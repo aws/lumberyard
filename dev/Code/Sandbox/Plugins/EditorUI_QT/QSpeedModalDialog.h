@@ -11,7 +11,7 @@
 */
 #ifndef QSpeedModalDialog_h__
 #define QSpeedModalDialog_h__
-#include "qdialog.h"
+#include "QDialog"
 #include "QGridLayout"
 #include "QLabel"
 #include "QSlider"

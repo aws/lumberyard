@@ -11,7 +11,7 @@
 */
 
 #include <ISystem.h>
-#include "../FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 #include <IFlowSystem.h>
 #include <Cry_Vector3.h>

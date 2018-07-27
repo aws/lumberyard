@@ -39,7 +39,7 @@ void logmessage(const char* text, ...)
 
     long req = CCrySimpleJob::GlobalRequestNumber();
 
-    int ret = azsnprintf(error, bufferlen, "% 8d | ", req);
+    int ret = azsnprintf(error, bufferlen, "%8ld | ", req);
 
     if (ret <= 0)
     {
@@ -50,8 +50,13 @@ void logmessage(const char* text, ...)
 
     time_t ltime;
     time(&ltime);
-    struct tm* today = localtime(&ltime);
-    ret = (int)strftime(error, bufferlen, "%d/%m %H:%M:%S | ", today);
+    tm today;
+#if defined(AZ_PLATFORM_WINDOWS)
+    localtime_s(&today, &ltime);
+#else
+    localtime_r(&ltime, &today);
+#endif
+    ret = (int)strftime(error, bufferlen, "%d/%m %H:%M:%S | ", &today);
 
     if (ret <= 0)
     {

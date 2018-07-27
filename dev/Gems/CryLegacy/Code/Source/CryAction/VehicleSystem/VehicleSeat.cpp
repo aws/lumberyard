@@ -13,7 +13,7 @@
 
 // Description : Implements a standard seat for vehicles
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "GameObjects/GameObject.h"
 #include "IActorSystem.h"
 #include "IAnimatedCharacter.h"
@@ -376,7 +376,8 @@ void CVehicleSeat::OnSpawnComplete()
         name.append("_serializer_");
 
         char a[128] = { 0 };
-        name.append(ltoa(m_seatId, a, 10));
+        azltoa(m_seatId, a, AZ_ARRAY_SIZE(a), 10);
+        name.append(a);
 
         SEntitySpawnParams params;
         params.sName = name.c_str();
@@ -2266,7 +2267,7 @@ void CVehicleSeat::Serialize(TSerialize ser, EEntityAspects aspects)
 
         for (TVehicleSeatActionVector::iterator ite = m_seatActions.begin(); ite != m_seatActions.end(); ++ite)
         {
-            _snprintf(pSeatActionString, 32, "seatAction_%d", ++i);
+            azsnprintf(pSeatActionString, 32, "seatAction_%d", ++i);
             pSeatActionString[sizeof(pSeatActionString) - 1] = '\0';
 
             ser.BeginGroup(pSeatActionString);

@@ -11,12 +11,12 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "GroundEffect.h"
 #include "IMaterialEffects.h"
 #include "CryAction.h"
 
-#include "../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 const float InvalidRayWorldIntersectDistance = -1.0f;
 

@@ -34,6 +34,9 @@
             "include/LmbrCentral/Audio/AudioSwitchComponentBus.h",
             "include/LmbrCentral/Audio/AudioTriggerComponentBus.h"
         ],
+        "Include/Geometry": [
+            "include/LmbrCentral/Geometry/GeometrySystemComponentBus.h"
+        ],
         "Include/Physics": [
             "include/LmbrCentral/Physics/ColliderComponentBus.h",
             "include/LmbrCentral/Physics/ConstraintComponentBus.h",
@@ -60,7 +63,8 @@
             "include/LmbrCentral/Rendering/RenderNodeBus.h",
             "include/LmbrCentral/Rendering/FogVolumeComponentBus.h",
             "include/LmbrCentral/Rendering/HighQualityShadowComponentBus.h",
-            "include/LmbrCentral/Rendering/GeomCacheComponentBus.h"
+            "include/LmbrCentral/Rendering/GeomCacheComponentBus.h",
+            "include/LmbrCentral/Rendering/GiRegistrationBus.h"
         ],
         "Include/Scripting": [
             "include/LmbrCentral/Scripting/EditorTagComponentBus.h",
@@ -132,6 +136,10 @@
         "Source/Events": [
             "Source/Events/ReflectScriptableEvents.h",
             "Source/Events/ReflectScriptableEvents.cpp"
+        ],
+        "Source/Geometry": [
+            "Source/Geometry/GeometrySystemComponent.h",
+            "Source/Geometry/GeometrySystemComponent.cpp"
         ],
         "Source/Physics": [
             "Source/Physics/CharacterPhysicsComponent.h",

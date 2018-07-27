@@ -58,7 +58,7 @@ static string GetFrameProfilerPath(CFrameProfiler* pProfiler)
         char sThreadNameBuf[11]; // 0x 12345678 \0 => 2+8+1=11
         if (!sThreadName || !sThreadName[0])
         {
-            _snprintf(sThreadNameBuf, sizeof(sThreadNameBuf), "%" PRI_THREADID "", (pProfiler->m_threadId));
+            azsnprintf(sThreadNameBuf, sizeof(sThreadNameBuf), "%" PRI_THREADID "", (pProfiler->m_threadId));
         }
 
         char sNameBuffer[256];
@@ -247,7 +247,7 @@ void CStatoscopeIntervalGroup::WriteDescEvent(void* p) const
     {
         const CStatoscopeDataClass::BinDataElement& elem = m_dataClass.GetBinElement(i);
         *pc++ = (char)elem.type;
-        strcpy(pc, elem.name.c_str());
+        azstrcpy(pc, elem.name.length() + 1, elem.name.c_str());
         pc += elem.name.length() + 1;
     }
 }
@@ -521,362 +521,6 @@ struct SSystemThreadsDG
         pThreadProf->Stop();
     }
 };
-
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-
-struct SWorkerInfoSummarizedDG
-    : public IStatoscopeDataGroup
-{
-    virtual SDescription GetDescription() const
-    {
-        return SDescription('X', "Worker Information Summarized", "['/WorkerInformation/Summary/$/' "
-            "(float SamplePeriodInMS) (int ActiveWorkers) (float AvgUtilPerc) (float TotalExecutionPeriodeInMS) (int TotalNumberOfJobsExecuted)]");
-    }
-
-    virtual void Write(IStatoscopeFrameRecord& fr)
-    {
-        // Helpers
-        struct SBackendPair
-        {
-            const JobManager::IBackend* pBackend;
-            const char* pPrefix;
-        };
-
-        const SBackendPair pBackends [] =
-        {
-            {gEnv->GetJobManager()->GetBackEnd(JobManager::eBET_Thread), "NoneBlocking"},
-            {gEnv->GetJobManager()->GetBackEnd(JobManager::eBET_Blocking), "Blocking"},
-        };
-
-        // Write worker summary for each backend
-        for (int i = 0; i < sizeof(pBackends) / sizeof(pBackends[0]); i++)
-        {
-            const SBackendPair& rBackendPair = pBackends[i];
-            bool addedValuesToStream = false;
-
-            if (rBackendPair.pBackend)
-            {
-                JobManager::SWorkerFrameStatsSummary frameStatsSummary;
-                JobManager::IWorkerBackEndProfiler* const __restrict pWorkerProfiler = rBackendPair.pBackend->GetBackEndWorkerProfiler();
-
-                if (pWorkerProfiler)
-                {
-                    pWorkerProfiler->GetFrameStatsSummary(frameStatsSummary);
-
-                    fr.AddValue(rBackendPair.pPrefix);                                                                      // Prefix
-                    fr.AddValue(frameStatsSummary.nSamplePeriod * 0.001f);                              // SamplePeriode
-                    fr.AddValue((int)frameStatsSummary.nNumActiveWorkers);                              // ActiveWorkers
-                    fr.AddValue(frameStatsSummary.nAvgUtilPerc);                                                    // AvgUtilPerc
-                    fr.AddValue((float)frameStatsSummary.nTotalExecutionPeriod * 0.001f);   // TotalExecutionPeriode
-                    fr.AddValue((int)frameStatsSummary.nTotalNumJobsExecuted);                      // TotalNumberOfJobsExecuted
-                    addedValuesToStream = true;
-                }
-            }
-
-            if (!addedValuesToStream)
-            {
-                fr.AddValue(rBackendPair.pPrefix);
-                fr.AddValue(0.f);
-                fr.AddValue(0);
-                fr.AddValue(0.f);
-                fr.AddValue(0.f);
-                fr.AddValue(0);
-            }
-        }
-    }
-
-    virtual uint32 PrepareToWrite()
-    {
-        return 2; // None-Blocking & Blocking Worker Summary Data Set
-    }
-};
-
-struct SJobsInfoSummarizedDG
-    : public IStatoscopeDataGroup
-{
-    virtual SDescription GetDescription() const
-    {
-        return SDescription('Z', "Job Information Summarized", "['/JobInformation/Summary/$/' "
-            "(float TotalExecutionTimeInMS) (int TotalNumberOfJobsExecuted) (int TotalNumberOfIndividualJobsExecuted)]");
-    }
-
-    virtual void Write(IStatoscopeFrameRecord& fr)
-    {
-        // Helpers
-        struct SBackendPair
-        {
-            const JobManager::IBackend* pBackend;
-            const char* pPrefix;
-        };
-
-        const SBackendPair pBackendPairs [] =
-        {
-            {gEnv->GetJobManager()->GetBackEnd(JobManager::eBET_Thread), "NoneBlocking"},
-            {gEnv->GetJobManager()->GetBackEnd(JobManager::eBET_Blocking), "Blocking"},
-        };
-
-        // Write jobs summary for each backend
-        for (int i = 0; i < sizeof(pBackendPairs) / sizeof(pBackendPairs[0]); i++)
-        {
-            const SBackendPair& rBackendPair = pBackendPairs[i];
-            bool addedValuesToStream = false;
-
-            if (rBackendPair.pBackend)
-            {
-                JobManager::SJobFrameStatsSummary jobFrameStatsSummary;
-                JobManager::IWorkerBackEndProfiler* const __restrict pWorkerProfiler = rBackendPair.pBackend->GetBackEndWorkerProfiler();
-
-                if (pWorkerProfiler)
-                {
-                    pWorkerProfiler->GetFrameStatsSummary(jobFrameStatsSummary);
-
-                    fr.AddValue(rBackendPair.pPrefix);                                                                          // Prefix
-                    fr.AddValue((float)jobFrameStatsSummary.nTotalExecutionTime * 0.001f);  // TotalExecutionTime
-                    fr.AddValue((int)jobFrameStatsSummary.nNumJobsExecuted);                                // TotalNumberOfJobsExecuted
-                    fr.AddValue((int)jobFrameStatsSummary.nNumIndividualJobsExecuted);          // TotalNumberOfIndividualJobsExecuted
-                    addedValuesToStream = true;
-                }
-            }
-
-            if (!addedValuesToStream)
-            {
-                fr.AddValue(rBackendPair.pPrefix);
-                fr.AddValue(0.f);
-                fr.AddValue(0);
-                fr.AddValue(0);
-            }
-        }
-    }
-
-    virtual uint32 PrepareToWrite()
-    {
-        return 2; // None-Blocking & Blocking Job Summary Data Set
-    }
-};
-
-class CWorkerInfoIndividualDG
-    : public IStatoscopeDataGroup
-{
-public:
-    CWorkerInfoIndividualDG()
-    {
-        m_pThreadFrameStats = new JobManager::CWorkerFrameStats(0);
-        m_pBlockingFrameStats = new JobManager::CWorkerFrameStats(0);
-    }
-
-    ~CWorkerInfoIndividualDG()
-    {
-        SAFE_DELETE(m_pBlockingFrameStats);
-        SAFE_DELETE(m_pThreadFrameStats);
-    }
-
-    virtual SDescription GetDescription() const
-    {
-        return SDescription('W', "Worker Information Individual", "['/WorkerInformation/Individual/$/$/' "
-            "(float SamplePeriodInMS) (float ExecutionTimeInMS) (float IdleTimeInMS) (float UtilPerc) (int NumJobs)]");
-    }
-
-    virtual void Write(IStatoscopeFrameRecord& fr)
-    {
-        // Helpers
-        struct SFrameStatsPair
-        {
-            const JobManager::CWorkerFrameStats* pFrameStats;
-            const char* pPrefix;
-        };
-
-        const SFrameStatsPair pFrameStatsPairs[] =
-        {
-            {m_pThreadFrameStats,   "NoneBlocking"},
-            {m_pBlockingFrameStats, "Blocking"},
-        };
-
-        // Write individual worker information for each backend
-        for (int i = 0; i < sizeof(pFrameStatsPairs) / sizeof(pFrameStatsPairs[0]); i++)
-        {
-            const SFrameStatsPair& rFrameStatsPair = pFrameStatsPairs[i];
-            const float cSamplePeriod = (float)rFrameStatsPair.pFrameStats->nSamplePeriod;
-
-            for (int j = 0; j < rFrameStatsPair.pFrameStats->numWorkers; ++j)
-            {
-                const JobManager::CWorkerFrameStats::SWorkerStats& pWorkerStats = rFrameStatsPair.pFrameStats->workerStats[j];
-                const float nExecutionPeriod = (float)pWorkerStats.nExecutionPeriod * 0.001f;
-                const float nIdleTime = (rFrameStatsPair.pFrameStats->nSamplePeriod > pWorkerStats.nExecutionPeriod) ? (rFrameStatsPair.pFrameStats->nSamplePeriod - pWorkerStats.nExecutionPeriod) * 0.001f : 0.f;
-
-                char cWorkerName[16];
-                sprintf(cWorkerName, "Worker%i", j);
-                fr.AddValue(rFrameStatsPair.pPrefix);                           // Category
-                fr.AddValue(cWorkerName);                                                   // Worker Name
-                fr.AddValue(cSamplePeriod * 0.001f);                            // SamplePeriodInMS
-                fr.AddValue(nExecutionPeriod);                                      // ExecutionTimeInMS
-                fr.AddValue(nIdleTime);                                                     // IdleTimeInMS
-                fr.AddValue(pWorkerStats.nUtilPerc);                            // UtilPerc [0.f ... 100.f]
-                fr.AddValue((int)pWorkerStats.nNumJobsExecuted);    // NumJobs
-            }
-        }
-    }
-
-    virtual uint32 PrepareToWrite()
-    {
-        // Helpers
-        struct SBackendSTatePair
-        {
-            const JobManager::IBackend* pBackend;
-            JobManager::CWorkerFrameStats** pFrameStats;
-        };
-
-        SBackendSTatePair rBackendStatePairs[] =
-        {
-            {gEnv->GetJobManager()->GetBackEnd(JobManager::eBET_Thread), &m_pThreadFrameStats},
-            {gEnv->GetJobManager()->GetBackEnd(JobManager::eBET_Blocking), &m_pBlockingFrameStats},
-        };
-
-        // Get individual worker information for each backend
-        uint32 cNumTotalWorkers = 0;
-        for (int i = 0; i < sizeof(rBackendStatePairs) / sizeof(rBackendStatePairs[0]); i++)
-        {
-            SBackendSTatePair& rBackendStatePair = rBackendStatePairs[i];
-            bool gotData = false;
-
-            // Get job profile stats for backend
-            if (rBackendStatePair.pBackend)
-            {
-                const uint32 cNumWorkers = rBackendStatePair.pBackend->GetBackEndWorkerProfiler()->GetNumWorkers();
-                JobManager::IWorkerBackEndProfiler* const __restrict pWorkerProfiler = rBackendStatePair.pBackend->GetBackEndWorkerProfiler();
-
-                // Get stats
-                if (pWorkerProfiler)
-                {
-                    // Validate size
-                    if ((*rBackendStatePair.pFrameStats)->numWorkers != cNumWorkers)
-                    {
-                        SAFE_DELETE(*rBackendStatePair.pFrameStats);
-                        *rBackendStatePair.pFrameStats = new JobManager::CWorkerFrameStats(cNumWorkers);
-                    }
-
-                    // Get frame stats
-                    pWorkerProfiler->GetFrameStats(**rBackendStatePair.pFrameStats);
-                    cNumTotalWorkers += cNumWorkers;
-                    gotData = true;
-                }
-            }
-
-            // Set frame stats to 0 workers
-            if (!gotData)
-            {
-                if ((*rBackendStatePair.pFrameStats)->numWorkers != 0)
-                {
-                    SAFE_DELETE(*rBackendStatePair.pFrameStats);
-                    *rBackendStatePair.pFrameStats = new JobManager::CWorkerFrameStats(0);
-                }
-            }
-        }
-
-        // Return number of data sets to be written
-        return cNumTotalWorkers;
-    }
-
-private:
-    JobManager::CWorkerFrameStats* m_pThreadFrameStats;
-    JobManager::CWorkerFrameStats* m_pBlockingFrameStats;
-};
-
-class CJobsInfoIndividualDG
-    : public IStatoscopeDataGroup
-{
-public:
-    virtual SDescription GetDescription() const
-    {
-        return SDescription('Y', "Job Information Individual", "['/JobInformation/Individual/$/$/' "
-            "(float ExecutionTimeInMS) (int NumberOfExecutions)]");
-    }
-
-    virtual void Write(IStatoscopeFrameRecord& fr)
-    {
-        // Helpers
-        struct SFrameStatsPair
-        {
-            const JobManager::IWorkerBackEndProfiler::TJobFrameStatsContainer* pFrameStats;
-            const char* pPrefix;
-        };
-
-        const SFrameStatsPair pFrameStatsPairs[] =
-        {
-            {&m_ThreadJobFrameStats,    "NoneBlocking"},
-            {&m_BlockingJobFrameStats, "Blocking"},
-        };
-
-        // Write individual job information for each backend
-        for (int i = 0; i < sizeof(pFrameStatsPairs) / sizeof(pFrameStatsPairs[0]); i++)
-        {
-            const SFrameStatsPair& pFrameStatsPair = pFrameStatsPairs[i];
-
-            // Write job information
-            for (int j = 0, nSize = pFrameStatsPair.pFrameStats->size(); j < nSize; ++j)
-            {
-                char cJobName[128];
-                const JobManager::SJobFrameStats& rJobFrameStats = (*pFrameStatsPair.pFrameStats)[j];
-
-                sprintf(cJobName, "Job_%s", rJobFrameStats.cpName);
-                fr.AddValue(pFrameStatsPair.pPrefix);                           // Category
-                fr.AddValue(cJobName);                                                      // Job Name
-                fr.AddValue((float)rJobFrameStats.usec * 0.001f);   // ExecutionTimeInMS
-                fr.AddValue((int)rJobFrameStats.count);                     // NumberOfExecutions
-            }
-        }
-    }
-
-    virtual uint32 PrepareToWrite()
-    {
-        // Helpers
-        struct SBackendStatePair
-        {
-            const JobManager::IBackend* pBackend;
-            JobManager::IWorkerBackEndProfiler::TJobFrameStatsContainer* pFrameStats;
-        };
-
-        SBackendStatePair pBackendStatePair[] =
-        {
-            {gEnv->GetJobManager()->GetBackEnd(JobManager::eBET_Thread), &m_ThreadJobFrameStats},
-            {gEnv->GetJobManager()->GetBackEnd(JobManager::eBET_Blocking), &m_BlockingJobFrameStats},
-        };
-
-        // Get individual job information for each backend
-        uint32 cNumTotalJobs = 0;
-        for (int i = 0; i < sizeof(pBackendStatePair) / sizeof(pBackendStatePair[0]); i++)
-        {
-            SBackendStatePair& rBackendStatePair = pBackendStatePair[i];
-            bool gotData = false;
-
-            // Get job profile stats
-            if (rBackendStatePair.pBackend)
-            {
-                JobManager::IWorkerBackEndProfiler* const __restrict pWorkerProfiler = rBackendStatePair.pBackend->GetBackEndWorkerProfiler();
-
-                if (pWorkerProfiler)
-                {
-                    pWorkerProfiler->GetFrameStats(*rBackendStatePair.pFrameStats, JobManager::IWorkerBackEndProfiler::eJobSortOrder_NoSort);
-                    cNumTotalJobs += rBackendStatePair.pFrameStats->size();
-                    gotData = true;
-                }
-
-                // Clear on no data
-                if (!gotData)
-                {
-                    rBackendStatePair.pFrameStats->clear();
-                }
-            }
-        }
-
-        // Return number of data sets to be written
-        return cNumTotalJobs;
-    }
-
-private:
-    JobManager::IWorkerBackEndProfiler::TJobFrameStatsContainer m_ThreadJobFrameStats;
-    JobManager::IWorkerBackEndProfiler::TJobFrameStatsContainer m_BlockingJobFrameStats;
-};
-#endif
 
 struct SCPUTimesDG
     : public IStatoscopeDataGroup
@@ -2538,10 +2182,18 @@ void CStatoscope::SetLogFilename()
     {
         time_t curTime;
         time(&curTime);
-        const struct tm* lt = localtime(&curTime);
+#ifdef AZ_COMPILER_MSVC
+        struct tm lt;
+        localtime_s(&lt, &curTime);
+
+        char name[MAX_PATH];
+        strftime(name, sizeof(name) / sizeof(name[0]), "_%Y%m%d_%H%M%S", &lt);
+#else
+        auto lt = localtime(&curTime);
 
         char name[MAX_PATH];
         strftime(name, sizeof(name) / sizeof(name[0]), "_%Y%m%d_%H%M%S", lt);
+#endif
 
         m_logFilename += name;
     }
@@ -2627,7 +2279,7 @@ void CStatoscope::AddUserMarkerFmt(const char* path, const char* fmt, ...)
         char msg[1024];
         va_list args;
         va_start(args, fmt);
-        vsnprintf(msg, sizeof(msg), fmt, args);
+        azvsnprintf(msg, sizeof(msg), fmt, args);
         msg[sizeof(msg) - 1] = '\0';
         va_end(args);
 
@@ -2860,12 +2512,6 @@ void CStatoscope::RegisterBuiltInDataGroups()
     RegisterDataGroup(new SStreamingObjectsDG());
     RegisterDataGroup(new SThreadsDG());
     RegisterDataGroup(new SSystemThreadsDG());
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-    RegisterDataGroup(new CWorkerInfoIndividualDG());
-    RegisterDataGroup(new SWorkerInfoSummarizedDG());
-    RegisterDataGroup(new CJobsInfoIndividualDG());
-    RegisterDataGroup(new SJobsInfoSummarizedDG());
-#endif
     RegisterDataGroup(new SCPUTimesDG());
     RegisterDataGroup(new SVertexCostDG());
     RegisterDataGroup(new SParticlesDG());

@@ -427,10 +427,10 @@ function weaponcontroller:OnActivate()
 	self.debugFireMessageEventId = GameplayNotificationId(self.entityId, "DebugFireMessage", "float");
 	self.debugFireMessageHandler = GameplayNotificationBus.Connect(self, self.debugFireMessageEventId);
 
-    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AnimWeightSpine1", self.Properties.Weapons.AimWeightSpine1);
-    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AnimWeightSpine2", self.Properties.Weapons.AimWeightSpine2);
-    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AnimWeightSpine3", self.Properties.Weapons.AimWeightSpine3);
-    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightShoulder", self.Properties.Weapons.AimWeightShoulder);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightSpine1", self.Properties.Weapons.AimWeightSpine1);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightSpine2", self.Properties.Weapons.AimWeightSpine2);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightSpine3", self.Properties.Weapons.AimWeightSpine3);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "SimWeightShoulder", self.Properties.Weapons.AimWeightShoulder);
     AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightUpperArm", self.Properties.Weapons.AimWeightUpperArm);
     AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightLowerArm", self.Properties.Weapons.AimWeightLowerArm);
     AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightHand", self.Properties.Weapons.AimWeightHand);

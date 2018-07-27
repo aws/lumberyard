@@ -23,10 +23,13 @@
 #include <MCore/Source/JobManager.h>
 #include <MCore/Source/Job.h>
 #include <MCore/Source/JobList.h>
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(SoftSkinDeformer, DeformerAllocator, 0)
+
     // constructor
     SoftSkinDeformer::SoftSkinDeformer(Mesh* mesh)
         : MeshDeformer(mesh)
@@ -47,7 +50,7 @@ namespace EMotionFX
     // create
     SoftSkinDeformer* SoftSkinDeformer::Create(Mesh* mesh)
     {
-        return new SoftSkinDeformer(mesh);
+        return aznew SoftSkinDeformer(mesh);
     }
 
 
@@ -69,7 +72,7 @@ namespace EMotionFX
     MeshDeformer* SoftSkinDeformer::Clone(Mesh* mesh)
     {
         // create the new cloned deformer
-        SoftSkinDeformer* result = new SoftSkinDeformer(mesh);
+        SoftSkinDeformer* result = aznew SoftSkinDeformer(mesh);
 
         // copy the bone info (for precalc/optimization reasons)
         result->mNodeNumbers    = mNodeNumbers;

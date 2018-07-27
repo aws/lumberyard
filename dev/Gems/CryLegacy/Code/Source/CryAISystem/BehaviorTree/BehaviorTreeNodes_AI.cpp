@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "BehaviorTreeNodes_AI.h"
 
 #include "AIActor.h" // Big one, but needed for timestamp collection
@@ -35,7 +35,7 @@
 #include "TargetSelection/TargetTrackManager.h"
 #include "BehaviorTree/BehaviorTreeNodes_Helicopter.h"
 #include "CryName.h"
-#include "../CryAction/ICryMannequin.h"
+#include "ICryMannequin.h"
 #include "IGameFramework.h"
 #include "BehaviorTreeManager.h"
 

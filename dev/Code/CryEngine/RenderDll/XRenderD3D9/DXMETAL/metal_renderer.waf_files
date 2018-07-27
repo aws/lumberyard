@@ -45,7 +45,7 @@
             "Implementation/GLShader.hpp",
             "Implementation/GLState.hpp",
             "Implementation/METALContext.hpp",
-            "Implementation/METALDevice.hpp"
+            "Implementation/MetalDevice.hpp"
         ],
         "DXMETAL/Interfaces":
         [
@@ -158,6 +158,7 @@
             "../D3DVolumetricFog.cpp",
             "../DriverD3D.cpp",
             "../GPUTimer.cpp",
+            "../GPUTimerFactory.cpp",
             "../PipelineProfiler.cpp",
             "../StatoscopeRenderStats.cpp",
             "../D3DREBreakableGlassBuffer.h",

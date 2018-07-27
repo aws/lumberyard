@@ -41,9 +41,9 @@ namespace EMotionFX
                 void SetMaxScaleError(float value);
 
                 // IMotionCompressionSettingsRule overrides
-                virtual float GetMaxTranslationError() const;
-                virtual float GetMaxRotationError() const;
-                virtual float GetMaxScaleError() const;
+                float GetMaxTranslationError() const override;
+                float GetMaxRotationError() const override;
+                float GetMaxScaleError() const override;
 
                 static void Reflect(AZ::ReflectContext* context);
 

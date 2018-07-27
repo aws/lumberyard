@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "QtUI/QCollapsibleGroupBox.h"
 
 #include <QResizeEvent>
@@ -25,7 +25,7 @@ QCollapsibleGroupBox::QCollapsibleGroupBox(QWidget* parent)
     m_toggleButton = new QToolButton(this);
     m_toggleButton->setFixedSize(16, 16);
     m_toggleButton->setArrowType(Qt::UpArrow);
-    connect(m_toggleButton, &QToolButton::clicked, [&]()
+    connect(m_toggleButton, &QToolButton::clicked, this, [&]()
         {
             setCollapsed(!m_collapsed);
         });

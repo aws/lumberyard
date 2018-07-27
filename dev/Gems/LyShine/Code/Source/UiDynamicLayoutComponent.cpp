@@ -209,7 +209,6 @@ void UiDynamicLayoutComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiDynamicLayoutBus>("UiDynamicLayoutBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("SetNumChildElements", &UiDynamicLayoutBus::Events::SetNumChildElements);
     }
 }

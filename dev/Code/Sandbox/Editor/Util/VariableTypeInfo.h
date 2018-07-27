@@ -160,6 +160,10 @@ public:
 
     virtual ISplineInterpolator* GetSpline();
 
+    //! Overrides CVariableTypeInfo to keep m_pSpline in sync with CVariableTypeInfo::m_pData
+    //! when Set(value) functions are called
+    void OnSetValue(bool bRecursive) override;
+
 private:
     ISplineInterpolator* m_pSpline;
 };

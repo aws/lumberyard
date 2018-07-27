@@ -81,6 +81,7 @@ TEST_F(DescriptionTest, ParseJson_V3_GameModule)
     EXPECT_MODULE_TYPE_COUNT(desc, EditorModule, 1);
     EXPECT_MODULE_TYPE_COUNT(desc, StaticLib, 0);
     EXPECT_MODULE_TYPE_COUNT(desc, Builder, 0);
+    EXPECT_MODULE_TYPE_COUNT(desc, Standalone, 0);
 }
 
 // Test for parsing V3 Gem Descriptions with an editor module
@@ -109,6 +110,7 @@ TEST_F(DescriptionTest, ParseJson_V3_EditorModule)
     EXPECT_MODULE_TYPE_COUNT(desc, EditorModule, 1);
     EXPECT_MODULE_TYPE_COUNT(desc, StaticLib, 0);
     EXPECT_MODULE_TYPE_COUNT(desc, Builder, 0);
+    EXPECT_MODULE_TYPE_COUNT(desc, Standalone, 0);
 }
 
 // Test for parsing V4 Gem Descriptions with a game module
@@ -140,6 +142,7 @@ TEST_F(DescriptionTest, ParseJson_V4_GameModule)
     EXPECT_MODULE_TYPE_COUNT(desc, EditorModule, 1);
     EXPECT_MODULE_TYPE_COUNT(desc, StaticLib, 0);
     EXPECT_MODULE_TYPE_COUNT(desc, Builder, 0);
+    EXPECT_MODULE_TYPE_COUNT(desc, Standalone, 0);
 }
 
 // Test for parsing V4 Gem Descriptions with an editor module
@@ -172,6 +175,7 @@ TEST_F(DescriptionTest, ParseJson_V4_EditorModule)
     EXPECT_MODULE_TYPE_COUNT(desc, EditorModule, 1);
     EXPECT_MODULE_TYPE_COUNT(desc, StaticLib, 0);
     EXPECT_MODULE_TYPE_COUNT(desc, Builder, 0);
+    EXPECT_MODULE_TYPE_COUNT(desc, Standalone, 0);
 }
 
 // Test for parsing V4 Gem Descriptions with a game and an editor module (that extends the editor module
@@ -208,6 +212,7 @@ TEST_F(DescriptionTest, ParseJson_V4_EditorModuleExtends)
     EXPECT_MODULE_TYPE_COUNT(desc, EditorModule, 1);
     EXPECT_MODULE_TYPE_COUNT(desc, StaticLib, 0);
     EXPECT_MODULE_TYPE_COUNT(desc, Builder, 0);
+    EXPECT_MODULE_TYPE_COUNT(desc, Standalone, 0);
 }
 
 // Test for parsing V4 Gem Descriptions with a static lib
@@ -240,6 +245,40 @@ TEST_F(DescriptionTest, ParseJson_V4_StaticLib)
     EXPECT_MODULE_TYPE_COUNT(desc, EditorModule, 0);
     EXPECT_MODULE_TYPE_COUNT(desc, StaticLib, 1);
     EXPECT_MODULE_TYPE_COUNT(desc, Builder, 0);
+    EXPECT_MODULE_TYPE_COUNT(desc, Standalone, 0);
+}
+
+// Test for parsing V4 Gem Descriptions with a static lib
+TEST_F(DescriptionTest, ParseJson_V4_Standalone)
+{
+    static const char* description = R"JSON(
+{
+    "GemFormatVersion": 4,
+    "Uuid": "f910686b6725452fbfc4671f95f733c6",
+    "Name": "Camera",
+    "Version": "0.1.0",
+    "DisplayName": "Camera",
+    "Tags": ["Camera"],
+    "Summary": "The Camera Gem includes a basic camera component that defines a frustum for runtime rendering.",
+    "IconPath": "preview.png",
+    "Modules": [
+        {
+            "Name": "CameraHelper",
+            "Type": "Standalone"
+        }
+    ]
+}
+)JSON";
+
+    GemDescription desc = ParseString(description);
+
+    EXPECT_MODULE_COUNT(desc, 1);
+
+    EXPECT_MODULE_TYPE_COUNT(desc, GameModule, 0);
+    EXPECT_MODULE_TYPE_COUNT(desc, EditorModule, 0);
+    EXPECT_MODULE_TYPE_COUNT(desc, StaticLib, 0);
+    EXPECT_MODULE_TYPE_COUNT(desc, Builder, 0);
+    EXPECT_MODULE_TYPE_COUNT(desc, Standalone, 1);
 }
 
 // Test for parsing V4 Gem Descriptions with a builder module
@@ -272,6 +311,7 @@ TEST_F(DescriptionTest, ParseJson_V4_BuilderModule)
     EXPECT_MODULE_TYPE_COUNT(desc, EditorModule, 0);
     EXPECT_MODULE_TYPE_COUNT(desc, StaticLib, 0);
     EXPECT_MODULE_TYPE_COUNT(desc, Builder, 1);
+    EXPECT_MODULE_TYPE_COUNT(desc, Standalone, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////

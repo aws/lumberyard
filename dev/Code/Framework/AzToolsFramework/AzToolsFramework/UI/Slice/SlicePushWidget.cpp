@@ -21,6 +21,7 @@
 #include <QtWidgets/QRadioButton>
 #include <QtWidgets/QSplitter>
 #include <QtWidgets/QMessageBox>
+#include <QKeyEvent>
 
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Quaternion.h>
@@ -70,11 +71,7 @@ namespace AzToolsFramework
         button->setFixedSize(200, 40);
         layout->addWidget(button);
 
-        connect(button, &QPushButton::released, 
-            [this]()
-            {
-                emit OnCloseClicked();
-            });
+        connect(button, &QPushButton::released, this, &NoChangesOverlay::OnCloseClicked);
 
         setLayout(layout);
 
@@ -579,11 +576,7 @@ namespace AzToolsFramework
         if (0 == m_fieldTree->topLevelItemCount())
         {
             NoChangesOverlay* overlay = new NoChangesOverlay(this);
-            connect(overlay, &NoChangesOverlay::OnCloseClicked, 
-                [this]() 
-                { 
-                    OnCancelClicked();
-                });
+            connect(overlay, &NoChangesOverlay::OnCloseClicked, this, &SlicePushWidget::OnCancelClicked);
         }
 
         DisplayStatusMessages();
@@ -625,10 +618,10 @@ namespace AzToolsFramework
             QTreeWidgetItemIterator itemIter(m_fieldTree);
             for (; *itemIter; ++itemIter)
             {
-                FieldTreeItem* item = static_cast<FieldTreeItem*>(*itemIter);
-                if (!item->parent())
+                FieldTreeItem* pItem = static_cast<FieldTreeItem*>(*itemIter);
+                if (!pItem->parent())
                 {
-                    for (auto iter = item->m_ancestors.begin(); iter != item->m_ancestors.end(); ++iter)
+                    for (auto iter = pItem->m_ancestors.begin(); iter != pItem->m_ancestors.end(); ++iter)
                     {
                         auto& ancestor = *iter;
                         const AZ::Data::AssetId& sliceAssetId = ancestor.m_sliceAddress.first->GetSliceAsset().GetId();
@@ -770,14 +763,14 @@ namespace AzToolsFramework
 
         while (!stack.empty())
         {
-            FieldTreeItem* item = stack.back();
+            FieldTreeItem* pItem = stack.back();
             stack.pop_back();
 
-            item->setCheckState(0, checkState);
+            pItem->setCheckState(0, checkState);
 
-            for (int i = 0; i < item->childCount(); ++i)
+            for (int i = 0; i < pItem->childCount(); ++i)
             {
-                stack.push_back(static_cast<FieldTreeItem*>(item->child(i)));
+                stack.push_back(static_cast<FieldTreeItem*>(pItem->child(i)));
             }
         }
 
@@ -823,28 +816,28 @@ namespace AzToolsFramework
 
                 while (!verificationStack.empty())
                 {
-                    FieldTreeItem* item = verificationStack.back();
+                    FieldTreeItem* pItem = verificationStack.back();
                     verificationStack.pop_back();
 
-                    FieldTreeItem* parentItem = static_cast<FieldTreeItem*>(item->parent());
-                    if (item->m_isEntityAdd)
+                    FieldTreeItem* parentItem = static_cast<FieldTreeItem*>(pItem->parent());
+                    if (pItem->m_isEntityAdd)
                     {
                         if (parentItem->checkState(0) == Qt::CheckState::Unchecked)
                         {
-                            item->setCheckState(0, Qt::CheckState::Unchecked);
+                            pItem->setCheckState(0, Qt::CheckState::Unchecked);
                         }
                     }
-                    else if (item->m_isEntityRemoval)
+                    else if (pItem->m_isEntityRemoval)
                     {
                         if (parentItem->checkState(0) == Qt::CheckState::Checked)
                         {
-                            item->setCheckState(0, Qt::CheckState::Checked);
+                            pItem->setCheckState(0, Qt::CheckState::Checked);
                         }
                     }
 
-                    for (int i = 0; i < item->childCount(); ++i)
+                    for (int i = 0; i < pItem->childCount(); ++i)
                     {
-                        verificationStack.push_back(static_cast<FieldTreeItem*>(item->child(i)));
+                        verificationStack.push_back(static_cast<FieldTreeItem*>(pItem->child(i)));
                     }
                 }
             }

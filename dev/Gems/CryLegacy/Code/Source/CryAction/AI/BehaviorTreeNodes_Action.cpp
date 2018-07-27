@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "BehaviorTreeNodes_Action.h"
 #include "BehaviorTree/IBehaviorTree.h"
 #include "BehaviorTree/Action.h"

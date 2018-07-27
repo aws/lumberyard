@@ -11,10 +11,10 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "Cry_Color.h"
 #include "ConvertContext.h"
-#include "iconfig.h"
+#include "IConfig.h"
 #include "CharacterCompiler.h"
 #include "CGF/CGFSaver.h"
 #include "StatCGFPhysicalize.h"

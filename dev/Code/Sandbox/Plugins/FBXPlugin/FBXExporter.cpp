@@ -242,17 +242,23 @@ bool CFBXExporter::ExportToFile(const char* filename, const Export::IData* pData
     //Save a scene
     bool bRet = false;
     FbxExporter* pFBXExporter = FbxExporter::Create(m_pFBXManager, name.c_str());
-    if (pFBXExporter->Initialize(filename, nFileFormat, pSettings))
+
+    // For backward compatilibity choose a widely compatible FBX version that's been out for a while:
+    if (pFBXExporter)
     {
-        bRet = pFBXExporter->Export(pFBXScene);
+        pFBXExporter->SetFileExportVersion(FBX_2014_00_COMPATIBLE);
+
+        if (pFBXExporter->Initialize(filename, nFileFormat, pSettings))
+        {
+            bRet = pFBXExporter->Export(pFBXScene);
+        }
+        pFBXExporter->Destroy();
     }
+
+    pFBXScene->Destroy();
 
     m_materials.clear();
     m_meshMaterialIndices.clear();
-
-    pFBXExporter->Destroy();
-
-    pFBXScene->Destroy();
 
     m_pFBXManager->Destroy();
     m_pFBXManager = 0;

@@ -132,7 +132,7 @@ bool CResFile::mfActivate(bool bFirstTime)
             if (!bFirstTime && m_szAccess[0] == 'w')
             {
                 char szAcc[16];
-                strcpy(szAcc, m_szAccess);
+                azstrcpy(szAcc, AZ_ARRAY_SIZE(szAcc), m_szAccess);
                 szAcc[0] = 'r';
                 m_fileHandle = gEnv->pCryPak->FOpen(m_name.c_str(), szAcc, nFlags | ICryPak::FOPEN_HINT_DIRECT_OPERATION);
             }
@@ -211,7 +211,7 @@ void CResFile::mfSetError(const char* er, ...)
     char buffer[1024];
     va_list args;
     va_start(args, er);
-    if (vsnprintf(buffer, sizeof(buffer), er, args) == -1)
+    if (azvsnprintf(buffer, sizeof(buffer), er, args) == -1)
     {
         buffer[sizeof(buffer) - 1] = 0;
     }
@@ -2162,7 +2162,7 @@ void fpAddExtension(char* path, const char* extension, size_t bytes)
     }
 
     assert(bytes > strlen(path) + strlen(extension)); // if this hits, bad buffer was passed in
-    strcat(path, extension);
+    azstrcat(path, bytes, extension);
 }
 
 void fpConvertDOSToUnixName(char* dst, const char* src, size_t bytes)
@@ -2212,25 +2212,25 @@ void fpUsePath(const char* name, const char* path, char* dst, size_t bytes)
     if (!path)
     {
         assert(bytes > strlen(name)); // if this hits, bad buffer was passed in
-        strcpy(dst, name);
+        azstrcpy(dst, bytes, name);
         return;
     }
 
     assert(bytes > strlen(path)); // if this hits, bad buffer was passed in
-    strcpy(dst, path);
+    azstrcpy(dst, bytes, path);
 
     assert(*path); // if this hits, path underflow
     char c = path[strlen(path) - 1];
     if (c != '/' && c != '\\')
     {
         assert(bytes > strlen(path) + strlen(name) + 1); // it this hits, bad buffer was passed in
-        strcat(dst, "/");
+        azstrcat(dst, bytes, "/");
     }
     else
     {
         assert(bytes > strlen(path) + strlen(name)); // it this hits, bad buffer was passed in
     }
-    strcat(dst, name);
+    azstrcat(dst, bytes, name);
 }
 
 #include "TypeInfo_impl.h"

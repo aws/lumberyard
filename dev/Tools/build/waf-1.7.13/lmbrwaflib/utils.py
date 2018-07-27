@@ -516,6 +516,10 @@ def get_spec_dependencies(ctx, modules_spec, valid_gem_types):
                         Logs.debug('utils: -> skipping gem {} because it is not in the project gem list'.format(module))
 
                 else:
+                    if getattr(module_task_gen, 'is_editor_plugin', False) and modules_spec not in ['all', 'engine_and_editor']:
+                        Logs.debug('utils: -> skipping module because it is an editor plugin and we are not including them.')
+                        continue
+
                     Logs.debug('utils: -> adding the module and its dependencies because it is a module for the game project.')
                     task_project_name = getattr(module_task_gen, 'project_name', None)
                     game_engine_module_dependencies.add(module)

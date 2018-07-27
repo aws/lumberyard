@@ -10,17 +10,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 ########################################################################################
+from waflib import Logs
 
 def build(bld):
-
-    use_list = ['CryRenderD3D11'] 
-    if 'win' in bld.variant and bld.options.win_build_renderer == 'DX12':
-        if not getattr(bld, 'has_dx12', None) or not bld.has_dx12():
-            Logs.warn('win_build_renderer == DX12 but machine cant compile for DX12, reverting to DX11')
-        else:
-            use_list = ['CryRenderD3D12'] 
-        
-    use_list.extend(['CryRenderGL', 'CryRenderMetal', 'CryRenderNULL', 'CryCommon', 'Cry3DEngine'])
 
     bld.DefineGem(
         ## Runtime build configuration
@@ -29,14 +21,11 @@ def build(bld):
             bld.Path('Code/CryEngine/Cry3DEngine'),
             bld.Path('Code/CryEngine/RenderDll'),
             bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
-            bld.Path('Gems/LmbrCentral/Code/Include'),
+            bld.Path('Gems/LmbrCentral/Code/include'),
             bld.Path('Code/Framework/AzToolsFramework'),
         ],
         disable_tests   = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
-
         win_features    = ['crcfix'],
-        use             = use_list,
-
         uselib          = [ 'NVAPI', 'LZSS', 'LZMA' ],
 
         ## Ensure that Apple platforms use Metal, since GL isn't supported.
@@ -50,17 +39,16 @@ def build(bld):
         appletv_framework   = [ 'Metal', 'CoreGraphics', 'OpenGLES' ],
         appletv_defines     = ['CRY_USE_METAL'],
 
-        darwin_cxxflags        = [ '-x', 'objective-c++', '-Wno-c++11-narrowing'  ],
-        darwin_libpath         = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/mac') ],
-        darwin_framework       = [ 'Metal', 'CoreGraphics', 'CoreServices', 'QuartzCore' ],
-        darwin_defines         = ['CRY_USE_METAL'],
+        darwin_cxxflags     = [ '-x', 'objective-c++', '-Wno-c++11-narrowing'  ],
+        darwin_libpath      = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/mac') ],
+        darwin_framework    = [ 'Metal', 'CoreGraphics', 'CoreServices', 'QuartzCore' ],
+        darwin_defines      = ['CRY_USE_METAL'],
 
 
         ## Editor build configuration
         editor = dict(
             platforms   = ['win', 'darwin'],
             features    = ['qt5'],
-            use         = ['CryRenderD3D11', 'CryRenderD3D12', 'CryRenderGL', 'CryRenderMetal', 'CryCommon', 'Cry3DEngine', 'EditorCore', 'EditorCommon'],
             includes    = [
                 'Source',
                 bld.Path('Code/CryEngine'),
@@ -69,7 +57,7 @@ def build(bld):
                 bld.Path('Code/CryEngine/RenderDll'),
                 bld.Path('Code/CryEngine/RenderDll/Common'),
                 bld.Path('Code/Framework/AzToolsFramework'),
-                bld.Path('Gems/LmbrCentral/Code/Include'),
+                bld.Path('Gems/LmbrCentral/Code/include'),
                 bld.Path('Gems/LmbrCentral/Code/Source'),
                 bld.Path('Code/Sandbox'),
                 bld.Path('Code/Sandbox/Editor'),
@@ -106,7 +94,7 @@ def build(bld):
             win_uselib      = ['AWS_CPP_SDK_ALL'],
             win_features    = ['crcfix', 'ExternalLyIdentity', 'ExternalLyMetrics'],
             win_use         = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
-            win_defines     = ['METRICS_SYSTEM_COMPONENT_ENABLED']
+            win_defines     = ['METRICS_SYSTEM_COMPONENT_ENABLED'],
         ),
     )
         

@@ -51,8 +51,8 @@ void UserLoginDefault::UserLoginDefaultGem::OnPlatformEvent(const IPlatformOS::S
 
 void UserLoginDefault::UserLoginDefaultGem::UserLogin(unsigned int user)
 {
-    auto pGameFramework = GetISystem()->GetIGame()->GetIGameFramework();
-    auto profileManager = pGameFramework->GetIPlayerProfileManager();
+    auto pGameFramework = GetISystem()->GetIGame() ? GetISystem()->GetIGame()->GetIGameFramework() : nullptr;
+    auto profileManager = pGameFramework ? pGameFramework->GetIPlayerProfileManager() : nullptr;
     if (!profileManager)
     {
         GameWarning("[GameProfiles]: PlayerProfileManager not available. Running without.");

@@ -14,7 +14,6 @@
 
 #include <platform_impl.h>
 #include <IGem.h>
-#include "CryAction.h"
 #include "IEntitySystem.h"
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 

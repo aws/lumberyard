@@ -12,22 +12,25 @@
 
 #pragma once
 
-// include the required headers
-#include "EMotionFXConfig.h"
-#include "BaseObject.h"
-#include <MCore/Source/Array.h>
+#include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/std/string/string.h>
+#include <MCore/Source/Array.h>
+#include <EMotionFX/Source/Allocators.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
 
 
 namespace EMotionFX
 {
     class EMFX_API AnimGraphGameControllerSettings
-        : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphGameControllerSettings, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_GAMECONTROLLER);
-
     public:
-        enum ParameterMode
+        AZ_RTTI(AnimGraphGameControllerSettings, "{05DF1B3B-2073-4E6D-B5B6-7B87F46CCCB7}");
+        AZ_CLASS_ALLOCATOR_DECL
+
+        AnimGraphGameControllerSettings();
+        virtual ~AnimGraphGameControllerSettings();
+
+        enum ParameterMode : AZ::u8
         {
             PARAMMODE_STANDARD                          = 0,
             PARAMMODE_ZEROTOONE                         = 1,
@@ -37,7 +40,7 @@ namespace EMotionFX
             PARAMMODE_ROTATE_CHARACTER                  = 5
         };
 
-        enum ButtonMode
+        enum ButtonMode : AZ::u8
         {
             BUTTONMODE_NONE                             = 0,
             BUTTONMODE_SWITCHSTATE                      = 1,
@@ -47,45 +50,55 @@ namespace EMotionFX
             BUTTONMODE_ENABLEBOOLFORONLYONEFRAMEONLY    = 5
         };
 
-        struct EMFX_API ParameterInfo
+        struct EMFX_API ParameterInfo final
         {
-            MCORE_MEMORYOBJECTCATEGORY(AnimGraphGameControllerSettings::ParameterInfo, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_GAMECONTROLLER);
+            AZ_RTTI(AnimGraphGameControllerSettings::ParameterInfo, "{C3220DB3-54FA-4719-80F0-CEAE5859C641}");
+            AZ_CLASS_ALLOCATOR_DECL
+
+            ParameterInfo();
             ParameterInfo(const char* parameterName);
+            virtual ~ParameterInfo() = default;
 
-            ParameterInfo* Clone() const;
+            static void Reflect(AZ::ReflectContext* context);
 
-            AZStd::string           mParameterName;
-            ParameterMode           mMode;
-            bool                    mInvert;
-            bool                    mEnabled;
-            uint8                   mAxis;
+            AZStd::string           m_parameterName;
+            ParameterMode           m_mode;
+            bool                    m_invert;
+            bool                    m_enabled;
+            uint8                   m_axis;
         };
 
-        struct EMFX_API ButtonInfo
+        struct EMFX_API ButtonInfo final
         {
-            MCORE_MEMORYOBJECTCATEGORY(AnimGraphGameControllerSettings::ButtonInfo, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_GAMECONTROLLER);
-            ButtonInfo(uint32 buttonIndex);
+            AZ_RTTI(AnimGraphGameControllerSettings::ButtonInfo, "{94027445-C44F-4310-9DF2-1A2F39518578}");
+            AZ_CLASS_ALLOCATOR_DECL
 
-            ButtonInfo* Clone() const;
+            ButtonInfo();
+            ButtonInfo(AZ::u32 buttonIndex);
+            virtual ~ButtonInfo() = default;
 
-            uint32                  mButtonIndex;
-            ButtonMode              mMode;
-            AZStd::string           mString;                /**< Mostly used to store the attribute or parameter name to which this button belongs to. */
-            bool                    mOldIsPressed;
-            bool                    mEnabled;
+            static void Reflect(AZ::ReflectContext* context);
+
+            AZ::u32                 m_buttonIndex;
+            ButtonMode              m_mode;
+            AZStd::string           m_string;                /**< Mostly used to store the attribute or parameter name to which this button belongs to. */
+            bool                    m_oldIsPressed;
+            bool                    m_enabled;
         };
 
         class EMFX_API Preset
-            : public BaseObject
         {
-            MCORE_MEMORYOBJECTCATEGORY(AnimGraphGameControllerSettings::Preset, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_GAMECONTROLLER);
-
         public:
-            static Preset* Create(const char* name);
+            AZ_RTTI(AnimGraphGameControllerSettings::Preset, "{51F08C40-B249-4F6D-BE82-D16721816A60}");
+            AZ_CLASS_ALLOCATOR_DECL
+
+            Preset();
+            Preset(const char* name);
+            virtual ~Preset();
 
             // try to find the parameter or button info and create a new one for the given name or index in case no existing one has been found
             ParameterInfo* FindParameterInfo(const char* parameterName);
-            ButtonInfo* FindButtonInfo(uint32 buttonIndex);
+            ButtonInfo* FindButtonInfo(AZ::u32 buttonIndex);
 
             /**
              * Check if the parameter with the given name is being controlled by the gamepad.
@@ -113,58 +126,50 @@ namespace EMotionFX
 
             void Clear();
 
-            void SetName(const char* name)                              { mName = name; }
-            const char* GetName() const                                 { return mName.c_str(); }
-            const AZStd::string& GetNameString() const                  { return mName; }
+            void SetName(const char* name)                              { m_name = name; }
+            const char* GetName() const                                 { return m_name.c_str(); }
+            const AZStd::string& GetNameString() const                  { return m_name; }
 
-            void SetNumParamInfos(uint32 numParamInfos)                 { mParameterInfos.Resize(numParamInfos); }
-            void SetParamInfo(uint32 index, ParameterInfo* paramInfo)   { mParameterInfos[index] = paramInfo; }
-            uint32 GetNumParamInfos() const                             { return mParameterInfos.GetLength(); }
-            ParameterInfo* GetParamInfo(uint32 index) const             { return mParameterInfos[index]; }
+            void SetNumParamInfos(size_t numParamInfos)                 { m_parameterInfos.resize(numParamInfos); }
+            void SetParamInfo(size_t index, ParameterInfo* paramInfo)   { m_parameterInfos[index] = paramInfo; }
+            size_t GetNumParamInfos() const                             { return m_parameterInfos.size(); }
+            ParameterInfo* GetParamInfo(size_t index) const             { return m_parameterInfos[index]; }
 
-            void SetNumButtonInfos(uint32 numButtonInfos)               { mButtonInfos.Resize(numButtonInfos); }
-            void SetButtonInfo(uint32 index, ButtonInfo* buttonInfo)    { mButtonInfos[index] = buttonInfo; }
-            uint32 GetNumButtonInfos() const                            { return mButtonInfos.GetLength(); }
-            ButtonInfo* GetButtonInfo(uint32 index) const               { return mButtonInfos[index]; }
+            void SetNumButtonInfos(size_t numButtonInfos)               { m_buttonInfos.resize(numButtonInfos); }
+            void SetButtonInfo(size_t index, ButtonInfo* buttonInfo)    { m_buttonInfos[index] = buttonInfo; }
+            size_t GetNumButtonInfos() const                            { return m_buttonInfos.size(); }
+            ButtonInfo* GetButtonInfo(size_t index) const               { return m_buttonInfos[index]; }
 
-            Preset* Clone() const;
+            static void Reflect(AZ::ReflectContext* context);
 
         private:
-            MCore::Array<ParameterInfo*>    mParameterInfos;
-            MCore::Array<ButtonInfo*>       mButtonInfos;
-            AZStd::string                   mName;
-
-            Preset(const char* name);
-            ~Preset();
+            AZStd::vector<ParameterInfo*>    m_parameterInfos;
+            AZStd::vector<ButtonInfo*>       m_buttonInfos;
+            AZStd::string                    m_name;
         };
 
-        static AnimGraphGameControllerSettings* Create();
-
         void AddPreset(Preset* preset);
-        void RemovePreset(uint32 index);
-        void SetNumPresets(uint32 numPresets);
-        void SetPreset(uint32 index, Preset* preset);
+        void RemovePreset(size_t index);
+        void SetNumPresets(size_t numPresets);
+        void SetPreset(size_t index, Preset* preset);
         void Clear();
 
         void OnParameterNameChange(const char* oldName, const char* newName);
 
-        Preset* GetPreset(uint32 index) const;
-        uint32 GetNumPresets() const;
+        Preset* GetPreset(size_t index) const;
+        size_t GetNumPresets() const;
 
         uint32 GetActivePresetIndex() const;
         Preset* GetActivePreset() const;
         void SetActivePreset(Preset* preset);
 
-        uint32 FindPresetIndexByName(const char* presetName) const;
-        uint32 FindPresetIndex(Preset* preset) const;
+        size_t FindPresetIndexByName(const char* presetName) const;
+        size_t FindPresetIndex(Preset* preset) const;
 
-        AnimGraphGameControllerSettings* Clone() const;
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        MCore::Array<Preset*>   mPresets;
-        uint32                  mActivePresetIndex;
-
-        AnimGraphGameControllerSettings();
-        ~AnimGraphGameControllerSettings();
+        AZStd::vector<Preset*>   m_presets;
+        AZ::u32                  m_activePresetIndex;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

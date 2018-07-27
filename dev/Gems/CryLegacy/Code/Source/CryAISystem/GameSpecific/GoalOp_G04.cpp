@@ -15,7 +15,7 @@
 //               These should move into GameDLL when interfaces allow
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #if 0
 // deprecated and won't compile at all...
 

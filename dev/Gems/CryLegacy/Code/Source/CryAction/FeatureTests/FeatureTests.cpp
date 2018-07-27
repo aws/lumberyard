@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FeatureTests.h"
 #include "CryActionCVars.h"
 #include "Algorithm.h"
@@ -80,7 +80,7 @@ namespace FeatureTests
         FeatureTestType m_featureTests;
         State m_currentState;
         IFeatureTest* m_currentTest;
-        std::array<std::function<void()>, State::NumStates> m_update;
+        AZStd::array<AZStd::function<void()>, State::NumStates> m_update;
 
         float m_currentTestRunningTime;
         int64 m_timeStart;
@@ -192,16 +192,28 @@ namespace FeatureTests
         //JUnit wants timestamps in ISO 8601 format. ex "2011-10-08T07:07:09Z"
         time_t now;
         time(&now);
+#if defined (AZ_COMPILER_MSVC)
+        tm gmTime;
+        gmtime_s(&gmTime, &now);
+        strftime(m_timeStamp, sizeof m_timeStamp, "%Y-%m-%dT%H:%M:%SZ", &gmTime);
+#else
         auto gmTime = gmtime(&now);
         strftime(m_timeStamp, sizeof m_timeStamp, "%Y-%m-%dT%H:%M:%SZ", gmTime);
+#endif
 
         char timestampedFolderTime[ICryPak::g_nMaxPath];
+#if defined (AZ_COMPILER_MSVC)
+        tm lTime;
+        localtime_s(&lTime, &now);
+        strftime(timestampedFolderTime, sizeof(timestampedFolderTime), "%Y-%m-%d/%I-%M%p", &lTime);
+#else
         auto lTime = localtime(&now);
         strftime(timestampedFolderTime, sizeof(timestampedFolderTime), "%Y-%m-%d/%I-%M%p", lTime);
+#endif
         string timestampedFolderRoot;
         timestampedFolderRoot.Format("@LOG@/Reports/%s/%s/%s", m_mapName.c_str(),
             m_testGroupName.c_str(), timestampedFolderTime);
-        gEnv->pCryPak->AdjustFileName(timestampedFolderRoot, m_timestampedFolder, ICryPak::FLAGS_FOR_WRITING);
+        gEnv->pCryPak->AdjustFileName(timestampedFolderRoot, m_timestampedFolder, AZ_ARRAY_SIZE(m_timestampedFolder), ICryPak::FLAGS_FOR_WRITING);
         if (ShouldCreateTimeStampedFolder())
         {
             gEnv->pCryPak->MakeDir(m_timestampedFolder);
@@ -369,8 +381,8 @@ namespace FeatureTests
         rootSrcPath.Format("@root@/%s", gEnv->pLog->GetFileName());
         char srcLogPath[ICryPak::g_nMaxPath];
         char dstLogPath[ICryPak::g_nMaxPath];
-        gEnv->pCryPak->AdjustFileName(rootSrcPath.c_str(), srcLogPath, ICryPak::FLAGS_FOR_WRITING);
-        gEnv->pCryPak->AdjustFileName(gameLogFilename, dstLogPath, ICryPak::FLAGS_FOR_WRITING);
+        gEnv->pCryPak->AdjustFileName(rootSrcPath.c_str(), srcLogPath, AZ_ARRAY_SIZE(srcLogPath), ICryPak::FLAGS_FOR_WRITING);
+        gEnv->pCryPak->AdjustFileName(gameLogFilename, dstLogPath, AZ_ARRAY_SIZE(dstLogPath), ICryPak::FLAGS_FOR_WRITING);
         bool result = gEnv->pCryPak->CopyFileOnDisk(srcLogPath, dstLogPath, false);
 
         if (m_createTimestampedFolder)
@@ -379,7 +391,7 @@ namespace FeatureTests
             gEnv->pCryPak->CopyFileOnDisk(dstLogPath, dstPath.c_str(), false);
 
             char srcReportPath[ICryPak::g_nMaxPath];
-            gEnv->pCryPak->AdjustFileName(junitFilename.c_str(), srcReportPath, ICryPak::FLAGS_FOR_WRITING);
+            gEnv->pCryPak->AdjustFileName(junitFilename.c_str(), srcReportPath, AZ_ARRAY_SIZE(srcReportPath), ICryPak::FLAGS_FOR_WRITING);
             dstPath = CreateTimeStampedFileName(junitFilename.c_str());
             gEnv->pCryPak->CopyFileOnDisk(srcReportPath, dstPath.c_str(), false);
         }

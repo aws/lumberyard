@@ -14,7 +14,7 @@
 // Description : Manages geometry cache attachments
 
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #if defined(USE_GEOM_CACHES)
 #include "GeomCacheAttachmentManager.h"
 

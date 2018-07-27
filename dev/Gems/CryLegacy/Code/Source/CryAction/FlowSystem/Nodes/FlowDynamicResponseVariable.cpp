@@ -11,8 +11,8 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "FlowBaseNode.h"
+#include "CryLegacy_precompiled.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <ISystem.h>
 #include <IDynamicResponseSystem.h>
 
@@ -45,12 +45,12 @@ namespace
 
             static unsigned int currentID = 0;
             char buffer[16];
-            itoa(currentID, buffer, 10);
+            azitoa(currentID, buffer, AZ_ARRAY_SIZE(buffer), 10);
             generatedUniqueName += buffer;
             while (gEnv->pDynamicResponseSystem->GetCollection(generatedUniqueName.c_str()))
             {
                 currentID += 32;
-                itoa(currentID, buffer, 10);
+                azitoa(currentID, buffer, AZ_ARRAY_SIZE(buffer), 10);
                 generatedUniqueName += buffer;
             }
             currentID++;

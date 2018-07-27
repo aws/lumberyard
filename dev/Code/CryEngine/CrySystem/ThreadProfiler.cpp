@@ -285,7 +285,7 @@ void CThreadProfiler::Render()
                 continue;
             }
 
-            strcpy(str, m_pSampler->GetThreadName(threadId));
+            azstrcpy(str, AZ_ARRAY_SIZE(str), m_pSampler->GetThreadName(threadId));
             if (str[0] == 0)
             {
                 sprintf_s(str, "  * %x", threadId);

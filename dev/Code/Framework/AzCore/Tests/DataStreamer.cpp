@@ -85,7 +85,7 @@ namespace // anonymous
     AZStd::string GetRandomTestFileName(const char* basedOn)
     {
         AZ::Uuid uniqueId = AZ::Uuid::CreateRandom();
-        return AZStd::string::format("%s%s-%s", GetTestFolderPath(), basedOn, uniqueId.ToString<AZStd::string>().c_str());
+        return AZStd::string::format("%s%s-%s", GetTestFolderPath().c_str(), basedOn, uniqueId.ToString<AZStd::string>().c_str());
     }
 } // anonymous namespace
 

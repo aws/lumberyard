@@ -114,6 +114,7 @@ public:
     QPushButton* EnableSaveButton(const QString& toolTip);
     void DisableSaveButton(const QString& toolTip);
 
+    QPushButton* GetDeleteButton() const;
     QPushButton* EnableDeleteButton(const QString& toolTip);
     void DisableDeleteButton(const QString& toolTip);
 
@@ -241,11 +242,12 @@ private:
     enum class SourceControlState
     {
         QUERYING = 0,
-        DISABLED_CHECK_OUT,
+        UNAVAILABLE_CHECK_OUT,
         ENABLED_CHECK_OUT,
         DISABLED_CHECK_IN,
         DISABLED_ADD,
-        ENABLED_ADD
+        ENABLED_ADD,
+        NOT_APPLICABLE
     };
     void SetSourceControlState(SourceControlState newState, const QString& tooltipOverride = {});
 

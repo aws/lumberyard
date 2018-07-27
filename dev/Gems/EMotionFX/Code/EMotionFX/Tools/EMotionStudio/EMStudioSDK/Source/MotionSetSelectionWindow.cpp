@@ -59,6 +59,25 @@ namespace EMStudio
     }
 
 
+    void MotionSetSelectionWindow::Select(const AZStd::vector<MotionSetSelectionItem>& selectedItems)
+    {
+        mHierarchyWidget->Select(selectedItems);
+    }
+
+
+    void MotionSetSelectionWindow::Select(const AZStd::vector<AZStd::string>& selectedMotionIds, EMotionFX::MotionSet* motionSet)
+    {
+        AZStd::vector<MotionSetSelectionItem> selectedItems;
+
+        for (const AZStd::string& motionId : selectedMotionIds)
+        {
+            selectedItems.push_back(MotionSetSelectionItem(motionId, motionSet));
+        }
+
+        Select(selectedItems);
+    }
+
+
     void MotionSetSelectionWindow::OnSelectionChanged(AZStd::vector<MotionSetSelectionItem> selection)
     {
         MCORE_UNUSED(selection);

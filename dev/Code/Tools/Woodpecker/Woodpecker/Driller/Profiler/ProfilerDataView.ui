@@ -475,13 +475,13 @@
   <customwidget>
    <class>StripChart::DataStrip</class>
    <extends>QWidget</extends>
-   <header>../stripchart.hxx</header>
+   <header>../StripChart.hxx</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>Driller::ProfilerDataWidget</class>
    <extends>QTreeView</extends>
-   <header>profilerdatapanel.hxx</header>
+   <header>ProfilerDataPanel.hxx</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

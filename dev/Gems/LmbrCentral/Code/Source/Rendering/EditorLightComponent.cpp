@@ -872,7 +872,7 @@ namespace LmbrCentral
             lightComponent->m_configuration = m_configuration;
         }
     }
-
+    
     void EditorLightComponent::SetCubemap(const AZStd::string& cubemap)
     {
         if (cubemap != m_configuration.m_probeCubemap)

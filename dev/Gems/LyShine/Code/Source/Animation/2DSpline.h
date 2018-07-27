@@ -57,6 +57,7 @@ namespace UiSpline
             m_curr = 0;
             m_rangeStart = 0;
             m_rangeEnd = 0;
+            m_refCount = 0;
         }
 
         virtual ~TSpline() {};
@@ -278,6 +279,25 @@ namespace UiSpline
                 }
             }
         }
+
+    private:
+        int m_refCount;
+
+    public:
+
+        inline void add_ref()
+        {
+            ++m_refCount;
+        };
+
+        inline void release()
+        {
+            AZ_Assert(m_refCount > 0, "Reference count logic error, trying to decrement reference when refCount is 0");
+            if (--m_refCount == 0)
+            {
+                delete this;
+            }
+        }
     };
 
     template    <class T>
@@ -379,7 +399,7 @@ namespace UiSpline
     {
         serializeContext->Class<SplineKeyEx<Vec2>, SplineKey<Vec2> >()
             ->Version(1)
-            ->SerializerForEmptyClass();
+            ;
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -981,7 +1001,7 @@ namespace UiSpline
             serializeContext->Class<TrackSplineInterpolator<Vec2>,
                 UiSpline::BezierSpline<Vec2, UiSpline::SplineKeyEx<Vec2> > >()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
         }
     };
 }; // namespace spline

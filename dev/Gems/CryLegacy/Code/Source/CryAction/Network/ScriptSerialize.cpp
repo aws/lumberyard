@@ -13,7 +13,7 @@
 
 // Description : Helper classes for implementing serialization in script
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ScriptSerialize.h"
 
 //

@@ -14,7 +14,7 @@
 // Description : UI draw functions
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "UIDraw.h"
 
 //-----------------------------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ int CUIDraw::CreateTexture(const char* strName, bool dontRelease)
 {
     for (TTexturesMap::iterator iter = m_texturesMap.begin(); iter != m_texturesMap.end(); ++iter)
     {
-        if (0 == strcmpi((*iter).second->GetName(), strName))
+        if (0 == azstricmp((*iter).second->GetName(), strName))
         {
             return (*iter).first;
         }

@@ -155,14 +155,23 @@
             }, 
             "Metadata": {
                 "CloudCanvas": {
-                    "Permissions": {
-                        "AbstractRole": "Player",
-                        "Action": "execute-api:Invoke",
-                        "ResourceSuffix": [
-                            "/api/GET/example/data",
-                            "/api/PUT/example/data"
-                        ]
-                    }
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": "execute-api:Invoke",
+                            "ResourceSuffix": [
+                                "/api/GET/example/data",
+                                "/api/PUT/example/data"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "AuthenticatedPlayer",
+                            "Action": "execute-api:Invoke",
+                            "ResourceSuffix": [
+                                "/api/GET/example/data/authenticated"
+                            ]
+                        }
+                    ]
                 }
             }, 
             "Type": "Custom::ServiceApi"

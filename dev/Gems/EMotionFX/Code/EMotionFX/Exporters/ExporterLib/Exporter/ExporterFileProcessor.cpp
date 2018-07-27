@@ -50,7 +50,8 @@ namespace ExporterLib
 
 
     // constructor
-    Exporter::Exporter() : EMotionFX::BaseObject()
+    Exporter::Exporter()
+        : EMotionFX::BaseObject()
     {
     }
 
@@ -73,7 +74,7 @@ namespace ExporterLib
         delete this;
     }
 
-    
+
     // make the memory file ready for saving
     void Exporter::ResetMemoryFile(MCore::MemoryFile* file)
     {
@@ -108,31 +109,11 @@ namespace ExporterLib
     }
 
 
-    // anim graph
-    bool Exporter::SaveAnimGraph(MCore::MemoryFile* file, EMotionFX::AnimGraph* animGraph, MCore::Endian::EEndianType targetEndianType, const char* companyName)
-    {
-        ResetMemoryFile(file);
-        ExporterLib::SaveAnimGraph(file, animGraph, targetEndianType, companyName);
-        return true;
-    }
-
-
-    bool Exporter::SaveAnimGraph(AZStd::string filenameWithoutExtension, EMotionFX::AnimGraph* animGraph, MCore::Endian::EEndianType targetEndianType, const char* companyName)
-    {
-        PREPARE_DISKFILE_SAVE(GetAnimGraphFileExtension);
-        if (SaveAnimGraph(&memoryFile, animGraph, targetEndianType, companyName) == false)
-        {
-            return false;
-        }
-        FINISH_DISKFILE_SAVE
-    }
-
-
     // skeletal motion
     bool Exporter::SaveSkeletalMotion(MCore::MemoryFile* file, EMotionFX::SkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType, bool onlyAnimatedMorphs)
     {
         ResetMemoryFile(file);
-        ExporterLib::SaveSkeletalMotion(file, motion,targetEndianType, onlyAnimatedMorphs);
+        ExporterLib::SaveSkeletalMotion(file, motion, targetEndianType, onlyAnimatedMorphs);
         return true;
     }
 
@@ -161,26 +142,6 @@ namespace ExporterLib
     {
         PREPARE_DISKFILE_SAVE(GetSkeletalMotionExtension);
         if (SaveWaveletSkeletalMotion(&memoryFile, motion, targetEndianType) == false)
-        {
-            return false;
-        }
-        FINISH_DISKFILE_SAVE
-    }
-
-
-    // motion set
-    bool Exporter::SaveMotionSet(MCore::MemoryFile* file, const AZStd::vector<EMotionFX::MotionSet*>& motionSets, MCore::Endian::EEndianType targetEndianType)
-    {
-        ResetMemoryFile(file);
-        SaveMotionSets(file, motionSets, targetEndianType);
-        return true;
-    }
-
-
-    bool Exporter::SaveMotionSet(AZStd::string filenameWithoutExtension, const AZStd::vector<EMotionFX::MotionSet*>& motionSets, MCore::Endian::EEndianType targetEndianType)
-    {
-        PREPARE_DISKFILE_SAVE(GetMotionSetFileExtension);
-        if (SaveMotionSet(&memoryFile, motionSets, targetEndianType) == false)
         {
             return false;
         }

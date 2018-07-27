@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ToolsConfigPage.h"
 #include <ui_ToolsConfigPage.h>
 #include <ui_IconListDialog.h>
@@ -254,11 +254,17 @@ public:
     MacroModel(QObject* parent = nullptr)
         : QAbstractListModel(parent)
         , m_hasEmptyRow(false)
+        , m_currentlyRemovingRows(false)
     {
     }
 
     bool moveRow(int row, bool up)
     {
+        if (m_hasEmptyRow)
+        {
+            return false;
+        }
+
         const int targetRow = up ? row - 1 : row + 1;
         if (row < 0 || row >= rowCount() || targetRow < 0 || targetRow >= rowCount())
         {
@@ -330,15 +336,18 @@ public:
         // check null data input
         if (data.toString().isEmpty())
         {
-            QMessageBox::critical(parentWidget, QString(), tr("Please enter a valid name!"));
-
-            // If this is a newly added empty row, then just delete it
-            // Otherwise if the user was renaming an existing row, the previous
-            // value will be restored
-            if (isEmptyRow(index))
+            if (!m_currentlyRemovingRows)
             {
-                removeRow(index.row());
-                assert(!m_hasEmptyRow);
+                QMessageBox::critical(parentWidget, QString(), tr("Please enter a valid name!"));
+
+                // If this is a newly added empty row, then just delete it
+                // Otherwise if the user was renaming an existing row, the previous
+                // value will be restored
+                if (isEmptyRow(index))
+                {
+                    removeRow(index.row());
+                    assert(!m_hasEmptyRow);
+                }
             }
 
             return false;
@@ -396,6 +405,7 @@ public:
             return false;
         }
 
+        m_currentlyRemovingRows = true;
         beginRemoveRows(QModelIndex(), row, row + count - 1);
 
         auto tools = GetIEditor()->GetToolBoxManager();
@@ -412,11 +422,13 @@ public:
         }
 
         endRemoveRows();
+        m_currentlyRemovingRows = false;
         return true;
     }
 
 private:
     bool m_hasEmptyRow;
+    bool m_currentlyRemovingRows;
 
     // Empty row is the last row in the list if the proper flag is set
     bool isEmptyRow(const QModelIndex& index) const
@@ -468,7 +480,7 @@ CToolsConfigPage::CToolsConfigPage(QWidget* parent)
 
     m_ui->m_macroCmd->setCompleter(new QCompleter(m_completionModel));
 
-    connect(m_ui->m_macroShortcutKey, &QKeySequenceEdit::keySequenceChanged, [&](const QKeySequence &keySequence) {
+    connect(m_ui->m_macroShortcutKey, &QKeySequenceEdit::keySequenceChanged, this, [&](const QKeySequence &keySequence) {
         int numOfShortcuts = m_ui->m_macroShortcutKey->keySequence().count() - 1;
         if (numOfShortcuts >= 1)
         {

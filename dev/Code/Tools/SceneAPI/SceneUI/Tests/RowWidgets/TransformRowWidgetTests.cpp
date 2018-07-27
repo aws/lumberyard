@@ -13,7 +13,6 @@
 #include <AzTest/AzTest.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Quaternion.h>
-#include <AzFramework/Math/MathUtils.h>
 #include <SceneAPI/SceneUI/RowWidgets/TransformRowWidget.h>
 
 namespace AZ
@@ -71,7 +70,7 @@ namespace AZ
 
             TEST_F(TransformRowWidgetTest, GetRotation_RotationInMatrix_RotationCanBeRetrievedDirectly)
             {
-                m_transform = AzFramework::ConvertEulerDegreesToTransform(m_rotation);
+                m_transform = AZ::ConvertEulerDegreesToTransform(m_rotation);
                 m_expanded.SetTransform(m_transform);
 
                 const Vector3& returned = m_expanded.GetRotation();
@@ -82,12 +81,12 @@ namespace AZ
 
             TEST_F(TransformRowWidgetTest, GetRotation_RotationInMatrix_RotationCanBeRetrievedFromTransform)
             {
-                m_transform = AzFramework::ConvertEulerDegreesToTransform(m_rotation);
+                m_transform.SetFromEulerDegrees(m_rotation);
                 m_expanded.SetTransform(m_transform);
 
                 Transform rebuild;
                 m_expanded.GetTransform(rebuild);
-                Vector3 returned = AzFramework::ConvertTransformToEulerDegrees(rebuild);
+                Vector3 returned = rebuild.GetEulerDegrees();
                 EXPECT_NEAR(m_rotation.GetX(), returned.GetX(), 1.0f);
                 EXPECT_NEAR(m_rotation.GetY(), returned.GetY(), 1.0f);
                 EXPECT_NEAR(m_rotation.GetZ(), returned.GetZ(), 1.0f);
@@ -119,7 +118,7 @@ namespace AZ
 
             TEST_F(TransformRowWidgetTest, GetTransform_RotateAndTranslateInMatrix_ReconstructedTransformMatchesOriginal)
             {
-                Quaternion quaternion = AzFramework::ConvertEulerDegreesToQuaternion(m_rotation);
+                Quaternion quaternion = AZ::ConvertEulerDegreesToQuaternion(m_rotation);
                 m_transform = Transform::CreateFromQuaternionAndTranslation(quaternion, m_translation);
                 m_expanded.SetTransform(m_transform);
 
@@ -131,7 +130,7 @@ namespace AZ
             
             TEST_F(TransformRowWidgetTest, GetTransform_RotateTranslateAndScaleInMatrix_ReconstructedTransformMatchesOriginal)
             {
-                Quaternion quaternion = AzFramework::ConvertEulerDegreesToQuaternion(m_rotation);
+                Quaternion quaternion = AZ::ConvertEulerDegreesToQuaternion(m_rotation);
                 m_transform = Transform::CreateFromQuaternionAndTranslation(quaternion, m_translation);
                 m_transform.MultiplyByScale(m_scale);
                 m_expanded.SetTransform(m_transform);

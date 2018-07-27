@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "PersistentDebug.h"
 #include "CryAction.h"
 #include <IRenderAuxGeom.h>
@@ -82,7 +82,7 @@ void CPersistentDebug::AddEntityTag(const SEntityTagParams& params, const char* 
             if (m_pETLog->GetIVal() > 1)
             {
                 char text[256];
-                _snprintf(text, sizeof(text), "[Entity Tag] %s", params.text.c_str());
+                azsnprintf(text, sizeof(text), "[Entity Tag] %s", params.text.c_str());
                 gEnv->pAISystem->Record(ent->GetAI(), IAIRecordable::E_NONE, text);
             }
         }

@@ -380,7 +380,7 @@ bool QToolTipWidget::IsValid()
 
 void QToolTipWidget::KeepTipOnScreen(QRect targetRect, ArrowDirection preferredArrowDir)
 {
-    QRect desktop = QApplication::desktop()->rect();
+    QRect desktop = QApplication::desktop()->availableGeometry(this);
 
     if (this->isHidden())
     {

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <IXml.h>
 #include <StringUtils.h>
 #include "PlayerProfileImplFS.h"
@@ -1234,9 +1234,9 @@ public:
         return m_metadataNode->HaveAttr(pTag);
     }
 
-    std::unique_ptr<TSerialize> GetSection(const char* pSection)
+    AZStd::unique_ptr<TSerialize> GetSection(const char* section)
     {
-        XMLCPB::CNodeLiveReaderRef node = m_binXmlReader.GetRoot()->GetChildNode(pSection);
+        XMLCPB::CNodeLiveReaderRef node = m_binXmlReader.GetRoot()->GetChildNode(section);
         if (!node.IsValid())
         {
             return std::unique_ptr<TSerialize>();
@@ -1244,7 +1244,7 @@ public:
 
         _smart_ptr<CSerializeCtx> pCtx = new CSerializeCtx(node, m_binXmlReader);
         m_sections.push_back(pCtx);
-        return std::make_unique<TSerialize>(pCtx->GetTSerialize());
+        return AZStd::make_unique<TSerialize>(pCtx->GetTSerialize());
     }
 
     bool HaveSection(const char* pSection)

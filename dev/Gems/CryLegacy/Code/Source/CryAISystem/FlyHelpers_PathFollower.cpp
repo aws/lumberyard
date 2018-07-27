@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlyHelpers_PathFollower.h"
 
 #include "FlyHelpers_PathFollowerHelpers.h"

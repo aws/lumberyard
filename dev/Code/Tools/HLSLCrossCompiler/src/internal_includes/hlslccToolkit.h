@@ -6,7 +6,7 @@
 #include "bstrlib.h"
 #include "internal_includes/structs.h"
 
-#include <cstdbool>
+#include <stdbool.h>
 
 // Check if "src" type can be assigned directly to the "dest" type.
 bool DoAssignmentDataTypesMatch(SHADER_VARIABLE_TYPE dest, SHADER_VARIABLE_TYPE src);
@@ -28,5 +28,8 @@ const char* GetBitcastOp(SHADER_VARIABLE_TYPE src, SHADER_VARIABLE_TYPE dest);
 
 // Check if the register number is part of the ones we used for signaling GMEM input
 bool IsGmemReservedSlot(FRAMEBUFFER_FETCH_TYPE type, const uint32_t regNumber);
+
+// Return the name of an auxiliary variable used to save intermediate values to bypass driver issues
+const char * GetAuxArgumentName(const SHADER_VARIABLE_TYPE varType);
 
 #endif

@@ -17,12 +17,7 @@
 //
 #pragma once
 
+#include <AzCore/PlatformIncl.h>
 #include <AzCore/PlatformDef.h>
 
 #include "targetver.h"
-
-#if defined(AZ_PLATFORM_WINDOWS)
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
-#include <windows.h>
-#endif
-

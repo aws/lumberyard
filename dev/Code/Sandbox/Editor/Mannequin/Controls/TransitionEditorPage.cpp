@@ -398,7 +398,7 @@ void CTransitionEditorPage::OnPlayMenu()
             action->setData(Scales[i].fScale);
         }
 
-        connect(menu, &QMenu::triggered, [&](QAction* action){ m_playSpeed = action->data().toDouble(); });
+        connect(menu, &QMenu::triggered, this, [&](QAction* action){ m_playSpeed = action->data().toDouble(); });
     }
 
     for (QAction* action : menu->actions())

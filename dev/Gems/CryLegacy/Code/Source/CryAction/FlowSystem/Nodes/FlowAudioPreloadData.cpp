@@ -14,8 +14,8 @@
 // Description : Allows for loading/unloading preload requests.
 
 
-#include "StdAfx.h"
-#include "FlowBaseNode.h"
+#include "CryLegacy_precompiled.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <IAudioSystem.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

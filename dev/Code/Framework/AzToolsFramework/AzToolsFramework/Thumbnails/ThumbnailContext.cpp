@@ -46,7 +46,7 @@ namespace AzToolsFramework
                         // listen to the loading signal, so the anyone using it will update loading animation
                         connect(m_loadingThumbnail.data(), &Thumbnail::Updated, key.data(), &ThumbnailKey::ThumbnailUpdatedSignal);
                         // once the thumbnail is loaded, disconnect it from loading thumbnail
-                        connect(thumbnail.data(), &Thumbnail::Updated, [this, key, thumbnail]()
+                        connect(thumbnail.data(), &Thumbnail::Updated, this , [this, key, thumbnail]()
                             {
                                 disconnect(m_loadingThumbnail.data(), &Thumbnail::Updated, key.data(), &ThumbnailKey::ThumbnailUpdatedSignal);
                                 thumbnail->disconnect();

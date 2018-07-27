@@ -61,6 +61,7 @@ echo Compiling shaders...
 echo Packing Shaders...
 call .\lmbr_pak_shaders.bat %SHADERFLAVOR% %GAMENAME%
 
+if %ERRORLEVEL% NEQ 0 GOTO Failed
 GOTO Success
 
 :Failed

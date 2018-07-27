@@ -188,7 +188,8 @@ namespace ScriptCanvas
             { ScriptCanvas::SelfReferenceId, GetEntityId() },
             { ScriptCanvas::InvalidUniqueRuntimeId, GetUniqueId() },
             { GetEntityId(), GetEntityId() },
-            { GetUniqueId(), GetUniqueId()}
+            { GetUniqueId(), GetUniqueId() },
+            { AZ::EntityId(), AZ::EntityId() }
         };
         editorToRuntimeEntityIdMap.insert(assetToRuntimeInternalMap.begin(), assetToRuntimeInternalMap.end());
         editorToRuntimeEntityIdMap.insert(loadedGameEntityIdMap.begin(), loadedGameEntityIdMap.end());

@@ -122,6 +122,8 @@ namespace EMotionFX
 
         Transform& Blend(const Transform& dest, float weight);
         Transform& BlendAdditive(const Transform& dest, const Transform& orgTransform, float weight);
+        Transform& ApplyAdditive(const Transform& additive);
+        Transform& ApplyAdditive(const Transform& additive, float weight);
         Transform& Add(const Transform& other, float weight);
         Transform& Add(const Transform& other);
         Transform& Subtract(const Transform& other);

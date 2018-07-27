@@ -24,8 +24,8 @@
 #include "IGameObjectSystem.h"
 #include "IGameObject.h"
 #include "IMovementController.h"
-#include "VehicleSystem/VehicleParams.h"
 
+class CVehicleParams;
 struct IGameFramework;
 struct SViewParams;
 struct SOBJECTSTATE;

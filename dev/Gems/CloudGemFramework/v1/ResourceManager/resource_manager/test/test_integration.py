@@ -195,7 +195,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
                         'StackStatus': 'CREATE_COMPLETE',
                         'StackResources': {
                             'Table': {
-                                'ResourceType': 'AWS::DynamoDB::Table'
+                                'ResourceType': 'Custom::DynamoDBTable'
                             },
                             'ServiceLambdaConfiguration': {
                                 'ResourceType': 'Custom::LambdaConfiguration'
@@ -295,7 +295,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
                         'StackStatus': 'CREATE_COMPLETE',
                         'StackResources': {
                             'Table': {
-                                'ResourceType': 'AWS::DynamoDB::Table'
+                                'ResourceType': 'Custom::DynamoDBTable'
                             },
                             'ServiceLambdaConfiguration': {
                                 'ResourceType': 'Custom::LambdaConfiguration'

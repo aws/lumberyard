@@ -21,6 +21,7 @@
 #include <AzCore/std/containers/vector.h>
 
 #include <AK/SoundEngine/Common/AkTypes.h>
+#include <AK/AkWwiseSDKVersion.h>
 
 namespace Audio
 {
@@ -51,6 +52,7 @@ namespace Audio
     struct SATLListenerData_wwise
         : public IATLListenerData
     {
+#if (AK_WWISESDK_VERSION_MAJOR <= 2016)
         explicit SATLListenerData_wwise(const AkUniqueID nPassedAKID)
             : nAKID(nPassedAKID)
         {}
@@ -58,6 +60,15 @@ namespace Audio
         ~SATLListenerData_wwise() override {}
 
         const AkUniqueID nAKID;
+#else
+        explicit SATLListenerData_wwise(const AkGameObjectID passedObjectId)
+            : nAKListenerObjectId(passedObjectId)
+        {}
+
+        ~SATLListenerData_wwise() override {}
+
+        const AkGameObjectID nAKListenerObjectId = AK_INVALID_GAME_OBJECT;
+#endif // AK_WWISESDK_VERSION_MAJOR
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

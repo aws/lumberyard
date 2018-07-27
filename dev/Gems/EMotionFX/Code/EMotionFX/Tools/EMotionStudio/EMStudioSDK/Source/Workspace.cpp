@@ -27,7 +27,6 @@
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 #include <EMotionFX/CommandSystem/Source/MotionSetCommands.h>
 #include <EMotionFX/Source/ActorManager.h>
-#include "PreferencesWindow.h"
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
 
 #include <QApplication>
@@ -284,6 +283,7 @@ namespace EMStudio
                 continue;
             }
 
+            // only activate the saved anim graph
             if (itActivationIndices->second.m_animGraphCommandIndex != -1
                 && itActivationIndices->second.m_motionSetCommandIndex != -1)
             {
@@ -387,6 +387,15 @@ namespace EMStudio
         GetCommandManager()->SetWorkspaceDirtyFlag(false);
         mDirtyFlag = false;
         return true;
+    }
+
+
+    void Workspace::Reset()
+    {
+        mFilename.clear();
+
+        GetCommandManager()->SetWorkspaceDirtyFlag(false);
+        mDirtyFlag = false;
     }
 
 

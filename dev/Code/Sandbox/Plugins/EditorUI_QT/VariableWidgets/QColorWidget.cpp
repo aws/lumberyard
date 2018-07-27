@@ -35,11 +35,11 @@ QColorWidget::QColorWidget(QWidget* parent)
     ui->multiplierBox1->setStyleSheet("QDoubleSpinBox::disabled{color: gray;}");
     connect(ui->multiplierBox, SIGNAL(valueChanged(double)), this, SLOT(onMultiplierEntered()));
     connect(ui->multiplierBox1, SIGNAL(valueChanged(double)), this, SLOT(onMultiplier1Entered()));
-    connect(ui->colorButton, &QPushButton::clicked, [this]()
+    connect(ui->colorButton, &QPushButton::clicked, this, [this]()
         {
             onSelectColor(0);
         });
-    connect(ui->colorButton1, &QPushButton::clicked, [this]()
+    connect(ui->colorButton1, &QPushButton::clicked, this, [this]()
         {
             onSelectColor(1);
         });

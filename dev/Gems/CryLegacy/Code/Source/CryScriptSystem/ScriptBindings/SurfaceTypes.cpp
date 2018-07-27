@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "SurfaceTypes.h"
 
 #include <I3DEngine.h>
@@ -294,7 +294,11 @@ bool CScriptSurfaceTypesLoader::LoadSurfaceTypes(const char* sFolder, bool bRelo
             }
 
             char name[_MAX_PATH];
+#ifdef AZ_COMPILER_MSVC
+            _splitpath_s(fd.name, NULL, 0, NULL, 0, name, AZ_ARRAY_SIZE(name), NULL, 0);
+#else
             _splitpath(fd.name, NULL, NULL, name, NULL);
+#endif
 
             if (strlen(name) == 0)
             {

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include <LyMetricsProducer/LyMetricsAPI.h>
 
@@ -25,7 +25,6 @@ namespace Telemetry
         {
             serialize->Class<TelemetryComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
             ;
         }
     }

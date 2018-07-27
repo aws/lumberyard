@@ -89,7 +89,7 @@
             "native/utilities/IniConfiguration.h",
             "native/utilities/assetUtils.cpp",
             "native/utilities/assetUtils.h",
-            "native/utilities/assetUtilEBusHelper.h",
+            "native/utilities/AssetUtilEBusHelper.h",
             "native/utilities/ByteArrayStream.h",
             "native/utilities/ByteArrayStream.cpp",
             "native/utilities/AssetBuilderInfo.h",

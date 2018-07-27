@@ -67,6 +67,7 @@ namespace AzQtComponents
 
     protected:
         void polish(QWidget* widget) override;
+        void unpolish(QWidget* widget) override;
         QSize sizeFromContents(ContentsType type, const QStyleOption* option,
             const QSize& size, const QWidget* widget) const override;
 

@@ -13,7 +13,7 @@
 
 // Description : Implements a damage behavior which send an AI signal
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IAgent.h"
 #include "IVehicleSystem.h"
 #include "VehicleDamageBehaviorAISignal.h"

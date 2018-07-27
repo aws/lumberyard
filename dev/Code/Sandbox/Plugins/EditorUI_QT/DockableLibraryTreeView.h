@@ -51,7 +51,7 @@ public:
     CLibraryTreeViewItem* GetItemFromName(const QString& nameWithoutLibrary);
     void SelectItemFromName(const QString& nameWithoutLibrary, bool forceSelection = false);
     bool IsModified();
-    void Reload();
+    bool Reload();
     bool CanItemHaveFolderAsChild(const QString& nameWithoutLibrary);
     //Rename item by open text editor
     void RenameItem(CLibraryTreeViewItem* item, const QString forceNameOverride = "", const bool overrideSafety = false);

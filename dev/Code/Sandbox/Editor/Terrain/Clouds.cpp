@@ -14,7 +14,7 @@
 // Description : Implementaion of the class CClouds.
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "Clouds.h"
 #include "Util/DynamicArray2D.h"
 

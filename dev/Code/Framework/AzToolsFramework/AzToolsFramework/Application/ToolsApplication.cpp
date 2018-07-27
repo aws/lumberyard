@@ -90,6 +90,8 @@ namespace AzToolsFramework
                 return;
             }
 
+            AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
             UndoSystem::URSequencePoint* currentUndoBatch = nullptr;
             ToolsApplicationRequests::Bus::BroadcastResult(
                 currentUndoBatch, &ToolsApplicationRequests::Bus::Events::GetCurrentUndoBatch);
@@ -1000,6 +1002,8 @@ namespace AzToolsFramework
         {
             if (m_undoStack->CanUndo())
             {
+                EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
                 m_isDuringUndoRedo = true;
                 EBUS_EVENT(ToolsApplicationEvents::Bus, BeforeUndoRedo);
                 m_undoStack->Undo();
@@ -1019,6 +1023,8 @@ namespace AzToolsFramework
         {
             if (m_undoStack->CanRedo())
             {
+                EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
                 m_isDuringUndoRedo = true;
                 EBUS_EVENT(ToolsApplicationEvents::Bus, BeforeUndoRedo);
                 m_undoStack->Redo();

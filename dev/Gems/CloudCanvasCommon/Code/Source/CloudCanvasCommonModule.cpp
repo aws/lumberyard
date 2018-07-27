@@ -16,13 +16,11 @@
 #include "CloudCanvasCommonModule.h"
 #include "CloudCanvasCommonSystemComponent.h"
 
-#include <IGem.h>
-
 namespace CloudCanvasCommon
 {
 
     CloudCanvasCommonModule::CloudCanvasCommonModule()
-            : CryHooksModule()
+            : AZ::Module()
     {
         // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
         m_descriptors.insert(m_descriptors.end(), {

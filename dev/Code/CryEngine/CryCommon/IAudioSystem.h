@@ -72,7 +72,6 @@ namespace Audio
         eAMRT_STOP_ALL_SOUNDS           = BIT(19),
         eAMRT_DRAW_DEBUG_INFO           = BIT(20), // Only used internally!
         eAMRT_CHANGE_LANGUAGE           = BIT(21),
-        eAMRT_RETRIGGER_AUDIO_CONTROLS  = BIT(22),
     };
 
     enum EAudioCallbackManagerRequestType : TATLEnumFlagsType
@@ -387,18 +386,6 @@ namespace Audio
         {}
 
         ~SAudioManagerRequestData<eAMRT_CHANGE_LANGUAGE>()override {}
-    };
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    template<>
-    struct SAudioManagerRequestData<eAMRT_RETRIGGER_AUDIO_CONTROLS>
-        : public SAudioManagerRequestDataBase
-    {
-        SAudioManagerRequestData()
-            : SAudioManagerRequestDataBase(eAMRT_RETRIGGER_AUDIO_CONTROLS)
-        {}
-
-        ~SAudioManagerRequestData<eAMRT_RETRIGGER_AUDIO_CONTROLS>()override {}
     };
 
 

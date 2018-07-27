@@ -21,10 +21,12 @@
 
 namespace CloudsGem
 {
-    CloudVolumeRenderElement::CloudVolumeRenderElement() : CRendElementBase()
+    CloudVolumeRenderElement::CloudVolumeRenderElement()
     {
-        mfSetType(eDATA_VolumeObject);
-        mfUpdateFlags(FCEF_TRANSFORM);
+        m_gemRE = gEnv->pRenderer->EF_CreateRE(eDATA_Gem);
+        m_gemRE->mfSetFlags(FCEF_TRANSFORM);
+        m_gemRE->mfSetDelegate(this);
+
         m_inverseWorldMatrix.SetIdentity();
         m_renderBoundsOS.Reset();
     }
@@ -34,11 +36,11 @@ namespace CloudsGem
         IRenderer* renderer = gEnv->pRenderer;
         if (bCheckOverflow)
         {
-            renderer->FX_CheckOverflow(0, 0, this);
+            renderer->FX_CheckOverflow(0, 0, m_gemRE);
         }
 
         SRenderPipeline* renderPipeline = renderer->GetRenderPipeline();
-        renderPipeline->m_pRE = this;
+        renderPipeline->SetRenderElement(m_gemRE);
         renderPipeline->m_RendNumIndices = 0;
         renderPipeline->m_RendNumVerts = 0;
         renderPipeline->m_CurVFormat = eVF_P3F;
@@ -50,7 +52,7 @@ namespace CloudsGem
         {
             IVolumeTexture* texture = customId == TO_VOLOBJ_DENSITY ? m_pDensVol : m_pShadVol;
             int texId = texture ? texture->GetTexID() : 0;
-            CTexture::ApplyForID(texId, nTUnit, nTState, nTexMaterialSlot, nSUnit, true);
+            gEnv->pRenderer->ApplyForID(texId, nTUnit, nTState, nTexMaterialSlot, nSUnit, true);
             return true;
         }
         return false;
@@ -88,29 +90,25 @@ namespace CloudsGem
         }
 
         // set vs constants
-        static CCryNameR invObjSpaceMatrixName("invObjSpaceMatrix");
-        shader->FXSetVSFloat(invObjSpaceMatrixName, (const Vec4*)&m_inverseWorldMatrix.m00, 3);
+        shader->FXSetVSFloat("invObjSpaceMatrix", (const Vec4*)&m_inverseWorldMatrix.m00, 3);
 
         const Vec4 cEyePosVec(m_eyePosInWS, 0);
-        static CCryNameR eyePosInWSName("eyePosInWS");
-        shader->FXSetVSFloat(eyePosInWSName, &cEyePosVec, 1);
+        shader->FXSetVSFloat("eyePosInWS", &cEyePosVec, 1);
 
         const Vec4 cViewerOutsideVec(!m_viewerInsideVolume ? 1.0f : 0.0f, m_nearPlaneIntersectsVolume ? 1.0f : 0.0f, 0.0f, 0.0f);
-        static CCryNameR viewerIsOutsideName("viewerIsOutside");
-        shader->FXSetVSFloat(viewerIsOutsideName, &cViewerOutsideVec, 1);
+        shader->FXSetVSFloat("viewerIsOutside", &cViewerOutsideVec, 1);
 
         const Vec4 cEyePosInOSVec(m_eyePosInOS, 0);
-        static CCryNameR eyePosInOSName("eyePosInOS");
-        shader->FXSetVSFloat(eyePosInOSName, &cEyePosInOSVec, 1);
+        shader->FXSetVSFloat("eyePosInOS", &cEyePosInOSVec, 1);
 
         // set ps constants
         const Vec4 cEyePosInWSVec(m_eyePosInWS, 0);
-        shader->FXSetPSFloat(eyePosInWSName, &cEyePosInWSVec, 1);
+        shader->FXSetPSFloat("eyePosInWS", &cEyePosInWSVec, 1);
 
         ColorF specColor(1, 1, 1, 1);
         ColorF diffColor(1, 1, 1, 1);
 
-        CShaderResources* pRes(renderPipeline->m_pShaderResources);
+        IRenderShaderResources* pRes = renderPipeline->m_pShaderResources;
         if (pRes && pRes->HasLMConstants())
         {
             specColor = pRes->GetColorValue(EFTT_SPECULAR);
@@ -123,24 +121,20 @@ namespace CloudsGem
         Vec3 brightColor(gEnv->p3DEngine->GetSunColor() * cloudShadingMultipliers.x);
         brightColor = brightColor.CompMul(Vec3(specColor.r, specColor.g, specColor.b));
 
-        static CCryNameR darkColorName("darkColor");
         const Vec4 darkColorData(0, 0, 0, m_alpha);
-        shader->FXSetPSFloat(darkColorName, &darkColorData, 1);
+        shader->FXSetPSFloat("darkColor", &darkColorData, 1);
         
-        static CCryNameR brightColorName("brightColor");
         const Vec4 brightColorData(brightColor, m_alpha);
-        shader->FXSetPSFloat(brightColorName, &brightColorData, 1);
+        shader->FXSetPSFloat("brightColor", &brightColorData, 1);
         
         const Vec4 cVolumeTraceStartPlane(m_volumeTraceStartPlane.n, m_volumeTraceStartPlane.d);
-        static CCryNameR volumeTraceStartPlaneName("volumeTraceStartPlane");
-        shader->FXSetPSFloat(volumeTraceStartPlaneName, &cVolumeTraceStartPlane, 1);
+        shader->FXSetPSFloat("volumeTraceStartPlane", &cVolumeTraceStartPlane, 1);
 
-        const Vec4 cScaleConsts(0.4, 0, 0, 0);
-        static CCryNameR scaleConstsName("scaleConsts");
-        shader->FXSetPSFloat(scaleConstsName, &cScaleConsts, 1);
+        const Vec4 cScaleConsts(0.4f, 0, 0, 0);
+        shader->FXSetPSFloat("scaleConsts", &cScaleConsts, 1);
 
         // TODO: optimize shader and remove need to pass inv obj space matrix
-        shader->FXSetPSFloat(invObjSpaceMatrixName, (const Vec4*)&m_inverseWorldMatrix.m00, 3);
+        shader->FXSetPSFloat("invObjSpaceMatrix", (const Vec4*)&m_inverseWorldMatrix.m00, 3);
 
 
         // commit all render changes

@@ -44,6 +44,7 @@ FILE* TiXmlFOpen( const char* filename, const char* mode )
 			return fp;
 		return 0;
 	#else
+		// Not using fopen_s() as it's not available in Mac or Linux
 		return fopen( filename, mode );
 	#endif
 }

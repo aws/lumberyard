@@ -52,6 +52,7 @@ enum MMRM_CULL_FLAGS
     , MMRM_CULL_LOD = 0x4
     , MMRM_LOD_SHIFT = 3
     , MMRM_SAMPLE_REDUCTION_SHIFT = 5
+    , MMRM_LOD_MASK = 7
 };
 
 struct SMergedMeshInstanceCompressed

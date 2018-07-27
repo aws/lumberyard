@@ -133,5 +133,6 @@ namespace News
 
     private:
         void ReadConfig();
+        void DeleteResources();
     };
 } // namespace News

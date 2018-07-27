@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "UnsupportedDataAggregator.hxx"
 #include <Woodpecker/Driller/Unsupported/UnsupportedDataAggregator.moc>

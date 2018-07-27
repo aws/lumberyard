@@ -135,7 +135,8 @@ namespace GridMate
                 int value = 0;
 
                 const char* delims = "+";
-                char* token = strtok(items, delims);
+                char* nextToken = nullptr;
+                char* token = azstrtok(items, 0, delims, &nextToken);
                 while (token)
                 {
                     if (nullptr != stristr(token, "basic"))
@@ -167,8 +168,7 @@ namespace GridMate
                         value = Debug::Full;
                         break;
                     }
-
-                    token = strtok(nullptr, delims);
+                    token = azstrtok(nullptr, 0, delims, &nextToken);
                 }
 
                 Debug::s_DebugDraw = value;
@@ -200,7 +200,8 @@ namespace GridMate
                 char resolvedPath[MAX_PATH] = { 0 };
                 gEnv->pFileIO->ResolvePath(logFile.c_str(), resolvedPath, MAX_PATH);
 
-                Network::s_DumpStatsFile = fopen(resolvedPath, "wt");
+                Network::s_DumpStatsFile = nullptr;
+                azfopen(&Network::s_DumpStatsFile, resolvedPath, "wt");
             }
         }
 
@@ -423,8 +424,9 @@ namespace GridMate
                 #ifdef WIN32
                 char timeFriendly[ 128 ];
                 {
-                    struct tm* timeStruct = localtime(&iter->m_time);
-                    strftime(timeFriendly, 20, "%H:%M:%S", timeStruct);
+                    tm timeStruct;
+                    localtime_s(&timeStruct, &iter->m_time);
+                    strftime(timeFriendly, 20, "%H:%M:%S", &timeStruct);
                     time = timeFriendly;
                 }
                 #endif // WIN32

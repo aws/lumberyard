@@ -155,6 +155,10 @@ HRESULT CCryDXGLSwapChain::GetDesc(DXGI_SWAP_CHAIN_DESC* pDesc)
 
 HRESULT CCryDXGLSwapChain::ResizeBuffers(UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags)
 {
+    // MS Documentation states that a buffer count of 0 means to use the same
+    // number of existing buffers
+    BufferCount = BufferCount == 0 ? m_kDesc.BufferCount : BufferCount;
+
     if (
         Format         == m_kDesc.BufferDesc.Format &&
         Width          == m_kDesc.BufferDesc.Width  &&

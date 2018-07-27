@@ -20,6 +20,8 @@
 
 #include "IVehicleSystem.h"
 
+#include "VehicleSystem/VehicleParams.h"
+
 #include "IEntityPoolManager.h"
 
 typedef std::map<string, IGameObjectExtensionCreatorBase*>  TVehicleClassMap;

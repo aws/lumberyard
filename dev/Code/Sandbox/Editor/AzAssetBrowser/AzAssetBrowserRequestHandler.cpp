@@ -306,20 +306,20 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
         if (openers.empty() || foundNonNullOpener)
         {
             // if we get here either NOBODY has an opener for this kind of asset, or there is at least one opener that is not vetoing the ability to open it.
-            menu->addAction(QObject::tr("Open"), [this, sourceID]()
+            menu->addAction(QObject::tr("Open"), menu, [sourceID]()
             {
                 bool someoneHandledIt = false;
                 AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, sourceID, someoneHandledIt);
             });
         }
-        
+
         AZStd::vector<const ProductAssetBrowserEntry*> products;
         entry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
         if (products.empty())
         {
             if (entry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Source)
             {
-                CFileUtil::PopulateQMenu(caller, menu, fileName.c_str(), fullFileDirectory.c_str(), nullptr);
+                CFileUtil::PopulateQMenu(caller, menu, fileName.c_str(), fullFileDirectory.c_str());
             }
             return;
         }
@@ -368,7 +368,7 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
             }
         }
 
-        CFileUtil::PopulateQMenu(caller, menu, fileName.c_str(), fullFileDirectory.c_str(), nullptr);
+        CFileUtil::PopulateQMenu(caller, menu, fileName.c_str(), fullFileDirectory.c_str());
     }
     break;
     case AssetBrowserEntry::AssetEntryType::Folder:
@@ -544,7 +544,7 @@ void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFi
                 "Lumberyard_LUA_Editor",
                 "Open in Lumberyard LUA Editor...",
                 QIcon(":/PropertyEditor/Resources/edit-asset.png"),
-                [this](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
+                [](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
                 {
                     // we know how to handle LUA files (open with the lua Editor.
                     EditorRequestBus::Broadcast(&EditorRequests::LaunchLuaEditor, fullSourceFileNameInCallback);
@@ -566,7 +566,7 @@ void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFi
             "Lumberyard_Resource_Compiler",
             "Open in Resource Compiler...",
             QIcon(":/PropertyEditor/Resources/edit-asset.png"),
-            [this](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
+            [](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
             {
                 gEnv->pResourceCompilerHelper->CallResourceCompiler(fullSourceFileNameInCallback, "/userdialog", NULL, false, IResourceCompilerHelper::eRcExePath_currentFolder, true, false, L".");
             }
@@ -634,7 +634,7 @@ void AzAssetBrowserRequestHandler::OpenAssetInAssociatedEditor(const AZ::Data::A
                     firstValidOpener = &openerDetails;
                 }
                 // bind a callback such that when the menu item is clicked, it sets that as the opener to use.
-                menu.addAction(openerDetails.m_iconToUse, QObject::tr(openerDetails.m_displayText.c_str()), AZStd::bind(switchToOpener, &openerDetails));
+                menu.addAction(openerDetails.m_iconToUse, QObject::tr(openerDetails.m_displayText.c_str()), mainWindow, AZStd::bind(switchToOpener, &openerDetails));
             }
         }
 

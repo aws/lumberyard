@@ -13,7 +13,6 @@
 #pragma once
 
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
 #include <EMotionFX/Source/BlendSpaceParamEvaluator.h>
 
@@ -23,23 +22,21 @@ namespace EMotionFX
     class EMFX_API BlendSpaceManager
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendSpaceManager, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDSPACE);
-
     public:
-        static BlendSpaceManager* Create();
+        AZ_RTTI(BlendSpaceManager, "{FCCE8C41-01A5-43F2-A9AD-04E8ECE3304F}")
+        AZ_CLASS_ALLOCATOR_DECL
 
-        void RegisterParameterEvaluator(BlendSpaceParamEvaluator* evaluator);
-        void ClearParameterEvaluators();
-
-        size_t GetParameterEvaluatorCount() const;
-        BlendSpaceParamEvaluator* GetParameterEvaluator(size_t index) const;
-        BlendSpaceParamEvaluator* FindParameterEvaluatorByName(const AZStd::string& evaluatorName) const;
-
-    private:
         BlendSpaceManager();
         ~BlendSpaceManager();
 
+        void RegisterEvaluator(BlendSpaceParamEvaluator* evaluator);
+        void ClearEvaluators();
+
+        size_t GetEvaluatorCount() const;
+        BlendSpaceParamEvaluator* GetEvaluator(size_t index) const;
+        BlendSpaceParamEvaluator* FindEvaluatorByType(const AZ::TypeId& type) const;
+
     private:
-        AZStd::vector<BlendSpaceParamEvaluator*> m_parameterEvaluators;
+        AZStd::vector<BlendSpaceParamEvaluator*> m_evaluators;
     };
 } // namespace EMotionFX

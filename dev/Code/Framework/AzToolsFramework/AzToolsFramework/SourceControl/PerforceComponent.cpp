@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include <AzToolsFramework/SourceControl/PerforceComponent.h>
 
@@ -109,8 +109,7 @@ namespace AzToolsFramework
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<PerforceComponent, AZ::Component>()
-                ->SerializerForEmptyClass()
-            ;
+                ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
@@ -290,7 +289,7 @@ namespace AzToolsFramework
 
         if (s_perforceConn->m_command.IsOpenByCurrentUser())
         {
-            newInfo.m_flags |= SCF_OpenByUser;
+            newInfo.m_flags |= SCF_Tracked | SCF_OpenByUser;
             if (s_perforceConn->m_command.CurrentActionIsAdd())
             {
                 newInfo.m_flags |= SCF_PendingAdd;
@@ -853,7 +852,7 @@ namespace AzToolsFramework
                     if (AZ::TickBus::IsFunctionQueuing())
                     {
                         // Push to the main thread for convenience.
-                        AZStd::function<void()> trustNotify = [this, fingerprint]()
+                        AZStd::function<void()> trustNotify = [fingerprint]()
                         {
                             SourceControlNotificationBus::Broadcast(&SourceControlNotificationBus::Events::RequestTrust, fingerprint.c_str());
                         };
@@ -992,16 +991,16 @@ namespace AzToolsFramework
                 AZ_TracePrintf(SCC_WINDOW, "Perforce connected");
                 break;
             }
-        }
 
-        if (AZ::TickBus::IsFunctionQueuing())
-        {
-            // Push to the main thread for convenience.
-            AZStd::function<void()> connectivityNotify = [currentState]()
+            if (AZ::TickBus::IsFunctionQueuing())
             {
-                SourceControlNotificationBus::Broadcast(&SourceControlNotificationBus::Events::ConnectivityStateChanged, currentState);
-            };
-            AZ::TickBus::QueueFunction(connectivityNotify);
+                // Push to the main thread for convenience.
+                AZStd::function<void()> connectivityNotify = [currentState]()
+                {
+                    SourceControlNotificationBus::Broadcast(&SourceControlNotificationBus::Events::ConnectivityStateChanged, currentState);
+                };
+                AZ::TickBus::QueueFunction(connectivityNotify);
+            }
         }
 
         return true;

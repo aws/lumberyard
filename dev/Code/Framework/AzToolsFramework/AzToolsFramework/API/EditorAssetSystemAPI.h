@@ -18,7 +18,8 @@
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Asset/AssetCommon.h>
-#include <Azcore/Asset/AssetManagerBus.h>
+#include <AzCore/Asset/AssetManagerBus.h>
+#include <AzCore/PlatformDef.h>
 
 namespace AzToolsFramework
 {
@@ -88,6 +89,12 @@ namespace AzToolsFramework
             * returns false if it cannot find the source, true otherwise.
             */
             virtual bool GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) = 0;
+
+            /**
+            * Returns a list of scan folders recorded in the database.
+            * @param scanFolder gets appended with the found folders.
+            */
+            virtual bool GetScanFolders(AZStd::vector<AZStd::string>& scanFolders) = 0;
         };
         
 
@@ -280,6 +287,20 @@ namespace AzToolsFramework
             /// Retrieve the actual log content for a particular job.   you can retrieve the run key from the above info function.
             virtual AZ::Outcome<AZStd::string> GetJobLog(AZ::u64 jobrunkey) = 0;
         };
+
+        inline const char* GetHostAssetPlatform()
+        {
+#if defined(AZ_PLATFORM_APPLE_OSX)
+            return "osx_gl";
+#elif defined(AZ_PLATFORM_WINDOWS)
+            return "pc";
+#elif defined(AZ_PLATFORM_LINUX)
+            // set this to pc because that's what bootstrap.cfg currently defines the platform to "pc", even on Linux
+            return "pc";
+#else
+            #error Unimplemented Host Asset Platform
+#endif
+        }
 
     } // namespace AssetSystem
     using AssetSystemBus = AZ::EBus<AssetSystem::AssetSystemNotifications>;

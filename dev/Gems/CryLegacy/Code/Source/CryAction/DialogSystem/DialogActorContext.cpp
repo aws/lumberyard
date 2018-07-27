@@ -14,7 +14,7 @@
 // Description : Dialog System
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "DialogActorContext.h"
 #include "DialogSession.h"
 #include "DialogCommon.h"

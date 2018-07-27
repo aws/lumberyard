@@ -14,8 +14,8 @@
 // Description : flownodes copied and updated from FlowEngineNodes.cpp
 
 
-#include "StdAfx.h"
-#include "FlowBaseNode.h"
+#include "CryLegacy_precompiled.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "Components/IComponentRender.h"
 
 //////////////////////////////////////////////////////////////////////////

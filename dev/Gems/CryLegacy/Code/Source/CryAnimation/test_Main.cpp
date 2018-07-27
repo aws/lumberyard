@@ -9,23 +9,23 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include <AzTest/AzTest.h>
 #include <Mocks/ITimerMock.h>
 #include <Mocks/ICryPakMock.h>
-#include <AzCore/Memory/OSAllocator.h> 
-#include <AzCore/Memory/SystemAllocator.h> 
-
+#include <AzCore/Memory/OSAllocator.h>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <aws/core/http/HttpClientFactory.h>
 
 using ::testing::NiceMock;
 
-class CryAnimationTestEnvironment
+class CryLegacyTestEnvironment
     : public AZ::Test::ITestEnvironment
 {
 public:
-    AZ_TEST_CLASS_ALLOCATOR(CryAnimationTestEnvironment);
+    AZ_TEST_CLASS_ALLOCATOR(CryLegacyTestEnvironment);
 
-    virtual ~CryAnimationTestEnvironment()
+    virtual ~CryLegacyTestEnvironment()
     {
     }
 
@@ -42,6 +42,7 @@ protected:
     {
         AZ::AllocatorInstance<AZ::OSAllocator>::Create();
         AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+        Aws::Http::InitHttp();
 
         // Mocks need to be destroyed before the allocators are destroyed, 
         // but if they are member variables, they get destroyed *after*
@@ -62,6 +63,7 @@ protected:
         // Destroy mocks before AZ allocators
         delete m_mocks;
 
+        Aws::Http::CleanupHttp();
         AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
         AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
     }
@@ -71,7 +73,8 @@ private:
     MockHolder* m_mocks;
 };
 
-AZ_UNIT_TEST_HOOK(new CryAnimationTestEnvironment)
+AZ_UNIT_TEST_HOOK(new CryLegacyTestEnvironment)
+AZ_INTEG_TEST_HOOK();
 
 TEST(CryAnimationSanityTest, Sanity)
 {

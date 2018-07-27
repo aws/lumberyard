@@ -20,8 +20,25 @@ tasks_json_contents = {
     "version": "0.1.0",
     "command": "lmbr_waf",
     "isShellCommand": True,
-    "args": ["build_{platform}_{arch}_{configuration}"],
+    "args": ["build_{platform}_{configuration}", "-p", "all"],
     "showOutput": "always"
+}
+
+launch_json_contents = {
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "{default}",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/{outfolder}/{default}.exe",
+            "args": [],
+            "stopAtEntry": False,
+            "cwd": "${workspaceFolder}/{outfolder}",
+            "environment": [],
+            "externalConsole": False
+        }
+    ]
 }
 
 settings_json_contents = {
@@ -36,7 +53,7 @@ settings_json_contents = {
         "*.slice": "xml"
     },
 }
-        
+
 def write_obj(node, obj):
     node.write(json.dumps(obj, indent=4, separators=(',', ': ')))
 
@@ -51,32 +68,33 @@ class GenerateVSCodeWorkspace(Build.BuildContext):
             self.load_envs()
 
         self.load_user_settings()
-        
+
+        # Populate common settings
+        self.host = Utils.unversioned_sys_platform()
+        self.default_config = 'debug'
+        if self.host in ('win_x64', 'win32'):
+            if 'win_x64_clang' in self.get_available_platforms():
+                self.target_arch = 'win_x64_clang'
+            else:
+                vs = {
+                    "15" : 'vs2017',
+                    "14" : 'vs2015'
+                }
+                self.target_arch = "win_x64_" + vs[self.options.msvs_version]
+
         self.generate_vscode_project()
-    
+
     def generate_tasks_json(self, vscode_dir):
         global tasks_json_contents
         tasks_json = vscode_dir.make_node('tasks.json')
-        
-        host = Utils.unversioned_sys_platform()
-        if host not in ('win_x64', 'win32'):
+
+        if self.host not in ('win_x64', 'win32'):
             # lmbr_waf -> lmbr_waf.sh
             tasks_json_contents["command"] = "./" + tasks_json_contents["command"] + ".sh"
 
-        platform = host
-        arch = "x64"
-        if host in ('win_x64', 'win32'):
-            vs = {
-                "15" : 'vs2017',
-                "14" : 'vs2015',
-                "12" : 'vs2013'
-            }
-            platform = 'win'
-            arch = "x64_" + vs[self.options.msvs_version]
         variant = {
-            "{platform}": platform,
-            "{arch}": arch,
-            "{configuration}": "debug"
+            "{platform}": self.target_arch,
+            "{configuration}": self.default_config
         }
 
         args = tasks_json_contents["args"][0]
@@ -84,7 +102,24 @@ class GenerateVSCodeWorkspace(Build.BuildContext):
             args = string.replace(args, key, val)
         tasks_json_contents["args"][0] = args
         write_obj(tasks_json, tasks_json_contents)
-    
+
+    def generate_launch_json(self, vscode_dir):
+        global launch_json_contents
+        launch_json = vscode_dir.make_node('launch.json')
+
+        variant = {
+            "{default}": self.options.default_project,
+            "{outfolder}": self.get_output_folders(self.target_arch, self.default_config)[0]
+        }
+
+        configuration = launch_json_contents['configurations'][0]
+        for key, val in configuration.iteritems():
+            if isinstance(val, str):
+                for var, sub in variant.iteritems():
+                    configuration[key] = configuration[key].replace(var, str(sub))
+
+        write_obj(launch_json, launch_json_contents)
+
     def generate_settings_json(self, vscode_dir):
         global settings_json_contents
         settings_json = vscode_dir.make_node('settings.json')
@@ -96,4 +131,5 @@ class GenerateVSCodeWorkspace(Build.BuildContext):
         vscode_dir.mkdir()
 
         self.generate_tasks_json(vscode_dir)
+        self.generate_launch_json(vscode_dir)
         self.generate_settings_json(vscode_dir)

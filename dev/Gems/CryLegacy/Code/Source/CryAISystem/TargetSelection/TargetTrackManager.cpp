@@ -15,7 +15,7 @@
 //               for target selection
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "TargetTrackManager.h"
 #include "TargetTrackGroup.h"
 #include "TargetTrack.h"

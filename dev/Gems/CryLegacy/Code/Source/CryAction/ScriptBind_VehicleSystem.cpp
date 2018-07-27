@@ -14,7 +14,7 @@
 // Description : Script Binding for the Vehicle System
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ICryAnimation.h"
 #include "ActorSystem.h"
 #include "IGameFramework.h"

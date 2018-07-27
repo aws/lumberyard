@@ -13,7 +13,7 @@
 
 #include "OutlinerSortFilterProxyModel.hxx"
 
-#include <AzCore/Component/componentapplication.h>
+#include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/Entity.h>
 
 #include "OutlinerListModel.hxx"

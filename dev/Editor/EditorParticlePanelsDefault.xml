@@ -153,16 +153,20 @@
  </panel>
  <panel name="Size">
   <group name="Size">
-   <item name="Lock Aspect Ratio" onUpdateCallback="aspectFixRatio(Size.Maintain_Aspect_Ratio,Size.Size_X,Size.Size_Y,Size.Size_X]Size.Size_X.Random,Size.Size_Y]Size.Size_Y.Random)" visibility="all,allshape" as="Size.Maintain_Aspect_Ratio"/>
-   <item name="Size X" onUpdateCallback="aspectFixRatio(Size.Maintain_Aspect_Ratio,Size.Size_X,Size.Size_Y)" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Size.Size_X">
-    <item name="Random" onUpdateCallback="keepFloatEqual([[Size.Maintain_Aspect_Ratio,Size.Size_X.Random,[[Size.Size_Y]Size.Size_Y.Random)" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Size.Size_X.Random"/>
+   <item name="Lock Aspect Ratio" visibility="all,allshape" as="Size.Maintain_Aspect_Ratio"/>
+   <item name="Size X" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Size.Size_X">
+    <item name="Random" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Size.Size_X.Random"/>
    </item>
-   <item name="Size Y" onUpdateCallback="aspectFixRatio(Size.Maintain_Aspect_Ratio,Size.Size_X,Size.Size_Y)" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Size.Size_Y">
-    <item name="Random" onUpdateCallback="keepFloatEqual([[Size.Maintain_Aspect_Ratio,[[Size.Size_X]Size.Size_X.Random,Size.Size_Y.Random)" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Size.Size_Y.Random"/>
+   <item name="Size Y" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Size.Size_Y">
+    <item name="Random" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Size.Size_Y.Random"/>
    </item>
+    <item name="Size Z" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" as="Size.Size_Z">
+      <item name="Random" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" as="Size.Size_Z.Random"/>
+    </item>
   </group>
   <item name="Pivot X" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" advanced="yes" as="Size.Pivot_X"/>
   <item name="Pivot Y" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" advanced="yes" as="Size.Pivot_Y"/>
+  <item name="Pivot Z" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Size.Pivot_Z"/>
   <item name="Stretch" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" advanced="yes" as="Size.Local_Stretch"/>
   <item name="Tail Length" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Size.Tail_Length"/>
   <item name="Min Pixels" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Size.Min_Pixels"/>
@@ -210,7 +214,7 @@
   <item name="Density" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Collision.Density"/>
  </panel>
  <panel name="Visibility">
-  <!-- Removed until we can solidify the design: <item name="Camera non-facing fade" as="Visibility.Camera_Non_Facing_Fade" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:trail" /> -->
+  <item name="Camera Non Facing Fade" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Visibility.Camera_Non_Facing_Fade"/>
   <item name="View Distance Adjust" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" as="Visibility.View_Distance_Adjust"/>
   <item name="Camera Min Distance" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Visibility.Camera_Min_Distance"/>
   <item name="Camera Max Distance" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Visibility.Camera_Max_Distance"/>

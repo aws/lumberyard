@@ -44,6 +44,7 @@ protected:
         QMap<int, QVariant> m_data;
         Folder* m_parent;
 
+        virtual ~Item() = default;
         virtual const Folder* asFolder() const { return 0; }        // need this as we don't have RTTI
     };
 

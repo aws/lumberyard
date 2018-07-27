@@ -16,6 +16,7 @@
 #include "PropertyQTConstants.h"
 #include <QtWidgets/QHBoxLayout>
 #include <AzCore/Math/MathUtils.h>
+#include <QWheelEvent>
 
 namespace AzToolsFramework
 {

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "EditorPreferencesTreeWidgetItem.h"
 #include "IPreferencesPage.h"
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>

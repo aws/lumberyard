@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Math/Vector4.h>
+#include <AzCore/Outcome/Outcome.h>
 #include <AzCore/std/string/string.h>
 #include "StandardHeaders.h"
 #include "Array.h"
@@ -146,6 +147,9 @@ namespace MCore
          */
         void GetValue(const char* paramName, Command* command, AZStd::string* outResult) const;
         void GetValue(const char* paramName, Command* command, AZStd::string& outResult) const;
+        AZStd::string GetValue(const char* paramName, Command* command) const;
+
+        AZ::Outcome<AZStd::string> GetValueIfExists(const char* paramName, Command* command) const;
 
         /**
          * Get the value for a parameter with a specified name, as an integer value.

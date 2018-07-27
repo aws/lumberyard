@@ -79,7 +79,7 @@ export class AwsResourceGroup extends ResourceGroup {
     constructor(private context: AwsContext, spec: any) {         
         super();
         this.setResource(spec);
-        this._outputs = new Map<string, any>();
+        this._outputs = new Map<string, ResourceOutput>();
         this._updating = new BehaviorSubject<boolean>(true);
     }
 

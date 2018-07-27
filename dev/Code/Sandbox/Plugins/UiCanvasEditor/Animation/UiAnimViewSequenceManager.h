@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "Util/SmartPtr.h"
+#include "Util/smartptr.h"
 
 #include "UiAnimViewSequence.h"
 #include <LyShine/Animation/IUiAnimation.h>

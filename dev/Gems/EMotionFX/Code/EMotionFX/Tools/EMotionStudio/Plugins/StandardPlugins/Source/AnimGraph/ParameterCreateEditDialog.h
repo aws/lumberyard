@@ -12,24 +12,31 @@
 
 #pragma once
 
+#include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
 #include <MCore/Source/StandardHeaders.h>
-#include <AzCore/std/containers/vector.h>
-#include <MCore/Source/Attribute.h>
-#include "../StandardPluginsConfig.h"
-#include "AttributesWindow.h"
 #include <QDialog>
-#include <QWidget>
-#include <QGridLayout>
-#include <QTextEdit>
 
+
+namespace EMotionFX
+{
+    class Parameter;
+}
+
+namespace MysticQt
+{
+    class ComboBox;
+}
 
 namespace EMStudio
 {
     // forward declarations
     class AnimGraphPlugin;
+    class ValueParameterEditor;
 
     class ParameterCreateEditDialog
         : public QDialog
+        , private AzToolsFramework::IPropertyEditorNotify
     {
         Q_OBJECT
         MCORE_MEMORYOBJECTCATEGORY(ParameterCreateEditDialog, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
@@ -42,62 +49,37 @@ namespace EMStudio
             VALUE_MAXIMUM = 2
         };
 
-        ParameterCreateEditDialog(AnimGraphPlugin* plugin, QWidget* parent, bool editMode = false);
+        ParameterCreateEditDialog(AnimGraphPlugin* plugin, QWidget* parent, const EMotionFX::Parameter* editParameter = nullptr);
         ~ParameterCreateEditDialog();
 
         void Init();
-        void InitDynamicInterfaceOnType(uint32 interfaceTypeID);
 
-        const AZStd::string& GetName() const                                                    { return mName; }
-        const AZStd::string& GetDescription() const                                             { return mDescription; }
-        const MCore::Attribute* GetMinValue() const                                             { return mAttributes[VALUE_MINIMUM]; }
-        const MCore::Attribute* GetMaxValue() const                                             { return mAttributes[VALUE_MAXIMUM]; }
-        const MCore::Attribute* GetDefaultValue() const                                         { return mAttributes[VALUE_DEFAULT]; }
-        MCore::AttributeSettings* GetAttributeSettings() const                                  { return mAttributeSettings; }
-
-        void SetName(const char* name)                                                          { mName = name; }
-        void SetDescription(const char* description)                                            { mDescription = description; }
-        void SetMinValue(MCore::Attribute* value)                                               { mAttributes[VALUE_MINIMUM] = value; }
-        void SetMaxValue(MCore::Attribute* value)                                               { mAttributes[VALUE_MAXIMUM] = value; }
-        void SetDefaultValue(MCore::Attribute* value)                                           { mAttributes[VALUE_DEFAULT] = value; }
-
-        void SetNumAttributes(uint32 numAttribs)
-        {
-            ClearAttributesArray();
-            mAttributes.resize(numAttribs);
-            for (uint32 i = 0; i < numAttribs; ++i)
-            {
-                mAttributes[i] = nullptr;
-            }
-        }
+        const AZStd::unique_ptr<EMotionFX::Parameter>& GetParameter() const { return m_parameter; }
 
     protected slots:
-        void OnNameEdited(const QString& text);
         void OnValueTypeChange(int valueType);
         void OnValidate();
 
     private:
-        void InitDynamicInterface(uint32 valueType);
-        QLayout* CreateNameLabel(QWidget* widget, MCore::AttributeSettings* attributeSettings);
-        void ClearAttributesArray();
+        void InitDynamicInterface(const AZ::TypeId& typeID);
+
+        // AzToolsFramework::IPropertyEditorNotify
+        void BeforePropertyModified(AzToolsFramework::InstanceDataNode*) override {}
+        void AfterPropertyModified(AzToolsFramework::InstanceDataNode*) override;
+        void SetPropertyEditingActive(AzToolsFramework::InstanceDataNode*) override {}
+        void SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode*) override {}
+        void SealUndoStack() override {}
 
     private:
-        AnimGraphPlugin*                    mPlugin;
-        QVBoxLayout*                        mMainLayout;
-        QGridLayout*                        mStaticLayout;
-        QVBoxLayout*                        mDynamicLayout;
-        MysticQt::ComboBox*                 mValueTypeCombo;
-        QWidget*                            mParamContainer;
-        QTextEdit*                          mDescriptionEdit;
-        QLineEdit*                          mNameEdit;
-        QPushButton*                        mCreateButton;
-        AZStd::vector<MCore::Attribute*>    mAttributes;
-        AZStd::string                       mName;
-        AZStd::string                       mDescription;
-        MCore::AttributeSettings*           mAttributeSettings;
-        MCore::AttributeSettings*           mOrgAttributeSettings;
-        bool                                mEditMode;
-        uint32                              mMaxStaticItemValueWidth;
-        uint32                              mMaxStaticItemDescWidth;
+        AnimGraphPlugin*                    m_plugin;
+        MysticQt::ComboBox*                 m_valueTypeCombo;
+        QFrame*                             m_previewFrame;
+        AzToolsFramework::ReflectedPropertyEditor* m_previewWidget;
+        ValueParameterEditor*               m_valueParameterEditor;
+        AzToolsFramework::ReflectedPropertyEditor* m_parameterEditorWidget;
+        QPushButton*                        m_createButton;
+
+        AZStd::unique_ptr<EMotionFX::Parameter> m_parameter;
+        AZStd::string                       m_originalName;
     };
 } // namespace EMStudio

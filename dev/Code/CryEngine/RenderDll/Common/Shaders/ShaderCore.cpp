@@ -17,6 +17,7 @@
 #include "StdAfx.h"
 #include "I3DEngine.h"
 #include "CryHeaders.h"
+#include "../RenderCapabilities.h"
 
 
 CShader* CShaderMan::s_DefaultShader;
@@ -165,6 +166,98 @@ void SEfTexModPool::Unlock(void)
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+
+
+EShaderLanguage GetShaderLanguage()
+{
+    EShaderLanguage shaderLanguage = eSL_Unknown;
+    if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
+    {
+        shaderLanguage = eSL_Orbis; // ACCEPTED_USE
+    }
+    else if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
+    {
+        shaderLanguage = eSL_Durango; // ACCEPTED_USE
+    }
+    else if (CParserBin::m_nPlatform == SF_D3D11)
+    {
+        shaderLanguage = eSL_D3D11;
+    }
+    else if (CParserBin::m_nPlatform == SF_GL4)
+    {
+#if defined(AZ_PLATFORM_APPLE_OSX)
+        shaderLanguage = eSL_GL4_1;
+#else
+        shaderLanguage = eSL_GL4_4;
+#endif
+    }
+    else if (CParserBin::m_nPlatform == SF_GLES3)
+    {
+#if defined(OPENGL_ES)
+        uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
+        AZ_Assert(glVersion >= DXGLES_VERSION_30, "Invalid OpenGL version %lu", static_cast<unsigned long>(glVersion));
+        if (glVersion == DXGLES_VERSION_30)
+        {
+            shaderLanguage = eSL_GLES3_0;
+        }
+        else
+        {
+            shaderLanguage = eSL_GLES3_1;
+        }
+#else
+        AZ_Assert(false, "Only platforms with OPENGL_ES can get the device GL Version!");
+#endif // defined(OPENGL_ES)
+    }
+    else if (CParserBin::m_nPlatform == SF_METAL)
+    {
+        shaderLanguage = eSL_METAL;
+    }
+
+    return shaderLanguage;
+}
+
+const char* GetShaderLanguageName()
+{
+    static const char *platformNames[eSL_MAX] =
+    {
+        "Unknown",
+        "Orbis", // ACCEPTED_USE
+        "Durango", // ACCEPTED_USE
+        "D3D11",
+        "GL4_1",
+        "GL4_4",
+        "GLES3_0",
+        "GLES3_1",
+        "METAL"
+    };
+
+    EShaderLanguage shaderLanguage = GetShaderLanguage();
+    return platformNames[shaderLanguage];
+}
+
+const char* GetShaderLanguageResourceName()
+{
+    static const char *platformResourceNames[eSL_MAX] =
+    {
+        "(UNK)",
+        "(O)", // ACCEPTED_USE
+        "(D)", // ACCEPTED_USE
+        "(DX1)",
+        "(G4)",
+        "(G4)",
+        "(E3)",
+        "(E3)",
+        "(MET)"
+    };
+
+    EShaderLanguage shaderLanguage = GetShaderLanguage();
+    return platformResourceNames[shaderLanguage];
+}
+
+AZStd::string GetShaderListFilename()
+{
+    return AZStd::string::format("ShaderList_%s.txt", GetShaderLanguageName());
+}
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -472,7 +565,7 @@ void CShaderResources::PostLoad(CShader* pSH)
             char    sky[128];
             char    path[1024];
 
-            strcpy(sky, pTextureRes->m_Name.c_str());
+            azstrcpy(sky, AZ_ARRAY_SIZE(sky), pTextureRes->m_Name.c_str());
             int size = strlen(sky);
             const char* ext = fpGetExtension(sky);
             if (size > 0)
@@ -685,7 +778,7 @@ void CShaderMan:: mfCreateCommonGlobalFlags(const char* szName)
         }
 
         const char* pszExt = PathUtil::GetExt(fileinfo.name);
-        if (_stricmp(pszExt, "ext"))
+        if (azstricmp(pszExt, "ext"))
         {
             continue;
         }
@@ -722,7 +815,15 @@ void CShaderMan:: mfCreateCommonGlobalFlags(const char* szName)
                     pCurrOffset += 4;
                     char dummy[256] = "\n";
                     char name[256] = "\n";
-                    int res = sscanf(pCurrOffset, "%s %s", dummy, name); // Get flag name..
+                    int res = azsscanf(pCurrOffset, "%s %s", dummy
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
+                    , (unsigned int)AZ_ARRAY_SIZE(dummy)
+#endif
+                    , name
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
+                    , (unsigned int)AZ_ARRAY_SIZE(name)
+#endif
+                    ); // Get flag name..
                     assert(res);
 
                     string pszNameFlag = name;
@@ -917,7 +1018,7 @@ void CShaderMan::mfInitCommonGlobalFlags(void)
 {
     mfInitCommonGlobalFlagsLegacyFix();
 
-    string pszGlobalsPath = string(m_szCachePath) + string("Shaders/Cache/globals.txt");
+    AZStd::string pszGlobalsPath = m_szCachePath + CONCAT_PATHS(g_shaderCache,"globals.txt");
     AZ::IO::HandleType fileHandle = gEnv->pCryPak->FOpen(pszGlobalsPath.c_str(), "r", ICryPak::FOPEN_HINT_QUIET);
     if (fileHandle != AZ::IO::InvalidHandle)
     {
@@ -928,9 +1029,14 @@ void CShaderMan::mfInitCommonGlobalFlags(void)
         if (strstr(str, "FX_CACHE_VER"))
         {
             float fCacheVer = 0.0f;
-            int res = sscanf(str, "%s %f", name, &fCacheVer);
+            int res = azsscanf(str, "%s %f",
+            name,
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
+            (unsigned int)AZ_ARRAY_SIZE(name),
+#endif
+            &fCacheVer);
             assert(res);
-            if (!_stricmp(name, "FX_CACHE_VER") && fabs(FX_CACHE_VER - fCacheVer) >= 0.01f)
+            if (!azstricmp(name, "FX_CACHE_VER") && fabs(FX_CACHE_VER - fCacheVer) >= 0.01f)
             {
                 gEnv->pCryPak->FClose(fileHandle);
                 // re-create common global flags (shader cache bumped)
@@ -954,13 +1060,17 @@ void CShaderMan::mfInitCommonGlobalFlags(void)
                 uint64 nGenMask = 0;
                 gEnv->pCryPak->FGets(str, 256, fileHandle);
 
-                if (sscanf(str, "%s "
+                if (azsscanf(str, "%s "
 #if defined(__GNUC__)
                     "%llx"
 #else
                     "%I64x"
 #endif
-                    , name, &nGenMask) > 1)
+                    , name,
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
+                    (unsigned int)AZ_ARRAY_SIZE(name),
+#endif
+                    &nGenMask) > 1)
                 {
                     m_pShaderCommonGlobalFlag.insert(MapNameFlagsItor::value_type(name, nGenMask));
                     nCurrMaskCount++;
@@ -985,7 +1095,7 @@ void CShaderMan::mfInitCommonGlobalFlags(void)
 void CShaderMan::mfInitLookups()
 {
     m_ResLookupDataMan[CACHE_READONLY].Clear();
-    string dirdatafilename(m_ShadersCache);
+    AZStd::string dirdatafilename(m_ShadersCache);
     dirdatafilename += "lookupdata.bin";
     m_ResLookupDataMan[CACHE_READONLY].LoadData(dirdatafilename.c_str(), CParserBin::m_bEndians, true);
 
@@ -1410,17 +1520,17 @@ void CShaderMan::mfInit (void)
         m_ShadersPath = "Shaders/HWScripts/";
         m_ShadersMergeCachePath = "Shaders/MergeCache/";
 #if defined(LINUX32)
-        m_ShadersCache = "Shaders/Cache/LINUX32/";
+        m_ShadersCache = CONCAT_PATHS(g_shaderCache, "LINUX32/");
 #elif defined(LINUX64)
-        m_ShadersCache = "Shaders/Cache/LINUX64/";
+        m_ShadersCache = CONCAT_PATHS(g_shaderCache, "LINUX64/");
 #elif defined(MAC)
-        m_ShadersCache = "Shaders/Cache/Mac/";
+        m_ShadersCache = CONCAT_PATHS(g_shaderCache, "Mac/");
 #elif defined(IOS)
-        m_ShadersCache = "Shaders/Cache/iOS/";
+        m_ShadersCache = CONCAT_PATHS(g_shaderCache, "iOS/");
 #elif defined(APPLETV)
-        m_ShadersCache = "Shaders/Cache/AppleTV/";
+        m_ShadersCache = CONCAT_PATHS(g_shaderCache, "AppleTV/");
 #else
-        m_ShadersCache = "Shaders/Cache/D3D11";
+        m_ShadersCache = CONCAT_PATHS(g_shaderCache, "D3D11");
 #endif
         m_szCachePath = "@cache@/";
 #ifndef CONSOLE_CONST_CVAR_MODE
@@ -1515,9 +1625,12 @@ void CShaderMan::mfInit (void)
 #if !defined(CONSOLE) && !defined(NULL_RENDERER)
         if (!CRenderer::CV_r_shadersAllowCompilation)
         {
+            AZStd::string cgpShaders = m_ShadersCache + "cgpshaders";
+            AZStd::string cgvShaders = m_ShadersCache + "cgvshaders";
+            
             // make sure we can write to the shader cache
-            if (!CheckAllFilesAreWritable((string(m_ShadersCache) + "cgpshaders").c_str())
-                || !CheckAllFilesAreWritable((string(m_ShadersCache) + "cgvshaders").c_str()))
+            if (!CheckAllFilesAreWritable(cgpShaders.c_str()) ||
+                !CheckAllFilesAreWritable(cgvShaders.c_str()))
             {
                 // message box causes problems in fullscreen
                 //          MessageBox(0,"WARNING: Shader cache cannot be updated\n\n"
@@ -1694,7 +1807,7 @@ void CShaderMan::ParseShaderProfiles()
                 SShaderProfile* pr = NULL;
                 assert(name);
                 PREFAST_ASSUME(name);
-                if (!_stricmp(name, "Low"))
+                if (!azstricmp(name, "Low"))
                 {
                     pr = &m_ShaderFixedProfiles[eSQ_Low];
                 }
@@ -1949,7 +2062,7 @@ bool CShaderMan::mfGatherShadersList(const char* szPath, bool bCheckIncludes, bo
         }
         if (bCheckIncludes)
         {
-            if (!_stricmp(&nmf[len], ".cfi"))
+            if (!azstricmp(&nmf[len], ".cfi"))
             {
                 fpStripExtension(fileinfo.name, nmf);
                 SShaderBin* pBin = m_Bin.GetBinShader(nmf, true, 0, &bChanged);
@@ -1967,7 +2080,7 @@ bool CShaderMan::mfGatherShadersList(const char* szPath, bool bCheckIncludes, bo
             }
             continue;
         }
-        if (_stricmp(&nmf[len], ".cfx"))
+        if (azstricmp(&nmf[len], ".cfx"))
         {
             continue;
         }
@@ -2003,7 +2116,7 @@ void CShaderMan::mfGatherFilesList(const char* szPath, std::vector<CCryNameR>& N
         }
         if (fileinfo.attrib & _A_SUBDIR)
         {
-            if (!bUseFilter || nLevel != 1 || (m_ShadersFilter && !_stricmp(fileinfo.name, m_ShadersFilter)))
+            if (!bUseFilter || nLevel != 1 || !azstricmp(fileinfo.name, m_ShadersFilter.c_str()))
             {
                 char ddd[256];
                 sprintf_s(ddd, "%s%s/", szPath, fileinfo.name);
@@ -2023,11 +2136,11 @@ void CShaderMan::mfGatherFilesList(const char* szPath, std::vector<CCryNameR>& N
         {
             continue;
         }
-        if (!bMaterial && _stricmp(&nmf[len], ".fxcb"))
+        if (!bMaterial && azstricmp(&nmf[len], ".fxcb"))
         {
             continue;
         }
-        if (bMaterial && _stricmp(&nmf[len], ".mtl"))
+        if (bMaterial && azstricmp(&nmf[len], ".mtl"))
         {
             continue;
         }
@@ -2040,7 +2153,7 @@ void CShaderMan::mfGatherFilesList(const char* szPath, std::vector<CCryNameR>& N
 int CShaderMan::mfInitShadersList(std::vector<string>* Names)
 {
     // Detect include changes
-    bool bChanged = mfGatherShadersList(m_ShadersPath, true, false, Names);
+    bool bChanged = mfGatherShadersList(m_ShadersPath.c_str(), true, false, Names);
 
     if (gRenDev->m_bShaderCacheGen)
     {
@@ -2060,7 +2173,7 @@ int CShaderMan::mfInitShadersList(std::vector<string>* Names)
     }
 
 #ifndef NULL_RENDERER
-    mfGatherShadersList(m_ShadersPath, false, bChanged, Names);
+    mfGatherShadersList(m_ShadersPath.c_str(), false, bChanged, Names);
     return m_ShaderNames.size();
 #else
     return 0;
@@ -2088,7 +2201,7 @@ void CShaderMan::mfPreloadShaderExts(void)
             continue;
         }
         // Ignore runtime.ext
-        if (!_stricmp(fileinfo.name, "runtime.ext"))
+        if (!azstricmp(fileinfo.name, "runtime.ext"))
         {
             continue;
         }

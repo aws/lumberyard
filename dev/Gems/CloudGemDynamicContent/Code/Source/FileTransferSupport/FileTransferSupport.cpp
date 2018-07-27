@@ -115,12 +115,12 @@ namespace CloudCanvas
 
         bool IsPak(const AZStd::string& someString)
         {
-            return (strcmpi(PathUtil::GetExt(someString.c_str()), "pak") == 0);
+            return (azstricmp(PathUtil::GetExt(someString.c_str()), "pak") == 0);
         }
 
         bool IsManifest(const AZStd::string& someString)
         {
-            return (strcmpi(PathUtil::GetExt(someString.c_str()),"json") == 0);
+            return (azstricmp(PathUtil::GetExt(someString.c_str()),"json") == 0);
         }
     }
 } // namespace CloudCanvas

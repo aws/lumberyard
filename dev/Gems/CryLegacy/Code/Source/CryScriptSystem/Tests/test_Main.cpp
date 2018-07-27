@@ -9,10 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <AzTest/AzTest.h>
-
-AZ_UNIT_TEST_HOOK();
 
 TEST(CryScriptSystemSanityTest, Sanity)
 {

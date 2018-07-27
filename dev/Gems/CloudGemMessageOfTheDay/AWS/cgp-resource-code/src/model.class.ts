@@ -7,12 +7,13 @@ export class MotdForm {
     end?: any;
     hasStart?: boolean;
     hasEnd?: boolean;
+    datetime?: any;
 
     constructor(motdInfo: any) {
         this.UniqueMsgID = motdInfo.UniqueMsgID;
         this.start = motdInfo.start;
         this.end = motdInfo.end;
-        this.message = motdInfo.message;
+        this.message = motdInfo.message;        
         this.priority = motdInfo.priority;
         this.hasStart = motdInfo.hasStart;
         this.hasEnd = motdInfo.hasEnd;

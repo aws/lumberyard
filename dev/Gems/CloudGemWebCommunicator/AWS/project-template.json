@@ -1,0 +1,292 @@
+{
+    "Resources": {
+        "IoTResourceType": {
+            "Type": "Custom::ResourceTypes",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "LambdaConfiguration": {
+                    "Fn::GetAtt": [
+                        "CustomIotLambdaConfiguration",
+                        "ComposedLambdaConfiguration"
+                    ]
+                },
+                "LambdaTimeout": 30,
+                "Definitions": {
+                    "Custom::IotServicePermissions": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "custom_iot_service.handler"
+                        }
+                    }
+                }
+            }
+        },
+        "IoTPlayerPermissionsResourceType": {
+            "Type": "Custom::ResourceTypes",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "LambdaConfiguration": {
+                    "Fn::GetAtt": [
+                        "CustomIotLambdaConfiguration",
+                        "ComposedLambdaConfiguration"
+                    ]
+                },
+                "LambdaTimeout": 30,
+                "Definitions": {
+                    "Custom::IotPlayerPermissions": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "custom_iot_service.handler"
+                        }
+                    }
+                }
+            }
+        },
+        "CustomIotLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "Configuration"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "IotService",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "IoTPolicyType": {
+            "Type": "Custom::ResourceTypes",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "LambdaConfiguration": {
+                    "Fn::GetAtt": [
+                        "IotPolicyLambdaConfiguration",
+                        "ComposedLambdaConfiguration"
+                    ]
+                },
+                "LambdaTimeout": 30,
+                "Definitions": {
+                    "Custom::IotPlayerPolicy": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "custom_iot_policy.handler",
+                            "PolicyStatement": [
+                                {
+                                    "Sid": "DescribeStacksAndResources",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudformation:DescribeStacks",
+                                        "cloudformation:ListStackResources"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                },
+                                {
+                                    "Sid": "RetrieveResourceGroupSettings",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    { "Ref": "Configuration" },
+                                                    "/resource-settings/*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Sid": "CreateDeleteIotPolicy",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iot:CreatePolicy",
+                                        "iot:DeletePolicy",
+                                        "iot:GetPolicy",
+                                        "iot:ListPolicyPrincipals",
+                                        "iot:DetachPrincipalPolicy"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "IoTCGPPolicyType": {
+            "Type": "Custom::ResourceTypes",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "LambdaConfiguration": {
+                    "Fn::GetAtt": [
+                        "IotPolicyLambdaConfiguration",
+                        "ComposedLambdaConfiguration"
+                    ]
+                },
+                "LambdaTimeout": 30,
+                "Definitions": {
+                    "Custom::IotCgpPolicy": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "custom_iot_cgp_policy.handler",
+                            "PolicyStatement": [
+                                {
+                                    "Sid": "DescribeStacksAndResources",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudformation:DescribeStacks",
+                                        "cloudformation:ListStackResources"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                },
+                                {
+                                    "Sid": "RetrieveResourceGroupSettings",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": [
+                                        { "Fn::Join": [ "", [ "arn:aws:s3:::",  { "Ref": "Configuration" },"/resource-settings/*" ]] }
+                                    ]
+                                },
+                                {
+                                    "Sid": "CreateDeleteIotPolicy",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iot:CreatePolicy",
+                                        "iot:DeletePolicy",
+                                        "iot:GetPolicy",
+                                        "iot:ListPolicyPrincipals",
+                                        "iot:DetachPrincipalPolicy"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "IoTDevicePolicyType": {
+            "Type": "Custom::ResourceTypes",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "LambdaConfiguration": {
+                    "Fn::GetAtt": [
+                        "IotPolicyLambdaConfiguration",
+                        "ComposedLambdaConfiguration"
+                    ]
+                },
+                "LambdaTimeout": 30,
+                "Definitions": {
+                    "Custom::IotDevicePolicy": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "custom_iot_device_policy.handler",
+                            "PolicyStatement": [
+                                {
+                                    "Sid": "DescribeStacksAndResources",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudformation:DescribeStacks",
+                                        "cloudformation:ListStackResources"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                },
+                                {
+                                    "Sid": "RetrieveResourceGroupSettings",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": [
+                                        { "Fn::Join": [ "", [ "arn:aws:s3:::",  { "Ref": "Configuration" },"/resource-settings/*" ]] }
+                                    ]
+                                },
+                                {
+                                    "Sid": "CreateDeleteIotPolicy",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iot:CreatePolicy",
+                                        "iot:DeletePolicy",
+                                        "iot:GetPolicy",
+                                        "iot:ListPolicyPrincipals",
+                                        "iot:DetachPrincipalPolicy"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "IotPolicyLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "Configuration"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "IotService",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        }
+    }
+}

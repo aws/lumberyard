@@ -23,7 +23,7 @@ class UiButtonInterface
 {
 public: // types
 
-    typedef std::function<void(AZ::EntityId, AZ::Vector2)> OnClickCallback;
+    typedef AZStd::function<void(AZ::EntityId, AZ::Vector2)> OnClickCallback;
 
 public: // member functions
 

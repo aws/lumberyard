@@ -15,7 +15,7 @@
 //               of a parent Animated part
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ICryAnimation.h"
 #include "IVehicleSystem.h"
@@ -167,7 +167,7 @@ void CVehiclePartAnimatedJoint::InitGeometry(const CVehicleParams& table)
                 if (m_pSharedParameters->m_useOption > 0)
                 {
                     // store actual used name
-                    _snprintf(jointName, 128, "%s_option_%i", GetName(), m_pSharedParameters->m_useOption);
+                    azsnprintf(jointName, 128, "%s_option_%i", GetName(), m_pSharedParameters->m_useOption);
                     jointName[sizeof(jointName) - 1] = '\0';
 
                     int jointId = rIDefaultSkeleton.GetJointIDByName(jointName);
@@ -187,11 +187,11 @@ void CVehiclePartAnimatedJoint::InitGeometry(const CVehicleParams& table)
 
                     if (i == 0)
                     {
-                        _snprintf(jointName, 128, "%s", GetName());
+                        azsnprintf(jointName, 128, "%s", GetName());
                     }
                     else
                     {
-                        _snprintf(jointName, 128, "%s_option_%i", GetName(), i);
+                        azsnprintf(jointName, 128, "%s_option_%i", GetName(), i);
                     }
 
                     jointName[sizeof(jointName) - 1] = '\0';

@@ -12,247 +12,1236 @@
 
 // include the required headers
 #include "RenderOptions.h"
-#include <MysticQt/Source/MysticQtConfig.h>
-#include <EMotionFX/Rendering/Common/OrbitCamera.h>
 
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
+#include <EMotionFX/Rendering/Common/OrbitCamera.h>
+#include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/GUIOptions.h>
+#include <EMotionStudio/EMStudioSDK/Source/MainWindow.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
+#include <MysticQt/Source/MysticQtConfig.h>
+
+#include <QColor>
+#include <QSettings>
 
 namespace EMStudio
 {
+    const char* RenderOptions::s_gridUnitSizeOptionName = "gridUnitSize";
+    const char* RenderOptions::s_vertexNormalsScaleOptionName = "vertexNormalsScale";
+    const char* RenderOptions::s_faceNormalsScaleOptionName = "faceNormalsScale";
+    const char* RenderOptions::s_tangentsScaleOptionName = "tangentsScale";
+    const char* RenderOptions::s_nodeOrientationScaleOptionName = "nodeOrientationScale";
+    const char* RenderOptions::s_scaleBonesOnLengthOptionName = "scaleBonesOnLength";
+    const char* RenderOptions::s_renderBonesOnlyOptionName = "renderBonesOnly";
+    const char* RenderOptions::s_nearClipPlaneDistanceOptionName = "nearClipPlaneDistance";
+    const char* RenderOptions::s_farClipPlaneDistanceOptionName = "farClipPlaneDistance";
+    const char* RenderOptions::s_FOVOptionName = "fieldOfView";
+    const char* RenderOptions::s_mainLightIntensityOptionName = "mainLightIntensity";
+    const char* RenderOptions::s_mainLightAngleAOptionName = "mainLightAngleA";
+    const char* RenderOptions::s_mainLightAngleBOptionName = "mainLightAngleB";
+    const char* RenderOptions::s_specularIntensityOptionName = "specularIntensity";
+    const char* RenderOptions::s_rimIntensityOptionName = "rimIntensity";
+    const char* RenderOptions::s_rimWidthOptionName = "rimWidth";
+    const char* RenderOptions::s_rimAngleOptionName = "rimAngle";
+    const char* RenderOptions::s_showFPSOptionName = "showFPS";
+    const char* RenderOptions::s_lightGroundColorOptionName = "lightGroundColor";
+    const char* RenderOptions::s_lightSkyColorOptionName = "lightSkyColor";
+    const char* RenderOptions::s_rimColorOptionName = "rimColor";
+    const char* RenderOptions::s_backgroundColorOptionName = "backgroundColor";
+    const char* RenderOptions::s_gradientSourceColorOptionName = "gradientSourceColor";
+    const char* RenderOptions::s_gradientTargetColorOptionName = "gradientTargetColor";
+    const char* RenderOptions::s_wireframeColorOptionName = "wireframeColor";
+    const char* RenderOptions::s_collisionMeshColorOptionName = "collisionMeshColor";
+    const char* RenderOptions::s_vertexNormalsColorOptionName = "vertexNormalsColor";
+    const char* RenderOptions::s_faceNormalsColorOptionName = "faceNormalsColor";
+    const char* RenderOptions::s_tangentsColorOptionName = "tangentsColor";
+    const char* RenderOptions::s_mirroredBinormalsColorOptionName = "mirroredBinormalsColor";
+    const char* RenderOptions::s_binormalsColorOptionName = "binormalsColor";
+    const char* RenderOptions::s_nodeAABBColorOptionName = "nodeAABBColor";
+    const char* RenderOptions::s_staticAABBColorOptionName = "staticAABBColor";
+    const char* RenderOptions::s_meshAABBColorOptionName = "meshAABBColor";
+    const char* RenderOptions::s_collisionMeshAABBColorOptionName = "collisionMeshAABBColor";
+    const char* RenderOptions::s_OBBsColorOptionName = "OBBsColor";
+    const char* RenderOptions::s_lineSkeletonColorOptionName = "lineSkeletonColor";
+    const char* RenderOptions::s_skeletonColorOptionName = "skeletonColor";
+    const char* RenderOptions::s_selectionColorOptionName = "selectionColor";
+    const char* RenderOptions::s_selectedObjectColorOptionName = "selectedObjectColor";
+    const char* RenderOptions::s_nodeNameColorOptionName = "nodeNameColor";
+    const char* RenderOptions::s_gridColorOptionName = "gridColor";
+    const char* RenderOptions::s_mainAxisColorOptionName = "gridMainAxisColor";
+    const char* RenderOptions::s_subStepColorOptionName = "gridSubStepColor";
+    const char* RenderOptions::s_trajectoryArrowInnerColorOptionName = "trajectoryArrowInnerColor";
+    const char* RenderOptions::s_lastUsedLayoutOptionName = "lastUsedLayout";
+    const char* RenderOptions::s_renderSelectionBoxOptionName = "renderSelectionBox";
+
     // constructor
     RenderOptions::RenderOptions()
+        : m_gridUnitSize(0.2f)
+        , m_vertexNormalsScale(1.0f)
+        , m_faceNormalsScale(1.0f)
+        , m_tangentsScale(1.0f)
+        , m_nodeOrientationScale(1.0f)
+        , m_scaleBonesOnLength(true)
+        , m_renderBonesOnly(false)
+        , m_mainLightIntensity(1.0f)
+        , m_mainLightAngleA(0.0f)
+        , m_mainLightAngleB(0.0f)
+        , m_specularIntensity(1.0f)
+        , m_rimIntensity(1.5f)
+        , m_rimWidth(0.65f)
+        , m_rimAngle(60.0f)
+        , m_showFPS(false)
+        , m_lightGroundColor(0.117f, 0.015f, 0.07f, 1.0f)
+        , m_lightSkyColor(0.635f, 0.6f, 0.572f, 1.0f)
+        , m_rimColor(1.0f, 0.70f, 0.109f, 1.0f)
+        , m_backgroundColor(0.359f, 0.3984f, 0.4492f, 1.0f)
+        , m_gradientSourceColor(0.4941f, 0.5686f, 0.6470f, 1.0f)
+        , m_gradientTargetColor(0.0941f, 0.1019f, 0.1098f, 1.0f)
+        , m_wireframeColor(0.0f, 0.0f, 0.0f, 1.0f)
+        , m_collisionMeshColor(0.0f, 1.0f, 1.0f, 1.0f)
+        , m_vertexNormalsColor(0.0f, 1.0f, 0.0f, 1.0f)
+        , m_faceNormalsColor(0.5f, 0.5f, 1.0f, 1.0f)
+        , m_tangentsColor(1.0f, 0.0f, 0.0f, 1.0f)
+        , m_mirroredBinormalsColor(1.0f, 1.0f, 0.0f, 1.0f)
+        , m_binormalsColor(1.0f, 1.0f, 1.0f, 1.0f)
+        , m_nodeAABBColor(1.0f, 0.0f, 0.0f, 1.0f)
+        , m_staticAABBColor(0.0f, 0.7f, 0.7f, 1.0f)
+        , m_meshAABBColor(0.0f, 0.0f, 0.7f, 1.0f)
+        , m_collisionMeshAABBColor(0.0f, 0.7f, 0.0f, 1.0f)
+        , m_OBBsColor(1.0f, 1.0f, 0.0f, 1.0f)
+        , m_lineSkeletonColor(1.0f, 1.0f, 0.0f, 1.0f)
+        , m_skeletonColor(0.19f, 0.58f, 0.19f, 1.0f)
+        , m_selectionColor(1.0f, 1.0f, 1.0f, 1.0f)
+        , m_selectedObjectColor(1.0f, 0.647f, 0.0f, 1.0f)
+        , m_nodeNameColor(1.0f, 1.0f, 1.0f, 1.0f)
+        , m_gridColor(0.3242f, 0.3593f, 0.40625f, 1.0f)
+        , m_mainAxisColor(0.0f, 0.01f, 0.04f, 1.0f)
+        , m_subStepColor(0.2460f, 0.2851f, 0.3320f, 1.0f)
+        , m_trajectoryArrowInnerColor(0.184f, 0.494f, 0.866f, 1.0f)
+        , m_lastUsedLayout("Single")
+        , m_renderSelectionBox(true)
     {
-        // render background
-        mBackgroundColor        = MCore::RGBAColor(0.359f, 0.3984f, 0.4492f);
-        mGradientSourceColor    = MCore::RGBAColor(0.4941f, 0.5686f, 0.6470f);
-        mGradientTargetColor    = MCore::RGBAColor(0.0941f, 0.1019f, 0.1098f);
-        mWireframeColor         = MCore::RGBAColor(0.0f, 0.0f, 0.0f);
-        mVertexNormalsColor     = MCore::RGBAColor(0.0f, 1.0f, 0.0f);
-        mFaceNormalsColor       = MCore::RGBAColor(0.5f, 0.5f, 1.0f);
-        mTangentsColor          = MCore::RGBAColor(1.0f, 0.0f, 0.0f);
-        mMirroredBinormalsColor = MCore::RGBAColor(1.0f, 1.0f, 0.0f);
-        mBinormalsColor         = MCore::RGBAColor(1.0f, 1.0f, 1.0f);
-        mNodeAABBColor          = MCore::RGBAColor(1.0f, 0.0f, 0.0f);
-        mStaticAABBColor        = MCore::RGBAColor(0.0f, 0.7f, 0.7f);
-        mMeshAABBColor          = MCore::RGBAColor(0.0f, 0.0f, 0.7f);
-        mCollisionMeshAABBColor = MCore::RGBAColor(0.0f, 0.7f, 0.0f);
-        mCollisionMeshColor     = MCore::RGBAColor(0.0f, 1.0f, 1.0f);
-        mOBBsColor              = MCore::RGBAColor(1.0f, 1.0f, 0.0f);
-        mLineSkeletonColor      = MCore::RGBAColor(1.0f, 1.0f, 0.0f);
-        mSkeletonColor          = MCore::RGBAColor(0.19f, 0.58f, 0.19f);
-        mSelectionColor         = MCore::RGBAColor(1.0f, 1.0f, 1.0f);
-        mNodeNameColor          = MCore::RGBAColor(1.0f, 1.0f, 1.0f);
-        mSelectedObjectColor    = MCore::RGBAColor(1.0f, 0.647f, 0.0f);
-
-        mGridColor              = MCore::RGBAColor(0.3242f, 0.3593f, 0.40625f);
-        mMainAxisColor          = MCore::RGBAColor(0.0f, 0.01f, 0.04f);
-        mSubStepColor           = MCore::RGBAColor(0.2460f, 0.2851f, 0.3320f);
-
-        mLightSkyColor          = MCore::RGBAColor(0.635f, 0.6f, 0.572f);
-        mLightGroundColor       = MCore::RGBAColor(0.117f, 0.015f, 0.07f);
-
-        mTrajectoryArrowInnerColor  = MCore::RGBAColor(0.184f, 0.494f, 0.866f);
-        mTrajectoryArrowBorderColor = MCore::RGBAColor(0.184f, 0.494f, 0.866f);
-
-        mGridUnitSize           = 0.2f;
-        mFaceNormalsScale       = 1.0f;
-        mVertexNormalsScale     = 1.0f;
-        mTangentsScale          = 1.0f;
-        mCreateMipMaps          = true;
-        mMainLightIntensity     = 1.00f;
-        mMainLightAngleA        = 0.0f;
-        mMainLightAngleB        = 0.0f;
-        mSpecularIntensity      = 1.0f;
-        mNodeOrientationScale   = 1.0f;
-        mScaleBonesOnLength     = true;
-        mRenderBonesOnly        = false;
-
-        mAspiredRenderFPS       = 100;
-        mSkipLoadingTextures    = false;
-        mShowFPS                = false;
-
-        // advanced render options
-        mEnableAdvancedRendering = false;
-        mBloomEnabled           = true;
-        mBloomThreshold         = 0.8f;
-        mBloomIntensity         = 0.7f;
-        mBloomRadius            = 4.0f;
-        mDOFEnabled             = false;
-        mDOFFocalPoint          = 10.0f;
-        mDOFNear                = 0.01f;
-        mDOFFar                 = 100.0f;
-        mDOFBlurRadius          = 2.0f;
-        mRimIntensity           = 1.5f;
-        mRimAngle               = 60.0f;
-        mRimColor               = MCore::RGBAColor(1.0f, 0.70f, 0.109f);
-        mRimWidth               = 0.65f;
-        mLastUsedLayout         = "Single";
-
         MCommon::OrbitCamera tempCam;
-        mNearClipPlaneDistance  = tempCam.GetNearClipDistance();
-        mFarClipPlaneDistance   = tempCam.GetFarClipDistance();
-        mFOV                    = tempCam.GetFOV();
+        m_nearClipPlaneDistance = tempCam.GetNearClipDistance();
+        m_farClipPlaneDistance = tempCam.GetFarClipDistance();
+        m_FOV = tempCam.GetFOV();
 
-        mRenderSelectionBox     = true;
+        PluginOptionsNotificationsBus::Handler::BusConnect(GUIOptions::s_unitTypeOptionName);
     }
 
+    RenderOptions& RenderOptions::operator=(const RenderOptions& other)
+    {
+        SetGridUnitSize(other.GetGridUnitSize());
+        SetVertexNormalsScale(other.GetVertexNormalsScale());
+        SetFaceNormalsScale(other.GetFaceNormalsScale());
+        SetTangentsScale(other.GetTangentsScale());
+        SetNodeOrientationScale(other.GetNodeOrientationScale());
+        SetScaleBonesOnLenght(other.GetScaleBonesOnLength());
+        SetMainLightIntensity(other.GetMainLightIntensity());
+        SetMainLightAngleA(other.GetMainLightAngleA());
+        SetMainLightAngleB(other.GetMainLightAngleB());
+        SetSpecularIntensity(other.GetSpecularIntensity());
+        SetRimIntensity(other.GetRimIntensity());
+        SetRimWidth(other.GetRimWidth());
+        SetRimAngle(other.GetRimAngle());
+        SetShowFPS(other.GetShowFPS());
+        SetLightGroundColor(other.GetLightGroundColor());
+        SetLightSkyColor(other.GetLightSkyColor());
+        SetRimColor(other.GetRimColor());
+        SetBackgroundColor(other.GetBackgroundColor());
+        SetGradientSourceColor(other.GetGradientSourceColor());
+        SetGradientTargetColor(other.GetGradientTargetColor());
+        SetWireframeColor(other.GetWireframeColor());
+        SetCollisionMeshColor(other.GetCollisionMeshColor());
+        SetVertexNormalsColor(other.GetVertexNormalsColor());
+        SetFaceNormalsColor(other.GetFaceNormalsColor());
+        SetTangentsColor(other.GetTangentsColor());
+        SetMirroredBinormalsColor(other.GetMirroredBinormalsColor());
+        SetBinormalsColor(other.GetBinormalsColor());
+        SetNodeAABBColor(other.GetNodeAABBColor());
+        SetStaticAABBColor(other.GetStaticAABBColor());
+        SetMeshAABBColor(other.GetMeshAABBColor());
+        SetCollisionMeshAABBColor(other.GetCollisionMeshAABBColor());
+        SetOBBsColor(other.GetOBBsColor());
+        SetLineSkeletonColor(other.GetLineSkeletonColor());
+        SetSkeletonColor(other.GetSkeletonColor());
+        SetSelectionColor(other.GetSelectionColor());
+        SetSelectedObjectColor(other.GetSelectedObjectColor());
+        SetNodeNameColor(other.GetNodeNameColor());
+        SetGridColor(other.GetGridColor());
+        SetMainAxisColor(other.GetMainAxisColor());
+        SetSubStepColor(other.GetSubStepColor());
+        SetTrajectoryArrowInnerColor(other.GetTrajectoryArrowInnerColor());
+        SetLastUsedLayout(other.GetLastUsedLayout());
+        SetRenderSelectionBox(other.GetRenderSelectionBox());
+        SetNearClipPlaneDistance(other.GetNearClipPlaneDistance());
+        SetFarClipPlaneDistance(other.GetFarClipPlaneDistance());
+        SetFOV(other.GetFOV());
+        return *this;
+    }
 
+    RenderOptions::~RenderOptions()
+    {
+        PluginOptionsNotificationsBus::Handler::BusDisconnect();
+    }
 
     void RenderOptions::Save(QSettings* settings)
     {
-        settings->setValue("backgroundColor",          ColorToString(mBackgroundColor));
-        settings->setValue("gradientSourceColor",      ColorToString(mGradientSourceColor));
-        settings->setValue("gradientTargetColor",      ColorToString(mGradientTargetColor));
-        settings->setValue("wireframeColor",           ColorToString(mWireframeColor));
-        settings->setValue("vertexNormalsColor",       ColorToString(mVertexNormalsColor));
-        settings->setValue("faceNormalsColor",         ColorToString(mFaceNormalsColor));
-        settings->setValue("tangentsColor",            ColorToString(mTangentsColor));
-        settings->setValue("mirroredBinormalsColor",   ColorToString(mMirroredBinormalsColor));
-        settings->setValue("binormalsColor",           ColorToString(mBinormalsColor));
-        settings->setValue("nodeAABBColor",            ColorToString(mNodeAABBColor));
-        settings->setValue("staticAABBColor",          ColorToString(mStaticAABBColor));
-        settings->setValue("meshAABBColor",            ColorToString(mMeshAABBColor));
-        settings->setValue("collisionMeshAABBColor",   ColorToString(mCollisionMeshAABBColor));
-        settings->setValue("collisionMeshColor",       ColorToString(mCollisionMeshColor));
-        settings->setValue("OBBsColor",                ColorToString(mOBBsColor));
-        settings->setValue("lineSkeletonColor",        ColorToString(mLineSkeletonColor));
-        settings->setValue("skeletonColor",            ColorToString(mSkeletonColor));
-        settings->setValue("selectionColor",           ColorToString(mSelectionColor));
-        settings->setValue("nodeNameColor",            ColorToString(mNodeNameColor));
+        settings->setValue(s_backgroundColorOptionName, ColorToString(m_backgroundColor));
+        settings->setValue(s_gradientSourceColorOptionName, ColorToString(m_gradientSourceColor));
+        settings->setValue(s_gradientTargetColorOptionName, ColorToString(m_gradientTargetColor));
+        settings->setValue(s_wireframeColorOptionName, ColorToString(m_wireframeColor));
+        settings->setValue(s_vertexNormalsColorOptionName, ColorToString(m_vertexNormalsColor));
+        settings->setValue(s_faceNormalsColorOptionName, ColorToString(m_faceNormalsColor));
+        settings->setValue(s_tangentsColorOptionName, ColorToString(m_tangentsColor));
+        settings->setValue(s_mirroredBinormalsColorOptionName, ColorToString(m_mirroredBinormalsColor));
+        settings->setValue(s_binormalsColorOptionName, ColorToString(m_binormalsColor));
+        settings->setValue(s_nodeAABBColorOptionName, ColorToString(m_nodeAABBColor));
+        settings->setValue(s_staticAABBColorOptionName, ColorToString(m_staticAABBColor));
+        settings->setValue(s_meshAABBColorOptionName, ColorToString(m_meshAABBColor));
+        settings->setValue(s_collisionMeshAABBColorOptionName, ColorToString(m_collisionMeshAABBColor));
+        settings->setValue(s_collisionMeshColorOptionName, ColorToString(m_collisionMeshColor));
+        settings->setValue(s_OBBsColorOptionName, ColorToString(m_OBBsColor));
+        settings->setValue(s_lineSkeletonColorOptionName, ColorToString(m_lineSkeletonColor));
+        settings->setValue(s_skeletonColorOptionName, ColorToString(m_skeletonColor));
+        settings->setValue(s_selectionColorOptionName, ColorToString(m_selectionColor));
+        settings->setValue(s_selectedObjectColorOptionName, ColorToString(m_selectedObjectColor));
+        settings->setValue(s_nodeNameColorOptionName, ColorToString(m_nodeNameColor));
 
-        settings->setValue("gridColor",                ColorToString(mGridColor));
-        settings->setValue("gridMainAxisColor",        ColorToString(mMainAxisColor));
-        settings->setValue("gridSubStepColor",         ColorToString(mSubStepColor));
+        settings->setValue(s_gridColorOptionName, ColorToString(m_gridColor));
+        settings->setValue(s_mainAxisColorOptionName, ColorToString(m_mainAxisColor));
+        settings->setValue(s_subStepColorOptionName, ColorToString(m_subStepColor));
 
-        settings->setValue("lightSkyColor",            ColorToString(mLightSkyColor));
-        settings->setValue("lightGroundColor",         ColorToString(mLightGroundColor));
-        settings->setValue("rimColor",                 ColorToString(mRimColor));
+        settings->setValue(s_lightSkyColorOptionName, ColorToString(m_lightSkyColor));
+        settings->setValue(s_lightGroundColorOptionName, ColorToString(m_lightGroundColor));
+        settings->setValue(s_rimColorOptionName, ColorToString(m_rimColor));
 
-        settings->setValue("trajectoryArrowInnerColor", ColorToString(mTrajectoryArrowInnerColor));
-        settings->setValue("trajectoryArrowBorderColor", ColorToString(mTrajectoryArrowBorderColor));
+        settings->setValue(s_trajectoryArrowInnerColorOptionName, ColorToString(m_trajectoryArrowInnerColor));
 
-        settings->setValue("gridUnitSize",             (double)mGridUnitSize);
-        settings->setValue("faceNormalsScale",         (double)mFaceNormalsScale);
-        settings->setValue("vertexNormalsScale",       (double)mVertexNormalsScale);
-        settings->setValue("tangentsScale",            (double)mTangentsScale);
-        settings->setValue("nearClipPlaneDistance",    (double)mNearClipPlaneDistance);
-        settings->setValue("farClipPlaneDistance",     (double)mFarClipPlaneDistance);
-        settings->setValue("fieldOfView",              (double)mFOV);
-        settings->setValue("showFPS",                  mShowFPS);
+        settings->setValue(s_gridUnitSizeOptionName, (double)m_gridUnitSize);
+        settings->setValue(s_faceNormalsScaleOptionName, (double)m_faceNormalsScale);
+        settings->setValue(s_vertexNormalsScaleOptionName, (double)m_vertexNormalsScale);
+        settings->setValue(s_tangentsScaleOptionName, (double)m_tangentsScale);
+        settings->setValue(s_nearClipPlaneDistanceOptionName, (double)m_nearClipPlaneDistance);
+        settings->setValue(s_farClipPlaneDistanceOptionName, (double)m_farClipPlaneDistance);
+        settings->setValue(s_FOVOptionName, (double)m_FOV);
+        settings->setValue(s_showFPSOptionName, m_showFPS);
 
-        settings->setValue("texturePath",              mTexturePath.c_str());
-        settings->setValue("autoCreateMipMaps",        mCreateMipMaps);
+        settings->setValue(s_lastUsedLayoutOptionName, m_lastUsedLayout.c_str());
 
-        settings->setValue("lastUsedLayout",           mLastUsedLayout.c_str());
+        settings->setValue(s_nodeOrientationScaleOptionName, (double)m_nodeOrientationScale);
+        settings->setValue(s_scaleBonesOnLengthOptionName, m_scaleBonesOnLength);
+        settings->setValue(s_renderBonesOnlyOptionName, m_renderBonesOnly);
 
-        settings->setValue("aspiredRenderFPS",         mAspiredRenderFPS);
-        settings->setValue("skipLoadingTextures",      mSkipLoadingTextures);
+        settings->setValue(s_mainLightIntensityOptionName, (double)m_mainLightIntensity);
+        settings->setValue(s_mainLightAngleAOptionName, (double)m_mainLightAngleA);
+        settings->setValue(s_mainLightAngleBOptionName, (double)m_mainLightAngleB);
+        settings->setValue(s_specularIntensityOptionName, (double)m_specularIntensity);
 
-        settings->setValue("nodeOrientationScale",     (double)mNodeOrientationScale);
-        settings->setValue("scaleBonesOnLength",       mScaleBonesOnLength);
-        settings->setValue("renderBonesOnly",          mRenderBonesOnly);
+        settings->setValue(s_rimIntensityOptionName, (double)m_rimIntensity);
+        settings->setValue(s_rimAngleOptionName, (double)m_rimAngle);
+        settings->setValue(s_rimWidthOptionName, (double)m_rimWidth);
 
-        settings->setValue("mainLightIntensity",       (double)mMainLightIntensity);
-        settings->setValue("mainLightAngleA",          (double)mMainLightAngleA);
-        settings->setValue("mainLightAngleB",          (double)mMainLightAngleB);
-        settings->setValue("specularIntensity",        (double)mSpecularIntensity);
-        /*
-            settings->setValue( "enableAdvancedRendering",  mEnableAdvancedRendering );
-            settings->setValue( "bloomEnabled",             mBloomEnabled);
-            settings->setValue( "bloomIntensity",           (double)mBloomIntensity );
-            settings->setValue( "bloomThreshold",           (double)mBloomThreshold );
-            settings->setValue( "bloomRadius",              (double)mBloomRadius );
-
-            settings->setValue( "dofEnabled",               mDOFEnabled);
-            settings->setValue( "dofFocusDist",             (double)mDOFFocalPoint );
-            settings->setValue( "dofNear",                  (double)mDOFNear );
-            settings->setValue( "dofFar",                   (double)mDOFFar);
-            settings->setValue( "dofBlurRadius",            (double)mDOFBlurRadius);
-        */
-        settings->setValue("rimIntensity",             (double)mRimIntensity);
-        settings->setValue("rimAngle",                 (double)mRimAngle);
-        settings->setValue("rimWidth",                 (double)mRimWidth);
-
-        settings->setValue("renderSelectionBox",   mRenderSelectionBox);
+        settings->setValue(s_renderSelectionBoxOptionName, m_renderSelectionBox);
     }
 
 
-    void RenderOptions::Load(QSettings* settings)
+    RenderOptions RenderOptions::Load(QSettings* settings)
     {
-        mLastUsedLayout         = FromQtString(settings->value("lastUsedLayout",          mLastUsedLayout.c_str()).toString());
-        mBackgroundColor        = StringToColor(settings->value("backgroundColor",         ColorToString(mBackgroundColor)).toString());
-        mGradientSourceColor    = StringToColor(settings->value("gradientSourceColor",     ColorToString(mGradientSourceColor)).toString());
-        mGradientTargetColor    = StringToColor(settings->value("gradientTargetColor",     ColorToString(mGradientTargetColor)).toString());
-        mWireframeColor         = StringToColor(settings->value("wireframeColor",          ColorToString(mWireframeColor)).toString());
-        mVertexNormalsColor     = StringToColor(settings->value("vertexNormalsColor",      ColorToString(mVertexNormalsColor)).toString());
-        mFaceNormalsColor       = StringToColor(settings->value("faceNormalsColor",        ColorToString(mFaceNormalsColor)).toString());
-        mTangentsColor          = StringToColor(settings->value("tangentsColor",           ColorToString(mTangentsColor)).toString());
-        mMirroredBinormalsColor = StringToColor(settings->value("mirroredBinormalsColor",  ColorToString(mMirroredBinormalsColor)).toString());
-        mBinormalsColor         = StringToColor(settings->value("binormalsColor",          ColorToString(mBinormalsColor)).toString());
-        mNodeAABBColor          = StringToColor(settings->value("nodeAABBColor",           ColorToString(mNodeAABBColor)).toString());
-        mStaticAABBColor        = StringToColor(settings->value("staticAABBColor",         ColorToString(mStaticAABBColor)).toString());
-        mMeshAABBColor          = StringToColor(settings->value("meshAABBColor",           ColorToString(mMeshAABBColor)).toString());
-        mCollisionMeshAABBColor = StringToColor(settings->value("collisionMeshAABBColor",  ColorToString(mCollisionMeshAABBColor)).toString());
-        mCollisionMeshColor     = StringToColor(settings->value("collisionMeshColor",      ColorToString(mCollisionMeshColor)).toString());
-        mOBBsColor              = StringToColor(settings->value("OBBsColor",               ColorToString(mOBBsColor)).toString());
-        mLineSkeletonColor      = StringToColor(settings->value("lineSkeletonColor",       ColorToString(mLineSkeletonColor)).toString());
-        mSkeletonColor          = StringToColor(settings->value("skeletonColor",           ColorToString(mSkeletonColor)).toString());
-        mSelectionColor         = StringToColor(settings->value("selectionColor",          ColorToString(mSelectionColor)).toString());
-        mNodeNameColor          = StringToColor(settings->value("nodeNameColor",           ColorToString(mNodeNameColor)).toString());
-        mRimColor               = StringToColor(settings->value("rimColor",                ColorToString(mRimColor)).toString());
+        RenderOptions options;
+        options.m_lastUsedLayout = FromQtString(settings->value(s_lastUsedLayoutOptionName, options.m_lastUsedLayout.c_str()).toString());
+        options.m_backgroundColor = StringToColor(settings->value(s_backgroundColorOptionName, ColorToString(options.m_backgroundColor)).toString());
+        options.m_gradientSourceColor = StringToColor(settings->value(s_gradientSourceColorOptionName, ColorToString(options.m_gradientSourceColor)).toString());
+        options.m_gradientTargetColor = StringToColor(settings->value(s_gradientTargetColorOptionName, ColorToString(options.m_gradientTargetColor)).toString());
+        options.m_wireframeColor = StringToColor(settings->value(s_wireframeColorOptionName, ColorToString(options.m_wireframeColor)).toString());
+        options.m_vertexNormalsColor = StringToColor(settings->value(s_vertexNormalsColorOptionName, ColorToString(options.m_vertexNormalsColor)).toString());
+        options.m_faceNormalsColor = StringToColor(settings->value(s_faceNormalsColorOptionName, ColorToString(options.m_faceNormalsColor)).toString());
+        options.m_tangentsColor = StringToColor(settings->value(s_tangentsColorOptionName, ColorToString(options.m_tangentsColor)).toString());
+        options.m_mirroredBinormalsColor = StringToColor(settings->value(s_mirroredBinormalsColorOptionName, ColorToString(options.m_mirroredBinormalsColor)).toString());
+        options.m_binormalsColor = StringToColor(settings->value(s_binormalsColorOptionName, ColorToString(options.m_binormalsColor)).toString());
+        options.m_nodeAABBColor = StringToColor(settings->value(s_nodeAABBColorOptionName, ColorToString(options.m_nodeAABBColor)).toString());
+        options.m_staticAABBColor = StringToColor(settings->value(s_staticAABBColorOptionName, ColorToString(options.m_staticAABBColor)).toString());
+        options.m_meshAABBColor = StringToColor(settings->value(s_meshAABBColorOptionName, ColorToString(options.m_meshAABBColor)).toString());
+        options.m_collisionMeshAABBColor = StringToColor(settings->value(s_collisionMeshAABBColorOptionName, ColorToString(options.m_collisionMeshAABBColor)).toString());
+        options.m_collisionMeshColor = StringToColor(settings->value(s_collisionMeshColorOptionName, ColorToString(options.m_collisionMeshColor)).toString());
+        options.m_OBBsColor = StringToColor(settings->value(s_OBBsColorOptionName, ColorToString(options.m_OBBsColor)).toString());
+        options.m_lineSkeletonColor = StringToColor(settings->value(s_lineSkeletonColorOptionName, ColorToString(options.m_lineSkeletonColor)).toString());
+        options.m_skeletonColor = StringToColor(settings->value(s_skeletonColorOptionName, ColorToString(options.m_skeletonColor)).toString());
+        options.m_selectionColor = StringToColor(settings->value(s_selectionColorOptionName, ColorToString(options.m_selectionColor)).toString());
+        options.m_selectedObjectColor = StringToColor(settings->value(s_selectedObjectColorOptionName, ColorToString(options.m_selectedObjectColor)).toString());
+        options.m_nodeNameColor = StringToColor(settings->value(s_nodeNameColorOptionName, ColorToString(options.m_nodeNameColor)).toString());
+        options.m_rimColor = StringToColor(settings->value(s_rimColorOptionName, ColorToString(options.m_rimColor)).toString());
 
-        mTrajectoryArrowInnerColor      = StringToColor(settings->value("trajectoryArrowInnerColor",           ColorToString(mTrajectoryArrowInnerColor)).toString());
-        mTrajectoryArrowBorderColor     = StringToColor(settings->value("trajectoryArrowBorderColor",          ColorToString(mTrajectoryArrowBorderColor)).toString());
+        options.m_trajectoryArrowInnerColor = StringToColor(settings->value(s_trajectoryArrowInnerColorOptionName, ColorToString(options.m_trajectoryArrowInnerColor)).toString());
 
-        mGridColor              = StringToColor(settings->value("gridColor",               ColorToString(mGridColor)).toString());
-        mMainAxisColor          = StringToColor(settings->value("gridMainAxisColor",       ColorToString(mMainAxisColor)).toString());
-        mSubStepColor           = StringToColor(settings->value("gridSubStepColor",        ColorToString(mSubStepColor)).toString());
+        options.m_gridColor = StringToColor(settings->value(s_gridColorOptionName, ColorToString(options.m_gridColor)).toString());
+        options.m_mainAxisColor = StringToColor(settings->value(s_mainAxisColorOptionName, ColorToString(options.m_mainAxisColor)).toString());
+        options.m_subStepColor = StringToColor(settings->value(s_subStepColorOptionName, ColorToString(options.m_subStepColor)).toString());
 
-        mLightSkyColor          = StringToColor(settings->value("lightSkyColor",           ColorToString(mLightSkyColor)).toString());
-        mLightGroundColor       = StringToColor(settings->value("lightGroundColor",        ColorToString(mLightGroundColor)).toString());
+        options.m_lightSkyColor = StringToColor(settings->value(s_lightSkyColorOptionName, ColorToString(options.m_lightSkyColor)).toString());
+        options.m_lightGroundColor = StringToColor(settings->value(s_lightGroundColorOptionName, ColorToString(options.m_lightGroundColor)).toString());
 
-        mTexturePath            = FromQtString(settings->value("texturePath",              mTexturePath.c_str()).toString());
-        mCreateMipMaps          = settings->value("autoCreateMipMaps",                      mCreateMipMaps).toBool();
+        options.m_showFPS = settings->value(s_showFPSOptionName, options.m_showFPS).toBool();
 
-        mAspiredRenderFPS       = settings->value("aspiredRenderFPS",                       mAspiredRenderFPS).toInt();
-        mSkipLoadingTextures    = settings->value("skipLoadingTextures",                    mSkipLoadingTextures).toBool();
+        options.m_gridUnitSize = (float)settings->value(s_gridUnitSizeOptionName, (double)options.m_gridUnitSize).toDouble();
+        options.m_faceNormalsScale = (float)settings->value(s_faceNormalsScaleOptionName, (double)options.m_faceNormalsScale).toDouble();
+        options.m_vertexNormalsScale = (float)settings->value(s_vertexNormalsScaleOptionName, (double)options.m_vertexNormalsScale).toDouble();
+        options.m_tangentsScale = (float)settings->value(s_tangentsScaleOptionName, (double)options.m_tangentsScale).toDouble();
 
-        mShowFPS                = settings->value("showFPS",                                mShowFPS).toBool();
+        options.m_nearClipPlaneDistance = (float)settings->value(s_nearClipPlaneDistanceOptionName, (double)options.m_nearClipPlaneDistance).toDouble();
+        options.m_farClipPlaneDistance = (float)settings->value(s_farClipPlaneDistanceOptionName, (double)options.m_farClipPlaneDistance).toDouble();
+        options.m_FOV = (float)settings->value(s_FOVOptionName, (double)options.m_FOV).toDouble();
 
-        mGridUnitSize           = (float)settings->value("gridUnitSize",                    (double)mGridUnitSize).toDouble();
-        mFaceNormalsScale       = (float)settings->value("faceNormalsScale",                (double)mFaceNormalsScale).toDouble();
-        mVertexNormalsScale     = (float)settings->value("vertexNormalsScale",              (double)mVertexNormalsScale).toDouble();
-        mTangentsScale          = (float)settings->value("tangentsScale",                   (double)mTangentsScale).toDouble();
+        options.m_mainLightIntensity = (float)settings->value(s_mainLightIntensityOptionName, (double)options.m_mainLightIntensity).toDouble();
+        options.m_mainLightAngleA = (float)settings->value(s_mainLightAngleAOptionName, (double)options.m_mainLightAngleA).toDouble();
+        options.m_mainLightAngleB = (float)settings->value(s_mainLightAngleBOptionName, (double)options.m_mainLightAngleB).toDouble();
+        options.m_specularIntensity = (float)settings->value(s_specularIntensityOptionName, (double)options.m_specularIntensity).toDouble();
 
-        mNearClipPlaneDistance  = (float)settings->value("nearClipPlaneDistance",           (double)mNearClipPlaneDistance).toDouble();
-        mFarClipPlaneDistance   = (float)settings->value("farClipPlaneDistance",            (double)mFarClipPlaneDistance).toDouble();
-        mFOV                    = (float)settings->value("fieldOfView",                     (double)mFOV).toDouble();
+        options.m_nodeOrientationScale = (float)settings->value(s_nodeOrientationScaleOptionName, (double)options.m_nodeOrientationScale).toDouble();
+        options.m_scaleBonesOnLength = settings->value(s_scaleBonesOnLengthOptionName, options.m_scaleBonesOnLength).toBool();
+        options.m_renderBonesOnly = settings->value(s_renderBonesOnlyOptionName, options.m_renderBonesOnly).toBool();
 
-        mMainLightIntensity     = (float)settings->value("mainLightIntensity",              (double)mMainLightIntensity).toDouble();
-        mMainLightAngleA        = (float)settings->value("mainLightAngleA",                 (double)mMainLightAngleA).toDouble();
-        mMainLightAngleB        = (float)settings->value("mainLightAngleB",                 (double)mMainLightAngleB).toDouble();
-        mSpecularIntensity      = (float)settings->value("specularIntensity",               (double)mSpecularIntensity).toDouble();
+        options.m_rimIntensity = (float)settings->value(s_rimIntensityOptionName, (double)options.m_rimIntensity).toDouble();
+        options.m_rimAngle = (float)settings->value(s_rimAngleOptionName, (double)options.m_rimAngle).toDouble();
+        options.m_rimWidth = (float)settings->value(s_rimWidthOptionName, (double)options.m_rimWidth).toDouble();
 
-        mNodeOrientationScale   = (float)settings->value("nodeOrientationScale",            (double)mNodeOrientationScale).toDouble();
-        mScaleBonesOnLength     = settings->value("scaleBonesOnLength",                     mScaleBonesOnLength).toBool();
-        mRenderBonesOnly        = settings->value("renderBonesOnly",                        mRenderBonesOnly).toBool();
-        /*
-            mEnableAdvancedRendering= settings->value("enableAdvancedRendering",                mEnableAdvancedRendering).toBool();
-            mBloomEnabled           = settings->value("bloomEnabled",                           mBloomEnabled).toBool();
-            mBloomIntensity         = (float)settings->value("bloomIntensity",                  (double)mBloomIntensity).toDouble();
-            mBloomThreshold         = (float)settings->value("bloomThreshold",                  (double)mBloomThreshold).toDouble();
-            mBloomRadius            = (float)settings->value("bloomRadius",                     (double)mBloomRadius).toDouble();
-        */
+        options.m_renderSelectionBox = settings->value(s_renderSelectionBoxOptionName, options.m_renderSelectionBox).toBool();
 
-        /*  mDOFEnabled             = settings->value("dofEnabled",                             mDOFEnabled).toBool();
-            mDOFFocalPoint          = (float)settings->value("dofFocusDist",                    (double)mDOFFocalPoint).toDouble();
-            mDOFNear                = (float)settings->value("dofNear",                         (double)mDOFNear).toDouble();
-            mDOFFar                 = (float)settings->value("dofFar",                          (double)mDOFFar).toDouble();
-            mDOFBlurRadius          = (float)settings->value("dofBlurRadius",                   (double)mDOFBlurRadius).toDouble();*/
-
-        mRimIntensity           = (float)settings->value("rimIntensity",                    (double)mRimIntensity).toDouble();
-        mRimAngle               = (float)settings->value("rimAngle",                        (double)mRimAngle).toDouble();
-        mRimWidth               = (float)settings->value("rimWidth",                        (double)mRimWidth).toDouble();
-
-        mRenderSelectionBox = settings->value("renderSelectionBox",                         mRenderSelectionBox).toBool();
+        return options;
     }
+
+
+    AZ::Color RenderOptions::StringToColor(const QString& text)
+    {
+        QColor color = QColor(text);
+        return AZ::Color(static_cast<float>(color.redF()),
+            static_cast<float>(color.greenF()),
+            static_cast<float>(color.blueF()),
+            static_cast<float>(color.alphaF()));
+    }
+
+    QString RenderOptions::ColorToString(const AZ::Color& color)
+    {
+        QColor qColor;
+        qColor.setRedF(color.GetR());
+        qColor.setGreenF(color.GetG());
+        qColor.setBlueF(color.GetB());
+        qColor.setAlphaF(color.GetA());
+        return qColor.name();
+    }
+
+    void RenderOptions::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<RenderOptions>()
+            ->Version(1)
+            ->Field(s_gridUnitSizeOptionName, &RenderOptions::m_gridUnitSize)
+            ->Field(s_vertexNormalsScaleOptionName, &RenderOptions::m_vertexNormalsScale)
+            ->Field(s_faceNormalsScaleOptionName, &RenderOptions::m_faceNormalsScale)
+            ->Field(s_tangentsScaleOptionName, &RenderOptions::m_tangentsScale)
+            ->Field(s_nodeOrientationScaleOptionName, &RenderOptions::m_nodeOrientationScale)
+            ->Field(s_scaleBonesOnLengthOptionName, &RenderOptions::m_scaleBonesOnLength)
+            ->Field(s_renderBonesOnlyOptionName, &RenderOptions::m_renderBonesOnly)
+            ->Field(s_nearClipPlaneDistanceOptionName, &RenderOptions::m_nearClipPlaneDistance)
+            ->Field(s_farClipPlaneDistanceOptionName, &RenderOptions::m_farClipPlaneDistance)
+            ->Field(s_FOVOptionName, &RenderOptions::m_FOV)
+            ->Field(s_mainLightIntensityOptionName, &RenderOptions::m_mainLightIntensity)
+            ->Field(s_mainLightAngleAOptionName, &RenderOptions::m_mainLightAngleA)
+            ->Field(s_mainLightAngleBOptionName, &RenderOptions::m_mainLightAngleB)
+            ->Field(s_specularIntensityOptionName, &RenderOptions::m_specularIntensity)
+            ->Field(s_rimIntensityOptionName, &RenderOptions::m_rimIntensity)
+            ->Field(s_rimWidthOptionName, &RenderOptions::m_rimWidth)
+            ->Field(s_rimAngleOptionName, &RenderOptions::m_rimAngle)
+            ->Field(s_showFPSOptionName, &RenderOptions::m_showFPS)
+            ->Field(s_lightGroundColorOptionName, &RenderOptions::m_lightGroundColor)
+            ->Field(s_lightSkyColorOptionName, &RenderOptions::m_lightSkyColor)
+            ->Field(s_rimColorOptionName, &RenderOptions::m_rimColor)
+            ->Field(s_backgroundColorOptionName, &RenderOptions::m_backgroundColor)
+            ->Field(s_gradientSourceColorOptionName, &RenderOptions::m_gradientSourceColor)
+            ->Field(s_gradientTargetColorOptionName, &RenderOptions::m_gradientTargetColor)
+            ->Field(s_wireframeColorOptionName, &RenderOptions::m_wireframeColor)
+            ->Field(s_collisionMeshColorOptionName, &RenderOptions::m_collisionMeshColor)
+            ->Field(s_vertexNormalsColorOptionName, &RenderOptions::m_vertexNormalsColor)
+            ->Field(s_faceNormalsColorOptionName, &RenderOptions::m_faceNormalsColor)
+            ->Field(s_tangentsColorOptionName, &RenderOptions::m_tangentsColor)
+            ->Field(s_mirroredBinormalsColorOptionName, &RenderOptions::m_mirroredBinormalsColor)
+            ->Field(s_binormalsColorOptionName, &RenderOptions::m_binormalsColor)
+            ->Field(s_nodeAABBColorOptionName, &RenderOptions::m_nodeAABBColor)
+            ->Field(s_staticAABBColorOptionName, &RenderOptions::m_staticAABBColor)
+            ->Field(s_meshAABBColorOptionName, &RenderOptions::m_meshAABBColor)
+            ->Field(s_collisionMeshAABBColorOptionName, &RenderOptions::m_collisionMeshAABBColor)
+            ->Field(s_OBBsColorOptionName, &RenderOptions::m_OBBsColor)
+            ->Field(s_lineSkeletonColorOptionName, &RenderOptions::m_lineSkeletonColor)
+            ->Field(s_skeletonColorOptionName, &RenderOptions::m_skeletonColor)
+            ->Field(s_selectionColorOptionName, &RenderOptions::m_selectionColor)
+            ->Field(s_selectedObjectColorOptionName, &RenderOptions::m_selectedObjectColor)
+            ->Field(s_nodeNameColorOptionName, &RenderOptions::m_nodeNameColor)
+            ->Field(s_gridColorOptionName, &RenderOptions::m_gridColor)
+            ->Field(s_mainAxisColorOptionName, &RenderOptions::m_mainAxisColor)
+            ->Field(s_subStepColorOptionName, &RenderOptions::m_subStepColor)
+            ->Field(s_trajectoryArrowInnerColorOptionName, &RenderOptions::m_trajectoryArrowInnerColor)
+            ->Field(s_lastUsedLayoutOptionName, &RenderOptions::m_lastUsedLayout)
+            ->Field(s_renderSelectionBoxOptionName, &RenderOptions::m_renderSelectionBox);
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<RenderOptions>("Render plugin properties", "")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gridUnitSize, "Grid unit size", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnGridUnitSizeChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.1f)
+                ->Attribute(AZ::Edit::Attributes::Max, 10000.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_vertexNormalsScale, "Vertex normals scale", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnVertexNormalsScaleChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
+                ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_faceNormalsScale, "Face normals scale", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnFaceNormalsScaleChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
+                ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_tangentsScale, "Tangents & binormals scale", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnTangentsScaleChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
+                ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nodeOrientationScale, "Node orientation scale", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnNodeOrientationScaleChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
+                ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_scaleBonesOnLength, "Scale bones on length", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnScaleBonesOnLengthChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_renderBonesOnly, "Render bones only", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRenderBonesOnlyChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nearClipPlaneDistance, "Near clip plane distance", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnNearClipPlaneDistanceChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
+                ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_farClipPlaneDistance, "Far clip plane distance", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnFarClipPlaneDistanceChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 1.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, 100000.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_FOV, "Field of view", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnFOVChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 1.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, 170.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainLightIntensity, "Main light intensity", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMainLightIntensityChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, 10.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainLightAngleA, "Main light angle A", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMainLightAngleAChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, -360.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, 360.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainLightAngleB, "Main light angle B", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMainLightAngleBChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, -360.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, 360.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_specularIntensity, "Specular intensity", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSpecularIntensityChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, 3.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimIntensity, "Rim intensity", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRimIntensityChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, 3.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimWidth, "Rim width", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRimWidthChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.1f)
+                ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimAngle, "Rim angle", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRimAngleChangedCallback)
+                ->Attribute(AZ::Edit::Attributes::Min, -360.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, 360.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_showFPS, "Show FPS", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnShowFPSChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_lightGroundColor, "Ground light color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnLightGroundColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_lightSkyColor, "Sky light color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnLightSkyColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimColor, "Rim light color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRimColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_backgroundColor, "Background color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnBackgroundColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gradientSourceColor, "Gradient background top color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnGradientSourceColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gradientTargetColor, "Gradient background bottom color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnGradientTargetColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_wireframeColor, "Wireframe color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnWireframeColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_collisionMeshColor, "Collision mesh color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnCollisionMeshColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_vertexNormalsColor, "Vertex normals color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnVertexNormalsColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_faceNormalsColor, "Face normals color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnFaceNormalsColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_tangentsColor, "Tangents color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnTangentsColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mirroredBinormalsColor, "Mirrored binormals color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMirroredBinormalsColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_binormalsColor, "Binormals color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnBinormalsColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nodeAABBColor, "Node based AABB color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnNodeAABBColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_staticAABBColor, "Static based AABB color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnStaticAABBColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_meshAABBColor, "Mesh based AABB color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMeshAABBColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_collisionMeshAABBColor, "CollisionMesh based AABB color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnCollisionMeshAABBColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_OBBsColor, "Node OOB color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnOBBsColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_lineSkeletonColor, "Line based skeleton color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnLineSkeletonColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_skeletonColor, "Solid skeleton color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSkeletonColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectionColor, "Selection gizmo color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectionColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedObjectColor, "Selected object color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedObjectColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nodeNameColor, "Node name color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnNodeNameColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gridColor, "Grid color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnGridColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainAxisColor, "Grid main axis color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMainAxisColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_subStepColor, "Grid substep color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSubStepColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_trajectoryArrowInnerColor, "Trajectory path color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnTrajectoryArrowInnerColorChangedCallback)
+            ;
+    }
+
+    void RenderOptions::SetGridUnitSize(float gridUnitSize)
+    {
+        if (!AZ::IsClose(gridUnitSize, m_gridUnitSize, std::numeric_limits<float>::epsilon()))
+        {
+            m_gridUnitSize = gridUnitSize;
+            OnGridUnitSizeChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetVertexNormalsScale(float vertexNormalsScale)
+    {
+        if (!AZ::IsClose(vertexNormalsScale, m_vertexNormalsScale, std::numeric_limits<float>::epsilon()))
+        {
+            m_vertexNormalsScale = vertexNormalsScale;
+            OnVertexNormalsScaleChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetFaceNormalsScale(float faceNormalsScale)
+    {
+        if (!AZ::IsClose(faceNormalsScale, m_faceNormalsScale, std::numeric_limits<float>::epsilon()))
+        {
+            m_faceNormalsScale = faceNormalsScale;
+            OnFaceNormalsScaleChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetTangentsScale(float tangentsScale)
+    {
+        if (!AZ::IsClose(tangentsScale, m_tangentsScale, std::numeric_limits<float>::epsilon()))
+        {
+            m_tangentsScale = tangentsScale;
+            OnTangentsScaleChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetNodeOrientationScale(float nodeOrientationScale)
+    {
+        if (!AZ::IsClose(nodeOrientationScale, m_nodeOrientationScale, std::numeric_limits<float>::epsilon()))
+        {
+            m_nodeOrientationScale = nodeOrientationScale;
+            OnNodeOrientationScaleChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetScaleBonesOnLenght(bool scaleBonesOnLenght)
+    {
+        if (scaleBonesOnLenght != m_scaleBonesOnLength)
+        {
+            m_scaleBonesOnLength = scaleBonesOnLenght;
+            OnScaleBonesOnLengthChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetRenderBonesOnly(bool renderBonesOnly)
+    {
+        if (renderBonesOnly != m_renderBonesOnly)
+        {
+            m_renderBonesOnly = renderBonesOnly;
+            OnRenderBonesOnlyChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetNearClipPlaneDistance(float nearClipPlaneDistance)
+    {
+        if (!AZ::IsClose(nearClipPlaneDistance, m_nearClipPlaneDistance, std::numeric_limits<float>::epsilon()))
+        {
+            m_nearClipPlaneDistance = nearClipPlaneDistance;
+            OnNearClipPlaneDistanceChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetFarClipPlaneDistance(float farClipPlaneDistance)
+    {
+        if (!AZ::IsClose(farClipPlaneDistance, m_farClipPlaneDistance, std::numeric_limits<float>::epsilon()))
+        {
+            m_farClipPlaneDistance = farClipPlaneDistance;
+            OnFarClipPlaneDistanceChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetFOV(float FOV)
+    {
+        if (!AZ::IsClose(FOV, m_FOV, std::numeric_limits<float>::epsilon()))
+        {
+            m_FOV = FOV;
+            OnFOVChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetMainLightIntensity(float mainLightIntensity)
+    {
+        if (!AZ::IsClose(mainLightIntensity, m_mainLightIntensity, std::numeric_limits<float>::epsilon()))
+        {
+            m_mainLightIntensity = mainLightIntensity;
+            OnMainLightIntensityChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetMainLightAngleA(float mainLightAngleA)
+    {
+        if (!AZ::IsClose(mainLightAngleA, m_mainLightAngleA, std::numeric_limits<float>::epsilon()))
+        {
+            m_mainLightAngleA = mainLightAngleA;
+            OnMainLightAngleAChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetMainLightAngleB(float mainLightAngleB)
+    {
+        if (!AZ::IsClose(mainLightAngleB, m_mainLightAngleB, std::numeric_limits<float>::epsilon()))
+        {
+            m_mainLightAngleB = mainLightAngleB;
+            OnMainLightAngleBChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetSpecularIntensity(float specularIntensity)
+    {
+        if (!AZ::IsClose(specularIntensity, m_specularIntensity, std::numeric_limits<float>::epsilon()))
+        {
+            m_specularIntensity = specularIntensity;
+            OnSpecularIntensityChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetRimIntensity(float rimIntensity)
+    {
+        if (!AZ::IsClose(rimIntensity, m_rimIntensity, std::numeric_limits<float>::epsilon()))
+        {
+            m_rimIntensity = rimIntensity;
+            OnRimIntensityChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetRimWidth(float rimWidth)
+    {
+        if (!AZ::IsClose(rimWidth, m_rimWidth, std::numeric_limits<float>::epsilon()))
+        {
+            m_rimWidth = rimWidth;
+            OnRimWidthChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetRimAngle(float rimAngle)
+    {
+        if (!AZ::IsClose(rimAngle, m_rimAngle, std::numeric_limits<float>::epsilon()))
+        {
+            m_rimAngle = rimAngle;
+            OnRimAngleChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetShowFPS(bool showFPS)
+    {
+        if (showFPS != m_showFPS)
+        {
+            m_showFPS = showFPS;
+            OnShowFPSChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetLightGroundColor(const AZ::Color& lightGroundColor)
+    {
+        if (!lightGroundColor.IsClose(m_lightGroundColor))
+        {
+            m_lightGroundColor = lightGroundColor;
+            OnLightGroundColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetLightSkyColor(const AZ::Color& lightSkyColor)
+    {
+        if (!lightSkyColor.IsClose(m_lightSkyColor))
+        {
+            m_lightSkyColor = lightSkyColor;
+            OnLightSkyColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetRimColor(const AZ::Color& rimColor)
+    {
+        if (!rimColor.IsClose(m_rimColor))
+        {
+            m_rimColor = rimColor;
+            OnRimColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetBackgroundColor(const AZ::Color& backgroundColor)
+    {
+        if (!backgroundColor.IsClose(m_backgroundColor))
+        {
+            m_backgroundColor = backgroundColor;
+            OnBackgroundColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetGradientSourceColor(const AZ::Color& gradientSourceColor)
+    {
+        if (!gradientSourceColor.IsClose(m_gradientSourceColor))
+        {
+            m_gradientSourceColor = gradientSourceColor;
+            OnGradientSourceColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetGradientTargetColor(const AZ::Color& gradientTargetColor)
+    {
+        if (!gradientTargetColor.IsClose(m_gradientTargetColor))
+        {
+            m_gradientTargetColor = gradientTargetColor;
+            OnGradientTargetColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetWireframeColor(const AZ::Color& wireframeColor)
+    {
+        if (!wireframeColor.IsClose(m_wireframeColor))
+        {
+            m_wireframeColor = wireframeColor;
+            OnWireframeColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetCollisionMeshColor(const AZ::Color& collisionMeshColor)
+    {
+        if (!collisionMeshColor.IsClose(m_collisionMeshColor))
+        {
+            m_collisionMeshColor = collisionMeshColor;
+            OnCollisionMeshColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetVertexNormalsColor(const AZ::Color& vertexNormalsColor)
+    {
+        if (!vertexNormalsColor.IsClose(m_vertexNormalsColor))
+        {
+            m_vertexNormalsColor = vertexNormalsColor;
+            OnVertexNormalsColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetFaceNormalsColor(const AZ::Color& faceNormalsColor)
+    {
+        if (!faceNormalsColor.IsClose(m_faceNormalsColor))
+        {
+            m_faceNormalsColor = faceNormalsColor;
+            OnFaceNormalsColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetTangentsColor(const AZ::Color& tangentsColor)
+    {
+        if (!tangentsColor.IsClose(m_tangentsColor))
+        {
+            m_tangentsColor = tangentsColor;
+            OnTangentsColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetMirroredBinormalsColor(const AZ::Color& mirroredBinormalsColor)
+    {
+        if (!mirroredBinormalsColor.IsClose(m_mirroredBinormalsColor))
+        {
+            m_mirroredBinormalsColor = mirroredBinormalsColor;
+            OnMirroredBinormalsColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetBinormalsColor(const AZ::Color& binormalsColor)
+    {
+        if (!binormalsColor.IsClose(m_binormalsColor))
+        {
+            m_binormalsColor = binormalsColor;
+            OnBinormalsColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetNodeAABBColor(const AZ::Color& nodeAABBColor)
+    {
+        if (!nodeAABBColor.IsClose(m_nodeAABBColor))
+        {
+            m_nodeAABBColor = nodeAABBColor;
+            OnNodeAABBColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetStaticAABBColor(const AZ::Color& staticAABBColor)
+    {
+        if (!staticAABBColor.IsClose(m_staticAABBColor))
+        {
+            m_staticAABBColor = staticAABBColor;
+            OnStaticAABBColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetMeshAABBColor(const AZ::Color& meshAABBColor)
+    {
+        if (!meshAABBColor.IsClose(m_meshAABBColor))
+        {
+            m_meshAABBColor = meshAABBColor;
+            OnMeshAABBColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetCollisionMeshAABBColor(const AZ::Color& collisionMeshAABBColor)
+    {
+        if (!collisionMeshAABBColor.IsClose(m_collisionMeshAABBColor))
+        {
+            m_collisionMeshAABBColor = collisionMeshAABBColor;
+            OnCollisionMeshAABBColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetOBBsColor(const AZ::Color& OBBsColor)
+    {
+        if (!OBBsColor.IsClose(m_OBBsColor))
+        {
+            m_OBBsColor = OBBsColor;
+            OnOBBsColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetLineSkeletonColor(const AZ::Color& lineSkeletonColor)
+    {
+        if (!lineSkeletonColor.IsClose(m_lineSkeletonColor))
+        {
+            m_lineSkeletonColor = lineSkeletonColor;
+            OnLineSkeletonColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetSkeletonColor(const AZ::Color& skeletonColor)
+    {
+        if (!skeletonColor.IsClose(m_skeletonColor))
+        {
+            m_skeletonColor = skeletonColor;
+            OnSkeletonColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetSelectionColor(const AZ::Color& selectionColor)
+    {
+        if (!selectionColor.IsClose(m_selectionColor))
+        {
+            m_selectionColor = selectionColor;
+            OnSelectionColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetSelectedObjectColor(const AZ::Color& selectedObjectColor)
+    {
+        if (!selectedObjectColor.IsClose(m_selectedObjectColor))
+        {
+            m_selectedObjectColor = selectedObjectColor;
+            OnSelectedObjectColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetNodeNameColor(const AZ::Color& nodeNameColor)
+    {
+        if (!nodeNameColor.IsClose(m_nodeNameColor))
+        {
+            m_nodeNameColor = nodeNameColor;
+            OnNodeNameColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetGridColor(const AZ::Color& gridColor)
+    {
+        if (!gridColor.IsClose(m_gridColor))
+        {
+            m_gridColor = gridColor;
+            OnGridColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetMainAxisColor(const AZ::Color& mainAxisColor)
+    {
+        if (!mainAxisColor.IsClose(m_mainAxisColor))
+        {
+            m_mainAxisColor = mainAxisColor;
+            OnMainAxisColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetSubStepColor(const AZ::Color& subStepColor)
+    {
+        if (!subStepColor.IsClose(m_subStepColor))
+        {
+            m_subStepColor = subStepColor;
+            OnSubStepColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetTrajectoryArrowInnerColor(const AZ::Color& trajectoryArrowInnerColor)
+    {
+        if (!trajectoryArrowInnerColor.IsClose(m_trajectoryArrowInnerColor))
+        {
+            m_trajectoryArrowInnerColor = trajectoryArrowInnerColor;
+            OnTrajectoryArrowInnerColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetLastUsedLayout(const AZStd::string& lastUsedLayout)
+    {
+        if (lastUsedLayout != m_lastUsedLayout)
+        {
+            m_lastUsedLayout = lastUsedLayout;
+            OnLastUsedLayoutChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetRenderSelectionBox(bool renderSelectionBox)
+    {
+        if (renderSelectionBox != m_renderSelectionBox)
+        {
+            m_renderSelectionBox = renderSelectionBox;
+            OnRenderSelectionBoxChangedCallback();
+        }
+    }
+
+    void RenderOptions::OnOptionChanged(const AZStd::string& optionChanged)
+    {
+        AZ_UNUSED(optionChanged); // Since we connect to only one option, we should only be called by it
+
+        MCore::Distance::EUnitType unitType = GetMainWindow()->GetOptions().GetUnitType();
+        switch (unitType)
+        {
+        case MCore::Distance::UNITTYPE_MILLIMETERS:
+            SetNearClipPlaneDistance(10.0f);
+            SetFarClipPlaneDistance(200000.0f);
+            SetGridUnitSize(200.0f);
+            break;
+        case MCore::Distance::UNITTYPE_CENTIMETERS:
+            SetNearClipPlaneDistance(1.0f);
+            SetFarClipPlaneDistance(20000.0f);
+            SetGridUnitSize(20.0f);
+            break;
+        case MCore::Distance::UNITTYPE_DECIMETERS:
+            SetNearClipPlaneDistance(0.1f);
+            SetFarClipPlaneDistance(2000.0f);
+            SetGridUnitSize(2.0f);
+            break;
+        case MCore::Distance::UNITTYPE_METERS:
+            SetNearClipPlaneDistance(0.1f);
+            SetFarClipPlaneDistance(200.0f);
+            SetGridUnitSize(0.2f);
+            break;
+        case MCore::Distance::UNITTYPE_KILOMETERS:
+            SetNearClipPlaneDistance(0.0001f);
+            SetFarClipPlaneDistance(0.2f);
+            SetGridUnitSize(0.0002f);
+            break;
+        case MCore::Distance::UNITTYPE_INCHES:
+            SetNearClipPlaneDistance(3.937f);
+            SetFarClipPlaneDistance(7874.0f);
+            SetGridUnitSize(7.87402f);
+            break;
+        case MCore::Distance::UNITTYPE_FEET:
+            SetNearClipPlaneDistance(0.328f);
+            SetFarClipPlaneDistance(656.0f);
+            SetFarClipPlaneDistance(0.656168f);
+            break;
+        case MCore::Distance::UNITTYPE_YARDS:
+            SetNearClipPlaneDistance(0.109f);
+            SetFarClipPlaneDistance(218.0f);
+            SetGridUnitSize(0.218723f);
+            break;
+        case MCore::Distance::UNITTYPE_MILES:
+            SetNearClipPlaneDistance(0.000062f);
+            SetFarClipPlaneDistance(0.1242f);
+            SetGridUnitSize(0.000124274f);
+            break;
+        default:
+            // Assume "meters"
+            SetNearClipPlaneDistance(0.1f);
+            SetFarClipPlaneDistance(200.0f);
+            SetGridUnitSize(0.2f);
+            MCORE_ASSERT(false); // We should not hit this scenario
+            return;
+        }
+    }
+
+    void RenderOptions::OnGridUnitSizeChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_gridUnitSizeOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_gridUnitSizeOptionName);
+    }
+
+    void RenderOptions::OnVertexNormalsScaleChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_vertexNormalsScaleOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_vertexNormalsScaleOptionName);
+    }
+
+    void RenderOptions::OnFaceNormalsScaleChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_faceNormalsScaleOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_faceNormalsScaleOptionName);
+    }
+
+    void RenderOptions::OnTangentsScaleChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_tangentsScaleOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_tangentsScaleOptionName);
+    }
+
+    void RenderOptions::OnNodeOrientationScaleChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_nodeOrientationScaleOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_nodeOrientationScaleOptionName);
+    }
+
+    void RenderOptions::OnScaleBonesOnLengthChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_scaleBonesOnLengthOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_scaleBonesOnLengthOptionName);
+    }
+
+    void RenderOptions::OnRenderBonesOnlyChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_renderBonesOnlyOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_renderBonesOnlyOptionName);
+    }
+
+    void RenderOptions::OnNearClipPlaneDistanceChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_nearClipPlaneDistanceOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_nearClipPlaneDistanceOptionName);
+    }
+
+    void RenderOptions::OnFarClipPlaneDistanceChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_farClipPlaneDistanceOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_farClipPlaneDistanceOptionName);
+    }
+
+    void RenderOptions::OnFOVChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_FOVOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_FOVOptionName);
+    }
+
+    void RenderOptions::OnMainLightIntensityChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_mainLightIntensityOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_mainLightIntensityOptionName);
+    }
+
+    void RenderOptions::OnMainLightAngleAChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_mainLightAngleAOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_mainLightAngleAOptionName);
+    }
+
+    void RenderOptions::OnMainLightAngleBChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_mainLightAngleBOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_mainLightAngleBOptionName);
+    }
+
+    void RenderOptions::OnSpecularIntensityChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_specularIntensityOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_specularIntensityOptionName);
+    }
+
+    void RenderOptions::OnRimIntensityChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_rimIntensityOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_rimIntensityOptionName);
+    }
+
+    void RenderOptions::OnRimWidthChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_rimWidthOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_rimWidthOptionName);
+    }
+
+    void RenderOptions::OnRimAngleChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_rimAngleOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_rimAngleOptionName);
+    }
+
+    void RenderOptions::OnShowFPSChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_showFPSOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_showFPSOptionName);
+    }
+
+    void RenderOptions::OnLightGroundColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_lightGroundColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_lightGroundColorOptionName);
+    }
+
+    void RenderOptions::OnLightSkyColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_lightSkyColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_lightSkyColorOptionName);
+    }
+
+    void RenderOptions::OnRimColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_rimColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_rimColorOptionName);
+    }
+
+    void RenderOptions::OnBackgroundColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_backgroundColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_backgroundColorOptionName);
+    }
+
+    void RenderOptions::OnGradientSourceColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_gradientSourceColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_gradientSourceColorOptionName);
+    }
+
+    void RenderOptions::OnGradientTargetColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_gradientTargetColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_gradientTargetColorOptionName);
+    }
+
+    void RenderOptions::OnWireframeColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_wireframeColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_wireframeColorOptionName);
+    }
+
+    void RenderOptions::OnCollisionMeshColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_collisionMeshColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_collisionMeshColorOptionName);
+    }
+
+    void RenderOptions::OnVertexNormalsColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_vertexNormalsColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_vertexNormalsColorOptionName);
+    }
+
+    void RenderOptions::OnFaceNormalsColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_faceNormalsColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_faceNormalsColorOptionName);
+    }
+
+    void RenderOptions::OnTangentsColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_tangentsColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_tangentsColorOptionName);
+    }
+
+    void RenderOptions::OnMirroredBinormalsColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_mirroredBinormalsColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_mirroredBinormalsColorOptionName);
+    }
+
+    void RenderOptions::OnBinormalsColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_binormalsColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_binormalsColorOptionName);
+    }
+
+    void RenderOptions::OnNodeAABBColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_nodeAABBColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_nodeAABBColorOptionName);
+    }
+
+    void RenderOptions::OnStaticAABBColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_staticAABBColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_staticAABBColorOptionName);
+    }
+
+    void RenderOptions::OnMeshAABBColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_meshAABBColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_meshAABBColorOptionName);
+    }
+
+    void RenderOptions::OnCollisionMeshAABBColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_collisionMeshAABBColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_collisionMeshAABBColorOptionName);
+    }
+
+    void RenderOptions::OnOBBsColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_OBBsColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_OBBsColorOptionName);
+    }
+
+    void RenderOptions::OnLineSkeletonColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_lineSkeletonColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_lineSkeletonColorOptionName);
+    }
+
+    void RenderOptions::OnSkeletonColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_skeletonColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_skeletonColorOptionName);
+    }
+
+    void RenderOptions::OnSelectionColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_selectionColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_selectionColorOptionName);
+    }
+
+    void RenderOptions::OnSelectedObjectColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_selectedObjectColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_selectedObjectColorOptionName);
+    }
+
+    void RenderOptions::OnNodeNameColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_nodeNameColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_nodeNameColorOptionName);
+    }
+
+    void RenderOptions::OnGridColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_gridColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_gridColorOptionName);
+    }
+
+    void RenderOptions::OnMainAxisColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_mainAxisColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_mainAxisColorOptionName);
+    }
+
+    void RenderOptions::OnSubStepColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_subStepColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_subStepColorOptionName);
+    }
+
+    void RenderOptions::OnTrajectoryArrowInnerColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_trajectoryArrowInnerColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_trajectoryArrowInnerColorOptionName);
+    }
+
+    void RenderOptions::OnLastUsedLayoutChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_lastUsedLayoutOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_lastUsedLayoutOptionName);
+    }
+
+    void RenderOptions::OnRenderSelectionBoxChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_renderSelectionBoxOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_renderSelectionBoxOptionName);
+    }
+
+
 } // namespace EMStudio

@@ -43,18 +43,18 @@ namespace EMotionFX
             , public AZ::Data::AssetBus::MultiHandler
         {
         public:
-
-            AZ_CLASS_ALLOCATOR(MotionSetAsset, EMotionFXAllocator, 0);
-            AZ_RTTI(MotionSetAsset, "{1DA936A0-F766-4B2F-B89C-9F4C8E1310F9}", EMotionFXAsset);
+            AZ_RTTI(MotionSetAsset, "{1DA936A0-F766-4B2F-B89C-9F4C8E1310F9}", EMotionFXAsset)
+            AZ_CLASS_ALLOCATOR_DECL
 
             MotionSetAsset();
+            ~MotionSetAsset() override;
 
             // AZ::Data::AssetBus::MultiHandler
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
             static void NotifyMotionSetModified(const AZ::Data::Asset<MotionSetAsset>& asset);
 
-            EMotionFXPtr<EMotionFX::MotionSet>          m_emfxMotionSet;            ///< EMotionFX motion set
+            AZStd::unique_ptr<EMotionFX::MotionSet>     m_emfxMotionSet;            ///< EMotionFX motion set
             AZStd::vector<AZ::Data::Asset<MotionAsset>> m_motionAssets;             ///< Handles to all contained motions
             bool                                        m_isReloadPending;          ///< True if a dependent motion was reloaded and we're pending our own reload notification.
         };
@@ -65,7 +65,7 @@ namespace EMotionFX
         class MotionSetAssetHandler : public EMotionFXAssetHandler<MotionSetAsset>
         {
         public:
-            AZ_CLASS_ALLOCATOR(MotionSetAssetHandler, EMotionFXAllocator, 0);
+            AZ_CLASS_ALLOCATOR_DECL
 
             bool OnInitAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
             AZ::Data::AssetType GetAssetType() const override;

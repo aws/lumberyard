@@ -261,6 +261,17 @@
                                             "/cgp-resource-code/*"
                                         ]
                                     ]
+                                },
+                                { 
+                                    "Fn::Join": [ 
+                                        "", 
+                                        [ 
+                                            "arn:aws:s3:::",  { 
+                                                "Ref": "Configuration" 
+                                            },
+                                            "/resource-settings/*" 
+                                        ]
+                                    ] 
                                 }
                             ]
                         },
@@ -385,6 +396,19 @@
                                     ]
                                 ]
                             }
+                        },
+                        {
+                            "Sid": "IoTPolicy",
+                            "Effect": "Allow",
+                            "Action": [
+                                "iot:Connect",
+                                "iot:Subscribe",
+                                "iot:Receive",
+                                "iot:Publish"
+                            ],
+                            "Resource": [
+                                "*"
+                            ]
                         }
                     ]
                 }
@@ -1177,7 +1201,8 @@
                             ],
                             "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/project-settings.json" ]] },
-                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/project-settings/*" ]] }
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/project-settings/*" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-settings/*" ]] }
                             ]
                         }
                     ]
@@ -1538,8 +1563,17 @@
                 "Timeout" : 300,
                 "Code": {
                     "S3Bucket": { "Ref": "Configuration" },
-                    "S3Key": { "Fn::Join": [ "/", [ { "Ref": "ConfigurationKey" }, "ProjectResourceHandler-lambda-code.zip" ]] }
-                }
+                    "S3Key": {
+                        "Fn::Join": [
+                            "/",
+                            [
+                                { "Ref": "ConfigurationKey" },
+                                "ProjectResourceHandler-lambda-code.zip"
+                            ]
+                        ]
+                    }
+                },
+                "MemorySize":  1024
             }
         },
 
@@ -1605,7 +1639,8 @@
                                     "Resource": [
                                         { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/upload/*" ]] },
                                         { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-definitions/*" ]] },
-                                        { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/project-settings.json" ]] }
+                                        { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/project-settings.json" ]] },
+                                        { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-settings/*" ]] }
                                     ]
                                 },
                                 {
@@ -1931,7 +1966,8 @@
                             ],
                             "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/upload/*" ]] },
-                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/project-settings.json" ]] }
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/project-settings.json" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-settings/*" ]] }
                             ]
                         },
                         {

@@ -221,9 +221,12 @@ static BOOL WINAPI CtrlHandler(DWORD ctrlEvent)
     case CTRL_SHUTDOWN_EVENT:
         return TRUE;
     case CTRL_CLOSE_EVENT:
-        gEnv->pSystem->Quit();
-        Sleep(INFINITE);
-        return TRUE;
+        if ( (gEnv != nullptr) && (gEnv->pSystem != nullptr) && (gEnv->pSystem->GetIConsole() != nullptr) )
+        {
+            gEnv->pSystem->GetIConsole()->ExecuteString("quit", true, true);
+            Sleep(INFINITE);
+            return TRUE;
+        }
     default:
         break;
     }
@@ -291,7 +294,7 @@ void CWindowsConsole::OnUpdate()
     {
         Lock();
 
-        bool                    updateStatus = false;
+        bool updateStatus = false;
 
         if (!m_OnUpdateCalled)
         {
@@ -657,7 +660,7 @@ void CWindowsConsole::DrawStatus()
 
     if (!m_progressString.empty())
     {
-        _snprintf(bufferLeft, sizeof bufferLeft, " %s", m_progressString.c_str());
+        azsnprintf(bufferLeft, sizeof bufferLeft, " %s", m_progressString.c_str());
         bufferLeft [sizeof bufferLeft - 1 ] = 0;
         pStatusLeft = bufferLeft;
     }
@@ -671,7 +674,7 @@ void CWindowsConsole::DrawStatus()
         const char*             pGameRules = m_pCVarSvGameRules->GetString();
 
         const char*             pMissionName = m_pCVarSvMission ? m_pCVarSvMission->GetString() : "";
-        _snprintf(bufferLeft, sizeof bufferLeft, " mission: %s map:%s", pMissionName, pMapName);
+        azsnprintf(bufferLeft, sizeof bufferLeft, " mission: %s map:%s", pMissionName, pMapName);
 
         bufferLeft[ sizeof bufferLeft - 1 ] = 0;
         pStatusLeft = bufferLeft;
@@ -692,14 +695,14 @@ void CWindowsConsole::DrawStatus()
             char*                   pBufferRight = bufferRight;
             char* const             pBufferRightEnd = bufferRight + sizeof bufferRight;
 
-            strcpy(pBufferRight, "| ");
+            azstrcpy(pBufferRight, AZ_ARRAY_SIZE(bufferRight), "| ");
             pBufferRight += strlen(pBufferRight);
 
             if (pBufferRight < pBufferRightEnd)
             {
                 if (m_pConsole != NULL)
                 {
-                    pBufferRight += _snprintf(
+                    pBufferRight += azsnprintf(
                             pBufferRight,
                             pBufferRightEnd - pBufferRight,
                             "upd:%.1fms(%.2f..%.2f) " \
@@ -770,8 +773,6 @@ void CWindowsConsole::CleanUp()
         m_pCVarSvGameRules = NULL;
         m_inputBufferHandle = INVALID_HANDLE_VALUE;
         m_screenBufferHandle = INVALID_HANDLE_VALUE;
-        FreeConsole();
-
         m_initialized = false;
     }
 
@@ -1059,7 +1060,7 @@ void CWindowsConsole::CCellBuffer::FmtScrollStatus(uint32 size, char* pBuffer)
 {
     if (m_position.scroll)
     {
-        _snprintf(pBuffer, size, "| SCROLL: %.1f%%", 100.0F * static_cast< float >(m_position.scroll) / static_cast< float >(m_position.lines - (m_screenArea.Bottom - m_screenArea.Top + 1)));
+        azsnprintf(pBuffer, size, "| SCROLL: %.1f%%", 100.0F * static_cast< float >(m_position.scroll) / static_cast< float >(m_position.lines - (m_screenArea.Bottom - m_screenArea.Top + 1)));
     }
     else
     {

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AnimationDatabaseManager.h"
 #include "TypeInfo_impl.h"
 #include "Xml/TagDefinitionXml.h"
@@ -545,7 +545,7 @@ void CAnimationDatabaseManager::RemoveDataFromParent(CAnimationDatabase* parentA
 void CAnimationDatabaseManager::RevertSubADB (const char* szFilename, CAnimationDatabase* animDB, const CAnimationDatabase::SSubADB& subADB)
 {
     // Check the subADBs of animDB
-    if (_stricmp(szFilename, subADB.filename) == 0)
+    if (azstricmp(szFilename, subADB.filename) == 0)
     {
         RemoveDataFromParent(animDB, &subADB);
 
@@ -574,7 +574,7 @@ void CAnimationDatabaseManager::RevertDatabase(const char* szFilename)
         }
 
         // Are we reverting animDB itself?
-        if (_stricmp(szFilename, animDB->GetFilename()) == 0)
+        if (azstricmp(szFilename, animDB->GetFilename()) == 0)
         {
             RemoveDataFromParent(animDB, NULL);
 
@@ -883,7 +883,7 @@ void CAnimationDatabaseManager::RenameTag(const CTagDefinition* pOriginal, int32
         bool importsRoot = false;
         for (uint32 index = 0, size = tagDefImportsInfo.size(); index < size; ++index)
         {
-            if (_stricmp(root.GetFilename(), tagDefImportsInfo[index]->GetFilename()) == 0)
+            if (azstricmp(root.GetFilename(), tagDefImportsInfo[index]->GetFilename()) == 0)
             {
                 importsRoot = true;
                 break;
@@ -932,7 +932,7 @@ void CAnimationDatabaseManager::RenameTagGroup(const CTagDefinition* pOriginal, 
         bool importsRoot = false;
         for (uint32 index = 0, size = tagDefImportsInfo.size(); index < size; ++index)
         {
-            if (_stricmp(root.GetFilename(), tagDefImportsInfo[index]->GetFilename()) == 0)
+            if (azstricmp(root.GetFilename(), tagDefImportsInfo[index]->GetFilename()) == 0)
             {
                 importsRoot = true;
                 break;
@@ -1037,7 +1037,7 @@ void CAnimationDatabaseLibrary::AnimEntryToXML(XmlNodeRef outXmlAnimEntry, const
         outXmlAnimEntry->setAttr("weightList", animEntry.weightList);
     }
     char channelName[10];
-    strcpy(channelName, "channel0");
+    azstrcpy(channelName, AZ_ARRAY_SIZE(channelName), "channel0");
     for (uint32 i = 0; i < MANN_NUMBER_BLEND_CHANNELS; i++)
     {
         if (animEntry.blendChannels[i] != 0.0f)
@@ -1060,7 +1060,7 @@ bool CAnimationDatabaseLibrary::XMLToAnimEntry(SAnimationEntry& animEntry, XmlNo
     root->getAttr("weightList", animEntry.weightList);
 
     char channelName[10];
-    strcpy(channelName, "channel0");
+    azstrcpy(channelName, AZ_ARRAY_SIZE(channelName), "channel0");
     for (uint32 i = 0; i < MANN_NUMBER_BLEND_CHANNELS; i++)
     {
         channelName[7] = '0' + i;
@@ -1635,7 +1635,7 @@ bool CAnimationDatabaseLibrary::LoadDatabaseDefinitions(const XmlNodeRef& root, 
 
 bool CAnimationDatabaseLibrary::LoadDatabase(const XmlNodeRef& root, CAnimationDatabase& animDB, bool recursive)
 {
-    if (_stricmp(root->getTag(), "AnimDB") != 0)
+    if (azstricmp(root->getTag(), "AnimDB") != 0)
     {
         return false;
     }
@@ -2051,7 +2051,7 @@ XmlNodeRef CAnimationDatabaseManager::SaveDatabase
 
 SControllerDef* CAnimationControllerDefLibrary::LoadControllerDef(const XmlNodeRef& root, const char* context)
 {
-    if (_stricmp(root->getTag(), "ControllerDef") != 0)
+    if (azstricmp(root->getTag(), "ControllerDef") != 0)
     {
         return NULL;
     }
@@ -3075,7 +3075,7 @@ bool IsFileUsedByTagDefinition(const char* normalizedFilename, const CTagDefinit
         return false;
     }
 
-    return (_stricmp(normalizedFilename, pTagDefinition->GetFilename()) == 0);
+    return (azstricmp(normalizedFilename, pTagDefinition->GetFilename()) == 0);
 }
 
 
@@ -3084,7 +3084,7 @@ bool CAnimationDatabaseManager::IsFileUsedByControllerDef(const SControllerDef& 
     char normalizedFilename[DEF_PATH_LENGTH];
     NormalizeFilename(normalizedFilename, szFilename);
 
-    if (stricmp(controllerDef.m_filename.c_str(), normalizedFilename) == 0)
+    if (azstricmp(controllerDef.m_filename.c_str(), normalizedFilename) == 0)
     {
         return true;
     }
@@ -3123,7 +3123,7 @@ bool CAnimationDatabaseManager::IsFileUsedByControllerDef(const SControllerDef& 
     //  const CAnimationDatabase* pAnimDB = cit->second;
     //  if (pAnimDB->m_def == &controllerDef)
     //  {
-    //      if (_stricmp(normalizedFilename, pAnimDB->GetFilename()) == 0)
+    //      if (azstricmp(normalizedFilename, pAnimDB->GetFilename()) == 0)
     //      {
     //          return true;
     //      }

@@ -56,7 +56,7 @@ PropertyPivotCtrl::PropertyPivotCtrl(QWidget* parent)
         m_propertyVectorCtrl->setLabel(0, "X");
         m_propertyVectorCtrl->setLabel(1, "Y");
 
-        QObject::connect(m_propertyVectorCtrl, &AzToolsFramework::PropertyVectorCtrl::valueChanged, [this]()
+        QObject::connect(m_propertyVectorCtrl, &AzToolsFramework::PropertyVectorCtrl::valueChanged, this, [this]()
             {
                 EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, this);
             });

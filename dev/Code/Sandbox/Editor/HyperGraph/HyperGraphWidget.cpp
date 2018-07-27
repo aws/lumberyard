@@ -23,7 +23,7 @@
 #include "Tarray.h"
 #include "Viewport.h"
 
-#include "clipboard.h"
+#include "Clipboard.h"
 #include "FlowGraphManager.h"
 #include "FlowGraph.h"
 #include "FlowGraphNode.h"

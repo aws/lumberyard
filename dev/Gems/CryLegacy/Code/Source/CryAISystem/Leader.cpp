@@ -14,7 +14,7 @@
 // Description : Class Implementation for CLeader
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "Leader.h"
 #include "LeaderAction.h"
 #include "CAISystem.h"

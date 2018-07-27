@@ -49,7 +49,7 @@ struct SItemParamConversion
     {                                                                \
         static ILINE bool ConvertValue(const string&from, type & to) \
         {                                                            \
-            return 1 == sscanf(from.c_str(), fmt, &to);              \
+            return 1 == azsscanf(from.c_str(), fmt, &to);              \
         }                                                            \
     };
 
@@ -134,7 +134,7 @@ struct SItemParamConversion<string, Vec3>
 {
     static ILINE bool ConvertValue(const string& from, Vec3& to)
     {
-        return sscanf(from.c_str(), "%f,%f,%f", &to.x, &to.y, &to.z) == 3;
+        return azsscanf(from.c_str(), "%f,%f,%f", &to.x, &to.y, &to.z) == 3;
     }
 };
 

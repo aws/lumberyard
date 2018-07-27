@@ -59,7 +59,7 @@ namespace ThreadUtils
 #if defined(AZ_DEBUG_BUILD)
         bool IsLocked()
         {
-            return m_cs.RecursionCount > 0 && (DWORD)m_cs.OwningThread == GetCurrentThreadId();
+            return m_cs.RecursionCount > 0 && m_cs.OwningThread == GetCurrentThread();
         }
 #endif
 

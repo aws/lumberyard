@@ -2,7 +2,7 @@
 #include "QAttributePresetWidget.h"
 #include <qaction.h>
 #include <QtXml/QDomDocument>
-#include <qmenu.h>
+#include <QMenu>
 #include <qsettings.h>
 
 #include <QT/QAttributePresetWidget.moc>
@@ -30,7 +30,7 @@ void QAttributePresetWidget::BuilPresetMenu(QMenu* menu)
     for (auto preset : m_presetList)
     {
         QAction* action = menu->addAction(preset->name);
-        action->connect(action, &QAction::triggered, [=]()
+        action->connect(action, &QAction::triggered, this, [=]()
             {
                 // Send Add CustomPanel
                 emit SignalCustomPanel(preset->doc);

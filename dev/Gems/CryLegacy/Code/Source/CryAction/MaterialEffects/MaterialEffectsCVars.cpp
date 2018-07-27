@@ -14,7 +14,7 @@
 // Description : CVars for the MaterialEffects subsystem
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "MaterialEffectsCVars.h"
 #include <CryAction.h>
 

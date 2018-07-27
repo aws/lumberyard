@@ -37,6 +37,7 @@ namespace EMotionFX
     class EMFX_API AttachmentNode
         : public Attachment
     {
+        AZ_CLASS_ALLOCATOR_DECL
     public:
         enum
         {
@@ -56,21 +57,21 @@ namespace EMotionFX
          * Every class inherited from this base class should have some type ID.
          * @return The type ID of this attachment class.
          */
-        virtual uint32 GetType() const override                                 { return TYPE_ID; }
+        uint32 GetType() const override                                 { return TYPE_ID; }
 
         /**
          * Get the attachment type string.
          * Every class inherited from this base class should have some type ID string, which should be equal to the class name really.
          * @return The type string of this attachment class, which should be the class name.
          */
-        virtual const char* GetTypeString() const override                      { return "AttachmentNode"; }
+        const char* GetTypeString() const override                      { return "AttachmentNode"; }
 
         /**
          * Check if this attachment is being influenced by multiple nodes or not.
          * This is the case for attachments such as clothing items which get influenced by multiple nodes/bones inside the actor instance they are attached to.
          * @result Returns true if it is influenced by multiple nodes, otherwise false is returned.
          */
-        virtual bool GetIsInfluencedByMultipleNodes() const override final      { return false; }
+        bool GetIsInfluencedByMultipleNodes() const override final      { return false; }
 
         /**
          * Get the node where we attach something to.
@@ -82,7 +83,7 @@ namespace EMotionFX
         /**
          * The main update method.
          */
-        virtual void Update() override;
+        void Update() override;
 
 
     protected:

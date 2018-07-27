@@ -32,9 +32,6 @@
 #include "Pose.h"
 #include "Skeleton.h"
 
-// forward declare MCore classes
-MCORE_FORWARD_DECLARE(AttributeSet);
-
 
 namespace EMotionFX
 {
@@ -60,7 +57,7 @@ namespace EMotionFX
     class EMFX_API Actor
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(Actor, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ACTORS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**
@@ -586,13 +583,6 @@ namespace EMotionFX
         void SetMorphSetup(uint32 lodLevel, MorphSetup* setup);
 
         /**
-         * Log the names of all nodes using the MCore::LogInfo method.
-         * This is sometimes useful when you don't exactly know the name of a node, and you want to quickly see
-         * a list of all the node names inside this actor.
-         */
-        void LogNodes();
-
-        /**
          * Update the oriented bounding volumes (OBB) of all the nodes inside this actor.
          * This is a very heavy calculation and must NOT be performed on a per-frame basis but only as pre-process step.
          * The OBBs of the nodes are already being calculated at export time, so you shouldn't really need to use this method.
@@ -785,8 +775,6 @@ namespace EMotionFX
          */
         void MakeGeomLODsCompatibleWithSkeletalLODs();
 
-        MCORE_INLINE MCore::AttributeSet* GetAttributeSet() const               { return mAttributeSet; }
-
         void RenderSkeleton(const Transform* globalTransforms, uint32 color);
 
         void ReinitializeMeshDeformers();
@@ -796,7 +784,6 @@ namespace EMotionFX
         const MCore::Array<NodeMirrorInfo>& GetNodeMirrorInfos() const;
         MCore::Array<NodeMirrorInfo>& GetNodeMirrorInfos();
         void SetNodeMirrorInfos(const MCore::Array<NodeMirrorInfo>& mirrorInfos);
-        uint32 CalcHierarchyDepthForNode(uint32 nodeIndex) const;
         bool GetHasMirrorAxesDetected() const;
 
         MCORE_INLINE const MCore::AlignedArray<MCore::Matrix, 16>& GetInverseBindPoseGlobalMatrices() const              { return mInvBindPoseGlobalMatrices; }
@@ -905,6 +892,11 @@ namespace EMotionFX
 
         EAxis FindBestMatchingMotionExtractionAxis() const;
 
+        MCORE_INLINE uint32 GetRetargetRootNodeIndex() const    { return mRetargetRootNode; }
+        MCORE_INLINE Node* GetRetargetRootNode() const          { return (mRetargetRootNode != MCORE_INVALIDINDEX32) ? mSkeleton->GetNode(mRetargetRootNode) : nullptr; }
+        void SetRetargetRootNodeIndex(uint32 nodeIndex);
+        void SetRetargetRootNode(Node* node);
+
 
     private:
         // data per node, per lod
@@ -940,8 +932,8 @@ namespace EMotionFX
         AZStd::string                   mName;                  /**< The name of the actor. */
         AZStd::string                   mFileName;              /**< The filename of the actor. */
         MCore::Array<NodeMirrorInfo>    mNodeMirrorInfos;       /**< The array of node mirror info. */
-        MCore::Array< MCore::Array< Material* > >   mMaterials; /**< A collection of materials (for each lod). */
-        MCore::Array< MorphSetup* >     mMorphSetups;           /**< A  morph setup for each geometry LOD. */
+        MCore::Array< MCore::Array<Material*> >   mMaterials;   /**< A collection of materials (for each lod). */
+        MCore::Array<MorphSetup*>       mMorphSetups;           /**< A morph setup for each geometry LOD. */
         MCore::SmallArray<NodeGroup*>   mNodeGroups;            /**< The set of node groups. */
         MCore::Distance::EUnitType      mUnitType;              /**< The unit type used on export. */
         MCore::Distance::EUnitType      mFileUnitType;          /**< The unit type used on export. */
@@ -949,8 +941,8 @@ namespace EMotionFX
         MCore::AlignedArray<MCore::Matrix, 16>  mInvBindPoseGlobalMatrices;
 
         void*                           mCustomData;            /**< Some custom data, for example a pointer to your own game character class which is linked to this actor. */
-        MCore::AttributeSet*            mAttributeSet;          /**< A set of attributes used to store custom data. */
         uint32                          mMotionExtractionNode;  /**< The motion extraction node. This is the node from which to transfer a filtered part of the motion onto the actor instance. Can also be MCORE_INVALIDINDEX32 when motion extraction is disabled. */
+        uint32                          mRetargetRootNode;      /**< The retarget root node, which controls the height displacement of the character. This is most likely the hip or pelvis node. */
         uint32                          mID;                    /**< The unique identification number for the actor. */
         uint32                          mThreadIndex;
         MCore::AABB                     mStaticAABB;            /**< The static AABB. */

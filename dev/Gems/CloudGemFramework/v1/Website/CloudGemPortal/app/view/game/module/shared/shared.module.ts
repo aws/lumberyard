@@ -12,13 +12,16 @@ import {
     PaginationComponent,
     FacetComponent,
     SearchComponent,
-    ThumbnailComponent
+    ThumbnailComponent,
+    GraphComponent
 } from "./component/index";
 import { DragulaModule, DragulaService } from 'ng2-dragula/ng2-dragula';
 import {
     InnerRouterService,
-    ApiGatewayService,
-    CloudGemDirectoryService
+    ApiGatewayService,    
+    DependencyService,
+    DependencyGuard
+
 } from './service/index';
 import { FacetDirective } from './directive/facet.directive'
 
@@ -33,7 +36,8 @@ import { FacetDirective } from './directive/facet.directive'
         PaginationComponent,
         SearchComponent,
         FacetComponent,
-        ThumbnailComponent
+        ThumbnailComponent,
+        GraphComponent
     ],
     declarations: [                  
         DragableComponent,        
@@ -48,19 +52,22 @@ import { FacetDirective } from './directive/facet.directive'
         RestApiExplorerComponent,
         CloudWatchLogComponent,
         MetricComponent,
-        ThumbnailComponent
+        ThumbnailComponent,
+        GraphComponent
     ],
     providers: [
         DragulaService,
         InnerRouterService,
-        ApiGatewayService,
-        CloudGemDirectoryService
+        ApiGatewayService,        
+        DependencyService,
+        DependencyGuard
     ],
     entryComponents: [
         BodyTreeViewComponent,
         RestApiExplorerComponent,
         CloudWatchLogComponent, 
-        MetricComponent             
+        MetricComponent,
+        GraphComponent            
     ]
 })
 export class GameSharedModule { }

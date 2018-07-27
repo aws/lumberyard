@@ -423,7 +423,7 @@ int CSaverCGF::SaveNode(
     }
 
     cry_strcpy(chunk.name, pNode->name);
-    strncpy(chunk.name, pNode->name, sizeof(chunk.name));
+    azstrncpy(chunk.name, AZ_ARRAY_SIZE(chunk.name), pNode->name, sizeof(chunk.name));
     chunk.name[sizeof(chunk.name) - 1] = 0;
 
     // Set matrix to node chunk.

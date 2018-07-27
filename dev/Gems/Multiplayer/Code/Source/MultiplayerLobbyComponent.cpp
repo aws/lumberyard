@@ -1477,17 +1477,9 @@ namespace Multiplayer
             m_gameliftCreationSearch = nullptr;
         }
 
-        // Request a new Gamelift Game
         GridMate::GameLiftSessionRequestParams reqParams;
+        ConfigureSessionParams(reqParams);
         reqParams.m_instanceName = GetServerName().c_str();
-        reqParams.m_numPublicSlots = m_maxPlayers;
-        reqParams.m_numParams = 0;
-        reqParams.m_params[reqParams.m_numParams].m_id = "sv_name";
-        reqParams.m_params[reqParams.m_numParams].m_value = GetServerName().c_str();
-        reqParams.m_numParams++;
-        reqParams.m_params[reqParams.m_numParams].m_id = "sv_map";
-        reqParams.m_params[reqParams.m_numParams].m_value = GetMapName().c_str();
-        reqParams.m_numParams++;
 
         ShowBusyScreen();
 

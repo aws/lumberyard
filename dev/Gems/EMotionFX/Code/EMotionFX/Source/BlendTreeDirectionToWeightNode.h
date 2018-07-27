@@ -27,15 +27,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeDirectionToWeightNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeDirectionToWeightNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeDirectionToWeightNode, "{05D6BE60-276D-4524-8DCD-79408AAC3398}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x38427080
-        };
+        AZ_RTTI(BlendTreeDirectionToWeightNode, "{05D6BE60-276D-4524-8DCD-79408AAC3398}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -52,24 +46,19 @@ namespace EMotionFX
             PORTID_OUTPUT_WEIGHT    = 0
         };
 
-        static BlendTreeDirectionToWeightNode* Create(AnimGraph* animGraph);
+        BlendTreeDirectionToWeightNode();
+        ~BlendTreeDirectionToWeightNode();
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         uint32 GetVisualColor() const override;
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        BlendTreeDirectionToWeightNode(AnimGraph* animGraph);
-        ~BlendTreeDirectionToWeightNode();
-
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
     };
 }   // namespace EMotionFX

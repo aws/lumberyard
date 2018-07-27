@@ -121,26 +121,10 @@ namespace EMStudio
             return false;
         }
 
-        AZStd::string texturePath;
-        if (mRenderOptions.mTexturePath.empty() == false)
-        {
-            // use the texture path specified in the render options
-            texturePath = mRenderOptions.mTexturePath;
-        }
-        else
-        {
-            // extract the file path from the actor name, assuming the actor name is its full filename
-            AzFramework::StringFunc::Path::GetFolderPath(actor->GetFileNameString().c_str(), texturePath);
-        }
-
-        // set the automatic mip mapping creation and the skip loading textures flag
-        mGraphicsManager->SetCreateMipMaps(mRenderOptions.mCreateMipMaps);
-        mGraphicsManager->SetSkipLoadingTextures(mRenderOptions.mSkipLoadingTextures);
-
         // create a new OpenGL actor and try to initialize it
         //GetMainWindow()->GetOpenGLShareWidget()->makeCurrent();
         RenderGL::GLActor* glActor = RenderGL::GLActor::Create();
-        if (glActor->Init(actor, texturePath.c_str(), true, false) == false)
+        if (glActor->Init(actor, "", true, false) == false)
         {
             MCore::LogError("Initializing the OpenGL actor for '%s' failed.", actor->GetFileName());
             glActor->Destroy();
@@ -195,8 +179,8 @@ namespace EMStudio
             if (widget->GetRenderFlag(RenderViewWidget::RENDER_LIGHTING))
             {
                 renderFlags |= RenderGL::GLActor::RENDER_LIGHTING;
-                renderActor->SetGroundColor(renderOptions->mLightGroundColor);
-                renderActor->SetSkyColor(renderOptions->mLightSkyColor);
+                renderActor->SetGroundColor(renderOptions->GetLightGroundColor());
+                renderActor->SetSkyColor(renderOptions->GetLightSkyColor());
             }
             if (widget->GetRenderFlag(RenderViewWidget::RENDER_SHADOWS))
             {

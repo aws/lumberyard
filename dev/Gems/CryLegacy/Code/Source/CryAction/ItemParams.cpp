@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ItemParams.h"
 
 //------------------------------------------------------------------------
@@ -233,7 +233,7 @@ const IItemParamsNode* CItemParamsNode::GetChild(const char* name) const
 {
     for (TChildVector::const_iterator it = m_children.begin(); it != m_children.end(); ++it)
     {
-        if (!strcmpi((*it)->GetName(), name))
+        if (!azstricmp((*it)->GetName(), name))
         {
             return (*it);
         }
@@ -245,7 +245,7 @@ const IItemParamsNode* CItemParamsNode::GetChild(const char* name) const
 void CItemParamsNode::SetAttribute(const char* name, const char* attr)
 {
     //m_attributes.insert(TAttributeMap::value_type(name, string(attr)));
-    if (!strcmpi(name, "name"))
+    if (!azstricmp(name, "name"))
     {
         m_nameAttribute = attr;
         AddAttribute(name, TItemParamValue(m_nameAttribute));
@@ -333,7 +333,7 @@ bool IsFloat(const char* v, float* f = 0)
 bool IsVec3(const char* v, Vec3* vec)
 {
     float x, y, z;
-    if (sscanf(v, "%f,%f,%f", &x, &y, &z) != 3)
+    if (azsscanf(v, "%f,%f,%f", &x, &y, &z) != 3)
     {
         return false;
     }
@@ -371,11 +371,11 @@ bool CItemParamsNode::ConvertFromXMLWithFiltering(const XmlNodeRef& root, const 
             float f;
             int i;
             Vec3 v;
-            if (!_stricmp(value, "true"))
+            if (!azstricmp(value, "true"))
             {
                 SetAttribute(name, 1);
             }
-            else if (!_stricmp(value, "false"))
+            else if (!azstricmp(value, "false"))
             {
                 SetAttribute(name, 0);
             }

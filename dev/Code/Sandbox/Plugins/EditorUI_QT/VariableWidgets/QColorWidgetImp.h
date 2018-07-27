@@ -14,7 +14,7 @@
 
 #include "QColorWidget.h"
 #include "BaseVariableWidget.h"
-#include "qmenu.h"
+#include "QMenu"
 #include <Controls/QToolTipWidget.h>
 
 class QColorWidgetImp

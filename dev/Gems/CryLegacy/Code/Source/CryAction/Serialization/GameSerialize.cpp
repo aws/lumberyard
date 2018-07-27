@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "GameSerialize.h"
 
 #include "GameSerializeHelpers.h"
@@ -729,7 +729,7 @@ ELoadGameResult CGameSerialize::LoadGame(CCryAction* pCryAction, const char* met
     }
 
     // basic game state loading... need to do it early to verify and reserve entity id's
-    std::shared_ptr<TSerialize> pGameStateSer(loadEnvironment.m_pLoadGame->GetSection(SAVEGAME_GAMESTATE_SECTION));
+    AZStd::shared_ptr<TSerialize> pGameStateSer(loadEnvironment.m_pLoadGame->GetSection(SAVEGAME_GAMESTATE_SECTION));
     if (!pGameStateSer.get())
     {
         return eLGR_Failed;
@@ -1753,7 +1753,7 @@ bool CGameSerialize::LoadLevel(SLoadEnvironment& loadEnv, SGameStartParams& star
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CGameSerialize::LoadEntities(SLoadEnvironment& loadEnv, std::shared_ptr<TSerialize> pGameStateSer)
+bool CGameSerialize::LoadEntities(SLoadEnvironment& loadEnv, AZStd::shared_ptr<TSerialize> pGameStateSer)
 {
     IEntitySystem* pEntitySystem = gEnv->pEntitySystem;
     // entity creation/deletion/repositioning

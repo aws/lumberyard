@@ -65,7 +65,7 @@ namespace CharacterTool
         bool updated = false;
         for (int i = 0; i < numItems; ++i)
         {
-            if (stricmp(m_items[i].path.c_str(), animationPath) == 0)
+            if (azstricmp(m_items[i].path.c_str(), animationPath) == 0)
             {
                 SAnimationFilterItem& filterItem = m_items[i];
                 SAnimSettings settings;
@@ -106,7 +106,7 @@ namespace CharacterTool
         int numItems = m_items.size();
         for (int i = 0; i < numItems; ++i)
         {
-            if (stricmp(m_items[i].path.c_str(), filename) == 0)
+            if (azstricmp(m_items[i].path.c_str(), filename) == 0)
             {
                 m_items.erase(m_items.begin() + i);
                 --numItems;

@@ -14,7 +14,7 @@
 // Description : Implements a simple box-shaped part for mass distribution
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "IVehicleSystem.h"
 #include "VehiclePartMassBox.h"

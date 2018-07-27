@@ -37,7 +37,7 @@
 #include <QStackedWidget>
 #include <QPushButton>
 #include <QDesktopServices>
-#include <Qurl>
+#include <QUrl>
 #include <QNetworkInterface>
 #include <QGroupBox>
 #include <QHostInfo>
@@ -149,7 +149,7 @@ void MainWindow::Activate()
     ui->jobTreeView->setToolTip(tr("Double click to view Job Log"));
 
     connect(ui->jobTreeView->header(), &QHeaderView::sortIndicatorChanged, m_sortFilterProxy, &AssetProcessor::JobSortFilterProxyModel::sort);
-    connect(ui->jobTreeView, &QAbstractItemView::doubleClicked, [this](const QModelIndex &index)
+    connect(ui->jobTreeView, &QAbstractItemView::doubleClicked, this, [this](const QModelIndex &index)
     {
         // read the log file and show it to the user
         AZStd::string jobLog = m_sortFilterProxy->data(index, AssetProcessor::JobsModel::DataRoles::logRole).toString().toUtf8().data();
@@ -200,7 +200,7 @@ void MainWindow::Activate()
     logButton->setSizePolicy(sizePolicy2);
     ui->LogDialog->layout()->addWidget(logButton);
 
-    connect(logButton, &QPushButton::clicked, []()
+    connect(logButton, &QPushButton::clicked, this, []()
     {
         QString currentDir(QCoreApplication::applicationDirPath());
         QDir dir(currentDir);

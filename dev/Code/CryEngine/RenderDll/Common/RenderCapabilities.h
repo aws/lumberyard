@@ -53,11 +53,6 @@ namespace RenderCapabilities
     bool SupportsHalfFloatRendering();
 #endif
 
-#if defined(CRY_USE_METAL)
-    //Cache the OS version which can then be used to query if certain API calls are enabled/disabled.
-    void CacheMinOSVersionInfo();
-#endif
-
 #if defined(OPENGL_ES) || defined(OPENGL)
     uint32 GetDeviceGLVersion();
 #endif

@@ -9,10 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <IRenderer.h>
 #include <LyShine/IDraw2d.h>
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

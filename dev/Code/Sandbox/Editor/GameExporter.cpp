@@ -323,7 +323,7 @@ bool CGameExporter::Export(unsigned int flags, EEndian eExportEndian, const char
     pEditor->Notify(eNotify_OnExportToGame);
 
     // Notify the level system that there's a new level, so that the level info is populated.
-    pEditor->GetGame()->GetIGameFramework()->GetILevelSystem()->Rescan("levels", ILevelSystem::TAG_MAIN);
+    gEnv->pSystem->GetILevelSystem()->Rescan("levels", ILevelSystem::TAG_MAIN);
 
     CLogFile::WriteLine("Exporting was successful.");
 

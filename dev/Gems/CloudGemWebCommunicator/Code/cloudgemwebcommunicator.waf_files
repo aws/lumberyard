@@ -1,0 +1,33 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/CloudGemWebCommunicator/CloudGemWebCommunicatorBus.h",
+            "AWS/ServiceApi/CloudGemWebCommunicatorClientComponent.h"
+        ],
+        "Source": [
+            "Source/CloudGemWebCommunicatorModule.cpp",
+            "Source/CloudGemWebCommunicatorComponent.cpp",
+            "Source/CloudGemWebCommunicatorComponent.h",
+            "AWS/ServiceApi/CloudGemWebCommunicatorClientComponent.cpp"
+        ],
+        "3rdParty/IoTDevice": [
+            "3rdParty/IoTDevice/network/WebSocket/WebSocketConnection.cpp",
+            "3rdParty/IoTDevice/network/WebSocket/WebSocketConnection.hpp",
+            "3rdParty/IoTDevice/network/OpenSSL/OpenSSLConnection.cpp",
+            "3rdParty/IoTDevice/network/OpenSSL/OpenSSLConnection.hpp"
+        ],
+        "3rdParty/IoTDevice/wslay": [
+            "3rdParty/IoTDevice/network/WebSocket/wslay/wslay_frame.cpp",
+            "3rdParty/IoTDevice/network/WebSocket/wslay/wslay_frame.hpp",
+            "3rdParty/IoTDevice/network/WebSocket/wslay/wslay_net.cpp",
+            "3rdParty/IoTDevice/network/WebSocket/wslay/wslay_net.hpp",
+            "3rdParty/IoTDevice/network/WebSocket/wslay/wslay.hpp"
+        ]
+    }
+}

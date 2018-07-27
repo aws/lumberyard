@@ -217,24 +217,32 @@ namespace AppleLauncher
             EditorGameRequestBus::BroadcastResult(gameStartup, &EditorGameRequestBus::Events::CreateGameStartup);
         }
 
-        if (!gameStartup)
+        // The legacy IGameStartup and IGameFramework are now optional,
+        // if they don't exist we need to create CrySystem here instead.
+        if (!gameStartup || !gameStartup->Init(systemInitParams))
         {
-            AZ_TracePrintf("AppleLauncher", "Failed to create the GameStartup Interface");
-            if (legacyGameDllStartup)
+        #if !defined(AZ_MONOLITHIC_BUILD)
+            PFNCREATESYSTEMINTERFACE CreateSystemInterface = (PFNCREATESYSTEMINTERFACE)CryGetProcAddress(systemLib, "CreateSystemInterface");
+            if (CreateSystemInterface)
             {
-                CryFreeLibrary(gameLib);
+                systemInitParams.pSystem = CreateSystemInterface(systemInitParams);
             }
-            return EXIT_CODE_FAILURE;
+        #else
+            systemInitParams.pSystem = CreateSystemInterface(systemInitParams);
+        #endif // AZ_MONOLITHIC_BUILD
+
         }
 
-        // Init the legacy CryEngine startup interface
-        if (!gameStartup->Init(systemInitParams))
+        if (!systemInitParams.pSystem)
         {
-            AZ_TracePrintf("AppleLauncher", "Failed to initialize the GameStartup Interface");
+            AZ_TracePrintf("AppleLauncher", "Failed to initialize the CrySystem Interface");
 
             // If initialization failed, we still need to call shutdown.
-            gameStartup->Shutdown();
-            gameStartup = nullptr;
+            if (gameStartup)
+            {
+                gameStartup->Shutdown();
+                gameStartup = nullptr;
+            }
             if (legacyGameDllStartup)
             {
                 CryFreeLibrary(gameLib);
@@ -247,13 +255,16 @@ namespace AppleLauncher
 #endif
 
         // Ensure the various global environment pointers are valid
-        if (!gEnv || !gEnv->pConsole || !gEnv->pGame || !gEnv->pGame->GetIGameFramework())
+        if (!gEnv || !gEnv->pConsole)
         {
             AZ_TracePrintf("AppleLauncher", "Failed to initialize the CryEngine global environment");
 
             // If initialization failed, we still need to call shutdown.
-            gameStartup->Shutdown();
-            gameStartup = nullptr;
+            if (gameStartup)
+            {
+                gameStartup->Shutdown();
+                gameStartup = nullptr;
+            }
             if (legacyGameDllStartup)
             {
                 CryFreeLibrary(gameLib);
@@ -265,11 +276,14 @@ namespace AppleLauncher
         gEnv->pConsole->ExecuteString("exec autoexec.cfg");
 
         // Run the main loop
-        LumberyardLauncher::RunMainLoop(gameApplication, *gEnv->pGame->GetIGameFramework());
+        LumberyardLauncher::RunMainLoop(gameApplication);
 
         // Shutdown
-        gameStartup->Shutdown();
-        gameStartup = nullptr;
+        if (gameStartup)
+        {
+            gameStartup->Shutdown();
+            gameStartup = nullptr;
+        }
         gameApplication.Stop();
 
         if (legacyGameDllStartup)

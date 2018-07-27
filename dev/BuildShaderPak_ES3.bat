@@ -26,11 +26,13 @@ echo(
 GOTO Failed
 
 :SetParams
-set SHADERFLAVOR="gles3_0 gles3_1"
+set PLATFORM=es3
+set SHADERFLAVOR="gles3*"
 set GAMENAME=%1
 
-call .\lmbr_pak_shaders.bat %SHADERFLAVOR% %GAMENAME% es3
+call .\lmbr_pak_shaders.bat %SHADERFLAVOR% %GAMENAME% %PLATFORM%
 
+if %ERRORLEVEL% NEQ 0 GOTO Failed
 GOTO Success
 
 :Failed

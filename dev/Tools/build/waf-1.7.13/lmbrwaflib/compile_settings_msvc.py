@@ -106,12 +106,12 @@ def load_msvc_common_settings(conf):
         '/fp:fast',     # Use fast (but not as precisce floatin point model)
         '/Zc:wchar_t',  # Use compiler native wchar_t
         '/Zc:forScope', # Force Conformance in for Loop Scope
+        '/Zc:inline',   # Remove unreferenced COMDAT
         '/GR-',         # Disable RTTI
         '/Gd',          # Use _cdecl calling convention for all functions
 #        '/FC'      #debug
-        '/wd4573',      # Known issue, disabling "C2220: the usage of 'X' requires the compiler to capture 'this' but the current default capture mode does not allow it"
         '/wd4530',      # Known issue, Disabling "C4530: C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc" until it is fixed
-        '/wd4351',      # Default initialization of array warning.  This is a mostly minor issue, but MSVC made it L1.
+        '/wd4577',      # Known issue, disabling "C4577: 'noexcept' used with no exception handling mode specified; termination on exception is not guaranteed. Specify /EHsc"
         ]
         
     # Enable timing reports in the output

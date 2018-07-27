@@ -5,7 +5,8 @@ import { AwsService } from 'app/aws/aws.service';
 import { InnerRouterService } from "../../shared/service/index";
 import { Observable } from 'rxjs/Observable'
 import { DefinitionService, LyMetricService, GemService, BreadcrumbService, PaginationService } from 'app/shared/service/index';
-import {Router, ActivatedRoute, ParamMap } from '@angular/router';
+import { Router, ActivatedRoute, ParamMap } from '@angular/router';
+import { AwsDeployment } from 'app/aws/deployment.class'
 export class ROUTES {
     public static CLOUD_GEMS = "cloudgems";
 }
@@ -23,6 +24,7 @@ export class GemIndexComponent implements OnInit, OnDestroy{
     private _loader: AbstractCloudGemLoader;
     private _gemIdRouteParam: string;
     private forceRefresh: boolean = false;
+    private gemsNum: number = 0;
 
     constructor(
         private aws: AwsService,
@@ -66,36 +68,57 @@ export class GemIndexComponent implements OnInit, OnDestroy{
             this.loadGems(activeDeployment);
         }));
 
+        this.subscriptions.push(this.aws.context.project.settings.subscribe(settings => {
+            let deploymentCount = Object.keys(settings.deployment).length
+            if (deploymentCount == 0)
+                this.gems.isLoading = false;
+        }));
+
         // If there is already an active deployment use that and initialize the gems in the gem index
         if (this.aws.context.project.activeDeployment) {
             this.loadGems(this.aws.context.project.activeDeployment);
         }
     }
 
-    private loadGems(activeDeployment) {
-        this._loader = this.definition.isProd ? this._loader = new AwsCloudGemLoader(this.definition, this.aws, this.http) : new LocalCloudGemLoader(this.definition, this.http);
+    private isDeploymentLoading = (): boolean => {
+        if (!this.aws.context.project.activeDeployment)
+            return false
 
-        if (!activeDeployment || !activeDeployment.settings || this._subscribedDeployments.indexOf(activeDeployment.settings.name) > -1) {
+        return this.aws.context.project.activeDeployment.isLoading
+    }
+
+    private loadGems(activeDeployment) {
+        //you must initialize the component with isLoading = true so that we do not see the "No gems present" message
+        this.gems.isLoading = true;
+        this._loader = this.definition.isProd ? this._loader = new AwsCloudGemLoader(this.definition, this.aws, this.http) : new LocalCloudGemLoader(this.definition, this.http);        
+                
+        if (!activeDeployment) {
+            //this is used for removing the loading icon when no deployments exist.
+            this.gems.isLoading = false;
             return;
         }
 
         this._subscribedDeployments.push(activeDeployment.settings.name);
         this.subscriptions.push(activeDeployment.resourceGroup.subscribe(rgs => {
-            this.gems.isLoading = false;
-            if (rgs === undefined)
+            if (rgs === undefined || rgs.length == 0) {               
+                if (!activeDeployment.isLoading) {
+                    //this is used for removing the loading icon when no cloud gems exist in the project stack.
+                    this.gems.isLoading = false;
+                }
                 return;
+            }
+
+            this.gemsNum = rgs.length;
 
             for (var i = 0; i < rgs.length; i++) {
                 this._loader.load(activeDeployment, rgs[i], this.handleLoadedGem);
             }
-            if (rgs.length > 0) {
-                let names = rgs.map(gem => gem.logicalResourceId)
-                this.lymetrics.recordEvent('CloudGemsLoaded', {
-                    'CloudGemsInDeployment': names.join(','),
-                }, {
-                        'NumberOfCloudGemsInDeployment': names.length
-                    })
-            }
+            let names = rgs.map(gem => gem.logicalResourceId)
+            this.lymetrics.recordEvent('CloudGemsLoaded', {
+                'CloudGemsInDeployment': names.join(','),
+            }, {
+                    'NumberOfCloudGemsInDeployment': names.length
+                })
         }));
 
         // Subscribe to gems being added to the gem service
@@ -105,15 +128,36 @@ export class GemIndexComponent implements OnInit, OnDestroy{
     }
 
 
-    private handleLoadedGem(gem: Gemifiable): void {
-        this.gems.isLoading = false;
+    private handleLoadedGem(gem: Gemifiable): void {        
         if (gem === undefined) {
             return;
-
         }
+        this.gems.isLoading = false;
         this.zone.run(() => {
             this.gems.addGem(gem);
+            this.navigateToSpecificPage();       
         })
+    }
+
+    private navigateToSpecificPage() {
+        if (this.gems.currentGems.length === this.gemsNum) {
+            this.route.queryParams.subscribe(params => {
+                //Navigate to the deployment specified in the query parameters
+                if (params['deployment'] && params['deployment'] != this.aws.context.project.activeDeployment.settings.name) {
+                    for (let deployment of this.aws.context.project.deployments) {
+                        if (deployment.settings.name === params['deployment']) {
+                            this.gems.isLoading = true;
+                            this.aws.context.project.activeDeployment = <AwsDeployment>deployment;
+                            break;
+                        }
+                    }
+                }
+                //Navigate to the gem specified in the query parameters. Need to wait until all the gems are loaded since some gems may depend on the others.
+                else if (params['deployment'] && this.aws.context.project.activeDeployment.settings.name === params['deployment']) {
+                    this.router.navigate(['game/cloudgems', params['target']], { queryParams: { params: params['params'] } });
+                }
+            })
+        }
     }
 
     ngOnDestroy() {

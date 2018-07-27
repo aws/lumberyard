@@ -14,7 +14,7 @@
 // Description : Goal Op Factory interface and management classes
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "GoalOpFactory.h"
 
 

@@ -121,8 +121,8 @@ CMainWindow::CMainWindow()
     //Size to last size.
     resize(s_width, s_height);
 
-    CreateMenuBar();
     CreateDockWindows();
+    CreateMenuBar();
     CreateShortcuts();
 
     //Save the editor layout for reset before we load any user settings
@@ -145,6 +145,7 @@ CMainWindow::CMainWindow()
 
             m_layoutMenu = new QMenu();
             StateLoad_layoutMenu();
+            View_PopulateMenu();
         });
 
     m_undoManager = new EditorUIPlugin::EditorLibraryUndoManager(GetIEditor()->GetParticleManager());
@@ -235,12 +236,14 @@ void CMainWindow::CreateMenuBar()
 
     // File Menu
     m_fileMenu = new QMenu(tr("File"));
-    connect(m_fileMenu, &QMenu::aboutToShow, this, &CMainWindow::File_PopulateMenu);
+    File_PopulateMenu();
     m_menuBar->addMenu(m_fileMenu);
 
     // Edit Menu
     m_editMenu = new QMenu(tr("Edit"));
-    connect(m_editMenu, &QMenu::aboutToShow, this, &CMainWindow::Edit_PopulateMenu);
+    Edit_PopulateMenu();
+    connect(m_editMenu, &QMenu::aboutToShow, this, [this] { UpdateEditActions(true); });
+    connect(m_editMenu, &QMenu::aboutToHide, this, [this] { UpdateEditActions(false);});
     m_menuBar->addMenu(m_editMenu);
 
     // View Menu
@@ -251,6 +254,55 @@ void CMainWindow::CreateMenuBar()
     setMenuBar(m_menuBar);
 #undef ADD_ACTION
 #undef SETUP_LIBRARY_ACTION
+}
+
+void CMainWindow::UpdateEditActions(bool menuShown)
+{
+    if (menuShown)
+    {
+        // Undo
+        bool hasUndo = false;
+        EBUS_EVENT_RESULT(hasUndo, EditorLibraryUndoRequestsBus, HasUndo);
+        m_undoAction->setEnabled(hasUndo);
+
+        // Redo
+        bool hasRedo = false;
+        EBUS_EVENT_RESULT(hasRedo, EditorLibraryUndoRequestsBus, HasRedo);
+        m_redoAction->setEnabled(hasRedo);
+
+        // Copy
+        QVector<CBaseLibraryItem*> selectedItems = m_libraryTreeViewDock->GetSelectedItems();
+        auto firstSelectedItem = selectedItems.isEmpty() ? nullptr : selectedItems.first();
+        m_copyAction->setEnabled(firstSelectedItem);
+
+        // Duplicate
+        m_duplicateAction->setEnabled(firstSelectedItem && selectedItems.count() == 1);
+
+        // Add LOD
+        bool enable = false;
+        if (firstSelectedItem)
+        {
+            auto pParticle = static_cast<CParticleItem*>(firstSelectedItem);
+            enable = pParticle->IsParticleItem && m_libraryTreeViewDock->GetTreeItemFromPath(QString(selectedItems.first()->GetFullName())) != nullptr;
+        }
+        m_addLODAction->setEnabled(enable);
+
+        // Others
+        m_resetSelectedItem->setEnabled(firstSelectedItem);
+        m_deleteSelectedItem->setEnabled(firstSelectedItem);
+        m_renameSelectedItem->setEnabled(firstSelectedItem);
+    }
+    else
+    {
+        // All actions need to be enabled when menu is hidden, so they can respond to shortcuts
+        m_undoAction->setEnabled(true);
+        m_redoAction->setEnabled(true);
+        m_copyAction->setEnabled(true);
+        m_duplicateAction->setEnabled(true);
+        m_resetSelectedItem->setEnabled(true);
+        m_deleteSelectedItem->setEnabled(true);
+        m_renameSelectedItem->setEnabled(true);
+    }
 }
 
 void CMainWindow::OnEditorNotifyEvent(EEditorNotifyEvent e)
@@ -576,7 +628,7 @@ void CMainWindow::OnAddNewLayout(QString location, bool loading)
             action->setCheckable(true);
             action->setChecked(!loading);
             action->setData(this->saveState(0));
-            connect(action, &QAction::triggered, [this, action]()
+            connect(action, &QAction::triggered, this, [this, action]()
                 {
                     RestoreAllLayout(action->text());
                     OnAddNewLayout(action->text(), false);
@@ -1483,7 +1535,6 @@ void CMainWindow::Edit_PopulateMenu()
     CRY_ASSERT(GetIEditor()->GetParticleUtils());
 
     QMenu* menu = m_editMenu;
-    QVector<CBaseLibraryItem*> selectedItems = m_libraryTreeViewDock->GetSelectedItems();
     menu->clear();
     QAction* action = nullptr;
 #define ADD_ACTION(text, callback, tooltip, icon, key)                               \
@@ -1496,93 +1547,93 @@ void CMainWindow::Edit_PopulateMenu()
     }
 
     ADD_ACTION("Undo", OnActionStandardUndo, "Undo", "standardUndo.png", GetIEditor()->GetParticleUtils()->HotKey_GetShortcut("Edit Menu.Undo"));
+    m_undoAction = action;
     bool hasUndo = false;
     EBUS_EVENT_RESULT(hasUndo, EditorLibraryUndoRequestsBus, HasUndo);
     action->setEnabled(hasUndo);
     ADD_ACTION("Redo", OnActionStandardRedo, "Redo", "standardRedo.png", GetIEditor()->GetParticleUtils()->HotKey_GetShortcut("Edit Menu.Redo"));    
+    m_redoAction = action;
     bool hasRedo = false;
     EBUS_EVENT_RESULT(hasRedo, EditorLibraryUndoRequestsBus, HasRedo);
     action->setEnabled(hasRedo);
 
     //COPY////////////////////////////////////////////////////////////////////
-    action = menu->addAction(tr("Copy"));
-    action->setIcon(QIcon("Editor/UI/Icons/toolbar/standardCopy.png"));
-    action->setShortcut(GetIEditor()->GetParticleUtils()->HotKey_GetShortcut("Edit Menu.Copy"));
-    if (selectedItems.count() && selectedItems.first())
-    {
-        connect(action, &QAction::triggered, this, [=]()
-            {
-                Library_ItemCopied(selectedItems.first());
-            });
-    }
-    else
-    {
-        action->setEnabled(false);
-    }
+    m_copyAction = menu->addAction(tr("Copy"));
+    m_copyAction->setIcon(QIcon("Editor/UI/Icons/toolbar/standardCopy.png"));
+    m_copyAction->setShortcut(GetIEditor()->GetParticleUtils()->HotKey_GetShortcut("Edit Menu.Copy"));
+    connect(m_copyAction, &QAction::triggered, this, [this]
+        {
+            QVector<CBaseLibraryItem*> selectedItems = m_libraryTreeViewDock->GetSelectedItems();
+             if (!selectedItems.isEmpty() && selectedItems.first())
+             {
+                 Library_ItemCopied(selectedItems.first());
+             }
+        });
+
     //PASTE///////////////////////////////////////////////////////////////////
     menu->addAction(m_libraryTreeViewDock->GetParticleAction(DockableParticleLibraryPanel::ParticleActions::PASTE, "", tr("Paste"), false, menu, Qt::QueuedConnection));
     
     //DUPLICATE///////////////////////////////////////////////////////////////
-    action = menu->addAction(tr("Duplicate"));
-    action->setIcon(QIcon("Editor/UI/Icons/toolbar/standardDuplicate.png"));
-    action->setShortcut(GetIEditor()->GetParticleUtils()->HotKey_GetShortcut("Edit Menu.Duplicate"));
-    if (selectedItems.count() == 1 && selectedItems.first())
-    {
-        connect(action, &QAction::triggered, this, [=]()
+    m_duplicateAction = menu->addAction(tr("Duplicate"));
+    m_duplicateAction->setIcon(QIcon("Editor/UI/Icons/toolbar/standardDuplicate.png"));
+    m_duplicateAction->setShortcut(GetIEditor()->GetParticleUtils()->HotKey_GetShortcut("Edit Menu.Duplicate"));
+    connect(m_duplicateAction, &QAction::triggered, this, [this]
+        {
+            QVector<CBaseLibraryItem*> selectedItems = m_libraryTreeViewDock->GetSelectedItems();
+            if (selectedItems.count() == 1 && selectedItems.first())
             {
                 Library_ItemDuplicated("", "");
-            });
-    }
-    else
-    {
-        action->setEnabled(false);
-    }
+            }
+        });
 
     ////////////////////////////////////////////////////
     //Action Add LOD
-    action = menu->addAction(tr("Add LOD"));
-    action->setEnabled(false);
-    if (selectedItems.count() && selectedItems.first())
-    {
-        CParticleItem* pParticle = static_cast<CParticleItem*>(selectedItems.first());
-        if (pParticle->IsParticleItem)
+    m_addLODAction = menu->addAction(tr("Add LOD"));
+    connect(m_addLODAction, &QAction::triggered, this, [this]
         {
-            connect(action, &QAction::triggered, this, [=]()
+            QVector<CBaseLibraryItem*> selectedItems = m_libraryTreeViewDock->GetSelectedItems();
+            if (selectedItems.count() && selectedItems.first())
+            {
+                auto pParticle = static_cast<CParticleItem*>(selectedItems.first());
+                if (pParticle->IsParticleItem)
                 {
                     CLibraryTreeViewItem* treeitem = m_libraryTreeViewDock->GetTreeItemFromPath(QString(selectedItems.first()->GetFullName()));
                     if (treeitem)
                     {
                         m_LoDDock->OnAddLod(treeitem);
                     }
-                });
-            action->setEnabled(true);
-        }
-    }
+                }
+            }
+        });
 
-    menu->addAction(m_libraryTreeViewDock->GetMenuAction(DockableLibraryPanel::ItemActions::RENAME, "", tr("Rename"), false, menu, Qt::QueuedConnection));
-    menu->actions().back()->setEnabled(selectedItems.count() && selectedItems.first());
-    menu->addAction(m_libraryTreeViewDock->GetMenuAction(DockableLibraryPanel::ItemActions::DESTROY, "", tr("Delete"), false, menu, Qt::QueuedConnection));
-    menu->actions().back()->setEnabled(selectedItems.count() && selectedItems.first());
+
+    m_renameSelectedItem = m_libraryTreeViewDock->GetMenuAction(DockableLibraryPanel::ItemActions::RENAME, "", tr("Rename"), false, menu, Qt::QueuedConnection);
+    menu->addAction(m_renameSelectedItem);
+
+    m_deleteSelectedItem = m_libraryTreeViewDock->GetMenuAction(DockableLibraryPanel::ItemActions::DESTROY, "", tr("Delete"), false, menu, Qt::QueuedConnection);
+    menu->addAction(m_deleteSelectedItem);
     menu->actions().back()->setIcon(QIcon("Editor/UI/Icons/toolbar/itemRemove.png"));
 
     //////////////////////////////////////////////////////////////////////////
     //Reset selected items to default state
-    action = menu->addAction(tr("Reset to default"));
-    action->setEnabled(selectedItems.count() && selectedItems.first());
-    connect(action, &QAction::triggered, this, [=]()
+    m_resetSelectedItem = menu->addAction(tr("Reset to default"));
+    connect(m_resetSelectedItem, &QAction::triggered, this, [this]
         {
-            QVector<CBaseLibraryItem*> tempSelectionList = m_libraryTreeViewDock->GetSelectedItems();
-            while (tempSelectionList.count() > 0)
+            QVector<CBaseLibraryItem*> selectedItems = m_libraryTreeViewDock->GetSelectedItems();
+            if (selectedItems.count() && selectedItems.first())
             {
-                CParticleItem* pParticle = static_cast<CParticleItem*>(tempSelectionList.takeFirst());
-                Library_ItemReset(pParticle);
+                QVector<CBaseLibraryItem*> tempSelectionList = m_libraryTreeViewDock->GetSelectedItems();
+                while (tempSelectionList.count() > 0)
+                {
+                    CParticleItem* pParticle = static_cast<CParticleItem*>(tempSelectionList.takeFirst());
+                    Library_ItemReset(pParticle);
+                }
             }
         });
     //////////////////////////////////////////////////////////////////////////
 
     action = menu->addAction(tr("Edit Hotkeys"));
     action->setShortcut(GetIEditor()->GetParticleUtils()->HotKey_GetShortcut("Edit Menu.Edit Hotkeys"));
-    action->setEnabled(true);
     connect(action, &QAction::triggered, this, [&]()
         {
             QKeySequenceEditorDialog* dlg = UIFactory::GetHotkeyEditor();
@@ -1670,7 +1721,7 @@ void CMainWindow::UpdatePalette()
     if (processedStyle.length() > 0)
     {
         hide();
-        setStyleSheet(processedStyle);
+        setStyleSheet(processedStyle); // Stylesheet also propagates to the docks
 
         QCustomColorDialog* cdlg = UIFactory::GetColorPicker();
         cdlg->setStyleSheet(processedStyle);

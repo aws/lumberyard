@@ -108,7 +108,7 @@ namespace CharacterTool {
         }
 
         char path[ICryPak::g_nMaxPath] = "";
-        gEnv->pCryPak->AdjustFileName(fullFilePath.c_str(), path, 0);
+        gEnv->pCryPak->AdjustFileName(fullFilePath.c_str(), path, ICryPak::g_nMaxPath, 0);
         if (!root->saveToFile(path))
         {
             return false;

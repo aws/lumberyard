@@ -16,8 +16,8 @@
 
 #include <QThreadPool>
 
-#include "native/utilities/AssetUtils.h"
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/assetUtils.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 
 ShaderCompilerManager::ShaderCompilerManager(QObject* parent)
     : QObject(parent)

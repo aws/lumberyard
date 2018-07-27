@@ -15,7 +15,7 @@
 //               and a central class to track their registration
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #if !defined(_RELEASE)
 

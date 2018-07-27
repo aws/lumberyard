@@ -30,7 +30,7 @@ public:
     virtual const char* GetMetadata(const char* tag);
     virtual bool GetMetadata(const char* tag, int& value);
     virtual bool HaveMetadata(const char* tag);
-    virtual std::unique_ptr<TSerialize> GetSection(const char* section);
+    virtual AZStd::unique_ptr<TSerialize> GetSection(const char* section);
     virtual bool HaveSection(const char* section);
     virtual void Complete();
     virtual const char* GetFileName() const;
@@ -41,7 +41,7 @@ protected:
 
 private:
     struct Impl;
-    std::unique_ptr<Impl> m_pImpl;
+    AZStd::unique_ptr<Impl> m_pImpl;
 };
 
 #endif // CRYINCLUDE_CRYACTION_SERIALIZATION_XMLLOADGAME_H

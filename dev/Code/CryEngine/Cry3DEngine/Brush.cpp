@@ -59,7 +59,7 @@ CLodValue CBrush::ComputeLod(int wantedLod, const SRenderingPassInfo& passInfo)
     {
         const Vec3 vCamPos = passInfo.GetCamera().GetPosition();
         const float fEntDistance = sqrt_tpl(Distance::Point_AABBSq(vCamPos, CBrush::GetBBox())) * passInfo.GetZoomFactor();
-		
+        
         if (pCVars->e_Dissolve && passInfo.IsGeneralPass() && !(pStatObj->m_nFlags & STATIC_OBJECT_COMPOUND))
         {
             int nLod = CLAMP(wantedLod, pStatObj->GetMinUsableLod(), (int)pStatObj->m_nMaxUsableLod);
@@ -750,7 +750,9 @@ void CBrush::UpdateExecuteAsPreProcessJobFlag()
         }
 
 #if defined(FEATURE_SVO_GI)
-        if (pMat && (GetCVars()->e_svoTI_Active >= 0) && (gEnv->IsEditor() || GetCVars()->e_svoTI_Apply))
+        if (pMat && (gEnv->pConsole->GetCVar("e_svoTI_Active") && 
+            gEnv->pConsole->GetCVar("e_svoTI_Active")->GetIVal() && 
+            gEnv->pConsole->GetCVar("e_GI")->GetIVal()))
         {
             pMat->SetKeepLowResSysCopyForDiffTex();
         }

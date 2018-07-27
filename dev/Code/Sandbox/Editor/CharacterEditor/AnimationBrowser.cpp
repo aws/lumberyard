@@ -14,7 +14,7 @@
 // Description : implementation file
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AnimationBrowser.h"
 #include <I3DEngine.h>
 #include <ICryAnimation.h>
@@ -682,9 +682,9 @@ QPixmap AnimationBrowserModel::GetAnimIcon(int nAnimId) const
         {
             const CAnimEventData& animEventData = pAnimEventList->GetByIndex(i);
             const char* eventName = animEventData.GetName();
-            if (strcmpi(eventName, "sound") == 0 ||
-                strcmpi(eventName, "footstep") == 0 ||
-                strcmpi(eventName, "foley") == 0 ||
+            if (azstricmp(eventName, "sound") == 0 ||
+                azstricmp(eventName, "footstep") == 0 ||
+                azstricmp(eventName, "foley") == 0 ||
                 strstr(eventName, "asfx_") != NULL)
             {
                 hasSoundAnimEvents = true;

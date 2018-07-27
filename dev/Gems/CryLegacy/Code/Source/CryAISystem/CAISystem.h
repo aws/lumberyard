@@ -1065,7 +1065,7 @@ public:
         {
             if (name_)
             {
-                _snprintf(name, sizeof(name), "%s", name_);
+                azsnprintf(name, sizeof(name), "%s", name_);
             }
             else
             {

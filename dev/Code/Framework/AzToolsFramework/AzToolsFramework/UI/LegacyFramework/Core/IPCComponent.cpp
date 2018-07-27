@@ -23,9 +23,9 @@ namespace LegacyFramework
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
         if (serializeContext)
         {
-            serializeContext->Class<IPCComponent>()
+            serializeContext->Class<IPCComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
         }
     }
 

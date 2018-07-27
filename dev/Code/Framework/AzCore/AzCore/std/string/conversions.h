@@ -338,21 +338,21 @@ namespace AZStd
     void to_wstring(Str& str, long long value)
     {
         wchar_t buf[64];
-        azswnprintf(buf, 64, L"%lld", value);
+        azsnwprintf(buf, 64, L"%lld", value);
         str = buf;
     }
     template<class Str>
     void to_wstring(Str& str, unsigned long long value)
     {
         wchar_t buf[64];
-        azswnprintf(buf, 64, L"%llu", value);
+        azsnwprintf(buf, 64, L"%llu", value);
         str = buf;
     }
     template<class Str>
     void to_wstring(Str& str, long double value)
     {
         wchar_t buf[64];
-        azswnprintf(buf, 64, L"%Lf", value);
+        azsnwprintf(buf, 64, L"%Lf", value);
         str = buf;
     }
     inline AZStd::wstring to_wstring(long long val)             { AZStd::wstring wstr; to_wstring(wstr, val); return wstr; }

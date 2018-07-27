@@ -26,9 +26,9 @@ def rc_file(self, node):
 	if hasattr(self, 'target'):
 		target_name = self.target
 
-	obj_ext = '.' + str(self.idx) + '.rc.o'
+	obj_ext = '.' + str(self.target_uid) + '.rc.o'
 	if self.env['WINRC_TGT_F'] == '/fo':
-		obj_ext = '.' + str(self.idx) + '.res'
+		obj_ext = '.' + str(self.target_uid) + '.res'
 
 	rctask = self.create_task('winrc', node, node.change_ext(obj_ext))
 
@@ -62,7 +62,7 @@ RC_FILE_TEMPLATE='''// Microsoft Visual C++ generated resource script.
 //
 // Generated from the TEXTINCLUDE 2 resource.
 //
-#include "afxres.h"
+#include "winres.h"
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -87,7 +87,7 @@ END
 
 2 TEXTINCLUDE
 BEGIN
-	"#include ""afxres.h""\\r\\n"
+	"#include ""winres.h""\\r\\n"
 	"\\0"
 END
 

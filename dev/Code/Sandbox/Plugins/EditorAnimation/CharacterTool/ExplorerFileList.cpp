@@ -211,7 +211,7 @@ namespace CharacterTool
         {
             for (size_t j = 0; j < m_entryTypes[i].formats.size(); ++j)
             {
-                if (stricmp(m_entryTypes[i].formats[j].extension, ext) == 0)
+                if (azstricmp(m_entryTypes[i].formats[j].extension, ext) == 0)
                 {
                     return &m_entryTypes[i];
                 }
@@ -231,7 +231,7 @@ namespace CharacterTool
         {
             for (size_t j = 0; j < m_entryTypes[i].formats.size(); ++j)
             {
-                if (stricmp(m_entryTypes[i].formats[j].path.c_str(), singleFilePath) == 0)
+                if (azstricmp(m_entryTypes[i].formats[j].path.c_str(), singleFilePath) == 0)
                 {
                     return &m_entryTypes[i];
                 }
@@ -515,7 +515,7 @@ namespace CharacterTool
             for (size_t j = 0; j < entryType->formats.size(); ++j)
             {
                 const EntryFormat& format = entryType->formats[j];
-                if (stricmp(format.path.c_str(), entryPath) == 0 && format.usage & FORMAT_SAVE)
+                if (azstricmp(format.path.c_str(), entryPath) == 0 && format.usage & FORMAT_SAVE)
                 {
                     return true;
                 }
@@ -632,7 +632,7 @@ namespace CharacterTool
                 }, AZ::AsyncSaveRunner::ControllerOrder::Random);
         }
     }
-    
+
     void ExplorerFileList::DeleteEntry(const AZStd::shared_ptr<AZ::ActionOutput>& output, const char * entryFullPath, const char * entryPath)
     {
         if (IsRunningAsyncSaveOperation() && !m_isRunningSaveAll)
@@ -650,11 +650,11 @@ namespace CharacterTool
         }
 
         AZStd::shared_ptr<AZ::SaveOperationController> saveEntryController = m_saveRunner->GenerateController();
-       
+
         string fileName = entryFullPath;
         string fullFileName = Path::GamePathToFullPath(fileName.c_str()).toUtf8().data();
         saveEntryController->AddDeleteOperation(fullFileName.c_str(),
-            [this](const AZStd::string& fullPath, const AZStd::shared_ptr<AZ::ActionOutput>& actionOutput) -> bool
+            [](const AZStd::string& fullPath, const AZStd::shared_ptr<AZ::ActionOutput>& actionOutput) -> bool
             {
                 if (gEnv->pCryPak->IsFileExist(fullPath.c_str(), ICryPak::eFileLocation_OnDisk))
                 {
@@ -675,7 +675,7 @@ namespace CharacterTool
             SignalEntryDeleted(entryPath);
         }
         );
-        
+
 
         // If we aren't running save all, then this is the end, so run all the save operations
         if (!m_isRunningSaveAll)
@@ -848,7 +848,7 @@ namespace CharacterTool
                 {
                     actions->push_back(ExplorerAction("Delete", 0, [=](ActionContext& x) { ActionDelete(x); }));
                 }
-            
+
                 actions->push_back(ExplorerAction());
                 actions->push_back(ExplorerAction("Show in Explorer", ACTION_NOT_STACKABLE, [=](ActionContext& x) { explorer->ActionShowInExplorer(x); }, "Editor/Icons/animation/show_in_explorer.png"));
             }

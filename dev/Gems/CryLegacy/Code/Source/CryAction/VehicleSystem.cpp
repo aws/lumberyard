@@ -14,7 +14,7 @@
 // Description : Vehicle System
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <IScriptSystem.h>
 #include <ICryPak.h>
 #include "IGameObjectSystem.h"
@@ -425,7 +425,7 @@ bool CVehicleSystem::GetOptionalScript(const char* vehicleName, char* buf, size_
     _finddata_t fd;
     intptr_t handle;
 
-    _snprintf(buf, len, "%s%s.lua", gScriptPath, vehicleName);
+    azsnprintf(buf, len, "%s%s.lua", gScriptPath, vehicleName);
     buf[len - 1] = 0;
 
     if ((handle = gEnv->pCryPak->FindFirst(buf, &fd)) != -1)
@@ -691,7 +691,7 @@ void CVehicleSystem::Update(float deltaTime)
         for (TVehicleMap::iterator it = m_vehicles.begin(); it != m_vehicles.end(); ++it)
         {
             IVehicle* pVehicle = it->second;
-            if (pVehicle->IsPlayerDriving() || 0 == strcmpi(pDebugVehicle->GetString(), pVehicle->GetEntity()->GetName()))
+            if (pVehicle->IsPlayerDriving() || 0 == azstricmp(pDebugVehicle->GetString(), pVehicle->GetEntity()->GetName()))
             {
                 static_cast<CVehicle*>(pVehicle)->DebugReorient();
             }

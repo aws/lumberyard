@@ -13,10 +13,14 @@
 // include the required headers
 #include "NodeGroup.h"
 #include "ActorInstance.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(NodeGroup, NodeAllocator, 0)
+
+
     // default constructor
     NodeGroup::NodeGroup()
         : BaseObject()
@@ -54,32 +58,21 @@ namespace EMotionFX
     // create
     NodeGroup* NodeGroup::Create()
     {
-        return new NodeGroup();
+        return aznew NodeGroup();
     }
 
 
     // create
     NodeGroup* NodeGroup::Create(const char* groupName, bool enabledOnDefault)
     {
-        return new NodeGroup(groupName, enabledOnDefault);
+        return aznew NodeGroup(groupName, enabledOnDefault);
     }
 
 
     // create
     NodeGroup* NodeGroup::Create(const char* groupName, uint16 numNodes, bool enabledOnDefault)
     {
-        return new NodeGroup(groupName, numNodes, enabledOnDefault);
-    }
-
-
-    // create an exact clone
-    NodeGroup* NodeGroup::Clone()
-    {
-        NodeGroup* clone = new NodeGroup();
-        clone->mName             = mName;
-        clone->mNodes            = mNodes;
-        clone->mEnabledOnDefault = mEnabledOnDefault;
-        return clone;
+        return aznew NodeGroup(groupName, numNodes, enabledOnDefault);
     }
 
 
@@ -194,4 +187,18 @@ namespace EMotionFX
     {
         mEnabledOnDefault = enabledOnDefault;
     }
+
+    NodeGroup::NodeGroup(const NodeGroup& aOther)
+    {
+        *this = aOther;
+    }
+
+    NodeGroup& NodeGroup::operator=(const NodeGroup& aOther)
+    {
+        mName = aOther.mName;
+        mNodes = aOther.mNodes;
+        mEnabledOnDefault = aOther.mEnabledOnDefault;
+        return *this;
+    }
+
 }   // namespace EMotionFX

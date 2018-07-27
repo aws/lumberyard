@@ -10,97 +10,168 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "BlendTreeFloatMath1Node.h"
 #include <MCore/Source/Random.h>
-#include <MCore/Source/AttributeSettings.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeFloatMath1Node::BlendTreeFloatMath1Node(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeFloatMath1Node, AnimGraphAllocator, 0)
 
-        // default on sinus calculation
-        mMathFunction   = MATHFUNCTION_SIN;
-        mCalculateFunc  = CalculateSin;
-        SetNodeInfo("Sin");
-    }
-
-
-    // destructor
-    BlendTreeFloatMath1Node::~BlendTreeFloatMath1Node()
-    {
-    }
-
-
-    // create
-    BlendTreeFloatMath1Node* BlendTreeFloatMath1Node::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeFloatMath1Node(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeFloatMath1Node::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeFloatMath1Node::RegisterPorts()
+    BlendTreeFloatMath1Node::BlendTreeFloatMath1Node()
+        : AnimGraphNode()
+        , m_mathFunction(MATHFUNCTION_SIN)
     {
         // setup the input ports
         InitInputPorts(1);
         SetupInputPortAsNumber("x", INPUTPORT_X, PORTID_INPUT_X); // accept float/int/bool values
 
-        // setup the output ports
+                                                                  // setup the output ports
         InitOutputPorts(1);
         SetupOutputPort("Result", OUTPUTPORT_RESULT, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_RESULT);
+
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
     }
 
 
-    // register the parameters
-    void BlendTreeFloatMath1Node::RegisterAttributes()
+    BlendTreeFloatMath1Node::~BlendTreeFloatMath1Node()
     {
-        MCore::AttributeSettings* functionParam = RegisterAttribute("Math Function", "mathFunction", "The math function to use.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        functionParam->SetReinitGuiOnValueChange(true);
-        functionParam->ResizeComboValues((uint32)MATHFUNCTION_NUMFUNCTIONS);
-        functionParam->SetComboValue(MATHFUNCTION_SIN,          "Sine");
-        functionParam->SetComboValue(MATHFUNCTION_COS,          "Cosine");
-        functionParam->SetComboValue(MATHFUNCTION_TAN,          "Tan");
-        functionParam->SetComboValue(MATHFUNCTION_SQR,          "Square");
-        functionParam->SetComboValue(MATHFUNCTION_SQRT,         "Square Root");
-        functionParam->SetComboValue(MATHFUNCTION_ABS,          "Absolute");
-        functionParam->SetComboValue(MATHFUNCTION_FLOOR,        "Floor");
-        functionParam->SetComboValue(MATHFUNCTION_CEIL,         "Ceil");
-        functionParam->SetComboValue(MATHFUNCTION_ONEOVERINPUT, "One Over X");
-        functionParam->SetComboValue(MATHFUNCTION_INVSQRT,      "Inverse Square Root");
-        functionParam->SetComboValue(MATHFUNCTION_LOG,          "Natural Log");
-        functionParam->SetComboValue(MATHFUNCTION_LOG10,        "Log Base 10");
-        functionParam->SetComboValue(MATHFUNCTION_EXP,          "Exponent");
-        functionParam->SetComboValue(MATHFUNCTION_FRACTION,     "Fraction");
-        functionParam->SetComboValue(MATHFUNCTION_SIGN,         "Sign");
-        functionParam->SetComboValue(MATHFUNCTION_ISPOSITIVE,   "Is Positive");
-        functionParam->SetComboValue(MATHFUNCTION_ISNEGATIVE,   "Is Negative");
-        functionParam->SetComboValue(MATHFUNCTION_ISNEARZERO,   "Is Near Zero");
-        functionParam->SetComboValue(MATHFUNCTION_RANDOMFLOAT,  "Random Float");
-        functionParam->SetComboValue(MATHFUNCTION_RADTODEG,     "Radians to Degrees");
-        functionParam->SetComboValue(MATHFUNCTION_DEGTORAD,     "Degrees to Radians");
-        functionParam->SetComboValue(MATHFUNCTION_SMOOTHSTEP,   "Smooth Step [0..1]");
-        functionParam->SetComboValue(MATHFUNCTION_ACOS,         "Arc Cosine");
-        functionParam->SetComboValue(MATHFUNCTION_ASIN,         "Arc Sine");
-        functionParam->SetComboValue(MATHFUNCTION_ATAN,         "Arc Tan");
-        functionParam->SetComboValue(MATHFUNCTION_NEGATE,       "Negate");
-        functionParam->SetDefaultValue(MCore::AttributeFloat::Create(0));
+    }
+
+
+    void BlendTreeFloatMath1Node::Reinit()
+    {
+        switch (m_mathFunction)
+        {
+        case MATHFUNCTION_SIN:
+            m_calculateFunc = CalculateSin;
+            SetNodeInfo("Sin");
+            break;
+        case MATHFUNCTION_COS:
+            m_calculateFunc = CalculateCos;
+            SetNodeInfo("Cos");
+            break;
+        case MATHFUNCTION_TAN:
+            m_calculateFunc = CalculateTan;
+            SetNodeInfo("Tan");
+            break;
+        case MATHFUNCTION_SQR:
+            m_calculateFunc = CalculateSqr;
+            SetNodeInfo("Square");
+            break;
+        case MATHFUNCTION_SQRT:
+            m_calculateFunc = CalculateSqrt;
+            SetNodeInfo("Sqrt");
+            break;
+        case MATHFUNCTION_ABS:
+            m_calculateFunc = CalculateAbs;
+            SetNodeInfo("Abs");
+            break;
+        case MATHFUNCTION_FLOOR:
+            m_calculateFunc = CalculateFloor;
+            SetNodeInfo("Floor");
+            break;
+        case MATHFUNCTION_CEIL:
+            m_calculateFunc = CalculateCeil;
+            SetNodeInfo("Ceil");
+            break;
+        case MATHFUNCTION_ONEOVERINPUT:
+            m_calculateFunc = CalculateOneOverInput;
+            SetNodeInfo("1/x");
+            break;
+        case MATHFUNCTION_INVSQRT:
+            m_calculateFunc = CalculateInvSqrt;
+            SetNodeInfo("1.0/sqrt(x)");
+            break;
+        case MATHFUNCTION_LOG:
+            m_calculateFunc = CalculateLog;
+            SetNodeInfo("Log");
+            break;
+        case MATHFUNCTION_LOG10:
+            m_calculateFunc = CalculateLog10;
+            SetNodeInfo("Log10");
+            break;
+        case MATHFUNCTION_EXP:
+            m_calculateFunc = CalculateExp;
+            SetNodeInfo("Exponent");
+            break;
+        case MATHFUNCTION_FRACTION:
+            m_calculateFunc = CalculateFraction;
+            SetNodeInfo("Fraction");
+            break;
+        case MATHFUNCTION_SIGN:
+            m_calculateFunc = CalculateSign;
+            SetNodeInfo("Sign");
+            break;
+        case MATHFUNCTION_ISPOSITIVE:
+            m_calculateFunc = CalculateIsPositive;
+            SetNodeInfo("Is Positive");
+            break;
+        case MATHFUNCTION_ISNEGATIVE:
+            m_calculateFunc = CalculateIsNegative;
+            SetNodeInfo("Is Negative");
+            break;
+        case MATHFUNCTION_ISNEARZERO:
+            m_calculateFunc = CalculateIsNearZero;
+            SetNodeInfo("Is Near Zero");
+            break;
+        case MATHFUNCTION_RANDOMFLOAT:
+            m_calculateFunc = CalculateRandomFloat;
+            SetNodeInfo("Random Float");
+            break;
+        case MATHFUNCTION_RADTODEG:
+            m_calculateFunc = CalculateRadToDeg;
+            SetNodeInfo("RadToDeg");
+            break;
+        case MATHFUNCTION_DEGTORAD:
+            m_calculateFunc = CalculateDegToRad;
+            SetNodeInfo("DegToRad");
+            break;
+        case MATHFUNCTION_SMOOTHSTEP:
+            m_calculateFunc = CalculateSmoothStep;
+            SetNodeInfo("SmoothStep");
+            break;
+        case MATHFUNCTION_ACOS:
+            m_calculateFunc = CalculateACos;
+            SetNodeInfo("Arc Cos");
+            break;
+        case MATHFUNCTION_ASIN:
+            m_calculateFunc = CalculateASin;
+            SetNodeInfo("Arc Sin");
+            break;
+        case MATHFUNCTION_ATAN:
+            m_calculateFunc = CalculateATan;
+            SetNodeInfo("Arc Tan");
+            break;
+        case MATHFUNCTION_NEGATE:
+            m_calculateFunc = CalculateNegate;
+            SetNodeInfo("Negate");
+            break;
+        default:
+            AZ_Assert(false, "EMotionFX: Math function unknown.");
+        }
+
+        AnimGraphNode::Reinit();
+    }
+
+
+    bool BlendTreeFloatMath1Node::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -118,192 +189,44 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeFloatMath1Node::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeFloatMath1Node* clone = new BlendTreeFloatMath1Node(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // the update function
     void BlendTreeFloatMath1Node::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // update all inputs
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
-        //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
-
-        // if there are no incoming connections, there is nothing to do
-        const uint32 numConnections = mConnections.GetLength();
-        if (numConnections == 0 || mDisabled)
+        // If there are no incoming connections, there is nothing to do.
+        if (mConnections.empty())
         {
-            if (numConnections > 0) // pass the input value as output in case we are disabled
-            {
-                OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_X));
-                GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT)->SetValue(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_X));
-            }
-
             return;
         }
-
-        // update the math function if needed
-        SetMathFunction((EMathFunction)((uint32)GetAttributeFloat(0)->GetValue()));
+        // Pass the input value as output in case we are disabled and have connected inputs.
+        else if (mDisabled)
+        {
+            OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_X));
+            GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT)->SetValue(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_X));
+            return;
+        }
 
         // get the input value as a float, convert if needed
         OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_X));
         const float x = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_X);
 
         // apply the operation
-        const float result = mCalculateFunc(x);
+        const float result = m_calculateFunc(x);
 
         // update the output value
         GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT)->SetValue(result);
     }
 
 
-
-    // get the type string
-    const char* BlendTreeFloatMath1Node::GetTypeString() const
-    {
-        return "BlendTreeFloatMath1Node";
-    }
-
-
-    // set the math function to use
     void BlendTreeFloatMath1Node::SetMathFunction(EMathFunction func)
     {
-        // if it didn't change, don't update anything
-        if (func == mMathFunction)
+        m_mathFunction = func;
+        if (mAnimGraph)
         {
-            return;
+            Reinit();
         }
-
-        mMathFunction = func;
-        switch (mMathFunction)
-        {
-        case MATHFUNCTION_SIN:
-            mCalculateFunc = CalculateSin;
-            SetNodeInfo("Sin");
-            return;
-        case MATHFUNCTION_COS:
-            mCalculateFunc = CalculateCos;
-            SetNodeInfo("Cos");
-            return;
-        case MATHFUNCTION_TAN:
-            mCalculateFunc = CalculateTan;
-            SetNodeInfo("Tan");
-            return;
-        case MATHFUNCTION_SQR:
-            mCalculateFunc = CalculateSqr;
-            SetNodeInfo("Square");
-            return;
-        case MATHFUNCTION_SQRT:
-            mCalculateFunc = CalculateSqrt;
-            SetNodeInfo("Sqrt");
-            return;
-        case MATHFUNCTION_ABS:
-            mCalculateFunc = CalculateAbs;
-            SetNodeInfo("Abs");
-            return;
-        case MATHFUNCTION_FLOOR:
-            mCalculateFunc = CalculateFloor;
-            SetNodeInfo("Floor");
-            return;
-        case MATHFUNCTION_CEIL:
-            mCalculateFunc = CalculateCeil;
-            SetNodeInfo("Ceil");
-            return;
-        case MATHFUNCTION_ONEOVERINPUT:
-            mCalculateFunc = CalculateOneOverInput;
-            SetNodeInfo("1/x");
-            return;
-        case MATHFUNCTION_INVSQRT:
-            mCalculateFunc = CalculateInvSqrt;
-            SetNodeInfo("1.0/sqrt(x)");
-            return;
-        case MATHFUNCTION_LOG:
-            mCalculateFunc = CalculateLog;
-            SetNodeInfo("Log");
-            return;
-        case MATHFUNCTION_LOG10:
-            mCalculateFunc = CalculateLog10;
-            SetNodeInfo("Log10");
-            return;
-        case MATHFUNCTION_EXP:
-            mCalculateFunc = CalculateExp;
-            SetNodeInfo("Exponent");
-            return;
-        case MATHFUNCTION_FRACTION:
-            mCalculateFunc = CalculateFraction;
-            SetNodeInfo("Fraction");
-            return;
-        case MATHFUNCTION_SIGN:
-            mCalculateFunc = CalculateSign;
-            SetNodeInfo("Sign");
-            return;
-        case MATHFUNCTION_ISPOSITIVE:
-            mCalculateFunc = CalculateIsPositive;
-            SetNodeInfo("Is Positive");
-            return;
-        case MATHFUNCTION_ISNEGATIVE:
-            mCalculateFunc = CalculateIsNegative;
-            SetNodeInfo("Is Negative");
-            return;
-        case MATHFUNCTION_ISNEARZERO:
-            mCalculateFunc = CalculateIsNearZero;
-            SetNodeInfo("Is Near Zero");
-            return;
-        case MATHFUNCTION_RANDOMFLOAT:
-            mCalculateFunc = CalculateRandomFloat;
-            SetNodeInfo("Random Float");
-            return;
-        case MATHFUNCTION_RADTODEG:
-            mCalculateFunc = CalculateRadToDeg;
-            SetNodeInfo("RadToDeg");
-            return;
-        case MATHFUNCTION_DEGTORAD:
-            mCalculateFunc = CalculateDegToRad;
-            SetNodeInfo("DegToRad");
-            return;
-        case MATHFUNCTION_SMOOTHSTEP:
-            mCalculateFunc = CalculateSmoothStep;
-            SetNodeInfo("SmoothStep");
-            return;
-        case MATHFUNCTION_ACOS:
-            mCalculateFunc = CalculateACos;
-            SetNodeInfo("Arc Cos");
-            return;
-        case MATHFUNCTION_ASIN:
-            mCalculateFunc = CalculateASin;
-            SetNodeInfo("Arc Sin");
-            return;
-        case MATHFUNCTION_ATAN:
-            mCalculateFunc = CalculateATan;
-            SetNodeInfo("Arc Tan");
-            return;
-        case MATHFUNCTION_NEGATE:
-            mCalculateFunc = CalculateNegate;
-            SetNodeInfo("Negate");
-            return;
-        default:
-            MCORE_ASSERT(false);    // function unknown
-        }
-        ;
-    }
-
-
-    // update the data
-    void BlendTreeFloatMath1Node::OnUpdateAttributes()
-    {
-        // update the math function if needed
-        SetMathFunction((EMathFunction)((uint32)GetAttributeFloat(0)->GetValue()));
     }
 
 
@@ -409,5 +332,60 @@ namespace EMotionFX
     float BlendTreeFloatMath1Node::CalculateASin(float input)               { return MCore::Math::ASin(input); }
     float BlendTreeFloatMath1Node::CalculateATan(float input)               { return MCore::Math::ATan(input); }
     float BlendTreeFloatMath1Node::CalculateNegate(float input)             { return -input; }
-}   // namespace EMotionFX
 
+
+    void BlendTreeFloatMath1Node::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeFloatMath1Node, AnimGraphNode>()
+            ->Version(1)
+            ->Field("mathFunction", &BlendTreeFloatMath1Node::m_mathFunction)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeFloatMath1Node>("Float Math1", "Float Math1 attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeFloatMath1Node::m_mathFunction, "Math Function", "The math function to use.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeFloatMath1Node::Reinit)
+                ->EnumAttribute(MATHFUNCTION_SIN,          "Sine")
+                ->EnumAttribute(MATHFUNCTION_COS,          "Cosine")
+                ->EnumAttribute(MATHFUNCTION_TAN,          "Tan")
+                ->EnumAttribute(MATHFUNCTION_SQR,          "Square")
+                ->EnumAttribute(MATHFUNCTION_SQRT,         "Square Root")
+                ->EnumAttribute(MATHFUNCTION_ABS,          "Absolute")
+                ->EnumAttribute(MATHFUNCTION_FLOOR,        "Floor")
+                ->EnumAttribute(MATHFUNCTION_CEIL,         "Ceil")
+                ->EnumAttribute(MATHFUNCTION_ONEOVERINPUT, "One Over X")
+                ->EnumAttribute(MATHFUNCTION_INVSQRT,      "Inverse Square Root")
+                ->EnumAttribute(MATHFUNCTION_LOG,          "Natural Log")
+                ->EnumAttribute(MATHFUNCTION_LOG10,        "Log Base 10")
+                ->EnumAttribute(MATHFUNCTION_EXP,          "Exponent")
+                ->EnumAttribute(MATHFUNCTION_FRACTION,     "Fraction")
+                ->EnumAttribute(MATHFUNCTION_SIGN,         "Sign")
+                ->EnumAttribute(MATHFUNCTION_ISPOSITIVE,   "Is Positive")
+                ->EnumAttribute(MATHFUNCTION_ISNEGATIVE,   "Is Negative")
+                ->EnumAttribute(MATHFUNCTION_ISNEARZERO,   "Is Near Zero")
+                ->EnumAttribute(MATHFUNCTION_RANDOMFLOAT,  "Random Float")
+                ->EnumAttribute(MATHFUNCTION_RADTODEG,     "Radians to Degrees")
+                ->EnumAttribute(MATHFUNCTION_DEGTORAD,     "Degrees to Radians")
+                ->EnumAttribute(MATHFUNCTION_SMOOTHSTEP,   "Smooth Step [0..1]")
+                ->EnumAttribute(MATHFUNCTION_ACOS,         "Arc Cosine")
+                ->EnumAttribute(MATHFUNCTION_ASIN,         "Arc Sine")
+                ->EnumAttribute(MATHFUNCTION_ATAN,         "Arc Tan")
+                ->EnumAttribute(MATHFUNCTION_NEGATE,       "Negate")
+            ;
+    }
+} // namespace EMotionFX

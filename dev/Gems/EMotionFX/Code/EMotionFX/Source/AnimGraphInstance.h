@@ -12,12 +12,13 @@
 
 #pragma once
 
-// include the required headers
-#include "EMotionFXConfig.h"
+#include <AzCore/Outcome/Outcome.h>
+#include <EMotionFX/Source/AnimGraphEventBuffer.h>
+#include <EMotionFX/Source/AnimGraphObject.h>
+#include <EMotionFX/Source/BaseObject.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
 #include <MCore/Source/Attribute.h>
-#include "BaseObject.h"
-#include "AnimGraphEventBuffer.h"
-#include "AnimGraphObject.h"
+
 
 namespace AZ
 {
@@ -44,7 +45,7 @@ namespace EMotionFX
     class EMFX_API AnimGraphInstance
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphInstance, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_INSTANCE);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         enum
@@ -72,7 +73,6 @@ namespace EMotionFX
 
         static AnimGraphInstance* Create(AnimGraph* animGraph, ActorInstance* actorInstance, MotionSet* motionSet, const InitSettings* initSettings = nullptr);
 
-        void Init();
         void Output(Pose* outputPose, bool autoFreeAllPoses = true);
 
         void Start();
@@ -82,17 +82,17 @@ namespace EMotionFX
         MCORE_INLINE AnimGraph* GetAnimGraph() const                  { return mAnimGraph; }
         MCORE_INLINE MotionSet* GetMotionSet() const                    { return mMotionSet; }
 
-        bool GetFloatParameterValue(const char* paramName, float* outValue);
-        bool GetFloatParameterValueAsBool(const char* paramName, bool* outValue);
-        bool GetFloatParameterValueAsInt(const char* paramName, int32* outValue);
+        bool GetParameterValueAsFloat(const char* paramName, float* outValue);
+        bool GetParameterValueAsBool(const char* paramName, bool* outValue);
+        bool GetParameterValueAsInt(const char* paramName, int32* outValue);
         bool GetVector2ParameterValue(const char* paramName, AZ::Vector2* outValue);
         bool GetVector3ParameterValue(const char* paramName, AZ::Vector3* outValue);
         bool GetVector4ParameterValue(const char* paramName, AZ::Vector4* outValue);
         bool GetRotationParameterValue(const char* paramName, MCore::Quaternion* outRotation);
 
-        bool GetFloatParameterValue(uint32 paramIndex, float* outValue);
-        bool GetFloatParameterValueAsBool(uint32 paramIndex, bool* outValue);
-        bool GetFloatParameterValueAsInt(uint32 paramIndex, int32* outValue);
+        bool GetParameterValueAsFloat(uint32 paramIndex, float* outValue);
+        bool GetParameterValueAsBool(uint32 paramIndex, bool* outValue);
+        bool GetParameterValueAsInt(uint32 paramIndex, int32* outValue);
         bool GetVector2ParameterValue(uint32 paramIndex, AZ::Vector2* outValue);
         bool GetVector3ParameterValue(uint32 paramIndex, AZ::Vector3* outValue);
         bool GetVector4ParameterValue(uint32 paramIndex, AZ::Vector4* outValue);
@@ -103,6 +103,7 @@ namespace EMotionFX
         void CreateParameterValues();
         void AddMissingParameterValues();   // add the missing parameters that the anim graph has to this anim graph instance
         void ReInitParameterValue(uint32 index);
+        void ReInitParameterValues();
         void RemoveParameterValue(uint32 index, bool delFromMem = true);
         void AddParameterValue();       // add the last anim graph parameter to this instance
         void InsertParameterValue(uint32 index);    // add the parameter of the animgraph, at a given index
@@ -120,15 +121,15 @@ namespace EMotionFX
         }
 
         MCORE_INLINE MCore::Attribute* GetParameterValue(uint32 index) const                            { return mParamValues[index]; }
-        MCore::Attribute* FindParameter(const char* name) const;
-        uint32 FindParameterIndex(const char* name) const;
+        MCore::Attribute* FindParameter(const AZStd::string& name) const;
+        AZ::Outcome<size_t> FindParameterIndex(const AZStd::string& name) const;
 
         bool SwitchToState(const char* stateName);
         bool TransitionToState(const char* stateName);
 
-        void SwapParameterValues(uint32 whatIndex, uint32 withIndex);
+        void ResetUniqueData();
+        void UpdateUniqueData();
 
-        void OnUpdateUniqueData();
         void ApplyMotionExtraction();
 
         void RecursiveResetFlags(uint32 flagsToDisable);
@@ -139,27 +140,26 @@ namespace EMotionFX
         void ResetRefDataRefCountsForAllNodes();
 
         void InitInternalAttributes();
+        size_t GetNumInternalAttributes() const;
+        MCore::Attribute* GetInternalAttribute(size_t attribIndex) const;
+
         void RemoveAllInternalAttributes();
-        void ReserveInternalAttributes(uint32 totalNumInternalAttributes);
-        void RemoveInternalAttribute(uint32 index, bool delFromMem = true);   // removes the internal attribute (does not update any indices of other attributes)
+        void ReserveInternalAttributes(size_t totalNumInternalAttributes);
+        void RemoveInternalAttribute(size_t index, bool delFromMem = true);   // removes the internal attribute (does not update any indices of other attributes)
         uint32 AddInternalAttribute(MCore::Attribute* attribute);           // returns the index of the new added attribute
 
-        MCORE_INLINE MCore::Attribute* GetInternalAttribute(uint32 attribIndex) const                   { return mInternalAttributes[attribIndex]; }
-
-        MCORE_INLINE AnimGraphObjectData* FindUniqueObjectData(const AnimGraphObject* object) const   { return mUniqueDatas[ object->GetObjectIndex() ]; }
+        AnimGraphObjectData* FindUniqueObjectData(const AnimGraphObject* object) const   { return m_uniqueDatas[ object->GetObjectIndex() ]; }
         AnimGraphNodeData* FindUniqueNodeData(const AnimGraphNode* node) const;
 
         void AddUniqueObjectData();
         void RegisterUniqueObjectData(AnimGraphObjectData* data);
 
-        MCORE_INLINE AnimGraphObjectData* GetUniqueObjectData(uint32 index)                            { return mUniqueDatas[index]; }
-        MCORE_INLINE uint32 GetNumUniqueObjectDatas() const                                             { return mUniqueDatas.GetLength(); }
-        void SetUniqueObjectData(uint32 index, AnimGraphObjectData* data);
-        void RemoveUniqueObjectData(uint32 index, bool delFromMem);
+        AnimGraphObjectData* GetUniqueObjectData(size_t index)                            { return m_uniqueDatas[index]; }
+        size_t GetNumUniqueObjectDatas() const                                            { return m_uniqueDatas.size(); }
+        void SetUniqueObjectData(size_t index, AnimGraphObjectData* data);
+        void RemoveUniqueObjectData(size_t index, bool delFromMem);
         void RemoveUniqueObjectData(AnimGraphObjectData* uniqueData, bool delFromMem);
         void RemoveAllObjectData(bool delFromMem);
-
-        void RecursivePrepareNodes();
 
         void Update(float timePassedInSeconds);
         void OutputEvents();
@@ -238,7 +238,7 @@ namespace EMotionFX
         void OnStartTransition(AnimGraphStateTransition* transition);
         void OnEndTransition(AnimGraphStateTransition* transition);
 
-        void CollectActiveAnimGraphNodes(MCore::Array<AnimGraphNode*>* outNodes, uint32 nodeTypeID = MCORE_INVALIDINDEX32); // MCORE_INVALIDINDEX32 means all node types
+        void CollectActiveAnimGraphNodes(MCore::Array<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType = AZ::TypeId::CreateNull()); // MCORE_INVALIDINDEX32 means all node types
 
         MCORE_INLINE uint32 GetObjectFlags(uint32 objectIndex) const                                            { return mObjectFlags[objectIndex]; }
         MCORE_INLINE void SetObjectFlags(uint32 objectIndex, uint32 flags)                                      { mObjectFlags[objectIndex] = flags; }
@@ -279,17 +279,17 @@ namespace EMotionFX
         const AnimGraphEventBuffer& GetEventBuffer() const;
 
     private:
-        AnimGraph*                                         mAnimGraph;
+        AnimGraph*                                          mAnimGraph;
         ActorInstance*                                      mActorInstance;         //
         MCore::Array<MCore::Attribute*>                     mParamValues;           // a value for each AnimGraph parameter (the control parameters)
-        MCore::Array<AnimGraphObjectData*>                 mUniqueDatas;           // unique object data
+        AZStd::vector<AnimGraphObjectData*>                 m_uniqueDatas;          // unique object data
         MCore::Array<uint32>                                mObjectFlags;           // the object flags
-        MCore::Array<AnimGraphInstanceEventHandler*>       mEventHandlers;         /**< The event handlers to use to process events. */
-        MCore::Array<MCore::Attribute*>                     mInternalAttributes;
+        MCore::Array<AnimGraphInstanceEventHandler*>        mEventHandlers;         /**< The event handlers to use to process events. */
+        AZStd::vector<MCore::Attribute*>                    m_internalAttributes;
         MotionSet*                                          mMotionSet;             // the used motion set
         MCore::Mutex                                        mMutex;
         InitSettings                                        mInitSettings;
-        AnimGraphEventBuffer                               mEventBuffer;           /**< The event buffer of the last update. */
+        AnimGraphEventBuffer                                mEventBuffer;           /**< The event buffer of the last update. */
         float                                               mVisualizeScale;
         bool                                                mAutoUnregister;        /**< Specifies whether we will automatically unregister this anim graph instance set from the anim graph manager or not, when deleting this object. */
         bool                                                mEnableVisualization;
@@ -303,7 +303,6 @@ namespace EMotionFX
         ~AnimGraphInstance();
         void RecursiveSwitchToEntryState(AnimGraphNode* node);
         void RecursiveResetCurrentState(AnimGraphNode* node);
-        void RecursivePrepareNode(AnimGraphNode* node);
         void InitUniqueDatas();
     };
 }   // namespace EMotionFX

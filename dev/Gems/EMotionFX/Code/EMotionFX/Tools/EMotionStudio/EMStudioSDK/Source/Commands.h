@@ -24,17 +24,16 @@ namespace EMStudio
     MCORE_DEFINECOMMAND_START(CommandSaveActorAssetInfo, "Save actor assetinfo", false)
     MCORE_DEFINECOMMAND_END
 
-    MCORE_DEFINECOMMAND_START(CommandSaveMotionAssetInfo, "Save motion assetinfo", false)
+        MCORE_DEFINECOMMAND_START(CommandSaveMotionAssetInfo, "Save motion assetinfo", false)
     MCORE_DEFINECOMMAND_END
 
-    MCORE_DEFINECOMMAND_START(CommandSaveMotionSet, "Save motion set", false)
-    void RecursiveAddMotionSets(EMotionFX::MotionSet* motionSet, AZStd::vector<EMotionFX::MotionSet*>& motionSets);
+        MCORE_DEFINECOMMAND_START(CommandSaveMotionSet, "Save motion set", false)
     void RecursiveSetDirtyFlag(EMotionFX::MotionSet* motionSet, bool dirtyFlag);
     MCORE_DEFINECOMMAND_END
 
-    MCORE_DEFINECOMMAND_START(CommandSaveAnimGraph, "Save a anim graph", false)
+        MCORE_DEFINECOMMAND_START(CommandSaveAnimGraph, "Save a anim graph", false)
     MCORE_DEFINECOMMAND_END
 
-    MCORE_DEFINECOMMAND_START(CommandSaveWorkspace, "Save Workspace", false)
+        MCORE_DEFINECOMMAND_START(CommandSaveWorkspace, "Save Workspace", false)
     MCORE_DEFINECOMMAND_END
 } // namespace EMStudio

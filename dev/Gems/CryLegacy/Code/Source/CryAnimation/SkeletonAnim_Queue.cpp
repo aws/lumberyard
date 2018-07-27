@@ -14,7 +14,7 @@
 // Description : Implementation of Animation class for parameterisation
 
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include <IRenderAuxGeom.h>
 #include "CharacterInstance.h"
 #include "Model.h"

@@ -30,5 +30,16 @@ namespace AzQtComponents
     AZ_QT_COMPONENTS_API void SetCursorPos(const QPoint& point);
     AZ_QT_COMPONENTS_API void SetCursorPos(int x, int y);
 
+    // Rationale: There are platform-specific differences in how mouse coordinates are handled, this
+    // lets us sample every pixel of a HiDPI screen running at > "100%" scaling.
+
+    struct AZ_QT_COMPONENTS_API MappedPoint
+    {
+        QPoint native;
+        QPoint qt;
+    };
+
+    MappedPoint AZ_QT_COMPONENTS_API MappedCursorPosition();
+
 } // namespace AzQtComponents
 

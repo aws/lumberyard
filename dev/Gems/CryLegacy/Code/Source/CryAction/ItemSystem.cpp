@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ItemSystem.h"
 #include <CryPath.h>
 //#include "ScriptBind_ItemSystem.h"
@@ -492,9 +492,9 @@ void CItemSystem::Scan(const char* folderName)
             }
 
             const char* fileExtension = PathUtil::GetExt(fd.name);
-            if (_stricmp(fileExtension, "xml"))
+            if (azstricmp(fileExtension, "xml"))
             {
-                if (_stricmp(fileExtension, "binxml"))
+                if (azstricmp(fileExtension, "binxml"))
                 {
                     GameWarning("ItemSystem: File '%s' does not have 'xml' extension, skipping.", fd.name);
                 }
@@ -535,7 +535,7 @@ bool CItemSystem::ScanXML(XmlNodeRef& root, const char* xmlFile)
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "ItemSystem");
     MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Item XML (%s)", xmlFile);
 
-    if (strcmpi(root->getTag(), "item"))
+    if (azstricmp(root->getTag(), "item"))
     {
         // We don't want to report error here, we have other files in the same folder like ammo with different tag
         return false;
@@ -720,7 +720,7 @@ EntityId CItemSystem::GiveItem(IActor* pActor, const char* item, bool sound, boo
     INDENT_LOG_DURING_SCOPE(true, "Giving %s a new item of class %s (sound=%u select=%u keepHistory=%u setup='%s')", pActor->GetEntity()->GetEntityTextDescription(), item, sound, select, keepHistory, setup ? setup : "N/A");
 
     static char itemName[65];
-    _snprintf(itemName, 64, "%s%.03d", item, ++m_spawnCount);
+    azsnprintf(itemName, 64, "%s%.03d", item, ++m_spawnCount);
     itemName[sizeof(itemName) - 1] = '\0';
     SEntitySpawnParams params;
     params.sName = itemName;
@@ -1007,13 +1007,13 @@ void CItemSystem::CacheItemSound(const char* className)
                 for (int i = 0; i < n; i++)
                 {
                     const IItemParamsNode* action = actions->GetChild(i);
-                    if (!_stricmp(action->GetName(), "action"))
+                    if (!azstricmp(action->GetName(), "action"))
                     {
                         int na = action->GetChildCount();
                         for (int a = 0; a < na; a++)
                         {
                             const IItemParamsNode* sound = actions->GetChild(i);
-                            if (!_stricmp(sound->GetName(), "sound"))
+                            if (!azstricmp(sound->GetName(), "sound"))
                             {
                                 const char* soundName = sound->GetNameAttribute();
                                 // Audio: do we still need this type of data priming?
@@ -1409,13 +1409,13 @@ void CItemSystem::GiveItemsHelper(IConsoleCmdArgs* args, bool useGiveable, bool 
             {
                 const IItemParamsNode* param = itemParams->GetChild(i);
                 const char* name = param->GetAttribute("name");
-                if (!_stricmp(name ? name : "", "giveable") && useGiveable)
+                if (!azstricmp(name ? name : "", "giveable") && useGiveable)
                 {
                     int val = 0;
                     param->GetAttribute("value", val);
                     give = val != 0;
                 }
-                if (!_stricmp(name ? name : "", "debug") && useDebug)
+                if (!azstricmp(name ? name : "", "debug") && useDebug)
                 {
                     int val = 0;
                     param->GetAttribute("value", val);
@@ -1910,7 +1910,7 @@ uint32 CItemSystem::GetItemSocketCount(const char* item) const
     for (int i = 0; i < sockets->GetChildCount(); ++i)
     {
         const char* name = sockets->GetChildName(i);
-        if (name != 0 && !_stricmp(name, "socket"))
+        if (name != 0 && !azstricmp(name, "socket"))
         {
             ++count;
         }
@@ -1982,7 +1982,7 @@ bool CItemSystem::IsCompatible(const char* item, const char* attachment) const
                 for (int k = 0; k < types->GetChildCount(); ++k)
                 {
                     const char* typeName = types->GetChild(k)->GetAttribute("name");
-                    if (typeName != 0 && !_stricmp(socketName, typeName))
+                    if (typeName != 0 && !azstricmp(socketName, typeName))
                     {
                         return true;
                     }
@@ -2082,7 +2082,7 @@ bool CItemSystem::CanSocketBeEmpty(const char* item, const char* socket) const
     for (int i = 0; i < sockets->GetChildCount(); ++i)
     {
         const char* socketName = sockets->GetChild(i)->GetAttribute("name");
-        if (socketName != 0 && !_stricmp(socketName, socket))
+        if (socketName != 0 && !azstricmp(socketName, socket))
         {
             int canBeEmpty = 1;
             sockets->GetChild(i)->GetAttribute("can_be_empty", canBeEmpty);
@@ -2115,7 +2115,7 @@ void CItemSystem::InsertFolder(const char* folder)
 {
     for (TFolderList::const_iterator folderCit = m_folders.begin(); folderCit != m_folders.end(); ++folderCit)
     {
-        if (_stricmp(folderCit->c_str(), folder) == 0)
+        if (azstricmp(folderCit->c_str(), folder) == 0)
         {
             return;
         }

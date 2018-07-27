@@ -113,7 +113,7 @@ namespace AzToolsFramework
     void LocalFileSCComponent::RequestLatest(const char* fullFilePath, const SourceControlResponseCallback& respCallback)
     {
         SourceControlFileInfo fileInfo(fullFilePath);
-        auto job = AZ::CreateJobFunction([fileInfo, respCallback, this]() mutable
+        auto job = AZ::CreateJobFunction([fileInfo, respCallback]() mutable
         {
             RefreshInfoFromFileSystem(fileInfo);
             AZ::TickBus::QueueFunction(respCallback, true, fileInfo);
@@ -125,7 +125,7 @@ namespace AzToolsFramework
     {
         SourceControlFileInfo fileInfoSrc(sourcePathFull);
         SourceControlFileInfo fileInfoDst(destPathFull);
-        auto job = AZ::CreateJobFunction([fileInfoSrc, fileInfoDst, respCallback, this]() mutable
+        auto job = AZ::CreateJobFunction([fileInfoSrc, fileInfoDst, respCallback]() mutable
         {
             RefreshInfoFromFileSystem(fileInfoSrc);
             auto succeeded = AZ::IO::SystemFile::Rename(fileInfoSrc.m_filePath.c_str(), fileInfoDst.m_filePath.c_str());
@@ -142,7 +142,7 @@ namespace AzToolsFramework
         if (serialize)
         {
             serialize->Class<LocalFileSCComponent, AZ::Component>()
-                ->SerializerForEmptyClass()
+
             ;
         }
     }

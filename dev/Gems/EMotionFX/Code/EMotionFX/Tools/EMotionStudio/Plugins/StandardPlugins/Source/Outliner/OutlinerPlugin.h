@@ -14,7 +14,6 @@
 
 #include <MCore/Source/Array.h>
 #include "../StandardPluginsConfig.h"
-#include <MysticQt/Source/SearchButton.h>
 #include "../../../../EMStudioSDK/Source/OutlinerManager.h"
 #include "../../../../EMStudioSDK/Source/DockWidgetPlugin.h"
 
@@ -24,6 +23,10 @@ QT_FORWARD_DECLARE_CLASS(QListWidget)
 QT_FORWARD_DECLARE_CLASS(QTreeWidget)
 QT_FORWARD_DECLARE_CLASS(QLabel)
 
+namespace AzQtComponents
+{
+    class FilteredSearchWidget;
+}
 
 namespace EMStudio
 {
@@ -62,7 +65,7 @@ namespace EMStudio
 
     private slots:
         void OnCategoryItemSelectionChanged();
-        void OnSearchStringChanged(const QString& text);
+        void OnTextFilterChanged(const QString& text);
         void OnCategoryTreeContextMenu(const QPoint& pos);
         void OnCategoryItemListContextMenu(const QPoint& pos);
         void OnCategoryItemTableContextMenu(const QPoint& pos);
@@ -81,7 +84,8 @@ namespace EMStudio
         void UpdateViewer();
 
     private:
-        MysticQt::SearchButton* mFindWidget;
+        AzQtComponents::FilteredSearchWidget* m_searchWidget;
+        AZStd::string           m_searchWidgetText;
         QTreeWidgetItem*        mCategoryRootItem;
         QTreeWidget*            mCategoryTreeWidget;
         QTableWidget*           mViewerTableWidget;

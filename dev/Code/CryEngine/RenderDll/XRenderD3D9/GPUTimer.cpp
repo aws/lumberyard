@@ -16,8 +16,8 @@
 #include "DriverD3D.h"
 #include <AzCore/Debug/EventTraceDrillerBus.h>
 
-bool CSimpleGPUTimer::s_bTimingEnabled = false;
-bool CSimpleGPUTimer::s_bTimingAllowed = true;
+bool CD3DProfilingGPUTimer::s_bTimingEnabled = false;
+bool CD3DProfilingGPUTimer::s_bTimingAllowed = true;
 
 namespace EventTrace
 {
@@ -26,7 +26,7 @@ namespace EventTrace
     const char* GpuCategory = "GPU";
 }
 
-void CSimpleGPUTimer::EnableTiming()
+void CD3DProfilingGPUTimer::EnableTiming()
 {
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -38,7 +38,7 @@ void CSimpleGPUTimer::EnableTiming()
 #define GPUTIMER_CPP_SECTION_5 5
 #endif
 
-#ifdef ENABLE_SIMPLE_GPU_TIMERS
+#ifdef ENABLE_PROFILING_GPU_TIMERS
     if (!s_bTimingEnabled && s_bTimingAllowed)
     {
         s_bTimingEnabled = true;
@@ -46,10 +46,9 @@ void CSimpleGPUTimer::EnableTiming()
 #endif
 }
 
-
-void CSimpleGPUTimer::DisableTiming()
+void CD3DProfilingGPUTimer::DisableTiming()
 {
-#ifdef ENABLE_SIMPLE_GPU_TIMERS
+#ifdef ENABLE_PROFILING_GPU_TIMERS
     if (s_bTimingEnabled)
     {
         s_bTimingEnabled = false;
@@ -57,14 +56,12 @@ void CSimpleGPUTimer::DisableTiming()
 #endif
 }
 
-
-void CSimpleGPUTimer::AllowTiming()
+void CD3DProfilingGPUTimer::AllowTiming()
 {
     s_bTimingAllowed = true;
 }
 
-
-void CSimpleGPUTimer::DisallowTiming()
+void CD3DProfilingGPUTimer::DisallowTiming()
 {
     s_bTimingAllowed = false;
     if (gcpRendD3D->m_pPipelineProfiler)
@@ -74,8 +71,45 @@ void CSimpleGPUTimer::DisallowTiming()
     DisableTiming();
 }
 
+void CD3DProfilingGPUTimer::Start(const char* name)
+{
+#ifdef ENABLE_PROFILING_GPU_TIMERS
+    if (s_bTimingEnabled)
+    {
+        CD3DGPUTimer::Start(name);
+    }
+#endif
+}
 
-CSimpleGPUTimer::CSimpleGPUTimer()
+void CD3DProfilingGPUTimer::Stop()
+{
+#ifdef ENABLE_PROFILING_GPU_TIMERS
+    if (s_bTimingEnabled)
+    {
+        CD3DGPUTimer::Stop();
+    }
+#endif
+}
+
+void CD3DProfilingGPUTimer::UpdateTime()
+{
+#ifdef ENABLE_PROFILING_GPU_TIMERS
+    if (s_bTimingEnabled)
+    {
+        CD3DGPUTimer::UpdateTime();
+    }
+#endif
+}
+
+bool CD3DProfilingGPUTimer::Init()
+{
+#ifdef ENABLE_PROFILING_GPU_TIMERS
+    return CD3DGPUTimer::Init();
+#endif
+    return false;
+}
+
+CD3DGPUTimer::CD3DGPUTimer()
 {
     m_time = 0.f;
     m_smoothedTime = 0.f;
@@ -88,60 +122,15 @@ CSimpleGPUTimer::CSimpleGPUTimer()
 #endif
 }
 
-
-CSimpleGPUTimer::~CSimpleGPUTimer()
+CD3DGPUTimer::~CD3DGPUTimer()
 {
     Release();
 }
 
-void CSimpleGPUTimer::Release()
+void CD3DGPUTimer::Start(const char* name)
 {
-#if GPUTIMER_CPP_TRAIT_RELEASE_RELEASEQUERY
-    SAFE_RELEASE(m_pQueryStart);
-    SAFE_RELEASE(m_pQueryStop);
-    SAFE_RELEASE(m_pQueryFreq);
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
-#endif
-    m_bInitialized = false;
-    m_bWaiting = false;
-    m_bStarted = false;
-    m_smoothedTime = 0.f;
-}
-
-bool CSimpleGPUTimer::Init()
-{
-#ifdef ENABLE_SIMPLE_GPU_TIMERS
-    if (!m_bInitialized)
-    {
-    #if GPUTIMER_CPP_TRAIT_INIT_CREATEQUERY
-        D3D11_QUERY_DESC stampDisjointDesc = { D3D11_QUERY_TIMESTAMP_DISJOINT, 0 };
-        D3D11_QUERY_DESC stampDesc = { D3D11_QUERY_TIMESTAMP, 0 };
-
-        if (gcpRendD3D->GetDevice().CreateQuery(&stampDisjointDesc, &m_pQueryFreq) == S_OK &&
-            gcpRendD3D->GetDevice().CreateQuery(&stampDesc, &m_pQueryStart) == S_OK &&
-            gcpRendD3D->GetDevice().CreateQuery(&stampDesc, &m_pQueryStop) == S_OK)
-        {
-            m_bInitialized = true;
-        }
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
-    #endif
-
-        EBUS_EVENT(AZ::Debug::EventTraceDrillerSetupBus, SetThreadName, EventTrace::GpuThreadId, EventTrace::GpuThreadName);
-    }
-#endif
-
-    return m_bInitialized;
-}
-
-
-void CSimpleGPUTimer::Start(const char* name)
-{
-#ifdef ENABLE_SIMPLE_GPU_TIMERS
-    if (s_bTimingEnabled && !m_bWaiting && Init())
+#ifndef NULL_RENDERER
+    if (!m_bWaiting && Init())
     {
         m_Name = name;
 
@@ -158,28 +147,28 @@ void CSimpleGPUTimer::Start(const char* name)
 #endif
 }
 
-void CSimpleGPUTimer::Stop()
+void CD3DGPUTimer::Stop()
 {
-#ifdef ENABLE_SIMPLE_GPU_TIMERS
-    if (s_bTimingEnabled && m_bStarted && m_bInitialized)
+#ifndef NULL_RENDERER
+    if (m_bStarted && m_bInitialized)
     {
     #if GPUTIMER_CPP_TRAIT_STOP_ENDQUERY
         gcpRendD3D->GetDeviceContext().End(m_pQueryStop);
         gcpRendD3D->GetDeviceContext().End(m_pQueryFreq);
         m_bStarted = false;
         m_bWaiting = true;
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
+    #elif defined(AZ_RESTRICTED_PLATFORM)
+    #define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_4
+    #include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
     #endif
     }
 #endif
 }
 
-void CSimpleGPUTimer::UpdateTime()
+void CD3DGPUTimer::UpdateTime()
 {
-#ifdef ENABLE_SIMPLE_GPU_TIMERS
-    if (s_bTimingEnabled && m_bWaiting && m_bInitialized)
+#ifndef NULL_RENDERER
+    if (m_bWaiting && m_bInitialized)
     {
     #if GPUTIMER_CPP_TRAIT_UPDATETIME_GETDATA
         D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
@@ -221,7 +210,7 @@ void CSimpleGPUTimer::UpdateTime()
 #endif
 }
 
-void CSimpleGPUTimer::RecordSlice(AZ::u64 timeStart, AZ::u64 timeStop, AZ::u64 frequency)
+void CD3DGPUTimer::RecordSlice(AZ::u64 timeStart, AZ::u64 timeStop, AZ::u64 frequency)
 {
 #if defined(CRY_USE_DX12)
     {
@@ -232,4 +221,47 @@ void CSimpleGPUTimer::RecordSlice(AZ::u64 timeStart, AZ::u64 timeStop, AZ::u64 f
         EBUS_EVENT(AZ::Debug::EventTraceDrillerBus, RecordSlice, m_Name.c_str(), EventTrace::GpuCategory, EventTrace::GpuThreadId, cpuTimeStart, durationInMicroseconds);
     }
 #endif
+}
+
+void CD3DGPUTimer::Release()
+{
+#if GPUTIMER_CPP_TRAIT_RELEASE_RELEASEQUERY
+    SAFE_RELEASE(m_pQueryStart);
+    SAFE_RELEASE(m_pQueryStop);
+    SAFE_RELEASE(m_pQueryFreq);
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+    m_bInitialized = false;
+    m_bWaiting = false;
+    m_bStarted = false;
+    m_smoothedTime = 0.f;
+}
+
+bool CD3DGPUTimer::Init()
+{
+#ifndef NULL_RENDERER
+    if (!m_bInitialized)
+    {
+    #if GPUTIMER_CPP_TRAIT_INIT_CREATEQUERY
+        D3D11_QUERY_DESC stampDisjointDesc = { D3D11_QUERY_TIMESTAMP_DISJOINT, 0 };
+        D3D11_QUERY_DESC stampDesc = { D3D11_QUERY_TIMESTAMP, 0 };
+
+        if (gcpRendD3D->GetDevice().CreateQuery(&stampDisjointDesc, &m_pQueryFreq) == S_OK &&
+            gcpRendD3D->GetDevice().CreateQuery(&stampDesc, &m_pQueryStart) == S_OK &&
+            gcpRendD3D->GetDevice().CreateQuery(&stampDesc, &m_pQueryStop) == S_OK)
+        {
+            m_bInitialized = true;
+        }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
+    #endif
+
+        EBUS_EVENT(AZ::Debug::EventTraceDrillerSetupBus, SetThreadName, EventTrace::GpuThreadId, EventTrace::GpuThreadName);
+    }
+#endif
+
+    return m_bInitialized;
 }

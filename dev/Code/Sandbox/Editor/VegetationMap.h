@@ -90,6 +90,9 @@ public:
     //! Remove all objects.
     void ClearObjects();
 
+    //! Remove everything.
+    void ClearAll();
+
     //! Hide all instances of this object.
     void HideObject(CVegetationObject* object, bool bHide);
     void HideAllObjects(bool bHide);
@@ -256,7 +259,6 @@ private:
     //! Returns true if theres no any objects within radius from given position.
     bool IsPlaceEmpty(const Vec3& pos, float radius, CVegetationInstance* ignore);
 
-    void ClearAll();
     void ClearSectors();
 
     void LoadOldStuff(CXmlArchive& xmlAr);

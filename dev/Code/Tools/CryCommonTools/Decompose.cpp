@@ -368,7 +368,7 @@ HVect spect_decomp(HMatrix S, HMatrix U)
  */
 Quat snuggle(Quat q, HVect *k)
 {
-#define SQRTHALF (0.7071067811865475244)
+#define SQRTHALF (0.7071067811865475244f)
 #define sgn(n,v)    ((n)?-(v):(v))
 #define swap(a,i,j) {a[3]=a[i]; a[i]=a[j]; a[j]=a[3];}
 #define cycle(a,p)  if (p) {a[3]=a[0]; a[0]=a[1]; a[1]=a[2]; a[2]=a[3];}\

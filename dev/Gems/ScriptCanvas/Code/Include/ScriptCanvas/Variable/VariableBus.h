@@ -41,7 +41,7 @@ namespace ScriptCanvas
         virtual AZStd::string_view GetName() const = 0;
 
 
-        //! Changes the name of the variable with the specified @variableId within the handler 
+        //! Changes the name of the variable with the specified @variableId within the handler
         //! returns an AZ::Outcome to indicate if the variable was able to be succesfully or an error message to indicate
         //! why the rename failed
         virtual AZ::Outcome<void, AZStd::string> RenameVariable(AZStd::string_view newVarName) = 0;
@@ -112,7 +112,7 @@ namespace ScriptCanvas
 
         //! Searches for a variable with the specified name
         //! returns pointer to the first variable with the specified name or nullptr
-        virtual VariableDatum* FindVariable(AZStd::string_view propName) = 0;        
+        virtual VariableDatum* FindVariable(AZStd::string_view propName) = 0;
 
         //! Returns the type associated with the specified variable.
         virtual Data::Type GetVariableType(const VariableId& variableId) = 0;
@@ -128,7 +128,7 @@ namespace ScriptCanvas
 
         //! Looks up the variable name that the variable data is associated with in the handler of the bus
         virtual AZStd::string_view GetVariableName(const VariableId&) const = 0;
-        //! Changes the name of the variable with the specified @variableId within the handler 
+        //! Changes the name of the variable with the specified @variableId within the handler
         //! returns an AZ::Outcome to indicate if the variable was able to be succesfully or an error message to indicate
         //! why the rename failed
         virtual AZ::Outcome<void, AZStd::string> RenameVariable(const VariableId& variableId, AZStd::string_view newVarName) = 0;
@@ -183,11 +183,11 @@ namespace ScriptCanvas
         using BusIdType = AZ::EntityId;
 
         // Invoked when after a variable has been added to the handler
-        virtual void OnVariableAdded(const ScriptCanvas::VariableId& /*variableId*/, AZStd::string_view /*variableName*/) {}
+        virtual void OnVariableAddedToGraph(const ScriptCanvas::VariableId& /*variableId*/, AZStd::string_view /*variableName*/) {}
         // Invoked after a variable has been removed from the handler
-        virtual void OnVariableRemoved(const ScriptCanvas::VariableId& /*variableId*/, AZStd::string_view /*variableName*/) {}
+        virtual void OnVariableRemovedFromGraph(const ScriptCanvas::VariableId& /*variableId*/, AZStd::string_view /*variableName*/) {}
         // Invoked after a variable has been renamed
-        virtual void OnVariableNameChanged(const ScriptCanvas::VariableId& /*variableId*/, AZStd::string_view /*variableName*/) {}
+        virtual void OnVariableNameChangedInGraph(const ScriptCanvas::VariableId& /*variableId*/, AZStd::string_view /*variableName*/) {}
         // Invoked after the variable data has been set on the variable handler
         virtual void OnVariableDataSet() {}
     };
@@ -223,7 +223,7 @@ namespace ScriptCanvas
         // Invoked after the variable id has been changed on the SetVariable/GetVariableNode
         virtual void OnVariableIdChanged(const VariableId& /*oldVariableId*/, const VariableId& /*newVariableId*/) {}
         // Invoked after the variable has been removed from the GraphVariableManagerRequestBus
-        virtual void OnVariableRemoved(const VariableId& /*removedVariableId*/) {}
+        virtual void OnVariableRemovedFromNode(const VariableId& /*removedVariableId*/) {}
     };
 
     using VariableNodeNotificationBus = AZ::EBus<VariableNodeNotifications>;

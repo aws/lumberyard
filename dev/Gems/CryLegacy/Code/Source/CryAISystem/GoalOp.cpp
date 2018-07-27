@@ -14,7 +14,7 @@
 // Description : implementation of the CGoalOp class.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "GoalOp.h"
 #include "GoalOpTrace.h"
 #include "Puppet.h"

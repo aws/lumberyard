@@ -14,7 +14,7 @@
 // Description : Generic report dialog.
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ReportDialog.h"
 #include "Util/CryMemFile.h"
 

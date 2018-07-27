@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "QTangent.h"
 #include "VertexFormats.h"
 #include "../ModelMesh.h"

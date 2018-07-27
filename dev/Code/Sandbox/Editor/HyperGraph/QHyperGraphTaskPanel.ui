@@ -175,7 +175,7 @@
   <customwidget>
    <class>CFlowGraphProperties</class>
    <extends>QWidget</extends>
-   <header>FlowGraphProperties.h</header>
+   <header>HyperGraph/FlowGraphProperties.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -187,7 +187,7 @@
   <customwidget>
    <class>CFlowGraphTokensCtrl</class>
    <extends>QWidget</extends>
-   <header>FlowGraphTokens.h</header>
+   <header>HyperGraph/FlowGraphTokens.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

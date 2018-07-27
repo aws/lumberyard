@@ -230,14 +230,18 @@
 		<tooltip path="Audio.Sound_Control_Time" title="Sound Control Time" content="The sound control time type- Affects audio when game is run."/>
 		<tooltip path="Size" title="Size"/>
 		<tooltip path="Size.Maintain_Aspect_Ratio" title="Maintain Aspect Ratio" content="Maintain particle aspect ratio"/>
-		<tooltip path="Size.Size_X" title="Size X" content="X size for sprites; ignored for geometry"/>
+		<tooltip path="Size.Size_X" title="Size X" content="X size for sprites; size scale on geometry's X axis"/>
 		<tooltip path="Size.Size_X.Random" title="Random" content="Random variation, fraction range = [1-Random,1]."/>
 		<tooltip path="Size.Size_X.Emitter_Strength" title="Emitter Strength" content="Value variance with emitter Strength, or emitter age if Strength &lt; 0" disabled_content="Disabled when Emitter Lifetime is set to 0."/>
 		<tooltip path="Size.Size_X.Particle_Age" title="Particle Age" content="Value variance with particle age"/>
-		<tooltip path="Size.Size_Y" title="Size Y" content="Y size for sprites; size scale for geometry"/>
+		<tooltip path="Size.Size_Y" title="Size Y" content="Y size for sprites; size scale on geometry's Y axis"/>
 		<tooltip path="Size.Size_Y.Random" title="Random" content="Random variation, fraction range = [1-Random,1]."/>
 		<tooltip path="Size.Size_Y.Emitter_Strength" title="Emitter Strength" content="Value variance with emitter Strength, or emitter age if Strength &lt; 0" disabled_content="Disabled when Emitter Lifetime is set to 0."/>
 		<tooltip path="Size.Size_Y.Particle_Age" title="Particle Age" content="Value variance with particle age"/>
+		<tooltip path="Size.Size_Z" title="Size Z" content="Size scale on geometry's Z axis"/>
+		<tooltip path="Size.Size_Z.Random" title="Random" content="Random variation, fraction range = [1-Random,1]."/>
+		<tooltip path="Size.Size_Z.Emitter_Strength" title="Emitter Strength" content="Value variance with emitter Strength, or emitter age if Strength &lt; 0" disabled_content="Disabled when Emitter Lifetime is set to 0."/>
+		<tooltip path="Size.Size_Z.Particle_Age" title="Particle Age" content="Value variance with particle age"/>
 		<tooltip path="Size.Pivot_X" title="Pivot X" content="Pivot offset in X direction"/>
 		<tooltip path="Size.Pivot_X.Random" title="Random" content="Random variation, fraction range = [1-Random,1]."/>
 		<tooltip path="Size.Pivot_X.Emitter_Strength" title="Emitter Strength" content="Value variance with emitter Strength, or emitter age if Strength &lt; 0" disabled_content="Disabled when Emitter Lifetime is set to 0."/>
@@ -246,6 +250,10 @@
 		<tooltip path="Size.Pivot_Y.Random" title="Random" content="Random variation, fraction range = [1-Random,1]."/>
 		<tooltip path="Size.Pivot_Y.Emitter_Strength" title="Emitter Strength" content="Value variance with emitter Strength, or emitter age if Strength &lt; 0" disabled_content="Disabled when Emitter Lifetime is set to 0."/>
 		<tooltip path="Size.Pivot_Y.Particle_Age" title="Particle Age" content="Value variance with particle age"/>
+		<tooltip path="Size.Pivot_Z" title="Pivot Z" content="Pivot offset in Z direction; geometry particle only"/>
+		<tooltip path="Size.Pivot_Z.Random" title="Random" content="Random variation, fraction range = [1-Random,1]."/>
+		<tooltip path="Size.Pivot_Z.Emitter_Strength" title="Emitter Strength" content="Value variance with emitter Strength, or emitter age if Strength &lt; 0" disabled_content="Disabled when Emitter Lifetime is set to 0."/>
+		<tooltip path="Size.Pivot_Z.Particle_Age" title="Particle Age" content="Value variance with particle age"/>
 		<tooltip path="Size.Stretch" title="Stretch" content="Stretch particle into moving direction, amount in seconds"/>
 		<tooltip path="Size.Local_Stretch" title="Stretch" content="Multiplier to stretch along particles Y axis in seconds"/>
 		<tooltip path="Size.Stretch.Random" title="Random" content="Random variation, fraction range = [1-Random,1]."/>
@@ -333,7 +341,7 @@
 		<tooltip path="Collision.Thickness" title="Thickness" content="Used for projection depth for Decal particle type. And simulates thickness for physicalized particles."/>
 		<tooltip path="Collision.Density" title="Density" content="Mass density for physicslized particles"/>
 		<tooltip path="Visibility" title="Visibility"/>
-		<tooltip path="Visibility.Camera_Non_Facing_Fade" title="Camera Non Facing Fade" content="If the particle in the trail is close to orthagonal to the camera it will be replaced with a fade particle."/>
+		<tooltip path="Visibility.Camera_Non_Facing_Fade" title="Camera Non Facing Fade" content="If the particle is close to orthagonal to the camera it will be faded out."/>
 		<tooltip path="Visibility.View_Distance_Adjust" title="View Distance Adjust" content="Multiplier to automatic distance fade-out"/>
 		<tooltip path="Visibility.Camera_Fade_Near_Strength" title="Fade Strength at Min Distance" content="Exponential power applied during the fade transition at Camera Min Distance"/>
 		<tooltip path="Visibility.Camera_Fade_Far_Strength" title="Fade Strength at Max Distance" content="Exponential power applied during the fade transition at Camera Max Distance"/>

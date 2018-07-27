@@ -256,7 +256,7 @@ namespace CharacterTool {
     {
         for (size_t i = 0; i < m_columns.size(); ++i)
         {
-            if (stricmp(m_columns[i].label, label) == 0)
+            if (azstricmp(m_columns[i].label, label) == 0)
             {
                 return int(i);
             }
@@ -899,7 +899,7 @@ namespace CharacterTool {
         for (auto provider : m_providers)
         {
             provider->SaveAll(errorInfo,
-                [this, captureTrackerData, onSaveComplete](bool success)
+                [captureTrackerData, onSaveComplete](bool success)
                 {
                     captureTrackerData->m_numProviders -= 1;
                     if (!success)
@@ -1225,7 +1225,7 @@ namespace CharacterTool {
         string path = Path::GamePathToFullPath(entry->path.c_str()).toUtf8().data();
         if (!gEnv->pCryPak->IsFileExist(path.c_str(), ICryPak::eFileLocation_OnDisk))
         {
-            if (stricmp(PathUtil::GetExt(path.c_str()), "caf") == 0)
+            if (azstricmp(PathUtil::GetExt(path.c_str()), "caf") == 0)
             {
                 path = PathUtil::ReplaceExtension(path, "i_caf");
             }

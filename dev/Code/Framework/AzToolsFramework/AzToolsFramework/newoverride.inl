@@ -13,7 +13,7 @@
 // for tracking purposes.
 
 #include <AzCore/base.h>
-#include <AzCore/Memory/memory.h>
+#include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/allocatorbase.h>
 #include <AzCore/Memory/SystemAllocator.h>
 

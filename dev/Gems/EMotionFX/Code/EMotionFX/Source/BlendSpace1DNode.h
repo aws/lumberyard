@@ -13,7 +13,8 @@
 #pragma once
 
 
-#include "BlendSpaceNode.h"
+#include <EMotionFX/Source/BlendSpaceNode.h>
+#include <EMotionFX/Source/BlendSpaceParamEvaluator.h>
 #include <AzCore/std/containers/vector.h>
 
 namespace EMotionFX
@@ -26,24 +27,9 @@ namespace EMotionFX
     class EMFX_API BlendSpace1DNode
         : public BlendSpaceNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendSpace1DNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDSPACE);
-        AZ_RTTI(BlendSpace2DNode, "{E41B443C-8423-4764-97F0-6C57997C2E5B}", BlendSpaceNode);
-
     public:
-        enum
-        {
-            TYPE_ID = 0x00022100
-        };
-
-        enum
-        {
-            ATTRIB_CALCULATION_METHOD   = 0,
-            ATTRIB_EVALUATOR            = 1,
-            ATTRIB_SYNC                 = 2,
-            ATTRIB_SYNC_MASTERMOTION    = 3,
-            ATTRIB_EVENTMODE            = 4,
-            ATTRIB_MOTIONS              = 5
-        };
+        AZ_RTTI(BlendSpace1DNode, "{E41B443C-8423-4764-97F0-6C57997C2E5B}", BlendSpaceNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         enum
         {
@@ -67,31 +53,17 @@ namespace EMotionFX
             : public AnimGraphNodeData
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
+
         public:
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)
-                , m_allMotionsHaveSyncTracks(false)
-                , m_currentPosition(0)
-                , m_masterMotionIdx(0)
-                , m_hasOverlappingCoordinates(false)
-            {
-            }
+            AZ_CLASS_ALLOCATOR_DECL
 
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
             ~UniqueData();
-            uint32 GetClassSize() const override { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override
-            {
-                return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance);
-            }
 
-            float GetRangeMin() const
-            {
-                return m_sortedMotions.empty() ? 0.0f : m_motionCoordinates[m_sortedMotions.front()];
-            }
-            float GetRangeMax() const
-            {
-                return m_sortedMotions.empty() ? 0.0f : m_motionCoordinates[m_sortedMotions.back()];
-            }
+            float GetRangeMin() const;
+            float GetRangeMax() const;
+
+            void Reset() override;
 
         public:
             MotionInfos                     m_motionInfos;
@@ -105,7 +77,11 @@ namespace EMotionFX
             bool                            m_hasOverlappingCoordinates; // indicates if two coordinates are overlapping, to notify the UI
         };
 
-        static BlendSpace1DNode* Create(AnimGraph* animGraph);
+        BlendSpace1DNode();
+        ~BlendSpace1DNode();
+
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         bool GetValidCalculationMethodAndEvaluator() const;
         const char* GetAxisLabel() const;
@@ -117,18 +93,11 @@ namespace EMotionFX
         bool    GetHasOutputPose() const override { return true; }
         uint32  GetVisualColor() const override { return MCore::RGBA(59, 181, 200); }
         void    OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
-        void    Init(AnimGraphInstance* animGraphInstance) override;
-        void    RegisterPorts() override;
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 
         // AnimGraphObject overrides
-        void        RegisterAttributes() override;
-        const char* GetTypeString() const override;
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
-        void OnUpdateAttributes() override;
 
         //! Update the positions of all motions in the blend space.
         void UpdateMotionPositions(UniqueData& uniqueData);
@@ -136,16 +105,35 @@ namespace EMotionFX
         //! Called to set the current position from GUI.
         void SetCurrentPosition(float point);
 
+        void SetCalculationMethod(ECalculationMethod calculationMethod);
+        ECalculationMethod GetCalculationMethod() const;
+
+        void SetSyncMasterMotionId(const AZStd::string& syncMasterMotionId);
+        const AZStd::string& GetSyncMasterMotionId() const;
+
+        void SetEvaluatorType(const AZ::TypeId& evaluatorType);
+        const AZ::TypeId& GetEvaluatorType() const;
+        BlendSpaceParamEvaluator* GetEvaluator() const;
+
+        void SetSyncMode(ESyncMode syncMode);
+        ESyncMode GetSyncMode() const;
+
+        void SetEventFilterMode(EBlendSpaceEventMode eventFilterMode);
+        EBlendSpaceEventMode GetEventFilterMode() const;
+
+        void SetMotions(const AZStd::vector<BlendSpaceMotion>& motions) override;
+        const AZStd::vector<BlendSpaceMotion>& GetMotions() const override;
+
+        static void Reflect(AZ::ReflectContext* context);
+
     public:
         //  BlendSpaceNode overrides
 
         //! Compute the position of the motion in blend space.
-        void ComputeMotionPosition(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance, AZ::Vector2& position) override;
+        void ComputeMotionCoordinates(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance, AZ::Vector2& position) override;
 
         //! Restore the motion coordinates that are set to automatic mode back to the computed values.
-        void RestoreMotionCoords(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance) override;
-
-        MCore::AttributeArray* GetMotionAttributeArray() const override;
+        void RestoreMotionCoordinates(BlendSpaceMotion& motion, AnimGraphInstance* animGraphInstance) override;
 
     protected:
         // AnimGraphNode overrides
@@ -156,9 +144,6 @@ namespace EMotionFX
         void Rewind(AnimGraphInstance* animGraphInstance) override;
 
     private:
-        BlendSpace1DNode(AnimGraph* animGraph);
-        ~BlendSpace1DNode();
-
         bool    UpdateMotionInfos(AnimGraphInstance* animGraphInstance);
         void    SortMotionInstances(UniqueData& uniqueData);
 
@@ -168,6 +153,18 @@ namespace EMotionFX
         void    SetBindPoseAtOutput(AnimGraphInstance* animGraphInstance);
 
     private:
+        AZ::Crc32 GetEvaluatorVisibility() const;
+        AZ::Crc32 GetSyncOptionsVisibility() const;
+
+        AZStd::vector<BlendSpaceMotion> m_motions;
+        AZStd::string                   m_syncMasterMotionId;
+        BlendSpaceParamEvaluator*       m_evaluator;
+        AZ::TypeId                      m_evaluatorType;
+        ECalculationMethod              m_calculationMethod;
+        ESyncMode                       m_syncMode;
+        EBlendSpaceEventMode            m_eventFilterMode;
+
+
         float   m_currentPositionSetInteractively;
     };
 }   // namespace EMotionFX

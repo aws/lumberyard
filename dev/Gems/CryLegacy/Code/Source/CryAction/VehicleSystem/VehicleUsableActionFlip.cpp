@@ -14,7 +14,7 @@
 // Description : Implements a usable action to recover a vehicle by flipping it over
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "GameObjects/GameObject.h"
 #include "IActorSystem.h"

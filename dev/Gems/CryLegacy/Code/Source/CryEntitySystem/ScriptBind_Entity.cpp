@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "ScriptBind_Entity.h"
 #include "Entity.h"
 #include "EntitySystem.h"
@@ -53,12 +53,6 @@
 #include "Components/IComponentCamera.h"
 #include "DynamicResponseProxy.h"
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
-
-// TypeInfo implementations
-#ifndef AZ_MONOLITHIC_BUILD
-    #include "ParticleParams_TypeInfo.h"
-    #include "Common_TypeInfo.h"
-#endif
 
 //#pragma optimize("", off)
 //#pragma inline_depth(0)
@@ -1225,7 +1219,7 @@ int CScriptBind_Entity::LoadObject(IFunctionHandler* pH, int nSlot, const char* 
     GET_ENTITY;
 
     const char* ext = PathUtil::GetExt(sFilename);
-    if (_stricmp(ext, CRY_SKEL_FILE_EXT) == 0 || _stricmp(ext, CRY_CHARACTER_DEFINITION_FILE_EXT) == 0 || _stricmp(ext, CRY_ANIM_GEOMETRY_FILE_EXT) == 0)
+    if (azstricmp(ext, CRY_SKEL_FILE_EXT) == 0 || azstricmp(ext, CRY_CHARACTER_DEFINITION_FILE_EXT) == 0 || azstricmp(ext, CRY_ANIM_GEOMETRY_FILE_EXT) == 0)
     {
         nSlot = pEntity->LoadCharacter(nSlot, sFilename);
     }
@@ -1248,7 +1242,7 @@ int CScriptBind_Entity::LoadObjectWithFlags(IFunctionHandler* pH, int nSlot, con
     GET_ENTITY;
 
     const char* ext = PathUtil::GetExt(sFilename);
-    if (_stricmp(ext, CRY_SKEL_FILE_EXT) == 0 || _stricmp(ext, CRY_CHARACTER_DEFINITION_FILE_EXT) == 0 || _stricmp(ext, CRY_ANIM_GEOMETRY_FILE_EXT) == 0)
+    if (azstricmp(ext, CRY_SKEL_FILE_EXT) == 0 || azstricmp(ext, CRY_CHARACTER_DEFINITION_FILE_EXT) == 0 || azstricmp(ext, CRY_ANIM_GEOMETRY_FILE_EXT) == 0)
     {
         nSlot = pEntity->LoadCharacter(nSlot, sFilename);
     }
@@ -2977,7 +2971,7 @@ int CScriptBind_Entity::StartAnimation(IFunctionHandler* pH)
         return pH->EndFunction(false);
     }
 
-    if (_stricmp(animname, "NULL") == 0)
+    if (azstricmp(animname, "NULL") == 0)
     {
         bool result = pCharacter->GetISkeletonAnim()->StopAnimationInLayer(layer, 0.0f);
         return pH->EndFunction(result);
@@ -5359,7 +5353,7 @@ int CScriptBind_Entity::SetPublicParam(IFunctionHandler* pH)
     for (int i = 0; i < pPublicParams->GetParamCount(); i++)
     {
     // Check if parameter already exists, if so just update parameter
-        if (!_stricmp(pPublicParams->GetParam(i).m_Name, name))
+        if (!azstricmp(pPublicParams->GetParam(i).m_Name, name))
         {
             pPublicParams->SetParam(i, shaderParam);
             return pH->EndFunction();
@@ -6538,7 +6532,7 @@ int CScriptBind_Entity::ReplaceMaterial(IFunctionHandler* pH, int slot, const ch
             continue;
         }
 
-        if (info.pMaterial && !_stricmp(info.pMaterial->GetName(), name))
+        if (info.pMaterial && !azstricmp(info.pMaterial->GetName(), name))
         {
             pEntity->SetSlotMaterial(i, pReplacement);
         }
@@ -6546,7 +6540,7 @@ int CScriptBind_Entity::ReplaceMaterial(IFunctionHandler* pH, int slot, const ch
         if (info.pCharacter)
         {
             _smart_ptr<IMaterial> pMaterial = info.pCharacter->GetIMaterial();
-            if (pMaterial && !_stricmp(pMaterial->GetName(), name))
+            if (pMaterial && !azstricmp(pMaterial->GetName(), name))
             {
                 pEntity->SetSlotMaterial(i, pReplacement);
             }
@@ -6561,7 +6555,7 @@ int CScriptBind_Entity::ReplaceMaterial(IFunctionHandler* pH, int slot, const ch
                 if (pAttachmentObject)
                 {
                     _smart_ptr<IMaterial> pAttachMaterial = (_smart_ptr<IMaterial>)pAttachmentObject->GetBaseMaterial();
-                    if (pAttachMaterial && !_stricmp(pAttachMaterial->GetName(), name))
+                    if (pAttachMaterial && !azstricmp(pAttachMaterial->GetName(), name))
                     {
                         pAttachmentObject->SetReplacementMaterial(pReplacement);
                     }
@@ -6572,7 +6566,7 @@ int CScriptBind_Entity::ReplaceMaterial(IFunctionHandler* pH, int slot, const ch
         else if (info.pStatObj)
         {
             _smart_ptr<IMaterial> pMaterial = info.pStatObj->GetMaterial();
-            if (pMaterial && !_stricmp(pMaterial->GetName(), name))
+            if (pMaterial && !azstricmp(pMaterial->GetName(), name))
             {
                 pEntity->SetSlotMaterial(i, pReplacement);
             }
@@ -7127,7 +7121,7 @@ IEntityLink* GetLink(IEntityLink* pFirst, const char* name, int ith = 0)
     int i = 0;
     while (pFirst)
     {
-        if (!_stricmp(name, pFirst->name) && ith == i++)
+        if (!azstricmp(name, pFirst->name) && ith == i++)
         {
             break;
         }
@@ -7946,7 +7940,7 @@ bool CScriptBind_Entity::ParseLightParams(IScriptTable* pLightTable, CDLight& li
             }
 
             char diffuseCubemap[ICryPak::g_nMaxPath];
-            _snprintf(diffuseCubemap, sizeof(diffuseCubemap), "%s%s%s.%s", PathUtil::AddSlash(PathUtil::GetPath(specularCubemap)).c_str(),
+            azsnprintf(diffuseCubemap, sizeof(diffuseCubemap), "%s%s%s.%s", PathUtil::AddSlash(PathUtil::GetPath(specularCubemap)).c_str(),
                 PathUtil::GetFileName(specularCubemap).c_str(), "_diff", PathUtil::GetExt(specularCubemap));
 
             // '\\' in filename causing texture duplication

@@ -12,7 +12,8 @@
 
 #include "MorphTargetGroupWidget.h"
 #include <AzCore/Casting/numeric_cast.h>
-#include "../../../../EMStudioSDK/Source/EMStudioManager.h"
+#include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
+#include <MCore/Source/StringConversions.h>
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QLabel>

@@ -95,6 +95,42 @@
 				}
 			}
 		},
+		"/example/data/authenticated": {
+			"get": {
+				"description": "Lists available data to authenticated players.",
+				"parameters": [
+					{
+						"description": "Continues listing following the specified key. Use with count parameter for paging through the results.",
+						"name": "exclusive_start",
+						"in": "query",
+						"required": false,
+						"type": "string"
+					}, 
+					{
+						"description": "Maximum number of results returned. Use with start parameter for paging through the results.",
+						"name": "count",
+						"in": "query",
+						"required": false,
+						"type": "integer"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "List of available data, with optional filtering applied.",
+						"schema": {
+							"$ref": "#/definitions/ExampleList"
+						}
+					}
+				},
+				"x-amazon-cloud-canvas-lambda-dispatch": {
+					"module": "example_data",
+					"function": "list"
+				},
+				"x-amazon-cloud-canvas-client-generation": {
+					"function": "ListExampleDataAuthenticated"
+				}
+			}
+		 },
 		"/example/data/{key}": {
 			"put": {
 				"description": "Sets data with specified key.",

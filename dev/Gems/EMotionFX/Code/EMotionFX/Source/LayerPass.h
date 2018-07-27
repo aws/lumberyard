@@ -31,8 +31,6 @@ namespace EMotionFX
     class EMFX_API LayerPass
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(LayerPass, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_MOTIONSYSTEMS);
-
     public:
         /**
          * Get the unique type ID of the layer pass class.

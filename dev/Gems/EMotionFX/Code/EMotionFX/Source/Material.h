@@ -17,8 +17,6 @@
 #include "EMotionFXManager.h"
 #include "BaseObject.h"
 
-MCORE_FORWARD_DECLARE(AttributeSet);
-
 
 namespace EMotionFX
 {
@@ -26,14 +24,11 @@ namespace EMotionFX
      * The material base class.
      * This actually acts directly as generic material type. So it is possible for materials to be created from this base class.
      * Other materials are represented by the StandardMaterial class and the FXMaterial class.
-     * Every material also has an attribute set with material information. This can be useful when dealing with custom material types in Max or Maya for example.
-     * In that case the attribute set will contain information about your material.
-     * EMotion Studio could be used to display the contents of this attribute set, or you can use the AttributeSet::Log() method to see some.
      */
     class EMFX_API Material
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(Material, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_GEOMETRY_MATERIALS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         enum
@@ -86,15 +81,8 @@ namespace EMotionFX
          */
         void SetName(const char* name);
 
-        /**
-         * Get the generic attribute set.
-         * @result A pointer to the attribute set.
-         */
-        MCORE_INLINE MCore::AttributeSet* GetAttributeSet() const       { return mAttributeSet; }
-
     protected:
         uint32                  mNameID;            /**< The material id representing the name. */
-        MCore::AttributeSet*    mAttributeSet;      /**< The attribute set. */
 
         /**
          * The constructor.

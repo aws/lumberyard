@@ -27,7 +27,7 @@ class CAboutDialog
     Q_OBJECT
 
 public:
-    CAboutDialog(QString versionText, QWidget* pParent = nullptr);
+    CAboutDialog(QString versionText, QString richTextCopyrightNotice, QWidget* pParent = nullptr);
     ~CAboutDialog();
 
 private:

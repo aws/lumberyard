@@ -13,7 +13,6 @@
 
 #pragma once
 
-// include the required headers
 #include "CommandSystemConfig.h"
 #include <MCore/Source/Command.h>
 #include <EMotionFX/Source/ActorManager.h>
@@ -23,5 +22,8 @@ namespace CommandSystem
 {
     // clear the recorder
     MCORE_DEFINECOMMAND_START(CommandRecorderClear, "Clear Recording", false)
+public:
+    static const char* s_RecorderClearCmdName;
+    bool m_wasRecording;
     MCORE_DEFINECOMMAND_END
 } // namespace CommandSystem

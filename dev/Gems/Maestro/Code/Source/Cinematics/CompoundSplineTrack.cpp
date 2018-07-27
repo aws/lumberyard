@@ -14,15 +14,15 @@
 #include "Maestro_precompiled.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Math/Transform.h>
-#include <AzFramework/Math/MathUtils.h>
 
 #include "CompoundSplineTrack.h"
 #include "AnimSplineTrack.h"
 #include "Maestro/Types/AnimParamType.h"
 #include "Maestro/Types/AnimValueType.h"
 
-CCompoundSplineTrack::CCompoundSplineTrack(int nDims, AnimValueType inValueType, CAnimParamType subTrackParamTypes[MAX_SUBTRACKS])
+CCompoundSplineTrack::CCompoundSplineTrack(int nDims, AnimValueType inValueType, CAnimParamType subTrackParamTypes[MAX_SUBTRACKS], bool expanded)
     : m_refCount(0)
+    , m_expanded(expanded)
 {
     assert(nDims > 0 && nDims <= MAX_SUBTRACKS);
     m_node = nullptr;
@@ -64,6 +64,7 @@ CCompoundSplineTrack::CCompoundSplineTrack()
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
     , m_bCustomColorSet(false)
 #endif
+    , m_expanded(false)
 {
 }
 
@@ -282,107 +283,61 @@ void CCompoundSplineTrack::OffsetKeyPosition(const Vec3& offset)
 //////////////////////////////////////////////////////////////////////////
 void CCompoundSplineTrack::UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM)
 {
+    // Only update the position tracks
+    if (m_nParamType.GetType() != AnimParamType::Position)
+    {
+        return;
+    }
+
     AZ_Assert(m_nDimensions == 3, "Expected 3 dimensions, position, rotation or scale.");
 
-    // Get the inverse of the new parent world transform.
-    AZ::Transform newParentInverseWorldTM = newParentWorldTM;
-    newParentInverseWorldTM.InvertFull();
-
-    // Collect all times that have key data on any track.
-    AZStd::vector<float> allTimes;
-    for (int i = 0; i < 3; i++)
+    struct KeyValues
     {
-        IAnimTrack* subTrack = m_subTracks[i].get();
-        for (int k = 0, num = subTrack->GetNumKeys(); k < num; k++)
-        {
-            // If this key time is not already in the list, add it.
-            float time = subTrack->GetKeyTime(k);
-            if (AZStd::find(allTimes.begin(), allTimes.end(), time) == allTimes.end())
-            {
-                allTimes.push_back(time);
-            }
-        }
-    }
+        KeyValues(int i, float t, float v) : index(i), time(t), value(v) {};
+        int index;
+        float time;
+        float value;           
+    };
 
     // Don't actually set the key data until we are done calculating all the new values.
     // In the case where not all 3 tracks have key data, data from other keys may be referenced
     // and used. So we don't want to muck with those other keys until we are done transforming all of
     // the key data.
-    AZStd::vector<AZStd::pair<float, float>> newKeyValues;
+    AZStd::vector<KeyValues> newKeyValues;
 
-    // Calc new key data for each time gathered from the keys.
-    for (float time : allTimes)
+    // Collect all times that have key data on any track.
+    for (int subTrackIndex = 0; subTrackIndex < 3; subTrackIndex++)
     {
-        // Create a 3 float vector with values from the 3 tracks.
-        AZ::Vector3 vector;
-        for (int i = 0; i < 3; i++)
+        IAnimTrack* subTrack = m_subTracks[subTrackIndex].get();
+        for (int k = 0, num = subTrack->GetNumKeys(); k < num; k++)
         {
-            float value = 0;
-            m_subTracks[i]->GetValue(time, value);
-            vector.SetElement(i, value);
-        }
+            // If this key time is not already in the list, add it.
+            float time = subTrack->GetKeyTime(k);
 
-        // Different track types need to be handled slightly differently
-        switch (m_nParamType.GetType())
-        {
+        	// Create a 3 float vector with values from the 3 tracks.
+       	 	AZ::Vector3 vector;
+        	for (int i = 0; i < 3; i++)
+        	{
+           	 	float value = 0;
+            	m_subTracks[i]->GetValue(time, value);
+            	vector.SetElement(i, value);
+        	}
 
-        case AnimParamType::Position:
-        {
             // Use the old parent world transform to get the current key data into world space.
-            AZ::Vector3 worldPosition = oldParentWorldTM * vector;
+            AZ::Vector3 worldPosition = oldParentWorldTM.GetTranslation() + vector;
 
-            // Use the inverse transform of the new parent to convert the world space
-            // key data into local space relative to the new parent.
-            vector = newParentInverseWorldTM * worldPosition;
-        }
-        break;
+            // Get the world location into local space relative to the new parent.
+            vector = worldPosition - newParentWorldTM.GetTranslation();
 
-        case AnimParamType::Rotation:
-        {
-           // Use the old parent world rotation to get the key data into world space.
-            AZ::Vector3 worldRoation = AzFramework::ConvertTransformToEulerDegrees(oldParentWorldTM) + vector;
-
-            // Remove the world rotation of the the new parent to convert the world space
-            // key data into local space relative to the new parent.
-            vector = AzFramework::ConvertTransformToEulerDegrees(newParentInverseWorldTM) + worldRoation;        
-        }
-        break;
-
-        case AnimParamType::Scale:
-        {
-            // Use the old parent world transform scale to get the key data into world space.
-            AZ::Vector3 worldScale = oldParentWorldTM.RetrieveScaleExact() * vector;
-
-            // Use the inverse transform scale of the new parent to convert the world space
-            // key data into local space relative to the new parent.
-            vector = newParentInverseWorldTM.RetrieveScaleExact() * worldScale;
-        }
-        break;
-        
-        default:
-            AZ_Assert(false, "Unsupported Anim Param Type: %s", m_nParamType.GetName());
-
-        }
-
-        // Store the new key data in a list to be set to keys later.
-        for (int i = 0; i < 3; i++)
-        {
-            newKeyValues.push_back(AZStd::make_pair(time, vector.GetElement(i)));
+            // Store the new key data in a list to be set to keys later.
+            newKeyValues.push_back(KeyValues(subTrackIndex, time, vector.GetElement(subTrackIndex)));
         }
     }
 
-    // Set or create key data for each time gathered from the keys.
-    assert(allTimes.size() * 3 == newKeyValues.size());
-    int newKeyValuesIndex = 0;
-    for (float time : allTimes)
+    // Set key data for each time gathered from the keys.
+    for (auto valuePair : newKeyValues)
     {
-        // Update all of the tracks with the new float values.
-        // This may create a new key if there was not one before.
-        for (int i = 0; i < 3; i++)
-        {
-            auto valuePair = newKeyValues.at(newKeyValuesIndex++);
-            m_subTracks[i]->SetValue(valuePair.first, valuePair.second);
-        }
+        m_subTracks[valuePair.index]->SetValue(valuePair.time, valuePair.value);
     }
 }
 
@@ -623,14 +578,27 @@ int CCompoundSplineTrack::NextKeyByTime(int key) const
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CCompoundSplineTrack::SetExpanded(bool expanded)
+{
+    m_expanded = expanded;
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CCompoundSplineTrack::GetExpanded() const
+{
+    return m_expanded;
+}
+ 
+//////////////////////////////////////////////////////////////////////////
 void CCompoundSplineTrack::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<CCompoundSplineTrack>()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &CCompoundSplineTrack::m_flags)
         ->Field("ParamType", &CCompoundSplineTrack::m_nParamType)
         ->Field("NumSubTracks", &CCompoundSplineTrack::m_nDimensions)
         ->Field("SubTracks", &CCompoundSplineTrack::m_subTracks)
         ->Field("SubTrackNames", &CCompoundSplineTrack::m_subTrackNames)
-        ->Field("ValueType", &CCompoundSplineTrack::m_valueType);
+        ->Field("ValueType", &CCompoundSplineTrack::m_valueType)
+        ->Field("Expanded", &CCompoundSplineTrack::m_expanded);    
 }

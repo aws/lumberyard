@@ -131,6 +131,11 @@ Negative values will be ignored.\n")->
                     Attribute(AZ::Edit::Attributes::Max, ParticleEmitterSettings::MaxSizeScale)->
                     Attribute(AZ::Edit::Attributes::Step, 0.1f)->
 
+                    DataElement(0, &ParticleEmitterSettings::m_particleSizeScaleZ, "Particle size scale z", "Particle size scale z for geometry particle")->
+                    Attribute(AZ::Edit::Attributes::Min, 0.f)->
+                    Attribute(AZ::Edit::Attributes::Max, ParticleEmitterSettings::MaxSizeScale)->
+                    Attribute(AZ::Edit::Attributes::Step, 0.1f)->
+
                     DataElement(AZ::Edit::UIHandlers::Slider, &ParticleEmitterSettings::m_particleSizeScaleRandom, "Particle size scale random", "(CPU only) Randomize particle size scale")->
                     Attribute(AZ::Edit::Attributes::Min, 0.f)->
                     Attribute(AZ::Edit::Attributes::Max, 1.f)->
@@ -185,6 +190,9 @@ Negative values will be ignored.\n")->
                 ->Event("SetParticleSizeScaleY", &EditorParticleComponentRequestBus::Events::SetParticleSizeScaleY)
                 ->Event("GetParticleSizeScaleY", &EditorParticleComponentRequestBus::Events::GetParticleSizeScaleY)
                 ->VirtualProperty("ParticleSizeScaleY", "GetParticleSizeScaleY", "SetParticleSizeScaleY")
+                ->Event("SetParticleSizeScaleZ", &EditorParticleComponentRequestBus::Events::SetParticleSizeScaleZ)
+                ->Event("GetParticleSizeScaleZ", &EditorParticleComponentRequestBus::Events::GetParticleSizeScaleZ)
+                ->VirtualProperty("ParticleSizeScaleZ", "GetParticleSizeScaleZ", "SetParticleSizeScaleZ")
                 ;
         }
     }
@@ -655,6 +663,18 @@ Negative values will be ignored.\n")->
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
+    void EditorParticleComponent::SetParticleSizeScaleZ(float scale)
+    {
+        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        {
+            return;
+        }
+
+        m_settings.m_particleSizeScaleZ = scale;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+
     bool EditorParticleComponent::GetEnable()
     {
         return m_settings.m_enable;
@@ -695,4 +715,8 @@ Negative values will be ignored.\n")->
         return m_settings.m_particleSizeScaleY;
     }
 
+    float EditorParticleComponent::GetParticleSizeScaleZ()
+    {
+        return m_settings.m_particleSizeScaleZ;
+    }
 } // namespace LmbrCentral

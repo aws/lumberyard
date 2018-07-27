@@ -35,6 +35,7 @@
 #include <QTimer>
 #include <QTreeView>
 #include <QVBoxLayout>
+#include <QKeyEvent>
 
 namespace AzToolsFramework
 {

@@ -17,8 +17,7 @@
 
 
 #include <IFlowSystem.h>
-#include "../FlowSystem.h"
-#include "../FlowSerialize.h"
+
 #include <IActorSystem.h>
 
 //////////////////////////////////////////////////////////////////////////
@@ -164,7 +163,7 @@ private:
 
 #if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_MONOLITHIC_BUILD)
 #define CRY_EXPORT_STATIC_LINK_VARIABLE(Var)                \
-    extern "C" { int lib_func_##Var() { return (int)&Var; } \
+    extern "C" { size_t lib_func_##Var() { return reinterpret_cast<uintptr_t>(&Var); } \
     }                                                       \
     __pragma(message("#pragma comment(linker,\"/include:_lib_func_"#Var "\")"))
 #else

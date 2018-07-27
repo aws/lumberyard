@@ -84,7 +84,7 @@ struct HasTypeFunction
 
 //! Allow ComponentType be used as key in std::unordered_map
 //! by specializing std::hash<ComponentType>
-namespace std
+namespace AZStd
 {
 template<>
 struct hash<ComponentType>

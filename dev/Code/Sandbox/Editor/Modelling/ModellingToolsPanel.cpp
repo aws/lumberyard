@@ -13,7 +13,7 @@
 
 // Description : Polygon creation edit tool.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include <QPushButton>
 #include <QTimer>

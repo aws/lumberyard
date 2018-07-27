@@ -27,6 +27,8 @@
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QFrame>
 #include <QtCore/QMimeData>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 
 //just a test to see how it would work to pop a dialog
 
@@ -206,10 +208,10 @@ namespace AzToolsFramework
         event->acceptProposedAction();
     }
 
-    bool PropertyEntityIdCtrl::IsCorrectMimeData(const QMimeData* data) const
+    bool PropertyEntityIdCtrl::IsCorrectMimeData(const QMimeData* data_) const
     {
-        if (data == nullptr ||
-            !data->hasFormat(AzToolsFramework::EditorEntityIdContainer::GetMimeType()))
+        if (data_ == nullptr ||
+            !data_->hasFormat(AzToolsFramework::EditorEntityIdContainer::GetMimeType()))
         {
             return false;
         }
@@ -217,16 +219,16 @@ namespace AzToolsFramework
         return true;
     }
 
-    AZ::EntityId PropertyEntityIdCtrl::EntityIdFromMimeData(const QMimeData& data) const
+    AZ::EntityId PropertyEntityIdCtrl::EntityIdFromMimeData(const QMimeData& data_) const
     {
         AZ::EntityId entityIdResult;
 
-        if (!IsCorrectMimeData(&data))
+        if (!IsCorrectMimeData(&data_))
         {
             return entityIdResult;
         }
 
-        QByteArray arrayData = data.data(AzToolsFramework::EditorEntityIdContainer::GetMimeType());
+        QByteArray arrayData = data_.data(AzToolsFramework::EditorEntityIdContainer::GetMimeType());
 
         AzToolsFramework::EditorEntityIdContainer entityIdListContainer;
         if (!entityIdListContainer.FromBuffer(arrayData.constData(), arrayData.size()))

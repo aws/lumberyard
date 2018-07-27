@@ -19,7 +19,6 @@
 #include <Cry_Color.h>
 #include "EditorCommonAPI.h"
 #include "Serialization.h"
-#include <AzFramework/Math/MathUtils.h>
 #include <MathConversion.h>
 
 namespace Serialization
@@ -56,7 +55,7 @@ struct SViewportState
         , orbitTarget(ZERO)
     {
         // This eye position is similar to Maya's initial camera position
-        AZ::Transform transform = AzFramework::CreateLookAt(
+        AZ::Transform transform = AZ::Transform::CreateLookAt(
             AZ::Vector3(-3.5f, 3.625f, 2.635f), // Eye position
             AZ::Vector3(LYVec3ToAZVec3(orbitTarget))
         );

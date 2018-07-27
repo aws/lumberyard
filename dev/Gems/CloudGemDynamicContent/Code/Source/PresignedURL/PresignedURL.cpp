@@ -12,6 +12,7 @@
 
 #include <CloudGemDynamicContent_precompiled.h>
 
+#include <CloudGemFramework/CloudGemFrameworkBus.h>
 #include <PresignedURL/PresignedURL.h>
 
 #include <FileTransferSupport/FileTransferSupport.h>
@@ -69,7 +70,7 @@ namespace CloudCanvas
             return nullptr;
         }
         AZ::JobContext* jobContext{ nullptr };
-        EBUS_EVENT_RESULT(jobContext, AZ::JobManagerBus, GetGlobalContext);
+        EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
 
         gEnv->pLog->LogAlways("Requesting download from URL: %s to %s", signedURL.c_str(), fileName.c_str());
 

@@ -95,36 +95,35 @@ def _add_file_response(resultList, file_name):
     current_time = datetime.utcnow()
     print 'Current time is ' + _get_formatted_time(current_time)
     
-    staging_start = item_data.get('StagingStart')    
-    
+    staging_start = item_data.get('StagingStart')
+    staging_end = item_data.get('StagingEnd')
+
     if staging_status == 'WINDOW':
-        if staging_start == None:
-            print 'No StagingStart set - invalid'
+        if staging_start == None and staging_end == None:
+            print 'Item is staged as WINDOW with no start or end - treating as unavailable'
             resultData['FileStatus'] = 'Data is unavailable' 
             return
             
-        print 'staging_start is ' + staging_start
-        startdate = get_struct_time(staging_start)
+        print 'staging_start is {}'.format(staging_start)
+
+        if staging_start != None:
+            startdate = get_struct_time(staging_start)
         
-        if startdate > current_time:
-            print 'Start date is in the future, content not ready'
-            resultData['FileStatus'] = 'Not available yet'
-            return
-                
-        staging_end = item_data.get('StagingEnd')     
-        
-        if staging_end == None:
-            print 'No StagingEnd set - invalid'
-            resultData['FileStatus'] = 'Data is unavailable' 
-            return
-            
-        print 'staging_end is ' + staging_end
-        enddate = get_struct_time(staging_end)
-        
-        if enddate < current_time:
-            print 'End date is in the past, content no longer available'
-            resultData['FileStatus'] = 'No longer available'   
-            return
+            if startdate > current_time:
+                print 'Start date is in the future, content not ready'
+                resultData['FileStatus'] = 'Not available yet'
+                return
+
+        print 'staging_end is {}'.format(staging_end)
+
+        if staging_end != None:
+            print 'staging_end is ' + staging_end
+            enddate = get_struct_time(staging_end)
+
+            if enddate < current_time:
+                print 'End date is in the past, content no longer available'
+                resultData['FileStatus'] = 'No longer available'
+                return
             
     s3Client = boto3.client('s3')
     returnUrl = s3Client.generate_presigned_url('get_object', Params = {'Bucket': content_bucket_name, 'Key': file_name}, ExpiresIn = get_presigned_url_lifetime())

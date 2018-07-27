@@ -10,14 +10,13 @@
 *
 */
 
-#ifndef __EMSTUDIO_GRAPHNODE_H
-#define __EMSTUDIO_GRAPHNODE_H
+#pragma once
 
-// include required headers
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
 #include <MCore/Source/Color.h>
 #include <MCore/Source/StringIdPool.h>
+#include <EMotionFX/Source/AnimGraphNodeId.h>
 #include "../StandardPluginsConfig.h"
 #include <QPainter>
 #include <QIcon>
@@ -99,8 +98,10 @@ namespace EMStudio
         MCORE_INLINE bool GetIsVisible() const                              { return mIsVisible; }
         MCORE_INLINE const char* GetName() const                            { return mName.c_str(); }
         MCORE_INLINE const AZStd::string& GetNameString() const             { return mName; }
-        MCORE_INLINE uint32 GetID() const                                   { return mID; }
-        MCORE_INLINE void SetID(uint32 id)                                  { mID = id; }
+
+        EMotionFX::AnimGraphNodeId GetId() const                            { return m_id; }
+        void SetId(EMotionFX::AnimGraphNodeId id)                           { m_id = id; }
+
         MCORE_INLINE bool GetCreateConFromOutputOnly() const                { return mConFromOutputOnly; }
         MCORE_INLINE void SetCreateConFromOutputOnly(bool enable)           { mConFromOutputOnly = enable; }
         MCORE_INLINE bool GetIsDeletable() const                            { return mIsDeletable; }
@@ -228,7 +229,7 @@ namespace EMStudio
         AZStd::string                   mNodeInfo;
         QString                         mElidedNodeInfo;
         QBrush                          mBrush;
-        uint32                          mID;
+        EMotionFX::AnimGraphNodeId      m_id;
         QColor                          mBaseColor;
         QRect                           mRect;
         QRect                           mFinalRect;
@@ -292,5 +293,3 @@ namespace EMStudio
         QPolygonF                       mSubstPoly;
     };
 }   // namespace EMStudio
-
-#endif

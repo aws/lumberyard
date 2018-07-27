@@ -14,7 +14,7 @@
 // Description : synchronized animation playing on multiple actors
 //               including exact positioning and sliding the actors into position
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CooperativeAnimation.h"
 #include "CooperativeAnimationManager.h"
 #include "CryActionCVars.h"

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ModelMesh.h"
 #include "CharacterManager.h"
@@ -19,7 +19,6 @@
 #include "FacialAnimation/FacialInstance.h"
 #include "GeomQuery.h"
 #include "CharacterInstance.h"
-#include <IJobManager_JobDelegator.h>
 
 #include "Vertex/VertexCommandBuffer.h"
 

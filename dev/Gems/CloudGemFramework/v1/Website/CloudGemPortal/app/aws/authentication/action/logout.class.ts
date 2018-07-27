@@ -21,9 +21,11 @@ export class LogoutAction implements AuthStateAction {
         }
 
         user.signOut();
-        AWS.config.credentials.clearCachedId()        
-        AWS.config.credentials.expired = true;
-        AWS.config.credentials = null;
+        if (AWS.config.credentials != null) {
+            AWS.config.credentials.clearCachedId()
+            AWS.config.credentials.expired = true;
+            AWS.config.credentials = null;
+        }
         subject.next(<AuthStateActionContext>{
             state: EnumAuthState.LOGGED_OUT,
             output: [args[0]]

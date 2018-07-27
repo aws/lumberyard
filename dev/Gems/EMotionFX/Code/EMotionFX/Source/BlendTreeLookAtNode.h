@@ -12,10 +12,11 @@
 
 #pragma once
 
-#include "EMotionFXConfig.h"
-#include "AnimGraphNode.h"
-
 #include <AzCore/Math/Vector2.h>
+#include <AzCore/Math/Quaternion.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/ConstraintTransformRotationAngles.h>
 
 
 namespace EMotionFX
@@ -26,27 +27,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeLookAtNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeLookAtNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
         AZ_RTTI(BlendTreeLookAtNode, "{7FBBFD4A-3B17-47D6-8419-8F8F5B89C1B3}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00040360
-        };
-
-        enum
-        {
-            ATTRIB_NODE,                // the node to apply the lookat on, for example the head
-            ATTRIB_YAWPITCHROLL_MIN,    // minimum angles in degrees
-            ATTRIB_YAWPITCHROLL_MAX,    // maximum angles in degrees
-            ATTRIB_CONSTRAINTROTATION,  // the rotation to move into constraint space
-            ATTRIB_POSTROTATION,        // a relative post rotation
-            ATTRIB_SPEED,               // follow speed
-            ATTRIB_TWISTAXIS,           // twist axis
-            ATTRIB_CONSTRAINTS          // enable constraints?
-        };
+        AZ_CLASS_ALLOCATOR_DECL
 
         enum
         {
@@ -64,17 +47,23 @@ namespace EMotionFX
             PORTID_OUTPUT_POSE      = 0
         };
 
+        enum TwistAxis : AZ::u8
+        {
+            TWISTAXIS_X = 0,
+            TWISTAXIS_Y = 1,
+            TWISTAXIS_Z = 2
+        };
+
         class EMFX_API UniqueData
             : public AnimGraphNodeData
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
                 : AnimGraphNodeData(node, animGraphInstance)     { mNodeIndex = MCORE_INVALIDINDEX32; mMustUpdate = true; mIsValid = false; mFirstUpdate = true; mTimeDelta = 0.0f; }
             ~UniqueData() {}
-
-            uint32 GetClassSize() const override                                                                                        { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override            { return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance); }
 
         public:
             MCore::Quaternion mRotationQuat;
@@ -85,11 +74,12 @@ namespace EMotionFX
             bool        mFirstUpdate;
         };
 
-        static BlendTreeLookAtNode* Create(AnimGraph* animGraph);
+        BlendTreeLookAtNode();
+        ~BlendTreeLookAtNode();
 
-        void Init(AnimGraphInstance* animGraphInstance) override;
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
+
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         bool GetSupportsVisualization() const override              { return true; }
         bool GetHasOutputPose() const override                      { return true; }
@@ -100,18 +90,31 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        void SetTargetNodeName(const AZStd::string& targetNodeName);
+        void SetConstraintRotation(const AZ::Quaternion& constraintRotation);
+        void SetPostRotation(const AZ::Quaternion& postRotation);
+        void SetLimitMin(const AZ::Vector2& limitMin);
+        void SetLimitMax(const AZ::Vector2& limitMax);
+        void SetFollowSpeed(float followSpeed);
+        void SetTwistAxis(ConstraintTransformRotationAngles::EAxis twistAxis);
+        void SetLimitsEnabled(bool limitsEnabled);
 
-        void OnUpdateAttributes() override;
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        BlendTreeLookAtNode(AnimGraph* animGraph);
-        ~BlendTreeLookAtNode();
-
         void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+
+        AZ::Crc32 GetLimitWidgetsVisibility() const;
+
+        AZStd::string                               m_targetNodeName;
+        AZ::Quaternion                              m_constraintRotation;
+        AZ::Quaternion                              m_postRotation;
+        AZ::Vector2                                 m_limitMin;
+        AZ::Vector2                                 m_limitMax;
+        float                                       m_followSpeed;
+        ConstraintTransformRotationAngles::EAxis    m_twistAxis;
+        bool                                        m_limitsEnabled;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

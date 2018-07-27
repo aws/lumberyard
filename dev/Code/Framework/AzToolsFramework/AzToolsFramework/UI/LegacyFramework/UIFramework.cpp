@@ -147,7 +147,6 @@ namespace AzToolsFramework
         {
             serialize->Class<Framework, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
             ;
 
             MainWindowSavedState::Reflect(serialize);
@@ -394,7 +393,7 @@ namespace AzToolsFramework
         EBUS_EVENT_RESULT(pApp, AZ::ComponentApplicationBus, GetApplication);
         if (pApp)
         {
-            
+
             AZStd::chrono::system_clock::time_point now = AZStd::chrono::system_clock::now();
             static AZStd::chrono::system_clock::time_point lastUpdate = now;
 

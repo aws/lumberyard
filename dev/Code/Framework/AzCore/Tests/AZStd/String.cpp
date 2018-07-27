@@ -105,7 +105,7 @@ namespace UnitTest
     TEST(StringC, AZSWNPrintf)
     {
         wchar_t wbuffer32[32];
-        azswnprintf(wbuffer32, AZ_ARRAY_SIZE(wbuffer32), L"This is a buffer test %ls", L"Bla1");
+        azsnwprintf(wbuffer32, AZ_ARRAY_SIZE(wbuffer32), L"This is a buffer test %ls", L"Bla1");
         EXPECT_EQ(0, wcscmp(wbuffer32, L"This is a buffer test Bla1"));
     }
 
@@ -436,6 +436,13 @@ namespace UnitTest
         AZ_TEST_ASSERT(str2.at(0) == 'E');
         str2[0] = 'G';
         AZ_TEST_ASSERT(str2.at(0) == 'G');
+
+        AZ_TEST_ASSERT(str2.front() == 'G');
+        str2.front() = 'X';
+        AZ_TEST_ASSERT(str2.front() == 'X');
+        AZ_TEST_ASSERT(str2.back() == 'c'); // From the insert of 2 'c's at the end() further up.
+        str2.back() = 'p';
+        AZ_TEST_ASSERT(str2.back() == 'p');
 
         AZ_TEST_ASSERT(str2.c_str() != 0);
         AZ_TEST_ASSERT(::strlen(str2.c_str()) == str2.length());

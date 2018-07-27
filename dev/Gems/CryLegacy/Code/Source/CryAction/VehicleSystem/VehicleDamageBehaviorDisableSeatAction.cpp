@@ -15,7 +15,7 @@
 //               seat actions for a specified seat
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "VehicleDamageBehaviorDisableSeatAction.h"
 

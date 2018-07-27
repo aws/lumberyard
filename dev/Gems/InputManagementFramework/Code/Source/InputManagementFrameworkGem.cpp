@@ -67,7 +67,6 @@ namespace Input
             {
                 serializeContext->Class<InputManagementFrameworkSystemComponent, AZ::Component>()
                     ->Version(1)
-                    ->SerializerForEmptyClass()
                     ;
 
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())

@@ -153,6 +153,8 @@ public class KeyboardHandler
         ////////////////////////////////////////////////////////////////
         public void Show()
         {
+            m_windowFlags = GetView().getSystemUiVisibility();
+
             setVisibility(View.VISIBLE);
             requestFocus();
             m_isShowing = true;
@@ -163,12 +165,15 @@ public class KeyboardHandler
         {
             setVisibility(View.GONE);
             m_isShowing = false;
+
+            GetView().setSystemUiVisibility(m_windowFlags);
         }
 
 
         // ----
 
         private boolean m_isShowing;
+        private int m_windowFlags;
     }
 
 

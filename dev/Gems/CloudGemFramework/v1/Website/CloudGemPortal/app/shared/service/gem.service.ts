@@ -15,7 +15,7 @@ export class GemService {
         this._currentGems = new Array<Gemifiable>();
         this._currentGem = null;
         this._currentGemSubscription = new Subject<Gemifiable>();
-        this._isLoading = false;
+        this._isLoading = true;
     }
 
     /**

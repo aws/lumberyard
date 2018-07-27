@@ -13,33 +13,30 @@
 // include the required headers
 #include "Material.h"
 #include <MCore/Source/StringIdPool.h>
-#include <MCore/Source/AttributeSet.h>
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(Material, MaterialAllocator, 0)
+
+
     // constructor
     Material::Material(const char* name)
     {
         SetName(name);
-        mAttributeSet = MCore::AttributeSet::Create();
     }
 
 
     // destructor
     Material::~Material()
     {
-        if (mAttributeSet)
-        {
-            mAttributeSet->Destroy();
-        }
     }
 
 
     // create a material
     Material* Material::Create(const char* name)
     {
-        return new Material(name);
+        return aznew Material(name);
     }
 
 
@@ -69,7 +66,6 @@ namespace EMotionFX
     Material* Material::Clone() const
     {
         Material* newMat = Material::Create(GetName());
-        newMat->mAttributeSet->InitFrom(mAttributeSet);
         return newMat;
     }
 } // namespace EMotionFX

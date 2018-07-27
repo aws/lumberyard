@@ -12,6 +12,11 @@
 
 #include "Gestures_precompiled.h"
 #include <platform_impl.h>
+
+#include <AzCore/Memory/SystemAllocator.h>
+
+#include "GesturesSystemComponent.h"
+
 #include <IGem.h>
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 
@@ -21,14 +26,27 @@ namespace Gestures
         : public CryHooksModule
     {
     public:
-        AZ_RTTI(GesturesModule, "{5648A92C-04A3-4E30-B4E2-B0AEB280CA44}", AZ::Module);
+        AZ_RTTI(GesturesModule, "{5648A92C-04A3-4E30-B4E2-B0AEB280CA44}", CryHooksModule);
+        AZ_CLASS_ALLOCATOR(GesturesModule, AZ::SystemAllocator, 0);
 
         GesturesModule()
             : CryHooksModule()
         {
+            // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
+            m_descriptors.insert(m_descriptors.end(), {
+                GesturesSystemComponent::CreateDescriptor(),
+            });
         }
 
-        ~GesturesModule() override = default;
+        /**
+         * Add required SystemComponents to the SystemEntity.
+         */
+        AZ::ComponentTypeList GetRequiredSystemComponents() const override
+        {
+            return AZ::ComponentTypeList{
+                azrtti_typeid<GesturesSystemComponent>(),
+            };
+        }
 
         void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override
         {
@@ -44,4 +62,7 @@ namespace Gestures
     };
 }
 
+// DO NOT MODIFY THIS LINE UNLESS YOU RENAME THE GEM
+// The first parameter should be GemName_GemIdLower
+// The second should be the fully qualified name of the class above
 AZ_DECLARE_MODULE_CLASS(Gestures_6056556b6088413984309c4a413593ad, Gestures::GesturesModule)

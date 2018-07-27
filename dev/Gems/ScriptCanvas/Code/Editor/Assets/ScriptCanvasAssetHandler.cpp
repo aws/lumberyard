@@ -44,6 +44,11 @@ namespace ScriptCanvasEditor
         AZ::AssetTypeInfoBus::MultiHandler::BusConnect(GetAssetType());
     }
 
+    ScriptCanvasAssetHandler::~ScriptCanvasAssetHandler()
+    {
+        AZ::AssetTypeInfoBus::MultiHandler::BusDisconnect();
+    }
+
     AZ::Data::AssetPtr ScriptCanvasAssetHandler::CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type)
     {
         (void)type;

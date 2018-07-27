@@ -13,14 +13,12 @@
 #include "LmbrCentral_precompiled.h"
 #include "CapsuleShapeComponent.h"
 
-#include <AzCore/std/containers/array.h>
 #include <AzCore/Math/IntersectPoint.h>
 #include <AzCore/Math/IntersectSegment.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <MathConversion.h>
-#include <Shape/ShapeGeometryUtil.h>
 
 namespace LmbrCentral
 {
@@ -105,7 +103,7 @@ namespace LmbrCentral
     {
         return m_capsuleShapeConfig.m_height;
     }
-    
+
     float CapsuleShape::GetRadius()
     {
         return m_capsuleShapeConfig.m_radius;
@@ -212,188 +210,5 @@ namespace LmbrCentral
         // scale intersection data cache radius by entity transform for internal calculations
         m_radius = configuration.m_radius * entityScale;
         m_internalHeight = internalCylinderHeight;
-    }
-
-    /**
-     * Generate vertices for triangles to make up a complete capsule.
-     */
-    static void GenerateSolidCapsuleMeshVertices(
-        const AZ::Transform& worldFromLocal, float radius, float height,
-        AZ::u32 sides, AZ::u32 capSegments, Vec3* vertices)
-    {
-        const float middleHeight = AZ::GetMax(height - radius * 2.0f, 0.0f);
-        const float halfMiddleHeight = middleHeight * 0.5f;
-
-        vertices = CapsuleTubeUtil::GenerateSolidStartCap(
-            worldFromLocal, AZ::Vector3::CreateAxisZ(-halfMiddleHeight), radius,
-            AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisX(),
-            sides, capSegments, vertices);
-
-        AZStd::array<float, 2> endPositions = {{ -halfMiddleHeight, halfMiddleHeight }};
-        for (int i = 0; i < endPositions.size(); ++i)
-        {
-            const AZ::Vector3 position = AZ::Vector3::CreateAxisZ(endPositions[i]);
-            vertices = CapsuleTubeUtil::GenerateSegmentVertices(
-                position, AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisX(),
-                radius, sides, worldFromLocal, vertices);
-        }
-
-        CapsuleTubeUtil::GenerateSolidEndCap(
-            worldFromLocal, AZ::Vector3::CreateAxisZ(halfMiddleHeight), radius,
-            AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisX(),
-            sides, capSegments, vertices);
-    }
-
-    /**
-     * Generate vertices (via GenerateSolidCapsuleMeshVertices) and then build index
-     * list for capsule shape for solid rendering.
-     */
-    static void GenerateSolidCapsuleMesh(
-        const AZ::Transform& worldFromLocal, float radius, float height,
-        AZ::u32 sides, AZ::u32 capSegments, AZStd::vector<Vec3>& vertexBufferOut,
-        AZStd::vector<vtx_idx>& indexBufferOut)
-    {
-        const AZ::u32 segments = 1;
-        const AZ::u32 totalSegments = segments + capSegments * 2;
-
-        const size_t numVerts = sides * (totalSegments + 1) + 2;
-        const size_t numTriangles = (sides * totalSegments) * 2 + (sides * 2);
-
-        vertexBufferOut.resize(numVerts);
-        indexBufferOut.resize(numTriangles * 3);
-
-        GenerateSolidCapsuleMeshVertices(
-            worldFromLocal, radius, height, sides, capSegments, &vertexBufferOut[0]);
-
-        CapsuleTubeUtil::GenerateSolidMeshIndices(
-            sides, segments, capSegments, &indexBufferOut[0]);
-    }
-
-    /**
-     * Generate full wire mesh for capsule (end caps, loops, and lines along length).
-     */
-    static void GenerateWireCapsuleMesh(
-        const AZ::Transform& worldFromLocal, float radius, float height,
-        AZ::u32 sides, AZ::u32 capSegments, AZStd::vector<Vec3>& lineBufferOut)
-    {
-        // notes on vert buffer size
-        // total end segments
-        // 2 verts for each segment
-        //  2 * capSegments for one full half arc
-        //   2 arcs per end
-        //    2 ends
-        // total segments
-        // 2 verts for each segment
-        //  2 lines - top and bottom
-        //   2 lines - left and right
-        // total loops
-        // 2 verts for each segment
-        //  loops == sides
-        //   1 extra segment needed for last loop
-        //    1 extra segment needed for centre loop
-        const AZ::u32 segments = 1;
-        const AZ::u32 totalEndSegments = capSegments * 2 * 2 * 2 * 2;
-        const AZ::u32 totalSegments = segments * 2 * 2 * 2;
-        const AZ::u32 totalLoops = sides * 2 * (segments + 2);
-
-        const size_t numVerts = totalEndSegments + totalSegments + totalLoops;
-        lineBufferOut.resize(numVerts);
-
-        const float middleHeight = AZ::GetMax(height - radius * 2.0f, 0.0f);
-        const float halfMiddleHeight = middleHeight * 0.5f;
-
-        // start cap
-        Vec3* vertices = CapsuleTubeUtil::GenerateWireCap(
-            worldFromLocal,
-            AZ::Vector3::CreateAxisZ(-halfMiddleHeight),
-            radius,
-            -AZ::Vector3::CreateAxisZ(),
-            AZ::Vector3::CreateAxisX(),
-            capSegments,
-            &lineBufferOut[0]);
-
-        // first loop
-        vertices = CapsuleTubeUtil::GenerateWireLoop(
-            worldFromLocal, AZ::Vector3::CreateAxisZ(-halfMiddleHeight),
-            AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisX(), sides, radius, vertices);
-
-        // centre loop
-        vertices = CapsuleTubeUtil::GenerateWireLoop(
-            worldFromLocal, AZ::Vector3::CreateZero(),
-            AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisX(), sides, radius, vertices);
-
-        // body
-        // left line
-        vertices = WriteVertex(CapsuleTubeUtil::CalculatePositionOnSphere(
-                worldFromLocal, AZ::Vector3::CreateAxisZ(-halfMiddleHeight),
-                radius, AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisX(), 0.0f),
-            vertices);
-        vertices = WriteVertex(
-            CapsuleTubeUtil::CalculatePositionOnSphere(
-                worldFromLocal, AZ::Vector3::CreateAxisZ(halfMiddleHeight),
-                radius, AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisX(), 0.0f),
-            vertices);
-        // right line
-        vertices = WriteVertex(
-            CapsuleTubeUtil::CalculatePositionOnSphere(
-                worldFromLocal, AZ::Vector3::CreateAxisZ(-halfMiddleHeight),
-                radius, -AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisX(), AZ::Constants::Pi),
-            vertices);
-        vertices = WriteVertex(
-            CapsuleTubeUtil::CalculatePositionOnSphere(
-                worldFromLocal, AZ::Vector3::CreateAxisZ(halfMiddleHeight),
-                radius, -AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisX(), AZ::Constants::Pi),
-            vertices);
-        // top line
-        vertices = WriteVertex(
-            CapsuleTubeUtil::CalculatePositionOnSphere(
-                worldFromLocal, AZ::Vector3::CreateAxisZ(-halfMiddleHeight),
-                radius, AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisY(), 0.0f),
-            vertices);
-        vertices = WriteVertex(
-            CapsuleTubeUtil::CalculatePositionOnSphere(
-                worldFromLocal, AZ::Vector3::CreateAxisZ(halfMiddleHeight),
-                radius, AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisY(), 0.0f),
-            vertices);
-        // bottom line
-        vertices = WriteVertex(
-            CapsuleTubeUtil::CalculatePositionOnSphere(
-                worldFromLocal, AZ::Vector3::CreateAxisZ(-halfMiddleHeight),
-                radius, -AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisY(), AZ::Constants::Pi),
-            vertices);
-        vertices = WriteVertex(
-            CapsuleTubeUtil::CalculatePositionOnSphere(
-                worldFromLocal, AZ::Vector3::CreateAxisZ(halfMiddleHeight),
-                radius, -AZ::Vector3::CreateAxisZ(), AZ::Vector3::CreateAxisY(), AZ::Constants::Pi),
-            vertices);
-
-        // final loop
-        vertices = CapsuleTubeUtil::GenerateWireLoop(
-            worldFromLocal, AZ::Vector3::CreateAxisZ(halfMiddleHeight), AZ::Vector3::CreateAxisZ(),
-            AZ::Vector3::CreateAxisX(), sides, radius, vertices);
-
-        // end cap
-        CapsuleTubeUtil::GenerateWireCap(
-            worldFromLocal, AZ::Vector3::CreateAxisZ(halfMiddleHeight),
-            radius, AZ::Vector3::CreateAxisZ(),
-            AZ::Vector3::CreateAxisX(), capSegments,
-            vertices);
-    }
-
-    void GenerateCapsuleMesh(
-        const AZ::Transform& worldFromLocal, float radius, float height,
-        AZ::u32 sides, AZ::u32 capSegments, AZStd::vector<Vec3>& vertexBufferOut,
-        AZStd::vector<vtx_idx>& indexBufferOut, AZStd::vector<Vec3>& lineBufferOut)
-    {
-        AZ::Transform worldFromLocalUniformScale = worldFromLocal;
-        const AZ::VectorFloat maxScale = worldFromLocalUniformScale.ExtractScale().GetMaxElement();
-        worldFromLocalUniformScale *= AZ::Transform::CreateScale(AZ::Vector3(maxScale));
-
-        GenerateSolidCapsuleMesh(
-            worldFromLocalUniformScale, radius, height, sides,
-            capSegments, vertexBufferOut, indexBufferOut);
-
-        GenerateWireCapsuleMesh(
-            worldFromLocalUniformScale, radius, height, sides, capSegments, lineBufferOut);
     }
 } // namespace LmbrCentral

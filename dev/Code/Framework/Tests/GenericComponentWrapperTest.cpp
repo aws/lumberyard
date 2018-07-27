@@ -130,7 +130,7 @@ public:
     {
         if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
         {
-            serializeContext->Class<InGameOnlyComponent>()->SerializerForEmptyClass();
+            serializeContext->Class<InGameOnlyComponent, AZ::Component>();
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<InGameOnlyComponent>("InGame Only", "")
@@ -155,7 +155,7 @@ public:
     {
         if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
         {
-            serializeContext->Class<NoneEditorComponent>()->SerializerForEmptyClass();
+            serializeContext->Class<NoneEditorComponent, AZ::Component>();
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<NoneEditorComponent>("None Editor", "")

@@ -43,7 +43,7 @@ def build(bld):
         # Suppressing level 1 warning C4351 on windows
         # new behavior: elements of array 'array' will be default initialized
         # https://msdn.microsoft.com/en-us/library/1ywe7hcy.aspx
-        win_cxxflags = ['/wd4351'],
+        msvc_cxxflags = ['/wd4351'],
         features        = ['az_code_gen'],
         win_defines = [],
 
@@ -61,6 +61,6 @@ def build(bld):
 
         )
 
-        
+
         ########################################
     )

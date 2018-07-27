@@ -24,6 +24,8 @@ export class FacetComponent implements OnInit {
     @Input('tabs') facets?: String[];
     // Optional string that will be used as the registered cloud gem id for metrics
     @Input() metricIdentifier: string;
+    /** Disable inherited facets such as REST explorer and Logs */
+    @Input() disableInheritedFacets: boolean;
     @Output() tabClicked = new EventEmitter<number>();
     @ViewChild(FacetDirective) facetHost: FacetDirective;
 
@@ -67,24 +69,26 @@ export class FacetComponent implements OnInit {
 
     defineQualifiedFacets(): void {
         //iterate all defined facets
-        for (let i = 0; i < FacetDefinitions.defined.length; i++) {
-            let facet = FacetDefinitions.defined[i]
-            let isApplicable = true;
-            for (let x = 0; x < facet.constraints.length; x++) {
-                let constraint = facet.constraints[x];
-                //determine if the defined facet qualifies for this cloud gem
-                if (!(constraint in this.context)) {
-                    isApplicable = false;
-                } else {
-                    isApplicable = true;
-                    facet.data[constraint] = this.context[constraint]
-                    facet.data["Identifier"] = this.metricIdentifier
-                    break;
+        if (!this.disableInheritedFacets) {
+            for (let i = 0; i < FacetDefinitions.defined.length; i++) {
+                let facet = FacetDefinitions.defined[i]
+                let isApplicable = true;
+                for (let x = 0; x < facet.constraints.length; x++) {
+                    let constraint = facet.constraints[x];
+                    //determine if the defined facet qualifies for this cloud gem
+                    if (!(constraint in this.context)) {
+                        isApplicable = false;
+                    } else {
+                        isApplicable = true;
+                        facet.data[constraint] = this.context[constraint]
+                        facet.data["Identifier"] = this.metricIdentifier
+                        break;
+                    }
                 }
-            }
 
-            if (isApplicable) {
-                this.model.facets.qualified.push(facet)
+                if (isApplicable) {
+                    this.model.facets.qualified.push(facet)
+                }
             }
         }
 

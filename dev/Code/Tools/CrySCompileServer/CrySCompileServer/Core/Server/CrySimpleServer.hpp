@@ -16,10 +16,21 @@
 
 #include <Core/Common.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/containers/unordered_set.h>
+#include <AzCore/std/containers/unordered_map.h>
 #include <string>
 #include <vector>
 
 extern bool g_Success;
+
+bool GetExecutableDirectory(AZStd::string& executableDir);
+bool GetBaseDirectory(AZStd::string& baseDir);
+
+void NormalizePath(AZStd::string& pathToNormalize);
+void NormalizePath(std::string& pathToNormalize);
+
+bool IsPathValid(const AZStd::string& path);
+bool IsPathValid(const std::string& path);
 
 namespace AZ {
     class JobManager;
@@ -31,12 +42,11 @@ class SEnviropment
 {
 public:
     std::string     m_Root;
-    std::string     m_Compiler;
-    std::string     m_Cache;
-    std::string     m_Temp;
-    std::string     m_Error;
-    std::string     m_Shader;
-    std::string     m_Platform;
+    std::string     m_CompilerPath;
+    std::string     m_CachePath;
+    std::string     m_TempPath;
+    std::string     m_ErrorPath;
+    std::string     m_ShaderPath;
 
     std::string   m_FailEMail;
     std::string   m_MailServer;
@@ -45,16 +55,52 @@ public:
 
     bool                    m_Caching;
     bool                    m_PrintErrors = 1;
+    bool                    m_PrintWarnings;
+    bool                    m_PrintCommands;
     bool          m_PrintListUpdates;
     bool          m_DedupeErrors;
-    bool          m_DumpShaders = 1;
+    bool          m_DumpShaders = false;
     bool          m_RunAsRoot = false;
     std::string     m_FallbackServer;
     int32_t                 m_FallbackTreshold;
     int32_t       m_MaxConnections;
     std::vector<AZStd::string> m_WhitelistAddresses;
+    
+    // Shader Compilers ID
+    static const char* m_Orbis_DXC; // ACCEPTED_USE
+    static const char* m_Durango_FXC; // ACCEPTED_USE
+    static const char* m_D3D11_FXC;
+    static const char* m_GLSL_HLSLcc;
+    static const char* m_METAL_HLSLcc;
+    static const char* m_GLSL_LLVM_DXC;
+    static const char* m_METAL_LLVM_DXC;
 
-    static SEnviropment&    Instance();
+    static void Create();
+    static void Destroy();
+    static SEnviropment& Instance();
+    
+    void InitializePlatformAttributes();
+    
+    bool IsPlatformValid( const AZStd::string& platform ) const;
+    bool IsShaderLanguageValid( const AZStd::string& shaderLanguage ) const;
+    bool IsShaderCompilerValid( const AZStd::string& shaderCompilerID ) const;
+    
+    bool GetShaderCompilerExecutable( const AZStd::string& shaderCompilerID, AZStd::string& shaderCompilerExecutable ) const;
+    
+private:
+    SEnviropment() = default;
+    
+    // The single instance of the environment
+    static SEnviropment* m_instance;
+    
+    // Platforms
+    AZStd::unordered_set<AZStd::string> m_Platforms;
+    
+    // Shader Languages
+    AZStd::unordered_set<AZStd::string> m_ShaderLanguages;
+    
+    // Shader Compilers ID to Executable map
+    AZStd::unordered_map<AZStd::string, AZStd::string> m_ShaderCompilersMap;
 };
 
 class CCrySimpleServer

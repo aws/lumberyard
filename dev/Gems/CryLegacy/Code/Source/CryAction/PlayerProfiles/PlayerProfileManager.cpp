@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "PlayerProfileManager.h"
 #include "PlayerProfile.h"
 #include "CryAction.h"
@@ -73,6 +73,22 @@ namespace TESTING
         ISaveGameEnumerator::SGameDescription desc;
         CryLogAlways("SaveGames for Profile '%s'", pProfile->GetName());
         char timeBuf[256];
+#ifdef AZ_COMPILER_MSVC
+        tm time;
+        for (int i = 0; i < pSGE->GetCount(); ++i)
+        {
+            pSGE->GetDescription(i, desc);
+            localtime_s(&time, &desc.metaData.saveTime);
+            if (strftime(timeBuf, sizeof(timeBuf), "%#c", &time) == 0)
+            {
+                asctime_s(timeBuf, AZ_ARRAY_SIZE(timeBuf), &time);
+            }
+            CryLogAlways("SaveGame %d/%d: name='%s' humanName='%s' desc='%s'", i, pSGE->GetCount() - 1, desc.name, desc.humanName, desc.description);
+            CryLogAlways("MetaData: level=%s gr=%s version=%d build=%s savetime=%s",
+                desc.metaData.levelName, desc.metaData.gameRules, desc.metaData.fileVersion, desc.metaData.buildVersion,
+                timeBuf);
+        }
+#else
         struct tm* timePtr;
         for (int i = 0; i < pSGE->GetCount(); ++i)
         {
@@ -88,6 +104,7 @@ namespace TESTING
                 desc.metaData.levelName, desc.metaData.gameRules, desc.metaData.fileVersion, desc.metaData.buildVersion,
                 timeString);
         }
+#endif
     }
 
     void DumpActionMap(IPlayerProfile* pProfile, const char* name)
@@ -613,7 +630,7 @@ bool CPlayerProfileManager::DeleteProfile(const char* userId, const char* profil
         {
             pEntry->profileDesc.erase(iter);
             // if the profile was the current profile, delete it
-            if (pEntry->pCurrentProfile != 0 && _stricmp(profileName, pEntry->pCurrentProfile->GetName()) == 0)
+            if (pEntry->pCurrentProfile != 0 && azstricmp(profileName, pEntry->pCurrentProfile->GetName()) == 0)
             {
                 delete pEntry->pCurrentProfile;
                 pEntry->pCurrentProfile = 0;
@@ -663,7 +680,7 @@ bool CPlayerProfileManager::RenameProfile(const char* userId, const char* newNam
         return false;
     }
 
-    if (_stricmp(pEntry->pCurrentProfile->GetName(), PLAYER_DEFAULT_PROFILE_NAME) == 0)
+    if (azstricmp(pEntry->pCurrentProfile->GetName(), PLAYER_DEFAULT_PROFILE_NAME) == 0)
     {
         GameWarning("[PlayerProfiles] RenameProfile: User '%s' cannot rename default profile", userId);
         result = ePOR_DefaultProfile;
@@ -870,7 +887,7 @@ const IPlayerProfile* CPlayerProfileManager::PreviewProfile(const char* userId, 
     }
 
     // if this is the current profile, do nothing
-    if (pEntry->pCurrentPreviewProfile != 0 && profileName && _stricmp(profileName, pEntry->pCurrentPreviewProfile->GetName()) == 0)
+    if (pEntry->pCurrentPreviewProfile != 0 && profileName && azstricmp(profileName, pEntry->pCurrentPreviewProfile->GetName()) == 0)
     {
         return pEntry->pCurrentPreviewProfile;
     }
@@ -916,7 +933,7 @@ IPlayerProfile* CPlayerProfileManager::ActivateProfile(const char* userId, const
     }
 
     // if this is the current profile, do nothing
-    if (pEntry->pCurrentProfile != 0 && _stricmp(profileName, pEntry->pCurrentProfile->GetName()) == 0)
+    if (pEntry->pCurrentProfile != 0 && azstricmp(profileName, pEntry->pCurrentProfile->GetName()) == 0)
     {
         return pEntry->pCurrentProfile;
     }
@@ -1948,8 +1965,8 @@ bool CPlayerProfileManager::MoveFileHelper(const char* existingFileName, const c
     char oldPath[ICryPak::g_nMaxPath];
     char newPath[ICryPak::g_nMaxPath];
     // need to adjust aliases and paths (use FLAGS_FOR_WRITING)
-    gEnv->pCryPak->AdjustFileName(existingFileName, oldPath, ICryPak::FLAGS_FOR_WRITING);
-    gEnv->pCryPak->AdjustFileName(newFileName, newPath, ICryPak::FLAGS_FOR_WRITING);
+    gEnv->pCryPak->AdjustFileName(existingFileName, oldPath, AZ_ARRAY_SIZE(oldPath), ICryPak::FLAGS_FOR_WRITING);
+    gEnv->pCryPak->AdjustFileName(newFileName, newPath, AZ_ARRAY_SIZE(newPath), ICryPak::FLAGS_FOR_WRITING);
     return ::MoveFile(oldPath, newPath) != 0;
 }
 #else
@@ -1957,7 +1974,7 @@ bool CPlayerProfileManager::MoveFileHelper(const char* existingFileName, const c
 bool CPlayerProfileManager::MoveFileHelper(const char* existingFileName, const char* newFileName)
 {
     char oldPath[ICryPak::g_nMaxPath];
-    gEnv->pCryPak->AdjustFileName(existingFileName, oldPath, ICryPak::FLAGS_FOR_WRITING);
+    gEnv->pCryPak->AdjustFileName(existingFileName, oldPath, AZ_ARRAY_SIZE(oldPath), ICryPak::FLAGS_FOR_WRITING);
     string msg;
     msg.Format("CPlayerProfileManager::MoveFileHelper for this Platform not implemented yet.\nOriginal '%s' will be lost!", oldPath);
     CRY_ASSERT_MESSAGE(0, msg.c_str());

@@ -1,6 +1,7 @@
 ﻿import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { Observable } from 'rxjs/Observable'
+import { Subscription } from 'rxjs/Subscription';
 import { AwsContext } from './context.class'
 import { Authentication, AuthStateActionContext, EnumAuthState } from './authentication/authentication.class'
 import { UserManagement } from './user/user-management.class'
@@ -55,6 +56,7 @@ export interface Outputable {
 export class AwsService {
     private _context: AwsContext;
     private _isInitialized: boolean;
+    private _initializationSubscription: Subscription
 
     public static getStackNameFromArn(arn: string) {
         if (arn)
@@ -84,27 +86,28 @@ export class AwsService {
 
     constructor(
         private router: Router,
-        private http: Http, 
+        private http: Http,
         private metric: LyMetricService
     ) {
         this._isInitialized = false;
         this._context = new AwsContext();
-        this._context.authentication = new Authentication(this.context, this.metric);
+        this._context.authentication = new Authentication(this.context, this.router, this.metric);
         this._context.userManagement = new UserManagement(this.context, this.router, this.metric);
     }
 
     public init(userPoolId: string, clientId: string, identityPoolId: string, bucketid: string, region: string, definitions: DefinitionService): void {
-        //init the aws context                
+        //init the aws context
         this._isInitialized = this.isValidBootstrap(userPoolId, clientId, identityPoolId, bucketid, region)
         if (!this._isInitialized)
-            return;       
+            return;
 
         this._context.init(userPoolId, clientId, identityPoolId, bucketid, region);
-        
+
         this.initializeSubscriptions();
 
         this.context.authentication.change.subscribe(context => {
             if (context.state === EnumAuthState.LOGGED_OUT) {
+                this._initializationSubscription.unsubscribe()
                 this.initializeSubscriptions();
                 this.router.navigate(['/login']);
             }
@@ -122,18 +125,42 @@ export class AwsService {
     }
 
     private initializeSubscriptions(): void {
-        let initializationSubscription = this.context.authentication.change.subscribe(context => {
-            if (context.state === EnumAuthState.USER_CREDENTIAL_UPDATED) {
-                initializationSubscription.unsubscribe();
-                this.context.initializeServices();
-                this.context.project = new AwsProject(this.context, this.http);             
-                this.router.navigate(['game/cloudgems']);
+        this._initializationSubscription = this.subscribeUserUpdated()
+
+        this.context.authentication.change.subscribe(context => {
+            if (context.state === EnumAuthState.LOGGED_OUT) {
+                this._initializationSubscription  = this.subscribeUserUpdated()
             }
         });
+    }
+
+    private subscribeUserUpdated(): Subscription {
+        return this.context.authentication.change.subscribe(context => {
+            if (context.state === EnumAuthState.USER_CREDENTIAL_UPDATED) {
+                this._initializationSubscription .unsubscribe();
+                this.context.initializeServices();                
+                if (!this.context.project) {
+                    this.context.project = new AwsProject(this.context, this.http);
+                }
+
+                // Parse the URL to get the query parameters
+                let baseUrl = location.href;
+                let queryParam = {};
+                if (baseUrl.indexOf("deployment=") !== -1) {
+                    let queryParams = baseUrl.slice(baseUrl.indexOf("deployment="));
+                    let queryParamSections = queryParams.split("&");
+                    for (let section of queryParamSections) {
+                        let keyValuePair = section.split('=');
+                        queryParam[keyValuePair[0]] = decodeURIComponent(decodeURIComponent(keyValuePair[1]));
+                    }
+                }
+
+                this.router.navigate(['game/cloudgems'], { 'queryParams': queryParam });
+            }
+        })
     }
 
     private isValidBootstrap(userPoolId: string, clientId: string, identityPoolId: string, bucketid: string, region: string): boolean {
         return userPoolId && clientId && identityPoolId && bucketid && region ? true : false
     }
 }
-

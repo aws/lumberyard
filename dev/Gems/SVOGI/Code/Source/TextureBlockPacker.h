@@ -11,117 +11,108 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef __POWEROF2BLOCKPACKER_H__
-#define __POWEROF2BLOCKPACKER_H__
+#pragma once
 
-#if defined(FEATURE_SVO_GI)
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/Math/Aabb.h>
 
-#include <vector>                       // STL vector<>
 
-struct SBlockMinMax
+/*
+  These classes are used to map brick data into 3d textures so that we can do cone tracing on the gpu.
+  The blocks represent the texture regions and associate meta data.
+  The block packer is responsible for mapping blocks to free areas of the texture.
+  Currently the blocks and texture regions are mapped in a 1:1 fashion but as a future optimizaiton
+  we should utilize compression to map multiple blocks into a texture region.
+
+*/
+namespace SVOGI
 {
-    SBlockMinMax()
+    struct TextureBlock3D
     {
-        ZeroStruct(*this);
-        MarkFree();
-    }
+        const static AZ::u8 s_freeBlock;
 
-    uint8       m_dwMinX;       // 0xffffffff if free, included
-    uint8       m_dwMinY;       // not defined if free, included
-    uint8       m_dwMinZ;       // not defined if free, included
-    uint8       m_dwMaxX;       // not defined if free, not included
-    uint8       m_dwMaxY;       // not defined if free, not included
-    uint8       m_dwMaxZ;       // not defined if free, not included
-    uint16  m_nDataSize;
-    void*  m_pUserData;
-    uint32  m_nLastVisFrameId;
+        TextureBlock3D()
+        {
+            memset(this, 0, sizeof(*this));
+            MarkFree();
+        }
 
-    SBlockMinMax* m_pNext, * m_pPrev;
+        AZ::Aabb    m_worldBox;
+        AZ::Aabb    m_textureBox;
+        AZ::u32     m_atlasOffset;
+        AZ::u8      m_minX;       // 0xff        if free, inclusive
+        AZ::u8      m_minY;       // not defined if free, inclusive
+        AZ::u8      m_minZ;       // not defined if free, inclusive
+        AZ::u8      m_maxX;       // not defined if free, non inclusive
+        AZ::u8      m_maxY;       // not defined if free, non inclusive
+        AZ::u8      m_maxZ;       // not defined if free, not inclusive
+        AZ::u32     m_lastUpdatedFrame;
+        bool        m_staticDirty;
+        bool        m_dynamicDirty;
 
-    bool IsFree() const
+        bool IsFree() const
+        {
+            return m_minX == s_freeBlock;
+        }
+
+        void MarkFree()
+        {
+            m_minX = s_freeBlock;
+        }
+    };
+
+    class TextureBlockPacker3D
     {
-        return m_dwMinX == 0xff;
-    }
+    public:
+        AZ_CLASS_ALLOCATOR(TextureBlockPacker3D, AZ::SystemAllocator, 0);
 
-    void MarkFree()
-    {
-        m_dwMinX = 0xff;
-        m_pUserData = 0;
-        m_nDataSize = m_nLastVisFrameId = 0;
-    }
-};
+        const static AZ::s32 s_invalidBlockID;
 
-class CBlockPacker3D
-{
-public:
-    float                           m_fLastUsed;
+        // constructor
+        // Arguments:
+        //   dwLogHeight - e.g. specify 5 for 32, keep is small like ~ 5 or 6, don't use pixel size
+        //   dwLogHeight - e.g. specify 5 for 32, keep is small like ~ 5 or 6, don't use pixel size
+        TextureBlockPacker3D(const AZ::u32 dwLogWidth, const AZ::u32 dwLogHeight, const AZ::u32 dwLogDepth, const bool bNonPow = false);
 
-public:
-    // constructor
-    // Arguments:
-    //   dwLogHeight - e.g. specify 5 for 32, keep is small like ~ 5 or 6, don't use pixel size
-    //   dwLogHeight - e.g. specify 5 for 32, keep is small like ~ 5 or 6, don't use pixel size
-    CBlockPacker3D(const uint32 dwLogWidth, const uint32 dwLogHeight,  const uint32 dwLogDepth,  const bool bNonPow = false);
+        // Arguments:
+        //   dwLogHeight - e.g. specify 5 for 32
+        //   dwLogHeight - e.g. specify 5 for 32
+        // Returns:
+        //   Block ID or s_invalidBlockID if there was no free space
+        AZ::s32 AddBlock(const AZ::u32 dwLogWidth, const AZ::u32 dwLogHeight, const AZ::u32 dwLogDepth, const AZ::Aabb& worldBox);
 
-    // Arguments:
-    //   dwLogHeight - e.g. specify 5 for 32
-    //   dwLogHeight - e.g. specify 5 for 32
-    // Returns:
-    //   block * or 0 if there was no free space
-    SBlockMinMax* AddBlock(const uint32 dwLogWidth, const uint32 dwLogHeight, const uint32 dwLogDepth, void* pUserData, uint32 nCreateFrameId, uint32 nDataSize);
+        // Arguments:
+        //   blockID - as it was returned from AddBlock()
+        TextureBlock3D* GetBlockInfo(const AZ::s32 blockID);
 
-    // Arguments:
-    //   dwBlockID - as it was returned from AddBlock()
-    SBlockMinMax* GetBlockInfo(const uint32 dwBlockID);
+        // Arguments:
+        //   blockID - as it was returned from AddBlock()
+        void RemoveBlock(const AZ::s32 blockID);
 
-    void UpdateSize(int nW, int nH, int nD);
+        AZ::u32 GetNumBlocks() const
+        {
+            return m_blocks.size();
+        }
 
-    // Arguments:
-    //   dwBlockID - as it was returned from AddBlock()
-    void RemoveBlock(const uint32 dwBlockID);
-    void RemoveBlock(SBlockMinMax* pInfo);
+    private: // ----------------------------------------------------------
 
-    uint32 GetNumSubBlocks() const
-    {
-        return m_nUsedBlocks;
-    }
+        AZStd::vector<TextureBlock3D>   m_blocks;
+        AZStd::vector<AZ::s32>          m_blockBitmap;
+        AZStd::vector<AZ::u32>          m_blockUsageGrid;
+        AZ::u32                         m_width;
+        AZ::u32                         m_height;
+        AZ::u32                         m_depth;
+        void FillRect(const TextureBlock3D& rect, AZ::s32 value);
 
-    uint32 GetNumBlocks() const
-    {
-        return m_Blocks.size();
-    }
+        void FreeBlock(TextureBlock3D& blockInfo);
 
-    //  void MarkAsInUse(SBlockMinMax * pInfo);
+        bool IsFree(const TextureBlock3D& rect) const;
 
-    //  SBlockMinMax * CBlockPacker3D::GetLruBlock();
+        AZ::u32 GetUsedSlotsCount(const TextureBlock3D& rect) const;
 
-private: // ----------------------------------------------------------
+        void UpdateUsageGrid(const TextureBlock3D& rectIn);
 
-    // -----------------------------------------------------------------
-
-    //  TDoublyLinkedList<SBlockMinMax> m_BlocksList;
-    std::vector<SBlockMinMax>               m_Blocks;                       //
-    std::vector<uint32>                         m_BlockBitmap;          // [m_dwWidth*m_dwHeight*m_dwDepth], elements are 0xffffffff if not used
-    std::vector<byte>                               m_BlockUsageGrid;
-    uint32                                                  m_dwWidth;                  // >0
-    uint32                                                  m_dwHeight;                 // >0
-    uint32                                                  m_dwDepth;                  // >0
-    uint32                          m_nUsedBlocks;
-    // -----------------------------------------------------------------
-
-    //
-    void FillRect(const SBlockMinMax& rect, uint32 dwValue);
-
-    bool IsFree(const SBlockMinMax& rect);
-
-    int GetUsedSlotsCount(const SBlockMinMax& rect);
-
-    void UpdateUsageGrid(const SBlockMinMax& rectIn);
-
-    //
-    uint32 FindFreeBlockIDOrCreateNew();
-};
-
-#endif
-
-#endif
+        AZ::s32 FindFreeBlockIDOrCreateNew();
+    };
+}

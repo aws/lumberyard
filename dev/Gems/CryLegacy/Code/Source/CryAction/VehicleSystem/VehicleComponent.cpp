@@ -13,7 +13,7 @@
 
 // Description : Implements a standard class for a vehicle component
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "GameObjects/GameObject.h"
 #include "IActorSystem.h"
@@ -399,7 +399,7 @@ void CVehicleComponent::DebugDraw()
         static float drawColor[4] = {1, 1, 1, 1};
 
         char pMessage[256];
-        _snprintf(pMessage, sizeof(pMessage), "%s - %5.2f (%3.2f)", m_pSharedParams->name.c_str(), m_damage, m_damage / max(1.f, m_pSharedParams->damageMax));
+        azsnprintf(pMessage, sizeof(pMessage), "%s - %5.2f (%3.2f)", m_pSharedParams->name.c_str(), m_damage, m_damage / max(1.f, m_pSharedParams->damageMax));
         pMessage[sizeof(pMessage) - 1] = '\0';
 
         pRenderer->DrawLabelEx(worldTM * localBounds.GetCenter(), 1.0f, drawColor, true, true, pMessage);

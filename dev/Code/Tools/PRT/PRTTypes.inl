@@ -115,7 +115,7 @@ namespace NSH
 				for(uint32 i=0; i<m_ElemCount; ++i)
 					m_pElements[i].~T();
 #if defined(USE_MEM_ALLOCATOR)
-				gsByteAllocator.delete_mem_array(m_pElements, m_ElemCount * sizeof(T));			
+				gsByteAllocator.delete_mem_array(m_pElements, m_ElemCount * sizeof(T));
 			}
 			m_pElements = (T*)gsByteAllocator.new_mem_array(cNewElemCount * sizeof(T));
 #else
@@ -198,19 +198,19 @@ namespace NSH
 
 	template<class T>
 	template<class TE>
-	inline prtlist<T>::SListElem<TE>::SListElem(const SListElem<TE>& crCopyFrom) 
+	inline prtlist<T>::SListElem<TE>::SListElem(const SListElem<TE>& crCopyFrom)
 		: pNext(crCopyFrom.pNext), pPrevious(crCopyFrom.pPrevious), elem(crCopyFrom.elem)
 	{}
 
 	template<class T>
 	template<class TE>
-	inline prtlist<T>::SListElem<TE>::SListElem(SListElem<TE> *cpPrevious, SListElem<TE> *cpNext) 
+	inline prtlist<T>::SListElem<TE>::SListElem(SListElem<TE> *cpPrevious, SListElem<TE> *cpNext)
 		: pNext(cpNext), pPrevious(cpPrevious)
 	{}
-	
+
 	template<class T>
 	template<class TE>
-	inline prtlist<T>::SListElem<TE>::SListElem(const TE& crElem) 
+	inline prtlist<T>::SListElem<TE>::SListElem(const TE& crElem)
 		: pNext(NULL), pPrevious(NULL), elem(crElem)
 	{}
 
@@ -272,7 +272,7 @@ namespace NSH
 			pNext = pNextTmp->pNext;
 			pPrevious = pNextTmp->pPrevious;
 			elem = pNextTmp->elem;
-		}	
+		}
 		return *this;
 	}
 
@@ -289,21 +289,13 @@ namespace NSH
 			pNext = pNextTmp->pNext;
 			pPrevious = pNextTmp->pPrevious;
 			elem = pNextTmp->elem;
-		}	
+		}
 		return old;
 	}
 
 	template<class T>
 	template<class TE>
-	inline
-#if defined(_MSC_VER)
-	typename
-#endif
-	const bool prtlist<T>::SListElem<TE>::operator !=(const
-#if defined(_MSC_VER)
-	    typename
-#endif
-	    prtlist<T>::SListElem<TE>& crE) const
+	inline const bool prtlist<T>::SListElem<TE>::operator !=(const typename prtlist<T>::SListElem<TE>& crE) const
 	{
 		return (pPrevious != crE.pPrevious) || (pNext != crE.pNext);
 	}
@@ -387,7 +379,7 @@ namespace NSH
 		pNewElem->pNext = &m_LastDummy;
 		m_pLastElem = pNewElem;
 	}
-#pragma warning (default : 4291) 
+#pragma warning (default : 4291)
 
 	/************************************************************************************************************************************************/
 
@@ -523,7 +515,7 @@ namespace NSH
 
 	template<class TFloatType>
 	inline SCartesianCoord_tpl<TFloatType>::SCartesianCoord_tpl(const TFloatType cX, const TFloatType cY, const TFloatType cZ) : ::Vec3_tpl<TFloatType>(cX, cY, cZ){}
-	
+
 	template<class TFloatType>
 	template<class F>
 	inline SCartesianCoord_tpl<TFloatType>::SCartesianCoord_tpl(const SCartesianCoord_tpl<F>& rcCopyFrom) : ::Vec3_tpl<TFloatType>((TFloatType)rcCopyFrom.x, (TFloatType)rcCopyFrom.y, (TFloatType)rcCopyFrom.z){}
@@ -545,8 +537,8 @@ namespace NSH
 	{
 		return SCartesianCoord_tpl<TOtherFloatType>
 			(
-				(TOtherFloatType)Vec3_tpl<TFloatType>::x, 
-				(TOtherFloatType)Vec3_tpl<TFloatType>::y, 
+				(TOtherFloatType)Vec3_tpl<TFloatType>::x,
+				(TOtherFloatType)Vec3_tpl<TFloatType>::y,
 				(TOtherFloatType)Vec3_tpl<TFloatType>::z
 			);
 	}
@@ -781,8 +773,8 @@ namespace NSH
 		return sum;
 	}
 
-	/************************************************************************************************************************************************/	
-	
+	/************************************************************************************************************************************************/
+
 	template<typename CoeffTypeList>
 	inline CSample_tpl<CoeffTypeList>::CSample_tpl(const SDescriptor& crDescriptor, const TPolarCoord& crPolarCoord, const TSampleHandle cHandle)
 		: m_PolarCoord(crPolarCoord), m_Coeffs(crDescriptor), m_Handle(cHandle)
@@ -797,7 +789,7 @@ namespace NSH
 	}
 
 	template<typename CoeffTypeList>
-	inline CSample_tpl<CoeffTypeList>::CSample_tpl(const CSample_tpl<CoeffTypeList>& crCopyFrom) 
+	inline CSample_tpl<CoeffTypeList>::CSample_tpl(const CSample_tpl<CoeffTypeList>& crCopyFrom)
 		: m_CartCoord(crCopyFrom.m_CartCoord), m_PolarCoord(crCopyFrom.m_PolarCoord), m_Coeffs(crCopyFrom.m_Coeffs), m_Handle(0)
 	{
 #if defined(_DEBUG)

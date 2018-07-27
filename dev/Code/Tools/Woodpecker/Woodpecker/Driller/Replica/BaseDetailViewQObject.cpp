@@ -14,7 +14,7 @@
 
 #include "BaseDetailViewQObject.hxx"
 #include <Woodpecker/Driller/Replica/BaseDetailViewQObject.moc>
-#include <Woodpecker/Driller/Replica/ui_BaseDetailView.h>
+#include <Woodpecker/Driller/Replica/ui_basedetailview.h>
 
 #include "Woodpecker/Driller/AreaChart.hxx"
 #include "Woodpecker/Driller/Replica/ReplicaDataView.hxx"

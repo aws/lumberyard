@@ -13,7 +13,7 @@
 
 // Description : Implements a flow node to use vehicle horn
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "IVehicleSystem.h"
 #include "IFlowSystem.h"

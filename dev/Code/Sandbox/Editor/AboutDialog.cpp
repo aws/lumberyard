@@ -23,7 +23,7 @@
 #include <QDesktopServices>
 #include <QFont>
 
-CAboutDialog::CAboutDialog(QString versionText, QWidget* pParent /*=NULL*/)
+CAboutDialog::CAboutDialog(QString versionText, QString richTextCopyrightNotice, QWidget* pParent /*=NULL*/)
     : QDialog(pParent)
     , m_ui(new Ui::CAboutDialog)
 {
@@ -34,6 +34,9 @@ CAboutDialog::CAboutDialog(QString versionText, QWidget* pParent /*=NULL*/)
     connect(m_ui->m_transparentNotice, &QLabel::linkActivated, this, &CAboutDialog::OnPrivacyNotice);
 
     m_ui->m_transparentTrademarks->setText(versionText);
+
+    m_ui->m_transparentAllRightReserved->setTextFormat(Qt::RichText);
+    m_ui->m_transparentAllRightReserved->setText(richTextCopyrightNotice);
 
     m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/sandbox_dark.png"));
 

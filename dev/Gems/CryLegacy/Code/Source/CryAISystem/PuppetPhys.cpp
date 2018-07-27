@@ -13,7 +13,7 @@
 
 // Description : should contaioin all the methods of CPuppet which have to deal with Physics
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "Puppet.h"
 #include "AILog.h"
 #include "GoalOp.h"

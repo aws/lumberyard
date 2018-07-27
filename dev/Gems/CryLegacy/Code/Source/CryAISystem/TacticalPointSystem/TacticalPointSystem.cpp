@@ -24,7 +24,7 @@ MTJ 11/09/07 - TODO: Refactoring the queries themselves into a separate class to
 MTJ 30/06/09 - QueryContext's IAIActor should be a CAIActor internally
 */
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "TacticalPointSystem.h"
 #include "TacticalPointQuery.h"
 #include "TacticalPointQueryEnum.h"

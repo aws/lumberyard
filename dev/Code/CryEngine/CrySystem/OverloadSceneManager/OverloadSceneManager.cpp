@@ -410,7 +410,7 @@ void COverloadSceneManager::DebugDrawDisplay()
 //--------------------------------------------------------------------------------------------------
 void COverloadSceneManager::DebugDrawGraphs()
 {
-    if (m_pDebugHistoryManager == NULL)
+    if (m_pDebugHistoryManager == NULL && gEnv->pGame && gEnv->pGame->GetIGameFramework())
     {
         static float leftX = 0.6f, topY = 0.1f, width = 0.4f, height = 0.4f, margin = 0.f;
         m_pDebugHistoryManager = gEnv->pGame->GetIGameFramework()->CreateDebugHistoryManager();

@@ -14,7 +14,6 @@
 #define __EMSTUDIO_RENDERVIEWWIDGET_H
 
 #include "../EMStudioConfig.h"
-#include "../PreferencesWindow.h"
 #include "RenderWidget.h"
 #include <QWidget>
 #include <QMenu>

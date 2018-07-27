@@ -30,6 +30,10 @@ struct IDataBaseItem;
 
 namespace EditorUIPlugin
 {
+    class LibraryModifyCommand;
+    class LibraryMoveCommand;
+    class LibraryDeleteCommand;
+
     class EDITOR_QT_UI_API ScopedLibraryModifyUndo
     {
     public:
@@ -38,7 +42,9 @@ namespace EditorUIPlugin
         ScopedLibraryModifyUndo(const AZStd::string& libId);
         ~ScopedLibraryModifyUndo();
     private:
-        UndoSystem::URSequencePoint* m_modifyCmd;
+        AZStd::string m_libId;
+        LibraryModifyCommand* m_modifyCmd;
+        LibraryDeleteCommand* m_deleteCmd;
     };
 
     class EDITOR_QT_UI_API ScopedLibraryMoveUndo
@@ -50,7 +56,9 @@ namespace EditorUIPlugin
         ~ScopedLibraryMoveUndo();
 
     private:
-        UndoSystem::URSequencePoint* m_moveCmd;
+        AZStd::string m_libId;
+        LibraryMoveCommand* m_moveCmd;
+        LibraryDeleteCommand* m_deleteCmd;
     };
 
     class EDITOR_QT_UI_API ScopedSuspendUndo

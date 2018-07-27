@@ -1,0 +1,6 @@
+<Material MtlFlags="524288" DccMaterialHash="0" Shader="Illum" GenMask="501000080003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%NORMAL_MAP%SPECULAR_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_concrete" Diffuse="1,1,1,1" Specular="0.1559265,1,0,1" Opacity="1" Shininess="10.690001" vertModifType="0" LayerAct="0">
+ <Textures>
+  <Texture Map="Diffuse" File="$metricsui" Filter="5" TexType="5"/>
+ </Textures>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

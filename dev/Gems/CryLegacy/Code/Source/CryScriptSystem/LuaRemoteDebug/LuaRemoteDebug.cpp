@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "LuaRemoteDebug.h"
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/IO/SystemFile.h> // for the max path len
@@ -506,7 +506,7 @@ void CLuaRemoteDebug::GetLuaCallStack(std::vector<SLuaStackEntry>& callstack)
         description.clear();
 
         lua_getinfo(L, ("Sl"), &ar);
-        if (ar.source && *ar.source && _stricmp(ar.source, "=C") != 0 && ar.linedefined != 0)
+        if (ar.source && *ar.source && azstricmp(ar.source, "=C") != 0 && ar.linedefined != 0)
         {
             description = GetLineFromFile(ar.source + 1, ar.linedefined);
         }
@@ -605,7 +605,7 @@ string CLuaRemoteDebug::GetLineFromFile(const char* sFilename, int nLine)
     int nCurLine = 1;
     string strLine;
 
-    strcpy(sString, "");
+    azstrcpy(sString, nLen + 1, "");
 
     const char* strLast = sScript + nLen;
 
@@ -651,7 +651,7 @@ void CLuaRemoteDebug::SendLogMessage(const char* format, ...)
     char* pMessage = new char[MaxMessageLength];
     va_list args;
     va_start(args, format);
-    _vsnprintf(pMessage, MaxMessageLength, format, args);
+    azvsnprintf(pMessage, MaxMessageLength, format, args);
     va_end(args);
     pMessage[MaxMessageLength - 1] = 0;
 

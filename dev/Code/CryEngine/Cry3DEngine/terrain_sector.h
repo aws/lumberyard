@@ -80,6 +80,9 @@ struct SurfaceTile
 
     void AssignMaps(uint16 size, uint16* heightmap, ITerrain::SurfaceWeight* weights)
     {
+        delete[] m_Heightmap;
+        delete[] m_Weightmap;
+
         m_Size = size;
         m_Heightmap = heightmap;
         m_Weightmap = weights;

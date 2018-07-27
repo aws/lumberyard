@@ -23,6 +23,7 @@
 #include "ITacticalPointSystem.h"
 #include "TimeValue.h"
 #include "XMLAttrReader.h"
+#include "AIObject.h"
 
 class CAIObject;
 class CPipeUser;

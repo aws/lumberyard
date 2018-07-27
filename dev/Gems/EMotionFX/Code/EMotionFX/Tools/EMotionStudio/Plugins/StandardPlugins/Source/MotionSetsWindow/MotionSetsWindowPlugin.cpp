@@ -128,6 +128,8 @@ namespace EMStudio
         : public EMotionFX::EventHandler
     {
     public:
+        AZ_CLASS_ALLOCATOR(MotionSetsWindowPluginEventHandler, EMotionFX::EventHandlerAllocator, 0)
+
         void OnDeleteMotionSet(EMotionFX::MotionSet* motionSet) override
         {
             if (motionSet == nullptr)
@@ -258,7 +260,7 @@ namespace EMStudio
         void RecursiveIncreaseMotionsReferenceCount(EMotionFX::MotionSet* motionSet)
         {
             // Increase the reference counter if needed for each motion.
-            const EMotionFX::MotionSet::EntryMap& motionEntries = motionSet->GetMotionEntries();
+            const EMotionFX::MotionSet::MotionEntries& motionEntries = motionSet->GetMotionEntries();
             for (const auto& item : motionEntries)
             {
                 const EMotionFX::MotionSet::MotionEntry* motionEntry = item.second;
@@ -360,7 +362,7 @@ namespace EMStudio
         mSaveMotionSetCallback          = new CommandSaveMotionSetCallback(false);
         mAdjustMotionSetCallback        = new CommandAdjustMotionSetCallback(false);
         mMotionSetAddMotionCallback     = new CommandMotionSetAddMotionCallback(false);
-        mMotionSetRemoveMotionCallback  = new CommandMotionSetRemoveMotionCallback(false, true);
+        mMotionSetRemoveMotionCallback  = new CommandMotionSetRemoveMotionCallback(false);
         mMotionSetAdjustMotionCallback  = new CommandMotionSetAdjustMotionCallback(false);
         mLoadMotionSetCallback          = new CommandLoadMotionSetCallback(false);
 
@@ -418,7 +420,7 @@ namespace EMStudio
         }
 
         // add the event handler
-        mEventHandler = new MotionSetsWindowPluginEventHandler();
+        mEventHandler = aznew MotionSetsWindowPluginEventHandler();
         EMotionFX::GetEventManager().AddEventHandler(mEventHandler);
 
         return true;
@@ -539,7 +541,7 @@ namespace EMStudio
 
         if (motionSet)
         {
-            mMotionSetManagementWindow->SelectItemsByName(motionSet->GetName());
+            mMotionSetManagementWindow->SelectItemsById(motionSet->GetID());
         }
         mMotionSetManagementWindow->ReInit();
         mMotionSetManagementWindow->UpdateInterface();
@@ -741,25 +743,10 @@ namespace EMStudio
 
     bool MotionSetsWindowPlugin::CommandMotionSetAddMotionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
-        EMotionFX::MotionSet* motionSet = nullptr;
-        MotionSetsWindowPlugin* plugin = nullptr;
-        if (!MotionSetsWindowPlugin::GetMotionSetCommandInfo(command, commandLine, &motionSet, &plugin))
-        {
-            return false;
-        }
-
-        // Get the motion id.
-        AZStd::string motionId;
-        commandLine.GetValue("idString", command, motionId);
-
-        // Find the corresponding motion entry.
-        EMotionFX::MotionSet::MotionEntry* motionEntry = motionSet->FindMotionEntryByStringID(motionId.c_str());
-        if (!motionEntry)
-        {
-            return false;
-        }
-
-        return plugin->GetMotionSetWindow()->AddMotion(motionSet, motionEntry);
+        MCORE_UNUSED(command);
+        MCORE_UNUSED(commandLine);
+        UpdateMotionSetsPlugin();
+        return true;
     }
 
 
@@ -774,25 +761,10 @@ namespace EMStudio
 
     bool MotionSetsWindowPlugin::CommandMotionSetRemoveMotionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
-        EMotionFX::MotionSet* motionSet = nullptr;
-        MotionSetsWindowPlugin* plugin = nullptr;
-        if (!MotionSetsWindowPlugin::GetMotionSetCommandInfo(command, commandLine, &motionSet, &plugin))
-        {
-            return false;
-        }
-
-        // Get the motion id.
-        AZStd::string motionId;
-        commandLine.GetValue("idString", command, motionId);
-
-        // Find the corresponding motion entry.
-        EMotionFX::MotionSet::MotionEntry* motionEntry = motionSet->FindMotionEntryByStringID(motionId.c_str());
-        if (!motionEntry)
-        {
-            return false;
-        }
-
-        return plugin->GetMotionSetWindow()->RemoveMotion(motionSet, motionEntry);
+        MCORE_UNUSED(command);
+        MCORE_UNUSED(commandLine);
+        UpdateMotionSetsPlugin();
+        return true;
     }
 
 
@@ -815,7 +787,7 @@ namespace EMStudio
         }
 
         // Find the corresponding motion entry.
-        EMotionFX::MotionSet::MotionEntry* motionEntry = motionSet->FindMotionEntryByStringID(newMotionId);
+        EMotionFX::MotionSet::MotionEntry* motionEntry = motionSet->FindMotionEntryById(newMotionId);
         if (!motionEntry)
         {
             return false;
@@ -871,7 +843,7 @@ namespace EMStudio
 
         GetOutlinerManager()->AddItemToCategory("Motion Sets", motionSet->GetID(), motionSet);
 
-        const EMotionFX::MotionSet::EntryMap& motionEntries = motionSet->GetMotionEntries();
+        const EMotionFX::MotionSet::MotionEntries& motionEntries = motionSet->GetMotionEntries();
         for (const auto& item : motionEntries)
         {
             const EMotionFX::MotionSet::MotionEntry* motionEntry = item.second;

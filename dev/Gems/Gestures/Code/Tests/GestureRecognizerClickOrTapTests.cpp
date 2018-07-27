@@ -20,17 +20,17 @@ namespace
     Gestures::RecognizerClickOrTap::Config singleTapOneSecond;
 }
 
-class MockListener
-    : public Gestures::IClickOrTapListener
+class MockRecognizer
+    : public Gestures::RecognizerClickOrTap
 {
 public:
-    MockListener()
+    MockRecognizer()
         : m_count(0)
     {
     }
     int m_count;
 
-    void OnClickOrTapRecognized(const Gestures::RecognizerClickOrTap& recognizer) override
+    void OnDiscreteGestureRecognized() override
     {
         ++m_count;
     }
@@ -58,68 +58,68 @@ public:
 
 TEST_F(SimpleTests, NoInput_DefaultConfig_NotRecognized)
 {
-    MockListener mockListener;
-    Gestures::RecognizerClickOrTap recognizer(mockListener, singleTapOneSecond);
-    ASSERT_EQ(0, mockListener.m_count);
+    MockRecognizer mockRecognizer;
+    mockRecognizer.SetConfig(singleTapOneSecond);
+    ASSERT_EQ(0, mockRecognizer.m_count);
 }
 
 TEST_F(SimpleTests, Tap_ZeroDuration_Recognized)
 {
-    MockListener mockListener;
-    Gestures::RecognizerClickOrTap recognizer(mockListener, singleTapOneSecond);
+    MockRecognizer mockRecognizer;
+    mockRecognizer.SetConfig(singleTapOneSecond);
 
-    MouseDownAt(recognizer, 0.0f);
-    MouseUpAt(recognizer, 0.0f);
+    MouseDownAt(mockRecognizer, 0.0f);
+    MouseUpAt(mockRecognizer, 0.0f);
 
-    ASSERT_EQ(1, mockListener.m_count);
+    ASSERT_EQ(1, mockRecognizer.m_count);
 }
 
 TEST_F(SimpleTests, Tap_LessThanMaxDuration_Recognized)
 {
-    MockListener mockListener;
-    Gestures::RecognizerClickOrTap recognizer(mockListener, singleTapOneSecond);
+    MockRecognizer mockRecognizer;
+    mockRecognizer.SetConfig(singleTapOneSecond);
 
-    MouseDownAt(recognizer, 0.0f);
-    MouseUpAt(recognizer, 0.9f);
+    MouseDownAt(mockRecognizer, 0.0f);
+    MouseUpAt(mockRecognizer, 0.9f);
 
-    ASSERT_EQ(1, mockListener.m_count);
+    ASSERT_EQ(1, mockRecognizer.m_count);
 }
 
 TEST_F(SimpleTests, Tap_GreaterThanMaxDuration_NotRecognized)
 {
-    MockListener mockListener;
-    Gestures::RecognizerClickOrTap recognizer(mockListener, singleTapOneSecond);
+    MockRecognizer mockRecognizer;
+    mockRecognizer.SetConfig(singleTapOneSecond);
 
-    MouseDownAt(recognizer, 0.0f);
-    MouseUpAt(recognizer, 1.1f);
+    MouseDownAt(mockRecognizer, 0.0f);
+    MouseUpAt(mockRecognizer, 1.1f);
 
-    ASSERT_EQ(0, mockListener.m_count);
+    ASSERT_EQ(0, mockRecognizer.m_count);
 }
 
 TEST_F(SimpleTests, Tap_MoveWithinLimits_Recognized)
 {
-    MockListener mockListener;
+    MockRecognizer mockRecognizer;
     singleTapOneSecond.maxPixelsMoved = 10.0f;
-    Gestures::RecognizerClickOrTap recognizer(mockListener, singleTapOneSecond);
+    mockRecognizer.SetConfig(singleTapOneSecond);
 
     MoveTo(0.0f, 0.0f);
-    MouseDownAt(recognizer, 0.0f);
+    MouseDownAt(mockRecognizer, 0.0f);
     MoveTo(9.9f, 0.0f);
-    MouseUpAt(recognizer, 0.5f);
+    MouseUpAt(mockRecognizer, 0.5f);
 
-    ASSERT_EQ(1, mockListener.m_count);
+    ASSERT_EQ(1, mockRecognizer.m_count);
 }
 
 TEST_F(SimpleTests, Tap_MoveOutsideLimits_NotRecognized)
 {
-    MockListener mockListener;
+    MockRecognizer mockRecognizer;
     singleTapOneSecond.maxPixelsMoved = 10.0f;
-    Gestures::RecognizerClickOrTap recognizer(mockListener, singleTapOneSecond);
+    mockRecognizer.SetConfig(singleTapOneSecond);
 
     MoveTo(0.0f, 0.0f);
-    MouseDownAt(recognizer, 0.0f);
+    MouseDownAt(mockRecognizer, 0.0f);
     MoveTo(10.1f, 0.0f);
-    MouseUpAt(recognizer, 0.5f);
+    MouseUpAt(mockRecognizer, 0.5f);
 
-    ASSERT_EQ(0, mockListener.m_count);
+    ASSERT_EQ(0, mockRecognizer.m_count);
 }

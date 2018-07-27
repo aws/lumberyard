@@ -22,6 +22,7 @@
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManagerBus.h>
+#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
 /// To use a specific AWS API request you have to include each of these.
 #pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
@@ -87,11 +88,21 @@ namespace CloudGemAWSScriptBehaviors
     AZ::Job* AWSBehaviorHTTP::CreateHttpGetJob(const AZStd::string& url) const
     {
         AZ::JobContext* jobContext{ nullptr };
-        EBUS_EVENT_RESULT(jobContext, AZ::JobManagerBus, GetGlobalContext);
+        EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
         AZ::Job* job{ nullptr };
         job = AZ::CreateJobFunction([url]()
         {
-            std::shared_ptr<Aws::Http::HttpClient> httpClient = Aws::Http::CreateHttpClient(Aws::Client::ClientConfiguration());
+            auto config = Aws::Client::ClientConfiguration();
+            AZStd::string caFile;
+            CloudCanvas::RequestRootCAFileResult requestResult;
+            EBUS_EVENT_RESULT(requestResult, CloudCanvasCommon::CloudCanvasCommonRequestBus, RequestRootCAFile, caFile);
+            if (caFile.length())
+            {
+                AZ_TracePrintf("CloudCanvas", "AWSBehaviorHTTP using caFile %s with request result %d", caFile.c_str(), requestResult);
+                config.caFile = caFile.c_str();                
+            }
+
+            std::shared_ptr<Aws::Http::HttpClient> httpClient = Aws::Http::CreateHttpClient(config);
 
             Aws::String requestURL{ url.c_str() };
             auto httpRequest(Aws::Http::CreateHttpRequest(requestURL, Aws::Http::HttpMethod::HTTP_GET, Aws::Utils::Stream::DefaultResponseStreamFactoryMethod));

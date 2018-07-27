@@ -25,7 +25,7 @@ def build(bld):
         file_list               = 'cryd3dcompilerstub.waf_files',
         platforms               = ['all'],
         configurations          = ['all'],
-        pch                     = 'stdafx.cpp',
+        pch                     = 'StdAfx.cpp',
 
         #==============================
         # Common

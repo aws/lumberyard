@@ -79,8 +79,8 @@ CResFileLookupDataMan::CResFileLookupDataMan()
 
     m_VersionInfo.m_ResVersion = RES_COMPRESSION;
 
-    float fVersion = (float)FX_CACHE_VER;
-    sprintf(m_VersionInfo.m_szCacheVer, "Ver: %.1f", fVersion);
+    float fVersion = FX_CACHE_VER;
+    azsprintf(m_VersionInfo.m_szCacheVer, "Ver: %.1f", fVersion);
 }
 
 CResFileLookupDataMan::~CResFileLookupDataMan()
@@ -98,18 +98,18 @@ CCryNameTSCRC CResFileLookupDataMan::AdjustName(const char* szName)
     int nSize = gRenDev->m_cEF.m_szCachePath.size();
     if (!_strnicmp(szName, gRenDev->m_cEF.m_szCachePath.c_str(), nSize))
     {
-        strcpy(acTmp, &szName[nSize]);
+        azstrcpy(acTmp, AZ_ARRAY_SIZE(acTmp), &szName[nSize]);
     }
     else if (!_strnicmp(szName, "Levels", 6))
     {
         const char* acNewName = strstr(szName, "ShaderCache");
         assert(acNewName);
         PREFAST_ASSUME(acNewName);
-        strcpy(acTmp, acNewName);
+        azstrcpy(acTmp, AZ_ARRAY_SIZE(acTmp), acNewName);
     }
     else
     {
-        strcpy(acTmp, szName);
+        azstrcpy(acTmp, AZ_ARRAY_SIZE(acTmp), szName);
     }
 
     return acTmp;
@@ -172,9 +172,9 @@ bool CResFileLookupDataMan::LoadData(
         return false;
     }
 
-    float fVersion = (float)FX_CACHE_VER;
+    float fVersion = FX_CACHE_VER;
     char cacheVer[16] = {0};
-    sprintf(cacheVer, "Ver: %.1f", fVersion);
+    azsprintf(cacheVer, "Ver: %.1f", fVersion);
     if (strcmp(cacheVer, versionInfo.m_szCacheVer))
     {
         gEnv->pCryPak->FClose(fileHandle);
@@ -317,8 +317,8 @@ void CResFileLookupDataMan::SaveData(
     SVersionInfo versionInfo;
     versionInfo.m_ResVersion = RES_COMPRESSION;
 
-    float fVersion = (float)FX_CACHE_VER;
-    sprintf(versionInfo.m_szCacheVer, "Ver: %.1f", fVersion);
+    float fVersion = FX_CACHE_VER;
+    azsprintf(versionInfo.m_szCacheVer, "Ver: %.1f", fVersion);
 
     if (bSwapEndianWrite)
     {
@@ -453,7 +453,7 @@ void CResFileLookupDataMan::AddData(const CResFile* pResFile, uint32 CRC)
     data.m_NumOfFilesUnique = pResFile->m_nNumFilesUnique;
     data.m_NumOfFilesRef = pResFile->m_nNumFilesRef;
 
-    float fVersion = (float)FX_CACHE_VER;
+    float fVersion = FX_CACHE_VER;
     uint32 nMinor = (int)(((float)fVersion - (float)(int)fVersion) * 10.1f);
     uint32 nMajor = (int)fVersion;
     data.m_CacheMinorVer = nMinor;
@@ -507,7 +507,11 @@ void CResFileLookupDataMan::AddData(const CResFile* pResFile, uint32 CRC)
 void CResFileLookupDataMan::AddDataCFX(const char* acOrigFilename, uint32 CRC)
 {
     char nm[256], nmDir[512];
+#ifdef AZ_COMPILER_MSVC
+    _splitpath_s(acOrigFilename, NULL, 0, nmDir, AZ_ARRAY_SIZE(nmDir), nm, AZ_ARRAY_SIZE(nm), NULL, 0);
+#else
     _splitpath(acOrigFilename, NULL, nmDir, nm, NULL);
+#endif
     {
         char* s = strchr(nm, '@');
         //assert(s);
@@ -567,7 +571,11 @@ SCFXLookupData* CResFileLookupDataMan::GetDataCFX(
     const char* szPath)
 {
     char nm[256];
+#ifdef AZ_COMPILER_MSVC
+    _splitpath_s(szPath, NULL, 0, NULL, 0, nm, AZ_ARRAY_SIZE(nm), NULL, 0);
+#else
     _splitpath(szPath, NULL, NULL, nm, NULL);
+#endif
     CCryNameTSCRC name = nm;
     TFileCFXDataMap::iterator it = m_CFXData.find(name);
     if (it == m_CFXData.end())

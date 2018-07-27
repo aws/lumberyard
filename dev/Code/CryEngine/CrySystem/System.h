@@ -520,6 +520,8 @@ public:
     virtual IDiskProfiler* GetIDiskProfiler() { return m_pDiskProfiler; }
     CThreadProfiler* GetThreadProfiler() { return m_pThreadProfiler; }
     INameTable* GetINameTable() { return m_env.pNameTable; };
+    IViewSystem* GetIViewSystem();
+    ILevelSystem* GetILevelSystem();
     IBudgetingSystem* GetIBudgetingSystem()  { return(m_pIBudgetingSystem); }
     IFlowSystem* GetIFlowSystem() { return m_env.pFlowSystem; }
     IDialogSystem* GetIDialogSystem() { return m_env.pDialogSystem; }
@@ -781,7 +783,6 @@ private:
     void CreateAudioVars();
     void RenderStats();
     void RenderOverscanBorders();
-    void RenderJobStats();
     void RenderMemStats();
     void RenderThreadInfo();
     WIN_HMODULE LoadDLL(const char* dllName);
@@ -945,6 +946,12 @@ private: // ------------------------------------------------------
     //! The default font for end-user UI interfaces
     IFFont* m_pIFontUi;
 
+    //! System to manage levels.
+    ILevelSystem* m_pLevelSystem;
+
+    //! System to manage views.
+    IViewSystem* m_pViewSystem;
+
     //! System to monitor given budget.
     IBudgetingSystem* m_pIBudgetingSystem;
 
@@ -981,7 +988,6 @@ private: // ------------------------------------------------------
     //////////////////////////////////////////////////////////////////////////
 
     // DLL names
-    ICVar* m_sys_dll_ai;
     ICVar* m_sys_dll_response_system;
     ICVar* m_sys_dll_game;
     ICVar* m_sys_game_folder;
@@ -1046,10 +1052,6 @@ private: // ------------------------------------------------------
     ICVar* m_sys_profile_memory;
     ICVar* m_sys_profile_sampler;
     ICVar* m_sys_profile_sampler_max_samples;
-    ICVar* m_sys_job_system_filter;
-    ICVar* m_sys_job_system_enable;
-    ICVar* m_sys_job_system_profiler;
-    ICVar* m_sys_job_system_max_worker;
     ICVar* m_sys_GraphicsQuality;
     ICVar* m_sys_firstlaunch;
     ICVar* m_sys_skip_input;

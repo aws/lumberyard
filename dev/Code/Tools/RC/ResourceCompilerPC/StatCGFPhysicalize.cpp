@@ -413,7 +413,8 @@ namespace {
     {
         int i, j;
         Vec3 n;
-        FILE* f = fopen(fname, "wt");
+        FILE* f = nullptr; 
+        azfopen(&f, fname, "wt");
         if (!f)
         {
             return 0;
@@ -441,7 +442,8 @@ namespace {
     int LoadNetgenTetrahedrization(const char* fname, Vec3*& pVtx, int& nVtx, int*& pTets, int& nTets)
     {
         int i, j, nj;
-        FILE* f = fopen(fname, "rt");
+        FILE* f = nullptr; 
+        azfopen(&f, fname, "rt");
         char buf[65536], * pbuf = buf, * str;
 
         pVtx = 0;

@@ -14,9 +14,9 @@
 // Description : This node includes different generic VR functionality
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <HMDBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <IStereoRenderer.h>

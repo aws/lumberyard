@@ -34,7 +34,7 @@ namespace EMotionFX
     class EMFX_API VertexAttributeLayer
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(VertexAttributeLayer, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_GEOMETRY_VERTEXATTRIBUTES);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**

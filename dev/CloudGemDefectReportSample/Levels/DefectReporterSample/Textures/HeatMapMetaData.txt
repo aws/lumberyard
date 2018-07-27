@@ -1,0 +1,8 @@
+Game world coordinates:
+Lower Left X: 0.03 Y: 0.31
+Lower Right X: 127.77 Y: 0.12
+
+Data:
+Event: defect
+X Axis: translationx
+Y Axis: translationy

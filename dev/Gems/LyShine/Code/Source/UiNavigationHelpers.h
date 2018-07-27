@@ -38,7 +38,7 @@ namespace UiNavigationHelpers
     //! Map input channel ids to interactable ui commands
     UiNavigationHelpers::Command MapInputChannelIdToUiNavigationCommand(const AzFramework::InputChannelId& inputChannelId, AzFramework::ModifierKeyMask activeModifierKeys);
 
-    using ValidationFunction = std::function<bool(AZ::EntityId)>;
+    using ValidationFunction = AZStd::function<bool(AZ::EntityId)>;
 
     //! Find the next element given the current element and a direction
     AZ::EntityId GetNextElement(AZ::EntityId curEntityId, Command command,

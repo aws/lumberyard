@@ -23,6 +23,7 @@ class QKeySequence;
 class QViewportConsumer
 {
 public:
+    virtual ~QViewportConsumer() = default;
     virtual void OnViewportRender(const SRenderContext& rc) {}
 
     // If you're overriding OnViewportKey, you should also override ProcessesViewportKey and return true if you're interested in a particular key.

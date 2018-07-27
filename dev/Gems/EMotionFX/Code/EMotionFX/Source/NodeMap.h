@@ -38,7 +38,7 @@ namespace EMotionFX
     class EMFX_API NodeMap
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(NodeMap, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_NODEMAP);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         struct MapEntry

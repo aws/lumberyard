@@ -55,10 +55,11 @@ def create_compiled_task(self, name, node):
 	:return: The task created
 	:rtype: :py:class:`waflib.Task.Task`
 	"""
+	index = self.target_uid
 	if self.env['CC_NAME'] == 'msvc':
-		out = '%s.%d.obj' % (node.name, self.idx)
+		out = '%s.%d.obj' % (node.name, index)
 	else:
-		out = '%s.%d.o' % (node.name, self.idx)	
+		out = '%s.%d.o' % (node.name, index)
 	
 	task = self.create_task(name, node, node.parent.find_or_declare(out))
 	

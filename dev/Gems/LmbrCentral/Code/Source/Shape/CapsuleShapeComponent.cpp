@@ -18,6 +18,7 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <Shape/ShapeComponentConverters.h>
 #include <Shape/ShapeDisplay.h>
+#include <LmbrCentral/Geometry/GeometrySystemComponentBus.h>
 
 namespace LmbrCentral
 {
@@ -35,12 +36,19 @@ namespace LmbrCentral
     void CapsuleShapeDebugDisplayComponent::Activate()
     {
         EntityDebugDisplayComponent::Activate();
+        ShapeComponentNotificationsBus::Handler::BusConnect(GetEntityId());
         GenerateVertices();
     }
-    
-    void CapsuleShapeDebugDisplayComponent::Draw(AzFramework::EntityDebugDisplayRequests* /*displayContext*/)
+
+    void CapsuleShapeDebugDisplayComponent::Deactivate()
     {
-        DrawShape(g_defaultShapeDrawParams, m_capsuleShapeMesh);
+        ShapeComponentNotificationsBus::Handler::BusDisconnect();
+        EntityDebugDisplayComponent::Deactivate();
+    }
+
+    void CapsuleShapeDebugDisplayComponent::Draw(AzFramework::EntityDebugDisplayRequests* displayContext)
+    {
+        DrawShape(displayContext, g_defaultShapeDrawParams, m_capsuleShapeMesh);
     }
 
     bool CapsuleShapeDebugDisplayComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
@@ -63,20 +71,28 @@ namespace LmbrCentral
         return false;
     }
 
-    void CapsuleShapeDebugDisplayComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
-    {
-        EntityDebugDisplayComponent::OnTransformChanged(local, world);
-        GenerateVertices();
-    }
-
     void CapsuleShapeDebugDisplayComponent::GenerateVertices()
     {
-        GenerateCapsuleMesh(
-            GetCurrentTransform(), m_capsuleShapeConfig.m_radius, m_capsuleShapeConfig.m_height,
-            g_capsuleDebugShapeSides, g_capsuleDebugShapeCapSegments, m_capsuleShapeMesh.m_vertexBuffer, m_capsuleShapeMesh.m_indexBuffer,
-            m_capsuleShapeMesh.m_lineBuffer);
+        CapsuleGeometrySystemRequestBus::Broadcast(
+            &CapsuleGeometrySystemRequestBus::Events::GenerateCapsuleMesh,
+            m_capsuleShapeConfig.m_radius,
+            m_capsuleShapeConfig.m_height,
+            g_capsuleDebugShapeSides,
+            g_capsuleDebugShapeCapSegments,
+            m_capsuleShapeMesh.m_vertexBuffer,
+            m_capsuleShapeMesh.m_indexBuffer,
+            m_capsuleShapeMesh.m_lineBuffer
+        );
     }
 
+    void CapsuleShapeDebugDisplayComponent::OnShapeChanged(ShapeChangeReasons changeReason)
+    {
+        if (changeReason == ShapeChangeReasons::ShapeChanged)
+        {
+            CapsuleShapeComponentRequestsBus::EventResult(m_capsuleShapeConfig, GetEntityId(), &CapsuleShapeComponentRequests::GetCapsuleConfiguration);
+            GenerateVertices();
+        }
+    }
 
     namespace ClassConverters
     {

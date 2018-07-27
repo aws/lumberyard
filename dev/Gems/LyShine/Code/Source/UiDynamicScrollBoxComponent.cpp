@@ -257,17 +257,14 @@ void UiDynamicScrollBoxComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiDynamicScrollBoxBus>("UiDynamicScrollBoxBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("RefreshContent", &UiDynamicScrollBoxBus::Events::RefreshContent)
             ->Event("GetLocationIndexOfChild", &UiDynamicScrollBoxBus::Events::GetLocationIndexOfChild)
             ->Event("GetChildElementAtLocationIndex", &UiDynamicScrollBoxBus::Events::GetChildElementAtLocationIndex);
 
         behaviorContext->EBus<UiDynamicScrollBoxDataBus>("UiDynamicScrollBoxDataBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiDynamicScrollBoxDataBusHandler>();
 
         behaviorContext->EBus<UiDynamicScrollBoxElementNotificationBus>("UiDynamicScrollBoxElementNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiDynamicScrollBoxElementNotificationBusHandler>();
     }
 }

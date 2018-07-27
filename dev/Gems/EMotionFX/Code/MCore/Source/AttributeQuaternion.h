@@ -41,7 +41,6 @@ namespace MCore
 
         MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(&mValue); }
         MCORE_INLINE uint32 GetRawDataSize() const                  { return sizeof(Quaternion); }
-        bool GetSupportsRawDataPointer() const override             { return true; }
 
         // adjust values
         MCORE_INLINE const Quaternion& GetValue() const             { return mValue; }
@@ -104,17 +103,5 @@ namespace MCore
             return true;
         }
 
-        // write to a stream
-        bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override
-        {
-            Quaternion streamValue = mValue;
-            Endian::ConvertQuaternionTo(&streamValue, targetEndianType);
-            if (stream->Write(&streamValue, sizeof(Quaternion)) == 0)
-            {
-                return false;
-            }
-
-            return true;
-        }
     };
 }   // namespace MCore

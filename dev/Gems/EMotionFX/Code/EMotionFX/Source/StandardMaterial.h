@@ -30,7 +30,7 @@ namespace EMotionFX
     class EMFX_API StandardMaterialLayer
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(StandardMaterialLayer, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_GEOMETRY_MATERIALS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**
@@ -268,7 +268,7 @@ namespace EMotionFX
     class EMFX_API StandardMaterial
         : public Material
     {
-        MCORE_DECLARE_CLASS(StandardMaterial);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         enum
@@ -459,19 +459,19 @@ namespace EMotionFX
          * Creates a clone of the material, including it's layers.
          * @result A pointer to an exact clone (copy) of the material.
          */
-        virtual Material* Clone() const override;
+        Material* Clone() const override;
 
         /**
          * Get the unique type ID of this type of material.
          * @result The unique ID of this material type.
          */
-        virtual uint32 GetType() const override                 { return TYPE_ID; }
+        uint32 GetType() const override                 { return TYPE_ID; }
 
         /**
          * Get the string that is a description or the class name of this material type.
          * @result The string containing the description or class name.
          */
-        virtual const char* GetTypeString() const override      { return "StandardMaterial"; }
+        const char* GetTypeString() const override      { return "StandardMaterial"; }
 
 
     protected:

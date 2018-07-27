@@ -13,7 +13,7 @@
 
 // Description : Implementation of Skeleton class (Forward Kinematics)
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 
 
 #include <CryExtension/Impl/ClassWeaver.h>

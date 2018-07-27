@@ -1,0 +1,102 @@
+{
+    "targetDir": "C:\\Users\\dmeehan\\Documents\\Wwise LTX 2017.2.4.6590\\bundle",
+    "bundle": {
+        "id": "wwise.2017_2_4_6590_ltx",
+        "vendor": "Audiokinetic",
+        "name": "Wwise",
+        "type": "wwise",
+        "version": {
+            "build": 6590,
+            "major": 2,
+            "minor": 4,
+            "nickname": "LTX",
+            "year": 2017
+        },
+        "displayName": "Wwise LTX 2017.2.4.6590"
+    },
+    "installed": {
+        "groups": [
+            {
+                "id": "Packages",
+                "valueId": "Authoring"
+            },
+            {
+                "id": "Packages",
+                "valueId": "LTX"
+            },
+            {
+                "id": "Packages",
+                "valueId": "SDK"
+            },
+            {
+                "id": "AuthoringPlatforms",
+                "valueId": "Win32"
+            },
+            {
+                "id": "AuthoringPlatforms",
+                "valueId": "x64"
+            },
+            {
+                "id": "AuthoringOS",
+                "valueId": "Windows"
+            },
+            {
+                "id": "AuthoringOS",
+                "valueId": "OSX"
+            },
+            {
+                "id": "DeploymentPlatforms",
+                "valueId": "Android"
+            },
+            {
+                "id": "DeploymentPlatforms",
+                "valueId": "iOS"
+            },
+            {
+                "id": "DeploymentPlatforms",
+                "valueId": "tvOS"
+            },
+            {
+                "id": "DeploymentPlatforms",
+                "valueId": "Mac"
+            },
+            {
+                "id": "DeploymentPlatforms",
+                "valueId": "Linux"
+            },
+            {
+                "id": "DeploymentPlatforms",
+                "valueId": "Windows_vc120"
+            },
+            {
+                "id": "DeploymentPlatforms",
+                "valueId": "Windows_vc140"
+            },
+            {
+                "id": "DeploymentPlatforms",
+                "valueId": "Windows_vc150"
+            }
+        ],
+        "files": [
+            "SDK.Mac.tar.xz",
+            "SDK.Android.tar.xz",
+            "Authoring.tar.xz",
+            "Authoring.MacExcludes.x64.tar.xz",
+            "SDK.tar.xz",
+            "SDK.Windows_vc140.tar.xz",
+            "SDK.tvOS.tar.xz",
+            "Documentation_LTX.tar.xz",
+            "SDK.Linux.tar.xz",
+            "SDK.Windows_vc120.tar.xz",
+            "Authoring.x64.tar.xz",
+            "WwiseLTX.tar.xz",
+            "SDK.Windows_vc150.tar.xz",
+            "SDK.iOS.tar.xz",
+            "Wwise.app.zip"
+        ],
+        "date": {}
+    },
+    "sampleFiles": [],
+    "entryState": 0,
+    "children": []
+}

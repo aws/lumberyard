@@ -1400,15 +1400,15 @@ struct IEntity
     //! Gets the entity's component for the specified type.
     //! \return Returns the raw pointer, does not transfer ownership.
     template <typename T>
-    std::shared_ptr<T> GetComponent()
+    AZStd::shared_ptr<T> GetComponent()
     {
-        return std::static_pointer_cast<T>(GetComponentImpl(T::Type()));
+        return AZStd::static_pointer_cast<T>(GetComponentImpl(T::Type()));
     }
 
     template <typename T>
-    std::shared_ptr<const T> GetComponent() const
+    AZStd::shared_ptr<const T> GetComponent() const
     {
-        return std::static_pointer_cast<const T>(GetComponentImpl(T::Type()));
+        return AZStd::static_pointer_cast<const T>(GetComponentImpl(T::Type()));
     }
 
     //! Gets the entity's component for the specified type;
@@ -1421,7 +1421,7 @@ struct IEntity
     //!
     //! \return Returns the a shared_ptr of the component type.
     template <class T>
-    typename std::enable_if<std::is_base_of<IComponent, T>::value, std::shared_ptr<T> >::type GetOrCreateComponent();
+    typename std::enable_if<std::is_base_of<IComponent, T>::value, AZStd::shared_ptr<T> >::type GetOrCreateComponent();
 
 protected:
 
@@ -1437,7 +1437,7 @@ protected:
 // CryComponent helpers
 
 template<typename DST, typename SRC>
-DST crycomponent_cast(SRC pComponent) { return std::static_pointer_cast<typename DST::element_type>(pComponent); }
+DST crycomponent_cast(SRC pComponent) { return AZStd::static_pointer_cast<typename DST::element_type>(pComponent); }
 
 //////////////////////////////////////////////////////////////////////////
 // Inline implementation.

@@ -15,7 +15,7 @@
 #define CRYINCLUDE_CRYACTION_EFFECTSYSTEM_GROUNDEFFECT_H
 #pragma once
 
-#include "../IEffectSystem.h"
+#include "IEffectSystem.h"
 #include "CryActionPhysicQueues.h"
 
 struct IParticleEffect;

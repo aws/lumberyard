@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "UiEditorAnimationBus.h"
 #include "UiEditorDLLBus.h"
 #include "UiAnimViewAnimNode.h"
@@ -1362,7 +1362,7 @@ CUiAnimViewAnimNodeBundle CUiAnimViewAnimNode::AddSelectedUiElements()
         EBUS_EVENT_ID_RESULT(elementId, entity->GetId(), UiElementBus, GetElementId);
         QString nodeName = entity->GetName().c_str();
         char suffix[10];
-        _snprintf(suffix, 10, " (%d)", elementId);
+        azsnprintf(suffix, 10, " (%d)", elementId);
         nodeName += suffix;
 
         pAnimNode = CreateSubNodeAz(nodeName, eUiAnimNodeType_AzEntity, entity, true);

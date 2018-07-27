@@ -9,12 +9,11 @@
 #include <CloudGemFramework/HttpClientComponent.h>
 #include <MappingsComponent.h>
 #include <PlayerIdentityComponent.h>
-#include <IGem.h>
 
 namespace CloudGemFramework
 {
     CloudGemFrameworkModule::CloudGemFrameworkModule()
-        : CryHooksModule()
+        : AZ::Module()
     {
         // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
         m_descriptors.insert(m_descriptors.end(), {

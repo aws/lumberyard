@@ -12,14 +12,14 @@
 
 #pragma once
 
-#include <AzCore/Memory/SystemAllocator.h>
-
+#include <AzCore/Math/Color.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
+#include <MCore/Source/Color.h>
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Matrix4.h>
 #include <MCore/Source/Quaternion.h>
@@ -29,6 +29,16 @@
 
 namespace MCore
 {
+    AZ_FORCE_INLINE AZ::Color EmfxColorToAzColor(const MCore::RGBAColor& emfxColor)
+    {
+        return AZ::Color(emfxColor.r, emfxColor.g, emfxColor.b, emfxColor.a);
+    }
+
+    AZ_FORCE_INLINE MCore::RGBAColor AzColorToEmfxColor(const AZ::Color& azColor)
+    {
+        return MCore::RGBAColor(static_cast<float>(azColor.GetR()), static_cast<float>(azColor.GetG()), static_cast<float>(azColor.GetB()), static_cast<float>(azColor.GetA()));
+    }
+
     AZ_FORCE_INLINE AZ::Quaternion EmfxQuatToAzQuat(const MCore::Quaternion& emfxQuat)
     {
         return AZ::Quaternion(emfxQuat.x, emfxQuat.y, emfxQuat.z, emfxQuat.w);

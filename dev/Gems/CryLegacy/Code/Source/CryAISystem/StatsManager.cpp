@@ -14,7 +14,7 @@
 // Description : Stores global AI statistics and provides display/output methods
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "StatsManager.h"
 #include "DebugDrawContext.h"
 

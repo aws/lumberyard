@@ -17,8 +17,6 @@
 #define CRYINCLUDE_CRYANIMATION_CONTROLLEROPT_H
 #pragma once
 
-#if !defined(RESOURCE_COMPILER)
-
 #include "CGFContent.h"
 #include "QuatQuantization.h"
 #include "ControllerPQ.h"
@@ -424,7 +422,7 @@ struct ControllerData
 };
 
 
-// If the size of this structure changes, RC_GetSizeOfControllerOptNonVirtual also needs
+// If the size of this structure changes, RC_GetSizeOfControllerOptNonVirtual (see dev/Code/Tools/RC/ResourceCompilerPC/CGA/TrackStorage.cpp) also needs
 // to be updated.
 
 class CControllerOptNonVirtual
@@ -733,28 +731,6 @@ static uint32   GetKeySelector(f32 normalized_time, f32& difference_time, const 
         }
     }
 }
-
-#else
-
-// Essentially, the DBA needs to reserve space for the CControllerOptNonVirtual instances.
-// They need to be allocated within the same allocation as the track data, as the
-// CControllerOptNonVirtual instances store offsets to the data, and the allocation as a
-// whole gets defragged and relocated.
-
-// sizeof(CControllerOptNonVirtual) can't be done in RC, because:
-
-// a) The struct depends on a bunch of things that will conflict with RC types
-// b) The vtable pointer means the size may be wrong.
-
-// So we have this. If it's wrong, you'll get warnings when DBAs are streamed.
-inline size_t RC_GetSizeOfControllerOptNonVirtual(size_t pointerSize)
-{
-    size_t icontrollerSize = Align(pointerSize + sizeof(uint32), pointerSize);
-    size_t controllerSize = Align(icontrollerSize + sizeof(uint32), pointerSize);
-    return Align(controllerSize + sizeof(uint32) * 6, pointerSize);
-}
-
-#endif
 
 #endif // CRYINCLUDE_CRYANIMATION_CONTROLLEROPT_H
 

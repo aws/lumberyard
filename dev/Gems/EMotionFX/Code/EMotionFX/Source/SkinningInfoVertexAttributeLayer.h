@@ -99,6 +99,8 @@ namespace EMotionFX
     class EMFX_API SkinningInfoVertexAttributeLayer
         : public VertexAttributeLayer
     {
+        AZ_CLASS_ALLOCATOR_DECL
+
     public:
         enum
         {
@@ -120,7 +122,7 @@ namespace EMotionFX
          * @result The unique type ID, which identifies what type of data is stored inside this layer. Each class inherited from
          *         the VertexAttributeLayer class requires a unique type ID.
          */
-        virtual uint32 GetType() const override;
+        uint32 GetType() const override;
 
         /**
          * Get the description of the vertex attributes or layer.
@@ -196,7 +198,7 @@ namespace EMotionFX
          * @param startAttributeNr The start attribute number.
          * @param endAttributeNr The end attribute number, which will also be removed.
          */
-        virtual void RemoveAttributes(uint32 startAttributeNr, uint32 endAttributeNr) override;
+        void RemoveAttributes(uint32 startAttributeNr, uint32 endAttributeNr) override;
 
         /**
          * Remove all influences which are linked to the given node and optimize the memory usage of the skinning info

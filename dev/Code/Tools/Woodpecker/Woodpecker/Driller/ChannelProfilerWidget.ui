@@ -140,7 +140,7 @@
   <customwidget>
    <class>AzToolsFramework::ClickableLabel</class>
    <extends>QLabel</extends>
-   <header>AzToolsFramework/UI/UICore/clickablelabel.hxx</header>
+   <header>AzToolsFramework/UI/UICore/ClickableLabel.hxx</header>
   </customwidget>
  </customwidgets>
  <resources>

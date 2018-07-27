@@ -18,7 +18,7 @@
 #include <QCoreApplication>
 #include <QThreadPool>
 
-#include "native/utilities/AssetUtils.h"
+#include "native/utilities/assetUtils.h"
 #include "native/utilities/PlatformConfiguration.h"
 #include "native/resourcecompiler/RCCommon.h"
 
@@ -90,7 +90,7 @@ namespace AssetProcessor
         m_RCJobListModel.markAsProcessing(rcJob);
         Q_EMIT JobStatusChanged(rcJob->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::InProgress);
         rcJob->Start();
-        Q_EMIT JobStarted(rcJob->GetInputFileRelativePath(), QString::fromUtf8(rcJob->GetPlatformInfo().m_identifier.c_str()));
+        Q_EMIT JobStarted(rcJob->GetJobEntry().m_pathRelativeToWatchFolder, QString::fromUtf8(rcJob->GetPlatformInfo().m_identifier.c_str()));
     }
 
     void RCController::QuitRequested()
@@ -179,24 +179,34 @@ namespace AssetProcessor
 
     void RCController::JobSubmitted(JobDetails details)
     {
-        AssetProcessor::QueueElementID checkFile(details.m_jobEntry.m_relativePathToFile, details.m_jobEntry.m_platformInfo.m_identifier.c_str(), details.m_jobEntry.m_jobKey);
+        AssetProcessor::QueueElementID checkFile(details.m_jobEntry.m_databaseSourceName, details.m_jobEntry.m_platformInfo.m_identifier.c_str(), details.m_jobEntry.m_jobKey);
 
         if (m_RCJobListModel.isInQueue(checkFile))
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Job is already in queue - ignored [%s, %s, %s]\n", checkFile.GetInputAssetName().toUtf8().data(), checkFile.GetPlatform().toUtf8().data(), checkFile.GetJobDescriptor().toUtf8().data());
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Job is already in queue and has not started yet - ignored [%s, %s, %s]\n", checkFile.GetInputAssetName().toUtf8().data(), checkFile.GetPlatform().toUtf8().data(), checkFile.GetJobDescriptor().toUtf8().data());
             return;
         }
 
         if (m_RCJobListModel.isInFlight(checkFile))
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Cancelling Job [%s, %s, %s]\n", checkFile.GetInputAssetName().toUtf8().data(), checkFile.GetPlatform().toUtf8().data(), checkFile.GetJobDescriptor().toUtf8().data());
+            // if the computed fingerprint is the same as the fingerprint of the in-flight job, this is okay.
             int existingJobIndex = m_RCJobListModel.GetIndexOfProcessingJob(checkFile);
             if (existingJobIndex != -1)
             {
                 RCJob* job = m_RCJobListModel.getItem(existingJobIndex);
-                job->SetState(RCJob::JobState::cancelled);
-                AssetBuilderSDK::JobCommandBus::Event(job->GetJobEntry().m_jobRunKey, &AssetBuilderSDK::JobCommandBus::Events::Cancel);
-                m_RCJobListModel.UpdateRow(existingJobIndex);
+
+                if (job->GetJobEntry().m_computedFingerprint != details.m_jobEntry.m_computedFingerprint)
+                {
+                    AZ_TracePrintf(AssetProcessor::DebugChannel, "Cancelling Job [%s, %s, %s] with old FP %u, replacing with new FP %u \n", checkFile.GetInputAssetName().toUtf8().data(), checkFile.GetPlatform().toUtf8().data(), checkFile.GetJobDescriptor().toUtf8().data(), job->GetJobEntry().m_computedFingerprint, details.m_jobEntry.m_computedFingerprint);
+                    job->SetState(RCJob::JobState::cancelled);
+                    AssetBuilderSDK::JobCommandBus::Event(job->GetJobEntry().m_jobRunKey, &AssetBuilderSDK::JobCommandBus::Events::Cancel);
+                    m_RCJobListModel.UpdateRow(existingJobIndex);
+                }
+                else
+                {
+                    AZ_TracePrintf(AssetProcessor::DebugChannel, "Job is already in progress but has the same computed fingerprint (%u) - ignored [%s, %s, %s]\n", details.m_jobEntry.m_computedFingerprint,  checkFile.GetInputAssetName().toUtf8().data(), checkFile.GetPlatform().toUtf8().data(), checkFile.GetJobDescriptor().toUtf8().data());
+                    return;
+                }
             }
         }
 
@@ -330,12 +340,12 @@ namespace AssetProcessor
         }
     }
     
-    void RCController::RemoveJobsBySource(QString relSourceFile)
+    void RCController::RemoveJobsBySource(QString relSourceFileDatabaseName)
     {
         // some jobs may have not been started yet, these need to be removed manually
         QVector<RCJob*> pendingJobs;
 
-        m_RCJobListModel.EraseJobs(relSourceFile, pendingJobs);
+        m_RCJobListModel.EraseJobs(relSourceFileDatabaseName, pendingJobs);
 
         // force finish all pending jobs
         for (auto* rcJob : pendingJobs)

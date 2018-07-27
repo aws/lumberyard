@@ -129,7 +129,7 @@ namespace ScriptCanvasEditor
         ScriptCanvas::VariableId m_variableId;
     };
     // </GetOrSetVariableNodeMimeEvent>
-    
+
     // <VariableCategoryNodePaletteTreeItem>
     class VariableCategoryNodePaletteTreeItem
         : public GraphCanvas::NodePaletteTreeItem
@@ -138,13 +138,13 @@ namespace ScriptCanvasEditor
         AZ_CLASS_ALLOCATOR(VariableCategoryNodePaletteTreeItem, AZ::SystemAllocator, 0);
         VariableCategoryNodePaletteTreeItem(const QString& displayName);
         ~VariableCategoryNodePaletteTreeItem() = default;
-        
+
     private:
-    
+
         void PreOnChildAdded(GraphCanvasTreeItem* item) override;
-    };    
+    };
     // </VariableNodePaeltteTreeItem>
-    
+
     // <LocalVariablesListNodePaletteTreeItem>
     class LocalVariablesListNodePaletteTreeItem
         : public GraphCanvas::NodePaletteTreeItem
@@ -166,8 +166,8 @@ namespace ScriptCanvasEditor
         ////
 
         // GraphVariableManagerNotificationBus
-        void OnVariableAdded(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
-        void OnVariableRemoved(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
+        void OnVariableAddedToGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
+        void OnVariableRemovedFromGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
         ////
 
     private:

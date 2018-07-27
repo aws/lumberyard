@@ -12,7 +12,6 @@
 
 #pragma once
 
-// include the required headers
 #include "CommandSystemConfig.h"
 #include <MCore/Source/Command.h>
 #include <MCore/Source/CommandGroup.h>
@@ -24,32 +23,32 @@ namespace CommandSystem
     // adjust a node group
     MCORE_DEFINECOMMAND_START(CommandAnimGraphAdjustNodeGroup, "Adjust anim graph node group", true)
 public:
-    static AZStd::string GenerateNodeNameString(EMotionFX::AnimGraph* animGraph, const MCore::Array<uint32>& nodeIDs);
+    static AZStd::string GenerateNodeNameString(EMotionFX::AnimGraph* animGraph, const AZStd::vector<EMotionFX::AnimGraphNodeId>& nodeIDs);
+    static AZStd::vector<EMotionFX::AnimGraphNodeId> CollectNodeIdsFromGroup(EMotionFX::AnimGraphNodeGroup* nodeGroup);
 
-    AZStd::string               mOldName;
-    bool                        mOldIsVisible;
-    MCore::RGBAColor            mOldColor;
-    MCore::Array<uint32>        mOldNodeIDs;
-    bool                        mOldDirtyFlag;
+    AZStd::string                               mOldName;
+    bool                                        mOldIsVisible;
+    AZ::u32                                     mOldColor;
+    AZStd::vector<EMotionFX::AnimGraphNodeId>   mOldNodeIds;
+    bool                                        mOldDirtyFlag;
     MCORE_DEFINECOMMAND_END
 
 
     // add node group
-        MCORE_DEFINECOMMAND_START(CommandAnimGraphAddNodeGroup, "Add anim graph node group", true)
-    bool                mOldDirtyFlag;
-    AZStd::string       mOldName;
+    MCORE_DEFINECOMMAND_START(CommandAnimGraphAddNodeGroup, "Add anim graph node group", true)
+    bool                    mOldDirtyFlag;
+    AZStd::string           mOldName;
     MCORE_DEFINECOMMAND_END
 
 
     // remove a node group
-        MCORE_DEFINECOMMAND_START(CommandAnimGraphRemoveNodeGroup, "Remove anim graph node group", true)
-    AZStd::string           mOldName;
-    bool                    mOldIsVisible;
-    MCore::RGBAColor        mOldColor;
-    MCore::Array<uint32>    mOldNodeIDs;
-    bool                    mOldDirtyFlag;
+    MCORE_DEFINECOMMAND_START(CommandAnimGraphRemoveNodeGroup, "Remove anim graph node group", true)
+    AZStd::string                               mOldName;
+    bool                                        mOldIsVisible;
+    AZ::u32                                     mOldColor;
+    AZStd::vector<EMotionFX::AnimGraphNodeId>   mOldNodeIds;
+    bool                                        mOldDirtyFlag;
     MCORE_DEFINECOMMAND_END
-
 
     // helper function
     COMMANDSYSTEM_API void ClearNodeGroups(EMotionFX::AnimGraph* animGraph, MCore::CommandGroup* commandGroup = nullptr);

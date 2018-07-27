@@ -153,7 +153,7 @@ MCORE_INLINE void KeyTrackLinear<ReturnType, StorageType>::AddKey(float time, co
 template <class ReturnType, class StorageType>
 MCORE_INLINE uint32 KeyTrackLinear<ReturnType, StorageType>::FindKeyNumber(float curTime) const
 {
-    return KeyFrameFinder<ReturnType, StorageType>::FindKey(curTime, this);
+    return KeyFrameFinder<ReturnType, StorageType>::FindKey(curTime, mKeys.GetReadPtr(), mKeys.GetLength());
 }
 
 
@@ -162,7 +162,7 @@ template <class ReturnType, class StorageType>
 MCORE_INLINE KeyFrame<ReturnType, StorageType>* KeyTrackLinear<ReturnType, StorageType>::FindKey(float curTime)  const
 {
     // find the key number
-    const uint32 keyNumber = KeyFrameFinder<ReturnType, StorageType>::FindKey(curTime, this);
+    const uint32 keyNumber = KeyFrameFinder<ReturnType, StorageType>::FindKey(curTime, mKeys.GetReadPtr(), mKeys.GetLength());
 
     // if no key was found
     return (keyNumber != MCORE_INVALIDINDEX32) ? &mKeys[keyNumber] : nullptr;

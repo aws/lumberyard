@@ -44,6 +44,7 @@ namespace Gems
         m_modulesByType.emplace(ModuleDefinition::Type::EditorModule);
         m_modulesByType.emplace(ModuleDefinition::Type::StaticLib);
         m_modulesByType.emplace(ModuleDefinition::Type::Builder);
+        m_modulesByType.emplace(ModuleDefinition::Type::Standalone);
     }
 
     GemDescription::GemDescription(const GemDescription& rhs)
@@ -118,6 +119,7 @@ namespace Gems
             { GPF_TAG_MODULE_TYPE_EDITOR_MODULE,    ModuleDefinition::Type::EditorModule },
             { GPF_TAG_MODULE_TYPE_STATIC_LIB,       ModuleDefinition::Type::StaticLib },
             { GPF_TAG_MODULE_TYPE_BUILDER,          ModuleDefinition::Type::Builder },
+            { GPF_TAG_MODULE_TYPE_STANDALONE,       ModuleDefinition::Type::Standalone },
         };
 
         auto found = AZStd::find_if(moduleNameToType.begin(), moduleNameToType.end(), [&value](decltype(moduleNameToType)::const_reference pair) {

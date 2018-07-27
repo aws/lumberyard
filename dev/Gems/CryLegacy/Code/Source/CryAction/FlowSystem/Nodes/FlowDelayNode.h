@@ -15,9 +15,8 @@
 #define CRYINCLUDE_CRYACTION_FLOWSYSTEM_NODES_FLOWDELAYNODE_H
 #pragma once
 
-#include "FlowBaseNode.h"
 #include <queue>
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 class CFlowDelayNode
     : public CFlowBaseNode<eNCT_Instanced>

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "LUAEditorGoToLineDialog.hxx"
 #include <Woodpecker/LUA/LUAEditorGoToLineDialog.moc>

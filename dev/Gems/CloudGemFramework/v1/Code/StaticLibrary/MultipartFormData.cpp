@@ -35,14 +35,18 @@ namespace CloudGemFramework
 
     void MultipartFormData::AddFile(AZStd::string fieldName, AZStd::string fileName, const char* path)
     {
-        AZ::IO::FileIOStream fp(path, AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary);
+        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetDirectInstance();
 
-        if (fp.IsOpen())
-        {
-            m_fileFields.emplace_back(FileField{ std::move(fieldName), std::move(fileName) , AZStd::vector<char>{}});
+        AZ::IO::HandleType fileHandle;
+
+        if (fileIO->Open(path, AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, fileHandle)) {
+            m_fileFields.emplace_back(FileField{ std::move(fieldName), std::move(fileName) , AZStd::vector<char>{} });
             auto destFileBuffer = &m_fileFields.back().m_fileData;
-            destFileBuffer->resize(fp.GetLength());
-            fp.Read(destFileBuffer->size(), &destFileBuffer->at(0));
+            AZ::u64 size;
+            if (fileIO->Size(path, size) && size > 0) {
+                destFileBuffer->resize(size);
+                fileIO->Read(fileHandle, &destFileBuffer->at(0), destFileBuffer->size());
+            }
         }
     }
 

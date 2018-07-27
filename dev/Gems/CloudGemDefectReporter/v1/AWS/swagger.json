@@ -1,0 +1,516 @@
+{
+	"swagger": "2.0",
+	"info": {
+		"version": "1.0.0",
+		"title": "$RestApiResourceName$",
+		"description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+	},
+	"schemes": [
+		"https"
+	],
+	"consumes": [
+		"application/json"
+	],
+	"produces": [
+		"application/json"
+	],
+	"x-amazon-cloud-canvas-lambda-dispatch": {
+		"lambda": "$ServiceLambdaArn$"
+	},
+	"paths": {
+		"/service/status": {
+			"get": {
+				"description": "Returns the service's status. Useful for testing connectivity.",
+				"responses": {
+					"200": {
+						"description": "A successful service status response.",
+						"schema": {
+							"$ref": "#/definitions/ServiceStatus"
+						}
+					}
+				}
+			}
+		},
+        "/service/upload": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "service_upload",
+                "function": "request_presigned_posts"
+            },
+            "post": {
+                "description": "Request a list of presigned post from S3. Maximum number of presigned posts that can be requested is 10. Each presigned post lasts 300 seconds.",
+                "parameters": [
+                    {
+                        "name": "request_content",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/UploadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Presigned post for each file requested.",
+                        "schema": {
+                            "$ref": "#/definitions/UploadRequestResults"
+                        }
+                    }
+                }
+            }
+        },
+        "/headers": {
+            "get": {
+                "description": "Get all the report headers",
+                "responses": {
+                    "200": {
+                        "description": "An array contains addtional report information",
+                        "schema": {
+                            "$ref": "#/definitions/ReportHeaders"
+                        }
+                    }
+                }
+            }
+        },
+        "/header": {
+            "put": {
+                "description": "Update report header information.",
+                "parameters": [
+                    {
+                        "name": "report",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/ReportHeader"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "'SUCCEED' if the header information is updated",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/comment/{universal_unique_identifier}": {
+            "get": {
+                "description": "Get all the report comments",
+                "parameters": [
+                    {
+                        "description": "The UUID of the requested report",
+                        "name": "universal_unique_identifier",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "An object contains the report comments information",
+                        "schema": {
+                            "$ref": "#/definitions/ReportComments"
+                        }
+                    }
+                }
+            }
+        },
+        "/comment": {
+            "put": {
+                "description": "Update report comments.",
+                "parameters": [
+                    {
+                        "name": "report",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/ReportComments"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "'SUCCEED' if the comment is added",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/recentsearch": {
+            "put": {
+                "description": "Add a new entry to the recent searches table",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/SearchEntry"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "'SUCCEED' if the entry is added",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/recentsearches/{user_id}": {
+            "get": {
+                "description": "Get all the recent searches",
+                 "parameters": [
+                    {
+                        "description": "The user id to get",
+                        "name": "user_id",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "An array contains all the recent searches",
+                        "schema": {
+                            "$ref": "#/definitions/RecentSearches"
+                        }
+                    }
+                }
+            }
+        },
+        "/clientconfiguration": {
+            "get": {
+                "description": "Get the client configuration",
+                "responses": {
+                    "200": {
+                        "description": "An object contains the custom questions to be prompted to the players when submitting a defect report",
+                        "schema": {
+                            "$ref": "#/definitions/ClientConfiguration"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update the custom questions to be prompted to the players when submitting a defect report",
+                "parameters": [
+                    {
+                        "name": "client_configuration",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/ClientConfiguration"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "'SUCCEED' if the custom client configuration is updated",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        }
+	},
+	"definitions": {
+		"EmptyResponse": {},
+		"Error": {
+			"description": "Object to hold error response.",
+			"type": "object",
+			"properties": {
+				"errorCode": {
+					"description": "String to hold a error code response.",
+					"type": "string"
+				},
+				"errorMessage": {
+					"description": "String to hold a error message response.",
+					"type": "string"
+				}
+			},
+			"required": [
+				"errorCode",
+				"errorMessage"
+			]
+		},
+		"ServiceStatus": {
+			"description": "Request to get status of service.",
+			"type": "object",
+			"properties": {
+				"status": {
+					"description": "String to hold the status response.",
+					"type": "string"
+				}
+			},
+			"required": [
+				"status"
+			]
+		},
+		"UploadRequest": {
+			"description": "Object to hold the number of presigned posts requested by the client. Posts may be encrypted server-side(SSE-S3) by requesting encrypted posts instead of unencrypted. At least one post of any type must be requested.",
+			"type": "object",
+			"properties": {
+				"NumberOfEncryptedPosts": {
+					"description": "The number of presigned posts to be generated with server side encryption(SSE-S3).",
+					"type": "integer",
+					"format": "int32"
+				},
+				"NumberOfUnencryptedPosts": {
+					"description": "The number of presigned posts to be generated without server side encryption.",
+					"type": "integer",
+					"format": "int32"
+				}
+			},
+			"required": [
+				"NumberOfEncryptedPosts",
+				"NumberOfUnencryptedPosts"
+			]
+		},
+		"UploadRequestResults": {
+			"description": "Object to contain results from the upload request.",
+			"type": "object",
+			"properties": {
+				"Url" : {
+					"description": "URL to be used when posting from client.",
+					"type": "string"
+				},
+				"EncryptedPresignedPostFieldsArray": {
+					"description" : "Array that holds objects that contain the necessary fields to do a presigned post from the client with server side encryption(SSE-S3).",
+					"type" : "array",
+					"items" : {
+						"$ref": "#/definitions/EncryptedPresignedPostFields"
+					}
+				},
+				"UnencryptedPresignedPostFieldsArray": {
+					"description" : "Array that holds objects that contain the necessary fields to do a presigned post from the client without encryption.",
+					"type" : "array",
+					"items" : {
+						"$ref": "#/definitions/UnencryptedPresignedPostFields"
+					}
+				}
+			}
+		},
+		"EncryptedPresignedPostFields": {
+			"description": "Object to hold fields to do a server side encrypted(SSE-S3) presigned post from a client. All fields must be used for a successful post.",
+			"type": "object",
+			"properties": {
+				"AmzAlgorithm": {
+					"description": "String to hold the x-amz-algorithm value.",
+					"type": "string"
+				},
+				"AmzServerSideEncryption": {
+					"description": "String to hold the x-amz-server-side-encryption value.",
+					"type": "string"
+				},
+				"AmzDate": {
+					"description": "String to hold the x-amz-date value.",
+					"type": "string"
+				},
+				"Key": {
+					"description": "String to hold the key, which is a UUID4 generated for the file to be uploaded.",
+					"type": "string"
+				},
+				"AmzSignature": {
+					"description": "String to hold the x-amz-signature value.",
+					"type": "string"
+				},
+				"AmzSecurityToken": {
+					"description": "String to hold the x-amz-security-token session token value.",
+					"type": "string"
+				},
+				"Policy": {
+					"description": "String to hold the policy.",
+					"type": "string"
+				},
+				"AmzCredential": {
+					"description": "String to hold the x-amz-credential value.",
+					"type": "string"
+				}
+			},
+			"required": [
+				"AmzAlgorithm",
+				"AmzServerSideEncryption",
+				"AmzDate", 
+				"Key", 
+				"AmzSignature", 
+				"AmzSecurityToken", 
+				"Policy", 
+				"AmzCredential"
+			]
+		},
+        "UnencryptedPresignedPostFields": {
+            "description": "Object to hold fields to do an unencrypted presigned post from a client. All fields must be used for a successful post.",
+            "type": "object",
+            "properties": {
+                "AmzAlgorithm": {
+                    "description": "String to hold the x-amz-algorithm value.",
+                    "type": "string"
+                },
+                "AmzDate": {
+                    "description": "String to hold the x-amz-date value.",
+                    "type": "string"
+                },
+                "Key": {
+                    "description": "String to hold the key, which is a UUID4 generated for the file to be uploaded.",
+                    "type": "string"
+                },
+                "AmzSignature": {
+                    "description": "String to hold the x-amz-signature value.",
+                    "type": "string"
+                },
+                "AmzSecurityToken": {
+                    "description": "String to hold the x-amz-security-token session token value.",
+                    "type": "string"
+                },
+                "Policy": {
+                    "description": "String to hold the policy.",
+                    "type": "string"
+                },
+                "AmzCredential": {
+                    "description": "String to hold the x-amz-credential value.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "AmzAlgorithm",
+                "AmzDate",
+                "Key",
+                "AmzSignature",
+                "AmzSecurityToken",
+                "Policy",
+                "AmzCredential"
+            ]
+        },
+        "ReportHeaders": {
+            "description": "Array that holds all the existing report headers.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/ReportHeader"
+            }
+        },
+        "ReportHeader": {
+            "description": "Object to hold fields of the report header information.",
+            "type": "object",
+            "properties": {
+                "universal_unique_identifier": {
+                    "description": "The UUID of the report",
+                    "type": "string"
+                },
+                "bookmark": {
+                    "description": "Indicate whether the report is bookmarked",
+                    "type": "number"
+                },
+                "read_status": {
+                    "description": "Indicate whether the report is reviewed",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "universal_unique_identifier",
+                "bookmark",
+                "read_status"
+            ]
+        },
+        "ReportComments": {
+            "description": "Object to hold fields of the report comments information",
+            "type": "object",
+            "properties": {
+                "universal_unique_identifier": {
+                    "description": "The UUID of the report",
+                    "type": "string"
+                },
+                "comments": {
+                    "description": "Array that holds all the report comments.",
+                    "$ref": "#/definitions/StringList"
+                }
+            },
+            "required": [
+                "universal_unique_identifier",
+                "comments"
+            ]
+        },
+        "SearchEntry": {
+            "description": "Object to hold fields of the search entry",
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "description": "The name of the current user",
+                    "type": "string"
+                },
+                "sql_id": {
+                    "description": "A unique ID for the query record",
+                    "type": "string"
+                },
+                "query_params": {
+                    "description": "Query parameters in the query string",
+                    "type": "string"
+                },
+                "timestamp": {
+                    "description": "The timestamp (UTC time) for the query record",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "user_id",
+                "query_params"
+            ]
+        },
+        "RecentSearches": {
+            "description": "Array that holds all the recent searches.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/SearchEntry"
+            }
+        },
+        "ClientConfiguration": {
+            "description": "An object that contains the custom client configuation",
+            "type": "object",
+            "properties": {
+                "clientConfiguration": {
+                    "description": "The custom questions to be prompted to the players when submitting a defect report",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/CustomField"
+                    }
+                }
+            }
+        },
+        "CustomField": {
+            "description": "The custom client field",
+            "type": "object",
+            "properties": {
+                "multipleSelect": {
+                    "description": "Whether the field will allow multiple selections",
+                    "type": "boolean"
+                },
+                "title": {
+                    "description": "The title of the field",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "The type of the field",
+                    "type": "string"
+                },
+                "predefines": {
+                    "description": "The options of the check box or radio button group",
+                    "$ref": "#/definitions/StringList"
+                },
+                "maxChars": {
+                    "description": "The maximum number of characters allowed for a text field",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "title",
+                "type"
+            ]
+        },
+        "StringList": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+	}
+}

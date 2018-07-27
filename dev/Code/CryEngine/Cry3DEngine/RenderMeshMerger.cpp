@@ -26,7 +26,6 @@
 #include "terrain.h"
 #include "RenderMeshMerger.h"
 #include "MeshCompiler/MeshCompiler.h"
-#include <IJobManager_JobDelegator.h>
 #include "../RenderDll/Common/Shaders/Vertex.h"
 
 CRenderMeshMerger::CRenderMeshMerger()

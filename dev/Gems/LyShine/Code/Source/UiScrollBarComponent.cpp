@@ -731,7 +731,6 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiScrollBarBus>("UiScrollBarBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetHandleSize", &UiScrollBarBus::Events::GetHandleSize)
             ->Event("SetHandleSize", &UiScrollBarBus::Events::SetHandleSize)
             ->Event("GetMinHandlePixelSize", &UiScrollBarBus::Events::GetMinHandlePixelSize)
@@ -745,7 +744,6 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiScrollerInterface::Orientation::Vertical>("eUiScrollerOrientation_Vertical");
 
         behaviorContext->EBus<UiScrollerBus>("UiScrollerBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetValue", &UiScrollerBus::Events::GetValue)
             ->Event("SetValue", &UiScrollerBus::Events::SetValue)
             ->Event("GetOrientation", &UiScrollerBus::Events::GetOrientation)
@@ -757,7 +755,6 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
             ->VirtualProperty("Value", "GetValue", "SetValue");
 
         behaviorContext->EBus<UiScrollerNotificationBus>("UiScrollerNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiScrollerNotificationBusHandler>();
 
         behaviorContext->Class<UiScrollBarComponent>()

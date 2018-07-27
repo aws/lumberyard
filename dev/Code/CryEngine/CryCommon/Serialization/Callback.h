@@ -15,7 +15,7 @@
 #define CRYINCLUDE_CRYCOMMON_SERIALIZATION_CALLBACK_H
 #pragma once
 
-#include <functional>
+#include <AzCore/std/functional.h>
 
 namespace Serialization
 {
@@ -26,7 +26,7 @@ namespace Serialization
         virtual void Release() = 0;
         virtual TypeID Type() const = 0;
 
-        typedef std::function<void(void*, const TypeID&)> ApplyFunction;
+        typedef AZStd::function<void(void*, const TypeID&)> ApplyFunction;
         virtual void Call(const ApplyFunction&) = 0;
     };
 
@@ -34,12 +34,12 @@ namespace Serialization
     struct CallbackSimple
         : ICallback
     {
-        typedef std::function<void(const T&)> CallbackFunction;
+        typedef AZStd::function<void(const T&)> CallbackFunction;
         T* value;
         T oldValue;
         CallbackFunction callback;
 
-        CallbackSimple(T* value, const T& oldValue, const std::function<void(const T&)>& callback)
+        CallbackSimple(T* value, const T& oldValue, const AZStd::function<void(const T&)>& callback)
             : value(value)
             , oldValue(oldValue)
             , callback(callback)
@@ -67,8 +67,8 @@ namespace Serialization
     struct CallbackWithDecorator
         : ICallback
     {
-        typedef std::function<void(const T&)> CallbackFunction;
-        typedef std::function<Decorator (T&)> DecoratorFunction;
+        typedef AZStd::function<void(const T&)> CallbackFunction;
+        typedef AZStd::function<Decorator (T&)> DecoratorFunction;
 
         T oldValue;
         T* value;
@@ -131,7 +131,7 @@ namespace Serialization
     CallbackSimple<T>
     Callback(T& value, const CallbackFunc& callback)
     {
-        return CallbackSimple<T>(&value, value, std::function<void(const T&)>(callback));
+        return CallbackSimple<T>(&value, value, AZStd::function<void(const T&)>(callback));
     }
 
 
@@ -141,8 +141,8 @@ namespace Serialization
     {
         typedef typename Detail::OperatorBracketsReturnType<DecoratorFunc>::Type Decorator;
         return CallbackWithDecorator<T, Decorator>(&value, value,
-            std::function<void(const T&)>(callback),
-            std::function<Decorator(T&)>(decorator));
+            AZStd::function<void(const T&)>(callback),
+            AZStd::function<Decorator(T&)>(decorator));
     }
 
 

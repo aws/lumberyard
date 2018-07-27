@@ -80,7 +80,7 @@ namespace FeatureTests
         IFeatureTestsManager& operator=(IFeatureTestsManager&);
     };
 
-    typedef std::shared_ptr < IFeatureTestsManager > FeatureTestHandle;
+    typedef AZStd::shared_ptr < IFeatureTestsManager > FeatureTestHandle;
 
     //When you destroy the returned handle, your test will be un-registered.
     //Its best to just store the handle in your feature test as a member variable, because

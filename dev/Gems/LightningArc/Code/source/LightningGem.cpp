@@ -85,21 +85,25 @@ namespace Lightning
         // Init GameObjectExtension
         // Originally registered with REGISTER_GAME_OBJECT(pFramework, LightningArc, "Scripts/Entities/Environment/LightningArc.lua");
         // If more objects need registered, consider bringing the macro back along with the GameFactory wrapper.
-        IEntityClassRegistry::SEntityClassDesc clsDesc;
-        clsDesc.sName = "LightningArc";
-        clsDesc.sScriptFile = "Scripts/Entities/Environment/LightningArc.lua";
-        static CLightningArcCreator _creator;
-        GetISystem()->GetIGame()->GetIGameFramework()->GetIGameObjectSystem()->RegisterExtension("LightningArc", &_creator, &clsDesc);
+        if (GetISystem()->GetIGame() && GetISystem()->GetIGame()->GetIGameFramework())
+        {
+            IEntityClassRegistry::SEntityClassDesc clsDesc;
+            clsDesc.sName = "LightningArc";
+            clsDesc.sScriptFile = "Scripts/Entities/Environment/LightningArc.lua";
+            static CLightningArcCreator _creator;
+            GetISystem()->GetIGame()->GetIGameFramework()->GetIGameObjectSystem()->RegisterExtension("LightningArc", &_creator, &clsDesc);
+        }
     }
 
     void LightningGem::Shutdown()
     {
-        m_gameEffectAZ = nullptr;
-
         if (m_gameEffect)
         {
             m_gameEffect->Release();
         }
+
+        m_gameEffectAZ = nullptr;
+
         SAFE_DELETE(m_gameEffect);
         SAFE_DELETE(m_lightningArcScriptBind);
     }

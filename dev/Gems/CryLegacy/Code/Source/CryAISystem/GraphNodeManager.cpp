@@ -14,7 +14,7 @@
 // Description : Manager class for graph nodes.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "GraphNodeManager.h"
 
 inline IAISystem::tNavCapMask TypeFromTypeIndex (int typeIndex)

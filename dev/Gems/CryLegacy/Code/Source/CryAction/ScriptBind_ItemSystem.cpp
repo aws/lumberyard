@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ItemSystem.h"
 #include "IActorSystem.h"
 #include "ScriptBind_ItemSystem.h"

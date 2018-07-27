@@ -34,7 +34,7 @@
 #include <QDebug>
 
 class FileContentDetailWidget
-    : public TextDetailWidget
+    : public TextDetailWidget, private AzToolsFramework::SourceControlNotificationBus::Handler
 {
     Q_OBJECT
 
@@ -66,6 +66,13 @@ public:
         }
     }
 
+    void ConnectivityStateChanged(const AzToolsFramework::SourceControlState connected) override
+    {
+        m_sourceControlEnabled = (connected == AzToolsFramework::SourceControlState::Active);
+        UpdateDeleteButton();
+        UpdateSourceControlState();
+    }
+
     void OnUploadCode()
     {
         m_view->UploadLambdaCode(m_stackStatusModel, "");
@@ -85,6 +92,11 @@ public:
     {
         TextDetailWidget::show();
 
+        AzToolsFramework::SourceControlState state = AzToolsFramework::SourceControlState::Disabled;
+        AzToolsFramework::SourceControlConnectionRequestBus::BroadcastResult(state, &AzToolsFramework::SourceControlConnectionRequestBus::Events::GetSourceControlState);
+        m_sourceControlEnabled = (state == AzToolsFramework::SourceControlState::Active);
+
+        AzToolsFramework::SourceControlNotificationBus::Handler::BusConnect();
         UpdateSourceControlState();
 
         connectUntilHidden(m_textEdit, &DetailTextEditWidget::OnKeyPressed, this, &FileContentDetailWidget::OnTextEditKeyPress);
@@ -110,13 +122,21 @@ public:
 
         if (!IsContentDoNotDelete())
         {
-            auto deleteButton = m_view->EnableDeleteButton(tr("Delete the selected file from disk."));
+            auto deleteButton = m_view->GetDeleteButton();
             connectUntilHidden(deleteButton, &QPushButton::clicked, this, &FileContentDetailWidget::OnDeleteRequested);
+            UpdateDeleteButton();
         }
 
         connectUntilHidden(m_uploadLambdaCodeButton, &QPushButton::clicked, this, &FileContentDetailWidget::OnUploadCode);
 
         UpdateUI();
+    }
+
+    void hide() override
+    {
+        TextDetailWidget::hide();
+
+        AzToolsFramework::SourceControlNotificationBus::Handler::BusDisconnect();
     }
 
     void Save()
@@ -199,6 +219,37 @@ public:
 
     void OnDeleteRequested()
     {
+        if (m_sourceControlEnabled)
+        {
+            if (m_sourceControlModel->IsReady())
+            {
+                if (m_sourceControlModel->GetFlags() & AzToolsFramework::SCF_Tracked)
+                {
+                    QMessageBox msg(QMessageBox::NoIcon,
+                        "File under source control",
+                        "Please delete the file from your source control tool.",
+                        QMessageBox::Ok,
+                        Q_NULLPTR,
+                        Qt::Popup);
+                    msg.exec();
+
+                    return;
+                }
+            }
+            else
+            {
+                QMessageBox msg(QMessageBox::NoIcon,
+                    "Source control busy",
+                    "Please wait until source control information has been updated for this file, then try deleting again.",
+                    QMessageBox::Ok,
+                    Q_NULLPTR,
+                    Qt::Popup);
+                msg.exec();
+
+                return;
+            }
+        }
+
         auto reply = QMessageBox::question(
                 this,
                 "Delete file",
@@ -211,11 +262,14 @@ public:
             {
                 QMessageBox box(QMessageBox::NoIcon,
                     "Delete file",
-                    "File could not be deleted.",
+                    "File could not be deleted. Check that it is not open by other programs, that you have sufficient permissions to delete it, and that it is not being managed by a source control system.",
                     QMessageBox::Ok,
                     Q_NULLPTR,
                     Qt::Popup);
                 box.exec();
+            }
+            else {
+                GetIEditor()->GetAWSResourceManager()->RequestDeleteFile(m_fileContentModel->Path());
             }
         }
     }
@@ -351,6 +405,12 @@ protected:
 
     void DoRequestEdit()
     {
+        // Create the file if it does not already exist
+        if (!GetIEditor()->GetFileUtil()->FileExists(m_fileContentModel->Path()))
+        {
+            m_fileContentModel->Save();
+        }
+
         QSharedPointer<IFileSourceControlModel> sourceModel = m_sourceControlModel;
         using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
         SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, m_fileContentModel->Path().toStdString().c_str(), true, [this, sourceModel](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
@@ -362,6 +422,7 @@ protected:
                 }
                 sourceModel->SetFlags(fileInfo.m_flags);
                 sourceModel->SetStatus(fileInfo.m_status);
+                OnSourceControlStatusChanged();
             }
             );
     }
@@ -374,6 +435,7 @@ private:
     QSharedPointer<IFileContentModel> m_fileContentModel;
     QSharedPointer<IStackStatusModel> m_stackStatusModel;
     QSharedPointer<IFileSourceControlModel> m_sourceControlModel;
+    bool m_sourceControlEnabled{ false };
 
     FocusButtonWidget* m_updateStackButton {
         nullptr
@@ -404,7 +466,7 @@ private:
 
         if (sourceStatus != AzToolsFramework::SCS_OpSuccess)
         {
-            m_view->SetSourceControlState(ResourceManagementView::SourceControlState::DISABLED_CHECK_OUT);
+            m_view->SetSourceControlState(ResourceManagementView::SourceControlState::UNAVAILABLE_CHECK_OUT);
         }
         else
         {
@@ -416,19 +478,22 @@ private:
             {
                 targetState = ResourceManagementView::SourceControlState::ENABLED_ADD;
             }
-            else if (sourceFlags & AzToolsFramework::SCF_OpenByUser)
+            else
             {
-                targetState = ResourceManagementView::SourceControlState::DISABLED_CHECK_IN;
+                if (sourceFlags & AzToolsFramework::SCF_OpenByUser)
+                {
+                    targetState = ResourceManagementView::SourceControlState::DISABLED_CHECK_IN;
 
-                if (sourceFlags & AzToolsFramework::SCF_PendingAdd)
-                {
-                    targetState = ResourceManagementView::SourceControlState::DISABLED_ADD;
-                    doSave = false;
-                }
-                else if (sourceFlags & AzToolsFramework::SCF_PendingDelete)
-                {
-                    tooltipOverride = tr("File is currently marked for delete, check in in source control to complete delete.");
-                    doSave = false;
+                    if (sourceFlags & AzToolsFramework::SCF_PendingAdd)
+                    {
+                        targetState = ResourceManagementView::SourceControlState::DISABLED_ADD;
+                        doSave = false;
+                    }
+                    else if (sourceFlags & AzToolsFramework::SCF_PendingDelete)
+                    {
+                        tooltipOverride = tr("File is currently marked for delete, check in in source control to complete delete.");
+                        doSave = false;
+                    }
                 }
             }
 
@@ -439,22 +504,30 @@ private:
             }
         }
 
+        UpdateDeleteButton();
         SetSavePending(false);
         UpdateFileSaveControls();
     }
 
     void UpdateSourceControlState()
     {
-        QSharedPointer<IFileSourceControlModel> sourceModel = m_sourceControlModel;
+        if (m_sourceControlEnabled)
+        {
+            QSharedPointer<IFileSourceControlModel> sourceModel = m_sourceControlModel;
 
-        using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
-        SCCommandBus::Broadcast(&SCCommandBus::Events::GetFileInfo, m_fileContentModel->Path().toStdString().c_str(), [this, sourceModel](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
+            using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
+            SCCommandBus::Broadcast(&SCCommandBus::Events::GetFileInfo, m_fileContentModel->Path().toStdString().c_str(), [this, sourceModel](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
             {
                 sourceModel->SetFlags(fileInfo.m_flags);
                 sourceModel->SetStatus(fileInfo.m_status);
                 OnSourceControlStatusChanged();
             }
             );
+        }
+        else
+        {
+            m_view->SetSourceControlState(ResourceManagementView::SourceControlState::NOT_APPLICABLE);
+        }
     }
 
     void OnMenuSave()
@@ -525,6 +598,24 @@ private:
     void OnStackStatusModelUpdatableStatusChanged()
     {
         m_updateStackButton->setDisabled(m_stackStatusModel->StackIsBusy());
+    }
+
+    void UpdateDeleteButton()
+    {
+        if (IsContentDoNotDelete())
+        {
+            m_view->DisableDeleteButton(tr("File cannot be deleted."));
+        }
+        else if (m_sourceControlEnabled && 
+            m_sourceControlModel->GetStatus() == AzToolsFramework::SCS_OpSuccess && 
+            m_sourceControlModel->GetFlags() & AzToolsFramework::SCF_Tracked)
+        {
+            m_view->DisableDeleteButton(tr("Cannot delete file while it is under source control."));
+        }
+        else
+        {
+            m_view->EnableDeleteButton(tr("Delete the selected file from disk."));
+        }
     }
 
 signals:

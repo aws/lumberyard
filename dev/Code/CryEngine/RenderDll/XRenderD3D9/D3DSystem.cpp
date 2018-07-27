@@ -320,6 +320,8 @@ bool CD3D9Renderer::CreateMSAADepthBuffer()
 
         SAFE_RELEASE(m_RP.m_MSAAData.m_pZBuffer);
         SAFE_RELEASE(m_RP.m_MSAAData.m_pDepthTex);
+        
+        SAFE_RELEASE(m_DepthBufferOrigMSAA.pSurf);
         m_DepthBufferOrigMSAA.pTex = nullptr;
         m_DepthBufferOrigMSAA.pSurf = m_pZBuffer;
         m_DepthBufferOrigMSAA.pTarget = m_pZTexture;
@@ -1354,7 +1356,7 @@ bool CD3D9Renderer::SetWindowIcon(const char* path)
         return false;
     }
 
-    if (stricmp(path, m_iconPath.c_str()) == 0)
+    if (azstricmp(path, m_iconPath.c_str()) == 0)
     {
         return true;
     }
@@ -2005,8 +2007,12 @@ bool CD3D9Renderer::CheckSSAAChange()
 {
     const int width = m_CVWidth ? m_CVWidth->GetIVal() : m_width;
     const int height = m_CVHeight ? m_CVHeight->GetIVal() : m_height;
-    const int maxSamples = min(m_MaxTextureSize / width, m_MaxTextureSize / height);
-    const int numSSAASamples = clamp_tpl(CV_r_Supersampling, 1, maxSamples);
+    int numSSAASamples = 1;
+    if (width > 0 && height > 0)
+    {
+        const int maxSamples = min(m_MaxTextureSize / width, m_MaxTextureSize / height);
+        numSSAASamples = clamp_tpl(CV_r_Supersampling, 1, maxSamples);
+    }
     if (m_numSSAASamples != numSSAASamples)
     {
         m_numSSAASamples = numSSAASamples;
@@ -2028,7 +2034,7 @@ void CD3D9Renderer::InitAMDAPI()
     {
         return;
     }
-    AGSDriverVersionInfoStruct driverInfo = {0};
+    AGSDriverVersionInfoStruct driverInfo = {};
     status = AGSDriverGetVersionInfo(&driverInfo);
 
     if (status != AGS_SUCCESS)
@@ -2079,10 +2085,10 @@ void CD3D9Renderer::InitNVAPI()
         return;
     }
 
-    NV_DISPLAY_DRIVER_VERSION version = {0};
-    version.version = NV_DISPLAY_DRIVER_VERSION_VER;
+    NvU32 version2;
+    char branchVersion[NVAPI_SHORT_STRING_MAX];
 
-    NvAPI_Status status = NvAPI_GetDisplayDriverVersion(NVAPI_DEFAULT_HANDLE, &version);
+    NvAPI_Status status = NvAPI_SYS_GetDriverAndBranchVersion(&version2, branchVersion);
     if (status != NVAPI_OK)
     {
         iLog->LogError("NVAPI: Unable to get driver version (%d)", status);
@@ -2778,12 +2784,17 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
     rd->m_DepthBufferOrig.pTex = nullptr;
     rd->m_DepthBufferOrig.pTarget = rd->m_pZTexture;
     rd->m_DepthBufferOrig.pSurf = rd->m_pZBuffer;
+    rd->m_pZBuffer->AddRef();
+    
     rd->m_DepthBufferOrigMSAA.pTex = nullptr;
     rd->m_DepthBufferOrigMSAA.pTarget = rd->m_pZTexture;
     rd->m_DepthBufferOrigMSAA.pSurf = rd->m_pZBuffer;
+    rd->m_pZBuffer->AddRef();
+    
     rd->m_DepthBufferNative.pTex = nullptr;
     rd->m_DepthBufferNative.pTarget = rd->m_pNativeZTexture;
     rd->m_DepthBufferNative.pSurf = rd->m_pNativeZBuffer;
+    rd->m_pNativeZBuffer->AddRef();
 
     rd->m_nRTStackLevel[0] = 0;
     if (rd->m_d3dsdBackBuffer.Width == rd->m_nativeWidth && rd->m_d3dsdBackBuffer.Height == rd->m_nativeHeight)
@@ -2820,19 +2831,16 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         rd->m_pCurTarget[i] = rd->m_pNewTarget[0]->m_pTex;
     }
 
-    rd->m_pZBuffer->AddRef();
     rd->m_DepthBufferOrig.nWidth = nDepthBufferWidth;
     rd->m_DepthBufferOrig.nHeight = nDepthBufferHeight;
     rd->m_DepthBufferOrig.bBusy = true;
     rd->m_DepthBufferOrig.nFrameAccess = -2;
 
-    rd->m_pZBuffer->AddRef();
     rd->m_DepthBufferOrigMSAA.nWidth = nDepthBufferWidth;
     rd->m_DepthBufferOrigMSAA.nHeight = nDepthBufferHeight;
     rd->m_DepthBufferOrigMSAA.bBusy = true;
     rd->m_DepthBufferOrigMSAA.nFrameAccess = -2;
 
-    rd->m_pNativeZBuffer->AddRef();
     rd->m_DepthBufferNative.nWidth = rd->m_nativeWidth;
     rd->m_DepthBufferNative.nHeight = rd->m_nativeHeight;
     rd->m_DepthBufferNative.bBusy = true;
@@ -2972,10 +2980,13 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
     {
         LOADING_TIME_PROFILE_SECTION_NAMED("CD3D9Renderer::OnD3D10PostCreateDevice(): m_OcclQueries");
         rd->m_OcclQueries.Reserve(MAX_OCCL_QUERIES);
+        // Lazy initialization on Android due to limited number of queries that we can create.
+#if !defined(AZ_PLATFORM_ANDROID)
         for (int a = 0; a < MAX_OCCL_QUERIES; a++)
         {
             rd->m_OcclQueries[a].Create();
         }
+#endif
     }
 
 

@@ -15,7 +15,7 @@
 //               some randomness
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IVehicleSystem.h"
 #include "VehicleSystem/Vehicle.h"
 #include "VehicleDamageBehaviorGroup.h"

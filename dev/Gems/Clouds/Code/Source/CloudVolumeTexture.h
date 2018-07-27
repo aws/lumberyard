@@ -33,7 +33,7 @@ namespace CloudsGem
         uint32 GetWidth() const override { return m_width; }
         uint32 GetHeight() const override { return m_height; }
         uint32 GetDepth() const override { return m_depth; }
-        CTexture* GetTexture() const override { return m_texture; }
+        ITexture* GetTexture() const override { return m_texture; }
 
     private:
 
@@ -44,7 +44,7 @@ namespace CloudsGem
         uint32 m_width{ 0 };
         uint32 m_height{ 0 };
         uint32 m_depth{ 0 };
-        CTexture* m_texture{ nullptr };
+        ITexture* m_texture{ nullptr };
         uint8_t m_frameIndex{ 0 };
         AZStd::vector<uint8_t> m_stagingData;
     };

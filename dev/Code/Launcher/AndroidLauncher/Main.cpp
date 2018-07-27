@@ -262,9 +262,92 @@ namespace
                 androidEnv->UpdateConfiguration();
             }
             break;
+
+            case APP_CMD_WINDOW_REDRAW_NEEDED:
+            {
+                EBUS_EVENT(AzFramework::AndroidLifecycleEvents::Bus, OnWindowRedrawNeeded);
+            }
+            break;
+        }
+    }
+
+    void OnWindowRedrawNeeded(ANativeActivity* activity, ANativeWindow* rect)
+    {
+        android_app* app = static_cast<android_app*>(activity->instance);
+        int8_t cmd = APP_CMD_WINDOW_REDRAW_NEEDED;
+        if (write(app->msgwrite, &cmd, sizeof(cmd)) != sizeof(cmd))
+        {
+            LOGE("Failure writing android_app cmd: %s\n", strerror(errno));
         }
     }
 }
+
+#ifdef AZ_RUN_ANDROID_LAUNCHER_TESTS
+
+struct SimulatedTickBusInterface
+    : public AZ::EBusTraits
+{
+    static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+    typedef size_t BusIdType;
+    typedef AZStd::mutex EventQueueMutexType;
+    static const bool EnableEventQueue = true;
+
+    virtual void OnTick() = 0;
+    virtual void OnPayload(size_t payload) = 0;
+};
+
+using SimulatedTickBus = AZ::EBus<SimulatedTickBusInterface>;
+
+struct SimulatedTickBusHandler
+    : public SimulatedTickBus::Handler
+{
+    void OnTick() override {}
+    void OnPayload(size_t) override {}
+};
+
+void TestEBuses()
+{
+    AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+
+    {
+        const size_t numLoops = 10000;
+        auto mainLoop = [numLoops]()
+        {
+            size_t loops = 0;
+            while (loops++ < numLoops)
+            {
+                SimulatedTickBus::ExecuteQueuedEvents();
+                SimulatedTickBus::Event(0, &SimulatedTickBus::Events::OnTick);
+            }
+        };
+
+        auto workerLoop = [numLoops]()
+        {
+            size_t loops = 0;
+            while (loops++ < numLoops)
+            {
+                SimulatedTickBus::QueueEvent(0, &SimulatedTickBus::Events::OnPayload, loops);
+            }
+        };
+
+        SimulatedTickBusHandler handler;
+        handler.BusConnect(0);
+
+        AZStd::thread mainThread(mainLoop);
+        AZStd::thread workerThread(workerLoop);
+
+        mainThread.join();
+        workerThread.join();
+    }
+
+    AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+}
+
+void RunAndroidLauncherTests()
+{
+    TestEBuses();
+}
+#endif
 
 
 ////////////////////////////////////////////////////////////////
@@ -289,6 +372,11 @@ void android_main(android_app* appState)
 
     // setup the system command handler
     appState->onAppCmd = HandleApplicationLifecycleEvents;
+
+    // This callback will notify us when the orientation of the device changes.
+    // While Android does have an onNativeWindowResized callback, it is never called in android_native_app_glue when the window size changes.
+    // The onNativeConfigChanged callback is called too early(before the window size has changed), so we won't have the correct window size at that point.
+    appState->activity->callbacks->onNativeWindowRedrawNeeded = OnWindowRedrawNeeded;
 
     // setup the android environment
     AZ::AllocatorInstance<AZ::OSAllocator>::Create();
@@ -334,6 +422,10 @@ void android_main(android_app* appState)
         // don't want to show the splash screen when we resumed from a paused state.
         AZ::Android::Utils::ShowSplashScreen();
     }
+
+#ifdef AZ_RUN_ANDROID_LAUNCHER_TESTS
+    RunAndroidLauncherTests();
+#endif
 
     // Engine Config (bootstrap.cfg)
     const char* assetsPath = AZ::Android::Utils::FindAssetsDirectory();
@@ -429,6 +521,7 @@ void android_main(android_app* appState)
 #if !defined(AZ_MONOLITHIC_BUILD)
     IGameStartup::TEntryFunction CreateGameStartup = nullptr;
     HMODULE gameDll = nullptr;
+    HMODULE systemLib = nullptr;
 
     if (legacyGameDllStartup)
     {
@@ -464,22 +557,23 @@ void android_main(android_app* appState)
         EditorGameRequestBus::BroadcastResult(gameStartup, &EditorGameRequestBus::Events::CreateGameStartup);
     }
 
-    if (!gameStartup)
+    // The legacy IGameStartup and IGameFramework are now optional,
+    // if they don't exist we need to create CrySystem here instead.
+    if (!gameStartup || !gameStartup->Init(startupParams))
     {
     #if !defined(AZ_MONOLITHIC_BUILD)
-        if (legacyGameDllStartup)
+        systemLib = CryLoadLibraryDefName("CrySystem");
+        PFNCREATESYSTEMINTERFACE CreateSystemInterface = systemLib ? (PFNCREATESYSTEMINTERFACE)CryGetProcAddress(systemLib, "CreateSystemInterface") : nullptr;
+        if (CreateSystemInterface)
         {
-            CryFreeLibrary(gameDll);
+            startupParams.pSystem = CreateSystemInterface(startupParams);
         }
-    #endif
-
-        AZ::Android::AndroidEnv::Destroy();
-        MAIN_EXIT_FAILURE(appState, "Failed to create the GameStartup Interface!");
+    #else
+        startupParams.pSystem = CreateSystemInterface(startupParams);
+    #endif // AZ_MONOLITHIC_BUILD
     }
 
-    // run the game
-    IGame* game = gameStartup->Init(startupParams);
-    if (game)
+    if (startupParams.pSystem)
     {
         AZ::Android::Utils::DismissSplashScreen();
 
@@ -491,21 +585,29 @@ void android_main(android_app* appState)
         gEnv->pConsole->ExecuteString("exec autoexec.cfg");
 
         // Run the main loop
-        LumberyardLauncher::RunMainLoop(gameApp, *gEnv->pGame->GetIGameFramework());
-    }
+        LumberyardLauncher::RunMainLoop(gameApp);
+	}
     else
     {
-        MAIN_EXIT_FAILURE(appState, "Failed to initialize the GameStartup Interface!");
+        MAIN_EXIT_FAILURE(appState, "Failed to initialize the CrySystem Interface!");
     }
 
     // Shutdown
-    gameStartup->Shutdown();
-    gameStartup = 0;
+    if (gameStartup)
+    {
+        gameStartup->Shutdown();
+        gameStartup = 0;
+    }
 
 #if !defined(AZ_MONOLITHIC_BUILD)
     if (legacyGameDllStartup)
     {
         CryFreeLibrary(gameDll);
+    }
+
+    if (systemLib)
+    {
+        CryFreeLibrary(systemLib);
     }
 #endif
 

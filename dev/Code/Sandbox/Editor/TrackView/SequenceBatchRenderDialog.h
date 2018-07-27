@@ -211,6 +211,7 @@ private:
     QStringListModel* m_renderListModel;
     QTimer m_renderTimer;
     bool m_editorIdleProcessingEnabled;
+    int32 CV_TrackViewRenderOutputCapturing;
 };
 
 #endif // CRYINCLUDE_EDITOR_TRACKVIEW_SEQUENCEBATCHRENDERDIALOG_H

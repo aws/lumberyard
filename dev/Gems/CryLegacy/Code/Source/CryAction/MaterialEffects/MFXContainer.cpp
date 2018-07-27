@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "MFXContainer.h"
 
 #include "MFXRandomEffect.h"
@@ -27,27 +27,27 @@ namespace MaterialEffectsUtils
 {
     CMFXEffectBase* CreateEffectByName(const char* effectType)
     {
-        if (!stricmp("RandEffect", effectType))
+        if (!azstricmp("RandEffect", effectType))
         {
             return new CMFXRandomEffect();
         }
-        else if (!stricmp("Particle", effectType))
+        else if (!azstricmp("Particle", effectType))
         {
             return new CMFXParticleEffect();
         }
-        else if (!stricmp("Audio", effectType))
+        else if (!azstricmp("Audio", effectType))
         {
             return new CMFXAudioEffect();
         }
-        else if (!stricmp("Decal", effectType))
+        else if (!azstricmp("Decal", effectType))
         {
             return new CMFXDecalEffect();
         }
-        else if (!stricmp("FlowGraph", effectType))
+        else if (!azstricmp("FlowGraph", effectType))
         {
             return new CMFXFlowGraphEffect();
         }
-        else if (!stricmp("ForceFeedback", effectType))
+        else if (!azstricmp("ForceFeedback", effectType))
         {
             return new CMFXForceFeedbackEffect();
         }

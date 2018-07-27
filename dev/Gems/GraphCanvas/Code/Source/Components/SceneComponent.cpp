@@ -48,7 +48,7 @@
 #include <GraphCanvas/Editor/GraphCanvasProfiler.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
 #include <GraphCanvas/Styling/Parser.h>
-#include <GraphCanvas/Tools.h>
+#include <GraphCanvas/tools.h>
 #include <GraphCanvas/Types/GraphCanvasGraphSerialization.h>
 #include <GraphCanvas/Widgets/GraphCanvasGraphicsView/GraphCanvasGraphicsView.h>
 #include <GraphCanvas/Widgets/GraphCanvasMimeContainer.h>

@@ -70,8 +70,8 @@ AIDebuggerViewFindDialog::AIDebuggerViewFindDialog(QWidget* parent /* = nullptr 
     m_ui->buttonBox->addButton(findNext, QDialogButtonBox::ActionRole);
     QPushButton* cancel = m_ui->buttonBox->addButton(QDialogButtonBox::Cancel);
 
-    connect(findNext, &QPushButton::clicked, [this]() { emit this->findNext(m_ui->findWhatEdit->text()); });
-    connect(m_ui->buttonBox, &QDialogButtonBox::rejected, [&]() { reject(); done(); });
+    connect(findNext, &QPushButton::clicked, this, [this]() { emit this->findNext(m_ui->findWhatEdit->text()); });
+    connect(m_ui->buttonBox, &QDialogButtonBox::rejected, this, [&]() { reject(); done(); });
 
     setFixedSize(size());
 }

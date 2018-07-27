@@ -36,9 +36,11 @@ namespace AzToolsFramework
         bool isLegacyReplacement = false;                               ///< set this to true if this is a viewpane to replace an older viewpane
         QString saveKeyName;                                            ///< can be zero length; set this if you want to use a name other than the viewpane name set in RegisterViewPane.
 
-
-
+        //************************************************************
         bool sendViewPaneNameBackToAmazonAnalyticsServers = false;      ///< ONLY SET THIS IF YOU'RE OK WITH YOUR VIEWPANE'S NAME BEING SENT TO AMAZON'S ANALYTICS SERVERS!
+        //************************************************************
+
+        bool detachedWindow = false;                                    ///< set to true if the view pane should use a detached, non-dockable widget. This is to workaround a problem with QOpenGLWidget on macOS. Currently this has no effect on other platforms.
     };
 
 } // namespace AzToolsFramework

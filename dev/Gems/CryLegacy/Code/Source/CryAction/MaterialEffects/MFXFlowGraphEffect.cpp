@@ -14,7 +14,7 @@
 // Description : IMFXEffect implementation
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "MFXFlowGraphEffect.h"
 #include "MaterialEffects.h"
 #include "MaterialFGManager.h"

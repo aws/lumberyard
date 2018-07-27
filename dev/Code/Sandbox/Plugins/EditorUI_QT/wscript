@@ -14,13 +14,15 @@
 ########################################################################################
 
 
-def build(bld): 
+def build(bld):
 
     bld.CryEditorUiQt(
         # Settings
         target              = 'EditorUI_QT',
         vs_filter           = 'Sandbox/Plugins',
         file_list           = 'editorui_qt.waf_files',
+        darwin_file_list    = 'editorui_qt_darwin.waf_files',
+        win_file_list       = 'editorui_qt_win.waf_files',
         platforms           = ['win','darwin'],
         configurations      = ['debug', 'debug_test', 'profile', 'profile_test'],
         features            = ['qt5'],
@@ -38,8 +40,10 @@ def build(bld):
                                'QT5WIDGETS',
                                'QT5XML',
                                'BOOST'],
+        darwin_uselib       = ['QT5MACEXTRAS'],
         enable_rtti         = True,
-        darwin_cxxflags = ['-Wno-char-subscripts'],
+
+        clang_cxxflags  = ['-Wno-char-subscripts', '-Wno-enum-compare-switch'],
 
         # Testing
         test_all_file_list = ['editorui_qt_test.waf_files'],

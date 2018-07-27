@@ -18,6 +18,7 @@
 #include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzFramework/Network/SocketConnection.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
+#include <AzToolsFramework/API/AssetDatabaseBus.h>
 #include "AssetBuilderInfo.h"
 
 //! This bus is used to signal to the AssetBuilderComponent to start up and execute while providing a return code
@@ -43,7 +44,8 @@ class AssetBuilderComponent
     : public AZ::Component,
     public BuilderBus::Handler,
     public AssetBuilderSDK::AssetBuilderBus::Handler,
-    public AzFramework::EngineConnectionEvents::Bus::Handler
+    public AzFramework::EngineConnectionEvents::Bus::Handler,
+    public AzToolsFramework::AssetDatabase::AssetDatabaseRequestsBus::Handler
 {
 public:
     AZ_COMPONENT(AssetBuilderComponent, "{04332899-5d73-4d41-86b7-b1017d349673}")
@@ -69,6 +71,8 @@ public:
     void Disconnected(AzFramework::SocketConnection* connection) override;
 
     static bool IsInDebugMode(const AzFramework::CommandLine& commandLine);
+    //AssetDatabaseRequestsBus Handler
+    bool GetAssetDatabaseLocation(AZStd::string& location) override;
 protected:
 
     AZ_DISABLE_COPY_MOVE(AssetBuilderComponent);

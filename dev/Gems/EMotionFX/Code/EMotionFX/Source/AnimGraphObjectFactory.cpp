@@ -10,22 +10,24 @@
 *
 */
 
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphObjectFactory.h"
 #include "AnimGraphObject.h"
-#include "AnimGraphObjectDataPool.h"
 #include "AnimGraphManager.h"
 
 #include <MCore/Source/LogManager.h>
 
 // default object types
 #include "BlendTreeParameterNode.h"
-#include "AnimGraphBindPoseNode.h"
-#include "AnimGraphMotionNode.h"
 #include "BlendSpace2DNode.h"
 #include "BlendSpace1DNode.h"
 #include "BlendTreeFinalNode.h"
 #include "BlendTreeBlend2Node.h"
+#include "BlendTreeBlend2NodeBase.h"
+#include "BlendTreeBlend2AdditiveNode.h"
+#include "BlendTreeBlend2LegacyNode.h"
 #include "BlendTreeBlendNNode.h"
 #include "BlendTreePoseSwitchNode.h"
 #include "BlendTreeFloatConstantNode.h"
@@ -54,9 +56,16 @@
 #include "BlendTreeDirectionToWeightNode.h"
 #include "BlendTreeMirrorPoseNode.h"
 #include "BlendTree.h"
+#include "BlendTreeMirrorPoseNode.h"
+#include "BlendTreePoseSubtractNode.h"
+
+#include "AnimGraphBindPoseNode.h"
+#include "AnimGraphMotionNode.h"
 #include "AnimGraphStateMachine.h"
 #include "AnimGraphExitNode.h"
 #include "AnimGraphEntryNode.h"
+#include "AnimGraphHubNode.h"
+
 #include "AnimGraphTransitionCondition.h"
 #include "AnimGraphParameterCondition.h"
 #include "AnimGraphMotionCondition.h"
@@ -66,315 +75,153 @@
 #include "AnimGraphVector2Condition.h"
 #include "AnimGraphPlayTimeCondition.h"
 
-
 namespace EMotionFX
 {
-    // constructor
-    AnimGraphObjectFactory::AnimGraphObjectFactory()
+    void AnimGraphObjectFactory::ReflectTypes(AZ::ReflectContext* context)
     {
+        AnimGraphNode::Reflect(context);
+        AnimGraphStateMachine::Reflect(context);
+        AnimGraphStateTransition::Reflect(context);
+        AnimGraphExitNode::Reflect(context);
+        AnimGraphEntryNode::Reflect(context);
+
+        AnimGraphMotionNode::Reflect(context);
+        BlendSpaceNode::Reflect(context);
+        BlendSpace1DNode::Reflect(context);
+        BlendSpace2DNode::Reflect(context);
+        AnimGraphBindPoseNode::Reflect(context);
+        AnimGraphHubNode::Reflect(context);
+
+        AnimGraphParameterCondition::Reflect(context);
+        AnimGraphVector2Condition::Reflect(context);
+        AnimGraphMotionCondition::Reflect(context);
+        AnimGraphStateCondition::Reflect(context);
+        AnimGraphTimeCondition::Reflect(context);
+        AnimGraphTransitionCondition::Reflect(context);
+        AnimGraphPlayTimeCondition::Reflect(context);
+        AnimGraphTagCondition::Reflect(context);
+
+        // Blend tree
+        BlendTree::Reflect(context);
+        BlendTreeConnection::Reflect(context);
+        BlendTreeFinalNode::Reflect(context);
+        BlendTreeBlend2NodeBase::Reflect(context);
+        BlendTreeBlend2Node::Reflect(context);
+        BlendTreeBlend2AdditiveNode::Reflect(context);
+        BlendTreeBlend2LegacyNode::Reflect(context);
+        BlendTreeBlendNNode::Reflect(context);
+        BlendTreeParameterNode::Reflect(context);
+        BlendTreeFloatMath1Node::Reflect(context);
+        BlendTreeFloatMath2Node::Reflect(context);
+        BlendTreeFloatConditionNode::Reflect(context);
+        BlendTreeFloatConstantNode::Reflect(context);
+        BlendTreeFloatSwitchNode::Reflect(context);
+        BlendTreeBoolLogicNode::Reflect(context);
+        BlendTreePoseSwitchNode::Reflect(context);
+        BlendTreeMaskNode::Reflect(context);
+        BlendTreeMorphTargetNode::Reflect(context);
+        BlendTreeMotionFrameNode::Reflect(context);
+        BlendTreeVector3Math1Node::Reflect(context);
+        BlendTreeVector3Math2Node::Reflect(context);
+        BlendTreeVector2DecomposeNode::Reflect(context);
+        BlendTreeVector3DecomposeNode::Reflect(context);
+        BlendTreeVector4DecomposeNode::Reflect(context);
+        BlendTreeVector2ComposeNode::Reflect(context);
+        BlendTreeVector3ComposeNode::Reflect(context);
+        BlendTreeVector4ComposeNode::Reflect(context);
+        BlendTreeSmoothingNode::Reflect(context);
+        BlendTreeRangeRemapperNode::Reflect(context);
+        BlendTreeDirectionToWeightNode::Reflect(context);
+        BlendTreeMirrorPoseNode::Reflect(context);
+        BlendTreeTwoLinkIKNode::Reflect(context);
+        BlendTreeLookAtNode::Reflect(context);
+        BlendTreeTransformNode::Reflect(context);
+        BlendTreeAccumTransformNode::Reflect(context);
+        BlendTreePoseSubtractNode::Reflect(context);
+    }
+
+    AZStd::unordered_set<AZ::TypeId>& AnimGraphObjectFactory::GetUITypes()
+    {
+        static AZStd::unordered_set<AZ::TypeId> uitypes = {
+            azrtti_typeid<AnimGraphBindPoseNode>(),
+            azrtti_typeid<AnimGraphStateMachine>(),
+            azrtti_typeid<AnimGraphMotionNode>(),
+            azrtti_typeid<AnimGraphHubNode>(),
+            azrtti_typeid<AnimGraphExitNode>(),
+            azrtti_typeid<AnimGraphEntryNode>(),
+            azrtti_typeid<BlendTree>(),
+            azrtti_typeid<BlendTreeFinalNode>(),
+            azrtti_typeid<BlendSpace1DNode>(),
+            azrtti_typeid<BlendSpace2DNode>(),
+            azrtti_typeid<BlendTreeBlend2Node>(),
+            azrtti_typeid<BlendTreeBlend2AdditiveNode>(),
+            azrtti_typeid<BlendTreeBlend2LegacyNode>(),
+            azrtti_typeid<BlendTreeBlendNNode>(),
+            azrtti_typeid<BlendTreeParameterNode>(),
+            azrtti_typeid<BlendTreeFloatMath1Node>(),
+            azrtti_typeid<BlendTreeFloatMath2Node>(),
+            azrtti_typeid<BlendTreeFloatConditionNode>(),
+            azrtti_typeid<BlendTreeFloatConstantNode>(),
+            azrtti_typeid<BlendTreeFloatSwitchNode>(),
+            azrtti_typeid<BlendTreeBoolLogicNode>(),
+            azrtti_typeid<BlendTreePoseSwitchNode>(),
+            azrtti_typeid<BlendTreeMaskNode>(),
+            azrtti_typeid<BlendTreeMorphTargetNode>(),
+            azrtti_typeid<BlendTreeMotionFrameNode>(),
+            azrtti_typeid<BlendTreeVector3Math1Node>(),
+            azrtti_typeid<BlendTreeVector3Math2Node>(),
+            azrtti_typeid<BlendTreeVector2DecomposeNode>(),
+            azrtti_typeid<BlendTreeVector3DecomposeNode>(),
+            azrtti_typeid<BlendTreeVector4DecomposeNode>(),
+            azrtti_typeid<BlendTreeVector2ComposeNode>(),
+            azrtti_typeid<BlendTreeVector3ComposeNode>(),
+            azrtti_typeid<BlendTreeVector4ComposeNode>(),
+            azrtti_typeid<BlendTreeSmoothingNode>(),
+            azrtti_typeid<BlendTreeRangeRemapperNode>(),
+            azrtti_typeid<BlendTreeDirectionToWeightNode>(),
+            azrtti_typeid<BlendTreeMirrorPoseNode>(),
+            azrtti_typeid<BlendTreeTwoLinkIKNode>(),
+            azrtti_typeid<BlendTreeLookAtNode>(),
+            azrtti_typeid<BlendTreeTransformNode>(),
+            azrtti_typeid<BlendTreeAccumTransformNode>(),
+            azrtti_typeid<BlendTreePoseSubtractNode>(),
+            azrtti_typeid<AnimGraphStateTransition>(),
+            azrtti_typeid<AnimGraphParameterCondition>(),
+            azrtti_typeid<AnimGraphVector2Condition>(),
+            azrtti_typeid<AnimGraphMotionCondition>(),
+            azrtti_typeid<AnimGraphStateCondition>(),
+            azrtti_typeid<AnimGraphTimeCondition>(),
+            azrtti_typeid<AnimGraphPlayTimeCondition>(),
+            azrtti_typeid<AnimGraphTagCondition>()
+        };
+
+        return uitypes;
     }
 
 
-    // destructor
-    AnimGraphObjectFactory::~AnimGraphObjectFactory()
+    AnimGraphObject* AnimGraphObjectFactory::Create(const AZ::TypeId& type, AnimGraph* animGraph)
     {
-        // unregister all objects
-        UnregisterAllObjects();
-    }
-
-
-    // init
-    void AnimGraphObjectFactory::Init()
-    {
-        // reserve space for the registered object types
-        mRegisteredObjects.reserve(64);
-
-        // register default object types
-        RegisterObjectType(AnimGraphStateMachine::Create(nullptr));
-        RegisterObjectType(BlendTree::Create(nullptr));
-        RegisterObjectType(BlendTreeFinalNode::Create(nullptr));
-        RegisterObjectType(AnimGraphMotionNode::Create(nullptr));
-        RegisterObjectType(BlendSpace1DNode::Create(nullptr));
-        RegisterObjectType(BlendSpace2DNode::Create(nullptr));
-        RegisterObjectType(BlendTreeBlend2Node::Create(nullptr));
-        RegisterObjectType(BlendTreeBlendNNode::Create(nullptr));
-        RegisterObjectType(BlendTreeParameterNode::Create(nullptr));
-        RegisterObjectType(BlendTreeFloatConstantNode::Create(nullptr));
-        RegisterObjectType(BlendTreeFloatMath1Node::Create(nullptr));
-        RegisterObjectType(BlendTreeFloatMath2Node::Create(nullptr));
-        RegisterObjectType(BlendTreeFloatConditionNode::Create(nullptr));
-        RegisterObjectType(BlendTreeFloatSwitchNode::Create(nullptr));
-        RegisterObjectType(BlendTreeBoolLogicNode::Create(nullptr));
-        RegisterObjectType(BlendTreePoseSwitchNode::Create(nullptr));
-        RegisterObjectType(BlendTreeMaskNode::Create(nullptr));
-        RegisterObjectType(AnimGraphBindPoseNode::Create(nullptr));
-        RegisterObjectType(BlendTreeMotionFrameNode::Create(nullptr));
-        RegisterObjectType(BlendTreeVector3Math1Node::Create(nullptr));
-        RegisterObjectType(BlendTreeVector3Math2Node::Create(nullptr));
-        RegisterObjectType(BlendTreeVector2DecomposeNode::Create(nullptr));
-        RegisterObjectType(BlendTreeVector3DecomposeNode::Create(nullptr));
-        RegisterObjectType(BlendTreeVector4DecomposeNode::Create(nullptr));
-        RegisterObjectType(BlendTreeVector2ComposeNode::Create(nullptr));
-        RegisterObjectType(BlendTreeVector3ComposeNode::Create(nullptr));
-        RegisterObjectType(BlendTreeVector4ComposeNode::Create(nullptr));
-        RegisterObjectType(BlendTreeSmoothingNode::Create(nullptr));
-        RegisterObjectType(BlendTreeRangeRemapperNode::Create(nullptr));
-        RegisterObjectType(AnimGraphExitNode::Create(nullptr));
-        RegisterObjectType(AnimGraphEntryNode::Create(nullptr));
-        RegisterObjectType(BlendTreeDirectionToWeightNode::Create(nullptr));
-        RegisterObjectType(BlendTreeMirrorPoseNode::Create(nullptr));
-        RegisterObjectType(BlendTreeMorphTargetNode::Create(nullptr));
-
-        // controller nodes
-        RegisterObjectType(BlendTreeTwoLinkIKNode::Create(nullptr));
-        RegisterObjectType(BlendTreeLookAtNode::Create(nullptr));
-        RegisterObjectType(BlendTreeTransformNode::Create(nullptr));
-        RegisterObjectType(BlendTreeAccumTransformNode::Create(nullptr));
-
-        // register transition nodes
-        RegisterObjectType(AnimGraphStateTransition::Create(nullptr));
-
-        // register default transition condition types
-        RegisterObjectType(AnimGraphParameterCondition::Create(nullptr));
-        RegisterObjectType(AnimGraphVector2Condition::Create(nullptr));
-        RegisterObjectType(AnimGraphMotionCondition::Create(nullptr));
-        RegisterObjectType(AnimGraphStateCondition::Create(nullptr));
-        RegisterObjectType(AnimGraphTimeCondition::Create(nullptr));
-        RegisterObjectType(AnimGraphPlayTimeCondition::Create(nullptr));
-        RegisterObjectType(AnimGraphTagCondition::Create(nullptr));
-    }
-
-    // create a given object by a given type ID
-    AnimGraphObject* AnimGraphObjectFactory::CreateObjectByTypeID(AnimGraph* animGraph, uint32 typeID)
-    {
-        // try to find the registered object index
-        const uint32 index = FindRegisteredObjectByTypeID(typeID);
-        if (index == MCORE_INVALIDINDEX32)
+        AZ::SerializeContext* context = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!context)
         {
-            MCore::LogWarning("EMotionFX::AnimGraphObjectFactory::CreateObjectByTypeID() - failed to create object with type ID %d, as no such object type has been registered", typeID);
+            AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
             return nullptr;
         }
 
-        // create a clone of the registered object
-        AnimGraphObject* object =  mRegisteredObjects[index]->Clone(animGraph);
-        return object;
-    }
-
-
-    // create a given object by its type string
-    AnimGraphObject* AnimGraphObjectFactory::CreateObjectByTypeString(AnimGraph* animGraph, const char* typeNameString)
-    {
-        // try to find the registered object index
-        const uint32 index = FindRegisteredObjectByTypeString(typeNameString);
-        if (index == MCORE_INVALIDINDEX32)
+        const AZ::SerializeContext::ClassData* classData = context->FindClassData(type);
+        if (!classData)
         {
-            MCore::LogWarning("EMotionFX::AnimGraphObjectFactory::CreateObjectByTypeString() - failed to create object with type string '%s', as no such object type has been registered", typeNameString);
+            AZ_Warning("EMotionFX", false, "Can't find class data for this type.");
             return nullptr;
         }
 
-        // create a clone of the registered object
-        AnimGraphObject* object = mRegisteredObjects[index]->Clone(animGraph);
-        return object;
-    }
-
-
-    // create a given object from a given registered object
-    AnimGraphObject* AnimGraphObjectFactory::CreateObject(AnimGraph* animGraph, AnimGraphObject* registeredObject)
-    {
-        MCORE_ASSERT(registeredObject);
-
-        // try to find the registered object index
-        const uint32 index = FindRegisteredObject(registeredObject);
-        if (index == MCORE_INVALIDINDEX32)
+        AnimGraphObject* animGraphObject = reinterpret_cast<AnimGraphObject*>(classData->m_factory->Create(classData->m_name));
+        if (animGraph)
         {
-            MCore::LogWarning("EMotionFX::AnimGraphObjectFactory::CreateObject() - failed to create object with from pointer 0x%x (typeString='%s'), as no such object type has been registered", registeredObject, registeredObject->GetTypeString());
-            return nullptr;
+            animGraphObject->InitAfterLoading(animGraph);
         }
-
-        // create a clone of the registered object
-        AnimGraphObject* object = mRegisteredObjects[index]->Clone(animGraph);
-        return object;
+        return animGraphObject;
     }
-
-
-    // unregister all nodes
-    void AnimGraphObjectFactory::UnregisterAllObjects()
-    {
-        const size_t numObjects = mRegisteredObjects.size();
-        for (size_t i = 0; i < numObjects; ++i)
-        {
-            AnimGraphObject* object = mRegisteredObjects[i];
-            object->Unregister();
-            object->Destroy();
-        }
-
-        mRegisteredObjects.clear();
-    }
-
-
-    // unregister a object with a given type ID
-    bool AnimGraphObjectFactory::UnregisterObjectByTypeID(uint32 typeID)
-    {
-        // try to find the object index
-        const uint32 index = FindRegisteredObjectByTypeID(typeID);
-        if (index == MCORE_INVALIDINDEX32)
-        {
-            return false;
-        }
-
-        // remove the object
-        mRegisteredObjects[index]->Unregister();
-        mRegisteredObjects[index]->Destroy();
-        mRegisteredObjects.erase(mRegisteredObjects.begin() + index);
-
-        // successfully unregistered
-        return true;
-    }
-
-
-    // unregister a given object by its type name
-    bool AnimGraphObjectFactory::UnregisterObjectByTypeString(const char* typeNameString)
-    {
-        // try to find the object index
-        const uint32 index = FindRegisteredObjectByTypeString(typeNameString);
-        if (index == MCORE_INVALIDINDEX32)
-        {
-            return false;
-        }
-
-        // remove the object
-        mRegisteredObjects[index]->Unregister();
-        mRegisteredObjects[index]->Destroy();
-        mRegisteredObjects.erase(mRegisteredObjects.begin() + index);
-
-        // successfully unregistered
-        return true;
-    }
-
-
-    // register a given object
-    bool AnimGraphObjectFactory::RegisterObjectType(AnimGraphObject* object)
-    {
-        // make sure we didn't already register this object
-        if (CheckIfHasRegisteredObject(object))
-        {
-            MCore::LogWarning("EMotionFX::BlendTreeObjectFactor::RegisterObjectType() - Already registered the given object (type=%s)", object->GetTypeString());
-            MCORE_ASSERT(false); // this is quite important, it shouldn't happen
-            return false;
-        }
-
-        // register it
-        mRegisteredObjects.push_back(object);
-
-        // create the shared data object and register the ports and parameters for this object
-        GetAnimGraphManager().CreateSharedData(object);
-        object->RegisterAttributes();
-
-        // register the unique data to the pool
-        GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().Register(object->GetType(), 32, AnimGraphObjectDataPool::POOLTYPE_DYNAMIC, 128);
-
-        return true;
-    }
-
-
-    // check if we have a registered object of the given type
-    bool AnimGraphObjectFactory::CheckIfHasRegisteredObjectByTypeID(uint32 typeID) const
-    {
-        return (FindRegisteredObjectByTypeID(typeID) != MCORE_INVALIDINDEX32);
-    }
-
-
-    // check if we have a registered object with the given type string
-    bool AnimGraphObjectFactory::CheckIfHasRegisteredObjectByTypeString(const char* typeNameString) const
-    {
-        return (FindRegisteredObjectByTypeString(typeNameString) != MCORE_INVALIDINDEX32);
-    }
-
-
-    // check if we have a given object registered already
-    bool AnimGraphObjectFactory::CheckIfHasRegisteredObject(AnimGraphObject* object) const
-    {
-        return (FindRegisteredObject(object) != MCORE_INVALIDINDEX32);
-    }
-
-
-    // find out if we already registered the given object pointer
-    uint32 AnimGraphObjectFactory::FindRegisteredObject(AnimGraphObject* object) const
-    {
-        const size_t numObjects = mRegisteredObjects.size();
-        for (size_t i = 0; i < numObjects; ++i)
-        {
-            if (mRegisteredObjects[i] == object)
-            {
-                return static_cast<uint32>(i);
-            }
-        }
-
-        return MCORE_INVALIDINDEX32;
-    }
-
-
-    // find registered object by its type ID
-    uint32 AnimGraphObjectFactory::FindRegisteredObjectByTypeID(uint32 typeID) const
-    {
-        const size_t numObjects = mRegisteredObjects.size();
-        for (size_t i = 0; i < numObjects; ++i)
-        {
-            if (mRegisteredObjects[i]->GetType() == typeID)
-            {
-                return static_cast<uint32>(i);
-            }
-        }
-
-        return MCORE_INVALIDINDEX32;
-    }
-
-
-    // find a registered object by its type string
-    uint32 AnimGraphObjectFactory::FindRegisteredObjectByTypeString(const char* typeString) const
-    {
-        const size_t numObjects = mRegisteredObjects.size();
-        for (size_t i = 0; i < numObjects; ++i)
-        {
-            if (strcmp(typeString, mRegisteredObjects[i]->GetTypeString()) == 0) // case sensitive string compare
-            {
-                return static_cast<uint32>(i);
-            }
-        }
-
-        return MCORE_INVALIDINDEX32;
-    }
-
-
-    AZ::Uuid AnimGraphObjectFactory::FindObjectTypeByTypeString(const char* typeNameString)
-    {
-        const uint32 index = FindRegisteredObjectByTypeString(typeNameString);
-        if (index == MCORE_INVALIDINDEX32)
-        {
-            MCore::LogWarning("EMotionFX::AnimGraphObjectFactory::FindObjectUuidByTypeString() - failed to find object with type string '%s', as no such object type has been registered", typeNameString);
-            return AZ::Uuid::CreateNull();
-        }
-
-        AnimGraphObject* object = mRegisteredObjects[index];
-        return azrtti_typeid(object);
-    }
-
-
-    void AnimGraphObjectFactory::Log()
-    {
-        const size_t numRegisteredObjects = mRegisteredObjects.size();
-        AZ_Printf("EMotionFX", " - AnimGraphObjectFactory: NumRegisteredObjects=%d", numRegisteredObjects);
-
-        AZ::Uuid uuid;
-        AZStd::string uuidString;
-        for (size_t i = 0; i < numRegisteredObjects; ++i)
-        {
-            const AnimGraphObject* object = mRegisteredObjects[i];
-
-            uuid = azrtti_typeid(object);
-            uuidString = uuid.ToString<AZStd::string>();
-
-            AZ_Printf("EMotionFX", "    + Object #%d: Name='%s' UUID='%s'", i + 1, object->GetPaletteName(), uuidString.c_str());
-        }
-    }
+    
 } // namespace EMotionFX

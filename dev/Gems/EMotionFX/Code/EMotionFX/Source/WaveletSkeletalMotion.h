@@ -48,7 +48,7 @@ namespace EMotionFX
     class EMFX_API WaveletSkeletalMotion
         : public SkeletalMotion
     {
-        MCORE_MEMORYOBJECTCATEGORY(WaveletSkeletalMotion, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_WAVELETSKELETALMOTIONS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         enum
@@ -64,7 +64,7 @@ namespace EMotionFX
         class EMFX_API Chunk
             : public BaseObject
         {
-            MCORE_MEMORYOBJECTCATEGORY(WaveletSkeletalMotion::Chunk, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_WAVELETSKELETALMOTIONS);
+            AZ_CLASS_ALLOCATOR_DECL
 
         public:
             static Chunk* Create();

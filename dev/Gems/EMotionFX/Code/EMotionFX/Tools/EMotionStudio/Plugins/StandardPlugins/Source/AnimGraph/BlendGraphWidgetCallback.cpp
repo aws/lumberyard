@@ -81,7 +81,7 @@ namespace EMStudio
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 GraphNode*                  graphNode   = activeGraph->GetNode(i);
-                EMotionFX::AnimGraphNode*  emfxNode    = currentNode->RecursiveFindNodeByID(graphNode->GetID());
+                EMotionFX::AnimGraphNode*  emfxNode    = currentNode->RecursiveFindNodeById(graphNode->GetId());
 
                 // skip invisible graph nodes
                 if (graphNode->GetIsVisible() == false)
@@ -202,7 +202,7 @@ namespace EMStudio
         NodeGraph*                activeGraph  = mBlendGraphWidget->GetActiveGraph();
         EMotionFX::AnimGraphNode* currentNode  = mBlendGraphWidget->GetCurrentNode();
 
-        if (!activeGraph || !currentNode || currentNode->GetType() != EMotionFX::BlendTree::TYPE_ID)
+        if (!activeGraph || !currentNode || azrtti_typeid(currentNode) != azrtti_typeid<EMotionFX::BlendTree>())
         {
             return;
         }
@@ -228,7 +228,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numNodes; ++i)
         {
             GraphNode*                  graphNode   = activeGraph->GetNode(i);
-            EMotionFX::AnimGraphNode*  emfxNode    = currentNode->RecursiveFindNodeByID(graphNode->GetID());
+            EMotionFX::AnimGraphNode*   emfxNode    = currentNode->RecursiveFindNodeById(graphNode->GetId());
 
             // make sure the corresponding anim graph node is valid
             if (emfxNode == nullptr)
@@ -244,9 +244,9 @@ namespace EMStudio
 
                 // get the source and target nodes
                 GraphNode*                  sourceNode      = visualConnection->GetSourceNode();
-                EMotionFX::AnimGraphNode*  emfxSourceNode  = currentNode->RecursiveFindNodeByID(sourceNode->GetID());
+                EMotionFX::AnimGraphNode*   emfxSourceNode  = currentNode->RecursiveFindNodeById(sourceNode->GetId());
                 GraphNode*                  targetNode      = visualConnection->GetTargetNode();
-                EMotionFX::AnimGraphNode*  emfxTargetNode  = currentNode->RecursiveFindNodeByID(targetNode->GetID());
+                EMotionFX::AnimGraphNode*   emfxTargetNode  = currentNode->RecursiveFindNodeById(targetNode->GetId());
 
                 //QColor color(255,0,255);
                 QColor color = visualConnection->GetTargetNode()->GetInputPort(visualConnection->GetInputPortNr())->GetColor();
@@ -320,19 +320,8 @@ namespace EMStudio
                 // pose attribute
                 case EMotionFX::AttributePose::TYPE_ID:
                 {
-                    //color = QColor( 0, 255, 0 );
-
-                    /*if (emfxSourceNode->GetType() == EMotionFX::BlendTreeMotionNode::TYPE_ID)
-                    {
-                        EMotionFX::BlendTreeMotionNode* motionNode = static_cast<EMotionFX::BlendTreeMotionNode*>(emfxSourceNode);
-                        EMotionFX::MotionInstance* motionInstance = motionNode->FindMotionInstance(animGraphInstance);
-
-                        color = QColor( 0, 255, 0 );
-                        mTempString = AZStd::string::format("%.2f", motionInstance->GetWeight());
-                    }*/
-
                     // handle blend 2 nodes
-                    if (emfxTargetNode->GetType() == EMotionFX::BlendTreeBlend2Node::TYPE_ID)
+                    if (azrtti_typeid(emfxTargetNode) == azrtti_typeid<EMotionFX::BlendTreeBlend2Node>())
                     {
                         // type-cast the target node to our blend node
                         EMotionFX::BlendTreeBlend2Node* blendNode = static_cast<EMotionFX::BlendTreeBlend2Node*>(emfxTargetNode);
@@ -353,7 +342,7 @@ namespace EMStudio
                     }
 
                     // handle blend N nodes
-                    if (emfxTargetNode->GetType() == EMotionFX::BlendTreeBlendNNode::TYPE_ID)
+                    if (azrtti_typeid(emfxTargetNode) == azrtti_typeid<EMotionFX::BlendTreeBlendNNode>())
                     {
                         // type-cast the target node to our blend node
                         EMotionFX::BlendTreeBlendNNode* blendNode = static_cast<EMotionFX::BlendTreeBlendNNode*>(emfxTargetNode);

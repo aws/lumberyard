@@ -18,7 +18,7 @@
 #include "CCryDXMETALSamplerState.hpp"
 #include "CCryDXMETALDevice.hpp"
 #include "../Implementation/GLState.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 
 
 CCryDXGLSamplerState::CCryDXGLSamplerState(const D3D11_SAMPLER_DESC& kDesc, CCryDXGLDevice* pDevice)

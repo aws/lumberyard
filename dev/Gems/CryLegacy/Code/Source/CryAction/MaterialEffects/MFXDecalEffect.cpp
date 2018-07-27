@@ -14,7 +14,7 @@
 // Description : Decal effect
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "MFXDecalEffect.h"
 #include "Components/IComponentRender.h"
 
@@ -115,7 +115,7 @@ void CMFXDecalEffect::Execute(const SMFXRunTimeEffectParams& params)
 
         if (!m_decalParams.material.empty())
         {
-            strcpy(terrainDecal.szMaterialName, m_decalParams.material.c_str());
+            azstrcpy(terrainDecal.szMaterialName, AZ_ARRAY_SIZE(terrainDecal.szMaterialName), m_decalParams.material.c_str());
         }
         else
         {
@@ -175,7 +175,7 @@ void CMFXDecalEffect::Execute(const SMFXRunTimeEffectParams& params)
 
         if (!m_decalParams.material.empty())
         {
-            strcpy(decal.szMaterialName, m_decalParams.material.c_str());
+            azstrcpy(decal.szMaterialName, AZ_ARRAY_SIZE(decal.szMaterialName), m_decalParams.material.c_str());
         }
         else
         {

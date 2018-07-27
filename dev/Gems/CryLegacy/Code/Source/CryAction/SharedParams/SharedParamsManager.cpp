@@ -14,7 +14,7 @@
 // Description : System for managing storage and retrieval of shared parameters.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "SharedParamsManager.h"
 
 CSharedParamsManager::CSharedParamsManager()

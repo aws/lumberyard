@@ -14,7 +14,7 @@
 // Description : Flowgraph nodes for opening/saving Xml documents
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowBaseXmlNode.h"
 #include "ILevelSystem.h"
 

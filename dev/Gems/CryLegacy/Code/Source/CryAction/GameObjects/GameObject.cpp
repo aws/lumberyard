@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "GameObjects/GameObject.h"
 #include "CryAction.h"
 #include "Network/GameContext.h"
@@ -1035,7 +1035,7 @@ static const char* AspectProfileSerializationName(int i)
     buffer[8] = 0;
     buffer[9] = 0;
     buffer[10] = 0;
-    itoa(i, &(buffer[8]), 10);
+    azitoa(i, &(buffer[8]), AZ_ARRAY_SIZE(buffer) - 8, 10);
 
     return buffer;
 }

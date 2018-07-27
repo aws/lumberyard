@@ -24,6 +24,7 @@ namespace Serialization
 
     struct INavigationProvider
     {
+        virtual ~INavigationProvider() = default;
         virtual const char* GetIcon(const char* type, const char* path) const = 0;
         virtual const char* GetFileSelectorMaskForType(const char* type) const = 0;
         virtual const char* GetEngineTypeForInputType(const char* extension) const { return extension; }

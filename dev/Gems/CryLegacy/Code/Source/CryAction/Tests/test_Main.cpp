@@ -9,38 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include <AzTest/AzTest.h>
-
-#include <AzCore/Memory/OSAllocator.h>
-#include <AzCore/Memory/SystemAllocator.h>
-#include <aws/core/http/HttpClientFactory.h>
-
-class CryActionTestEnvironment
-    : public AZ::Test::ITestEnvironment
-    {
-    public:
-    virtual ~CryActionTestEnvironment()
-    {}
-
-    protected:
-    void SetupEnvironment() override
-    {
-        AZ::AllocatorInstance<AZ::OSAllocator>::Create();
-        AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
-        Aws::Http::InitHttp();
-    }
-
-    void TeardownEnvironment() override
-    {
-        Aws::Http::CleanupHttp();
-        AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-        AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
-    }
-    };
-
-AZ_UNIT_TEST_HOOK(new CryActionTestEnvironment());
-AZ_INTEG_TEST_HOOK();
 
 TEST(CryActionSanityTest, Sanity)
 {

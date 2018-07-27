@@ -17,36 +17,17 @@ def build(bld):
     bld.CryStandAlonePlugin(
 
         platforms = ['win', 'darwin'],
-        configurations = ['debug', 'debug_test', 'profile', 'profile_test'],
-
+        configurations = ['debug', 'profile'],
+        use	            = ['AzCore'],
+        
         #==============================
         # Settings
         #==============================
         target          = 'StaticDataMonitorPlugin',
         vs_filter       = 'StaticData/Plugins',
-        file_list       = 'staticdatamonitor.waf_files',
-        use	            = ['EditorCommon','EditorCore', 'AzToolsFramework'],
-        features	    = 'qt5',
 
-        test_all_file_list = ['staticdatamonitor_tests.waf_files'],
-        autod_uselib    = [ 'QT5CORE',
-                            'QT5GUI',
-                            'QT5WIDGETS'],
+        file_list       = 'staticdatamonitorplugin.waf_files',
 
-        #==============================
-        # Common
-        #==============================
-        includes = ['../Include'],
-
-
-        # Monitor is only supported on windows
-        win_defines = ['USE_MONITOR'],
-
-        defines     = ['QT_NO_DEBUG',
-                       'QT_DLL',
-                       'QT_NO_EMIT',
-                       'EDITOR_COMMON_IMPORTS',
-                       'NOMINMAX']
 
     )
 

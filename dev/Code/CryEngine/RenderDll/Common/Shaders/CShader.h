@@ -236,6 +236,29 @@ enum EShaderCacheMode
     eSC_Preactivate = 4,
 };
 
+enum EShaderLanguage
+{
+    eSL_Unknown,
+    eSL_Orbis, // ACCEPTED_USE
+    eSL_Durango, // ACCEPTED_USE
+    eSL_D3D11,
+    eSL_GL4_1,
+    eSL_GL4_4,
+    eSL_GLES3_0,
+    eSL_GLES3_1,
+    eSL_METAL,
+
+    eSL_MAX
+};
+
+EShaderLanguage GetShaderLanguage();
+
+const char *GetShaderLanguageName();
+
+const char *GetShaderLanguageResourceName();
+
+AZStd::string GetShaderListFilename();
+
 //////////////////////////////////////////////////////////////////////////
 class CShaderMan
     : public ISystemEventListener
@@ -326,11 +349,11 @@ public:
     bool m_bInitialized;
     bool m_bLoadedSystem;
 
-    const char* m_ShadersPath;
-    const char* m_ShadersCache;
-    const char* m_ShadersFilter;
-    const char* m_ShadersMergeCachePath;
-    string m_szCachePath;
+    AZStd::string m_ShadersPath;
+    AZStd::string m_ShadersCache;
+    AZStd::string m_ShadersFilter;
+    AZStd::string m_ShadersMergeCachePath;
+    AZStd::string m_szCachePath;
 
     int m_nFrameForceReload;
 
@@ -577,13 +600,12 @@ public:
     void mfInitShadersCache(byte bForLevel, FXShaderCacheCombinations* Combinations = NULL, const char* pCombinations = NULL, int nType = 0);
     void mfMergeShadersCombinations(FXShaderCacheCombinations* Combinations, int nType);
     void mfInsertNewCombination(SShaderCombIdent& Ident, EHWShaderClass eCL, const char* name, int nID, string* Str = NULL, byte bStore = 1);
-	string mfGetShaderCompileFlags(EHWShaderClass eClass, UPipelineState pipelineState) const;
     const char* mfGetLevelListName() const;
     void mfExportShaders();
 
     bool mfReleasePreactivatedShaderData();
     bool mfPreactivateShaders2(const char* szPak, const char* szPath, bool bPersistent, const char* szBindRoot);
-    bool mfPreactivate2(CResFileLookupDataMan& LevelLookup, string szPathPerLevel, string szPathGlobal, bool bVS, bool bPersistent);
+    bool mfPreactivate2(CResFileLookupDataMan& LevelLookup, const AZStd::string& pathPerLevel, const AZStd::string& pathGlobal, bool bVS, bool bPersistent);
 
     bool mfPreloadBinaryShaders();
 

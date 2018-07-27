@@ -14,7 +14,7 @@
 // Description : CPathMarker class implementation
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "PathMarker.h"
 #include <limits>
 #include "DebugDrawContext.h"

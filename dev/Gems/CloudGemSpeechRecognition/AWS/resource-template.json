@@ -1,199 +1,101 @@
 {
-    "AWSTemplateFormatVersion": "2010-09-09", 
+    "AWSTemplateFormatVersion": "2010-09-09",
     "Metadata": {
         "CloudCanvas": {
             "Id": "$Revision: #7 $"
         }
-    }, 
+    },
     "Outputs": {
         "ServiceUrl": {
-            "Description": "The service url.", 
+            "Description": "The service url.",
             "Value": {
                 "Fn::GetAtt": [
-                    "ServiceApi", 
+                    "ServiceApi",
                     "Url"
                 ]
             }
         }
-    }, 
+    },
     "Parameters": {
         "CloudCanvasStack": {
-            "Default": "ResourceGroup", 
-            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.", 
+            "Default": "ResourceGroup",
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
             "Type": "String"
-        }, 
+        },
         "ConfigurationBucket": {
-            "Description": "Bucket that contains configuration data.", 
+            "Description": "Bucket that contains configuration data.",
             "Type": "String"
-        }, 
+        },
         "ConfigurationKey": {
-            "Description": "Location in the configuration bucket of configuration data.", 
+            "Description": "Location in the configuration bucket of configuration data.",
             "Type": "String"
-        }, 
+        },
         "DeploymentName": {
-            "Description": "Name of the resource group's deployment.", 
+            "Description": "Name of the resource group's deployment.",
             "Type": "String"
-        }, 
+        },
         "DeploymentStackArn": {
-            "Description": "ARN of the deployment stack that owns this resource group stack.", 
+            "Description": "ARN of the deployment stack that owns this resource group stack.",
             "Type": "String"
-        }, 
+        },
         "ProjectResourceHandler": {
-            "Description": "Service token of the custom resource handler.", 
+            "Description": "Service token of the custom resource handler.",
             "Type": "String"
-        }, 
+        },
         "ResourceGroupName": {
-            "Description": "Name of the resource group.", 
+            "Description": "Name of the resource group.",
             "Type": "String"
-        }, 
+        },
         "ServiceApiCacheClusterEnabled": {
-            "Default": "false", 
-            "Description": "Indicates whether cache clustering is enabled for the service API.", 
+            "Default": "false",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
             "Type": "String"
-        }, 
+        },
         "ServiceApiCacheClusterSize": {
-            "Default": "0.5", 
-            "Description": "Indicates whether cache clustering is enabled for the service API.", 
+            "Default": "0.5",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
             "Type": "String"
         }
-    }, 
+    },
     "Resources": {
         "AccessControl": {
             "DependsOn": [
                 "Lex",
-                "ServiceApi", 
-                "ServiceLambda", 
-                "ServiceApi", 
+                "ServiceApi",
                 "ServiceLambda"
-            ], 
+            ],
             "Properties": {
                 "ConfigurationBucket": {
                     "Ref": "ConfigurationBucket"
-                }, 
+                },
                 "ConfigurationKey": {
                     "Ref": "ConfigurationKey"
-                }, 
+                },
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 }
-            }, 
+            },
             "Type": "Custom::AccessControl"
         },
-        "Lex": {
+        "LambdaInvokePermissions": {
             "Metadata": {
                 "CloudCanvas": {
                     "Permissions": [
                         {
                             "AbstractRole": "ServiceLambda",
-                            "Action": "lex:PostText"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:PostContent"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetBots"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetBot"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:CreateBotVersion"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:PutBotAlias"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:PutSlotType"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:PutIntent"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:PutBot"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetIntent"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetSlotType"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:DeleteBot"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:CreateIntentVersion"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:CreateSlotTypeVersion"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetBuiltinIntents"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetBuiltinSlotTypes"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetIntents"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetSlotTypes"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:DeleteIntent"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:DeleteSlotType"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetBotAliases"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:DeleteBotAlias"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetBotVersions"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetBotAlias"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetIntentVersions"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetSlotTypeVersions"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "lex:GetBuiltinIntent"
+                            "Action": "lambda:AddPermission"
                         }
                     ]
                 }
             },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::LambdaPermissions"
+        },
+        "Lex": {
             "Properties": {
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
@@ -229,89 +131,89 @@
             "Properties": {
                 "CacheClusterEnabled": {
                     "Ref": "ServiceApiCacheClusterEnabled"
-                }, 
+                },
                 "CacheClusterSize": {
                     "Ref": "ServiceApiCacheClusterSize"
-                }, 
+                },
                 "ConfigurationBucket": {
                     "Ref": "ConfigurationBucket"
-                }, 
+                },
                 "ConfigurationKey": {
                     "Ref": "ConfigurationKey"
-                }, 
-                "MethodSettings": {}, 
+                },
+                "MethodSettings": {},
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
-                }, 
+                },
                 "SwaggerSettings": {
                     "ServiceLambdaArn": {
                         "Fn::GetAtt": [
-                            "ServiceLambda", 
+                            "ServiceLambda",
                             "Arn"
                         ]
                     }
                 }
-            }, 
+            },
             "Type": "Custom::ServiceApi"
-        }, 
+        },
         "ServiceLambda": {
             "Metadata": {
                 "CloudCanvas": {
                     "Permissions": [
                         {
-                            "AbstractRole": "ServiceApi", 
+                            "AbstractRole": "ServiceApi",
                             "Action": "lambda:InvokeFunction"
                         }
                     ]
                 }
-            }, 
+            },
             "Properties": {
                 "Code": {
                     "S3Bucket": {
                         "Fn::GetAtt": [
-                            "ServiceLambdaConfiguration", 
+                            "ServiceLambdaConfiguration",
                             "ConfigurationBucket"
                         ]
-                    }, 
+                    },
                     "S3Key": {
                         "Fn::GetAtt": [
-                            "ServiceLambdaConfiguration", 
+                            "ServiceLambdaConfiguration",
                             "ConfigurationKey"
                         ]
                     }
-                }, 
-                "Handler": "service.dispatch", 
+                },
+                "Handler": "service.dispatch",
                 "Role": {
                     "Fn::GetAtt": [
-                        "ServiceLambdaConfiguration", 
+                        "ServiceLambdaConfiguration",
                         "Role"
                     ]
-                }, 
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
-                        "ServiceLambdaConfiguration", 
+                        "ServiceLambdaConfiguration",
                         "Runtime"
                     ]
-                }, 
+                },
                 "Timeout": 30
-            }, 
+            },
             "Type": "AWS::Lambda::Function"
-        }, 
+        },
         "ServiceLambdaConfiguration": {
             "Properties": {
                 "ConfigurationBucket": {
                     "Ref": "ConfigurationBucket"
-                }, 
+                },
                 "ConfigurationKey": {
                     "Ref": "ConfigurationKey"
-                }, 
-                "FunctionName": "ServiceLambda", 
-                "Runtime": "python2.7", 
+                },
+                "FunctionName": "ServiceLambda",
+                "Runtime": "python2.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
-                }, 
+                },
                 "Settings": {}
-            }, 
+            },
             "Type": "Custom::LambdaConfiguration"
         }
     }

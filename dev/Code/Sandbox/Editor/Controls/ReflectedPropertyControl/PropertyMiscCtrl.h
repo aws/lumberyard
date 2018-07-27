@@ -15,8 +15,8 @@
 #pragma once
 
 #include <AzCore/base.h>
-#include <AzCore/memory/systemallocator.h>
-#include <AzToolsFramework/Ui/PropertyEditor/PropertyEditorAPI.h>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include "ReflectedVar.h"
 #include "Util/VariablePropertyType.h"
 #include "Controls/ColorGradientCtrl.h"

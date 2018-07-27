@@ -19,14 +19,18 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <QWidget>
 #include <QDialog>
-#include <MysticQt/Source/SearchButton.h>
 
+QT_FORWARD_DECLARE_CLASS(QLineEdit)
 QT_FORWARD_DECLARE_CLASS(QTableWidgetItem)
 QT_FORWARD_DECLARE_CLASS(QTableWidget)
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 
 EMFX_FORWARD_DECLARE(Actor)
 
+namespace AzQtComponents
+{
+    class FilteredSearchWidget;
+}
 
 namespace EMStudio
 {
@@ -37,7 +41,7 @@ namespace EMStudio
         : public QDialog
     {
         Q_OBJECT
-                 MCORE_MEMORYOBJECTCATEGORY(MirrorSetupWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
+        MCORE_MEMORYOBJECTCATEGORY(MirrorSetupWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
         MirrorSetupWindow(QWidget* parent, SceneManagerPlugin* plugin);
@@ -51,8 +55,8 @@ namespace EMStudio
         void OnMappingTableSelectionChanged();
         void OnCurrentListSelectionChanged();
         void OnSourceListSelectionChanged();
-        void CurrentFilterStringChanged(const QString& text);
-        void SourceFilterStringChanged(const QString& text);
+        void OnCurrentTextFilterChanged(const QString& text);
+        void OnSourceTextFilterChanged(const QString& text);
         void OnLinkPressed();
         void OnLoadMapping();
         void OnSaveMapping();
@@ -71,8 +75,8 @@ namespace EMStudio
         QPushButton*            mButtonGuess;
         QLineEdit*              mLeftEdit;
         QLineEdit*              mRightEdit;
-        MysticQt::SearchButton* mCurrentSearchButton;
-        MysticQt::SearchButton* mSourceSearchButton;
+        AzQtComponents::FilteredSearchWidget* m_searchWidgetCurrent;
+        AzQtComponents::FilteredSearchWidget* m_searchWidgetSource;
         QIcon*                  mBoneIcon;
         QIcon*                  mNodeIcon;
         QIcon*                  mMeshIcon;
@@ -93,5 +97,6 @@ namespace EMStudio
         void UpdateActorMotionSources();
         void InitMappingTableFromMotionSources(EMotionFX::Actor* actor);
         void ApplyCurrentMapAsCommand();
+        EMotionFX::Actor* GetSelectedActor() const;
     };
 } // namespace EMStudio

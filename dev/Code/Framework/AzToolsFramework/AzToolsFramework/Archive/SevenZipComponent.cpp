@@ -102,8 +102,8 @@ namespace AzToolsFramework
         {
             ThreadInfo& info = pair.second;
             info.shouldStop = true;
-            m_cv.wait(lock, [&info]() { 
-                return info.threads.size() == 0; 
+            m_cv.wait(lock, [&info]() {
+                return info.threads.size() == 0;
             });
         }
         m_threadInfoMap.clear();
@@ -114,7 +114,6 @@ namespace AzToolsFramework
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<SevenZipComponent, AZ::Component>()
-                ->SerializerForEmptyClass()
                 ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -148,8 +147,8 @@ namespace AzToolsFramework
 
         ThreadInfo& info = it->second;
         info.shouldStop = true;
-        m_cv.wait(lock, [&info]() { 
-            return info.threads.size() == 0; 
+        m_cv.wait(lock, [&info]() {
+            return info.threads.size() == 0;
         });
         m_threadInfoMap.erase(it);
     }
@@ -159,26 +158,26 @@ namespace AzToolsFramework
         AZStd::unique_lock<AZStd::mutex> lock(m_threadControlMutex);
         m_threadInfoMap[taskHandle].shouldStop = false;
 
-        AZStd::thread processThread([=]() 
+        AZStd::thread processThread([=]()
         {
             {
                 AZStd::unique_lock<AZStd::mutex> lock(m_threadControlMutex);
                 m_threadInfoMap[taskHandle].threads.insert(AZStd::this_thread::get_id());
                 m_cv.notify_all();
             }
-         
+
             AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(5000));
 
-            ProcessLauncher::ProcessLaunchInfo info;
-            info.m_commandlineParameters = m_7zPath + " " + commandLineArgs;
-            info.m_showWindow = false;
-            AZStd::unique_ptr<ProcessWatcher> watcher(ProcessWatcher::LaunchProcess(info, ProcessCommunicationType::COMMUNICATOR_TYPE_STDINOUT));
+            ProcessLauncher::ProcessLaunchInfo pInfo;
+            pInfo.m_commandlineParameters = m_7zPath + " " + commandLineArgs;
+            pInfo.m_showWindow = false;
+            AZStd::unique_ptr<ProcessWatcher> watcher(ProcessWatcher::LaunchProcess(pInfo, ProcessCommunicationType::COMMUNICATOR_TYPE_STDINOUT));
 
             AZ::u32 exitCode = static_cast<AZ::u32>(SevenZipExitCode::UserStoppedProcess);
-            if (watcher) 
+            if (watcher)
             {
                 ConsoleEchoCommunicator echoCommunicator(watcher->GetCommunicator());
-                while (watcher->IsProcessRunning(&exitCode)) 
+                while (watcher->IsProcessRunning(&exitCode))
                 {
                     {
                         AZStd::unique_lock<AZStd::mutex> lock(m_threadControlMutex);
@@ -194,14 +193,14 @@ namespace AzToolsFramework
 
             {
                 AZStd::unique_lock<AZStd::mutex> lock(m_threadControlMutex);
-                ThreadInfo& info = m_threadInfoMap[taskHandle];
-                info.threads.erase(AZStd::this_thread::get_id());
+                ThreadInfo& tInfo = m_threadInfoMap[taskHandle];
+                tInfo.threads.erase(AZStd::this_thread::get_id());
                 m_cv.notify_all();
             }
         });
         ThreadInfo& info = m_threadInfoMap[taskHandle];
-        m_cv.wait(lock, [&info, &processThread]() { 
-            return info.threads.find(processThread.get_id()) != info.threads.end(); 
+        m_cv.wait(lock, [&info, &processThread]() {
+            return info.threads.find(processThread.get_id()) != info.threads.end();
         });
         processThread.detach();
     }

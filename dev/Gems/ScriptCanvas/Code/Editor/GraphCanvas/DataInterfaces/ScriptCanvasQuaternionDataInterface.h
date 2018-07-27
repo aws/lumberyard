@@ -11,7 +11,8 @@
 */
 #pragma once
 
-#include <AzFramework/Math/MathUtils.h>
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Quaternion.h>
 
 #include <GraphCanvas/Components/NodePropertyDisplay/VectorDataInterface.h>
 
@@ -69,7 +70,7 @@ namespace ScriptCanvasEditor
                     
                     m_eulerAngles.SetElement(index,value);
 
-                    AZ::Transform eulerRepresentation = AzFramework::ConvertEulerDegreesToTransform(m_eulerAngles);
+                    AZ::Transform eulerRepresentation = AZ::ConvertEulerDegreesToTransform(m_eulerAngles);
                     AZ::Quaternion newValue = AZ::Quaternion::CreateFromTransform(eulerRepresentation);
 
                     (*currentQuat) = static_cast<AZ::Quaternion>(newValue);      
@@ -131,7 +132,7 @@ namespace ScriptCanvasEditor
             
                 if (quat)
                 {
-                    m_eulerAngles = AzFramework::ConvertTransformToEulerDegrees(AZ::Transform::CreateFromQuaternion((*quat)));
+                    m_eulerAngles = AZ::ConvertTransformToEulerDegrees(AZ::Transform::CreateFromQuaternion((*quat)));
                 }
             }
         }

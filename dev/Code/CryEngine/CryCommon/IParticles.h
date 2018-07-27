@@ -89,12 +89,12 @@ struct SpawnParams
     
     //new spawn parameters for particle component
     Vec3                    colorTint;                  // particle color tint
-    Vec2                    particleSizeScale;          // Multiplier for particle size. For geom particle, it only uses y component for uniform scale
+    Vec3                    particleSizeScale;          // Multiplier for particle size. For geom particle, it only uses y component for uniform scale
     float                   particleSizeScaleRandom;    // Random for particle size's scale.
 
     inline SpawnParams(EGeomType eType = GeomType_None, EGeomForm eForm = GeomForm_Surface)
         : colorTint(1.0f, 1.0f, 1.0f)
-        , particleSizeScale(1.0f, 1.0f)
+        , particleSizeScale(1.0f, 1.0f, 1.0f)
         , particleSizeScaleRandom(0.0f)
     {
         eAttachType = eType;

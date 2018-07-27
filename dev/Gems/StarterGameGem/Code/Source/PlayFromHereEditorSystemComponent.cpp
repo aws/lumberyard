@@ -47,7 +47,7 @@ namespace StarterGameGem
         {
             serialize->Class<PlayFromHereEditorSystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* editContext = serialize->GetEditContext())
             {

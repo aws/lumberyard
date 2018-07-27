@@ -138,7 +138,7 @@ namespace AZ
             bool fileRead = false;
             
             AZStd::string materialPath = context.m_scene.GetSourceFilename();
-            AzFramework::StringFunc::Path::ReplaceFullName(materialPath, context.m_group.GetName().c_str(), GFxFramework::MaterialExport::g_mtlExtension);
+            AzFramework::StringFunc::Path::ReplaceExtension(materialPath, GFxFramework::MaterialExport::g_mtlExtension);
             AZ_TraceContext("Material source file path", materialPath);
             
             //get if we need to upate materials in source folder
@@ -155,7 +155,7 @@ namespace AZ
             else
             {
                 materialPath = SceneAPI::Utilities::FileUtilities::CreateOutputFileName(
-                    context.m_group.GetName(), context.m_outputDirectory, GFxFramework::MaterialExport::g_dccMaterialExtension);
+                    context.m_scene.GetName(), context.m_outputDirectory, GFxFramework::MaterialExport::g_dccMaterialExtension);
                 AZ_TraceContext("Material cache file path", materialPath);
                 if (AZ::IO::SystemFile::Exists(materialPath.c_str()))
                 {
@@ -181,7 +181,7 @@ namespace AZ
             {
                 rootMaterial = new CMaterialCGF();
                 rootMaterial->nPhysicalizeType = PHYS_GEOM_TYPE_NONE;
-                azstrcpy(rootMaterial->name, sizeof(rootMaterial->name), context.m_group.GetName().c_str());
+                azstrcpy(rootMaterial->name, sizeof(rootMaterial->name), context.m_scene.GetName().c_str());
                 context.m_container.SetCommonMaterial(rootMaterial);
             }
         }

@@ -32,11 +32,12 @@ const void* NImage::CHDRImageReader::ReadImage
 {
     const uint32 cBPP = 3;
     //reads hdr files
-    FILE* pFile = fopen(cpImageName, "rb");
+    FILE* pFile = nullptr;
+    azfopen(&pFile, cpImageName, "rb");
     if (!pFile)
     {
         char message[200];
-        sprintf(message, "Image file could not been opened for reading: %s\n", cpImageName);
+        azsprintf(message, "Image file could not been opened for reading: %s\n", cpImageName);
         GetSHLog().LogError(message);
         return NULL;
     }
@@ -47,7 +48,7 @@ const void* NImage::CHDRImageReader::ReadImage
     if (memcmp(str, "#?RADIANCE", 10))
     {
         char message[200];
-        sprintf(message, "Image file not in correct hdr format(#?RADIANCE tag not found): %s\n", cpImageName);
+        azsprintf(message, "Image file not in correct hdr format(#?RADIANCE tag not found): %s\n", cpImageName);
         fclose(pFile);
         GetSHLog().LogError(message);
         return NULL;
@@ -80,10 +81,10 @@ const void* NImage::CHDRImageReader::ReadImage
     }
 
     long w, h;
-    if (!sscanf(reso, "-Y %ld +X %ld", &h, &w))
+    if (!azsscanf(reso, "-Y %ld +X %ld", &h, &w))
     {
         char message[200];
-        sprintf(message, "Image file not in correct hdr format(could not read width and height): %s\n", cpImageName);
+        azsprintf(message, "Image file not in correct hdr format(could not read width and height): %s\n", cpImageName);
         fclose(pFile);
         GetSHLog().LogError(message);
         return NULL;
@@ -102,7 +103,7 @@ const void* NImage::CHDRImageReader::ReadImage
     if (!pScanLine)
     {
         char message[200];
-        sprintf(message, "Image file not in correct hdr format(could not read scan line): %s\n", cpImageName);
+        azsprintf(message, "Image file not in correct hdr format(could not read scan line): %s\n", cpImageName);
         fclose(pFile);
         GetSHLog().LogError(message);
         return NULL;

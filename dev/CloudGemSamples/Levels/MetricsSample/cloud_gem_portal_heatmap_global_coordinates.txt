@@ -1,0 +1,7 @@
+Lower Left
+X: 0.39
+Y: 4.05
+
+Lower Right
+X: 126.96
+Y: 3.15

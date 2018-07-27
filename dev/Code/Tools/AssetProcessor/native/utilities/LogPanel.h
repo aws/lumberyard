@@ -10,7 +10,7 @@
 *
 */
 #pragma once
-#include <AZToolsFramework/UI/Logging/TracePrintFLogPanel.h>
+#include <AzToolsFramework/UI/Logging/TracePrintFLogPanel.h>
 
 namespace AssetProcessor
 {

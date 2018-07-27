@@ -18,6 +18,11 @@
         "lambda": "$ServiceLambdaArn$"
     },
     "paths": {
+        "/loadtest": {
+            "x-cloud-gem-framework-interface-implementation": {
+                "interface": "CloudGemMessageOfTheDay_LoadTest_1_0_0"
+            }
+        },
         "/service/status": {
             "x-amazon-cloud-canvas-lambda-dispatch": {
                 "module": "service_status"

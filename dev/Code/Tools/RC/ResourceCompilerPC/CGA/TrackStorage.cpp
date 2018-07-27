@@ -18,7 +18,23 @@
 #include "CGFContent.h"
 #include "FileUtil.h"
 
-#include "../../../../CryEngine/CryAnimation/ControllerOpt.h"
+// Essentially, the DBA needs to reserve space for the CControllerOptNonVirtual instances.
+// They need to be allocated within the same allocation as the track data, as the
+// CControllerOptNonVirtual instances store offsets to the data, and the allocation as a
+// whole gets defragged and relocated.
+
+// sizeof(CControllerOptNonVirtual) can't be done in RC, because:
+
+// a) The struct depends on a bunch of things that will conflict with RC types
+// b) The vtable pointer means the size may be wrong.
+
+// So we have this. If it's wrong, you'll get warnings when DBAs are streamed.
+inline size_t RC_GetSizeOfControllerOptNonVirtual(size_t pointerSize)
+{
+    size_t icontrollerSize = Align(pointerSize + sizeof(uint32), pointerSize);
+    size_t controllerSize = Align(icontrollerSize + sizeof(uint32), pointerSize);
+    return Align(controllerSize + sizeof(uint32) * 6, pointerSize);
+}
 
 CTrackStorage::CTrackStorage(bool bBigEndianOutput)
     : m_bBigEndianOutput(bBigEndianOutput)

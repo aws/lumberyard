@@ -1,0 +1,86 @@
+{
+    "name": [
+        "aws_iot_device"
+    ],
+    "source": "@GEM@",
+    "description": "Static libraries for AWS IoT Device SDK",
+    "includes": [
+        "External/IoTDevice/1.0.0/include"
+    ],
+    "lib_required": "True",
+  "platform": {
+    "win_x64_vs2015": {
+      "libpath_debug": [
+        "External/IoTDevice/1.0.0/lib/windows/intel64/vs2015/Debug"
+      ],
+      "lib_debug": [
+        "aws-iot-sdk-cpp.lib"
+      ],
+      "libpath_release": [
+        "External/IoTDevice/1.0.0/lib/windows/intel64/vs2015/Release"
+      ],
+      "lib_release": [
+        "aws-iot-sdk-cpp.lib"
+      ]
+    },
+    "win_x64_vs2017": "@win_x64_vs2015",
+    "win_x64_vs2013": {
+      "libpath_debug": [
+        "External/IoTDevice/1.0.0/lib/windows/intel64/vs2013/Debug"
+      ],
+      "lib_debug": [
+        "aws-iot-sdk-cpp.lib"
+      ],
+      "libpath_release": [
+        "External/IoTDevice/1.0.0/lib/windows/intel64/vs2013/Release"
+      ],
+      "lib_release": [
+        "aws-iot-sdk-cpp.lib"
+      ]
+    },
+    "android_armv7_clang": {
+      "libpath_debug": [
+        "External/IoTDevice/1.0.0/lib/android/armeabi-v7a/Debug"
+      ],
+      "libpath_release": [
+        "External/IoTDevice/1.0.0/lib/android/armeabi-v7a/Release"
+      ],
+      "lib": [
+        "libaws-iot-sdk-cpp.a"
+      ]
+    },
+    "android_armv8_clang": {
+      "libpath_debug": [
+        "External/IoTDevice/1.0.0/lib/android/arm64-v8a/Debug"
+      ],
+      "libpath_release": [
+        "External/IoTDevice/1.0.0/lib/android/arm64-v8a/Release"
+      ],
+      "lib": [
+        "libaws-iot-sdk-cpp.a"
+      ]
+    },
+    "darwin_x64": {
+      "libpath_debug": [
+        "External/IoTDevice/1.0.0/lib/mac/Debug"
+      ],
+      "libpath_release": [
+        "External/IoTDevice/1.0.0/lib/mac/Release"
+      ],
+      "lib": [
+        "libaws-iot-sdk-cpp.a"
+      ]
+    },
+    "ios": {
+      "libpath_debug": [
+        "External/IoTDevice/1.0.0/lib/ios_arm64/Debug"
+      ],
+      "libpath_release": [
+        "External/IoTDevice/1.0.0/lib/ios_arm64/Release"
+      ],
+      "lib": [
+        "libaws-iot-sdk-cpp.a"
+      ]
+    }
+  }
+}

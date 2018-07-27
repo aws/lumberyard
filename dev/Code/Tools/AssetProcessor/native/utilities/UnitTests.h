@@ -15,7 +15,7 @@
 #if defined(UNIT_TEST)
 
 #include <QList>
-#include <QOBject>
+#include <QObject>
 
 
 class UnitTestRun;

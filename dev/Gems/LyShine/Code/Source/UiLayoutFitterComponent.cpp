@@ -254,7 +254,6 @@ void UiLayoutFitterComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiLayoutFitterBus>("UiLayoutFitterBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetHorizontalFit", &UiLayoutFitterBus::Events::GetHorizontalFit)
             ->Event("SetHorizontalFit", &UiLayoutFitterBus::Events::SetHorizontalFit)
             ->Event("GetVerticalFit", &UiLayoutFitterBus::Events::GetVerticalFit)

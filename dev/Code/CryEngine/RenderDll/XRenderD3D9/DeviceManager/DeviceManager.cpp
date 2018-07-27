@@ -14,8 +14,6 @@
 #include "StdAfx.h"
 #include "../DriverD3D.h"
 
-#include <IJobManager.h>
-#include <IJobManager_JobDelegator.h>
 #include <Common/Memory/VRAMDrillerBus.h>
 #include "Base.h"
 

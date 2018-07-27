@@ -1,0 +1,581 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #1 $"
+        }
+    },
+    "Outputs": {
+        "SanitizedBucketName": {
+            "Description": "Name of the attachment bucket.",
+            "Value": {
+                "Ref": "SanitizedBucket"
+            }
+        },
+        "ServiceUrl": {
+            "Description": "The service url.",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceApi",
+                    "Url"
+                ]
+            }
+        }
+    },
+    "Parameters": {
+        "AdditionalReportInfoReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "AdditionalReportInfoWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup",
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
+            "Type": "String"
+        },
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.",
+            "Type": "String"
+        },
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.",
+            "Type": "String"
+        },
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.",
+            "Type": "String"
+        },
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.",
+            "Type": "String"
+        },
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.",
+            "Type": "String"
+        },
+        "RecentSearchesReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "RecentSearchesWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterEnabled": {
+            "Default": "false",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterSize": {
+            "Default": "0.5",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "AccessControl": {
+            "DependsOn": [
+                "AttachmentBucket",
+                "ServiceApi",
+                "ServiceLambda",
+                "SanitizationLambda",
+                "SanitizedBucket",
+                "AdditionalReportInfo",
+                "RecentSearches",
+                "ClientConfiguration"
+            ],
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::AccessControl"
+        },
+        "AdditionalReportInfo": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:GetItem",
+                                "dynamodb:PutItem",
+                                "dynamodb:UpdateItem",
+                                "dynamodb:Query"
+                            ],
+                            "ResourceSuffix": [
+                                "",
+                                "/*"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "universal_unique_identifier",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "section",
+                        "AttributeType": "S"
+                    }
+                ],
+                "GlobalSecondaryIndexes": [
+                    {
+                        "IndexName": "SectionIndex",
+                        "KeySchema": [
+                            {
+                                "AttributeName": "section",
+                                "KeyType": "HASH"
+                            }
+                        ],
+                        "Projection": {
+                            "NonKeyAttributes": [
+                                "value"
+                            ],
+                            "ProjectionType": "INCLUDE"
+                        },
+                        "ProvisionedThroughput": {
+                            "ReadCapacityUnits": {
+                                "Ref": "AdditionalReportInfoReadCapacityUnits"
+                            },
+                            "WriteCapacityUnits": {
+                                "Ref": "AdditionalReportInfoWriteCapacityUnits"
+                            }
+                        }
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "universal_unique_identifier",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "section",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "AdditionalReportInfoReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "AdditionalReportInfoWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "AttachmentBucket": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "s3:PutObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": [
+                                "SanitizationLambda"
+                            ],
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:DeleteObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::S3::Bucket"
+        },
+        "PatchS3Notifications": {
+            "DependsOn": [
+                "SanitizationLambda",
+                "SanitizationLambdaConfiguration",
+                "SanitizationLambdaInvokePermission"
+            ],
+            "Properties": {
+                "AttachmentBucket": {
+                    "Ref": "AttachmentBucket"
+                },
+                "SanitizationLambdaArn": {
+                    "Fn::GetAtt": [
+                        "SanitizationLambda",
+                        "Arn"
+                    ]
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::PatchS3Notifications"
+        },
+        "RecentSearches": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:PutItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:Scan"
+                            ],
+                            "ResourceSuffix": [
+                                "",
+                                "/*"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "user_id",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "sql_id",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "user_id",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "sql_id",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "RecentSearchesReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "RecentSearchesWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "SanitizationLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceApi",
+                            "Action": "lambda:InvokeFunction"
+                        },
+                        {
+                            "AbstractRole": [
+                                "CloudGemPortalAdministratorRole"
+                            ],
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": [
+                                "CloudGemPortalUserRole"
+                            ],
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "SanitizationLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "SanitizationLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Description": "Lambda used to sanitize uploaded attachments.",
+                "Handler": "sanitization_lambda.main",
+                "MemorySize": 768,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "SanitizationLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "SanitizationLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "SanitizationLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "SanitizationLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "AttachmentBucket": {
+                        "Ref": "AttachmentBucket"
+                    },
+                    "SanitizedBucket": {
+                        "Ref": "SanitizedBucket"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "SanitizationLambdaInvokePermission": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "SanitizationLambda",
+                        "Arn"
+                    ]
+                },
+                "Principal": "s3.amazonaws.com",
+                "SourceArn": {
+                    "Fn::GetAtt": [
+                        "AttachmentBucket",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "SanitizedBucket": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": [
+                                "CloudGemPortalAdministratorRole"
+                            ],
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": [
+                                "CloudGemPortalUserRole"
+                            ],
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": [
+                                "SanitizationLambda"
+                            ],
+                            "Action": [
+                                "s3:PutObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "CorsConfiguration": {
+                    "CorsRules": [
+                        {
+                            "AllowedHeaders": [ "*" ],
+                            "AllowedMethods": [ "GET" ],
+                            "AllowedOrigins": [ "*" ],
+                            "Id": "defect_reporter_cgp_policy",
+                            "MaxAge": 3000
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::S3::Bucket"
+        },
+        "ServiceApi": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "Player",
+                        "Action": "execute-api:Invoke",
+                        "ResourceSuffix": [
+                            "/api/POST/service/upload",
+                            "/api/GET/clientconfiguration"
+                        ]
+                    }
+                }
+            },
+            "Properties": {
+                "CacheClusterEnabled": {
+                    "Ref": "ServiceApiCacheClusterEnabled"
+                },
+                "CacheClusterSize": {
+                    "Ref": "ServiceApiCacheClusterSize"
+                },
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "MethodSettings": {
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "SwaggerSettings": {
+                    "ServiceLambdaArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda",
+                            "Arn"
+                        ]
+                    }
+                }
+            },
+            "Type": "Custom::ServiceApi"
+        },
+        "ServiceLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceApi",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "cgf_lambda_service.dispatch",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "ServiceLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "ServiceLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "AdditionalReportInfo": {
+                        "Ref": "AdditionalReportInfo"
+                    },
+                    "AttachmentBucket": {
+                        "Ref": "AttachmentBucket"
+                    },
+                    "RecentSearches": {
+                        "Ref": "RecentSearches"
+                    },
+                    "ClientConfiguration": {
+                        "Ref": "ClientConfiguration"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "ClientConfiguration": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "s3:PutObject",
+                                "s3:GetObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+            },
+            "Type": "AWS::S3::Bucket"
+        }
+    }
+}

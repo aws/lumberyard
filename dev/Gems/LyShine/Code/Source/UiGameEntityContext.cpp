@@ -305,7 +305,7 @@ void UiGameEntityContext::OnSlicePreInstantiate(const AZ::Data::AssetId& sliceAs
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiGameEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& instance)
 {
-    const AzFramework::SliceInstantiationTicket& ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
+    const AzFramework::SliceInstantiationTicket ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
 
     AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
 
@@ -407,7 +407,7 @@ void UiGameEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAsse
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiGameEntityContext::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)
 {
-    const AzFramework::SliceInstantiationTicket& ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
+    const AzFramework::SliceInstantiationTicket ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
 
     AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
 

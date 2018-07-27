@@ -21,15 +21,23 @@
 #include <QDebug>
 
 ContextMenu::ContextMenu(QWidget* p)
-    : QMenu(p)
+    : QMenu(nullptr)
 {
     Initialize();
+    // do not set the parent, otherwise we will get the broken stylesheet
+    // but delete with it
+    // this behaviour can be changed again, once ParticleEditor is restyled
+    connect(p, &QObject::destroyed, this, &QObject::deleteLater);
 }
 
 ContextMenu::ContextMenu(const QString& title, QWidget* parent)
-    : QMenu(title, parent)
+    : QMenu(title, nullptr)
 {
     Initialize();
+    // do not set the parent, otherwise we will get the broken stylesheet
+    // but delete with it
+    // this behaviour can be changed again, once ParticleEditor is restyled
+    connect(parent, &QObject::destroyed, this, &QObject::deleteLater);
 }
 
 void ContextMenu::Initialize()

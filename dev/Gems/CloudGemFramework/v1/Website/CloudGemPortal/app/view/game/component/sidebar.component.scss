@@ -3,6 +3,15 @@
 $footer-offset-collapsed: 145px;
 $footer-offset-expanded: 190px;
 
+.push {
+    &.expanded {
+        height: 300px;
+    }
+    &.collapsed {
+        height: 150px;
+    }
+}
+
 .sidebar-container {
     position: fixed;
     top: 0;

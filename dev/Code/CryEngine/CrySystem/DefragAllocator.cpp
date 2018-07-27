@@ -169,7 +169,8 @@ void CDefragAllocator::DumpState(const char* filename)
 {
     CryOptionalAutoLock<CryCriticalSection> lock(m_lock, m_isThreadSafe);
 
-    FILE* fp = fopen(filename, "wb");
+    FILE* fp = nullptr;
+    azfopen(&fp, filename, "wb");
     if (fp)
     {
         uint32 magic = 0xdef7a6e7;
@@ -203,7 +204,8 @@ void CDefragAllocator::RestoreState(const char* filename)
 {
     CryOptionalAutoLock<CryCriticalSection> lock(m_lock, m_isThreadSafe);
 
-    FILE* fp = fopen(filename, "rb");
+    FILE* fp = nullptr;
+    azfopen(&fp, filename, "rb");
     if (fp)
     {
         uint32 magic;

@@ -13,7 +13,7 @@
 
 // Description : Implements a base class for vehicle parts
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ICryAnimation.h"
 #include "CryAction.h"
@@ -278,7 +278,7 @@ void CVehiclePartBase::PostInit()
 EntityId CVehiclePartBase::SpawnEntity()
 {
     char pPartName[128];
-    _snprintf(pPartName, 128, "%s_part_%s", m_pVehicle->GetEntity()->GetName(), GetName());
+    azsnprintf(pPartName, 128, "%s_part_%s", m_pVehicle->GetEntity()->GetName(), GetName());
     pPartName[sizeof(pPartName) - 1] = '\0';
 
     SEntitySpawnParams params;

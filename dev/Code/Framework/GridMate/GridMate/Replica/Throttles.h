@@ -12,6 +12,12 @@
 #ifndef GM_REPLICA_THROTTLING_H
 #define GM_REPLICA_THROTTLING_H
 
+
+#include <AzCore/Math/Quaternion.h>
+#include <AzCore/Math/Vector2.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Vector4.h>
+
 namespace GridMate
 {
     //-----------------------------------------------------------------------------
@@ -24,18 +30,39 @@ namespace GridMate
     {
     public:
         AZ_TYPE_INFO(BasicThrottle, "{394E41BF-D60C-4917-8810-251E2E3D3EAF}", DataType);
-        bool WithinThreshold(const DataType& cur) const
+        
+        bool WithinThreshold(const DataType& newValue) const
         {
-            return cur == m_baseline;
+            return newValue == m_baseline;
         }
 
         void UpdateBaseline(const DataType& baseline)
         {
             m_baseline = baseline;
         }
-
+   
     private:
         DataType m_baseline;
+    };
+
+    template<>
+    class BasicThrottle<AZ::Quaternion>
+    {
+    public:
+        AZ_TYPE_INFO(BasicThrottle, "{6795C9AD-412F-4164-B025-0CBA82194A44}", AZ::Quaternion);
+        
+        bool WithinThreshold(const AZ::Quaternion& newValue) const
+        {
+            return newValue.IsClose(m_baseline);
+        }
+
+        void UpdateBaseline(const AZ::Quaternion& baseline)
+        {
+            m_baseline = baseline;
+        }
+
+    private:
+        AZ::Quaternion m_baseline;
     };
     //-----------------------------------------------------------------------------
 
@@ -62,19 +89,123 @@ namespace GridMate
         {
             m_baseline = baseline;
         }
-
+        
         void UpdateBaseline(const T& baseline)
         {
             m_baseline = baseline;
         }
-
+        
         void SetThreshold(const T& e)
+        {
+            m_epsilon2 = e * e;
+        }
+        
+    private:
+        T m_baseline;
+            
+    };
+    
+    template<>
+    class EpsilonThrottle<AZ::Vector2>
+    {
+        AZ::Vector2 m_epsilon2;
+        
+    public:
+        EpsilonThrottle()
+                : m_epsilon2(0) { }
+                
+        bool WithinThreshold(const AZ::Vector2& newValue) const
+        {
+            AZ::VectorFloat sqDiff = m_baseline.GetDistanceSq(newValue);
+            return sqDiff.IsLessThan(m_epsilon2.GetLength());
+        }
+
+        void SetBaseline(const AZ::Vector2& baseline)
+        {
+            m_baseline = baseline;
+        }
+                
+        void UpdateBaseline(const AZ::Vector2& baseline)
+        {
+            m_baseline = baseline;
+        }
+                
+        void SetThreshold(const AZ::Vector2& e)
+        {
+            m_epsilon2 = e * e;
+        }
+                
+    private:
+        AZ::Vector2 m_baseline;
+    };
+    
+    template<>
+    class EpsilonThrottle<AZ::Vector3>
+    {
+        AZ::Vector3 m_epsilon2;
+        
+    public:
+        EpsilonThrottle()
+                : m_epsilon2(0) { }
+                
+        bool WithinThreshold(const AZ::Vector3& newValue) const
+        {
+            AZ::VectorFloat sqDiff = (m_baseline - newValue).GetLengthSq();
+            return sqDiff.IsLessThan(m_epsilon2.GetLength());
+        }
+
+                
+        void SetBaseline(const AZ::Vector3& baseline)
+        {
+            m_baseline = baseline;
+        }
+                
+        void UpdateBaseline(const AZ::Vector3& baseline)
+        {
+                m_baseline = baseline;
+        }
+                
+        void SetThreshold(const AZ::Vector3& e)
+        {
+            m_epsilon2 = e * e;
+        }
+                
+    private:
+        AZ::Vector3 m_baseline;
+    };
+    
+    template<>
+    class EpsilonThrottle<AZ::Vector4>
+    {
+        AZ::Vector4 m_epsilon2;
+        
+    public:
+        EpsilonThrottle()
+                : m_epsilon2(0) { }
+                
+        bool WithinThreshold(const AZ::Vector4& newValue) const
+        {
+            AZ::VectorFloat sqDiff = (m_baseline - newValue).GetLengthSq();
+            return sqDiff.IsLessThan(m_epsilon2.GetLength());
+        }
+
+        void SetBaseline(const AZ::Vector4& baseline)
+        {
+            m_baseline = baseline;
+        }
+
+        void UpdateBaseline(const AZ::Vector4& baseline)
+        {
+            m_baseline = baseline;
+        }
+
+        void SetThreshold(const AZ::Vector4& e)
         {
             m_epsilon2 = e * e;
         }
 
     private:
-        T m_baseline;
+        AZ::Vector4 m_baseline;
     };
     //-----------------------------------------------------------------------------
 } // namespace GridMate

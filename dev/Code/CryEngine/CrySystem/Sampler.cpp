@@ -93,7 +93,7 @@ void CSamplingThread::Run()
         CONTEXT context;
         context.ContextFlags = CONTEXT_CONTROL;
 
-        uint64 ip;
+        uint64 ip = 0;
         if (GetThreadContext(m_hSampledThread, &context))
         {
 #ifdef CONTEXT_i386

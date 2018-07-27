@@ -1,0 +1,62 @@
+.host-label {
+    position: absolute;
+    font-size: 10px;
+    width: 128px;
+    text-align: right;
+    height: 24px;
+    line-height: 24px;
+    top: 0;
+    bottom: 0;
+}
+
+.activity-row-contents {
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    position: relative;
+}
+
+.activity-timeline {
+    position: absolute;
+    left: 132px;
+    top: 0px;
+    width: 100%;
+    height: 0px;
+}
+
+.activity-label {
+    position: absolute;
+    height: 24px;
+    line-height: 24px;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    padding-left: 4px;
+    z-index: 1;
+    pointer-events: none;  // So won't obstruct hover in element beneath
+}
+
+.activity-slice {
+    position: absolute;
+    height: 24px;
+    top: 0;
+}
+
+.activity-slice-closed {
+    background-color: #88ff88;
+    border-color: #00cc00;
+    border-width: 1px;
+    border-style: solid;
+}
+
+.activity-slice-open {
+    background-color: #ccccff;
+    border-color: #aaaacc;
+    border-width: 1px 0 1px 1px;
+    border-style: solid;
+}
+
+.activity-slice:hover .slice-tooltip {
+    visibility: visible;
+}

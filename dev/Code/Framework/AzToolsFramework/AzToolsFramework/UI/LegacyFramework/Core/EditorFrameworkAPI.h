@@ -14,7 +14,7 @@
 #define EditorFrameworkAPI_H
 
 #include <AzCore/base.h>
-#include <AzCore/Math/uuid.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzFramework/CommandLine/CommandLine.h>
 

@@ -27,15 +27,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeMirrorPoseNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeMirrorPoseNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeMirrorPoseNode, "{B4C5FA07-F789-45E9-967D-E0F2B259522A}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000214
-        };
+        AZ_RTTI(BlendTreeMirrorPoseNode, "{B4C5FA07-F789-45E9-967D-E0F2B259522A}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -52,35 +46,29 @@ namespace EMotionFX
             PORTID_OUTPUT_POSE  = 0
         };
 
-        static BlendTreeMirrorPoseNode* Create(AnimGraph* animGraph);
+        BlendTreeMirrorPoseNode();
+        ~BlendTreeMirrorPoseNode();
 
-        void Init(AnimGraphInstance* animGraphInstance) override;
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         uint32 GetVisualColor() const override                  { return MCore::RGBA(50, 200, 50); }
         bool GetCanActAsState() const override                  { return false; }
         bool GetSupportsVisualization() const override          { return true; }
         bool GetHasOutputPose() const override                  { return true; }
         bool GetSupportsDisable() const override                { return true; }
-        AnimGraphObjectData* CreateObjectData() override;
 
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue(); }
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-
         void HierarchicalSyncInputNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* inputNode, AnimGraphNodeData* uniqueDataOfThisNode) override;
 
         bool GetIsMirroringEnabled(AnimGraphInstance* animGraphInstance) const;
 
-    private:
-        BlendTreeMirrorPoseNode(AnimGraph* animGraph);
-        ~BlendTreeMirrorPoseNode();
+        static void Reflect(AZ::ReflectContext* context);
 
+    private:
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;

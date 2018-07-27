@@ -40,13 +40,12 @@ namespace EMStudio
     // update port names and number of ports etc
     void BlendTreeVisualNode::SyncWithEMFX()
     {
-        ///////mEMFXNode->OnUpdateAttributes(); // TODO: why?
-
-        // remove all ports
+        // remove all ports and connections
         RemoveAllInputPorts();
         RemoveAllOutputPorts();
+        RemoveAllConnections();
 
-        // update the info string
+        SetName(mEMFXNode->GetName());
         SetNodeInfo(mEMFXNode->GetNodeInfo());
 
         // add all input ports
@@ -72,6 +71,20 @@ namespace EMStudio
                 port->SetNameID(outPorts[i].mNameID);
                 port->SetColor(GetPortColor(outPorts[i]));
             }
+        }
+
+        // Recreate connections
+        const uint32 numConnections = mEMFXNode->GetNumConnections();
+        for (uint32 c = 0; c < numConnections; ++c)
+        {
+            EMotionFX::BlendTreeConnection* connection = mEMFXNode->GetConnection(c);
+            GraphNode* source = mParentGraph->FindNodeById(connection->GetSourceNode()->GetId());
+            GraphNode* target = mParentGraph->FindNodeById(mEMFXNode->GetId());
+            const uint32 sourcePort = connection->GetSourcePort();
+            const uint32 targetPort = connection->GetTargetPort();
+
+            NodeConnection* visualConnection = new NodeConnection(target, targetPort, source, sourcePort);
+            target->AddConnection(visualConnection);
         }
 
         //  UpdatePortTextPath();

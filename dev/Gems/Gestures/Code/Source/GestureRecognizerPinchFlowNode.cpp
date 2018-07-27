@@ -21,14 +21,13 @@ namespace Gestures
     ////////////////////////////////////////////////////////////////////////////////////////////////
     class RecognizerPinchFlowNode
         : public CFlowBaseNode<eNCT_Instanced>
-        , public IPinchListener
+        , public RecognizerPinch
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         RecognizerPinchFlowNode(SActivationInfo* activationInfo)
             : CFlowBaseNode()
             , m_activationInfo(*activationInfo)
-            , m_recognizer(*this)
             , m_enabled(false)
         {
         }
@@ -76,8 +75,8 @@ namespace Gestures
             {
                 InputPortConfig_Void("Enable", _HELP("Enable gesture recognizer")),
                 InputPortConfig_Void("Disable", _HELP("Disable gesture recognizer")),
-                InputPortConfig<float>("MinPixelsMoved", m_recognizer.GetConfig().minPixelsMoved, _HELP("The min distance in pixels that must be pinched before a pinch will be recognized")),
-                InputPortConfig<float>("MaxAngleDegrees", m_recognizer.GetConfig().maxAngleDegrees, _HELP("The max angle in degrees that a pinch can deviate before it will be recognized")),
+                InputPortConfig<float>("MinPixelsMoved", GetConfig().minPixelsMoved, _HELP("The min distance in pixels that must be pinched before a pinch will be recognized")),
+                InputPortConfig<float>("MaxAngleDegrees", GetConfig().maxAngleDegrees, _HELP("The max angle in degrees that a pinch can deviate before it will be recognized")),
                 { 0 }
             };
 
@@ -113,11 +112,11 @@ namespace Gestures
             {
                 if (IsPortActive(activationInfo, Input_MinPixelsMoved))
                 {
-                    m_recognizer.GetConfig().minPixelsMoved = GetPortFloat(activationInfo, Input_MinPixelsMoved);
+                    GetConfig().minPixelsMoved = GetPortFloat(activationInfo, Input_MinPixelsMoved);
                 }
                 if (IsPortActive(activationInfo, Input_MaxAngleDegrees))
                 {
-                    m_recognizer.GetConfig().maxAngleDegrees = GetPortFloat(activationInfo, Input_MaxAngleDegrees);
+                    GetConfig().maxAngleDegrees = GetPortFloat(activationInfo, Input_MaxAngleDegrees);
                 }
 
                 if (IsPortActive(activationInfo, Input_Disable))
@@ -141,8 +140,8 @@ namespace Gestures
         ////////////////////////////////////////////////////////////////////////////////////////////
         void Serialize(SActivationInfo* activationInfo, TSerialize ser) override
         {
-            ser.Value("minPixelsMoved", m_recognizer.GetConfig().minPixelsMoved);
-            ser.Value("maxAngleDegrees", m_recognizer.GetConfig().maxAngleDegrees);
+            ser.Value("minPixelsMoved", GetConfig().minPixelsMoved);
+            ser.Value("maxAngleDegrees", GetConfig().maxAngleDegrees);
 
             bool enabled = m_enabled;
             ser.Value("enabled", enabled);
@@ -164,7 +163,7 @@ namespace Gestures
             if (!m_enabled)
             {
                 m_enabled = true;
-                m_recognizer.BusConnect();
+                BusConnect();
             }
         }
 
@@ -174,53 +173,52 @@ namespace Gestures
             if (m_enabled)
             {
                 m_enabled = false;
-                m_recognizer.BusDisconnect();
+                BusDisconnect();
             }
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnPinchInitiated(const RecognizerPinch& recognizer) override
+        void OnContinuousGestureInitiated() override
         {
             ActivateOutput(&m_activationInfo, Output_Initiated, true);
 
-            const Vec2 startPosition = recognizer.GetStartMidpoint();
-            ActivateOutput(&m_activationInfo, Output_StartX, startPosition.x);
-            ActivateOutput(&m_activationInfo, Output_StartY, startPosition.y);
-            ActivateOutput(&m_activationInfo, Output_StartDistance, recognizer.GetStartDistance());
+            const AZ::Vector2 startPosition = GetStartMidpoint();
+            ActivateOutput(&m_activationInfo, Output_StartX, startPosition.GetX());
+            ActivateOutput(&m_activationInfo, Output_StartY, startPosition.GetY());
+            ActivateOutput(&m_activationInfo, Output_StartDistance, GetStartDistance());
 
-            OnPinchEvent(recognizer);
+            OnPinchEvent();
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnPinchUpdated(const RecognizerPinch& recognizer) override
+        void OnContinuousGestureUpdated() override
         {
             ActivateOutput(&m_activationInfo, Output_Updated, true);
 
-            OnPinchEvent(recognizer);
+            OnPinchEvent();
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnPinchEnded(const RecognizerPinch& recognizer) override
+        void OnContinuousGestureEnded() override
         {
             ActivateOutput(&m_activationInfo, Output_Ended, true);
 
-            OnPinchEvent(recognizer);
+            OnPinchEvent();
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnPinchEvent(const RecognizerPinch& recognizer)
+        void OnPinchEvent()
         {
-            const Vec2 currentPosition = recognizer.GetCurrentMidpoint();
-            ActivateOutput(&m_activationInfo, Output_CurrentX, currentPosition.x);
-            ActivateOutput(&m_activationInfo, Output_CurrentY, currentPosition.y);
-            ActivateOutput(&m_activationInfo, Output_CurrentDistance, recognizer.GetCurrentDistance());
+            const AZ::Vector2 currentPosition = GetCurrentMidpoint();
+            ActivateOutput(&m_activationInfo, Output_CurrentX, currentPosition.GetX());
+            ActivateOutput(&m_activationInfo, Output_CurrentY, currentPosition.GetY());
+            ActivateOutput(&m_activationInfo, Output_CurrentDistance, GetCurrentDistance());
 
-            ActivateOutput(&m_activationInfo, Output_PinchRatio, recognizer.GetPinchRatio());
+            ActivateOutput(&m_activationInfo, Output_PinchRatio, GetPinchRatio());
         }
 
     private:
         SActivationInfo m_activationInfo;
-        RecognizerPinch m_recognizer;
         bool m_enabled;
     };
 

@@ -13,6 +13,7 @@
 
 #include <GridMate/Serialize/MathMarshal.h>
 #include <GridMate/Serialize/CompressionMarshal.h>
+#include <AzCore/Casting/numeric_cast.h>                // for aznumeric_cast
 
 using namespace GridMate;
 
@@ -22,10 +23,10 @@ using namespace GridMate;
 void
 Vec2CompMarshaler::Marshal(WriteBuffer& wb, const AZ::Vector2& vec) const
 {
-	// \todo use VMX vector packing 
-	HalfMarshaler mHalf;
-	mHalf.Marshal(wb, vec.GetX());
-	mHalf.Marshal(wb, vec.GetY());
+    // \todo use VMX vector packing
+    HalfMarshaler mHalf;
+    mHalf.Marshal(wb, vec.GetX());
+    mHalf.Marshal(wb, vec.GetY());
 }
 
 //=========================================================================
@@ -34,11 +35,11 @@ Vec2CompMarshaler::Marshal(WriteBuffer& wb, const AZ::Vector2& vec) const
 void
 Vec2CompMarshaler::Unmarshal(AZ::Vector2& vec, ReadBuffer& rb) const
 {
-	HalfMarshaler mHalf;
-	float x, y;
-	mHalf.Unmarshal(x, rb);
-	mHalf.Unmarshal(y, rb);
-	vec.Set(x, y);
+    HalfMarshaler mHalf;
+    float x, y;
+    mHalf.Unmarshal(x, rb);
+    mHalf.Unmarshal(y, rb);
+    vec.Set(x, y);
 }
 
 //=========================================================================
@@ -155,7 +156,7 @@ Vec3CompNormMarshaler::Unmarshal(AZ::Vector3& vec, ReadBuffer& rb) const
         mF16.Unmarshal(z, rb);
     }
 
-	x = sqrtf(AZ::GetMax(0.0f, 1.0f - y * y - z * z));
+    x = sqrtf(AZ::GetMax(0.0f, 1.0f - y * y - z * z));
     if (flags & X_NEG)
     {
         x = -x;
@@ -206,7 +207,7 @@ QuatCompNormMarshaler::Marshal(WriteBuffer& wb, const AZ::Quaternion& norQuat) c
     float y = norQuat.GetY();
     float z = norQuat.GetZ();
     float w = norQuat.GetW();
-    AZ::u8 flags = 0; // we waste 4 bits here. If WriteBuffer starts supporting bits this might be useful.
+    AZ::u8 flags = 0; // we waste 7 bits here. If WriteBuffer starts supporting bits this might be useful.
 
     if (x == 0.0f)
     {
@@ -316,6 +317,158 @@ QuatCompNormMarshaler::Unmarshal(AZ::Quaternion& quat, ReadBuffer& rb) const
     }
 
     quat.Set(x, y, z, w);
+    quat.Normalize();
+}
+
+//=========================================================================
+// QuatCompNormQuantizedMarshaler::Marshal
+//=========================================================================
+void
+QuatCompNormQuantizedMarshaler::Marshal(WriteBuffer& wb, const AZ::Quaternion& norQuat) const
+{
+    AZ_Assert(norQuat.GetLengthSq().IsClose(AZ::VectorFloat::CreateOne()), "Input quaternion is not normalized!");
+
+    float x;
+    float y;
+    float z;
+    AZ::Vector3 eulerAnglesInDeg;
+    AZ::u8 tempQuantized;
+    AZ::u8 flags = 0;
+
+    eulerAnglesInDeg.CreateZero();
+    eulerAnglesInDeg = norQuat.GetEulerDegrees();
+    x = eulerAnglesInDeg.GetX();
+    if (x == 0.0f)
+    {
+        flags |= X_ZERO;
+    }
+    else if (x == 1.0f)
+    {
+        flags |= X_ONE;
+    }
+
+    y = eulerAnglesInDeg.GetY();
+    if (y == 0.0f)
+    {
+        flags |= Y_ZERO;
+    }
+    else if (y == 1.0f)
+    {
+        flags |= Y_ONE;
+    }
+
+    z = eulerAnglesInDeg.GetZ();
+    if (z == 0.0f)
+    {
+        flags |= Z_ZERO;
+    }
+    else if (z == 1.0f)
+    {
+        flags |= Z_ONE;
+    }
+
+    wb.Write(flags);
+
+    if ((flags & (X_ZERO | X_ONE)) == 0)
+    {
+        // quantize value into a byte and clamp to the max
+        tempQuantized = aznumeric_cast<AZ::u8>(AZStd::GetMin(255.f, x / kDegreesPerQuantizedValue));
+        wb.Write(tempQuantized);
+    }
+
+    if ((flags & (Y_ZERO | Y_ONE)) == 0)
+    {
+        // quantize value into a byte and clamp to the max
+        tempQuantized = aznumeric_cast<AZ::u8>(AZStd::GetMin(255.f, y / kDegreesPerQuantizedValue));
+        wb.Write(tempQuantized);
+    }
+
+    if ((flags & (Z_ZERO | Z_ONE)) == 0)
+    {
+        // quantize value into a byte and clamp to the max
+        tempQuantized = aznumeric_cast<AZ::u8>(AZStd::GetMin(255.f, z / kDegreesPerQuantizedValue));
+        wb.Write(tempQuantized);
+    }
+}
+
+//=========================================================================
+// QuatCompNormQuantizedMarshaler::Unmarshal
+//=========================================================================
+void
+QuatCompNormQuantizedMarshaler::Unmarshal(AZ::Quaternion& quat, ReadBuffer& rb) const
+{
+    AZ::u8 quantizedAngleFromNetwork;
+    AZ::s16 quantizedAngle;
+    AZ::Vector3 eulerAnglesInDeg;
+    AZ::u8 flags = 0;
+
+    rb.Read(flags);
+
+    eulerAnglesInDeg.CreateZero();
+
+    // process angle X
+    if (flags & X_ZERO)
+    {
+        quantizedAngle = 0;
+    }
+    else if (flags & X_ONE)
+    {
+        quantizedAngle = 1;
+    }
+    else
+    {
+        if (!rb.Read(quantizedAngleFromNetwork))
+        {
+            AZ_TracePrintf("GridMate", "Error unmarshaling X angle for QuatCompNormQuantizedMarshaler! Aborting Unmarshal!\n");
+            return;
+        }
+        quantizedAngle = quantizedAngleFromNetwork;
+    }
+
+    eulerAnglesInDeg.SetX(quantizedAngle * kDegreesPerQuantizedValue);
+
+    // process angle Y
+    if (flags & Y_ZERO)
+    {
+        quantizedAngle = 0;
+    }
+    else if (flags & Y_ONE)
+    {
+        quantizedAngle = 1;
+    }
+    else
+    {
+        if (!rb.Read(quantizedAngleFromNetwork))
+        {
+            AZ_TracePrintf("GridMate", "Error unmarshaling Y angle for QuatCompNormQuantizedMarshaler! Aborting Unmarshal!\n");
+            return;
+        }
+        quantizedAngle = quantizedAngleFromNetwork;
+    }
+
+    eulerAnglesInDeg.SetY(quantizedAngle * kDegreesPerQuantizedValue);
+
+    // process angle Z
+    if (flags & Z_ZERO)
+    {
+        quantizedAngle = 0;
+    }
+    else if (flags & Z_ONE)
+    {
+        quantizedAngle = 1;
+    }
+    else
+    {
+        if (!rb.Read(quantizedAngleFromNetwork))
+        {
+            AZ_TracePrintf("GridMate", "Error unmarshaling Z angle for QuatCompNormQuantizedMarshaler! Aborting Unmarshal!\n");
+            return;
+        }
+        quantizedAngle = quantizedAngleFromNetwork;
+    }
+
+    eulerAnglesInDeg.SetZ(quantizedAngle * kDegreesPerQuantizedValue);
+    quat.SetFromEulerDegrees(eulerAnglesInDeg);
     quat.Normalize();
 }
 

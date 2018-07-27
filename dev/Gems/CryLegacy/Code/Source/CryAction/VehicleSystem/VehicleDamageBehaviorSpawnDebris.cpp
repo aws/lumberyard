@@ -14,7 +14,7 @@
 // Description : Implements a damage behavior which spawn debris found in the
 //               damaged model of the Animated parts
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IVehicleSystem.h"
 #include "Vehicle.h"
 #include "VehicleDamageBehaviorSpawnDebris.h"
@@ -267,7 +267,7 @@ IEntity* CVehicleDamageBehaviorSpawnDebris::SpawnDebris(IStatObj* pStatObj, Matr
     // spawn the detached entity
 
     char buffer[128];
-    _snprintf(buffer, sizeof(buffer), "%s_DetachedPart_%s", m_pVehicle->GetEntity()->GetName(), pStatObj->GetGeoName());
+    azsnprintf(buffer, sizeof(buffer), "%s_DetachedPart_%s", m_pVehicle->GetEntity()->GetName(), pStatObj->GetGeoName());
     buffer[sizeof(buffer) - 1] = 0;
 
     SEntitySpawnParams spawnParams;

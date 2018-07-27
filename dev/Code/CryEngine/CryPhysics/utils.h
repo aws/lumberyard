@@ -1344,25 +1344,25 @@ public:
 #define VALIDATORS_START bool validate(const char* strSource, ILog* pLog, const Vec3& pt, \
     IPhysRenderer* pStreamer, void* param0, int param1, int param2) { bool res = true; char errmsg[1024];
 #define VALIDATOR(member) if (!is_unused(member) && !is_valid(member)) {                                                                 \
-        res = false; _snprintf(errmsg, sizeof errmsg, "%s: (%.50s @ %.1f,%.1f,%.1f) Validation Error: %s is invalid", strSource,         \
+        res = false; azsnprintf(errmsg, sizeof errmsg, "%s: (%.50s @ %.1f,%.1f,%.1f) Validation Error: %s is invalid", strSource,         \
             pStreamer? pStreamer->GetForeignName(param0, param1, param2) : "", pt.x, pt.y, pt.z,#member); errmsg[sizeof errmsg - 1] = 0; \
         VALIDATOR_LOG(pLog, errmsg); }
 #define VALIDATOR_NORM(member) if (!is_unused(member) && !(is_valid(member) && fabs_tpl((member | member) - 1.0f) < 0.01f)) {         \
-        res = false; _snprintf(errmsg, sizeof errmsg, "%s: (%.50s @ %.1f,%.1f,%.1f) Validation Error: %s is invalid or unnormalized", \
+        res = false; azsnprintf(errmsg, sizeof errmsg, "%s: (%.50s @ %.1f,%.1f,%.1f) Validation Error: %s is invalid or unnormalized", \
             strSource, pStreamer? pStreamer->GetForeignName(param0, param1, param2) : "", pt.x, pt.y, pt.z,#member); errmsg[sizeof errmsg - 1] = 0; VALIDATOR_LOG(pLog, errmsg); }
 #define VALIDATOR_NORM_MSG(member, msg, member1) if (!is_unused(member) && !(is_valid(member) && fabs_tpl((member | member) - 1.0f) < 0.01f)) {                                                         \
         PREFAST_SUPPRESS_WARNING(6053)                                                                                                                                                                  \
-        res = false; _snprintf(errmsg, sizeof errmsg, "%s: (%.50s @ %.1f,%.1f,%.1f) Validation Error: %s is invalid or unnormalized %s",                                                                \
+        res = false; azsnprintf(errmsg, sizeof errmsg, "%s: (%.50s @ %.1f,%.1f,%.1f) Validation Error: %s is invalid or unnormalized %s",                                                                \
             strSource, pStreamer? pStreamer->GetForeignName(param0, param1, param2) : "", pt.x, pt.y, pt.z,#member, msg); errmsg[sizeof errmsg - 1] = 0;                                                \
         PREFAST_SUPPRESS_WARNING(6053)                                                                                                                                                                  \
-        if (!is_unused(member1)) { _snprintf(errmsg + strlen(errmsg), sizeof errmsg - strlen(errmsg), " "#member1": %.1f,%.1f,%.1f", member1.x, member1.y, member1.z); errmsg[sizeof errmsg - 1] = 0; } \
+        if (!is_unused(member1)) { azsnprintf(errmsg + strlen(errmsg), sizeof errmsg - strlen(errmsg), " "#member1": %.1f,%.1f,%.1f", member1.x, member1.y, member1.z); errmsg[sizeof errmsg - 1] = 0; } \
         VALIDATOR_LOG(pLog, errmsg); }
 #define VALIDATOR_RANGE(member, minval, maxval) if (!is_unused(member) && !(is_valid(member) && member >= minval && member <= maxval)) { \
-        res = false; _snprintf(errmsg, sizeof errmsg, "%s: (%.50s @ %.1f,%.1f,%.1f) Validation Error: %s is invalid or out of range",    \
+        res = false; azsnprintf(errmsg, sizeof errmsg, "%s: (%.50s @ %.1f,%.1f,%.1f) Validation Error: %s is invalid or out of range",    \
             strSource, pStreamer? pStreamer->GetForeignName(param0, param1, param2) : "", pt.x, pt.y, pt.z,#member); errmsg[sizeof errmsg - 1] = 0; VALIDATOR_LOG(pLog, errmsg); }
 #define VALIDATOR_RANGE2(member, minval, maxval) if (!is_unused(member) && !(is_valid(member) && member* member >= minval* minval &&  \
                                                                              member* member <= maxval* maxval)) {                     \
-        res = false; _snprintf(errmsg, sizeof errmsg, "%s: (%.50s @ %.1f,%.1f,%.1f) Validation Error: %s is invalid or out of range", \
+        res = false; azsnprintf(errmsg, sizeof errmsg, "%s: (%.50s @ %.1f,%.1f,%.1f) Validation Error: %s is invalid or out of range", \
             strSource, pStreamer? pStreamer->GetForeignName(param0, param1, param2) : "", pt.x, pt.y, pt.z,#member); errmsg[sizeof errmsg - 1] = 0; VALIDATOR_LOG(pLog, errmsg); }
 #define VALIDATORS_END return res; }
 
@@ -1381,7 +1381,7 @@ ILINE const char* numbered_tag(const char* s, unsigned int num)
 {
     static char str[64];
     assert(strlen(s) < 20);
-    strcpy(str, s);
+    azstrcpy(str, AZ_ARRAY_SIZE(str), s);
     sprintf_s(str + strlen(s), sizeof(str) - strlen(s), "_%d", num);
     return str;
 }

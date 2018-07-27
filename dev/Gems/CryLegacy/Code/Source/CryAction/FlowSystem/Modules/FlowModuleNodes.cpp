@@ -14,11 +14,12 @@
 // Description : Flowgraph Nodes for module usage
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowModuleNodes.h"
 #include "IFlowSystem.h"
 #include "ModuleManager.h"
 #include "ILevelSystem.h"
+#include "FlowSystem/FlowSystem.h"
 
 
 //////////////////////////////////////////////////////////////////////////

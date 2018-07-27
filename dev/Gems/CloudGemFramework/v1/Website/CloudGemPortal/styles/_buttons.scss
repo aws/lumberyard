@@ -12,7 +12,8 @@ button.btn, label.btn {
 	display: inline-flex;
 	flex-direction: column;
 	justify-content: center;
-    cursor: pointer;
+	cursor: pointer;
+	width: initial;
 	&.l-primary, .btn-primary{
 	  	// @include button-variant($btn-primary-color, $btn-primary-bg, $btn-primary-border);
 		@include button-variant($white, $primary-color, $primary-color);
@@ -29,14 +30,8 @@ button.btn, label.btn {
 
 		}
 	}
-	&.l-secondary {
-		@include button-variant($white, $secondary-color, $secondary-color);
-		&:focus, &.focus {
-			box-shadow: none;
-		}
-	}
 
-	&.btn-outline-primary, .l-tertiary {
+	&.btn-outline-primary, &.l-secondary {
 		@include button-variant($primary-color, $white, $primary-color);
 		&:focus, &.focus {
 			box-shadow: none;

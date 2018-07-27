@@ -28,7 +28,7 @@ namespace EMStudio
         : QDialog(parent)
     {
         // set the selected condition type
-        mSelectedConditionType = MCORE_INVALIDINDEX32;
+        m_selectedTypeId = AZ::TypeId::CreateNull();
 
         // set the window title
         setWindowTitle("Select A Condition");
@@ -37,35 +37,35 @@ namespace EMStudio
         QVBoxLayout* layout = new QVBoxLayout();
 
         // create the list widget
-        mListBox = new QListWidget();
-        mListBox->setAlternatingRowColors(true);
+        m_listBox = new QListWidget();
+        m_listBox->setAlternatingRowColors(true);
 
         // for all registered objects, add it to the list if it is a condition
-        const size_t numObjects = EMotionFX::GetAnimGraphManager().GetObjectFactory()->GetNumRegisteredObjects();
-        for (size_t i = 0; i < numObjects; ++i)
+        const AZStd::unordered_set<AZ::TypeId>& nodeObjectTypes = EMotionFX::AnimGraphObjectFactory::GetUITypes();
+        m_typeIds.reserve(nodeObjectTypes.size());
+
+        for (const AZ::TypeId& nodeObjectType : nodeObjectTypes)
         {
-            // get the object
-            EMotionFX::AnimGraphObject* object = EMotionFX::GetAnimGraphManager().GetObjectFactory()->GetRegisteredObject(i);
-
-            // only include transition conditions
-            if (object->GetBaseType() != EMotionFX::AnimGraphTransitionCondition::BASETYPE_ID)
+            EMotionFX::AnimGraphObject* object = EMotionFX::AnimGraphObjectFactory::Create(nodeObjectType);
+            if (azrtti_istypeof<EMotionFX::AnimGraphTransitionCondition>(object))
             {
-                continue;
+                // add it to the listbox
+                QListWidgetItem* item = new QListWidgetItem(object->GetPaletteName(), m_listBox, static_cast<int>(m_typeIds.size()));
+                m_listBox->addItem(item);
+                m_typeIds.push_back(azrtti_typeid(object));
             }
-
-            // add it to the listbox
-            QListWidgetItem* item = new QListWidgetItem(object->GetPaletteName(), mListBox, static_cast<int>(i));
-            mListBox->addItem(item);
+            
+            delete object;
         }
 
         // set the current item of the list widget
-        mListBox->setCurrentRow(0);
+        m_listBox->setCurrentRow(0);
 
         // connect the list widget
-        connect(mListBox, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(OnItemDoubleClicked(QListWidgetItem*)));
+        connect(m_listBox, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(OnItemDoubleClicked(QListWidgetItem*)));
 
         // add the list widget in the layout
-        layout->addWidget(mListBox);
+        layout->addWidget(m_listBox);
 
         // create the buttons layout
         QHBoxLayout* buttonsLayout = new QHBoxLayout();
@@ -94,7 +94,7 @@ namespace EMStudio
     // when double click on an item
     void ConditionSelectDialog::OnItemDoubleClicked(QListWidgetItem* item)
     {
-        mSelectedConditionType = item->type();
+        m_selectedTypeId = m_typeIds[item->type()];
         emit accept();
     }
 
@@ -103,16 +103,16 @@ namespace EMStudio
     void ConditionSelectDialog::OnCreateButton()
     {
         // get the currently selected item
-        QListWidgetItem* item = mListBox->currentItem();
+        QListWidgetItem* item = m_listBox->currentItem();
         if (item == nullptr)
         {
-            mSelectedConditionType = MCORE_INVALIDINDEX32;
+            m_selectedTypeId = AZ::TypeId::CreateNull();
             emit accept();
             return;
         }
 
         // get the condition type
-        mSelectedConditionType = item->type();
+        m_selectedTypeId = m_typeIds[item->type()];
         emit accept();
     }
 }   // namespace EMStudio

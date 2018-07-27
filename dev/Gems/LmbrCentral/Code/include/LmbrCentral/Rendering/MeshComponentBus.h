@@ -161,7 +161,6 @@ namespace LmbrCentral
                 EBUS_EVENT_ID_RESULT(asset, id, MeshComponentRequestBus, GetMeshAsset);
                 if (asset.GetStatus() == AZ::Data::AssetData::AssetStatus::Ready)
                 {
-                    typename Bus::template CallstackEntryIterator<typename Bus::InterfaceType**> callstack(nullptr, &id); // Workaround for GetCurrentBusId in callee
                     handler->OnMeshCreated(asset);
                 }
             }

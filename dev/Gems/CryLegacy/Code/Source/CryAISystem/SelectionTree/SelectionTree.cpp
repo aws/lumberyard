@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "SelectionTree.h"
 #include "SelectionContext.h"
 #include "SelectionTreeManager.h"

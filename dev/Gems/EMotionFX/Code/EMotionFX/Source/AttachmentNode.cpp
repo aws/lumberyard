@@ -16,10 +16,13 @@
 #include "Actor.h"
 #include "ActorInstance.h"
 #include "TransformData.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(AttachmentNode, AttachmentAllocator, 0)
+
     // constructor for non-deformable attachments
     AttachmentNode::AttachmentNode(ActorInstance* attachToActorInstance, uint32 attachToNodeIndex, ActorInstance* attachment)
         : Attachment(attachToActorInstance, attachment)
@@ -39,7 +42,7 @@ namespace EMotionFX
     // create it
     AttachmentNode* AttachmentNode::Create(ActorInstance* attachToActorInstance, uint32 attachToNodeIndex, ActorInstance* attachment)
     {
-        return new AttachmentNode(attachToActorInstance, attachToNodeIndex, attachment);
+        return aznew AttachmentNode(attachToActorInstance, attachToNodeIndex, attachment);
     }
 
 

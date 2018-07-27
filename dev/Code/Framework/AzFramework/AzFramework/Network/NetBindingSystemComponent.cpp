@@ -40,7 +40,7 @@ namespace AzFramework
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<NetBindingSystemComponent, AZ::Component>()
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {

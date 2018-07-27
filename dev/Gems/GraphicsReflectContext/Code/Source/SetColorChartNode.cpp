@@ -14,7 +14,6 @@
 
 #include "SetColorChartNode.h"
 #include <ColorGradingBus.h>
-#include <Graphics/ColorGradientManager.h>
 #include <IRenderer.h>
 #include <ISystem.h>
 #include <AzCore/Serialization/Utils.h>

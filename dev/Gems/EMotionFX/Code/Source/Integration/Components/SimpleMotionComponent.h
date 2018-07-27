@@ -54,7 +54,6 @@ namespace EMotionFX
                 bool                                 m_reverse;                 ///< Toggles reversing of the motion
                 bool                                 m_mirror;                  ///< Toggles mirroring of the motion
                 float                                m_playspeed;               ///< Determines the rate at which the motion is played
-                bool                                 m_playOnActive;            ///< Determines if the motion should be played immediately
 
                 static void Reflect(AZ::ReflectContext* context);
             };
@@ -90,8 +89,6 @@ namespace EMotionFX
             void ReverseMotion(bool enable) override;
             void MirrorMotion(bool enable) override;
             void SetPlaySpeed(float speed) override;
-            void SetPlayOnActive(bool play) override;
-            void PlayAnimation() override;
 
         private:
             // ActorComponentNotificationBus::Handler

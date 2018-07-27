@@ -89,7 +89,6 @@ void UiCanvasProxyRefComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiCanvasProxyRefBus>("UiCanvasProxyRefBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("SetCanvasRefEntity", &UiCanvasProxyRefBus::Events::SetCanvasRefEntity);
     }
 }

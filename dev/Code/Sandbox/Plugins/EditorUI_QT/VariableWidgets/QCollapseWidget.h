@@ -13,7 +13,7 @@
 #define QCOLLAPSEWIDGET_H
 
 #include <QWidget>
-#include "qmenu.h"
+#include "QMenu"
 #include "QCopyableWidget.h"
 
 class QVBoxLayout;

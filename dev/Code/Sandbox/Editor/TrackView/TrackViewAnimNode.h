@@ -158,6 +158,10 @@ public:
     virtual bool SnapTimeToPrevKey(float& time) const override;
     virtual bool SnapTimeToNextKey(float& time) const override;
 
+    // Expanded state interface
+    void SetExpanded(bool expanded) override;
+    bool GetExpanded() const override;
+
     // Node getters
     CTrackViewAnimNodeBundle GetAllAnimNodes();
     CTrackViewAnimNodeBundle GetSelectedAnimNodes();

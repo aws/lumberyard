@@ -188,7 +188,7 @@ void SStatoscopeTextureStreamingItemsDG::Write(IStatoscopeFrameRecord& fr)
 
     for (size_t i = 0, c = list.size(); i != c; ++i)
     {
-        strcpy(name, list[i].pTex->GetName());
+        azstrcpy(name, AZ_ARRAY_SIZE(name), list[i].pTex->GetName());
         Normalize(name);
         fr.AddValue(name);
         fr.AddValue(list[i].nWanted / (1024 * 1024.f));

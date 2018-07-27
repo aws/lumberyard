@@ -24,8 +24,8 @@
 namespace ScriptedEntityTweener
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    //! ScriptedEntityTweenerNotificationBusHandler Behavior context handler class 
-    class ScriptedEntityTweenerNotificationBusHandler : 
+    //! ScriptedEntityTweenerNotificationBusHandler Behavior context handler class
+    class ScriptedEntityTweenerNotificationBusHandler :
         public ScriptedEntityTweenerNotificationsBus::Handler,
         public AZ::BehaviorEBusHandler
     {
@@ -65,7 +65,7 @@ namespace ScriptedEntityTweener
         {
             serialize->Class<ScriptedEntityTweenerSystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
         }
 
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
@@ -81,7 +81,7 @@ namespace ScriptedEntityTweener
                 ->Event("SetSpeed", &ScriptedEntityTweenerBus::Events::SetSpeed)
                 ->Event("SetInitialValue", &ScriptedEntityTweenerBus::Events::SetInitialValue)
                 ->Event("GetVirtualPropertyValue", &ScriptedEntityTweenerBus::Events::GetVirtualPropertyValue);
-            
+
             behaviorContext->EBus<ScriptedEntityTweenerNotificationsBus>("ScriptedEntityTweenerNotificationBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Handler<ScriptedEntityTweenerNotificationBusHandler>();
@@ -138,7 +138,7 @@ namespace ScriptedEntityTweener
     void ScriptedEntityTweenerSystemComponent::Deactivate()
     {
         ScriptedEntityTweenerBus::Handler::BusDisconnect();
-        
+
         AZ::TickBus::Handler::BusDisconnect();
     }
 

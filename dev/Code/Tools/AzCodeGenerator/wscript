@@ -28,6 +28,15 @@ def configure(cfg):
 
 
 def build(bld):
-
+    # If Clang doesn't exist, skip building AzCodeGenerator
+    try:
+        tp_content = bld.tp.content
+        tp_root = tp_content.get('3rdPartyRoot')
+        clang_base_source = tp_content.get('SDKs').get('Clang').get('base_source')
+        clang_path = os.path.join(tp_root, clang_base_source)
+        if not os.path.exists(clang_path):
+            return
+    except:
+        pass
     # Recursive into all sub projects
     bld.recurse(SUBFOLDERS)

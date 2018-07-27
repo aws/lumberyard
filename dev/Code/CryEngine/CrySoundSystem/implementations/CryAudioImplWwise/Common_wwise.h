@@ -20,7 +20,14 @@
 #define WWISE_IMPL_BASE_PATH "sounds/wwise/"
 #define WWISE_IMPL_BANK_PATH "" // No further sub folders necessary.
 #define WWISE_IMPL_BANK_FULL_PATH WWISE_IMPL_BASE_PATH WWISE_IMPL_BANK_PATH
-#define WWISE_IMPL_INFO_STRING "Wwise " AK_WWISESDK_VERSIONNAME
+
+#if defined(WWISE_LTX)
+    #define WWISE_FLAVOR_STRING     "Wwise LTX"
+#else
+    #define WWISE_FLAVOR_STRING     "Wwise"
+#endif // WWISE_LTX
+
+#define WWISE_IMPL_VERSION_STRING   WWISE_FLAVOR_STRING " " AK_WWISESDK_VERSIONNAME
 
 #define ASSERT_WWISE_OK(x) (AKASSERT((x) == AK_Success))
 #define IS_WWISE_OK(x)     ((x) == AK_Success)
@@ -39,25 +46,6 @@ namespace Audio
         return akVec;
     }
 
-#if (AK_WWISESDK_VERSION_MAJOR <= 2015)
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    inline void ATLTransformToAKTransform(const SATLWorldPosition& atlTransform, AkListenerPosition& akListenerPosition)
-    {
-        akListenerPosition.Position = EngineVec3ToAkVector(atlTransform.mPosition.GetColumn3());
-        akListenerPosition.OrientationFront = EngineVec3ToAkVector(atlTransform.mPosition.GetColumn1().GetNormalized());
-        akListenerPosition.OrientationTop = EngineVec3ToAkVector(atlTransform.mPosition.GetColumn2().GetNormalized());
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    inline void ATLTransformToAKTransform(const SATLWorldPosition& atlPosition, AkSoundPosition& akSoundPosition)
-    {
-        akSoundPosition.Position = EngineVec3ToAkVector(atlPosition.mPosition.GetColumn3());
-        akSoundPosition.Orientation = EngineVec3ToAkVector(atlPosition.mPosition.GetColumn1().GetNormalized());
-    }
-
-#else
-
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     inline void ATLTransformToAKTransform(const SATLWorldPosition& atlTransform, AkTransform& akTransform)
     {
@@ -67,7 +55,5 @@ namespace Audio
             EngineVec3ToAkVector(atlTransform.mPosition.GetColumn2().GetNormalized())   // are normalized prior to sending to the apis.
             );
     }
-
-#endif // AK_WWISESDK_VERSION_MAJOR
 
 } // namespace Audio

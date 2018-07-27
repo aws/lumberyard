@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "DialogLoaderMK2.h"
 #include "DialogCommon.h"
 #include "StringUtils.h"
@@ -53,7 +53,7 @@ void CDialogLoaderMK2::InternalLoadFromPath(const string& stripPath, const strin
             {
                 if (!gEnv->IsEditor())   //only load current levels dialogs
                 {
-                    if (!levelName || _stricmp(levelName, fd.name))
+                    if (!levelName || azstricmp(levelName, fd.name))
                     {
                         continue;
                     }
@@ -66,7 +66,7 @@ void CDialogLoaderMK2::InternalLoadFromPath(const string& stripPath, const strin
                 continue;
             }
 
-            if (_stricmp(PathUtil::GetExt(fd.name), "dlg") != 0)
+            if (azstricmp(PathUtil::GetExt(fd.name), "dlg") != 0)
             {
                 continue;
             }
@@ -128,7 +128,7 @@ bool CDialogLoaderMK2::LoadScript(const string& stripPath, const string& filenam
 
     // Make nice uppercase name, if storedId and filename match case-insensitive
     const char* storedId = rootNode->getAttr("Name");
-    if (storedId != 0 && _stricmp(storedId, scriptName.c_str()) == 0)
+    if (storedId != 0 && azstricmp(storedId, scriptName.c_str()) == 0)
     {
         scriptName.assign(storedId);
     }
@@ -184,7 +184,7 @@ bool CDialogLoaderMK2::GetActor(const char* actor, int& outID)
     }
 
     const char* found = CryStringUtils::stristr(actor, actorPrefix);
-    if (found && sscanf(found + actorPrefixLen, "%d", &outID) == 1)
+    if (found && azsscanf(found + actorPrefixLen, "%d", &outID) == 1)
     {
         return true;
     }
@@ -219,7 +219,7 @@ bool CDialogLoaderMK2::GetLookAtActor(const char* actor, int& outID, bool& outSt
     }
 
     const char* found = CryStringUtils::stristr(actor, actorPrefix);
-    if (found && sscanf(found + actorPrefixLen, "%d", &outID) == 1)
+    if (found && azsscanf(found + actorPrefixLen, "%d", &outID) == 1)
     {
         return true;
     }

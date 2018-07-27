@@ -14,7 +14,7 @@
 // Description : Handles management for loading of entities
 
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "EntityLoadManager.h"
 #include "EntityPoolManager.h"
 #include "EntitySystem.h"

@@ -321,7 +321,7 @@ namespace LUAEditor
         {
             DocumentInfo& info = it->second;
             {
-                AZ_TracePrintf(LUAEditorDebugName, "Refreshing Perforce for assetId '%i' '%s'\n", info.m_assetId, info.m_assetName.c_str());
+                AZ_TracePrintf(LUAEditorDebugName, "Refreshing Perforce for assetId '%s' '%s'\n", info.m_assetId.c_str(), info.m_assetName.c_str());
             }
 
             if (m_fileIO && !info.m_bUntitledDocument)
@@ -353,7 +353,7 @@ namespace LUAEditor
                         info.m_lastKnownModTime.dwLowDateTime = static_cast<DWORD>(modTime);
 
                         {
-                            AZ_TracePrintf(LUAEditorDebugName, "Document modtime has changed, queueing reload of '%i' '%s'\n", info.m_assetId, info.m_assetName.c_str());
+                            AZ_TracePrintf(LUAEditorDebugName, "Document modtime has changed, queueing reload of '%s' '%s'\n", info.m_assetId.c_str(), info.m_assetName.c_str());
                         }
 
                         // async crossover to test files being written against asset changes
@@ -375,7 +375,7 @@ namespace LUAEditor
                         if (!m_bShuttingDown)
                         {
                             {
-                                AZ_TracePrintf(LUAEditorDebugName, "Queuing P4 Refresh of '%i' '%s'\n", info.m_assetId, info.m_assetName.c_str());
+                                AZ_TracePrintf(LUAEditorDebugName, "Queuing P4 Refresh of '%s' '%s'\n", info.m_assetId.c_str(), info.m_assetName.c_str());
                             }
                             info.m_bSourceControl_BusyGettingStats = true;
                             // while we're reading it, fetch the perforce information for it:
@@ -417,7 +417,7 @@ namespace LUAEditor
 
             DocumentInfo& info = docInfoIter->second;
             {
-                AZ_TracePrintf(LUAEditorDebugName, "ProcessReloadCheck inspecting assetId '%i' '%s'\n", info.m_assetId, info.m_assetName.c_str());
+                AZ_TracePrintf(LUAEditorDebugName, "ProcessReloadCheck inspecting assetId '%s' '%s'\n", info.m_assetId.c_str(), info.m_assetName.c_str());
             }
 
             // we may have unsaved changes:
@@ -433,7 +433,7 @@ namespace LUAEditor
             {
                 // queue document reopen!
                 {
-                    AZ_TracePrintf(LUAEditorDebugName, "ProcessReloadCheck user queueing reload for assetId '%i' '%s'\n", info.m_assetId, info.m_assetName.c_str());
+                    AZ_TracePrintf(LUAEditorDebugName, "ProcessReloadCheck user queueing reload for assetId '%s' '%s'\n", info.m_assetId.c_str(), info.m_assetName.c_str());
                 }
                 EBUS_QUEUE_FUNCTION(AZ::SystemTickBus, &Context::OnReloadDocument, this, info.m_assetId);
             }
@@ -1771,17 +1771,17 @@ namespace LUAEditor
         AZStd::string assetId = absolutePath;
 
         // let's see if we can find an open document
-        DocumentInfoMap::iterator actualDocument = m_documentInfoMap.find(assetId);
+        DocumentInfoMap::iterator actualDocument = m_documentInfoMap.find(assetId.c_str());
         if (actualDocument == m_documentInfoMap.end())
         {
             // the document might have been closed
             AssetOpenRequested(assetId, true);
 
             // let's see if we can find an open document
-            DocumentInfoMap::iterator actualDocument = m_documentInfoMap.find(assetId);
-            if (actualDocument != m_documentInfoMap.end())
+            DocumentInfoMap::iterator actualDocumentIterator = m_documentInfoMap.find(assetId.c_str());
+            if (actualDocumentIterator != m_documentInfoMap.end())
             {
-                actualDocument->second.m_PresetLineAtOpen = lineNumber;
+                actualDocumentIterator->second.m_PresetLineAtOpen = lineNumber;
             }
 
             // early out after requesting a background data load

@@ -22,7 +22,7 @@ struct CryPakMock
     : public ICryPak
 {
     MOCK_CONST_METHOD0(GetDirectoryDelimiter, const char*());
-    MOCK_METHOD4(AdjustFileName, const char*(const char* src, char dst[g_nMaxPath], unsigned nFlags, bool skipMods));
+    MOCK_METHOD5(AdjustFileNameImpl, const char*(const char* src, char* dst, size_t dstSize, unsigned nFlags, bool skipMods));
     MOCK_METHOD1(Init, bool(const char* szBasePath));
     MOCK_METHOD0(Release, void());
     MOCK_CONST_METHOD1(IsInstalledToHDD, bool(const char* acFilePath));

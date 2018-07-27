@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include <QString.h>
-#include <QLineEdit.h>
+#include <QString>
+#include <QLineEdit>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Vector3.h>

@@ -9,10 +9,13 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StaticData_precompiled.h"
+
 #include <StaticDataManager.h>
 #include <CSVStaticData.h>
 #include <StaticDataInterface.h>
+#include <AzCore/IO/FileIO.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzFramework/IO/LocalFileIO.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/parallel/lock.h>
@@ -272,22 +275,25 @@ namespace CloudCanvas
 
             AZStd::string tagStr(GetTagFromFile(relativeFile));
 
-            AZ::IO::HandleType readHandle = gEnv->pCryPak->FOpen(relativeFile, "rt");
+            AZ::IO::HandleType readHandle;
+            AZ::IO::FileIOBase::GetInstance()->Open(relativeFile, AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, readHandle);
 
             if (readHandle != AZ::IO::InvalidHandle)
             {
-                size_t fileSize = gEnv->pCryPak->FGetSize(readHandle);
+                AZ::u64 fileSize{ 0 };
+                AZ::IO::FileIOBase::GetInstance()->Size(readHandle, fileSize);
                 if (fileSize > 0)
                 {
 
                     AZStd::string fileBuf;
                     fileBuf.resize(fileSize);
 
-                    size_t read = gEnv->pCryPak->FRead(fileBuf.data(), fileSize, readHandle);
+                    size_t read = AZ::IO::FileIOBase::GetInstance()->Read(readHandle, fileBuf.data(), fileSize);
 
                     CreateInterface(GetTypeFromFile(relativeFile), fileBuf.data(), tagStr.c_str());
+                    EBUS_EVENT(StaticDataUpdateBus, StaticDataFileAdded, relativeFile);
                 }
-                gEnv->pCryPak->FClose(readHandle);
+                AZ::IO::FileIOBase::GetInstance()->Close(readHandle);
             }
             else
             {
@@ -340,38 +346,27 @@ namespace CloudCanvas
                 return;
             }
 
-            if (gEnv->pCryPak)
+            AZStd::string extensionString{ "*" };
+            extensionString += extensionType;
+
+            AZ::IO::LocalFileIO localFileIO;
+            bool foundOK = localFileIO.FindFiles(sanitizedString.c_str(), extensionString.c_str(), [&](const char* filePath) -> bool
             {
-
-                _finddata_t fd;
-                intptr_t handle = gEnv->pCryPak->FindFirst((sanitizedString + "*" + extensionType).c_str(), &fd);
-
-                if (handle < 0)
-                {
-                    return;
-                }
-
-                do
-                {
-
-                    addSet.insert(sanitizedString + fd.name);
-
-                } while (gEnv->pCryPak->FindNext(handle, &fd) >= 0);
-                gEnv->pCryPak->FindClose(handle);
-            }
+                addSet.insert(filePath);
+                return true; // continue iterating
+            });
         }
 
-        AZStd::string StaticDataManager::ResolveAndSanitize(const char* dirName) const
+        AZStd::string StaticDataManager::ResolveAndSanitize(const char* dirName) 
         {
             char resolvedGameFolder[AZ_MAX_PATH_LEN] = { 0 };
-            if (!gEnv->pFileIO->ResolvePath(dirName, resolvedGameFolder, AZ_MAX_PATH_LEN))
+            if (!AZ::IO::FileIOBase::GetInstance()->ResolvePath(dirName, resolvedGameFolder, AZ_MAX_PATH_LEN))
             {
                 return{};
             }
-            AZStd::string sanitizedString;
+            AZStd::string sanitizedString{ resolvedGameFolder };
 
-            EBUS_EVENT_RESULT(sanitizedString, CloudCanvas::StaticData::StaticDataMonitorRequestBus, GetSanitizedName, resolvedGameFolder);
-
+            AzFramework::StringFunc::Path::Normalize(sanitizedString);
             return sanitizedString.length() ? sanitizedString : resolvedGameFolder;
         }
 
@@ -528,15 +523,15 @@ namespace CloudCanvas
 
         void StaticDataManager::MakeEndInSlash(AZStd::string& someString)
         {
-            if (someString.length() && someString[someString.length() - 1] != '/')
+            if (someString.length() && someString[someString.length() - 1] != AZ_CORRECT_FILESYSTEM_SEPARATOR)
             {
-                someString += '/';
+                someString += AZ_CORRECT_FILESYSTEM_SEPARATOR;
             }
         }
 
         AZStd::string StaticDataManager::GetDirectoryFromFullPath(const AZStd::string& filePath)
         {
-            auto lastPos = filePath.find_last_of('/');
+            auto lastPos = filePath.find_last_of(AZ_CORRECT_FILESYSTEM_SEPARATOR);
 
             if (lastPos != AZStd::string::npos)
             {

@@ -65,7 +65,7 @@ namespace ScriptCanvasTests
         SystemRequestBus::Broadcast(&SystemRequests::CreateNodeOnEntity, entityOut, graphUniqueId, azrtti_typeid<t_NodeType>());
         return GetTestNode<t_NodeType>(graphUniqueId, entityOut);
     }
-
+    
     ScriptCanvas::Node* CreateDataNodeByType(const AZ::EntityId& graphUniqueId, const ScriptCanvas::Data::Type& type, AZ::EntityId& nodeIDout);
 
     template<typename t_Value>

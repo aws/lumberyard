@@ -128,5 +128,37 @@ namespace AzToolsFramework
             AZ::Uuid m_sourceUUID;
             NotificationType m_type;
         };
+
+        class GetScanFoldersRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(GetScanFoldersRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(GetScanFoldersRequest, "{A3D7FD31-C260-4D6C-B970-D565B43F1316}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            ~GetScanFoldersRequest() override = default;
+
+            unsigned int GetMessageType() const override;
+        };
+
+        class GetScanFoldersResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(GetScanFoldersResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(GetScanFoldersResponse, "{13100365-009E-4C82-A682-A8E3646EB0E0}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            GetScanFoldersResponse() = default;
+            explicit GetScanFoldersResponse(const AZStd::vector<AZStd::string>& scanFolders);
+            explicit GetScanFoldersResponse(AZStd::vector<AZStd::string>&& scanFolders);
+            ~GetScanFoldersResponse() override = default;
+
+            unsigned int GetMessageType() const override;
+
+            AZStd::vector<AZStd::string> m_scanFolders;
+        };
     } // namespace AssetSystem
 } // namespace AzToolsFramework

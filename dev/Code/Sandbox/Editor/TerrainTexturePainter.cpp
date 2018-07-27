@@ -524,7 +524,11 @@ bool CTerrainTexturePainter::MouseCallback(CViewport* view, EMouseEvent event, Q
         }
     }
 
+#ifdef AZ_PLATFORM_APPLE
+    GetIEditor()->SetStatusText(tr("L-Mouse:Paint   [ ]: Change Brush Radius  Shift+[ ]:Change Brush Hardness   ⌘L-Mouse:Pick LayerId"));
+#else
     GetIEditor()->SetStatusText(tr("L-Mouse:Paint   [ ]: Change Brush Radius  Shift+[ ]:Change Brush Hardness   CTRL+L-Mouse:Pick LayerId"));
+#endif
 
     return true;
 }

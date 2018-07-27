@@ -17,7 +17,7 @@
 
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AIDbgRecorder.h"
 #include <AzFramework/IO/FileOperations.h>
 
@@ -190,10 +190,11 @@ void CAIDbgRecorder::InitFile() const
     // Get time.
     time_t ltime;
     time(&ltime);
-    tm* today = localtime(&ltime);
+    tm today;
+    localtime_s(&today, &ltime);
 
     char s[1024];
-    strftime(s, 128, "Date(%d %b %Y) Time(%H %M %S)\n\n", today);
+    strftime(s, 128, "Date(%d %b %Y) Time(%H %M %S)\n\n", &today);
     AZ::IO::FPutS(s, fileHandle);
 #endif
 

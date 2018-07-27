@@ -29,6 +29,7 @@
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/sort.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/containers/unordered_map.h>
 #include <zlib.h>
 
 #include <iostream>
@@ -65,12 +66,14 @@ struct STimer
 
 STimer g_Timer;
 
-bool ValidateExecutableString(const AZStd::string& executableString)
+// This function validates executables up to version 21
+// because it's received within the compilation flags.
+bool ValidateExecutableStringLegacy(const AZStd::string& executableString)
 {
     AZStd::string::size_type endOfCommand = executableString.find(" ");
 
-    // Game always sends some type of options after the command. If we don't 
-    // have a space then that implies that there are no options. Reject the 
+    // Game always sends some type of options after the command. If we don't
+    // have a space then that implies that there are no options. Reject the
     // command as someone being malicious
     if (endOfCommand == AZStd::string::npos)
     {
@@ -79,7 +82,7 @@ bool ValidateExecutableString(const AZStd::string& executableString)
 
     AZStd::string commandString = executableString.substr(0, endOfCommand);
 
-    // The game never sends a parent directory in the compiler flags so lets 
+    // The game never sends a parent directory in the compiler flags so lets
     // reject any commands that have .. in it
     if (commandString.find("..") != AZStd::string::npos)
     {
@@ -95,6 +98,7 @@ bool ValidateExecutableString(const AZStd::string& executableString)
 
     // Only allow a subset of executables to be accepted...
     if (commandString.find("fxc.exe") == AZStd::string::npos &&
+        commandString.find("FXC.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc_vc120x64.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc_vc140x64.exe") == AZStd::string::npos &&
@@ -102,7 +106,9 @@ bool ValidateExecutableString(const AZStd::string& executableString)
         commandString.find("HLSLcc_dedicated_vc120x64.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc_dedicated_vc140x64.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc_dedicated_vc141x64.exe") == AZStd::string::npos &&
-        commandString.find("DXOrbisShaderCompiler.exe") == AZStd::string::npos) // ACCEPTED_USE
+        commandString.find("DXOrbisShaderCompiler.exe") == AZStd::string::npos && // ACCEPTED_USE
+        commandString.find("dxcGL") == AZStd::string::npos &&
+        commandString.find("dxcMetal") == AZStd::string::npos)
     {
         return false;
     }
@@ -120,16 +126,6 @@ CCrySimpleJobCompile::CCrySimpleJobCompile(uint32_t requestIP, EProtocolVersion 
     {
         m_GlobalCompileTasksMax =   m_GlobalCompileTasks;
     }
-
-    // Intentionally put a space after the executable name so that attackers can't 
-    // try to change the executable name that we are going to run
-    m_platformToCompilerMap["ORBIS"] = "ORBIS\\V030\\DXOrbisShaderCompiler.exe "; // ACCEPTED_USE
-    m_platformToCompilerMap["DURANGO"] = "Durango\\FXC.exe "; // ACCEPTED_USE
-    m_platformToCompilerMap["D3D11"] = "PCD3D11\\v006\\fxc.exe ";
-    m_platformToCompilerMap["GL4"] = "PCGL\\V006\\HLSLcc.exe ";
-    m_platformToCompilerMap["GLES3_0"] = "PCGL\\V006\\HLSLcc.exe ";
-    m_platformToCompilerMap["GLES3_1"] = "PCGL\\V006\\HLSLcc.exe ";
-    m_platformToCompilerMap["METAL"] = "PCGMETAL\\HLSLcc\\HLSLcc.exe ";
 }
 
 CCrySimpleJobCompile::~CCrySimpleJobCompile()
@@ -218,13 +214,89 @@ bool CCrySimpleJobCompile::Execute(const TiXmlElement* pElement)
 
 bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uint8_t>& rVec)
 {
-    const char* pProfile      = pElement->Attribute("Profile");
-    const char* pProgram      = pElement->Attribute("Program");
-    const char* pEntry        = pElement->Attribute("Entry");
-    const char* pCompileFlags = pElement->Attribute("CompileFlags");
-    const char* pPlatform     = pElement->Attribute("Platform");
+    AZStd::string platform;
+    AZStd::string compiler;
+    AZStd::string language;
+    AZStd::string shaderPath;
+    
+    if (m_Version >= EPV_V0023)
+    {
+        // NOTE: These attributes were alredy validated.
+        platform = pElement->Attribute("Platform");
+        compiler = pElement->Attribute("Compiler");
+        language = pElement->Attribute("Language");
+        
+        shaderPath = AZStd::string::format("%s%s-%s-%s/", SEnviropment::Instance().m_ShaderPath.c_str(), platform.c_str(), compiler.c_str(), language.c_str());
+    }
+    else
+    {
+        // In previous versions Platform attribute is the language
+        platform = "N/A";
+        language = pElement->Attribute("Platform");
+        
+        // Map shader language to shader compiler key
+        const AZStd::unordered_map<AZStd::string, AZStd::string> languageToCompilerMap
+        {
+            {
+                "GL4", SEnviropment::m_GLSL_HLSLcc
+            },{
+                "GLES3_0", SEnviropment::m_GLSL_HLSLcc
+            },{
+                "GLES3_1", SEnviropment::m_GLSL_HLSLcc
+            },{
+                "DX11", SEnviropment::m_D3D11_FXC
+            },{
+                "METAL", SEnviropment::m_METAL_HLSLcc
+            },{
+                "ORBIS", SEnviropment::m_Orbis_DXC // ACCEPTED_USE
+            },{
+                "DURANGO", SEnviropment::m_Durango_FXC // ACCEPTED_USE
+            }
+        };
+        
+        auto foundShaderLanguage = languageToCompilerMap.find(language);
+        if (foundShaderLanguage == languageToCompilerMap.end())
+        {
+            State(ECSJS_ERROR_INVALID_LANGUAGE);
+            CrySimple_ERROR("Trying to compile with invalid shader language");
+            return false;
+        }
+        
+        if (m_Version < EPV_V0022)
+        {
+            compiler = "N/A"; // Compiler exe will be specified inside 'compile flags', this variable won't be used
+        }
+        else
+        {
+            compiler = foundShaderLanguage->second;
+            
+            if (!SEnviropment::Instance().IsShaderCompilerValid(compiler))
+            {
+                State(ECSJS_ERROR_INVALID_COMPILER);
+                CrySimple_ERROR("Trying to compile with invalid shader compiler");
+                return false;
+            }
+        }
+        
+        shaderPath = AZStd::string::format("%s%s/", SEnviropment::Instance().m_ShaderPath.c_str(), language.c_str());
+    }
+    
+    NormalizePath(shaderPath);
+    if (!IsPathValid(shaderPath))
+    {
+        State(ECSJS_ERROR);
+        CrySimple_ERROR("Shaders output path is invalid");
+        return false;
+    }
 
-    const char* pShaderRequestLine =    pElement->Attribute("ShaderRequest");
+    // Create shaders directory
+    AZ::IO::SystemFile::CreateDir( shaderPath.c_str() );
+
+    const char* pProfile           = pElement->Attribute("Profile");
+    const char* pProgram           = pElement->Attribute("Program");
+    const char* pEntry             = pElement->Attribute("Entry");
+    const char* pCompileFlags      = pElement->Attribute("CompileFlags");
+    const char* pShaderRequestLine = pElement->Attribute("ShaderRequest");
 
     if (!pProfile)
     {
@@ -257,13 +329,6 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
         return false;
     }
 
-    if ((m_Version < EPV_V0022) && (!ValidateExecutableString(pCompileFlags)))
-    {
-        State(ECSJS_ERROR_INVALID_COMPILEFLAGS);
-        CrySimple_ERROR("CompileFlags failed validation");
-        return false;
-    }
-
     // Validate that the shader request line has a set of open/close parens as
     // the code below this expects at least the open paren to be in the string.
     // Without the open paren the code below will crash the compiler
@@ -283,50 +348,81 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
     InterlockedIncrement(&nTmpCounter);
 
     char tmpstr[64];
+#if defined(AZ_PLATFORM_WINDOWS)
+    sprintf(tmpstr, "%ld", nTmpCounter);
+#else
     sprintf(tmpstr, "%d", nTmpCounter);
+#endif
 
-    const std::string TmpIn =   SEnviropment::Instance().m_Temp + tmpstr + ".In";
-    const std::string TmpOut =   SEnviropment::Instance().m_Temp + tmpstr + ".Out";
+    const std::string TmpIn =   SEnviropment::Instance().m_TempPath + tmpstr + ".In";
+    const std::string TmpOut =   SEnviropment::Instance().m_TempPath + tmpstr + ".Out";
     CCrySimpleFileGuard FGTmpIn(TmpIn);
     CCrySimpleFileGuard FGTmpOut(TmpOut);
     CSTLHelper::ToFile(TmpIn, std::vector<uint8_t>(pProgram, &pProgram[strlen(pProgram)]));
 
-    AZStd::string compilerPath = SEnviropment::Instance().m_Compiler.c_str();
-    AZStd::string buildCmd;
-    if (m_Version == EPV_V0022)
+    const AZStd::string compilerPath = SEnviropment::Instance().m_CompilerPath.c_str();
+    AZStd::string command;
+    if (m_Version >= EPV_V0022)
     {
-        if (m_platformToCompilerMap.find(pPlatform) == m_platformToCompilerMap.end())
+        AZStd::string compilerExecutable;
+        bool validCompiler = SEnviropment::Instance().GetShaderCompilerExecutable(compiler, compilerExecutable);
+        if (!validCompiler)
         {
-            State(ECSJS_ERROR_INVALID_COMPILEFLAGS);
-            CrySimple_ERROR("Trying to compile for an unsupported platform");
+            State(ECSJS_ERROR_INVALID_COMPILER);
+            CrySimple_ERROR("Trying to compile with unknown compiler");
             return false;
         }
 
-        AZStd::string commandStringToFormat = m_platformToCompilerMap[pPlatform].c_str();
+        AZStd::string commandStringToFormat = compilerPath + compilerExecutable;
+        
+#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+        // Surrounding compiler path+executable with quotes to support spaces in the path.
+        // NOTE: Executable has a space at the end on purpose, inserting quote before.
+        commandStringToFormat.insert(0, "\"");
+        commandStringToFormat.insert(commandStringToFormat.length()-1, "\"");
+#endif
+        
         commandStringToFormat.append(pCompileFlags);
 
         if (strstr(pCompileFlags, "-fxc") != nullptr)
         {
-            AZStd::string fxcLocation = compilerPath + m_platformToCompilerMap["D3D11"].c_str();
+            AZStd::string fxcCompilerExecutable;
+            bool validFXCCompiler = SEnviropment::Instance().GetShaderCompilerExecutable(SEnviropment::m_D3D11_FXC, fxcCompilerExecutable);
+            if (!validFXCCompiler)
+            {
+                State(ECSJS_ERROR_INVALID_COMPILER);
+                CrySimple_ERROR("FXC compiler executable cannot be found");
+                return false;
+            }
+        
+            AZStd::string fxcLocation = compilerPath + fxcCompilerExecutable;
+            
             // Handle an extra string parameter to specify the base directory where the fxc compiler is located
-            buildCmd = AZStd::move(AZStd::string::format(commandStringToFormat.c_str(), fxcLocation.c_str(), pEntry, pProfile, TmpOut.c_str(), TmpIn.c_str()));
+            command = AZStd::move(AZStd::string::format(commandStringToFormat.c_str(), fxcLocation.c_str(), pEntry, pProfile, TmpOut.c_str(), TmpIn.c_str()));
         }
         else
         {
-            buildCmd = AZStd::move(AZStd::string::format(commandStringToFormat.c_str(), pEntry, pProfile, TmpOut.c_str(), TmpIn.c_str()));
+            command = AZStd::move(AZStd::string::format(commandStringToFormat.c_str(), pEntry, pProfile, TmpOut.c_str(), TmpIn.c_str()));
         }
     }
-    else 
+    else
     {
+        if (!ValidateExecutableStringLegacy(pCompileFlags))
+        {
+            State(ECSJS_ERROR_INVALID_COMPILEFLAGS);
+            CrySimple_ERROR("CompileFlags failed validation");
+            return false;
+        }
+
         if (strstr(pCompileFlags, "-fxc=\"%s") != nullptr)
         {
-            // Check that the string after the %s is a valid shader compiler 
+            // Check that the string after the %s is a valid shader compiler
             // executable
             AZStd::string tempString(pCompileFlags);
             const AZStd::string::size_type fxcOffset = tempString.find("%s") + 2;
             const AZStd::string::size_type endOfFxcString = tempString.find(" ", fxcOffset);
             tempString = tempString.substr(fxcOffset, endOfFxcString);
-            if (!ValidateExecutableString(tempString))
+            if (!ValidateExecutableStringLegacy(tempString))
             {
                 State(ECSJS_ERROR_INVALID_COMPILEFLAGS);
                 CrySimple_ERROR("CompileFlags failed validation");
@@ -334,30 +430,30 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
             }
 
             // Handle an extra string parameter to specify the base directory where the fxc compiler is located
-            buildCmd = AZStd::move(AZStd::string::format(pCompileFlags, compilerPath.c_str(), pEntry, pProfile, TmpOut.c_str(), TmpIn.c_str()));
+            command = AZStd::move(AZStd::string::format(pCompileFlags, compilerPath.c_str(), pEntry, pProfile, TmpOut.c_str(), TmpIn.c_str()));
 
             // Need to add the string for escaped quotes around the path to the compiler. This is in case the path has spaces.
             // Adding just quotes (escaped) doesn't work because this cmd line is used to execute another process.
             AZStd::string insertPattern = "\\\"";
 
             // Search for the next space until that path exists. Then we assume that's the path to the executable.
-            size_t startPos = buildCmd.find(compilerPath);
-            for (size_t pos = buildCmd.find(" ", startPos); pos != AZStd::string::npos; pos = buildCmd.find(" ", pos + 1))
+            size_t startPos = command.find(compilerPath);
+            for (size_t pos = command.find(" ", startPos); pos != AZStd::string::npos; pos = command.find(" ", pos + 1))
             {
-                if (AZ::IO::SystemFile::Exists(buildCmd.substr(startPos, pos - startPos).c_str()))
+                if (AZ::IO::SystemFile::Exists(command.substr(startPos, pos - startPos).c_str()))
                 {
-                    buildCmd.insert(pos, insertPattern);
-                    buildCmd.insert(startPos, insertPattern);
+                    command.insert(pos, insertPattern);
+                    command.insert(startPos, insertPattern);
                 }
             }
         }
         else
         {
-            buildCmd = AZStd::move(AZStd::string::format(pCompileFlags, pEntry, pProfile, TmpOut.c_str(), TmpIn.c_str()));
+            command = AZStd::move(AZStd::string::format(pCompileFlags, pEntry, pProfile, TmpOut.c_str(), TmpIn.c_str()));
         }
+        
+        command = compilerPath + command;
     }
-
-    std::string Cmd = SEnviropment::Instance().m_Compiler + buildCmd.c_str();
 
     int64_t t0 = g_Timer.GetTime();
 
@@ -387,13 +483,13 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
         AZStd::replace(shaderName.begin(), shaderName.end(), '?', '!');
         AZStd::replace(shaderName.begin(), shaderName.end(), '%', '$');
 
-        crc = crc32(crc, reinterpret_cast<unsigned char*>(&(permutation)), static_cast<unsigned int>(permutation.length()));
+        crc = crc32(crc, reinterpret_cast<const unsigned char*>(permutation.c_str()), static_cast<unsigned int>(permutation.length()));
         crcStringStream << crc;
-        const std::string HlslDump = SEnviropment::Instance().m_Shader + shaderName + "_" + crcStringStream.str() + ".hlsl";
+        const std::string HlslDump = shaderPath.c_str() + shaderName + "_" + crcStringStream.str() + ".hlsl";
         CSTLHelper::ToFile(HlslDump, std::vector<uint8_t>(pProgram, &pProgram[strlen(pProgram)]));
         std::ofstream crcFile;
 
-        std::string crcFileName = SEnviropment::Instance().m_Shader + shaderName + "_" + crcStringStream.str() + ".txt";
+        std::string crcFileName = shaderPath.c_str() + shaderName + "_" + crcStringStream.str() + ".txt";
 
         crcFile.open(crcFileName, std::ios_base::trunc);
 
@@ -410,7 +506,12 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
         crcFile.close();
     }
 
-    if (!ExecuteCommand(Cmd, outError))
+    if (SEnviropment::Instance().m_PrintCommands)
+    {
+        AZ_Printf(0, "Compiler Command:\n%s\n\n", command.c_str());
+    }
+
+    if (!ExecuteCommand(command.c_str(), outError))
     {
         unsigned char* nIP = (unsigned char*) &RequestIP();
         char sIP[128];
@@ -423,7 +524,6 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
 
         std::string project = pProject ? pProject : "Unk/";
         std::string ccs = pEmailCCs ? pEmailCCs : "";
-        std::string platform = pPlatform ? pPlatform : "Unknown";
         std::string tags = pTags ? pTags : "";
 
         std::string filteredError;
@@ -436,7 +536,7 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
         CSTLHelper::Replace(filteredError, filteredError, "\r\n", "\n");
 
         State(ECSJS_ERROR_COMPILE);
-        throw new CCompilerError(pEntry, filteredError, ccs, sIP, pShaderRequestLine, pProgram, project, platform, tags, pProfile);
+        throw new CCompilerError(pEntry, filteredError, ccs, sIP, pShaderRequestLine, pProgram, project, platform.c_str(), compiler.c_str(), language.c_str(), tags, pProfile);
     }
 
     if (!CSTLHelper::FromFile(TmpOut, rVec))
@@ -451,19 +551,11 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
     // Dump cross-compiled shader
     if (SEnviropment::Instance().m_DumpShaders)
     {
-        std::string shaderDump;
-        if (SEnviropment::Instance().m_Platform.find("GL") != std::string::npos)
-        {
-            shaderDump = SEnviropment::Instance().m_Shader + shaderName + "_" + crcStringStream.str() + ".glsl";
-        }
-        if (SEnviropment::Instance().m_Platform.find("METAL") != std::string::npos)
-        {
-            shaderDump = SEnviropment::Instance().m_Shader + shaderName + "_" + crcStringStream.str() + ".metal";
-        }
-        if (!shaderDump.empty())
-        {
-            CSTLHelper::ToFile(shaderDump, rVec);
-        }
+        AZStd::string fileExtension = language;
+        AZStd::transform(fileExtension.begin(), fileExtension.end(), fileExtension.begin(), tolower);
+        
+        std::string shaderDump = shaderPath.c_str() + shaderName + "_" + crcStringStream.str() + "." + fileExtension.c_str();
+        CSTLHelper::ToFile(shaderDump, rVec);
     }
 
 
@@ -471,14 +563,9 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
     int64_t dt = t1 - t0;
     InterlockedAdd64(&m_GlobalCompileTime, dt);
 
-    if (pPlatform == NULL)
-    {
-        pPlatform = "Unk";
-    }
-
     int millis = (int)(g_Timer.TimeToSeconds(dt) * 1000.0);
     int secondsTotal = (int)g_Timer.TimeToSeconds(m_GlobalCompileTime);
-    logmessage("Compiled [%5dms|%8ds] (% 5s %s) %s\n", millis, secondsTotal, pPlatform, pProfile, pEntry);
+    logmessage("Compiled [%5dms|%8ds] (%s - %s - %s - %s) %s\n", millis, secondsTotal, platform.c_str(), compiler.c_str(), language.c_str(), pProfile, pEntry);
 
     return true;
 }
@@ -489,9 +576,9 @@ inline bool SortByLinenum(const std::pair<int, std::string>& f1, const std::pair
     return f1.first < f2.first;
 }
 
-CCompilerError::CCompilerError(std::string entry, std::string errortext, std::string ccs, std::string IP,
-    std::string requestLine, std::string program, std::string project,
-    std::string platform, std::string tags, std::string profile)
+CCompilerError::CCompilerError(const std::string& entry, const std::string& errortext, const std::string& ccs, const std::string& IP,
+    const std::string& requestLine, const std::string& program, const std::string& project,
+    const std::string& platform, const std::string& compiler, const std::string& language, const std::string& tags, const std::string& profile)
     : ICryError(COMPILE_ERROR)
     , m_entry(entry)
     , m_errortext(errortext)
@@ -499,6 +586,8 @@ CCompilerError::CCompilerError(std::string entry, std::string errortext, std::st
     , m_program(program)
     , m_project(project)
     , m_platform(platform)
+    , m_compiler(compiler)
+    , m_language(language)
     , m_tags(tags)
     , m_profile(profile)
     , m_uniqueID(0)
@@ -723,6 +812,16 @@ bool CCompilerError::Compare(const ICryError* err) const
         return m_platform < e->m_platform;
     }
 
+    if (m_compiler != e->m_compiler)
+    {
+        return m_compiler < e->m_compiler;
+    }
+
+    if (m_language != e->m_language)
+    {
+        return m_language < e->m_language;
+    }
+
     if (m_shader != e->m_shader)
     {
         return m_shader < e->m_shader;
@@ -745,7 +844,7 @@ bool CCompilerError::CanMerge(const ICryError* err) const
 
     CCompilerError* e = (CCompilerError*)err;
 
-    if (m_platform != e->m_platform || m_shader != e->m_shader)
+    if (m_platform != e->m_platform || m_compiler != e->m_compiler || m_language != e->m_language || m_shader != e->m_shader)
     {
         return false;
     }
@@ -776,7 +875,7 @@ void CCompilerError::AddCCs(std::set<std::string>& ccs) const
 
 std::string CCompilerError::GetErrorName() const
 {
-    return std::string("[") + m_tags + "] Shader Compile Errors in " + m_shader + " on " + m_platform;
+    return std::string("[") + m_tags + "] Shader Compile Errors in " + m_shader + " on " + m_language + " for " + m_platform + " " + m_compiler;
 }
 
 std::string CCompilerError::GetErrorDetails(EOutputFormatType outputType) const
@@ -795,14 +894,14 @@ std::string CCompilerError::GetErrorDetails(EOutputFormatType outputType) const
 
     if (outputType == OUTPUT_HASH)
     {
-        errorString = GetFilename() + m_IP + m_platform + m_project + m_entry + m_tags + m_profile + m_hasherrors /*+ m_requestline*/;
+        errorString = GetFilename() + m_IP + m_platform + m_compiler + m_language + m_project + m_entry + m_tags + m_profile + m_hasherrors /*+ m_requestline*/;
     }
     else if (outputType == OUTPUT_EMAIL)
     {
         errorString = std::string("=== Shader compile error in ") + m_entry + " (" + sNumDuplicates + " duplicates)\n\n";
 
         /////
-        errorString += std::string("* From:                  ") + m_IP + " on " + m_platform + " " + m_project;
+        errorString += std::string("* From:                  ") + m_IP + " on " + m_language + " for " + m_platform + " " + m_compiler + " " + m_project;
         if (m_tags != "")
         {
             errorString += std::string(" (Tags: ") + m_tags + ")";

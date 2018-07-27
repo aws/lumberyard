@@ -51,12 +51,14 @@ export class DateTimeRangePickerComponent {
             hasRequiredEndDateTime: this.model.isEndRequired,
 
         }
+        this.validateDate(result);
         this.dateTimeRange.emit(result);
     }
 
     ngOnInit() {
         this.init();
     }
+
     private init() {
         if (this.hasStart == null)
             this.model.hasStart = false;
@@ -129,6 +131,38 @@ export class DateTimeRangePickerComponent {
             { hour: 12, minute: 0 },
             valid: true
         }
+    }
+
+    private validateDate(model): void {
+        let isValid: boolean = true;
+
+        let start = DateTimeUtil.toObjDate(model.start);
+        let end = DateTimeUtil.toObjDate(model.end);
+        model.start.valid = model.end.valid = true
+        model.date = {}
+        if (this.hasEnd) {
+            model.end.valid = end ? true : false
+            if (!model.end.valid)
+                model.date = { message: "The end date is not a valid date.  A date must have a date, hour and minute." }
+
+            isValid = isValid && model.end.valid;
+        }
+        if (this.hasStart) {
+            model.start.valid = start ? true : false
+            if (!model.start.valid)
+                model.date = { message: "The start date is not a valid date.  A date must have a date, hour and minute." }
+            isValid = isValid && model.start.valid;
+        }
+
+        if (this.hasEnd && this.hasStart) {
+            let isValidDateRange = (start < end);
+            isValid = isValid && isValidDateRange
+            if (!isValidDateRange) {
+                model.date = { message: "The start date must be less than the end date." }
+                model.start.valid = false;
+            }
+        }
+        model.valid = isValid;
     }
 
 

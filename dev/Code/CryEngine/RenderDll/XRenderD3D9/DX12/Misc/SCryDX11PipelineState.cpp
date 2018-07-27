@@ -250,7 +250,7 @@ void SCryDX11ShaderStageState::DebugPrint()
                 {
                     DX12_LOG("  %2d: %p %p %p+%d[%d] %s", i,
                         ConstantBufferViews.Get(i),
-                        ConstantBufferViews.Get(i)->GetDX12Resource(),
+                        &ConstantBufferViews.Get(i)->GetDX12Resource(),
                         ConstantBufferViews.Get(i)->GetDX12View().GetCBVDesc().BufferLocation,
                         ConstBufferBindRange.Get(i).start,
                         ConstBufferBindRange.Get(i).end - ConstBufferBindRange.Get(i).start,

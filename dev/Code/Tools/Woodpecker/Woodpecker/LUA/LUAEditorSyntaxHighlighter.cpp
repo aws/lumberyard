@@ -717,7 +717,7 @@ namespace LUAEditor
 
         if (oldOpenBracketPos >= 0)
         {
-            auto openBlock = document()->findBlock(oldOpenBracketPos);
+            openBlock = document()->findBlock(oldOpenBracketPos);
             if (openBlock.isValid())
             {
                 rehighlightBlock(openBlock);
@@ -725,7 +725,7 @@ namespace LUAEditor
         }
         if (oldcloseBracketPos >= 0)
         {
-            auto closeBlock = document()->findBlock(oldcloseBracketPos);
+            closeBlock = document()->findBlock(oldcloseBracketPos);
             if (closeBlock.isValid())
             {
                 rehighlightBlock(closeBlock);

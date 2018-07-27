@@ -1839,7 +1839,6 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiTextBus>("UiTextBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetText", &UiTextBus::Events::GetText)
             ->Event("SetText", &UiTextBus::Events::SetText)
             ->Event("GetColor", &UiTextBus::Events::GetColor)
@@ -2506,7 +2505,7 @@ STextDrawContext UiTextComponent::GetTextDrawContextPrototype() const
     ctx.SetSizeIn800x600(false);
     ctx.SetSize(vector2f(m_fontSize, m_fontSize));
     ctx.m_processSpecialChars = false;
-    ctx.m_tracking = m_charSpacing / 1000.0f;
+    ctx.m_tracking = (m_charSpacing * m_fontSize) / 1000.0f; // m_charSpacing units are 1/1000th of ems, 1 em is equal to font size
     return ctx;
 }
 

@@ -41,10 +41,7 @@ namespace AzFramework
     void InputChannelAnalogWithPosition2D::ProcessRawInputEvent(const RawInputEvent& rawValues)
     {
         const AZ::Vector2 newPosition = AZ::Vector2(rawValues.m_normalizedX, rawValues.m_normalizedY);
-        const AZ::Vector2 oldPosition = m_positionData.m_normalizedPosition;
-
-        m_positionData.m_normalizedPosition = newPosition;
-        m_positionData.m_normalizedPositionDelta = newPosition - oldPosition;
+        m_positionData.UpdateNormalizedPositionAndDelta(newPosition);
 
         InputChannelAnalog::ProcessRawInputEvent(rawValues.m_analogValue);
     }

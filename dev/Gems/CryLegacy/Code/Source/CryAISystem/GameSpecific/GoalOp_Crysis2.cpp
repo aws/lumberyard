@@ -15,7 +15,7 @@
 //               These should move into GameDLL when interfaces allow!
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "GoalOp_Crysis2.h"
 #include "GoalOpTrace.h"
 

@@ -14,7 +14,7 @@
 // Description : A pool of entity containers with matching signatures
 
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "EntityPool.h"
 #include "EntityPoolManager.h"
 #include "EntityPoolDefinition.h"

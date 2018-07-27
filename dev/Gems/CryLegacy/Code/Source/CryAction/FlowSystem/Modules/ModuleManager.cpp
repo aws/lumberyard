@@ -14,10 +14,10 @@
 // Description : Manages module loading and application
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ModuleManager.h"
 #include "Module.h"
-#include "../Nodes/FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "FlowModuleNodes.h"
 #include "ILevelSystem.h"
 
@@ -461,7 +461,7 @@ void CFlowGraphModuleManager::ScanFolder(const string& folderName, IFlowGraphMod
             else
             {
                 moduleName = fd.name;
-                if (!strcmpi(PathUtil::GetExt(moduleName.c_str()), "xml"))
+                if (!azstricmp(PathUtil::GetExt(moduleName.c_str()), "xml"))
                 {
                     PathUtil::RemoveExtension(moduleName);
                     PathUtil::MakeGamePath(folderName);
@@ -722,7 +722,7 @@ void DrawModuleTextLabel(float x, float y, const float* pColor, const char* pFor
 
     va_list args;
     va_start(args, pFormat);
-    int written = vsnprintf(buffer, cnt, pFormat, args);
+    int written = azvsnprintf(buffer, cnt, pFormat, args);
     if (written < 0 || written == cnt)
     {
         buffer[cnt - 1] = '\0';

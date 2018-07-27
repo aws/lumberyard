@@ -14,7 +14,7 @@
 // Description : Dialog Session
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "DialogSession.h"
 #include "DialogSystem.h"
 #include "DialogScript.h"

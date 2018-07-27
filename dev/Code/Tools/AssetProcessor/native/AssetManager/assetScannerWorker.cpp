@@ -11,7 +11,7 @@
 */
 #include "native/AssetManager/assetScannerWorker.h"
 #include "native/AssetManager/assetScanner.h"
-#include "native/utilities/AssetUtils.h"
+#include "native/utilities/assetUtils.h"
 #include "native/utilities/PlatformConfiguration.h"
 #include <QDir>
 #include <QFileInfo>

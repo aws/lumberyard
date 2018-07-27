@@ -41,8 +41,8 @@ struct DefaultEmitter
         current = other.current;
         name = new char[strlen(other.name) + 1];
         node = new char[strlen(other.node) + 1];
-        strcpy(name, other.name);
-        strcpy(node, other.node);
+        azstrcpy(name, strlen(other.name) + 1, other.name);
+        azstrcpy(node, strlen(other.node) + 1, other.node);
     }
 };
 

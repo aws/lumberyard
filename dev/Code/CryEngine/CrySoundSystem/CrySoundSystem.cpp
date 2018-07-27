@@ -31,7 +31,7 @@
 #endif
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-    #include "../CryAction/IViewSystem.h"
+    #include <IViewSystem.h>
     #include <IGameFramework.h>
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
@@ -151,13 +151,12 @@ namespace Audio
 
         const char* controlsPath = nullptr;
         AudioSystemRequestBus::BroadcastResult(controlsPath, &AudioSystemRequestBus::Events::GetControlsPath);
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> sTemp(controlsPath);
 
-        SAudioManagerRequestData<eAMRT_PARSE_CONTROLS_DATA> oAMData(sTemp.c_str(), eADS_GLOBAL);
+        SAudioManagerRequestData<eAMRT_PARSE_CONTROLS_DATA> oAMData(controlsPath, eADS_GLOBAL);
         oAudioRequestData.pData = &oAMData;
         AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
 
-        SAudioManagerRequestData<eAMRT_PARSE_PRELOADS_DATA> oAMData2(sTemp.c_str(), eADS_GLOBAL);
+        SAudioManagerRequestData<eAMRT_PARSE_PRELOADS_DATA> oAMData2(controlsPath, eADS_GLOBAL);
         oAudioRequestData.pData = &oAMData2;
         AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
 
@@ -219,8 +218,8 @@ class CEngineModule_CrySoundSystem
             g_audioLogger.Log(eALT_ALWAYS, "%s loaded!", GetName());
 
             // Load the Audio Implementation Module.  If it fails to load, don't consider CrySoundSystem as a failure too.
-            s_currentModuleName = m_cvAudioSystemImplementationName->GetString();
-            if (env.pSystem->InitializeEngineModule(s_currentModuleName.c_str(), s_currentModuleName.c_str(), initParams))
+            const char* currentModuleName = m_cvAudioSystemImplementationName->GetString();
+            if (env.pSystem->InitializeEngineModule(currentModuleName, currentModuleName, initParams))
             {
                 PrepareAudioSystem();
 
@@ -230,9 +229,7 @@ class CEngineModule_CrySoundSystem
             else
             {
                 g_audioLogger.Log(eALT_ERROR, "Failed to load Audio System Implementation Module named: %s\n"
-                    "Check the spelling of the module (case sensitive!), and make sure it's correct.", s_currentModuleName.c_str());
-                // Reset to empty string if loading failed, next time around we won't try to unload a module that isn't there.
-                s_currentModuleName.clear();
+                    "Check the spelling of the module (case sensitive!), and make sure it's correct.", currentModuleName);
             }
 
             bSuccess = true;
@@ -246,104 +243,10 @@ class CEngineModule_CrySoundSystem
         return bSuccess;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    static void OnAudioImplChanged(ICVar* pAudioSystemImplementationName)
-    {
-    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        using namespace Audio;
-        // First set the NULL implementation. This will release the currently running implementation.
-        SAudioRequest oAudioRequestData;
-        oAudioRequestData.nFlags = eARF_PRIORITY_HIGH | eARF_EXECUTE_BLOCKING;
-
-        SAudioManagerRequestData<eAMRT_RELEASE_AUDIO_IMPL> oAMData;
-        oAudioRequestData.pData = &oAMData;
-        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
-
-        // Then unload the previous module.
-        if (!s_currentModuleName.empty())
-        {
-            if (!GetISystem()->UnloadEngineModule(s_currentModuleName.c_str(), s_currentModuleName.c_str()))
-            {
-                g_audioLogger.Log(eALT_WARNING, "Failed to unload Audio System Implementation Module named: %s", s_currentModuleName.c_str());
-            }
-        }
-
-        // Then initialize the new engine module.
-        SSystemInitParams oSystemInitParams;
-        s_currentModuleName = pAudioSystemImplementationName->GetString();
-        if (!GetISystem()->InitializeEngineModule(s_currentModuleName.c_str(), s_currentModuleName.c_str(), oSystemInitParams))
-        {
-            g_audioLogger.Log(eALT_ERROR, "Failed to load Audio System Implementation Module named: %s\n"
-                "Check the spelling of the module (case sensitive!), and make sure it's correct.", s_currentModuleName.c_str());
-            // Reset to empty string if loading failed, next time around we won't try to unload a module that isn't there.
-            s_currentModuleName.clear();
-            return;
-        }
-
-        // Then load global controls data and preloads.
-        PrepareAudioSystem();
-
-        // Then load level specific controls data and preloads.
-        const string szLevelName = PathUtil::GetFileName(gEnv->pGame->GetIGameFramework()->GetLevelName());
-
-        if (!szLevelName.empty() && szLevelName.compareNoCase("Untitled") != 0)
-        {
-            const char* controlsPath = nullptr;
-            AudioSystemRequestBus::BroadcastResult(controlsPath, &AudioSystemRequestBus::Events::GetControlsPath);
-            string szAudioLevelPath(controlsPath);
-            szAudioLevelPath += "levels/";
-            szAudioLevelPath += szLevelName;
-            SAudioManagerRequestData<eAMRT_PARSE_CONTROLS_DATA> oAMData2(szAudioLevelPath, eADS_LEVEL_SPECIFIC);
-            SAudioRequest audioRequestData;
-            audioRequestData.nFlags = eARF_PRIORITY_HIGH | eARF_EXECUTE_BLOCKING; // Needs to be blocking so data is available for next preloading request!
-            audioRequestData.pData = &oAMData2;
-            AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequestBlocking, audioRequestData);
-
-            SAudioManagerRequestData<eAMRT_PARSE_PRELOADS_DATA> oAMData3(szAudioLevelPath, eADS_LEVEL_SPECIFIC);
-            audioRequestData.pData = &oAMData3;
-            AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequestBlocking, audioRequestData);
-
-            TAudioPreloadRequestID nPreloadRequestID = INVALID_AUDIO_PRELOAD_REQUEST_ID;
-
-            AudioSystemRequestBus::BroadcastResult(nPreloadRequestID, &AudioSystemRequestBus::Events::GetAudioPreloadRequestID, szLevelName.c_str());
-            if (nPreloadRequestID != INVALID_AUDIO_PRELOAD_REQUEST_ID)
-            {
-                SAudioManagerRequestData<eAMRT_PRELOAD_SINGLE_REQUEST> oAMData4(nPreloadRequestID, true);
-                audioRequestData.pData = &oAMData4;
-                AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequestBlocking, audioRequestData);
-            }
-        }
-
-        // Then force the view system to update the listener position.
-        if (gEnv->IsEditor() && !gEnv->IsEditorGameMode())
-        {
-            if (IGame* pIGame = gEnv->pGame)
-            {
-                if (IGameFramework* pIGameFramework = pIGame->GetIGameFramework())
-                {
-                    if (IViewSystem* pIViewSystem = pIGameFramework->GetIViewSystem())
-                    {
-                        pIViewSystem->UpdateSoundListeners();
-                    }
-                }
-            }
-        }
-
-        // And finally re-trigger all active audio controls to restart previously playing sounds.
-        SAudioManagerRequestData<eAMRT_RETRIGGER_AUDIO_CONTROLS> oAMData5;
-        oAudioRequestData.pData = &oAMData5;
-        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
-
-        GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_AUDIO_IMPLEMENTATION_LOADED, 0, 0);
-    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-    }
-
 private:
-    ICVar* m_cvAudioSystemImplementationName;
-    static CryFixedStringT<MAX_MODULE_NAME_LENGTH> s_currentModuleName;
+    ICVar * m_cvAudioSystemImplementationName = nullptr;
 };
 
-CryFixedStringT<MAX_MODULE_NAME_LENGTH> CEngineModule_CrySoundSystem::s_currentModuleName;
 CRYREGISTER_SINGLETON_CLASS(CEngineModule_CrySoundSystem)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

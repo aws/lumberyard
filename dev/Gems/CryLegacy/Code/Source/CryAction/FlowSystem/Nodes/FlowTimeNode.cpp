@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowTimeNode.h"
 #include "TimeOfDayScheduler.h"
 #include <time.h>
@@ -280,7 +280,13 @@ private:
     void Update(SActivationInfo* pActInfo, bool forceUpdate)
     {
         time_t long_time = time(NULL);
-        tm* newtime = localtime(&long_time);
+#ifdef AZ_COMPILER_MSVC
+        tm _newtime;
+        localtime_s(&_newtime, &long_time);
+        tm* newtime = &_newtime;
+#else
+        auto newtime = localtime(&long_time);
+#endif
         bool bUpdate = false;
         if ((forceUpdate == true) || (newtime->tm_hour != m_lasttime.tm_hour))
         {

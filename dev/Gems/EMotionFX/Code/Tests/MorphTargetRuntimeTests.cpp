@@ -12,7 +12,6 @@
 
 #include "SystemComponentFixture.h"
 
-#include <MCore/Source/AttributeSettings.h>
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/AnimGraph.h>
@@ -24,16 +23,20 @@
 #include <EMotionFX/Source/BlendTreeMorphTargetNode.h>
 #include <EMotionFX/Source/BlendTreeParameterNode.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
-#include <EMotionFX/Source/MotionSet.h>
 #include <EMotionFX/Source/Mesh.h>
 #include <EMotionFX/Source/MeshBuilder.h>
 #include <EMotionFX/Source/MeshBuilderVertexAttributeLayers.h>
 #include <EMotionFX/Source/MorphSetup.h>
 #include <EMotionFX/Source/MorphTargetStandard.h>
+#include <EMotionFX/Source/MotionSet.h>
 #include <EMotionFX/Source/Node.h>
+#include <EMotionFX/Source/Parameter/FloatSliderParameter.h>
+#include <EMotionFX/Source/Parameter/ParameterFactory.h>
 #include <EMotionFX/Source/Pose.h>
-
 #include <Integration/System/SystemCommon.h>
+#include <MCore/Source/ReflectionSerializer.h>
+
+#include <AzCore/Serialization/SerializeContext.h>
 
 namespace AZ
 {
@@ -45,20 +48,22 @@ namespace AZ
 
 namespace EMotionFX
 {
-    class MorphTargetRuntimeFixture : public SystemComponentFixture
+    class MorphTargetRuntimeFixture
+        : public SystemComponentFixture
     {
     public:
         MorphTargetRuntimeFixture()
             : SystemComponentFixture()
-            , m_points({
-                AZ::Vector3(-1.0f, -1.0f, 0.0f),
-                AZ::Vector3( 1.0f, -1.0f, 0.0f),
-                AZ::Vector3(-1.0f,  1.0f, 0.0f),
+            , m_points(
+                {
+                    AZ::Vector3(-1.0f, -1.0f, 0.0f),
+                    AZ::Vector3(1.0f, -1.0f, 0.0f),
+                    AZ::Vector3(-1.0f,  1.0f, 0.0f),
 
-                AZ::Vector3( 1.0f, -1.0f, 0.0f),
-                AZ::Vector3(-1.0f,  1.0f, 0.0f),
-                AZ::Vector3( 1.0f,  1.0f, 0.0f)
-            })
+                    AZ::Vector3(1.0f, -1.0f, 0.0f),
+                    AZ::Vector3(-1.0f,  1.0f, 0.0f),
+                    AZ::Vector3(1.0f,  1.0f, 0.0f)
+                })
         {
         }
 
@@ -71,44 +76,42 @@ namespace EMotionFX
 
             // Original vertex numbers
             MeshBuilderVertexAttributeLayerUInt32* orgVtxLayer = MeshBuilderVertexAttributeLayerUInt32::Create(
-                vertCount,
-                EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS,
-                false,
-                false
-            );
+                    vertCount,
+                    EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS,
+                    false,
+                    false
+                    );
             meshBuilder->AddLayer(orgVtxLayer);
 
             // The positions layer
             MeshBuilderVertexAttributeLayerVector3* posLayer = MeshBuilderVertexAttributeLayerVector3::Create(
-                vertCount,
-                EMotionFX::Mesh::ATTRIB_POSITIONS,
-                false,
-                true
-            );
+                    vertCount,
+                    EMotionFX::Mesh::ATTRIB_POSITIONS,
+                    false,
+                    true
+                    );
             meshBuilder->AddLayer(posLayer);
 
             // The normals layer
             MeshBuilderVertexAttributeLayerVector3* normalsLayer = MeshBuilderVertexAttributeLayerVector3::Create(
-                vertCount,
-                EMotionFX::Mesh::ATTRIB_NORMALS,
-                false,
-                true
-            );
+                    vertCount,
+                    EMotionFX::Mesh::ATTRIB_NORMALS,
+                    false,
+                    true
+                    );
             meshBuilder->AddLayer(normalsLayer);
 
             const int materialId = 0;
+            const AZ::Vector3 normalVector(0.0f, 0.0f, 1.0f);
             for (uint32 faceNum = 0; faceNum < faceCount; ++faceNum)
             {
                 meshBuilder->BeginPolygon(materialId);
                 for (uint32 vertexOfFace = 0; vertexOfFace < 3; ++vertexOfFace)
                 {
                     uint32 vertexNum = faceNum * 3 + vertexOfFace;
-                    AZ::Vector3 posLayerValue(m_points[vertexNum]);
-                    AZ::Vector3 normalsLayerValue(0.0f, 0.0f, 1.0f);
-                    
                     orgVtxLayer->SetCurrentVertexValue(&vertexNum);
-                    posLayer->SetCurrentVertexValue(&posLayerValue);
-                    normalsLayer->SetCurrentVertexValue(&normalsLayerValue);
+                    posLayer->SetCurrentVertexValue(&m_points[vertexNum]);
+                    normalsLayer->SetCurrentVertexValue(&normalVector);
 
                     meshBuilder->AddPolygonVertex(vertexNum);
                 }
@@ -128,17 +131,16 @@ namespace EMotionFX
                     positions[vertexNum].GetX() * m_scaleFactor,
                     positions[vertexNum].GetY() * m_scaleFactor,
                     positions[vertexNum].GetZ() * m_scaleFactor
-                );
+                    );
             }
         }
 
-        template<class AttributeType, class InterfaceType, class... DefaultValue>
-        void AddParam(const char* name, InterfaceType interfaceType, DefaultValue... args)
+        void AddParam(const char* name, const AZ::TypeId& type, const AZStd::string& defaultValue)
         {
-            MCore::AttributeSettings* paramInfo = MCore::AttributeSettings::Create(name);
-            paramInfo->SetInterfaceType(interfaceType);
-            paramInfo->SetDefaultValue(AttributeType::Create(args...));
-            m_animGraph->AddParameter(paramInfo);
+            EMotionFX::Parameter* parameter = EMotionFX::ParameterFactory::Create(type);
+            parameter->SetName(name);
+            MCore::ReflectionSerializer::DeserializeIntoMember(parameter, "defaultValue", defaultValue);
+            m_animGraph->AddParameter(parameter);
         }
 
         void SetUp() override
@@ -160,12 +162,12 @@ namespace EMotionFX
             Mesh* morphMesh = morphActor->GetMesh(0, rootNode->GetNodeIndex());
             ScaleMesh(morphMesh);
             MorphTargetStandard* morphTarget = MorphTargetStandard::Create(
-                /*captureTransforms=*/false,
-                /*captureMeshDeforms=*/true,
-                m_actor.get(),
-                morphActor,
-                "morphTarget"
-            );
+                    /*captureTransforms=*/ false,
+                    /*captureMeshDeforms=*/ true,
+                    m_actor.get(),
+                    morphActor,
+                    "morphTarget"
+                    );
             m_morphSetup->AddMorphTarget(morphTarget);
 
             // Without this call, the bind pose does not know about newly added
@@ -173,53 +175,53 @@ namespace EMotionFX
             m_actor->ResizeTransformData();
             m_actor->PostCreateInit(true, true, false);
 
-            m_animGraph = Integration::EMotionFXPtr<AnimGraph>::MakeFromNew(AnimGraph::Create("testAnimGraph"));
+            m_animGraph.reset(aznew AnimGraph);
 
-            AddParam<MCore::AttributeFloat>("FloatParam", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSLIDER, 0.0f);
+            AddParam("FloatParam", azrtti_typeid<EMotionFX::FloatSliderParameter>(), "0.0");
 
-            BlendTreeParameterNode* parameterNode = BlendTreeParameterNode::Create(m_animGraph.get());
-            parameterNode->Reinit();
+            BlendTreeParameterNode* parameterNode = aznew BlendTreeParameterNode();
 
-            BlendTreeMorphTargetNode* morphTargetNode = BlendTreeMorphTargetNode::Create(m_animGraph.get());
-            MCore::AttributeArray* morphTargetList = static_cast<MCore::AttributeArray*>(morphTargetNode->GetAttributeArray(BlendTreeMorphTargetNode::ATTRIB_MORPHTARGET));
-            MCore::AttributeString* selectedMorphTarget = static_cast<MCore::AttributeString*>(morphTargetList->AddAttribute());
-            selectedMorphTarget->SetValue("morphTarget");
-            morphTargetNode->OnUpdateAttributes();
+            BlendTreeMorphTargetNode* morphTargetNode = aznew BlendTreeMorphTargetNode();
+            morphTargetNode->SetMorphTargetNames({"morphTarget"});
+
+            BlendTreeFinalNode* finalNode = aznew BlendTreeFinalNode();
+            BlendTree* blendTree = aznew BlendTree();
+            blendTree->SetName("testBlendTree");
+            blendTree->AddChildNode(parameterNode);
+            blendTree->AddChildNode(morphTargetNode);
+            blendTree->AddChildNode(finalNode);
+            blendTree->SetFinalNodeId(finalNode->GetId());
+
+            m_stateMachine = aznew AnimGraphStateMachine();
+            m_stateMachine->SetName("rootStateMachine");
+            m_animGraph->SetRootStateMachine(m_stateMachine);
+            m_stateMachine->AddChildNode(blendTree);
+            m_stateMachine->SetEntryState(blendTree);
+
+            m_stateMachine->InitAfterLoading(m_animGraph.get());
+
+            // Create the connections once the port indices are known. The
+            // parameter node's ports are not known until after
+            // InitAfterLoading() is called
             morphTargetNode->AddConnection(
                 parameterNode,
                 parameterNode->FindOutputPortIndex("FloatParam"),
                 BlendTreeMorphTargetNode::PORTID_INPUT_WEIGHT
             );
-
-            BlendTreeFinalNode* finalNode = BlendTreeFinalNode::Create(m_animGraph.get());
             finalNode->AddConnection(
                 morphTargetNode,
                 BlendTreeMorphTargetNode::PORTID_OUTPUT_POSE,
                 BlendTreeFinalNode::PORTID_INPUT_POSE
             );
 
-            BlendTree* blendTree = BlendTree::Create(m_animGraph.get(), "testBlendTree");
-            blendTree->AddChildNode(parameterNode);
-            blendTree->AddChildNode(morphTargetNode);
-            blendTree->AddChildNode(finalNode);
-            blendTree->SetFinalNode(finalNode);
-
-            m_stateMachine = AnimGraphStateMachine::Create(m_animGraph.get(), "rootStateMachine");
-            m_animGraph->SetRootStateMachine(m_stateMachine);
-            m_stateMachine->AddChildNode(blendTree);
-            m_stateMachine->SetEntryState(blendTree);
-
-            m_motionSet = Integration::EMotionFXPtr<MotionSet>::MakeFromNew(MotionSet::Create("testMotionSet"));
+            m_motionSet = AZStd::make_unique<MotionSet>();
+            m_motionSet->SetName("testMotionSet");
 
             m_actorInstance = Integration::EMotionFXPtr<ActorInstance>::MakeFromNew(ActorInstance::Create(m_actor.get()));
 
             m_animGraphInstance = AnimGraphInstance::Create(m_animGraph.get(), m_actorInstance.get(), m_motionSet.get());
 
             m_actorInstance->SetAnimGraphInstance(m_animGraphInstance);
-
-            m_animGraphInstance->RecursivePrepareNodes();
-            m_animGraphInstance->Init();
-            m_animGraphInstance->OnUpdateUniqueData();
         }
 
         void TearDown() override
@@ -237,9 +239,9 @@ namespace EMotionFX
         // the EMotionFX runtime.
         Integration::EMotionFXPtr<Actor> m_actor;
         MorphSetup* m_morphSetup = nullptr;
-        Integration::EMotionFXPtr<AnimGraph> m_animGraph;
+        AZStd::unique_ptr<AnimGraph> m_animGraph;
         AnimGraphStateMachine* m_stateMachine = nullptr;
-        Integration::EMotionFXPtr<MotionSet> m_motionSet;
+        AZStd::unique_ptr<MotionSet> m_motionSet;
         Integration::EMotionFXPtr<ActorInstance> m_actorInstance;
         AnimGraphInstance* m_animGraphInstance = nullptr;
         const float m_scaleFactor = 10.0f;
@@ -260,7 +262,9 @@ namespace EMotionFX
         const Mesh* mesh = m_actor->GetMesh(0, 0);
         const uint32 vertexCount = mesh->GetNumOrgVertices();
         const AZ::PackedVector3f* positions = static_cast<AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
-        const AZStd::array<float, 4> weights = {{0.0f, 0.5f, 1.0f, 0.0f}};
+        const AZStd::array<float, 4> weights {
+            {0.0f, 0.5f, 1.0f, 0.0f}
+        };
         AZStd::vector<AZ::Vector3> gotWeightedPoints;
         AZStd::vector<AZ::Vector3> expectedWeightedPoints;
         for (const float weight : weights)

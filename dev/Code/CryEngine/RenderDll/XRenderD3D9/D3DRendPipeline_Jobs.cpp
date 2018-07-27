@@ -23,8 +23,6 @@
 #include "D3DStereo.h"
 #include "D3DHWShader.h"
 
-#include <IJobManager_JobDelegator.h>
-
 #include "Common/RenderView.h"
 
 ///////////////////////////////////////////////////////////////////////////////

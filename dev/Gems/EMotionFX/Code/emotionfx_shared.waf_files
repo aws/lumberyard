@@ -4,6 +4,7 @@
             "Include/Integration/AnimationBus.h",
             "Include/Integration/ActorComponentBus.h",
             "Include/Integration/AnimGraphComponentBus.h",
+            "Include/Integration/AnimAudioComponentBus.h",
             "Include/Integration/SimpleMotionComponentBus.h"
         ],
         "GemShared/Source/System": [
@@ -23,6 +24,8 @@
         "GemShared/Source/Components": [
             "Source/Integration/Components/ActorComponent.h",
             "Source/Integration/Components/ActorComponent.cpp",
+            "Source/Integration/Components/AnimAudioComponent.h",
+            "Source/Integration/Components/AnimAudioComponent.cpp",
             "Source/Integration/Components/AnimGraphComponent.h",
             "Source/Integration/Components/AnimGraphComponent.cpp",
             "Source/Integration/Components/SimpleMotionComponent.h",

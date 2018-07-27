@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #ifdef ENABLE_LEGACY_ANIMATION
 #include "EditorPreferencesPageMannequinGeneral.h"

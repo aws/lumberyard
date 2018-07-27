@@ -55,7 +55,7 @@ public:
     // IStreamEngine interface
     //////////////////////////////////////////////////////////////////////////
     IReadStreamPtr StartRead (const EStreamTaskType tSource, const char* szFile, IStreamCallback* pCallback, const StreamReadParams* pParams = NULL);
-    size_t StartBatchRead(IReadStreamPtr* pStreamsOut, const StreamReadBatchParams* pReqs, size_t numReqs, std::function<void()>* preRequestCallback = nullptr);
+    size_t StartBatchRead(IReadStreamPtr* pStreamsOut, const StreamReadBatchParams* pReqs, size_t numReqs, AZStd::function<void()>* preRequestCallback = nullptr);
     void BeginReadGroup();
     void EndReadGroup();
 

@@ -12,7 +12,6 @@
 
 #pragma once
 
-// include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
 
@@ -25,15 +24,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeFloatMath1Node
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeFloatMath1Node, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeFloatMath1Node, "{F6B9FDF5-6192-4CB7-A18D-447C0363C041}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000008
-        };
+        AZ_RTTI(BlendTreeFloatMath1Node, "{F6B9FDF5-6192-4CB7-A18D-447C0363C041}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -48,8 +41,7 @@ namespace EMotionFX
             PORTID_OUTPUT_RESULT    = 1
         };
 
-        // available math functions
-        enum EMathFunction
+        enum EMathFunction : AZ::u8
         {
             MATHFUNCTION_SIN            = 0,
             MATHFUNCTION_COS            = 1,
@@ -80,10 +72,11 @@ namespace EMotionFX
             MATHFUNCTION_NUMFUNCTIONS
         };
 
-        static BlendTreeFloatMath1Node* Create(AnimGraph* animGraph);
+        BlendTreeFloatMath1Node();
+        ~BlendTreeFloatMath1Node();
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void SetMathFunction(EMathFunction func);
 
@@ -93,21 +86,15 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
         typedef float (MCORE_CDECL * BlendTreeMath1Function)(float input);
 
-        EMathFunction           mMathFunction;
-        BlendTreeMath1Function  mCalculateFunc;
-
-        BlendTreeFloatMath1Node(AnimGraph* animGraph);
-        ~BlendTreeFloatMath1Node();
+        EMathFunction           m_mathFunction;
+        BlendTreeMath1Function  m_calculateFunc;
 
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
-        void OnUpdateAttributes() override;
 
         static float MCORE_CDECL CalculateSin(float input);
         static float MCORE_CDECL CalculateCos(float input);

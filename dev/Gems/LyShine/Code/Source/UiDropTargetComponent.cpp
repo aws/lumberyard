@@ -228,14 +228,12 @@ void UiDropTargetComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)DropStateInvalid>("eUiDropState_Invalid");
 
         behaviorContext->EBus<UiDropTargetBus>("UiDropTargetBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetOnDropActionName", &UiDropTargetBus::Events::GetOnDropActionName)
             ->Event("SetOnDropActionName", &UiDropTargetBus::Events::SetOnDropActionName)
             ->Event("GetDropState", &UiDropTargetBus::Events::GetDropState)
             ->Event("SetDropState", &UiDropTargetBus::Events::SetDropState);
 
         behaviorContext->EBus<UiDropTargetNotificationBus>("UiDropTargetNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiDropTargetNotificationBusBehaviorHandler>();
     }
 }

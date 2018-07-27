@@ -578,7 +578,15 @@ namespace AZ
 
             for (const auto& alias : m_aliases)
             {
-                if (((longest_match == 0) || (alias.second.size() > longest_match)) && (alias.second.size() <= bufStringLength))
+                // here we are making sure that the buffer being passed in has enough space to include the alias in it.
+                // we are trying to find the LONGEST match, meaning of the following two examples, the second should 'win'
+                // File:  g:/lumberyard/dev/files/morefiles/blah.xml
+                // Alias1 links to 'g:/lumberyard/dev/'
+                // Alias2 links to 'g:/lumberyard/dev/files/morefiles'
+                // so returning Alias2 is preferred as it is more specific, even though alias1 includes it.
+                // note that its not possible for this to be matched if the string is shorter than the length of the alias itself so we skip
+                // strings that are shorter than the alias's mapped path without checking.
+                if ((longest_match == 0) || (alias.second.size() > longest_match) && (alias.second.size() <= bufStringLength))
                 {
                     // custom strcmp that ignores slash directions
                     bool allMatch = true;
@@ -645,6 +653,13 @@ namespace AZ
         {
             AZ_Assert(path != resolvedPath && resolvedPathSize > strlen(path), "Resolved path is incorrect");
             AZ_Assert(path && path[0] != '%', "%% is deprecated, @ is the only valid alias token");
+
+            // we assert above, but we also need to properly handle the case when the resolvedPath buffer size
+            // is too small to copy the source into.
+            if (path == resolvedPath || (resolvedPathSize < strlen(path)))
+            {
+                return false;
+            }
 
             size_t pathLen = strlen(path) + 1; // account for null
             azstrncpy(resolvedPath, resolvedPathSize, path, pathLen);

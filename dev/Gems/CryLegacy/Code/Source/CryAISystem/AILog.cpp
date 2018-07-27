@@ -11,13 +11,12 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #ifdef CRYAISYSTEM_VERBOSITY
 
 #include "AILog.h"
 #include "CAISystem.h"
-#include "CryAISystem.h"
 
 #include "ISystem.h"
 #include "ITimer.h"
@@ -213,7 +212,7 @@ void AIError(const char* format, ...)
 
     va_list args;
     va_start(args, format);
-    vsnprintf(outputBufferLog, outputBufferSize, format, args);
+    azvsnprintf(outputBufferLog, outputBufferSize, format, args);
     outputBufferLog[outputBufferSize - 1] = '\0';
     va_end(args);
 
@@ -246,7 +245,7 @@ void AIWarning(const char* format, ...)
 
     va_list args;
     va_start(args, format);
-    vsnprintf(outputBufferLog, outputBufferSize, format, args);
+    azvsnprintf(outputBufferLog, outputBufferSize, format, args);
     outputBufferLog[outputBufferSize - 1] = '\0';
     va_end(args);
     pSystem->Warning(VALIDATOR_MODULE_AI, VALIDATOR_WARNING, VALIDATOR_FLAG_AI, 0, "AI: %s", outputBufferLog);
@@ -272,7 +271,7 @@ void AILogAlways(const char* format, ...)
     memcpy(outputBufferLog, outputPrefix, outputPrefixLen);
     va_list args;
     va_start(args, format);
-    vsnprintf(outputBufferLog + outputPrefixLen, outputBufferSize - outputPrefixLen, format, args);
+    azvsnprintf(outputBufferLog + outputPrefixLen, outputBufferSize - outputPrefixLen, format, args);
     outputBufferLog[outputBufferSize - 1] = '\0';
     va_end(args);
 
@@ -294,7 +293,7 @@ void AILogLoading(const char* format, ...)
     memcpy(outputBufferLog, outputPrefix2, outputPrefixLen2);
     va_list args;
     va_start(args, format);
-    vsnprintf(outputBufferLog + outputPrefixLen2, outputBufferSize - outputPrefixLen2, format, args);
+    azvsnprintf(outputBufferLog + outputPrefixLen2, outputBufferSize - outputPrefixLen2, format, args);
     outputBufferLog[outputBufferSize - 1] = '\0';
     va_end(args);
 
@@ -338,7 +337,7 @@ void AILogProgress(const char* format, ...)
     memcpy(outputBufferLog, outputPrefix, outputPrefixLen);
     va_list args;
     va_start(args, format);
-    vsnprintf(outputBufferLog + outputPrefixLen, outputBufferSize - outputPrefixLen, format, args);
+    azvsnprintf(outputBufferLog + outputPrefixLen, outputBufferSize - outputPrefixLen, format, args);
     outputBufferLog[outputBufferSize - 1] = '\0';
     va_end(args);
 
@@ -360,7 +359,7 @@ void AILogEvent(const char* format, ...)
     memcpy(outputBufferLog, outputPrefix, outputPrefixLen);
     va_list args;
     va_start(args, format);
-    vsnprintf(outputBufferLog + outputPrefixLen, outputBufferSize - outputPrefixLen, format, args);
+    azvsnprintf(outputBufferLog + outputPrefixLen, outputBufferSize - outputPrefixLen, format, args);
     outputBufferLog[outputBufferSize - 1] = '\0';
     va_end(args);
 
@@ -382,7 +381,7 @@ void AILogComment(const char* format, ...)
     memcpy(outputBufferLog, outputPrefix, outputPrefixLen);
     va_list args;
     va_start(args, format);
-    vsnprintf(outputBufferLog + outputPrefixLen, outputBufferSize - outputPrefixLen, format, args);
+    azvsnprintf(outputBufferLog + outputPrefixLen, outputBufferSize - outputPrefixLen, format, args);
     outputBufferLog[outputBufferSize - 1] = '\0';
     va_end(args);
 

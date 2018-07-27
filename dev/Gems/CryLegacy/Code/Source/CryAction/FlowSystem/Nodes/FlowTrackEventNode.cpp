@@ -13,7 +13,7 @@
 
 // Description : Dynamic node for Track Event logic
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowTrackEventNode.h"
 
 CFlowTrackEventNode::CFlowTrackEventNode(SActivationInfo* pActInfo)

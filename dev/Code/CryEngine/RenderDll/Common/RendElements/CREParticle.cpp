@@ -23,7 +23,6 @@
 #include "CREParticleGPU.h"
 #include <ParticleParams.h>
 // Confetti END:
-#include <IJobManager_JobDelegator.h>
 #include "../RenderView.h"
 #include "../Textures/TextureManager.h"
 

@@ -15,8 +15,8 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetTypeInfoBus.h>
 #include <AzCore/IO/FileIO.h>
+#include <EMotionFX/Source/Allocators.h>
 #include <Integration/System/SystemCommon.h>
-
 
 namespace EMotionFX
 {
@@ -28,8 +28,8 @@ namespace EMotionFX
         class EMotionFXAsset : public AZ::Data::AssetData
         {
         public:
-            AZ_CLASS_ALLOCATOR(EMotionFXAsset, EMotionFXAllocator, 0);
-            AZ_RTTI(EMotionFXAsset, "{043F606A-A483-4910-8110-D8BC4B78922C}", AZ::Data::AssetData);
+            AZ_RTTI(EMotionFXAsset, "{043F606A-A483-4910-8110-D8BC4B78922C}", AZ::Data::AssetData)
+            AZ_CLASS_ALLOCATOR(EMotionFXAsset, EMotionFXAllocator, 0)
 
             AZStd::vector<AZ::u8> m_emfxNativeData;
         };
@@ -43,7 +43,7 @@ namespace EMotionFX
             , private AZ::AssetTypeInfoBus::Handler
         {
         public:
-            AZ_CLASS_ALLOCATOR(EMotionFXAssetHandler<DataType>, EMotionFXAllocator, 0);
+            AZ_CLASS_ALLOCATOR(EMotionFXAssetHandler<DataType>, EMotionFXAllocator, 0)
 
             EMotionFXAssetHandler()
             {
@@ -111,20 +111,20 @@ namespace EMotionFX
 
             void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes) override
             {
-                assetTypes.push_back(AZ::AzTypeInfo<DataType>::Uuid());
+                assetTypes.push_back(azrtti_typeid<DataType>());
             }
 
             void Register()
             {
                 AZ_Assert(AZ::Data::AssetManager::IsReady(), "Asset database isn't ready!");
-                AZ::Data::AssetManager::Instance().RegisterHandler(this, AZ::AzTypeInfo<DataType>::Uuid());
+                AZ::Data::AssetManager::Instance().RegisterHandler(this, azrtti_typeid<DataType>());
 
-                AZ::AssetTypeInfoBus::Handler::BusConnect(AZ::AzTypeInfo<DataType>::Uuid());
+                AZ::AssetTypeInfoBus::Handler::BusConnect(azrtti_typeid<DataType>());
             }
 
             void Unregister()
             {
-                AZ::AssetTypeInfoBus::Handler::BusDisconnect(AZ::AzTypeInfo<DataType>::Uuid());
+                AZ::AssetTypeInfoBus::Handler::BusDisconnect(azrtti_typeid<DataType>());
 
                 if (AZ::Data::AssetManager::IsReady())
                 {

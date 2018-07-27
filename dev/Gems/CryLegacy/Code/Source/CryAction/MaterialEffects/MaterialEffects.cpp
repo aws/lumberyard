@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <limits.h>
 #include <CryPath.h>
 #include "MaterialEffectsCVars.h"
@@ -255,7 +255,7 @@ namespace
         bool operator()(const CConstCharArray& s0, const CConstCharArray& s1) const
         {
             const size_t minCount = (s0.count < s1.count) ? s0.count : s1.count;
-            const int result = memicmp(s0.ptr, s1.ptr, minCount);
+            const int result = azmemicmp(s0.ptr, s1.ptr, minCount);
             return result ? (result < 0) : (s0.count < s1.count);
         }
     };
@@ -359,7 +359,7 @@ void CMaterialEffects::LoadSpreadSheet()
             if (rowCount == 0 && colIndex > 0)
             {
                 const int matId = gEnv->p3DEngine->GetMaterialManager()->GetSurfaceTypeManager()->GetSurfaceTypeByName(cellString.c_str(), "MFX", true)->GetId();
-                if (matId != 0 || /* matId == 0 && */ _stricmp(cellString.c_str(), "mat_default") == 0) // if matId != 0 or it's the mat_default name
+                if (matId != 0 || /* matId == 0 && */ azstricmp(cellString.c_str(), "mat_default") == 0) // if matId != 0 or it's the mat_default name
                 {
                     // CryLogAlways("[MFX] Material found: %s [ID=%d] [mapping to row/col=%d]", cellString.c_str(), matId, colCount);
                     if (m_surfaceIdToMatrixEntry.size() < matId)

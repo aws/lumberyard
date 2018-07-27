@@ -1276,7 +1276,6 @@ void UiParticleEmitterComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiParticleEmitterInterface::ParticleInitialDirectionType::RelativeToEmitterCenter>("eUiParticleInitialDirectionType_RelativeToEmitterCenter");
 
         behaviorContext->EBus<UiParticleEmitterBus>("UiParticleEmitterBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetIsEmitting", &UiParticleEmitterBus::Events::GetIsEmitting)
             ->Event("SetIsEmitting", &UiParticleEmitterBus::Events::SetIsEmitting)
             ->Event("GetIsRandomSeedFixed", &UiParticleEmitterBus::Events::GetIsRandomSeedFixed)

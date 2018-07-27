@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "../FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <LyShine/ILyShine.h>
 #include <LyShine/Bus/UiCanvasBus.h>
 #include <LyShine/Bus/UiElementBus.h>

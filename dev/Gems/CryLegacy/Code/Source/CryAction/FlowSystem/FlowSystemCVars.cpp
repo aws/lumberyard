@@ -14,7 +14,7 @@
 // Description : CVars for the FlowSystem
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowSystemCVars.h"
 #include "Inspectors/FlowFilters.h"
 #include <CryAction.h>

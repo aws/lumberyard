@@ -1193,17 +1193,18 @@ SystemFile::FindFiles(const char* filter, FindFileCB cb)
 
     if (dir != NULL)
     {
-        struct dirent entry;
-        struct dirent* result = NULL;
+        // clear the errno state so we can distinguish between real errors and end of stream
+        errno = 0;
+        struct dirent* entry = readdir(dir);
 
-        int lastError = readdir_r(dir, &entry, &result);
         // List all the other files in the directory.
-        while (result != NULL && lastError == 0)
+        while (entry != NULL)
         {
-            cb(entry.d_name, (entry.d_type & DT_DIR) == 0);
-            lastError = readdir_r(dir, &entry, &result);
+            cb(entry->d_name, (entry->d_type & DT_DIR) == 0);
+            entry = readdir(dir);
         }
 
+        int lastError = errno;
         if (lastError != 0)
         {
             EBUS_EVENT(FileIOEventBus, OnError, nullptr, filter, lastError);

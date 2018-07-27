@@ -210,13 +210,13 @@ bool CLoaderCGF::LoadCGFWork(CContentCGF* pContentCGF, const char* filename, ICh
     {
         const char* const pExt = PathUtil::GetExt(filename);
         m_IsCHR =
-            !_stricmp(pExt, "chr") ||
-            !_stricmp(pExt, "chrp") ||
-            !_stricmp(pExt, "chrm") ||
-            !_stricmp(pExt, "skin") ||
-            !_stricmp(pExt, "skinp") ||
-            !_stricmp(pExt, "skinm") ||
-            !_stricmp(pExt, "skel");
+            !azstricmp(pExt, "chr") ||
+            !azstricmp(pExt, "chrp") ||
+            !azstricmp(pExt, "chrm") ||
+            !azstricmp(pExt, "skin") ||
+            !azstricmp(pExt, "skinp") ||
+            !azstricmp(pExt, "skinm") ||
+            !azstricmp(pExt, "skel");
     }
 
     const bool bJustGeometry = (nLoadingFlags& IStatObj::ELoadingFlagsJustGeometry) != 0;
@@ -1762,7 +1762,7 @@ bool CLoaderCGF::ProcessSkinning()
             pSkinningInfo->m_arrBonesDesc[nBone].m_DefaultB2W = m_arrInitPose34[nBoneID];
 
             memset(pSkinningInfo->m_arrBonesDesc[nBone].m_arrBoneName, 0, sizeof(pSkinningInfo->m_arrBonesDesc[nBone].m_arrBoneName));
-            strcpy(pSkinningInfo->m_arrBonesDesc[nBone].m_arrBoneName, m_arrBoneNameTable[nBoneID].c_str());
+            azstrcpy(pSkinningInfo->m_arrBonesDesc[nBone].m_arrBoneName, sizeof(pSkinningInfo->m_arrBonesDesc[nBone].m_arrBoneName), m_arrBoneNameTable[nBoneID].c_str());
 
             //fill in names of the bones and the limb IDs              ---
             uint32 nBoneId = m_arrIndexToId[nBone];
@@ -4293,7 +4293,7 @@ void CLoaderCGF::Warning(const char* szFormat, ...)
         char szBuffer[1024];
         va_list args;
         va_start(args, szFormat);
-        vsprintf_s(szBuffer, szFormat, args);
+        azvsprintf(szBuffer, szFormat, args);
         m_pListener->Warning(szBuffer);
         va_end(args);
     }

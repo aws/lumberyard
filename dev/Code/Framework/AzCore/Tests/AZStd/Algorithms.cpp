@@ -402,4 +402,40 @@ namespace UnitTest
             AZ_TEST_ASSERT(int64Arr[static_cast<AZStd::size_t>(i - 1)] == (i << 56 | AZ_INT64_CONST(0x000f0e0d0c0b0a09)));
         }
     }
+
+    TEST_F(Algorithms, CopyBackwardFastCopy)
+    {
+        array<int, 3> src = {{ 1, 2, 3 }};
+        array<int, 3> dest;
+
+        AZStd::copy_backward(src.begin(), src.end(), dest.end());
+        
+        EXPECT_EQ(1, dest[0]);
+        EXPECT_EQ(2, dest[1]);
+        EXPECT_EQ(3, dest[2]);
+    }
+
+    TEST_F(Algorithms, CopyBackwardStandardCopy)
+    {
+        // List is not contiguous, and is therefore unable to perform a fast copy
+        list<int> src = { 1, 2, 3 };
+        array<int, 3> dest;
+
+        AZStd::copy_backward(src.begin(), src.end(), dest.end());
+        
+        EXPECT_EQ(1, dest[0]);
+        EXPECT_EQ(2, dest[1]);
+        EXPECT_EQ(3, dest[2]);
+    }
+
+    TEST_F(Algorithms, ReverseCopy)
+    {
+        array<int, 3> src = {{ 1, 2, 3 }};
+        array<int, 3> dest;
+
+        AZStd::reverse_copy(src.begin(), src.end(), dest.begin());
+        EXPECT_EQ(3, dest[0]);
+        EXPECT_EQ(2, dest[1]);
+        EXPECT_EQ(1, dest[2]);
+    }
 }

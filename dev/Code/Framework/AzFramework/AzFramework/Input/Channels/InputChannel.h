@@ -100,7 +100,25 @@ namespace AzFramework
             AZ_RTTI(PositionData2D, "{354437EC-6BFD-41D4-A0F2-7740018D3589}", CustomData);
             virtual ~PositionData2D() = default;
 
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Convenience function to convert the normalized position to screen space coordinates
+            //! \param[in] screenWidth The width of the screen to use in the conversion
+            //! \param[in] screenHeight The height of the screen to use in the conversion
+            //! \return The position in screen space coordinates
+            AZ::Vector2 ConvertToScreenSpaceCoordinates(float screenWidth, float screenHeight) const;
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Update both m_normalizedPosition and m_normalizedPositionDelta given a new position
+            //! \param[in] newNormalizedPosition The new normalized position
+            void UpdateNormalizedPositionAndDelta(const AZ::Vector2& newNormalizedPosition);
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Normalized screen coordinates, where the top-left of the screen is at (0.0, 0.0) and
+            //! the bottom-right is at (1.0, 1.0)
             AZ::Vector2 m_normalizedPosition = AZ::Vector2(0.5f, 0.5f);
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! The delta between the current normalized position and the last one
             AZ::Vector2 m_normalizedPositionDelta = AZ::Vector2::CreateZero();
         };
 

@@ -546,6 +546,10 @@ struct IAnimTrack
     //! Set a multiplier which will be multiplied to track values in SetValue and divided out in GetValue if requested
     virtual void SetMultiplier(float trackValueMultiplier) = 0;
 
+    // Expanded state interface
+    virtual void SetExpanded(bool expanded) = 0;
+    virtual bool GetExpanded() const = 0;
+
     // </interfuscator:shuffle>
 };
 
@@ -854,6 +858,10 @@ public:
 
     // Returns the ICharacterInstance used on an Entity or Component Node, nullptr otherwise
     virtual ICharacterInstance* GetCharacterInstance() { return nullptr; }
+
+    // Expanded state interface
+    virtual void SetExpanded(bool expanded) = 0;
+    virtual bool GetExpanded() const = 0;
 };
 
 //! Track event listener
@@ -1103,8 +1111,12 @@ struct IAnimSequence
     virtual void AddTrackEventListener(ITrackEventListener* pListener) = 0;
     virtual void RemoveTrackEventListener(ITrackEventListener* pListener) = 0;
 
-    // return the seuqnence type - legacy or new director component
+    // return the sequence type - legacy or new component entity
     virtual SequenceType GetSequenceType() const = 0;
+
+    // Expanded state interface
+    virtual void SetExpanded(bool expanded) = 0;
+    virtual bool GetExpanded() const = 0;
 
     // </interfuscator:shuffle>
 };

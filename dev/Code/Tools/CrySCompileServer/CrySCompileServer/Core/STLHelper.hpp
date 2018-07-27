@@ -41,7 +41,7 @@ public:
     static  void                Tokenize(tdEntryVec& rRet, const std::string& Tokens, const std::string& Separator);
     static  tdToken         SplitToken(const std::string& rToken, const std::string& rSeparator);
     static  void                Splitizer(tdTokenList& rTokenList, const tdEntryVec& rFilter, const std::string& rSeparator);
-    static  void                Trim(std::string& rStr, char C);
+    static  void                Trim(std::string& rStr, const std::string& charsToTrim);
     static  void                Remove(std::string& rTokenDst, const std::string& rTokenSrc, const char C);
     static  void                Replace(std::vector<uint8_t>& rRet, const std::vector<uint8_t>& rTokenSrc, const std::string& rToReplace, const std::string& rReplacement);
     static  void                Replace(std::string& rRet, const std::string& rSrc, const std::string& rToReplace, const std::string& rReplacement);

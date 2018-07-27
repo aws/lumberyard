@@ -15,7 +15,9 @@ import botocore
 import CloudCanvas
 import hashlib
 import json
+import os
 
+from botocore.client import Config
 from botocore.exceptions import ClientError
 
 BUCKET = {'ttscache': None, 'packagedvoicelines': None}
@@ -172,7 +174,8 @@ def generate_presigned_url(key):
     '''
     Returns a presigned url for the given key in ttscache bucket
     '''
-    s3_client = boto3.client('s3')
+    s3_client = __get_s3_client()
+
     if cache_runtime_generated_files():
         return s3_client.generate_presigned_url('get_object',
             Params = { "Bucket" : CloudCanvas.get_setting(TTSCACHE), "Key" : key })
@@ -211,3 +214,13 @@ def get_custom_mappings():
         response = client.get_object(Bucket=CloudCanvas.get_setting(TTSCACHE), Key=file_key)
         custom_mappings = json.loads(response["Body"].read())
     return custom_mappings
+
+def __get_s3_client():
+    current_region = os.environ.get('AWS_REGION')
+    if not current_region:
+        raise RuntimeError('AWS region is empty')
+
+    configuration = Config(signature_version='s3v4', s3={
+                           "addressing_style": "path"})
+    s3_client = boto3.client('s3', region_name=current_region, config=configuration)
+    return s3_client

@@ -13,7 +13,7 @@
 
 // Description : CVars for the AnimationGraph Subsystem
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "AnimationGraphCVars.h"
 #include "../Animation/PoseAligner/PoseAligner.h"

@@ -11,8 +11,8 @@
 */
 #include "precompiled.h"
 
-#include <qgraphicsproxywidget.h>
-#include <qtoolbutton.h>
+#include <QGraphicsProxyWidget>
+#include <QToolButton>
 
 #include <Components/NodePropertyDisplays/ItemModelNodePropertyDisplay.h>
 #include <Source/Components/NodePropertyDisplays/ui_ItemModelInspectionDialog.h>
@@ -269,34 +269,21 @@ namespace GraphCanvas
 	
     ItemModelNodePropertyDisplay::ItemModelNodePropertyDisplay(ItemModelDataInterface* dataInterface)
         : m_itemModelDataInterface(dataInterface)
+        , m_proxyWidget(nullptr)
+        , m_itemModelSelectionWidget(nullptr)
     {
         m_itemModelDataInterface->RegisterDisplay(this);
 
         m_disabledLabel = aznew GraphCanvasLabel();
         m_displayLabel = aznew GraphCanvasLabel();
-
-        m_proxyWidget = new QGraphicsProxyWidget();
-
-        m_itemModelSelectionWidget = aznew ItemModelSelectionWidget(m_itemModelDataInterface);
-        m_itemModelSelectionWidget->setProperty("HasNoWindowDecorations", true);
-        m_itemModelSelectionWidget->setProperty("DisableFocusWindowFix", true);
-
-        m_proxyWidget->setWidget(m_itemModelSelectionWidget);
-
-        QObject::connect(m_itemModelSelectionWidget, &ItemModelSelectionWidget::OnFocusIn, [this]() { EditStart(); });
-        QObject::connect(m_itemModelSelectionWidget, &ItemModelSelectionWidget::OnFocusOut, [this]() { EditFinished(); });
-        QObject::connect(m_itemModelSelectionWidget, &ItemModelSelectionWidget::OnIndexSelected, [this](const QModelIndex& selectedIndex) { AssignIndex(selectedIndex); });
-
-        RegisterShortcutDispatcher(m_itemModelSelectionWidget);
     }
     
     ItemModelNodePropertyDisplay::~ItemModelNodePropertyDisplay()
     {        
         delete m_itemModelDataInterface;
-
-        delete m_proxyWidget;
         delete m_disabledLabel;
         delete m_displayLabel;
+        CleanupProxyWidget();
     }
     
     void ItemModelNodePropertyDisplay::RefreshStyle()
@@ -304,7 +291,10 @@ namespace GraphCanvas
         m_disabledLabel->SetSceneStyle(GetSceneId(), NodePropertyDisplay::CreateDisabledLabelStyle("variable").c_str());
         m_displayLabel->SetSceneStyle(GetSceneId(), NodePropertyDisplay::CreateDisplayLabelStyle("variable").c_str());
 
-        m_itemModelSelectionWidget->setMinimumSize(m_displayLabel->GetStyleHelper().GetMinimumSize().toSize());
+        if (m_itemModelSelectionWidget)
+        {
+            m_itemModelSelectionWidget->setMinimumSize(m_displayLabel->GetStyleHelper().GetMinimumSize().toSize());
+        }
     }
     
     void ItemModelNodePropertyDisplay::UpdateDisplay()
@@ -317,21 +307,28 @@ namespace GraphCanvas
         }
         
         m_displayLabel->SetLabel(displayString.c_str());
-        m_itemModelSelectionWidget->UpdateDisplay();
+
+        if (m_itemModelSelectionWidget)
+        {
+            m_itemModelSelectionWidget->UpdateDisplay();
+        }
     }
     
-    QGraphicsLayoutItem* ItemModelNodePropertyDisplay::GetDisabledGraphicsLayoutItem() const
-    {
+    QGraphicsLayoutItem* ItemModelNodePropertyDisplay::GetDisabledGraphicsLayoutItem()
+{
+        CleanupProxyWidget();
         return m_disabledLabel;
     }
 
-    QGraphicsLayoutItem* ItemModelNodePropertyDisplay::GetDisplayGraphicsLayoutItem() const
-    {
+    QGraphicsLayoutItem* ItemModelNodePropertyDisplay::GetDisplayGraphicsLayoutItem()
+{
+        CleanupProxyWidget();
         return m_displayLabel;
     }
 
-    QGraphicsLayoutItem* ItemModelNodePropertyDisplay::GetEditableGraphicsLayoutItem() const
-    {
+    QGraphicsLayoutItem* ItemModelNodePropertyDisplay::GetEditableGraphicsLayoutItem()
+{
+        SetupProxyWidget();
         return m_proxyWidget;
     }
 
@@ -352,6 +349,40 @@ namespace GraphCanvas
         UpdateDisplay();
         NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
     }
-    
+
+    void ItemModelNodePropertyDisplay::SetupProxyWidget()
+    {
+        if (!m_itemModelSelectionWidget)
+        {
+            m_proxyWidget = new QGraphicsProxyWidget();
+
+            m_itemModelSelectionWidget = aznew ItemModelSelectionWidget(m_itemModelDataInterface);
+            m_itemModelSelectionWidget->setProperty("HasNoWindowDecorations", true);
+            m_itemModelSelectionWidget->setProperty("DisableFocusWindowFix", true);
+
+            m_proxyWidget->setWidget(m_itemModelSelectionWidget);
+
+            QObject::connect(m_itemModelSelectionWidget, &ItemModelSelectionWidget::OnFocusIn, [this]() { EditStart(); });
+            QObject::connect(m_itemModelSelectionWidget, &ItemModelSelectionWidget::OnFocusOut, [this]() { EditFinished(); });
+            QObject::connect(m_itemModelSelectionWidget, &ItemModelSelectionWidget::OnIndexSelected, [this](const QModelIndex& selectedIndex) { AssignIndex(selectedIndex); });
+
+            RegisterShortcutDispatcher(m_itemModelSelectionWidget);
+            UpdateDisplay();
+            RefreshStyle();
+        }
+        
+    }
+
+    void ItemModelNodePropertyDisplay::CleanupProxyWidget()
+    {
+        if (m_itemModelSelectionWidget) 
+        {
+            UnregisterShortcutDispatcher(m_itemModelSelectionWidget);
+            delete m_itemModelSelectionWidget; // NB: this implicitly deletes m_proxyWidget
+            m_itemModelSelectionWidget = nullptr;
+            m_proxyWidget = nullptr;
+        }
+    }
+
 #include <Source/Components/NodePropertyDisplays/ItemModelNodePropertyDisplay.moc>
 }

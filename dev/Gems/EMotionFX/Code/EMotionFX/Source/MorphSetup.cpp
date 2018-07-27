@@ -14,10 +14,13 @@
 #include "MorphSetup.h"
 #include "MorphTarget.h"
 #include <MCore/Source/StringConversions.h>
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MorphSetup, DeformerAllocator, 0)
+
+
     // constructor
     MorphSetup::MorphSetup()
         : BaseObject()
@@ -36,7 +39,7 @@ namespace EMotionFX
     // create
     MorphSetup* MorphSetup::Create()
     {
-        return new MorphSetup();
+        return aznew MorphSetup();
     }
 
 

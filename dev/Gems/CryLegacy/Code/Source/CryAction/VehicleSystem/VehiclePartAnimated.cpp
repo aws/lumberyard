@@ -13,7 +13,7 @@
 
 // Description : Implements a part for vehicles which uses animated characters
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ICryAnimation.h"
 #include "IVehicleSystem.h"
@@ -343,11 +343,11 @@ IStatObj* CVehiclePartAnimated::GetDestroyedGeometry(const char* pJointName, uns
 
         if (index == 0)
         {
-            _snprintf(buffer, sizeof(buffer), "%s%s", pJointName, pSuffix);
+            azsnprintf(buffer, sizeof(buffer), "%s%s", pJointName, pSuffix);
         }
         else
         {
-            _snprintf(buffer, sizeof(buffer), "%s_debris_%d", pJointName, index);
+            azsnprintf(buffer, sizeof(buffer), "%s_debris_%d", pJointName, index);
         }
 
         buffer[sizeof(buffer) - 1] = '\0';
@@ -378,11 +378,11 @@ Matrix34 CVehiclePartAnimated::GetDestroyedGeometryTM(const char* pJointName, un
 
         if (index == 0)
         {
-            _snprintf(buffer, sizeof(buffer), "%s%s", pJointName, pSuffix);
+            azsnprintf(buffer, sizeof(buffer), "%s%s", pJointName, pSuffix);
         }
         else
         {
-            _snprintf(buffer, sizeof(buffer), "%s_debris_%d", pJointName, index);
+            azsnprintf(buffer, sizeof(buffer), "%s_debris_%d", pJointName, index);
         }
 
         buffer[sizeof(buffer) - 1] = '\0';
@@ -838,7 +838,7 @@ void CVehiclePartAnimated::FlagSkeleton(ISkeletonPose* pSkeletonPose, IDefaultSk
                     {
                         // check additional proxies, by naming convention _02, .. _05
                         char buf[64];
-                        _snprintf(buf, sizeof(buf), "%s_%02i", name.c_str(), p);
+                        azsnprintf(buf, sizeof(buf), "%s_%02i", name.c_str(), p);
                         buf[sizeof(buf) - 1] = '\0';
 
                         proxyId = rIDefaultSkeleton.GetJointIDByName(buf);

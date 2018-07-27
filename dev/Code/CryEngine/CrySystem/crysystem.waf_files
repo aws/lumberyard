@@ -296,19 +296,6 @@
             "Cryptography/StreamCipher.h",
             "Cryptography/Whirlpool.h"
         ],
-        "JobManager": [
-            "JobManager/JobManager.cpp",
-            "JobManager/JobManager.h",
-            "JobManager/JobStructs.h"
-        ],
-        "JobManager/FallbackBackend": [
-            "JobManager/FallbackBackend/FallbackBackend.cpp",
-            "JobManager/FallbackBackend/FallBackBackend.h"
-        ],
-        "JobManager/ThreadBackEnd": [
-            "JobManager/PCBackEnd/ThreadBackEnd.cpp",
-            "JobManager/PCBackEnd/ThreadBackEnd.h"
-        ],
         "SoftCode": [
             "SoftCode/SoftCodeMgr.cpp",
             "SoftCode/SoftCodeMgr.h"
@@ -342,6 +329,20 @@
         "LZ4Decompressor": [
             "LZ4Decompressor.h",
             "LZ4Decompressor.cpp"
+        ],
+        "LevelSystem":
+        [
+            "LevelSystem/LevelSystem.cpp",
+            "LevelSystem/LevelSystem.h"
+        ],
+        "View System":
+        [
+            "ViewSystem/DebugCamera.cpp",
+            "ViewSystem/DebugCamera.h",
+            "ViewSystem/View.cpp",
+            "ViewSystem/View.h",
+            "ViewSystem/ViewSystem.cpp",
+            "ViewSystem/ViewSystem.h"
         ],
         "Serialization": [
             "Serialization/ArchiveHost.cpp",
@@ -410,11 +411,6 @@
             "MemReplay.h",
             "CrySizerImpl.cpp",
             "CrySizerImpl.h"
-        ],
-        "JobManager/BlockingBackend":
-        [
-            "JobManager/BlockingBackend/BlockingBackEnd.cpp",
-            "JobManager/BlockingBackend/BlockingBackEnd.h"
         ],
         "HTTPDownloader":
         [

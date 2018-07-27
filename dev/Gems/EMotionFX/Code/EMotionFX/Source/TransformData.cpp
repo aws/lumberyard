@@ -17,10 +17,13 @@
 #include "Actor.h"
 #include <MCore/Source/Compare.h>
 #include "Node.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(TransformData, TransformDataAllocator, 0)
+
     // default constructor
     TransformData::TransformData()
         : BaseObject()
@@ -44,7 +47,7 @@ namespace EMotionFX
     // create
     TransformData* TransformData::Create()
     {
-        return new TransformData();
+        return aznew TransformData();
     }
 
 

@@ -42,13 +42,13 @@ namespace ScriptCanvas
     }
     VariableDatumBase::VariableDatumBase(const Datum& datum)
         : m_data(datum)
-        , m_id(AZ::Uuid::CreateRandom())
+        , m_id(VariableId::MakeVariableId())
     {
     }
 
     VariableDatumBase::VariableDatumBase(Datum&& datum)
         : m_data(AZStd::move(datum))
-        , m_id(AZ::Uuid::CreateRandom())
+        , m_id(VariableId::MakeVariableId())
     {
     }
 

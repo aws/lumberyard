@@ -260,12 +260,15 @@ void CTrackViewDopeSheetBase::SetTimeScale(float timeScale, float fAnchorTime)
 
     float fCurrentOffset = -fAnchorTime * m_timeScale;
     m_scrollOffset.rx() += fOldOffset - fCurrentOffset;
+    m_scrollBar->setValue(m_scrollOffset.x());
 
     update();
 
     SetHorizontalExtent(-m_leftOffset, m_timeRange.end * m_timeScale);
 
     ComputeFrameSteps(GetVisibleRange());
+
+    OnHScroll();
 }
 
 void CTrackViewDopeSheetBase::showEvent(QShowEvent* event)
@@ -308,10 +311,10 @@ void CTrackViewDopeSheetBase::wheelEvent(QWheelEvent* event)
     }
 
     float z = (event->delta() > 0) ? (m_timeScale * 1.25f) : (m_timeScale * 0.8f);
-
-    const QPoint pt = event->pos();
-
-    float fAnchorTime = TimeFromPointUnsnapped(pt);
+    // Use m_mouseOverPos to get the local position in the timeline view instead of
+    // event->pos() which seems to include the variable left panel of the view that
+    // lists the tracks.
+    float fAnchorTime = TimeFromPointUnsnapped(m_mouseOverPos);
     SetTimeScale(z, fAnchorTime);
 
     event->accept();
@@ -1169,7 +1172,7 @@ CTrackViewNode* CTrackViewDopeSheetBase::GetNodeFromPointRec(CTrackViewNode* pCu
         return pCurrentNode;
     }
 
-    if (pCurrentNode->IsExpanded())
+    if (pCurrentNode->GetExpanded())
     {
         unsigned int childCount = pCurrentNode->GetChildCount();
         for (unsigned int i = 0; i < childCount; ++i)
@@ -1679,6 +1682,10 @@ void CTrackViewDopeSheetBase::MouseMoveMove(const QPoint& p, Qt::KeyboardModifie
         }
         m_keyTimeOffset = timeOffset;
     }
+
+    // The time of the selected keys has likely just changed. OnKeySelectionChanged() so the 
+    // UI elements of the key properties control will update.
+    pSequence->OnKeySelectionChanged();
 }
 
 void CTrackViewDopeSheetBase::MouseMoveDragTime(const QPoint& point, Qt::KeyboardModifiers modifiers)
@@ -1914,25 +1921,50 @@ void CTrackViewDopeSheetBase::LButtonDownOnTimeAdjustBar(const QPoint& point, CT
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDopeSheetBase::LButtonDownOnKey(const QPoint& point, CTrackViewKeyHandle& keyHandle, Qt::KeyboardModifiers modifiers)
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
+    AZ_Assert(sequence, "Expected a valid sequence.");
 
     if (!keyHandle.IsSelected() && !(modifiers & Qt::ControlModifier))
     {
-        CUndo undo("Select Keys");
-        CUndoAnimKeySelection* pUndoKeySelection = new CUndoAnimKeySelection(pSequence);
-        CUndo::Record(pUndoKeySelection);
+        CTrackViewSequenceNotificationContext context(sequence);
+        CUndoAnimKeySelection* undoKeySelection = new CUndoAnimKeySelection(sequence);
 
-        CTrackViewSequenceNotificationContext context(pSequence);
-        pSequence->DeselectAllKeys();
-        m_bJustSelected = true;
-        m_keyTimeOffset = 0;
-        keyHandle.Select(true);
-
-        ChangeSequenceTrackSelection(pSequence, keyHandle.GetTrack());
-
-        if (!pUndoKeySelection->IsSelectionChanged())
+        if (sequence->GetSequenceType() == SequenceType::Legacy)
         {
-            undo.Cancel();
+            CUndo undo("Select Keys");
+            CUndo::Record(undoKeySelection);
+
+            sequence->DeselectAllKeys();
+            m_bJustSelected = true;
+            m_keyTimeOffset = 0;
+            keyHandle.Select(true);
+
+            ChangeSequenceTrackSelection(sequence, keyHandle.GetTrack());
+
+            if (!undoKeySelection->IsSelectionChanged())
+            {
+                undo.Cancel();
+            }
+        }
+        else
+        {
+            AzToolsFramework::ScopedUndoBatch undoBatch("Select keys");
+
+            sequence->DeselectAllKeys();
+            m_bJustSelected = true;
+            m_keyTimeOffset = 0;
+            keyHandle.Select(true);
+
+            ChangeSequenceTrackSelection(sequence, keyHandle.GetTrack());
+
+            if (undoKeySelection->IsSelectionChanged())
+            {
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
+
+            // Delete undo for non legacy sequences, for legacy sequences we need to 
+            // keep it around for the CUndo system.
+            delete undoKeySelection;
         }
     }
     else
@@ -1942,7 +1974,7 @@ void CTrackViewDopeSheetBase::LButtonDownOnKey(const QPoint& point, CTrackViewKe
 
     /// Move/Clone Key Undo Begin
     GetIEditor()->BeginUndo();
-    pSequence->StoreUndoForTracksWithSelectedKeys();
+    sequence->StoreUndoForTracksWithSelectedKeys();
     StoreMementoForTracksWithSelectedKeys();
 
     if (modifiers & Qt::ShiftModifier)
@@ -2400,7 +2432,7 @@ void CTrackViewDopeSheetBase::DrawNodesRecursive(CTrackViewNode* pNode, QPainter
         }
     }
 
-    if (pNode->IsExpanded())
+    if (pNode->GetExpanded())
     {
         unsigned int numChildren = pNode->GetChildCount();
         for (unsigned int i = 0; i < numChildren; ++i)

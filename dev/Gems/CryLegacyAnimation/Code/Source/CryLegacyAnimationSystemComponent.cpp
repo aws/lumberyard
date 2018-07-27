@@ -14,7 +14,7 @@ namespace CryLegacyAnimation
         {
             serialize->Class<CryLegacyAnimationSystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {

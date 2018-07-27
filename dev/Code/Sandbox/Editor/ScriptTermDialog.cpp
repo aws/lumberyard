@@ -14,7 +14,7 @@
 // Description : Dialog for python script terminal
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ScriptTermDialog.h"
 #include "ScriptHelpDialog.h"
 #include "Util/BoostPythonHelpers.h"
@@ -142,7 +142,7 @@ void CScriptTermDialog::AppendText(const char* pText)
 
 void CScriptTermDialog::AppendError(const char* pText)
 {
-    AppendToConsole(QtUtil::ToQString(pText), QColor(150, 0, 0));
+    AppendToConsole(QtUtil::ToQString(pText), QColor(255, 64, 64));
 }
 
 void CScriptTermDialog::AppendToConsole(const QString& string, const QColor& color)

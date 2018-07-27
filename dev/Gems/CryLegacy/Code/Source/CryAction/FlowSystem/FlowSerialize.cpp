@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowSerialize.h"
 #include <AzCore/Casting/numeric_cast.h>
 
@@ -25,28 +25,28 @@ public:
 
     void Visit(int& i)
     {
-        m_ok = 1 == sscanf(m_data, "%i", &i);
+        m_ok = 1 == azsscanf(m_data, "%i", &i);
     }
 
     void Visit(float& i)
     {
-        m_ok = 1 == sscanf(m_data, "%f", &i);
+        m_ok = 1 == azsscanf(m_data, "%f", &i);
     }
 
     void Visit(double& i)
     {
-        m_ok = 1 == sscanf(m_data, "%lf", &i);
+        m_ok = 1 == azsscanf(m_data, "%lf", &i);
     }
 
     void Visit(EntityId& i)
     {
-        m_ok = 1 == sscanf(m_data, "%u", &i);
+        m_ok = 1 == azsscanf(m_data, "%u", &i);
     }
 
     void Visit(FlowEntityId& i)
     {
         FlowEntityId::StorageType id;
-        m_ok = 1 == sscanf(m_data, "%" PRIu64, &id);
+        m_ok = 1 == azsscanf(m_data, "%" PRIu64, &id);
         if (m_ok)
         {
             i = FlowEntityId(aznumeric_cast<EntityId>(id));
@@ -58,12 +58,12 @@ public:
         float x = i.GetX();
         float y = i.GetY();
         float z = i.GetZ();
-        m_ok = 3 == sscanf(m_data, "%f,%f,%f", &x, &y, &z);
+        m_ok = 3 == azsscanf(m_data, "%f,%f,%f", &x, &y, &z);
     }
 
     void Visit(Vec3& i)
     {
-        m_ok = 3 == sscanf(m_data, "%f,%f,%f", &i.x, &i.y, &i.z);
+        m_ok = 3 == azsscanf(m_data, "%f,%f,%f", &i.x, &i.y, &i.z);
     }
 
     void Visit(string& i)
@@ -75,7 +75,7 @@ public:
     void Visit(bool& b)
     {
         int i;
-        m_ok = 1 == sscanf(m_data, "%i", &i);
+        m_ok = 1 == azsscanf(m_data, "%i", &i);
         b = i != 0;
     }
 

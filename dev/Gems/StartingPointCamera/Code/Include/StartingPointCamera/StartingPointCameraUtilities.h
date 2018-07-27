@@ -10,11 +10,11 @@
 *
 */
 #pragma once
+#include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include "StartingPointCamera/StartingPointCameraConstants.h"
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Transform.h>
-#include <AzFramework/Math/MathUtils.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
@@ -68,7 +68,7 @@ namespace Camera
     //////////////////////////////////////////////////////////////////////////
     static float GetEulerAngleFromTransform(const AZ::Transform& rotation, EulerAngleType eulerAngleType)
     {
-        AZ::Vector3 angles = AzFramework::ConvertTransformToEulerDegrees(rotation);
+        AZ::Vector3 angles = rotation.GetEulerDegrees();
         switch (eulerAngleType)
         {
         case Pitch:

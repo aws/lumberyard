@@ -21,12 +21,10 @@
         ],
         "EmotionFXTools/Plugins/AnimGraph":
         [
+            "Source/AnimGraph/AnimGraphEditor.cpp",
+            "Source/AnimGraph/AnimGraphEditor.h",
             "Source/AnimGraph/AttributesWindow.cpp",
             "Source/AnimGraph/AttributesWindow.h",
-            "Source/AnimGraph/AttributeWidget.cpp",
-            "Source/AnimGraph/AttributeWidget.h",
-            "Source/AnimGraph/AttributeWidgetCreator.cpp",
-            "Source/AnimGraph/AttributeWidgetCreator.h",
             "Source/AnimGraph/BlendTreeVisualNode.cpp",
             "Source/AnimGraph/BlendTreeVisualNode.h",
             "Source/AnimGraph/BlendGraphViewWidget.cpp",
@@ -37,8 +35,6 @@
             "Source/AnimGraph/BlendGraphWidgetCallback.h",
             "Source/AnimGraph/BlendNodeSelectionWindow.cpp",
             "Source/AnimGraph/BlendNodeSelectionWindow.h",
-            "Source/AnimGraph/BlendResourceWidget.cpp",
-            "Source/AnimGraph/BlendResourceWidget.h",
             "Source/AnimGraph/BlendSpaceNodeWidget.cpp",
             "Source/AnimGraph/BlendSpaceNodeWidget.h",
             "Source/AnimGraph/BlendSpace1DNodeWidget.cpp",
@@ -51,6 +47,8 @@
             "Source/AnimGraph/AnimGraphHierarchyWidget.h",
             "Source/AnimGraph/AnimGraphNodeWidget.h",
             "Source/AnimGraph/AnimGraphNodeWidget.cpp",
+            "Source/AnimGraph/AnimGraphOptions.cpp",
+            "Source/AnimGraph/AnimGraphOptions.h",
             "Source/AnimGraph/AnimGraphPlugin.cpp",
             "Source/AnimGraph/AnimGraphPlugin.h",
             "Source/AnimGraph/AnimGraphPluginCallbacks.cpp",
@@ -96,6 +94,39 @@
             "Source/AnimGraph/StateFilterSelectionWindow.h",
             "Source/AnimGraph/StateGraphNode.cpp",
             "Source/AnimGraph/StateGraphNode.h"
+        ],
+        "EmotionFXTools/Plugins/AnimGraph/ParameterEditor":
+        [
+            "Source/AnimGraph/ParameterEditor/BoolParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/BoolParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/ColorParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/ColorParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/FloatSliderParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/FloatSliderParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/FloatSpinnerParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/FloatSpinnerParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/IntSliderParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/IntSliderParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/IntSpinnerParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/IntSpinnerParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/ParameterEditorFactory.cpp",
+            "Source/AnimGraph/ParameterEditor/ParameterEditorFactory.h",
+            "Source/AnimGraph/ParameterEditor/RotationParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/RotationParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/StringParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/StringParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/TagParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/TagParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/ValueParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/ValueParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/Vector2ParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/Vector2ParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/Vector3GizmoParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/Vector3GizmoParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/Vector3ParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/Vector3ParameterEditor.h",
+            "Source/AnimGraph/ParameterEditor/Vector4ParameterEditor.cpp",
+            "Source/AnimGraph/ParameterEditor/Vector4ParameterEditor.h"
         ],
         "EmotionFXTools/Plugins/CommandBar":
         [
@@ -171,8 +202,20 @@
         ],
         "EmotionFXTools/Plugins/NodeWindow":
         [
+            "Source/NodeWindow/ActorInfo.cpp",
+            "Source/NodeWindow/ActorInfo.h",
+            "Source/NodeWindow/MeshInfo.cpp",
+            "Source/NodeWindow/MeshInfo.h",
+            "Source/NodeWindow/NamedPropertyStringValue.cpp",
+            "Source/NodeWindow/NamedPropertyStringValue.h",
+            "Source/NodeWindow/NodeInfo.cpp",
+            "Source/NodeWindow/NodeInfo.h",
+            "Source/NodeWindow/NodeGroupInfo.cpp",
+            "Source/NodeWindow/NodeGroupInfo.h",
             "Source/NodeWindow/NodeWindowPlugin.cpp",
-            "Source/NodeWindow/NodeWindowPlugin.h"
+            "Source/NodeWindow/NodeWindowPlugin.h",
+            "Source/NodeWindow/SubMeshInfo.cpp",
+            "Source/NodeWindow/SubMeshInfo.h"
         ],
         "EmotionFXTools/Plugins/Outliner":
         [

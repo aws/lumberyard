@@ -126,7 +126,7 @@
                 </tbody>  
             </table> 
         </div>
-        <pre>{{bannedPlayers | json | devonly}}</pre>
+        <!--<pre>{{bannedPlayers | json | devonly}}</pre>-->
     </div>
 </div>
 
@@ -176,14 +176,14 @@
             <div class="form-group row" [class.has-danger]="currentLeaderboard.validation && currentLeaderboard.validation.min.valid == false">
                 <label class="col-5 col-form-label affix ">Minimum Reportable Value Allowed</label>
                 <div class="col-7 form-control-danger">
-                    <input class="form-control full-width" [(ngModel)]="currentLeaderboard.min" name="currentLeaderboard.min" type="number" />
+                    <input class="form-control full-width" [(ngModel)]="currentLeaderboard.min" name="currentLeaderboard.min" type="text" />
                     <div *ngIf="currentLeaderboard.validation && currentLeaderboard.validation.min.valid == false" class="form-control-feedback">{{currentLeaderboard.validation.min.message}}</div>
                 </div>
             </div>
             <div class="form-group row" [class.has-danger]="currentLeaderboard.validation && currentLeaderboard.validation.max.valid == false" >
                 <label class="col-5 col-form-label affix ">Maximum Reportable Value Allowed</label>
                 <div class="col-7 form-control-danger">                                    
-                    <input class="form-control full-width" [(ngModel)]="currentLeaderboard.max" name="currentLeaderboard.max" type="number" />
+                    <input class="form-control full-width" [(ngModel)]="currentLeaderboard.max" name="currentLeaderboard.max" type="text" />
                     <div *ngIf="currentLeaderboard.validation && currentLeaderboard.validation.max.valid == false" class="form-control-feedback">{{currentLeaderboard.validation.max.message}}</div>
                 </div>
             </div>    
@@ -191,12 +191,12 @@
                 <label class="col-5 col-form-label affix ">Reservoir Sample Size <i class="fa fa-question-circle-o" placement="right"
                     ngbTooltip="The leaderboard sample resevoir size. The recommended range is between 200 to 1000. Example: 300"></i></label>
                 <div class="col-7 form-control-danger">
-                    <input class="form-control full-width" [(ngModel)]="currentLeaderboard.sample_size" name="currentLeaderboard.sample_size" type="number" />
+                    <input class="form-control full-width" [(ngModel)]="currentLeaderboard.sample_size" name="currentLeaderboard.sample_size" type="text" />
                     <div *ngIf="currentLeaderboard.validation && currentLeaderboard.validation.sample_size.valid == false" class="form-control-feedback">{{currentLeaderboard.validation.sample_size.message}}</div>
                 </div>
             </div>            
         </form>
-        <pre>{{currentLeaderboard | json | devonly}}</pre>
+        <!--<pre>{{currentLeaderboard | json | devonly}}</pre>-->
     </div>
 </modal>
 
@@ -213,7 +213,7 @@
     <div class="modal-body">
         <p> Are you sure you want to delete leaderboard: {{currentLeaderboard.name}}?</p>
         <p> All data in {{currentLeaderboard.name}} will be lost. </p>
-        <pre>{{currentLeaderboard | json | devonly}}</pre>
+        <!--<pre>{{currentLeaderboard | json | devonly}}</pre>-->
     </div>
 </modal>
 
@@ -232,7 +232,7 @@
         <p> Are you sure you want to ban the player '{{currentScore.user}}'?</p>
         <p> '{{currentScore.user}}' will have their future scores rejected.  All their current scores will remain.  The scores can be deleted manually. </p>        
         <p> These changes will be reflected locally in the CGP for now and may take a few minutes to propagate to the server. </p>
-        <pre>{{currentScore | json | devonly}}</pre>
+        <!--<pre>{{currentScore | json | devonly}}</pre>-->
     </div>
 </modal>
 
@@ -249,7 +249,7 @@
     <div class="modal-body">
         <p> Are you sure you want to delete the player '{{currentScore.user}}' with score '{{currentScore.value}}'? </p>
         <p> These changes will be reflected locally in the CGP for now and may take a few minutes to propagate to the server. </p>
-        <pre>{{currentScore | json | devonly}}</pre>
+        <!--<pre>{{currentScore | json | devonly}}</pre>-->
     </div>
 </modal>
 
@@ -266,7 +266,7 @@
     <div class="modal-body">
         Are you sure you want to remove the ban on {{currentPlayer}}?  This will restore all their scores to existing leaderboards and allow their future scores to be posted.
         <p> These changes will be reflected locally in the CGP for now and may take a few minutes to propagate to the server. </p>
-        <pre>{{currentPlayer | json | devonly}}</pre>
+        <!--<pre>{{currentPlayer | json | devonly}}</pre>-->
     </div>
 </modal>
 

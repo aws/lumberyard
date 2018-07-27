@@ -16,6 +16,7 @@
 #include <EMotionFX/Source/Attachment.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
+#include <MCore/Source/StringConversions.h>
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QHeaderView>

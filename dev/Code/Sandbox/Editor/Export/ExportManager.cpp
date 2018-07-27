@@ -837,7 +837,7 @@ bool CExportManager::AddMeshes(Export::CObject* pObj)
         }
     }
 
-    if (m_pBaseObj->GetType() == OBJTYPE_ENTITY)
+    if ((m_pBaseObj->GetType() == OBJTYPE_ENTITY) || (m_pBaseObj->GetType() == OBJTYPE_AZENTITY))
     {
         CEntityObject* pEntityObject = (CEntityObject*)m_pBaseObj;
         IRenderNode* pEngineNode = pEntityObject->GetEngineNode();
@@ -1720,7 +1720,7 @@ bool CExportManager::AddTerrain()
     material.diffuse.r = 1.0f;
     material.diffuse.g = 1.0f;
     material.diffuse.b = 1.0f;
-    strcpy(material.name, "Sandbox_Terrain");
+    azstrcpy(material.name, AZ_ARRAY_SIZE(material.name), "Sandbox_Terrain");
 
     pObj->m_meshes.push_back(pMesh);
 

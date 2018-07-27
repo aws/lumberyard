@@ -334,7 +334,7 @@ namespace AzToolsFramework
             }
         }
 
-        virtual void WriteGUIValuesIntoTempProperty_Internal(QWidget* widget, void* tempValue, const AZ::Uuid& propertyType, AZ::SerializeContext* serializeContext) override
+		virtual void WriteGUIValuesIntoTempProperty_Internal(QWidget* widget, void* tempValue, const AZ::Uuid& propertyType, AZ::SerializeContext* serializeContext) override
         {
             WidgetType* wid = static_cast<WidgetType*>(widget);
 

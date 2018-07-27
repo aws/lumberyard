@@ -110,7 +110,7 @@ void CanvasSizeToolbarSection::InitWidgets(QToolBar* parent, bool addSeparator)
         m_lineEditCanvasHeight->setValidator(new QIntValidator(0, INT_MAX, parent));
 
         QObject::connect(m_combobox,
-            static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), // IMPORTANT: We HAVE to use static_cast<>() to specify which overload of QComboBox::currentIndexChanged() we want.
+            static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), m_combobox, // IMPORTANT: We HAVE to use static_cast<>() to specify which overload of QComboBox::currentIndexChanged() we want.
             [this](int index)
             {
                 //! Called only when the canvas preset ComboBox selection changes
@@ -149,14 +149,14 @@ void CanvasSizeToolbarSection::InitWidgets(QToolBar* parent, bool addSeparator)
 
         // Listen for changes to custom canvas size for width and height
         m_lineEditCanvasWidthConnection = QObject::connect(m_lineEditCanvasWidth,
-                &QLineEdit::editingFinished,
+                &QLineEdit::editingFinished, m_lineEditCanvasWidth,
                 [this]()
                 {
                     LineEditWidthEditingFinished();
                 });
 
         m_lineEditCanvasHeightConnection = QObject::connect(m_lineEditCanvasHeight,
-                &QLineEdit::editingFinished,
+                &QLineEdit::editingFinished, m_lineEditCanvasHeight,
                 [this]()
                 {
                     LineEditHeightEditingFinished();

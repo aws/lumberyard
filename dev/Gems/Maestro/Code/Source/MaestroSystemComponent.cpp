@@ -28,7 +28,7 @@ namespace Maestro
         {
             serialize->Class<MaestroSystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
@@ -78,7 +78,7 @@ namespace Maestro
         CrySystemEventBus::Handler::BusDisconnect();
     }
 
-    //////////////////////////////////////////////////////////////////////////   
+    //////////////////////////////////////////////////////////////////////////
     void CSystemEventListener_Movie::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
     {
         switch (event)

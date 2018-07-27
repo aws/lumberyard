@@ -35,6 +35,7 @@ private:
     QPushButton* m_addResourceButton;
     QPushButton* m_importResourceButton;
     QPushButton* m_uploadLambdaCodeButton;
+    QPushButton* m_enableResourceGroupButton;
 
     void CreateUI();
     void UpdateUI();
@@ -42,5 +43,6 @@ private:
     void OnAddResource();
     void OnImportResource();
     void OnUploadLambdaCode();
+    void EnableResourceGroup();
 };
 

@@ -17,7 +17,7 @@ namespace CloudGemLeaderboard
         {
             serialize->Class<CloudGemLeaderboardSystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {

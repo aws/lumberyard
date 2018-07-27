@@ -339,23 +339,23 @@ void CrySizerStatsRenderer::render(bool bRefreshMark)
         {
             if (rComp.sizeBytesTotal > rComp.sizeBytes)
             {
-                sprintf (szSize, "%7.3f  %7.3f", rComp.getTotalSizeMBytes(), rComp.getSizeMBytes());
+                azsprintf(szSize, "%7.3f  %7.3f", rComp.getTotalSizeMBytes(), rComp.getSizeMBytes());
             }
             else
             {
-                sprintf (szSize, "         %7.3f", rComp.getSizeMBytes());
+                azsprintf(szSize, "         %7.3f", rComp.getSizeMBytes());
             }
         }
         else
         {
             assert (rComp.sizeBytesTotal > 0);
-            sprintf (szSize, "%7.3f         ", rComp.getTotalSizeMBytes());
+            azsprintf(szSize, "%7.3f         ", rComp.getTotalSizeMBytes());
         }
         char szCount[16];
 #ifdef _DEBUG
         if (rComp.numObjects)
         {
-            sprintf(szCount, "%zd" PRIu64 "", rComp.numObjects);
+            azsprintf(szCount, "%zd" PRIu64 "", rComp.numObjects);
         }
         else
 #endif
@@ -443,23 +443,23 @@ void CrySizerStatsRenderer::dump(bool bUseKB)
         {
             if (rComp.sizeBytesTotal > rComp.sizeBytes)
             {
-                sprintf (szSize, bUseKB ? "%7.2f  %7.2f" : "%7.3f  %7.3f", bUseKB ? rComp.getTotalSizeKBytes() : rComp.getTotalSizeMBytes(), bUseKB ? rComp.getSizeKBytes() : rComp.getSizeMBytes());
+                azsprintf(szSize, bUseKB ? "%7.2f  %7.2f" : "%7.3f  %7.3f", bUseKB ? rComp.getTotalSizeKBytes() : rComp.getTotalSizeMBytes(), bUseKB ? rComp.getSizeKBytes() : rComp.getSizeMBytes());
             }
             else
             {
-                sprintf (szSize, bUseKB ? "         %7.2f" : "         %7.3f", bUseKB ? rComp.getSizeKBytes() : rComp.getSizeMBytes());
+                azsprintf(szSize, bUseKB ? "         %7.2f" : "         %7.3f", bUseKB ? rComp.getSizeKBytes() : rComp.getSizeMBytes());
             }
         }
         else
         {
             assert (rComp.sizeBytesTotal > 0);
-            sprintf (szSize, bUseKB ? "%7.2f         " : "%7.3f         ", bUseKB ? rComp.getTotalSizeKBytes() : rComp.getTotalSizeMBytes());
+            azsprintf(szSize, bUseKB ? "%7.2f         " : "%7.3f         ", bUseKB ? rComp.getTotalSizeKBytes() : rComp.getTotalSizeMBytes());
         }
         char szCount[16];
 
         if (rComp.numObjects)
         {
-            sprintf (szCount, "%8u", (unsigned int)rComp.numObjects);
+            azsprintf(szCount, "%8u", (unsigned int)rComp.numObjects);
         }
         else
         {

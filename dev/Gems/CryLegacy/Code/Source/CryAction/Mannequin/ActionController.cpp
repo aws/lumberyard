@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ActionController.h"
 #include "ActionScope.h"
@@ -119,7 +119,7 @@ void CActionController::RegisterCVars()
 #endif //!CRYMANNEQUIN_WARN_ABOUT_VALIDITY()
 
         char channelName[10];
-        strcpy(channelName, "channel0");
+        azstrcpy(channelName, AZ_ARRAY_SIZE(channelName), "channel0");
         for (uint32 i = 0; i < MANN_NUMBER_BLEND_CHANNELS; i++)
         {
             channelName[7] = '0' + i;
@@ -229,7 +229,7 @@ void CActionController::ChangeDebug(const char* entName)
         for (TActionControllerList::iterator iter = s_actionControllers.begin(); iter != s_actionControllers.end(); ++iter)
         {
             CActionController* ac = *iter;
-            if (_stricmp(ac->GetSafeEntityName(), entName) == 0)
+            if (azstricmp(ac->GetSafeEntityName(), entName) == 0)
             {
                 debugAC = ac;
                 break;
@@ -256,8 +256,14 @@ void BuildFilename(stack_string& filename, const char* entityName)
     char dateTime[128];
     time_t ltime;
     time(&ltime);
+#ifdef AZ_COMPILER_MSVC
+    tm _tm;
+    localtime_s(&_tm, &ltime);
+    strftime(dateTime, 128, "_%d_%b_%Y_%H_%M_%S.xml", &_tm);
+#else
     tm* pTm = localtime(&ltime);
     strftime(dateTime, 128, "_%d_%b_%Y_%H_%M_%S.xml", pTm);
+#endif
 
     ICVar* pSequencePathCVar = gEnv->pConsole->GetCVar("mn_sequence_path");
     if (pSequencePathCVar)
@@ -275,7 +281,7 @@ void CActionController::DumpSequence(const char* entName, float dumpTime)
     for (TActionControllerList::iterator iter = s_actionControllers.begin(); iter != s_actionControllers.end(); ++iter)
     {
         CActionController* ac = *iter;
-        if (_stricmp(ac->GetSafeEntityName(), entName) == 0)
+        if (azstricmp(ac->GetSafeEntityName(), entName) == 0)
         {
             debugAC = ac;
             break;

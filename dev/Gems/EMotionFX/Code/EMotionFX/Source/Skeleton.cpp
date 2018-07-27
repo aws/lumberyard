@@ -13,11 +13,15 @@
 // include required headers
 #include "Skeleton.h"
 #include "Node.h"
-#include <Mcore/Source/StringConversions.h>
+#include <MCore/Source/StringConversions.h>
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(Skeleton, SkeletonAllocator, 0)
+
+
     // constructor
     Skeleton::Skeleton()
     {
@@ -36,7 +40,7 @@ namespace EMotionFX
     // create the skeleton
     Skeleton* Skeleton::Create()
     {
-        return new Skeleton();
+        return aznew Skeleton();
     }
 
 

@@ -1,0 +1,6 @@
+CloudGemFramework.LambdaSettings
+CloudGemFramework.LambdaService
+CloudGemFramework.ResourceManagerCommon
+CloudGemFramework.ServiceClient_Python
+CloudGemWebCommunicator.aws_iot_device_sdk_python
+CloudGemWebCommunicator.certificate_support

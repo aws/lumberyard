@@ -473,8 +473,8 @@ namespace ScriptCanvas
 
             static SetterContainer GetSetterWrappers(const Data::Type& type)
             {
-                const size_t thisIndex = 0U;
-                const size_t propertyIndex = 1U;
+                enum : size_t { thisIndex = 0U };
+                enum : size_t { propertyIndex = 1U };
                 SetterContainer setterFunctions;
                 auto behaviorProperties = GetBehaviorProperties(type);
                 for (auto&& behaviorProperty : behaviorProperties)
@@ -482,7 +482,7 @@ namespace ScriptCanvas
                     AZ::BehaviorMethod* setterMethod = behaviorProperty->m_setter;
                     if (setterMethod && setterMethod->GetNumArguments() == 2)
                     {
-                        SetterFunction setterFunction = [setterMethod, thisIndex, propertyIndex](Datum& thisDatum, const Datum& propertyDatum) -> AZ::Outcome<void, AZStd::string>
+                        SetterFunction setterFunction = [setterMethod](Datum& thisDatum, const Datum& propertyDatum) -> AZ::Outcome<void, AZStd::string>
                         {
                             const size_t maxSetterArguments = 2;
                             AZStd::array<AZ::BehaviorValueParameter, maxSetterArguments> setterParams;

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "Resource.h"
 #include "TelemetryDialog.h"
 #include "TelemetryViewClass.h"

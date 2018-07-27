@@ -17,7 +17,7 @@
 
 */
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AIProxy.h"
 #include "AI/AIProxyManager.h"
 #include <IAIAction.h>

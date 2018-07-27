@@ -344,7 +344,6 @@ void UiTooltipDisplayComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiTooltipDisplayInterface::AutoPositionMode::OffsetFromElement>("eUiTooltipDisplayAutoPositionMode_OffsetFromElement");
 
         behaviorContext->EBus<UiTooltipDisplayBus>("UiTooltipDisplayBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetAutoPosition", &UiTooltipDisplayBus::Events::GetAutoPosition)
             ->Event("SetAutoPosition", &UiTooltipDisplayBus::Events::SetAutoPosition)
             ->Event("GetAutoPositionMode", &UiTooltipDisplayBus::Events::GetAutoPositionMode)

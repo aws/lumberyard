@@ -16,7 +16,7 @@
 
 #include <StdAfx.h>
 #include "METALContext.hpp"
-#include "METALDevice.hpp"
+#include "MetalDevice.hpp"
 #include "METALCopyShaders.h"
 
 #include "GLShader.hpp"
@@ -117,6 +117,39 @@ namespace NCryMetal
 
         TMap m_kMap;
     };
+
+    void LogCommandBufferError(int errorCode)
+    {
+        switch (errorCode)
+        {
+            case MTLCommandBufferErrorNone:
+                break;
+            case MTLCommandBufferErrorInternal:
+                DXGL_ERROR("Internal error has occurred");
+                break;
+            case MTLCommandBufferErrorTimeout:
+                CryLog("Execution of this command buffer took more time than system allows. execution interrupted and aborted.");
+                break;
+            case MTLCommandBufferErrorPageFault:
+                DXGL_ERROR("Execution of this command generated an unserviceable GPU page fault. This error maybe caused by buffer read/write attribute mismatch or outof boundary access");
+                break;
+            case MTLCommandBufferErrorBlacklisted:
+                DXGL_ERROR("Access to this device has been revoked because this client has been responsible for too many timeouts or hangs");
+                break;
+            case MTLCommandBufferErrorNotPermitted:
+                DXGL_ERROR("This process does not have aceess to use device");
+                break;
+            case MTLCommandBufferErrorOutOfMemory:
+                DXGL_ERROR("Insufficient memory");
+                break;
+            case MTLCommandBufferErrorInvalidResource:
+                DXGL_ERROR("The command buffer referenced an invlid resource. This error is most commonly caused when caller deletes a resource before executing a command buffer that refers to it");
+                break;
+            default:
+                DXGL_ERROR("Unknown error status was set on the command buffer.");
+                break;
+        }
+    }
 
     //  Confetti BEGIN: Igor Lobanchikov
     CContext::CRingBuffer::CRingBuffer(id<MTLDevice> device, unsigned int bufferSize, unsigned int alignment, MemRingBufferStorage memAllocMode)
@@ -224,6 +257,7 @@ namespace NCryMetal
         , m_PipelineStateRGBA32Float(0)
         , m_PipelineStateR16Float(0)
         , m_PipelineStateR16Unorm(0)
+        , m_PipelineStateRG16Float(0)
         , m_PipelineStateBGRA8UnormLanczos(0)
         , m_PipelineStateRGBA8UnormLanczos(0)
         , m_PipelineStateBGRA8UnormBicubic(0)
@@ -263,6 +297,11 @@ namespace NCryMetal
         if (m_PipelineStateR16Unorm)
         {
             [m_PipelineStateR16Unorm release];
+        }
+
+        if (m_PipelineStateRG16Float)
+        {
+            [m_PipelineStateRG16Float release];
         }
 
         if (m_PipelineStateBGRA8UnormLanczos)
@@ -312,12 +351,16 @@ namespace NCryMetal
 
             if (error)
             {
-                LOG_METAL_SHADER_ERRORS(@ "%@", error);
-
-                //  4 is warning
-                if (error.code != 4)
+                // Error code 4 is warning, but sometimes a 3 (compile error) is returned on warnings only.
+                // The documentation indicates that if the lib is nil there is a compile error, otherwise anything
+                // in the error is really a warning. Therefore, we check the lib instead of the error code
+                if (!lib)
                 {
-                    int i = 0;
+                    LOG_METAL_SHADER_ERRORS(@ "%@", error);
+                }
+                else
+                {
+                    LOG_METAL_SHADER_WARNINGS(@ "%@", error);
                 }
 
                 error = 0;
@@ -430,6 +473,16 @@ namespace NCryMetal
                 }
             }
 
+            {
+                desc.colorAttachments[0].pixelFormat = MTLPixelFormatRG16Float;
+                m_PipelineStateRG16Float = [mtlDevice newRenderPipelineStateWithDescriptor:desc error : &error];
+                if (!m_PipelineStateRG16Float)
+                {
+                    LOG_METAL_PIPELINE_ERRORS(@ "Error generating pipeline object: %@", error);
+                    CRY_ASSERT(!"Can't create copy pippeline???");
+                    return false;
+                }
+            }
             [PS release];
             [VS release];
         }
@@ -446,12 +499,16 @@ namespace NCryMetal
 
             if (error)
             {
-                LOG_METAL_SHADER_ERRORS(@ "%@", error);
-
-                //  4 is warning
-                if (error.code != 4)
+                // Error code 4 is warning, but sometimes a 3 (compile error) is returned on warnings only.
+                // The documentation indicates that if the lib is nil there is a compile error, otherwise anything
+                // in the error is really a warning. Therefore, we check the lib instead of the error code
+                if (!lib)
                 {
-                    int i = 0;
+                    LOG_METAL_SHADER_ERRORS(@ "%@", error);
+                }
+                else
+                {
+                    LOG_METAL_SHADER_WARNINGS(@ "%@", error);
                 }
 
                 error = 0;
@@ -653,6 +710,9 @@ namespace NCryMetal
         case MTLPixelFormatR16Unorm:
             return m_PipelineStateR16Unorm;
 
+        case MTLPixelFormatRG16Float:
+            return m_PipelineStateRG16Float;
+
         case MTLPixelFormatBGRA8Unorm:
             if (filterType == LANCZOS)
             {
@@ -832,7 +892,7 @@ encoding: NSASCIIStringEncoding]
         , m_MetalIndexType(MTLIndexTypeUInt16)
         , m_defaultSamplerState(0)
     {
-        //  Confetti BEGIN: Igor Lobanchikov
+
         m_kStateCache.m_kDepthStencil.m_DepthStencilState = 0;
         m_kStateCache.m_kDepthStencil.m_iStencilRef = 0;
         m_kStateCache.m_kDepthStencil.m_bDSSDirty = false;
@@ -856,8 +916,8 @@ encoding: NSASCIIStringEncoding]
             m_kStateCache.m_kBlend.colorAttachements[i].ResetToDefault();
         }
         
-        RenderCapabilities::CacheMinOSVersionInfo();
-        //  Confetti End: Igor Lobanchikov
+        NCryMetal::CacheMinOSVersionInfo();
+        NCryMetal::CacheGPUFamilyFeaturSetInfo(m_pDevice->GetMetalDevice());       
     }
 
     CContext::~CContext()
@@ -951,12 +1011,10 @@ encoding: NSASCIIStringEncoding]
         [m_CurrentCommandBuffer addCompletedHandler: ^ (id < MTLCommandBuffer > Buffer)
          {
              CRY_ASSERT(pEventHelper->bCommandBufferPreSubmitted);
-#ifdef DXMETAL_DEBUG_PIPELINE
              if (!pEventHelper->bCommandBufferSubmitted)
              {
-                 NSLog(@ "Command buffer was finished too fast. Do we have anything to render?");
+                 LOG_METAL_PIPELINE_ERRORS(@ "Command buffer was finished too fast. Do we have anything to render?");
              }
-#endif // DXMETAL_DEBUG_PIPELINE
              pEventHelper->bTriggered = true;
          }];
     }
@@ -1732,10 +1790,10 @@ withRange: range];
                 STexture* pTexture = pTextureView ? pTextureView->m_pTexture : NULL;
                 if (pTexture)
                 {
-                    if (pTexture->m_spViewToClear.get())
+                    if (pTexture->m_spTextureViewToClear.get())
                     {
-                        CRY_ASSERT(pTexture->m_spViewToClear == m_CurrentRTs[i]);
-                        if (pTexture->m_spViewToClear != m_CurrentRTs[i])
+                        CRY_ASSERT(pTexture->m_spTextureViewToClear == m_CurrentRTs[i]);
+                        if (pTexture->m_spTextureViewToClear != m_CurrentRTs[i])
                         {
                             DXGL_ERROR("RT View used for rendering does not match view which was used to clear RT. This behaviour is not supported for METAL");
                         }
@@ -1751,12 +1809,12 @@ withRange: range];
 
                 {
                     //  Igor: deside if need to clear at this point
-                    if (pTexture->m_spViewToClear.get() && pTexture->m_bClearDepth)
+                    if (pTexture->m_spTextureViewToClear.get() && pTexture->m_bClearDepth)
                     {
-                        CRY_ASSERT(pTexture->m_spViewToClear == m_CurrentDepth);
-                        if (pTexture->m_spViewToClear != m_CurrentDepth)
+                        CRY_ASSERT(pTexture->m_spTextureViewToClear == m_CurrentDepth);
+                        if (pTexture->m_spTextureViewToClear != m_CurrentDepth)
                         {
-                            DXGL_ERROR("Depth Stencil View used for rendering does not match view which was used to clear RT. This behaviour is not supported for METAL");
+                            DXGL_ERROR("Depth View used for rendering does not match view which was used to clear RT. This behaviour is not supported for METAL");
                         }
                         bDoBindRTs = true;
                     }
@@ -1766,12 +1824,12 @@ withRange: range];
                 if (pTexture->m_StencilTexture)
                 {
                     //  Igor: deside if need to clear at this point
-                    if (pTexture->m_spViewToClear.get() && pTexture->m_bClearStencil)
+                    if (pTexture->m_spStencilTextureViewToClear.get() && pTexture->m_bClearStencil)
                     {
-                        CRY_ASSERT(pTexture->m_spViewToClear == m_CurrentDepth);
-                        if (pTexture->m_spViewToClear != m_CurrentDepth)
+                        CRY_ASSERT(pTexture->m_spStencilTextureViewToClear == m_CurrentDepth);
+                        if (pTexture->m_spStencilTextureViewToClear != m_CurrentDepth)
                         {
-                            DXGL_ERROR("Depth Stencil View used for rendering does not match view which was used to clear RT. This behaviour is not supported for METAL");
+                            DXGL_ERROR("Stencil View used for rendering does not match view which was used to clear RT. This behaviour is not supported for METAL");
                         }
                         bDoBindRTs = true;
                     }
@@ -1823,10 +1881,10 @@ withRange: range];
                     m_kStateCache.m_DefaultViewport.height = pTexture->m_iHeight >> pTextureView->m_iMipLevel;
 
                     //  Igor: deside if need to clear at this point
-                    if (pTexture->m_spViewToClear.get())
+                    if (pTexture->m_spTextureViewToClear.get())
                     {
-                        CRY_ASSERT(pTexture->m_spViewToClear == m_CurrentRTs[i]);
-                        if (pTexture->m_spViewToClear != m_CurrentRTs[i])
+                        CRY_ASSERT(pTexture->m_spTextureViewToClear == m_CurrentRTs[i]);
+                        if (pTexture->m_spTextureViewToClear != m_CurrentRTs[i])
                         {
                             DXGL_ERROR("RT View used for rendering does not match view which was used to clear RT. This behaviour is not supported for METAL");
                         }
@@ -1834,7 +1892,7 @@ withRange: range];
                         ColorAttachment.loadAction = MTLLoadActionClear;
                         ColorAttachment.clearColor = MTLClearColorMake(pTexture->m_ClearColor[0], pTexture->m_ClearColor[1], pTexture->m_ClearColor[2], pTexture->m_ClearColor[3]);
 
-                        pTexture->m_spViewToClear.reset();
+                        pTexture->m_spTextureViewToClear.reset();
                     }
                     else
                     {
@@ -1893,7 +1951,10 @@ withRange: range];
 #if defined(AZ_PLATFORM_APPLE_OSX) 
                 
                 //Only do this if the buffers are combined.
-                if(pTexture->m_Texture.pixelFormat == MTLPixelFormatDepth32Float_Stencil8 || pTexture->m_Texture.pixelFormat == MTLPixelFormatDepth24Unorm_Stencil8)
+                if (pTexture->m_Texture.pixelFormat == MTLPixelFormatDepth32Float_Stencil8 ||
+                    pTexture->m_Texture.pixelFormat == MTLPixelFormatDepth24Unorm_Stencil8 ||
+                    pTexture->m_Texture.pixelFormat == MTLPixelFormatX32_Stencil8 ||
+                    pTexture->m_Texture.pixelFormat == MTLPixelFormatX24_Stencil8)
                 {
                     //If depth/stencil is set to load/store dontcare but the other one is not
                     //set the first one to true as well.
@@ -1944,13 +2005,13 @@ withRange: range];
                     m_kStateCache.m_DefaultViewport.height = pTexture->m_iHeight >> pTextureView->m_iMipLevel;
 
                     //  Igor: decide if need to clear at this point
-                    if (pTexture->m_spViewToClear.get() &&
+                    if (pTexture->m_spTextureViewToClear.get() &&
                         pTexture->m_bClearDepth)
                     {
-                        CRY_ASSERT(pTexture->m_spViewToClear == m_CurrentDepth);
-                        if (pTexture->m_spViewToClear != m_CurrentDepth)
+                        CRY_ASSERT(pTexture->m_spTextureViewToClear == m_CurrentDepth);
+                        if (pTexture->m_spTextureViewToClear != m_CurrentDepth)
                         {
-                            DXGL_ERROR("Depth Stencil View used for rendering does not match view which was used to clear RT. This behaviour is not supported for METAL");
+                            DXGL_ERROR("Depth View used for rendering does not match view which was used to clear RT. This behaviour is not supported for METAL");
                         }
                         DepthAttachment.loadAction = MTLLoadActionClear;
                         DepthAttachment.clearDepth = pTexture->m_fClearDepthValue;
@@ -1993,13 +2054,13 @@ withRange: range];
                     }
 
                     //  Igor: deside if need to clear at this point
-                    if (pTexture->m_spViewToClear.get() &&
+                    if (pTexture->m_spStencilTextureViewToClear.get() &&
                         pTexture->m_bClearStencil)
                     {
-                        CRY_ASSERT(pTexture->m_spViewToClear == m_CurrentDepth);
-                        if (pTexture->m_spViewToClear != m_CurrentDepth)
+                        CRY_ASSERT(pTexture->m_spStencilTextureViewToClear == m_CurrentDepth);
+                        if (pTexture->m_spStencilTextureViewToClear != m_CurrentDepth)
                         {
-                            DXGL_ERROR("Depth Stencil View used for rendering does not match view which was used to clear RT. This behaviour is not supported for METAL");
+                            DXGL_ERROR("Stencil View used for rendering does not match view which was used to clear RT. This behaviour is not supported for METAL");
                         }
                         StencilAttachment.loadAction = MTLLoadActionClear;
                         StencilAttachment.clearStencil = pTexture->m_uClearStencilValue;
@@ -2034,7 +2095,8 @@ withRange: range];
                 }
 
 
-                pTexture->m_spViewToClear.reset();
+                pTexture->m_spTextureViewToClear.reset();
+                pTexture->m_spStencilTextureViewToClear.reset();
 
                 // Reset don't care flags
                 pTexture->ResetDontCareActionFlags();
@@ -2291,10 +2353,10 @@ threadsPerThreadgroup: threadsPerGroup];
             DXGL_WARNING("UAVTexture unit slot %d not available for stage %d - uav texture setting ignored", uSlot, uStage);
             return;
         }
-        if (pTexture != NULL && pTexture->m_spViewToClear.get())
+        if (pTexture != NULL && pTexture->m_spTextureViewToClear.get())
         {
             //dont clear uav
-            pTexture->m_spViewToClear.reset();
+            pTexture->m_spTextureViewToClear.reset();
         }
         SUAVTextureStageCache& uavState = m_kStateCache.m_StageCache.m_UAVTextureState;
 
@@ -2417,13 +2479,8 @@ threadsPerThreadgroup: threadsPerGroup];
 
         if (resToClear)
         {
-            //  Once the texture is cleared, it must be bound as rt before second clear can be issued.
-            //CRY_ASSERT(!resToClear->m_spViewToClear.get());
-            //if(resToClear->m_spViewToClear.get())
-            //    DXGL_ERROR("Render target was already cleared. Don't support multiple clears on the same texture.");
-
-            CRY_ASSERT(!resToClear->m_spViewToClear.get() || (resToClear->m_spViewToClear.get() == pRenderTargetView));
-            if (resToClear->m_spViewToClear.get() && (resToClear->m_spViewToClear.get() != pRenderTargetView))
+            CRY_ASSERT(!resToClear->m_spTextureViewToClear.get() || (resToClear->m_spTextureViewToClear.get() == pRenderTargetView));
+            if (resToClear->m_spTextureViewToClear.get() && (resToClear->m_spTextureViewToClear.get() != pRenderTargetView))
             {
                 DXGL_ERROR("Render target's view was already cleared. Don't support multiple view clears on the same texture.");
             }
@@ -2436,7 +2493,7 @@ threadsPerThreadgroup: threadsPerGroup];
 
 
             //  Store deferred clear information.
-            resToClear->m_spViewToClear = pRenderTargetView;
+            resToClear->m_spTextureViewToClear = pRenderTargetView;
             for (int i = 0; i < 4; ++i)
             {
                 resToClear->m_ClearColor[i] = afColor[i];
@@ -2449,6 +2506,11 @@ threadsPerThreadgroup: threadsPerGroup];
 
     void CContext::ClearDepthStencil(SOutputMergerView* pDepthStencilView, bool bClearDepth, bool bClearStencil, float fDepthValue, uint8 uStencilValue)
     {
+        if (!bClearDepth && !bClearStencil)
+        {
+            return;
+        }
+        
         DXGL_SCOPED_PROFILE("CContext::ClearDepthStencil")
 
         //  Confetti BEGIN: Igor Lobanchikov
@@ -2458,22 +2520,18 @@ threadsPerThreadgroup: threadsPerGroup];
 
         if (resToClear)
         {
-            //  Once the texture is cleared, it must be bound as rt before second clear can be issued unless we clear the same view and different plane (depth and stencil can be cleared in 2 calls).
-            CRY_ASSERT(!resToClear->m_spViewToClear.get() || resToClear->m_spViewToClear == pDepthStencilView);
-            if (resToClear->m_spViewToClear.get() && resToClear->m_spViewToClear != pDepthStencilView)
-            {
-                DXGL_ERROR("Different view of this depth buffer was already cleared. Don't support multiple clears on different views.");
-            }
-
-            //CRY_ASSERT(!(resToClear->m_bClearDepth && bClearDepth) && !(resToClear->m_bClearStencil && bClearStencil));
-            //if(resToClear->m_bClearDepth && bClearDepth || resToClear->m_bClearStencil && bClearStencil)
-            //    DXGL_ERROR("Can't cear the sampe plane of depth buffer twice.");
-
-            //  Store deferred clear information.
-            resToClear->m_spViewToClear = pDepthStencilView;
-
             if (bClearDepth)
             {
+                //  Once the texture is cleared, it must be bound as rt before second clear can be issued unless we clear the same view and different plane (depth and stencil can be cleared in 2 calls).
+                CRY_ASSERT(!resToClear->m_spTextureViewToClear.get() || resToClear->m_spTextureViewToClear == pDepthStencilView);
+                if (resToClear->m_spTextureViewToClear.get() && resToClear->m_spTextureViewToClear != pDepthStencilView)
+                {
+                    DXGL_ERROR("Different view of this depth buffer was already cleared. Don't support multiple clears on different views.");
+                }
+                
+                //  Store deferred clear information.
+                resToClear->m_spTextureViewToClear = pDepthStencilView;
+                
                 CRY_ASSERT(!resToClear->m_bDepthLoadDontCare);
                 if (resToClear->m_bDepthLoadDontCare)
                 {
@@ -2486,6 +2544,16 @@ threadsPerThreadgroup: threadsPerGroup];
 
             if (bClearStencil)
             {
+                //  Once the texture is cleared, it must be bound as rt before second clear can be issued unless we clear the same view and different plane (depth and stencil can be cleared in 2 calls).
+                CRY_ASSERT(!resToClear->m_spStencilTextureViewToClear.get() || resToClear->m_spStencilTextureViewToClear == pDepthStencilView);
+                if (resToClear->m_spStencilTextureViewToClear.get() && resToClear->m_spStencilTextureViewToClear != pDepthStencilView)
+                {
+                    DXGL_ERROR("Different view of this stencil buffer was already cleared. Don't support multiple clears on different views.");
+                }
+                
+                //  Store deferred clear information.
+                resToClear->m_spStencilTextureViewToClear = pDepthStencilView;
+                
                 CRY_ASSERT(!resToClear->m_bStencilLoadDontCare);
                 if (resToClear->m_bStencilLoadDontCare)
                 {
@@ -2706,9 +2774,7 @@ threadsPerThreadgroup: threadsPerGroup];
         m_uIndexStride = uIndexStride;
         m_uIndexOffset = uOffset;
 
-        //  Confetti BEGIN: Igor Lobanchikov
         m_spIndexBufferResource.reset(pIndexBuffer);
-        //  Confetti End: Igor Lobanchikov
     }
 
     void CContext::DrawIndexed(uint32 uIndexCount, uint32 uStartIndexLocation, uint32 uBaseVertexLocation)
@@ -2717,8 +2783,7 @@ threadsPerThreadgroup: threadsPerGroup];
 
         SetVertexOffset(uBaseVertexLocation);
 
-        FlushDrawState();
-        //  Confetti BEGIN: Igor Lobanchikov
+        FlushDrawState();        
         CRY_ASSERT(m_spIndexBufferResource.get());
         if (!m_spIndexBufferResource.get())
         {
@@ -2735,10 +2800,8 @@ threadsPerThreadgroup: threadsPerGroup];
                                     indexBuffer: tmpBuffer
                               indexBufferOffset: offset];
 
-        // David: assert that all transient mapped data was bound for this draw call
+        // assert that all transient mapped data was bound for this draw call
         CRY_ASSERT(m_spIndexBufferResource->m_pTransientMappedData.empty());
-
-        //  Confetti End: Igor Lobanchikov
     }
 
     void CContext::Draw(uint32 uVertexCount, uint32 uBaseVertexLocation)
@@ -2747,11 +2810,10 @@ threadsPerThreadgroup: threadsPerGroup];
         SetVertexOffset(0); // No need to use uBaseVertexLocation for vertex offset as it is used to indicate which vertex is the starting vertex when calling drawPrimitives below
         
         FlushDrawState();
-        //  Confetti BEGIN: Igor Lobanchikov
+
         [m_CurrentEncoder drawPrimitives: m_MetalPrimitiveType
-vertexStart: uBaseVertexLocation
-vertexCount: uVertexCount];
-        //  Confetti End: Igor Lobanchikov
+                             vertexStart: uBaseVertexLocation
+                             vertexCount: uVertexCount];
     }
 
     void CContext::DrawIndexedInstanced(uint32 uIndexCountPerInstance, uint32 uInstanceCount, uint32 uStartIndexLocation, uint32 uBaseVertexLocation, uint32 uStartInstanceLocation)
@@ -2760,7 +2822,7 @@ vertexCount: uVertexCount];
         SetVertexOffset(uBaseVertexLocation);
 
         FlushDrawState();
-        //  Confetti BEGIN: Igor Lobanchikov + David Srour (adding baseInstance support for A9 GPUs)
+
         CRY_ASSERT(m_spIndexBufferResource.get());
         if (!m_spIndexBufferResource.get())
         {
@@ -2773,32 +2835,32 @@ vertexCount: uVertexCount];
 
 
         id<MTLDevice> mtlDevice = m_pDevice->GetMetalDevice();
+        
+        bool isBaseVertexInstanceEnabled = true;
 #if defined(AZ_PLATFORM_APPLE_IOS)
-        bool baseInstSupported = [mtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1];
-#else
-        bool baseInstSupported = true; //This feature is supported on osx gpu families
+        isBaseVertexInstanceEnabled = NCryMetal::s_isIOSGPUFamily3;
 #endif
-        if (baseInstSupported)
+        if(isBaseVertexInstanceEnabled)
         {
             // `-[MTLDebugRenderCommandEncoder drawPrimitives:vertexStart:vertexCount:instanceCount:baseInstance:] is only supported on MTLFeatureSet_iOS_GPUFamily3_v1 and later'... (This is most likely related to the new A9 GPUS.)
             // https://developer.apple.com/library/ios/documentation/Metal/Reference/MTLDevice_Ref/index.html#//apple_ref/c/econst/MTLFeatureSet_iOS_GPUFamily2_v1
             [m_CurrentEncoder drawIndexedPrimitives: m_MetalPrimitiveType
-indexCount: uIndexCountPerInstance
-indexType: m_MetalIndexType
-indexBuffer: tmpBuffer
-indexBufferOffset: offset
-instanceCount: uInstanceCount
-             baseVertex : 0
-baseInstance: uStartInstanceLocation];
+                                         indexCount: uIndexCountPerInstance
+                                          indexType: m_MetalIndexType
+                                        indexBuffer: tmpBuffer
+                                  indexBufferOffset: offset
+                                      instanceCount: uInstanceCount
+                                        baseVertex : 0
+                                       baseInstance: uStartInstanceLocation];
         }
         else if (uStartInstanceLocation == 0)
         {
             [m_CurrentEncoder drawIndexedPrimitives: m_MetalPrimitiveType
-indexCount: uIndexCountPerInstance
-indexType: m_MetalIndexType
-indexBuffer: tmpBuffer
-indexBufferOffset: offset
-instanceCount: uInstanceCount];
+                                         indexCount: uIndexCountPerInstance
+                                          indexType: m_MetalIndexType
+                                        indexBuffer: tmpBuffer
+                                  indexBufferOffset: offset
+                                      instanceCount: uInstanceCount];
         }
         else
         {
@@ -2806,9 +2868,8 @@ instanceCount: uInstanceCount];
             CRY_ASSERT(0);
         }
 
-        // David: assert that all transient mapped data was bound for this draw call
+        // assert that all transient mapped data was bound for this draw call
         CRY_ASSERT(m_spIndexBufferResource->m_pTransientMappedData.empty());
-        //  Confetti End: Igor Lobanchikov + David Srour
     }
 
     void CContext::DrawInstanced(uint32 uVertexCountPerInstance, uint32 uInstanceCount, uint32 uStartVertexLocation, uint32 uStartInstanceLocation)
@@ -2819,12 +2880,12 @@ instanceCount: uInstanceCount];
 
 
         id<MTLDevice> mtlDevice = m_pDevice->GetMetalDevice();
+        
+        bool isBaseInstanceEnabled = true;
 #if defined(AZ_PLATFORM_APPLE_IOS)
-        bool baseInstSupported = [mtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1];
-#else
-        bool baseInstSupported = true; //This feature is supported on osx gpu families
+        isBaseInstanceEnabled = NCryMetal::s_isIOSGPUFamily3;
 #endif
-        if (baseInstSupported)
+        if (isBaseInstanceEnabled)
         {
             // `-[MTLDebugRenderCommandEncoder drawPrimitives:vertexStart:vertexCount:instanceCount:baseInstance:] is only supported on MTLFeatureSet_iOS_GPUFamily3_v1 and later'... (This is most likely related to the new A9 GPUS.)
             // https://developer.apple.com/library/ios/documentation/Metal/Reference/MTLDevice_Ref/index.html#//apple_ref/c/econst/MTLFeatureSet_iOS_GPUFamily2_v1
@@ -2837,28 +2898,24 @@ instanceCount: uInstanceCount];
         else if (uStartInstanceLocation == 0)
         {
             [m_CurrentEncoder drawPrimitives: m_MetalPrimitiveType
-vertexStart: uStartVertexLocation
-vertexCount: uVertexCountPerInstance
-instanceCount: uInstanceCount];
+                                 vertexStart: uStartVertexLocation
+                                 vertexCount: uVertexCountPerInstance
+                               instanceCount: uInstanceCount];
         }
         else
         {
             // Not supported!
             CRY_ASSERT(0);
         }
-
-        //  Confetti End: David Srour
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
-    void CContext::Flush(bool bOnPresent)
+    void CContext::Flush(id<CAMetalDrawable> drawable, float syncInterval)
     {
         DXGL_SCOPED_PROFILE("CContext::Flush")
 
-        //  Confetti BEGIN: Igor Lobanchikov
         FlushCurrentEncoder();
 
-        if (bOnPresent)
+        if (drawable)
         {
             // call the view's completion handler which is required by the view since it will signal its semaphore and set up the next buffer
             __block dispatch_semaphore_t block_sema = m_FrameQueueSemaphore;
@@ -2868,64 +2925,70 @@ instanceCount: uInstanceCount];
         }
 
         GetCurrentEventHelper()->bCommandBufferPreSubmitted = true;
+        
+        if(drawable)
+        {
+            // presentAfterMinimumDuration only available on ios and appltv 10.3+
+#if (defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)) && defined(__IPHONE_10_3)
+            bool hasPresentAfterMinimumDuration = [drawable respondsToSelector:@selector(presentAfterMinimumDuration:)];
+
+            if (hasPresentAfterMinimumDuration && syncInterval > 0.0f)
+            {
+                [m_CurrentCommandBuffer presentDrawable:drawable afterMinimumDuration:syncInterval];
+            }
+            else
+#endif
+            {
+                [m_CurrentCommandBuffer presentDrawable:drawable];
+            }
+        }
         [m_CurrentCommandBuffer commit];
         GetCurrentEventHelper()->bCommandBufferSubmitted = true;
-
-        //  Igor: see https://developer.apple.com/library/ios/documentation/Animation/Reference/CAMetalLayer_Ref/#//apple_ref/occ/instp/CAMetalLayer/presentsWithTransaction
-        //  for motivation to call this method before presenting
-        if (bOnPresent)
-        {
-            [m_CurrentCommandBuffer waitUntilScheduled];
-        }
 
         MTLCommandBufferStatus stat = m_CurrentCommandBuffer.status;
         if (stat == MTLCommandBufferStatusError)
         {
-            int eCode = m_CurrentCommandBuffer.error.code;
-            switch (eCode)
-            {
-            case MTLCommandBufferErrorNone:
-                break;
-            case MTLCommandBufferErrorInternal:
-                DXGL_ERROR("Internal error has occurred");
-                break;
-            case MTLCommandBufferErrorTimeout:
-                CryLog("Execution of this command buffer took more time than system allows. execution interrupted and aborted.");
-                break;
-            case MTLCommandBufferErrorPageFault:
-                DXGL_ERROR("Execution of this command generated an unserviceable GPU page fault. This error maybe caused by buffer read/write attribute mismatch or outof boundary access");
-                break;
-            case MTLCommandBufferErrorBlacklisted:
-                DXGL_ERROR("Access to this device has been revoked because this client has been responsible for too many timeouts or hangs");
-                break;
-            case MTLCommandBufferErrorNotPermitted:
-                DXGL_ERROR("This process does not have aceess to use device");
-                break;
-            case MTLCommandBufferErrorOutOfMemory:
-                DXGL_ERROR("Insufficient memory");
-                break;
-            case MTLCommandBufferErrorInvalidResource:
-                DXGL_ERROR("The command buffer referenced an invlid resource. This error is most commonly caused when caller deletes a resource before executing a command buffer that refers to it");
-                break;
-            default:
-                break;
-            }
+            LogCommandBufferError(m_CurrentCommandBuffer.error.code);
         }
 
         [m_CurrentCommandBuffer release];
         m_CurrentCommandBuffer = nil;
 
-        if (bOnPresent)
-        {
-            ;//InitMetalFrameResources();
-        }
-        else
+        if (!drawable)
         {
             NextCommandBuffer();
         }
-        //  Confetti End: Igor Lobanchikov
     }
-    //  Confetti End: Igor Lobanchikov
+
+    void CContext::FlushBlitEncoderAndWait()
+    {
+        DXGL_SCOPED_PROFILE("CContext::Flush")
+
+        if (m_CurrentBlitEncoder)
+        {
+            m_GPUEventsHelper.FlushActions(m_CurrentBlitEncoder, CGPUEventsHelper::eFT_FlushEncoder);
+
+            [m_CurrentBlitEncoder endEncoding];
+            [m_CurrentBlitEncoder release];
+            m_CurrentBlitEncoder = nil;
+
+            GetCurrentEventHelper()->bCommandBufferPreSubmitted = true;
+            [m_CurrentCommandBuffer commit];
+            GetCurrentEventHelper()->bCommandBufferSubmitted = true;
+
+            [m_CurrentCommandBuffer waitUntilCompleted];
+            MTLCommandBufferStatus stat = m_CurrentCommandBuffer.status;
+
+            if (stat == MTLCommandBufferStatusError)
+            {
+                LogCommandBufferError(m_CurrentCommandBuffer.error.code);
+            }
+
+            [m_CurrentCommandBuffer release];
+            m_CurrentCommandBuffer = nil;
+            NextCommandBuffer();
+        }
+    }
 
     SPipelinePtr CContext::AllocatePipeline(const SPipelineConfiguration& kConfiguration)
     {

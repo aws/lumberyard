@@ -14,7 +14,7 @@
 #include "stdafx.h"
 #include "IXml.h"
 #include "../../CryXML/IXMLSerializer.h"
-#include "../../CryXML/Xml/xml.h"
+#include "../../CryXML/XML/xml.h"
 #include "../../CryEngine/Cry3DEngine/MeshCompiler/MeshCompiler.h"
 #include "IPakSystem.h"
 #include <cstdarg>
@@ -29,10 +29,10 @@
 #include "Util.h"
 #include "CryCrc32.h"
 
-#include "cga/Controller.h"
-#include "cga/ControllerPQ.h"
-#include "cga/ControllerPQLog.h"
-#include "cgf/LoaderCAF.h"
+#include "CGA/Controller.h"
+#include "CGA/ControllerPQ.h"
+#include "CGA/ControllerPQLog.h"
+#include "CGF/LoaderCAF.h"
 
 #include "PakXmlFileBufferSource.h"
 
@@ -113,7 +113,7 @@ namespace
 
             string key = StringHelpers::Trim(StringHelpers::Replace(StringHelpers::MakeLowerCase(boneName.substr(keyStart, equalPos - keyStart)), '*', ' '));
             string value = boneName.substr(valueStart, valueEnd - valueStart);
-            if (_stricmp(key.c_str(), "name") == 0)
+            if (azstricmp(key.c_str(), "name") == 0)
             {
                 value.replace('*', ' '); // We can't use spaces in names in Collada since the joints are separated by whitespace.
                 return StringHelpers::Trim(value); // Found an override property, use the value as the name.
@@ -173,7 +173,7 @@ namespace
             PhysBone::AxisLimit axisLimit;
             for (int i = 0; i < 6; ++i)
             {
-                if (_stricmp(key.c_str(), keys[i]) == 0)
+                if (azstricmp(key.c_str(), keys[i]) == 0)
                 {
                     foundKey = true;
                     axisLimit = axisLimits[i];
@@ -197,7 +197,7 @@ namespace
                 PhysBoneAxisMapPtr map = 0;
                 for (int i = 0; i < 3; ++i)
                 {
-                    if (_stricmp(paramName.c_str(), keys[i]) == 0)
+                    if (azstricmp(paramName.c_str(), keys[i]) == 0)
                     {
                         map = maps[i];
                     }
@@ -2245,9 +2245,9 @@ ColladaController* ColladaLoaderImpl::ParseMorphController(XmlNodeRef node, cons
     for (int childIndex = 0, childCount = (targetsNode ? targetsNode->getChildCount() : 0); childIndex < childCount; ++childIndex)
     {
         XmlNodeRef targetsChildNode = (targetsNode ? targetsNode->getChild(childIndex) : 0);
-        XmlNodeRef inputNode = ((_stricmp(targetsChildNode->getTag(), "input") == 0) ? targetsChildNode : 0);
+        XmlNodeRef inputNode = ((azstricmp(targetsChildNode->getTag(), "input") == 0) ? targetsChildNode : 0);
         const char* semanticStr = (inputNode ? inputNode->getAttr("semantic") : 0);
-        bool isMorphTargetNode = (_stricmp((semanticStr ? semanticStr : ""), "MORPH_TARGET") == 0);
+        bool isMorphTargetNode = (azstricmp((semanticStr ? semanticStr : ""), "MORPH_TARGET") == 0);
         const char* morphSourceIDStr = (inputNode && isMorphTargetNode ? inputNode->getAttr("source") : 0);
 
         if (morphSourceIDStr && morphSourceIDStr[0] && morphSourceIDStr[0] != '#')
@@ -2609,7 +2609,7 @@ ColladaAnimClip* ColladaLoaderImpl::ParseAnimClip(XmlNodeRef node, const Animati
     for (SceneMap::const_iterator itScene = scenes.begin(); itScene != scenes.end(); itScene++)
     {
         ColladaScene* scene = (*itScene).second;
-        if (_stricmp(scene->GetExportNodeName().c_str(), parts[1].c_str()) == 0)
+        if (azstricmp(scene->GetExportNodeName().c_str(), parts[1].c_str()) == 0)
         {
             targetScene = scene;
         }
@@ -2791,11 +2791,11 @@ SHelperData ColladaLoaderImpl::ReadXmlNodeHelperData(XmlNodeRef node, const Scen
             const char* str_type = 0;
             if (node_helper && node_helper->haveAttr("type") && (str_type = node_helper->getAttr("type")))
             {
-                if (_stricmp(str_type, "point") == 0)
+                if (azstricmp(str_type, "point") == 0)
                 {
                     helperData.m_eHelperType = SHelperData::eHelperType_Point;
                 }
-                else if (_stricmp(str_type, "dummy") == 0)
+                else if (azstricmp(str_type, "dummy") == 0)
                 {
                     helperData.m_eHelperType = SHelperData::eHelperType_Dummy;
                     XmlNodeRef node_bound_box_min = node_helper->findChild("bound_box_min");
@@ -4076,8 +4076,8 @@ static void debugWriteMesh(const MeshUtils::Mesh& mesh, const std::vector<int>& 
     char filename[MAX_PATH];
     azsnprintf(filename, sizeof(filename), meshFilename, meshIdx);
 
-    FILE* f;
-    f = fopen(filename, "wb");
+    FILE* f = nullptr;
+    azfopen(&f, filename, "wb");
     if (!f)
     {
         return;
@@ -4109,7 +4109,7 @@ static void debugWriteMesh(const MeshUtils::Mesh& mesh, const std::vector<int>& 
 
     for (size_t uvSet = 0; uvSet < mesh.m_texCoords.size(); ++uvSet)
     {
-        fprintf(f, "[TexCoords %lu]\n", uvSet);
+        fprintf(f, "[TexCoords %zu]\n", uvSet);
         for (size_t i = 0; i < mesh.m_texCoords[uvSet].size(); ++i)
         {
             fprintf(f, "\t%g %g\n", mesh.m_texCoords[uvSet][i].x, mesh.m_texCoords[uvSet][i].y);
@@ -6108,7 +6108,7 @@ void ColladaAnimation::ParseName(const string& name)
     {
         int const nextPos = name.rfind('-', pos - 1);
         string const flagString = name.substr(nextPos + 1, pos - nextPos - 1);
-        if (_stricmp(flagString.c_str(), "noexport") == 0)
+        if (azstricmp(flagString.c_str(), "noexport") == 0)
         {
             this->flags |= Flags_NoExport;
             break;

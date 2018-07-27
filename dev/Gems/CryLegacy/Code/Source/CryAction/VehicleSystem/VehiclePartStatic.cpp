@@ -14,7 +14,7 @@
 // Description : Implements a part for vehicles which uses static objects
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ICryAnimation.h"
 #include "IVehicleSystem.h"

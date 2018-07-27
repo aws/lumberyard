@@ -300,10 +300,8 @@ AzToolsFramework::ReflectedPropertyEditor* PropertiesContainer::CreatePropertyEd
 
     QObject::connect(editor,
         &AzToolsFramework::ReflectedPropertyEditor::OnExpansionContractionDone,
-        [ this ]()
-        {
-            SetHeightOfContentRect();
-        });
+        this,
+        &PropertiesContainer::SetHeightOfContentRect);
 
     return editor;
 }

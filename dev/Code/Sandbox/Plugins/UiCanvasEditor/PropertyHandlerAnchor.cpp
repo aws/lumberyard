@@ -88,7 +88,7 @@ PropertyAnchorCtrl::PropertyAnchorCtrl(QWidget* parent)
         m_propertyVectorCtrl->setLabel(2, "Right");
         m_propertyVectorCtrl->setLabel(3, "Bottom");
 
-        QObject::connect(m_propertyVectorCtrl, &AzToolsFramework::PropertyVectorCtrl::valueChanged, [this]()
+        QObject::connect(m_propertyVectorCtrl, &AzToolsFramework::PropertyVectorCtrl::valueChanged, this, [this]()
             {
                 EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, this);
             });

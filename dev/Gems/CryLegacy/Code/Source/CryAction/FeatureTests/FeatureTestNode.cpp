@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <IFlowSystem.h>
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <AzCore/std/string/string.h>

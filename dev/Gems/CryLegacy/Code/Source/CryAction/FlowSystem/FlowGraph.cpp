@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IAIAction.h"
 
 #include "FlowGraph.h"
@@ -444,18 +444,18 @@ const char* CFlowGraphBase::InternalGetDebugName()
 
     if (m_pAIAction != 0)
     {
-        count = _snprintf(buf, sizeof(buf), "FG-0x%p-AIAction '%s'", this, m_pAIAction->GetName());
+        count = azsnprintf(buf, sizeof(buf), "FG-0x%p-AIAction '%s'", this, m_pAIAction->GetName());
     }
     else
     {
         IEntity* pEntity = gEnv->pEntitySystem->GetEntity(GetGraphEntity(0));
         if (pEntity != 0)
         {
-            count = _snprintf(buf, sizeof(buf), "FG-0x%p-Entity '%s'", this, pEntity->GetName());
+            count = azsnprintf(buf, sizeof(buf), "FG-0x%p-Entity '%s'", this, pEntity->GetName());
         }
         else
         {
-            count = _snprintf(buf, sizeof(buf), "FG-0x%p", this);
+            count = azsnprintf(buf, sizeof(buf), "FG-0x%p", this);
         }
     }
 
@@ -1578,7 +1578,7 @@ void CFlowGraphBase::FlowLoadError(const char* format, ...)
     char buffer[MAX_WARNING_LENGTH];
     va_list args;
     va_start(args, format);
-    vsnprintf(buffer, MAX_WARNING_LENGTH - 1, format, args);
+    azvsnprintf(buffer, MAX_WARNING_LENGTH - 1, format, args);
     buffer[MAX_WARNING_LENGTH - 1] = '\0';
     va_end(args);
     IEntity* pEnt = gEnv->pEntitySystem->GetEntity(GetGraphEntity(0));

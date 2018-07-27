@@ -24,8 +24,8 @@
 #include <CryPath.h>
 
 #ifdef RESOURCE_COMPILER
-# include "../../../Tools/CryXml/ICryXML.h"
-# include "../../../Tools/CryXml/IXMLSerializer.h"
+# include "../../../Tools/CryXML/ICryXML.h"
+# include "../../../Tools/CryXML/IXMLSerializer.h"
 # include "../../../Tools/CryCommonTools/PakXmlFileBufferSource.h"
 #endif
 
@@ -421,7 +421,7 @@ void SCompressionSettings::SetControllerCompressionSettings(const char* controll
 
     for (size_t i = 0; i < m_controllerCompressionSettings.size(); ++i)
     {
-        if (stricmp(m_controllerCompressionSettings[i].first.c_str(), controllerName) == 0)
+        if (azstricmp(m_controllerCompressionSettings[i].first.c_str(), controllerName) == 0)
         {
             m_controllerCompressionSettings[i].second = settings;
             return;
@@ -435,7 +435,7 @@ static SControllerCompressionSettings* FindSettings(SCompressionSettings::TContr
 {
     for (size_t i = 0; i < settings.size(); ++i)
     {
-        if (stricmp(settings[i].first.c_str(), controllerName) == 0)
+        if (azstricmp(settings[i].first.c_str(), controllerName) == 0)
         {
             return &settings[i].second;
         }
@@ -447,7 +447,7 @@ static const SControllerCompressionSettings* FindSettings(const SCompressionSett
 {
     for (size_t i = 0; i < settings.size(); ++i)
     {
-        if (stricmp(settings[i].first.c_str(), controllerName) == 0)
+        if (azstricmp(settings[i].first.c_str(), controllerName) == 0)
         {
             return &settings[i].second;
         }

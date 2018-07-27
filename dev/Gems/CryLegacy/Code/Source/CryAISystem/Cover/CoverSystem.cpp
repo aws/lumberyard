@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CoverSystem.h"
 #include "CoverSampler.h"
 #include "CoverSurface.h"

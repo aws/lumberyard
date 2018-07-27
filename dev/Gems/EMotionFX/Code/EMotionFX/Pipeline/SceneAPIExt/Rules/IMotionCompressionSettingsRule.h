@@ -27,7 +27,7 @@ namespace EMotionFX
             public:
                 AZ_RTTI(IMotionCompressionSettingsRule, "{8BECDD88-9940-4E8E-9E5C-4E088F8D0BDC}", AZ::SceneAPI::DataTypes::IRule);
 
-                virtual ~IMotionCompressionSettingsRule() override = default;
+                ~IMotionCompressionSettingsRule() override = default;
 
                 virtual float GetMaxTranslationError() const = 0;
                 virtual float GetMaxRotationError() const = 0;

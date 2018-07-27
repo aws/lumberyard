@@ -12,7 +12,7 @@
 // NewTerrainDialog.cpp : implementation file
 //
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "NewTerrainDialog.h"
 #include <ui_NewTerrainDialog.h>
 

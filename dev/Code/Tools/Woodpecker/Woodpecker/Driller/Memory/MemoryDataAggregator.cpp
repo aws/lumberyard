@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "MemoryDataAggregator.hxx"
 #include <Woodpecker/Driller/Memory/MemoryDataAggregator.moc>
@@ -271,7 +271,7 @@ namespace Driller
 
             serialize->Class<MemoryDataAggregator>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ->SerializeWithNoData();
         }
     }
 } // namespace Driller

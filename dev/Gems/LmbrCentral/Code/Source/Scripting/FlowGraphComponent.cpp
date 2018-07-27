@@ -11,7 +11,6 @@
 */
 #include "LmbrCentral_precompiled.h"
 #include "FlowGraphComponent.h"
-#include <FlowSystem/FlowData.h>
 
 #include <IXml.h>
 #include <FlowGraphInformation.h>

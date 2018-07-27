@@ -14,7 +14,7 @@
 // Description : Script Binding for the Vehicle Seat
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryString.h"
 #include <IActionMapManager.h>
 #include <ICryAnimation.h>

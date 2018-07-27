@@ -19,7 +19,6 @@
 #pragma once
 
 #include <CrySizer.h>
-#include <IFlowSystem.h>
 
 struct ILevelRotationFile;
 struct IConsoleCmdArgs;
@@ -43,46 +42,46 @@ struct ILevelRotation
         ePRF_MaintainPairs = 1 << 1,
     };
 
-    virtual bool Load(ILevelRotationFile* file) = 0;
-    virtual bool LoadFromXmlRootNode(const XmlNodeRef rootNode, const char* altRootTag) = 0;
+    virtual bool Load(ILevelRotationFile* file) { return false; }
+    virtual bool LoadFromXmlRootNode(const XmlNodeRef rootNode, const char* altRootTag) { return false; }
 
-    virtual void Reset() = 0;
-    virtual int  AddLevel(const char* level) = 0;
-    virtual void AddGameMode(int level, const char* gameMode) = 0;
+    virtual void Reset() {}
+    virtual int  AddLevel(const char* level) { return 0; }
+    virtual void AddGameMode(int level, const char* gameMode) {}
 
-    virtual int  AddLevel(const char* level, const char* gameMode) = 0;
+    virtual int  AddLevel(const char* level, const char* gameMode) { return 0; }
 
 
     //call to set the playlist ready for a new session
-    virtual void Initialise(int nSeed) = 0;
+    virtual void Initialise(int nSeed) {}
 
-    virtual bool First() = 0;
-    virtual bool Advance() = 0;
-    virtual bool AdvanceAndLoopIfNeeded() = 0;
+    virtual bool First() { return false; }
+    virtual bool Advance() { return false; }
+    virtual bool AdvanceAndLoopIfNeeded() { return false; }
 
-    virtual const char* GetNextLevel() const = 0;
-    virtual const char* GetNextGameRules() const = 0;
-    virtual int GetLength() const = 0;
-    virtual int GetTotalGameModeEntries() const = 0;
-    virtual int GetNext() const = 0;
+    virtual const char* GetNextLevel() const { return nullptr; }
+    virtual const char* GetNextGameRules() const { return nullptr; }
+    virtual int GetLength() const { return 0; }
+    virtual int GetTotalGameModeEntries() const { return 0; }
+    virtual int GetNext() const { return 0; }
 
-    virtual const char* GetLevel(uint32 idx, bool accessShuffled = true) const = 0;
-    virtual int GetNGameRulesForEntry(uint32 idx, bool accessShuffled = true) const = 0;
-    virtual const char* GetGameRules(uint32 idx, uint32 iMode, bool accessShuffled = true) const = 0;
+    virtual const char* GetLevel(uint32 idx, bool accessShuffled = true) const { return nullptr; }
+    virtual int GetNGameRulesForEntry(uint32 idx, bool accessShuffled = true) const { return 0; }
+    virtual const char* GetGameRules(uint32 idx, uint32 iMode, bool accessShuffled = true) const { return nullptr; }
 
-    virtual const char* GetNextGameRulesForEntry(int idx) const = 0;
+    virtual const char* GetNextGameRulesForEntry(int idx) const { return nullptr; }
 
-    virtual const int NumAdvancesTaken() const = 0;
-    virtual void ResetAdvancement() = 0;
+    virtual const int NumAdvancesTaken() const { return 0; }
+    virtual void ResetAdvancement() {}
 
-    virtual bool IsRandom() const = 0;
+    virtual bool IsRandom() const { return false; }
 
-    virtual ILevelRotation::TRandomisationFlags GetRandomisationFlags() const = 0;
-    virtual void SetRandomisationFlags(TRandomisationFlags flags) = 0;
+    virtual ILevelRotation::TRandomisationFlags GetRandomisationFlags() const { return ePRF_None; }
+    virtual void SetRandomisationFlags(TRandomisationFlags flags) {}
 
-    virtual void ChangeLevel(IConsoleCmdArgs* pArgs = NULL) = 0;
+    virtual void ChangeLevel(IConsoleCmdArgs* pArgs = NULL) {}
 
-    virtual bool NextPairMatch() const = 0;
+    virtual bool NextPairMatch() const { return false; }
 };
 
 
@@ -151,19 +150,6 @@ struct ILevelInfo
     virtual const ILevelInfo::SMinimapInfo& GetMinimapInfo() const = 0;
 
     virtual const char* GetDefaultGameRules() const = 0;
-
-    virtual bool GetAttribute(const char* name, TFlowInputData& val) const = 0;
-
-    template<typename T>
-    bool GetAttribute(const char* name, T& outVal) const
-    {
-        TFlowInputData val;
-        if (GetAttribute(name, val) == false)
-        {
-            return false;
-        }
-        return val.GetValueWithConversion(outVal);
-    }
 };
 
 
@@ -209,8 +195,9 @@ struct ILevelSystem
         TAG_UNKNOWN = 'ZZZZ'
     };
 
+    virtual void Release() = 0;
     virtual void Rescan(const char* levelsFolder, const uint32 tag) = 0;
-    virtual void LoadRotation() = 0;
+    virtual void LoadRotation() {}
     virtual int GetLevelCount() = 0;
     virtual DynArray<string>* GetLevelTypeList() = 0;
     virtual ILevelInfo* GetLevelInfo(int level) = 0;
@@ -226,13 +213,13 @@ struct ILevelSystem
     virtual bool IsLevelLoaded() = 0;
     virtual void PrepareNextLevel(const char* levelName) = 0;
 
-    virtual ILevelRotation* GetLevelRotation() = 0;
+    virtual ILevelRotation* GetLevelRotation() { return nullptr; }
 
-    virtual ILevelRotation* FindLevelRotationForExtInfoId(const ILevelRotation::TExtInfoId findId) = 0;
+    virtual ILevelRotation* FindLevelRotationForExtInfoId(const ILevelRotation::TExtInfoId findId) { return nullptr; }
 
-    virtual bool AddExtendedLevelRotationFromXmlRootNode(const XmlNodeRef rootNode, const char* altRootTag, const ILevelRotation::TExtInfoId extInfoId) = 0;
-    virtual void ClearExtendedLevelRotations() = 0;
-    virtual ILevelRotation* CreateNewRotation(const ILevelRotation::TExtInfoId id) = 0;
+    virtual bool AddExtendedLevelRotationFromXmlRootNode(const XmlNodeRef rootNode, const char* altRootTag, const ILevelRotation::TExtInfoId extInfoId) { return false; }
+    virtual void ClearExtendedLevelRotations() {}
+    virtual ILevelRotation* CreateNewRotation(const ILevelRotation::TExtInfoId id) { return nullptr; }
 
     // Retrieve`s last level level loading time.
     virtual float GetLastLevelLoadTime() = 0;

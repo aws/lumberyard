@@ -1,0 +1,505 @@
+{
+    "name": "wwise2016",
+    "source": "@3P:wwise@",
+    "description": "Wwise Audio",
+    "includes": [
+        "SDK/include"
+    ],
+    "aliases": {
+        "ak_core_libs": [
+            "AkMemoryMgr",
+            "AkMusicEngine",
+            "AkSoundEngine",
+            "AkStreamMgr"
+        ],
+        "ak_effect_libs": [
+            "AkCompressorFX",
+            "AkConvolutionReverbFX",
+            "AkDelayFX",
+            "AkExpanderFX",
+            "AkFlangerFX",
+            "AkGainFX",
+            "AkGuitarDistortionFX",
+            "AkHarmonizerFX",
+            "AkMatrixReverbFX",
+            "AkMeterFX",
+            "AkParametricEQFX",
+            "AkPeakLimiterFX",
+            "AkPitchShifterFX",
+            "AkRecorderFX",
+            "AkRoomVerbFX",
+            "AkStereoDelayFX",
+            "AkTimeStretchFX",
+            "AkTremoloFX"
+        ],
+        "ak_source_libs": [
+            "AkAudioInputSource",
+            "AkSilenceSource",
+            "AkSineSource",
+            "AkSynthOne",
+            "AkToneSource"
+        ],
+        "ak_extra_libs": [
+            "AkMotionGenerator",
+            "AkRumble"
+        ],
+        "ak_vorbis_libs": [
+            "AkVorbisDecoder"
+        ],
+        "ak_soundseed_libs": [
+            "AkSoundSeedImpactFX",
+            "AkSoundSeedWind",
+            "AkSoundSeedWoosh"
+        ],
+        "auro_libs": [
+            "AuroHeadphoneFX",
+            "AuroPannerMixer"
+        ],
+        "crankcase_libs": [
+            "CrankcaseAudioREVModelPlayerFX"
+        ],
+        "isono_libs": [
+            "IOSONOProximityMixer"
+        ],
+        "izotope_libs": [
+            "iZHybridReverbFX",
+            "iZTrashBoxModelerFX",
+            "iZTrashDelayFX",
+            "iZTrashDistortionFX",
+            "iZTrashDynamicsFX",
+            "iZTrashFiltersFX",
+            "iZTrashMultibandDistortionFX"
+        ],
+        "mcdsp_libs": [
+            "McDSPFutzBoxFX",
+            "McDSPLimiterFX"
+        ],
+        "communication_libs": [
+            "CommunicationCentral"
+        ],
+        "common_libs": [
+            "${ak_core_libs}",
+            "${ak_effect_libs}",
+            "${ak_source_libs}"
+        ],
+        "extra_libs": [
+            "${ak_extra_libs}",
+            "${ak_vorbis_libs}",
+            "${ak_soundseed_libs}",
+            "${auro_libs}",
+            "${crankcase_libs}",
+            "${isono_libs}",
+            "${izotope_libs}",
+            "${mcdsp_libs}"
+        ],
+        "win_release_libs": [
+            "${common_libs}",
+            "${extra_libs}"
+        ]
+    },
+    "suppress_warning": "True",
+    "lib_required": "True",
+    "engine_configs": "True",
+    "defines_debug": [
+        "WWISE_FOR_DEBUG"
+    ],
+    "defines_profile": [
+        "WWISE_FOR_PROFILE"
+    ],
+    "defines_performance": [
+        "WWISE_FOR_RELEASE"
+    ],
+    "defines_release": [
+        "WWISE_FOR_RELEASE",
+        "AK_OPTIMIZED"
+    ],
+    "platform": {
+        "win_x64_vs2013": {
+            "libpath_debug": [
+                "SDK/x64_vc120/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/x64_vc120/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/x64_vc120/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/x64_vc120/Release/lib"
+            ],
+            "lib_debug": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "${extra_libs}.lib",
+                "SFLib.lib"
+            ],
+            "lib_profile": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "${extra_libs}.lib",
+                "SFLib.lib"
+            ],
+            "lib_performance": [
+                "${common_libs}.lib",
+                "${extra_libs}.lib"
+            ],
+            "lib_release": [
+                "${common_libs}.lib",
+                "${extra_libs}.lib"
+            ]
+        },
+        "win_x64_vs2015": {
+            "libpath_debug": [
+                "SDK/x64_vc140/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/x64_vc140/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/x64_vc140/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/x64_vc140/Release/lib"
+            ],
+            "lib_debug": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "${extra_libs}.lib",
+                "SFLib.lib"
+            ],
+            "lib_profile": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "${extra_libs}.lib",
+                "SFLib.lib"
+            ],
+            "lib_performance": [
+                "${common_libs}.lib",
+                "${extra_libs}.lib"
+            ],
+            "lib_release": [
+                "${common_libs}.lib",
+                "${extra_libs}.lib"
+            ]
+        },
+        "win_x64_vs2017": "@win_x64_vs2015",
+        "durango_vs2015": {
+            "libpath_debug": [
+                "SDK/XboxOne_vc140/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/XboxOne_vc140/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/XboxOne_vc140/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/XboxOne_vc140/Release/lib"
+            ],
+            "lib_debug": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "${extra_libs}.lib"
+            ],
+            "lib_profile": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "${extra_libs}.lib"
+            ],
+            "lib_performance": [
+                "${common_libs}.lib",
+                "${extra_libs}.lib"
+            ],
+            "lib_release": [
+                "${common_libs}.lib",
+                "${extra_libs}.lib"
+            ]
+        },
+        "durango_vs2017": "@durango_vs2015",
+        "orbis_vs2015": {
+            "libpath_debug": [
+                "SDK/PS4/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/PS4/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/PS4/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/PS4/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${extra_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${extra_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a",
+                "lib${extra_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a",
+                "lib${extra_libs}.a"
+            ]
+        },
+        "darwin_x64": {
+            "libpath_debug": [
+                "SDK/Mac/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/Mac/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/Mac/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/Mac/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ]
+        },
+        "ios": {
+            "libpath_debug": [
+                "SDK/iOS/Debug-iphoneos/lib"
+            ],
+            "libpath_profile": [
+                "SDK/iOS/Profile-iphoneos/lib"
+            ],
+            "libpath_performance": [
+                "SDK/iOS/Release-iphoneos/lib"
+            ],
+            "libpath_release": [
+                "SDK/iOS/Release-iphoneos/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ]
+        },
+        "appletv": {
+            "libpath_debug": [
+                "SDK/tvOS/Debug-appletvos/lib"
+            ],
+            "libpath_profile": [
+                "SDK/tvOS/Profile-appletvos/lib"
+            ],
+            "libpath_performance": [
+                "SDK/tvOS/Release-appletvos/lib"
+            ],
+            "libpath_release": [
+                "SDK/tvOS/Release-appletvos/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ]
+        },
+        "android_armv7_gcc": {
+            "libpath_debug": [
+                "SDK/android-9_armeabi-v7a/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/android-9_armeabi-v7a/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/android-9_armeabi-v7a/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/android-9_armeabi-v7a/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ]
+        },
+        "android_armv7_clang": "@android_armv7_gcc",
+        "android_armv8_clang": {
+            "libpath_debug": [
+                "SDK/android-21_arm64-v8a/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/android-21_arm64-v8a/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/android-21_arm64-v8a/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/android-21_arm64-v8a/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a",
+                "lib${ak_soundseed_libs}.a",
+                "lib${crankcase_libs}.a",
+                "lib${ak_vorbis_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ]
+        },
+        "linux_x64": {
+            "libpath_debug": [
+                "SDK/Linux_x64/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/Linux_x64/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/Linux_x64/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/Linux_x64/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a",
+                "lib${mcdsp_libs}.a"
+            ]
+        }
+    }
+}

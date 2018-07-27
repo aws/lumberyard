@@ -29,14 +29,14 @@
 namespace EMStudio
 {
     // constructor
-    BlendNodeSelectionWindow::BlendNodeSelectionWindow(QWidget* parent, bool useSingleSelection, CommandSystem::SelectionList* selectionList, uint32 visibilityFilterNodeID, bool showStatesOnly)
+    BlendNodeSelectionWindow::BlendNodeSelectionWindow(QWidget* parent, bool useSingleSelection, CommandSystem::SelectionList* selectionList, const AZ::TypeId& visibilityFilterNode, bool showStatesOnly)
         : QDialog(parent)
     {
         setWindowTitle("Blend Node Selection Window");
 
         QVBoxLayout* layout = new QVBoxLayout();
 
-        mHierarchyWidget = new AnimGraphHierarchyWidget(this, useSingleSelection, selectionList, visibilityFilterNodeID, showStatesOnly);
+        mHierarchyWidget = new AnimGraphHierarchyWidget(this, useSingleSelection, selectionList, visibilityFilterNode, showStatesOnly);
 
         // create the ok and cancel buttons
         QHBoxLayout* buttonLayout = new QHBoxLayout();

@@ -9,17 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <Tests/FlowNodeTestHarness.h>
 
 inline void PrintTo(const SFlowAddress& value, std::ostream* os)
 {
     *os << "SFlowAddress(port=" << (int)value.port << ", node=" << value.node << ", isOutput=" << value.isOutput << ")";
-}
-
-template<>
-bool OutPortEqualsMatcher<float>::MatchAndExplain(wrapper_type wrapper, ::testing::MatchResultListener* listener) const
-{
-    const float eps = 1.0e-6f;
-    return fabs(wrapper.value - m_expected) < eps;
 }

@@ -13,8 +13,8 @@
 
 // Description : Camera Nodes
 
-#include "StdAfx.h"
-#include "FlowBaseNode.h"
+#include "CryLegacy_precompiled.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 class CFlowNode_Camera
     : public CFlowBaseNode<eNCT_Singleton>

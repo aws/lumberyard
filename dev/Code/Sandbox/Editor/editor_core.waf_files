@@ -56,8 +56,6 @@
             "BaseLibrary.cpp",
             "UsedResources.cpp",
             "UIEnumsDatabase.cpp",
-            "fancydocking.cpp",
-            "fancydocking.h",
             "LyViewPaneNames.h",
             "QtViewPaneManager.cpp",
             "QtViewPaneManager.h",

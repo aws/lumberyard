@@ -14,7 +14,7 @@
 // Description : Implements an entity class for detached parts
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <IViewSystem.h>
 #include <IItemSystem.h>

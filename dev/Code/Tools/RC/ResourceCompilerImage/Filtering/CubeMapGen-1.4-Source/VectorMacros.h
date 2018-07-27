@@ -11,7 +11,7 @@
 #ifndef VECTORMACROS_HPP
 #define VECTORMACROS_HPP
 
-#include "types.h"
+#include "Types.h"
 #include <math.h>
 
 //disable warning about doubles being converted down to float

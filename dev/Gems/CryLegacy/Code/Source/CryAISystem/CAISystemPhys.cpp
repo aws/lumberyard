@@ -14,7 +14,7 @@
 // Description : should contain all the methods of CAISystem which have to deal with Physics
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CAISystem.h"
 #include "Puppet.h"
 

@@ -14,7 +14,7 @@
 
 #include <StdAfx.h>
 #include "GLShader.hpp"
-#include "METALDevice.hpp"
+#include "MetalDevice.hpp"
 #include "GLExtensions.hpp"
 
 //  Confetti BEGIN: Igor Lobanchikov
@@ -386,6 +386,9 @@ namespace NCryMetal
             for (uElement = uPrevNumElements; uElement < kParameters.size(); ++uElement)
             {
                 SShaderReflectionParameter& kParameter(kParameters.at(uElement));
+                
+                memset(&kParameter.m_kDesc, 0, sizeof(kParameter.m_kDesc));
+                
                 // Only for extended parameters fxc adds two extra pieces of information, the stream index and the minimum precision.
                 if (extended && !DXBCReadUint32(*pContext, kParameter.m_kDesc.Stream))
                 {
@@ -398,7 +401,7 @@ namespace NCryMetal
                 {
                     return false;
                 }
-                memset(&kParameter, 0, sizeof(kParameter.m_kDesc));
+                
                 kParameter.m_kDesc.SemanticName = kParameter.m_acSemanticName;
                 if (!DXBCReadUint32(*pContext, kParameter.m_kDesc.SemanticIndex) ||
                     !DXBCReadUint32(*pContext, kParameter.m_kDesc.SystemValueType) ||
@@ -596,75 +599,69 @@ namespace NCryMetal
         return true;
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
-#ifdef DXMETAL_DEBUG_SHADER_COMPILER
-    void ValidateVertexAttributes(SShaderReflection::TParameters& inputsReflection, NSArray* vertexAttributes)
+    MTLLanguageVersion GetMetalLanguage()
     {
-        NSLog(@ "%@", vertexAttributes);
+#if defined(AZ_COMPILER_CLANG) && AZ_COMPILER_CLANG >= 9    //@available was added in Xcode 9
+#if defined(__MAC_10_13) || defined(__IPHONE_11_0)
+        if(@available(macOS 10.13, iOS 11.0, *))
+        {
+            return MTLLanguageVersion2_0;
+        }
+#endif
+        
+#if defined(__MAC_10_12) || defined(__IPHONE_10_0)
+        if (@available(macOS 10.12, iOS 10.0, *))
+        {
+            return MTLLanguageVersion1_2;
+        }
+#endif
+        
+#if defined(__MAC_10_11) || defined(__IPHONE_9_0)
+        if(@available(macOS 10.11, iOS 9.0, *))
+        {
+            
+            return MTLLanguageVersion1_1;
+        }
+#endif
+#else  // Xcode 8.
+        
+        // NSFoundationVersionNumber10_10_4 is to check for iOS 10.0+ and macOS 10.12+
+        if (floor(NSFoundationVersionNumber) < NSFoundationVersionNumber10_10_4)
+        {
+            return MTLLanguageVersion1_1;
+        }
+        else
+        {
+            return MTLLanguageVersion1_2;
+        }
+ 
+#endif
+        return MTLLanguageVersion1_2;
     }
-#endif // DXMETAL_DEBUG_SHADER_COMPILER
-       //  Confetti End: Igor Lobanchikov
-
+    
     bool CompileShader(SShader* pShader, SSource* aSourceVersions, SGLShader* pGLShader, id<MTLDevice> mtlDevice)
     {
-        //  Confetti BEGIN: Igor Lobanchikov
-
-        NSString* source = [[NSString alloc] initWithBytes:aSourceVersions->m_pData
-                            length:(aSourceVersions->m_uDataSize - 1)
-                            encoding:NSASCIIStringEncoding];
-
-        {
-            //  TODO: Igor: remove this hacks. Update the shader or the shader compiler instead.
-            NSString* tmp = [source stringByReplacingOccurrencesOfString:@ "texture2d_array<float> shadowMask[[ texture(8) ]])"
-                             withString:@ "texture2d<float> shadowMask[[ texture(8) ]])"];
-            [source release];
-            source = tmp;
-
-
-            source = [source stringByReplacingOccurrencesOfString:@ "Temp[1].x = shadowMask.read((as_type<uint4>(Temp[6])).xy, (as_type<uint4>(Temp[6])).z, (as_type<uint4>(Temp[6])).w).x;"
-                      withString:@ "Temp[1].x = shadowMask.read((as_type<uint4>(Temp[6])).xy, (as_type<uint4>(Temp[6])).z).x;"];
-
-            [source retain];
-        }
-
-        {
-            //  TODO: Igor: remove this hacks. Update the shader or the shader compiler instead.
-            NSString* tmp = [source stringByReplacingOccurrencesOfString:@ "texture2d_array<float> shadowMask_t[[ texture(8) ]])"
-                             withString:@ "texture2d<float> shadowMask_t[[ texture(8) ]])"];
-            [source release];
-            source = tmp;
-
-
-            source = [source stringByReplacingOccurrencesOfString:@ "Temp1.x = (shadowMask_t.read((as_type<uint4>(Temp6)).xy, (as_type<uint4>(Temp6)).z, (as_type<uint4>(Temp6)).w).x);"
-                      withString:@ "Temp1.x = (shadowMask_t.read((as_type<uint4>(Temp6)).xy, (as_type<uint4>(Temp6)).z).x);"];
-
-            //  TODO: Igor: remove this hack! Beta 3 want metal language version 2_0 for [[ early_fragment_tests ]] ?!
-            source = [source stringByReplacingOccurrencesOfString:@ "[[ early_fragment_tests ]]"
-                      withString:@ ""];
-            
-            [source retain];
-        }
-
-        {
-            //  TODO: Igor: remove this hacks. Update the shader or the shader compiler instead.
-            NSString* tmp = [source stringByReplacingOccurrencesOfString:@ "texture2d_array<float> shadowMask_t[[ texture(8) ]])"
-                             withString:@ "texture2d<float> shadowMask_t[[ texture(8) ]])"];
-            [source release];
-            source = tmp;
-
-
-            source = [source stringByReplacingOccurrencesOfString:@ "Temp[0].y = shadowMask.read((as_type<uint4>(Temp[1])).xy, (as_type<uint4>(Temp[1])).z, (as_type<uint4>(Temp[1])).w).yxzw.y;"
-                      withString:@ "Temp[0].y = shadowMask.read((as_type<uint4>(Temp[1])).xy, (as_type<uint4>(Temp[1])).z).yxzw.y;"];
-
-            [source retain];
-        }
-
+        
+        NSMutableString* source = [[NSMutableString alloc] initWithBytes:aSourceVersions->m_pData
+                                                     length:(aSourceVersions->m_uDataSize - 1)
+                                                   encoding:NSASCIIStringEncoding];
 
         MTLCompileOptions* options = [MTLCompileOptions alloc];
-        NSError* error = nil;
+        options.fastMathEnabled = CRenderer::CV_r_MetalShadersFastMath ? YES : NO;
         
+        MTLLanguageVersion metalLang = GetMetalLanguage();
+        if(metalLang == MTLLanguageVersion1_1)
+        {
+            //Our cross compiler doesnt have support for different mtllanguageversions. In order to ensure
+            //that the game runs on ios 9.0 we simply have language specific macros in the metal shader
+            //and inserting the define language MTLLanguageVersion1_1 to ensure correct code is used
+            [source insertString:@"#define MTLLanguage1_1\n" atIndex:0];
+        }
+        options.languageVersion = metalLang;
+        NSError* error = nil;
+
         id<MTLLibrary> lib = [mtlDevice newLibraryWithSource:source
-                              options:nil   //Use default language version which is the most recent language version available
+                              options:options
                               error:&error];
         
 
@@ -672,14 +669,17 @@ namespace NCryMetal
 
         if (error)
         {
-            LOG_METAL_SHADER_ERRORS(@ "%@", error);
-
             // Error code 4 is warning, but sometimes a 3 (compile error) is returned on warnings only.
             // The documentation indicates that if the lib is nil there is a compile error, otherwise anything
             // in the error is really a warning. Therefore, we check the lib instead of the error code
             if (!lib)
             {
+                LOG_METAL_SHADER_ERRORS(@ "%@", error);
                 assert(!"HLSLcc compiler should generate valid code.");
+            }
+            else
+            {
+                LOG_METAL_SHADER_WARNINGS(@ "%@", error);
             }
 
             //  Igor: error string is an autorelease object.
@@ -702,19 +702,17 @@ namespace NCryMetal
 
         if (pGLShader->m_pFunction.functionType == MTLFunctionTypeVertex)
         {
-#ifdef  DXMETAL_DEBUG_SHADER_COMPILER
-            ValidateVertexAttributes(pShader->m_kReflection.m_kInputs, pGLShader->m_pFunction.vertexAttributes);
-#endif  //  DXMETAL_DEBUG_SHADER_COMPILER
+            LOG_METAL_SHADER_REFLECTION_VALIDATION(@ "%@", pGLShader->m_pFunction.vertexAttributes);
         }
 
         return true;
-        //  Confetti End: Igor Lobanchikov
+        
     }
 
     //  Confetti BEGIN: Igor Lobanchikov
-#ifdef DXMETAL_DEBUG_SHADER_COMPILER
     void LogMTLArgument(MTLArgument* arg)
     {
+#if DXMETAL_LOG_SHADER_REFLECTION_VALIDATION
         NSLog(@ "Name: %@", arg.name);
 
         NSLog(@ "\tActive: %@", arg.active ? @ "true" : @ "false");
@@ -757,8 +755,8 @@ namespace NCryMetal
         {
             NSLog(@ "StructType: %@", arg.bufferStructType);
         }
+#endif // DXMETAL_LOG_SHADER_REFLECTION_VALIDATION
     }
-#endif // DXMETAL_DEBUG_SHADER_COMPILER
 
     MTLArgumentType DX11SITToMetal(D3D_SHADER_INPUT_TYPE dx11Type)
     {
@@ -931,10 +929,8 @@ namespace NCryMetal
             if (!ValidateBindPoint(arg, cryReflection))
             {
                 res = false;
-#ifdef DXMETAL_DEBUG_SHADER_COMPILER
-                NSLog(@ "%@", arg);
+                LOG_METAL_SHADER_REFLECTION_VALIDATION(@ "%@", arg);
                 LogMTLArgument(arg);
-#endif // DXMETAL_DEBUG_SHADER_COMPILER
             }
 
             if (shaderType != eST_Compute)
@@ -946,9 +942,7 @@ namespace NCryMetal
                     if (!ValidateBufferResource(arg, cryReflection))
                     {
                         res = false;
-#ifdef DXMETAL_DEBUG_SHADER_COMPILER
                         LogMTLArgument(arg);
-#endif // DXMETAL_DEBUG_SHADER_COMPILER
                     }
                     break;
                 }

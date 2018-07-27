@@ -66,7 +66,7 @@ namespace StarterGameGem
 	VisualiseAIStatesSystemComponent* g_vaissc_instance = nullptr;
 
 	VisualiseAIStatesSystemComponent* VisualiseAIStatesSystemComponent::GetInstance()
-	{ 
+	{
 		return g_vaissc_instance;
 	}
 
@@ -76,7 +76,6 @@ namespace StarterGameGem
 		{
 			serializeContext->Class<VisualiseAIStatesSystemComponent, AZ::Component>()
 				->Version(1)
-				->SerializerForEmptyClass()
 			;
 
 			if (AZ::EditContext* editContext = serializeContext->GetEditContext())

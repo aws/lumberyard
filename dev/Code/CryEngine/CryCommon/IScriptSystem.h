@@ -712,6 +712,26 @@ struct IScriptSystem
     }
 };
 
+class CryLegacyScriptSystemRequests
+    : public AZ::EBusTraits
+{
+public:
+    //////////////////////////////////////////////////////////////////////////
+    // EBusTraits overrides
+    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+    static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Creates and initializes a legacy IScriptSystem instance
+    virtual IScriptSystem* InitScriptSystem() = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Shuts down and destroys a legacy IScriptSystem instance
+    virtual void ShutdownScriptSystem(IScriptSystem* scriptSystem) = 0;
+};
+using CryLegacyScriptSystemRequestBus = AZ::EBus<CryLegacyScriptSystemRequests>;
+
 class CCheckScriptStack
 {
 public:

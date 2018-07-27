@@ -3,5 +3,65 @@
         "Tests": [
             "Tests/CryLegacyTest.cpp"
         ]
+    },
+    "none": {
+        "Source/CryAction/Tests":
+        [
+            "Source/CryAction/Tests/test_Main.cpp",
+            "Source/CryAction/Tests/CryMathPrinters.h",
+            "Source/CryAction/Tests/CryMathTestAux.cpp",
+            "Source/CryAction/Tests/CryMathTestAux.h",
+            "Source/CryAction/Tests/FlowNodeTestHarness.cpp",
+            "Source/CryAction/Tests/FlowNodeTestHarness.h"
+        ],
+        "Source/CryAction/Mannequin/Tests":
+        [
+            "Source/CryAction/Mannequin/Tests/Test_CRCRef.cpp",
+            "Source/CryAction/Mannequin/Tests/Test_ProceduralParams.cpp"
+        ],
+        "Source/CryAction/UnitTests":
+        [
+            "Source/CryAction/UnitTests/CrossModuleComponents.cpp"
+        ],
+        "Source/CryAction/FlowSystem/Tests":
+        [
+            "Source/CryAction/FlowSystem/Tests/SanityTest.cpp",
+            "Source/CryAction/FlowSystem/Tests/MathRoundTest.cpp",
+            "Source/CryAction/FlowSystem/Tests/MathAddTest.cpp"
+        ],
+        "Source/CryAISystem/Tests":
+        [
+            "Source/CryAISystem/Tests/test_Shape.cpp",
+            "Source/CryAISystem/Tests/test_Main.cpp"
+        ],
+        "Source/CryAnimation/Tests":
+        [
+            "Source/CryAnimation/test_Main.cpp"
+        ],
+        "Source/CryAnimation/CharacterInstance/UnitTests":
+        [
+            "Source/CryAnimation/UnitTests/Command_Commands_UnitTest.cpp"
+        ],
+        "Source/CryAnimation/CharacterManager/UnitTests":
+        [
+            "Source/CryAnimation/UnitTests/ParamLoaderUnitTest.cpp"
+        ],
+        "Source/CryAnimation/SkeletonAnim/UnitTests":
+        [
+            "Source/CryAnimation/UnitTests/SkeletonAnim_Commands_UnitTests.cpp"
+        ],
+        "Source/CryEntitySystem/Tests":
+        [
+            "Source/CryEntitySystem/Tests/test_Main.cpp",
+            "Source/CryEntitySystem/Tests/ComponentFactoryTests.cpp",
+            "Source/CryEntitySystem/Tests/ComponentFactoryRegistryTests.cpp",
+            "Source/CryEntitySystem/Tests/ComponentSerializationTests.cpp",
+            "Source/CryEntitySystem/Tests/EntityTests.cpp"
+        ],
+        "Source/CryEntitySystem/Components/Test":
+        [ 
+            "Source/CryEntitySystem/Components/ComponentModuleTest.h",
+            "Source/CryEntitySystem/Components/ComponentModuleTest.cpp"
+        ]
     }
 }

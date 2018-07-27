@@ -14,7 +14,7 @@
 // Description : Rate of Death handling for the Puppet
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "Puppet.h"
 #include "IAIRateOfDeathHandler.h"
 

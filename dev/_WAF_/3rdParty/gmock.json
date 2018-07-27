@@ -10,6 +10,7 @@
         "googletest/include"
     ],
     "defines": [
+        "GTEST_HAS_EXCEPTIONS=0",
         "_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING"
     ],
     "lib_required": "True",

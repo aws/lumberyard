@@ -40,9 +40,12 @@ namespace AssetProcessor
     {
     public:
         QueueElementID() = default;
+        
+        ///! note that inputAssetName is a database name (so includes outputprefix), not a relative path.
         QueueElementID(QString inputAssetName, QString platform, QString jobDescriptor);
 
-        QString GetInputAssetName() const;
+        
+        QString GetInputAssetName() const; ///< This is the database name, with output prefix.
         QString GetPlatform() const;
         QString GetJobDescriptor() const;
         void SetInputAssetName(QString inputAssetName);

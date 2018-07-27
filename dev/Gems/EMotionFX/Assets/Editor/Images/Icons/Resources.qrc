@@ -4,5 +4,8 @@
         <file>AnimGraphComponent.png</file>
         <file>Restore.png</file>
         <file>Trash.png</file>
+        <file>ArrowDownGray.png</file>
+        <file>ArrowRightGray.png</file>
+        <file>AnimGraph.png</file>
     </qresource>
 </RCC>

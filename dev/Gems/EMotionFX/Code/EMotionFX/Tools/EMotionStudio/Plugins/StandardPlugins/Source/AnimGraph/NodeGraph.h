@@ -13,15 +13,13 @@
 #ifndef __EMSTUDIO_NODEGRAPH_H
 #define __EMSTUDIO_NODEGRAPH_H
 
-// include required headers
+#include <AzCore/Debug/Timer.h>
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
-#include <AzCore/Debug/Timer.h>
+#include <EMotionFX/Source/AnimGraphNodeId.h>
 #include "../StandardPluginsConfig.h"
 #include <QPainter>
 #include <QTimer>
-
-
 
 
 namespace EMStudio
@@ -115,7 +113,7 @@ namespace EMStudio
         uint32 CalcNumSelectedItems() const;    // nodes + connections
 
         GraphNode* FindNode(const QPoint& globalPoint);
-        GraphNode* FindNodeByID(uint32 id);
+        GraphNode* FindNodeById(EMotionFX::AnimGraphNodeId id);
         void StartCreateConnection(uint32 portNr, bool isInputPort, GraphNode* portNode, NodePort* port, const QPoint& startOffset);
         void StartRelinkConnection(NodeConnection* connection, uint32 portNr, GraphNode* node);
         void StopCreateConnection();

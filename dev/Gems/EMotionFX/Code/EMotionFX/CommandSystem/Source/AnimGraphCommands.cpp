@@ -10,10 +10,11 @@
 *
 */
 
-// include the required headers
+#include <AzFramework/StringFunc/StringFunc.h>
 #include "AnimGraphCommands.h"
 #include "CommandManager.h"
 #include <MCore/Source/FileSystem.h>
+#include <MCore/Source/ReflectionSerializer.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphInstance.h>
@@ -31,6 +32,7 @@
 
 namespace CommandSystem
 {
+    const char* CommandActivateAnimGraph::s_activateAnimGraphCmdName = "ActivateAnimGraph";
     //-------------------------------------------------------------------------------------
     // Load the given anim graph
     //-------------------------------------------------------------------------------------
@@ -65,10 +67,8 @@ namespace CommandSystem
         }
 
         // get the filename and set it for the anim graph
-        AZStd::string filenameValue;
-        parameters.GetValue("filename", this, &filenameValue);
-
-        AZStd::string filename = filenameValue.c_str();
+        AZStd::string filename;
+        parameters.GetValue("filename", this, filename);
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
         // check if we have already loaded the anim graph
@@ -101,22 +101,18 @@ namespace CommandSystem
         }
         mOldAnimGraphID = animGraph->GetID();
 
-        // recursively update attributes of all nodes
-        animGraph->RecursiveUpdateAttributes();
-
-        // update unique datas recursively for all anim graph instances
-        const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
-        for (uint32 i = 0; i < numActorInstances; ++i)
-        {
-            EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetActorManager().GetActorInstance(i)->GetAnimGraphInstance();
-            if (animGraphInstance && animGraphInstance->GetAnimGraph() == animGraph)
-            {
-                animGraphInstance->OnUpdateUniqueData();
-            }
-        }
+        animGraph->Reinit();
+        animGraph->UpdateUniqueData();
 
         // return the id of the newly created anim graph
         AZStd::to_string(outResult, animGraph->GetID());
+
+        AZStd::string removedConnections;
+        animGraph->FindAndRemoveCycles(&removedConnections);
+        if (!removedConnections.empty())
+        {
+            GetCommandManager()->AddError("The following connections: " + removedConnections + "where removed because they were producing cycles.");
+        }
 
         // mark the workspace as dirty
         mOldWorkspaceDirtyFlag = GetCommandManager()->GetWorkspaceDirtyFlag();
@@ -157,10 +153,9 @@ namespace CommandSystem
     // init the syntax of the command
     void CommandLoadAnimGraph::InitSyntax()
     {
-        GetSyntax().ReserveParameters(3);
+        GetSyntax().ReserveParameters(2);
         GetSyntax().AddRequiredParameter("filename", "The filename of the anim graph file.", MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddParameter("animGraphID", "The id to assign to the newly loaded anim graph.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
-        GetSyntax().AddParameter("autoActivate", "True in case this anim graph should be automatically selected, false if not.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -169,177 +164,6 @@ namespace CommandSystem
     {
         return "This command loads a anim graph to the given file.";
     }
-
-
-    //-------------------------------------------------------------------------------------
-    // Adjust the given anim graph
-    //-------------------------------------------------------------------------------------
-
-    // constructor
-    CommandAdjustAnimGraph::CommandAdjustAnimGraph(MCore::Command* orgCommand)
-        : MCore::Command("AdjustAnimGraph", orgCommand)
-    {
-    }
-
-
-    // destructor
-    CommandAdjustAnimGraph::~CommandAdjustAnimGraph()
-    {
-    }
-
-
-    // execute
-    bool CommandAdjustAnimGraph::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
-    {
-        // get the anim graph id from the string and check if it is valid
-        const uint32            animGraphID    = parameters.GetValueAsInt("animGraphID", this);
-        EMotionFX::AnimGraph*  animGraph      = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
-        if (animGraph == nullptr)
-        {
-            outResult = AZStd::string::format("Cannot adjust anim graph. Anim graph id '%i' is not valid.", animGraphID);
-            return false;
-        }
-
-        // set the new name of the anim graph
-        AZStd::string valueString;
-        if (parameters.CheckIfHasParameter("name"))
-        {
-            parameters.GetValue("name", this, &valueString);
-            mOldName        = animGraph->GetName();
-            animGraph->SetName(valueString.c_str());
-        }
-
-        // set the new description of the anim graph
-        if (parameters.CheckIfHasParameter("description"))
-        {
-            parameters.GetValue("description", this, &valueString);
-            mOldDescription = animGraph->GetDescription();
-            animGraph->SetDescription(valueString.c_str());
-        }
-
-        // set if retargeting shall be enabled
-        if (parameters.CheckIfHasParameter("retargetingEnabled"))
-        {
-            // store the old retargeting flag, get and set the new one
-            mOldRetargetingEnabled = animGraph->GetRetargetingEnabled();
-            const bool retargetingEnabled = parameters.GetValueAsBool("retargetingEnabled", this);
-            animGraph->SetRetargetingEnabled(retargetingEnabled);
-
-            // sync anim graph instances
-            const uint32 numAnimGraphInstances = EMotionFX::GetAnimGraphManager().GetNumAnimGraphInstances();
-            for (uint32 i = 0; i < numAnimGraphInstances; ++i)
-            {
-                // sync the retargeting flag for the anim graph instances
-                EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i);
-                if (animGraphInstance->GetAnimGraph() == animGraph)
-                {
-                    animGraphInstance->SetRetargetingEnabled(retargetingEnabled);
-                }
-            }
-        }
-
-        // save the current dirty flag and tell the anim graph that something got changed
-        mOldDirtyFlag = animGraph->GetDirtyFlag();
-        animGraph->SetDirtyFlag(true);
-
-        // recursively update attributes of all nodes
-        animGraph->RecursiveUpdateAttributes();
-
-        // update unique datas recursively for all anim graph instances
-        const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
-        for (uint32 i = 0; i < numActorInstances; ++i)
-        {
-            EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetActorManager().GetActorInstance(i)->GetAnimGraphInstance();
-            if (animGraphInstance && animGraphInstance->GetAnimGraph() == animGraph)
-            {
-                animGraphInstance->OnUpdateUniqueData();
-            }
-        }
-
-        return true;
-    }
-
-
-    // undo the command
-    bool CommandAdjustAnimGraph::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
-    {
-        // get the anim graph id from the string and check if it is valid
-        const uint32                animGraphID    = parameters.GetValueAsInt("animGraphID", this);
-        EMotionFX::AnimGraph*      animGraph      = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
-        if (animGraph == nullptr)
-        {
-            outResult = AZStd::string::format("Cannot adjust anim graph. Anim graph id '%i' is not valid.", animGraphID);
-            return false;
-        }
-
-        // set the new name of the anim graph
-        if (parameters.CheckIfHasParameter("name"))
-        {
-            animGraph->SetName(mOldName.c_str());
-        }
-
-        // set the old description of the anim graph
-        if (parameters.CheckIfHasParameter("description"))
-        {
-            animGraph->SetDescription(mOldDescription.c_str());
-        }
-
-        // set if retargeting shall be enabled
-        if (parameters.CheckIfHasParameter("retargetingEnabled"))
-        {
-            animGraph->SetRetargetingEnabled(mOldRetargetingEnabled);
-
-            // sync anim graph instances
-            const uint32 numAnimGraphInstances = EMotionFX::GetAnimGraphManager().GetNumAnimGraphInstances();
-            for (uint32 i = 0; i < numAnimGraphInstances; ++i)
-            {
-                // sync the retargeting flag for the anim graph instances
-                EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i);
-                if (animGraphInstance->GetAnimGraph() == animGraph)
-                {
-                    animGraphInstance->SetRetargetingEnabled(mOldRetargetingEnabled);
-                }
-            }
-        }
-
-        // set the dirty flag back to the old value
-        animGraph->SetDirtyFlag(mOldDirtyFlag);
-
-        // recursively update attributes of all nodes
-        animGraph->RecursiveUpdateAttributes();
-
-        // update unique datas recursively for all anim graph instances
-        const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
-        for (uint32 i = 0; i < numActorInstances; ++i)
-        {
-            EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetActorManager().GetActorInstance(i)->GetAnimGraphInstance();
-            if (animGraphInstance && animGraphInstance->GetAnimGraph() == animGraph)
-            {
-                animGraphInstance->OnUpdateUniqueData();
-            }
-        }
-
-        return true;
-    }
-
-
-    // init the syntax of the command
-    void CommandAdjustAnimGraph::InitSyntax()
-    {
-        GetSyntax().ReserveParameters(4);
-        GetSyntax().AddRequiredParameter("animGraphID",    "The id of the anim graph to remove.", MCore::CommandSyntax::PARAMTYPE_INT);
-        GetSyntax().AddParameter("name",                    "The new name of the anim graph.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("description",             "The new description of the anim graph.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("retargetingEnabled",      "True in case retargeting of the anim graph as well as for all linked anim graph instances shall be enabled, false if not.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
-    }
-
-
-    // get the description
-    const char* CommandAdjustAnimGraph::GetDescription() const
-    {
-        return "This command adjusts the attributes of a anim graph.";
-    }
-
 
     //-------------------------------------------------------------------------------------
     // Create a new anim graph
@@ -364,33 +188,14 @@ namespace CommandSystem
     {
         AZStd::string resultString;
 
-        // Generate a unique anim graph name.
-        AZ::u32 animGraphIndex = 0;
-        AZStd::string animGraphName = "AnimGraph00";
-        while (EMotionFX::GetAnimGraphManager().FindAnimGraphByName(animGraphName.c_str()))
-        {
-            animGraphName = AZStd::string::format("AnimGraph%02d", ++animGraphIndex);
-        }
-
-        // get the new name of the anim graph to create
-        if (parameters.CheckIfHasParameter("name"))
-        {
-            parameters.GetValue("name", this, animGraphName);
-        }
-        if (mOldName.empty() == false)
-        {
-            animGraphName = mOldName;
-        }
-        mOldName = animGraphName.c_str();
-
         // create the anim graph
-        EMotionFX::AnimGraph* animGraph = EMotionFX::AnimGraph::Create(animGraphName.c_str());
+        EMotionFX::AnimGraph* animGraph = aznew EMotionFX::AnimGraph();
 
         // create the root state machine object
-        EMotionFX::AnimGraphObject* rootSMObject = EMotionFX::GetAnimGraphManager().GetObjectFactory()->CreateObjectByTypeID(animGraph, EMotionFX::AnimGraphStateMachine::TYPE_ID);
-        if (rootSMObject == nullptr)
+        EMotionFX::AnimGraphObject* rootSMObject = EMotionFX::AnimGraphObjectFactory::Create(azrtti_typeid<EMotionFX::AnimGraphStateMachine>(), animGraph);
+        if (!rootSMObject)
         {
-            MCore::LogWarning("Cannot instantiate root state machine for anim graph '%s'.", animGraphName.c_str());
+            MCore::LogWarning("Cannot instantiate root state machine for new anim graph.");
             return false;
         }
 
@@ -411,19 +216,8 @@ namespace CommandSystem
         }
         mPreviouslyUsedID = animGraph->GetID();
 
-        // recursively update attributes of all nodes
-        animGraph->RecursiveUpdateAttributes();
-
-        // update unique datas recursively for all anim graph instances
-        const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
-        for (uint32 i = 0; i < numActorInstances; ++i)
-        {
-            EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetActorManager().GetActorInstance(i)->GetAnimGraphInstance();
-            if (animGraphInstance && animGraphInstance->GetAnimGraph() == animGraph)
-            {
-                animGraphInstance->OnUpdateUniqueData();
-            }
-        }
+        animGraph->Reinit();
+        animGraph->UpdateUniqueData();
 
         // register master animgraph
         GetCommandManager()->ExecuteCommandInsideCommand("Unselect -animGraphIndex SELECT_ALL", resultString);
@@ -467,7 +261,6 @@ namespace CommandSystem
     void CommandCreateAnimGraph::InitSyntax()
     {
         GetSyntax().ReserveParameters(2);
-        GetSyntax().AddParameter("name",            "The name of the anim graph.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("animGraphID",    "The id of the anim graph to remove.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
     }
 
@@ -500,8 +293,45 @@ namespace CommandSystem
     bool CommandRemoveAnimGraph::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the anim graph id from the string and check if it is valid
-        const uint32                animGraphID    = parameters.GetValueAsInt("animGraphID", this);
-        EMotionFX::AnimGraph*      animGraph      = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
+        const AZStd::string animGraphIDString = parameters.GetValue("animGraphID", this);
+        if (animGraphIDString == "SELECT_ALL")
+        {
+            bool someAnimGraphRemoved = false;
+
+            // remove all anim graphs, to do so we will iterate over them and issue an internal command for
+            // that specific ID. This way we don't need to add complexity to this command to deal with all 
+            // the anim graph's undo data
+            for (uint32 i = 0; i < EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();)
+            {
+                EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().GetAnimGraph(i);
+                if (!animGraph->GetIsOwnedByRuntime())
+                {
+                    m_oldFileNamesAndIds.emplace_back(animGraph->GetFileName(), animGraph->GetID());
+                    if (!GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("RemoveAnimGraph -animGraphID %d", animGraph->GetID()), outResult))
+                    {
+                        m_oldFileNamesAndIds.pop_back();
+                        return false;
+                    }
+                    someAnimGraphRemoved = true;
+                    i = 0; // we start again to handle the case where an anim graph was removed because it was in a reference node
+                }
+                else
+                {
+                    ++i;
+                }
+            }
+
+            if (someAnimGraphRemoved)
+            {
+                mOldWorkspaceDirtyFlag = GetCommandManager()->GetWorkspaceDirtyFlag();
+                GetCommandManager()->SetWorkspaceDirtyFlag(true);
+            }
+            
+            return true;
+        }
+
+        const uint32 animGraphID = AzFramework::StringFunc::ToInt(animGraphIDString.c_str());
+        EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (animGraph == nullptr)
         {
             outResult = AZStd::string::format("Cannot remove anim graph. Anim graph id '%i' is not valid.", animGraphID);
@@ -509,13 +339,11 @@ namespace CommandSystem
         }
 
         // remove the given anim graph
-        mOldName    = animGraph->GetName();
-        mOldFileName = animGraph->GetFileName();
-        mOldID      = animGraph->GetID();
-        mOldIndex   = EMotionFX::GetAnimGraphManager().FindAnimGraphIndex(animGraph);
+        m_oldFileNamesAndIds.emplace_back(animGraph->GetFileName(), animGraph->GetID());
+        uint32 oldIndex = EMotionFX::GetAnimGraphManager().FindAnimGraphIndex(animGraph);
 
         // iterate through all anim graph instances and remove the ones that depend on the anim graph to be removed
-        for (uint32 i = 0; i < EMotionFX::GetAnimGraphManager().GetNumAnimGraphInstances(); )
+        for (size_t i = 0; i < EMotionFX::GetAnimGraphManager().GetNumAnimGraphInstances(); )
         {
             // in case the assigned anim graph instance belongs to the anim graph to remove, remove it and unassign it from all actor instances
             EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i);
@@ -537,7 +365,7 @@ namespace CommandSystem
 
         // Reselect the anim graph at the index of the removed one if possible.
         const int numAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();
-        for (int indexToSelect = mOldIndex; indexToSelect >= 0; indexToSelect--)
+        for (int indexToSelect = oldIndex; indexToSelect >= 0; indexToSelect--)
         {
             // Is the index to select in a valid range?
             if (indexToSelect >= numAnimGraphs)
@@ -567,12 +395,18 @@ namespace CommandSystem
     {
         MCORE_UNUSED(parameters);
 
-        if (mOldFileName.empty() == false)
+        bool result = true;
+        for (const AZStd::pair<AZStd::string, uint32>& oldFileNameAndId : m_oldFileNamesAndIds)
         {
-            return GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("LoadAnimGraph -filename \"%s\" -animGraphID %i", mOldFileName.c_str(), mOldID), outResult);
+            if (!oldFileNameAndId.first.empty())
+            {
+                result |= GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("LoadAnimGraph -filename \"%s\" -animGraphID %i", oldFileNameAndId.first.c_str(), oldFileNameAndId.second), outResult);
+            }
+            else
+            {
+                result |= GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("CreateAnimGraph -animGraphID %i", oldFileNameAndId.second), outResult);
+            }
         }
-
-        const bool result = GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("CreateAnimGraph -animGraphID %i -name \"%s\"", mOldID, mOldName.c_str()), outResult);
 
         // restore the workspace dirty flag
         GetCommandManager()->SetWorkspaceDirtyFlag(mOldWorkspaceDirtyFlag);
@@ -585,7 +419,7 @@ namespace CommandSystem
     void CommandRemoveAnimGraph::InitSyntax()
     {
         GetSyntax().ReserveParameters(1);
-        GetSyntax().AddRequiredParameter("animGraphID", "The id of the anim graph to remove.", MCore::CommandSyntax::PARAMTYPE_INT);
+        GetSyntax().AddRequiredParameter("animGraphID", "The id of the anim graph to remove.", MCore::CommandSyntax::PARAMTYPE_STRING);
     }
 
 
@@ -595,117 +429,11 @@ namespace CommandSystem
         return "This command removes the given anim graph.";
     }
 
-
-    //-------------------------------------------------------------------------------------
-    // Clone the given anim graph
-    //-------------------------------------------------------------------------------------
-
-    // constructor
-    CommandCloneAnimGraph::CommandCloneAnimGraph(MCore::Command* orgCommand)
-        : MCore::Command("CloneAnimGraph", orgCommand)
-    {
-        mOldAnimGraphID = MCORE_INVALIDINDEX32;
-    }
-
-
-    // destructor
-    CommandCloneAnimGraph::~CommandCloneAnimGraph()
-    {
-    }
-
-
-    // execute
-    bool CommandCloneAnimGraph::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
-    {
-        // get the anim graph id from the string and check if it is valid
-        const uint32                animGraphID    = parameters.GetValueAsInt("animGraphID", this);
-        EMotionFX::AnimGraph*      animGraph      = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
-        if (animGraph == nullptr)
-        {
-            outResult = AZStd::string::format("Cannot clone anim graph. Anim graph id '%i' is not valid.", animGraphID);
-            return false;
-        }
-
-        AZStd::string resultString;
-
-        // generate the unique name string
-        AZStd::string uniqueName;
-        uniqueName = MCore::GenerateUniqueString(animGraph->GetName(),
-            [&](const AZStd::string& value)
-            {
-                return (EMotionFX::GetAnimGraphManager().FindAnimGraphByName(value.c_str()) == nullptr);
-            });
-
-        // clone the anim graph
-        EMotionFX::AnimGraph* clonedAnimGraph = animGraph->Clone(uniqueName.c_str());
-        clonedAnimGraph->SetDirtyFlag(true);
-        clonedAnimGraph->SetFileName("");
-
-        // in case we are in a redo call assign the previously used id
-        if (mOldAnimGraphID != MCORE_INVALIDINDEX32)
-        {
-            clonedAnimGraph->SetID(mOldAnimGraphID);
-        }
-        mOldAnimGraphID = clonedAnimGraph->GetID();
-
-        // select the newly created anim graph
-        GetCommandManager()->ExecuteCommandInsideCommand("Unselect -animGraphIndex SELECT_ALL", resultString);
-        GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("Select -animGraphID %d", clonedAnimGraph->GetID()), resultString);
-
-        // return the id of the newly created anim graph
-        AZStd::to_string(outResult, clonedAnimGraph->GetID());
-
-        // mark the workspace as dirty
-        mOldWorkspaceDirtyFlag = GetCommandManager()->GetWorkspaceDirtyFlag();
-        GetCommandManager()->SetWorkspaceDirtyFlag(true);
-
-        return true;
-    }
-
-
-    // undo the command
-    bool CommandCloneAnimGraph::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
-    {
-        MCORE_UNUSED(parameters);
-
-        // get the anim graph the command created
-        EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(mOldAnimGraphID);
-        if (animGraph == nullptr)
-        {
-            outResult = AZStd::string::format("Cannot undo clone anim graph command. Previously used anim graph id '%i' is not valid.", mOldAnimGraphID);
-            return false;
-        }
-
-        // Remove the newly created anim graph.
-        const bool result = GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("RemoveAnimGraph -animGraphID %i", mOldAnimGraphID), outResult);
-
-        // restore the workspace dirty flag
-        GetCommandManager()->SetWorkspaceDirtyFlag(mOldWorkspaceDirtyFlag);
-
-        return result;
-    }
-
-
-    // init the syntax of the command
-    void CommandCloneAnimGraph::InitSyntax()
-    {
-        GetSyntax().ReserveParameters(1);
-        GetSyntax().AddRequiredParameter("animGraphID", "The id of the anim graph to clone.", MCore::CommandSyntax::PARAMTYPE_INT);
-    }
-
-
-    // get the description
-    const char* CommandCloneAnimGraph::GetDescription() const
-    {
-        return "This command clones the given anim graph.";
-    }
-
-
     //-------------------------------------------------------------------------------------
     // Activate the given anim graph
     //-------------------------------------------------------------------------------------
     CommandActivateAnimGraph::CommandActivateAnimGraph(MCore::Command* orgCommand)
-        : MCore::Command("ActivateAnimGraph", orgCommand)
+        : MCore::Command(s_activateAnimGraphCmdName, orgCommand)
     {
         mActorInstanceID  = MCORE_INVALIDINDEX32;
         mOldAnimGraphUsed = MCORE_INVALIDINDEX32;
@@ -854,10 +582,8 @@ namespace CommandSystem
                     // set the anim graph instance
                     actorInstance->SetAnimGraphInstance(animGraphInstance);
 
-                    // prepare, init and update
-                    animGraphInstance->RecursivePrepareNodes();
-                    animGraphInstance->Init();
-                    animGraphInstance->OnUpdateUniqueData();
+                    // update unique datas
+                    animGraphInstance->UpdateUniqueData();
                 }
             }
             else
@@ -882,10 +608,11 @@ namespace CommandSystem
                 // set the anim graph instance
                 actorInstance->SetAnimGraphInstance(animGraphInstance);
 
-                // prepare, init and update
-                animGraphInstance->RecursivePrepareNodes();
-                animGraphInstance->Init();
-                animGraphInstance->OnUpdateUniqueData();
+                // update unique datas
+                animGraphInstance->UpdateUniqueData();
+
+                animGraph->Reinit();
+                animGraph->UpdateUniqueData();
             }
         }
 
@@ -980,9 +707,7 @@ namespace CommandSystem
                     actorInstance->SetAnimGraphInstance(animGraphInstance);
 
                     // prepare, init and update
-                    animGraphInstance->RecursivePrepareNodes();
-                    animGraphInstance->Init();
-                    animGraphInstance->OnUpdateUniqueData();
+                    animGraphInstance->UpdateUniqueData();
                 }
             }
             else
@@ -1004,9 +729,7 @@ namespace CommandSystem
                 actorInstance->SetAnimGraphInstance(animGraphInstance);
 
                 // prepare, init and update
-                animGraphInstance->RecursivePrepareNodes();
-                animGraphInstance->Init();
-                animGraphInstance->OnUpdateUniqueData();
+                animGraphInstance->UpdateUniqueData();
             }
         }
 
@@ -1048,36 +771,21 @@ namespace CommandSystem
 
     void ClearAnimGraphsCommand(MCore::CommandGroup* commandGroup)
     {
-        MCore::CommandGroup internalCommandGroup("Clear anim graphs");
-        AZStd::string command;
-
-        const uint32 numAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();
-        for (uint32 i = 0; i < numAnimGraphs; ++i)
+        if (EMotionFX::GetAnimGraphManager().GetNumAnimGraphs() > 0)
         {
-            const EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().GetAnimGraph(i);
-            command = AZStd::string::format("RemoveAnimGraph -animGraphID %i", animGraph->GetID());
-
-            if (animGraph->GetIsOwnedByRuntime())
-            {
-                continue;
-            }
+            const AZStd::string command = "RemoveAnimGraph -animGraphID SELECT_ALL";
 
             if (!commandGroup)
             {
-                internalCommandGroup.AddCommandString(command);
+                AZStd::string result;
+                if (!GetCommandManager()->ExecuteCommand(command, result))
+                {
+                    AZ_Error("EMotionFX", false, result.c_str());
+                }
             }
             else
             {
                 commandGroup->AddCommandString(command);
-            }
-        }
-
-        if (!commandGroup)
-        {
-            AZStd::string result;
-            if (!GetCommandManager()->ExecuteCommandGroup(internalCommandGroup, result))
-            {
-                AZ_Error("EMotionFX", false, result.c_str());
             }
         }
     }
@@ -1109,7 +817,7 @@ namespace CommandSystem
 
                     if (animGraph &&
                         !animGraph->GetIsOwnedByRuntime() &&
-                        AzFramework::StringFunc::Equal(animGraph->GetFileNameString().c_str(), filenames[i].c_str(), false /* no case */))
+                        AzFramework::StringFunc::Equal(animGraph->GetFileName(), filenames[i].c_str(), false /* no case */))
                     {
                         commandString = AZStd::string::format("RemoveAnimGraph -animGraphID %d", animGraph->GetID());
                         commandGroup.AddCommandString(commandString);
@@ -1126,5 +834,7 @@ namespace CommandSystem
         {
             AZ_Error("EMotionFX", false, result.c_str());
         }
+
+        GetCommandManager()->ClearHistory();
     }
 } // namesapce EMotionFX

@@ -41,7 +41,7 @@ namespace AzToolsFramework
             , m_thumbnailSize(thumbnailSize)
             , m_key(key)
         {
-            connect(&m_watcher, &QFutureWatcher<void>::finished, [this]()
+            connect(&m_watcher, &QFutureWatcher<void>::finished, this, [this]()
                 {
                     if (m_state == State::Loading)
                     {

@@ -166,6 +166,94 @@ namespace AZ
         VectorFloat one = VectorFloat::CreateOne();
         return VectorFloat(2.0f * acosf(GetW().GetClamp(-one, one)));
     }
+
+    // Technique from published work available here
+    // https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2012/07/euler-angles1.pdf (Extracting Euler Angles from a Rotation Matrix - Mike Day, Insomniac Games mday@insomniacgames.com)
+    AZ::Vector3 Quaternion::GetEulerDegrees() const
+    {
+        AZ::Vector3 eulers = GetEulerRadians();
+        eulers.Set(AZ::RadToDeg(eulers.GetX()), AZ::RadToDeg(eulers.GetY()), AZ::RadToDeg(eulers.GetZ()));
+        return eulers;
+    }
+
+    AZ::Vector3 Quaternion::GetEulerRadians() const
+    {
+        AZ::Transform transform = AZ::Transform::CreateFromQuaternion(*this);
+        return transform.GetEulerRadians();
+    }
+
+    void Quaternion::SetFromEulerRadians(const AZ::Vector3& eulerRadians)
+    {
+        AZ::VectorFloat half(0.5f);
+        AZ::VectorFloat rotx = eulerRadians.GetX() * half;
+        AZ::VectorFloat roty = eulerRadians.GetY() * half;
+        AZ::VectorFloat rotz = eulerRadians.GetZ() * half;
+
+        AZ::VectorFloat sx, cx, sy, cy, sz, cz;
+        rotx.GetSinCos(sx, cx);
+        roty.GetSinCos(sy, cy);
+        rotz.GetSinCos(sz, cz);
+
+        // rot = rotx * roty * rotz
+        auto w = cx * cy * cz - sx * sy * sz;
+        auto x = cx * sy * sz + sx * cy * cz;
+        auto y = cx * sy * cz - sx * cy * sz;
+        auto z = cx * cy * sz + sx * sy * cz;
+
+        Set(x, y, z, w);
+    }
+
+    void Quaternion::SetFromEulerDegrees(const AZ::Vector3& eulerDegrees)
+    {
+        SetFromEulerRadians(Vector3DegToRad(eulerDegrees));
+    }
+
+    void Quaternion::ConvertToAxisAngle(AZ::Vector3& outAxis, float& outAngle) const
+    {
+        outAngle = 2.0f * acosf(GetW());
+
+        const float sinHalfAngle = sinf(outAngle * 0.5f);
+        if (sinHalfAngle > 0.0f)
+        {
+            const float invS = 1.0f / sinHalfAngle;
+            outAxis.Set(GetX() * invS, GetY() * invS, GetZ() * invS);
+        }
+        else
+        {
+            outAxis.Set(0.0f, 1.0f, 0.0f);
+            outAngle = 0.0f;
+        }
+    }
+
+    // Non-member functionality belonging to the AZ namespace
+    Vector3 ConvertQuaternionToEulerDegrees(const AZ::Quaternion& q)
+    {
+        return q.GetEulerRadians();
+    }
+
+    AZ::Vector3 ConvertQuaternionToEulerRadians(const AZ::Quaternion& q)
+    {
+        return q.GetEulerRadians();
+    }
+
+    AZ::Quaternion ConvertEulerRadiansToQuaternion(const AZ::Vector3& eulerRadians)
+    {
+        Quaternion q;
+        q.SetFromEulerRadians(eulerRadians);
+        return q;
+    }
+
+    AZ::Quaternion ConvertEulerDegreesToQuaternion(const AZ::Vector3& eulerDegrees)
+    {
+        Quaternion q;
+        q.SetFromEulerDegrees(eulerDegrees);
+        return q;
+    }
+
+    void ConvertQuaternionToAxisAngle(const AZ::Quaternion& quat, AZ::Vector3& outAxis, float& outAngle)
+    {
+        quat.ConvertToAxisAngle(outAxis, outAngle);
+    }
 }
 
 #endif // #ifndef AZ_UNITY_BUILD

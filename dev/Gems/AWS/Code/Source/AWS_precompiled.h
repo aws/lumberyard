@@ -23,5 +23,6 @@
 
 #undef IN
 #undef GetObject
+#undef SendMessage
 
 #endif//GEM_F79C1285_700E_4E56_B77B_A78562B2365B_CODE_SOURCE_AWS_PRECOMPILED_H

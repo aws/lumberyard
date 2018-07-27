@@ -14,7 +14,7 @@
 // Description : Implements a flow node to handle vehicle damages
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowVehicleDamage.h"
 
 #include "CryAction.h"

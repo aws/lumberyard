@@ -101,6 +101,18 @@ struct ITerrain
     virtual void InitTerrainWater(_smart_ptr<IMaterial> pTerrainWaterMat) = 0;
 
     virtual IRenderNode* AddVegetationInstance(int nStaticGroupID, const Vec3& vPos, const float fScale, uint8 ucBright, uint8 angle, uint8 angleX = 0, uint8 angleY = 0) = 0;
+
+    virtual float GetZ(int x, int y) const = 0;
+    virtual float GetBilinearZ(float x1, float y1) const = 0;
+
+    virtual SurfaceWeight GetSurfaceWeight(int x, int y) const = 0;
+
+    virtual Vec3 GetTerrainSurfaceNormal(Vec3 vPos, float fRange) = 0;
+    virtual void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33) = 0;
+
+    virtual bool IsHole(int x, int y) const = 0;
+    virtual bool IsMeshQuadFlipped(const int x, const int y, const int nUnitSize) const = 0;
+
 };
 
 //==============================================================================================

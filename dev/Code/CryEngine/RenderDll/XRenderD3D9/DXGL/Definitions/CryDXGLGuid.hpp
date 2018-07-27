@@ -40,7 +40,7 @@
 
 #define DXGL_GUID_QUOTE(_STRING) #_STRING
 #define DXGL_GUID_STRING(_D0, _W0, _W1, _B0, _B1, _B2, _B3, _B4, _B5, _B6, _B7) \
-    DXGL_GUID_QUOTE(_D0##-##_W0##-##_W1##-##_B0##_B1##-##_B2##_B3##_B4##_B5##_B6##_B7)
+    DXGL_GUID_QUOTE(_D0-_W0-_W1-_B0##_B1-_B2##_B3##_B4##_B5##_B6##_B7)
 #define DXGL_DEFINE_TYPE_GUID(_CLASS, _TYPE, _D0, _W0, _W1, _B0, _B1, _B2, _B3, _B4, _B5, _B6, _B7) \
     _CLASS __declspec(uuid(DXGL_GUID_STRING(_D0, _W0, _W1, _B0, _B1, _B2, _B3, _B4, _B5, _B6, _B7))) _TYPE;
 

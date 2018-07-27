@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StaticData_precompiled.h"
 #include <platform_impl.h>
 #include "StaticDataGem.h"
 #include <FlowSystem/Nodes/FlowBaseNode.h>
@@ -22,33 +21,13 @@ namespace StaticData
         m_descriptors.insert(m_descriptors.end(), {
             CloudCanvas::StaticData::StaticDataManager::CreateDescriptor(),
         });
+
+        Initialize();
     }
 
-    void StaticDataGem::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
+    StaticDataGem::~StaticDataGem()
     {
-        using namespace StaticData;
 
-        switch (event)
-        {
-        case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-            RegisterExternalFlowNodes();
-            break;
-
-        case ESYSTEM_EVENT_GAME_POST_INIT:
-            // Put your init code here
-            // All other Gems will exist at this point
-        {
-
-        }
-        break;
-
-        case ESYSTEM_EVENT_FULL_SHUTDOWN:
-        case ESYSTEM_EVENT_FAST_SHUTDOWN:
-            // Put your shutdown code here
-            // Other Gems may have been shutdown already, but none will have destructed
-
-            break;
-        }
     }
 
     AZ::ComponentTypeList StaticDataGem::GetRequiredSystemComponents() const

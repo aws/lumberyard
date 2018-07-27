@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Unit Testing
@@ -18,6 +18,21 @@
 
 namespace ComponentFactoryTests
 {
+    class ComponentFactoryTests
+        : public ::testing::Test
+    {
+    public:
+        void SetUp() override
+        {
+            AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+        }
+
+        void TearDown() override
+        {
+            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+        }
+    };
+
     class IComponentDog
         : public IComponent
     {
@@ -52,7 +67,7 @@ namespace ComponentFactoryTests
     int CComponentDog::sDeleteRunCount = 0;
 
 
-    TEST(ComponentFactoryTests, CUT_DefaultComponentFactory)
+    TEST_F(ComponentFactoryTests, CUT_DefaultComponentFactory)
     {
         DefaultComponentFactory<CComponentDog, IComponentDog> dogFactory;
         EXPECT_TRUE(dogFactory.GetComponentType() == IComponentDog::Type());
@@ -61,7 +76,7 @@ namespace ComponentFactoryTests
         const int prevDeleteRunCount = CComponentDog::sDeleteRunCount;
         {
             // check that factory can create component
-            std::shared_ptr<IComponentDog> idog = dogFactory.CreateComponent();
+            AZStd::shared_ptr<IComponentDog> idog = dogFactory.CreateComponent();
             EXPECT_TRUE(idog.get() != nullptr);
             EXPECT_TRUE(idog->GetComponentType() == IComponentDog::Type());
         }
@@ -71,7 +86,7 @@ namespace ComponentFactoryTests
         EXPECT_TRUE(CComponentDog::sDeleteRunCount == (prevDeleteRunCount + 1));
     }
 
-    TEST(ComponentFactoryTests, CUT_ComponentFactoryCreationNode)
+    TEST_F(ComponentFactoryTests, CUT_ComponentFactoryCreationNode)
     {
         // track number of nodes in global list as we proceed through test
         const int oldNodeCount = ComponentFactoryCreationNode::GetGlobalList().size();
@@ -86,7 +101,7 @@ namespace ComponentFactoryTests
             auto createDogFactoryFunction = [&]()
                 {
                     createDogFactoryFunctionRunCount++;
-                    return std::make_unique<DefaultComponentFactory<CComponentDog, IComponentDog> >();
+                    return AZStd::make_unique<DefaultComponentFactory<CComponentDog, IComponentDog> >();
                 };
 
             // node that will spawn a factory (by running createDogFactoryFunction)
@@ -99,7 +114,7 @@ namespace ComponentFactoryTests
 
             // create factory
             EXPECT_TRUE(createDogFactoryFunctionRunCount == 0);
-            std::unique_ptr<IComponentFactoryBase> dogFactory = dogFactoryNode.GetCreateFactoryFunction()();
+            AZStd::unique_ptr<IComponentFactoryBase> dogFactory = dogFactoryNode.GetCreateFactoryFunction()();
             EXPECT_TRUE(createDogFactoryFunctionRunCount == 1);
             EXPECT_TRUE(dogFactory.get() != nullptr);
             EXPECT_TRUE(dogFactory->GetComponentType() == IComponentDog::Type());
@@ -113,7 +128,7 @@ namespace ComponentFactoryTests
         EXPECT_TRUE(!stl::find(ComponentFactoryCreationNode::GetGlobalList(), staleOldNodePointer));
     }
 
-    TEST(ComponentFactoryTests, CUT_DefaultComponentFactoryCreationNode)
+    TEST_F(ComponentFactoryTests, CUT_DefaultComponentFactoryCreationNode)
     {
         // track number of nodes in global list as we proceed through test
         const int oldNodeCount = ComponentFactoryCreationNode::GetGlobalList().size();
@@ -122,7 +137,7 @@ namespace ComponentFactoryTests
         {
             DefaultComponentFactoryCreationNode<CComponentDog, IComponentDog> node;
             EXPECT_TRUE(stl::find(ComponentFactoryCreationNode::GetGlobalList(), &node));
-            std::unique_ptr<IComponentFactoryBase> factory = node.GetCreateFactoryFunction()();
+            AZStd::unique_ptr<IComponentFactoryBase> factory = node.GetCreateFactoryFunction()();
             EXPECT_TRUE(factory.get() != nullptr);
             EXPECT_TRUE(factory->GetComponentType() == IComponentDog::Type());
         }

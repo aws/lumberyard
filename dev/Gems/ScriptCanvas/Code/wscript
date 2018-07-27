@@ -56,7 +56,6 @@ def build(bld):
         configurations  = ['all'],
         file_list       = ['scriptcanvasgem_common.waf_files', 'scriptcanvasgem_runtime_asset.waf_files'],
         defines         = COMMON_DEFINES,
-        export_defines  = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
 
         includes        = ['Include', 'Include/ScriptCanvas'],
         use             = ['AzCore', 'AzFramework'],
@@ -84,7 +83,6 @@ def build(bld):
         configurations  = ['debug', 'profile'],
         file_list       = ['scriptcanvasgem_editor_static.waf_files'],
         defines         = ['SCRIPTCANVAS_EDITOR'] + COMMON_DEFINES,
-        export_defines  = ['SCRIPTCANVAS_ERRORS_ENABLED'],
 
         includes        = [ 'Editor/Static/Include', 'Editor/Static/Source' ],
         export_includes = [ 'Editor/Static/Include' ],
@@ -106,7 +104,6 @@ def build(bld):
         export_includes     = [ '.', 'Include/ScriptCanvas', 'Editor/Include' ],
 
         defines             = COMMON_DEFINES,
-        export_defines      = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
 
         platforms           = ['all'],
         configurations      = ['all'],
@@ -124,7 +121,6 @@ def build(bld):
         # Editor Gem configuration
         editor = dict(
             defines         = ['SCRIPTCANVAS_EDITOR'] + COMMON_DEFINES,
-            export_defines  = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
 
             features        = ['qt5','az_code_gen'],
             platforms       = ['win', 'darwin'],

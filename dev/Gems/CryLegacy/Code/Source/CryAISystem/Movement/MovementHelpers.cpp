@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "MovementUpdateContext.h"
 #include "MovementActor.h"
 #include "PipeUser.h"

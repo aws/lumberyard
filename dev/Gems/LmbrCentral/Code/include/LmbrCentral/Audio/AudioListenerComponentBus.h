@@ -37,6 +37,8 @@ namespace LmbrCentral
             SetRotationEntity(entityId);
             SetPositionEntity(entityId);
         }
+
+        virtual void SetListenerEnabled(bool enabled) = 0;
     };
 
     using AudioListenerComponentRequestBus = AZ::EBus<AudioListenerComponentRequests>;

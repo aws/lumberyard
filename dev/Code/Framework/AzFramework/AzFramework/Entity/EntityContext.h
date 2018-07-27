@@ -187,7 +187,7 @@ namespace AzFramework
             SliceInstantiationTicket m_ticket;
             AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper m_customMapper;
         };
-        AZStd::list<InstantiatingSliceInfo> m_queuedSliceInstantiations;
+        AZStd::vector<InstantiatingSliceInfo> m_queuedSliceInstantiations;
     };
 } // namespace AzFramework
 

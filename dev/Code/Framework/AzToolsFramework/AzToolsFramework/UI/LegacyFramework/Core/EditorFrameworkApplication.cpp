@@ -20,7 +20,7 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/Serialization/ObjectStream.h>
-#include <AzCore/Debug/trace.h>
+#include <AzCore/Debug/Trace.h>
 #include <AzCore/Math/Sfmt.h>
 #include <AzCore/std/time.h>
 
@@ -61,7 +61,7 @@
 
 namespace LegacyFramework
 {
-    ApplicationDesc::ApplicationDesc(const char* name)
+    ApplicationDesc::ApplicationDesc(const char* name, int argc, char** argv)
         : m_applicationModule(NULL)
         , m_enableGridmate(true)
         , m_enablePerforce(true)
@@ -69,11 +69,13 @@ namespace LegacyFramework
         , m_enableProjectManager(true)
         , m_shouldRunAssetProcessor(true)
         , m_saveUserSettings(true)
+        , m_argc(argc)
+        , m_argv(argv)
     {
         m_applicationName[0] = 0;
         if (name)
         {
-            qstrcpy(m_applicationName, name);
+            azstrcpy(m_applicationName, _MAX_PATH, name);
         }
     }
 
@@ -93,10 +95,12 @@ namespace LegacyFramework
         m_enableGUI = other.m_enableGUI;
         m_enableGridmate = other.m_enableGridmate;
         m_enablePerforce = other.m_enablePerforce;
-        qstrcpy(m_applicationName, other.m_applicationName);
+        azstrcpy(m_applicationName, _MAX_PATH, other.m_applicationName);
         m_enableProjectManager = other.m_enableProjectManager;
         m_shouldRunAssetProcessor = other.m_shouldRunAssetProcessor;
         m_saveUserSettings = other.m_saveUserSettings;
+        m_argc = other.m_argc;
+        m_argv = other.m_argv;
         return *this;
     }
 
@@ -174,7 +178,7 @@ namespace LegacyFramework
         QSharedMemory* shared = new QSharedMemory(appNameConcat);
         if (qApp)
         {
-            QObject::connect(qApp, &QCoreApplication::aboutToQuit, [shared]() { delete shared; });
+            QObject::connect(qApp, &QCoreApplication::aboutToQuit, qApp, [shared]() { delete shared; });
         }
         m_isMaster = shared->create(1);
 
@@ -218,7 +222,7 @@ namespace LegacyFramework
         azstrncpy(m_appRoot, AZ_MAX_PATH_LEN, m_exeDirectory, AZ_MAX_PATH_LEN);
 
         m_ptrCommandLineParser = aznew AzFramework::CommandLine();
-        m_ptrCommandLineParser->Parse();
+        m_ptrCommandLineParser->Parse(m_desc.m_argc, m_desc.m_argv);
         if (m_ptrCommandLineParser->HasSwitch("app-root"))
         {
             auto appRootOverride = m_ptrCommandLineParser->GetSwitchValue("app-root", 0);

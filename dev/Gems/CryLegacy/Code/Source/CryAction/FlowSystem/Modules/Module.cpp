@@ -14,7 +14,7 @@
 // Description : Module container
 
 
-#include <StdAfx.h>
+#include "CryLegacy_precompiled.h"
 #include <FlowSystem/Modules/Module.h>
 #include <FlowSystem/Modules/FlowModuleNodes.h>
 #include <ILevelSystem.h>

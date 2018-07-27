@@ -14,7 +14,7 @@
 //  Contains:
 //  Implementation of all software skinning & morphing functions
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include <IRenderAuxGeom.h>
 #include "ModelMesh.h"
 #include "QTangent.h"

@@ -498,7 +498,7 @@ namespace NCryOpenGL
         if (kWindowHandle == NULL || GetWindowRect(kWindowHandle, &kWindowRect) != TRUE)
         {
             DXGL_ERROR("Could not retrieve the device window rectangle");
-            return false;
+            return nullptr;
         }
 
         int32 iWindowCenterX((kWindowRect.left + kWindowRect.right) / 2);
@@ -513,7 +513,7 @@ namespace NCryOpenGL
             RECT kDisplayRect;
             if (!NWin32Helper::GetDisplayRect(&kDisplayRect, pOutput))
             {
-                return NULL;
+                return nullptr;
             }
 
             if (kWindowRect.left   >= kDisplayRect.left  &&
@@ -690,7 +690,7 @@ namespace NCryOpenGL
 #if defined(ANDROID)
         ANativeWindow* nativeWindow = reinterpret_cast<ANativeWindow*>(handle);
         // We need to set the windows size to match the engine width and height. The Android compositor will upscale it to fullscreen.
-        ANativeWindow_setBuffersGeometry(nativeWindow, width, height, WINDOW_FORMAT_RGBA_8888);
+        ANativeWindow_setBuffersGeometry(nativeWindow, width, height, WINDOW_FORMAT_RGBX_8888); // discard alpha
 #endif
     }
 #endif // !defined(WIN32)
@@ -715,6 +715,39 @@ namespace NCryOpenGL
 
         HWND window = reinterpret_cast<HWND>(AZ::Android::Utils::GetWindow());
         CDevice::InitWindow(window, width, height);
+#endif
+    }
+
+    void CDevice::OnApplicationWindowRedrawNeeded()
+    {
+#if defined(ANDROID)
+        if (gEnv && gEnv->pConsole && gEnv->pRenderer)
+        {
+            ICVar* widthCVar = gEnv->pConsole->GetCVar("r_width");
+            ICVar* heightCVar = gEnv->pConsole->GetCVar("r_height");
+
+            int width, height;
+            if (AZ::Android::Utils::GetWindowSize(width, height))
+            {
+                gcpRendD3D->GetClampedWindowSize(width, height);
+
+                widthCVar->Set(width);
+                heightCVar->Set(height);
+
+                // We need to wait for the render thread to finish before we set the new dimensions.
+                // Since Android has a separate render thread, it'll be in the middle of rendering the scene when this function is called.
+                if (!gRenDev->m_pRT->IsRenderThread(true))
+                {
+                    gEnv->pRenderer->GetRenderThread()->WaitFlushFinishedCond();
+                }
+
+                gcpRendD3D->SetWidth(widthCVar->GetIVal());
+                gcpRendD3D->SetHeight(heightCVar->GetIVal());
+
+                InitWindow(AZ::Android::Utils::GetWindow(), width, height);
+                DetectOutputs(*m_spAdapter, m_spAdapter->m_kOutputs);
+            }
+        }
 #endif
     }
 
@@ -2372,6 +2405,8 @@ namespace NCryOpenGL
             DXGL_ERROR("Failed to get window size");
             return false;
         }
+
+        gcpRendD3D->GetClampedWindowSize(widthPixels, heightPixels);
 
         SDisplayMode mode;
         mode.m_uWidth = static_cast<uint32>(widthPixels);

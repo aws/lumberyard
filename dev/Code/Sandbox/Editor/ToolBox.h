@@ -70,7 +70,7 @@ public:
         : m_action(title, 0)
         , m_toolbarId(INVALID_TOOLBAR_ID)
     {
-        QObject::connect(&m_action, &QAction::triggered, [this]() { Execute(); });
+        QObject::connect(&m_action, &QAction::triggered, &m_action, [this]() { Execute(); });
     }
     ~CToolBoxMacro()
     { Clear(); }

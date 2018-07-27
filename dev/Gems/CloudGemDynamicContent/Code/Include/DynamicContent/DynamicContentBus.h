@@ -43,17 +43,22 @@ namespace CloudCanvas
         using DynamicContentRequestBus = AZ::EBus<IDynamicContentTransferManager>;
 
         // Update bus to listen for data updates from the DynamicContent Gem
-        // Used by StaticDataManager in the Don't Die Demo to
-        // Allow for live data updates in the game client
         class DynamicContentUpdate
             : public AZ::ComponentBus
         {
         public:
-            virtual void NewContentReady(const AZStd::string& outputFile) = 0;
-            virtual void NewPakContentReady(const AZStd::string& pakFileName) = 0;
+            virtual void NewContentReady(const AZStd::string& outputFile) {}
+            virtual void NewPakContentReady(const AZStd::string& pakFileName) {}
+            virtual void FileStatusFailed(const AZStd::string& outputFile) {}
+
+            // Download was attempted and failed
+            virtual void DownloadFailed(const AZStd::string& outputFile) {}
+
+            // Broadcast when we've detected a change in file status on the back end from the WebCommunicator (New file made public, public file made private)
+            virtual void FileStatusChanged(const AZStd::string& fileName, const AZStd::string& fileStatus) {}
 
             // Fired when when our tick bus checks and finds no remaining pak entries to mount in the UPDATING state
-            virtual void RequestsCompleted() = 0;
+            virtual void RequestsCompleted() {}
         };
 
         class DynamicContentUpdateTraits

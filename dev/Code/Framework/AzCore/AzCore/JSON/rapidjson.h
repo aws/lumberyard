@@ -34,8 +34,17 @@
 // Set custom namespace for AzCore's rapidjson to avoid various collisions.
 #define RAPIDJSON_NAMESPACE rapidjson_ly
 
+#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-warning-option"
+#endif
+
 // Make you have available rapidjson/include folder. Currently 3rdParty\rapidjson\rapidjson-1.0.2\include
 #include <rapidjson/rapidjson.h>
+
+#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG)
+#pragma clang diagnostic pop
+#endif
 
 // Allow our existing code to continue use "rapidjson::"
 #define rapidjson RAPIDJSON_NAMESPACE

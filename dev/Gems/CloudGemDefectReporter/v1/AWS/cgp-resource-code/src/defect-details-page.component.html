@@ -1,0 +1,71 @@
+<facet-generator 
+    [context]="context" 
+    [tabs]="['Report Detail', 'Raw Data']" 
+    [disableInheritedFacets]="true"
+    [metricIdentifier]="context.identifier"
+    (tabClicked)="tabIndex=$event"></facet-generator>
+
+<!-- Shared button by all facets -->
+<button class="btn l-primary" (click)="onShowDefectListPage()">
+    < Back to Defect List
+</button>
+<button *ngIf="tabIndex === 0" class="btn btn-outline-primary float-right report-operation" (click)="changeReportStatus()">
+    {{getReportStatus()}}
+</button>
+<button *ngIf="tabIndex === 0" class="btn btn-outline-primary float-right report-operation" (click)="changeBookmarkStatus()">
+   {{getBookmarkStatus()}}
+</button>
+<button *ngIf="tabIndex === 0" class="btn btn-outline-primary float-right report-operation" (click)="addCommentModal()">
+    Add Comment
+</button>
+
+<!-- Overview Tab -->
+<div *ngIf="tabIndex === 0">
+    <div *ngIf="isLoading">
+        <loading-spinner></loading-spinner>
+    </div>
+    
+    <div *ngIf="!isLoading && defect">
+        <div class="detail-information">
+            <report-information [context]="context" [reportInformation]="defect" [configurationMappings]="configurationMappings" (deleteComment)="deleteComment($event)" (editComment)="editCommentModal($event)"></report-information>
+        </div>
+        <div class="detail-information">
+            <player-information [playerInformation]="defect" [configurationMappings]="configurationMappings"></player-information>
+            <system-information [systemInformation]="defect" [configurationMappings]="configurationMappings"></system-information>
+        </div>       
+    </div>
+</div>
+
+<!-- Raw Data Tab -->
+<div *ngIf="tabIndex === 1">
+    <form class="raw-data-container">
+        <div *ngFor="let key of rawDataKeys">
+            <div *ngIf="defect[key] != ''" class="form-group row">
+                <label class="col-3 col-form-label affix">{{key}}</label>
+                <label class="col-6 form-control affix">{{defect[key]}}</label>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Add comment and edit comment modal -->
+<modal *ngIf="mode == Modes.AddComment || mode == Modes.EditComment"
+       [title]="mode == Modes.AddComment ? 'Add Comment' : 'Edit Comment'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Add'"
+       (modalSubmitted)="mode == Modes.AddComment ? addComment() : updateComment()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <form>
+            <div class="form-group row">
+                <label class="col-3 col-form-label affix">Comment</label>
+                <div class="col-9">
+                    <textarea class="form-control" name="comment" [(ngModel)]="currentComment['content']" cols="100" rows="6"></textarea>
+                </div>
+            </div>
+        </form>
+    </div>
+</modal>

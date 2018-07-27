@@ -14,7 +14,7 @@
 // Description : Implements AssetMaterialDatabase.h
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AssetMaterialDatabase.h"
 #include "AssetMaterialItem.h"
 #include "IMaterial.h"

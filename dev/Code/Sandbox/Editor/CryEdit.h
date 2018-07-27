@@ -140,7 +140,7 @@ public:
     void CreateSplashScreen();
     void InitPlugins();
     bool InitGame();
-    void InitLevel(CEditCommandLineInfo& cmdInfo);
+
     BOOL InitConsole();
     int IdleProcessing(bool bBackground);
     bool IsWindowInForeground();
@@ -159,7 +159,6 @@ public:
     bool ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location);
 
     bool ToExternalToolPrompt(const QString& msg, const QString& caption);
-    bool ToExternalToolSave();
     bool OpenProjectConfiguratorSwitchProject();
     bool OpenProjectConfigurator(const QString& startPage) const;
 
@@ -219,7 +218,6 @@ public:
     void ProceduralCreation();
     void SaveTagLocations();
     void MeasurementSystemTool();
-    void ToolSky();
     void ToolLighting();
     void TerrainTextureExport();
     void RefineTerrainTextureTiles();
@@ -401,6 +399,8 @@ protected:
     // -------------------------------------------
 
 private:
+    void InitLevel(const CEditCommandLineInfo& cmdInfo);
+
     CMainFrame* GetMainFrame() const;
     void InitAccelManager();
     void WriteConfig();
@@ -428,63 +428,67 @@ private:
     int RunPluginUnitTests(CEditCommandLineInfo& cmdInfo);
 #endif
 
-    class CEditorImpl* m_pEditor;
+    class CEditorImpl* m_pEditor = nullptr;
     static CCryEditApp* s_currentInstance;
     //! True if editor is in test mode.
     //! Test mode is a special mode enabled when Editor ran with /test command line.
     //! In this mode editor starts up, but exit immediately after all initialization.
-    bool m_bTestMode;
-    bool m_bPrecacheShaderList;
-    bool m_bPrecacheShaders;
-    bool m_bPrecacheShadersLevels;
-    bool m_bMergeShaders;
-    bool m_bStatsShaderList;
-    bool m_bStatsShaders;
+    bool m_bTestMode = false;
+    bool m_bPrecacheShaderList = false;
+    bool m_bPrecacheShaders = false;
+    bool m_bPrecacheShadersLevels = false;
+    bool m_bMergeShaders = false;
+    bool m_bStatsShaderList = false;
+    bool m_bStatsShaders = false;
     //! In this mode editor will load specified cry file, export t, and then close.
-    bool m_bExportMode;
+    bool m_bExportMode = false;
     QString m_exportFile;
     //! If application exiting.
-    bool m_bExiting;
+    bool m_bExiting = false;
     //! True if editor is in preview mode.
     //! In this mode only very limited functionality is available and only for fast preview of models.
-    bool m_bPreviewMode;
+    bool m_bPreviewMode = false;
     // Only console window is created.
-    bool m_bConsoleMode;
+    bool m_bConsoleMode = false;
+    // Skip showing the WelcomeScreenDialog
+    bool m_bSkipWelcomeScreenDialog = false;
     // Level load test mode
-    bool m_bLevelLoadTestMode;
+    bool m_bLevelLoadTestMode = false;
     //! Current file in preview mode.
     char m_sPreviewFile[_MAX_PATH];
     //! True if "/runpython" was passed as a flag.
-    bool m_bRunPythonScript;
-    CMatEditMainDlg* m_pMatEditDlg;
-    CConsoleDialog* m_pConsoleDialog;
+    bool m_bRunPythonScript = false;
+    CMatEditMainDlg* m_pMatEditDlg = nullptr;
+    CConsoleDialog* m_pConsoleDialog = nullptr;
     //! In this mode, editor will load world segments and process command for each batch
-    bool m_bSWBatchMode;
+    bool m_bSWBatchMode = false;
     Vec3 m_tagLocations[12];
     Ang3 m_tagAngles[12];
-    float m_fastRotateAngle;
-    float m_moveSpeedStep;
+    float m_fastRotateAngle = 45.0f;
+    float m_moveSpeedStep = 0.1f;
 
     ULONG_PTR m_gdiplusToken;
     QSharedMemory* m_mutexApplication = nullptr;
     //! was the editor active in the previous frame ... needed to detect if the game lost focus and
     //! dispatch proper SystemEvent (needed to release input keys)
-    bool m_bPrevActive;
+    bool m_bPrevActive = false;
     // If this flag is set, the next OnIdle() will update, even if the app is in the background, and then
     // this flag will be reset.
-    bool m_bForceProcessIdle;
+    bool m_bForceProcessIdle = false;
     // Keep the editor alive, even if no focus is set
-    bool m_bKeepEditorActive;
+    bool m_bKeepEditorActive = false;
+    // Currently creating a new level
+    bool m_creatingNewLevel = false;
 
     QString m_lastOpenLevelPath;
-    CQuickAccessBar* m_pQuickAccessBar;
-    int m_initSegmentsToOpen;
-    IEventLoopHook* m_pEventLoopHook;
+    CQuickAccessBar* m_pQuickAccessBar = nullptr;
+    int m_initSegmentsToOpen = 0;
+    IEventLoopHook* m_pEventLoopHook = nullptr;
     QString m_rootEnginePath;
 
-    class CMannequinChangeMonitor* m_pChangeMonitor;
+    class CMannequinChangeMonitor* m_pChangeMonitor = nullptr;
 
-    int m_disableIdleProcessingCounter; //!< Counts requests to disable idle processing. When non-zero, idle processing will be disabled.
+    int m_disableIdleProcessingCounter = 0; //!< Counts requests to disable idle processing. When non-zero, idle processing will be disabled.
 
 #if AZ_TESTS_ENABLED
     struct BootstrapTestInfo
@@ -498,7 +502,7 @@ private:
     } m_bootstrapTestInfo;
 #endif
 
-    CCryDocManager* m_pDocManager;
+    CCryDocManager* m_pDocManager = nullptr;
 
 private:
     void OnEditHide();
@@ -655,17 +659,13 @@ public:
 };
 
 //////////////////////////////////////////////////////////////////////////
-class CFrameWnd;
 class CCrySingleDocTemplate 
     : public QObject
 {
 private:
-    explicit CCrySingleDocTemplate(UINT nIDResource, const QMetaObject* pDocClass, CRuntimeClass* pFrameClass)
+    explicit CCrySingleDocTemplate(const QMetaObject* pDocClass)
         : QObject()
         , m_documentClass(pDocClass)
-        , m_frameClass(pFrameClass)
-        , m_nIdResource(nIDResource)
-        , m_frame(nullptr)
     {
     }
 public:
@@ -680,29 +680,25 @@ public:
     };
 
     template<typename DOCUMENT>
-    static CCrySingleDocTemplate* create(UINT nIDResource, CRuntimeClass* pFrameClass)
+    static CCrySingleDocTemplate* create()
     {
-        return new CCrySingleDocTemplate(nIDResource, &DOCUMENT::staticMetaObject, pFrameClass);
+        return new CCrySingleDocTemplate(&DOCUMENT::staticMetaObject);
     }
     ~CCrySingleDocTemplate() {};
     // avoid creating another CMainFrame
-    virtual CFrameWnd* CreateNewFrame(CCryEditDoc* pDoc, CFrameWnd* pOther);
     // close other type docs before opening any things
     virtual CCryEditDoc* OpenDocumentFile(LPCTSTR lpszPathName, BOOL bAddToMRU, BOOL bMakeVisible);
     virtual CCryEditDoc* OpenDocumentFile(LPCTSTR lpszPathName, BOOL bMakeVisible = TRUE);
     virtual Confidence MatchDocType(LPCTSTR lpszPathName, CCryEditDoc*& rpDocMatch);
 
 private:
-    const QMetaObject* m_documentClass;
-    CRuntimeClass* m_frameClass;
-    CFrameWnd* m_frame;
-    UINT m_nIdResource;
+    const QMetaObject* m_documentClass = nullptr;
 };
 
 class CDocTemplate;
 class CCryDocManager
 {
-    CCrySingleDocTemplate* m_pDefTemplate;
+    CCrySingleDocTemplate* m_pDefTemplate = nullptr;
 public:
     CCryDocManager();
     CCrySingleDocTemplate* SetDefaultTemplate(CCrySingleDocTemplate* pNew);

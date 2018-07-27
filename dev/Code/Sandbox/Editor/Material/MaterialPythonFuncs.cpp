@@ -1622,21 +1622,6 @@ namespace
                     value.type = SPyWrappedProperty::eType_Float;
                     value.property.floatValue = pMaterial->GetShaderResources().m_DeformInfo.m_fDividerX;
                 }
-                else if (propertyName == "Wave Length Y")
-                {
-                    value.type = SPyWrappedProperty::eType_Float;
-                    value.property.floatValue = pMaterial->GetShaderResources().m_DeformInfo.m_fDividerY;
-                }
-                else if (propertyName == "Wave Length Z")
-                {
-                    value.type = SPyWrappedProperty::eType_Float;
-                    value.property.floatValue = pMaterial->GetShaderResources().m_DeformInfo.m_fDividerZ;
-                }
-                else if (propertyName == "Wave Length W")
-                {
-                    value.type = SPyWrappedProperty::eType_Float;
-                    value.property.floatValue = pMaterial->GetShaderResources().m_DeformInfo.m_fDividerW;
-                }
                 else if (propertyName == "Noise Scale")
                 {
                     value.type = SPyWrappedProperty::eType_Vec3;
@@ -1649,27 +1634,15 @@ namespace
                     throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toUtf8().data());
                 }
             }
-            // ########## Vertex Deformation / [ Wave X | Wave Y | Wave Z | Wave W ] ##########
+            // ########## Vertex Deformation / [ Wave X ] ##########
             else if (splittedPropertyPath.size() == 3)
             {
-                if (subCategoryName == "Wave X" || subCategoryName == "Wave Y" || subCategoryName == "Wave Z" || subCategoryName == "Wave W")
+                if (subCategoryName == "Wave X")
                 {
                     SWaveForm2 currentWaveForm;
                     if (subCategoryName == "Wave X")
                     {
                         currentWaveForm = pMaterial->GetShaderResources().m_DeformInfo.m_WaveX;
-                    }
-                    else if (subCategoryName == "Wave Y")
-                    {
-                        currentWaveForm = pMaterial->GetShaderResources().m_DeformInfo.m_WaveY;
-                    }
-                    else if (subCategoryName == "Wave Z")
-                    {
-                        currentWaveForm = pMaterial->GetShaderResources().m_DeformInfo.m_WaveZ;
-                    }
-                    else if (subCategoryName == "Wave W")
-                    {
-                        currentWaveForm = pMaterial->GetShaderResources().m_DeformInfo.m_WaveW;
                     }
 
                     if (propertyName == "Type")
@@ -2204,18 +2177,6 @@ namespace
                 {
                     pMaterial->GetShaderResources().m_DeformInfo.m_fDividerX = value.property.floatValue;
                 }
-                else if (propertyName == "Wave Length Y")
-                {
-                    pMaterial->GetShaderResources().m_DeformInfo.m_fDividerY = value.property.floatValue;
-                }
-                else if (propertyName == "Wave Length Z")
-                {
-                    pMaterial->GetShaderResources().m_DeformInfo.m_fDividerZ = value.property.floatValue;
-                }
-                else if (propertyName == "Wave Length W")
-                {
-                    pMaterial->GetShaderResources().m_DeformInfo.m_fDividerW = value.property.floatValue;
-                }
                 else if (propertyName == "Noise Scale")
                 {
                     pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[0] = value.property.vecValue.x;
@@ -2223,87 +2184,12 @@ namespace
                     pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[2] = value.property.vecValue.z;
                 }
             }
-            // ########## Vertex Deformation / [ Wave X | Wave Y | Wave Z | Wave W ] ##########
+            // ########## Vertex Deformation / [ Wave X ] ##########
             else if (splittedPropertyPath.size() == 3)
             {
                 if (subCategoryName == "Wave X")
                 {
                     SWaveForm2& currentWaveForm = pMaterial->GetShaderResources().m_DeformInfo.m_WaveX;
-
-                    if (propertyName == "Type")
-                    {
-                        currentWaveForm.m_eWFType = TryConvertingCStringToEWaveForm(value.stringValue);
-                    }
-                    else if (propertyName == "Level")
-                    {
-                        currentWaveForm.m_Level = value.property.floatValue;
-                    }
-                    else if (propertyName == "Amplitude")
-                    {
-                        currentWaveForm.m_Amp = value.property.floatValue;
-                    }
-                    else if (propertyName == "Phase")
-                    {
-                        currentWaveForm.m_Phase = value.property.floatValue;
-                    }
-                    else if (propertyName == "Frequency")
-                    {
-                        currentWaveForm.m_Freq = value.property.floatValue;
-                    }
-                }
-                else if (subCategoryName == "Wave Y")
-                {
-                    SWaveForm2& currentWaveForm = pMaterial->GetShaderResources().m_DeformInfo.m_WaveY;
-
-                    if (propertyName == "Type")
-                    {
-                        currentWaveForm.m_eWFType = TryConvertingCStringToEWaveForm(value.stringValue);
-                    }
-                    else if (propertyName == "Level")
-                    {
-                        currentWaveForm.m_Level = value.property.floatValue;
-                    }
-                    else if (propertyName == "Amplitude")
-                    {
-                        currentWaveForm.m_Amp = value.property.floatValue;
-                    }
-                    else if (propertyName == "Phase")
-                    {
-                        currentWaveForm.m_Phase = value.property.floatValue;
-                    }
-                    else if (propertyName == "Frequency")
-                    {
-                        currentWaveForm.m_Freq = value.property.floatValue;
-                    }
-                }
-                else if (subCategoryName == "Wave Z")
-                {
-                    SWaveForm2& currentWaveForm = pMaterial->GetShaderResources().m_DeformInfo.m_WaveZ;
-
-                    if (propertyName == "Type")
-                    {
-                        currentWaveForm.m_eWFType = TryConvertingCStringToEWaveForm(value.stringValue);
-                    }
-                    else if (propertyName == "Level")
-                    {
-                        currentWaveForm.m_Level = value.property.floatValue;
-                    }
-                    else if (propertyName == "Amplitude")
-                    {
-                        currentWaveForm.m_Amp = value.property.floatValue;
-                    }
-                    else if (propertyName == "Phase")
-                    {
-                        currentWaveForm.m_Phase = value.property.floatValue;
-                    }
-                    else if (propertyName == "Frequency")
-                    {
-                        currentWaveForm.m_Freq = value.property.floatValue;
-                    }
-                }
-                else if (subCategoryName == "Wave W")
-                {
-                    SWaveForm2& currentWaveForm = pMaterial->GetShaderResources().m_DeformInfo.m_WaveW;
 
                     if (propertyName == "Type")
                     {

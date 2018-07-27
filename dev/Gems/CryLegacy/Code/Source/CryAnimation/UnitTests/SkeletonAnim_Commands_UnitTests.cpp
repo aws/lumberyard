@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "SkeletonAnim.h"
 
 #include <AzTest/AzTest.h>

@@ -18,7 +18,7 @@
 #define CRYINCLUDE_CRYACTION_FLOWSYSTEM_NODES_VEHICLE_FLOWVEHICLEBASE_H
 #pragma once
 
-#include "../FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 class CFlowVehicleBase
     : public CFlowBaseNode<eNCT_Instanced>

@@ -12,7 +12,7 @@
 
 #include "StdAfx.h"
 #include "UIFrameworkAPI.h"
-#include <AzCore/Math/uuid.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzCore/std/delegate/delegate.h>
 
 #ifdef Q_OS_WIN

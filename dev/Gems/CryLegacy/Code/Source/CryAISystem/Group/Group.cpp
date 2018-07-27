@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "Group.h"
 #include "GroupManager.h"
 #include "SelectionTree/SelectionTreeManager.h"
@@ -193,7 +193,7 @@ void Group::Update(float updateTime)
             if (IAIObject* groupTarget = gAIEnv.pObjectContainer->GetAIObject(info.targetID))
             {
                 char targetName[256] = { 0 };
-                _snprintf(targetName, 256, "Group Target [%s]", groupTarget->GetName());
+                azsnprintf(targetName, 256, "Group Target [%s]", groupTarget->GetName());
                 m_target->SetName(targetName);
                 m_target->SetEntityID(groupTarget->GetEntityID());
             }

@@ -14,7 +14,7 @@
 // Description : implementation of the CScriptTimerMgr class.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ScriptTimerMgr.h"
 #include <ITimer.h>
 #include <IEntitySystem.h>
@@ -261,7 +261,7 @@ void CScriptTimerMgr::Serialize(TSerialize& ser)
 
             string func;
             ser.Value("func", func);
-            strcpy(timer.sFuncName, func);
+            azstrcpy(timer.sFuncName, AZ_ARRAY_SIZE(timer.sFuncName), func);
 
             uint32 nEntityId = 0;
             ser.Value("entity", nEntityId);

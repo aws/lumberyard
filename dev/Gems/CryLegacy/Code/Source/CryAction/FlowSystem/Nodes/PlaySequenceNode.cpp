@@ -11,13 +11,13 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <ISystem.h>
 #include <ICryAnimation.h>
 #include <IMovieSystem.h>
 #include <IViewSystem.h>
 #include "CryActionCVars.h"
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "Maestro/Types/AnimParamType.h"
 
 class CPlaySequence_Node

@@ -13,67 +13,65 @@
 
 #include "IGestureRecognizer.h"
 
+#include <AzCore/RTTI/ReflectContext.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace Gestures
 {
-    class RecognizerRotate;
-
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    struct IRotateListener
-    {
-        virtual ~IRotateListener() {}
-        virtual void OnRotateInitiated(const RecognizerRotate& recognizer) {}
-        virtual void OnRotateUpdated(const RecognizerRotate& recognizer) {}
-        virtual void OnRotateEnded(const RecognizerRotate& recognizer) {}
-    };
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    class RecognizerRotate
-        : public IRecognizer
+    class RecognizerRotate : public RecognizerContinuous
     {
     public:
-        inline static float GetDefaultMaxPixelsMoved() { return 50.0f; }
-        inline static float GetDefaultMinAngleDegrees() { return 15.0f; }
-        inline static int32_t GetDefaultPriority() { return 0; }
+        static float GetDefaultMaxPixelsMoved() { return 50.0f; }
+        static float GetDefaultMinAngleDegrees() { return 15.0f; }
+        static int32_t GetDefaultPriority() { return AzFramework::InputChannelEventListener::GetPriorityUI() + 1; }
 
         struct Config
         {
-            inline Config()
+            AZ_CLASS_ALLOCATOR(Config, AZ::SystemAllocator, 0);
+            AZ_RTTI(Config, "{B329235B-3C8E-4554-8751-9DBCFC61312E}");
+            static void Reflect(AZ::ReflectContext* context);
+
+            Config()
                 : maxPixelsMoved(GetDefaultMaxPixelsMoved())
                 , minAngleDegrees(GetDefaultMinAngleDegrees())
                 , priority(GetDefaultPriority())
             {}
+            virtual ~Config() = default;
 
             float maxPixelsMoved;
             float minAngleDegrees;
             int32_t priority;
         };
-        inline static const Config& GetDefaultConfig() { static Config s_cfg; return s_cfg; }
+        static const Config& GetDefaultConfig() { static Config s_cfg; return s_cfg; }
 
-        inline explicit RecognizerRotate(IRotateListener& listener,
-            const Config& config = GetDefaultConfig());
-        inline ~RecognizerRotate() override;
+        AZ_CLASS_ALLOCATOR(RecognizerRotate, AZ::SystemAllocator, 0);
+        AZ_RTTI(RecognizerRotate, "{ABD687F0-FEFA-4424-81CA-4AC3773620D9}", RecognizerContinuous);
 
-        inline int32_t GetPriority() const override { return m_config.priority; }
-        inline bool OnPressedEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
-        inline bool OnDownEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
-        inline bool OnReleasedEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
+        explicit RecognizerRotate(const Config& config = GetDefaultConfig());
+         ~RecognizerRotate() override;
 
-        inline Config& GetConfig() { return m_config; }
-        inline const Config& GetConfig() const { return m_config; }
+       int32_t GetPriority() const override { return m_config.priority; }
+       bool OnPressedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
+       bool OnDownEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
+       bool OnReleasedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
 
-        inline Vec2 GetStartPosition0() const { return m_startPositions[0]; }
-        inline Vec2 GetStartPosition1() const { return m_startPositions[1]; }
+       Config& GetConfig() { return m_config; }
+       const Config& GetConfig() const { return m_config; }
+       void SetConfig(const Config& config) { m_config = config; }
 
-        inline Vec2 GetCurrentPosition0() const { return m_currentPositions[0]; }
-        inline Vec2 GetCurrentPosition1() const { return m_currentPositions[1]; }
+       AZ::Vector2 GetStartPosition0() const { return m_startPositions[0]; }
+       AZ::Vector2 GetStartPosition1() const { return m_startPositions[1]; }
 
-        inline Vec2 GetStartMidpoint() const { return Lerp(GetStartPosition0(), GetStartPosition1(), 0.5f); }
-        inline Vec2 GetCurrentMidpoint() const { return Lerp(GetCurrentPosition0(), GetCurrentPosition1(), 0.5f); }
+       AZ::Vector2 GetCurrentPosition0() const { return m_currentPositions[0]; }
+       AZ::Vector2 GetCurrentPosition1() const { return m_currentPositions[1]; }
 
-        inline float GetStartDistance() const { return GetStartPosition1().GetDistance(GetStartPosition0()); }
-        inline float GetCurrentDistance() const { return GetCurrentPosition1().GetDistance(GetCurrentPosition0()); }
-        inline float GetSignedRotationInDegrees() const;
+       AZ::Vector2 GetStartMidpoint() const { return Lerp(GetStartPosition0(), GetStartPosition1(), 0.5f); }
+       AZ::Vector2 GetCurrentMidpoint() const { return Lerp(GetCurrentPosition0(), GetCurrentPosition1(), 0.5f); }
+
+       float GetStartDistance() const { return GetStartPosition1().GetDistance(GetStartPosition0()); }
+       float GetCurrentDistance() const { return GetCurrentPosition1().GetDistance(GetCurrentPosition0()); }
+       float GetSignedRotationInDegrees() const;
 
     private:
         enum class State
@@ -87,7 +85,6 @@ namespace Gestures
 
         static const uint32_t s_maxRotatePointerIndex = 1;
 
-        IRotateListener& m_listener;
         Config m_config;
 
         ScreenPosition m_startPositions[2];

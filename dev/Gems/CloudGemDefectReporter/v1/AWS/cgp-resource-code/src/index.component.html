@@ -1,0 +1,20 @@
+<div class="gem-container">
+    
+    <!-- Defect List Tab -->
+    <defect-list-page #DefectListPage
+        [hidden]="showingPage !== 0" 
+        [context]="context" 
+        [metricApiHandler]="getMetricApiHandler()"
+        [toDefectDetailsPageCallback]="toDefectDetailsPage">
+    </defect-list-page>
+
+    <!-- Defect Details Tab -->
+    <defect-details-page 
+        *ngIf="showingPage === 1" 
+        [context]="context"
+        [configurationMappings]="defectListPage.configurationMappings" 
+        [toDefectListPageCallback]="toDefectListPage" 
+        [defect]="showingDefect">
+    </defect-details-page>
+
+</div>

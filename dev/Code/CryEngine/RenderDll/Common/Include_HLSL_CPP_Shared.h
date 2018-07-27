@@ -70,10 +70,6 @@ hlsl_cbuffer(PerPassConstantBuffer_Svo)
 {
     hlsl_float4(PerPass_SvoTreeSettings0);
     hlsl_float4(PerPass_SvoTreeSettings1);
-    hlsl_float4(PerPass_SvoTreeSettings2);
-    hlsl_float4(PerPass_SvoTreeSettings3);
-    hlsl_float4(PerPass_SvoTreeSettings4);
-    hlsl_float4(PerPass_SvoTreeSettings5);
     hlsl_float4(PerPass_SvoParams0);
     hlsl_float4(PerPass_SvoParams1);
     hlsl_float4(PerPass_SvoParams2);

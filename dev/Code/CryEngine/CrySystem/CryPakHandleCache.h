@@ -114,8 +114,10 @@ public:
                 }
             }
         }
-        return fopen(name.c_str(), "rb");
-    }
+        File* fp = nullptr;
+        azfopen(&fp, name.c_str(), "rb");
+        return fp;
+   }
     uint32 Size() const{return m_Size; }
     ~CPakHandleCache()
     {

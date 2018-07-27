@@ -10,7 +10,8 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "BlendTreePoseSwitchNode.h"
 #include "AnimGraphInstance.h"
@@ -22,63 +23,49 @@
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreePoseSwitchNode::BlendTreePoseSwitchNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreePoseSwitchNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreePoseSwitchNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
 
-    // destructor
-    BlendTreePoseSwitchNode::~BlendTreePoseSwitchNode()
-    {
-    }
-
-
-    // create
-    BlendTreePoseSwitchNode* BlendTreePoseSwitchNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreePoseSwitchNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreePoseSwitchNode::CreateObjectData()
-    {
-        return new UniqueData(this, nullptr, 0);
-    }
-
-
-    // register the ports
-    void BlendTreePoseSwitchNode::RegisterPorts()
+    BlendTreePoseSwitchNode::BlendTreePoseSwitchNode()
+        : AnimGraphNode()
     {
         // setup input ports
         InitInputPorts(11);
-        SetupInputPort("Pose 0", INPUTPORT_POSE_0, AttributePose::TYPE_ID,  PORTID_INPUT_POSE_0);
-        SetupInputPort("Pose 1", INPUTPORT_POSE_1, AttributePose::TYPE_ID,  PORTID_INPUT_POSE_1);
-        SetupInputPort("Pose 2", INPUTPORT_POSE_2, AttributePose::TYPE_ID,  PORTID_INPUT_POSE_2);
-        SetupInputPort("Pose 3", INPUTPORT_POSE_3, AttributePose::TYPE_ID,  PORTID_INPUT_POSE_3);
-        SetupInputPort("Pose 4", INPUTPORT_POSE_4, AttributePose::TYPE_ID,  PORTID_INPUT_POSE_4);
-        SetupInputPort("Pose 5", INPUTPORT_POSE_5, AttributePose::TYPE_ID,  PORTID_INPUT_POSE_5);
-        SetupInputPort("Pose 6", INPUTPORT_POSE_6, AttributePose::TYPE_ID,  PORTID_INPUT_POSE_6);
-        SetupInputPort("Pose 7", INPUTPORT_POSE_7, AttributePose::TYPE_ID,  PORTID_INPUT_POSE_7);
-        SetupInputPort("Pose 8", INPUTPORT_POSE_8, AttributePose::TYPE_ID,  PORTID_INPUT_POSE_8);
-        SetupInputPort("Pose 9", INPUTPORT_POSE_9, AttributePose::TYPE_ID,  PORTID_INPUT_POSE_9);
-        SetupInputPortAsNumber("Decision Value", INPUTPORT_DECISIONVALUE,  PORTID_INPUT_DECISIONVALUE); // accept float/int/bool values
+        SetupInputPort("Pose 0", INPUTPORT_POSE_0, AttributePose::TYPE_ID, PORTID_INPUT_POSE_0);
+        SetupInputPort("Pose 1", INPUTPORT_POSE_1, AttributePose::TYPE_ID, PORTID_INPUT_POSE_1);
+        SetupInputPort("Pose 2", INPUTPORT_POSE_2, AttributePose::TYPE_ID, PORTID_INPUT_POSE_2);
+        SetupInputPort("Pose 3", INPUTPORT_POSE_3, AttributePose::TYPE_ID, PORTID_INPUT_POSE_3);
+        SetupInputPort("Pose 4", INPUTPORT_POSE_4, AttributePose::TYPE_ID, PORTID_INPUT_POSE_4);
+        SetupInputPort("Pose 5", INPUTPORT_POSE_5, AttributePose::TYPE_ID, PORTID_INPUT_POSE_5);
+        SetupInputPort("Pose 6", INPUTPORT_POSE_6, AttributePose::TYPE_ID, PORTID_INPUT_POSE_6);
+        SetupInputPort("Pose 7", INPUTPORT_POSE_7, AttributePose::TYPE_ID, PORTID_INPUT_POSE_7);
+        SetupInputPort("Pose 8", INPUTPORT_POSE_8, AttributePose::TYPE_ID, PORTID_INPUT_POSE_8);
+        SetupInputPort("Pose 9", INPUTPORT_POSE_9, AttributePose::TYPE_ID, PORTID_INPUT_POSE_9);
+        SetupInputPortAsNumber("Decision Value", INPUTPORT_DECISIONVALUE, PORTID_INPUT_DECISIONVALUE); // accept float/int/bool values
 
-        // setup output ports
+                                                                                                       // setup output ports
         InitOutputPorts(1);
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
     }
 
 
-    // register the parameters
-    void BlendTreePoseSwitchNode::RegisterAttributes()
+    BlendTreePoseSwitchNode::~BlendTreePoseSwitchNode()
     {
+    }
+
+
+    bool BlendTreePoseSwitchNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -93,29 +80,6 @@ namespace EMotionFX
     AnimGraphObject::ECategory BlendTreePoseSwitchNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_LOGIC;
-    }
-
-
-
-    // create a clone of this node
-    AnimGraphObject* BlendTreePoseSwitchNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreePoseSwitchNode* clone = new BlendTreePoseSwitchNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
-    // init the node
-    void BlendTreePoseSwitchNode::Init(AnimGraphInstance* animGraphInstance)
-    {
-        MCORE_UNUSED(animGraphInstance);
-        //mOutputPose.Init( animGraphInstance->GetActorInstance() );
     }
 
 
@@ -217,13 +181,6 @@ namespace EMotionFX
     }
 
 
-    // get the blend node type string
-    const char* BlendTreePoseSwitchNode::GetTypeString() const
-    {
-        return "BlendTreePoseSwitchNode";
-    }
-
-
     // post update
     void BlendTreePoseSwitchNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
@@ -294,10 +251,9 @@ namespace EMotionFX
         HierarchicalSyncAllInputNodes(animGraphInstance, uniqueData);
 
         // top down update all incoming connections
-        const uint32 numConnections = mConnections.GetLength();
-        for (uint32 i = 0; i < numConnections; ++i)
+        for (BlendTreeConnection* connection : mConnections)
         {
-            mConnections[i]->GetSourceNode()->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
+            connection->GetSourceNode()->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
         }
     }
 
@@ -309,10 +265,34 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         if (uniqueData == nullptr)
         {
-            //uniqueData = new UniqueData(this, animGraphInstance, MCORE_INVALIDINDEX32);
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance, MCORE_INVALIDINDEX32);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
     }
-}   // namespace EMotionFX
 
+
+    void BlendTreePoseSwitchNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreePoseSwitchNode, AnimGraphNode>()
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreePoseSwitchNode>("Pose Switch", "Pose switch attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ;
+    }
+} // namespace EMotionFX

@@ -18,7 +18,7 @@
 #define CRYINCLUDE_CRYACTION_FLOWSYSTEM_NODES_FLOWTRACKEVENTNODE_H
 #pragma once
 
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <IMovieSystem.h>
 
 class CFlowTrackEventNode

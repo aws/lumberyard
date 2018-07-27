@@ -14,7 +14,7 @@
 // Description : Implements a part for vehicles which is the an attachment
 //               of a parent Animated part
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ICryAnimation.h"
 #include "IVehicleSystem.h"
 #include "CryAction.h"

@@ -33,6 +33,8 @@ namespace EMStudio
 
         static const char* GetFileExtension()                               { return ".emfxworkspace"; }
 
+        void Reset();
+
         void SetFilename(const char* filename)                              { mFilename = filename; mDirtyFlag = true; }
         const AZStd::string& GetFilenameString() const                      { return mFilename; }
         const char* GetFilename() const                                     { return mFilename.c_str(); }

@@ -397,7 +397,6 @@ bool CD3D9Renderer::PrepareShadowGenForFrustum(ShadowMapFrustum* pCurFrustum, SR
             nRenderingFlags |= SRenderingPassInfo::DISABLE_RENDER_CHUNK_MERGE;
         }
 #endif
-
         // create a matching rendering pass info for shadows
         SRenderingPassInfo passInfo = SRenderingPassInfo::CreateShadowPassRenderingInfo(tmpCamera, pCurFrustum->m_Flags, pCurFrustum->nShadowMapLod,
                 pCurFrustum->IsCached(), pCurFrustum->bIsMGPUCopy, &pCurFrustum->nShadowGenMask, nS, nShadowGenID, nRenderingFlags);
@@ -1458,7 +1457,7 @@ void CD3D9Renderer::ConfigShadowTexgen(int Num, ShadowMapFrustum* pFr, int nFrus
 
                 if (pFr->m_eFrustumType == ShadowMapFrustum::e_Nearest)
                 {
-                    fFilteredArea *= 0.1;
+                    fFilteredArea *= 0.1f;
                 }
 
                 m_cEF.m_TempVecs[4].x = fFilteredArea;
@@ -1570,7 +1569,7 @@ void CD3D9Renderer::FX_SetupShadowsForFog()
 }
 
 
-void CD3D9Renderer::FX_PrepareDepthMapsForLight(const SRenderLight& rLight, int nLightID, bool bClearPool)
+bool CD3D9Renderer::FX_PrepareDepthMapsForLight(const SRenderLight& rLight, int nLightID, bool bClearPool)
 {
     int nThreadID = m_RP.m_nProcessThreadID;
     int nCurRecLevel = SRendItem::m_RecurseLevel[nThreadID];
@@ -1578,13 +1577,21 @@ void CD3D9Renderer::FX_PrepareDepthMapsForLight(const SRenderLight& rLight, int 
 
     if ((m_RP.m_TI[nThreadID].m_PersFlags & RBPF_NO_SHADOWGEN) != 0)
     {
-        return;
+        return false;
     }
 
     //render all valid shadow frustums
     const int nStartIdx = SRendItem::m_StartFrust[nThreadID][nLightID];
     const int nEndIdx = SRendItem::m_EndFrust[nThreadID][nLightID];
-    assert((nEndIdx - nStartIdx) <= MAX_GSM_LODS_NUM);
+    if (nStartIdx == nEndIdx)
+    {
+        return false;
+    }
+
+    AZ_Assert((nEndIdx - nStartIdx) <= MAX_GSM_LODS_NUM, "Number of shadow frustums is more than max GSM LODs supported.");
+
+    bool processedAtLeastOneShadow = false;
+
     for (int nFrustIdx = nEndIdx - 1; nFrustIdx >= nStartIdx; --nFrustIdx)
     {
         ShadowMapFrustum* pCurFrustum = &m_RP.m_SMFrustums[nThreadID][nCurRecLevel][nFrustIdx];
@@ -1658,12 +1665,14 @@ void CD3D9Renderer::FX_PrepareDepthMapsForLight(const SRenderLight& rLight, int 
                 if (pCachedFrustum != pEnd)
                 {
                     FX_MergeShadowMaps(pCurFrustum, pCachedFrustum);
+                    processedAtLeastOneShadow = true;
                 }
             }
 
             if (PrepareDepthMap(pCurFrustum, nLightFrustumID, bClearPool))
             {
                 bClearPool = false;
+                processedAtLeastOneShadow = true;
             }
 
 #ifndef _RELEASE
@@ -1674,6 +1683,8 @@ void CD3D9Renderer::FX_PrepareDepthMapsForLight(const SRenderLight& rLight, int 
 #endif
         }
     }
+
+    return processedAtLeastOneShadow;
 }
 
 void CD3D9Renderer::EF_PrepareCustomShadowMaps()
@@ -1777,6 +1788,7 @@ void CD3D9Renderer::EF_PrepareAllDepthMaps()
         return;
     }
 
+    bool haveShadows = false;
     for (int nLightID = 0; nLightID < NumDynLights; nLightID++)
     {
         SRenderLight* pLight =  &m_RP.m_DLights[nThreadID][SRendItem::m_RecurseLevel[nThreadID]][nLightID];
@@ -1786,7 +1798,17 @@ void CD3D9Renderer::EF_PrepareAllDepthMaps()
             continue;
         }
 
-        FX_PrepareDepthMapsForLight(*pLight, nLightID);
+        haveShadows |= FX_PrepareDepthMapsForLight(*pLight, nLightID);
+    }
+
+    if (!haveShadows && m_clearShadowMaskTexture)
+    {
+        FX_ClearShadowMaskTexture();
+        m_clearShadowMaskTexture = false;
+    }
+    else
+    {
+        m_clearShadowMaskTexture = true;
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -1953,3 +1975,27 @@ void CD3D9Renderer::FX_MergeShadowMaps(ShadowMapFrustum* pDst, const ShadowMapFr
     pDst->fDepthTestBias = pSrc->fDepthTestBias;
     pDst->fDepthSlopeBias = pSrc->fDepthSlopeBias;
 }
+
+void CD3D9Renderer::FX_ClearShadowMaskTexture()
+{
+    const int arraySize = CTexture::s_ptexShadowMask->StreamGetNumSlices();
+    SResourceView curSliceRVDesc = SResourceView::RenderTargetView(CTexture::s_ptexShadowMask->GetTextureDstFormat(), 0, 1);
+    for (int i = 0; i < arraySize; ++i)
+    {
+        curSliceRVDesc.m_Desc.nFirstSlice = i;
+        SResourceView& firstSliceRV = CTexture::s_ptexShadowMask->GetResourceView(curSliceRVDesc);
+
+        FX_ClearTarget(static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), Clr_Transparent, 0, nullptr);
+
+#if defined(CRY_USE_METAL)
+        // On metal we have to submit a draw call in order for a clear to take affect.
+        // Doing the commit/clear target region will produce the needed draw call for the clear.
+        FX_PushRenderTarget(0, static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), nullptr);
+        RT_SetViewport(0, 0, CTexture::s_ptexShadowMask->GetWidth(), CTexture::s_ptexShadowMask->GetHeight());
+        FX_Commit();
+        FX_ClearTargetRegion();
+        FX_PopRenderTarget(0);
+#endif
+    }
+}
+

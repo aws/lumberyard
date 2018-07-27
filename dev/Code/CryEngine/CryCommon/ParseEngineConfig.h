@@ -203,7 +203,7 @@ protected:
     {
         if (KeyMatches(key.c_str(), checkKey))
         {
-            sscanf(value.c_str(), "%d", &store);
+            azsscanf(value.c_str(), "%d", &store);
         }
     }
 

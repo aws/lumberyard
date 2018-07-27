@@ -62,7 +62,7 @@ struct SLoadEnvironment
 {
     CCryAction* m_pCryAction;
     CLoadGameHolder m_pLoadGame;
-    std::shared_ptr<TSerialize> m_pSer;
+    AZStd::shared_ptr<TSerialize> m_pSer;
     Checkpoint& m_checkpoint;
     TBasicEntityDatas m_basicEntityData;
 
@@ -136,7 +136,7 @@ private:
     //load process steps
     void LoadEngineSystems(SLoadEnvironment& loadEnv);
     bool LoadLevel(SLoadEnvironment& loadEnv, SGameStartParams& startParams, STempAutoResourcesLock& autoResourcesLock, bool bIsQuickLoading, bool requireQuickLoad);
-    bool LoadEntities(SLoadEnvironment& loadEnv, std::shared_ptr<TSerialize> pGameStateSer);
+    bool LoadEntities(SLoadEnvironment& loadEnv, AZStd::shared_ptr<TSerialize> pGameStateSer);
     void LoadBasicEntityData(SLoadEnvironment& loadEnv);
     void LoadGameData(SLoadEnvironment& loadEnv);
 

@@ -13,63 +13,61 @@
 
 #include "IGestureRecognizer.h"
 
+#include <AzCore/RTTI/ReflectContext.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace Gestures
 {
-    class RecognizerDrag;
-
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    struct IDragListener
-    {
-        virtual ~IDragListener() {}
-        virtual void OnDragInitiated(const RecognizerDrag& recognizer) {}
-        virtual void OnDragUpdated(const RecognizerDrag& recognizer) {}
-        virtual void OnDragEnded(const RecognizerDrag& recognizer) {}
-    };
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    class RecognizerDrag
-        : public IRecognizer
+    class RecognizerDrag : public RecognizerContinuous
     {
     public:
-        inline static float GetDefaultMinSecondsHeld() { return 0.0f; }
-        inline static float GetDefaultMinPixelsMoved() { return 20.0f; }
-        inline static uint32_t GetDefaultPointerIndex() { return 0; }
-        inline static int32_t GetDefaultPriority() { return 0; }
+        static float GetDefaultMinSecondsHeld() { return 0.0f; }
+        static float GetDefaultMinPixelsMoved() { return 20.0f; }
+        static uint32_t GetDefaultPointerIndex() { return 0; }
+        static int32_t GetDefaultPriority() { return AzFramework::InputChannelEventListener::GetPriorityUI() + 1; }
 
         struct Config
         {
-            inline Config()
+            AZ_CLASS_ALLOCATOR(Config, AZ::SystemAllocator, 0);
+            AZ_RTTI(Config, "{F28051E1-8B39-40BC-B80E-0CBAF1EF288A}");
+            static void Reflect(AZ::ReflectContext* context);
+
+            Config()
                 : minSecondsHeld(GetDefaultMinSecondsHeld())
                 , minPixelsMoved(GetDefaultMinPixelsMoved())
                 , pointerIndex(GetDefaultPointerIndex())
                 , priority(GetDefaultPriority())
             {}
+            virtual ~Config() = default;
 
             float minSecondsHeld;
             float minPixelsMoved;
             uint32_t pointerIndex;
             int32_t priority;
         };
-        inline static const Config& GetDefaultConfig() { static Config s_cfg; return s_cfg; }
+        static const Config& GetDefaultConfig() { static Config s_cfg; return s_cfg; }
 
-        inline explicit RecognizerDrag(IDragListener& listener,
-            const Config& config = GetDefaultConfig());
-        inline ~RecognizerDrag() override;
+        AZ_CLASS_ALLOCATOR(RecognizerDrag, AZ::SystemAllocator, 0);
+        AZ_RTTI(RecognizerDrag, "{B244C54C-1F5C-420E-8F47-025AFEB7A499}", RecognizerContinuous);
 
-        inline int32_t GetPriority() const override { return m_config.priority; }
-        inline bool OnPressedEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
-        inline bool OnDownEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
-        inline bool OnReleasedEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
+        explicit RecognizerDrag(const Config& config = GetDefaultConfig());
+        ~RecognizerDrag() override;
 
-        inline Config& GetConfig() { return m_config; }
-        inline const Config& GetConfig() const { return m_config; }
+        int32_t GetPriority() const override { return m_config.priority; }
+        bool OnPressedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
+        bool OnDownEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
+        bool OnReleasedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
 
-        inline Vec2 GetStartPosition() const { return m_startPosition; }
-        inline Vec2 GetCurrentPosition() const { return m_currentPosition; }
+        Config& GetConfig() { return m_config; }
+        const Config& GetConfig() const { return m_config; }
+        void SetConfig(const Config& config) { m_config = config; }
 
-        inline Vec2 GetDelta() const { return GetCurrentPosition() - GetStartPosition(); }
-        inline float GetDistance() const { return GetCurrentPosition().GetDistance(GetStartPosition()); }
+        AZ::Vector2 GetStartPosition() const { return m_startPosition; }
+        AZ::Vector2 GetCurrentPosition() const { return m_currentPosition; }
+
+        AZ::Vector2 GetDelta() const { return GetCurrentPosition() - GetStartPosition(); }
+        float GetDistance() const { return GetCurrentPosition().GetDistance(GetStartPosition()); }
 
     private:
         enum class State
@@ -79,7 +77,6 @@ namespace Gestures
             Dragging
         };
 
-        IDragListener& m_listener;
         Config m_config;
 
         int64 m_startTime;

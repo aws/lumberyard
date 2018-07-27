@@ -28,6 +28,8 @@ namespace CommandSystem
         : public EMotionFX::MotionSetCallback
     {
     public:
+        AZ_CLASS_ALLOCATOR_DECL
+
         CommandSystemMotionSetCallback()
             : EMotionFX::MotionSetCallback() {}
         CommandSystemMotionSetCallback(EMotionFX::MotionSet* motionSet)
@@ -66,10 +68,13 @@ namespace CommandSystem
     // EMotionFX::Motion* entries
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     MCORE_DEFINECOMMAND_START(CommandMotionSetAddMotion, "Add motion to set", true)
+        bool                m_oldDirtyFlag;
+        AZStd::string       m_oldMotionIds;
     MCORE_DEFINECOMMAND_END
 
-    MCORE_DEFINECOMMAND_START(CommandMotionSetRemoveMotion, "Remove motion to set", true)
-        AZStd::string   mOldFileName;
+    MCORE_DEFINECOMMAND_START(CommandMotionSetRemoveMotion, "Remove motion from set", true)
+        AZStd::string       m_oldMotionFilenamesAndIds;
+        bool                m_oldDirtyFlag;
     MCORE_DEFINECOMMAND_END
 
     MCORE_DEFINECOMMAND_START(CommandMotionSetAdjustMotion, "Adjust motion set", true)
@@ -95,6 +100,7 @@ namespace CommandSystem
     void COMMANDSYSTEM_API RecursivelyRemoveMotionSets(EMotionFX::MotionSet* motionSet, MCore::CommandGroup& commandGroup);
     void COMMANDSYSTEM_API ClearMotionSetsCommand(MCore::CommandGroup* commandGroup = nullptr);
     void COMMANDSYSTEM_API LoadMotionSetsCommand(const AZStd::vector<AZStd::string>& filenames, bool reload, bool clearUpfront);
+    AZStd::string COMMANDSYSTEM_API GenerateMotionId(const AZStd::string& motionFilenameToAdd, const AZStd::string& defaultIdString, const AZStd::vector<AZStd::string>& idStrings);
 
     /**
      * Construct the command to add a new motion set entry.

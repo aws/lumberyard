@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ActionController.h"
 #include "MannequinDebug.h"
 
@@ -249,7 +249,7 @@ namespace mannequin
 
             va_list args;
             va_start(args, format);
-            vsnprintf(outputBufferLog, outputBufferSize, format, args);
+            azvsnprintf(outputBufferLog, outputBufferSize, format, args);
             outputBufferLog[outputBufferSize - 1] = '\0';
             va_end(args);
 

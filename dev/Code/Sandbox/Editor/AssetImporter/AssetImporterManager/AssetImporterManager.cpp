@@ -127,33 +127,32 @@ bool AssetImporterManager::OnBrowseFiles()
 
     fileDialog.setDirectory(currentAbsolutePath);
 
-    // prevent users from selecting files under the game root directory
-    connect(&fileDialog, &QFileDialog::directoryEntered, this, [this, &fileDialog, &gameRoot, &currentAbsolutePath, &gameRootAbsPath](const QString& path)
-        {
-            // if it's under the game root folder, then set the directory back to the previous directory
-            if (path.startsWith(gameRootAbsPath, Qt::CaseInsensitive))
-            {
-                fileDialog.setDirectory(currentAbsolutePath);
-            }
-        });
-
     if (!fileDialog.exec())
     {
         return false;
     }
 
     bool encounteredCrate = false;
+    QStringList invalidFiles;
+
     for (QString path : fileDialog.selectedFiles())
     {
         QString fileName = GetFileName(path);
-
         QFileInfo info(path);
         QString extension = info.completeSuffix(); // extension without '.'
 
         if (QString(AssetImporterManagerPrivate::s_crateFileExtension).compare(extension, Qt::CaseInsensitive) != 0)
         {
-            // store paths into the map.
-            m_pathMap[path] = fileName;
+            // prevent users from importing files under the game root directory
+            if (path.startsWith(gameRootAbsPath, Qt::CaseInsensitive))
+            {
+                invalidFiles << fileName;
+            }
+            else
+            {
+                // store paths into the map.
+                m_pathMap[path] = fileName;
+            }
         }
         else
         {
@@ -161,6 +160,13 @@ bool AssetImporterManager::OnBrowseFiles()
         }
     }
 
+    if (invalidFiles.size() > 0)
+    {
+        QString fileWarning = QString("Files cannot be imported into their own project. The following files will not be moved or copied:\n");
+        fileWarning.append(invalidFiles.join(", "));
+        fileWarning.append('.');
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), AssetImporterManagerPrivate::g_errorMessageBoxTitle, fileWarning);
+    }
     if (encounteredCrate)
     {
         QMessageBox::warning(AzToolsFramework::GetActiveWindow(), AssetImporterManagerPrivate::g_errorMessageBoxTitle, AssetImporterManagerPrivate::g_crateError);
@@ -202,7 +208,7 @@ void AssetImporterManager::OnBrowseDestinationFilePath(QLineEdit* destinationLin
 
     // The default file path is the game project root folder.
     // After that, the default file path will be the previous opened folder path.
-    connect(&fileDialog, &QFileDialog::directoryEntered, this, [this, &fileDialog, &gameRoot, &gameRootAbsPath](const QString& path)
+    connect(&fileDialog, &QFileDialog::directoryEntered, this, [&fileDialog, &gameRoot, &gameRootAbsPath](const QString& path)
         {
             // get current relative path
             QString relativePath = gameRoot.relativeFilePath(path);
@@ -332,7 +338,7 @@ ProcessFilesMethod AssetImporterManager::OnOpenFilesAlreadyExistDialog(QString m
 
     bool applyToAll = false;
 
-    connect(&filesAlreadyExistDialog, &FilesAlreadyExistDialog::ApplyActionToAllFiles, this, [this, &applyToAll](bool result)
+    connect(&filesAlreadyExistDialog, &FilesAlreadyExistDialog::ApplyActionToAllFiles, this, [&applyToAll](bool result)
         {
             applyToAll = result;
         });
@@ -352,7 +358,7 @@ ProcessFilesMethod AssetImporterManager::OnOpenFilesAlreadyExistDialog(QString m
             processMethod = UpdateProcessFileMethod(ProcessFilesMethod::SkipProcessingFile, applyToAll);
         });
 
-    connect(&filesAlreadyExistDialog, &FilesAlreadyExistDialog::CancelAllProcesses, this, [this, &processMethod]()
+    connect(&filesAlreadyExistDialog, &FilesAlreadyExistDialog::CancelAllProcesses, this, [&processMethod]()
         {
             processMethod = ProcessFilesMethod::Cancel;
         });
@@ -685,7 +691,7 @@ bool AssetImporterManager::Overwrite(QString relativePath, QString oldAbsolutePa
 
         if (file.exists())
         {
-            // if the original file is read-only, 
+            // if the original file is read-only,
             // then it got to be writable in order to be deleted successfully
             SetDestinationFileWritable(file);
             absoluteDir.remove(fileName);
@@ -704,20 +710,27 @@ bool AssetImporterManager::Overwrite(QString relativePath, QString oldAbsolutePa
 
 bool AssetImporterManager::GetAndCheckAllFilesInFolder(QString path)
 {
-    QString rootFolderName = GetFileName(path);
+    QString formattedPath = path;
 
-    QDirIterator it(path, QDir::NoDotAndDotDot | QDir::Files, QDirIterator::Subdirectories);
+    // Paths ending with '/' return from QFileInfo().fileName() with a value of ""
+    // Strip a trailing slash so we can correctly get rootFolderName on all platforms
+    if (formattedPath.endsWith("/"))
+    {
+        formattedPath.truncate(formattedPath.lastIndexOf(QChar('/')));
+    }
 
-    QFileInfo info(path);
+    QString rootFolderName = GetFileName(formattedPath);
+    QDirIterator it(formattedPath, QDir::NoDotAndDotDot | QDir::Files, QDirIterator::Subdirectories);
+    QFileInfo info(formattedPath);
 
     if (!info.isDir() && !it.hasNext() && info.exists())
     {
-        m_pathMap[path] = rootFolderName;
+        m_pathMap[formattedPath] = rootFolderName;
         return true;
     }
 
     // Get the index of the last sub folder name in the path
-    QStringList directoryNameList = path.split('/');
+    QStringList directoryNameList = formattedPath.split('/');
     int lastFolderIndex = directoryNameList.size() - 1;
 
     QString pathToBeRelativeTo = directoryNameList.mid(0, lastFolderIndex).join('/');
@@ -761,7 +774,7 @@ void AssetImporterManager::SetDestinationFileWritable(QFile& destinationFile)
 {
     if (destinationFile.open(QIODevice::ReadOnly))
     {
-        destinationFile.setPermissions(QFile::WriteOwner);
+        destinationFile.setPermissions(QFile::WriteOwner | destinationFile.permissions());
     }
 
     destinationFile.close();

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ShadersDialog.h"
 #include "ShaderEnum.h"
 #include <ui_ShadersDialog.h>

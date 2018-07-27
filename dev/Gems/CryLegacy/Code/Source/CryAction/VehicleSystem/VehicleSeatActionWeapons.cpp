@@ -14,7 +14,7 @@
 // Description : Implements a seat action to control vehicle weapons
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "VehicleSeatActionWeapons.h"
 
@@ -283,11 +283,11 @@ bool CVehicleSeatActionWeapons::Init(IVehicle* pVehicle, IVehicleSeat* pSeat, co
 
     if (const char* attackInput = weaponsParamsTable.getAttr("attackInput"))
     {
-        if (!strcmpi("primary", attackInput))
+        if (!azstricmp("primary", attackInput))
         {
             m_attackInput = eAI_Primary;
         }
-        else if (!strcmpi("secondary", attackInput))
+        else if (!azstricmp("secondary", attackInput))
         {
             m_attackInput = eAI_Secondary;
         }
@@ -313,7 +313,7 @@ IEntity* CVehicleSeatActionWeapons::SpawnWeapon(SVehicleWeapon& weapon, IEntity*
     if ((isServer || bClientOnly) && static_cast<CVehicle*>(m_pVehicle)->SpawnAndDeleteEntities())
     {
         char pWeaponName[512];
-        _snprintf(pWeaponName, 512, "%s_Weapon_%s_%s_%d",
+        azsnprintf(pWeaponName, 512, "%s_Weapon_%s_%s_%d",
             pVehicleEntity->GetName(), spawnParams.pClass->GetName(), partName.c_str(), weaponIndex + 1);
         pWeaponName[sizeof(pWeaponName) - 1] = '\0';
 
@@ -771,7 +771,7 @@ void CVehicleSeatActionWeapons::Serialize(TSerialize ser, EEntityAspects aspects
 
         for (int i = 0; i < n; ++i)
         {
-            _snprintf(buffer, 16, "weapon_%d", i);
+            azsnprintf(buffer, 16, "weapon_%d", i);
             buffer[sizeof(buffer) - 1] = '\0';
             ser.Value(buffer, m_weapons[i].weaponEntityId, 'eid');
         }

@@ -1,0 +1,30 @@
+﻿@import "../../../styles/variables";
+
+.progress-border {
+  border: 1px solid;
+  color: $border-light-gray;
+  display: inline-block;
+  position: relative;
+}
+
+.error-background {
+  background-color: $red;
+}
+
+.progress-background {
+  background-color: $light-purple;  
+}
+
+.cgp-progress-bar {    
+  height: 100%;
+  display: inline-block;
+}
+
+.progress-percent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  text-align: center;
+  width: 100%;
+  color: black;
+}

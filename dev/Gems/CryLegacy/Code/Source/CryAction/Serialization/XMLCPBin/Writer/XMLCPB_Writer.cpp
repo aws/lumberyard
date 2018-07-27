@@ -22,7 +22,7 @@
 // - tags, attribute names, and attribute string data is added to the StringTableWriter objects when every node/attr is created. They are written into the file only at the end of the process.
 //
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "XMLCPB_Writer.h"
 #include "XMLCPB_ZLibCompressor.h"
 #include "CryActionCVars.h"

@@ -25,6 +25,7 @@ import json
 import boto3
 import hashlib
 import urlparse
+import botocore
 
 from cgf_utils import custom_resource_response
 from cgf_utils import properties
@@ -36,8 +37,9 @@ from cgf_utils import aws_utils
 from botocore.exceptions import ClientError
 from cgf_service_directory import ServiceDirectory
 
-s3 = aws_utils.ClientWrapper(boto3.client('s3'))
-api_gateway = aws_utils.ClientWrapper(boto3.client('apigateway'), do_not_log_args=['body'])
+cfg = botocore.config.Config(read_timeout=70, connect_timeout=70)
+s3 = aws_utils.ClientWrapper(boto3.client('s3', config = cfg))
+api_gateway = aws_utils.ClientWrapper(boto3.client('apigateway', config = cfg), do_not_log_args=['body'])
 
 API_GATEWAY_SERVICE_NAME = 'apigateway.amazonaws.com'
 STAGE_NAME = 'api'
@@ -215,16 +217,31 @@ def configure_swagger_content(owning_stack_info , props, role_arn, rest_api_reso
     return content
 
 
+def list_rest_apis():
+    response = api_gateway.get_rest_apis()
+    return response['items']
+
 def create_api_gateway(props, swagger_content):
-    rest_api_id = import_rest_api(swagger_content)
+    api_name = json.loads(swagger_content)["info"]["title"]
+    existing_apis = list_rest_apis()
+    rest_api_id = None
+    for api in existing_apis:
+        if api_name == api["name"]:
+            print "We have already created {}, skipping create and using existing api Id".format(api_name)
+            rest_api_id = api["id"]
+
+    if rest_api_id is None:
+        rest_api_id = import_rest_api(swagger_content)
+
     try:
         swagger_digest = compute_swagger_digest(swagger_content)
-        create_rest_api_deployment(rest_api_id, swagger_digest)
+        create_rest_api_deployment(rest_api_id, swagger_digest, True)
         update_rest_api_stage(rest_api_id, props)
         create_documentation_version(rest_api_id)
     except:
         delete_rest_api(rest_api_id)
         raise
+
     return rest_api_id
 
 
@@ -350,7 +367,20 @@ def put_rest_api(rest_api_id, swagger_content):
     res = api_gateway.put_rest_api(**kwargs)
 
 
-def create_rest_api_deployment(rest_api_id, swagger_digest):
+def create_rest_api_deployment(rest_api_id, swagger_digest, new_api = False):
+
+    if new_api:
+        # Creates have a habit of timing out when standing up large deployments due to APIG throttling calls.
+        # This can cause the create event to refire.
+        # If we already have a deployment for this api we don't need to create a new one,
+        # and skipping it will help avoid further throttling issues.
+        response = api_gateway.get_deployments(
+            restApiId=rest_api_id
+        )
+
+        if response["items"]:
+            print "Deployment has already been created for this API"
+            return
 
     kwargs = {
         'restApiId': rest_api_id,

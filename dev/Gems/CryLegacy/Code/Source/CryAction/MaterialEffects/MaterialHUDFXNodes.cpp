@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "MaterialEffects.h"
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "Components/IComponentRender.h"

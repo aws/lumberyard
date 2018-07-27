@@ -19,6 +19,16 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifndef __cplusplus
+    #ifndef max
+    #define max(a,b)            (((a) > (b)) ? (a) : (b))
+    #endif
+
+    #ifndef min
+    #define min(a,b)            (((a) < (b)) ? (a) : (b))
+    #endif
+#endif //__cplusplus
+
 typedef enum
 {
     LANG_DEFAULT,// Depends on the HLSL shader model.
@@ -432,6 +442,10 @@ typedef struct
     ShaderLang GLSLLanguage;
     TextureSamplerInfo textureSamplerInfo;    // HLSLCC_FLAG_COMBINE_TEXTURE_SAMPLERS fills this out
 } Shader;
+
+// NOTE: HLSLCC flags are specified by command line when executing this cross compiler.
+//       If these flags change, the command line switch '-flags=XXX' must change as well.
+//       Lumberyard composes the command line in file 'dev\Code\CryEngine\RenderDll\Common\Shaders\RemoteCompiler.cpp'
 
 /*HLSL constant buffers are treated as default-block unform arrays by default. This is done
   to support versions of GLSL which lack ARB_uniform_buffer_object functionality.

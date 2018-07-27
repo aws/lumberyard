@@ -372,13 +372,13 @@ namespace ScriptCanvasEditor
         RefreshVariableList();
     }
 
-    void LocalVariablesListNodePaletteTreeItem::OnVariableAdded(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
+    void LocalVariablesListNodePaletteTreeItem::OnVariableAddedToGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
     {
         LocalVariableNodePaletteTreeItem* localVariableTreeItem = CreateChildNode<LocalVariableNodePaletteTreeItem>(variableId, m_scriptCanvasGraphId);
         localVariableTreeItem->PopulateChildren();
     }
 
-    void LocalVariablesListNodePaletteTreeItem::OnVariableRemoved(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
+    void LocalVariablesListNodePaletteTreeItem::OnVariableRemovedFromGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
     {
         int rows = GetChildCount();
 
@@ -396,7 +396,7 @@ namespace ScriptCanvasEditor
 
     void LocalVariablesListNodePaletteTreeItem::RefreshVariableList()
     {
-        // Need to let the child clear signal out 
+        // Need to let the child clear signal out
         ClearChildren();
 
         SignalLayoutAboutToBeChanged();

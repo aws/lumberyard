@@ -21,6 +21,7 @@
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobCompletion.h>
 #include <AzCore/Jobs/JobFunction.h>
+#include <AzCore/EBus/Results.h>
 
 using namespace AZ;
 
@@ -1281,6 +1282,8 @@ namespace UnitTest
         m_jobContext = aznew JobContext(*m_jobManager);
         JobContext::SetGlobalContext(m_jobContext);
 
+        m_singleHandler.m_callCount = 0;
+        m_multiHandler.m_callCount = 0;
         const int NumCalls = 5000;
         QueueTestMultiBus::Bind(m_multiPtr, 0);
         m_multiHandler.BusConnect(0);
@@ -2007,6 +2010,12 @@ namespace UnitTest
         {
             BusConnect();
         }
+
+        ~LocklessImpl()
+        {
+            BusDisconnect();
+        }
+
         void RemoveMe() override
         {
             BusDisconnect();
@@ -2028,13 +2037,13 @@ namespace UnitTest
     void ThrashLocklessDispatch(uint32_t maxSleep = 0)
     {
         const size_t threadCount = 8;
-        const size_t cycleCount = 1000;
+        enum : size_t { cycleCount = 1000 };
         AZStd::thread threads[threadCount];
         AZStd::vector<int> results[threadCount];
 
         LocklessImpl handler(maxSleep);
 
-        auto work = [maxSleep, cycleCount]()
+        auto work = [maxSleep]()
         {
             char sentinel[64] = { 0 };
             char* end = sentinel + AZ_ARRAY_SIZE(sentinel);
@@ -2087,6 +2096,324 @@ namespace UnitTest
         AZ_TEST_START_ASSERTTEST;
         LocklessBus::Broadcast(&LocklessBus::Events::DeleteMe);
         AZ_TEST_STOP_ASSERTTEST(1);
+    }
+
+    namespace EBusResultsTest
+    {
+        class ResultClass
+        {
+        public:
+            int m_value1 = 0;
+            int m_value2 = 0;
+
+            bool m_operator_called_const = false;
+            bool m_operator_called_rvalue_ref = false;
+
+            ResultClass() = default;
+            ResultClass(const ResultClass&) = default;
+
+            bool operator==(const ResultClass& b) const
+            {
+                return m_value1 == b.m_value1 && m_value2 == b.m_value2;
+            }
+
+            ResultClass& operator=(const ResultClass& b)
+            {
+                m_value1 = b.m_value1 + m_value1;
+                m_value2 = b.m_value2 + m_value2;
+                m_operator_called_const = true;
+                m_operator_called_rvalue_ref = b.m_operator_called_rvalue_ref;
+                return *this;
+            }
+            
+            ResultClass& operator=(ResultClass&& b)
+            {
+                // combine together to prove its not just an assignment
+                m_value1 = b.m_value1 + m_value1;
+                m_value2 = b.m_value2 + m_value2;
+
+                // but destroy the original value (emulating move op)
+                b.m_value1 = 0;
+                b.m_value2 = 0;
+
+                m_operator_called_rvalue_ref = true;
+                m_operator_called_const = b.m_operator_called_const;
+                return *this;
+            }
+        };
+
+        class ResultReducerClass
+        {
+        public:
+            bool m_operator_called_const = false;
+            bool m_operator_called_rvalue_ref = false;
+
+            ResultClass operator()(const ResultClass& a, const ResultClass& b)
+            {
+                ResultClass newValue;
+                newValue.m_value1 = a.m_value1 + b.m_value1;
+                newValue.m_value2 = a.m_value2 + b.m_value2;
+                m_operator_called_const = true;
+                return newValue;
+            }
+
+            ResultClass operator()(const ResultClass& a, ResultClass&& b)
+            {
+                m_operator_called_rvalue_ref = true;
+                ResultClass newValue;
+                newValue.m_value1 = a.m_value1 + b.m_value1;
+                newValue.m_value2 = a.m_value2 + b.m_value2;
+                return newValue;
+            }
+        };
+
+        class MyInterface
+        {
+        public:
+            virtual ResultClass EventX() = 0;
+            virtual const ResultClass& EventY() = 0;
+        };
+
+        using MyInterfaceBus = AZ::EBus<MyInterface, AZ::EBusTraits>;
+
+        class MyListener : public MyInterfaceBus::Handler
+        {
+        public:
+            MyListener(int value1, int value2)
+            {
+                m_result.m_value1 = value1;
+                m_result.m_value2 = value2;
+            }
+            
+            ~MyListener()
+            {
+            }
+
+            ResultClass EventX() override
+            {
+                return m_result;
+            }
+
+            const ResultClass& EventY() override
+            {
+                return m_result;
+            }
+
+            ResultClass m_result;
+        };
+
+    } // EBusResultsTest
+
+    TEST_F(EBus, ResultsTest)
+    {
+        using namespace EBusResultsTest;
+        MyListener val1(1, 2);
+        MyListener val2(3, 4);
+
+        val1.BusConnect();
+        val2.BusConnect();
+
+        {
+            ResultClass results;
+            MyInterfaceBus::BroadcastResult(results, &MyInterfaceBus::Events::EventX);
+
+            // ensure that the RVALUE-REF op was called:
+            EXPECT_FALSE(results.m_operator_called_const);
+            EXPECT_TRUE(results.m_operator_called_rvalue_ref);
+            EXPECT_EQ(results.m_value1, 4); // 1 + 3
+            EXPECT_EQ(results.m_value2, 6); // 2 + 4
+            // make sure originals are not destroyed
+            EXPECT_EQ(val1.m_result.m_value1, 1);
+            EXPECT_EQ(val1.m_result.m_value2, 2);
+            EXPECT_EQ(val2.m_result.m_value1, 3);
+            EXPECT_EQ(val2.m_result.m_value2, 4);
+        }
+
+        {
+            ResultClass results;
+            MyInterfaceBus::BroadcastResult(results, &MyInterfaceBus::Events::EventY);
+
+            // ensure that the const version of operator= was called.
+            EXPECT_TRUE(results.m_operator_called_const);
+            EXPECT_FALSE(results.m_operator_called_rvalue_ref);
+            EXPECT_EQ(results.m_value1, 4); // 1 + 3
+            EXPECT_EQ(results.m_value2, 6); // 2 + 4
+            // make sure originals are not destroyed
+            EXPECT_EQ(val1.m_result.m_value1, 1);
+            EXPECT_EQ(val1.m_result.m_value2, 2);
+            EXPECT_EQ(val2.m_result.m_value1, 3);
+            EXPECT_EQ(val2.m_result.m_value2, 4);
+        }
+
+        
+        val1.BusDisconnect();
+        val2.BusDisconnect();
+    }
+
+    // ensure RVALUE-REF move on RHS does not corrupt existing values.
+    TEST_F(EBus, ResultsTest_ReducerCorruption)
+    {
+        using namespace EBusResultsTest;
+        MyListener val1(1, 2);
+        MyListener val2(3, 4);
+
+        val1.BusConnect();
+        val2.BusConnect();
+
+        {
+            EBusReduceResult<ResultClass, ResultReducerClass> resultreducer;
+            MyInterfaceBus::BroadcastResult(resultreducer, &MyInterfaceBus::Events::EventX);
+            EXPECT_FALSE(resultreducer.unary.m_operator_called_const);
+            EXPECT_TRUE(resultreducer.unary.m_operator_called_rvalue_ref);
+
+            // note that operator= is called TWICE here.  one on (val1+val2)
+            // because the ebus results is defined as "value = unary(a, b)"
+            // and in this case both operator = as well as the unary operate here.
+            // meaning that the addition is actually run multiple times
+            // once for (a+b) and then again, during value = unary(...) for a second time
+
+            EXPECT_EQ(resultreducer.value.m_value1, 7);  // (3 + 1) + 3
+            EXPECT_EQ(resultreducer.value.m_value2, 10); // (4 + 2) + 4
+            // make sure originals are not destroyed in the move
+            EXPECT_EQ(val1.m_result.m_value1, 1);
+            EXPECT_EQ(val1.m_result.m_value2, 2);
+            EXPECT_EQ(val2.m_result.m_value1, 3);
+            EXPECT_EQ(val2.m_result.m_value2, 4);
+        }
+
+        {
+            EBusReduceResult<ResultClass, ResultReducerClass> resultreducer;
+            MyInterfaceBus::BroadcastResult(resultreducer, &MyInterfaceBus::Events::EventY);
+            EXPECT_TRUE(resultreducer.unary.m_operator_called_const); // we expect the const version to have been called this time
+            EXPECT_FALSE(resultreducer.unary.m_operator_called_rvalue_ref);
+            EXPECT_EQ(resultreducer.value.m_value1, 7);  // (3 + 1) + 3
+            EXPECT_EQ(resultreducer.value.m_value2, 10); // (4 + 2) + 4
+            // make sure originals are not destroyed in the move
+            EXPECT_EQ(val1.m_result.m_value1, 1);
+            EXPECT_EQ(val1.m_result.m_value2, 2);
+            EXPECT_EQ(val2.m_result.m_value1, 3);
+            EXPECT_EQ(val2.m_result.m_value2, 4);
+        }
+        val1.BusDisconnect();
+        val2.BusDisconnect();
+    }
+
+    // ensure RVALUE-REF move on RHS does not corrupt existing values and operates correctly
+    // even if the other form is used (where T is T&)
+    TEST_F(EBus, ResultsTest_ReducerCorruption_Ref)
+    {
+        using namespace EBusResultsTest;
+        MyListener val1(1, 2);
+        MyListener val2(3, 4);
+
+        val1.BusConnect();
+        val2.BusConnect();
+
+        {
+            ResultClass finalResult;
+            EBusReduceResult<ResultClass&, ResultReducerClass> resultreducer(finalResult);
+
+            MyInterfaceBus::BroadcastResult(resultreducer, &MyInterfaceBus::Events::EventX);
+            EXPECT_FALSE(resultreducer.unary.m_operator_called_const);
+            EXPECT_TRUE(resultreducer.unary.m_operator_called_rvalue_ref);
+
+            EXPECT_FALSE(finalResult.m_operator_called_const);
+            EXPECT_TRUE(finalResult.m_operator_called_rvalue_ref);
+
+            EXPECT_EQ(resultreducer.value.m_value1, 7);  // (3 + 1) + 3
+            EXPECT_EQ(resultreducer.value.m_value2, 10); // (4 + 2) + 4
+            // make sure originals are not destroyed in the move
+            EXPECT_EQ(val1.m_result.m_value1, 1);
+            EXPECT_EQ(val1.m_result.m_value2, 2);
+            EXPECT_EQ(val2.m_result.m_value1, 3);
+            EXPECT_EQ(val2.m_result.m_value2, 4);
+        }
+
+        {
+            ResultClass finalResult;
+            EBusReduceResult<ResultClass&, ResultReducerClass> resultreducer(finalResult);
+            MyInterfaceBus::BroadcastResult(resultreducer, &MyInterfaceBus::Events::EventY);
+            EXPECT_TRUE(resultreducer.unary.m_operator_called_const);  // EventY is const, so we expect this to have happened again
+            EXPECT_FALSE(resultreducer.unary.m_operator_called_rvalue_ref);
+            
+            // we still expect the actual finalresult to have been populated via RVALUE REF MOVE
+            EXPECT_FALSE(finalResult.m_operator_called_const);
+            EXPECT_TRUE(finalResult.m_operator_called_rvalue_ref);
+
+            EXPECT_EQ(resultreducer.value.m_value1, 7);  // (3 + 1) + 3
+            EXPECT_EQ(resultreducer.value.m_value2, 10); // (4 + 2) + 4
+            // make sure originals are not destroyed in the move
+            EXPECT_EQ(val1.m_result.m_value1, 1);
+            EXPECT_EQ(val1.m_result.m_value2, 2);
+            EXPECT_EQ(val2.m_result.m_value1, 3);
+            EXPECT_EQ(val2.m_result.m_value2, 4);
+        }
+        val1.BusDisconnect();
+        val2.BusDisconnect();
+    }
+
+    // ensure RVALUE-REF move on RHS does not corrupt existing values.
+    TEST_F(EBus, ResultsTest_AggregatorCorruption)
+    {
+        using namespace EBusResultsTest;
+        MyListener val1(1, 2);
+        MyListener val2(3, 4);
+
+        val1.BusConnect();
+        val2.BusConnect();
+
+        {
+            EBusAggregateResults<ResultClass> resultarray;
+            MyInterfaceBus::BroadcastResult(resultarray, &MyInterfaceBus::Events::EventX);
+            EXPECT_EQ(resultarray.values.size(), 2);
+            // bus connection is unordered, so we just have to find the two values on it, can't assume they're in same order.
+            EXPECT_TRUE(resultarray.values[0] == val1.m_result || resultarray.values[1] == val1.m_result);
+            EXPECT_TRUE(resultarray.values[0] == val2.m_result || resultarray.values[1] == val2.m_result);
+
+            if (resultarray.values[0] == val1.m_result)
+            {
+                EXPECT_EQ(resultarray.values[1], val2.m_result);
+            }
+            
+            if (resultarray.values[0] == val2.m_result)
+            {
+                EXPECT_EQ(resultarray.values[1], val1.m_result);
+            }
+
+            // make sure originals are not destroyed in the move
+            EXPECT_EQ(val1.m_result.m_value1, 1);
+            EXPECT_EQ(val1.m_result.m_value2, 2);
+            EXPECT_EQ(val2.m_result.m_value1, 3);
+            EXPECT_EQ(val2.m_result.m_value2, 4);
+        }
+
+        {
+            EBusAggregateResults<ResultClass> resultarray;
+            MyInterfaceBus::BroadcastResult(resultarray, &MyInterfaceBus::Events::EventY);
+            // bus connection is unordered, so we just have to find the two values on it, can't assume they're in same order.
+            EXPECT_TRUE(resultarray.values[0] == val1.m_result || resultarray.values[1] == val1.m_result);
+            EXPECT_TRUE(resultarray.values[0] == val2.m_result || resultarray.values[1] == val2.m_result);
+
+            if (resultarray.values[0] == val1.m_result)
+            {
+                EXPECT_EQ(resultarray.values[1], val2.m_result);
+            }
+
+            if (resultarray.values[0] == val2.m_result)
+            {
+                EXPECT_EQ(resultarray.values[1], val1.m_result);
+            }
+
+            // make sure originals are not destroyed
+            EXPECT_EQ(val1.m_result.m_value1, 1);
+            EXPECT_EQ(val1.m_result.m_value2, 2);
+            EXPECT_EQ(val2.m_result.m_value1, 3);
+            EXPECT_EQ(val2.m_result.m_value2, 4);
+        }
+
+
+        val1.BusDisconnect();
+        val2.BusDisconnect();
     }
 
     namespace EBusEnvironmentTest
@@ -2152,7 +2479,7 @@ namespace UnitTest
 
                 uniqueListener.BusDisconnect();
 
-                // Test that we have only X num events 
+                // Test that we have only X num events
                 EXPECT_EQ(uniqueListener.m_numEventsX, numEventsToBroadcast); // If environments are properly separated we should get only the events from our environment!
 
                 m_busEvironment->DeactivateOnCurrentThread();
@@ -2199,6 +2526,139 @@ namespace UnitTest
 
         EXPECT_EQ(1, globalListener.m_numEventsX); // If environments are properly separated we should get only the events the global/default Environment!
     }
+
+    class BusWithConnectionPolicy 
+    : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::Crc32;
+        virtual ~BusWithConnectionPolicy() = default;
+
+        virtual void MessageWhichOccursDuringConnect() = 0;
+
+        template<class Bus>
+        struct ConnectionPolicy
+            : public AZ::EBusConnectionPolicy<Bus>
+        {
+            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+            {
+                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
+                handler->MessageWhichOccursDuringConnect();
+            }
+        };
+    };
+    using BusWithConnectionPolicyBus = AZ::EBus<BusWithConnectionPolicy>;
+
+    class HandlerWhichDisconnectsDuringDelivery : public BusWithConnectionPolicyBus::Handler
+    {
+        void MessageWhichOccursDuringConnect() override 
+        {
+            BusDisconnect();
+        }
+    };
+
+    TEST_F(EBus, ConnectionPolicy_DisconnectDuringDelivery)
+    {
+        HandlerWhichDisconnectsDuringDelivery handlerTest;
+        handlerTest.BusConnect(AZ_CRC("test"));
+    }
+
+    struct SimulatedTickBusInterface
+        : public AZ::EBusTraits
+    {
+        static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::ById;
+        typedef size_t BusIdType;
+        typedef AZStd::mutex EventQueueMutexType;
+        static const bool EnableEventQueue = true;
+
+        virtual void OnTick() = 0;
+        virtual void OnPayload(size_t payload) = 0;
+    };
+
+    using SimulatedTickBus = AZ::EBus<SimulatedTickBusInterface>;
+
+    struct SimulatedTickBusHandler
+        : public SimulatedTickBus::Handler
+    {
+        void OnTick() override {}
+        void OnPayload(size_t) override {}
+    };
+
+    TEST_F(EBus, QueueDuringDispatchOnSingleThreadedBus)
+    {
+        const size_t numLoops = 10000;
+        auto mainLoop = [numLoops]()
+        {
+            size_t loops = 0;
+            while (loops++ < numLoops)
+            {
+                SimulatedTickBus::ExecuteQueuedEvents();
+                SimulatedTickBus::Event(0, &SimulatedTickBus::Events::OnTick);
+            }
+        };
+
+        auto workerLoop = [numLoops]()
+        {
+            size_t loops = 0;
+            while (loops++ < numLoops)
+            {
+                SimulatedTickBus::QueueEvent(0, &SimulatedTickBus::Events::OnPayload, loops);
+            }
+        };
+
+        SimulatedTickBusHandler handler;
+        handler.BusConnect(0);
+
+        AZStd::thread mainThread(mainLoop);
+        AZStd::thread workerThread(workerLoop);
+
+        mainThread.join();
+        workerThread.join();
+    }
+
+    struct LastHandlerDisconnectInterface
+        : public AZ::EBusTraits
+    {
+        static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Multiple;
+        static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::ById;
+        typedef size_t BusIdType;
+
+        virtual void OnEvent() = 0;
+    };
+
+    using LastHandlerDisconnectBus = AZ::EBus<LastHandlerDisconnectInterface>;
+
+    struct LastHandlerDisconnectHandler
+        : public LastHandlerDisconnectBus::Handler
+    {
+        void OnEvent() override 
+        {
+            ++m_numOnEvents;
+            BusDisconnect();
+        }
+
+        unsigned int m_numOnEvents = 0;
+    };
+
+    TEST_F(EBus, LastHandlerDisconnectForward)
+    {
+        LastHandlerDisconnectHandler lastHandler;
+        lastHandler.BusConnect(0);
+        EBUS_EVENT_ID(0, LastHandlerDisconnectBus, OnEvent);
+        EXPECT_FALSE(lastHandler.BusIsConnected());
+        EXPECT_EQ(1, lastHandler.m_numOnEvents);
+    }
+
+    TEST_F(EBus, LastHandlerDisconnectReverse)
+    {
+        LastHandlerDisconnectHandler lastHandler;
+        lastHandler.BusConnect(0);
+        EBUS_EVENT_ID_REVERSE(0, LastHandlerDisconnectBus, OnEvent);
+        EXPECT_FALSE(lastHandler.BusIsConnected());
+        EXPECT_EQ(1, lastHandler.m_numOnEvents);
+    }
+
 }
 
 #if defined(HAVE_BENCHMARK)
@@ -2362,7 +2822,6 @@ namespace Benchmark
         {
             benchmark
                 ->Unit(::benchmark::kNanosecond)
-                ->Iterations(1000)
                 ;
         }
 
@@ -2406,7 +2865,6 @@ namespace Benchmark
         void Multithreaded(::benchmark::internal::Benchmark* benchmark)
         {
             benchmark
-                ->Iterations(20)
                 ->ThreadRange(1, 8)
                 ->ThreadPerCpu();
                 ;

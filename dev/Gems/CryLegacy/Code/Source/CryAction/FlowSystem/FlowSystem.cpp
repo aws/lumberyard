@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "FlowSystem.h"
 
@@ -19,7 +19,7 @@
 
 #include "FlowGraph.h"
 #include "FlowInitManager.h"
-#include "Nodes/FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "Nodes/FlowLogNode.h"
 #include "Nodes/FlowStartNode.h"
 #include "Nodes/FlowTrackEventNode.h"

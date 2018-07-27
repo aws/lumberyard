@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "MaterialEffectsDebug.h"
 
 #include "MaterialEffects.h"
@@ -37,7 +37,7 @@ namespace MaterialEffectsUtils
             const char* debugFilter = CMaterialEffectsCVars::Get().mfx_DebugVisualFilter->GetString();
             assert(debugFilter);
             bool ignoreFilter = (strlen(debugFilter) == 0) || (strcmp(debugFilter, "0") == 0);
-            bool addToDebugList = ignoreFilter || (stricmp(debugFilter, m_lastSearchHint.materialName1.c_str()) == 0);
+            bool addToDebugList = ignoreFilter || (azstricmp(debugFilter, m_lastSearchHint.materialName1.c_str()) == 0);
 
             if (addToDebugList)
             {
@@ -134,8 +134,8 @@ namespace MaterialEffectsUtils
                 const float textColorError[4] = {1.0f, 0.0f, 0.0f, alpha};
                 const float titleColor[4] = {1.0f, 1.0f, 0.0f, alpha};
 
-                bool matDefaultDetected = ((stricmp(currentFX.materialName1.c_str(), "mat_default") == 0) ||
-                                           (stricmp(currentFX.materialName2.c_str(), "mat_default") == 0));
+                bool matDefaultDetected = ((azstricmp(currentFX.materialName1.c_str(), "mat_default") == 0) ||
+                                           (azstricmp(currentFX.materialName2.c_str(), "mat_default") == 0));
 
                 const float* textColor = matDefaultDetected ? textColorError : textColorOk;
 

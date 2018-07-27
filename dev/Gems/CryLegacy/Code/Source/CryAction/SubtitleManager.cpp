@@ -14,7 +14,7 @@
 // Description : Subtitle Manager Implementation
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "SubtitleManager.h"
 #include "ISubtitleManager.h"
 #include "DialogSystem/DialogActorContext.h"

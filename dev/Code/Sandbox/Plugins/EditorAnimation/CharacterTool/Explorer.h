@@ -342,7 +342,7 @@ namespace CharacterTool {
         const char* description;
         int flags;
 
-        typedef std::function<void(ActionContext&)> ActionFunction;
+        typedef AZStd::function<void(ActionContext&)> ActionFunction;
         ActionFunction func;
 
         ExplorerAction()

@@ -64,7 +64,7 @@ namespace ChatPlay
         {
             serialize->Class<ChatPlaySystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
@@ -180,7 +180,7 @@ namespace ChatPlay
         {
             return true;
         }
-        
+
         return false;
     }
 

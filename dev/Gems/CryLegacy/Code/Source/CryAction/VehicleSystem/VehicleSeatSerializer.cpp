@@ -14,7 +14,7 @@
 // Description : Implements an entity class which can serialize vehicle parts
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "VehicleSeatSerializer.h"
 #include "Vehicle.h"
 #include "VehicleSeat.h"

@@ -42,7 +42,7 @@ PLUGIN_API IPlugin* CreatePluginInstance(PLUGIN_INIT_PARAM* pInitParam)
 }
 
 #ifdef _WIN32
-extern HINSTANCE g_hInstance = NULL;
+HINSTANCE g_hInstance = NULL;
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
 {

@@ -425,7 +425,7 @@ namespace
                     }
 
                     char tempString[255];
-                    strcpy(tempString, stringValue.toUtf8().data());
+                    azstrcpy(tempString, AZ_ARRAY_SIZE(tempString), stringValue.toUtf8().data());
 
                     for (int i = 0; i < stringValue.length(); i++)
                     {
@@ -786,59 +786,59 @@ namespace
         uint32 hideMask = GetIEditor()->GetDisplaySettings()->GetObjectHideMask();
         int hideType = 0;
 
-        if          (!stricmp(pName, "aipoints"))
+        if          (!azstricmp(pName, "aipoints"))
         {
             hideType = OBJTYPE_AIPOINT;
         }
-        else if (!stricmp(pName, "brushes"))
+        else if (!azstricmp(pName, "brushes"))
         {
             hideType = OBJTYPE_BRUSH;
         }
-        else if (!stricmp(pName, "decals"))
+        else if (!azstricmp(pName, "decals"))
         {
             hideType = OBJTYPE_DECAL;
         }
-        else if (!stricmp(pName, "entities"))
+        else if (!azstricmp(pName, "entities"))
         {
             hideType = OBJTYPE_ENTITY;
         }
-        else if (!stricmp(pName, "groups"))
+        else if (!azstricmp(pName, "groups"))
         {
             hideType = OBJTYPE_GROUP;
         }
-        else if (!stricmp(pName, "prefabs"))
+        else if (!azstricmp(pName, "prefabs"))
         {
             hideType = OBJTYPE_PREFAB;
         }
-        else if (!stricmp(pName, "other"))
+        else if (!azstricmp(pName, "other"))
         {
             hideType = OBJTYPE_OTHER;
         }
-        else if (!stricmp(pName, "shapes"))
+        else if (!azstricmp(pName, "shapes"))
         {
             hideType = OBJTYPE_SHAPE;
         }
-        else if (!stricmp(pName, "solids"))
+        else if (!azstricmp(pName, "solids"))
         {
             hideType = OBJTYPE_SOLID;
         }
-        else if (!stricmp(pName, "tagpoints"))
+        else if (!azstricmp(pName, "tagpoints"))
         {
             hideType = OBJTYPE_TAGPOINT;
         }
-        else if (!stricmp(pName, "volumes"))
+        else if (!azstricmp(pName, "volumes"))
         {
             hideType = OBJTYPE_VOLUME;
         }
-        else if (!stricmp(pName, "geomcaches"))
+        else if (!azstricmp(pName, "geomcaches"))
         {
             hideType = OBJTYPE_GEOMCACHE;
         }
-        else if (!stricmp(pName, "roads"))
+        else if (!azstricmp(pName, "roads"))
         {
             hideType = OBJTYPE_ROAD;
         }
-        else if (!stricmp(pName, "rivers"))
+        else if (!azstricmp(pName, "rivers"))
         {
             hideType = OBJTYPE_ROAD;
         }
@@ -859,20 +859,20 @@ namespace
     {
         uint32 hideMask = GetIEditor()->GetDisplaySettings()->GetObjectHideMask();
 
-        if ((!stricmp(pName, "aipoints")        && (hideMask & OBJTYPE_AIPOINT))  ||
-            (!stricmp(pName, "brushes")         && (hideMask & OBJTYPE_BRUSH))        ||
-            (!stricmp(pName, "decals")          && (hideMask & OBJTYPE_DECAL))        ||
-            (!stricmp(pName, "entities")        && (hideMask & OBJTYPE_ENTITY))       ||
-            (!stricmp(pName, "groups")          && (hideMask & OBJTYPE_GROUP))        ||
-            (!stricmp(pName, "prefabs")         && (hideMask & OBJTYPE_PREFAB))       ||
-            (!stricmp(pName, "other")               && (hideMask & OBJTYPE_OTHER))        ||
-            (!stricmp(pName, "shapes")          && (hideMask & OBJTYPE_SHAPE))        ||
-            (!stricmp(pName, "solids")          && (hideMask & OBJTYPE_SOLID))        ||
-            (!stricmp(pName, "tagpoints")       && (hideMask & OBJTYPE_TAGPOINT)) ||
-            (!stricmp(pName, "volumes")         && (hideMask & OBJTYPE_VOLUME))       ||
-            (!stricmp(pName, "geomcaches")  && (hideMask & OBJTYPE_GEOMCACHE)) ||
-            (!stricmp(pName, "roads")               && (hideMask & OBJTYPE_ROAD))         ||
-            (!stricmp(pName, "rivers")          && (hideMask & OBJTYPE_ROAD)))
+        if ((!azstricmp(pName, "aipoints")        && (hideMask & OBJTYPE_AIPOINT))  ||
+            (!azstricmp(pName, "brushes")         && (hideMask & OBJTYPE_BRUSH))        ||
+            (!azstricmp(pName, "decals")          && (hideMask & OBJTYPE_DECAL))        ||
+            (!azstricmp(pName, "entities")        && (hideMask & OBJTYPE_ENTITY))       ||
+            (!azstricmp(pName, "groups")          && (hideMask & OBJTYPE_GROUP))        ||
+            (!azstricmp(pName, "prefabs")         && (hideMask & OBJTYPE_PREFAB))       ||
+            (!azstricmp(pName, "other")               && (hideMask & OBJTYPE_OTHER))        ||
+            (!azstricmp(pName, "shapes")          && (hideMask & OBJTYPE_SHAPE))        ||
+            (!azstricmp(pName, "solids")          && (hideMask & OBJTYPE_SOLID))        ||
+            (!azstricmp(pName, "tagpoints")       && (hideMask & OBJTYPE_TAGPOINT)) ||
+            (!azstricmp(pName, "volumes")         && (hideMask & OBJTYPE_VOLUME))       ||
+            (!azstricmp(pName, "geomcaches")  && (hideMask & OBJTYPE_GEOMCACHE)) ||
+            (!azstricmp(pName, "roads")               && (hideMask & OBJTYPE_ROAD))         ||
+            (!azstricmp(pName, "rivers")          && (hideMask & OBJTYPE_ROAD)))
         {
             return true;
         }

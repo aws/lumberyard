@@ -14,7 +14,7 @@
 // Description : Implements an effect damage behavior
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ParticleParams.h"
 #include "IVehicleSystem.h"
 #include "VehicleDamageBehaviorEffect.h"

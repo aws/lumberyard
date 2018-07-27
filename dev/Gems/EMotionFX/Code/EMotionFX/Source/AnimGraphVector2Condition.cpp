@@ -10,98 +10,71 @@
 *
 */
 
-// include the required headers
-#include "EMotionFXConfig.h"
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/AnimGraphVector2Condition.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/Parameter/Vector2Parameter.h>
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/AttributeSettings.h>
-#include "AnimGraphVector2Condition.h"
-#include "AnimGraph.h"
-#include "AnimGraphInstance.h"
-#include "AnimGraphAttributeTypes.h"
-#include "EMotionFXManager.h"
-#include "AnimGraphManager.h"
-
 
 namespace EMotionFX
 {
-    // constructor
-    AnimGraphVector2Condition::AnimGraphVector2Condition(AnimGraph* animGraph)
-        : AnimGraphTransitionCondition(animGraph, TYPE_ID)
+    const char* AnimGraphVector2Condition::s_operationLength = "Length";
+    const char* AnimGraphVector2Condition::s_operationGetX = "Get X";
+    const char* AnimGraphVector2Condition::s_operationGetY = "Get Y";
+
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphVector2Condition, AnimGraphAllocator, 0)
+
+    AnimGraphVector2Condition::AnimGraphVector2Condition()
+        : AnimGraphTransitionCondition()
+        , m_parameterIndex(AZ::Failure())
+        , m_operation(OPERATION_LENGTH)
+        , m_operationFunction(OperationLength)
+        , m_function(AnimGraphParameterCondition::FUNCTION_GREATER)
+        , m_testFunction(TestGreater)
+        , m_testValue(0.0f)
+        , m_rangeValue(0.0f)
     {
-        mParameterIndex     = MCORE_INVALIDINDEX32;
-
-        mTestFunction       = TestGreater;
-        mFunction           = FUNCTION_GREATER;
-
-        mOperation          = OPERATION_LENGTH;
-        mOperationFunction  = OperationLength;
-
-        CreateAttributeValues();
-        InitInternalAttributesForAllInstances();
     }
 
 
-    // destructor
+    AnimGraphVector2Condition::AnimGraphVector2Condition(AnimGraph* animGraph)
+        : AnimGraphVector2Condition()
+    {
+        InitAfterLoading(animGraph);
+    }
+
+
     AnimGraphVector2Condition::~AnimGraphVector2Condition()
     {
     }
 
 
-    // create
-    AnimGraphVector2Condition* AnimGraphVector2Condition::Create(AnimGraph* animGraph)
+    void AnimGraphVector2Condition::Reinit()
     {
-        return new AnimGraphVector2Condition(animGraph);
+        // Update the function pointers.
+        SetFunction(m_function);
+        SetOperation(m_operation);
+
+        // Find the parameter index for the given parameter name, to prevent string based lookups every frame
+        m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
     }
 
 
-    // create unique data
-    AnimGraphObjectData* AnimGraphVector2Condition::CreateObjectData()
+    bool AnimGraphVector2Condition::InitAfterLoading(AnimGraph* animGraph)
     {
-        return AnimGraphObjectData::Create(this, nullptr);
-    }
+        if (!AnimGraphTransitionCondition::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
 
+        InitInternalAttributesForAllInstances();
 
-    // register the attributes
-    void AnimGraphVector2Condition::RegisterAttributes()
-    {
-        MCore::AttributeSettings* attribInfo;
-
-        // register the source motion file name
-        attribInfo = RegisterAttribute("Parameter", "parameter", "The parameter name to apply the condition on.", ATTRIBUTE_INTERFACETYPE_PARAMETERPICKER);
-        attribInfo->SetDefaultValue(MCore::AttributeString::Create());
-
-        // create the function combobox
-        attribInfo = RegisterAttribute("Operation", "operation", "The type of operation to perform on the vector.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        attribInfo->ResizeComboValues(OPERATION_NUMOPERATIONS);
-        attribInfo->SetComboValue(OPERATION_LENGTH,     "Length");
-        attribInfo->SetComboValue(OPERATION_GETX,       "Get X");
-        attribInfo->SetComboValue(OPERATION_GETY,       "Get Y");
-        attribInfo->SetDefaultValue(MCore::AttributeFloat::Create(static_cast<float>(mOperation)));
-
-        // create the function combobox
-        attribInfo = RegisterAttribute("Test Function", "testFunction", "The type of test function or condition.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        attribInfo->ResizeComboValues(FUNCTION_NUMFUNCTIONS);
-        attribInfo->SetComboValue(FUNCTION_GREATER,     "param > testValue");
-        attribInfo->SetComboValue(FUNCTION_GREATEREQUAL, "param >= testValue");
-        attribInfo->SetComboValue(FUNCTION_LESS,        "param < testValue");
-        attribInfo->SetComboValue(FUNCTION_LESSEQUAL,   "param <= testValue");
-        attribInfo->SetComboValue(FUNCTION_NOTEQUAL,    "param != testValue");
-        attribInfo->SetComboValue(FUNCTION_EQUAL,       "param == testValue");
-        attribInfo->SetComboValue(FUNCTION_INRANGE,     "param INRANGE [testValue..rangeValue]");
-        attribInfo->SetComboValue(FUNCTION_NOTINRANGE,  "param NOT INRANGE [testValue..rangeValue]");
-        attribInfo->SetDefaultValue(MCore::AttributeFloat::Create(static_cast<float>(mFunction)));
-
-        // create the test value float spinner
-        attribInfo = RegisterAttribute("Test Value", "testValue", "The float value to test against the parameter value.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        attribInfo->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        attribInfo->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        attribInfo->SetMaxValue(MCore::AttributeFloat::Create(FLT_MAX));
-
-        // create the low range value
-        attribInfo = RegisterAttribute("Range Value", "rangeValue", "The range high or low bound value, only used when the function is set to 'In Range' or 'Not in Range'.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        attribInfo->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        attribInfo->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        attribInfo->SetMaxValue(MCore::AttributeFloat::Create(FLT_MAX));
+        Reinit();
+        return true;
     }
 
 
@@ -112,25 +85,20 @@ namespace EMotionFX
     }
 
 
-    // get the type string
-    const char* AnimGraphVector2Condition::GetTypeString() const
-    {
-        return "AnimGraphVector2Condition";
-    }
-
-    
     // get the type of the selected paramter
-    uint32 AnimGraphVector2Condition::GetParameterType() const
+    AZ::TypeId AnimGraphVector2Condition::GetParameterType() const
     {
         // if there is no parameter selected yet, return invalid type
-        if (mParameterIndex == MCORE_INVALIDINDEX32)
+        if (m_parameterIndex.IsSuccess())
         {
-            return MCORE_INVALIDINDEX32;
+            // get access to the parameter info and return the type of its default value
+            const ValueParameter* valueParameter = mAnimGraph->FindValueParameter(m_parameterIndex.GetValue());
+            return azrtti_typeid(valueParameter);
         }
-
-        // get access to the parameter info and return the type of its default value
-        MCore::AttributeSettings* parameterInfo = mAnimGraph->GetParameter(mParameterIndex);
-        return parameterInfo->GetDefaultValue()->GetType();
+        else
+        {
+            return AZ::TypeId();
+        }
     }
 
 
@@ -138,88 +106,66 @@ namespace EMotionFX
     bool AnimGraphVector2Condition::TestCondition(AnimGraphInstance* animGraphInstance) const
     {
         // allow the transition in case we don't have a valid parameter to test against
-        if (mParameterIndex == MCORE_INVALIDINDEX32)
+        if (!m_parameterIndex.IsSuccess())
         {
             return false; // act like this condition failed
         }
+
         // make sure we have the right type, otherwise fail
-        const uint32 parameterType = GetParameterType();
-        if (parameterType != MCore::AttributeVector2::TYPE_ID)
+        const AZ::TypeId parameterType = GetParameterType();
+        if (parameterType != azrtti_typeid<Vector2Parameter>())
         {
             return false;
         }
 
         // get the vector value
         AZ::Vector2 vectorValue(0.0f, 0.0f);
-        MCore::Attribute* attribute = animGraphInstance->GetParameterValue(mParameterIndex);
+        MCore::Attribute* attribute = animGraphInstance->GetParameterValue(static_cast<uint32>(m_parameterIndex.GetValue()));
         MCORE_ASSERT(attribute->GetType() == MCore::AttributeVector2::TYPE_ID);
         vectorValue = static_cast<MCore::AttributeVector2*>(attribute)->GetValue();
 
         // perform the operation on the vector
-        const float operationResult = mOperationFunction(vectorValue);
-
-        // get the test and range values
-        const float testValue   = GetAttributeFloat(ATTRIB_TESTVALUE)->GetValue();
-        const float rangeValue  = GetAttributeFloat(ATTRIB_RANGEVALUE)->GetValue();
+        const float operationResult = m_operationFunction(vectorValue);
 
         // now apply the function
-        return mTestFunction(operationResult, testValue, rangeValue);
-    }
-
-
-    // clonse the condition
-    AnimGraphObject* AnimGraphVector2Condition::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        AnimGraphVector2Condition* clone = new AnimGraphVector2Condition(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
+        return m_testFunction(operationResult, m_testValue, m_rangeValue);
     }
 
 
     // set the math function to use
-    void AnimGraphVector2Condition::SetFunction(EFunction func)
+    void AnimGraphVector2Condition::SetFunction(AnimGraphParameterCondition::EFunction func)
     {
-        // if it didn't change, don't update anything
-        if (func == mFunction)
-        {
-            return;
-        }
+        m_function = func;
 
-        mFunction = func;
-        switch (mFunction)
+        switch (m_function)
         {
-        case FUNCTION_GREATER:
-            mTestFunction = TestGreater;
-            return;
-        case FUNCTION_GREATEREQUAL:
-            mTestFunction = TestGreaterEqual;
-            return;
-        case FUNCTION_LESS:
-            mTestFunction = TestLess;
-            return;
-        case FUNCTION_LESSEQUAL:
-            mTestFunction = TestLessEqual;
-            return;
-        case FUNCTION_NOTEQUAL:
-            mTestFunction = TestNotEqual;
-            return;
-        case FUNCTION_EQUAL:
-            mTestFunction = TestEqual;
-            return;
-        case FUNCTION_INRANGE:
-            mTestFunction = TestInRange;
-            return;
-        case FUNCTION_NOTINRANGE:
-            mTestFunction = TestNotInRange;
-            return;
-        default:
-            MCORE_ASSERT(false);        // function unknown
-        }
+            case AnimGraphParameterCondition::FUNCTION_GREATER:
+                m_testFunction = TestGreater;
+                return;
+            case AnimGraphParameterCondition::FUNCTION_GREATEREQUAL:
+                m_testFunction = TestGreaterEqual;
+                return;
+            case AnimGraphParameterCondition::FUNCTION_LESS:
+                m_testFunction = TestLess;
+                return;
+            case AnimGraphParameterCondition::FUNCTION_LESSEQUAL:
+                m_testFunction = TestLessEqual;
+                return;
+            case AnimGraphParameterCondition::FUNCTION_NOTEQUAL:
+                m_testFunction = TestNotEqual;
+                return;
+            case AnimGraphParameterCondition::FUNCTION_EQUAL:
+                m_testFunction = TestEqual;
+                return;
+            case AnimGraphParameterCondition::FUNCTION_INRANGE:
+                m_testFunction = TestInRange;
+                return;
+            case AnimGraphParameterCondition::FUNCTION_NOTINRANGE:
+                m_testFunction = TestNotInRange;
+                return;
+            default:
+                MCORE_ASSERT(false);        // function unknown
+            }
         ;
     }
 
@@ -227,114 +173,61 @@ namespace EMotionFX
     // set the operation
     void AnimGraphVector2Condition::SetOperation(EOperation operation)
     {
-        // if it didn't change, don't update anything
-        if (operation == mOperation)
-        {
-            return;
-        }
+        m_operation = operation;
 
-        mOperation = operation;
-        switch (mOperation)
+        switch (m_operation)
         {
-        case OPERATION_LENGTH:
-            mOperationFunction = OperationLength;
-            return;
-        case OPERATION_GETX:
-            mOperationFunction = OperationGetX;
-            return;
-        case OPERATION_GETY:
-            mOperationFunction = OperationGetY;
-            return;
-        default:
-            MCORE_ASSERT(false);        // function unknown
+            case OPERATION_LENGTH:
+                m_operationFunction = OperationLength;
+                return;
+            case OPERATION_GETX:
+                m_operationFunction = OperationGetX;
+                return;
+            case OPERATION_GETY:
+                m_operationFunction = OperationGetY;
+                return;
+            default:
+                MCORE_ASSERT(false);        // function unknown
         }
-        ;
     }
 
-
-    // update the data
-    void AnimGraphVector2Condition::OnUpdateAttributes()
-    {
-        MCORE_ASSERT(mAnimGraph);
-
-        // update the function pointers
-        SetFunction((EFunction)((uint32)GetAttributeFloat(ATTRIB_FUNCTION)->GetValue()));
-        SetOperation((EOperation)((uint32)GetAttributeFloat(ATTRIB_OPERATION)->GetValue()));
-
-        // get the name of the parameter we want to compare against
-        const char* name = GetAttributeString(ATTRIB_PARAMETER)->AsChar();
-
-        // convert this name into an index value, to prevent string based lookups every frame
-        mParameterIndex = MCORE_INVALIDINDEX32;
-    #ifdef EMFX_EMSTUDIOBUILD
-        MCore::AttributeSettings* parameterInfo = nullptr;
-    #endif
-        if (name)
-        {
-            const uint32 numParams = mAnimGraph->GetNumParameters();
-            for (uint32 i = 0; i < numParams; ++i)
-            {
-                if (mAnimGraph->GetParameter(i)->GetNameString() == name)
-                {
-                #ifdef EMFX_EMSTUDIOBUILD
-                    parameterInfo = mAnimGraph->GetParameter(i);
-                #endif
-                    mParameterIndex = i;
-                    break;
-                }
-            }
-        }
-
-        // disable GUI items that have no influence
-    #ifdef EMFX_EMSTUDIOBUILD
-        // disable all attributes
-        EnableAllAttributes(false);
-
-        // always enable the parameter selection attribute
-        SetAttributeEnabled(ATTRIB_PARAMETER);
-
-        if (parameterInfo && parameterInfo->GetDefaultValue()->GetType() == MCore::AttributeVector2::TYPE_ID)
-        {
-            SetAttributeEnabled(ATTRIB_TESTVALUE);
-            SetAttributeEnabled(ATTRIB_RANGEVALUE);
-            SetAttributeEnabled(ATTRIB_FUNCTION);
-            SetAttributeEnabled(ATTRIB_OPERATION);
-
-            // disable the range value if we're not using a function that needs the range
-            const int32 function = GetAttributeFloatAsInt32(ATTRIB_FUNCTION);
-            if (function == FUNCTION_INRANGE || function == FUNCTION_NOTINRANGE)
-            {
-                SetAttributeEnabled(ATTRIB_RANGEVALUE);
-            }
-        }
-    #endif
-    }
-
-
+    
     // get the name of the currently used test function
     const char* AnimGraphVector2Condition::GetTestFunctionString() const
     {
-        // get access to the combo values and the currently selected function
-        MCore::AttributeSettings*   comboAttributeInfo  = GetAnimGraphManager().GetAttributeInfo(this, ATTRIB_FUNCTION);
-        const int32                 functionIndex       = GetAttributeFloatAsInt32(ATTRIB_FUNCTION);
-        return comboAttributeInfo->GetComboValue(functionIndex);
+        return AnimGraphParameterCondition::GetTestFunctionString(m_function);
     }
 
 
     // get the name of the currently used operation
     const char* AnimGraphVector2Condition::GetOperationString() const
     {
-        // get access to the combo values and the currently selected function
-        MCore::AttributeSettings*   comboAttributeInfo  = GetAnimGraphManager().GetAttributeInfo(this, ATTRIB_OPERATION);
-        const int32                 functionIndex       = GetAttributeFloatAsInt32(ATTRIB_OPERATION);
-        return comboAttributeInfo->GetComboValue(functionIndex);
+        switch (m_operation)
+        {
+            case OPERATION_LENGTH:
+            {
+                return s_operationLength;
+            }
+            case OPERATION_GETX:
+            {
+                return s_operationGetX;
+            }
+            case OPERATION_GETY:
+            {
+                return s_operationGetY;
+            }
+            default:
+            {
+                return "Unknown operation";
+            }
+        }
     }
 
 
     // construct and output the information summary string for this object
     void AnimGraphVector2Condition::GetSummary(AZStd::string* outResult) const
     {
-        *outResult = AZStd::string::format("%s: Parameter Name='%s', Test Function='%s', Test Value=%.2f", GetTypeString(), GetAttributeString(ATTRIB_PARAMETER)->AsChar(), GetTestFunctionString(), GetAttributeFloat(ATTRIB_TESTVALUE)->GetValue());
+        *outResult = AZStd::string::format("%s: Parameter Name='%s', Test Function='%s', Test Value=%.2f", RTTI_GetTypeName(), m_parameterName.c_str(), GetTestFunctionString(), m_testValue);
     }
 
 
@@ -345,15 +238,12 @@ namespace EMotionFX
 
         // add the condition type
         columnName = "Condition Type: ";
-        columnValue = GetTypeString();
+        columnValue = RTTI_GetTypeName();
         *outResult = AZStd::string::format("<table border=\"0\"><tr><td width=\"120\"><b>%s</b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
 
         // add the parameter
         columnName = "Parameter Name: ";
-        //columnName.ConvertToNonBreakingHTMLSpaces();
-        columnValue = GetAttributeString(ATTRIB_PARAMETER)->AsChar();
-        //columnValue.ConvertToNonBreakingHTMLSpaces();
-        *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
+        *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), m_parameterName.c_str());
 
         // add the operation
         columnName = "Operation: ";
@@ -362,23 +252,17 @@ namespace EMotionFX
 
         // add the test function
         columnName = "Test Function: ";
-        //columnName.ConvertToNonBreakingHTMLSpaces();
         columnValue = GetTestFunctionString();
-        //columnValue.ConvertToNonBreakingHTMLSpaces();
         *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td></tr>", columnName.c_str(), columnValue.c_str());
 
         // add the test value
         columnName = "Test Value: ";
-        //columnName.ConvertToNonBreakingHTMLSpaces();
-        columnValue = AZStd::string::format("%.3f", GetAttributeFloat(ATTRIB_TESTVALUE)->GetValue());
-        //columnValue.ConvertToNonBreakingHTMLSpaces();
+        columnValue = AZStd::string::format("%.3f", m_testValue);
         *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
 
         // add the range value
         columnName = "Range Value: ";
-        //columnName.ConvertToNonBreakingHTMLSpaces();
-        columnValue = AZStd::string::format("%.3f", GetAttributeFloat(ATTRIB_RANGEVALUE)->GetValue());
-        //columnValue.ConvertToNonBreakingHTMLSpaces();
+        columnValue = AZStd::string::format("%.3f", m_rangeValue);
         *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
     }
 
@@ -391,7 +275,7 @@ namespace EMotionFX
     bool AnimGraphVector2Condition::TestLess(float paramValue, float testValue, float rangeValue)              { MCORE_UNUSED(rangeValue); return (paramValue < testValue);    }
     bool AnimGraphVector2Condition::TestLessEqual(float paramValue, float testValue, float rangeValue)         { MCORE_UNUSED(rangeValue); return (paramValue <= testValue); }
     bool AnimGraphVector2Condition::TestEqual(float paramValue, float testValue, float rangeValue)             { MCORE_UNUSED(rangeValue); return MCore::Compare<float>::CheckIfIsClose(paramValue, testValue, MCore::Math::epsilon); }
-    bool AnimGraphVector2Condition::TestNotEqual(float paramValue, float testValue, float rangeValue)          { MCORE_UNUSED(rangeValue); return (MCore::Compare<float>::CheckIfIsClose(paramValue, testValue, MCore::Math::epsilon) == false); }
+    bool AnimGraphVector2Condition::TestNotEqual(float paramValue, float testValue, float rangeValue)          { MCORE_UNUSED(rangeValue); return !MCore::Compare<float>::CheckIfIsClose(paramValue, testValue, MCore::Math::epsilon); }
     bool AnimGraphVector2Condition::TestInRange(float paramValue, float testValue, float rangeValue)
     {
         if (testValue <= rangeValue)
@@ -423,4 +307,79 @@ namespace EMotionFX
     float AnimGraphVector2Condition::OperationLength(const AZ::Vector2& vec)                               { return vec.GetLength();   }
     float AnimGraphVector2Condition::OperationGetX(const AZ::Vector2& vec)                                 { return vec.GetX();    }
     float AnimGraphVector2Condition::OperationGetY(const AZ::Vector2& vec)                                 { return vec.GetY();    }
-}   // namespace EMotionFX
+
+
+    AZ::Crc32 AnimGraphVector2Condition::GetRangeValueVisibility() const
+    {
+        if (m_function == AnimGraphParameterCondition::FUNCTION_INRANGE || m_function == AnimGraphParameterCondition::FUNCTION_NOTINRANGE)
+        {
+            return AZ::Edit::PropertyVisibility::Show;
+        }
+        
+        return AZ::Edit::PropertyVisibility::Hide;
+    }
+
+    void AnimGraphVector2Condition::SetRangeValue(float rangeValue)
+    {
+        m_rangeValue = rangeValue;
+    }
+
+    void AnimGraphVector2Condition::SetTestValue(float testValue)
+    {
+        m_testValue = testValue;
+    }
+
+    void AnimGraphVector2Condition::SetParameterName(const AZStd::string& parameterName)
+    {
+        m_parameterName = parameterName;
+    }
+
+    void AnimGraphVector2Condition::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphVector2Condition, AnimGraphTransitionCondition>()
+            ->Version(1)
+            ->Field("parameterName", &AnimGraphVector2Condition::m_parameterName)
+            ->Field("operation", &AnimGraphVector2Condition::m_operation)
+            ->Field("testFunction", &AnimGraphVector2Condition::m_function)
+            ->Field("testValue", &AnimGraphVector2Condition::m_testValue)
+            ->Field("rangeValue", &AnimGraphVector2Condition::m_rangeValue)
+            ;
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<AnimGraphVector2Condition>("Vector2 Condition", "Vector2 condition attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphVector2Condition::m_parameterName, "Parameter", "The parameter name to apply the condition on.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphVector2Condition::Reinit)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphVector2Condition::GetAnimGraph)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimGraphVector2Condition::m_operation, "Operation", "The type of operation to perform on the vector.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphVector2Condition::Reinit)
+                ->EnumAttribute(OPERATION_LENGTH,   s_operationLength)
+                ->EnumAttribute(OPERATION_GETX,     s_operationGetX)
+                ->EnumAttribute(OPERATION_GETY,     s_operationGetY)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimGraphVector2Condition::m_function)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphVector2Condition::Reinit)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphVector2Condition::m_testValue, "Test Value", "The float value to test against the parameter value.")
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphVector2Condition::m_rangeValue, "Range Value", "The range high or low bound value, only used when the function is set to 'In Range' or 'Not in Range'.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphVector2Condition::GetRangeValueVisibility)
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ;
+    }
+} // namespace EMotionFX

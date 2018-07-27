@@ -13,14 +13,18 @@ import fnmatch
 import logging as lg
 import os
 import subprocess
+import time
+from aztest.common import SubprocessTimeoutException
+
 logger = lg.getLogger(__name__)
 
 
-def run(cmd, cwd=None):
+def run_cmd_in_subprocess(cmd, cwd=None, timeout=None):
     """
     Run a command on Windows in a subprocess
     :type cmd: list of arguments to run, first should be the executable
     :type cwd: directory to execute from, or null
+    :type timeout: time out on the subprocess in seconds
     :return: return code from process
     """
 
@@ -31,16 +35,35 @@ def run(cmd, cwd=None):
     if not os.path.isabs(cmd[0]):
         cmd = (os.path.join(cwd, cmd[0]),) + cmd[1:]
 
+    deadline = None
+    if timeout:
+        deadline = time.time() + timeout
+
     logger.info("run cmd=[" + ', '.join(cmd) + "], cwd={}".format(cwd or "<none>"))
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=cwd)
 
-    line = proc.stdout.readline()
-    while not line == '':
-        logger.info(line.strip())
-        line = proc.stdout.readline()
+    while True:
+        # read up to 50 lines, to avoid deadlocks
+        for _ in range(50):
+            line = proc.stdout.readline(400)  # limit line size to avoid blocking
 
-    proc.wait()
-    return proc.returncode
+            if line == "":
+                break
+            logger.info(line.strip())
+
+        proc.poll()
+
+        if proc.returncode is not None:
+            logger.info("AZTestRunner returned code: {}".format(proc.returncode))
+            return proc.returncode
+
+        if timeout and time.time() > deadline:
+            proc.terminate()
+            os.system("taskkill /f /pid {}".format(proc.pid))  # ensure process is terminated
+            raise SubprocessTimeoutException("Subprocess timed out after {} seconds. If this is too short, change it "
+                                             "in the command line arguments.".format(timeout))
+
+        time.sleep(0.005)
 
 
 class Scanner:
@@ -61,19 +84,19 @@ class Scanner:
     def enumerate_executables(self, starting_dir):
         return self.enumerate_by_extension(starting_dir, "*.exe")
 
-    def call(self, filename, method, runner_path, args):
+    def call(self, filename, method, runner_path, args, timeout):
         working_dir, fn = os.path.split(filename)
 
         # run tests in the DLL using a special launcher program
-        return run([runner_path, fn, method] + args, cwd=working_dir)
+        return run_cmd_in_subprocess([runner_path, fn, method] + args, cwd=working_dir, timeout=timeout)
 
-    def run(self, filename, args):
+    def run(self, filename, args, timeout):
         # run tests in an executable
         working_dir, _ = os.path.split(filename)
 
         # run tests in an executable by directly invoking
         # it with '--unittest' argument as the first parameter
-        return run([filename, '--unittest'] + args, cwd=working_dir)
+        return run_cmd_in_subprocess([filename, '--unittest'] + args, cwd=working_dir, timeout=timeout)
 
     def bootstrap(self, working_dir, commandline):
         """
@@ -85,7 +108,7 @@ class Scanner:
         elif not os.path.isabs(working_dir):
             working_dir = os.path.join(os.getcwd(), working_dir)
 
-        return run(commandline, cwd=working_dir)
+        return run_cmd_in_subprocess(commandline, cwd=working_dir)
 
     def exports_symbol(self, filename, symbol):
         return True

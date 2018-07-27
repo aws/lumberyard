@@ -14,7 +14,7 @@
 // Description : Definitions for various modifiers to target tracks
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "TargetTrackModifiers.h"
 #include "TargetTrackManager.h"
 #include "TargetTrack.h"

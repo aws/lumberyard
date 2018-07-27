@@ -14,6 +14,7 @@
 #include "rcjoblistmodel.h"
 #include "rcjob.h"
 #include "native/assetprocessor.h"
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
 namespace AssetProcessor
 {
@@ -146,11 +147,11 @@ namespace AssetProcessor
         // arbitrarily, lets have PC get done first since pc-format assets are what the editor uses.
         if (leftJob->GetPlatformInfo().m_identifier != rightJob->GetPlatformInfo().m_identifier)
         {
-            if (leftJob->GetPlatformInfo().m_identifier == CURRENT_PLATFORM)
+            if (leftJob->GetPlatformInfo().m_identifier == AzToolsFramework::AssetSystem::GetHostAssetPlatform())
             {
                 return true; // left wins.
             }
-            if (rightJob->GetPlatformInfo().m_identifier == CURRENT_PLATFORM)
+            if (rightJob->GetPlatformInfo().m_identifier == AzToolsFramework::AssetSystem::GetHostAssetPlatform())
             {
                 return false; // right wins
             }

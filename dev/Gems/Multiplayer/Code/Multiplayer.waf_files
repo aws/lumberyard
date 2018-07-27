@@ -33,7 +33,9 @@
             "Source/MultiplayerCVars.cpp",
             "Source/GameLiftListener.h",
             "Source/GameLiftListener.cpp",
-            "Source/MultiplayerEventsComponent.cpp"
+            "Source/MultiplayerEventsComponent.cpp",
+            "Source/MultiplayerGameLiftClient.h",
+            "Source/MultiplayerGameLiftClient.cpp"
         ],
         "Source/FlowGraph": [
             "Source/FlowMultiplayerNodes.cpp",

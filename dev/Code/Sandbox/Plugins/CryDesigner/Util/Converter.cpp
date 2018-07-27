@@ -356,7 +356,7 @@ namespace CD
 
         const char* tag = pSolidNode->getChild(0)->getTag();
 
-        if (!stricmp(tag, "Face"))
+        if (!azstricmp(tag, "Face"))
         {
             int numFaces = pSolidNode->getChildCount();
             std::vector<SSolidPolygon> polygonlist;
@@ -386,7 +386,7 @@ namespace CD
             }
             AddPolygonsToDesigner(polygonlist, vertexlist, pDesignerObject);
         }
-        else if (!stricmp(tag, "Polygon"))
+        else if (!azstricmp(tag, "Polygon"))
         {
             std::vector<SSolidPolygon> polylist;
             int numberOfChildren = pSolidNode->getChildCount();

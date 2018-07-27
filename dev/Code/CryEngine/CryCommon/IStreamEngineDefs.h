@@ -25,7 +25,7 @@
 #define STREAMENGINE_SUPPORT_DECRYPT
 #endif
 
-enum
+enum : unsigned int
 {
     ERROR_UNKNOWN_ERROR          = 0xF0000000,
     ERROR_UNEXPECTED_DESTRUCTION = 0xF0000001,

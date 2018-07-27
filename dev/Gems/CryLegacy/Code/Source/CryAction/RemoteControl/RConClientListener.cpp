@@ -13,7 +13,7 @@
 
 // Description : IRemoteControlClientListener implementation
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IRemoteControl.h"
 #include "RConClientListener.h"
 

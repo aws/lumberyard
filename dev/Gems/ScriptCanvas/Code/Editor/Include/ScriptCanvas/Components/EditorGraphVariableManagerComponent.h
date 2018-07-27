@@ -42,8 +42,8 @@ namespace ScriptCanvasEditor
         ////
 
         // SceneVariableManagerNotificationBus
-        void OnVariableAdded(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
-        void OnVariableRemoved(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
+        void OnVariableAddedToGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
+        void OnVariableRemovedFromGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
         ////
 
     private:

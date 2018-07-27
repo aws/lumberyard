@@ -17,7 +17,7 @@
 #include "MemoryManager.h"
 #include "Endian.h"
 #include "Stream.h"
-#include <AZCore/std/string/string.h>
+#include <AzCore/std/string/string.h>
 
 namespace MCore
 {
@@ -37,9 +37,9 @@ namespace MCore
         ATTRIBUTE_INTERFACETYPE_VECTOR2         = 6,        // MCore::AttributeVector2
         ATTRIBUTE_INTERFACETYPE_VECTOR3GIZMO    = 7,        // MCore::AttributeVector3
         ATTRIBUTE_INTERFACETYPE_VECTOR4         = 8,        // MCore::AttributeVector4
-        ATTRIBUTE_INTERFACETYPE_FILEBROWSE      = 9,        // MCore::AttributeString
         ATTRIBUTE_INTERFACETYPE_COLOR           = 10,       // MCore::AttributeVector4
         ATTRIBUTE_INTERFACETYPE_STRING          = 11,       // MCore::AttributeString
+        ATTRIBUTE_INTERFACETYPE_TAG             = 26,       // MCore::AttributeBool
         ATTRIBUTE_INTERFACETYPE_VECTOR3         = 113212,   // MCore::AttributeVector3
         ATTRIBUTE_INTERFACETYPE_PROPERTYSET     = 113213,   // MCore::AttributeSet
         ATTRIBUTE_INTERFACETYPE_DEFAULT         = 0xFFFFFFFF// use the default attribute type that the specific attribute class defines as default
@@ -68,83 +68,19 @@ namespace MCore
         virtual bool ConvertToString(AZStd::string& outString) const = 0;
         virtual bool InitFrom(const Attribute* other) = 0;
         virtual uint32 GetClassSize() const = 0;
-        virtual uint8 GetStreamWriteVersion() const;
         virtual uint32 GetDefaultInterfaceType() const = 0;
-        virtual void Scale(float scaleFactor)                                       { MCORE_UNUSED(scaleFactor); }  // scale data, for example a vector3 holding a position
 
-        virtual bool GetCanHaveChildren() const                                     { return false; }
-        virtual uint32 GetNumChildAttributes() const                                { return 0; }
-        virtual Attribute* GetChildAttribute(uint32 index) const                    { MCORE_UNUSED(index); return nullptr; }
-        virtual AttributeSettings* GetChildAttributeSettings(uint32 index) const    { MCORE_UNUSED(index); return nullptr; }
-
-        virtual uint32 FindAttributeIndexByValuePointer(const Attribute* attribute) const;
-        virtual uint32 FindAttributeIndexByName(const char* name) const;
-        virtual uint32 FindAttributeIndexByNameID(uint32 nameID) const;
-        virtual uint32 FindAttributeIndexByInternalName(const char* name) const;
-        virtual uint32 FindAttributeIndexByInternalNameID(uint32 nameID) const;
-        virtual uint32 FindAttributeIndexHierarchical(const char* namePath, Attribute** outContainer) const;
-        virtual Attribute* FindAttributeHierarchical(const char* namePath, AttributeSettings** outSettings = nullptr, bool lookUpRef = true) const;
-
-        AttributeSettings* FindAttributeSettings() const;
-
-        template<typename AttributeClass>
-        MCORE_INLINE AttributeClass* FindAttributeHierarchical(const char* namePath, AttributeSettings** outSettings = nullptr, bool lookUpRef = true) const
-        {
-            Attribute* result = FindAttributeHierarchical(namePath, outSettings, lookUpRef);
-            if (result)
-            {
-                if (result->GetType() == AttributeClass::TYPE_ID)
-                {
-                    return static_cast<AttributeClass*>(result);
-                }
-                else
-                {
-                    LogWarning("MCore::Attribute::FindAttributeHierarchical<TYPE>() - The attribute for path '%s' is not of type %d but of type %d (%s), returning nullptr.", namePath, AttributeClass::TYPE_ID, result->GetType(), result->GetTypeString());
-                }
-            }
-
-            return nullptr;
-        }
-
-        void BuildHierarchicalName(AZStd::string& outString) const;
-        AZStd::string BuildHierarchicalName() const;
-
-        MCORE_INLINE virtual uint8* GetRawDataPointer()             { return nullptr; }
-        MCORE_INLINE virtual uint32 GetRawDataSize() const          { return 0; }
-        virtual bool GetSupportsRawDataPointer() const              { return false; }
-
-        bool Write(Stream* stream, MCore::Endian::EEndianType targetEndianType) const;
+        // These two members and ReadData can go away once we put the old-format parser
         bool Read(Stream* stream, MCore::Endian::EEndianType sourceEndianType);
-
-        static bool WriteHeader(Stream* stream, Endian::EEndianType targetEndianType, const Attribute* attribute);  // write the header (type + size)
-        static bool ReadHeader(Stream* stream, Endian::EEndianType endianType, Attribute** outAttribute); // read the header (type + size)
-        static bool WriteFullAttribute(Stream* stream, Endian::EEndianType targetEndianType, const Attribute* attribute);   // writes header + data (data=versionnumber + data)
-        static bool ReadFullAttribute(Stream* stream, Endian::EEndianType endianType, Attribute** outAttribute);    // read header + data (data=versionnumber + data)
-        static uint32 GetFullAttributeSize(Attribute* attribute);
-
-        uint32 GetStreamSize() const;                   // version + data
         virtual uint32 GetDataSize() const = 0;         // data only
 
         Attribute& operator=(const Attribute& other);
 
-        void SetParent(Attribute* parent);
-        Attribute* GetParent() const;
-        void UpdateChildParentPointers(bool recursive = true);
-
     protected:
         uint32      mTypeID;    /**< The unique type ID of the attribute class. */
-        Attribute*  mParent;    /**< The parent, which contains this attribute as child, or nullptr if none. */
 
         virtual ~Attribute();
         Attribute(uint32 typeID);
-
-        /**
-         * Write the attribute to a given stream.
-         * @param stream The stream to write to.
-         * @param endianType The target endian to write the data in.
-         * @result Returns true when successful or false when failed.
-         */
-        virtual bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const = 0;
 
         /**
          * Read the attribute info and data from a given stream.

@@ -16,7 +16,7 @@
 #include <QJsonArray>
 #include <QString>
 #include <QDebug>
-#include <functional>
+#include <AzCore/std/functional.h>
 
 namespace Lyzard
 {
@@ -36,7 +36,7 @@ namespace Lyzard
             QString key,
             QJsonObject source,
             QObject* parent,
-            std::function<bool(ReadType*)> callback
+            AZStd::function<bool(ReadType*)> callback
         )
         {
             static_assert(std::is_base_of<IJsonReadable, ReadType>::value, "ReadType must be derived from IJsonObject");

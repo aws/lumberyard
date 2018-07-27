@@ -18,7 +18,8 @@
 
 bool TextFileReader::Load(const char* filename, std::vector<char*>& lines)
 {
-    FILE* const file = fopen(filename, "rb");
+    FILE* file = nullptr; 
+    azfopen(&file, filename, "rb");
     if (!file)
     {
         return false;

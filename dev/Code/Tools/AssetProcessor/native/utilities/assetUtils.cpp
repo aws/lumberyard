@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "AssetUtils.h"
+#include "assetUtils.h"
 
 #include "native/utilities/PlatformConfiguration.h"
 #include "native/AssetManager/assetScanner.h"
@@ -69,16 +69,6 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
-
-#if defined(AZ_PLATFORM_APPLE_IOS)
-const char* const CURRENT_PLATFORM = "ios";
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-const char* const CURRENT_PLATFORM = "osx_gl";
-#elif defined(AZ_PLATFORM_ANDROID)
-const char* const CURRENT_PLATFORM = "es3";
-#elif defined(AZ_PLATFORM_WINDOWS)
-const char* const CURRENT_PLATFORM = "pc";
-#endif
 
 
 namespace AssetUtilsInternal
@@ -822,8 +812,27 @@ namespace AssetUtilities
 
     QString NormalizeFilePath(const QString& filePath)
     {
-        // do NOT convert to absolute paths here.
-        return QDir::fromNativeSeparators(filePath);
+        // do NOT convert to absolute paths here, we just want to manipulate the string itself.
+
+        // note that according to the Qt Documentation, in QDir::toNativeSeparators,
+        // "The returned string may be the same as the argument on some operating systems, for example on Unix.".
+        // in other words, what we need here is a custom normalization - we want always the same
+        // direction of slashes on all platforms.s
+
+        QString returnString = filePath;
+        returnString.replace(QChar('\\'), QChar('/'));
+        returnString = QDir::cleanPath(returnString);
+
+#if defined(AZ_PLATFORM_WINDOWS)
+        // windows has an additional idiosyncrasy - it returns upper and lower case drive letters
+        // from various APIs differently.  we will settle on upper case as the standard.
+        if ((returnString.length() > 1) && (returnString[1] == ':'))
+        {
+            returnString[0] = returnString[0].toUpper();
+        }
+#endif
+
+        return returnString;
     }
 
     QString NormalizeDirectoryPath(const QString& directoryPath)
@@ -872,14 +881,14 @@ namespace AssetUtilities
     unsigned int ComputeCRC32Lowercase(const char* inString, unsigned int priorCRC)
     {
         AZ::Crc32 crc(priorCRC != -1 ? priorCRC : 0U);
-        crc.Add(inString);
+        crc.Add(inString); // note that the char* version of Add() sets lowercase to be true by default.
         return crc;
     }
 
     unsigned int ComputeCRC32Lowercase(const char* data, size_t dataSize, unsigned int priorCRC)
     {
         AZ::Crc32 crc(priorCRC != -1 ? priorCRC : 0U);
-        crc.Add(data, dataSize);
+        crc.Add(data, dataSize, true);
         return crc;
     }
 
@@ -973,55 +982,6 @@ namespace AssetUtilities
         return true;
     }
 
-    QString GenerateKeyForSourceFile(QString path, AssetProcessor::PlatformConfiguration* platformConfig)
-    {
-        //This functions takes an input path like @assets@/Editor/Texture/xxx.dds
-        //or an input path like Editor/Texture/xxx.dds
-        //or an input path like this D:/x/y/z/Editor/Texture/xxx.tif
-        //where Editor is the source folder AP is monitoring
-        //and returns a relative file path without file extension like Editor/Texture/xxx
-
-        QString normalizedFilePath = NormalizeFilePath(path);
-        QFileInfo fileInfo(normalizedFilePath);
-        if (fileInfo.isRelative())
-        {
-            if (normalizedFilePath.contains("@assets@/", Qt::CaseInsensitive))
-            {
-                normalizedFilePath.remove("@assets@/", Qt::CaseInsensitive);
-            }
-
-            //if the game or editor is asking for a *cm_diff.dds than we need to remove _diff from the name
-            if (normalizedFilePath.contains("cm_diff"))
-            {
-                normalizedFilePath.remove("_diff");
-            }
-        }
-        else
-        {
-            //if we are here than we need to find relative path
-            //from the monitored folder
-            QString scanFolderName;
-            QString relativePathToFile;
-            if (!platformConfig->ConvertToRelativePath(normalizedFilePath, relativePathToFile, scanFolderName))
-            {
-                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Unable to find relative path to %s.\n", normalizedFilePath.toUtf8().data());
-
-                return QString();
-            }
-
-            normalizedFilePath = relativePathToFile;
-        }
-
-        fileInfo.setFile(normalizedFilePath);
-
-        QString fileName = fileInfo.baseName();//if path is /xyz/aaa.b.c filename is aaa
-
-        QDir fileDir(fileInfo.path());
-        QString outputString = fileDir.filePath(fileName);
-
-        return outputString.toLower();
-    }
-
     QString ComputeJobDescription(const AssetProcessor::AssetRecognizer* recognizer)
     {
         return recognizer->m_name.toLower();
@@ -1093,7 +1053,8 @@ namespace AssetUtilities
 
     unsigned int GenerateFingerprint(const AssetProcessor::JobDetails& jobDetail)
     {
-        unsigned int fingerprint = GenerateBaseFingerprint(jobDetail.m_jobEntry.m_absolutePathToFile, jobDetail.m_extraInformationForFingerprinting);
+        QString absolutePath = jobDetail.m_jobEntry.GetAbsoluteSourcePath();
+        unsigned int fingerprint = GenerateBaseFingerprint(absolutePath, jobDetail.m_extraInformationForFingerprinting);
 
         // If fingerprint is zero, then the file does not exist so abort
         if (fingerprint == 0)
@@ -1137,7 +1098,7 @@ namespace AssetUtilities
 
     AZStd::string ComputeJobLogFileName(const AssetProcessor::JobEntry& jobEntry)
     {
-        return AZStd::string::format("%s-%u-%u.log", jobEntry.m_relativePathToFile.toUtf8().constData(), jobEntry.GetHash(), jobEntry.m_jobRunKey);
+        return AZStd::string::format("%s-%u-%u.log", jobEntry.m_databaseSourceName.toUtf8().constData(), jobEntry.GetHash(), jobEntry.m_jobRunKey);
     }
 
     bool CreateTempRootFolder(QString startFolder, QDir& tempRoot)
@@ -1220,7 +1181,7 @@ namespace AssetUtilities
         return false;
     }
 
-    QString GuessProductNameInDatabase(QString path, AssetProcessor::AssetDatabaseConnection* databaseConnection)
+    QString GuessProductNameInDatabase(QString path, QString platform, AssetProcessor::AssetDatabaseConnection* databaseConnection)
     {
         QString productName;
         QString inputName;
@@ -1236,13 +1197,17 @@ namespace AssetUtilities
 
         // most of the time, the incoming request will be for an actual product name, so optimize this by assuming that is the case
         // and do an optimized query for it
+        if (platform.isEmpty())
+        {
+            platform = AzToolsFramework::AssetSystem::GetHostAssetPlatform();
+        }
 
-        QString platformPrepend = QString("%1/%2/").arg(CURRENT_PLATFORM, gameName);
+        QString platformPrepend = QString("%1/%2/").arg(platform, gameName);
         QString productNameWithPlatformAndGameName = productName;
 
         if (!productName.startsWith(platformPrepend, Qt::CaseInsensitive))
         {
-            productNameWithPlatformAndGameName = productName = QString("%1/%2/%3").arg(CURRENT_PLATFORM, gameName, productName);
+            productNameWithPlatformAndGameName = productName = QString("%1/%2/%3").arg(platform, gameName, productName);
         }
 
         ProductDatabaseEntryContainer products;
@@ -1267,7 +1232,7 @@ namespace AssetUtilities
 
             if (gameNameIndex != -1)
             {
-                //we will now remove the gameName and the native separator
+                //we will now remove the gameName and the separator
                 productName.remove(gameNameIndex, gameName.length() + 1);// adding one for the native separator
             }
 
@@ -1301,6 +1266,11 @@ namespace AssetUtilities
     QuitListener::QuitListener()
         : m_requestedQuit(false)
     {
+    }
+
+    QuitListener::~QuitListener()
+    {
+        BusDisconnect();
     }
 
     void QuitListener::ApplicationShutdownRequested()

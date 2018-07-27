@@ -14,7 +14,7 @@
 // Description : Implements a damage behavior which destroy a vehicle
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "IVehicleSystem.h"
 

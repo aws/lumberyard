@@ -132,7 +132,7 @@ namespace AzQtComponents
             hLayout->addWidget(tagWidget);
 
             // Connect the clicked event of the close button of the tag widget to the remove tag function in the container.
-            connect(tagWidget, &TagWidget::DeleteClicked, [this, tagWidget]{ RemoveTag(tagWidget->text()); });
+            connect(tagWidget, &TagWidget::DeleteClicked, this, [this, tagWidget]{ RemoveTag(tagWidget->text()); });
         }
 
         m_widget->setLayout(vLayout);
@@ -241,7 +241,7 @@ namespace AzQtComponents
         layout->addWidget(m_combo);
 
         connect(m_combo, SIGNAL(activated(int)), this, SLOT(OnComboActivated(int)));
-        connect(m_tagWidgets, &TagWidgetContainer::TagsChanged, [this]{ Reinit(); emit TagsChanged(); });
+        connect(m_tagWidgets, &TagWidgetContainer::TagsChanged, this, [this]{ Reinit(); emit TagsChanged(); });
     }
 
 

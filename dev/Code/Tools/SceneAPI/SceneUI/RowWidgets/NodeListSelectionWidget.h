@@ -12,7 +12,7 @@
 *
 */
 
-#include <QComboBox.h>
+#include <QComboBox>
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/unordered_set.h>

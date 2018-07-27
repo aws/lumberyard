@@ -460,6 +460,7 @@ namespace spline
             m_curr = 0;
             m_rangeStart = 0;
             m_rangeEnd = 0;
+            m_refCount = 0;
         }
 
         virtual ~TSpline() {};
@@ -640,6 +641,23 @@ namespace spline
         //////////////////////////////////////////////////////////////////////////
 
         static void Reflect(AZ::SerializeContext* serializeContext) {}
+     
+        inline void add_ref()
+        {
+            ++m_refCount;
+        };
+
+        inline void release()
+        {
+            AZ_Assert(m_refCount > 0, "Reference count logic error, trying to decrement reference when refCount is 0");
+            if (--m_refCount == 0)
+            {
+                delete this;
+            }
+        }
+
+    private:
+        int m_refCount;
 
     protected:
         AZStd::vector<key_type> m_keys;                 // List of keys.

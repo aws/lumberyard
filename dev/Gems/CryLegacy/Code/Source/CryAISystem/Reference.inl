@@ -13,6 +13,7 @@
 
 #include "AIObject.h"
 #include "AIObjectManager.h"
+#include "Environment.h"
 
 bool CAbstractUntypedRef::IsNil() const
 {

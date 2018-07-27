@@ -27,7 +27,7 @@
 #include "Material/Material.h"
 #include "Include/ITransformManipulator.h"
 #include "QtUI/WaitCursor.h"
-#include "I3dEngine.h"
+#include "I3DEngine.h"
 #include "IPhysics.h"
 #include "MainWindow.h"
 
@@ -400,7 +400,11 @@ bool CVegetationTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& 
     }
     else
     {
+#ifdef AZ_PLATFORM_APPLE
+        GetIEditor()->SetStatusText("Shift: Place New  ⌘: Add To Selection  ⌥: Scale Selected  ⌥⌘: Rotate Selected DEL: Delete Selected");
+#else
         GetIEditor()->SetStatusText("Shift: Place New  Ctrl: Add To Selection  Alt: Scale Selected  Alt+Ctrl: Rotate Selected DEL: Delete Selected");
+#endif
     }
 
     m_prevMousePos = point;

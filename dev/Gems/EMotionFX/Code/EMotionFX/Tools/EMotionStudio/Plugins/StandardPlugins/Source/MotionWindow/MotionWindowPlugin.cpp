@@ -10,27 +10,28 @@
 *
 */
 
-#include "MotionListWindow.h"
-#include "MotionPropertiesWindow.h"
-#include "MotionExtractionWindow.h"
-#include "MotionRetargetingWindow.h"
-#include "MotionWindowPlugin.h"
-#include <QPushButton>
-#include <QLabel>
-#include <QSplitter>
-#include <QMessageBox>
-#include <QApplication>
-#include <QMenu>
-#include <MysticQt/Source/ButtonGroup.h>
-#include "../../../../EMStudioSDK/Source/MainWindow.h"
-#include "../../../../EMStudioSDK/Source/SaveChangedFilesManager.h"
-#include <MCore/Source/LogManager.h>
-#include <EMotionFX/Source/MotionSystem.h>
-#include <EMotionFX/Source/MotionManager.h>
-#include <EMotionFX/Source/SkeletalMotion.h>
-#include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 #include <EMotionFX/CommandSystem/Source/MotionCommands.h>
+#include <EMotionFX/Source/MotionManager.h>
+#include <EMotionFX/Source/MotionSystem.h>
+#include <EMotionFX/Source/SkeletalMotion.h>
+#include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/FileManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/MainWindow.h>
+#include <EMotionStudio/EMStudioSDK/Source/SaveChangedFilesManager.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionExtractionWindow.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionListWindow.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionPropertiesWindow.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionRetargetingWindow.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionWindowPlugin.h>
+#include <MCore/Source/LogManager.h>
+#include <MysticQt/Source/ButtonGroup.h>
+#include <QApplication>
+#include <QLabel>
+#include <QMenu>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QSplitter>
 
 
 namespace EMStudio
@@ -116,6 +117,8 @@ namespace EMStudio
         : public EMotionFX::EventHandler
     {
     public:
+        AZ_CLASS_ALLOCATOR(MotionWindowPluginEventHandler, EMotionFX::EventHandlerAllocator, 0)
+
         void OnDeleteMotion(EMotionFX::Motion* motion) override
         {
             if (motion == nullptr)
@@ -395,7 +398,7 @@ namespace EMStudio
         }
 
         // add the event handler
-        mEventHandler = new MotionWindowPluginEventHandler();
+        mEventHandler = aznew MotionWindowPluginEventHandler();
         EMotionFX::GetEventManager().AddEventHandler(mEventHandler);
 
         return true;

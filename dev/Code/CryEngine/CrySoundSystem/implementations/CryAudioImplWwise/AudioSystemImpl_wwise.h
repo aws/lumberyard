@@ -130,8 +130,8 @@ namespace Audio
         SATLAudioObjectData_wwise* NewAudioObjectData(const TAudioObjectID nObjectID) override;
         void DeleteAudioObjectData(IATLAudioObjectData* const pOldObjectData) override;
 
-        SATLListenerData_wwise* NewDefaultAudioListenerObjectData() override;
-        SATLListenerData_wwise* NewAudioListenerObjectData(const uint nIndex) override;
+        SATLListenerData_wwise* NewDefaultAudioListenerObjectData(const TATLIDType nObjectID) override;
+        SATLListenerData_wwise* NewAudioListenerObjectData(const TATLIDType nObjectID) override;
         void DeleteAudioListenerObjectData(IATLListenerData* const pOldListenerData) override;
 
         SATLEventData_wwise* NewAudioEventData(const TAudioEventID nEventID) override;
@@ -165,6 +165,8 @@ namespace Audio
         static const char* const sWwiseMutiplierAttribute;
         static const char* const sWwiseShiftAttribute;
         static const char* const sWwiseLocalisedAttribute;
+        static const char* const sWwiseGlobalAudioObjectName;
+
         static const float sObstructionOcclusionMin;
         static const float sObstructionOcclusionMax;
 
@@ -186,7 +188,8 @@ namespace Audio
 
         EAudioRequestStatus PostEnvironmentAmounts(IATLAudioObjectData* const pAudioObjectData);
 
-        AkGameObjectID m_nDummyGameObjectID;
+        AkGameObjectID m_globalGameObjectID;
+        AkGameObjectID m_defaultListenerGameObjectID;
         AkBankID m_nInitBankID;
         CFileIOHandler_wwise m_oFileIOHandler;
 

@@ -18,7 +18,7 @@
 #include <QProcess>
 #include <QDir>
 #include <QList>
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 
 #include "rcjoblistmodel.h"
 #include "RCQueueSortModel.h"
@@ -67,6 +67,8 @@ namespace AssetProcessor
         //void AssetStatus(JobEntry jobEntry, AzFramework::AssetProcessor::AssetStatus status);
         void RcError(QString error);
         void ReadyToQuit(QObject* source); //After receiving QuitRequested, you must send this when its safe
+
+        ///! JobStarted will notify with a path name relative to the watch folder it was found in (not the database sourcename column)
         void JobStarted(QString inputFile, QString platform);
         void JobStatusChanged(JobEntry entry, AzToolsFramework::AssetSystem::JobStatus status);
         void JobsInQueuePerPlatform(QString platform, int jobs);
@@ -94,7 +96,7 @@ namespace AssetProcessor
         void SetDispatchPaused(bool pause);
 
         //! All jobs which match this source will be cancelled or removed.  Note that relSourceFile should have any applicable output prefixes!
-        void RemoveJobsBySource(QString relSourceFile);
+        void RemoveJobsBySource(QString relSourceFileDatabaseName);
 
     private:
         void FinishJob(AssetProcessor::RCJob* rcJob);

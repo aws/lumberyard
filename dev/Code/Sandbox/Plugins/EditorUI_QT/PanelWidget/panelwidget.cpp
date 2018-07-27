@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "PanelWidget.h"
 #include <PanelWidget/ui_PanelWidget.h>
 
@@ -85,13 +85,13 @@ QWidget* PanelWidget::addItemPanel(const char* name, CAttributeItem* attr_item, 
     {
         //This breaks horizontal resizing when only the left panel is expanded,
         // this fixes the problem where the panels take up all the remaining space.
-        //attr_item->setSizePolicy(QSizePolicy::QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum));
+        //attr_item->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum));
         dWidget->setWidget(attr_item);
 
         attr_item->setSizePolicy(QSizePolicy(attr_item->sizePolicy().horizontalPolicy(), QSizePolicy::Maximum));
     }
 
-    connect(dWidget, &QDockWidget::topLevelChanged, [dWidget](bool isTopLevel)
+    connect(dWidget, &QDockWidget::topLevelChanged, dWidget, [dWidget](bool isTopLevel)
         {
             dWidget->setWindowOpacity(isTopLevel ? 0.5 : 1.0);
         });
@@ -139,7 +139,7 @@ QWidget* PanelWidget::addPanel(const char* name, QWidget* contentWidget, bool sc
     {
         //This breaks horizontal resizing when only the left panel is expanded,
         // this fixes the problem where the panels take up all the remaining space.
-        //contentWidget->setSizePolicy(QSizePolicy::QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum));
+        //contentWidget->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum));
         dWidget->setWidget(contentWidget);
         this->stackUnder(contentWidget);
     }
@@ -240,7 +240,7 @@ void PanelWidget::addShowPanelItemsToMenu(QMenu* menu)
         action->setChecked(titlebar->isVisible());
 #endif
 
-        connect(action, &QAction::triggered, dw, [action, dw, menu]
+        connect(action, &QAction::triggered, dw, [dw, menu]
             {
                 //Set panel visibility
                 dw->setVisible(!dw->isVisible());
@@ -271,7 +271,7 @@ void PanelWidget::addShowPanelItemsToMenu(QMenu* menu)
     //Add extra menu options to show/hide multiple panels
     if (visiblePanelCount < panelCount)
     {
-        connect(menu->addAction("Show All"), &QAction::triggered, [this]()
+        connect(menu->addAction("Show All"), &QAction::triggered, this, [this]()
             {
                 for (auto it : children())
                 {
@@ -290,7 +290,7 @@ void PanelWidget::addShowPanelItemsToMenu(QMenu* menu)
 
     if (visiblePanelCount > 0)
     {
-        connect(menu->addAction("Hide All"), &QAction::triggered, [this]()
+        connect(menu->addAction("Hide All"), &QAction::triggered, this, [this]()
             {
                 for (auto it : children())
                 {
@@ -309,7 +309,7 @@ void PanelWidget::addShowPanelItemsToMenu(QMenu* menu)
 
     if (invisibleChangedPanels > 0)
     {
-        connect(menu->addAction("Show Changed"), &QAction::triggered, [this]()
+        connect(menu->addAction("Show Changed"), &QAction::triggered, this, [this]()
             {
                 for (auto it : children())
                 {
@@ -339,7 +339,7 @@ QString PanelWidget::saveCollapsedState()
 {
     QString str;
 
-    iterateOver([this, &str](QDockWidget* dw, PanelTitleBar* titlebar)
+    iterateOver([&str](QDockWidget* dw, PanelTitleBar* titlebar)
         {
             // store when it's uncollapsed
             if (titlebar->getCollapsed() == false)
@@ -362,7 +362,7 @@ void PanelWidget::loadCollapsedState(const QString& str)
     }
 
     // uncollapse children if needed
-    iterateOver([this, &str, &uncollapsedSet](QDockWidget* dw, PanelTitleBar* titlebar)
+    iterateOver([&uncollapsedSet](QDockWidget* dw, PanelTitleBar* titlebar)
         {
             if (uncollapsedSet.contains(dw->windowTitle()))
             {
@@ -379,7 +379,7 @@ QString PanelWidget::saveAdvancedState()
 {
     QString str;
 
-    iterateOver([this, &str](QDockWidget* dw, PanelTitleBar* titlebar)
+    iterateOver([&str](QDockWidget* dw, PanelTitleBar* titlebar)
         {
             // store when advanced options are visible
             ItemPanelTitleBar* itemTitleBar = qobject_cast<ItemPanelTitleBar*>(titlebar);
@@ -423,7 +423,7 @@ void PanelWidget::loadAdvancedState(const QString& str)
             }
         });
 #else
-    iterateOver([this](QDockWidget* dw, PanelTitleBar* titlebar)
+    iterateOver([](QDockWidget* dw, PanelTitleBar* titlebar)
         {
             ItemPanelTitleBar* itemTitleBar = qobject_cast<ItemPanelTitleBar*>(titlebar);
             itemTitleBar->showAdvanced(true);

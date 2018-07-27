@@ -10,52 +10,20 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "BlendTreeVector3Math1Node.h"
 #include <MCore/Source/Random.h>
-#include <MCore/Source/AttributeSettings.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeVector3Math1Node::BlendTreeVector3Math1Node(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-
-        // default on sinus calculation
-        mMathFunction   = MATHFUNCTION_LENGTH;
-        mCalculateFunc  = CalculateLength;
-        SetNodeInfo("Length");
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeVector3Math1Node, AnimGraphAllocator, 0)
 
 
-    // destructor
-    BlendTreeVector3Math1Node::~BlendTreeVector3Math1Node()
-    {
-    }
-
-
-    // create
-    BlendTreeVector3Math1Node* BlendTreeVector3Math1Node::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeVector3Math1Node(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeVector3Math1Node::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeVector3Math1Node::RegisterPorts()
+    BlendTreeVector3Math1Node::BlendTreeVector3Math1Node()
+        : AnimGraphNode()
+        , m_mathFunction(MATHFUNCTION_LENGTH)
     {
         // create the input ports
         InitInputPorts(1);
@@ -63,29 +31,88 @@ namespace EMotionFX
 
         // create the output ports
         InitOutputPorts(2);
-        SetupOutputPort("Vector3",  OUTPUTPORT_RESULT_VECTOR3,  MCore::AttributeVector3::TYPE_ID,   PORTID_OUTPUT_VECTOR3);
-        SetupOutputPort("Float",    OUTPUTPORT_RESULT_FLOAT,    MCore::AttributeFloat::TYPE_ID,     PORTID_OUTPUT_FLOAT);
+        SetupOutputPort("Vector3", OUTPUTPORT_RESULT_VECTOR3, MCore::AttributeVector3::TYPE_ID, PORTID_OUTPUT_VECTOR3);
+        SetupOutputPort("Float", OUTPUTPORT_RESULT_FLOAT, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_FLOAT);
+
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
+    }
+    
+
+    BlendTreeVector3Math1Node::~BlendTreeVector3Math1Node()
+    {
     }
 
 
-    // register the parameters
-    void BlendTreeVector3Math1Node::RegisterAttributes()
+    void BlendTreeVector3Math1Node::Reinit()
     {
-        MCore::AttributeSettings* functionParam = RegisterAttribute("Math Function", "mathFunction", "The math function to use.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        functionParam->SetReinitGuiOnValueChange(true);
-        functionParam->ResizeComboValues((uint32)MATHFUNCTION_NUMFUNCTIONS);
-        functionParam->SetComboValue(MATHFUNCTION_LENGTH,       "Length");
-        functionParam->SetComboValue(MATHFUNCTION_SQUARELENGTH, "Square Length");
-        functionParam->SetComboValue(MATHFUNCTION_NORMALIZE,    "Normalize");
-        functionParam->SetComboValue(MATHFUNCTION_ZERO,         "Zero");
-        functionParam->SetComboValue(MATHFUNCTION_FLOOR,        "Floor");
-        functionParam->SetComboValue(MATHFUNCTION_CEIL,         "Ceil");
-        functionParam->SetComboValue(MATHFUNCTION_ABS,          "Abs");
-        functionParam->SetComboValue(MATHFUNCTION_RANDOM,       "Random Vector [0..1]");
-        functionParam->SetComboValue(MATHFUNCTION_RANDOMNEG,    "Random Vector [-1..1]");
-        functionParam->SetComboValue(MATHFUNCTION_RANDOMDIRVEC, "Random Direction");
-        functionParam->SetComboValue(MATHFUNCTION_NEGATE,       "Negate");
-        functionParam->SetDefaultValue(MCore::AttributeFloat::Create(0));
+        switch (m_mathFunction)
+        {
+        case MATHFUNCTION_LENGTH:
+            m_calculateFunc = CalculateLength;
+            SetNodeInfo("Length");
+            break;
+        case MATHFUNCTION_SQUARELENGTH:
+            m_calculateFunc = CalculateSquareLength;
+            SetNodeInfo("Square Length");
+            break;
+        case MATHFUNCTION_NORMALIZE:
+            m_calculateFunc = CalculateNormalize;
+            SetNodeInfo("Normalize");
+            break;
+        case MATHFUNCTION_ZERO:
+            m_calculateFunc = CalculateZero;
+            SetNodeInfo("Zero");
+            break;
+        case MATHFUNCTION_FLOOR:
+            m_calculateFunc = CalculateFloor;
+            SetNodeInfo("Floor");
+            break;
+        case MATHFUNCTION_CEIL:
+            m_calculateFunc = CalculateCeil;
+            SetNodeInfo("Ceil");
+            break;
+        case MATHFUNCTION_ABS:
+            m_calculateFunc = CalculateAbs;
+            SetNodeInfo("Abs");
+            break;
+        case MATHFUNCTION_NEGATE:
+            m_calculateFunc = CalculateNegate;
+            SetNodeInfo("Negate");
+            break;
+        case MATHFUNCTION_RANDOM:
+            m_calculateFunc = CalculateRandomVector;
+            SetNodeInfo("Random[0..1]");
+            break;
+        case MATHFUNCTION_RANDOMNEG:
+            m_calculateFunc = CalculateRandomVectorNeg;
+            SetNodeInfo("Random[-1..1]");
+            break;
+        case MATHFUNCTION_RANDOMDIRVEC:
+            m_calculateFunc = CalculateRandomVectorDir;
+            SetNodeInfo("RandomDirection");
+            break;
+        default:
+            AZ_Assert(false, "EMotionFX: Math function unknown.");
+        }
+
+        AnimGraphNode::Reinit();
+    }
+
+
+    bool BlendTreeVector3Math1Node::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -103,28 +130,11 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeVector3Math1Node::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeVector3Math1Node* clone = new BlendTreeVector3Math1Node(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // the update function
     void BlendTreeVector3Math1Node::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // update all inputs
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
-
-        // update the math function if needed
-        SetMathFunction((EMathFunction)((uint32)GetAttributeFloat(0)->GetValue()));
 
         // get the input value as a float, convert if needed
         AZ::Vector3 input;
@@ -142,7 +152,7 @@ namespace EMotionFX
         // apply the operation
         AZ::Vector3 vectorResult(0.0f, 0.0f, 0.0f);
         float floatResult = 0.0f;
-        mCalculateFunc(input, &vectorResult, &floatResult);
+        m_calculateFunc(input, &vectorResult, &floatResult);
 
         // update the output value
         //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
@@ -151,84 +161,14 @@ namespace EMotionFX
     }
 
 
-    // get the type string
-    const char* BlendTreeVector3Math1Node::GetTypeString() const
-    {
-        return "BlendTreeVector3Math1Node";
-    }
-
-
-    // set the math function to use
     void BlendTreeVector3Math1Node::SetMathFunction(EMathFunction func)
     {
-        // if it didn't change, don't update anything
-        if (func == mMathFunction)
+        m_mathFunction = func;
+        if (mAnimGraph)
         {
-            return;
+            Reinit();
         }
-
-        mMathFunction = func;
-        switch (mMathFunction)
-        {
-        case MATHFUNCTION_LENGTH:
-            mCalculateFunc = CalculateLength;
-            SetNodeInfo("Length");
-            return;
-        case MATHFUNCTION_SQUARELENGTH:
-            mCalculateFunc = CalculateSquareLength;
-            SetNodeInfo("Square Length");
-            return;
-        case MATHFUNCTION_NORMALIZE:
-            mCalculateFunc = CalculateNormalize;
-            SetNodeInfo("Normalize");
-            return;
-        case MATHFUNCTION_ZERO:
-            mCalculateFunc = CalculateZero;
-            SetNodeInfo("Zero");
-            return;
-        case MATHFUNCTION_FLOOR:
-            mCalculateFunc = CalculateFloor;
-            SetNodeInfo("Floor");
-            return;
-        case MATHFUNCTION_CEIL:
-            mCalculateFunc = CalculateCeil;
-            SetNodeInfo("Ceil");
-            return;
-        case MATHFUNCTION_ABS:
-            mCalculateFunc = CalculateAbs;
-            SetNodeInfo("Abs");
-            return;
-        case MATHFUNCTION_NEGATE:
-            mCalculateFunc = CalculateNegate;
-            SetNodeInfo("Negate");
-            return;
-        case MATHFUNCTION_RANDOM:
-            mCalculateFunc = CalculateRandomVector;
-            SetNodeInfo("Random[0..1]");
-            return;
-        case MATHFUNCTION_RANDOMNEG:
-            mCalculateFunc = CalculateRandomVectorNeg;
-            SetNodeInfo("Random[-1..1]");
-            return;
-        case MATHFUNCTION_RANDOMDIRVEC:
-            mCalculateFunc = CalculateRandomVectorDir;
-            SetNodeInfo("RandomDirection");
-            return;
-
-        default:
-            MCORE_ASSERT(false);        // function unknown
-        }
-        ;
     }
-
-
-    // update the data
-    void BlendTreeVector3Math1Node::OnUpdateAttributes()
-    {
-        // update the math function if needed
-        SetMathFunction((EMathFunction)((uint32)GetAttributeFloat(0)->GetValue()));
-    }
-
 
     //-----------------------------------------------
     // the math functions
@@ -244,5 +184,45 @@ namespace EMotionFX
     void BlendTreeVector3Math1Node::CalculateRandomVectorNeg(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput) { MCORE_UNUSED(floatOutput); MCORE_UNUSED(input); *vectorOutput = MCore::Random::RandomVecF(); }
     void BlendTreeVector3Math1Node::CalculateRandomVectorDir(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput) { MCORE_UNUSED(floatOutput); MCORE_UNUSED(input); *vectorOutput = MCore::Random::RandDirVecF(); }
     void BlendTreeVector3Math1Node::CalculateNegate(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput)          { MCORE_UNUSED(floatOutput); vectorOutput->Set(-input.GetX(), -input.GetY(), -input.GetZ()); }
-}   // namespace EMotionFX
 
+
+    void BlendTreeVector3Math1Node::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeVector3Math1Node, AnimGraphNode>()
+            ->Version(1)
+            ->Field("mathFunction", &BlendTreeVector3Math1Node::m_mathFunction)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeVector3Math1Node>("Vector3 Math1", "Vector3 Math1 attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeVector3Math1Node::m_mathFunction, "Math Function", "The math function to use.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeVector3Math1Node::Reinit)
+                ->EnumAttribute(MATHFUNCTION_LENGTH,       "Length")
+                ->EnumAttribute(MATHFUNCTION_SQUARELENGTH, "Square Length")
+                ->EnumAttribute(MATHFUNCTION_NORMALIZE,    "Normalize")
+                ->EnumAttribute(MATHFUNCTION_ZERO,         "Zero")
+                ->EnumAttribute(MATHFUNCTION_FLOOR,        "Floor")
+                ->EnumAttribute(MATHFUNCTION_CEIL,         "Ceil")
+                ->EnumAttribute(MATHFUNCTION_ABS,          "Abs")
+                ->EnumAttribute(MATHFUNCTION_RANDOM,       "Random Vector [0..1]")
+                ->EnumAttribute(MATHFUNCTION_RANDOMNEG,    "Random Vector [-1..1]")
+                ->EnumAttribute(MATHFUNCTION_RANDOMDIRVEC, "Random Direction")
+                ->EnumAttribute(MATHFUNCTION_NEGATE,       "Negate")
+            ;
+    }
+} // namespace EMotionFX

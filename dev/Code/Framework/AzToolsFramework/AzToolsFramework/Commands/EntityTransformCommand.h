@@ -17,7 +17,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/RTTI.h>
-#include <AzCore/Component/componentbus.h>
+#include <AzCore/Component/ComponentBus.h>
 #include <HexEdFramework/FrameworkCore/UndoSystem.h>
 #include <HexEd/WorldEditor/ToolsComponents/TransformComponentBus.h>
 

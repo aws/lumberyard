@@ -1,0 +1,168 @@
+<button *ngIf="index.testRunner && index.testRunner.loaded" (click)="index.runTests()">Run Test</button>
+
+<div [ngSwitch]="initialized">
+    <div *ngSwitchCase="false">
+        <div class="loading-spinner-container">
+            <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+        </div>
+    </div>
+    <div *ngSwitchCase="true">
+        <div style="margin-bottom: 8px;">
+            <button *ngIf="canStartWorkflow" class="btn l-primary create-button" (click)="openRunDialog()">
+                Run Workflow
+            </button>
+            <button *ngIf="!canStartWorkflow" [disabled]="!canCancelWorkflow" class="btn btn-outline-primary create-button" (click)="cancelWorkflow()">
+                Cancel Workflow
+            </button>
+
+            <button *ngIf="canStartWorkflow" class="btn btn-outline-primary" (click)="openHistoryDialog()">
+                View Previous Builds
+            </button>
+
+            <span *ngIf="invalidWorkflowInput" class="error-message">
+                Assign valid options in the Build Configuration tab to run and view workflows.
+            </span>
+        </div>
+
+        <h2>Workflow Execution Progress</h2>
+
+        <div class="row">
+            <div class="col-2">
+                Name
+            </div>
+            <div class="col-8">
+                {{runner.activeWorkflowId}}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-2">
+                Status
+            </div>
+            <div class="col-8">
+                <span>
+                    <i *ngIf="statusDecoration.length" [ngClass]="statusDecoration" aria-hidden="true"></i> {{activeWorkflowStatus}}
+                </span>
+            </div>
+        </div>
+
+        <div *ngIf="runner.buildState != runner.BuildState.Idle" class="row">
+            <div class="col-2">
+                Progress
+            </div>
+            <div class="col-8">
+                <table>
+                    <tr>
+                        <th>Task</th>
+                        <th>Completed</th>
+                        <th>Total</th>
+                    </tr>
+                    <tr *ngFor="let row of progressRows">
+                        <td *ngFor="let item of row">
+                            {{item}}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-2">
+                Started
+            </div>
+            <div class="col-8">
+                {{startTime}}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-2">
+                Ended
+            </div>
+            <div class="col-8">
+                {{endTime}}
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<!-- Run modal -->
+<modal #runModal *ngIf="displayMode == DisplayMode.RunDialog"
+    title="Run Workflow"
+    [autoOpen]="true"
+    [onDismiss]="dismissModal"
+    [onClose]="dismissModal"
+    [hasSubmit]="true"
+    [submitButtonText]="'Run'"
+    (modalSubmitted)="runWorkflow()"
+>
+    <div class="modal-body">
+        <div class="row">
+            <div class="col-3">
+                Execution Name:
+            </div>
+            <div class="col-9">
+                <input type="text" class="form-control execution-name col-9" [(ngModel)]="executionName" name="execution-name" placeholder="Optional name for this workflow execution">
+                <div class="row">
+                    <span>
+                        <i class="fa fa-question-circle-o upload-tooltip" aria-hidden="true"></i> 
+                        Execution Name, if specified, must be unique for every execution. A unique name will be generated if left blank (recommended).
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</modal>
+
+<!-- History modal -->
+<modal #historyModal *ngIf="displayMode == DisplayMode.HistoryDialog"
+    title="View Previous Builds"
+    [autoOpen]="true"
+    [onDismiss]="dismissModal"
+    [onClose]="dismissModal"
+    [hasSubmit]="true"
+    [submitButtonText]="'View'"
+    (modalSubmitted)="submitViewBuild()"
+>
+    <div class="modal-body">
+
+        <button class="btn btn-outline-primary" (click)="promptDeleteAllBuilds()">
+            Clear Logs
+        </button>
+
+        <span *ngIf="!canStartWorkflow" class="clear-info">
+            Logs cannot be purged while a build is active.
+        </span>
+    
+        <div *ngIf="buildIdManager.isLoading()">
+            <div class="loading-spinner-container">
+                <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+            </div>
+        </div>
+        <div *ngIf="!buildIdManager.isLoading()">
+            <table class="table table-hover float-left">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>NAME</th>
+                        <th>STARTED</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let buildId of buildIdManager.buildIds let i = index" (click)="changeBuildIndex(i)">
+                        <td>
+                            <input class="show-radio-buttons" type="radio" [value]="i" [(ngModel)]="selectedBuildIndex">
+                        </td>
+                        <td>
+                            {{buildId.name}}
+                        </td>
+                        <td>
+                            {{buildId.start}}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</modal>

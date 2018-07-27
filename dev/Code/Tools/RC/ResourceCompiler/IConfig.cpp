@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include <StdAfx.h>
+#include <stdafx.h>
 #include "IConfig.h"
 #include "IRCLog.h"
 
@@ -33,28 +33,28 @@ IConfig::EResult IConfig::Get(const char* const key, bool& value, const int ePri
 
     {
         int tmpInt;
-        if (sscanf(pValue, "%d", &tmpInt) == 1)
+        if (azsscanf(pValue, "%d", &tmpInt) == 1)
         {
             value = (tmpInt != 0);
             return eResult_Success;
         }
     }
 
-    if (!_stricmp(pValue, "true") ||
-        !_stricmp(pValue, "yes") ||
-        !_stricmp(pValue, "enable") ||
-        !_stricmp(pValue, "y") ||
-        !_stricmp(pValue, "t"))
+    if (!azstricmp(pValue, "true") ||
+        !azstricmp(pValue, "yes") ||
+        !azstricmp(pValue, "enable") ||
+        !azstricmp(pValue, "y") ||
+        !azstricmp(pValue, "t"))
     {
         value = true;
         return eResult_Success;
     }
 
-    if (!_stricmp(pValue, "false") ||
-        !_stricmp(pValue, "no") ||
-        !_stricmp(pValue, "disable") ||
-        !_stricmp(pValue, "n") ||
-        !_stricmp(pValue, "f"))
+    if (!azstricmp(pValue, "false") ||
+        !azstricmp(pValue, "no") ||
+        !azstricmp(pValue, "disable") ||
+        !azstricmp(pValue, "n") ||
+        !azstricmp(pValue, "f"))
     {
         value = false;
         return eResult_Success;
@@ -72,7 +72,7 @@ IConfig::EResult IConfig::Get(const char* const key, int& value, const int ePriM
     }
 
     int tmpValue;
-    if (sscanf(pValue, "%d", &tmpValue) == 1)
+    if (azsscanf(pValue, "%d", &tmpValue) == 1)
     {
         value = tmpValue;
         return eResult_Success;
@@ -90,7 +90,7 @@ IConfig::EResult IConfig::Get(const char* const key, float& value, const int ePr
     }
 
     float tmpValue;
-    if (sscanf(pValue, "%f", &tmpValue) == 1)
+    if (azsscanf(pValue, "%f", &tmpValue) == 1)
     {
         value = tmpValue;
         return eResult_Success;

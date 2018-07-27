@@ -14,55 +14,60 @@
 #include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/std/string/string.h>
 
-#include <QFileSystemWatcher>
-#include <QDateTime>
-#include <QObject>
-#include <QMap>
-
-#include <StaticDataMonitorEditorPlugin.h>
+#include <AzFramework/Asset/AssetCatalogBus.h>
 
 #include <StaticData/StaticDataBus.h>
 #include <IStaticDataMonitor.h>
 
-class QFileInfo;
-
+#include <CrySystemBus.h>
 
 namespace CloudCanvas
 {
     namespace StaticData
     {
 
-        class StaticDataMonitor : public QObject, public StaticDataMonitorRequestBus::Handler
+        class StaticDataMonitor :  
+            public StaticDataMonitorRequestBus::Handler
+            , public AzFramework::AssetCatalogEventBus::Handler
+            , public AZ::Data::AssetBus::MultiHandler
+            , public StaticDataUpdateBus::Handler
+            , public CrySystemEventBus::Handler
         {
-
-            Q_OBJECT
         public:
             StaticDataMonitor();
             ~StaticDataMonitor();
 
+            void Initialize();
             void RemoveAll() override;
 
             void AddPath(const AZStd::string& sanitizedPath, bool isFile) override;
             void RemovePath(const AZStd::string& sanitizedPath) override;
 
-            AZStd::string GetSanitizedName(const char* pathName) const override; // Do any sort of path sanitizing so output events line up
+            void AddAsset(const AZ::Data::AssetId& sanitizedPath) override;
+            void RemoveAsset(const AZ::Data::AssetId& sanitizedPath) override;
 
-        signals:
+            //AssetCatalogEventBus
+            void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId);
+            void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId);
+            void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId);
 
-            void FileChanged(const QString&);
+            // AssetDatabaseBus
+            void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
-        private slots:
+            // StaticDataUpdateBus
+            void StaticDataFileAdded(const AZStd::string& filePath) override;
 
-            void OnFileChanged(const QString&);
-            void OnDirectoryChanged(const QString&);
-
+            void OnCrySystemInitialized(ISystem& system, const SSystemInitParams& systemInitParams) override;
         private:
 
-            QFileSystemWatcher m_watcher;
+            bool IsMonitored(const AZ::Data::AssetId& assetId);
+            void OnFileChanged(const AZStd::string& filePath);
 
-            void Monitor(const QFileInfo& fileInfo);
+            AZStd::string GetSanitizedName(const char* pathName) const override; // Do any sort of path sanitizing so output events line up
+            static AZStd::string GetAssetFilenameFromAssetId(const AZ::Data::AssetId& assetId);
 
-            AZStd::unordered_set<AZStd::string> m_monitoredFiles;
+            AZStd::unordered_set<AZ::Data::AssetId> m_monitoredAssets;
+            AZStd::unordered_set<AZStd::string> m_monitoredPaths;
         };
     }
 }

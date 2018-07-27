@@ -443,7 +443,7 @@ bool CEntityObject::Init(IEditor* pEditor, CBaseObject* pPrev, const QString& fi
         SetUniqueName(file);
         m_entityClass = file;
 
-        IEntityPoolManager* pPoolManager = gEnv->pEntitySystem->GetIEntityPoolManager();
+        IEntityPoolManager* pPoolManager = gEnv->pEntitySystem ? gEnv->pEntitySystem->GetIEntityPoolManager() : nullptr;
         if (pPoolManager && pPoolManager->IsClassDefaultBookmarked(m_entityClass.toUtf8().data()))
         {
             mv_createdThroughPool = true;
@@ -1259,7 +1259,7 @@ void CEntityObject::SpawnEntity()
 
     if (m_entityId != 0)
     {
-        if (pEntitySystem->IsIDUsed(m_entityId))
+        if (pEntitySystem && pEntitySystem->IsIDUsed(m_entityId))
         {
             m_entityId = 0;
         }
@@ -1307,7 +1307,7 @@ void CEntityObject::SpawnEntity()
     params.guid = ToEntityGuid(GetId());
 
     // Spawn Entity but not initialize it.
-    m_pEntity = pEntitySystem->SpawnEntity(params, false);
+    m_pEntity = pEntitySystem ? pEntitySystem->SpawnEntity(params, false) : nullptr;
     if (m_pEntity)
     {
         m_entityId = m_pEntity->GetId();
@@ -1493,10 +1493,12 @@ void CEntityObject::DeleteEntity()
     {
         UnbindIEntity();
         m_pEntity->ClearFlags(ENTITY_FLAG_UNREMOVABLE);
-        IEntitySystem* pEntitySystem = gEnv->pEntitySystem;
-        pEntitySystem->RemoveEntity(m_pEntity->GetId(), true);
+        if (IEntitySystem* pEntitySystem = gEnv->pEntitySystem)
+        {
+            pEntitySystem->RemoveEntity(m_pEntity->GetId(), true);
+            gEnv->pEntitySystem->RemoveEntityEventListener(m_entityId, ENTITY_EVENT_SCRIPT_PROPERTY_ANIMATED, this);
+        }
         s_entityIdMap.erase(m_entityId);
-        gEnv->pEntitySystem->RemoveEntityEventListener(m_entityId, ENTITY_EVENT_SCRIPT_PROPERTY_ANIMATED, this);
     }
     m_pEntity = 0;
 }
@@ -4684,9 +4686,12 @@ void CEntityObject::OnMenuReloadScripts()
     }
     Reload(true);
 
-    SEntityEvent event;
-    event.event = ENTITY_EVENT_RELOAD_SCRIPT;
-    gEnv->pEntitySystem->SendEventToAll(event);
+    if (gEnv->pEntitySystem)
+    {
+        SEntityEvent event;
+        event.event = ENTITY_EVENT_RELOAD_SCRIPT;
+        gEnv->pEntitySystem->SendEventToAll(event);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -4722,7 +4727,7 @@ void CEntityObject::OnMenuConvertToPrefab()
     QString strFullName = this->GetEntityPropertyString("sPrefabVariation");
 
     // check if we have the info we need from the script
-    IEntity* pEnt = gEnv->pEntitySystem->GetEntity(this->GetEntityId());
+    IEntity* pEnt = gEnv->pEntitySystem ? gEnv->pEntitySystem->GetEntity(this->GetEntityId()) : nullptr;
     if (pEnt)
     {
         IScriptTable* pScriptTable(pEnt->GetScriptTable());
@@ -4799,8 +4804,7 @@ void CEntityObject::OnContextMenu(QMenu* pMenu)
     if (GetFlowGraph() == 0)
     {
         action = pMenu->addAction(QObject::tr("Create Flow Graph"));
-        QObject::connect(action, &QAction::triggered, [this] { OnMenuCreateFlowGraph();
-            });
+        QObject::connect(action, &QAction::triggered, this, &CEntityObject::OnMenuCreateFlowGraph);
         pMenu->addSeparator();
     }
 
@@ -4821,7 +4825,7 @@ void CEntityObject::OnContextMenu(QMenu* pMenu)
                 name += " <GraphEntity>";
 
                 action = fgMenu->addAction(name);
-                QObject::connect(action, &QAction::triggered, [this, flowGraph] { OnMenuFlowGraphOpen(flowGraph);
+                QObject::connect(action, &QAction::triggered, this, [this, flowGraph] { OnMenuFlowGraphOpen(flowGraph);
                     });
                 if (fgMenu->actions().size() > 1)
                 {
@@ -4831,7 +4835,7 @@ void CEntityObject::OnContextMenu(QMenu* pMenu)
             else
             {
                 action = fgMenu->addAction(name);
-                QObject::connect(action, &QAction::triggered, [this, flowGraph] { OnMenuFlowGraphOpen(flowGraph);
+                QObject::connect(action, &QAction::triggered, this, [this, flowGraph] { OnMenuFlowGraphOpen(flowGraph);
                     });
             }
         }
@@ -4854,7 +4858,7 @@ void CEntityObject::OnContextMenu(QMenu* pMenu)
             {
                 action = sequenceMenu->addAction(pSequence->GetName());
                 auto node = bundle.GetNode(nodeIndex);
-                QObject::connect(action, &QAction::triggered, [this, node] { OnMenuOpenTrackView(node);
+                QObject::connect(action, &QAction::triggered, this, [this, node] { OnMenuOpenTrackView(node);
                     });
             }
         }
@@ -4873,25 +4877,22 @@ void CEntityObject::OnContextMenu(QMenu* pMenu)
         {
             QString sourceEvent = pScript->GetEvent(i);
             action = eventMenu->addAction(sourceEvent);
-            QObject::connect(action, &QAction::triggered, [this, i] { OnMenuScriptEvent(i);
+            QObject::connect(action, &QAction::triggered, this, [this, i] { OnMenuScriptEvent(i);
                 });
         }
         pMenu->addSeparator();
     }
 
     action = pMenu->addAction(QObject::tr("Reload Script"));
-    QObject::connect(action, &QAction::triggered, [this] { OnMenuReloadScripts();
-        });
+    QObject::connect(action, &QAction::triggered, this, &CEntityObject::OnMenuReloadScripts);
 
     action = pMenu->addAction(QObject::tr("Reload All Scripts"));
-    QObject::connect(action, &QAction::triggered, [this] { OnMenuReloadAllScripts();
-        });
+    QObject::connect(action, &QAction::triggered, this, &CEntityObject::OnMenuReloadAllScripts);
 
     if (pScript && pScript->GetClass() && _stricmp(pScript->GetClass()->GetName(), "ProceduralObject") == 0)
     {
         action = pMenu->addAction(QObject::tr("Convert to prefab"));
-        QObject::connect(action, &QAction::triggered, [this] { OnMenuConvertToPrefab();
-            });
+        QObject::connect(action, &QAction::triggered, this, &CEntityObject::OnMenuConvertToPrefab);
         //pMenu->AddSeparator();
     }
     CBaseObject::OnContextMenu(pMenu);

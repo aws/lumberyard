@@ -228,7 +228,8 @@ namespace NCryMetal
         id<MTLTexture>                  m_Texture;
         id<MTLTexture>                  m_StencilTexture;
         double                          m_ClearColor[4];
-        _smart_ptr<SOutputMergerView>   m_spViewToClear;
+        _smart_ptr<SOutputMergerView>   m_spTextureViewToClear;
+        _smart_ptr<SOutputMergerView>   m_spStencilTextureViewToClear;
         float                           m_fClearDepthValue;
         bool                            m_bClearDepth;
         bool                            m_bClearStencil;

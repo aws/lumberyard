@@ -63,6 +63,7 @@
 
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
 #include <LmbrCentral/Rendering/EditorLightComponentBus.h>
 
@@ -247,7 +248,7 @@ void CCryEditDoc::DeleteContents()
         (*it)->OnCloseDocument();
     }
 
-    GetIEditor()->GetVegetationMap()->ClearObjects();
+    GetIEditor()->GetVegetationMap()->ClearAll();
     GetIEditor()->GetTerrainManager()->ClearLayers();
     m_pClouds->GetLastParam()->bValid = false;
     GetIEditor()->ResetViews();
@@ -517,9 +518,6 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
             }
         }
 
-        // Reposition Vegetation.
-        RepositionVegetation();
-
         // update surf types because layers info only now is available in vegetation groups
         {
             CAutoLogTime logtime("Updating Surface Types");
@@ -532,7 +530,6 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
         SerializeFogSettings((*arrXmlAr[DMAS_GENERAL]));
 
         //! Serialize entity prototype manager.
-        if (gEnv->pGame)
         {
             CAutoLogTime logtime("Load Entity Archetypes Database");
             GetIEditor()->GetEntityProtManager()->Serialize((*arrXmlAr[DMAS_GENERAL]).root, (*arrXmlAr[DMAS_GENERAL]).bLoading);
@@ -903,7 +900,7 @@ int CCryEditDoc::GetModifiedModule()
     return m_modifiedModuleFlags;
 }
 
-BOOL CCryEditDoc::CanCloseFrame(CFrameWnd* pFrame)
+BOOL CCryEditDoc::CanCloseFrame()
 {
     // Ask the base class to ask for saving, which also includes the save
     // status of the plugins. Additionaly we query if all the plugins can exit
@@ -932,9 +929,11 @@ BOOL CCryEditDoc::CanCloseFrame(CFrameWnd* pFrame)
 bool CCryEditDoc::SaveModified()
 {
     if (!IsModified())
+    {
         return true;
+    }
 
-    auto button = QMessageBox::question(QApplication::activeWindow(), QString(), tr("Save changes to %1?").arg(GetTitle()), QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+    auto button = QMessageBox::question(AzToolsFramework::GetActiveWindow(), QString(), tr("Save changes to %1?").arg(GetTitle()), QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
     switch (button)
     {
     case QMessageBox::Cancel:
@@ -1525,6 +1524,8 @@ void CCryEditDoc::Fetch(const QString& holdName, bool bShowMessages, bool bDelHo
     TDocMultiArchive arrXmlAr = {};
     if (!LoadXmlArchiveArray(arrXmlAr, holdFilename, holdPath))
     {
+        QMessageBox::critical(QApplication::activeWindow(), "Error", "The temporary 'Hold' level failed to load successfully.  Your level might be corrupted, you should restart the Editor.", QMessageBox::Ok);
+        AZ_Error("CryEditDoc", false, "Fetch failed to load the Xml Archive");
         return;
     }
     
@@ -1816,7 +1817,8 @@ void CCryEditDoc::LogLoadTime(int time)
     SetFileAttributes(filename.toUtf8().data(), FILE_ATTRIBUTE_ARCHIVE);
 #endif
 
-    FILE* file = fopen(filename.toUtf8().data(), "at");
+    FILE* file = nullptr;
+    azfopen(&file, filename.toUtf8().data(), "at");
 
     if (file)
     {

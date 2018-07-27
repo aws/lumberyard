@@ -15,7 +15,6 @@
 #include "DriverD3D.h"
 #include "StringUtils.h"
 #include <AzCore/Debug/Profiler.h>
-#include <IJobManager_JobDelegator.h>
 
 #include "../Common/Textures/TextureStreamPool.h"
 
@@ -99,17 +98,22 @@ void CTexture::StreamExpandMip(const void* vpRawData, int nMip, int nBaseMipOffs
     const int nSrcSidePitch = nSrcSurfaceSize + nSideDelta;
 
     SRenderThread* pRT = gRenDev->m_pRT;
-
-    for (int iSide = 0; iSide < nSides; ++iSide)
+    if (mh.m_Mips && mh.m_SideSize > 0)
     {
-        SMipData* mp = &mh.m_Mips[iSide];
-        if (!mp->DataArray)
+        for (int iSide = 0; iSide < nSides; ++iSide)
         {
-            mp->Init(mh.m_SideSize, Align(max(1, m_nWidth >> nMip), vMipAlign.x), Align(max(1, m_nHeight >> nMip), vMipAlign.y));
-        }
+            SMipData* mp = &mh.m_Mips[iSide];
+            if (mp)
+            {
+                if (!mp->DataArray)
+                {
+                    mp->Init(mh.m_SideSize, Align(max(1, m_nWidth >> nMip), vMipAlign.x), Align(max(1, m_nHeight >> nMip), vMipAlign.y));
+                }
 
-        const byte* pRawSideData = pRawData + nSrcSidePitch * iSide;
-        CTexture::ExpandMipFromFile(&mp->DataArray[0], mh.m_SideSize, pRawSideData, nSrcSurfaceSize, m_eTFSrc);
+                const byte* pRawSideData = pRawData + nSrcSidePitch * iSide;
+                CTexture::ExpandMipFromFile(&mp->DataArray[0], mh.m_SideSize, pRawSideData, nSrcSurfaceSize, m_eTFSrc);
+            }
+        }
     }
 }
 

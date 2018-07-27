@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "MannequinAGState.h"
 #include "CryAction.h"
 #include "AnimationGraph/AnimatedCharacter.h"
@@ -117,10 +117,10 @@ namespace MannequinAG
         switch (iid)
         {
         case eSIID_Action:
-            strcpy(value, m_actionValue.c_str());
+            azstrcpy(value, AZ_ARRAY_SIZE(value), m_actionValue.c_str());
             break;
         case eSIID_Signal:
-            strcpy(value, m_signalValue.c_str());
+            azstrcpy(value, AZ_ARRAY_SIZE(value), m_signalValue.c_str());
             break;
         default:
             break;

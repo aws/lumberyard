@@ -11,8 +11,7 @@
 */
 #include "precompiled.h"
 
-#include <qgraphicsproxywidget.h>
-#include <qspinbox.h>
+#include <QGraphicsProxyWidget>
 
 #include <Components/NodePropertyDisplays/NumericNodePropertyDisplay.h>
 
@@ -30,40 +29,19 @@ namespace GraphCanvas
     NumericNodePropertyDisplay::NumericNodePropertyDisplay(NumericDataInterface* dataInterface)
         : m_dataInterface(dataInterface)
         , m_displayLabel(nullptr)
+        , m_spinBox(nullptr)
         , m_proxyWidget(nullptr)
     {
         m_dataInterface->RegisterDisplay(this);
         
         m_disabledLabel = aznew GraphCanvasLabel();
         m_displayLabel = aznew GraphCanvasLabel();
-        m_proxyWidget = new QGraphicsProxyWidget();
-        m_proxyWidget->setFlag(QGraphicsItem::ItemIsFocusable, true);
-        m_proxyWidget->setFocusPolicy(Qt::StrongFocus);
-        
-        m_spinBox = aznew Internal::FocusableDoubleSpinBox();
-        m_spinBox->setProperty("HasNoWindowDecorations", true);
-        m_spinBox->setProperty("DisableFocusWindowFix", true);
-        
-        QObject::connect(m_spinBox, &Internal::FocusableDoubleSpinBox::OnFocusIn, [this]() { this->EditStart(); });
-        QObject::connect(m_spinBox, &Internal::FocusableDoubleSpinBox::OnFocusOut, [this]() { this->EditFinished(); });
-        QObject::connect(m_spinBox, &QDoubleSpinBox::editingFinished, [this]() { this->SubmitValue(); });
-        
-        m_spinBox->setMinimum(m_dataInterface->GetMin());
-        m_spinBox->setMaximum(m_dataInterface->GetMax());
-        m_spinBox->setSuffix(QString(m_dataInterface->GetSuffix()));
-        m_spinBox->setDecimals(m_dataInterface->GetDecimalPlaces());
-        m_spinBox->SetDisplayDecimals(m_dataInterface->GetDisplayDecimalPlaces());
-
-        m_proxyWidget->setWidget(m_spinBox);
-
-        RegisterShortcutDispatcher(m_spinBox);
     }
     
     NumericNodePropertyDisplay::~NumericNodePropertyDisplay()
     {
+        CleanupProxyWidget();
         delete m_dataInterface;
-
-        delete m_proxyWidget;
         delete m_displayLabel;
         delete m_disabledLabel;
     }
@@ -73,43 +51,51 @@ namespace GraphCanvas
         m_disabledLabel->SetSceneStyle(GetSceneId(), NodePropertyDisplay::CreateDisabledLabelStyle("double").c_str());
         m_displayLabel->SetSceneStyle(GetSceneId(), NodePropertyDisplay::CreateDisplayLabelStyle("double").c_str());
 
-        QSizeF minimumSize = m_displayLabel->minimumSize();
-        QSizeF maximumSize = m_displayLabel->maximumSize();
+        if (m_spinBox)
+        {
+            QSizeF minimumSize = m_displayLabel->minimumSize();
+            QSizeF maximumSize = m_displayLabel->maximumSize();
 
-        m_spinBox->setMinimumSize(minimumSize.width(), minimumSize.height());
-        m_spinBox->setMaximumSize(maximumSize.width(), maximumSize.height());
+            m_spinBox->setMinimumSize(minimumSize.width(), minimumSize.height());
+            m_spinBox->setMaximumSize(maximumSize.width(), maximumSize.height());
+        }
     }
     
     void NumericNodePropertyDisplay::UpdateDisplay()
     {
         double value = m_dataInterface->GetNumber();
         
+        AZStd::string displayValue = AZStd::string::format("%.*g%s", m_dataInterface->GetDisplayDecimalPlaces(), value, m_dataInterface->GetSuffix());
+        m_displayLabel->SetLabel(displayValue);
+
+        if (m_spinBox)
         {
             QSignalBlocker signalBlocker(m_spinBox);
-
-            AZStd::string displayValue = AZStd::string::format("%.*g%s", m_dataInterface->GetDisplayDecimalPlaces(), value, m_dataInterface->GetSuffix());
-            
             m_spinBox->setValue(value);
             m_spinBox->deselectAll();
-
-            m_displayLabel->SetLabel(displayValue);
         }
         
-        m_proxyWidget->update();
+        if (m_proxyWidget)
+        {
+            m_proxyWidget->update();
+        }
     }
 
-    QGraphicsLayoutItem* NumericNodePropertyDisplay::GetDisabledGraphicsLayoutItem() const
+    QGraphicsLayoutItem* NumericNodePropertyDisplay::GetDisabledGraphicsLayoutItem()
     {
+        CleanupProxyWidget();
         return m_disabledLabel;
     }
 
-    QGraphicsLayoutItem* NumericNodePropertyDisplay::GetDisplayGraphicsLayoutItem() const
+    QGraphicsLayoutItem* NumericNodePropertyDisplay::GetDisplayGraphicsLayoutItem()
     {
+        CleanupProxyWidget();
         return m_displayLabel;
     }
 
-    QGraphicsLayoutItem* NumericNodePropertyDisplay::GetEditableGraphicsLayoutItem() const
+    QGraphicsLayoutItem* NumericNodePropertyDisplay::GetEditableGraphicsLayoutItem()
     {
+        SetupProxyWidget();
         return m_proxyWidget;
     }
 
@@ -122,18 +108,67 @@ namespace GraphCanvas
     
     void NumericNodePropertyDisplay::SubmitValue()
     {
-        m_dataInterface->SetNumber(m_spinBox->value());
+        if (m_spinBox)
+        {
+            m_dataInterface->SetNumber(m_spinBox->value());
+            m_spinBox->selectAll();
+        }
+        else
+        {
+            AZ_Error("GraphCanvas", false, "spin box doesn't exist!");
+        }
         UpdateDisplay();
-
-        m_spinBox->selectAll();
     }
 
     void NumericNodePropertyDisplay::EditFinished()
     {
         SubmitValue();
-        m_spinBox->deselectAll();
+        if (m_spinBox)
+        {
+            m_spinBox->deselectAll();
+        }
 
         NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
+    }
+
+    void NumericNodePropertyDisplay::SetupProxyWidget()
+    {
+        if (!m_spinBox)
+        {
+            m_proxyWidget = new QGraphicsProxyWidget();
+            m_proxyWidget->setFlag(QGraphicsItem::ItemIsFocusable, true);
+            m_proxyWidget->setFocusPolicy(Qt::StrongFocus);
+
+            m_spinBox = aznew Internal::FocusableDoubleSpinBox();
+            m_spinBox->setProperty("HasNoWindowDecorations", true);
+            m_spinBox->setProperty("DisableFocusWindowFix", true);
+
+            QObject::connect(m_spinBox, &Internal::FocusableDoubleSpinBox::OnFocusIn, [this]() { this->EditStart(); });
+            QObject::connect(m_spinBox, &Internal::FocusableDoubleSpinBox::OnFocusOut, [this]() { this->EditFinished(); });
+            QObject::connect(m_spinBox, &QDoubleSpinBox::editingFinished, [this]() { this->SubmitValue(); });
+
+            m_spinBox->setMinimum(m_dataInterface->GetMin());
+            m_spinBox->setMaximum(m_dataInterface->GetMax());
+            m_spinBox->setSuffix(QString(m_dataInterface->GetSuffix()));
+            m_spinBox->setDecimals(m_dataInterface->GetDecimalPlaces());
+            m_spinBox->SetDisplayDecimals(m_dataInterface->GetDisplayDecimalPlaces());
+
+            m_proxyWidget->setWidget(m_spinBox);
+            UpdateDisplay();
+            RefreshStyle();
+            RegisterShortcutDispatcher(m_spinBox);
+        }
+    }
+
+    void NumericNodePropertyDisplay::CleanupProxyWidget()
+    {
+        if (m_spinBox)
+        {
+            UnregisterShortcutDispatcher(m_spinBox);
+            delete m_spinBox; // NB: this implicitly deletes m_proxy widget
+            m_spinBox = nullptr;
+            m_proxyWidget = nullptr;
+        }
     }
 
 #include <Source/Components/NodePropertyDisplays/NumericNodePropertyDisplay.moc>

@@ -77,6 +77,9 @@ namespace LmbrCentral
 
     void StaticPhysicsComponent::ConfigurePhysicalEntity()
     {
+        pe_params_flags flagsParams;
+        flagsParams.flagsOR = pef_log_state_changes | pef_monitor_state_changes;
+        m_physicalEntity->SetParams(&flagsParams);
     }
 
 } // namespace LmbrCentral

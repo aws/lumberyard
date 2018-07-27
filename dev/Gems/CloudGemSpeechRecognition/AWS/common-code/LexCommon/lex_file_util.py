@@ -138,7 +138,7 @@ def build_bot_desc(name, version):
     bot.pop('ResponseMetadata', None)
 
     intents = []
-    for intent_in_bot in bot.get('intents', []):
+    for index, intent_in_bot in enumerate(bot.get('intents', [])):
         # if intentVersion missing, it's a built in intent
         if 'intentVersion' in intent_in_bot:
             intent = {}
@@ -157,9 +157,11 @@ def build_bot_desc(name, version):
             intent.pop('ResponseMetadata', None)
             intents.append(intent)
 
+            bot['intents'][index]['intentVersion'] = '$LATEST'
+
     slot_types = []
     for intent in intents:
-        for slot in intent['slots']:
+        for index, slot in enumerate(intent.get('slots', [])):
             if not any(slot_type['name'] == slot['slotType'] for slot_type in slot_types):
                 #if slotVersion missing, it's a built in slot type
                 if 'slotTypeVersion' in slot:
@@ -177,6 +179,8 @@ def build_bot_desc(name, version):
                     slot_type.pop('version', None)
                     slot_type.pop('ResponseMetadata', None)
                     slot_types.append(slot_type)
+
+                    intent['slots'][index]['slotTypeVersion'] = '$LATEST'
 
     ret = {
         'bot' : bot,

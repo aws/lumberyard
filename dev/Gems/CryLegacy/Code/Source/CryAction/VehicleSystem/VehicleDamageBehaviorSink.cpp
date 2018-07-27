@@ -14,7 +14,7 @@
 // Description : Implements a damage behavior which sink the vehicle
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IVehicleSystem.h"
 #include "Vehicle.h"
 #include "VehicleDamageBehaviorSink.h"

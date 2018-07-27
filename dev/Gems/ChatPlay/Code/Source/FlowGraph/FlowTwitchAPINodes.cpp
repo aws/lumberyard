@@ -152,19 +152,19 @@ namespace ChatPlay
 
                     if (typeIdentifier < 100)
                     {
-                        m_broadcastAPI->GetBoolValue(m_channelId.c_str(), static_cast<IBroadcast::ApiKey>(typeIdentifier), std::bind(&CFlowNode_TwitchAPIGet::VerifyNodeAndCallback<bool>, graphId, nodeId, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+                        m_broadcastAPI->GetBoolValue(m_channelId.c_str(), static_cast<IBroadcast::ApiKey>(typeIdentifier), AZStd::bind(&CFlowNode_TwitchAPIGet::VerifyNodeAndCallback<bool>, graphId, nodeId, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3));
                     }
                     else if (typeIdentifier < 200)
                     {
-                        m_broadcastAPI->GetIntValue(m_channelId.c_str(), static_cast<IBroadcast::ApiKey>(typeIdentifier), std::bind(&CFlowNode_TwitchAPIGet::VerifyNodeAndCallback<int>, graphId, nodeId, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+                        m_broadcastAPI->GetIntValue(m_channelId.c_str(), static_cast<IBroadcast::ApiKey>(typeIdentifier), AZStd::bind(&CFlowNode_TwitchAPIGet::VerifyNodeAndCallback<int>, graphId, nodeId, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3));
                     }
                     else if (typeIdentifier < 300)
                     {
-                        m_broadcastAPI->GetFloatValue(m_channelId.c_str(), static_cast<IBroadcast::ApiKey>(typeIdentifier), std::bind(&CFlowNode_TwitchAPIGet::VerifyNodeAndCallback<float>, graphId, nodeId, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+                        m_broadcastAPI->GetFloatValue(m_channelId.c_str(), static_cast<IBroadcast::ApiKey>(typeIdentifier), AZStd::bind(&CFlowNode_TwitchAPIGet::VerifyNodeAndCallback<float>, graphId, nodeId, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3));
                     }
                     else if (typeIdentifier < 400)
                     {
-                        m_broadcastAPI->GetStringValue(m_channelId.c_str(), static_cast<IBroadcast::ApiKey>(typeIdentifier), std::bind(&CFlowNode_TwitchAPIGet::VerifyNodeAndCallback<std::string>, graphId, nodeId, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+                        m_broadcastAPI->GetStringValue(m_channelId.c_str(), static_cast<IBroadcast::ApiKey>(typeIdentifier), AZStd::bind(&CFlowNode_TwitchAPIGet::VerifyNodeAndCallback<std::string>, graphId, nodeId, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3));
                     }
                 }
 

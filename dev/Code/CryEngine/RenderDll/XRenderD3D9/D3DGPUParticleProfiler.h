@@ -57,7 +57,7 @@ private:
 
 #define GPU_PARTICLE_PROFILER_START(emitterData, index)
 #define GPU_PARTICLE_PROFILER_END(emitterData, index)
-#define GPU_PARTICLE_PROFILER_GET_TIME(emitterData, timeOUT, index)
+#define GPU_PARTICLE_PROFILER_GET_TIME(emitterData, index)
 #define GPU_PARTICLE_PROFILER_GET_INDEX_NAME(emitterData, index)
 
 #endif

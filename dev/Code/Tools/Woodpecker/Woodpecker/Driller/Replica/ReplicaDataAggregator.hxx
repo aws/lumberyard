@@ -16,7 +16,7 @@
 #include "Woodpecker/Driller/DrillerAggregator.hxx"
 #include "ReplicaDataParser.h"
 
-#include "GridMate/drillers/ReplicaDriller.h"
+#include "GridMate/Drillers/ReplicaDriller.h"
 
 #include "Woodpecker/Driller/GenericCustomizeCSVExportWidget.hxx"
 #include <AzCore/RTTI/RTTI.h>

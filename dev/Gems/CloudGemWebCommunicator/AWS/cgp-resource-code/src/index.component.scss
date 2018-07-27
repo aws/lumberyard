@@ -1,0 +1,71 @@
+﻿@import "../../../styles/variables";
+
+.content-container {
+	margin-bottom: 30px;
+}
+
+.search-label{
+    margin: 5px 5px 5px 5px;
+}
+
+table.table {
+    margin-bottom: 30px;
+    thead {
+        display:table-header-group;
+    }
+    input:focus {
+        outline: none;
+    }
+    tr {
+        .client-id-column {
+            width: 50%;
+        }
+        .connection-type-column {
+            width: 20%;
+        }
+        .user-status-column {
+            width: 20%;
+        }
+        .channel-id-column {
+            width: 60%;
+        }
+        .communication-type-column {
+            width: 30%;
+        }
+    }
+}
+
+.user-profile {
+    width: 30%;
+    border:1px solid $primary-color;
+    padding: 10px;
+}
+
+.activity-header {
+    margin-top: 20px;
+}
+
+.activity {
+    width: 100%;
+    height: 500px;
+    overflow: auto;
+    background-color: $off-white;
+}
+
+.activity-message{
+    font-family: Courier;
+}
+
+.channel-type, .user-type {
+    width: 200px;
+}
+
+.client-asb {
+    margin-bottom: 32px;
+    margin-top: 10px;
+}
+
+/* Offset for inline icon fonts */
+.asb-container .row info { 
+   margin: 0 5px; 
+}

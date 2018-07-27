@@ -23,6 +23,7 @@
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorDisabledCompositionBus.h>
+#include <AzFramework/API/ApplicationAPI.h>
 
 #include "TrackViewDialog.h"
 #include "TrackViewAnimNode.h"
@@ -45,10 +46,10 @@
 #include "ViewManager.h"
 #include "RenderViewport.h"
 #include "Clipboard.h"
-#include "Maestro/Types/AnimNodeType.h"
-#include "Maestro/Types/AnimValueType.h"
-#include "Maestro/Types/AnimParamType.h"
-#include "Maestro/Types/SequenceType.h"
+#include <Maestro/Types/AnimNodeType.h>
+#include <Maestro/Types/AnimValueType.h>
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/SequenceType.h>
 
 // static class data
 const AZ::Uuid CTrackViewAnimNode::s_nullUuid = AZ::Uuid::CreateNull();
@@ -268,8 +269,6 @@ CTrackViewAnimNode::CTrackViewAnimNode(IAnimSequence* pSequence, IAnimNode* pAni
     }
 
     SortNodes();
-
-    m_bExpanded = IsGroupNode() || (pParentNode == nullptr);
 
     switch (GetType())
     {
@@ -511,7 +510,6 @@ CTrackViewAnimNode* CTrackViewAnimNode::CreateSubNode(const QString& name, const
 
     CTrackViewAnimNodeFactory animNodeFactory;
     CTrackViewAnimNode* pNewNode = animNodeFactory.BuildAnimNode(m_pAnimSequence, pNewAnimNode, this);
-    pNewNode->m_bExpanded = true;
 
     // Make sure that camera and entity nodes get created with an owner
     assert((animNodeType != AnimNodeType::Camera && animNodeType != AnimNodeType::Entity) || pOwner);
@@ -737,6 +735,47 @@ bool CTrackViewAnimNode::SnapTimeToNextKey(float& time) const
     }
 
     return bFoundNextKey;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewAnimNode::SetExpanded(bool expanded)
+{
+    if (GetExpanded() != expanded)
+    {
+        CTrackViewSequence* sequence = GetSequence();
+        AZ_Assert(nullptr != sequence, "Every node should have a sequence.");
+        if (nullptr != sequence)
+        {
+            AZ_Assert(m_pAnimNode, "Expected m_pAnimNode to be valid.");
+            if (m_pAnimNode)
+            {
+                m_pAnimNode->SetExpanded(expanded);
+            }
+
+            if (expanded)
+            {
+                sequence->OnNodeChanged(this, ITrackViewSequenceListener::eNodeChangeType_Expanded);
+            }
+            else
+            {
+                sequence->OnNodeChanged(this, ITrackViewSequenceListener::eNodeChangeType_Collapsed);
+            }
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CTrackViewAnimNode::GetExpanded() const
+{
+    bool result = true;
+
+    AZ_Assert(m_pAnimNode, "Expected m_pAnimNode to be valid.");
+    if (m_pAnimNode)
+    {
+        result = m_pAnimNode->GetExpanded();
+    }
+
+    return result;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1705,7 +1744,6 @@ void CTrackViewAnimNode::PasteNodeFromClipboard(AZStd::map<int, IAnimNode*>& cop
 
         CTrackViewAnimNodeFactory animNodeFactory;
         CTrackViewAnimNode* pNewNode = animNodeFactory.BuildAnimNode(m_pAnimSequence, pNewAnimNode, parentNode);
-        pNewNode->m_bExpanded = true;
 
         parentNode->AddNode(pNewNode);
 
@@ -1889,29 +1927,57 @@ bool CTrackViewAnimNode::IsDisabled() const
 void CTrackViewAnimNode::SetPos(const Vec3& position)
 {
     const float time = GetSequence()->GetTime();
-    CTrackViewTrack* pTrack = GetTrackForParameter(AnimParamType::Position);
-    CRenderViewport* pRenderViewport = static_cast<CRenderViewport*>(GetIEditor()->GetViewManager()->GetGameViewport());
+    CTrackViewTrack* track = GetTrackForParameter(AnimParamType::Position);
+    CRenderViewport* renderViewport = static_cast<CRenderViewport*>(GetIEditor()->GetViewManager()->GetGameViewport());
 
-    if (pTrack)
+    if (track)
     {
         if (!GetIEditor()->GetAnimation()->IsRecording())
         {
             // Offset all keys by move amount.
             Vec3 offset = m_pAnimNode->GetOffsetPosition(position);
             
-            pTrack->OffsetKeyPosition(offset);
+            track->OffsetKeyPosition(offset);
 
             GetSequence()->OnKeysChanged();
         }
-        else if (m_pNodeEntity->IsSelected() || pRenderViewport->GetCameraObject() == m_pNodeEntity)
+        else if (m_pNodeEntity->IsSelected() || renderViewport->GetCameraObject() == m_pNodeEntity)
         {
-            CUndo::Record(new CUndoTrackObject(pTrack, GetSequence()));
-            const int flags = m_pAnimNode->GetFlags();
-            // Set the selected flag to enable record when unselected camera is moved through viewport
-            m_pAnimNode->SetFlags(flags | eAnimNodeFlags_EntitySelected);
-            m_pAnimNode->SetPos(GetSequence()->GetTime(), position);
-            m_pAnimNode->SetFlags(flags);
-            GetSequence()->OnKeysChanged();
+            CTrackViewSequence* sequence = GetSequence();
+
+            AZ_Assert(sequence, "Expected valid sequence");
+            if (sequence != nullptr)
+            {
+                const int flags = m_pAnimNode->GetFlags();
+                if (sequence->GetSequenceType() == SequenceType::Legacy)
+                {
+                    CUndo::Record(new CUndoTrackObject(track, sequence));
+                    // Set the selected flag to enable record when unselected camera is moved through viewport
+                    m_pAnimNode->SetFlags(flags | eAnimNodeFlags_EntitySelected);
+                    m_pAnimNode->SetPos(sequence->GetTime(), position);
+                    m_pAnimNode->SetFlags(flags);
+                }
+                else
+                {
+                    // This is required because the entity movement system uses Undo to
+                    // undo a previous move delta as the entity is dragged.
+                    CUndo::Record(new CUndoComponentEntityTrackObject(track));
+
+                    // Set the selected flag to enable record when unselected camera is moved through viewport
+                    m_pAnimNode->SetFlags(flags | eAnimNodeFlags_EntitySelected);
+                    m_pAnimNode->SetPos(sequence->GetTime(), position);
+                    m_pAnimNode->SetFlags(flags);
+                    
+                    // We don't want to use ScopedUndoBatch here because we don't want a separate Undo operation
+                    // generate for every frame as the user moves an entity.
+                    AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+                        &AzToolsFramework::ToolsApplicationRequests::Bus::Events::AddDirtyEntity, 
+                        sequence->GetSequenceComponentEntityId()
+                    );                    
+                }
+
+                sequence->OnKeysChanged();
+            }
         }
     }
 }
@@ -1919,31 +1985,82 @@ void CTrackViewAnimNode::SetPos(const Vec3& position)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewAnimNode::SetScale(const Vec3& scale)
 {
-    CTrackViewTrack* pTrack = GetTrackForParameter(AnimParamType::Scale);
+    CTrackViewTrack* track = GetTrackForParameter(AnimParamType::Scale);
 
-    if (GetIEditor()->GetAnimation()->IsRecording() && m_pNodeEntity->IsSelected() && pTrack)
+    if (GetIEditor()->GetAnimation()->IsRecording() && m_pNodeEntity->IsSelected() && track)
     {
-        CUndo::Record(new CUndoTrackObject(pTrack, GetSequence()));
-        m_pAnimNode->SetScale(GetSequence()->GetTime(), scale);
-        GetSequence()->OnKeysChanged();
+        CTrackViewSequence* sequence = GetSequence();
+
+        AZ_Assert(sequence, "Expected valid sequence");
+        if (sequence != nullptr)
+        {
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo::Record(new CUndoTrackObject(track, sequence));
+                m_pAnimNode->SetScale(sequence->GetTime(), scale);
+            }
+            else
+            {
+                // This is required because the entity movement system uses Undo to
+                // undo a previous move delta as the entity is dragged.
+                CUndo::Record(new CUndoComponentEntityTrackObject(track));
+
+                m_pAnimNode->SetScale(sequence->GetTime(), scale);
+
+                // We don't want to use ScopedUndoBatch here because we don't want a separate Undo operation
+                // generate for every frame as the user scales an entity.
+                AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+                    &AzToolsFramework::ToolsApplicationRequests::Bus::Events::AddDirtyEntity,
+                    sequence->GetSequenceComponentEntityId()
+                );
+            }
+            sequence->OnKeysChanged();
+        }
     }
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewAnimNode::SetRotation(const Quat& rotation)
 {
-    CTrackViewTrack* pTrack = GetTrackForParameter(AnimParamType::Rotation);
-    CRenderViewport* pRenderViewport = static_cast<CRenderViewport*>(GetIEditor()->GetViewManager()->GetGameViewport());
+    CTrackViewTrack* track = GetTrackForParameter(AnimParamType::Rotation);
+    CRenderViewport* renderViewport = static_cast<CRenderViewport*>(GetIEditor()->GetViewManager()->GetGameViewport());
 
-    if (GetIEditor()->GetAnimation()->IsRecording() && (m_pNodeEntity->IsSelected() || pRenderViewport->GetCameraObject() == m_pNodeEntity) && pTrack)
+    if (GetIEditor()->GetAnimation()->IsRecording() && (m_pNodeEntity->IsSelected() || renderViewport->GetCameraObject() == m_pNodeEntity) && track)
     {
-        CUndo::Record(new CUndoTrackObject(pTrack, GetSequence()));
-        const int flags = m_pAnimNode->GetFlags();
-        // Set the selected flag to enable record when unselected camera is moved through viewport
-        m_pAnimNode->SetFlags(flags | eAnimNodeFlags_EntitySelected);
-        m_pAnimNode->SetRotate(GetSequence()->GetTime(), rotation);
-        m_pAnimNode->SetFlags(flags);
-        GetSequence()->OnKeysChanged();
+        CTrackViewSequence* sequence = GetSequence();
+
+        AZ_Assert(sequence, "Expected valid sequence");
+        if (sequence != nullptr)
+        {
+            const int flags = m_pAnimNode->GetFlags();
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo::Record(new CUndoTrackObject(track, GetSequence()));
+                // Set the selected flag to enable record when unselected camera is moved through viewport
+                m_pAnimNode->SetFlags(flags | eAnimNodeFlags_EntitySelected);
+                m_pAnimNode->SetRotate(sequence->GetTime(), rotation);
+                m_pAnimNode->SetFlags(flags);
+            }
+            else
+            {
+                // This is required because the entity movement system uses Undo to
+                // undo a previous move delta as the entity is dragged.
+                CUndo::Record(new CUndoComponentEntityTrackObject(track));
+
+                // Set the selected flag to enable record when unselected camera is moved through viewport
+                m_pAnimNode->SetFlags(flags | eAnimNodeFlags_EntitySelected);
+                m_pAnimNode->SetRotate(sequence->GetTime(), rotation);
+                m_pAnimNode->SetFlags(flags);
+
+                // We don't want to use ScopedUndoBatch here because we don't want a separate Undo operation
+                // generate for every frame as the user rotates an entity.
+                AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+                    &AzToolsFramework::ToolsApplicationRequests::Bus::Events::AddDirtyEntity,
+                    sequence->GetSequenceComponentEntityId()
+                );
+            }
+            sequence->OnKeysChanged();
+        }
     }
 }
 

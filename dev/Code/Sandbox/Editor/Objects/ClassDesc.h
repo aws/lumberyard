@@ -20,6 +20,7 @@
 
 #include "Plugin.h"
 #include "Include/ObjectEvent.h"
+#include <QString>
 
 class CXmlArchive;
 

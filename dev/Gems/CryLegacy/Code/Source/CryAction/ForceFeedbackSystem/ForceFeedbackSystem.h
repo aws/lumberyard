@@ -22,7 +22,7 @@
 #define CRYINCLUDE_CRYACTION_FORCEFEEDBACKSYSTEM_FORCEFEEDBACKSYSTEM_H
 #pragma once
 
-#include "../IForceFeedbackSystem.h"
+#include "IForceFeedbackSystem.h"
 
 #define FFSYSTEM_MAX_PATTERN_SAMPLES 32
 #define FFSYSTEM_MAX_PATTERN_SAMPLES_FLOAT 32.0f

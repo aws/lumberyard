@@ -55,6 +55,68 @@ namespace AzFramework
 
         ASSERT_TRUE(samplePath == expectedResult);
     }
+    
+    TEST_F(StringFuncTest, Strip_AllEmptyResult1_Success)
+    {
+        AZStd::string input = "aa";
+        const char stripToken = 'a';
+
+        AzFramework::StringFunc::Strip(input, stripToken);
+
+        ASSERT_TRUE(input.empty());
+    }
+
+    TEST_F(StringFuncTest, Strip_AllEmptyResult2_Success)
+    {
+        AZStd::string input = "aaaa";
+        const char stripToken = 'a';
+
+        AzFramework::StringFunc::Strip(input, stripToken);
+
+        ASSERT_TRUE(input.empty());
+    }
+
+    TEST_F(StringFuncTest, Strip_BeginEndCaseSensitiveEmptyResult1_Success)
+    {
+        AZStd::string input = "aa";
+        const char stripToken = 'a';
+
+        AzFramework::StringFunc::Strip(input, stripToken, true, true, true);
+
+        ASSERT_TRUE(input.empty());
+    }
+
+    TEST_F(StringFuncTest, Strip_BeginEndCaseSensitiveEmptyResult2_Success)
+    {
+        AZStd::string input = "aaaa";
+        AZStd::string expectedResult = "aa";
+        const char stripToken = 'a';
+
+        AzFramework::StringFunc::Strip(input, stripToken, true, true, true);
+
+        ASSERT_EQ(input, expectedResult);
+    }
+
+    TEST_F(StringFuncTest, Strip_BeginEndCaseInsensitiveEmptyResult1_Success)
+    {
+        AZStd::string input = "aa";
+        const char stripToken = 'a';
+
+        AzFramework::StringFunc::Strip(input, stripToken, false, true, true);
+
+        ASSERT_TRUE(input.empty());
+    }
+
+    TEST_F(StringFuncTest, Strip_BeginEndCaseInsensitiveEmptyResult2_Success)
+    {
+        AZStd::string input = "aaaa";
+        AZStd::string expectedResult = "aa";
+        const char stripToken = 'a';
+
+        AzFramework::StringFunc::Strip(input, stripToken, false, true, true);
+
+        ASSERT_EQ(input, expectedResult);
+    }
 
     TEST_F(StringFuncTest, CalculateBranchToken_ValidInput_Success)
     {

@@ -15,7 +15,7 @@
 #
 ########### Below are various getter to expose the global values ############
 from waflib.Configure import conf, ConfigurationContext
-from waflib import Context, Utils, Logs
+from waflib import Context, Utils, Logs, Errors
 from cry_utils import append_to_unique_list, split_comma_delimited_string
 
 from waf_branch_spec import BINTEMP_FOLDER
@@ -31,8 +31,8 @@ from waf_branch_spec import PLATFORM_CONFIGURATION_FILTER
 from waf_branch_spec import ADDITIONAL_COPYRIGHT_TABLE
 import json
 import os
+import copy
 import subprocess
-
 
 
 # Copyright table lookup by copyright organization ( copyright_org for the wscript keyword. )
@@ -55,6 +55,7 @@ for additional_copyright_org in ADDITIONAL_COPYRIGHT_TABLE:
 # dictionary
 PLATFORM_SHORTCUT_ALIASES = {
     'win': [
+        'win_x64_clang',
         'win_x64_vs2017',
         'win_x64_vs2015',
         'win_x64_vs2013',
@@ -74,6 +75,7 @@ PLATFORM_SHORTCUT_ALIASES = {
         'darwin_x64',
         'ios',
         'appletv',
+        'win_x64_clang',
         'win_x64_vs2017',
         'win_x64_vs2015',
         'win_x64_vs2013',
@@ -89,6 +91,7 @@ PLATFORM_SHORTCUT_ALIASES = {
         'win_x64_vs2013',
     ],
     'clang': [
+        'win_x64_clang',
         'darwin_x64',
         'ios',
         'appletv',
@@ -356,8 +359,31 @@ def get_supported_configurations(self, platform=None):
 
 #############################################################################
 @conf
-def get_available_launchers(self):
-    return AVAILABLE_LAUNCHERS
+def get_available_launchers(self, project):
+    # Get the dictionary for the launchers
+    available_launchers = copy.deepcopy(AVAILABLE_LAUNCHERS)
+
+    # Get the list of all the launchers
+    projects_settings = self.get_project_settings_map()
+    additional_launchers = projects_settings.get(project, {}).get('additional_launchers', [])
+
+    # Update the modules in the dictionary to include the additional launchers
+    for additional_launcher in additional_launchers:
+        if additional_launcher not in available_launchers['modules']:
+            available_launchers['modules'].append(additional_launcher)
+
+    # Check if there is a list of restricted launchers
+    restricted_launchers = projects_settings.get(project, {}).get('restricted_launchers', [])
+
+    # Remove the modules in the dictionary if there is a restricted list
+    if len(restricted_launchers) > 0:
+        for key in available_launchers:
+            modules = available_launchers[key]
+            launchers = [launcher for launcher in modules if launcher in restricted_launchers]
+            available_launchers[key] = launchers
+
+    return available_launchers
+
 
 #############################################################################
 #############################################################################
@@ -692,18 +718,56 @@ def spec_visual_studio_name(ctx, spec_name = None):
     return visual_studio_name[0]
 
 
+# The GAME_FOLDER_MAP is used as an optional dictionary that maps a game name to a specific folder.  This dictionary is
+# populated based on the current spec that is used.  By default, the game name and the folder name are the same.
+GAME_FOLDER_MAP = {}
+
+
+@conf
+def get_game_asset_folder(_, game_name):
+    global GAME_FOLDER_MAP
+    return GAME_FOLDER_MAP.get(game_name,game_name)
+
+
+@conf
+def spec_override_gems_json(ctx, spec_name = None):
+    return _spec_entry(ctx, 'override_gems_json', spec_name)
+
+
+@conf
+def spec_additional_code_folders(ctx, spec_name = None):
+    return _spec_entry(ctx, 'additional_code_folders', spec_name)
+
+
 @conf
 def spec_game_projects(ctx, spec_name=None):
     """
     Get and game projects defined for the spec.  Will strip out duplicate entries
     """
+    project_settings_map = ctx.get_project_settings_map()
 
     game_projects = _spec_entry(ctx, 'game_projects', spec_name)
     if game_projects is None:
         return []
     unique_list = list()
     for game_project in game_projects:
-        append_to_unique_list(unique_list, game_project)
+        if game_project in project_settings_map:
+            append_to_unique_list(unique_list, game_project)
+
+    # Check if this spec has any game->folder map
+    global GAME_FOLDER_MAP
+    spec_game_folder_map_list = _spec_entry(ctx, 'game_folders', spec_name)
+    if spec_game_folder_map_list and len(spec_game_folder_map_list) > 0:
+        # If there is an override game folder map in the spec, then validate its uniqueness and add it to the map
+        spec_game_folder_map = spec_game_folder_map_list[0]
+        for game_name, game_folder in spec_game_folder_map.items():
+            if game_name in GAME_FOLDER_MAP:
+                current_game_folder = GAME_FOLDER_MAP[game_name]
+                if current_game_folder != game_folder:
+                    raise Errors.WafError('Conflicting game name to folder map detected in spec {}'.format(spec_name))
+            else:
+                GAME_FOLDER_MAP[game_name] = game_folder
+
     return unique_list
 
 
@@ -730,7 +794,7 @@ def spec_disable_games(ctx, spec_name = None):
     """ For a given spec, are game projects disabled?  For example, tool-only specs do this."""
 
     # If no spec is supplied, then no games are disabled
-    if len(ctx.options.project_spec)==0:
+    if len(ctx.options.project_spec)==0 and not spec_name:
         return False
 
     disable_games = _spec_entry(ctx, 'disable_game_projects', spec_name)
@@ -900,6 +964,7 @@ ANDROID_CAPABILITY = ('compileandroid','Compile For Android')
 IOS_CAPABILITY = ('compileios','Compile for iOS')
 
 PLATFORM_TO_CAPABILITY_MAP = {
+    'win_x64_clang':        VC140_CAPABILITY,
     'win_x64_vs2017':       VC141_CAPABILITY,
     'win_x64_vs2015':       VC140_CAPABILITY,
     'win_x64_vs2013':       VC120_CAPABILITY,

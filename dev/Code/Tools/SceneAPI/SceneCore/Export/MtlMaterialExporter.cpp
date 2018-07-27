@@ -81,7 +81,7 @@ namespace AZ
                     // Look for a material file in the source directory, which is will be the canonical material to use. If there's none
                     //      then write one in the cache.
                     AZStd::string sourceMaterialPath = context.GetScene().GetSourceFilename();
-                    AzFramework::StringFunc::Path::ReplaceFullName(sourceMaterialPath, group.GetName().c_str(), GFxFramework::MaterialExport::g_mtlExtension);
+                    AzFramework::StringFunc::Path::ReplaceExtension(sourceMaterialPath, GFxFramework::MaterialExport::g_mtlExtension);
                     AZ_TraceContext("Material source file path", sourceMaterialPath);
                     bool sourceFileExists = AZ::IO::SystemFile::Exists(sourceMaterialPath.c_str());
 
@@ -91,8 +91,12 @@ namespace AZ
                         continue;
                     }
 
+                    AZStd::string cacheFileName;
+                    bool succeeded = AzFramework::StringFunc::Path::GetFileName(sourceMaterialPath.c_str(), cacheFileName);
+                    AZ_Assert(succeeded, "Failed to retrieve a valid material file name from %s", sourceMaterialPath.c_str());
+
                     AZStd::string materialCachePath;
-                    if (!AzFramework::StringFunc::Path::ConstructFull(context.GetOutputDirectory().c_str(), group.GetName().c_str(),
+                    if (!AzFramework::StringFunc::Path::ConstructFull(context.GetOutputDirectory().c_str(), cacheFileName.c_str(),
                         GFxFramework::MaterialExport::g_dccMaterialExtension, materialCachePath, true))
                     {
                         AZ_TracePrintf(Utilities::ErrorWindow, "Failed to construct the full output path for the material.");

@@ -13,7 +13,7 @@
 
 // Description : Implements a seat action for the steering wheel
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "IActorSystem.h"
 #include "IVehicleSystem.h"

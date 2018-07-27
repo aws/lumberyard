@@ -46,11 +46,14 @@ void SnowGem::PostGameInitialize()
 {
     // Originally registered with REGISTER_GAME_OBJECT(pFramework, Snow, "Scripts/Entities/Environment/Snow.lua");
     // If more objects need registered, consider bringing the macro back along with the GameFactory wrapper.
-    IEntityClassRegistry::SEntityClassDesc clsDesc;
-    clsDesc.sName = "Snow";
-    clsDesc.sScriptFile = "Scripts/Entities/Environment/Snow.lua";
-    static CSnowCreator _creator;
-    GetISystem()->GetIGame()->GetIGameFramework()->GetIGameObjectSystem()->RegisterExtension("Snow", &_creator, &clsDesc);
+    if (GetISystem()->GetIGame() && GetISystem()->GetIGame()->GetIGameFramework())
+    {
+        IEntityClassRegistry::SEntityClassDesc clsDesc;
+        clsDesc.sName = "Snow";
+        clsDesc.sScriptFile = "Scripts/Entities/Environment/Snow.lua";
+        static CSnowCreator _creator;
+        GetISystem()->GetIGame()->GetIGameFramework()->GetIGameObjectSystem()->RegisterExtension("Snow", &_creator, &clsDesc);
+    }
 }
 
 void SnowGem::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)

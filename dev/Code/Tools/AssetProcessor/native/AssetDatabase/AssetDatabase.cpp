@@ -289,7 +289,7 @@ namespace AssetProcessor
             "JobPK = :jobid, "
             "SubID = :subid, "
             "ProductName = :productname, "
-            "AssetType = :assetttype, "
+            "AssetType = :assettype, "
             "LegacyGuid = :legacyguid WHERE "
             "ProductID = :productid;";
 
@@ -316,7 +316,7 @@ namespace AssetProcessor
             "DELETE FROM Products "
             "WHERE EXISTS "
             "(SELECT * FROM Jobs WHERE "
-            "Products.JobPK = Jobs.JobsID AND "
+            "Products.JobPK = Jobs.JobID AND "
             "Jobs.SourcePK = :sourceid AND "
             "Jobs.Platform = :platform);";
 
@@ -712,66 +712,66 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetScanFolderByScanFolderID(AZ::s64 scanfolderID, ScanFolderDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QueryScanFolderByScanFolderID( scanfolderID, 
+        QueryScanFolderByScanFolderID( scanfolderID, 
             [&](ScanFolderDatabaseEntry& scanFolderEntry)
             {
                 entry = scanFolderEntry;
                 found = true;
-                return false;//only one
+                return false; // stop after the first result
             });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetScanFolderBySourceID(AZ::s64 sourceID, ScanFolderDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QueryScanFolderBySourceID( sourceID, 
+        QueryScanFolderBySourceID( sourceID, 
             [&](ScanFolderDatabaseEntry& scanFolderEntry)
         {
             entry = scanFolderEntry;
             found = true;
-            return false;//only one
+            return false; // stop after the first result
         });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetScanFolderByJobID(AZ::s64 jobID, ScanFolderDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QueryScanFolderByJobID( jobID, 
+        QueryScanFolderByJobID( jobID, 
             [&](ScanFolderDatabaseEntry& scanFolderEntry)
         {
             entry = scanFolderEntry;
             found = true;
-            return false;//only one
+            return false;  // return false because we only want one entry, no need to continue scanning rows
         });
-        return found && succeeded;
+        return found ;
     }
 
     bool AssetDatabaseConnection::GetScanFolderByProductID(AZ::s64 productID, ScanFolderDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QueryScanFolderByProductID( productID, 
+        QueryScanFolderByProductID( productID, 
             [&](ScanFolderDatabaseEntry& scanFolderEntry)
         {
             entry = scanFolderEntry;
             found = true;
-            return false;//only one
+            return false; // stop after the first result
         });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetScanFolderByPortableKey(QString portableKey, ScanFolderDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QueryScanFolderByPortableKey(portableKey.toUtf8().constData(),
+        QueryScanFolderByPortableKey(portableKey.toUtf8().constData(),
             [&](ScanFolderDatabaseEntry& scanFolder)
             {
                 entry = AZStd::move(scanFolder);
                 found = true;
-                return false;//only one
+                return false; // stop after the first result
             });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetScanFolders(ScanFolderDatabaseEntryContainer& container)
@@ -783,7 +783,7 @@ namespace AssetProcessor
                 found = true;
                 container.push_back();
                 container.back() = AZStd::move(scanFolder);
-                return true;//all
+                return true;  // return true to collect more rows since we are filling a container
             });
         return found && succeeded;
     }
@@ -992,27 +992,27 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetSourceBySourceID(AZ::s64 sourceID, SourceDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QuerySourceBySourceID( sourceID,
+        QuerySourceBySourceID( sourceID,
             [&](SourceDatabaseEntry& source)
             {
                 found = true;
                 entry = AZStd::move(source);
-                return false;//one
+                return false;  // return false in order to stop iterating any further - we are only populating one entry.
             });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetSourceBySourceGuid(AZ::Uuid sourceGuid, SourceDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QuerySourceBySourceGuid(sourceGuid,
+        QuerySourceBySourceGuid(sourceGuid,
             [&](SourceDatabaseEntry& source)
         {
             found = true;
             entry = AZStd::move(source);
-            return false;//one
+            return false;  // return false in order to stop iterating any further - we are only populating one entry.
         });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetSources(SourceDatabaseEntryContainer& container)
@@ -1024,7 +1024,7 @@ namespace AssetProcessor
                 found = true;
                 container.push_back();
                 container.back() = AZStd::move(source);
-                return true;//all
+                return true; // return true to continue iterating over additional results, we are populating a container
             });
         return  found && succeeded;
     }
@@ -1038,7 +1038,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(source);
-            return true;//all
+            return true;  // return true to continue iterating over additional results, we are populating a container
         });
         return  found && succeeded;
     }
@@ -1053,13 +1053,18 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(source);
-            return true;//all
+            return true;  // return true to continue iterating over additional results, we are populating a container
         });
         return  found && succeeded;
     }
 
     bool AssetDatabaseConnection::GetSourcesLikeSourceName(QString likeSourceName, LikeType likeType, SourceDatabaseEntryContainer& container)
     {
+        if (likeSourceName.isEmpty())
+        {
+            return false;
+        }
+
         bool found = false;
         bool succeeded = QuerySourceLikeSourceName(likeSourceName.toUtf8().constData(), likeType,
             [&](SourceDatabaseEntry& source)
@@ -1067,7 +1072,7 @@ namespace AssetProcessor
                 found = true;
                 container.push_back();
                 container.back() = AZStd::move(source);
-                return true;//all
+                return true;  // return true to continue iterating over additional results, we are populating a container
             });
         return  found && succeeded;
     }
@@ -1075,27 +1080,27 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetSourceByJobID(AZ::s64 jobID, SourceDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QuerySourceByJobID( jobID,
+        QuerySourceByJobID( jobID,
             [&](SourceDatabaseEntry& source)
         {
             found = true;
             entry = AZStd::move(source);
-            return false;//one
+            return false; // stop after the first result
         });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetSourceByProductID(AZ::s64 productID, SourceDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QuerySourceByProductID( productID,
+        QuerySourceByProductID( productID,
             [&](SourceDatabaseEntry& source)
         {
             found = true;
             entry = AZStd::move(source);
-            return false;//one
+            return false; // stop after the first result
         });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetSourcesByProductName(QString exactProductName, SourceDatabaseEntryContainer& container)
@@ -1376,27 +1381,27 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetJobByJobID(AZ::s64 jobID, JobDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QueryJobByJobID( jobID,
+        QueryJobByJobID( jobID,
             [&](JobDatabaseEntry& job)
         {
             found = true;
             entry = AZStd::move(job);
-            return false;//one
+            return false; // stop after the first result
         });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetJobByProductID(AZ::s64 productID, JobDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QueryJobByProductID(productID,
+        QueryJobByProductID(productID,
             [&](JobDatabaseEntry& job)
         {
             found = true;
             entry = AZStd::move(job);
-            return true;//all
+            return false; // stop after the first result
         });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetJobsBySourceID(AZ::s64 sourceID, JobDatabaseEntryContainer& container, AZ::Uuid builderGuid, QString jobKey, QString platform, JobStatus status)
@@ -1408,7 +1413,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(job);
-            return true;//all
+            return true; // continue to fetch more rows.
         },  builderGuid,
             jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
             platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
@@ -1433,13 +1438,18 @@ namespace AssetProcessor
                     jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
                     platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
                     status);
-            return true;//all
+            return true; // continue to fetch more rows.
         });
         return found && succeeded;
     }
 
     bool AssetDatabaseConnection::GetJobsLikeSourceName(QString likeSourceName, LikeType likeType, JobDatabaseEntryContainer& container, AZ::Uuid builderGuid, QString jobKey, QString platform, JobStatus status)
     {
+        if (likeSourceName.isEmpty())
+        {
+            return false;
+        }
+
         bool found = false;
         bool succeeded = QuerySourceLikeSourceName(likeSourceName.toUtf8().constData(), likeType,
             [&](SourceDatabaseEntry& source)
@@ -1455,7 +1465,7 @@ namespace AssetProcessor
                 jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
                 platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
                 status);
-            return true;//all
+            return true; // continue to fetch more rows.
         });
         return found && succeeded;
     }
@@ -1474,7 +1484,7 @@ namespace AssetProcessor
                 container.back() = AZStd::move(job);
                 return true;//all
             });
-            return true;//all
+            return true; // continue to fetch more rows.
         },  builderGuid,
             jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
             platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
@@ -1494,9 +1504,9 @@ namespace AssetProcessor
                 found = true;
                 container.push_back();
                 container.back() = AZStd::move(job);
-                return true;//all
+                return true; // continue to fetch more rows for the QueryJobByProductId call
             });
-            return true;//all
+            return true; // continue to fetch more rows for the QueryProductLikeProductName call
         },  builderGuid,
             jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
             platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
@@ -1890,14 +1900,14 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetProductByProductID(AZ::s64 productID, ProductDatabaseEntry& entry)
     {
         bool found = false;
-        bool succeeded = QueryProductByProductID(productID,
+        QueryProductByProductID(productID,
             [&](ProductDatabaseEntry& product)
             {
                 found = true;
                 entry = AZStd::move(product);
-                return false;//only one
+                return false; // stop after the first one is found.
             });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetProducts(ProductDatabaseEntryContainer& container, AZ::Uuid builderGuid, QString jobKey, QString platform, JobStatus status)
@@ -1909,7 +1919,7 @@ namespace AssetProcessor
                 found = true;
                 container.push_back();
                 container.back() = AZStd::move(product);
-                return true;//all
+                return true; // continue fetching more results.
             }, builderGuid,
                jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
                platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
@@ -1926,7 +1936,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(product);
-            return true;//all
+            return true; // continue fetching more results.
         }, builderGuid,
            jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
            platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
@@ -1937,16 +1947,23 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetProductsLikeProductName(QString likeProductName, LikeType likeType, ProductDatabaseEntryContainer& container, AZ::Uuid builderGuid, QString jobKey, QString platform, JobStatus status)
     {
         bool found = false;
+        
+        if (likeProductName.isEmpty())
+        {
+            return false;
+        }
+
         bool succeeded = QueryProductLikeProductName(likeProductName.toUtf8().constData(), likeType,
                 [&](ProductDatabaseEntry& product)
             {
                 found = true;
                 container.push_back();
                 container.back() = AZStd::move(product);
-                return true;//all
+                return true; // continue fetching more results.
             }, builderGuid,
                jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
-               platform.isEmpty() ? nullptr : platform.toUtf8().constData());
+               platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
+               status);
         return found && succeeded;
     }
 
@@ -1959,7 +1976,7 @@ namespace AssetProcessor
                 found = true;
                 container.push_back();
                 container.back() = AZStd::move(product);
-                return true;//all
+                return true; // continue fetching more results.
             }, builderGuid,
                jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
                platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
@@ -1969,6 +1986,11 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::GetProductsLikeSourceName(QString likeSourceName, LikeType likeType, ProductDatabaseEntryContainer& container, AZ::Uuid builderGuid, QString jobKey, QString platform, JobStatus status)
     {
+        if (likeSourceName.isEmpty())
+        {
+            return false;
+        }
+
         bool found = false;
         bool succeeded = QueryProductLikeSourceName(likeSourceName.toUtf8().constData(), likeType,
             [&](ProductDatabaseEntry& product)
@@ -1976,7 +1998,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(product);
-            return true;//all
+            return true; // continue fetching more results.
         }, builderGuid,
             jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
             platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
@@ -1993,7 +2015,7 @@ namespace AssetProcessor
                 found = true;
                 container.push_back();
                 container.back() = AZStd::move(combined);
-                return true;//all
+                return true; // continue fetching more results.
             }, builderGuid,
                jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
                platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
@@ -2010,9 +2032,22 @@ namespace AssetProcessor
                 found = true;
                 container.push_back();
                 container.back() = AZStd::move(combined);
-                return true;//all
+                return true; // continue fetching more results.
             });
         return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::GetProductByJobIDSubId(AZ::s64 jobID, AZ::u32 subID, AzToolsFramework::AssetDatabase::ProductDatabaseEntry& result)
+    {
+        bool found = false;
+        QueryProductByJobIDSubID(jobID, subID, 
+            [&](ProductDatabaseEntry& resultFromDB)
+        {
+            found = true;
+            result = AZStd::move(resultFromDB);
+            return false; // stop after the first result
+        });
+        return found;
     }
 
     //! For a given source, set the list of products for that source.
@@ -2026,34 +2061,68 @@ namespace AssetProcessor
             return false;
         }
 
-        if(entry.m_productID == -1)
+        bool wasAlreadyInDatabase = false;
+        ProductDatabaseEntry existingProductInDatabase;
+
+        if (entry.m_productID == -1)
         {
-            //they didn't set an id, add to database
-
-            //make sure its not already in the database
-            ProductDatabaseEntryContainer existingProducts;
-            if(GetProductsByJobID(entry.m_jobPK, existingProducts))
+            // they didn't set an id, add to database
+            // but make sure its not already in the database before doing so:
+            if (GetProductByJobIDSubId(entry.m_jobPK, entry.m_subID, existingProductInDatabase))
             {
-                for(const auto& existingProduct : existingProducts)
-                {
-                    if(existingProduct == entry)
-                    {
-                        //this product already exists
-                        entry.m_productID = existingProduct.m_productID;
-                        return true;
-                    }
-                }
+                wasAlreadyInDatabase = true;
             }
+        }
+        else
+        {
+            if (GetProductByProductID(entry.m_productID, existingProductInDatabase))
+            {
+                wasAlreadyInDatabase = true;
+            }
+            else
+            {
+                // its not OK to be pushing specific IDs into the database that don't exist.
+                AZ_Error(LOG_NAME, false, "Attempt to call SetProduct(...) with a database productID (%lli) that is not -1 but also doesn't exist.", entry.m_productID);
+                return false;
+            }
+        }
 
-            // scope created for the statement.
-            StatementAutoFinalizer autoFinalizer(*m_databaseConnection, INSERT_PRODUCT);
+        // we can early out if it was in the database and the database entry is identical to the new one:
+        if (wasAlreadyInDatabase)
+        {
+            entry.m_productID = existingProductInDatabase.m_productID;
+            if (entry == existingProductInDatabase)
+            {
+                return true;
+            }
+        }
+
+        // if we get here, we need to either insert or update in the database.
+
+        {
+            // note, intentional scope created for the statement finalizer
+            const char* statementToUse = wasAlreadyInDatabase ? UPDATE_PRODUCT : INSERT_PRODUCT;
+            StatementAutoFinalizer autoFinalizer(*m_databaseConnection, statementToUse);
             Statement* statement = autoFinalizer.Get();
-            AZ_Assert(statement, "Statement not found: %s", INSERT_PRODUCT);
+            AZ_Assert(statement, "Statement not found: %s", statementToUse);
+
+            if (wasAlreadyInDatabase)
+            {
+                // the "update" version requires the prior product row Id:
+                int productIdx = statement->GetNamedParamIdx(":productid");
+                if (!productIdx)
+                {
+                    AZ_Error(LOG_NAME, false, "Could not find the Idx for :productid for %s ", statementToUse);
+                    return false;
+                }
+
+                statement->BindValueInt64(productIdx, entry.m_productID);
+            }
 
             int jobIdx = statement->GetNamedParamIdx(":jobid");
             if(!jobIdx)
             {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :jobid for %s ", INSERT_PRODUCT);
+                AZ_Error(LOG_NAME, false, "Could not find the Idx for :jobid for %s ", statementToUse);
                 return false;
             }
             statement->BindValueInt64(jobIdx, entry.m_jobPK);
@@ -2061,7 +2130,7 @@ namespace AssetProcessor
             int subIdIdx = statement->GetNamedParamIdx(":subid");
             if(!subIdIdx)
             {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :subid for %s ", INSERT_PRODUCT);
+                AZ_Error(LOG_NAME, false, "Could not find the Idx for :subid for %s ", statementToUse);
                 return false;
             }
             statement->BindValueInt(subIdIdx, entry.m_subID);
@@ -2069,7 +2138,7 @@ namespace AssetProcessor
             int productNameIdx = statement->GetNamedParamIdx(":productname");
             if(!productNameIdx)
             {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :productname for %s ", INSERT_PRODUCT);
+                AZ_Error(LOG_NAME, false, "Could not find the Idx for :productname for %s ", statementToUse);
                 return false;
             }
             statement->BindValueText(productNameIdx, entry.m_productName.c_str());
@@ -2077,7 +2146,7 @@ namespace AssetProcessor
             int assetTypeIdx = statement->GetNamedParamIdx(":assettype");
             if(!assetTypeIdx)
             {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :assettype for %s ", INSERT_PRODUCT);
+                AZ_Error(LOG_NAME, false, "Could not find the Idx for :assettype for %s ", statementToUse);
                 return false;
             }
             statement->BindValueUuid(assetTypeIdx, entry.m_assetType);
@@ -2085,121 +2154,36 @@ namespace AssetProcessor
             int legacyGuidIdx = statement->GetNamedParamIdx(":legacyguid");
             if(!legacyGuidIdx)
             {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :legacyguid for %s ", INSERT_PRODUCT);
+                AZ_Error(LOG_NAME, false, "Could not find the Idx for :legacyguid for %s ", statementToUse);
                 return false;
             }
             statement->BindValueUuid(legacyGuidIdx, entry.m_legacyGuid);
 
             if(statement->Step() == Statement::SqlError)
             {
-                AZ_Warning(LOG_NAME, false, "Failed to execute the INSERT_PRODUCT statement");
+                AZ_Error(LOG_NAME, false, "Failed to execute the %s statement", statementToUse);
                 return false;
             }
 
-            //now read it from the database
-            existingProducts.clear();
-            if(GetProductsByJobID(entry.m_jobPK, existingProducts))
+            if (!wasAlreadyInDatabase)
             {
-                for(const auto& existingProduct : existingProducts)
-                {
-                    if(existingProduct == entry)
-                    {
-                        //this product already exists
-                        entry.m_productID = existingProduct.m_productID;
-                        return true;
-                    }
-                }
+                // just read what the last inserted row ID is.
+                // (this is why database access must only be one thread per connection, as this could otherwise
+                // be mutated by the other thread.  its stored on the connection object, not a TLS variable)
+                entry.m_productID = m_databaseConnection->GetLastRowID();
             }
-
-            return false;
         }
-        else
-        {
-            //they supplied an id, see if it exists in the database
-            ProductDatabaseEntry existingEntry;
-            if(!GetProductByProductID(entry.m_productID, existingEntry))
-            {
-                AZ_Error(LOG_NAME, false, "Failed to write the product into the database.");
-                return false;
-            }
-
-            //if the product is now different update it
-            if(existingEntry == entry)
-            {
-                return true;
-            }
-
-            //its in the database already, update the database
-            // it is a single statement, do not wrap it in a transaction, this wastes a lot of time.
-            StatementAutoFinalizer autoFinal(*m_databaseConnection, UPDATE_PRODUCT);
-            Statement* statement = autoFinal.Get();
-            if(!statement)
-            {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_PRODUCT);
-                return false;
-            }
-
-            int productIdx = statement->GetNamedParamIdx(":productid");
-            if(!productIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :productid for %s ", UPDATE_PRODUCT);
-                return false;
-            }
-            statement->BindValueInt64(productIdx, entry.m_productID);
-
-            int jobIdx = statement->GetNamedParamIdx(":jobid");
-            if(!jobIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :jobid for %s ", UPDATE_PRODUCT);
-                return false;
-            }
-            statement->BindValueInt64(jobIdx, entry.m_jobPK);
-
-            int subIdIdx = statement->GetNamedParamIdx(":subid");
-            if(!subIdIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :subid for %s ", UPDATE_PRODUCT);
-                return false;
-            }
-            statement->BindValueInt(subIdIdx, entry.m_subID);
-
-            int productNameIdx = statement->GetNamedParamIdx(":productname");
-            if(!productNameIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :productname for %s ", UPDATE_PRODUCT);
-                return false;
-            }
-            statement->BindValueText(productNameIdx, entry.m_productName.c_str());
-
-            int assetTypeIdx = statement->GetNamedParamIdx(":assetType");
-            if(!assetTypeIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :assetType for %s ", UPDATE_PRODUCT);
-                return false;
-            }
-            statement->BindValueUuid(assetTypeIdx, entry.m_assetType);
-
-            int legacyGuidIdx = statement->GetNamedParamIdx(":legacyguid");
-            if(!legacyGuidIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :legacyguid for %s ", UPDATE_PRODUCT);
-                return false;
-            }
-            statement->BindValueUuid(legacyGuidIdx, entry.m_legacyGuid);
-
-            if(statement->Step() == Statement::SqlError)
-            {
-                AZ_Warning(LOG_NAME, false, "Failed to execute %s to update (key %i)", UPDATE_PRODUCT, entry.m_productID);
-                return false;
-            }
-
-            return true;
-        }
+        return true;
     }
 
     bool AssetDatabaseConnection::SetProducts(ProductDatabaseEntryContainer& container)
     {
-        bool succeeded = false;
+        if (container.empty())
+        {
+            return false;
+        }
+        
+        bool succeeded = true;
         for(auto& entry : container)
         {
             succeeded &= SetProduct(entry);
@@ -2237,13 +2221,20 @@ namespace AssetProcessor
             return false;
         }
 
+        bool wasEffective = (m_databaseConnection->GetNumAffectedRows() != 0);
+
         transaction.Commit();
 
-        return true;
+        return wasEffective;
     }
 
     bool AssetDatabaseConnection::RemoveProducts(ProductDatabaseEntryContainer& container)
     {
+        if (container.empty())
+        {
+            return false;
+        }
+
         bool succeeded = true;
         for(auto& entry : container)
         {
@@ -2286,14 +2277,17 @@ namespace AssetProcessor
             return false;
         }
 
+
+        bool wasEffective = (m_databaseConnection->GetNumAffectedRows() != 0);
+
         transaction.Commit();
 
-        return true;
+        return wasEffective;
     }
 
     bool AssetDatabaseConnection::RemoveProductsBySourceID(AZ::s64 sourceID, AZ::Uuid builderGuid, QString jobKey, QString platform, JobStatus status)
     {
-        if(!builderGuid.IsNull() || jobKey != nullptr)
+        if ( (!builderGuid.IsNull()) || (jobKey != nullptr) || (status != AssetSystem::JobStatus::Any) )
         {
             //we have to do custom query the delete
             ProductDatabaseEntryContainer products;
@@ -2353,22 +2347,25 @@ namespace AssetProcessor
             return false;
         }
 
+
+        bool wasEffective = (m_databaseConnection->GetNumAffectedRows() != 0);
+
         transaction.Commit();
 
-        return true;
+        return wasEffective;
     }
 
     bool AssetDatabaseConnection::GetJobInfoByJobID(AZ::s64 jobID, JobInfo& entry)
     {
         bool found = false;
-        bool succeeded = QueryJobInfoByJobID(jobID,
+        QueryJobInfoByJobID(jobID,
             [&](JobInfo& jobInfo)
         {
             found = true;
             entry = AZStd::move(jobInfo);
-            return true;//all
+            return false; // stop after the first result
         });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetJobInfoByJobKey(AZStd::string jobKey, JobInfoContainer& container)
@@ -2380,7 +2377,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(jobInfo);
-            return true;//all
+            return true; // return true to keep iterating over further rows.
         });
         return found && succeeded;
 
@@ -2395,7 +2392,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(jobInfo);
-            return true;//all
+            return true; // return true to keep iterating over further rows.
         });
         return found && succeeded;
     }
@@ -2409,7 +2406,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(jobInfo);
-            return true;//all
+            return true; // return true to keep iterating over further rows.
         }, builderGuid,
             jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
             platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
@@ -2636,14 +2633,14 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetSourceFileDependency(const SourceFileDependencyEntry& inputEntry, SourceFileDependencyEntry& databaseEntry)
     {
         bool found = false;
-        bool succeeded = QuerySourceDependency(inputEntry.m_builderGuid, inputEntry.m_source.c_str(), inputEntry.m_dependsOnSource.c_str(),
+        QuerySourceDependency(inputEntry.m_builderGuid, inputEntry.m_source.c_str(), inputEntry.m_dependsOnSource.c_str(),
             [&](SourceFileDependencyEntry& entry)
         {
             found = true;
             databaseEntry = AZStd::move(entry);
-            return false; //one
+            return false; // stop after the first result
         });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetSourceFileDependenciesByBuilderGUIDAndSource(const AZ::Uuid& builderGuid, const char* source, SourceFileDependencyEntryContainer& container)
@@ -2655,7 +2652,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(entry);
-            return true;//all
+            return true; // return true to keep iterating over further rows.
         });
         return found && succeeded;
     }
@@ -2669,7 +2666,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(entry);
-            return true;//all
+            return true; // return true to keep iterating over further rows.
         });
         return found && succeeded;
     }
@@ -2683,7 +2680,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(entry);
-            return true;//all
+            return true; // return true to keep iterating over further rows.
         });
         return found && succeeded;
     }
@@ -2691,14 +2688,14 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetSourceFileDependencyBySourceDependencyId(AZ::s64 sourceDependencyId, SourceFileDependencyEntry& sourceDependencyEntry)
     {
         bool found = false;
-        bool succeeded = QuerySourceDependencyBySourceDependencyId(sourceDependencyId,
+        QuerySourceDependencyBySourceDependencyId(sourceDependencyId,
             [&](SourceFileDependencyEntry& entry)
         {
             found = true;
             sourceDependencyEntry = AZStd::move(entry);
-            return false; //one
+            return false; // stop after the first result
         });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::CreateOrUpdateLegacySubID(AzToolsFramework::AssetDatabase::LegacySubIDsEntry& entry)
@@ -2756,14 +2753,15 @@ namespace AssetProcessor
             return false;
         }
 
-        AZ::s64 rowID = m_databaseConnection->GetLastRowID();
+        
         if (creatingNew)
         {
+            AZ::s64 rowID = m_databaseConnection->GetLastRowID();
             entry.m_subIDsEntryID = rowID;
         }
         else
         {
-            if (rowID != entry.m_subIDsEntryID)
+            if (m_databaseConnection->GetNumAffectedRows() == 0)
             {
                 // you specified an invalid key.
                 AZ_Warning(LOG_NAME, false, "Failed to CreateOrUpdateLegacySubID in the database - invalid key specified.");
@@ -2860,7 +2858,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(entry);
-            return true;//all
+            return true; // return true to keep iterating over further rows.
         });
         return found && succeeded;
     }
@@ -2868,14 +2866,14 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetProductDependencyByProductDependencyID(AZ::s64 productDependencyID, ProductDependencyDatabaseEntry& productDependencyEntry)
     {
         bool found = false;
-        bool succeeded = QueryProductDependencyByProductDependencyId(productDependencyID,
+        QueryProductDependencyByProductDependencyId(productDependencyID,
             [&](ProductDependencyDatabaseEntry& entry)
         {
             found = true;
             productDependencyEntry = AZStd::move(entry);
-            return false;//one
+            return false; // stop after the first result
         });
-        return found && succeeded;
+        return found;
     }
 
     bool AssetDatabaseConnection::GetProductDependenciesByProductID(AZ::s64 productID, ProductDependencyDatabaseEntryContainer& container)
@@ -2887,7 +2885,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(entry);
-            return true;//all
+            return true; // return true to keep iterating over further rows.
         });
         return found && succeeded;
     }
@@ -2901,7 +2899,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(entry);
-            return true;//all 
+            return true; // return true to keep iterating over further rows.
         });
         return found && succeeded;
     }
@@ -2915,7 +2913,7 @@ namespace AssetProcessor
             found = true;
             container.push_back();
             container.back() = AZStd::move(entry);
-            return true;//all 
+            return true; // return true to keep iterating over further rows.
         });
         return found && succeeded;
     }

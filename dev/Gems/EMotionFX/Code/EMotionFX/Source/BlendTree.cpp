@@ -10,7 +10,9 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <EMotionFX/Source/AnimGraph.h>
 #include "EMotionFXConfig.h"
 #include "BlendTree.h"
 #include "AnimGraphNode.h"
@@ -25,65 +27,85 @@
 
 namespace EMotionFX
 {
-    // default constructor
-    BlendTree::BlendTree(AnimGraph* animGraph, const char* name)
-        : AnimGraphNode(animGraph, name, TYPE_ID)
-    {
-        mFinalNode          = nullptr;
-        mVirtualFinalNode   = nullptr;
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTree, AnimGraphAllocator, 0)
 
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
-
-
-    // destructor
-    BlendTree::~BlendTree()
-    {
-        // NOTE: child nodes get removed by the base class already
-    }
-
-
-    // create
-    BlendTree* BlendTree::Create(AnimGraph* animGraph, const char* name)
-    {
-        return new BlendTree(animGraph, name);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTree::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTree::RegisterPorts()
+    BlendTree::BlendTree()
+        : AnimGraphNode()
+        , m_finalNodeId(AnimGraphNodeId::InvalidId)
+        , m_finalNode(nullptr)
+        , mVirtualFinalNode(nullptr)
     {
         // setup output ports
         InitOutputPorts(1);
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
     }
 
-
-    // register the parameters
-    void BlendTree::RegisterAttributes()
+    
+    BlendTree::~BlendTree()
     {
+        // NOTE: child nodes get removed by the base class already
     }
 
 
-    // clone the tree
-    AnimGraphObject* BlendTree::Clone(AnimGraph* animGraph)
+    void BlendTree::Reinit()
     {
-        BlendTree* clone = BlendTree::Create(animGraph);
+        m_finalNode = nullptr;
 
-        // TODO: clone the rest?
-        CopyBaseObjectTo(clone);
+        if (!mAnimGraph)
+        {
+            return;
+        }
 
-        return clone;
+        if (m_finalNodeId == AnimGraphNodeId::InvalidId)
+        {
+            // Double-check if a final node exists and the final node id is just not set.
+            AnimGraphNode* finalNode = FindFirstChildNodeOfType(azrtti_typeid<BlendTreeFinalNode>());
+            if (!finalNode)
+            {
+                // No final node exists in the blend tree.
+                return;
+            }
+
+            // Safety fallback: Relink the final node id to the existing final node
+            m_finalNodeId = finalNode->GetId();
+            m_finalNode = static_cast<BlendTreeFinalNode*>(finalNode);
+        }
+        else
+        {
+            AnimGraphNode* finalNodeCandidate = FindChildNodeById(m_finalNodeId);
+            if (finalNodeCandidate)
+            {
+                if (azrtti_typeid(finalNodeCandidate) == azrtti_typeid<BlendTreeFinalNode>())
+                {
+                    m_finalNode = static_cast<BlendTreeFinalNode*>(finalNodeCandidate);
+                }
+            }
+        }
+
+        // Re-initialize all child nodes and connections
+        AnimGraphNode::Reinit();
+    }
+
+
+    bool BlendTree::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        // Relink input and output ports for all nodes in the blend tree with their corresponding connections.
+        // This has to be done after all child nodes called InitAfterLoading() and RegisterPorts(). We're depending on the node load order here
+        // and a given node might be connected to one that has not been loaded yet and thus the ports have not been created yet.
+        for (AnimGraphNode* childNode : mChildNodes)
+        {
+            childNode->RelinkPortConnections();
+        }
+
+        Reinit();
+        return true;
     }
 
 
@@ -97,9 +119,9 @@ namespace EMotionFX
         }
 
         // otherwise get the real final node
-        if (mFinalNode)
+        if (m_finalNode)
         {
-            return (mFinalNode->GetNumConnections() > 0) ? mFinalNode : nullptr;
+            return (m_finalNode->GetNumConnections() > 0) ? m_finalNode : nullptr;
         }
 
         return nullptr;
@@ -109,6 +131,8 @@ namespace EMotionFX
     // process the blend tree and calculate its output
     void BlendTree::Output(AnimGraphInstance* animGraphInstance)
     {
+        AZ_Assert(m_finalNode, "There should always be a final node. Something seems to be wrong with the blend tree creation.");
+
         // get the output pose
         AnimGraphPose* outputPose;
 
@@ -233,11 +257,9 @@ namespace EMotionFX
     // rewind the nodes in the tree
     void BlendTree::Rewind(AnimGraphInstance* animGraphInstance)
     {
-        // get the number of child nodes, iterate through and rewind them
-        const uint32 numChildNodes = mChildNodes.GetLength();
-        for (uint32 i = 0; i < numChildNodes; ++i)
+        for (AnimGraphNode* childNode : mChildNodes)
         {
-            mChildNodes[i]->Rewind(animGraphInstance);
+            childNode->Rewind(animGraphInstance);
         }
 
         // call the base class rewind
@@ -291,38 +313,11 @@ namespace EMotionFX
 
         if (GetFinalNode() == nodeToRemove)
         {
-            SetFinalNode(nullptr);
+            SetFinalNodeId(AnimGraphNodeId::InvalidId);
         }
 
         // call it for all children
         AnimGraphNode::OnRemoveNode(animGraph, nodeToRemove);
-    }
-
-
-    // update the final node and virtual final nodes
-    void BlendTree::RecursiveClonePostProcess(AnimGraphNode* resultNode)
-    {
-        // do the same as the base class
-        AnimGraphNode::RecursiveClonePostProcess(resultNode);
-
-        // now do custom things
-        MCORE_ASSERT(resultNode->GetType() == BlendTree::TYPE_ID);
-        BlendTree* resultTree = static_cast<BlendTree*>(resultNode);
-
-        // final node
-        if (mFinalNode)
-        {
-            AnimGraphNode* node = resultTree->RecursiveFindNodeByID(mFinalNode->GetID());
-            MCORE_ASSERT(node->GetType() == BlendTreeFinalNode::TYPE_ID);
-            resultTree->SetFinalNode(static_cast<BlendTreeFinalNode*>(node));
-        }
-
-        // virtual final node
-        if (mVirtualFinalNode)
-        {
-            AnimGraphNode* virtualNode = resultTree->RecursiveFindNodeByID(mVirtualFinalNode->GetID());
-            resultTree->SetVirtualFinalNode(virtualNode);
-        }
     }
 
 
@@ -332,8 +327,110 @@ namespace EMotionFX
     }
 
 
-    void BlendTree::SetFinalNode(BlendTreeFinalNode* finalNode)
+    void BlendTree::SetFinalNodeId(const AnimGraphNodeId finalNodeId)
     {
-        mFinalNode = finalNode;
+        m_finalNodeId = finalNodeId;
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
     }
-}   // namespace EMotionFX
+
+
+    void BlendTree::GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const
+    {
+        auto itConvertedIds = convertedIds.find(m_finalNodeId);
+        if (itConvertedIds != convertedIds.end())
+        {
+            // need to convert
+            attributesString = AZStd::string::format("-finalNodeId %llu", itConvertedIds->second);
+        }
+    }
+
+
+    AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*>> BlendTree::FindCycles() const
+    {
+        AZStd::unordered_set<AnimGraphNode*> visitedNodes;
+        AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*>> cycleConnections;
+
+        for (AnimGraphNode* childNode : mChildNodes)
+        {
+            visitedNodes.clear();
+            visitedNodes.emplace(childNode);
+            RecursiveFindCycles(childNode, visitedNodes, cycleConnections);
+        }
+
+        return cycleConnections;
+    }
+
+
+    void BlendTree::RecursiveFindCycles(AnimGraphNode* nextNode, AZStd::unordered_set<AnimGraphNode*>& visitedNodes, AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*>>& cycleConnections) const
+    {
+        AZStd::unordered_map<AnimGraphNode*, AZStd::vector<BlendTreeConnection*>> sourceNodesAndConnections;
+        const uint32 numConnections = nextNode->GetNumConnections();
+        for (uint32 j = 0; j < numConnections; ++j)
+        {
+            sourceNodesAndConnections[nextNode->GetConnection(j)->GetSourceNode()].emplace_back(nextNode->GetConnection(j));
+        }
+                
+        for (const auto& sourceNodeAndConnections : sourceNodesAndConnections)
+        {
+            if (visitedNodes.emplace(sourceNodeAndConnections.first).second)
+            {
+                // was able to insert it, so we didn't visit it yet
+                RecursiveFindCycles(sourceNodeAndConnections.first, visitedNodes, cycleConnections);
+            }
+            else
+            {
+                // Trying to visit again, this is a cycle
+                for (BlendTreeConnection* connection : sourceNodeAndConnections.second)
+                {
+                    cycleConnections.emplace(connection, nextNode);
+                }
+                
+            }
+        }
+
+        visitedNodes.erase(nextNode);
+    }
+
+
+    bool BlendTree::ConnectionWillProduceCycle(AnimGraphNode* sourceNode, AnimGraphNode* targetNode) const
+    {
+        AZStd::unordered_set<AnimGraphNode*> visitedNodes;
+        AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*>> cycleConnections;
+
+        visitedNodes.emplace(targetNode);
+        RecursiveFindCycles(sourceNode, visitedNodes, cycleConnections);
+        
+        return !cycleConnections.empty();
+    }
+
+
+    void BlendTree::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTree, AnimGraphNode>()
+            ->Version(1)
+            ->Field("finalNodeId", &BlendTree::m_finalNodeId)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTree>("Blend Tree", "Blend tree attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ;
+    }
+} // namespace EMotionFX

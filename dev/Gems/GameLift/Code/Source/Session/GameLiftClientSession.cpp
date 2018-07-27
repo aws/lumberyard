@@ -404,6 +404,27 @@ namespace GridMate
             case SE_RECEIVED_PLAYERSESSION:
             {
                 m_playerSession = *reinterpret_cast<const Aws::GameLift::Model::PlayerSession*>(e.userData);
+                const auto& clientEndpoint = m_clientService->GetEndpoint();
+
+                //To support GameLiftLocal on a remote server, convert the reported 127.0.0.1
+                // address to the configured GameLiftLocal endpoint address
+                if (m_clientService->UseGameLiftLocal() &&
+                    m_playerSession.GetIpAddress().compare("127.0.0.1") == 0 &&
+                    //Ignore actual loopback connections
+                    clientEndpoint.find("localhost") == -1 &&
+                    clientEndpoint.find("127.") != 0)
+                {
+                    const auto portLocation = clientEndpoint.find(":");
+                    if (portLocation != -1)
+                    {
+                        //Copy only the host name/address
+                        m_playerSession.SetIpAddress(clientEndpoint.substr(0, portLocation).c_str());
+                    }
+                    else
+                    {
+                        m_playerSession.SetIpAddress(clientEndpoint.c_str());
+                    }
+                }
                 m_sessionId = m_playerSession.GetGameSessionId().c_str();
                 sm.Transition(SS_CREATE);
                 return true;

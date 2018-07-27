@@ -175,7 +175,6 @@ void UiDropdownOptionComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiDropdownOptionBus>("UiDropdownOptionBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetOwningDropdown", &UiDropdownOptionBus::Events::GetOwningDropdown)
             ->Event("SetOwningDropdown", &UiDropdownOptionBus::Events::SetOwningDropdown)
             ->Event("GetTextElement", &UiDropdownOptionBus::Events::GetTextElement)
@@ -184,7 +183,6 @@ void UiDropdownOptionComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetIconElement", &UiDropdownOptionBus::Events::SetIconElement);
 
         behaviorContext->EBus<UiDropdownOptionNotificationBus>("UiDropdownOptionNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiDropdownOptionNotificationBusBehaviorHandler>();
     }
 }

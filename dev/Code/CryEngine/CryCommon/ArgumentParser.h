@@ -173,12 +173,12 @@ struct SUIConversion<string, bool>
             to = to_i != 0;
             return true;
         }
-        if (0 == _stricmp (from.c_str(), "true"))
+        if (0 == azstricmp(from.c_str(), "true"))
         {
             to = true;
             return true;
         }
-        if (0 == _stricmp (from.c_str(), "false"))
+        if (0 == azstricmp(from.c_str(), "false"))
         {
             to = false;
             return true;
@@ -202,7 +202,7 @@ struct SUIConversion<string, Vec3>
 {
     static ILINE bool ConvertValue(const string& from, Vec3& to)
     {
-        return 3 == sscanf(from.c_str(), "%f,%f,%f", &to.x, &to.y, &to.z);
+        return 3 == azsscanf(from.c_str(), "%f,%f,%f", &to.x, &to.y, &to.z);
     }
 };
 
@@ -227,12 +227,12 @@ struct SUIConversion<wstring, bool>
             to = !!to_i;
             return true;
         }
-        if (0 == wcsicmp (from.c_str(), L"true"))
+        if (0 == azwcsicmp (from.c_str(), L"true"))
         {
             to = true;
             return true;
         }
-        if (0 == wcsicmp (from.c_str(), L"false"))
+        if (0 == azwcsicmp (from.c_str(), L"false"))
         {
             to = false;
             return true;
@@ -256,7 +256,7 @@ struct SUIConversion<wstring, Vec3>
 {
     static ILINE bool ConvertValue(const wstring& from, Vec3& to)
     {
-        return 3 == swscanf(from.c_str(), L"%f,%f,%f", &to.x, &to.y, &to.z);
+        return 3 == azswscanf(from.c_str(), L"%f,%f,%f", &to.x, &to.y, &to.z);
     }
 };
 

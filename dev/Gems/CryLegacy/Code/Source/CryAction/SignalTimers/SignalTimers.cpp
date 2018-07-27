@@ -13,7 +13,7 @@
 
 // Description : Signal entities based on configurable timers
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "SignalTimers.h"
 #include "PersonalSignalTimer.h"
 

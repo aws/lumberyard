@@ -10,50 +10,26 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "BlendTreeSmoothingNode.h"
 #include "AnimGraphManager.h"
 #include "EMotionFXManager.h"
 
-#include <MCore/Source/AttributeSettings.h>
 #include <MCore/Source/Compare.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeSmoothingNode::BlendTreeSmoothingNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSmoothingNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSmoothingNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
 
-    // destructor
-    BlendTreeSmoothingNode::~BlendTreeSmoothingNode()
-    {
-    }
-
-
-    // create
-    BlendTreeSmoothingNode* BlendTreeSmoothingNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeSmoothingNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeSmoothingNode::CreateObjectData()
-    {
-        return new UniqueData(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeSmoothingNode::RegisterPorts()
+    BlendTreeSmoothingNode::BlendTreeSmoothingNode()
+        : AnimGraphNode()
+        , m_interpolationSpeed(0.75f)
+        , m_startValue(0.0f)
+        , m_useStartValue(false)
     {
         // create the input ports
         InitInputPorts(1);
@@ -65,24 +41,22 @@ namespace EMotionFX
     }
 
 
-    // register the parameters
-    void BlendTreeSmoothingNode::RegisterAttributes()
+    BlendTreeSmoothingNode::~BlendTreeSmoothingNode()
     {
-        // create the interpolation speed attribute
-        MCore::AttributeSettings* speedAttribute = RegisterAttribute("Interpolation Speed", "interpolationSpeed", "The interpolation speed where 0.0 means the value won't change at all and 1.0 means the input value will directly be mapped to the output value.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSLIDER);
-        speedAttribute->SetDefaultValue(MCore::AttributeFloat::Create(0.75f));
-        speedAttribute->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        speedAttribute->SetMaxValue(MCore::AttributeFloat::Create(1.0f));
+    }
 
-        // use start value
-        MCore::AttributeSettings* useStartAttribute = RegisterAttribute("Use Start Value", "useStartValue", "Enable this to use the start value, otherwise the first input value will be used as start value.", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        useStartAttribute->SetDefaultValue(MCore::AttributeFloat::Create(0));
 
-        // start value
-        MCore::AttributeSettings* startValueAttribute = RegisterAttribute("Start Value", "startValue", "When the blend tree gets activated the smoothing node will start interpolating from this value.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        startValueAttribute->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        startValueAttribute->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        startValueAttribute->SetMaxValue(MCore::AttributeFloat::Create(+FLT_MAX));
+    bool BlendTreeSmoothingNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -100,44 +74,6 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeSmoothingNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeSmoothingNode* clone = new BlendTreeSmoothingNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
-    // get the type string
-    const char* BlendTreeSmoothingNode::GetTypeString() const
-    {
-        return "BlendTreeSmoothingNode";
-    }
-
-
-    // update the data
-    void BlendTreeSmoothingNode::OnUpdateAttributes()
-    {
-        // disable GUI items that have no influence
-    #ifdef EMFX_EMSTUDIOBUILD
-        // enable all attributes
-        EnableAllAttributes(true);
-
-        // if the interpolation type is linear, disable the ease-in and ease-out values
-        if (GetAttributeFloatAsBool(ATTRIB_USESTARTVALUE) == false)
-        {
-            SetAttributeDisabled(ATTRIB_STARTVALUE);
-        }
-    #endif
-    }
-
-
     // update
     void BlendTreeSmoothingNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
@@ -147,7 +83,7 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
 
         // if there are no incoming connections, there is nothing to do
-        if (mConnections.GetLength() == 0)
+        if (mConnections.size() == 0)
         {
             GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT)->SetValue(0.0f);
             return;
@@ -164,7 +100,7 @@ namespace EMotionFX
 
         // perform interpolation
         const float sourceValue = uniqueData->mCurrentValue;
-        const float interpolationSpeed = GetAttributeFloat(ATTRIB_INTERPOLATIONSPEED)->GetValue() * uniqueData->mFrameDeltaTime * 10.0f;
+        const float interpolationSpeed = m_interpolationSpeed * uniqueData->mFrameDeltaTime * 10.0f;
         const float interpolationResult = (interpolationSpeed < 0.99999f) ? MCore::LinearInterpolate<float>(sourceValue, destValue, interpolationSpeed) : destValue;
 
         // pass the interpolated result to the output port and the current value of the unique data
@@ -182,12 +118,9 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<BlendTreeSmoothingNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
 
         // check if the current value needs to be reset to the input or the start value when rewinding the node
-        const bool useStartValue = GetAttributeFloatAsBool(ATTRIB_USESTARTVALUE);
-        if (useStartValue)
+        if (m_useStartValue)
         {
-            // get the start value from the attribute and use it as current value
-            const float startValue = GetAttributeFloat(ATTRIB_STARTVALUE)->GetValue();
-            uniqueData->mCurrentValue = startValue;
+            uniqueData->mCurrentValue = m_startValue;
         }
         else
         {
@@ -206,7 +139,7 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<BlendTreeSmoothingNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (uniqueData == nullptr)
         {
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
             uniqueData->mCurrentValue = 0.0f;//GetInputNumber( INPUTPORT_DEST );
         }
@@ -231,5 +164,65 @@ namespace EMotionFX
     bool BlendTreeSmoothingNode::GetSupportsDisable() const
     {
         return true;
+    }
+
+
+    AZ::Crc32 BlendTreeSmoothingNode::GetStartValueVisibility() const
+    {
+        return m_useStartValue ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
+    }
+
+    void BlendTreeSmoothingNode::SetInterpolationSpeed(float interpolationSpeed)
+    {
+        m_interpolationSpeed = interpolationSpeed;
+    }
+
+    void BlendTreeSmoothingNode::SetStartVAlue(float startValue)
+    {
+        m_startValue = startValue;
+    }
+
+    void BlendTreeSmoothingNode::SetUseStartVAlue(bool useStartValue)
+    {
+        m_useStartValue = useStartValue;
+    }
+
+
+    void BlendTreeSmoothingNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeSmoothingNode, AnimGraphNode>()
+            ->Version(1)
+            ->Field("interpolationSpeed", &BlendTreeSmoothingNode::m_interpolationSpeed)
+            ->Field("useStartValue", &BlendTreeSmoothingNode::m_useStartValue)
+            ->Field("startValue", &BlendTreeSmoothingNode::m_startValue)
+        ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeSmoothingNode>("Smoothing", "Smoothing attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::Slider, &BlendTreeSmoothingNode::m_interpolationSpeed, "Interpolation Speed", "The interpolation speed where 0.0 means the value won't change at all and 1.0 means the input value will directly be mapped to the output value.")
+            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeSmoothingNode::m_useStartValue, "Use Start Value", "Enable this to use the start value, otherwise the first input value will be used as start value.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeSmoothingNode::m_startValue, "Start Value", "When the blend tree gets activated the smoothing node will start interpolating from this value.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeSmoothingNode::GetStartValueVisibility)
+            ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+            ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+        ;
     }
 } // namespace EMotionFX

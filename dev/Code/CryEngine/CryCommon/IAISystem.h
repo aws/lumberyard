@@ -15,7 +15,7 @@
 
 #include "SerializeFwd.h"
 #include <IAIRecorder.h> // <> required for Interfuscator
-#include <IJobManager.h> // <> required for Interfuscator
+#include <ITimer.h>
 #include <IPhysics.h>
 #include <CryFixedArray.h>
 #include <IEntity.h>
@@ -1039,6 +1039,26 @@ struct IAISystem
     virtual IPathFollowerPtr CreateAndReturnNewDefaultPathFollower(const PathFollowerParams& params, const IPathObstacles& pathObstacleObject) = 0;
     // </interfuscator:shuffle>
 };
+
+class CryLegacyAISystemRequests
+    : public AZ::EBusTraits
+{
+public:
+    //////////////////////////////////////////////////////////////////////////
+    // EBusTraits overrides
+    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+    static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Creates and initializes a legacy IAISystem instance
+    virtual IAISystem* InitAISystem() = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Shuts down and destroys a legacy IAISystem instance
+    virtual void ShutdownAISystem(IAISystem* aiSystem) = 0;
+};
+using CryLegacyAISystemRequestBus = AZ::EBus<CryLegacyAISystemRequests>;
 
 #if defined(ENABLE_LW_PROFILERS)
 class CAILightProfileSection

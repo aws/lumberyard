@@ -10,7 +10,7 @@
 *
 */
 
-#include <QStyle.h>
+#include <QStyle>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/SceneManifest.h>

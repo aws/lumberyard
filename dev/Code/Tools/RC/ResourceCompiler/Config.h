@@ -15,7 +15,7 @@
 #define CRYINCLUDE_TOOLS_RC_RESOURCECOMPILER_CONFIG_H
 #pragma once
 
-#include "iconfig.h"
+#include "IConfig.h"
 #include "StlUtils.h"
 #include "StringHelpers.h"
 

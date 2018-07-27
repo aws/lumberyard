@@ -76,7 +76,8 @@ namespace ChunkFile
 
         m_filename = filename;
 
-        m_f = fopen(filename, "wb");
+        m_f = nullptr;
+        azfopen(&m_f, filename, "wb");
         if (!m_f)
         {
             // RCLogError("Failed to create file %s.", m_filename.c_str());

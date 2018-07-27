@@ -352,11 +352,16 @@ public:
         return T(1);
     }
 
-    T operator ()(type_min) const
+	T operator ()(type_min) const
+	{
+		T val;
+		min_value(val);
+		return val;
+	}
+    
+    bool operator == (const TThis& o) const
     {
-        T val;
-        min_value(val);
-        return val;
+        return super_type::operator==(o);
     }
 
     struct CCustomInfo;
@@ -679,6 +684,14 @@ struct TVarEPParam
     T operator ()(R r, E e, P p) const
     {
         return TSuper::operator()(r, e) * m_ParticleAge(p);
+    }
+
+    // Note this hides TVarEParam::IsConstant(). This should be fine because params are only accessed directly, 
+    // never through base pointers. We could make TVarEParam::IsConstant() virtual but there isn't a good reason
+    // to do that.
+    bool IsConstant() const
+    {
+        return  m_ParticleAge.IsIdentity() && TSuper::IsConstant();
     }
 
     // Additional helpers
@@ -1518,9 +1531,11 @@ struct ParticleParams
     TVarEPParam<UFloat> fAspect;                    // <SoftMax=8> X-to-Y scaling factor
     TVarEPParam<UFloat> fSizeX;                     // <SoftMax=800> X Size for sprites; size scale for geometry
     TVarEPParam<UFloat> fSizeY;                     // <SoftMax=800> Y size
+    TVarEPParam<UFloat> fSizeZ;                     // <SoftMax=800> Z size; only usful for geometry particle
     TSmallBool bMaintainAspectRatio;                // Maintain aspect ratio in Editor AND Game
     TVarEPParam<SFloat> fPivotX;                    // <SoftMin=-1> <SoftMax=1> Pivot offset in X direction
     TVarEPParam<SFloat> fPivotY;                    // <SoftMin=-1> <SoftMax=1> Pivot offset in Y direction
+    TVarEPParam<SFloat> fPivotZ;                    // <SoftMin=-1> <SoftMax=1> Pivot offset in Z directions; only usful for geometry particle
 
     struct SStretch
         : TVarEPParam<UFloat>
@@ -1596,7 +1611,6 @@ struct ParticleParams
     // <Group=Trail> - Chris Hekman, Confetti
     TSmallBool bLockAnchorPoints;
     CCryName sTrailFading;
-    TSmallBool bIsCameraNonFacingFadeParticle;
 
 
     // Connection
@@ -1811,6 +1825,7 @@ struct ParticleParams
         , fAspect(1.f)
         , fSizeX(1.f)
         , fSizeY(1.f)
+        , fSizeZ(1.f)
         , bMaintainAspectRatio(true)
         , cColor(1.f)
         , fAlpha(1.f)
@@ -1933,7 +1948,7 @@ struct ParticleParams
     }
     AABB GetEmitOffsetBounds() const
     {
-        const float percentageToScale = 0.01;
+        const float percentageToScale = 0.01f;
 
         const float fEmissionStrength = fEmitterLifeTime.GetMaxValue();
 

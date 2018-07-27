@@ -20,6 +20,7 @@
 #include <cfloat>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Math/VectorFloat.h>
+#include <QFocusEvent>
 
 namespace AzToolsFramework
 {

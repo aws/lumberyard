@@ -14,7 +14,7 @@
 // Description : Prefab flownode functionality
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "FlowPrefabNodes.h"
 

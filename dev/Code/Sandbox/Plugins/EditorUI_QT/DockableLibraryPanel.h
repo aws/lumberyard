@@ -158,7 +158,6 @@ signals:
     void SignalPasteItemsToFolder(IDataBaseLibrary* lib, const QStringList& pasteList);
     void SignalCopyItems(QVector<CLibraryTreeViewItem*> items, bool copyAsChild = false);
     void SignalCopyItem(IDataBaseItem* item);
-    void SignalDragOperationFinish();
     void SignalSaveAllLibs();
     void SignalUpdateTabName(const QString& fullOriginalName, const QString& fullNewName);
 

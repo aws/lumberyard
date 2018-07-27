@@ -2,7 +2,7 @@
  * Based on Decompose.c by Ken Shoemake, 1993  GRAPHIC GEMS IV
  * Modifications copyright Amazon.com, Inc. or its affiliates.
  */
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "AffineParts.h"
 
 #pragma warning ( push )  // conversion from 'double' to 'float', possible loss of data.

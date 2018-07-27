@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "SkeletonEffectManager.h"
 #include "CharacterInstance.h"
 #include "ICryAnimation.h"

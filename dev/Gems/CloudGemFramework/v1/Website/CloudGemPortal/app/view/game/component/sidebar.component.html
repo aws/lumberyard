@@ -10,15 +10,15 @@
                     <!-- Case where there aren't any gems and we're done loading -->
                     <div *ngSwitchCase="true"> </div>
                     <!-- Case where we might still be loading gems -->
-                    <div *ngSwitchCase="false"> 
+                    <div *ngSwitchCase="false">
                         <div class="child-links" [ngSwitch]="gemService.isLoading">
                             <div *ngSwitchCase="true">
                                 <loading-spinner></loading-spinner>
                             </div>
                             <div *ngSwitchCase="false">
                                 <div *ngFor="let gem of gemService.currentGems" class="sidebar-links">
-                                    <a class="child-link" (click)="raiseRouteEvent('/game/cloudgems/'+gem.identifier)" routerLinkActive="active"> 
-                                        {{gem.displayName}} 
+                                    <a class="child-link" (click)="raiseRouteEvent('/game/cloudgems/'+gem.identifier)" routerLinkActive="active">
+                                        {{gem.displayName}}
                                     </a>
                                 </div>
                             </div>
@@ -26,35 +26,53 @@
                     </div>
                 </ng-container>
             </div>
+            <div *ngIf="featureMap != null && (featureMap | json) != ({} | json)">
+                <div *ngFor="let feature of featureMap | objKeys">
+                    <div *ngIf="featureMap[feature].length > 0 && featureMap[feature][0].location == 0">
+                        <a (click)="raiseRouteEvent('/game/'+feature.toLowerCase())" routerLinkActive="active">
+                            <i class="fa fa-area-chart fa-lg" aria-hidden="true"></i>
+                            <span *ngIf="sidebarState === 'Expanded'"> {{ feature }} </span>
+                        </a>
+                        <div class="child-links" *ngIf="sidebarState === 'Expanded'">
+                            <div *ngFor="let child of featureMap[feature]">
+                                <a *ngIf="child.location == 0" class="child-link" (click)="raiseRouteEvent('/game/'+child.route_path)" routerLinkActive="active">
+                                    {{child.name}}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <a (click)="raiseRouteEvent('/game/support')" routerLinkActive="active">
                 <i class="fa fa-life-ring fa-lg" aria-hidden="true"></i>
                 <span *ngIf="sidebarState === 'Expanded'"> Support </span>
             </a>
-            <a (click)="raiseRouteEvent('/game/analytics')" routerLinkActive="active">
-                <i class="fa fa-area-chart fa-lg" aria-hidden="true"></i>
-                <span *ngIf="sidebarState === 'Expanded'"> Analytics </span>
-            </a>
         </div>
+        <!-- Used to ensure the side bar footer doesn't overlay the top nav bar items when the windows size is small -->
+        <div class="push" [ngClass]="(sidebarState === 'Collapsed') ? 'collapsed' : 'expanded'"></div>
     </div>
     <div class="sidebar-footer" [ngClass]="(sidebarState === 'Collapsed') ? 'collapsed' : 'expanded'">
         <div class="sidebar-links">
-            <a class="admin-link-section" routerLink="/game/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-                <i class="fa fa-cog fa-lg" aria-hidden="true"></i>
-                <span *ngIf="sidebarState === 'Expanded'">Administration</span>
-            </a>
-            <div *ngIf="sidebarState === 'Expanded'">
-                <div class="child-links">
-                    <a class="child-link admin-user-mgt"  (click)="raiseRouteEvent('/game/admin/users')" routerLinkActive="active">
-                        User Administration
-                    </a>
-                    <a class="child-link admin-proj-logs" (click)="raiseRouteEvent('/game/admin/logs')" routerLinkActive="active">
-                        Project Logs
-                    </a>
+            <div *ngIf="featureMap != null && (featureMap | json) != ({} | json)">
+                <div *ngFor="let feature of featureMap | objKeys">
+                    <div *ngIf="featureMap[feature].length > 0 && featureMap[feature][0].location == 1">
+                        <a (click)="raiseRouteEvent('/game/'+feature.toLowerCase())" routerLinkActive="active">
+                            <i class="fa fa-cog fa-lg" aria-hidden="true"></i>
+                            <span *ngIf="sidebarState === 'Expanded'"> {{ feature }} </span>
+                        </a>
+                        <div class="child-links" *ngIf="sidebarState === 'Expanded'">
+                            <div *ngFor="let child of featureMap[feature]">
+                                <a *ngIf="child.location == 1" class="child-link" (click)="raiseRouteEvent('/game/'+child.route_path)" routerLinkActive="active">
+                                    {{child.name}}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="sidebar-close" (click)="sidebarState = (sidebarState === 'Expanded') ? 'Collapsed' : 'Expanded'">
             <i [ngClass]="sidebarState === 'Expanded' ? 'fa-angle-double-left' : 'fa-angle-double-right'" class="fa fa-angle-double-left fa-lg" aria-hidden="true"></i>
         </div>
-    </div> 
+    </div>
 </div>

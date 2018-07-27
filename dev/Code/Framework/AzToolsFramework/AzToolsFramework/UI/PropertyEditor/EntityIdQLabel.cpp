@@ -16,6 +16,8 @@
 
 #include <AzToolsFramework/ToolsMessaging/EntityHighlightBus.h>
 
+#include <QMouseEvent>
+
 namespace AzToolsFramework
 {
     EntityIdQLabel::EntityIdQLabel(QWidget* parent)

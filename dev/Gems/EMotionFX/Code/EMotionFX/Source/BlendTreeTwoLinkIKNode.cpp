@@ -10,59 +10,36 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <EMotionFX/Source/AnimGraph.h>
 #include "BlendTreeTwoLinkIKNode.h"
 #include "EventManager.h"
 #include "AnimGraphManager.h"
 #include "Recorder.h"
 #include "Node.h"
 #include "TransformData.h"
-#include <MCore/Source/AttributeSettings.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeTwoLinkIKNode::BlendTreeTwoLinkIKNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeTwoLinkIKNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeTwoLinkIKNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
 
-    // destructor
-    BlendTreeTwoLinkIKNode::~BlendTreeTwoLinkIKNode()
-    {
-    }
-
-
-    // create
-    BlendTreeTwoLinkIKNode* BlendTreeTwoLinkIKNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeTwoLinkIKNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeTwoLinkIKNode::CreateObjectData()
-    {
-        return new UniqueData(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeTwoLinkIKNode::RegisterPorts()
+    BlendTreeTwoLinkIKNode::BlendTreeTwoLinkIKNode()
+        : AnimGraphNode()
+        , m_rotationEnabled(false)
+        , m_relativeBendDir(true)
+        , m_extractBendDir(false)
     {
         // setup the input ports
         InitInputPorts(5);
-        SetupInputPort("Pose",     INPUTPORT_POSE,     AttributePose::TYPE_ID,             PORTID_INPUT_POSE);
-        SetupInputPort("Goal Pos", INPUTPORT_GOALPOS,  MCore::AttributeVector3::TYPE_ID,   PORTID_INPUT_GOALPOS);
-        SetupInputPort("Bend Dir", INPUTPORT_BENDDIR,  MCore::AttributeVector3::TYPE_ID,   PORTID_INPUT_BENDDIR);
-        SetupInputPort("Goal Rot", INPUTPORT_GOALROT,  AttributeRotation::TYPE_ID,         PORTID_INPUT_GOALROT);
-        SetupInputPortAsNumber("Weight",   INPUTPORT_WEIGHT, PORTID_INPUT_WEIGHT);
+        SetupInputPort("Pose", INPUTPORT_POSE, AttributePose::TYPE_ID, PORTID_INPUT_POSE);
+        SetupInputPort("Goal Pos", INPUTPORT_GOALPOS, MCore::AttributeVector3::TYPE_ID, PORTID_INPUT_GOALPOS);
+        SetupInputPort("Bend Dir", INPUTPORT_BENDDIR, MCore::AttributeVector3::TYPE_ID, PORTID_INPUT_BENDDIR);
+        SetupInputPort("Goal Rot", INPUTPORT_GOALROT, AttributeRotation::TYPE_ID, PORTID_INPUT_GOALROT);
+        SetupInputPortAsNumber("Weight", INPUTPORT_WEIGHT, PORTID_INPUT_WEIGHT);
 
         // setup the output ports
         InitOutputPorts(1);
@@ -70,41 +47,48 @@ namespace EMotionFX
     }
 
 
-    // register the parameters
-    void BlendTreeTwoLinkIKNode::RegisterAttributes()
+    BlendTreeTwoLinkIKNode::~BlendTreeTwoLinkIKNode()
     {
-        // the end node
-        MCore::AttributeSettings* attrib = RegisterAttribute("End Node", "endNode", "The end node name of the chain, for example the foot, or hand.", ATTRIBUTE_INTERFACETYPE_NODESELECTION);
-        attrib->SetReinitObjectOnValueChange(true);
-        attrib->SetDefaultValue(MCore::AttributeString::Create());
+    }
 
-        // the end effector node
-        attrib = RegisterAttribute("End Effector", "endEffectorNode", "The end effector node, which represents the node that actually tries to reach the goal. This is probably also the hand, or a child node of it for example. If not set, the end node is used.", ATTRIBUTE_INTERFACETYPE_NODESELECTION);
-        attrib->SetReinitObjectOnValueChange(true);
-        attrib->SetDefaultValue(MCore::AttributeString::Create());
 
-        // the node to align the end effector to
-        attrib = RegisterAttribute("Align To", "alignNode", "The node to align the end node to. This basically sets the goal to this node.", ATTRIBUTE_INTERFACETYPE_GOALNODESELECTION);
-        attrib->SetReinitObjectOnValueChange(true);
-        attrib->SetDefaultValue(AttributeGoalNode::Create());
+    void BlendTreeTwoLinkIKNode::Reinit()
+    {
+        if (!mAnimGraph)
+        {
+            return;
+        }
 
-        // the node to align the end effector to
-        attrib = RegisterAttribute("Bend Dir Node", "bendDirNode", "The optional node to control the bend direction. The vector from the start node to the bend dir node will be used as bend direction.", ATTRIBUTE_INTERFACETYPE_NODESELECTION);
-        attrib->SetReinitObjectOnValueChange(true);
-        attrib->SetDefaultValue(MCore::AttributeString::Create());
+        AnimGraphNode::Reinit();
 
-        // adjust the rotation of the end effector?
-        attrib = RegisterAttribute("Enable Rotation Goal", "rotationEnabled", "Enable the goal orientation?", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(0));
+        const size_t numInstances = mAnimGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numInstances; ++i)
+        {
+            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
 
-        // relative bend direction (rotate with the actor instance?)
-        attrib = RegisterAttribute("Relative Bend Dir", "relativeBendDir", "Use a relative (to the actor instance) bend direction, instead of global space?", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(1));
+            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+            if (!uniqueData)
+            {
+                continue;
+            }
 
-        // extract the bend direction from the input pose?
-        attrib = RegisterAttribute("Extract Bend Dir", "extractBendDir", "Extract the bend direction from the input pose instead of using the bend dir input value?", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        attrib->SetReinitGuiOnValueChange(true);
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(0));
+            uniqueData->mMustUpdate = true;
+            animGraphInstance->UpdateUniqueData();
+        }
+    }
+
+
+    bool BlendTreeTwoLinkIKNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -119,20 +103,6 @@ namespace EMotionFX
     AnimGraphObject::ECategory BlendTreeTwoLinkIKNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_CONTROLLERS;
-    }
-
-
-    // create a clone of this node
-    AnimGraphObject* BlendTreeTwoLinkIKNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeTwoLinkIKNode* clone = new BlendTreeTwoLinkIKNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
     }
 
 
@@ -157,13 +127,12 @@ namespace EMotionFX
             uniqueData->mIsValid                = false;
 
             // find the end node
-            const char* nodeName = GetAttributeString(ATTRIB_ENDNODE)->AsChar();
-            if (nodeName == nullptr)
+            if (m_endNodeName.empty())
             {
                 return;
             }
-            const Node* nodeC = skeleton->FindNodeByName(nodeName);
-            if (nodeC == nullptr)
+            const Node* nodeC = skeleton->FindNodeByName(m_endNodeName.c_str());
+            if (!nodeC)
             {
                 return;
             }
@@ -184,29 +153,26 @@ namespace EMotionFX
             }
 
             // get the end effector node
-            const Node* endEffectorNode = skeleton->FindNodeByName(GetAttributeString(ATTRIB_ENDEFFECTORNODE)->AsChar());
+            const Node* endEffectorNode = skeleton->FindNodeByName(m_endEffectorNodeName.c_str());
             if (endEffectorNode)
             {
                 uniqueData->mEndEffectorNodeIndex = endEffectorNode->GetNodeIndex();
             }
 
             // find the bend direction node
-            const char* bendDirNodeName = GetAttributeString(ATTRIB_BENDDIRNODE)->AsChar();
-            const Node* bendDirNode = skeleton->FindNodeByName(bendDirNodeName);
+            const Node* bendDirNode = skeleton->FindNodeByName(m_bendDirNodeName.c_str());
             if (bendDirNode)
             {
                 uniqueData->mBendDirNodeIndex = bendDirNode->GetNodeIndex();
             }
 
             // lookup the actor instance to get the alignment node from
-            const AttributeGoalNode* goalNodeAttrib = GetAttributeGoalNode(ATTRIB_ALIGNNODE);
-            const ActorInstance* alignInstance = animGraphInstance->FindActorInstanceFromParentDepth(goalNodeAttrib->GetParentDepth());
+            const ActorInstance* alignInstance = animGraphInstance->FindActorInstanceFromParentDepth(m_alignToNode.second);
             if (alignInstance)
             {
-                nodeName = GetAttributeGoalNode(ATTRIB_ALIGNNODE)->GetNodeName();
-                if (nodeName)
+                if (!m_alignToNode.first.empty())
                 {
-                    const Node* alignNode = alignInstance->GetActor()->GetSkeleton()->FindNodeByName(nodeName);
+                    const Node* alignNode = alignInstance->GetActor()->GetSkeleton()->FindNodeByName(m_alignToNode.first.c_str());
                     if (alignNode)
                     {
                         uniqueData->mAlignNodeIndex = alignNode->GetNodeIndex();
@@ -349,18 +315,14 @@ namespace EMotionFX
         SetHasError(animGraphInstance, false);
     #endif
 
-        // calculate the global space matrices
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-
-        // lookup the actor instance to get the alignment node from
-        const AttributeGoalNode* goalNodeAttrib = GetAttributeGoalNode(ATTRIB_ALIGNNODE);
         ActorInstance* alignInstance = actorInstance;
 
         // adjust the gizmo offset value
         if (alignNodeIndex != MCORE_INVALIDINDEX32)
         {
             // update the alignment actor instance
-            alignInstance = animGraphInstance->FindActorInstanceFromParentDepth(goalNodeAttrib->GetParentDepth());
+            alignInstance = animGraphInstance->FindActorInstanceFromParentDepth(m_alignToNode.second);
             if (alignInstance)
             {
                 const AZ::Vector3& offset = alignInstance->GetTransformData()->GetCurrentPose()->GetGlobalTransformInclusive(alignNodeIndex).mPosition;
@@ -371,7 +333,7 @@ namespace EMotionFX
                 const BlendTreeConnection* posConnection = GetInputPort(INPUTPORT_GOALPOS).mConnection;
                 if (posConnection)
                 {
-                    if (posConnection->GetSourceNode()->GetType() == BlendTreeParameterNode::TYPE_ID)
+                    if (azrtti_typeid(posConnection->GetSourceNode()) == azrtti_typeid<BlendTreeParameterNode>())
                     {
                         BlendTreeParameterNode* parameterNode = static_cast<BlendTreeParameterNode*>(posConnection->GetSourceNode());
                         GetEventManager().OnSetVisualManipulatorOffset(animGraphInstance, parameterNode->GetParameterIndex(posConnection->GetSourcePort()), offset);
@@ -390,7 +352,7 @@ namespace EMotionFX
             const BlendTreeConnection* posConnection = GetInputPort(INPUTPORT_GOALPOS).mConnection;
             if (posConnection)
             {
-                if (posConnection->GetSourceNode()->GetType() == BlendTreeParameterNode::TYPE_ID)
+                if (azrtti_typeid(posConnection->GetSourceNode()) == azrtti_typeid<BlendTreeParameterNode>())
                 {
                     BlendTreeParameterNode* parameterNode = static_cast<BlendTreeParameterNode*>(posConnection->GetSourceNode());
                     GetEventManager().OnSetVisualManipulatorOffset(animGraphInstance, parameterNode->GetParameterIndex(posConnection->GetSourcePort()), AZ::Vector3::CreateZero());
@@ -409,8 +371,7 @@ namespace EMotionFX
 
         // extract the bend direction from the input pose?
         AZ::Vector3 bendDir;
-        const bool extractBendDir = GetAttributeFloatAsBool(ATTRIB_EXTRACTBENDDIR);
-        if (extractBendDir)
+        if (m_extractBendDir)
         {
             if (bendDirIndex != MCORE_INVALIDINDEX32)
             {
@@ -429,7 +390,7 @@ namespace EMotionFX
         }
 
         // if we want a relative bend dir, rotate it with the actor (only do this if we don't extract the bend dir)
-        if (GetAttributeFloatAsBool(ATTRIB_RELBENDDIR) && extractBendDir == false)
+        if (m_relativeBendDir && !m_extractBendDir)
         {
             bendDir = actorInstance->GetGlobalTransform().mRotation * bendDir;
             bendDir = MCore::SafeNormalize(bendDir);
@@ -440,8 +401,7 @@ namespace EMotionFX
         }
 
         // if end node rotation is enabled
-        const bool enableRotation = GetAttributeFloatAsBool(ATTRIB_ENABLEROTATION);
-        if (enableRotation)
+        if (m_rotationEnabled)
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_GOALROT));
             const AttributeRotation* inputGoalRot = GetInputRotation(animGraphInstance, INPUTPORT_GOALROT);
@@ -478,7 +438,7 @@ namespace EMotionFX
         // adjust the goal and get the end effector position
         AZ::Vector3 endEffectorNodePos = outTransformPose.GetGlobalTransformInclusive(endEffectorNodeIndex).mPosition;
         const AZ::Vector3 posCToEndEffector = endEffectorNodePos - globalTransformC.mPosition;
-        if (enableRotation)
+        if (m_rotationEnabled)
         {
             goal -= posCToEndEffector;
         }
@@ -493,7 +453,7 @@ namespace EMotionFX
             const float s = animGraphInstance->GetVisualizeScale() * actorInstance->GetVisualizeScale();
 
             AZ::Vector3 realGoal;
-            if (enableRotation)
+            if (m_rotationEnabled)
             {
                 realGoal = goal + posCToEndEffector;
             }
@@ -527,7 +487,7 @@ namespace EMotionFX
 
         // perform IK, try to find a solution by calculating the new middle node position
         AZ::Vector3 midPos;
-        if (enableRotation)
+        if (m_rotationEnabled)
         {
             Solve2LinkIK(globalTransformA.mPosition, globalTransformB.mPosition, globalTransformC.mPosition, goal, bendDir, &midPos);
         }
@@ -561,7 +521,7 @@ namespace EMotionFX
         endEffectorNodePos = outTransformPose.GetGlobalTransformInclusive(endEffectorNodeIndex).mPosition;
 
         // second node
-        if (enableRotation)
+        if (m_rotationEnabled)
         {
             oldForward = globalTransformC.mPosition - globalTransformB.mPosition;
         }
@@ -593,7 +553,7 @@ namespace EMotionFX
         //outTransformPose.UpdateLocalTransform( nodeIndexB );
 
         // update the rotation of node C
-        if (enableRotation)
+        if (m_rotationEnabled)
         {
             globalTransformC = outTransformPose.GetGlobalTransformInclusive(nodeIndexC);
             globalTransformC.mRotation = newNodeRotationC;
@@ -635,21 +595,6 @@ namespace EMotionFX
     }
 
 
-    // get the type string
-    const char* BlendTreeTwoLinkIKNode::GetTypeString() const
-    {
-        return "BlendTreeTwoLinkIKNode";
-    }
-
-
-    // init
-    void BlendTreeTwoLinkIKNode::Init(AnimGraphInstance* animGraphInstance)
-    {
-        MCORE_UNUSED(animGraphInstance);
-        //mOutputPose.InitToBindPose( animGraphInstance->GetActorInstance() );
-    }
-
-
     // update the parameter contents, such as combobox values
     void BlendTreeTwoLinkIKNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
@@ -657,7 +602,7 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (uniqueData == nullptr)
         {
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
 
@@ -666,19 +611,92 @@ namespace EMotionFX
     }
 
 
-    // update attributes
-    void BlendTreeTwoLinkIKNode::OnUpdateAttributes()
+    AZ::Crc32 BlendTreeTwoLinkIKNode::GetRelativeBendDirVisibility() const
     {
-        // disable GUI items that have no influence
-    #ifdef EMFX_EMSTUDIOBUILD
-        EnableAllAttributes(true);
+        return m_extractBendDir ? AZ::Edit::PropertyVisibility::Hide : AZ::Edit::PropertyVisibility::Show;
+    }
 
-        // disable relative bend dir when extract bend dir is enabled
-        if (GetAttributeFloatAsBool(ATTRIB_EXTRACTBENDDIR))
+    void BlendTreeTwoLinkIKNode::SetRelativeBendDir(bool relativeBendDir)
+    {
+        m_relativeBendDir = relativeBendDir;
+    }
+    
+    void BlendTreeTwoLinkIKNode::SetExtractBendDir(bool extractBendDir)
+    {
+        m_extractBendDir = extractBendDir;
+    }
+    
+    void BlendTreeTwoLinkIKNode::SetRotationEnabled(bool rotationEnabled)
+    {
+        m_rotationEnabled = rotationEnabled;
+    }
+
+    void BlendTreeTwoLinkIKNode::SetBendDirNodeName(const AZStd::string& bendDirNodeName)
+    {
+        m_bendDirNodeName = bendDirNodeName;
+    }
+
+    void BlendTreeTwoLinkIKNode::SetAlignToNode(const NodeAlignmentData& alignToNode)
+    {
+        m_alignToNode = alignToNode;
+    }
+
+    void BlendTreeTwoLinkIKNode::SetEndEffectorNodeName(const AZStd::string& endEffectorNodeName)
+    {
+        m_endEffectorNodeName = endEffectorNodeName;
+    }
+
+    void BlendTreeTwoLinkIKNode::SetEndNodeName(const AZStd::string& endNodeName)
+    {
+        m_endNodeName = endNodeName;
+    }
+
+    void BlendTreeTwoLinkIKNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
         {
-            SetAttributeDisabled(ATTRIB_RELBENDDIR);
+            return;
         }
-    #endif
+
+        serializeContext->Class<BlendTreeTwoLinkIKNode, AnimGraphNode>()
+            ->Field("endNodeName", &BlendTreeTwoLinkIKNode::m_endNodeName)
+            ->Field("endEffectorNodeName", &BlendTreeTwoLinkIKNode::m_endEffectorNodeName)
+            ->Field("alignToNode", &BlendTreeTwoLinkIKNode::m_alignToNode)
+            ->Field("bendDirNodeName", &BlendTreeTwoLinkIKNode::m_bendDirNodeName)
+            ->Field("rotationEnabled", &BlendTreeTwoLinkIKNode::m_rotationEnabled)
+            ->Field("relativeBendDir", &BlendTreeTwoLinkIKNode::m_relativeBendDir)
+            ->Field("extractBendDir", &BlendTreeTwoLinkIKNode::m_extractBendDir)
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeTwoLinkIKNode>("Two Link IK", "Two Link IK attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeTwoLinkIKNode::m_endNodeName, "End Node", "The end node name of the chain, for example the foot, or hand.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeTwoLinkIKNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeTwoLinkIKNode::m_endEffectorNodeName, "End Effector", "The end effector node, which represents the node that actually tries to reach the goal. This is probably also the hand, or a child node of it for example. If not set, the end node is used.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeTwoLinkIKNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ_CRC("ActorGoalNode", 0xaf1e8a3a), &BlendTreeTwoLinkIKNode::m_alignToNode, "Align To", "The node to align the end node to. This basically sets the goal to this node.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeTwoLinkIKNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeTwoLinkIKNode::m_bendDirNodeName, "Bend Dir Node", "The optional node to control the bend direction. The vector from the start node to the bend dir node will be used as bend direction.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeTwoLinkIKNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTwoLinkIKNode::m_rotationEnabled, "Enable Rotation Goal", "Enable the goal orientation?")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTwoLinkIKNode::m_relativeBendDir, "Relative Bend Dir", "Use a relative (to the actor instance) bend direction, instead of global space?")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeTwoLinkIKNode::GetRelativeBendDirVisibility)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTwoLinkIKNode::m_extractBendDir, "Extract Bend Dir", "Extract the bend direction from the input pose instead of using the bend dir input value?")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+        ;
     }
 } // namespace EMotionFX
-

@@ -431,7 +431,7 @@ namespace EMStudio
     }
 
 
-    void MetricsEventSender::SendCreateNodeEvent(const AZ::Uuid& typeId)
+    void MetricsEventSender::SendCreateNodeEvent(const AZ::TypeId& typeId)
     {
         LyMetricIdType eventId = LyMetrics_CreateEvent("CreateNode");
         LyMetrics_AddAttribute(eventId, "Type", typeId.ToString<AZStd::string>().c_str());
@@ -518,7 +518,7 @@ namespace EMStudio
             {
                 const float timestep = 0.1f;// 10 fps sampling
                 //Max # of morph targets active per animation
-                const EMotionFX::MotionSet::EntryMap& motionEntries = motionSet->GetMotionEntries();
+                const EMotionFX::MotionSet::MotionEntries& motionEntries = motionSet->GetMotionEntries();
                 AZ::u32 maxNumConcurrentMorphInMotion = 0;
                 for (const auto& item : motionEntries)
                 {

@@ -176,17 +176,17 @@ public:
 
         if (!m_watchSubtree)
         {
-            // we don't care about subdirs.
-            if (fileInfo.isDir())
-            {
-                return;
-            }
-
             // filter out subtrees too.
             QStringRef subRef = info.m_filePath.rightRef(info.m_filePath.length() - m_folder.length());
             if ((subRef.indexOf('/') != -1) || (subRef.indexOf('\\') != -1))
             {
                 return; // filter this out.
+            }
+
+            // we don't care about subdirs.  IsDir is more expensive so we do it after the above filter.
+            if (fileInfo.isDir())
+            {
+                return;
             }
         }
 

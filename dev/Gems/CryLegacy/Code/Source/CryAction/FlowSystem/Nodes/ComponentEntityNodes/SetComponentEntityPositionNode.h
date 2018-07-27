@@ -13,7 +13,7 @@
 #include <ISystem.h>
 #include <IFlowSystem.h>
 
-#include "../FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 class ComponentEntitySetPositionNode
     : public CFlowBaseNode<eNCT_Instanced>

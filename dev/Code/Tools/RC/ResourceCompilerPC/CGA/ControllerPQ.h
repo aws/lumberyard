@@ -21,7 +21,7 @@
 #include "CGFContent.h"
 #include "QuatQuantization.h"
 
-#include "Wavelets/Compression.h"
+#include "wavelets/Compression.h"
 
 typedef Quat TRotation;
 typedef Vec3 TPosition;

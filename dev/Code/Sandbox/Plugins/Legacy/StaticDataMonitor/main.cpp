@@ -9,27 +9,15 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-/** @file dllmain.cpp
-    @brief Dll entry point
-    @author Josh Coyne - Allegorithmic (josh.coyne@allegorithmic.com)
-    @date 09-14-2015
-    @copyright Allegorithmic. All rights reserved.
-*/
 
-#include "StaticData_precompiled.h"
+#include <AzCore/PlatformDef.h>
 
-#include <platform.h>
-#include <platform_impl.h>
-#include <IEditor.h>
-#include <Include/IPlugin.h>
-#include <Include/IEditorClassFactory.h>
-#include "StaticDataMonitorEditorPlugin.h"
+#ifdef AZ_PLATFORM_WINDOWS
+#include <windows.h>
 
-//------------------------------------------------------------------
-PLUGIN_API IPlugin* CreatePluginInstance(PLUGIN_INIT_PARAM* pInitParam)
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
 {
-    ISystem* pSystem = pInitParam->pIEditorInterface->GetSystem();
-    ModuleInitISystem(pSystem, "StaticDataMonitorEditorPlugin");
-    return new StaticDataMonitorEditorPlugin(pInitParam->pIEditorInterface);
-}
 
+    return(TRUE);
+}
+#endif

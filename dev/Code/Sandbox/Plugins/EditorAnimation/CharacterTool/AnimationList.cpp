@@ -182,7 +182,7 @@ namespace CharacterTool {
                     continue;
                 }
 
-                if (stricmp(node->getAttr("name"), animationPath) == 0)
+                if (azstricmp(node->getAttr("name"), animationPath) == 0)
                 {
                     animationNode = node;
                     break;
@@ -372,7 +372,7 @@ namespace CharacterTool {
     {
         int result = 0;
         const char* ext = PathUtil::GetExt(animationPath);
-        if (stricmp(ext, "caf") == 0)
+        if (azstricmp(ext, "caf") == 0)
         {
             if (gEnv->pCryPak->IsFileExist(animationPath, ICryPak::eFileLocation_OnDisk))
             {
@@ -593,16 +593,21 @@ namespace CharacterTool {
             std::vector< string > candidateAnimationsForImport;
             const char* const filePattern = "*.i_caf";
 
+            //  Store the game data folder for later.
+            const AZStd::string editFolder = Path::GetEditingGameDataFolder();
             SDirectoryEnumeratorHelper dirHelper;
-            dirHelper.ScanDirectoryRecursive(Path::GetEditingGameDataFolder().c_str(), "", filePattern, candidateAnimationsForImport);
+            dirHelper.ScanDirectoryRecursive(editFolder.c_str(), "", filePattern, candidateAnimationsForImport);
 
             //collect a list of .i_caf files that have no .animsettings file
             for (size_t i = 0; i < candidateAnimationsForImport.size(); ++i)
             {
-                string animationFile = candidateAnimationsForImport[ i ];
+                //  Removed the call to Path::GamePathToFullPath. It has been redirected to the Asset Procesor and that
+                //  is a 150ms+ round trip. Since we are looking in the source assets folder, we should continue to look in the source folder.
+                //  We already got that folder to run the recursive search, above. Unless a new version is doing more than swapping
+                //  extensions and checking if they exist, try to keep this version of the loop.
+                const string animationFile = PathUtil::Make(editFolder.c_str(), candidateAnimationsForImport[i]);
 
-                string animSettingsPath = PathUtil::ReplaceExtension(animationFile.c_str(), ".animsettings");
-                AZStd::string fullFilePath = Path::GamePathToFullPath(animSettingsPath.c_str()).toUtf8().data();
+                const string fullFilePath = PathUtil::ToNativePath(PathUtil::ReplaceExtension(animationFile.c_str(), ".animsettings"));
                 if (gEnv->pCryPak->IsFileExist(fullFilePath.c_str(), ICryPak::eFileLocation_OnDisk))
                 {
                     continue;
@@ -742,7 +747,7 @@ namespace CharacterTool {
 
         {
             char buffer[ICryPak::g_nMaxPath] = "";
-            const char* realPath = gEnv->pCryPak->AdjustFileName(filePath, buffer, 0);
+            const char* realPath = gEnv->pCryPak->AdjustFileName(filePath, buffer, AZ_ARRAY_SIZE(buffer), 0);
             QFile::setPermissions(realPath, QFile::permissions(realPath) | QFile::WriteOther);
         }
 
@@ -855,7 +860,7 @@ namespace CharacterTool {
         AZStd::string entryFullPath = Path::GamePathToFullPath(entry->path.c_str()).toUtf8().data();
         XmlNodeRef root = entry->content.blendSpace.SaveToXml();
         char path[ICryPak::g_nMaxPath] = "";
-        gEnv->pCryPak->AdjustFileName(entryFullPath.c_str(), path, 0);
+        gEnv->pCryPak->AdjustFileName(entryFullPath.c_str(), path, AZ_ARRAY_SIZE(path), 0);
 
         SEntry<AnimationContent>* animation = GetEntry(entry->id);
         if (!animation)
@@ -911,7 +916,7 @@ namespace CharacterTool {
         XmlNodeRef root = GetIEditor()->GetSystem()->CreateXmlNode("anim_event_list");
 
         char realPath[ICryPak::g_nMaxPath];
-        gEnv->pCryPak->AdjustFileName(resolvedAnimEventsFullPath.c_str(), realPath, ICryPak::FLAGS_FOR_WRITING);
+        gEnv->pCryPak->AdjustFileName(resolvedAnimEventsFullPath.c_str(), realPath, AZ_ARRAY_SIZE(realPath), ICryPak::FLAGS_FOR_WRITING);
         {
             string path;
             string filename;
@@ -955,7 +960,7 @@ namespace CharacterTool {
                 continue;
             }
 
-            if (stricmp(node->getAttr("name"), animationPath) == 0)
+            if (azstricmp(node->getAttr("name"), animationPath) == 0)
             {
                 animationNode = node;
                 break;
@@ -1012,7 +1017,7 @@ namespace CharacterTool {
         if (needToSave)
         {
             char realPath[ICryPak::g_nMaxPath];
-            gEnv->pCryPak->AdjustFileName(resolvedAnimEventsFullPath.c_str(), realPath, ICryPak::FLAGS_FOR_WRITING);
+            gEnv->pCryPak->AdjustFileName(resolvedAnimEventsFullPath.c_str(), realPath, AZ_ARRAY_SIZE(realPath), ICryPak::FLAGS_FOR_WRITING);
             {
                 string path;
                 string filename;
@@ -1203,7 +1208,7 @@ namespace CharacterTool {
                 AZStd::string entryFullPath = Path::GamePathToFullPath(entry->path.c_str()).toUtf8().data();
                 XmlNodeRef root = entry->content.combinedBlendSpace.SaveToXml();
                 char path[ICryPak::g_nMaxPath] = "";
-                gEnv->pCryPak->AdjustFileName(entryFullPath.c_str(), path, 0);
+                gEnv->pCryPak->AdjustFileName(entryFullPath.c_str(), path, AZ_ARRAY_SIZE(path), 0);
 
                 saveEntryController->AddSaveOperation(path,
                     [root](const AZStd::string& outputPath, const AZStd::shared_ptr<AZ::ActionOutput>& actionOutput) -> bool

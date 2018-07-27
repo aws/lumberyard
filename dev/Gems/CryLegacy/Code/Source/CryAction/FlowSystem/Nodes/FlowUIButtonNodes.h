@@ -12,7 +12,7 @@
 #pragma once
 
 // Includes
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <LyShine/IUiButtonComponent.h>
 
 

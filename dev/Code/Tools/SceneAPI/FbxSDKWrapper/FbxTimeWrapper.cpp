@@ -65,6 +65,8 @@ namespace AZ
                 return FbxTime::eFrames30;
             case frames24:
                 return FbxTime::eFrames24;
+            case defaultMode:
+                return FbxTime::eDefaultMode;
             default:
                 AZ_TracePrintf(SceneAPI::Utilities::WarningWindow, "Unsupported frame rate");
                 return FbxTime::eDefaultMode;

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "SetComponentEntityRotationNode.h"
 
 #include <AzCore/Math/Transform.h>

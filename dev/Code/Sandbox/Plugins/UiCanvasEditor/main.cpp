@@ -112,7 +112,7 @@ public:
             openers.push_back({ "Lumberyard_UICanvas_Editor", 
                 "Open in UI Canvas Editor...", 
                 QIcon(), 
-                [this](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
+                [](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
             {
                 OpenViewPane(UICANVASEDITOR_NAME_LONG);
                 QString absoluteName = QString::fromUtf8(fullSourceFileNameInCallback);

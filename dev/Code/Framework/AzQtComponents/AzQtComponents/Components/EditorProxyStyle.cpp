@@ -23,6 +23,7 @@
 #include <AzQtComponents/Components/StyledDetailsTableView.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
+#include <AzQtComponents/Utilities/TextUtilities.h>
 
 #include <QTimer>
 #include <QAbstractItemView>
@@ -57,6 +58,12 @@
 #include <QMenu>
 #include <QPushButton>
 #include <QColorDialog>
+#include <QTimer>
+
+#if defined(AZ_PLATFORM_APPLE)
+#include <QMacNativeWidget>
+#endif
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 #include <assert.h>
 
@@ -350,7 +357,11 @@ namespace AzQtComponents
         {
             if (tb->orientation() == Qt::Horizontal)
             {
-                tb->setFixedSize(QSize(QWIDGETSIZE_MAX, heightForHorizontalToolbar(tb)));
+                // setting a fixed height w/o properly unsetting the set fixed size before
+                // will lead to a huge amount of memory allocated on macOS, failing and maybe
+                // even crashing then
+                tb->setFixedSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX)); // unset
+                tb->setFixedHeight(heightForHorizontalToolbar(tb));
             }
             else
             {
@@ -393,6 +404,7 @@ namespace AzQtComponents
             qobject_cast<const QFileDialog*>(w) || // QFileDialog is native
 #if defined(AZ_PLATFORM_APPLE)
             qobject_cast<const QColorDialog*>(w) || // QColorDialog is native on macOS
+            qobject_cast<const QMacNativeWidget*>(w) ||
 #endif
             w->property("HasNoWindowDecorations").toBool() || // Allows decorations to be disabled
             isQWinWidget(w))
@@ -434,10 +446,13 @@ namespace AzQtComponents
     {
         setObjectName("EditorProxyStyle");
         qApp->installEventFilter(this);
+
+        SpinBox::initializeWatcher();
     }
 
     EditorProxyStyle::~EditorProxyStyle()
     {
+        SpinBox::uninitializeWatcher();
     }
 
     void EditorProxyStyle::setAutoWindowDecorationMode(EditorProxyStyle::AutoWindowDecorationMode mode)
@@ -513,7 +528,7 @@ namespace AzQtComponents
     {
         if (QToolButton* expansion = expansionButton(tb))
         {
-            connect(expansion, &QAbstractButton::toggled, [tb, this](bool)
+            connect(expansion, &QAbstractButton::toggled, this, [tb, this](bool)
                 {
                     fixToolBarSizeConstraints(tb);
                 });
@@ -531,6 +546,12 @@ namespace AzQtComponents
     void EditorProxyStyle::polish(QWidget* widget)
     {
         TitleBarOverdrawHandler::getInstance()->polish(widget);
+
+        if (qobject_cast<const SpinBox*>(widget) || qobject_cast<const DoubleSpinBox*>(widget))
+        {
+            auto config = SpinBox::defaultConfig();
+            SpinBox::polish(this, widget, config);
+        }
 
         if (qobject_cast<QToolButton*>(widget))
         {
@@ -581,6 +602,15 @@ namespace AzQtComponents
 #endif
         }
         return QProxyStyle::polish(widget);
+    }
+
+    void EditorProxyStyle::unpolish(QWidget* widget)
+    {
+        if (qobject_cast<const SpinBox*>(widget) || qobject_cast<const DoubleSpinBox*>(widget))
+        {
+            auto config = SpinBox::defaultConfig();
+            SpinBox::unpolish(this, widget, config);
+        }
     }
 
     QSize EditorProxyStyle::sizeFromContents(QStyle::ContentsType type, const QStyleOption* option,
@@ -1184,15 +1214,28 @@ namespace AzQtComponents
 
     bool EditorProxyStyle::eventFilter(QObject* watched, QEvent* ev)
     {
-        if (ev->type() == QEvent::Show)
+        switch (ev->type())
         {
-            if (QWidget* w = qobject_cast<QWidget*>(watched))
+            case QEvent::Show:
             {
-                if (strcmp(w->metaObject()->className(), "QDockWidgetGroupWindow") != 0)
+                if (QWidget* w = qobject_cast<QWidget*>(watched))
                 {
-                    ensureCustomWindowDecorations(w);
+                    if (strcmp(w->metaObject()->className(), "QDockWidgetGroupWindow") != 0)
+                    {
+                        ensureCustomWindowDecorations(w);
+                    }
                 }
             }
+            break;
+
+            case QEvent::ToolTipChange:
+            {
+                if (QWidget* w = qobject_cast<QWidget*>(watched))
+                {
+                    forceToolTipLineWrap(w);
+                }
+            }
+            break;
         }
 
         return QProxyStyle::eventFilter(watched, ev);

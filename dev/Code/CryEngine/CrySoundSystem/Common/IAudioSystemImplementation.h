@@ -834,7 +834,7 @@ namespace Audio
         // See Also:
         //		DeleteAudioListenerObjectData
         ///////////////////////////////////////////////////////////////////////////////////////////////
-        virtual IATLListenerData* NewDefaultAudioListenerObjectData() = 0;
+        virtual IATLListenerData* NewDefaultAudioListenerObjectData(const TATLIDType nObjectID) = 0;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // <title NewAudioListenerObjectData>
@@ -852,7 +852,7 @@ namespace Audio
         // See Also:
         //		DeleteAudioListenerObjectData
         ///////////////////////////////////////////////////////////////////////////////////////////////
-        virtual IATLListenerData* NewAudioListenerObjectData(const uint nIndex) = 0;
+        virtual IATLListenerData* NewAudioListenerObjectData(const TATLIDType nObjectID) = 0;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // <title DeleteAudioListenerObjectData>

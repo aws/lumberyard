@@ -975,8 +975,7 @@ void CVisAreaManager::UpdateVisArea(CVisArea* pArea, const Vec3* pPoints, int nC
     char sTemp[64];
     cry_strcpy(sTemp, szName);
     _strlwr_s(sTemp, sizeof(sTemp));
-    strlwr(sTemp);
-
+ 
     bool bPortal = false;
     bool bVisArea = false;
     bool bOcclArea = false;

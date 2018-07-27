@@ -417,20 +417,19 @@ namespace EMStudio
                     hoveredNode = portNode;
                 }
 
-                // if we hover over a state, the action is valid
-                mActiveGraph->SetReplaceTransitionValid(hoveredNode);
-
                 if (mActiveGraph->GetIsRepositioningTransitionHead())
                 {
                     // when adjusting the arrow head and we are over the source node with the mouse
-                    if (hoveredNode == stateConnection->GetSourceNode())
+                    if (hoveredNode
+                        && hoveredNode != stateConnection->GetSourceNode()
+                        && CheckIfIsValidTransition(stateConnection->GetSourceNode(), hoveredNode))
+                    {
+                        stateConnection->SetTargetNode(hoveredNode); 
+                        mActiveGraph->SetReplaceTransitionValid(true);
+                    }
+                    else
                     {
                         mActiveGraph->SetReplaceTransitionValid(false);
-                    }
-
-                    if (hoveredNode && hoveredNode != stateConnection->GetSourceNode())
-                    {
-                        stateConnection->SetTargetNode(hoveredNode);
                     }
 
                     GraphNode* targetNode = stateConnection->GetTargetNode();
@@ -443,14 +442,16 @@ namespace EMStudio
                 else if (mActiveGraph->GetIsRepositioningTransitionTail())
                 {
                     // when adjusting the arrow tail and we are over the target node with the mouse
-                    if (hoveredNode == stateConnection->GetTargetNode())
-                    {
-                        mActiveGraph->SetReplaceTransitionValid(false);
-                    }
-
-                    if (hoveredNode && hoveredNode != stateConnection->GetTargetNode())
+                    if (hoveredNode
+                        && hoveredNode != stateConnection->GetTargetNode()
+                        && CheckIfIsValidTransition(hoveredNode, stateConnection->GetTargetNode()))
                     {
                         stateConnection->SetSourceNode(hoveredNode);
+                        mActiveGraph->SetReplaceTransitionValid(true);
+                    }
+                    else
+                    {
+                        mActiveGraph->SetReplaceTransitionValid(false);
                     }
 
                     GraphNode* sourceNode = stateConnection->GetSourceNode();
@@ -459,6 +460,7 @@ namespace EMStudio
                         QPoint offset = globalPos - sourceNode->GetRect().topLeft();
                         stateConnection->SetStartOffset(offset);
                     }
+                    
                 }
             }
 
@@ -710,7 +712,7 @@ namespace EMStudio
                 EMotionFX::AnimGraphNode* animGraphNode = blendNode->GetEMFXNode();
 
                 // check if the node is not part of a state machine, this is the only case where the collapsible node is possible
-                if (animGraphNode->GetParentNode()->GetType() != EMotionFX::AnimGraphStateMachine::TYPE_ID)
+                if (azrtti_typeid(animGraphNode->GetParentNode()) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
                 {
                     if (node->GetIsInsideArrowRect(globalPos))
                     {
@@ -757,11 +759,14 @@ namespace EMStudio
                 // create new connection
                 if ((isInputPort && portNode->GetCreateConFromOutputOnly() == false) || isInputPort == false)
                 {
-                    QPoint offset = globalPos - portNode->GetRect().topLeft();
-                    UpdateMouseCursor(mousePos, globalPos);
-                    mActiveGraph->StartCreateConnection(portNr, isInputPort, portNode, port, offset);
-                    //update();
-                    return;
+                    if (CheckIfIsValidTransitionSource(portNode))
+                    {
+                        QPoint offset = globalPos - portNode->GetRect().topLeft();
+                        UpdateMouseCursor(mousePos, globalPos);
+                        mActiveGraph->StartCreateConnection(portNr, isInputPort, portNode, port, offset);
+                        //update();
+                        return;
+                    }
                 }
 
                 //          update();
@@ -975,23 +980,26 @@ namespace EMStudio
                         GraphNode*  targetNode;
 
                         NodePort* targetPort = mActiveGraph->FindPort(globalPos.x(), globalPos.y(), &targetNode, &targetPortNr, &targetIsInputPort);
-                        MCORE_ASSERT(mActiveGraph->GetTargetPort() == targetPort);
-                    #ifndef MCORE_DEBUG
-                        MCORE_UNUSED(targetPort);
-                    #endif
+                        if (targetPort && mActiveGraph->GetTargetPort() == targetPort
+                            && targetNode != mActiveGraph->GetCreateConnectionNode())
+                        {
+#ifndef MCORE_DEBUG
+                            MCORE_UNUSED(targetPort);
+#endif
 
-                        QPoint endOffset = globalPos - targetNode->GetRect().topLeft();
-                        mActiveGraph->SetCreateConnectionEndOffset(endOffset);
+                            QPoint endOffset = globalPos - targetNode->GetRect().topLeft();
+                            mActiveGraph->SetCreateConnectionEndOffset(endOffset);
 
-                        // trigger the callback
-                        OnCreateConnection(mActiveGraph->GetCreateConnectionPortNr(),
-                            mActiveGraph->GetCreateConnectionNode(),
-                            mActiveGraph->GetCreateConnectionIsInputPort(),
-                            targetPortNr,
-                            targetNode,
-                            targetIsInputPort,
-                            mActiveGraph->GetCreateConnectionStartOffset(),
-                            mActiveGraph->GetCreateConnectionEndOffset());
+                            // trigger the callback
+                            OnCreateConnection(mActiveGraph->GetCreateConnectionPortNr(),
+                                mActiveGraph->GetCreateConnectionNode(),
+                                mActiveGraph->GetCreateConnectionIsInputPort(),
+                                targetPortNr,
+                                targetNode,
+                                targetIsInputPort,
+                                mActiveGraph->GetCreateConnectionStartOffset(),
+                                mActiveGraph->GetCreateConnectionEndOffset());
+                        }
                     }
                 }
 
@@ -1222,8 +1230,15 @@ namespace EMStudio
         }
 
         // get the mouse position, calculate the global mouse position and update the relevant data
-        QPoint mousePos     = event->pos();
-        QPoint globalPos    = LocalToGlobal(mousePos);
+        
+        // For some reason this call fails to get the correct mouse position
+        // It might be relative to the window?  Jira generated.
+//        QPoint mousePos     = event->pos();
+
+        QPoint globalQtMousePos = event->globalPos();
+        QPoint globalQtMousePosInWidget = this->mapFromGlobal(globalQtMousePos);
+        QPoint globalPos    = LocalToGlobal(globalQtMousePosInWidget);
+
         SetMousePos(globalPos);
 
         // only handle vertical events
@@ -1273,7 +1288,7 @@ namespace EMStudio
             EMotionFX::AnimGraphNode* animGraphNode = blendNode->GetEMFXNode();
 
             // check if the node is part of a state machine, on this case it's not collapsible, the arrow is not needed to be checked
-            if (animGraphNode->GetParentNode()->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID)
+            if (azrtti_typeid(animGraphNode->GetParentNode()) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
             {
                 // if the mouse is over a node but NOT over the visualize icon
                 if (node->GetIsInsideVisualizeRect(globalMousePos))
@@ -1470,6 +1485,12 @@ namespace EMStudio
         mControlPressed = false;
         mAltPressed     = false;
         releaseKeyboard();
+
+        if (mActiveGraph && mActiveGraph->GetIsCreatingConnection())
+        {
+            mActiveGraph->StopCreateConnection();
+            mLeftMousePressed = false;
+        }
         //update();
     }
 
@@ -1517,6 +1538,20 @@ namespace EMStudio
         return true;
     }
 
+    bool NodeGraphWidget::CheckIfIsValidTransition(GraphNode* sourceState, GraphNode* targetState)
+    {
+        AZ_UNUSED(sourceState);
+        AZ_UNUSED(targetState);
+
+        return true;
+    }
+
+    bool NodeGraphWidget::CheckIfIsValidTransitionSource(GraphNode* sourceState)
+    {
+        AZ_UNUSED(sourceState);
+
+        return true;
+    }
 
     // create the connection
     void NodeGraphWidget::OnCreateConnection(uint32 sourcePortNr, GraphNode* sourceNode, bool sourceIsInputPort, uint32 targetPortNr, GraphNode* targetNode, bool targetIsInputPort, const QPoint& startOffset, const QPoint& endOffset)

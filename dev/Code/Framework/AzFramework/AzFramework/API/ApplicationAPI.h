@@ -161,6 +161,11 @@ namespace AzFramework
         // rendering context.
         virtual void OnApplicationWindowCreated() {}
         virtual void OnApplicationWindowDestroy() {}
+
+        // Event triggered when an orientation change occurs.
+        // This is currently only supported on Android so the 
+        // renderer can handle orientation changes.
+        virtual void OnApplicationWindowRedrawNeeded() {}
     };
 } // namespace AzFramework
 

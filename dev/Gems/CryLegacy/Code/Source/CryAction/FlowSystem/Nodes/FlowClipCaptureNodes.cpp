@@ -14,11 +14,11 @@
 // Description : Node to record in-game video clips.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <IPlatformOS.h>
 #include "UnicodeFunctions.h"
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #undef AZ_RESTRICTED_SECTION

@@ -32,6 +32,7 @@
 #endif
 
 #include <AzCore/std/parallel/semaphore.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #include <windows.h>
@@ -48,13 +49,12 @@
 
 namespace
 {
-
 #if !defined(AZ_PLATFORM_WINDOWS)
-    void MessageBoxW(int,const wchar_t* header, const wchar_t* message, unsigned long)
+    void MessageBoxW(int, const wchar_t* header, const wchar_t* message, unsigned long)
     {
 #if defined(AZ_PLATFORM_APPLE)
         CFStringEncoding encoding = (CFByteOrderLittleEndian == CFByteOrderGetCurrent()) ?
-                                          kCFStringEncodingUTF32LE : kCFStringEncodingUTF32BE;
+            kCFStringEncodingUTF32LE : kCFStringEncodingUTF32BE;
         CFStringRef header_ref = CFStringCreateWithBytes(nullptr, reinterpret_cast<const UInt8*>(header), wcslen(header) * sizeof(wchar_t), encoding, false);
         CFStringRef message_ref = CFStringCreateWithBytes(nullptr, reinterpret_cast<const UInt8*>(message), wcslen(message) * sizeof(wchar_t), encoding, false);
 
@@ -67,89 +67,6 @@ namespace
 #endif
     }
 #endif
-
-    // this class represents a local compiler process execution
-    class LocalResourceCompilerProcess
-        : public IResourceCompilerProcess
-    {
-    public:
-#if defined(AZ_PLATFORM_WINDOWS)
-        LocalResourceCompilerProcess(HANDLE processHandle)
-#else
-        LocalResourceCompilerProcess(pid_t processHandle)
-#endif
-        {
-            m_rcProcessHandle = processHandle;
-        }
-
-        virtual bool IsDone() override
-        {
-#if defined(AZ_PLATFORM_WINDOWS)
-            return WaitForSingleObject(m_rcProcessHandle, 0) == WAIT_TIMEOUT;
-#else
-            int status = 0;
-            pid_t result = waitpid(m_rcProcessHandle, &status, WNOHANG);
-            m_exitCode = WEXITSTATUS(status);
-            return result == m_rcProcessHandle;
-#endif
-        }
-        virtual void WaitForDone() override
-        {
-#if defined(AZ_PLATFORM_WINDOWS)
-            WaitForSingleObject(m_rcProcessHandle, INFINITE);
-#else
-            int status = 0;
-            waitpid(m_rcProcessHandle, &status, 0);
-            m_exitCode = WEXITSTATUS(status);
-#endif
-        }
-
-        virtual void Terminate() override
-        {
-            if (m_rcProcessHandle)
-            {
-#if defined(AZ_PLATFORM_WINDOWS)
-                TerminateProcess(m_rcProcessHandle, eRcExitCode_Crash);
-                WaitForSingleObject(m_rcProcessHandle, INFINITE);
-#else
-                kill(m_rcProcessHandle, SIGTERM);
-#endif
-            }
-        }
-
-        virtual int GetExitCode() override
-        {
-            if (IsDone())
-            {
-#if defined(AZ_PLATFORM_WINDOWS)
-                DWORD exitCode = eRcExitCode_Pending;
-                return GetExitCodeProcess(m_rcProcessHandle, &exitCode);
-#else
-                return m_exitCode;
-#endif
-            }
-
-            return eRcExitCode_Pending;
-        }
-
-        virtual ~LocalResourceCompilerProcess()
-        {
-            if (m_rcProcessHandle)
-            {
-#if defined(AZ_PLATFORM_WINDOWS)
-                CloseHandle(m_rcProcessHandle);
-#endif
-            }
-        }
-
-    private:
-#if defined(AZ_PLATFORM_WINDOWS)
-        HANDLE m_rcProcessHandle;
-#else
-        pid_t m_rcProcessHandle;
-        int m_exitCode;
-#endif
-    };
 }
 
 namespace
@@ -224,7 +141,7 @@ static bool DirectoryExists(const wchar_t* szPathPart0, const wchar_t* szPathPar
     if (szPathPart0 && szPathPart0[0])
     {
         dir.append(szPathPart0);
-        if (szPathPart1 && szPathPart1[0] 
+        if (szPathPart1 && szPathPart1[0]
             && szPathPart1[0] != L'/' && szPathPart1[0] != L'\\')
         {
             size_t path0LastCharPos = dir.length() - 1;
@@ -254,7 +171,7 @@ static bool DirectoryExists(const wchar_t* szPathPart0, const wchar_t* szPathPar
 //////////////////////////////////////////////////////////////////////////
 static void ShowMessageBoxRcNotFound(const wchar_t* const szCmdLine, const wchar_t* const szDir)
 {
-    SettingsManagerHelpers::CFixedString<wchar_t, MAX_PATH * 4 + 150> tmp;
+    SettingsManagerHelpers::CFixedString<wchar_t, MAX_PATH* 4 + 150> tmp;
 
     tmp.append(L"The resource compiler (RC.EXE) was not found.  Please run the Lumberyard Setup Assistant (found in Bin64) to configure your workspace.");
     MessageBoxW(0, tmp.c_str(), L"Error", MB_ICONERROR | MB_OK);
@@ -413,7 +330,7 @@ namespace
         replaceAllInStringInPlace(finalString, "#ENGINEROOT#", pathBuffer);
         // put additional replacements here.
 
-        strcpy_s(outputString, bufferSize, finalString.c_str());
+        azstrcpy(outputString, bufferSize, finalString.c_str());
     }
 }
 
@@ -428,13 +345,13 @@ bool GetRCFolder(wchar_t* pathBuffer, const wchar_t* binFolderFromRegistry, wcha
     swprintf(szBinFolderFromRegistry, 0x40, L"%ls/rc", binFolderFromRegistry);
 
 #if defined(__APPLE__)
-        const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinMac64/rc" };
+    const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinMac64/rc" };
 #elif defined(_WIN32)
-        const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"Bin64vc141/rc", L"Bin64vc140/rc", L"Bin64vc120/rc"};
+    const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"Bin64vc141/rc", L"Bin64vc140/rc", L"Bin64vc120/rc"};
 #elif defined(LINUX64)
-        const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinLinux64/rc"};
+    const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinLinux64/rc"};
 #else
-        const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings };
+    const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings };
 #endif
 
     wchar_t szCheckedPathBuffer[_MAX_PATH];
@@ -442,7 +359,7 @@ bool GetRCFolder(wchar_t* pathBuffer, const wchar_t* binFolderFromRegistry, wcha
 
     if (pathBuffer && pathBuffer[0])
     {
-        size_t lastCharPos = wcslen(pathBuffer)-1;
+        size_t lastCharPos = wcslen(pathBuffer) - 1;
         if (pathBuffer[lastCharPos] == L'\\' || pathBuffer[lastCharPos] == L'/')
         {
             swprintf(szCheckedPathBuffer, _MAX_PATH, L"%s", pathBuffer);
@@ -452,11 +369,11 @@ bool GetRCFolder(wchar_t* pathBuffer, const wchar_t* binFolderFromRegistry, wcha
             swprintf(szCheckedPathBuffer, _MAX_PATH, L"%s/", pathBuffer);
         }
     }
-    
-    
+
+
 
     size_t  subfolder_name_index = 0;
-    for (size_t subFolderIndex=0;subFolderIndex<(sizeof(folderNames)/sizeof(wchar_t*));subFolderIndex++)
+    for (size_t subFolderIndex = 0; subFolderIndex < (sizeof(folderNames) / sizeof(wchar_t*)); subFolderIndex++)
     {
         if (DirectoryExists(szCheckedPathBuffer, folderNames[subFolderIndex]))
         {
@@ -521,10 +438,10 @@ IResourceCompilerHelper::ERcCallResult CResourceCompilerHelper::CallResourceComp
                 smTools.GetRootPathUtf16(false, SettingsManagerHelpers::CWCharBuffer(pathBuffer, sizeof(pathBuffer)));
                 break;
             case eRcExePath_currentFolder:
-                wcscpy(pathBuffer, L".");
+                azwcscpy(pathBuffer, AZ_ARRAY_SIZE(pathBuffer), L".");
                 break;
             case eRcExePath_customPath:
-                wcscpy(pathBuffer, szRootPath);
+                azwcscpy(pathBuffer, AZ_ARRAY_SIZE(pathBuffer), szRootPath);
                 break;
             default:
                 return eRcCallResult_notFound;
@@ -532,7 +449,7 @@ IResourceCompilerHelper::ERcCallResult CResourceCompilerHelper::CallResourceComp
 
             if (!pathBuffer[0])
             {
-                wcscpy(pathBuffer, L".");
+                azwcscpy(pathBuffer, AZ_ARRAY_SIZE(pathBuffer), L".");
             }
 
             // Do a best attempt to determine the RC path
@@ -540,7 +457,7 @@ IResourceCompilerHelper::ERcCallResult CResourceCompilerHelper::CallResourceComp
             smTools.GetBinFolderUtf16(true, SettingsManagerHelpers::CWCharBuffer(binFolderNameFromRegistry, sizeof(binFolderNameFromRegistry)));
 
             wchar_t szBinFolderName[0x40];
-            if (GetRCFolder(pathBuffer, binFolderNameFromRegistry, szBinFolderName, sizeof(szBinFolderName)/sizeof(wchar_t)))
+            if (GetRCFolder(pathBuffer, binFolderNameFromRegistry, szBinFolderName, sizeof(szBinFolderName) / sizeof(wchar_t)))
             {
                 swprintf(szRcDirectory, 512, L"%s/%s", pathBuffer, szBinFolderName);
             }
@@ -746,187 +663,5 @@ IResourceCompilerHelper::ERcCallResult CResourceCompilerHelper::CallResourceComp
     return ConvertResourceCompilerExitCodeToResultCode(exitCode);
 }
 
-//////////////////////////////////////////////////////////////////////////
-IResourceCompilerHelper::RCProcessHandle CResourceCompilerHelper::AsyncCallResourceCompiler(
-    const char* szFileName,
-    const char* szAdditionalSettings,
-    bool bMayShowWindow,
-    IResourceCompilerHelper::ERcExePath rcExePath,
-    bool bSilent,
-    bool bNoUserDialog,
-    const wchar_t* szWorkingDirectory,
-    const wchar_t* szRootPath,
-    IResourceCompilerListener* listener)
-{
-    // make command for execution
-
-    // expand macros such a #ENGINEROOT#:
-    char szActualFileName[512] = {0};
-    char szActualAdditionalSettings[512] = {0};
-
-    expandMacros(szFileName, szActualFileName, 512);
-    expandMacros(szAdditionalSettings, szActualAdditionalSettings, 512);
-
-    SettingsManagerHelpers::CFixedString<wchar_t, MAX_PATH* 3> wRemoteCmdLine;
-    CSettingsManagerTools smTools = CSettingsManagerTools();
-
-    if (!szAdditionalSettings)
-    {
-        szAdditionalSettings = "";
-    }
-
-    wchar_t szRcDirectory[512];
-    {
-        wchar_t pathBuffer[512];
-        switch (rcExePath)
-        {
-        case eRcExePath_registry:
-            smTools.GetRootPathUtf16(true, SettingsManagerHelpers::CWCharBuffer(pathBuffer, sizeof(pathBuffer)));
-            break;
-        case eRcExePath_settingsManager:
-            smTools.GetRootPathUtf16(false, SettingsManagerHelpers::CWCharBuffer(pathBuffer, sizeof(pathBuffer)));
-            break;
-        case eRcExePath_currentFolder:
-            wcscpy(pathBuffer, L".");
-            break;
-        case eRcExePath_customPath:
-            wcscpy(pathBuffer, szRootPath);
-            break;
-        default:
-            return NULL;
-        }
-
-        if (!pathBuffer[0])
-        {
-            wcscpy(pathBuffer, L".");
-        }
-
-        wchar_t szRCFolderName[_MAX_PATH];
-        swprintf(szRCFolderName, _MAX_PATH, L"/%hs/rc", BINFOLDER_NAME);
-        if (smTools.Is64bitWindows() && (DirectoryExists(pathBuffer, szRCFolderName) || !DirectoryExists(pathBuffer, L"/Bin32/rc")))
-        {
-            swprintf(szRcDirectory, 512, L"%s/%s", pathBuffer, szRCFolderName);
-        }
-        else
-        {
-            swprintf(szRcDirectory, 512, L"%s/Bin32/rc", pathBuffer);
-        }
-    }
-
-    wchar_t szRegSettingsBuffer[1024];
-    smTools.GetEngineSettingsManager()->GetValueByRef("RC_Parameters", SettingsManagerHelpers::CWCharBuffer(szRegSettingsBuffer, sizeof(szRegSettingsBuffer)));
-    bool enableSourceControl = true;
-    smTools.GetEngineSettingsManager()->GetValueByRef("RC_EnableSourceControl", enableSourceControl);
-
-    wRemoteCmdLine.appendAscii("\"");
-    wRemoteCmdLine.append(szRcDirectory);
-    wRemoteCmdLine.appendAscii("/");
-    wRemoteCmdLine.appendAscii(RC_EXECUTABLE);
-    wRemoteCmdLine.appendAscii("\"");
-
-    if (!enableSourceControl)
-    {
-        wRemoteCmdLine.appendAscii(" -nosourcecontrol ");
-    }
-
-    if (!szFileName)
-    {
-        wRemoteCmdLine.appendAscii(" -userdialog=0 ");
-        wRemoteCmdLine.appendAscii(szAdditionalSettings);
-        wRemoteCmdLine.appendAscii(" ");
-        wRemoteCmdLine.append(szRegSettingsBuffer);
-    }
-    else
-    {
-        wRemoteCmdLine.appendAscii(" \"");
-        wRemoteCmdLine.appendAscii(szActualFileName);
-        wRemoteCmdLine.appendAscii("\"");
-        wRemoteCmdLine.appendAscii(bNoUserDialog ? " -userdialog=0 " : " -userdialog=1 ");
-        wRemoteCmdLine.appendAscii(szActualAdditionalSettings);
-        wRemoteCmdLine.appendAscii(" ");
-        wRemoteCmdLine.append(szRegSettingsBuffer);
-    }
-
-#if defined(AZ_PLATFORM_WINDOWS)
-    STARTUPINFOW si;
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    si.dwX = 100;
-    si.dwY = 100;
-    si.dwFlags = STARTF_USEPOSITION;
-
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&pi, sizeof(pi));
-
-    bool bShowWindow;
-    if (bMayShowWindow)
-    {
-        wchar_t buffer[20];
-        smTools.GetEngineSettingsManager()->GetValueByRef("ShowWindow", SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer)));
-        bShowWindow = (wcscmp(buffer, L"true") == 0);
-    }
-    else
-    {
-        bShowWindow = false;
-    }
-
-    wchar_t currentDirectory[MAX_PATH];
-    GetCurrentDirectoryW(sizeof(currentDirectory) - 1, currentDirectory);
-    const wchar_t* const szStartingDirectory = szWorkingDirectory ? szWorkingDirectory : currentDirectory;
-
-    if (!CreateProcessW(
-            NULL,               // No module name (use command line).
-            const_cast<wchar_t*>(wRemoteCmdLine.c_str()), // Command line.
-            NULL,               // Process handle not inheritable.
-            NULL,               // Thread handle not inheritable.
-            TRUE,               // Set handle inheritance to TRUE.
-            bShowWindow ? 0 : CREATE_NO_WINDOW, // creation flags.
-            NULL,               // Use parent's environment block.
-            szStartingDirectory, // Set starting directory.
-            &si,                // Pointer to STARTUPINFO structure.
-            &pi))               // Pointer to PROCESS_INFORMATION structure.
-    {
-        if (!bSilent)
-        {
-            ShowMessageBoxRcNotFound(wRemoteCmdLine.c_str(), szStartingDirectory);
-        }
-        return NULL;
-    }
-    // return an interface that can be used to manipulate the process.
-    return RCProcessHandle(new LocalResourceCompilerProcess(pi.hProcess), [](IResourceCompilerProcess* proc) { delete proc; });
-#else
-    pid_t pid = fork();
-    if (pid == -1)
-    {
-        return nullptr;
-    }
-    else if (pid == 0)
-    {
-        char workingDirectory[MAX_PATH * 8];
-        if (szWorkingDirectory)
-        {
-            ConvertUtf16ToUtf8(szWorkingDirectory, SettingsManagerHelpers::CCharBuffer(workingDirectory, MAX_PATH * 8));
-            chdir(workingDirectory);
-        }
-        char utf8commandLine[MAX_PATH * 8];
-        ConvertUtf16ToUtf8(wRemoteCmdLine.c_str(), SettingsManagerHelpers::CCharBuffer(utf8commandLine, MAX_PATH * 8));
-        std::vector<std::string> args;
-        std::string s(utf8commandLine);
-        std::istringstream f(s);
-        while (getline(f, s, ' '))
-            args.push_back(s);
-
-        const char *path = args[0].c_str();
-        char **argv = new char*[args.size() + 1];
-        for (int i = 0; i < args.size(); ++i)
-            argv[i] = const_cast<char*>(args[i].c_str());
-        argv[args.size()] = 0;
-        execv(path, argv);
-        assert(false);
-    }
-
-    return RCProcessHandle(new LocalResourceCompilerProcess(pid), [](IResourceCompilerProcess* proc) { delete proc; });
-#endif
-}
 
 #endif //(CRY_ENABLE_RC_HELPER)

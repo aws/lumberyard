@@ -44,7 +44,7 @@ bool UIUtils::GetMultiFieldDialog(QWidget* parent, const QString& title, FieldCo
         QAmazonLineEdit* edit = new QAmazonLineEdit(&dialog);
 
         edit->setMinimumWidth(width);
-        QObject::connect(edit, &QAmazonLineEdit::textChanged, [edit, width](const QString& text)
+        QObject::connect(edit, &QAmazonLineEdit::textChanged, edit, [edit, width](const QString& text)
             {
                 const unsigned int currWidth = (unsigned int)edit->fontMetrics().boundingRect(text).width();
                 edit->setMinimumWidth(qMax(currWidth + 32, width));
@@ -108,47 +108,47 @@ QColor UIUtils::StringToColor(const QString& value)
     int res = 0;
     if (res != 4)
     {
-        res = sscanf(str.c_str(), "%f,%f,%f,%f", &r, &g, &b, &a);
+        res = azsscanf(str.c_str(), "%f,%f,%f,%f", &r, &g, &b, &a);
     }
     if (res != 4)
     {
-        res = sscanf(str.c_str(), "R:%f,G:%f,B:%f,A:%f", &r, &g, &b, &a);
+        res = azsscanf(str.c_str(), "R:%f,G:%f,B:%f,A:%f", &r, &g, &b, &a);
     }
     if (res != 4)
     {
-        res = sscanf(str.c_str(), "R:%f G:%f B:%f A:%f", &r, &g, &b, &a);
+        res = azsscanf(str.c_str(), "R:%f G:%f B:%f A:%f", &r, &g, &b, &a);
     }
     if (res != 4)
     {
-        res = sscanf(str.c_str(), "%f %f %f %f", &r, &g, &b, &a);
+        res = azsscanf(str.c_str(), "%f %f %f %f", &r, &g, &b, &a);
     }
 
     // if no alpha is passed in as part of the string we still need to support a valid RGB string.
     if (res < 3)
     {
-        res = sscanf(str.c_str(), "%f,%f,%f", &r, &g, &b);
+        res = azsscanf(str.c_str(), "%f,%f,%f", &r, &g, &b);
         a = 255.0f;
     }
     if (res < 3)
     {
-        res = sscanf(str.c_str(), "R:%f,G:%f,B:%f", &r, &g, &b);
+        res = azsscanf(str.c_str(), "R:%f,G:%f,B:%f", &r, &g, &b);
         a = 255.0f;
     }
     if (res < 3)
     {
-        res = sscanf(str.c_str(), "R:%f G:%f B:%f", &r, &g, &b);
+        res = azsscanf(str.c_str(), "R:%f G:%f B:%f", &r, &g, &b);
         a = 255.0f;
     }
     if (res < 3)
     {
-        res = sscanf(str.c_str(), "%f %f %f", &r, &g, &b);
+        res = azsscanf(str.c_str(), "%f %f %f", &r, &g, &b);
         a = 255.0f;
     }
 
     //If we have not been able to match any of the formates then we just assume one value and use it as the R.
     if (res < 3)
     {
-        sscanf(str.c_str(), "%f", &r);
+        azsscanf(str.c_str(), "%f", &r);
         return r;
     }
 

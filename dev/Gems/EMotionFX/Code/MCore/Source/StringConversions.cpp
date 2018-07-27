@@ -11,7 +11,7 @@
 */
 
 
-#include <AZCore/std/containers/vector.h>
+#include <AzCore/std/containers/vector.h>
 
 #include "Matrix4.h"
 #include "StringConversions.h"

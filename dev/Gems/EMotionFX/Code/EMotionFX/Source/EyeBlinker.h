@@ -31,7 +31,7 @@ namespace EMotionFX
     class EMFX_API EyeBlinker
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(EyeBlinker, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_EYEBLINKER);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         static EyeBlinker* Create(ActorInstance* actorInstance);

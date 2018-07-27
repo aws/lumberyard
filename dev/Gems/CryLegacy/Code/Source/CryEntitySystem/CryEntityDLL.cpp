@@ -11,12 +11,10 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <IEntitySystem.h>
 #include "EntitySystem.h"
-// Included only once per DLL module.
-#include <platform_impl.h>
 
 #include <IEngineModule.h>
 #include <CryExtension/ICryFactory.h>
@@ -65,46 +63,23 @@ static CSystemEventListner_Entity g_system_event_listener_entity;
 
 
 //////////////////////////////////////////////////////////////////////////
-class CEngineModule_EntitySystem
-    : public IEngineModule
+namespace LegacyCryEntitySystem
 {
-    CRYINTERFACE_SIMPLE(IEngineModule)
-    CRYGENERATE_SINGLETONCLASS(CEngineModule_EntitySystem, "EngineModule_CryEntitySystem", 0x885655072f014c03, 0x820c5a1a9b4d623b)
-
     //////////////////////////////////////////////////////////////////////////
-    virtual const char* GetName() const {
-        return "CryEntitySystem";
-    };
-    virtual const char* GetCategory() const { return "CryEngine"; };
-
-    //////////////////////////////////////////////////////////////////////////
-    virtual bool Initialize(SSystemGlobalEnvironment& env, const SSystemInitParams& initParams)
+    IEntitySystem* InitEntitySystem()
     {
-        ISystem* pSystem = env.pSystem;
+        ISystem* pSystem = gEnv->pSystem;
 
         CEntitySystem* pEntitySystem = new CEntitySystem(pSystem);
         g_pIEntitySystem = pEntitySystem;
         if (!pEntitySystem->Init(pSystem))
         {
             pEntitySystem->Release();
-            return false;
+            return nullptr;
         }
         pSystem->GetISystemEventDispatcher()->RegisterListener(&g_system_event_listener_entity);
 
-        env.pEntitySystem = pEntitySystem;
-        return true;
+        gEnv->pEntitySystem = pEntitySystem;
+        return pEntitySystem;
     }
 };
-
-CRYREGISTER_SINGLETON_CLASS(CEngineModule_EntitySystem)
-
-CEngineModule_EntitySystem::CEngineModule_EntitySystem()
-{
-};
-
-CEngineModule_EntitySystem::~CEngineModule_EntitySystem()
-{
-};
-
-
-#include <CrtDebugStats.h>

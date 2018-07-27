@@ -792,9 +792,9 @@ namespace AzToolsFramework
 
             //rebuild index cache for faster lookup
             m_childIndexCache.clear();
-            for (auto childId : m_children)
+            for (auto idx : m_children)
             {
-                m_childIndexCache[childId] = static_cast<AZ::u64>(m_childIndexCache.size());
+                m_childIndexCache[idx] = static_cast<AZ::u64>(m_childIndexCache.size());
             }
         }
     }

@@ -14,7 +14,7 @@
 // Description : implementation of the CLogFile class.
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "LogFile.h"
 #include "CryEdit.h"
 
@@ -29,7 +29,7 @@
 
 #include <stdarg.h>
 
-#if !defined(AZ_PLATFROM_WINDOWS)
+#if !defined(AZ_PLATFORM_WINDOWS)
 #include <time.h>
 #endif
 
@@ -216,7 +216,12 @@ void CLogFile::AboutSystem()
 #if defined(AZ_PLATFORM_WINDOWS)
     // Format and send OS version line
     QString str = "Windows ";
+
+#pragma warning( push )
+#pragma warning(disable: 4996)
     GetVersionEx(&OSVerInfo);
+#pragma warning( pop )
+
     if (OSVerInfo.dwMajorVersion == 4)
     {
         if (OSVerInfo.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS)
@@ -328,7 +333,7 @@ void CLogFile::AboutSystem()
     str += szBuffer;
     azsnprintf(szBuffer, MAX_LOGBUFFER_SIZE, ", system running for %d minutes", GetTickCount() / 60000);
     str += szBuffer;
-    CryLog("%s", str);
+    CryLog("%s", str.toUtf8().data());
 #else
     struct timespec ts;
 #if defined(AZ_PLATFORM_APPLE)
@@ -350,7 +355,7 @@ void CLogFile::AboutSystem()
 
 #if defined(AZ_PLATFORM_WINDOWS)
     GlobalMemoryStatus(&MemoryStatus);
-    azsnprintf(szBuffer, MAX_LOGBUFFER_SIZE, "%dMB phys. memory installed, %dMB paging available",
+    azsnprintf(szBuffer, MAX_LOGBUFFER_SIZE, "%zdMB phys. memory installed, %zdMB paging available",
         MemoryStatus.dwTotalPhys / 1048576 + 1,
         MemoryStatus.dwAvailPageFile / 1048576);
     CryLog("%s", szBuffer);
@@ -426,7 +431,8 @@ void CLogFile::AboutSystem()
     {
         azsnprintf(szBuffer, MAX_LOGBUFFER_SIZE, " keyboard and %i+ button mouse installed",
             GetSystemMetrics(SM_CMOUSEBUTTONS));
-        CryLog("%s", str + szBuffer);
+        str += szBuffer;
+        CryLog("%s", str.toUtf8().data());
     }
 
     CryLog("--------------------------------------------------------------------------------");
@@ -582,8 +588,13 @@ void CLogFile::OnWriteToConsole(const char* sText, bool bNewLine)
             char sTime[128];
             time_t ltime;
             time(&ltime);
-            struct tm* today = localtime(&ltime);
-            strftime(sTime, sizeof(sTime), "<%H:%M:%S> ", today);
+            struct tm today;
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
+            localtime_s(&today, &ltime);
+#else
+            today = *localtime(&ltime);
+#endif
+            strftime(sTime, sizeof(sTime), "<%H:%M:%S> ", &today);
             sOutLine = sTime;
             sOutLine += sText;
         }

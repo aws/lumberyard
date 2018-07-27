@@ -15,7 +15,7 @@
 //               are flagged as AI hideable. The manage also caches the objects.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IAISystem.h"
 #include "CAISystem.h"
 #include "StlUtils.h"

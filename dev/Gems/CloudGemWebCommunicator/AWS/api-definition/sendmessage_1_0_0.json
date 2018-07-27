@@ -1,0 +1,110 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "Cross Gem API to allow other CloudGems to send messages through their channels ($DeploymentName$ deployment)."
+    },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/broadcast": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "broadcast"
+            },
+            "post" : {
+                "parameters": [
+                    {
+                        "name": "message_request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/MessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Broadcast a message",
+                        "schema": {
+                            "$ref": "#/definitions/SendOutcome"
+                        }
+                    }
+                }
+            }
+        },
+        "/send/{cog_id}": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "send_direct"
+            },
+            "post": {
+                "description": "Send a message directly to a player",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "The players Cognito Identity ID.",
+                        "name": "cog_id",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "message_request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/MessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The player's account",
+                        "schema": {
+                            "$ref": "#/definitions/SendOutcome"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions" : {
+        "MessageRequest": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "description": "The channel to send to.",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "The message to send.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "message"
+            ]
+        },
+        "SendOutcome": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "Request result.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        }
+    }
+}

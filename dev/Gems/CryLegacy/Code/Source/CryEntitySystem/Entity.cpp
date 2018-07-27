@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "Entity.h"
 #include "AffineParts.h"
 #include "EntitySystem.h"
@@ -1489,7 +1489,7 @@ bool CEntity::RegisterComponent(IComponentPtr pComponentPtr)
     CRY_ASSERT_MESSAGE(m_bAllowDestroyOrCreateComponent, "Adding component to entity at this time is forbidden");
 
     const ComponentType& componentType = pComponentPtr->GetComponentType();
-    auto insertResult = m_components.insert(std::make_pair(componentType, pComponentPtr));
+    auto insertResult = m_components.insert(AZStd::make_pair(componentType, pComponentPtr));
     if (!insertResult.second)
     {
         CryWarning(VALIDATOR_MODULE_ENTITYSYSTEM, VALIDATOR_WARNING,

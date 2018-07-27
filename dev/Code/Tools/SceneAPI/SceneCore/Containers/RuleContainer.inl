@@ -27,7 +27,7 @@ namespace AZ
 
                 for (const AZStd::shared_ptr<DataTypes::IRule>& rule : m_rules)
                 {
-                    if (rule->RTTI_IsTypeOf(T::TYPEINFO_Uuid()))
+                    if (rule && rule->RTTI_IsTypeOf(T::TYPEINFO_Uuid()))
                     {
                         return AZStd::static_pointer_cast<T>(rule);
                     }
@@ -44,7 +44,7 @@ namespace AZ
 
                 for (const AZStd::shared_ptr<DataTypes::IRule>& rule : m_rules)
                 {
-                    if (rule->RTTI_IsTypeOf(T::TYPEINFO_Uuid()))
+                    if (rule && rule->RTTI_IsTypeOf(T::TYPEINFO_Uuid()))
                     {
                         return true;
                     }

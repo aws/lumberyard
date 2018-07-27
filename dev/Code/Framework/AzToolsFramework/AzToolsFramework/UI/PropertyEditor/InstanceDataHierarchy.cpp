@@ -1416,7 +1416,8 @@ namespace AzToolsFramework
                     for (size_t i = 0; i < targetNode->GetNumInstances(); ++i)
                     {
                         // Add a new element to the target container.
-                        void* targetPointer = targetClass->m_container->ReserveElement(targetNode->GetInstance(i), sourceChildToAdd->m_classElement);
+                        void* targetInstance = targetNode->GetInstance(i);
+                        void* targetPointer = targetClass->m_container->ReserveElement(targetInstance, sourceChildToAdd->m_classElement);
                         AZ_Assert(targetPointer, "Failed to allocate container element");
 
                         if (sourceChildToAdd->m_classElement->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER)
@@ -1453,6 +1454,10 @@ namespace AzToolsFramework
                             sourceStream, context, sourceChildToAdd->GetClassMetadata(), targetPointer, AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading));
                         (void)loadedFromStream;
                         AZ_Assert(loadedFromStream, "Failed to copy element to target.");
+
+                        // Some containers, such as AZStd::map require you to call StoreElement to actually consider the element part of the structure
+                        // Since the container is unable to put an uninitialized element into its tree until the key is known
+                        targetClass->m_container->StoreElement(targetInstance, targetPointer);
                     }
                 }
             }

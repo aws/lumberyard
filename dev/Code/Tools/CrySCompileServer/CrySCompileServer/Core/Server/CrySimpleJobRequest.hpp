@@ -15,15 +15,19 @@
 #define __CRYSIMPLEJOBREQUEST__
 
 #include "CrySimpleJob.hpp"
+#include "CrySimpleSock.hpp"
 
 
 class CCrySimpleJobRequest
     :   public  CCrySimpleJob
 {
 public:
-    CCrySimpleJobRequest(uint32_t requestIP);
+    CCrySimpleJobRequest(EProtocolVersion Version, uint32_t requestIP);
 
     virtual bool                    Execute(const TiXmlElement* pElement);
+
+private:
+    EProtocolVersion m_Version;
 };
 
 #endif

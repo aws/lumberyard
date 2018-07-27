@@ -18,7 +18,7 @@
 namespace LumberyardLauncher
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void RunMainLoop(AzGameFramework::GameApplication& gameApplication, IGameFramework& gameFramework)
+    void RunMainLoop(AzGameFramework::GameApplication& gameApplication)
     {
         // Ideally we'd just call GameApplication::RunMainLoop instead, but
         // we'd have to stop calling IGameFramework::PreUpdate / PostUpdate
@@ -32,6 +32,8 @@ namespace LumberyardLauncher
         // instead, which probably isn't going to happen anytime soon given
         // how many things depend on the ITimer interface).
         bool continueRunning = true;
+        ISystem* system = gEnv ? gEnv->pSystem : nullptr;
+        IGameFramework* gameFramework = (gEnv && gEnv->pGame) ? gEnv->pGame->GetIGameFramework() : nullptr;
         while (continueRunning)
         {
             // Pump the system event loop
@@ -41,13 +43,31 @@ namespace LumberyardLauncher
             gameApplication.TickSystem();
 
             // Pre-update CryEngine
-            continueRunning = gameFramework.PreUpdate(true, 0);
+            if (gameFramework)
+            {
+                // If the legacy game framework exists it updates CrySystem...
+                continueRunning = gameFramework->PreUpdate(true, 0);
+            }
+            else if (system)
+            {
+                // ...otherwise we need to update it here.
+                system->UpdatePreTickBus();
+            }
 
             // Update the AzFramework application tick bus
             gameApplication.Tick(gEnv->pTimer->GetFrameTime());
 
             // Post-update CryEngine
-            continueRunning = gameFramework.PostUpdate(true, 0) && continueRunning;
+            if (gameFramework)
+            {
+                // If the legacy game framework exists it updates CrySystem...
+                continueRunning = gameFramework->PostUpdate(true, 0) && continueRunning;
+            }
+            else if (system)
+            {
+                // ...otherwise we need to update it here.
+                system->UpdatePostTickBus();
+            }
 
             // Check for quit requests
             continueRunning = !gameApplication.WasExitMainLoopRequested() && continueRunning;

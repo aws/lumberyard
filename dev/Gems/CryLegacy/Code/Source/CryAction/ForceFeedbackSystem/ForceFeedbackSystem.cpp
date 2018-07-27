@@ -20,7 +20,7 @@ input system in a per frame basis
 
 */
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ForceFeedbackSystem.h"
 #include "GameXmlParamReader.h"
 
@@ -421,7 +421,7 @@ void CForceFeedBackSystem::LoadXmlData()
     const char* xmlDataFile = "Libs/GameForceFeedback/ForceFeedbackEffects.xml";
     XmlNodeRef rootNode = gEnv->pSystem->LoadXmlFromFile(xmlDataFile);
 
-    if (!rootNode || strcmpi(rootNode->getTag(), "ForceFeedback"))
+    if (!rootNode || azstricmp(rootNode->getTag(), "ForceFeedback"))
     {
         FORCEFEEDBACK_LOG("Could not load force feedback system data. Invalid XML file '%s'! ", xmlDataFile);
         return;

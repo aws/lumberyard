@@ -23,15 +23,15 @@ struct CryArchiveSortByName
 {
     bool operator () (const ICryArchive* left, const ICryArchive* right) const
     {
-        return _stricmp(left->GetFullPath(), right->GetFullPath()) < 0;
+        return azstricmp(left->GetFullPath(), right->GetFullPath()) < 0;
     }
     bool operator () (const char* left, const ICryArchive* right) const
     {
-        return _stricmp(left, right->GetFullPath()) < 0;
+        return azstricmp(left, right->GetFullPath()) < 0;
     }
     bool operator () (const ICryArchive* left, const char* right) const
     {
-        return _stricmp(left->GetFullPath(), right) < 0;
+        return azstricmp(left->GetFullPath(), right) < 0;
     }
 };
 
@@ -159,7 +159,7 @@ protected:
         if (szRelativePath[1] == ':' || (m_nFlags & FLAGS_ABSOLUTE_PATHS))
         {
             // make the normalized full path and try to match it against the binding root of this object
-            const char* szFullPath = m_pPak->AdjustFileName (szRelativePath, szFullPathBuf, ICryPak::FLAGS_PATH_REAL);
+            const char* szFullPath = m_pPak->AdjustFileName(szRelativePath, szFullPathBuf, CCryPak::g_nMaxPath, ICryPak::FLAGS_PATH_REAL);
             size_t nPathLen = strlen(szFullPath);
             if (nPathLen <= m_strBindRoot.length())
             {
@@ -171,7 +171,7 @@ protected:
             {
                 return NULL;
             }
-            if (memicmp(szFullPath, m_strBindRoot.c_str(), m_strBindRoot.length()))
+            if (azmemicmp(szFullPath, m_strBindRoot.c_str(), m_strBindRoot.length()))
             {
                 return NULL; // the roots don't match
             }

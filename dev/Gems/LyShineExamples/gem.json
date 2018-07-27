@@ -6,6 +6,11 @@
                 "~>0.1"
             ],
             "_comment": "LmbrCentral"
+        },
+        {
+            "Uuid": "6bb61c9e547043f0afc5019d6d460b78",
+            "VersionConstraints": [ "~>0.1.0" ],
+            "_comment": "UiBasics"
         }
     ],
     "GemFormatVersion": 3,

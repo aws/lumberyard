@@ -920,7 +920,7 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
     {
         int nModeGI = CSvoRenderer::GetInstance()->GetIntegratioMode();
 
-        if (nModeGI == 0 && CSvoRenderer::GetInstance()->GetUseLightProbes())
+        if (nModeGI == 0 && gEnv->pConsole->GetCVar("e_svoTI_UseLightProbes")->GetIVal())
         { // AO modulates diffuse and specular
             rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_CUBEMAP0];
         }
@@ -1138,6 +1138,7 @@ void CTiledShading::BindForwardShadingResources(CShader*, EHWShaderClass shaderT
         ptexRsmCol ? ptexRsmCol->GetShaderResourceView() : NULL,
         ptexRsmNor ? ptexRsmNor->GetShaderResourceView() : NULL,
     };
+
     rd->m_DevMan.BindSRV(shaderType, pTiledBaseRes, 16, 12);
 
     D3DSamplerState* pSamplers[1] = {

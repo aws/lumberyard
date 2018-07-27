@@ -4,6 +4,7 @@ import { Router } from "@angular/router";
 import { AwsService } from "app/aws/aws.service";
 import { LyMetricService, Event } from 'app/shared/service/index';
 import 'rxjs/add/operator/concatAll'
+import 'rxjs/add/observable/throw'
 
 //Use AWS from JS
 declare var AWS: any;
@@ -38,6 +39,15 @@ export abstract class ApiHandler implements Restifiable {
         this._aws = aws;
         this._identifier = metricIdentifier;
         this._metric = metric
+        this.get = this.get.bind(this)
+        this.post = this.post.bind(this)
+        this.put = this.put.bind(this)
+        this.delete = this.delete.bind(this)
+        this.sortQueryParametersByCodePoint = this.sortQueryParametersByCodePoint.bind(this)
+        this.execute = this.execute.bind(this)
+        this.mapResponseCodes = this.mapResponseCodes.bind(this)
+        this.recordEvent = this.recordEvent.bind(this)
+        this.AwsSigv4Signer = this.AwsSigv4Signer.bind(this)        
     }
 
     public get(restPath: string, headers: any = []): Observable<any> {        
@@ -103,14 +113,18 @@ export abstract class ApiHandler implements Restifiable {
     private execute(options: any): Observable<any> {
         let request_observable = new Observable<any>((observer) => {
             var signedRequest = this.AwsSigv4Signer(options);
-            let http_observable = this._http.request(signedRequest);
+            if (signedRequest == null) {
+                observer.error(new Error("Status: CreateRequestFailed, Message: Unable to create request"));
+            } else {
+                let http_observable = this._http.request(signedRequest);
 
-            this.recordEvent("ApiServiceRequested", {
-                "Identifier": this._identifier,
-                "Verb": RequestMethod[options.method],
-                "Path": options.url.replace(this._serviceAPI, "")               
-            }, null);
-            observer.next(this.mapResponseCodes(http_observable))
+                this.recordEvent("ApiServiceRequested", {
+                    "Identifier": this._identifier,
+                    "Verb": RequestMethod[options.method],
+                    "Path": options.url.replace(this._serviceAPI, "")
+                }, null);
+                observer.next(this.mapResponseCodes(http_observable))
+            }
         });
 
         return this._aws.context.authentication.refreshSessionOrLogout(request_observable.concatAll()).concatAll();
@@ -153,7 +167,9 @@ export abstract class ApiHandler implements Restifiable {
                 "Message": error.statusText,
                 "Identifier": this._identifier                
             }, null);
-
+            if (error.status == 'Missing credentials in config') {
+                this._aws.context.authentication.logout(true)
+            }
             return Observable.throw(new Error("Status: " + error.status + ", Message:" + error.statusText));
             })
     }
@@ -164,10 +180,16 @@ export abstract class ApiHandler implements Restifiable {
     }
       
     public AwsSigv4Signer(options: any) {
-        var parts = options.url.split('?');
+        if (options == null || options == undefined)
+            return null
+
+        var parts = options.url.split('?');        
         var host = parts[0].substr(8, parts[0].indexOf("/", 8) - 8);
         var path = parts[0].substr(parts[0].indexOf("/", 8));
         var querystring = this.codePointSort(parts[1]);
+        var requestmethod = RequestMethod[options.method]
+        if (requestmethod == undefined)
+            return null
 
         var now = new Date();
         if (!options.headers)
@@ -178,7 +200,7 @@ export abstract class ApiHandler implements Restifiable {
         options.pathname = function () {
             return path;
         };
-        options.methodIndex = options.method;
+        options.methodIndex = options.method;        
         options.method = RequestMethod[options.method].toLocaleUpperCase();
         options.search = function () {
             return querystring ? querystring : "";
@@ -186,7 +208,10 @@ export abstract class ApiHandler implements Restifiable {
         options.region = AWS.config.region;
 
         var signer = new AWS.Signers.V4(options, SIGNING_API);
-        
+
+        if (!AWS.config.credentials)
+            this._aws.context.authentication.logout(true)
+
         signer.addAuthorization(AWS.config.credentials, now);
         options.method = options.methodIndex;
 

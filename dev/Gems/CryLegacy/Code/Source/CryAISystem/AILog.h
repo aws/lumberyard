@@ -43,30 +43,6 @@ enum AI_LOG_VERBOSITY
     AI_LOG_COMMENT = 3,
 };
 
-
-#ifndef CRYAISYSTEM_VERBOSITY
-#    define AIInitLog               (void)
-#  define AIWarning             (void)
-#  define AIError                   (void)
-#  define AILogProgress     (void)
-#  define AILogEvent            (void)
-#  define AILogComment      (void)
-#    define AILogAlways         (void)
-#    define AILogLoading        (void)
-#  define AIWarningID           (void)
-#  define AIErrorID             (void)
-#  define AILogProgressID (void)
-#  define AILogEventID      (void)
-#  define AILogCommentID    (void)
-#else
-# define AIWarningID            GetAISystem()->Warning
-# define AIErrorID              GetAISystem()->Error
-# define AILogProgressID    GetAISystem()->LogProgress
-# define AILogEventID           GetAISystem()->LogEvent
-# define AILogCommentID     GetAISystem()->LogComment
-#endif
-
-
 #ifdef CRYAISYSTEM_VERBOSITY
 
 /// Sets up console variables etc

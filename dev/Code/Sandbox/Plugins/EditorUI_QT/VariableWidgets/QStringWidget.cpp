@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "QStringWidget.h"
 #include "BaseVariableWidget.h"
 #include "Utils.h"
@@ -24,7 +24,7 @@ QStringWidget::QStringWidget(CAttributeItem* parent)
 {
     setText(QString(m_var->GetDisplayValue()));
 
-    connect(this, &QAmazonLineEdit::textChanged, [this, parent](const QString& text)
+    connect(this, &QAmazonLineEdit::textChanged, this, [this](const QString& text)
         {
             SelfCallFence(m_ignoreSetCallback);
             m_var->SetDisplayValue(text.toUtf8().data());

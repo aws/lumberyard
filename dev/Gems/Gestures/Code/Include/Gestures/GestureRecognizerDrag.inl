@@ -9,26 +9,57 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "Gestures_precompiled.h"
+
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-Gestures::RecognizerDrag::RecognizerDrag(Gestures::IDragListener& listener, const Config& config)
-    : m_listener(listener)
-    , m_config(config)
+inline void Gestures::RecognizerDrag::Config::Reflect(AZ::ReflectContext* context)
+{
+    if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
+    {
+        serialize->Class<Config>()
+            ->Version(0)
+            ->Field("minSecondsHeld", &Config::minSecondsHeld)
+            ->Field("minPixelsMoved", &Config::minPixelsMoved)
+            ->Field("pointerIndex", &Config::pointerIndex)
+            ->Field("priority", &Config::priority)
+        ;
+
+        if (AZ::EditContext* ec = serialize->GetEditContext())
+        {
+            ec->Class<Config>("Drag Config", "Configuration values used to setup a gesture recognizer for drags.")
+                ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->DataElement(AZ::Edit::UIHandlers::SpinBox, &Config::pointerIndex, "Pointer Index", "The pointer (button or finger) index to track.")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0)
+                    ->Attribute(AZ::Edit::Attributes::Max, 10)
+                ->DataElement(AZ::Edit::UIHandlers::Default, &Config::minSecondsHeld, "Min Seconds Held", "The min time in seconds after the initial press before a drag will be recognized.")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->DataElement(AZ::Edit::UIHandlers::Default, &Config::minPixelsMoved, "Min Pixels Moved", "The min distance in pixels that must be dragged before a drag will be recognized.")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ;
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+inline Gestures::RecognizerDrag::RecognizerDrag(const Config& config)
+    : m_config(config)
     , m_startTime(0)
-    , m_startPosition(ZERO)
-    , m_currentPosition(ZERO)
+    , m_startPosition()
+    , m_currentPosition()
     , m_currentState(State::Idle)
 {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-Gestures::RecognizerDrag::~RecognizerDrag()
+inline Gestures::RecognizerDrag::~RecognizerDrag()
 {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Gestures::RecognizerDrag::OnPressedEvent(const Vec2& screenPosition, uint32_t pointerIndex)
+inline bool Gestures::RecognizerDrag::OnPressedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex)
 {
     if (pointerIndex != m_config.pointerIndex)
     {
@@ -50,7 +81,7 @@ bool Gestures::RecognizerDrag::OnPressedEvent(const Vec2& screenPosition, uint32
     default:
     {
         // Should not be possible, but not fatal if we happen to get here somehow.
-        CryLogAlways("RecognizerDrag::OnPressedEvent state logic failure");
+        AZ_Warning("RecognizerDrag", false, "RecognizerDrag::OnPressedEvent state logic failure");
     }
     break;
     }
@@ -59,7 +90,7 @@ bool Gestures::RecognizerDrag::OnPressedEvent(const Vec2& screenPosition, uint32
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Gestures::RecognizerDrag::OnDownEvent(const Vec2& screenPosition, uint32_t pointerIndex)
+inline bool Gestures::RecognizerDrag::OnDownEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex)
 {
     if (pointerIndex != m_config.pointerIndex)
     {
@@ -78,21 +109,21 @@ bool Gestures::RecognizerDrag::OnDownEvent(const Vec2& screenPosition, uint32_t 
         {
             m_startTime = currentTime.GetValue();
             m_startPosition = m_currentPosition;
-            m_listener.OnDragInitiated(*this);
+            OnContinuousGestureInitiated();
             m_currentState = State::Dragging;
         }
     }
     break;
     case State::Dragging:
     {
-        m_listener.OnDragUpdated(*this);
+        OnContinuousGestureUpdated();
     }
     break;
     case State::Idle:
     default:
     {
         // Should not be possible, but not fatal if we happen to get here somehow.
-        CryLogAlways("RecognizerDrag::OnDownEvent state logic failure");
+        AZ_Warning("RecognizerDrag", false, "RecognizerDrag::OnDownEvent state logic failure");
     }
     break;
     }
@@ -101,7 +132,7 @@ bool Gestures::RecognizerDrag::OnDownEvent(const Vec2& screenPosition, uint32_t 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Gestures::RecognizerDrag::OnReleasedEvent(const Vec2& screenPosition, uint32_t pointerIndex)
+inline bool Gestures::RecognizerDrag::OnReleasedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex)
 {
     if (pointerIndex != m_config.pointerIndex)
     {
@@ -120,7 +151,7 @@ bool Gestures::RecognizerDrag::OnReleasedEvent(const Vec2& screenPosition, uint3
     case State::Dragging:
     {
         m_currentPosition = screenPosition;
-        m_listener.OnDragEnded(*this);
+        OnContinuousGestureEnded();
         m_currentState = State::Idle;
     }
     break;
@@ -128,7 +159,7 @@ bool Gestures::RecognizerDrag::OnReleasedEvent(const Vec2& screenPosition, uint3
     default:
     {
         // Should not be possible, but not fatal if we happen to get here somehow.
-        CryLogAlways("RecognizerDrag::OnReleasedEvent state logic failure");
+        AZ_Warning("RecognizerDrag", false, "RecognizerDrag::OnReleasedEvent state logic failure");
     }
     break;
     }

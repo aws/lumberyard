@@ -300,25 +300,23 @@ namespace EMStudio
             const AZ::Vector2   transitionStart(start.rx(), start.ry());
             const AZ::Vector2   transitionEnd(end.rx(), end.ry());
 
-            // get the number of conditions
-            const uint32 numConditions = mTransition->GetNumConditions();
+            const size_t numConditions = mTransition->GetNumConditions();
 
             // precalculate some values we need for the condition rendering
             const float             circleDiameter  = 3.0f;
             const float             circleStride    = 4.0f;
             const float             elementSize     = circleDiameter + circleStride;
-            const AZ::Vector2   localEnd        = transitionEnd - transitionStart;
+            const AZ::Vector2       localEnd        = transitionEnd - transitionStart;
 
             // only draw the transition conditions in case the arrow has enough space for it, avoid zero rect sized crashes as well
             if (localEnd.GetLength() > numConditions * elementSize)
             {
                 const AZ::Vector2   transitionMid   = transitionStart + localEnd * 0.5;
                 const AZ::Vector2   transitionDir   = localEnd.GetNormalized();
-                //const float               halfLength      = localEnd.Length() * 0.5f;
                 const AZ::Vector2   conditionStart  = transitionMid - transitionDir * (elementSize * 0.5f * (float)numConditions);
 
                 // iterate through the conditions and render them
-                for (uint32 i = 0; i < numConditions; ++i)
+                for (size_t i = 0; i < numConditions; ++i)
                 {
                     // get access to the condition
                     EMotionFX::AnimGraphTransitionCondition* condition = mTransition->GetCondition(i);
@@ -400,8 +398,7 @@ namespace EMStudio
             const AZ::Vector2   transitionStart(start.rx(), start.ry());
             const AZ::Vector2   transitionEnd(end.rx(), end.ry());
 
-            // get the number of conditions
-            const uint32 numConditions = mTransition->GetNumConditions();
+            const size_t numConditions = mTransition->GetNumConditions();
 
             // precalculate some values we need for the condition rendering
             const float             circleDiameter  = 3.0f;
@@ -414,11 +411,10 @@ namespace EMStudio
             {
                 const AZ::Vector2   transitionMid   = transitionStart + localEnd * 0.5f;
                 const AZ::Vector2   transitionDir   = localEnd.GetNormalized();
-                //const float               halfLength      = localEnd.Length() * 0.5f;
                 const AZ::Vector2   conditionStart  = transitionMid - transitionDir * (elementSize * 0.5f * (float)numConditions);
 
                 // iterate through the conditions and render them
-                for (uint32 i = 0; i < numConditions; ++i)
+                for (size_t i = 0; i < numConditions; ++i)
                 {
                     // get access to the condition
                     EMotionFX::AnimGraphTransitionCondition* condition = mTransition->GetCondition(i);
@@ -581,8 +577,6 @@ namespace EMStudio
 
         mInputPorts.Resize(1);
         mOutputPorts.Resize(4);
-
-        Sync();
     }
 
 
@@ -595,7 +589,8 @@ namespace EMStudio
     // update port names and number of ports etc
     void StateGraphNode::SyncWithEMFX()
     {
-        //mEMFXNode->OnUpdateAttributes();
+        SetName(mEMFXNode->GetName());
+        SetNodeInfo(mEMFXNode->GetNodeInfo());
 
         // set visualization flag
         SetIsVisualized(mEMFXNode->GetIsVisualizationEnabled());
@@ -626,9 +621,9 @@ namespace EMStudio
         if (actorInstance)
         {
             EMotionFX::AnimGraphInstance* animGraphInstance = actorInstance->GetAnimGraphInstance();
-            if (animGraphInstance)
+            if (animGraphInstance && mEMFXNode && animGraphInstance->GetAnimGraph() == mEMFXNode->GetAnimGraph())
             {
-                MCORE_ASSERT(mEMFXNode->GetParentNode()->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID);
+                MCORE_ASSERT(azrtti_typeid(mEMFXNode->GetParentNode()) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>());
                 EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(mEMFXNode->GetParentNode());
                 EMotionFX::AnimGraphStateTransition* transition = stateMachine->GetActiveTransition(animGraphInstance);
                 EMotionFX::AnimGraphNode* nodeA = nullptr;

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "StreamerDataAggregator.hxx"
 #include <Woodpecker/Driller/IO/StreamerDataAggregator.moc>
@@ -38,7 +38,7 @@ namespace Driller
             {
                 serialize->Class<StreamerDataAggregatorSavedState, AZ::UserSettings>()
                     ->Version(1)
-                    ->SerializerForEmptyClass();
+                    ;
             }
         }
     };
@@ -303,7 +303,7 @@ namespace Driller
 
             serialize->Class<StreamerDataAggregator>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
         }
     }
 

@@ -453,8 +453,8 @@ void CBaseLibraryDialog::InitLibraryToolbar()
 
     m_undoAction = m_pStdToolBar->getAction("actionStandardUndo");
     m_redoAction = m_pStdToolBar->getAction("actionStandardRedo");
-    connect(m_undoAction, &QAction::triggered, []() { GetIEditor()->GetUndoManager()->Undo(); });
-    connect(m_redoAction, &QAction::triggered, []() { GetIEditor()->GetUndoManager()->Redo(); });
+    connect(m_undoAction, &QAction::triggered, this, []() { GetIEditor()->GetUndoManager()->Undo(); });
+    connect(m_redoAction, &QAction::triggered, this, []() { GetIEditor()->GetUndoManager()->Redo(); });
     
     GetIEditor()->GetUndoManager()->AddListener(this);
 

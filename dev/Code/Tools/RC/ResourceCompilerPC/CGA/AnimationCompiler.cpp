@@ -97,7 +97,7 @@ static bool ScanDirectoryRecursive(
 
 string UnifiedPath(const string& path)
 {
-    return PathHelpers::ToUnixPath(StringHelpers::MakeLowerCase(path));
+    return PathHelpers::ToUnixPath(path);
 }
 
 
@@ -1569,7 +1569,8 @@ void CAnimationCompiler::HandleUpToDateCheckFilesOnReturn(const std::vector<stri
                 {
                     RCLog("Creating file '%s' (used to check if '%s' is up to date).", upToDateCheckFilenames[i].c_str(), m_CC.GetSourcePath().c_str());
                 }
-                FILE* const pEmptyFile = fopen(upToDateCheckFilenames[i].c_str(), "wt");
+                FILE* pEmptyFile = nullptr; 
+                azfopen(&pEmptyFile, upToDateCheckFilenames[i].c_str(), "wt");
                 if (pEmptyFile)
                 {
                     fclose(pEmptyFile);

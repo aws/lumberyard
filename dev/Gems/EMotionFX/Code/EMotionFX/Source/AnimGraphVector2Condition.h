@@ -12,9 +12,9 @@
 
 #pragma once
 
-// include the required headers
-#include "EMotionFXConfig.h"
-#include "AnimGraphTransitionCondition.h"
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraphTransitionCondition.h>
+#include <EMotionFX/Source/AnimGraphParameterCondition.h>
 
 
 namespace EMotionFX
@@ -27,82 +27,50 @@ namespace EMotionFX
      *
      *
      */
-    class EMFX_API AnimGraphVector2Condition
+    class EMFX_API AnimGraphVector2Condition 
         : public AnimGraphTransitionCondition
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphVector2Condition, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_CONDITIONS);
-
     public:
-        AZ_RTTI(AnimGraphVector2Condition, "{605DF8B0-C39A-4BB4-B1A9-ABAF528E0739}", AnimGraphTransitionCondition);
+        AZ_RTTI(AnimGraphVector2Condition, "{605DF8B0-C39A-4BB4-B1A9-ABAF528E0739}", AnimGraphTransitionCondition)
+        AZ_CLASS_ALLOCATOR_DECL
 
-        enum
-        {
-            TYPE_ID = 0x00002123
-        };
-
-        enum
-        {
-            ATTRIB_PARAMETER            = 0,
-            ATTRIB_OPERATION            = 1,
-            ATTRIB_FUNCTION             = 2,
-            ATTRIB_TESTVALUE            = 3,
-            ATTRIB_RANGEVALUE           = 4,
-        };
-
-        enum EOperation
+        enum EOperation : AZ::u8
         {
             OPERATION_LENGTH            = 0,
             OPERATION_GETX              = 1,
-            OPERATION_GETY              = 2,
-            OPERATION_NUMOPERATIONS
+            OPERATION_GETY              = 2
         };
 
-        enum EFunction
-        {
-            FUNCTION_GREATER        = 0,
-            FUNCTION_GREATEREQUAL   = 1,
-            FUNCTION_LESS           = 2,
-            FUNCTION_LESSEQUAL      = 3,
-            FUNCTION_NOTEQUAL       = 4,
-            FUNCTION_EQUAL          = 5,
-            FUNCTION_INRANGE        = 6,
-            FUNCTION_NOTINRANGE     = 7,
-            FUNCTION_NUMFUNCTIONS
-        };
+        AnimGraphVector2Condition();
+        AnimGraphVector2Condition(AnimGraph* animGraph);
+        ~AnimGraphVector2Condition();
 
-        static AnimGraphVector2Condition* Create(AnimGraph* animGraph);
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void RegisterAttributes() override;
-
-        const char* GetTypeString() const override;
         void GetSummary(AZStd::string* outResult) const override;
         void GetTooltip(AZStd::string* outResult) const override;
         const char* GetPaletteName() const override;
 
         bool TestCondition(AnimGraphInstance* animGraphInstance) const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
 
-        void SetFunction(EFunction func);
+        void SetFunction(AnimGraphParameterCondition::EFunction func);
         const char* GetTestFunctionString() const;
 
         void SetOperation(EOperation operation);
         const char* GetOperationString() const;
 
-        uint32 GetParameterType() const;
+        AZ::TypeId GetParameterType() const;
+        void SetParameterName(const AZStd::string& parameterName);
+        void SetTestValue(float testValue);
+        void SetRangeValue(float rangeValue);
+
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
         // test function types
         typedef bool (MCORE_CDECL * BlendConditionParamValueFunction)(float paramValue, float testValue, float rangeValue);
         typedef float (MCORE_CDECL * BlendConditionOperationFunction)(const AZ::Vector2& vec);
-
-        uint32                                      mParameterIndex;
-
-        EFunction                                   mFunction;
-        BlendConditionParamValueFunction            mTestFunction;
-
-        EOperation                                  mOperation;
-        BlendConditionOperationFunction             mOperationFunction;
 
         // float test functions
         static bool MCORE_CDECL TestGreater(float paramValue, float testValue, float rangeValue);
@@ -119,10 +87,19 @@ namespace EMotionFX
         static float MCORE_CDECL OperationGetX(const AZ::Vector2& vec);
         static float MCORE_CDECL OperationGetY(const AZ::Vector2& vec);
 
-        AnimGraphVector2Condition(AnimGraph* animGraph);
-        ~AnimGraphVector2Condition();
+        AZ::Crc32 GetRangeValueVisibility() const;
 
-        void OnUpdateAttributes() override;
+        static const char* s_operationLength;
+        static const char* s_operationGetX;
+        static const char* s_operationGetY;
+
+        AZStd::string                           m_parameterName;
+        AZ::Outcome<size_t>                     m_parameterIndex;
+        EOperation                              m_operation;
+        BlendConditionOperationFunction         m_operationFunction;
+        AnimGraphParameterCondition::EFunction  m_function;
+        BlendConditionParamValueFunction        m_testFunction;
+        float                                   m_testValue;
+        float                                   m_rangeValue;
     };
-}   // namespace EMotionFX
-
+} // namespace EMotionFX

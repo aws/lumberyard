@@ -9,9 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IInput.h"
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class CFlowMotionSensorNode

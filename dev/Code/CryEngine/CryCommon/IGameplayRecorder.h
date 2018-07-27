@@ -15,7 +15,7 @@
 #define CRYINCLUDE_CRYACTION_IGAMEPLAYRECORDER_H
 #pragma once
 
-#include "TestSystem/IGameStateRecorder.h"
+#include "IGameStateRecorder.h"
 #include <TimeValue.h>
 
 typedef enum

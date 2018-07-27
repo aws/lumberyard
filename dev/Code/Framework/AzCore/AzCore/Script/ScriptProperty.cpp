@@ -23,21 +23,21 @@ namespace AZ
     void ScriptProperties::Reflect(AZ::ReflectContext* reflection)
     {
         ScriptProperty::Reflect(reflection);
-        
+
         ScriptPropertyBoolean::Reflect(reflection);
         ScriptPropertyNumber::Reflect(reflection);
         ScriptPropertyString::Reflect(reflection);
         ScriptPropertyGenericClass::Reflect(reflection);
-        
+
         ScriptPropertyBooleanArray::Reflect(reflection);
         ScriptPropertyNumberArray::Reflect(reflection);
         ScriptPropertyStringArray::Reflect(reflection);
         ScriptPropertyGenericClassArray::Reflect(reflection);
-        
+
         ScriptPropertyAsset::Reflect(reflection);
-        ScriptPropertyEntityRef::Reflect(reflection);        
+        ScriptPropertyEntityRef::Reflect(reflection);
     }
-    
+
     template<class Iterator>
     bool WriteContainerToLuaTableArray(AZ::ScriptContext& context, Iterator first, Iterator last)
     {
@@ -86,11 +86,11 @@ namespace AZ
 
         return true;
     }
-    
+
     void ScriptProperty::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<AZ::ScriptProperty>()->
@@ -148,7 +148,7 @@ namespace AZ
     {
         for (AZ::ScriptPropertyWatcher* watcher : m_watchers)
         {
-            EBUS_EVENT_ID(watcher, ScriptPropertyWatcherBus, OnObjectModified);   
+            EBUS_EVENT_ID(watcher, ScriptPropertyWatcherBus, OnObjectModified);
         }
     }
 
@@ -159,12 +159,12 @@ namespace AZ
     void ScriptPropertyNil::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
-            serializeContext->Class<AZ::ScriptPropertyNil, AZ::ScriptProperty>()->
-                Version(1)->
-                    SerializerForEmptyClass();
+            serializeContext->Class<AZ::ScriptPropertyNil>()
+                ->Version(1)
+                ->SerializeWithNoData();
         }
     }
 
@@ -196,17 +196,17 @@ namespace AZ
 
     bool ScriptPropertyNil::Write(AZ::ScriptContext& context)
     {
-        lua_pushnil(context.NativeContext());        
+        lua_pushnil(context.NativeContext());
         return true;
     }
 
     bool ScriptPropertyNil::TryRead(AZ::ScriptDataContext& context, int valueIndex)
     {
         if (context.IsNil(valueIndex))
-        {        
+        {
             return true;
         }
-        
+
         return false;
     }
 
@@ -214,14 +214,14 @@ namespace AZ
     {
         (void)scriptProperty;
     }
-    
+
     //////////////////////////
     // ScriptPropertyBoolean
     //////////////////////////
     void ScriptPropertyBoolean::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<ScriptPropertyBoolean, ScriptProperty>()->
@@ -255,7 +255,7 @@ namespace AZ
     {
         AZ::ScriptValue<bool>::StackPush(context.NativeContext(), m_value);
         return true;
-    }    
+    }
 
     bool ScriptPropertyBoolean::TryRead(AZ::ScriptDataContext& context, int valueIndex)
     {
@@ -266,7 +266,7 @@ namespace AZ
 
         return false;
     }
-    
+
     const AZ::Uuid& ScriptPropertyBoolean::GetDataTypeUuid() const
     {
         return AZ::SerializeTypeInfo<bool>::GetUuid();
@@ -280,16 +280,16 @@ namespace AZ
         if (booleanProperty)
         {
             m_value = booleanProperty->m_value;
-        } 
+        }
     }
-    
+
     /////////////////////////
     // ScriptPropertyNumber
     /////////////////////////
     void ScriptPropertyNumber::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<AZ::ScriptPropertyNumber, AZ::ScriptProperty>()->
@@ -318,7 +318,7 @@ namespace AZ
     {
         return aznew AZ::ScriptPropertyNumber(name ? name : m_name.c_str(),m_value);
     }
-    
+
     bool ScriptPropertyNumber::Write(AZ::ScriptContext& context)
     {
         AZ::ScriptValue<double>::StackPush(context.NativeContext(), m_value);
@@ -335,7 +335,7 @@ namespace AZ
 
         return false;
     }
-    
+
     const AZ::Uuid& ScriptPropertyNumber::GetDataTypeUuid() const
     {
         return AZ::SerializeTypeInfo<double>::GetUuid();
@@ -349,16 +349,16 @@ namespace AZ
         if (numberProperty)
         {
             m_value = numberProperty->m_value;
-        }        
+        }
     }
-    
+
     /////////////////////////
     // ScriptPropertyString
     /////////////////////////
     void ScriptPropertyString::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<ScriptPropertyString, ScriptProperty>()->
@@ -387,7 +387,7 @@ namespace AZ
     {
         return aznew AZ::ScriptPropertyString(name ? name : m_name.c_str(), m_value.c_str());
     }
-    
+
     bool ScriptPropertyString::Write(AZ::ScriptContext& context)
     {
         AZ::ScriptValue<const char*>::StackPush(context.NativeContext(), m_value.c_str());
@@ -410,7 +410,7 @@ namespace AZ
 
         return readValue;
     }
-    
+
     const AZ::Uuid& ScriptPropertyString::GetDataTypeUuid() const
     {
         return AZ::SerializeGenericTypeInfo<AZStd::string>::GetClassTypeId();
@@ -426,14 +426,14 @@ namespace AZ
             m_value = stringProperty->m_value;
         }
     }
-    
+
     ///////////////////////////////
     // ScriptPropertyGenericClass
     ///////////////////////////////
     void ScriptPropertyGenericClass::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<ScriptPropertyGenericClass, ScriptProperty>()->
@@ -475,7 +475,7 @@ namespace AZ
             value.m_data = Internal::LuaAnyClassFromStack(context.GetScriptContext()->NativeContext(), context.GetStartIndex() + valueIndex, &value.m_typeId);
             if (value.m_data)
             {
-                // clone the data or take ownership from LUA 
+                // clone the data or take ownership from LUA
                 const BehaviorClass* behaviorClass = nullptr;
                 if (Internal::LuaGetClassInfo(context.GetScriptContext()->NativeContext(), context.GetStartIndex() + valueIndex, nullptr, &behaviorClass))
                 {
@@ -494,7 +494,7 @@ namespace AZ
             }
             else
             {
-                AZ_Warning("Script", false, "Failed to read registered class %s", name);                
+                AZ_Warning("Script", false, "Failed to read registered class %s", name);
             }
         }
 
@@ -505,7 +505,7 @@ namespace AZ
     {
         return aznew AZ::ScriptPropertyGenericClass(name ? name : m_name.c_str(),m_value);
     }
-    
+
     bool ScriptPropertyGenericClass::Write(AZ::ScriptContext& context)
     {
         if (m_cacheObject)
@@ -526,13 +526,13 @@ namespace AZ
         {
             Internal::LuaClassToStack(context.NativeContext(), m_value.m_data, m_value.m_typeId);
         }
-        
+
         return true;
     }
 
-    bool ScriptPropertyGenericClass::TryRead(AZ::ScriptDataContext& context, int valueIndex) 
+    bool ScriptPropertyGenericClass::TryRead(AZ::ScriptDataContext& context, int valueIndex)
     {
-        bool didRead = false;        
+        bool didRead = false;
 
         if (context.IsRegisteredClass(valueIndex))
         {
@@ -540,7 +540,7 @@ namespace AZ
             value.m_data = Internal::LuaAnyClassFromStack(context.GetScriptContext()->NativeContext(), context.GetStartIndex() + valueIndex, &value.m_typeId);
             if (value.m_data)
             {
-                // clone the data or take ownership from LUA 
+                // clone the data or take ownership from LUA
                 const BehaviorClass* behaviorClass = nullptr;
                 if (Internal::LuaGetClassInfo(context.GetScriptContext()->NativeContext(), context.GetStartIndex() + valueIndex, nullptr, &behaviorClass))
                 {
@@ -551,10 +551,10 @@ namespace AZ
 
                     BehaviorObject source;
                     source.m_address = value.m_data;
-                    source.m_typeId = value.m_typeId;                    
+                    source.m_typeId = value.m_typeId;
 
                     BehaviorObject copy = behaviorClass->Clone(source);
-                    
+
                     m_value.m_data = copy.m_address;
                     m_value.m_typeId = copy.m_typeId;
 
@@ -585,19 +585,19 @@ namespace AZ
     }
 
     void ScriptPropertyGenericClass::EnableInPlaceControls()
-    {        
+    {
         m_cacheObject = true;
     }
 
     void ScriptPropertyGenericClass::DisableInPlaceControls()
-    {        
+    {
         if (m_cacheObject)
         {
             ReleaseCache();
             m_cacheObject = false;
         }
     }
-    
+
     void ScriptPropertyGenericClass::OnMemberMethodCalled(const BehaviorMethod* behaviorMethod)
     {
         if (!behaviorMethod->m_isConst)
@@ -633,7 +633,7 @@ namespace AZ
 
             m_value.DestroyData();
 
-            m_value.CopyDataFrom(genericClassProperty->m_value);            
+            m_value.CopyDataFrom(genericClassProperty->m_value);
 
             SignalPropertyChanged();
             MonitorBehaviorSignals(true);
@@ -644,7 +644,7 @@ namespace AZ
     {
         if (m_watchers.empty() || !enabled)
         {
-            BehaviorObjectSignals::Handler::BusDisconnect(m_value.m_data);            
+            BehaviorObjectSignals::Handler::BusDisconnect(m_value.m_data);
         }
         else
         {
@@ -676,14 +676,14 @@ namespace AZ
             m_cachedValue = Internal::LuaCacheRegisteredClass(m_scriptContext->NativeContext(), m_value.m_data, m_value.m_typeId);
         }
     }
-    
+
     ////////////////////////////
     // ScriptPropertyBoolArray
     ////////////////////////////
     void ScriptPropertyBooleanArray::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<ScriptPropertyBooleanArray, ScriptProperty>()->
@@ -729,7 +729,7 @@ namespace AZ
         ScriptPropertyBooleanArray* retVal = nullptr;
 
         if (IsBooleanArray(context,valueIndex))
-        {            
+        {
             retVal = aznew ScriptPropertyBooleanArray(name);
 
             AZ::ScriptDataContext arrayTable;
@@ -769,7 +769,7 @@ namespace AZ
             }
         }
     }
-    
+
     const AZ::Uuid& ScriptPropertyBooleanArray::GetDataTypeUuid() const
     {
         return AZ::SerializeGenericTypeInfo< AZStd::vector<bool> >::GetClassTypeId();
@@ -781,7 +781,7 @@ namespace AZ
         clonedValue->m_values = m_values;
         return clonedValue;
     }
-    
+
     bool ScriptPropertyBooleanArray::Write(AZ::ScriptContext& context)
     {
         return WriteContainerToLuaTableArray(context, m_values.begin(), m_values.end());
@@ -793,23 +793,23 @@ namespace AZ
 
         AZ_Error("ScriptPropertyBooleanArray", booleanPropertyArray, "Invalid call to CloneData. Types must match before clone attempt is made.\n");
         if (booleanPropertyArray)
-        {   
+        {
             m_values = booleanPropertyArray->m_values;
         }
     }
-    
+
     //////////////////////////////
     // ScriptPropertyNumberArray
     //////////////////////////////
     void ScriptPropertyNumberArray::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<ScriptPropertyNumberArray, ScriptProperty>()->
                 Version(1)->
-                Field("values", &ScriptPropertyNumberArray::m_values);        
+                Field("values", &ScriptPropertyNumberArray::m_values);
         }
     }
 
@@ -850,7 +850,7 @@ namespace AZ
         ScriptPropertyNumberArray* retVal = nullptr;
 
         if (IsNumberArray(context,valueIndex))
-        {            
+        {
             retVal = aznew ScriptPropertyNumberArray(name);
 
             AZ::ScriptDataContext arrayTable;
@@ -890,10 +890,10 @@ namespace AZ
             }
         }
     }
-    
+
     const AZ::Uuid& ScriptPropertyNumberArray::GetDataTypeUuid() const
-    { 
-        return AZ::SerializeGenericTypeInfo< AZStd::vector<double> >::GetClassTypeId(); 
+    {
+        return AZ::SerializeGenericTypeInfo< AZStd::vector<double> >::GetClassTypeId();
     }
 
     AZ::ScriptPropertyNumberArray* ScriptPropertyNumberArray::Clone(const char* name) const
@@ -902,10 +902,10 @@ namespace AZ
         clonedValue->m_values = m_values;
         return clonedValue;
     }
-    
+
     bool ScriptPropertyNumberArray::Write(AZ::ScriptContext& context)
-    { 
-        return WriteContainerToLuaTableArray(context, m_values.begin(), m_values.end()); 
+    {
+        return WriteContainerToLuaTableArray(context, m_values.begin(), m_values.end());
     }
 
     void ScriptPropertyNumberArray::CloneDataFrom(const AZ::ScriptProperty* scriptProperty)
@@ -918,19 +918,19 @@ namespace AZ
             m_values = scriptNumberArray->m_values;
         }
     }
-    
+
     //////////////////////////////
     // ScriptPropertyStringArray
     //////////////////////////////
     void ScriptPropertyStringArray::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<ScriptPropertyStringArray, ScriptProperty>()->
                 Version(1)->
-                Field("values", &ScriptPropertyStringArray::m_values);    
+                Field("values", &ScriptPropertyStringArray::m_values);
         }
     }
 
@@ -971,7 +971,7 @@ namespace AZ
         ScriptPropertyStringArray* retVal = nullptr;
 
         if (IsStringArray(context,valueIndex))
-        {            
+        {
             retVal = aznew ScriptPropertyStringArray(name);
 
             AZ::ScriptDataContext arrayTable;
@@ -1011,10 +1011,10 @@ namespace AZ
             }
         }
     }
-    
+
     const AZ::Uuid& ScriptPropertyStringArray::GetDataTypeUuid() const
     {
-        return AZ::SerializeGenericTypeInfo< AZStd::vector<AZStd::string> >::GetClassTypeId(); 
+        return AZ::SerializeGenericTypeInfo< AZStd::vector<AZStd::string> >::GetClassTypeId();
     }
 
     AZ::ScriptPropertyStringArray* ScriptPropertyStringArray::Clone(const char* name) const
@@ -1023,7 +1023,7 @@ namespace AZ
         clonedValue->m_values = m_values;
         return clonedValue;
     }
-    
+
     bool ScriptPropertyStringArray::Write(AZ::ScriptContext& context)
     {
         return WriteContainerToLuaTableArray(context, m_values.begin(), m_values.end());
@@ -1039,14 +1039,14 @@ namespace AZ
             m_values = stringPropertyArray->m_values;
         }
     }
-    
+
     ////////////////////////////////////
     // ScriptPropertyGenericClassArray
     ////////////////////////////////////
     void ScriptPropertyGenericClassArray::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<ScriptPropertyGenericClassArray, ScriptProperty>()->
@@ -1093,7 +1093,7 @@ namespace AZ
         ScriptPropertyGenericClassArray* retVal = nullptr;
 
         if (IsGenericClassArray(context,valueIndex))
-        {            
+        {
             retVal = aznew ScriptPropertyGenericClassArray(name);
 
             AZ::ScriptDataContext arrayTable;
@@ -1124,7 +1124,7 @@ namespace AZ
             if (fieldIndex == -1)
             {
                 continue;
-            }            
+            }
 
             if (genericClassArrayTable.IsRegisteredClass(elementIndex))
             {
@@ -1136,7 +1136,7 @@ namespace AZ
                 // If we fail to read, we want to remove the invalid data from our vector
                 if (value.m_data)
                 {
-                    // clone the data or take ownership from LUA 
+                    // clone the data or take ownership from LUA
                     const BehaviorClass* behaviorClass = nullptr;
                     if (Internal::LuaGetClassInfo(genericClassArrayTable.GetScriptContext()->NativeContext(), genericClassArrayTable.GetStartIndex() + elementIndex, nullptr, &behaviorClass))
                     {
@@ -1164,10 +1164,10 @@ namespace AZ
             }
         }
     }
-    
-    const AZ::Uuid& ScriptPropertyGenericClassArray::GetDataTypeUuid() const 
+
+    const AZ::Uuid& ScriptPropertyGenericClassArray::GetDataTypeUuid() const
     {
-        return AZ::SerializeGenericTypeInfo< ValueArrayType >::GetClassTypeId(); 
+        return AZ::SerializeGenericTypeInfo< ValueArrayType >::GetClassTypeId();
     }
 
     AZ::Uuid ScriptPropertyGenericClassArray::GetElementTypeUuid() const
@@ -1187,7 +1187,7 @@ namespace AZ
         clonedValue->m_elementTypeId = m_elementTypeId;
         return clonedValue;
     }
-    
+
     bool ScriptPropertyGenericClassArray::Write(AZ::ScriptContext& context)
     {
         lua_State* lua = context.NativeContext();
@@ -1222,11 +1222,11 @@ namespace AZ
             {
                 m_values.emplace_back(serializableField);
             }
-            
+
             m_elementTypeId = sourceProperty->m_elementTypeId;
         }
     }
-    
+
     bool ScriptPropertyGenericClassArray::VersionConverter(AZ::SerializeContext& context,
         AZ::SerializeContext::DataElementNode& classElement)
     {
@@ -1247,7 +1247,7 @@ namespace AZ
                         {
                             AZ::SerializeContext::DataElementNode& dataNode = dsfNode.GetSubElement(dsfIdx);
                             if (dataNode.GetName() == AZ_CRC("m_data", 0x335cc942))
-                            {                           
+                            {
                                 const int idx = classElement.AddElement<AZ::Uuid>(context, "elementType");
                                 const AZ::Uuid elementType = dataNode.GetId();
                                 classElement.GetSubElement(idx).SetData<AZ::Uuid>(context, elementType);
@@ -1272,21 +1272,21 @@ namespace AZ
     ////////////////////////
     // ScriptPropertyAsset
     ////////////////////////
-    
+
     void ScriptPropertyAsset::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<ScriptPropertyAsset, ScriptProperty>()->
                 Version(1)->
-                Field("value", &ScriptPropertyAsset::m_value);        
+                Field("value", &ScriptPropertyAsset::m_value);
         }
     }
 
-    const AZ::Uuid& ScriptPropertyAsset::GetDataTypeUuid() const 
-    { 
+    const AZ::Uuid& ScriptPropertyAsset::GetDataTypeUuid() const
+    {
         return AZ::SerializeTypeInfo<AZ::Data::Asset<AZ::Data::AssetData> >::GetUuid();
     }
 
@@ -1296,7 +1296,7 @@ namespace AZ
         clonedValue->m_value = m_value;
         return clonedValue;
     }
-    
+
     bool ScriptPropertyAsset::Write(AZ::ScriptContext& context)
     {
         (void)context;
@@ -1315,14 +1315,14 @@ namespace AZ
             m_value = assetProperty->m_value;
         }
     }
-    
+
     ////////////////////////////
     // ScriptPropertyEntityRef
     ////////////////////////////
     void ScriptPropertyEntityRef::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<AZ::ScriptPropertyEntityRef, AZ::ScriptProperty>()->
@@ -1342,7 +1342,7 @@ namespace AZ
         clonedValue->m_value = m_value;
         return clonedValue;
     }
-    
+
     bool ScriptPropertyEntityRef::Write(AZ::ScriptContext& context)
     {
         AZ::ScriptValue<AZ::EntityId>::StackPush(context.NativeContext(), m_value);
@@ -1355,7 +1355,7 @@ namespace AZ
 
         AZ_Error("ScriptPropertyEntityRef", entityProperty, "Invalid call to CloneData. Types must match before clone attempt is made.\n");
         if (entityProperty)
-        {        
+        {
             m_value = entityProperty->m_value;
         }
     }

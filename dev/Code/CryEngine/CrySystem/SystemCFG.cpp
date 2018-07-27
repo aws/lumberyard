@@ -120,7 +120,7 @@ void CSystem::QueryVersionInfo()
 #ifdef AZ_MONOLITHIC_BUILD
     GetModuleFileName(NULL, moduleName, _MAX_PATH);  //retrieves the PATH for the current module
 #else // AZ_MONOLITHIC_BUILD
-    strcpy(moduleName, "CrySystem.dll"); // we want to version from the system dll
+    azstrcpy(moduleName, AZ_ARRAY_SIZE(moduleName), "CrySystem.dll"); // we want to version from the system dll
 #endif // AZ_MONOLITHIC_BUILD
 
     int verSize = GetFileVersionInfoSize(moduleName, &dwHandle);
@@ -150,7 +150,7 @@ void CSystem::QueryVersionInfo()
         VerQueryValue(ver, "\\VarFileInfo\\Translation", (LPVOID*)&lpTranslate, &count);
         if (lpTranslate != NULL)
         {
-            _snprintf(path, sizeof(path), "\\StringFileInfo\\%04x%04x\\InternalName", lpTranslate[0].wLanguage, lpTranslate[0].wCodePage);
+            azsnprintf(path, sizeof(path), "\\StringFileInfo\\%04x%04x\\InternalName", lpTranslate[0].wLanguage, lpTranslate[0].wCodePage);
             VerQueryValue(ver, path, (LPVOID*)&version, &count);
             if (version)
             {
@@ -167,19 +167,28 @@ void CSystem::LogVersion()
     // Get time.
     time_t ltime;
     time(&ltime);
-    tm* today = localtime(&ltime);
 
+#ifdef AZ_COMPILER_MSVC
+    tm today;
+    localtime_s(&today, &ltime);
     char s[1024];
-
-
+    strftime(s, 128, "%d %b %y (%H %M %S)", &today);
+#else
+    char s[1024];
+    auto today = localtime(&ltime);
     strftime(s, 128, "%d %b %y (%H %M %S)", today);
+#endif
 
     const SFileVersion& ver = GetFileVersion();
 
     CryLogAlways("BackupNameAttachment=\" Build(%d) %s\"  -- used by backup system\n", ver.v[0], s);          // read by CreateBackupFile()
 
     // Use strftime to build a customized time string.
+#ifdef AZ_COMPILER_MSVC
+    strftime(s, 128, "Log Started at %c", &today);
+#else
     strftime(s, 128, "Log Started at %c", today);
+#endif
     CryLogAlways(s);
 
     CryLogAlways("Built on " __DATE__ " " __TIME__);
@@ -434,13 +443,23 @@ void CSystemConfiguration::AddCVarToMap(const string& filename, const string& st
             // default group in sys_spec cfg file
             else if (azstricmp(strGroup, "default") == 0)
             {
-                // New cvar loaded into map
+                CVarFileStatus defaultVal(val, val, val);
                 if (m_editorMap->find(key) == m_editorMap->end())
                 {
-                    CVarInfo* currentCVar = &(*m_editorMap)[key];
-                    currentCVar->type = cvar->GetType();
-                    CVarFileStatus defaultVal(val, val, val);
-                    currentCVar->fileVals.resize(NUM_SPEC_LEVELS, defaultVal);
+                    // New cvar loaded into map
+                    CVarInfo& currentCVar = (*m_editorMap)[key];
+                    currentCVar.type = cvar->GetType();
+                    currentCVar.fileVals.resize(NUM_SPEC_LEVELS, defaultVal);
+                }
+                else
+                {
+                    // Reset values, if there's a platform override it always follows the sys_spec_*.cfg files.
+                    // Resetting avoids the issue where some spec levels are never set because of an extra platform
+                    // override load happening earlier just to store the value of sys_spec_full.
+                    for (int specLevel = 0; specLevel < NUM_SPEC_LEVELS; ++specLevel)
+                    {
+                        (*m_editorMap)[key].fileVals[specLevel] = defaultVal;
+                    }
                 }
                 // Overwrite miscellaneous if mentioned in platform config file
                 (*m_editorMap)[key].cvarGroup = filename;
@@ -450,7 +469,7 @@ void CSystemConfiguration::AddCVarToMap(const string& filename, const string& st
             {
                 int group = 0;
 
-                if (sscanf(strGroup, "%d", &group) == 1)
+                if (azsscanf(strGroup, "%d", &group) == 1)
                 {
                     auto sysSpecFull = (*m_editorMap).find("sys_spec_full");
                     if (sysSpecFull == (*m_editorMap).end())

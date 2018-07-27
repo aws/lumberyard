@@ -1154,7 +1154,7 @@ public:
                 nxt = strstr(nxt + 1, "+");
             }
 
-            strcpy(tagBuffer, cur);
+            azstrcpy(tagBuffer, AZ_ARRAY_SIZE(tagBuffer), cur);
             TagID tag = Find(tagBuffer);
             if (tag == TAG_ID_INVALID)
             {

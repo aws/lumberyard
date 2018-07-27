@@ -10,73 +10,56 @@
 *
 */
 
-// include the required headers
-#include "EMotionFXConfig.h"
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/Random.h>
-#include <MCore/Source/AttributeSettings.h>
-#include "AnimGraphTimeCondition.h"
-#include "AnimGraph.h"
-#include "AnimGraphInstance.h"
-#include "AnimGraphManager.h"
-#include "EMotionFXManager.h"
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraphTimeCondition.h>
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    AnimGraphTimeCondition::AnimGraphTimeCondition(AnimGraph* animGraph)
-        : AnimGraphTransitionCondition(animGraph, TYPE_ID)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphTimeCondition, AnimGraphConditionAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphTimeCondition::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
+
+    AnimGraphTimeCondition::AnimGraphTimeCondition()
+        : AnimGraphTransitionCondition()
+        , m_countDownTime(1.0f)
+        , m_minRandomTime(0.0f)
+        , m_maxRandomTime(1.0f)
+        , m_useRandomization(false)
     {
-        CreateAttributeValues();
-        InitInternalAttributesForAllInstances();
     }
 
 
-    // destructor
+    AnimGraphTimeCondition::AnimGraphTimeCondition(AnimGraph* animGraph)
+        : AnimGraphTimeCondition()
+    {
+        InitAfterLoading(animGraph);
+    }
+
+
     AnimGraphTimeCondition::~AnimGraphTimeCondition()
     {
     }
 
 
-    // create
-    AnimGraphTimeCondition* AnimGraphTimeCondition::Create(AnimGraph* animGraph)
+    bool AnimGraphTimeCondition::InitAfterLoading(AnimGraph* animGraph)
     {
-        return new AnimGraphTimeCondition(animGraph);
-    }
+        if (!AnimGraphTransitionCondition::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
 
+        InitInternalAttributesForAllInstances();
 
-    // create unique data
-    AnimGraphObjectData* AnimGraphTimeCondition::CreateObjectData()
-    {
-        return new UniqueData(this, nullptr);
-    }
-
-
-    // register the attributes
-    void AnimGraphTimeCondition::RegisterAttributes()
-    {
-        // create the count down time value float spinner
-        MCore::AttributeSettings* attribInfo = RegisterAttribute("Count Down Time", "countDownTime", "The amount of seconds the condition will count down until the condition will trigger.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        attribInfo->SetDefaultValue(MCore::AttributeFloat::Create(1.0f));
-        attribInfo->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        attribInfo->SetMaxValue(MCore::AttributeFloat::Create(FLT_MAX));
-
-        // create the randomization flag checkbox
-        attribInfo = RegisterAttribute("Use Randomization", "randomization", "When randomization is enabled the count down time will be a random one between the min and max random time.", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        attribInfo->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // create the min random time value float spinner
-        attribInfo = RegisterAttribute("Min Random Time", "minRandomTime", "The minimum randomized count down time. This will be only used then randomization is enabled.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        attribInfo->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        attribInfo->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        attribInfo->SetMaxValue(MCore::AttributeFloat::Create(FLT_MAX));
-
-        // create the max random time value float spinner
-        attribInfo = RegisterAttribute("Max Random Time", "maxRandomTime", "The maximum randomized count down time. This will be only used then randomization is enabled.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        attribInfo->SetDefaultValue(MCore::AttributeFloat::Create(1.0f));
-        attribInfo->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        attribInfo->SetMaxValue(MCore::AttributeFloat::Create(FLT_MAX));
+        Reinit();
+        return true;
     }
 
 
@@ -87,13 +70,6 @@ namespace EMotionFX
     }
 
 
-    // get the type string
-    const char* AnimGraphTimeCondition::GetTypeString() const
-    {
-        return "AnimGraphTimeCondition";
-    }
-
-    
     // update the passed time of the condition
     void AnimGraphTimeCondition::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
@@ -115,18 +91,15 @@ namespace EMotionFX
         uniqueData->mElapsedTime = 0.0f;
 
         // use randomized count downs?
-        if (GetAttributeFloatAsBool(ATTRIB_USERANDOMIZATION))
+        if (m_useRandomization)
         {
-            const float minValue = GetAttributeFloat(ATTRIB_MINRANDOMTIME)->GetValue();
-            const float maxValue = GetAttributeFloat(ATTRIB_MAXRANDOMTIME)->GetValue();
-
             // create a randomized count down value
-            uniqueData->mCountDownTime = MCore::Random::RandF(minValue, maxValue);
+            uniqueData->mCountDownTime = MCore::Random::RandF(m_minRandomTime, m_maxRandomTime);
         }
         else
         {
             // get the fixed count down value from the attribute
-            uniqueData->mCountDownTime = GetAttributeFloat(ATTRIB_COUNTDOWNTIME)->GetValue();
+            uniqueData->mCountDownTime = m_countDownTime;
         }
     }
 
@@ -138,27 +111,13 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
 
         // in case the elapsed time is bigger than the count down time, we can trigger the condition
-        if (uniqueData->mElapsedTime >= uniqueData->mCountDownTime)
+        if (uniqueData->mElapsedTime + 0.0001f >= uniqueData->mCountDownTime)   // The 0.0001f is to counter floating point inaccuracies. The AZ float epsilon is too small.
         {
             return true;
         }
 
         // we have not reached the count down time yet, don't trigger yet
         return false;
-    }
-
-
-    // clonse the condition
-    AnimGraphObject* AnimGraphTimeCondition::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        AnimGraphTimeCondition* clone = new AnimGraphTimeCondition(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
     }
 
 
@@ -169,8 +128,7 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (uniqueData == nullptr)
         {
-            //uniqueData = new UniqueData(this, animGraphInstance);
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
     }
@@ -179,7 +137,7 @@ namespace EMotionFX
     // construct and output the information summary string for this object
     void AnimGraphTimeCondition::GetSummary(AZStd::string* outResult) const
     {
-        *outResult = AZStd::string::format("%s: Count Down=%.2f secs, RandomizationUsed=%d, Random Count Down Range=(%.2f secs, %.2f secs)", GetTypeString(), GetAttributeFloat(ATTRIB_COUNTDOWNTIME)->GetValue(), GetAttributeFloat(ATTRIB_USERANDOMIZATION)->GetValue(), GetAttributeFloat(ATTRIB_MINRANDOMTIME)->GetValue(), GetAttributeFloat(ATTRIB_MAXRANDOMTIME)->GetValue());
+        *outResult = AZStd::string::format("%s: Countdown=%.2f secs, RandomizationUsed=%d, Random Count Down Range=(%.2f secs, %.2f secs)", RTTI_GetTypeName(), m_countDownTime, m_useRandomization, m_minRandomTime, m_maxRandomTime);
     }
 
 
@@ -190,44 +148,21 @@ namespace EMotionFX
 
         // add the condition type
         columnName = "Condition Type: ";
-        columnValue = GetTypeString();
+        columnValue = RTTI_GetTypeName();
         *outResult = AZStd::string::format("<table border=\"0\"><tr><td width=\"165\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // add the count down
         columnName = "Count Down: ";
-        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%.2f secs</td>", columnName.c_str(), GetAttributeFloat(ATTRIB_COUNTDOWNTIME)->GetValue());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%.2f secs</td>", columnName.c_str(), m_countDownTime);
 
         // add the randomization used flag
         columnName = "Randomization Used: ";
-        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), GetAttributeFloat(ATTRIB_USERANDOMIZATION)->GetValue() ? "Yes" : "No");
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), m_useRandomization ? "Yes" : "No");
 
         // add the random count down range
         columnName = "Random Count Down Range: ";
-        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>(%.2f secs, %.2f secs)</td></tr></table>", columnName.c_str(), GetAttributeFloat(ATTRIB_MINRANDOMTIME)->GetValue(), GetAttributeFloat(ATTRIB_MAXRANDOMTIME)->GetValue());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>(%.2f secs, %.2f secs)</td></tr></table>", columnName.c_str(), m_minRandomTime, m_maxRandomTime);
     }
-
-
-    // update the attributes
-    void AnimGraphTimeCondition::OnUpdateAttributes()
-    {
-        // disable GUI items that have no influence
-    #ifdef EMFX_EMSTUDIOBUILD
-        // enable all attributes
-        EnableAllAttributes(true);
-
-        // disable randomize values if randomization is off
-        if (GetAttributeFloatAsBool(ATTRIB_USERANDOMIZATION) == false)
-        {
-            SetAttributeDisabled(ATTRIB_MINRANDOMTIME);
-            SetAttributeDisabled(ATTRIB_MAXRANDOMTIME);
-        }
-        else
-        {
-            SetAttributeDisabled(ATTRIB_COUNTDOWNTIME);
-        }
-    #endif
-    }
-
 
     //--------------------------------------------------------------------------------
     // class AnimGraphTimeCondition::UniqueData
@@ -245,5 +180,102 @@ namespace EMotionFX
     // destructor
     AnimGraphTimeCondition::UniqueData::~UniqueData()
     {
+    }
+
+
+    void AnimGraphTimeCondition::SetCountDownTime(float countDownTime)
+    {
+        m_countDownTime = countDownTime;
+    }
+
+
+    float AnimGraphTimeCondition::GetCountDownTime() const
+    {
+        return m_countDownTime;
+    }
+
+
+    void AnimGraphTimeCondition::SetMinRandomTime(float minRandomTime)
+    {
+        m_minRandomTime = minRandomTime;
+    }
+
+
+    float AnimGraphTimeCondition::GetMinRandomTime() const
+    {
+        return m_minRandomTime;
+    }
+
+
+    void AnimGraphTimeCondition::SetMaxRandomTime(float maxRandomTime)
+    {
+        m_maxRandomTime = maxRandomTime;
+    }
+
+
+    float AnimGraphTimeCondition::GetMaxRandomTime() const
+    {
+        return m_maxRandomTime;
+    }
+
+
+    void AnimGraphTimeCondition::SetUseRandomization(bool useRandomization)
+    {
+        m_useRandomization = useRandomization;
+    }
+
+
+    bool AnimGraphTimeCondition::GetUseRandomization() const
+    {
+        return m_useRandomization;
+    }
+
+
+    AZ::Crc32 AnimGraphTimeCondition::GetRandomTimeVisibility() const
+    {
+        return m_useRandomization ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
+    }
+
+
+    void AnimGraphTimeCondition::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphTimeCondition, AnimGraphTransitionCondition>()
+            ->Version(1)
+            ->Field("countDownTime", &AnimGraphTimeCondition::m_countDownTime)
+            ->Field("useRandomization", &AnimGraphTimeCondition::m_useRandomization)
+            ->Field("minRandomTime", &AnimGraphTimeCondition::m_minRandomTime)
+            ->Field("maxRandomTime", &AnimGraphTimeCondition::m_maxRandomTime)
+            ;
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<AnimGraphTimeCondition>("Time Condition", "Time condition attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &AnimGraphTimeCondition::m_countDownTime, "Countdown Time", "The amount of seconds the condition will count down until the condition will trigger.")
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &AnimGraphTimeCondition::m_useRandomization, "Use Randomization", "When randomization is enabled the count down time will be a random one between the min and max random time.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &AnimGraphTimeCondition::m_minRandomTime, "Min Random Time", "The minimum randomized count down time. This will be only used then randomization is enabled.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphTimeCondition::GetRandomTimeVisibility)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &AnimGraphTimeCondition::m_maxRandomTime, "Max Random Time", "The maximum randomized count down time. This will be only used then randomization is enabled.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphTimeCondition::GetRandomTimeVisibility)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
+            ;
     }
 } // namespace EMotionFX

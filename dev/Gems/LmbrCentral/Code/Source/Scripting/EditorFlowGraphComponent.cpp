@@ -26,8 +26,6 @@
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include "FlowGraphComponent.h"
 
-#include <FlowSystem/FlowData.h>
-
 #include "Include/EditorCoreAPI.h"
 
 #include <Editor/IEditor.h>

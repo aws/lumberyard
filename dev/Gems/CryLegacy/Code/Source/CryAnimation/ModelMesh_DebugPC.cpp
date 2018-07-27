@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include <IRenderAuxGeom.h>
 #include "ModelMesh.h"
 #include "Model.h"
@@ -139,7 +139,8 @@ void CModelMesh::ExportModel(IRenderMesh* pIRenderMesh)
     //--------------------------------------------------------------------------------
     //-- dump all vertices
     //--------------------------------------------------------------------------------
-    FILE* vstream = fopen("c:\\VBuffer.txt", "w+b");
+    FILE* vstream = nullptr;
+    fopen_s(&vstream, "c:\\VBuffer.txt", "w+b");
     for (uint32 v = 0; v < numExtVertices; v++)
     {
         fprintf(vstream, " {%15.10ff,%15.10ff,%15.10ff,   %15.10ff,%15.10ff,%15.10ff,%15.10ff,   %15.10ff,%15.10ff }, //%04x", arrSrcPositions[v].x, arrSrcPositions[v].y, arrSrcPositions[v].z,   arrSrcQTangents[v].v.x, arrSrcQTangents[v].v.y, arrSrcQTangents[v].v.z, arrSrcQTangents[v].w,     arrSrcUV[v].x, arrSrcUV[v].y,    v);
@@ -151,7 +152,8 @@ void CModelMesh::ExportModel(IRenderMesh* pIRenderMesh)
     //--------------------------------------------------------------------------------
     //--   dump all indices
     //--------------------------------------------------------------------------------
-    FILE* istream = fopen("c:\\IBuffer.txt", "w+b");
+    FILE* istream = nullptr;
+    fopen_s(&istream, "c:\\IBuffer.txt", "w+b");
     for (uint32 f = 0; f < numExtIndices; f = f + 3)
     {
         fprintf(istream, "0x%04x,0x%04x,0x%04x, //0x%08x", pIndices[f + 0], pIndices[f + 1], pIndices[f + 2], f / 3);
@@ -165,7 +167,8 @@ void CModelMesh::ExportModel(IRenderMesh* pIRenderMesh)
     //--   dump all subsets
     //--------------------------------------------------------------------------------
     /*uint32 numSubsets = m_arrSubsets.size();
-    FILE* sstream = fopen( "c:\\Subsets.txt", "w+b" );
+    FILE* sstream = nullptr;
+    fopen_s(&sstream,  "c:\\Subsets.txt", "w+b" );
     for (uint32 s=0; s<numSubsets; s++)
     {
         fprintf(sstream, "0x%08x,0x%08x, 0x%08x,0x%08x,  0x%04x, //0x%08x",  m_arrSubsets[s].nFirstVertId,m_arrSubsets[s].nNumVerts, m_arrSubsets[s].nFirstIndexId,m_arrSubsets[s].nNumIndices/3,   m_arrSubsets[s].nMatID, s);

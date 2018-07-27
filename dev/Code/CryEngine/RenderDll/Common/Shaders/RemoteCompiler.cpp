@@ -22,6 +22,11 @@
 #include <AzFramework/Network/SocketConnection.h>
 #include <AzFramework/Asset/AssetSystemTypes.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define REMOTECOMPILER_CPP_SECTION_1 1
+#endif
+
 namespace NRemoteCompiler
 {
     uint32 CShaderSrv::m_LastWorkingServer = 0;
@@ -40,7 +45,7 @@ namespace NRemoteCompiler
         bool m_unitTestMode;
         bool m_engineConnectionCallbackInstalled; // lazy-install it.
 
-        typedef std::function<void(const void* payload, unsigned int payloadSize)> TResponseCallback;
+        typedef AZStd::function<void(const void* payload, unsigned int payloadSize)> TResponseCallback;
 
         RemoteProxyState()
         {
@@ -292,6 +297,293 @@ namespace NRemoteCompiler
         static CShaderSrv g_ShaderSrv;
         return g_ShaderSrv;
     }
+    
+    EShaderCompiler CShaderSrv::GetShaderCompiler() const
+    {
+        EShaderCompiler shaderCompiler = eSC_Unknown;
+
+        EShaderLanguage shaderLanguage = GetShaderLanguage();
+        switch (shaderLanguage)
+        {
+        case eSL_Orbis: // ACCEPTED_USE
+            shaderCompiler = eSC_Orbis_DXC; // ACCEPTED_USE
+            break;
+
+        case eSL_Durango: // ACCEPTED_USE
+            shaderCompiler = eSC_Durango_FXC; // ACCEPTED_USE
+            break;
+
+        case eSL_D3D11:
+            shaderCompiler = eSC_D3D11_FXC;
+            break;
+
+        case eSL_GL4_1:
+        case eSL_GL4_4:
+        case eSL_GLES3_0:
+        case eSL_GLES3_1:
+            shaderCompiler = (CRenderer::CV_r_ShadersUseLLVMDirectXCompiler) ? eSC_GLSL_LLVM_DXC : eSC_GLSL_HLSLcc;
+            break;
+
+        case eSL_METAL:
+            shaderCompiler = (CRenderer::CV_r_ShadersUseLLVMDirectXCompiler) ? eSC_METAL_LLVM_DXC : eSC_METAL_HLSLcc;
+            break;
+        }
+
+        return shaderCompiler;
+    }
+
+    const char *CShaderSrv::GetShaderCompilerName() const
+    {
+        // NOTE: These strings are used in the CrySCompilerServer tool as IDs.
+        static const char *shaderCompilerNames[eSC_MAX] =
+        {
+            "Unknown",
+            "Orbis_DXC", // ACCEPTED_USE
+            "Durango_FXC", // ACCEPTED_USE
+            "D3D11_FXC",
+            "GLSL_HLSLcc",
+            "METAL_HLSLcc",
+            "GLSL_LLVM_DXC",
+            "METAL_LLVM_DXC"
+        };
+
+        EShaderCompiler shaderCompiler = GetShaderCompiler();
+        return shaderCompilerNames[shaderCompiler];
+    }
+
+    // Return the platform name depending on the shader language.
+    //
+    // NOTE: This is relevant for the remote compiler because there are specific platform macros being
+    //       included for certain languages in the SetupForXXX functions (ParseBin.cpp), this makes shaders
+    //       code unique per platform and the remote compiler has to know about it to avoid conflicts.
+    //
+    // IMPORTANT: For shaders languages that depend on ShaderCacheGen.exe (Orbis, Durango and D3D11) it's important // ACCEPTED_USE
+    //            to return the name without using preprocesor variables; this way ShaderCacheGen.exe can be used from
+    //            windows or mac to generate shaders using remote compiler.
+    const char* CShaderSrv::GetPlatformName() const
+    {
+        const char *platformName = "Unknown";
+
+        EShaderLanguage shaderLanguage = GetShaderLanguage();
+
+        switch (shaderLanguage)
+        {
+        case eSL_Orbis: // ACCEPTED_USE
+            platformName = "Orbis"; // ACCEPTED_USE
+            break;
+
+        case eSL_Durango: // ACCEPTED_USE
+            platformName = "Durango"; // ACCEPTED_USE
+            break;
+
+        case eSL_D3D11:
+            platformName = "PC";
+            break;
+
+        case eSL_GL4_1:
+        case eSL_GL4_4:
+#if defined(AZ_PLATFORM_APPLE_OSX)
+            platformName = "Mac";
+#else
+            platformName = "PC";
+#endif
+            break;
+
+        case eSL_GLES3_0:
+        case eSL_GLES3_1:
+#if defined(AZ_PLATFORM_ANDROID)
+            platformName = "Android";
+#else
+            platformName = "Unknown"; // GL3S is supposed to run only in Android
+#endif
+            break;
+
+        case eSL_METAL:
+#if defined(AZ_PLATFORM_APPLE_OSX)
+            platformName = "Mac";
+#else
+            platformName = "iOS";
+#endif
+            break;
+
+        case eSL_Unknown:
+        default:
+            AZ_Assert(false, "Unknown shader language");
+            break;
+        }
+
+        return platformName;
+    }
+
+    AZStd::string CShaderSrv::GetShaderCompilerFlags(EHWShaderClass eClass, UPipelineState pipelineState) const
+    {
+        AZStd::string flags = "";
+
+        EShaderCompiler shaderCompiler = GetShaderCompiler();
+        switch (shaderCompiler)
+        {
+        // ----------------------------------------
+        case eSC_Orbis_DXC: // ACCEPTED_USE
+        {
+            flags = "%s %s \"%s\" \"%s\"";
+
+            #if defined(AZ_RESTRICTED_PLATFORM)
+            #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_1
+            #include AZ_RESTRICTED_FILE(RemoteCompiler_cpp, AZ_RESTRICTED_PLATFORM)
+            #endif
+        }
+        break;
+
+        // ----------------------------------------
+        case eSC_Durango_FXC: // ACCEPTED_USE
+        case eSC_D3D11_FXC:
+        {
+            const char* extraFlags = (shaderCompiler==eSC_Durango_FXC) ? "/Gis" : ""; // ACCEPTED_USE
+
+            const char* debugFlags = "";
+            if (CRenderer::CV_r_shadersdebug == 3)
+            {
+                debugFlags = " /Zi /Od";  // Debug information
+            }
+            else if (CRenderer::CV_r_shadersdebug == 4)
+            {
+                debugFlags = " /Zi /O3";  // Debug information, optimized shaders
+            }
+
+            flags = AZStd::move(AZStd::string::format("/nologo /E %%s /T %%s /Zpr /Gec %s %s /Fo \"%%s\" \"%%s\"", extraFlags, debugFlags));
+        }
+        break;
+
+        // ----------------------------------------
+        case eSC_GLSL_HLSLcc:
+        {
+            // Translate flags for HLSLCrossCompiler compiler. All flags come from 'Code\Tools\HLSLCrossCompiler\include\hlslcc.h'
+            unsigned int translateFlags =
+                0x1 |    // Each constant buffer will have its own uniform block
+                0x100 |  // Invert clip space position Y
+                0x200 |  // Convert clip sapce position Z
+                0x400 |  // Avoid resource bindings and locations
+                0x800 |  // Do not use an array for temporary registers
+                0x8000 | // Do not add GLSL version macro
+                0x10000; // Avoid shader image load store extension
+
+            EShaderLanguage shaderLanguage = GetShaderLanguage();
+            switch (shaderLanguage)
+            {
+            case eSL_GL4_1:
+            case eSL_GL4_4:
+            {
+                const char* glVer = (shaderLanguage == eSL_GL4_1) ? "410" : "440";
+                flags = AZStd::move(AZStd::string::format("-lang=%s -flags=%u -fxc=\"%%s /nologo /E %%s /T %%s /Zpr /Gec /Fo\" -out=\"%%s\" -in=\"%%s\"", glVer, translateFlags));
+            }
+            break;
+
+            case eSL_GLES3_0:
+            {
+                translateFlags |=
+                    0x20000 | // Syntactic workarounds for driver bugs found in Qualcomm devices running OpenGL ES 3.0
+                    0x40000;  // Add half support
+
+                flags = AZStd::move(AZStd::string::format("-lang=es300 -flags=%u -fxc=\"%%s /nologo /E %%s /T %%s /Zpr /Gec /Fo\" -out=\"%%s\" -in=\"%%s\"", translateFlags));
+            }
+            break;
+
+            case eSL_GLES3_1:
+            {
+                translateFlags |=
+                    0x40000;  // Add half support
+
+                flags = AZStd::move(AZStd::string::format("-lang=es310 -flags=%u -fxc=\"%%s /nologo /E %%s /T %%s /Zpr /Gec /Fo\" -out=\"%%s\" -in=\"%%s\"", translateFlags));
+            }
+            break;
+
+            default:
+                AZ_Assert(false, "Non-GLSL shader language used with the GLSL HLSLcc compiler.");
+                break;
+            }
+        }
+        break;
+
+        // ----------------------------------------
+        case eSC_METAL_HLSLcc:
+        {
+            // Translate flags for HLSLCrossCompilerMETAL compiler. All flags come from 'Code\Tools\HLSLCrossCompilerMETAL\include\hlslcc.h'
+            unsigned int translateFlags =
+                //0x40000 |// Add half support
+                0x1 |    // Each constant buffer will have its own uniform block
+                0x100 |  // Declare inputs and outputs with their semantic name appended
+                0x200 |  // Combine texture/sampler pairs used together into samplers named "texturename_X_samplernamC"
+                0x400 |  // Attribute and uniform explicit location qualifiers are disabled (even if the language version supports that)
+                0x800;   // Global uniforms are not stored in a struct
+
+            flags = AZStd::move(AZStd::string::format("-lang=metal -flags=%u -fxc=\"%%s /nologo /E %%s /T %%s /Zpr /Gec /Fo\" -out=\"%%s\" -in=\"%%s\"", translateFlags));
+        }
+        break;
+
+        // ----------------------------------------
+        case eSC_GLSL_LLVM_DXC:
+        {
+            // Translate flags for DirectXShaderCompiler GLSL compiler. All flags come from 'DirectXShaderCompiler\src\tools\clang\tools\dxcGL\HLSLCrossCompiler\include\hlslcc.h'
+            unsigned int translateFlags =
+                0x1 |    // Each constant buffer will have its own uniform block
+                0x100 |  // Invert clip space position Y
+                0x200 |  // Convert clip sapce position Z
+                0x400 |  // Avoid resource bindings and locations
+                0x8000;  // Do not add GLSL version macro
+
+            EShaderLanguage shaderLanguage = GetShaderLanguage();
+            switch (shaderLanguage)
+            {
+            case eSL_GL4_1:
+            case eSL_GL4_4:
+            {
+                const char* glVer = (shaderLanguage == eSL_GL4_1) ? "410" : "440";
+                flags = AZStd::move(AZStd::string::format("-translate_flags %u -translate %s -E %%s -T %%s -Zpr -not_use_legacy_cbuf_load -Gfa -Fo \"%%s\" \"%%s\"", translateFlags, glVer));
+            }
+            break;
+
+            case eSL_GLES3_0:
+            case eSL_GLES3_1:
+            {
+                const char* glesVer = (shaderLanguage == eSL_GLES3_0) ? "es300" : "es310";
+                flags = AZStd::move(AZStd::string::format("-translate_flags %u -translate %s -E %%s -T %%s -Zpr -not_use_legacy_cbuf_load -Gfa -Fo \"%%s\" \"%%s\"", translateFlags, glesVer));
+            }
+            break;
+
+            default:
+                AZ_Assert(false, "Non-GLSL shader language used with the LLVM DXC compiler.");
+                break;
+            }
+        }
+        break;
+
+        // ----------------------------------------
+        case eSC_METAL_LLVM_DXC:
+        {
+            // Translate flags for DirectXShaderCompiler Metal compiler. All flags come from 'DirectXShaderCompiler\src\tools\clang\tools\dxcMetal\HLSLCrossCompilerMETAL\include\hlslcc.h'
+            unsigned int translateFlags =
+                0x1 |    // Each constant buffer will have its own uniform block
+                0x100 |  // Declare inputs and outputs with their semantic name appended
+                0x200 |  // Combine texture/sampler pairs used together into samplers named "texturename_X_samplername"
+                0x400;   // Attribute and uniform explicit location qualifiers are disabled (even if the language version supports that)
+            
+            #if defined(AZ_PLATFORM_APPLE_OSX)
+                translateFlags |= 0x1000; // Declare dynamically indexed constant buffers as an array of floats
+            #endif
+
+            flags = AZStd::move(AZStd::string::format("-translate_flags %u -translate metal -E %%s -T %%s -Zpr -not_use_legacy_cbuf_load -Gfa -Fo \"%%s\" \"%%s\"", translateFlags));
+        }
+        break;
+
+        // ----------------------------------------
+        case eSC_Unknown:
+        default:
+            AZ_Assert(false, "Unknown shader compiler");
+            break;
+        }
+
+        return flags;
+    }
 
     string CShaderSrv::CreateXMLNode(const string& rTag, const string& rValue)   const
     {
@@ -354,7 +646,7 @@ namespace NRemoteCompiler
         std::vector<std::pair<string, string> >& rNodes) const
     {
         string Request = "<?xml version=\"1.0\"?><Compile ";
-        Request +=  CreateXMLNode("Version", TransformToXML("2.2"));
+        Request +=  CreateXMLNode("Version", TransformToXML("2.3"));
         for (size_t a = 0; a < rNodes.size(); a++)
         {
             Request +=  CreateXMLNode(rNodes[a].first, TransformToXML(rNodes[a].second));
@@ -365,57 +657,9 @@ namespace NRemoteCompiler
         return true;
     }
 
-    const char* CShaderSrv::GetPlatform() const
-    {
-        const char* szTarget = "unknown";
-        if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
-        {
-            szTarget = "ORBIS"; // ACCEPTED_USE
-        }
-        else
-        if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
-        {
-            szTarget = "DURANGO"; // ACCEPTED_USE
-        }
-        else
-        if (CParserBin::m_nPlatform == SF_D3D11)
-        {
-            szTarget = "D3D11";
-        }
-        else
-        if (CParserBin::m_nPlatform == SF_GL4)
-        {
-            szTarget = "GL4";
-        }
-        else
-        if (CParserBin::m_nPlatform == SF_GLES3)
-        {
-#if defined(OPENGL_ES)
-            uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
-            AZ_Assert(glVersion >= DXGLES_VERSION_30, "Invalid OpenGL version %lu", static_cast<unsigned long>(glVersion));
-            if (glVersion == DXGLES_VERSION_30)
-            {
-                szTarget = "GLES3_0";
-            }
-            else
-            {
-                szTarget = "GLES3_1";
-            }
-#endif // defined(OPENGL_ES)
-        }
-        // Confetti Nicholas Baldwin: adding metal shader language support
-        else
-        if (CParserBin::m_nPlatform == SF_METAL)
-        {
-            szTarget = "METAL";
-        }
-
-        return szTarget;
-    }
-
     bool CShaderSrv::RequestLine(const SCacheCombination& cmb, const string& rLine) const
     {
-        const string    List(string(GetPlatform()) + "/" + cmb.Name.c_str() + "ShaderList.txt");
+        const string List(string(GetShaderLanguageName()) + "/" + cmb.Name.c_str() + "ShaderList.txt");
         return RequestLine(List, rLine);
     }
 
@@ -461,7 +705,7 @@ namespace NRemoteCompiler
 
         std::vector<uint8>  CompileData;
         std::vector<std::pair<string, string> > Nodes;
-        Nodes.resize(9);
+        Nodes.resize(11);
         Nodes[0]    =   std::pair<string, string>(string("JobType"), string("Compile"));
         Nodes[1]    =   std::pair<string, string>(string("Profile"), string(pProfile));
         Nodes[2]    =   std::pair<string, string>(string("Program"), string(pProgram));
@@ -469,8 +713,10 @@ namespace NRemoteCompiler
         Nodes[4]    =   std::pair<string, string>(string("CompileFlags"), string(pCompileFlags));
         Nodes[5]    =   std::pair<string, string>(string("HashStop"), string("1"));
         Nodes[6]    =   std::pair<string, string>(string("ShaderRequest"), string(pIdent));
-        Nodes[7]    =   std::pair<string, string>(string("Project"), string(m_RequestLineRootFolder.c_str()));
-        Nodes[8]    =   std::pair<string, string>(string("Platform"), string(GetPlatform()));
+        Nodes[7]    =   std::pair<string, string>(string("Project"), m_RequestLineRootFolder);
+        Nodes[8]    =   std::pair<string, string>(string("Platform"), string(GetPlatformName()));
+        Nodes[9]    =   std::pair<string, string>(string("Compiler"), string(GetShaderCompilerName()));
+        Nodes[10]   =   std::pair<string, string>(string("Language"), string(GetShaderLanguageName()));
 
         if (gRenDev->CV_r_ShaderEmailTags && gRenDev->CV_r_ShaderEmailTags->GetString() &&
             strlen(gRenDev->CV_r_ShaderEmailTags->GetString()) > 0)
@@ -552,14 +798,16 @@ namespace NRemoteCompiler
             return true;
         }
 
-        string list = m_RequestLineRootFolder + rList;
-
         std::vector<uint8>  CompileData;
         std::vector<std::pair<string, string> > Nodes;
-        Nodes.resize(3);
+        Nodes.resize(7);
         Nodes[0]    =   std::pair<string, string>(string("JobType"), string("RequestLine"));
-        Nodes[1]    =   std::pair<string, string>(string("Platform"), list);
-        Nodes[2]    =   std::pair<string, string>(string("ShaderRequest"), rString);
+        Nodes[1]    =   std::pair<string, string>(string("Project"), m_RequestLineRootFolder);
+        Nodes[2]    =   std::pair<string, string>(string("Platform"), string(GetPlatformName()));
+        Nodes[3]    =   std::pair<string, string>(string("Compiler"), string(GetShaderCompilerName()));
+        Nodes[4]    =   std::pair<string, string>(string("Language"), string(GetShaderLanguageName()));
+        Nodes[5]    =   std::pair<string, string>(string("ShaderList"), rList);
+        Nodes[6]    =   std::pair<string, string>(string("ShaderRequest"), rString);
         if (!CreateRequest(CompileData, Nodes))
         {
             iLog->LogError("ERROR: CShaderSrv::RequestLine: failed composing Request XML\n");
@@ -721,7 +969,10 @@ namespace NRemoteCompiler
 
             size_t nUncompressedLen = (size_t)nSrcUncompressedLen;
 
-            if (nUncompressedLen > 1000000)
+            // Maximum size allowed for a shader in bytes
+            static const size_t maxShaderSize = 1*(1024*1024); // 1 MB
+
+            if (nUncompressedLen > maxShaderSize)
             {
                 // Shader too big, something is wrong.
                 rCompileData.clear(); // don't propogate "something is wrong" data

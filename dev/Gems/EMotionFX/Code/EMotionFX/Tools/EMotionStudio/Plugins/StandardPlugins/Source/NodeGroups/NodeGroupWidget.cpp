@@ -14,6 +14,7 @@
 #include "NodeGroupWidget.h"
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <EMotionFX/Source/NodeGroup.h>
+#include <MCore/Source/StringConversions.h>
 
 // include qt headers
 #include <QPushButton>

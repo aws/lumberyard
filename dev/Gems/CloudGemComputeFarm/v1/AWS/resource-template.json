@@ -1,0 +1,659 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09", 
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #1 $"
+        }
+    }, 
+    "Outputs": {
+        "ServiceUrl": {
+            "Description": "The service url.",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceApi",
+                    "Url"
+                ]
+            }
+        },
+        "ComputeFarmBucketName": {
+            "Description": "Name of the computefarm bucket.",
+            "Value": {
+                "Ref": "computefarm"
+            }
+        }
+    }, 
+    "Parameters": {
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup", 
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.", 
+            "Type": "String"
+        }, 
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.", 
+            "Type": "String"
+        }, 
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.", 
+            "Type": "String"
+        }, 
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.", 
+            "Type": "String"
+        }, 
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.", 
+            "Type": "String"
+        }, 
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.", 
+            "Type": "String"
+        }, 
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.", 
+            "Type": "String"
+        }, 
+        "ServiceApiCacheClusterEnabled": {
+            "Default": "false", 
+            "Description": "Indicates whether cache clustering is enabled for the service API.", 
+            "Type": "String"
+        }, 
+        "ServiceApiCacheClusterSize": {
+            "Default": "0.5", 
+            "Description": "Indicates whether cache clustering is enabled for the service API.", 
+            "Type": "String"
+        }
+    }, 
+    "Resources": {
+        "AccessControl": {
+            "DependsOn": [
+                "ServiceApi",
+                "ServiceLambda",
+                "computefarm"
+            ], 
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            }, 
+            "Type": "Custom::AccessControl"
+        }, 
+        "ServiceApi": {
+            "Properties": {
+                "CacheClusterEnabled": {
+                    "Ref": "ServiceApiCacheClusterEnabled"
+                }, 
+                "CacheClusterSize": {
+                    "Ref": "ServiceApiCacheClusterSize"
+                }, 
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "MethodSettings": {}, 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }, 
+                "SwaggerSettings": {
+                    "ServiceLambdaArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda", 
+                            "Arn"
+                        ]
+                    }
+                }
+            }, 
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "Player",
+                        "Action": "execute-api:Invoke",
+                        "ResourceSuffix": [
+                            "/api/GET/example",
+                            "/api/POST/example"
+                        ]
+                    }
+                }
+            },
+            "Type": "Custom::ServiceApi"
+        }, 
+        "ServiceLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceApi",
+                            "Action": "lambda:InvokeFunction"
+                        },
+                        {
+                            "AbstractRole": "Server",
+                            "Action": "execute-api:Invoke",
+                            "ResourceSuffix": [
+                                "/api/GET/stream"
+                            ]
+                        }
+                    ]
+                }
+            }, 
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration", 
+                            "ConfigurationBucket"
+                        ]
+                    }, 
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration", 
+                            "ConfigurationKey"
+                        ]
+                    }
+                }, 
+                "Handler": "cgf_lambda_service.dispatch", 
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration", 
+                        "Role"
+                    ]
+                }, 
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration", 
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300
+            }, 
+            "Type": "AWS::Lambda::Function"
+        }, 
+        "ServiceLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "FunctionName": "ServiceLambda", 
+                "Runtime": "python2.7", 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }, 
+                "Settings": {
+                    "LogDB": {
+                        "Ref": "LogDB"
+                    },
+                    "Workflow": {
+                        "Ref": "Workflow"
+                    },
+                    "computefarm": {
+                        "Ref": "computefarm"
+                    },
+                    "InstanceProfile": {
+                        "Ref": "InstanceProfile"
+                    },
+                    "EC2SubnetA": {
+                        "Ref": "EC2SubnetA"
+                    },
+                    "EC2SubnetB": {
+                        "Ref": "EC2SubnetB"
+                    },
+                    "EC2SubnetC": {
+                        "Ref": "EC2SubnetC"
+                    },
+                    "EC2SecurityGroup": {
+                        "Ref": "EC2SecurityGroup"
+                    },
+                    "TaskList": {
+                        "Fn::GetAtt": ["Workflow", "TaskList"]
+                    },
+                    "DomainName": {
+                        "Fn::GetAtt": ["Workflow", "DomainName"]
+                    },
+                    "WorkflowTypeName": {
+                        "Fn::GetAtt": ["Workflow", "WorkflowTypeName"]
+                    },
+                    "DivTask": {
+                        "Fn::Select": [0, {"Fn::GetAtt": ["Workflow", "ActivityTypes"]}]
+                    },
+                    "BuildTask": {
+                        "Fn::Select": [1, {"Fn::GetAtt": ["Workflow", "ActivityTypes"]}]
+                    },
+                    "MergeTask": {
+                        "Fn::Select": [2, {"Fn::GetAtt": ["Workflow", "ActivityTypes"]}]
+                    },
+                    "S3Bucket": {
+                        "Ref": "computefarm"
+                    },
+                    "KVS": {
+                        "Ref": "KVS"
+                    }
+                }
+            }, 
+            "Type": "Custom::LambdaConfiguration"
+        },        
+        "EC2VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": "10.0.0.0/16"
+            }
+        },
+        
+        "EC2SubnetA": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": "10.0.0.0/18",
+                "MapPublicIpOnLaunch": true,
+                "AvailabilityZone": { "Fn::Join": [ "", [ {"Ref": "AWS::Region"}, "a" ] ] },
+                "VpcId": { "Ref": "EC2VPC" }
+            }
+        },
+
+        "EC2SubnetB": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": "10.0.128.0/18",
+                "MapPublicIpOnLaunch": true,
+                "AvailabilityZone": { "Fn::Join": [ "", [ {"Ref": "AWS::Region"}, "b" ] ] },
+                "VpcId": { "Ref": "EC2VPC" }
+            },
+            "DependsOn": ["EC2SubnetA"]
+        },
+
+        "EC2SubnetC": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": "10.0.64.0/18",
+                "MapPublicIpOnLaunch": true,
+                "AvailabilityZone": { "Fn::Join": [ "", [ {"Ref": "AWS::Region"}, "c" ] ] },
+                "VpcId": { "Ref": "EC2VPC" }
+            },
+            "DependsOn": ["EC2SubnetB"]
+        },
+        
+        "EC2SubnetARoute": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": { "Ref": "EC2RouteTable" },
+                "SubnetId": { "Ref": "EC2SubnetA" }
+            }
+        },
+        
+        "EC2SubnetBRoute": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": { "Ref": "EC2RouteTable" },
+                "SubnetId": { "Ref": "EC2SubnetB" }
+            }
+        },
+        
+        "EC2SubnetCRoute": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": { "Ref": "EC2RouteTable" },
+                "SubnetId": { "Ref": "EC2SubnetC" }
+            }
+        },
+        
+        "EC2SecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription" : "CloudGemComputeFarm security options",
+                "VpcId" : { "Ref" : "EC2VPC" },
+                "SecurityGroupIngress" : [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3389",
+                        "ToPort": "3389",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        
+        "EC2InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+            }
+        },
+        
+        "EC2VPCGatewayAttachment": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "InternetGatewayId": { "Ref": "EC2InternetGateway" },
+                "VpcId": { "Ref": "EC2VPC" }
+            }
+        },
+        
+        "EC2RouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": { "Ref": "EC2VPC" }
+            }
+        },
+        
+        "EC2InternetRoute": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": { "Ref": "EC2InternetGateway" },
+                "RouteTableId": {"Ref": "EC2RouteTable" } 
+            },
+            "DependsOn": [
+                "EC2VPCGatewayAttachment"
+            ]
+        },
+        
+        "InstanceRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "Path": { "Fn::Join": [ "", [ "/", { "Ref": "DeploymentName" }, "/", { "Ref": "ResourceGroupName" }, "/" ]] },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRole",
+                            "Principal": { "Service": "ec2.amazonaws.com" }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRole",
+                            "Principal": { "AWS": {"Ref": "AWS::AccountId"} }
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "instancePolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "swf:PollForActivityTask",
+                                        "swf:PollForDecisionTask",
+                                        "swf:RespondActivityTaskCompleted",
+                                        "swf:RespondActivityTaskCanceled",
+                                        "swf:RespondActivityTaskFailed",
+                                        "swf:RespondDecisionTaskCompleted",
+                                        "swf:RecordActivityTaskHeartbeat",
+                                        "swf:RespondDecisionTaskCompleted",
+                                        "swf:ScheduleActivityTask",
+                                        "swf:CompleteWorkflowExecution"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": { "Fn::Join": [ "", [ "arn:aws:swf:*:", {"Ref": "AWS::AccountId"}, ":/domain/", {"Fn::GetAtt": ["Workflow", "DomainName"]} ] ] }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "s3:*",
+                                    "Resource": [
+                                        { "Fn::GetAtt": [ "computefarm", "Arn" ] },
+                                        { "Fn::Join": [ "", [ { "Fn::GetAtt": [ "computefarm", "Arn" ] }, "/*" ] ] }
+                                    ]
+                                },
+                                {
+                                    "Action": [
+                                        "dynamodb:PutItem"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        { "Fn::GetAtt": [ "LogDB", "Arn" ] }
+                                    ]
+                                },
+                                {
+                                    "Action": [
+                                        "autoscaling:UpdateAutoScalingGroup"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": { "Fn::Join": [ "", [ "arn:aws:autoscaling:*:", {"Ref": "AWS::AccountId"}, ":*"] ] }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "InstanceProfile": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "Action": ["iam:PassRole"],
+                            "AbstractRole": "ServiceLambda"
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Roles": [ { "Ref": "InstanceRole" } ],
+                "Path": { "Fn::Join": [ "", [ "/", { "Ref": "DeploymentName" }, "/", { "Ref": "ResourceGroupName" }, "/" ]] }
+            }
+        },
+        
+        "LogDB": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "Action": ["dynamodb:Query", "dynamodb:Scan", "dynamodb:BatchWriteItem"],
+                            "AbstractRole": "ServiceLambda"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "run-id",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "event-id",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "run-id",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "event-id",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": "4",
+                    "WriteCapacityUnits": "260"
+                }
+            },
+            "Type": "Custom::DynamoDBTable"
+        },
+        
+        "KVS": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "Action": ["dynamodb:Query", "dynamodb:Scan", "dynamodb:BatchWriteItem", "dynamodb:PutItem", "dynamodb:DeleteItem"],
+                            "AbstractRole": "ServiceLambda"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "key",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "key",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": "4",
+                    "WriteCapacityUnits": "4"
+                }
+            },
+            "Type": "Custom::DynamoDBTable"
+        },
+
+        "Workflow": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "swf:StartWorkflowExecution",
+                                "swf:DescribeWorkflowExecution",
+                                "swf:CancelWorkflowExecution",
+                                "swf:TerminateWorkflowExecution"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Type": "Custom::SWF",
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "ChildPolicy": "ABANDON",
+                "ExecutionStartToCloseTimeout": "31536000",
+                "TaskList": {
+                    "name": "dev-task-list"
+                },
+                "TaskStartToCloseTimeout": "NONE",
+                "ActivityTypes": [ "task-divide", "task-build", "task-merge" ]
+            }
+        },
+        "computefarm": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": [ "CloudGemPortalAdministratorRole" ],
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "CloudGemPortalAdministratorRole",
+                            "Action": "s3:ListBucket"
+                        },
+                        {
+                            "AbstractRole": [ "CloudGemPortalUserRole" ],
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "CloudGemPortalUserRole",
+                            "Action": "s3:ListBucket"
+                        },
+                        {
+                            "AbstractRole": [ "ServiceLambda" ],
+                            "Action": [
+                                "s3:PutObject",
+                                "s3:GetObject",
+                                "s3:DeleteObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "CorsConfiguration": {
+                    "CorsRules":
+                        [{
+                            "AllowedHeaders" : [ "*" ],
+                            "AllowedMethods" : [ "GET", "PUT", "POST", "DELETE" ],
+                            "AllowedOrigins": [ "*" ],
+                            "ExposedHeaders": ["ETag"],
+                            "Id" : "compute_farm_upload_Policy",
+                            "MaxAge" : 3000
+                        }]
+                }
+            },
+            "Type": "AWS::S3::Bucket"
+        },
+        "AmiPermissions": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "ec2:DescribeImages"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::AmiPermissions"
+        },
+        "AutoscalingPermissions": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "autoscaling:CreateLaunchConfiguration",
+                                "autoscaling:DeleteLaunchConfiguration",
+                                "autoscaling:CreateAutoScalingGroup",
+                                "autoscaling:UpdateAutoScalingGroup",
+                                "autoscaling:DeleteAutoScalingGroup",
+                                "autoscaling:DescribeAutoScalingGroups",
+                                "ec2:DescribeKeyPairs"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::AutoscalingPermissions"
+        }
+    }
+}

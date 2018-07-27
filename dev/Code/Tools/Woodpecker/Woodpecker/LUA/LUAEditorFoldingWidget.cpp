@@ -124,9 +124,9 @@ namespace LUAEditor
                         auto prevBlock = block.previous();
                         if (prevBlock.isValid())
                         {
-                            QTBlockState blockState;
-                            blockState.m_qtBlockState = prevBlock.userState();
-                            lastFoldLevel = blockState.m_blockState.m_foldLevel;
+                            QTBlockState prevBlockState;
+                            prevBlockState.m_qtBlockState = prevBlock.userState();
+                            lastFoldLevel = prevBlockState.m_blockState.m_foldLevel;
                         }
                         firstBlock = false;
                     }
@@ -210,9 +210,9 @@ namespace LUAEditor
                     AZ::u32 prevFoldLevel = 0;
                     if (prevBlock.isValid())
                     {
-                        QTBlockState state;
-                        state.m_qtBlockState = prevBlock.userState();
-                        prevFoldLevel = state.m_blockState.m_foldLevel;
+                        QTBlockState prevBlockState;
+                        prevBlockState.m_qtBlockState = prevBlock.userState();
+                        prevFoldLevel = prevBlockState.m_blockState.m_foldLevel;
                     }
                     if (!state.m_blockState.m_uninitialized && state.m_blockState.m_foldLevel > prevFoldLevel)
                     {

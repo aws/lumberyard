@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include <ICryAnimation.h>
 #include "BreakableManager.h"
 #include "BreakablePlane.h"
@@ -660,7 +660,7 @@ void CBreakableManager::BreakIntoPieces(GeomRef& geoOrig, const Matrix34& mxSrcT
                 }
             }
 
-            if (!strcmpi(pSubObjInfo->name, "Main") || !strcmpi(pSubObjInfo->name, "Remain"))
+            if (!azstricmp(pSubObjInfo->name, "Main") || !azstricmp(pSubObjInfo->name, "Remain"))
             {
                 continue;
             }

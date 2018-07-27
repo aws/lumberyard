@@ -34,6 +34,7 @@ export class SpeechToTextEditIntentComponent {
     private showSlots: boolean = true;
     private showConfirmationPrompt: boolean;
     private confirmationPromptEnabled: boolean;
+    private showFulfillment: boolean;
 
     private currentIntent: IntentEntry;
     private builtinSlotTypes: SlotTypeEntry[];
@@ -106,6 +107,9 @@ export class SpeechToTextEditIntentComponent {
         }
         else if (name == "confirmationPrompt") {
             this.showConfirmationPrompt = !this.showConfirmationPrompt;
+        }
+        else if (name == "fulfillment") {
+            this.showFulfillment = !this.showFulfillment;
         }
     }
 
@@ -290,6 +294,9 @@ export class SpeechToTextEditIntentComponent {
     public saveIntent(): void {
         this.currentIntent.get("$LATEST").then(function (intent) {
             this.currentIntent.checksum = intent.checksum;
+            if (this.currentIntent.fulfillmentActivity.type === 'CodeHook') {
+                this.currentIntent.fulfillmentActivity.codeHook.messageVersion = '1.0';
+            }
             this.currentIntent.save();
         }.bind(this))
     }
@@ -328,6 +335,7 @@ export class SpeechToTextEditIntentComponent {
             this.confirmationPromptEnabled = this.showConfirmationPrompt;
             this.showLambdaInitializationAndValidation = this.currentIntent.dialogCodeHook && this.currentIntent.dialogCodeHook["uri"];
             this.lambdaInitializationAndValidationEnabled = this.showLambdaInitializationAndValidation;
+            this.showFulfillment = this.currentIntent.fulfillmentActivity;
             this.getIntentVersions(this.currentIntent);
         }.bind(this), function () {
             this.isLoadingIntent = false;
@@ -359,5 +367,18 @@ export class SpeechToTextEditIntentComponent {
         slotType.getVersions("t").then(function () {
             this.slotTypeVersionMappings[slotTypeName] = slotType.versions;
         }.bind(this));
+    }
+
+    /**
+     * Clear the current lambda function ARN when users select to return parameters to client
+    **/
+    public clearLambdaFunctionArn(): void {
+        if (this.currentIntent.fulfillmentActivity["type"] === 'CodeHook') {
+            this.currentIntent.fulfillmentActivity["codeHook"] = {};
+            this.currentIntent.fulfillmentActivity["codeHook"]["uri"] = "";
+        }
+        else {
+            delete this.currentIntent.fulfillmentActivity['codeHook'];
+        }
     }
 }

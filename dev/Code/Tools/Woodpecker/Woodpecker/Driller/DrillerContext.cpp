@@ -13,10 +13,10 @@
 #include "stdafx.h"
 #include "DrillerContext.h"
 #include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/IO/streamer.h>
+#include <AzCore/IO/Streamer.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <AzCore/Script/scriptcontext.h>
+#include <AzCore/Script/ScriptContext.h>
 #include <QMessageBox>
 #include <AzToolsFramework/UI/UICore/SaveChangesDialog.hxx>
 #include <AzToolsFramework/UI/LegacyFramework/UIFrameworkAPI.h>
@@ -112,7 +112,6 @@ namespace Driller
 
             serialize->Class<Context, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
             ;
         }
     }

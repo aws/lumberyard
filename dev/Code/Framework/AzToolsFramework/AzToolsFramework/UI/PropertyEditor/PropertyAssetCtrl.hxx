@@ -96,18 +96,13 @@ namespace AzToolsFramework
         void SetEditButtonTooltip(QString tooltip);
         void SetCurrentAssetID(const AZ::Data::AssetId& newID);
         void SetCurrentAssetType(const AZ::Data::AssetType& newType);
+        void SetCurrentAssetID(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType);
         void SetCurrentAssetHint(const AZStd::string& hint);
         void PopupAssetBrowser();
         void ClearAsset();
         void UpdateAssetDisplay();
         void OnEditButtonClicked();
         void ShowContextMenu(const QPoint& pos);
-
-        void SetValues(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType, const AZStd::string& hint, void* editNotifyTarget);
-        void SetValues(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType, const AZStd::string& hint);
-
-    private:
-        void ForceSetCurrentAssetID(const AZ::Data::AssetId& newID);
     };
 
     class AssetPropertyHandlerDefault

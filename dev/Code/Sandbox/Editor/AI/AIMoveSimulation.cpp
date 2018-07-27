@@ -56,9 +56,11 @@ void CAIMoveSimulation::OnSelectionChanged()
 //////////////////////////////////////////////////////////////////////////
 void CAIMoveSimulation::CancelMove()
 {
-    assert(gEnv && gEnv->pAISystem && gEnv->pAISystem->GetMovementSystem());
-    gEnv->pAISystem->GetMovementSystem()->CancelRequest(m_movementRequestID);
-    m_movementRequestID = 0;
+    if (gEnv && gEnv->pAISystem && gEnv->pAISystem->GetMovementSystem())
+    {
+        gEnv->pAISystem->GetMovementSystem()->CancelRequest(m_movementRequestID);
+        m_movementRequestID = 0;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

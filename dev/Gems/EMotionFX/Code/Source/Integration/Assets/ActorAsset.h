@@ -90,8 +90,8 @@ namespace EMotionFX
 
             friend class ActorAssetHandler;
 
-            AZ_CLASS_ALLOCATOR(ActorAsset, EMotionFXAllocator, 0);
-            AZ_RTTI(ActorAsset, "{F67CC648-EA51-464C-9F5D-4A9CE41A7F86}", EMotionFXAsset);
+            AZ_RTTI(ActorAsset, "{F67CC648-EA51-464C-9F5D-4A9CE41A7F86}", EMotionFXAsset)
+            AZ_CLASS_ALLOCATOR_DECL
 
             ActorAsset();
             ~ActorAsset() override;
@@ -118,13 +118,13 @@ namespace EMotionFX
         class ActorAssetHandler : public EMotionFXAssetHandler<ActorAsset>
         {
         public:
-            AZ_CLASS_ALLOCATOR(ActorAssetHandler, EMotionFXAllocator, 0);
+            AZ_CLASS_ALLOCATOR_DECL
 
             bool OnInitAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
             AZ::Data::AssetType GetAssetType() const override;
             void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override;
             AZ::Uuid GetComponentTypeId() const override;
-            const char* GetAssetTypeDisplayName() const;
+            const char* GetAssetTypeDisplayName() const override;
 
         private:
 
@@ -143,8 +143,7 @@ namespace EMotionFX
             , private LmbrCentral::SkeletalHierarchyRequestBus::Handler
         {
         public:
-
-            AZ_CLASS_ALLOCATOR(ActorRenderNode, EMotionFXAllocator, 0);
+            AZ_CLASS_ALLOCATOR_DECL
 
             ActorRenderNode(AZ::EntityId entityId,
                 const EMotionFXPtr<EMotionFX::ActorInstance>& actorInstance,

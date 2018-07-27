@@ -252,6 +252,13 @@ namespace AzToolsFramework
                 "Jobs.Platform = :platform AND "
                 "Sources.SourceName LIKE :sourcename ESCAPE '|';";// use the pipe to escape since its NOT a valid file path or operator
 
+            // JobPK and subid together uniquely identify a product.  Since JobPK is indexed, this is a fast query if you happen to know those details.
+            static const char* QUERY_PRODUCT_BY_JOBID_SUBID = "AzToolsFramework::AssetDatabase::QueryProductByJobIDSubID";
+            static const char* QUERY_PRODUCT_BY_JOBID_SUBID_STATEMENT =
+                "SELECT * FROM Products "
+                "WHERE JobPK = :jobpk "
+                "AND SubID = :subid;";
+
             //add sql statement for querying everything by platform
             static const char* QUERY_COMBINED = "AzToolsFramework::AssetDatabase::QueryCombined";
             static const char* QUERY_COMBINED_STATEMENT =
@@ -1180,6 +1187,7 @@ namespace AzToolsFramework
             m_databaseConnection->AddStatement(QUERY_PRODUCT_LIKE_SOURCENAME, QUERY_PRODUCT_LIKE_SOURCENAME_STATEMENT);
             m_databaseConnection->AddStatement(QUERY_PRODUCT_LIKE_SOURCENAME_PLATFORM, QUERY_PRODUCT_LIKE_SOURCENAME_PLATFORM_STATEMENT);
 
+            m_databaseConnection->AddStatement(QUERY_PRODUCT_BY_JOBID_SUBID, QUERY_PRODUCT_BY_JOBID_SUBID_STATEMENT);
 
             m_databaseConnection->AddStatement(QUERY_COMBINED, QUERY_COMBINED_BY_PLATFORM_STATEMENT);
             m_databaseConnection->AddStatement(QUERY_COMBINED_BY_PLATFORM, QUERY_COMBINED_BY_PLATFORM_STATEMENT);
@@ -2217,6 +2225,42 @@ namespace AzToolsFramework
             }
 
             return GetProductResult(name, statement, handler, builderGuid, jobKey, status);
+        }
+
+        bool AssetDatabaseConnection::QueryProductByJobIDSubID(AZ::s64 jobID, AZ::u32 subId, productHandler handler)
+        {
+            const char* name = QUERY_PRODUCT_BY_JOBID_SUBID;
+
+            if (!ValidateDatabaseTable(name, "Products"))
+            {
+                return false;
+            }
+
+            StatementAutoFinalizer autoFinal(*m_databaseConnection, name);
+            Statement* statement = autoFinal.Get();
+            if (!statement)
+            {
+                AZ_Error(LOG_NAME, false, "Unable to find SQL statement: %s", name);
+                return false;
+            }
+
+            int jobpkIdx = statement->GetNamedParamIdx(":jobpk");
+            if (!jobpkIdx)
+            {
+                AZ_Error(LOG_NAME, false, "Could not find :jobpk parameter in %s", name);
+                return false;
+            }
+            statement->BindValueInt64(jobpkIdx, jobID);
+
+            int subidIdx = statement->GetNamedParamIdx(":subid");
+            if (!subidIdx)
+            {
+                AZ_Error(LOG_NAME, false, "Could not find :subid parameter in %s", name);
+                return false;
+            }
+            statement->BindValueInt(subidIdx, subId);
+
+            return GetProductResult(name, statement, handler);
         }
 
         bool AssetDatabaseConnection::QueryLegacySubIdsByProductID(AZ::s64 productId, legacySubIDsHandler handler)

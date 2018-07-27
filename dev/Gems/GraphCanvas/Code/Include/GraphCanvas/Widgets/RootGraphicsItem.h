@@ -164,8 +164,11 @@ namespace GraphCanvas
 
         void SetDisplayState(RootGraphicsItemDisplayState displayState)
         {
-            m_internalDisplayState = displayState;
-            UpdateActualDisplayState();
+            if (m_internalDisplayState != displayState)
+            {
+                m_internalDisplayState = displayState;
+                UpdateActualDisplayState();
+            }
         }
 
         // ViewSceneNotifications
@@ -299,6 +302,9 @@ namespace GraphCanvas
                 case RootGraphicsItemDisplayState::Inspection:
                     LeaveInspectionState();
                     break;
+                case RootGraphicsItemDisplayState::GroupHighlight:
+                    LeaveGroupHighlightState();
+                    break;
                 case RootGraphicsItemDisplayState::Preview:
                     LeavePreviewState();
                     break;
@@ -321,6 +327,9 @@ namespace GraphCanvas
                     break;
                 case RootGraphicsItemDisplayState::Inspection:
                     EnterInspectionState();
+                    break;
+                case RootGraphicsItemDisplayState::GroupHighlight:
+                    EnterGroupHighlightState();
                     break;
                 case RootGraphicsItemDisplayState::Preview:
                     EnterPreviewState();
@@ -374,6 +383,16 @@ namespace GraphCanvas
         void LeaveInspectionTransparentState()
         {
             StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::RemoveSelectorState, Styling::States::InspectionTransparent);
+        }
+
+        void EnterGroupHighlightState()
+        {
+            StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::AddSelectorState, Styling::States::Hovered);
+        }
+
+        void LeaveGroupHighlightState()
+        {
+            StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::RemoveSelectorState, Styling::States::Hovered);
         }
 
         void EnterNeutralState()

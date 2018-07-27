@@ -30,8 +30,9 @@ namespace AssetProcessor
             QString m_outputDir;
         };
 
+        virtual ~RCCompiler() = default;
         virtual bool Initialize(const QString& systemRoot, const QString& rcExecutableFullPath) = 0;
-        virtual bool Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, 
+        virtual bool Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params,
             const QString& dest, const AssetBuilderSDK::JobCancelListener* jobCancelListener, Result& result) const = 0;
         virtual void RequestQuit() = 0;
     };
@@ -44,7 +45,7 @@ namespace AssetProcessor
         NativeLegacyRCCompiler();
 
         bool Initialize(const QString& systemRoot, const QString& rcExecutableFullPath) override;
-        bool Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest, 
+        bool Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest,
             const AssetBuilderSDK::JobCancelListener* jobCancelListener, Result& result) const override;
         static QString BuildCommand(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest);
         void RequestQuit()  override;
@@ -152,7 +153,7 @@ namespace AssetProcessor
             QHash<QString, InternalAssetRecognizerList>& internalRecognizerListByType);
 
     protected:
-        //! Constructor to initialize the internal builders and a general internal builder uuid that is used for bus 
+        //! Constructor to initialize the internal builders and a general internal builder uuid that is used for bus
         //! registration.  This constructor is helpful for deriving other classes from this builder for purposes like
         //! unit testing.
         InternalRecognizerBasedBuilder(QHash<QString, BuilderIdAndName> inputBuilderByIdMap, AZ::Uuid internalBuilderUuid);
@@ -188,7 +189,7 @@ namespace AssetProcessor
 
         // overridable so we can unit-test override it.
         virtual QFileInfoList GetFilesInDirectory(const QString& directoryPath);
-        
+
         // overridable so we can unit-test override it.
         virtual bool SaveProcessJobRequestFile(const char* requestFileDir, const char* requestFileName, const AssetBuilderSDK::ProcessJobRequest& request);
 

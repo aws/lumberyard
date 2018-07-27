@@ -14,7 +14,7 @@
 // Description : Single Range donut
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "Range.h"
 #include "PersonalRangeSignaling.h"
 

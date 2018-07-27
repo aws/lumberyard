@@ -810,221 +810,18 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_TRUE(stateData->SetJob(job3));
     /////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////
-    //products
     auto ProductsContainProductID = [](const ProductDatabaseEntryContainer& products, AZ::s64 productId) -> bool
-        {
-            for (const auto& product : products)
-            {
-                if (product.m_productID == productId)
-                {
-                    return true;
-                }
-            }
-            return false;
-        };
-
-    auto ProductsContainProductSubID = [](const ProductDatabaseEntryContainer& products, AZ::u32 subid) -> bool
-        {
-            for (const auto& product : products)
-            {
-                if (product.m_subID == subid)
-                {
-                    return true;
-                }
-            }
-            return false;
-        };
-
-    auto ProductsContainProductName = [](const ProductDatabaseEntryContainer& products, const char* productName) -> bool
-        {
-            for (const auto& product : products)
-            {
-                if (product.m_productName == productName)
-                {
-                    return true;
-                }
-            }
-            return false;
-        };
-
-    auto ProductsContainAssetType = [](const ProductDatabaseEntryContainer& products, AZ::Data::AssetType assetType) -> bool
-        {
-            for (const auto& product : products)
-            {
-                if (product.m_assetType == assetType)
-                {
-                    return true;
-                }
-            }
-            return false;
-        };
-
-    //there are no products yet so trying to find one should fail
-    products.clear();
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProducts(products));
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProductByProductID(3443, product));
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProductsLikeProductName("none", AzToolsFramework::AssetDatabase::AssetDatabaseConnection::Raw, products));
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProductsLikeProductName("none", AzToolsFramework::AssetDatabase::AssetDatabaseConnection::StartsWith, products));
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProductsLikeProductName("none", AzToolsFramework::AssetDatabase::AssetDatabaseConnection::EndsWith, products));
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProductsLikeProductName("none", AzToolsFramework::AssetDatabase::AssetDatabaseConnection::Matches, products));
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProductsBySourceID(25654, products));
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProductsBySourceName("none", products));
-
-    //trying to add a product without a valid job pk should fail
-    product = ProductDatabaseEntry(234234, 1, "SomeProduct1.dds", validAssetType1);
     {
-        UnitTestUtils::AssertAbsorber absorber;
-        UNIT_TEST_EXPECT_FALSE(stateData->SetProduct(product));
-        UNIT_TEST_EXPECT_TRUE(absorber.m_numWarningsAbsorbed > 0);
-    }
+        for (const auto& product : products)
+        {
+            if (product.m_productID == productId)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
 
-    //setting a valid scan folder pk should allow it to be added
-    product = ProductDatabaseEntry(job.m_jobID, 1, "SomeProduct1.dds", validAssetType1);
-    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product));
-    if (product.m_productID == -1)
-    {
-        Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - SetProduct failed to add");
-        return;
-    }
-
-    //get all products, there should only the one we added
-    products.clear();
-    UNIT_TEST_EXPECT_TRUE(stateData->GetProducts(products));
-    UNIT_TEST_EXPECT_TRUE(products.size() == 1);
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product.m_productID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductSubID(products, product.m_subID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductName(products, product.m_productName.c_str()));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainAssetType(products, product.m_assetType));
-
-    //add the same product again, should not add another because it already exists, so we should get the same id
-    ProductDatabaseEntry dupeProduct(product);
-    dupeProduct.m_productID = -1;
-    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(dupeProduct));
-    if (!(dupeProduct == product))
-    {
-        Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - SetProduct failed to add");
-        return;
-    }
-
-    //get all products, there should still only the one we added
-    products.clear();
-    UNIT_TEST_EXPECT_TRUE(stateData->GetProducts(products));
-    UNIT_TEST_EXPECT_TRUE(products.size() == 1);
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product.m_productID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductSubID(products, product.m_subID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductName(products, product.m_productName.c_str()));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainAssetType(products, product.m_assetType));
-
-    //try retrieving this source by id
-    ProductDatabaseEntry retrievedProduct;
-    UNIT_TEST_EXPECT_TRUE(stateData->GetProductByProductID(product.m_productID, retrievedProduct));
-    if (retrievedProduct.m_productID == -1 ||
-        retrievedProduct.m_productID != product.m_productID ||
-        retrievedProduct.m_jobPK != product.m_jobPK ||
-        retrievedProduct.m_subID != product.m_subID ||
-        retrievedProduct.m_productName != product.m_productName ||
-        retrievedProduct.m_assetType != product.m_assetType)
-    {
-        Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - GetProductByProductID failed");
-        return;
-    }
-
-    //try retrieving products by source id
-    products.clear();
-    UNIT_TEST_EXPECT_TRUE(stateData->GetProductsBySourceID(source.m_sourceID, products));
-    UNIT_TEST_EXPECT_TRUE(products.size() == 1);
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product.m_productID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductSubID(products, product.m_subID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductName(products, product.m_productName.c_str()));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainAssetType(products, product.m_assetType));
-
-    //try retrieving products by source name
-    products.clear();
-    UNIT_TEST_EXPECT_TRUE(stateData->GetProductsBySourceName(source.m_sourceName.c_str(), products));
-    UNIT_TEST_EXPECT_TRUE(products.size() == 1);
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product.m_productID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductSubID(products, product.m_subID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductName(products, product.m_productName.c_str()));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainAssetType(products, product.m_assetType));
-
-    //remove a product
-    UNIT_TEST_EXPECT_TRUE(stateData->RemoveProduct(432234));
-    UNIT_TEST_EXPECT_TRUE(stateData->RemoveProduct(product.m_productID));
-
-    //get all products, there shouldn't be any
-    products.clear();
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProducts(products));
-
-    //Add two products then delete the via container
-    ProductDatabaseEntry product2(job.m_jobID, 2, "SomeProduct2.dds", validAssetType2);
-    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product2));
-    ProductDatabaseEntry product3(job.m_jobID, 3, "SomeProduct3.dds", validAssetType3);
-    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product3));
-
-    //get all products, there should be 3
-    products.clear();
-    UNIT_TEST_EXPECT_TRUE(stateData->GetProducts(products));
-    UNIT_TEST_EXPECT_TRUE(products.size() == 2);
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product2.m_productID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductSubID(products, product2.m_subID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductName(products, product2.m_productName.c_str()));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainAssetType(products, product2.m_assetType));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product3.m_productID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductSubID(products, product3.m_subID));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainProductName(products, product3.m_productName.c_str()));
-    UNIT_TEST_EXPECT_TRUE(ProductsContainAssetType(products, product3.m_assetType));
-
-    //Remove product via container
-    ProductDatabaseEntryContainer tempProductDatabaseEntryContainer;
-    UNIT_TEST_EXPECT_TRUE(stateData->RemoveProducts(tempProductDatabaseEntryContainer)); // test in the empty case
-    UNIT_TEST_EXPECT_TRUE(stateData->RemoveProducts(products));
-
-    //get all products, there should none
-    products.clear();
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProducts(products));
-
-    //Add two products then delete the via removing by source id
-    product2 = ProductDatabaseEntry(job.m_jobID, 2, "SomeProduct2.dds", validAssetType2);
-    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product2));
-    product3 = ProductDatabaseEntry(job.m_jobID, 3, "SomeProduct3.dds", validAssetType3);
-    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product3));
-
-    //remove all products for a job id
-    products.clear();
-    UNIT_TEST_EXPECT_TRUE(stateData->RemoveProductsByJobID(3245532));
-    UNIT_TEST_EXPECT_TRUE(stateData->RemoveProductsByJobID(job.m_jobID));
-
-    //get all products, there should none
-    products.clear();
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProducts(products));
-
-    //Add two products then delete the via removing by source
-    product2 = ProductDatabaseEntry(job.m_jobID, 2, "SomeProduct2.dds", validAssetType2);
-    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product2));
-    product3 = ProductDatabaseEntry(job.m_jobID, 3, "SomeProduct3.dds", validAssetType3);
-    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product3));
-
-    //remove all product for source id
-    UNIT_TEST_EXPECT_TRUE(stateData->RemoveProductsBySourceID(3245532));
-    UNIT_TEST_EXPECT_TRUE(stateData->RemoveProductsBySourceID(source.m_sourceID));
-
-    //get all products, there should none
-    products.clear();
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProducts(products));
-
-    //Add two products then delete the via removing the job
-    product2 = ProductDatabaseEntry(job.m_jobID, 2, "SomeProduct2.dds", validAssetType2);
-    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product2));
-    product3 = ProductDatabaseEntry(job.m_jobID, 3, "SomeProduct3.dds", validAssetType3);
-    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product3));
-
-    //the products should cascade delete
-    UNIT_TEST_EXPECT_TRUE(stateData->RemoveJob(job.m_jobID));
-
-    //get all products, there should none
-    products.clear();
-    UNIT_TEST_EXPECT_FALSE(stateData->GetProducts(products));
 
     //Add jobs
     job = JobDatabaseEntry(source.m_sourceID, "jobkey1", validFingerprint1, "pc", validBuilderGuid1, statusCompleted, 9);
@@ -1035,9 +832,9 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_TRUE(stateData->SetJob(job3));
 
     //Add two products then delete the via removing the job
-    product2 = ProductDatabaseEntry(job.m_jobID, 2, "SomeProduct2.dds", validAssetType2);
+    ProductDatabaseEntry product2 = ProductDatabaseEntry(job.m_jobID, 2, "SomeProduct2.dds", validAssetType2);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product2));
-    product3 = ProductDatabaseEntry(job.m_jobID, 3, "SomeProduct3.dds", validAssetType3);
+    ProductDatabaseEntry product3 = ProductDatabaseEntry(job.m_jobID, 3, "SomeProduct3.dds", validAssetType3);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product3));
 
     //the products should cascade delete

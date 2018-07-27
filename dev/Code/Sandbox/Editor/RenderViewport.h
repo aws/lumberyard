@@ -105,6 +105,8 @@ public:
 public:
     virtual ~CRenderViewport();
 
+    Q_INVOKABLE void InjectFakeMouseMove(int deltaX, int deltaY);
+
 public:
     virtual void Update();
 
@@ -564,6 +566,8 @@ private:
     void PopDisableRendering();
     bool IsRenderingDisabled() const;
     MousePick BuildMousePickInternal(const QPoint& point) const;
+
+    void RestoreViewportAfterGameMode();
 
     double WidgetToViewportFactor() const
     {

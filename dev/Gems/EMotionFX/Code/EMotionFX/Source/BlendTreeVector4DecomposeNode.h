@@ -25,15 +25,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeVector4DecomposeNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeVector4DecomposeNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeVector4DecomposeNode, "{1B456B53-F634-40FD-96BA-7590CEAFFCFF}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000129
-        };
+        AZ_RTTI(BlendTreeVector4DecomposeNode, "{1B456B53-F634-40FD-96BA-7590CEAFFCFF}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -54,24 +48,19 @@ namespace EMotionFX
             PORTID_OUTPUT_W     = 3
         };
 
-        static BlendTreeVector4DecomposeNode* Create(AnimGraph* animGraph);
+        BlendTreeVector4DecomposeNode();
+        ~BlendTreeVector4DecomposeNode();
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         uint32 GetVisualColor() const override          { return MCore::RGBA(128, 255, 128); }
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        BlendTreeVector4DecomposeNode(AnimGraph* animGraph);
-        ~BlendTreeVector4DecomposeNode();
-
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
     };
 }   // namespace EMotionFX

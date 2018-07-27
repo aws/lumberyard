@@ -183,7 +183,7 @@ DECLARE_SMART_POINTERS(IAnimationSerializable);
 //     CreateCharManager
 struct ICharacterManager
 {
-    using LoadInstanceAsyncResult = std::function<void(ICharacterInstance*)>;
+    using LoadInstanceAsyncResult = AZStd::function<void(ICharacterInstance*)>;
     struct InstanceAsyncLoadRequest
     {
         InstanceAsyncLoadRequest() = default;
@@ -419,6 +419,26 @@ struct ICharacterManager
     virtual void ClearBSPACECache() = 0;
 #endif
 };
+
+class CryLegacyAnimationRequests
+    : public AZ::EBusTraits
+{
+public:
+    //////////////////////////////////////////////////////////////////////////
+    // EBusTraits overrides
+    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+    static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Creates and initializes a legacy ICharacterManager instance
+    virtual bool InitCharacterManager(const SSystemInitParams& initParams) = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Shuts down and destroys a legacy ICharacterManager instance
+    virtual void ShutdownCharacterManager(ICharacterManager* characterManager) = 0;
+};
+using CryLegacyAnimationRequestBus = AZ::EBus<CryLegacyAnimationRequests>;
 
 // Description:
 //    This struct defines the interface for a class that listens to

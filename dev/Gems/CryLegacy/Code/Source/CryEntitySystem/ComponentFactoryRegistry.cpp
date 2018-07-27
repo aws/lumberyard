@@ -1,12 +1,12 @@
 // Portions of this file Copyright (C) Amazon.com, Inc. or its affiliates.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "ComponentFactoryRegistry.h"
 
-bool CComponentFactoryRegistry::RegisterFactory(std::unique_ptr<IComponentFactoryBase>&& factory)
+bool CComponentFactoryRegistry::RegisterFactory(AZStd::unique_ptr<IComponentFactoryBase>&& factory)
 {
 	const ComponentType& type = factory->GetComponentType();
-	auto insertResult = m_factories.emplace(std::make_pair(type, std::move(factory)));
+	auto insertResult = m_factories.emplace(type, AZStd::move(factory));
 	// if insertion failed due to collision, insertResult.second is false
 	return insertResult.second;
 }

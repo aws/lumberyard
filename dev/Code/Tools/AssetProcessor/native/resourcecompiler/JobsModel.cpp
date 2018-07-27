@@ -214,14 +214,14 @@ namespace AssetProcessor
 
     void JobsModel::OnJobStatusChanged(JobEntry entry, AzToolsFramework::AssetSystem::JobStatus status)
     {
-        QueueElementID elementId(entry.m_relativePathToFile, entry.m_platformInfo.m_identifier.c_str(), entry.m_jobKey);
+        QueueElementID elementId(entry.m_databaseSourceName, entry.m_platformInfo.m_identifier.c_str(), entry.m_jobKey);
         CachedJobInfo* jobInfo = nullptr;
         unsigned int jobIndex = 0;
         auto iter = m_cachedJobsLookup.find(elementId);
         if (iter == m_cachedJobsLookup.end())
         {
             jobInfo = new CachedJobInfo();
-            jobInfo->m_elementId.SetInputAssetName(entry.m_relativePathToFile.toUtf8().data());
+            jobInfo->m_elementId.SetInputAssetName(entry.m_databaseSourceName.toUtf8().data());
             jobInfo->m_elementId.SetPlatform(entry.m_platformInfo.m_identifier.c_str());
             jobInfo->m_elementId.SetJobDescriptor(entry.m_jobKey.toUtf8().data());
             jobInfo->m_jobRunKey = entry.m_jobRunKey;
@@ -252,13 +252,13 @@ namespace AssetProcessor
         }
     }
 
-    void JobsModel::OnSourceRemoved(QString sourceRelPath)
+    void JobsModel::OnSourceRemoved(QString sourceDatabasePath)
     {
         // when a source is removed, we need to eliminate all job entries for that source regardless of all other details of it.
         QList<AssetProcessor::QueueElementID> elementsToRemove;
         for (int index = 0; index < m_cachedJobs.count(); ++index)
         {
-            if (QString::compare(m_cachedJobs[index]->m_elementId.GetInputAssetName(), sourceRelPath, Qt::CaseSensitive) == 0)
+            if (QString::compare(m_cachedJobs[index]->m_elementId.GetInputAssetName(), sourceDatabasePath, Qt::CaseSensitive) == 0)
             {
                 elementsToRemove.push_back(m_cachedJobs[index]->m_elementId);
             }
@@ -301,7 +301,7 @@ namespace AssetProcessor
                 }
                 else
                 {
-                    AZ_TracePrintf(AssetProcessor::DebugChannel, "OnJobRemoved: Job ( Source: %s, Platform: %s, JobKey: %s ) not found.\n ", 
+                    AZ_TracePrintf(AssetProcessor::DebugChannel, "OnJobRemoved: Job ( Source: %s, Platform: %s, JobKey: %s ) not found.\n", 
                         elementId.GetInputAssetName().toUtf8().data(), elementId.GetPlatform().toUtf8().data(), elementId.GetJobDescriptor().toUtf8().data());
                 }
             }

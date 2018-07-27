@@ -31,8 +31,6 @@ namespace EMotionFX
     class EMFX_API ActorUpdateScheduler
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(ActorUpdateScheduler, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_UPDATESCHEDULERS);
-
     public:
         /**
          * Get the name of this class, or a description.

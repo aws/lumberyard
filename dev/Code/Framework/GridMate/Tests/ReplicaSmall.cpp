@@ -525,6 +525,67 @@ public:
     }
 };
 
+class RpcNullHandlerCrash_Test
+    : public UnitTest::GridMateMPTestFixture
+{
+public:
+    GM_CLASS_ALLOCATOR(RpcNullHandlerCrash_Test);
+
+    class Handler
+        : public GridMate::ReplicaChunkInterface
+    {
+    public:
+        bool OnRpc(const RpcContext& rc)
+        {
+            AZ_UNUSED(rc);
+            return false;
+        }
+    };
+
+    class RpcWithoutArgumentsChunk
+        : public ReplicaChunk
+    {
+        friend class DataSet_ACKTest;
+    public:
+        GM_CLASS_ALLOCATOR(RpcWithoutArgumentsChunk);
+
+        RpcWithoutArgumentsChunk()
+            : Rpc1("rpc")
+        {
+        }
+
+        bool IsReplicaMigratable() override
+        {
+            return false;
+        }
+
+        static const char* GetChunkName()
+        {
+            return "RpcWithoutArgumentsChunk";
+        }
+
+        GridMate::Rpc<>::BindInterface<Handler, &Handler::OnRpc> Rpc1;
+    };
+
+    void run()
+    {
+        AZ_TracePrintf("GridMate", "\n");
+        Replica* replica = Replica::CreateReplica("TestReplica");
+
+        ReplicaChunkDescriptorTable::Get().RegisterChunkType<RpcWithoutArgumentsChunk>();
+        AZStd::unique_ptr<RpcWithoutArgumentsChunk> chunk(CreateReplicaChunk<RpcWithoutArgumentsChunk>());
+        replica->AttachReplicaChunk(chunk.get());
+
+        chunk->SetHandler(nullptr);
+
+        // This call would fail before LY-68517 "RPC without arguments crashes when a handler is null"
+        const bool result = chunk->Rpc1.InvokeImpl(nullptr);
+        AZ_TEST_ASSERT(!result);
+
+        chunk.release();
+    }
+};
+
 }; // namespace UnitTest
 
 GM_TEST_SUITE(ReplicaSmallSuite)
@@ -534,4 +595,5 @@ GM_TEST(ChunkEvents);
 GM_TEST(OfflineModeTest);
 GM_TEST(DataSet_PrepareTest);
 GM_TEST(DataSet_ACKTest);
+GM_TEST(RpcNullHandlerCrash_Test);
 GM_TEST_SUITE_END()

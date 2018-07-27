@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ProceduralClipConversion.h"
 
 static const char* const ProceduralClipConversionFilename = "Scripts/Mannequin/ProcClipConversion.xml";

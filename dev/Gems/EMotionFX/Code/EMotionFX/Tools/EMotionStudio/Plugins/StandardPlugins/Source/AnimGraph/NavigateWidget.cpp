@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include <AzCore/std/containers/vector.h>
 #include "NavigateWidget.h"
 #include "AnimGraphPlugin.h"
@@ -68,15 +69,9 @@ namespace EMStudio
         setLayout(mainLayout);
         mainLayout->setSizeConstraint(QLayout::SetNoConstraint);
 
-        QHBoxLayout* searchLayout = new QHBoxLayout();
-        searchLayout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::MinimumExpanding, QSizePolicy::Minimum));
-        searchLayout->addWidget(new QLabel("Find:"), 0, Qt::AlignRight);
-        mSearchFilter = new MysticQt::SearchButton(this, MysticQt::GetMysticQt()->FindIcon("Images/Icons/SearchClearButton2.png"));
-        connect(mSearchFilter->GetSearchEdit(), SIGNAL(textChanged(const QString&)), this, SLOT(OnFilterStringChanged(const QString&)));
-        searchLayout->addWidget(mSearchFilter);
-        searchLayout->setSpacing(6);
-
-        mainLayout->addLayout(searchLayout);
+        m_searchWidget = new AzQtComponents::FilteredSearchWidget(this);
+        connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &NavigateWidget::OnTextFilterChanged);
+        mainLayout->addWidget(m_searchWidget);
 
         // create the tree widget
         mTreeWidget = new QTreeWidget();
@@ -113,12 +108,34 @@ namespace EMStudio
 
         // update things based on default selection
         OnSelectionChanged();
+
+        EMotionFX::AnimGraphNotificationBus::Handler::BusConnect();
     }
 
 
-    // destructor
     NavigateWidget::~NavigateWidget()
     {
+        EMotionFX::AnimGraphNotificationBus::Handler::BusDisconnect();
+    }
+
+
+    void NavigateWidget::OnSyncVisualObject(EMotionFX::AnimGraphObject* object)
+    {
+        if (!object)
+        {
+            AZ_Assert(false, "EMotionFX: Cannot sync visual object. Invalid object.");
+            return;
+        }
+
+        if (azrtti_istypeof<EMotionFX::AnimGraphNode>(object))
+        {
+            const EMotionFX::AnimGraphNode* node = static_cast<EMotionFX::AnimGraphNode*>(object);
+            QTreeWidgetItem* item = FindItemById(node->GetId());
+            if (item)
+            {
+                item->setText(0, node->GetName());
+            }
+        }
     }
 
 
@@ -127,8 +144,8 @@ namespace EMStudio
         mVisibleItem = nullptr;
         mItemClicked = nullptr;
 
-        mSearchFilter->GetSearchEdit()->clear();
-        mSearchString.clear();
+        m_searchWidget->ClearTextFilter();
+        m_searchStringText.clear();
 
         mRootItem = UpdateTreeWidget(mTreeWidget, animGraph);
 
@@ -145,7 +162,7 @@ namespace EMStudio
 
 
     // init for a given anim graph
-    QTreeWidgetItem* NavigateWidget::UpdateTreeWidget(QTreeWidget* treeWidget, EMotionFX::AnimGraph* animGraph, uint32 visibilityFilterNodeID, bool showStatesOnly, const char* searchFilterString)
+    QTreeWidgetItem* NavigateWidget::UpdateTreeWidget(QTreeWidget* treeWidget, EMotionFX::AnimGraph* animGraph, const AZ::TypeId& visibilityFilterNodeType, bool showStatesOnly, const char* searchFilterString)
     {
         // first clear all contents
         treeWidget->clear();
@@ -155,24 +172,23 @@ namespace EMStudio
         }
 
         // add the root state machine
-        return InsertNode(treeWidget, nullptr, animGraph->GetRootStateMachine(), true, visibilityFilterNodeID, showStatesOnly, searchFilterString);
+        return InsertNode(treeWidget, nullptr, animGraph->GetRootStateMachine(), true, visibilityFilterNodeType, showStatesOnly, searchFilterString);
     }
 
 
     // recursively insert a node
-    QTreeWidgetItem* NavigateWidget::InsertNode(QTreeWidget* treeWidget, QTreeWidgetItem* parentItem, EMotionFX::AnimGraphNode* node, bool recursive, uint32 visibilityFilterNodeID, bool showStatesOnly, const char* searchFilterString)
+    QTreeWidgetItem* NavigateWidget::InsertNode(QTreeWidget* treeWidget, QTreeWidgetItem* parentItem, EMotionFX::AnimGraphNode* node, bool recursive, const AZ::TypeId& visibilityFilterNodeType, bool showStatesOnly, const char* searchFilterString)
     {
         QTreeWidgetItem* newItem = parentItem;
 
         bool allowItem = true;
-        if (visibilityFilterNodeID != MCORE_INVALIDINDEX32)
+        if (!visibilityFilterNodeType.IsNull())
         {
             if (node)
             {
-                const uint32 typeID = node->GetType();
-                if (visibilityFilterNodeID != EMotionFX::AnimGraphStateMachine::TYPE_ID)
+                if (visibilityFilterNodeType != azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
                 {
-                    if (typeID != visibilityFilterNodeID)
+                    if (azrtti_typeid(node) != visibilityFilterNodeType)
                     {
                         allowItem = false;
                     }
@@ -180,7 +196,7 @@ namespace EMStudio
                 else
                 {
                     EMotionFX::AnimGraphNode* parentNode = node->GetParentNode();
-                    if (parentNode == nullptr || (parentNode && parentNode->GetType() != EMotionFX::AnimGraphStateMachine::TYPE_ID))
+                    if (parentNode == nullptr || (parentNode && azrtti_typeid(parentNode) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>()))
                     {
                         allowItem = false;
                     }
@@ -205,6 +221,8 @@ namespace EMStudio
         if (allowItem && (searchFilterString == nullptr || (node && searchFilterString && loweredNodeName.find(searchFilterString) != AZStd::string::npos)))
         {
             newItem = new QTreeWidgetItem(parentItem, 0);
+            newItem->setData(0, Qt::UserRole, node->GetId().ToString().c_str());
+            
             if (node == nullptr)
             {
                 newItem->setText(COLUMN_NAME, "Root");
@@ -220,33 +238,7 @@ namespace EMStudio
             }
 
             newItem->setExpanded(true);
-
-            if (node)
-            {
-                const uint32 typeID = node->GetType();
-                switch (typeID)
-                {
-                case EMotionFX::AnimGraphStateMachine::TYPE_ID:
-                    //newItem->setTextColor(COLUMN_NAME, Qt::yellow);
-                    //newItem->setTextColor(COLUMN_TYPE, Qt::yellow);
-                    break;
-
-                case EMotionFX::BlendTree::TYPE_ID:
-                    //newItem->setTextColor(COLUMN_NAME, QColor(255,128,0));
-                    //newItem->setTextColor(COLUMN_TYPE, QColor(255,128,0));
-                    break;
-
-                default:
-                    ;
-                }
-                ;
-            }
-            else
-            {
-                //newItem->setTextColor(COLUMN_NAME, QColor(0,255,0));
-                //newItem->setTextColor(COLUMN_TYPE, QColor(0,255,0));
-            }
-
+            
             if (parentItem == nullptr)
             {
                 treeWidget->addTopLevelItem(newItem);
@@ -263,12 +255,12 @@ namespace EMStudio
             const uint32 numChildNodes = node->GetNumChildNodes();
             for (uint32 i = 0; i < numChildNodes; ++i)
             {
-                InsertNode(treeWidget, newItem, node->GetChildNode(i), true, visibilityFilterNodeID, showStatesOnly, searchFilterString);
+                InsertNode(treeWidget, newItem, node->GetChildNode(i), true, visibilityFilterNodeType, showStatesOnly, searchFilterString);
             }
 
             if (newItem)
             {
-                if (node->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID)
+                if (azrtti_typeid(node) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
                 {
                     newItem->setExpanded(true);
                 }
@@ -278,28 +270,6 @@ namespace EMStudio
                 }
             }
         }
-
-        /*if (visibilityFilterNodeID != MCORE_INVALIDINDEX32)
-            newItem->setSelected(true);
-        if (node)
-        {
-            if (visibilityFilterNodeID != MCORE_INVALIDINDEX32)
-            {
-                    const uint32 typeID = node->GetType();
-                if (visibilityFilterNodeID != EMotionFX::AnimGraphStateMachine::TYPE_ID)
-                {
-                    if (typeID != visibilityFilterNodeID)
-                        newItem->setSelected(false);
-                }
-                else
-                {
-                    EMotionFX::AnimGraphNode* parentNode = node->GetParentNode();
-                    if (parentNode == nullptr || (parentNode && parentNode->GetType() != EMotionFX::AnimGraphStateMachine::TYPE_ID))
-                        newItem->setSelected(false);
-                }
-            }
-        }
-        */
 
         return newItem;
     }
@@ -339,7 +309,7 @@ namespace EMStudio
     QTreeWidgetItem* NavigateWidget::FindItem(const QString& name)
     {
         QList<QTreeWidgetItem*> items = mTreeWidget->findItems(name, Qt::MatchExactly | Qt::MatchCaseSensitive | Qt::MatchRecursive, COLUMN_NAME);
-        assert(items.count() <= 1);
+        AZ_Assert(items.count() <= 1, "Expected only one element with the same name");
         if (items.count() == 0)
         {
             return nullptr;
@@ -348,42 +318,29 @@ namespace EMStudio
         return items.at(0);
     }
 
-    /*
-    // when the add state machine button is pressed
-    void NavigateWidget::OnAddStateMachine()
+
+    QTreeWidgetItem* NavigateWidget::FindItemById(const EMotionFX::AnimGraphNodeId& id) const
     {
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
-            return;
+        QTreeWidgetItemIterator iterator(mTreeWidget);
 
-        // find out the current parent
-        AZStd::string parentName;
-        const uint32 numSelected = mTreeWidget->selectedItems().count();
-        if (numSelected > 0)
-            parentName = mTreeWidget->selectedItems()[0]->text(0).toAscii().data();
-
-        // build the command string
-        AZStd::string commandString;
-        if (parentName.GetLength() > 0)
-            commandString = AZStd::string::format("AnimGraphCreateNode -name GENERATE -type AnimGraphStateMachine -parentState \"%s\"", parentName.AsChar());
-        else
-            commandString = AZStd::string::format("AnimGraphCreateNode -name GENERATE -type AnimGraphStateMachine");
-
-        // execute the command
-        AZStd::string commandResult;
-        if (GetCommandManager()->ExecuteCommand(commandString, commandResult) == false)
+        QString idString;
+        while (*iterator)
         {
-            MCore::LogError( commandResult.AsChar() );
-            UpdateTreeWidget( animGraph );
-            return;
+            QTreeWidgetItem* item = *iterator;
+            idString = item->data(0, Qt::UserRole).toString();
+
+            const EMotionFX::AnimGraphNodeId itemId = EMotionFX::AnimGraphNodeId::FromString(idString.toUtf8().data());
+            if (id == itemId)
+            {
+                return item;
+            }
+
+            ++iterator;
         }
 
-        // update the tree widget
-        UpdateTreeWidget( animGraph );
-
-        // TODO: auto select the newly created
+        return nullptr;
     }
-    */
+
 
     // when the selection changes
     void NavigateWidget::OnSelectionChanged()
@@ -444,8 +401,8 @@ namespace EMStudio
                 {
                     const AnimGraphPlugin::GraphInfo* graphInfo = mPlugin->GetGraphInfo(nodeGraphIndex);
                     MCORE_ASSERT(graphInfo);
-                    EMotionFX::AnimGraphNode* emfxNode = animGraph->RecursiveFindNodeByID(graphInfo->mNodeID);
-                    if (emfxNode == nullptr || emfxNode->GetType() != EMotionFX::AnimGraphStateMachine::TYPE_ID)
+                    EMotionFX::AnimGraphNode* emfxNode = animGraph->RecursiveFindNodeById(graphInfo->mNodeId);
+                    if (emfxNode == nullptr || azrtti_typeid(emfxNode) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
                     {
                         mPlugin->GetAttributesWindow()->InitForAnimGraphObject(nullptr);
                         return;
@@ -468,7 +425,7 @@ namespace EMStudio
         }
         else
         {
-            EMotionFX::AnimGraphNode* selectedNode = animGraph->RecursiveFindNode(FromQtString(selectedItems[0]->text(COLUMN_NAME)).c_str());
+            EMotionFX::AnimGraphNode* selectedNode = animGraph->RecursiveFindNodeByName(FromQtString(selectedItems[0]->text(COLUMN_NAME)).c_str());
             mPlugin->GetAttributesWindow()->InitForAnimGraphObject(selectedNode);
         }
     }
@@ -492,62 +449,7 @@ namespace EMStudio
     {
         MCORE_UNUSED(item);
         MCORE_UNUSED(column);
-        /*
-            // if we click the same item again
-            if (mItemClicked == item && column == 0)
-            {
-                // if it was within a given amount of seconds, not too fast and not too slow
-                if ( MCore::InRange<float>(mItemClickedTimer.GetTimeDelta(), 0.5f, 0.95f) )
-                {
-                    mItemClickedName = item->text(0);
-                    mTreeWidget->openPersistentEditor( item, 0 );
-
-                    // get the widget
-                    QWidget* widget = mTreeWidget->itemWidget( item, 0 );
-                    assert( widget );
-                    connect(widget, SIGNAL(editingFinished()), this, SLOT(OnNodeNameChange()));
-                }
-            }
-            else
-            {
-                mTreeWidget->closePersistentEditor( mItemClicked, 0 );
-                mItemClicked = nullptr;
-            }
-
-            // reset the timer
-            mItemClickedTimer.Reset();
-            mItemClicked = item;
-        */
     }
-
-
-    // change the name of a given item
-    /*void NavigateWidget::OnNodeNameChange()
-    {
-        // check if something changed
-        QString newName = mItemClicked->text(0);
-        if (newName == mItemClickedName)
-            return;
-
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        MCORE_ASSERT( animGraph );
-
-        // build the command string
-        AZStd::string commandString;
-        commandString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -newName \"%s\"", animGraph->GetID(), FromQtString(mItemClickedName).AsChar(), FromQtString(newName).AsChar());
-
-        // execute the command
-        AZStd::string commandResult;
-        if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), commandResult) == false)
-        {
-            MCore::LogError( commandResult.AsChar() );
-            UpdateTreeWidget( animGraph );
-            return;
-        }
-
-    //  mTreeWidget->closePersistentEditor( mItemClicked, COLUMN_NAME );
-    }*/
-
 
     MCore::Array<EMotionFX::AnimGraphNode*> NavigateWidget::GetSelectedNodes(EMotionFX::AnimGraph* animGraph)
     {
@@ -571,7 +473,7 @@ namespace EMStudio
                 continue;
             }
 
-            EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNode(FromQtString(selectedItems.at(i)->text(COLUMN_NAME)).c_str());
+            EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNodeByName(FromQtString(selectedItems.at(i)->text(COLUMN_NAME)).c_str());
             if (animGraphNode)
             {
                 selectedNodes.Add(animGraphNode);
@@ -685,7 +587,7 @@ namespace EMStudio
             return;
         }
 
-        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(nodeName.c_str());
+        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNodeByName(nodeName.c_str());
         if (!node)
         {
             ShowGraph(nullptr, updateInterface);
@@ -708,7 +610,7 @@ namespace EMStudio
             // select it in the visual graph as well and zoom in on the node in the graph
             GraphNode* graphNode;
             NodeGraph* graph;
-            if (mPlugin->FindGraphAndNode(node->GetParentNode(), node->GetID(), &graph, &graphNode, animGraph))
+            if (mPlugin->FindGraphAndNode(node->GetParentNode(), node->GetId(), &graph, &graphNode, animGraph))
             {
                 graphNode->SetIsSelected(true);
                 graph->ZoomOnRect(graphNode->GetRect(), mPlugin->GetGraphWidget()->geometry().width(), mPlugin->GetGraphWidget()->geometry().height(), true);
@@ -793,59 +695,6 @@ namespace EMStudio
     }
 
 
-    // when activating a state
-    void NavigateWidget::OnActivateState()
-    {
-        // find the selected node
-        EMotionFX::AnimGraphNode* node = GetSingleSelectedNode();
-        if (node == nullptr)
-        {
-            return;
-        }
-
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        MCORE_ASSERT(animGraph);
-
-        // make sure we're not workong on a root state machine and that the node has a state machine as parent
-        if (node->GetParentNode() == nullptr)
-        {
-            return;
-        }
-        if (node->GetParentNode()->GetType() != EMotionFX::AnimGraphStateMachine::TYPE_ID)
-        {
-            return;
-        }
-
-        // acivate the state in all selected actor instances
-        // iterate over all selected actor instances
-        CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numActorInstances = selectionList.GetNumSelectedActorInstances();
-        for (uint32 i = 0; i < numActorInstances; ++i)
-        {
-            EMotionFX::ActorInstance* actorInstance = selectionList.GetActorInstance(i);
-
-            // only process actor instances that have a anim graph instance
-            if (actorInstance->GetAnimGraphInstance() == nullptr)
-            {
-                continue;
-            }
-
-            // if the anim graph instance isn't using the anim graph we're modifying, then there is nothing to do
-            if (actorInstance->GetAnimGraphInstance()->GetAnimGraph() != animGraph)
-            {
-                continue;
-            }
-
-            // get the parent state machine
-            EMotionFX::AnimGraphStateMachine* stateMachine = (EMotionFX::AnimGraphStateMachine*)node->GetParentNode();
-
-            // switch to the current state
-            stateMachine->TransitionToState(actorInstance->GetAnimGraphInstance(), node);
-        }
-    }
-
-
     void NavigateWidget::OnAddWildCardTransition()
     {
         // find the selected node
@@ -864,13 +713,13 @@ namespace EMStudio
 
         // get the currently selected transition type
         //uint32 transitionType = mPlugin->GetPaletteWidget()->GetTransitionType();
-        uint32 transitionType = EMotionFX::AnimGraphStateTransition::TYPE_ID;
+        AZ::TypeId transitionType = azrtti_typeid<EMotionFX::AnimGraphStateTransition>();
 
         // space the wildcard transitions in case we're dealing with multiple ones
         uint32 endOffsetX = 0;
         uint32 endOffsetY = 0;
         EMotionFX::AnimGraphNode* parentNode = node->GetParentNode();
-        if (parentNode && parentNode->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID)
+        if (parentNode && azrtti_typeid(parentNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
         {
             EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
 
@@ -895,7 +744,7 @@ namespace EMStudio
         // build the command string
         AZStd::string commandString;
         AZStd::string commandResult;
-        commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"\" -targetNode \"%s\"  -sourcePort 0 -targetPort 0 -startOffsetX 0 -startOffsetY 0 -endOffsetX %i -endOffsetY %i -transitionType %d", animGraph->GetID(), node->GetName(), endOffsetX, endOffsetY, transitionType);
+        commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"\" -targetNode \"%s\"  -sourcePort 0 -targetPort 0 -startOffsetX 0 -startOffsetY 0 -endOffsetX %i -endOffsetY %i -transitionType \"%s\"", animGraph->GetID(), node->GetName(), endOffsetX, endOffsetY, transitionType.ToString<AZStd::string>().c_str());
 
         // execute the command
         if (GetCommandManager()->ExecuteCommand(commandString.c_str(), commandResult) == false)
@@ -946,17 +795,14 @@ namespace EMStudio
         MCORE_ASSERT(animGraph);
 
         // find the selected node
-        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(selectedItems.at(0)->text(COLUMN_NAME)).c_str());
+        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNodeByName(FromQtString(selectedItems.at(0)->text(COLUMN_NAME)).c_str());
         return node;
     }
 
 
     void NavigateWidget::FillPasteCommandGroup(bool cutMode)
     {
-        // clear old command groups.
-        mPasteCommandGroup.RemoveAllCommands();
-        mPasteCommandGroupNoConnections.RemoveAllCommands();
-        mNodeNamesToCopy.clear();
+        mNodeIdsToCopy.clear();
 
         EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
         if (!animGraph)
@@ -970,11 +816,7 @@ namespace EMStudio
             return;
         }
 
-        AZStd::vector<EMotionFX::AnimGraphNode*> nodesToCopy;
-        AZStd::vector<EMotionFX::AnimGraphNode*> nodesToCopyNoConnections;
-        AZStd::vector<EMotionFX::AnimGraphNode*> nodesToCopyRoot;
-
-        mCopyParentNodeTypeID = MCORE_INVALIDINDEX32;
+        mCopyParentNodeType = AZ::TypeId::CreateNull();
 
         // Get the selected items and return in case there is nothing selected.
         QList<QTreeWidgetItem*> selectedItems = mPlugin->GetNavigateWidget()->GetTreeWidget()->selectedItems();
@@ -984,26 +826,18 @@ namespace EMStudio
         for (uint32 i = 0; i < numSelected; ++i)
         {
             QTreeWidgetItem*           item  = selectedItems.at(i);
-            EMotionFX::AnimGraphNode*  node  = animGraph->RecursiveFindNode(FromQtString(item->text(COLUMN_NAME)).c_str());
+            EMotionFX::AnimGraphNode*  node  = animGraph->RecursiveFindNodeByName(FromQtString(item->text(COLUMN_NAME)).c_str());
 
             // Only add it if the node is valid and is not in the list yet.
-            if (node && AZStd::find(nodesToCopy.begin(), nodesToCopy.end(), node) == nodesToCopy.end())
+            if (node)
             {
-                nodesToCopy.push_back(node);
+                mNodeIdsToCopy.emplace(node->GetId());
 
                 // Check if the node has a parent, if yes store the parent node type (so that we know at paste time if we're pasting states or blend tree nodes).
                 EMotionFX::AnimGraphNode* parentNode = node->GetParentNode();
                 if (parentNode)
                 {
-                    mCopyParentNodeTypeID = parentNode->GetType();
-
-                    bool isParentStateMachine = parentNode->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID;
-
-                    if ((isParentStateMachine && !node->GetCanBeInsideSubStateMachineOnly()) || // In case the parent is a state machine this means we're pasting to a blend tree: allow all nodes except for sub state machine nodes.
-                        (!isParentStateMachine && node->GetCanActAsState()))                    // In case the parent is a blend tree this means we're pasting to a state machine: only allow states.
-                    {
-                        nodesToCopyNoConnections.push_back(node);
-                    }
+                    mCopyParentNodeType = azrtti_typeid(parentNode);
                 }
                 else
                 {
@@ -1012,10 +846,6 @@ namespace EMStudio
             }
         }
 
-        mPasteCommandGroup.SetGroupName("Copy and paste nodes");
-        mPasteCommandGroupNoConnections.SetGroupName("Copy and paste nodes");
-        CommandSystem::ConstructCopyAnimGraphNodesCommandGroup(&mPasteCommandGroup, animGraph, nodesToCopy, cutMode, false, mNodeNamesToCopy);
-        CommandSystem::ConstructCopyAnimGraphNodesCommandGroup(&mPasteCommandGroupNoConnections, animGraph, nodesToCopyNoConnections, cutMode, true, mNodeNamesToCopyNoConnections);
         mCutMode = cutMode;
     }
 
@@ -1026,18 +856,13 @@ namespace EMStudio
 
     bool NavigateWidget::GetIsReadyForPaste()
     {
-        if (mPasteCommandGroup.GetNumCommands() == 0 && mPasteCommandGroupNoConnections.GetNumCommands() == 0)
-        {
-            return false;
-        }
-
-        return true;
+        return !mNodeIdsToCopy.empty();
     }
 
 
     void NavigateWidget::Paste()
     {
-        if (GetIsReadyForPaste() == false)
+        if (!GetIsReadyForPaste())
         {
             return;
         }
@@ -1078,29 +903,34 @@ namespace EMStudio
 
         // check if the node we want to paste into is of the same type of where we copied from, if not don't copy along the connections/transitions
         // create a cloned version of the node names to copy, so that we can copy another time without recreating the copy information
-        AZStd::vector<AZStd::string> clonedNodeNames;
-        MCore::CommandGroup clonedPasteGroup;
-        if (currentNode && currentNode == animGraph->GetRootStateMachine())
+        MCore::CommandGroup pasteCommandGroup;
+        if (mCutMode)
         {
-            clonedPasteGroup    = mPasteCommandGroup;
-            clonedNodeNames     = mNodeNamesToCopy;
-        }
-        else if (currentNode && currentNode->GetType() == mCopyParentNodeTypeID)
-        {
-            clonedPasteGroup    = mPasteCommandGroup;
-            clonedNodeNames     = mNodeNamesToCopy;
+            pasteCommandGroup.SetGroupName("Cut and paste nodes");
         }
         else
         {
-            clonedPasteGroup    = mPasteCommandGroupNoConnections;
-            clonedNodeNames     = mNodeNamesToCopyNoConnections;
+            pasteCommandGroup.SetGroupName("Copy and paste nodes");
         }
 
-        // adjust the command group and reposition the nodes
-        CommandSystem::AdjustCopyAnimGraphNodesCommandGroup(&clonedPasteGroup, animGraph, clonedNodeNames, mousePos.x(), mousePos.y(), parentName, mCutMode);
+        // Convert the node names to copy to pointers
+        AZStd::vector<EMotionFX::AnimGraphNode*> nodesTopCopy;
+        nodesTopCopy.reserve(mNodeIdsToCopy.size());
+        for (const EMotionFX::AnimGraphNodeId nodeId : mNodeIdsToCopy)
+        {
+            EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNodeById(nodeId);
+            if (node)
+            {
+                nodesTopCopy.emplace_back(node);
+            }
+        }
+        AZStd::unordered_map<EMotionFX::AnimGraphNode*, AZStd::string> newNamesByCopiedNodes;
+        const bool ignoreTopLevelConnections = !(currentNode && (currentNode == animGraph->GetRootStateMachine() || azrtti_typeid(currentNode) == mCopyParentNodeType));
 
+        CommandSystem::ConstructCopyAnimGraphNodesCommandGroup(&pasteCommandGroup, currentNode, nodesTopCopy, mousePos.x(), mousePos.y(), mCutMode, newNamesByCopiedNodes, ignoreTopLevelConnections);
+        
         AZStd::string result;
-        if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(clonedPasteGroup, result))
+        if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(pasteCommandGroup, result))
         {
             AZ_Error("EMotionFX", false, result.c_str());
         }
@@ -1108,13 +938,11 @@ namespace EMStudio
         // clear old command group so that we can't paste again
         if (mCutMode)
         {
-            mPasteCommandGroup.RemoveAllCommands();
-            mPasteCommandGroupNoConnections.RemoveAllCommands();
-            mNodeNamesToCopy.clear();
+            mNodeIdsToCopy.clear();
         }
 
         // Send LyMetrics event.
-        MetricsEventSender::SendPasteNodesAndConnectionsEvent(static_cast<AZ::u32>(clonedNodeNames.size()), 0);
+        MetricsEventSender::SendPasteNodesAndConnectionsEvent(static_cast<AZ::u32>(nodesTopCopy.size()), 0);
     }
 
 
@@ -1128,96 +956,6 @@ namespace EMStudio
     void NavigateWidget::dropEvent(QDropEvent* event)
     {
         MCORE_UNUSED(event);
-
-        /*bool acceptEnterEvent = BlendGraphWidget::OnEnterDropEvent( event, mCurrentNode, GetActiveGraph() );
-
-        if (acceptEnterEvent)
-            event->accept();
-        else
-            event->ignore();*/
-
-        /*
-            // dont accept dragging/drop from and to yourself
-            if (event->source() == this)
-                return;
-
-            // only accept copy actions
-            if (event->dropAction() != Qt::CopyAction)
-            {
-                event->ignore();
-                return;
-            }
-
-            // if we have text, get it
-            if (event->mimeData()->hasText())
-            {
-                // extract the class name
-                MCore::Array<AZStd::string> parts = AZStd::string( event->mimeData()->text().toAscii().data() ).Split(';');
-                if (parts.GetLength() != 3)
-                {
-                    MCore::LogError("BlendGraphWidget::dropEvent() - Incorrect syntax using drop data '%s'", event->mimeData()->text().toAscii().data());
-                    event->ignore();
-                    update();
-                    return;
-                }
-
-                AZStd::string commandString;
-                AZStd::string resultString;
-                if (mCurrentNode == nullptr)
-                {
-                    if (AzFramework::StringFunc::Equal(parts[1].c_str(), "AnimGraphStateMachine", false) == false)
-                    {
-                        MCore::LogError("You can only drop State Machines as root nodes!");
-                        event->ignore();
-                        update();
-                        return;
-                    }
-                }
-
-                // calculate the position
-                const QPoint offset = LocalToGlobal( event->pos() );
-
-                // build the name prefix
-                AZStd::string namePrefix = parts[2];
-                namePrefix.RemoveChars(" ");
-
-                // if we add a blendtree, we also should automatically add a final node
-                if (AzFramework::StringFunc::Equal(parts[1].c_str(), "BlendTree", false))
-                {
-                    MCore::CommandGroup group("Create a blend tree");
-
-                    commandString = AZStd::string::format("AnimGraphCreateNode -type \"%s\" -parentName \"%s\" -xPos %d -yPos %d -name GENERATE -namePrefix \"%s\"", parts[1].AsChar(), mCurrentNode->GetName(), offset.x(), offset.y(), namePrefix.AsChar());
-                    group.AddCommandString( commandString.AsChar() );
-
-                    commandString = AZStd::string::format("AnimGraphCreateNode -type BlendTreeFinalNode -parentName \"%%LASTRESULT%%\" -xPos %d -yPos %d -name GENERATE -namePrefix \"FinalNode\"", geometry().width()/2, geometry().height()/2);
-                    group.AddCommandString( commandString.AsChar() );
-
-                    // execute the command
-                    if (GetCommandManager()->ExecuteCommandGroup( group, resultString ) == false)
-                    {
-                        if (resultString.GetLength() > 0)
-                            MCore::LogError( resultString );
-                    }
-                }
-                else
-                {
-                    if (mCurrentNode)
-                        commandString = AZStd::string::format("AnimGraphCreateNode -type \"%s\" -parentName \"%s\" -xPos %d -yPos %d -name GENERATE -namePrefix \"%s\"", parts[1].AsChar(), mCurrentNode->GetName(), offset.x(), offset.y(), namePrefix.AsChar());
-                    else
-                        commandString = AZStd::string::format("AnimGraphCreateNode -type \"%s\" -xPos %d -yPos %d -name GENERATE -namePrefix \"%s\"", parts[1].AsChar(), offset.x(), offset.y(), namePrefix.AsChar());
-
-                    // execute the command
-                    if (GetCommandManager()->ExecuteCommand( commandString, resultString ) == false)
-                    {
-                        if (resultString.GetLength() > 0)
-                            MCore::LogError( resultString );
-                    }
-                }
-
-                event->accept();
-            }
-
-            update();*/
     }
 
 
@@ -1249,11 +987,11 @@ namespace EMStudio
 
         // find the node inside EMotionFX::GetEMotionFX()
         QTreeWidgetItem* selectedItem = selectedItems[0];
-        EMotionFX::AnimGraphNode* virtualFinalNode = mPlugin->GetActiveAnimGraph()->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
+        EMotionFX::AnimGraphNode* virtualFinalNode = mPlugin->GetActiveAnimGraph()->RecursiveFindNodeByName(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
         MCORE_ASSERT(virtualFinalNode);
 
         // get the parent blend tree
-        MCORE_ASSERT(virtualFinalNode->GetParentNode()->GetType() == EMotionFX::BlendTree::TYPE_ID);
+        MCORE_ASSERT(azrtti_typeid(virtualFinalNode->GetParentNode()) == azrtti_typeid<EMotionFX::BlendTree>());
         EMotionFX::BlendTree* blendTree = static_cast<EMotionFX::BlendTree*>(virtualFinalNode->GetParentNode());
 
         // set its new virtual final node
@@ -1283,11 +1021,11 @@ namespace EMStudio
 
         // find the node inside EMotionFX::GetEMotionFX()
         QTreeWidgetItem* selectedItem = selectedItems[0];
-        EMotionFX::AnimGraphNode* virtualFinalNode = mPlugin->GetActiveAnimGraph()->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
+        EMotionFX::AnimGraphNode* virtualFinalNode = mPlugin->GetActiveAnimGraph()->RecursiveFindNodeByName(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
         MCORE_ASSERT(virtualFinalNode);
 
         // get the parent blend tree
-        MCORE_ASSERT(virtualFinalNode->GetParentNode()->GetType() == EMotionFX::BlendTree::TYPE_ID);
+        MCORE_ASSERT(azrtti_typeid(virtualFinalNode->GetParentNode()) == azrtti_typeid<EMotionFX::BlendTree>());
         EMotionFX::BlendTree* blendTree = static_cast<EMotionFX::BlendTree*>(virtualFinalNode->GetParentNode());
 
         // set its new virtual final node
@@ -1314,7 +1052,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numSelected; ++i)
         {
             QTreeWidgetItem* selectedItem = selectedItems[i];
-            EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
+            EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNodeByName(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
             MCORE_ASSERT(node);
             if (node->GetSupportsDisable() == false)
             {
@@ -1357,7 +1095,7 @@ namespace EMStudio
         if (mVisualOptionsNode == nullptr)
         {
             QTreeWidgetItem* selectedItem = selectedItems[0];
-            node = animGraph->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
+            node = animGraph->RecursiveFindNodeByName(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
         }
         else
         {
@@ -1394,20 +1132,16 @@ namespace EMStudio
         // sync the visual node with EMotionFX::GetEMotionFX()
         NodeGraph* visualGraph;
         GraphNode* visualNode;
-        mPlugin->FindGraphAndNode(mVisualColorNode->GetParentNode(), mVisualColorNode->GetID(), &visualGraph, &visualNode, mPlugin->GetActiveAnimGraph());
-        //if (visualNode->GetType() == BlendTreeVisualNode::TYPE_ID)
-        {
-            //static_cast<BlendTreeVisualNode*>(visualNode)->SyncWithEMFX();
-            visualNode->Sync();
-        }
+        mPlugin->FindGraphAndNode(mVisualColorNode->GetParentNode(), mVisualColorNode->GetId(), &visualGraph, &visualNode, mPlugin->GetActiveAnimGraph());
+        visualNode->Sync();
     }
 
 
     // when the filter string changed
-    void NavigateWidget::OnFilterStringChanged(const QString& text)
+    void NavigateWidget::OnTextFilterChanged(const QString& text)
     {
-        FromQtString(text, &mSearchString);
-        AZStd::to_lower(mSearchString.begin(), mSearchString.end());
+        FromQtString(text, &m_searchStringText);
+        AZStd::to_lower(m_searchStringText.begin(), m_searchStringText.end());
 
         EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
         if (animGraph == nullptr)
@@ -1417,13 +1151,13 @@ namespace EMStudio
 
         mVisibleItem = nullptr;
 
-        if (mSearchString.size() > 0)
+        if (m_searchStringText.size() > 0)
         {
-            mRootItem = UpdateTreeWidget(mTreeWidget, animGraph, MCORE_INVALIDINDEX32, false, mSearchString.c_str());
+            mRootItem = UpdateTreeWidget(mTreeWidget, animGraph, AZ::TypeId::CreateNull(), false, m_searchStringText.c_str());
         }
         else
         {
-            mRootItem = UpdateTreeWidget(mTreeWidget, animGraph, MCORE_INVALIDINDEX32, false, nullptr);
+            mRootItem = UpdateTreeWidget(mTreeWidget, animGraph, AZ::TypeId::CreateNull(), false, nullptr);
         }
 
         //  ChangeVisibleItem(nullptr);

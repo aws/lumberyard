@@ -23,8 +23,8 @@ namespace AzFramework
         AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
         if (serialize)
         {
-            serialize->Class<DrillToFileComponent>()
-                ->SerializerForEmptyClass();
+            serialize->Class<DrillToFileComponent, AZ::Component>()
+                ;
 
             if (serialize->FindClassData(DrillerInfo::RTTI_Type()) == nullptr)
             {

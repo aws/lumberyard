@@ -25,10 +25,11 @@ namespace LmbrCentral
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorAudioListenerComponent, AZ::Component>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("Rotation Entity", &EditorAudioListenerComponent::m_rotationEntity)
                 ->Field("Position Entity", &EditorAudioListenerComponent::m_positionEntity)
                 ->Field("Fixed offset", &EditorAudioListenerComponent::m_fixedOffset)
+                ->Field("DefaultListenerState", &EditorAudioListenerComponent::m_defaultListenerState)
                 ;
 
             if (auto editContext = serializeContext->GetEditContext())
@@ -47,6 +48,8 @@ namespace LmbrCentral
                         "Position Entity", "The Entity whose position the audio listener will adopt.  If none set, will assume 'this' Entity")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorAudioListenerComponent::m_fixedOffset,
                         "Fixed offset", "A fixed world-space offset to add to the listener position.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorAudioListenerComponent::m_defaultListenerState,
+                        "Listener Enabled", "Controls the initial state of this AudioListener on Component Activation.")
                     ;
             }
         }
@@ -69,6 +72,7 @@ namespace LmbrCentral
     {
         if (auto audioListenerComponent = gameEntity->CreateComponent<AudioListenerComponent>())
         {
+            audioListenerComponent->m_defaultListenerState = m_defaultListenerState;
             audioListenerComponent->m_rotationEntity = m_rotationEntity;
             audioListenerComponent->m_positionEntity = m_positionEntity;
             audioListenerComponent->m_fixedOffset = m_fixedOffset;

@@ -14,7 +14,7 @@
 
 #include <QWidget>
 #include <QLabel>
-#include "qmenu.h"
+#include "QMenu"
 
 namespace Ui {
     class QColorWidget;

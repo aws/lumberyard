@@ -13,7 +13,7 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
-#include <SceneAPI/FbxSDKWrapper/FBXSceneWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxSceneWrapper.h>
 
 namespace AZ
 {

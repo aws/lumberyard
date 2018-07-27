@@ -16,10 +16,7 @@
         "CommonWidgets":
         [
             "CommonWidgets/OverlayWidget.h",
-            "CommonWidgets/OverlayWidget.cpp",
             "CommonWidgets/OverlayWidgetLayer.h",
-            "CommonWidgets/OverlayWidgetLayer.cpp",
-            "CommonWidgets/OverlayWidgetLayer.ui",
             "CommonWidgets/JobWatcher.h",
             "CommonWidgets/JobWatcher.cpp",
             "CommonWidgets/ProcessingOverlayWidget.h",

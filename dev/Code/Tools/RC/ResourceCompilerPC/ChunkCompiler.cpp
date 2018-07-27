@@ -18,7 +18,7 @@
 #include "../Cry3DEngine/CGF/ChunkFileWriters.h"
 #include "CryHeaders.h"
 #include "IChunkFile.h"
-#include "iconfig.h"
+#include "IConfig.h"
 #include "IResCompiler.h"
 #include "IResourceCompilerHelper.h"
 #include "StringHelpers.h"

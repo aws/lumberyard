@@ -13,6 +13,7 @@
 
 #ifndef PoseModifierDesc_h
 #define PoseModifierDesc_h
+#pragma once
 
 namespace Serialization {
     class IArchive;

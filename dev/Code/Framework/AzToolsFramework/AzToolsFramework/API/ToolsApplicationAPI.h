@@ -646,6 +646,9 @@ namespace AzToolsFramework
         /// Returns whether a level document is open.
         virtual bool IsLevelDocumentOpen() { return false; }
 
+        /// Return the name of a level document.
+        virtual AZStd::string GetLevelName() { return AZStd::string(); }
+
         /// Return default icon to show in the viewport for components that haven't specified an icon.
         virtual AZStd::string GetDefaultComponentViewportIcon() { return AZStd::string(); }
 
@@ -732,6 +735,9 @@ namespace AzToolsFramework
 
         /// Notify that the Qt Application object is now ready to be used
         virtual void NotifyQtApplicationAvailable(QApplication* /* application */) {}
+
+        /// Notify that the IEditor is ready
+        virtual void NotifyIEditorAvailable(IEditor* /*editor*/) {}
     };
 
     /**

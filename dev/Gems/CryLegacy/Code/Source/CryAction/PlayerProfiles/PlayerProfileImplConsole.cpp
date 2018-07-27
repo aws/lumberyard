@@ -25,7 +25,7 @@
 
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <IXml.h>
 #include <StringUtils.h>
 #include <IPlatformOS.h>

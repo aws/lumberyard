@@ -17,7 +17,7 @@
 #include "WipFeatureManager.h"
 #include "WipFeaturesDlg.h"
 
-#if defined(AZ_PLATFORM_WINFOWS)
+#if defined(AZ_PLATFORM_WINDOWS)
 const char* CWipFeatureManager::kWipFeaturesFilename = "@user@\\Editor\\UI\\WipFeatures.xml";
 #else
 const char* CWipFeatureManager::kWipFeaturesFilename = "@user@/Editor/UI/WipFeatures.xml";

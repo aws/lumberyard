@@ -14,8 +14,12 @@ import argparse
 import boto3
 import time
 import os
+import json
+import sys
 from botocore.client import Config
 from botocore.exceptions import ClientError
+from ConfigParser import RawConfigParser
+from StringIO import StringIO
 
 DEFAULT_REGION='us-east-1'
 
@@ -33,12 +37,9 @@ class Cleaner:
         self.apigateway = session.client('apigateway')
         self.dynamodb = session.client('dynamodb')
         self.lambda_client = session.client('lambda')        
-        self.sqs = session.client('sqs')        
-        try:
-            self.glue = session.client('glue')        
-        except:
-            self.glue = None
-            print 'Glue service not found, skipping'
+        self.sqs = session.client('sqs')                
+        self.glue = session.client('glue')        
+        
         self.iot_client = session.client('iot')
         
     def cleanup(self, prefixes, exceptions):
@@ -703,12 +704,18 @@ class Cleaner:
                 next_marker = principal_list.get('nextMarker')
                 while True:
                     for thisPrincipal in principal_list['principals']:
-                        print '  Detaching policy {} from principal {}'.format(name, thisPrincipal)
-                        try:
+                        if ':cert/' in thisPrincipal:
+                            # For a cert, the principal is the full arn
+                            principal_name = thisPrincipal
+                        else:
                             ## Response is in the form of accountId:CognitoId - when we detach we only want cognitoId
-                            self.iot_client.detach_principal_policy(policyName=name, principal=thisPrincipal.split(':',1)[1])
+                            principal_name = thisPrincipal.split(':',1)[1]
+                        print '  Detaching policy {} from principal {}'.format(name, principal_name)
+                        try:
+                            self.iot_client.detach_principal_policy(policyName=name, principal=principal_name)
                         except ClientError as e:
-                            print '    ERROR', e.message                          
+                            print '    ERROR', e.message
+
                     if next_marker is None:
                         break
                     principal_list = self.iot_client.list_policy_principals(policyName=name, pageSize=100, marker=next_marker)  
@@ -725,6 +732,47 @@ class Cleaner:
                 res = self.iot_client.list_policies(pageSize=100, marker=next_marker)
                 
 if __name__ == '__main__':
+    def __get_user_settings_path():
+        '''Reads {root}\bootstrap.cfg to determine the name of the game directory.'''
+
+        root_directory_path = os.getcwd()
+        while os.path.basename(root_directory_path) != 'dev':
+            root_directory_path = os.path.dirname(root_directory_path)
+
+        path = os.path.join(root_directory_path, "bootstrap.cfg")
+
+        if not os.path.exists(path):
+            print 'Warning: a bootstrap.cfg file was not found at {}, using "Game" as the project directory name.'.format(path)
+            return 'Game'
+        else:
+            # If we add a section header and change the comment prefix, then
+            # bootstrap.cfg looks like an ini file and we can use ConfigParser.
+            ini_str = '[default]\n' + open(path, 'r').read()
+            ini_str = ini_str.replace('\n--', '\n#')
+            ini_fp = StringIO(ini_str)
+            config = RawConfigParser()
+            config.readfp(ini_fp)
+
+            game_directory_name = config.get('default', 'sys_game_folder')
+
+            platform_mapping = {"win32": "pc", "darwin": "osx_gl"}
+            user_settings_path = os.path.join(root_directory_path, 'Cache', game_directory_name, platform_mapping[sys.platform], 'User\AWS\user-settings.json')
+
+            if not os.path.exists(user_settings_path):
+                raise HandledError('{} does not exist.'.format(user_settings_path))
+
+            return user_settings_path
+
+    def __get_default_profile(args):
+        user_settings_path = __get_user_settings_path()
+        profile = 'default'
+
+        if os.path.isfile(user_settings_path):
+            with open(user_settings_path, 'r') as file:
+                settings = json.load(file)
+                profile = settings.get('DefaultProfile', args.profile)
+
+        return profile
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--prefix', dest='prefixes', nargs='+', default=DEFAULT_PREFIXES, help='Any stacks and buckets with names that start with this value will be deleted.')
@@ -749,9 +797,7 @@ if __name__ == '__main__':
     elif os.environ.get('NO_TEST_PROFILE', None):
         session = boto3.Session(region_name=args.region)
     else:
+        args.profile = __get_default_profile(args)
         session = boto3.Session(profile_name=args.profile, region_name=args.region)    
     cleaner = Cleaner(session)
     cleaner.cleanup(prefixes, exceptions)
-
- 
-

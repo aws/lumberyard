@@ -27,8 +27,8 @@ public:
     int GetDestructorRunCount() const override;
 
     bool CreateStaticSharedPtr() override;
-    std::shared_ptr<IComponentModuleTest> GetStaticSharedPtr() override;
-    std::shared_ptr<IComponentModuleTest>& GetStaticSharedPtrRef() override;
+    IComponentModuleTestPtr GetStaticSharedPtr() override;
+    IComponentModuleTestPtr& GetStaticSharedPtrRef() override;
 };
 
 #endif // CRYINCLUDE_CRYENTITYSYSTEM_COMPONENTMODULETEST_H

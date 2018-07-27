@@ -61,7 +61,7 @@ public:
     uint32 GetFilenameHash(const char* sResourceFile)
     {
         char filename[512];
-        strcpy_s(filename, sResourceFile);
+        azstrcpy(filename, AZ_ARRAY_SIZE(filename), sResourceFile);
         MaterialUtils::UnifyMaterialName(filename);
 
         uint32 code = CCrc32::ComputeLowercase(filename);
@@ -117,11 +117,12 @@ public:
                 m_lines.reserve(5000);
 
                 // Parse file, every line in a file represents a resource filename.
-                char* token = strtok(m_pFileBuffer, seps);
+                char* nextToken = nullptr;
+                char* token = azstrtok(m_pFileBuffer, 0, seps, &nextToken);
                 while (token != NULL)
                 {
                     m_lines.push_back(token);
-                    token = strtok(NULL, seps);
+                    token = azstrtok(NULL, 0, seps, &nextToken);
                 }
 
                 m_resources_crc32.resize(m_lines.size());

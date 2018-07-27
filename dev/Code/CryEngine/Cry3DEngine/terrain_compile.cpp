@@ -295,7 +295,7 @@ void CTerrain::SaveTables(byte*& pData, int& nDataSize, std::vector<struct IStat
             {
                 SNameChunk tmp;
                 assert(strlen(rTable[dwI] ? rTable[dwI]->GetName() : "") < sizeof(tmp.szFileName));
-                strcpy(tmp.szFileName, rTable[dwI] ? rTable[dwI]->GetName() : "");
+                azstrcpy(tmp.szFileName, AZ_ARRAY_SIZE(tmp.szFileName), rTable[dwI] ? rTable[dwI]->GetName() : "");
                 AddToPtr(pData, nDataSize, tmp, eEndian);
             }
         }

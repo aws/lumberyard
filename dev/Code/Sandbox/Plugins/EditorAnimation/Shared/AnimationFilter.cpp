@@ -202,7 +202,7 @@ struct SAnimationFilterHasTags
             bool hasTag = false;
             for (size_t j = 0; j < numItemTags; ++j)
             {
-                if (stricmp(item.tags[j].c_str(), tags[i].c_str()) == 0)
+                if (azstricmp(item.tags[j].c_str(), tags[i].c_str()) == 0)
                 {
                     hasTag = true;
                     break;
@@ -320,7 +320,7 @@ struct SAnimationFilterSkeletonAlias
 
     bool Check(const SAnimationFilterItem& item) const override
     {
-        if (stricmp(item.skeletonAlias.c_str(), skeletonAlias.c_str()) == 0)
+        if (azstricmp(item.skeletonAlias.c_str(), skeletonAlias.c_str()) == 0)
         {
             return !m_not;
         }

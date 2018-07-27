@@ -13,8 +13,10 @@
 
 #include "StdAfx.h"
 #include "DriverD3D.h"
-#include "../Common/DevBuffer.h"
-#include "../Common/RenderCapabilities.h"
+#include "Shaders/CShader.h"
+#include "DevBuffer.h"
+#include "RenderCapabilities.h"
+#include <AzCore/std/string/conversions.h>
 #include <I3DEngine.h>
 #include <IStatoscope.h>
 #include <IResourceManager.h>
@@ -80,6 +82,11 @@ bool CShader::FXSetCSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int
     return true;
 }
 
+bool CShader::FXSetCSFloat(const char* NameParam, const Vec4 fParams[], int nParams)
+{
+    return FXSetCSFloat(CCryNameR(NameParam), fParams, nParams);
+}
+
 bool CShader::FXSetPSFloat(const CCryNameR& NameParam, const Vec4* fParams, int nParams)
 {
     CRenderer* rd = gRenDev;
@@ -106,6 +113,11 @@ bool CShader::FXSetPSFloat(const CCryNameR& NameParam, const Vec4* fParams, int 
     const AZ::u32 registerCountMax = curPS->m_pCurInst->m_nMaxVecs[pBind->m_BindingSlot];
     AzRHI::ConstantBufferCache::GetInstance().WriteConstants(eHWSC_Pixel, pBind, fParams, nParams, registerCountMax);
     return true;
+}
+
+bool CShader::FXSetPSFloat(const char* NameParam, const Vec4* fParams, int nParams)
+{
+    return FXSetPSFloat(CCryNameR(NameParam), fParams, nParams);
 }
 
 bool CShader::FXSetVSFloat(const CCryNameR& NameParam, const Vec4* fParams, int nParams)
@@ -136,6 +148,11 @@ bool CShader::FXSetVSFloat(const CCryNameR& NameParam, const Vec4* fParams, int 
     return true;
 }
 
+bool CShader::FXSetVSFloat(const char* NameParam, const Vec4* fParams, int nParams)
+{
+    return FXSetVSFloat(CCryNameR(NameParam), fParams, nParams);
+}
+
 bool CShader::FXSetGSFloat(const CCryNameR& NameParam, const Vec4* fParams, int nParams)
 {
     CRenderer* rd = gRenDev;
@@ -164,6 +181,10 @@ bool CShader::FXSetGSFloat(const CCryNameR& NameParam, const Vec4* fParams, int 
     return true;
 }
 
+bool CShader::FXSetGSFloat(const char* NameParam, const Vec4* fParams, int nParams)
+{
+    return FXSetGSFloat(CCryNameR(NameParam), fParams, nParams);
+}
 
 bool CShader::FXBegin(uint32* uiPassCount, uint32 nFlags)
 {
@@ -309,7 +330,7 @@ void* CHWShader_D3D::GetVSDataForDecl(const D3D11_INPUT_ELEMENT_DESC* pDecl, int
     SShaderTechnique* pTech = NULL;
     for (i = 0; i < pSh->m_HWTechniques.Num(); i++)
     {
-        if (!_stricmp(pSh->m_HWTechniques[i]->m_NameStr.c_str(), "InputLayout"))
+        if (!azstricmp(pSh->m_HWTechniques[i]->m_NameStr.c_str(), "InputLayout"))
         {
             pTech = pSh->m_HWTechniques[i];
             break;
@@ -633,14 +654,16 @@ void CShaderMan::mfCheckObjectDependParams(std::vector<SCGParam>& PNoObj, std::v
 }
 
 bool CShaderMan::mfPreactivate2(CResFileLookupDataMan& LevelLookup,
-    string szPathPerLevel, string szPathGlobal,
+    const AZStd::string& pathPerLevel, const AZStd::string& pathGlobal,
     bool bVS, bool bPersistent)
 {
     bool bRes = true;
     struct _finddata_t fileinfo;
     intptr_t handle;
-
-    handle = gEnv->pCryPak->FindFirst (szPathPerLevel + "/*.*", &fileinfo);
+    
+    AZStd::string allFilesPath = pathPerLevel + "/*.*";
+    
+    handle = gEnv->pCryPak->FindFirst (allFilesPath.c_str(), &fileinfo);
     if (handle == -1)
     {
         return bRes;
@@ -652,27 +675,26 @@ bool CShaderMan::mfPreactivate2(CResFileLookupDataMan& LevelLookup,
         {
             continue;
         }
+        
+        AZStd::string fileInfoPerLevel = AZStd::string::format("%s/%s", pathPerLevel.c_str(), fileinfo.name);
+        AZStd::string fileInfoGlobal   = AZStd::string::format("%s/%s", pathGlobal.c_str(),   fileinfo.name);
+        
         if (fileinfo.attrib & _A_SUBDIR)
         {
-            bRes &= mfPreactivate2(LevelLookup, szPathPerLevel + "/" + fileinfo.name,
-                    szPathGlobal + "/" + fileinfo.name, bVS, bPersistent);
+            bRes &= mfPreactivate2(LevelLookup, fileInfoPerLevel, fileInfoGlobal, bVS, bPersistent);
             continue;
         }
-        string StrPerLevel = szPathPerLevel + "/" + fileinfo.name;
-        CResFile* pRes = new CResFile(StrPerLevel.c_str());
+        CResFile* pRes = new CResFile(fileInfoPerLevel.c_str());
         int bR = pRes ? pRes->mfOpen(RA_READ, &LevelLookup) : 0;
         if (!bR)
         {
-            Warning("ShaderCache rejected (damaged?) file %s: %s", StrPerLevel.c_str(), pRes->mfGetError() ? pRes->mfGetError() : "<unknown reason>");
+            Warning("ShaderCache rejected (damaged?) file %s: %s", fileInfoPerLevel.c_str(), pRes->mfGetError() ? pRes->mfGetError() : "<unknown reason>");
             bRes = false;
             SAFE_DELETE(pRes);
             continue;
         }
 
-        // name in the global cache used to retrieve the localup data
-        string StrGlobal = szPathGlobal + "/" + fileinfo.name;
-
-        SResFileLookupData* pLookupGlobal = gRenDev->m_cEF.m_ResLookupDataMan[CACHE_READONLY].GetData(StrGlobal.c_str());
+        SResFileLookupData* pLookupGlobal = gRenDev->m_cEF.m_ResLookupDataMan[CACHE_READONLY].GetData(fileInfoGlobal.c_str());
         if (!pLookupGlobal)
         {
             SAFE_DELETE(pRes);
@@ -691,10 +713,10 @@ bool CShaderMan::mfPreactivate2(CResFileLookupDataMan& LevelLookup,
             CCryNameTSCRC name;
             if (_strnicmp(szName, "ShaderCache/", 12) == 0)
             {
-                stack_string sName = stack_string("Shaders/Cache/") + stack_string(&szName[12]);
+                stack_string sName = stack_string(g_shaderCache) + stack_string(&szName[12]);
                 name = sName.c_str();
             }
-            else if (_strnicmp(szName, "Shaders/Cache/", 14) == 0)
+            else if (_strnicmp(szName, g_shaderCache, 14) == 0)
             {
                 name = LevelLookup.AdjustName(pRes->mfGetFileName());
             }
@@ -716,7 +738,7 @@ bool CShaderMan::mfPreactivate2(CResFileLookupDataMan& LevelLookup,
             SAFE_DELETE(pRes);
             continue;
         }
-        const char* s = StrPerLevel.c_str();
+        const char* s = fileInfoPerLevel.c_str();
         const uint32 nLen = strlen(s);
         int nStart = -1;
         int nEnd = -1;
@@ -908,66 +930,31 @@ bool CShaderMan::mfPreactivateShaders2(
 
     bool bRes = true;
 
-    string szPathPerLevel = szPath;
-    if (CParserBin::m_nPlatform == SF_D3D11)
-    {
-        szPathPerLevel += "d3d11/";
-    }
-    else
-    if (CParserBin::m_nPlatform == SF_GL4)
-    {
-        szPathPerLevel += "gl4/";
-    }
-    else
-    if (CParserBin::m_nPlatform == SF_GLES3)
-    {
-    #if defined(OPENGL_ES)
-        uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
-        if (glVersion == DXGLES_VERSION_30)
-        {
-            szPathPerLevel += "gles3_0/";
-        }
-        else
-        {
-            szPathPerLevel += "gles3_1/";
-        }
-    #endif
-    }
-    else
-    // Confetti Nicholas Baldwin: adding metal shader language support
-    if (CParserBin::m_nPlatform == SF_METAL)
-    {
-        szPathPerLevel += "metal/";
-    }
-    else
-    if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
-    {
-        szPathPerLevel += "orbis/"; // ACCEPTED_USE
-    }
-    else
-    if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
-    {
-        szPathPerLevel += "durango/"; // ACCEPTED_USE
-    }
+    // Get shader platform name and make it lower
+    AZStd::string shaderLanguageName = GetShaderLanguageName();
+    AZStd::to_lower(shaderLanguageName.begin(), shaderLanguageName.end());
 
-    string szPathGlobal = gRenDev->m_cEF.m_ShadersCache;
+    const AZStd::string pathPerLevel = AZStd::string::format( "%s%s/", szPath, shaderLanguageName.c_str());
 
     CResFileLookupDataMan LevelLookup;
-    bool bLoaded = LevelLookup.LoadData(szPathPerLevel + "lookupdata.bin", CParserBin::m_bEndians, true);
+    bool bLoaded = LevelLookup.LoadData((pathPerLevel + "lookupdata.bin").c_str(), CParserBin::m_bEndians, true);
     if (bLoaded)
     {
-        bRes &= mfPreactivate2(LevelLookup, szPathPerLevel + "cgcshaders",
-                szPathGlobal + "cgcshaders", false, bPersistent);
-        bRes &= mfPreactivate2(LevelLookup, szPathPerLevel + "cgdshaders",
-                szPathGlobal + "cgdshaders", false, bPersistent);
-        bRes &= mfPreactivate2(LevelLookup, szPathPerLevel + "cggshaders",
-                szPathGlobal + "cggshaders", false, bPersistent);
-        bRes &= mfPreactivate2(LevelLookup, szPathPerLevel + "cghshaders",
-                szPathGlobal + "cghshaders", false, bPersistent);
-        bRes &= mfPreactivate2(LevelLookup, szPathPerLevel + "cgpshaders",
-                szPathGlobal + "cgpshaders", false, bPersistent);
-        bRes &= mfPreactivate2(LevelLookup, szPathPerLevel + "cgvshaders",
-                szPathGlobal + "cgvshaders", true, bPersistent);
+        const AZStd::string& pathGlobal = gRenDev->m_cEF.m_ShadersCache;
+        
+        const char* cgcShaders = "cgcshaders";
+        const char* cgdShaders = "cgdshaders";
+        const char* cggShaders = "cggshaders";
+        const char* cghShaders = "cghshaders";
+        const char* cgpShaders = "cgpshaders";
+        const char* cgvShaders = "cgvshaders";
+        
+        bRes &= mfPreactivate2(LevelLookup, pathPerLevel + cgcShaders, pathPerLevel + cgcShaders, false, bPersistent);
+        bRes &= mfPreactivate2(LevelLookup, pathPerLevel + cgdShaders, pathPerLevel + cgdShaders, false, bPersistent);
+        bRes &= mfPreactivate2(LevelLookup, pathPerLevel + cggShaders, pathPerLevel + cggShaders, false, bPersistent);
+        bRes &= mfPreactivate2(LevelLookup, pathPerLevel + cghShaders, pathPerLevel + cghShaders, false, bPersistent);
+        bRes &= mfPreactivate2(LevelLookup, pathPerLevel + cgpShaders, pathPerLevel + cgpShaders, false, bPersistent);
+        bRes &= mfPreactivate2(LevelLookup, pathPerLevel + cgvShaders, pathPerLevel + cgvShaders, true,  bPersistent);
     }
 
     return bRes;
@@ -988,7 +975,7 @@ void CHWShader_D3D::mfLogShaderCacheMiss(SHWSInstance* pInst)
     }
 
     char nameCache[256];
-    strcpy(nameCache, GetName());
+    azstrcpy(nameCache, AZ_ARRAY_SIZE(nameCache), GetName());
     char* s = strchr(nameCache, '(');
     if (s)
     {
@@ -1007,7 +994,7 @@ void CHWShader_D3D::mfLogShaderCacheMiss(SHWSInstance* pInst)
     string sEntry;
 
     sEntry = "[";
-    sEntry += CParserBin::GetPlatformShaderlistName();
+    sEntry += GetShaderListFilename().c_str();
     sEntry += "]";
     sEntry += sNew;
 

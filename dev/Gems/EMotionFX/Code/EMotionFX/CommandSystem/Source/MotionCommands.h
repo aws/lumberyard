@@ -93,8 +93,10 @@ namespace CommandSystem
 
 
     // Stop all motion instances command.
-    MCORE_DEFINECOMMAND(CommandStopAllMotionInstances, "StopAllMotionInstances", "Stop all motion instances", false)
-
+    MCORE_DEFINECOMMAND_START(CommandStopAllMotionInstances, "Stop all motion instances", false)
+public:
+    static const char* s_stopAllMotionInstancesCmdName;
+    MCORE_DEFINECOMMAND_END
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Helper Functions

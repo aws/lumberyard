@@ -12,8 +12,8 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include <ISystem.h>
-#include "../FlowBaseNode.h"
-#include "../CryCommon/IFlowSystem.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
+#include <IFlowSystem.h>
 
 #include <AzCore/std/utils.h>
 #include <AzCore/Outcome/Outcome.h>

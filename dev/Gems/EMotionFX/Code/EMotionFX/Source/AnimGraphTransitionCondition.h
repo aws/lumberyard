@@ -24,30 +24,24 @@ namespace EMotionFX
     class EMFX_API AnimGraphTransitionCondition
         : public AnimGraphObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphTransitionCondition, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_CONDITIONS);
-
     public:
-        AZ_RTTI(AnimGraphTransitionCondition, "{DD14D0C7-AC88-4F90-BB4C-0F6810A6BAE7}", AnimGraphObject);
+        AZ_RTTI(AnimGraphTransitionCondition, "{DD14D0C7-AC88-4F90-BB4C-0F6810A6BAE7}", AnimGraphObject)
+        AZ_CLASS_ALLOCATOR_DECL
 
-        enum
-        {
-            BASETYPE_ID = 0x00000003
-        };
-
-        AnimGraphTransitionCondition(AnimGraph* animGraph, uint32 typeID);
+        AnimGraphTransitionCondition();
         virtual ~AnimGraphTransitionCondition();
+
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         virtual bool TestCondition(AnimGraphInstance* animGraphInstance) const = 0;
         virtual void Reset(AnimGraphInstance* animGraphInstance)       { MCORE_UNUSED(animGraphInstance); }
 
-        virtual AnimGraphObject* RecursiveClone(AnimGraph* animGraph, AnimGraphObject* parentObject) override;
-
-        uint32 GetBaseType() const override;
         ECategory GetPaletteCategory() const override;
 
-        void UpdatePreviousTestResult(AnimGraphInstance* animGraphInstance, bool newTestResult);
+        // Returns an attribute string (MCore::CommandLine formatted) if this condition is affected by a convertion of
+        // node ids. The method will return the attribute string that will be used to patch this condition on a command
+        virtual void GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const;
 
-    protected:
-        bool mPreviousTestResult; /**< Result of the last TestCondition() call. */
+        static void Reflect(AZ::ReflectContext* context);        
     };
 } // namespace EMotionFX

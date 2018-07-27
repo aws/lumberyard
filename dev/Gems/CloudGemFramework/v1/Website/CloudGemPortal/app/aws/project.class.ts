@@ -7,6 +7,8 @@ import { AwsContext } from './context.class'
 import { Authentication, AuthStateActionContext, EnumAuthState } from './authentication/authentication.class'
 import { Http } from '@angular/http';
 import { LyMetricService } from 'app/shared/service/index'
+import { Schema } from './schema.class'
+import { ResourceOutput  } from './resource-group.class'
 import 'rxjs/add/operator/map'
 import 'rxjs/add/operator/catch'
 
@@ -18,8 +20,10 @@ export class AwsProject {
     private _settings: Subject<ProjectSettings>;
     private _isInitialized: boolean;
     private _deployments: Deployment[]
-    private _activeDeployment: Deployment;
-    private _activeDeploymentSubscription: Subject<Deployment>;
+    private _activeDeployment: AwsDeployment;
+    private _activeDeploymentSubscription: Subject<AwsDeployment>;
+    private _outputs: Map<string, ResourceOutput>;
+    private _settingsCache: ProjectSettings;
 
     get isInitialized() {
         return this._isInitialized;
@@ -33,16 +37,16 @@ export class AwsProject {
         return this._deployments;
     }
 
-    get activeDeployment(): Deployment {
+    get activeDeployment(): AwsDeployment {
         return this._activeDeployment;
     }
 
-    set activeDeployment(activeDeployment: Deployment) {
+    set activeDeployment(activeDeployment: AwsDeployment) {
         this._activeDeployment = activeDeployment;
         this._activeDeploymentSubscription.next(activeDeployment);
     }
 
-    get activeDeploymentSubscription(): Observable<Deployment> {
+    get activeDeploymentSubscription(): Observable<AwsDeployment> {
         return this._activeDeploymentSubscription.asObservable();
     }
 
@@ -50,28 +54,36 @@ export class AwsProject {
         return this._settings.asObservable();
     }
 
+    get outputs(): any {
+        return this._outputs
+    }
+
     constructor(private context: AwsContext, private http: Http) {        
         this._settings = new Subject<ProjectSettings>();
-        this._activeDeploymentSubscription = new Subject<Deployment>();
+        this._activeDeploymentSubscription = new Subject<AwsDeployment>();
         this._activeDeployment = null;
         this._deployments = [];
+        this._outputs = new Map<string, ResourceOutput>();
 
 
         this._activeDeploymentSubscription.subscribe(deployment => { 
-            if (deployment)
-            deployment.update();
+            if (deployment) {
+                this._activeDeployment = deployment
+                deployment.update();
+            }
         })
 
         //initialize the deployments array
         this.settings.subscribe(d => {
             if (!d) {
-                this._activeDeploymentSubscription.next(undefined);
+                this.isInitialized = true;
+                this._activeDeploymentSubscription.next(undefined);                
                 return;
             }
 
-            if (d.DefaultDeployment)
+            if (d.DefaultDeployment || Object.keys(d.deployment).length == 0)
                 this.isInitialized = true;
-
+            
             //clear the array but don't generate a new reference
             this._deployments.length = 0;
 
@@ -100,7 +112,8 @@ export class AwsProject {
         });
 
         let proj = this;
-        var signedRequest = this.context.s3.getSignedUrl('getObject', { Bucket: this.context.configBucket, Key: AwsProject.PROJECT_SETTING_FILE, Expires: 60 })
+        var signedRequest = this.context.s3.getSignedUrl('getObject', { Bucket: this.context.configBucket, Key: AwsProject.PROJECT_SETTING_FILE, Expires: 120 })
+        
         this.http.request(signedRequest)
             .subscribe(response => {
                 let settings = response.json();
@@ -108,12 +121,12 @@ export class AwsProject {
                 var deployments = settings.deployment;
                 //Filter out our 'wildcard' settings and emit our deployment list
                 delete deployments["*"];
-
+                proj._settingsCache = settings
                 proj._settings.next(settings);
             },
             err => {
                 console.error(err)
             })
+        
     }
-
 }

@@ -54,7 +54,7 @@ public:
     virtual long FX_SetVStream(int nID, const void* pB, uint32 nOffs, uint32 nStride, uint32 nFreq = 1) override { return -1; }
     virtual void FX_DrawPrimitive(const eRenderPrimitiveType eType, const int nStartVertex, const int nVerticesCount, const int nInstanceVertices = 0) {}
     virtual void DrawQuad3D(const Vec3& v0, const Vec3& v1, const Vec3& v2, const Vec3& v3, const ColorF& color, float ftx0, float fty0, float ftx1, float fty1) override {}
-    virtual void FX_ClearTarget(CTexture* pTex) override;
+    virtual void FX_ClearTarget(ITexture* pTex) override;
     virtual void FX_ClearTarget(SDepthTexture* pTex) override;
 
     virtual bool FX_SetRenderTarget(int nTarget, void* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount = 1) override;
@@ -63,7 +63,6 @@ public:
     virtual bool FX_PushRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, int nCMSide = -1, bool bScreenVP = false, uint32 nTileCount = 1) override;
     virtual bool FX_RestoreRenderTarget(int nTarget) override;
     virtual bool FX_PopRenderTarget(int nTarget) override;
-    virtual SDepthTexture* FX_CreateDepthSurface(int nWidth, int nHeight, bool bAA) override;
     virtual void EF_Scissor(bool bEnable, int sX, int sY, int sWdt, int sHgt) override {};
     virtual void FX_ResetPipe() override {};
 
@@ -91,7 +90,7 @@ public:
     virtual int  CreateRenderTarget(const char* name, int nWidth, int nHeight, const ColorF& cClear, ETEX_Format eTF = eTF_R8G8B8A8);
     virtual bool DestroyRenderTarget(int nHandle);
     virtual bool SetRenderTarget(int nHandle, SDepthTexture* pDepthSurf = nullptr);
-    virtual SDepthTexture* CreateDepthSurface(int nWidth, int nHeight, bool bAA);
+    virtual SDepthTexture* CreateDepthSurface(int nWidth, int nHeight);
     virtual void DestroyDepthSurface(SDepthTexture* pDepthSurf);
 
     virtual int GetOcclusionBuffer(uint16* pOutOcclBuffer, Matrix44* pmCamBuffe);
@@ -367,7 +366,7 @@ public:
     virtual void RT_UnbindTMUs() {};
     virtual void RT_PrecacheDefaultShaders() {};
     virtual void RT_CreateRenderResources() {};
-    virtual void RT_ClearTarget(CTexture* pTex, const ColorF& color) {};
+    virtual void RT_ClearTarget(ITexture* pTex, const ColorF& color) {};
     virtual void RT_RenderDebug(bool bRenderStats = true) {};
 
     virtual HRESULT RT_CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, UINT Pool, void** ppVertexBuffer, HANDLE* pSharedHandle) { return S_OK; }
@@ -413,6 +412,8 @@ public:
 
     virtual bool BakeMesh(const SMeshBakingInputParams* pInputParams, SMeshBakingOutput* pReturnValues) { return false; }
     virtual PerInstanceConstantBufferPool* GetPerInstanceConstantBufferPoolPointer() override { return nullptr; }
+
+    IDynTexture* CreateDynTexture2(uint32 nWidth, uint32 nHeight, uint32 nTexFlags, const char* szSource, ETexPool eTexPool) override;
 
 #ifdef SUPPORT_HW_MOUSE_CURSOR
     virtual IHWMouseCursor* GetIHWMouseCursor() { return NULL; }

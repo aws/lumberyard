@@ -47,6 +47,8 @@ def build(bld):
         win_use                 = bld.make_aws_library_task_list(['LyMetricsProducer']),
         win_defines             = ['_SCL_SECURE_NO_WARNINGS'],
 
+        win_x64_clang_cxxflags  = ['-fexceptions'],
+
         darwin_features         = ['ExternalLyMetrics'],
         darwin_use              = bld.make_aws_library_task_list(['LyMetricsProducer']),
         darwin_enable_rtti      = True,

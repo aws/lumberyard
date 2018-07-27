@@ -11,7 +11,6 @@
 */
 #include "StdAfx.h"
 #include "CloudsSystemComponent.h"
-#include "DynamicTexture.h"
 
 namespace CloudsGem
 {
@@ -21,7 +20,7 @@ namespace CloudsGem
         {
             serialize->Class<CloudsSystemComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
@@ -52,7 +51,6 @@ namespace CloudsGem
         // When module is linked statically, we'll share the application's gEnv pointer.
         gEnv = system.GetGlobalEnvironment();
 #endif
-        DynamicTexture::Init();
     }
 
     void CloudsSystemComponent::OnCrySystemShutdown(ISystem& system)
@@ -60,6 +58,5 @@ namespace CloudsGem
 #if !defined(AZ_MONOLITHIC_BUILD)
         gEnv = nullptr;
 #endif
-        DynamicTexture::ShutDown();
     }
 }

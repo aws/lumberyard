@@ -13,6 +13,18 @@
     font-size: 14px;
     color: $primary-color;
     a {
-        cursor: pointer;      
+        cursor: pointer;
     }
 }
+
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width:10px;
+    height:10px;
+    background: $primary-color;
+    border-radius:50%;
+    transition:.1s;
+}
+
+#map { height: 450px; }

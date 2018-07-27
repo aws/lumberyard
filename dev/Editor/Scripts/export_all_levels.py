@@ -14,22 +14,61 @@ This is useful when there is a version update to a file that requires re-exporti
 '''
 import sys, os
 
+class CheckOutDialogEnableAll():
+	'''
+	Helper class to wrap enabling the "Apply to all" checkbox in the CheckOutDialog.
+	Guarantees that the old setting will be restored.
+	To use, do:
+
+	with CheckOutDialogEnableAll():
+		# your code here
+	'''
+
+	def __init__(self):
+		self.old_setting = False
+
+	def __enter__(self):
+		self.old_setting = checkout_dialog.enable_for_all(True)
+
+	def __exit__(self, type, value, traceback):
+		checkout_dialog.enable_for_all(self.old_setting)
+
 level_list = []
+
+def is_in_special_folder(file_full_path):
+	if file_full_path.find("_savebackup") >= 0:
+		return True
+	if file_full_path.find("_autobackup") >= 0:
+		return True
+	if file_full_path.find("_hold") >= 0:
+		return True
+	if file_full_path.find("_tmpresize") >= 0:
+		return True
+
+	return False
 
 game_folder = general.get_game_folder()
 
 # Recursively search every directory in the game project for files ending with .cry.
 for root, dirs, files in os.walk(game_folder):
 	for file in files:
-		if file.endswith(".cry"):
+		if file.endswith(".cry") or file.endswith(".ly"):
 			# The engine expects the full path of the .cry file
 			file_full_path = os.path.abspath(os.path.join(root, file))
-			# Exclude files in the "_savebackup" directories
-			is_save_backup = file_full_path.find("_savebackup")
-			if is_save_backup == -1:
+			# Exclude files in special directories
+			if not is_in_special_folder(file_full_path):
 				level_list.append(file_full_path)
 
-# For each valid .cry file found, open it in the editor and export it
-for level in level_list:
-	general.open_level_no_prompt(level)
-	general.export_to_engine()
+# make the checkout dialog enable the 'Apply to all' button
+with CheckOutDialogEnableAll():
+
+	# For each valid .cry file found, open it in the editor and export it
+	for level in level_list:
+
+		if not isinstance(input, str):
+			# general.open_level_no_prompt expects the file path in utf8 format
+			level = level.encode("utf-8")
+
+		general.open_level_no_prompt(level)
+		general.export_to_engine()
+

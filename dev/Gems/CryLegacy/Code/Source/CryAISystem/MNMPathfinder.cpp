@@ -11,14 +11,15 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "MNMPathfinder.h"
+#include "Navigation/MNM/MNM_Type_info.h"
+template const CTypeInfo& MNM::FixedAABB<unsigned short, 5>::TypeInfo() const;
 #include "Navigation/NavigationSystem/NavigationSystem.h"
 #include "DebugDrawContext.h"
 #include "AIBubblesSystem/IAIBubblesSystem.h"
 #include "Navigation/PathHolder.h"
-#include <IJobManager_JobDelegator.h>
 
 //#pragma optimize("", off)
 //#pragma inline_depth(0)

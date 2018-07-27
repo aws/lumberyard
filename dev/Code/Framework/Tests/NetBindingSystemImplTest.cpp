@@ -195,6 +195,8 @@ namespace UnitTest
     {
         EXPECT_CALL(*m_gameEntityMock, InstantiateDynamicSlice(_, _, _))
             .Times(1);
+        EXPECT_CALL(*m_gameEntityMock, CancelDynamicSliceInstantiation(_))
+            .Times(1);
 
         {
             NetBindingSliceContext spawnContext;
@@ -224,6 +226,8 @@ namespace UnitTest
     TEST_F(NetBindingWithSlicesTest, DifferentSliceInstanceId_InstantiateDynamicSlice_CalledTwice)
     {
         EXPECT_CALL(*m_gameEntityMock, InstantiateDynamicSlice(_, _, _))
+            .Times(2);
+        EXPECT_CALL(*m_gameEntityMock, CancelDynamicSliceInstantiation(_))
             .Times(2);
 
         {

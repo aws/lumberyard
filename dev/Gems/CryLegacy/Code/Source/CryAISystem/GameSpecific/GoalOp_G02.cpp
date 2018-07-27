@@ -15,14 +15,15 @@
 //               These should move into GameDLL when interfaces allow!
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "GoalOp_G02.h"
 #include "GoalOpTrace.h"
 
 #include "PipeUser.h"
 #include "Puppet.h"
 #include "DebugDrawContext.h"
-#include "../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 IGoalOp* CGoalOpFactoryG02::GetGoalOp(const char* sGoalOpName, IFunctionHandler* pH, int nFirstParam, GoalParameters& params) const
 {

@@ -28,7 +28,7 @@ namespace StarterGameGem
 	VisualisePathSystemComponent* g_vpsc_instance = nullptr;
 
 	VisualisePathSystemComponent* VisualisePathSystemComponent::GetInstance()
-	{ 
+	{
 		return g_vpsc_instance;
 	}
 
@@ -38,7 +38,6 @@ namespace StarterGameGem
 		{
 			serializeContext->Class<VisualisePathSystemComponent, AZ::Component>()
 				->Version(1)
-				->SerializerForEmptyClass()
 			;
 
 			if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -169,7 +168,7 @@ namespace StarterGameGem
 				break;
 			}
 		}
-		
+
 		if (it == m_paths.end())
 			return nullptr;
 		else

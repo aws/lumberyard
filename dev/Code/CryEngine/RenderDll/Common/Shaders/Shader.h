@@ -28,8 +28,8 @@
 
 // bump this value up if you want to invalidate shader cache (e.g. changed some code or .ext file)
 // #### VIP NOTE ####: DON'T USE MORE THAN ONE DECIMAL PLACE!!!! else it doesn't work...
-#define FX_CACHE_VER       9.8
-#define FX_SER_CACHE_VER   1.0  // Shader serialization version (FX_CACHE_VER + FX_SER_CACHE_VER)
+#define FX_CACHE_VER       9.8f
+#define FX_SER_CACHE_VER   1.0f  // Shader serialization version (FX_CACHE_VER + FX_SER_CACHE_VER)
 
 // Maximum 1 digit here
 // The version determines the parse logic in the shader cache gen, these values cannot overlap
@@ -1314,6 +1314,11 @@ public:
     virtual bool FXSetCSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) override;
     virtual bool FXSetVSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) override;
     virtual bool FXSetGSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) override;
+    
+    virtual bool FXSetPSFloat(const char* NameParam, const Vec4 fParams[], int nParams) override;
+    virtual bool FXSetCSFloat(const char* NameParam, const Vec4 fParams[], int nParams) override;
+    virtual bool FXSetVSFloat(const char* NameParam, const Vec4 fParams[], int nParams) override;
+    virtual bool FXSetGSFloat(const char* NameParam, const Vec4 fParams[], int nParams) override;
 
     virtual bool FXBegin(uint32* uiPassCount, uint32 nFlags) override;
     virtual bool FXBeginPass(uint32 uiPass) override;

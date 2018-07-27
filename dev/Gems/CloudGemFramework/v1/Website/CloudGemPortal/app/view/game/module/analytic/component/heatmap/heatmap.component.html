@@ -1,0 +1,15 @@
+<breadcrumbs></breadcrumbs>
+<div class="heatmap-container">
+    <div [ngSwitch]="mode">
+        <div *ngSwitchCase="'List'">
+            <p> Heatmaps can be used to easily view your metrics data.  This can range from seeing where most of bugs are being found to where most players are racking up kills.  Get started by creating a heatmap or editing an existing one below.</p>
+            <button type="button" (click)="createHeatmap()" class="btn l-primary"> Create Heatmap </button>
+        </div>
+        <div *ngSwitchCase="'Create'">
+            <create-heatmap [heatmap]="selectedHeatmap" [mode]="mode"> </create-heatmap>
+        </div>
+        <div class="existing-heatmaps-container" *ngSwitchCase="'List'">
+            <list-heatmap (onHeatmapClick)="onHeatmapClick($event)"></list-heatmap>
+        </div>
+    </div>
+</div>

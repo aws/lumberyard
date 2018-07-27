@@ -71,7 +71,7 @@ public:
 
     bool GetInstalledBuildRootPathUtf16(const int index, SettingsManagerHelpers::CWCharBuffer name, SettingsManagerHelpers::CWCharBuffer path);
 
-    void SetParentDialog(unsigned long window);
+    void SetParentDialog(size_t window);
 
 private:
     bool HasKey(const char* key);
@@ -91,7 +91,7 @@ private:
     SettingsManagerHelpers::CKeyValueArray<30> m_keyValueArray;
 
     void* m_hBtnBrowse;
-    unsigned long m_hWndParent;
+    size_t m_hWndParent;
 };
 
 #endif // CRY_ENABLE_RC_HELPER

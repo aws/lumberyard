@@ -1,0 +1,64 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+    },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/setup": {
+            "post": {
+                "description": "Setup test data before load test begins",
+                "responses": {
+                    "200": {
+                        "description": "Map of test data",
+                        "schema": {
+                            "$ref": "#/definitions/TestData"
+                        }
+                    }
+                }
+            }
+        },
+        "/teardown": {
+            "post": {
+                "description": "Teardown test data before load test ends",
+                "parameters": [
+                    {
+                        "name": "test_data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/TestData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of teardown",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "TestData": {
+            "type": "object",
+            "additionalProperties": true
+        }
+    }
+}

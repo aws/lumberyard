@@ -15,7 +15,7 @@
 //               file from file with list of resources
 
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <IConfig.h>
 #include "TextureSplitter.h"
 #include "IResCompiler.h"
@@ -176,7 +176,8 @@ bool CTextureSplitter::SaveFile(const string& sFileName, const void* pBuffer, co
     }
 
     // create file
-    FILE* file = fopen(sFileName, "wb");
+    FILE* file = nullptr; 
+    azfopen(&file, sFileName, "wb");
     if (!file)
     {
         RCLogError("Error '%s': Failed to create file '%s'\n", strerror(errno), sFileName.c_str());
@@ -421,7 +422,8 @@ void CTextureSplitter::PostLoadProcessTexture(std::vector<uint8>& fileContent)
 bool CTextureSplitter::LoadTexture(const char* fileName, std::vector<uint8>& fileContent)
 {
     // try to open file
-    FILE* file = fopen(fileName, "rb");
+    FILE* file = nullptr; 
+    azfopen(&file, fileName, "rb");
     if (file == NULL)
     {
         RCLogError("Error: Cannot open texture file: '%s'\n", fileName);

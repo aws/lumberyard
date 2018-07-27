@@ -25,17 +25,28 @@ namespace CommandSystem
     // add a transition condition
     MCORE_DEFINECOMMAND_START(CommandAnimGraphAddCondition, "Add a transition condition", true)
     uint32          mAnimGraphID;
-    uint32          mOldConditionIndex;
+    size_t          mOldConditionIndex;
     bool            mOldDirtyFlag;
-    AZStd::string   mOldAttributesString;
+    AZStd::string   mOldContents;
     MCORE_DEFINECOMMAND_END
 
     // remove a transition condition
-        MCORE_DEFINECOMMAND_START(CommandAnimGraphRemoveCondition, "Remove a transition condition", true)
+    MCORE_DEFINECOMMAND_START(CommandAnimGraphRemoveCondition, "Remove a transition condition", true)
     uint32          mAnimGraphID;
-    uint32          mOldConditionType;
-    uint32          mOldConditionIndex;
-    AZStd::string   mOldAttributesString;
+    AZ::TypeId      mOldConditionType;
+    size_t          mOldConditionIndex;
+    AZStd::string   mOldContents;
     bool            mOldDirtyFlag;
     MCORE_DEFINECOMMAND_END
+
+    // modify a transition condition
+    MCORE_DEFINECOMMAND_START(CommandAnimGraphAdjustCondition, "Adjust a transition condition", true)
+    uint32          mAnimGraphID;
+    EMotionFX::AnimGraphNodeId mStateMachineId;
+    uint32          mTransitionId;
+    size_t          mConditionIndex;
+    bool            mOldDirtyFlag;
+    AZStd::string   mOldContents;
+    MCORE_DEFINECOMMAND_END
+
 } // namespace CommandSystem

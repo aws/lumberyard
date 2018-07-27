@@ -61,13 +61,13 @@ var paths = {
 //gulp-exec options
 var gulp_exec = {
     options: {
-        continueOnError: false, // default = false, true means don't emit error event 
-        pipeStdout: true // default = false, true means stdout is written to file.contents    
+        continueOnError: false, // default = false, true means don't emit error event
+        pipeStdout: true // default = false, true means stdout is written to file.contents
     },
     reportOptions: {
-        err: true, // default = true, false means don't write err 
-        stderr: true, // default = true, false means don't write stderr 
-        stdout: true // default = true, false means don't write stdout 
+        err: true, // default = true, false means don't write err
+        stderr: true, // default = true, false means don't write stderr
+        stdout: true // default = true, false means don't write stdout
     }
 };
 // A display error function, to format and make custom errors more uniform
@@ -83,7 +83,7 @@ var displayError = function (error) {
         errorString += ' on line ' + error.lineNumber;
     // This will output an error like the following:
     // [gulp-sass] error message in file_name on line 1
-    
+
     util.log(new Error(errorString));
 }
 
@@ -141,7 +141,7 @@ gulp.task('sass', function () {
         .on('error', function (err) {
         displayError(err);
     })
-        // Pass the compiled sass through the prefixer with defined 
+        // Pass the compiled sass through the prefixer with defined
         .pipe(prefix(
         'last 2 version', 'safari 5', 'ie 8', 'ie 9', 'opera 12.1', 'ios 6', 'android 4'
     ))
@@ -151,37 +151,39 @@ gulp.task('sass', function () {
 
 //Link the Cloud Gem Portal cloud gem packages
 gulp.task('npm:link', function () {
-    var cwd = process.cwd();    	
-    return cloudGems()	
-    .pipe(through.obj(function (file, encoding, done) {		
+    var cwd = process.cwd();
+    return cloudGems()
+    .pipe(through.obj(function (file, encoding, done) {
 		var gem_path = file.path.substring(0, file.path.lastIndexOf("\\") + 1)
         var names = packageName(file.path);
         var package_name = names[0]
         var gem_name = names[1]
+        if (gem_name == "cloudgemportal")
+            return
 		util.log("")
 		util.log(util.colors.blue("GLOBAL LINKING"));
         util.log("Package Name:\t\t" + package_name);
         util.log("Gem Name:\t\t\t" + gem_name);
         util.log("Path:\t\t\t" + gem_path);
         util.log(gem_path)
-        process.chdir(gem_path)   
+        process.chdir(gem_path)
 		var stream = this.push
 		exec_process('npm link').on("close", function (code) {
-			util.log("LINKING global package complete for '" + package_name + "'")						
+			util.log("LINKING global package complete for '" + package_name + "'")
 			util.log("")
-			process.chdir(cwd)		
-			if (fs.existsSync("node_modules/@cloud-gems/" + gem_name)) {                			
-				done()			
+			process.chdir(cwd)
+			if (fs.existsSync("node_modules/@cloud-gems/" + gem_name)) {
+				done()
 				return;
 			}
 			util.log(util.colors.yellow("LOCAL LINKING"))
 			util.log("LINKING package " + cgp_package_name + " to package " + package_name + ".");
 			exec_process('npm link @cloud-gems/' + gem_name).on("close", function (code) {
-				util.log("LINKING CGP Cloud gem package to '" + package_name + "' is complete")		
+				util.log("LINKING CGP Cloud gem package to '" + package_name + "' is complete")
 				util.log("")
 				done()
-			}) 			
-		})			
+			})
+		})
 	}))
 })
 
@@ -194,7 +196,7 @@ var verifyEnvironmentFile = function () {
 
 gulp.task('set:prod-define', function (cb) {
     verifyEnvironmentFile()
-    globalDefines()    
+    globalDefines()
     replaceOrAppend(environment_file, /export const isProd: boolean = (true|false)/g, "export const isProd: boolean = true")
     cb()
 });
@@ -215,7 +217,7 @@ gulp.task('set:test-define-off', function (cb) {
 
 gulp.task('set:dev-define', function (cb) {
     verifyEnvironmentFile()
-    globalDefines()    
+    globalDefines()
     replaceOrAppend(environment_file, /export const isProd: boolean = (true|false)/g, "export const isProd: boolean = false")
     cb()
 });
@@ -229,9 +231,9 @@ gulp.task('gem-ts', function () {
         .pipe(gulp.dest("./"));
 });
 
-gulp.task('gem-watch', function () {    
-    return cloudGems()     
-        .pipe(through.obj(function (file, encoding, done) {                    
+gulp.task('gem-watch', function () {
+    return cloudGems()
+        .pipe(through.obj(function (file, encoding, done) {
             var path = file.path
             var gem_path = path.substring(0, path.lastIndexOf("\\") + 1)
             util.log("WATCHING [*.ts, *.scss] files in directory '" + gem_path + "'");
@@ -259,7 +261,7 @@ gulp.task('gem-watch', function () {
             })
 			done()
         }))
-    
+
 });
 
 var initializeBootstrap = function (cb) {
@@ -274,8 +276,8 @@ var initializeBootstrap = function (cb) {
         startServer()
         cb()
     } else {
-        //no bootstrap has been set.   Attempting to stand up a project stack        
-        
+        //no bootstrap has been set.   Attempting to stand up a project stack
+
         process.chdir(enginePath())
         exec_process('lmbr_aws project list-resources', function (err, stdout, stderr) {
             util.log(stdout);
@@ -290,7 +292,7 @@ var initializeBootstrap = function (cb) {
                 util.log(util.colors.yellow("No project stack or boostrap is defined."))
                 createProjectStack(function (stdout, stderr, err) {
                     var match = stdout.match(/Stack\s'CGPProjStk\S*'\supdate\scomplete/i)
-                    //is there a project stack created?                    
+                    //is there a project stack created?
                     if (match) {
                         writeBootstrapAndStart(cb)
                     } else {
@@ -351,23 +353,24 @@ gulp.task('inline-template-gem', gulp.series('sass', function () {
 }));
 
 var writeIndexDist = function (cb){
-    var systemjs_config_file_content = fs.readFileSync(systemjs_config_dev, 'utf-8').toString();    
+    var systemjs_config_file_content = fs.readFileSync(systemjs_config_dev, 'utf-8').toString();
     var regex_config_js = /System\.config\(([\s\S]*?)\);/gm
     var match = regex_config_js.exec(systemjs_config_file_content)
     var match_group = match[1]
     var regex_unquoted_attr = /  ([a-zA-Z].*):/gm
-    
+
     //replace all non-quoted attributes with their quoted equivalents so we can parse this as JSON
-    while (unquoted_attr = regex_unquoted_attr.exec(match_group)) {    
-        match_group = match_group.replace(unquoted_attr[1]+":", "\""+unquoted_attr[1]+"\":")        
+    while (unquoted_attr = regex_unquoted_attr.exec(match_group)) {
+        match_group = match_group.replace(unquoted_attr[1]+":", "\""+unquoted_attr[1]+"\":")
     }
-    match_group = match_group.replace(/\r\n|\r|\n/gm, '')    
-    
+    match_group = match_group.replace(/\r\n|\r|\n/gm, '')
+
     //parse the object into a javascript object
     var config = JSON.parse(match_group)
-    
+
     //append the required distro alterations
     config.map["app"] = "./dist/app"
+    config.defaultJSExtensions = true
     config.packages = {
         "app": {
             "defaultExtension": "js",
@@ -379,7 +382,7 @@ var writeIndexDist = function (cb){
     var index_file_content = fs.readFileSync(index, 'utf-8').toString();
     //write the empty bootstrap
     index_file_content = index_file_content.replace(/<script id=['|"]bootstrap['|"]>([\s\S])*?<\/script>/i, "<script>var bootstrap= {}</script>")
-    //replace the distro config.js with an updated version from the dev config.js    
+    //replace the distro config.js with an updated version from the dev config.js
     index_file_content = index_file_content.replace(/<script src=['|"]config.js['|"]>([\s\S])*?<\/script>/i, "<script>System.config(" + stringified_config + ");</script>")
     //write systemjs load script
     var systemjs_loader = 'let normalizeFn = System.normalize; \n' +
@@ -387,7 +390,7 @@ var writeIndexDist = function (cb){
                     '\t\tif ((name[0] != \'.\' || (!!name[1] && name[1] != \'/\' && name[1] != \'.\')) && name[0] != \'/\' && !name.match(System.absURLRegEx)) \n' +
                         '\t\t\treturn normalizeFn(name, parentName) \n' +
                     '\t\treturn name \n' +
-                    '\t} \n' +    
+                    '\t} \n' +
                     '\tSystem.normalize = customNormalize; \n' +
                     '\tSystem.import(dependencies).then(function () { \n' +
                         '\t\tSystem.normalize = customNormalize; \n ' +
@@ -398,7 +401,7 @@ var writeIndexDist = function (cb){
                     '\t}); \n' +
                     '\tSystem.normalize = normalizeFn; \n'
     writeFile(index_dist, index_file_content.replace(/<script id=['|"]systemjs_load['|"]>([\s\S])*?<\/script>/i, "<script>" + systemjs_loader + "</script>"))
-        
+
     //replace the distro config.js with an updated version from the dev config.js
     //gulp uses this file to transpile ts to js.
     writeFile(systemjs_config, "System.config(" + stringified_config + ");")
@@ -407,15 +410,15 @@ var writeIndexDist = function (cb){
 
 gulp.task('js', gulp.series(writeIndexDist))
 
-gulp.task('bundle-gems', gulp.series('inline-template-gem', 'gem-ts', function (cb) {    
-    var builder = new Builder('', systemjs_config);    
-	return cloudGems()	
-    .pipe(through.obj(function bundle(file, encoding, done) {	
+gulp.task('bundle-gems', gulp.series('inline-template-gem', 'gem-ts', function (cb) {
+    var builder = new Builder('', systemjs_config);
+	return cloudGems()
+    .pipe(through.obj(function bundle(file, encoding, done) {
 		var gem_path = file.path.substring(0, file.path.lastIndexOf("\\") + 1)
 		var names = packageName(file.path);
         var package_name = names[0]
         var gem_name = names[1]
-		var source = path.join('dist/external', gem_name, "/**/*.js");		
+		var source = path.join('dist/external', gem_name, "/**/*.js");
         var destination = path.join(gem_path, "/../dist/", gem_name.toLowerCase() + ".js");
 		util.log(util.colors.yellow("GEM BUNDLING"), "for", gem_name )
         del(destination, { force: true }).then(function (paths) {
@@ -428,18 +431,18 @@ gulp.task('bundle-gems', gulp.series('inline-template-gem', 'gem-ts', function (
                     comments: require('uglify-save-license')
                 }
             }
-        }).then(function () {            
+        }).then(function () {
             util.log("Bundled gem '" + gem_name + "' and copied to " + destination);
             done()
-        })	
-	}));	
+        })
+	}));
 }))
 
 // copy static assets - i.e. non TypeScript compiled source
 gulp.task('copy:assets', function (cb) {
     gulp.src(['./bundles/**/*',], { base: './' })
         .pipe(gulp.dest(dist_path))
-    
+
     gulp.src([index_dist], { base: './' })
         .pipe(rename('index.html'))
         .pipe(gulp.dest(dist_path))
@@ -454,7 +457,7 @@ var bundleApp = function () {
     var builder = new Builder('', systemjs_config);
     builder.loader.defaultJSExtensions = true;
     return builder.bundle('[dist/app/**/*.js]', app_bundle, {
-        minify: true,
+        minify: false,
         uglify: {
             beautify: {
                 comments: require('uglify-save-license')
@@ -474,8 +477,8 @@ var bundleDependencies = function () {
     //  sourceMaps: true,
     //  lowResSourceMaps: true,
     var builder = new Builder('', systemjs_config);
-    return builder.bundle('dist/app/**/* - [dist/app/**/*]', app_bundle_dependencies, {
-        minify: true,      
+    return builder.bundle('dist/**/* - [dist/**/*]', app_bundle_dependencies, {
+        minify: true,
         uglify: {
             beautify: {
                 comments: require('uglify-save-license')
@@ -492,9 +495,10 @@ var bundleDependencies = function () {
 gulp.task('build-deploy',
     gulp.series(gulp.parallel('clean:www','clean:dist','clean:assets'),
         gulp.parallel(gulp.series('set:test-define-off', 'set:prod-define'), writeIndexDist),
-        'npm:link',        
+        'npm:link',
         'inline-template-app',
-        gulp.parallel('bundle-gems', bundleDependencies, bundleApp),
+        'bundle-gems',
+        gulp.parallel(bundleDependencies, bundleApp),
         gulp.parallel('copy:assets', 'set:dev-define'))
 );
 
@@ -524,22 +528,22 @@ gulp.task('test:webdriver', gulp.series('test:config-path-for-drivers', 'serve',
 }));
 
 var testIntegrationWelcomeModal = function (cb, username, password, index_page) {
-    return runTest({ specs: './e2e/sequential/authentication-welcome-page.e2e-spec.js' }, 
+    return runTest({ specs: './e2e/sequential/authentication-welcome-page.e2e-spec.js' },
         [{ pattern: /"firstTimeUse": false/g, value: '"firstTimeUse": true' }], cb, username, password, index_page)
 };
 
 var testIntegrationUserAdministrator = function (cb) {
-    return runTest({ specs: './e2e/user-administration.e2e-spec.js' }, 
+    return runTest({ specs: './e2e/user-administration.e2e-spec.js' },
         [{ pattern: /"firstTimeUse": true/g, value: '"firstTimeUse": false' }], cb);
 };
 
-var testIntegrationNoBootstrap = function (cb, username, password, index_page) {        
-    return runTest({ specs: './e2e/sequential/authentication-no-bootstrap.e2e-spec.js' }, 
+var testIntegrationNoBootstrap = function (cb, username, password, index_page) {
+    return runTest({ specs: './e2e/sequential/authentication-no-bootstrap.e2e-spec.js' },
         [{ pattern: /var bootstrap = {.*}/g, value: 'var bootstrap = {}' }], cb, username, password, index_page);
 };
 
 var testIntegrationMessageOfTheDay = function (cb) {
-    return runTest({ specs: './e2e/message-of-the-day.e2e-spec.js' }, 
+    return runTest({ specs: './e2e/message-of-the-day.e2e-spec.js' },
         [{ pattern: /"firstTimeUse": true/g, value: '"firstTimeUse": false' }], cb);
 };
 
@@ -559,22 +563,22 @@ var killLocalHost = function (cb) {
     exec_process('Taskkill /IM node.exe /F', function (err, stdout, stderr) { });
     exec_process('Taskkill /IM geckodriver.exe /F', function (err, stdout, stderr) { });
     exec_process('Taskkill /IM MicrosoftWebDriver.exe /F', function (err, stdout, stderr) { });
-    exec_process('Taskkill /IM chromedriver_2.32.exe /F', function (err, stdout, stderr) { });    
-    exec_process('Taskkill /IM chromedriver_2.33.exe /F', function (err, stdout, stderr) { });    
+    exec_process('Taskkill /IM chromedriver_2.32.exe /F', function (err, stdout, stderr) { });
+    exec_process('Taskkill /IM chromedriver_2.33.exe /F', function (err, stdout, stderr) { });
     finder.find({
         port: localhost_port,
         info: true
-    }, function (err, pids) {        
+    }, function (err, pids) {
         pids.forEach(function (pid) {
             try {
                 process.kill(pid)
             } catch (err) {
-                util.log(err)         
-            } finally {                
+                util.log(err)
+            } finally {
                 cb()
             }
         });
-        if (!pids) {            
+        if (!pids) {
             cb()
         }
     });
@@ -590,7 +594,7 @@ var createTestRegion = function (gulp_callback, region, out) {
             out.password = password
             //createDevelopmentStack(function (stdout, stderr, err) {
             //    if (stderr) {
-            //        writeBootstrapAndStart(gulp_callback)                  
+            //        writeBootstrapAndStart(gulp_callback)
             //    }
                 gulp_callback();
             //})
@@ -635,11 +639,11 @@ function sleep(time) {
 gulp.task('test:integration:runallregions', gulp.series(function createRegion(region_all_cb) {
     var bootstrap_file = fs.readFileSync(index, 'utf-8').toString();
     //var bootstrap_information = bootstrap_file.match(bootstrap_pattern)
-    //util.log(util.colors.yellow("The original bootstrap is \n" + bootstrap_information))    
+    //util.log(util.colors.yellow("The original bootstrap is \n" + bootstrap_information))
     var regions = ['us-east-1']
     //var bootstrap = bootstrap_information ?  JSON.parse(bootstrap_information) : {}
     readLocalProjectSettingsPath(function (settings_path) {
-        var region_creation = function (cb) { cb() };     
+        var region_creation = function (cb) { cb() };
         var project_settings_path = settings_path
         var project_settings = fs.readFileSync(settings_path, 'utf-8').toString();
         let project_settings_obj = JSON.parse(project_settings)
@@ -647,80 +651,80 @@ gulp.task('test:integration:runallregions', gulp.series(function createRegion(re
         util.log(util.colors.green(project_settings))
         var filename = project_settings_path + "_bak"
         util.log(util.colors.yellow("Saving the local_project_settings.json as " + filename))
-        writeFile(filename, project_settings)                                
+        writeFile(filename, project_settings)
 
         for (var i = 0; i < regions.length; i++) {
             let region = regions[i]
             let multiplier = i
             console.log(region)
             region_creation = gulp.parallel(region_creation,
-                 gulp.series(  
+                 gulp.series(
                     function createRegionProjectStack(cb1) {
                         var project_region = undefined
                         if (project_settings_obj[region] && project_settings_obj[region].ProjectStackId) {
                             var parts = project_settings_obj[region].ProjectStackId.split(":")
                             project_region = parts[3]
-                        }                                        
+                        }
                         util.log("Region to test: \t\t\t " + region)
                         util.log("Project settings region object: \t " + JSON.stringify(project_settings_obj[region]))
                         if (project_region === undefined || project_region != region) {
                             //create the test region, we offset the starts to avoid colisions in the CGF as it was not designed to create project stacks in parallel
                             project_settings_obj[region]= {}
                         sleep(multiplier*30000).then(function () {
-                            createTestRegion(function () { 
+                            createTestRegion(function () {
                                 util.log(util.colors.yellow("Project stack out parameters"))
                                 util.log(project_settings_obj[region])
-                                cb1()    
-                            }, region, project_settings_obj[region])                            
+                                cb1()
+                            }, region, project_settings_obj[region])
                         })
                         } else {
                             cb1()
-                        }                   
+                        }
                     },
                     function createRegionIndex(cb1) {
-                        util.log("Region to test: \t\t\t " + region)                                                                        
+                        util.log("Region to test: \t\t\t " + region)
                         var filename = region + "_" + index
                         project_settings_obj[region].url = filename
                         util.log(util.colors.yellow("Saving the index.html with region '" + region + "' as " + filename))
                         util.log(util.colors.yellow("Project stack out parameters"))
                         util.log(project_settings_obj)
-                        writeBootstrap(cb1, filename, region)                        
-                    },        
-                    'test:webdriver', 
-                    //function (cb1) {                        
+                        writeBootstrap(cb1, filename, region)
+                    },
+                    'test:webdriver',
+                    //function (cb1) {
                     //    testIntegrationNoBootstrap(cb1, project_settings_obj[region].username, project_settings_obj[region].password, project_settings_obj[region].url )
                     //},
-                    function (cb1) {                    
+                    function (cb1) {
                         testIntegrationWelcomeModal(cb1, project_settings_obj[region].username, project_settings_obj[region].password, project_settings_obj[region].url)
-                    },                    
+                    },
                     //gulp.parallel(
                     //        testIntegrationUserAdministrator,
                     //        testIntegrationMessageOfTheDay
-                    //    ),             
+                    //    ),
                     function revertBootstrapAndProjectSettings(cb3) {
                             writeFile(index, bootstrap_file)
                             writeFile(project_settings_path, project_settings)
                             cb3()
                         }
                     //function deleteDeploymentStk(cb4) {
-                    //    deleteDeploymentStack(cb4)                        
+                    //    deleteDeploymentStack(cb4)
                     //},
-                    //deleteProjectStack,                                         
-                )              
+                    //deleteProjectStack,
+                )
             )
         }
         console.log("Done...main event now")
         //create all the regions in parallel
-        gulp.series(            
+        gulp.series(
             region_creation,
             killLocalHost,
-            function (main_callback) {                
+            function (main_callback) {
                 main_callback()
                 region_all_cb()
         })()
     })
-    
-   
+
+
 }));
 
 /*
@@ -729,10 +733,10 @@ gulp.task('test:integration:runallregions', gulp.series(function createRegion(re
 var makeId = function() {
     var text = "";
     var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    
+
     for (var i = 0; i < 5; i++)
         text += possible.charAt(Math.floor(Math.random() * possible.length));
-    
+
     return text;
 }
 
@@ -750,20 +754,20 @@ var runTest = function (context, bootstrap_setting, cb, username, password, inde
         '--params.user.newPassword', "Test02)@",
         '--params.admin.username', username ? username : "administrator",
         '--params.admin.password', password ? password : "T3mp1@34",
-        '--params.url', index_page ? "http://localhost:3000/" + index_page : "http://localhost:3000/index.html"            
+        '--params.url', index_page ? "http://localhost:3000/" + index_page : "http://localhost:3000/index.html"
     ]
     var source_file = "./e2e/*.e2e-spec.js"
-    
+
     var original_file_content = fs.readFileSync(index_page ? index_page : index, 'utf-8').toString();
-    
-    if (bootstrap_setting) {        
+
+    if (bootstrap_setting) {
         for (var i = 0; i < bootstrap_setting.length; i++) {
             var setting = bootstrap_setting[i]
             util.log(util.colors.yellow(JSON.stringify(setting)))
             replaceFileContent(index_page ? index_page : index, setting.pattern, setting.value)
         }
     }
-    
+
     if (context && context.specs) {
         source_file = context.specs
     }
@@ -772,11 +776,11 @@ var runTest = function (context, bootstrap_setting, cb, username, password, inde
     util.log("\t\tArgs: \t\t\t\t" + JSON.stringify(protractor_args))
     util.log("\t\tWorking Directory: \t" + process.cwd())
     util.log("\t\tBootstrap: \t\t" + fs.readFileSync(index_page ? index_page : index, 'utf-8').toString().match(bootstrap_pattern))
-    util.log("\t\Protractor Config Path: \t" +'./e2e/protractor.config.js')    
-    
+    util.log("\t\Protractor Config Path: \t" +'./e2e/protractor.config.js')
+
     return gulp.src([source_file])
-        .pipe(protractor({       
-            configFile: './e2e/protractor.config.js', 
+        .pipe(protractor({
+            configFile: './e2e/protractor.config.js',
             args: protractor_args
     }))
         .on('error', function (e) {
@@ -788,7 +792,7 @@ var runTest = function (context, bootstrap_setting, cb, username, password, inde
         runTestExit(original_file_content);
         if (cb)
             cb()
-            
+
     })
         .on('end', function () {
         runTestExit(original_file_content);
@@ -822,16 +826,16 @@ gulp.task('package:install', function (cb) {
         util.log("\tPackage: " + argv.package)
         util.log("\tRepository: " + argv.repos)
         util.log("\tDevonly: " + argv.devonly)
-        util.log("\tVersion: " + argv.version)
+        util.log("\tVersion: " + argv.pkgversion)
         npmcommand = 'npm i ' + argv.package
         jspmcommand = 'jspm install ' + argv.repos + ":" + argv.package
-        
-        if (argv.version) {
-            jspmcommand += "@" + argv.version
-            npmcommand += "@" + argv.version
+
+        if (argv.pkgversion) {
+            jspmcommand += "@" + argv.pkgversion
+            npmcommand += "@" + argv.pkgversion
         }
         npmcommand += ' --save '
-        
+
         if (argv.devonly)
             npmcommand += " --save-dev"
     }
@@ -876,14 +880,14 @@ gulp.task('package:uninstall', function () {
 
 function globalDefines() {
     enginePath()
-    process.chdir(cgp_path)        
-    append(environment_file, /export const metricWhiteListedCloudGem = \[.*\]/g, "export const metricWhiteListedCloudGem = []")        
+    process.chdir(cgp_path)
+    append(environment_file, /export const metricWhiteListedCloudGem = \[.*\]/g, "export const metricWhiteListedCloudGem = []")
     if (argv.builtByAmazon) {
-	console.log("Whitelisting: " + getCloudGemFolderNames(true))         
-        replaceOrAppend(environment_file, /export const metricWhiteListedCloudGem = \[.*\]/g, "export const metricWhiteListedCloudGem = [" + getCloudGemFolderNames(true) + "]")        
+	console.log("Whitelisting for metrics: " + getCloudGemFolderNames(true))
+        replaceOrAppend(environment_file, /export const metricWhiteListedCloudGem = \[.*\]/g, "export const metricWhiteListedCloudGem = [" + getCloudGemFolderNames(true) + "]")
     }
     replaceOrAppend(environment_file, /export const metricWhiteListedFeature = \[.*\]/g, "export const metricWhiteListedFeature = ['Cloud Gems', 'Support', 'Analytics', 'Admin', 'User Administration']")
-    replaceOrAppend(environment_file, /export const metricAdminIndex = 3/g, "export const metricAdminIndex = 3")    
+    replaceOrAppend(environment_file, /export const metricAdminIndex = 3/g, "export const metricAdminIndex = 3")
 }
 
 function packageName(gem_path) {
@@ -934,7 +938,7 @@ function writeFile(filename, content) {
 
 function replaceOrAppend(path, regex, content) {
     var file_content = fs.readFileSync(path, 'utf-8').toString();
-    
+
     var match = file_content.match(regex)
     if (match) {
         file_content = file_content.replace(new RegExp(regex, 'g'), content)
@@ -947,10 +951,10 @@ function replaceOrAppend(path, regex, content) {
 function append(path, regex, content) {
     var file_content = fs.readFileSync(path, 'utf-8').toString();
     var match = file_content.match(regex)
-    if (!match) {        
+    if (!match) {
         file_content = file_content + '\r\n' + content
         writeFile(path, file_content)
-    }    
+    }
 }
 
 
@@ -958,7 +962,7 @@ function replaceFileContent(path, regex, content, ouput_path) {
     var file_content = fs.readFileSync(path, 'utf-8').toString();
     var match = file_content.match(regex)
     if (match) {
-        var result = file_content.replace(new RegExp(regex, 'g'), content)        
+        var result = file_content.replace(new RegExp(regex, 'g'), content)
         writeFile(ouput_path ? ouput_path : path, result)
     }
 }
@@ -968,7 +972,7 @@ var startServer = function () {
     var port = config.match(/server.listen(.*)/i)[0]
     util.log(util.colors.yellow("Starting the local web server."))
     util.log(util.colors.magenta("Launch your browser and enter the url http://localhost:" + port.replace('server.listen(', '').replace(')', '')))
-    // Start a server 
+    // Start a server
     nodemon({
         // the script to run the app
         script: 'server.js',
@@ -980,7 +984,7 @@ var startServer = function () {
     });
 }
 
-var writeBootstrapAndStart = function (cb) {    
+var writeBootstrapAndStart = function (cb) {
     util.log(util.colors.yellow("A project stack exists.  Creating the local bootstrap at path ", cgp_path + path.sep + index, "."))
     writeBootstrap(function (err) {
         startServer()
@@ -989,13 +993,13 @@ var writeBootstrapAndStart = function (cb) {
 }
 
 var writeBootstrap = function (cb, output_path, region){
-    return executeLmbrAwsCommand('lmbr_aws cloud-gem-framework cloud-gem-portal --show-url-only --show-configuration' + (region ? ' --region-override ' + region : '' ) , function (stdout, stderr, err) {        
+    return executeLmbrAwsCommand('lmbr_aws cloud-gem-framework cloud-gem-portal --show-url-only --show-configuration' + (region ? ' --region-override ' + region : '' ) , function (stdout, stderr, err) {
         var bootstrap_information = stdout.match(bootstrap_pattern)
-        //is there a bootstrap configuration present?        
+        //is there a bootstrap configuration present?
         if (bootstrap_information) {
-            replaceFileContent(index, /var\s*bootstrap\s*=\s*{.*}/i, "var bootstrap = " + bootstrap_information[0], output_path)            
-        } else {            
-            util.log(util.colors.red("The attempt to automatically write the Cloud Gem Portal development bootstrap failed.  Please review the logs above."))            
+            replaceFileContent(index, /var\s*bootstrap\s*=\s*{.*}/i, "var bootstrap = " + bootstrap_information[0], output_path)
+        } else {
+            util.log(util.colors.red("The attempt to automatically write the Cloud Gem Portal development bootstrap failed.  Please review the logs above."))
         }
         cb(err)
     })
@@ -1003,19 +1007,19 @@ var writeBootstrap = function (cb, output_path, region){
 
 var cgp_path = undefined
 var enginePath = function () {
-    if (!cgp_path) {                
+    if (!cgp_path) {
         cgp_path = process.cwd()
-    }    
+    }
     return cgp_path + path.sep + ".." + path.sep + ".." + path.sep + ".." + path.sep + ".." + path.sep + ".." + path.sep
 }
 
 var createDevelopmentStack = function (handler_callback, name) {
     if (!name)
-        name = deploymentStackName()    
+        name = deploymentStackName()
     util.log(util.colors.yellow("Attempting to create a deploymment stack. Please wait...this could take up to 15 minutes."))
     executeLmbrAwsCommand('lmbr_aws deployment create  --confirm-aws-usage --confirm-security-change --deployment ' + name, function (stdout, stderr, err) {
         handler_callback(stdout, stderr, err)
-    })   
+    })
 }
 
 var createProjectStack = function (handler_callback, region) {
@@ -1032,30 +1036,30 @@ var createProjectStack = function (handler_callback, region) {
             util.log(util.colors.blue(password[0]))
         }
         handler_callback(stdout, stderr, err, username, password)
-    })  
+    })
 }
 
-var deleteProjectStack = function (gulp_callback) {    
+var deleteProjectStack = function (gulp_callback) {
     util.log(util.colors.yellow("Attempting to delete a project stack. Please wait...this could take up to 5 minutes."))
     executeLmbrAwsCommand('lmbr_aws project delete -D', function (response) {
         gulp_callback()
-    })    
+    })
 }
 
 var deleteDeploymentStack = function (handler_callback, stackname) {
     if (!stackname)
-        stackname = 'Stack1'    
-    util.log(util.colors.yellow("Attempting to delete a deployment stack. Please wait...this could take up to 10 minutes."))    
+        stackname = 'Stack1'
+    util.log(util.colors.yellow("Attempting to delete a deployment stack. Please wait...this could take up to 10 minutes."))
     executeLmbrAwsCommand('lmbr_aws deployment delete -D -d', function (response) {
         handler_callback()
-    })    
+    })
 }
 
-var readLocalProjectSettingsPath = function (handler_callback) {    
+var readLocalProjectSettingsPath = function (handler_callback) {
     util.log(util.colors.yellow("Reading your current local_project_settings.json file."))
     executeLmbrAwsCommand('lmbr_aws cloud-gem-framework paths', function (response) {
         var regex = /Local Project Settings\s*(\S*)\s*/i
-        var match = regex.exec(response)                   
+        var match = regex.exec(response)
         var path = match[1]
         util.log(util.colors.yellow("Found at location '"+path+"'"))
         handler_callback(path)
@@ -1070,7 +1074,7 @@ var projectStackName = function () {
     return 'CGPProjStk' + Date.now().toString().substring(5, Date.now().length)
 }
 
-var executeLmbrAwsCommand = function (command, callback) {    
+var executeLmbrAwsCommand = function (command, callback) {
     util.log("changing to " + enginePath() + " from " + process.cwd())
     process.chdir(enginePath())
     util.log(util.colors.yellow(command))

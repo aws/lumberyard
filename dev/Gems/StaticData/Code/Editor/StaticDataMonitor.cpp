@@ -9,128 +9,189 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StaticData_precompiled.h"
+
 #include "StaticDataMonitor.h"
-
-#include <StaticDataMonitor.moc>
-
-#include <QFileInfo>
-#include <QDir>
-#include <QDebug>
-#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <StaticDataManager.h>
+#include <AzCore/IO/FileIO.h>
+#include <AzFramework/IO/LocalFileIO.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/Asset/AssetManagerBus.h>
 
 namespace CloudCanvas
 {
     namespace StaticData
     {
 
-        StaticDataMonitor::StaticDataMonitor() :
-            QObject{}
+        StaticDataMonitor::StaticDataMonitor() 
         {
-            connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, &StaticDataMonitor::OnFileChanged);
-            connect(&m_watcher, &QFileSystemWatcher::directoryChanged, this, &StaticDataMonitor::OnDirectoryChanged);
-            CloudCanvas::StaticData::StaticDataMonitorRequestBus::Handler::BusConnect();
+            StaticDataMonitorRequestBus::Handler::BusConnect();
+            AzFramework::AssetCatalogEventBus::Handler::BusConnect();
+            StaticDataUpdateBus::Handler::BusConnect();
+            CrySystemEventBus::Handler::BusConnect();
         }
 
         StaticDataMonitor::~StaticDataMonitor()
         {
             CloudCanvas::StaticData::StaticDataMonitorRequestBus::Handler::BusDisconnect();
+            AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
+            AZ::Data::AssetBus::MultiHandler::BusDisconnect();
+            StaticDataUpdateBus::Handler::BusDisconnect();
+            CrySystemEventBus::Handler::BusDisconnect();
+        }
+
+        void StaticDataMonitor::OnCrySystemInitialized(ISystem& system, const SSystemInitParams& systemInitParams)
+        {
+            Initialize();
+        }
+
+        void StaticDataMonitor::Initialize()
+        {
+            StaticDataRequestBus::Broadcast(&IStaticDataManager::ReloadTagType, "csv");
         }
 
         AZStd::string StaticDataMonitor::GetSanitizedName(const char* pathName) const
         {
-            QDir dir(pathName);
-            QString path(dir.absoluteFilePath(pathName));
-
-            return path.toStdString().c_str();
+             AZStd::string pathString{ pathName };
+             AzFramework::StringFunc::Path::Normalize(pathString);
+             return pathString;
         }
 
+        void StaticDataMonitor::StaticDataFileAdded(const AZStd::string& filePath)
+        {
+            AddPath(filePath, true);
+        }
+
+        void StaticDataMonitor::AddAsset(const AZ::Data::AssetId& assetId)
+        {
+            if (m_monitoredAssets.find(assetId) != m_monitoredAssets.end())
+            {
+                AZ_TracePrintf("StaticData", "Already watching asset %d", assetId);
+                return;
+            }
+            m_monitoredAssets.insert(assetId);
+            AZ::Data::AssetBus::MultiHandler::BusConnect(assetId);
+        }
         void StaticDataMonitor::AddPath(const AZStd::string& inputName, bool isFile)
         {
+            AZStd::string resolvedName = StaticDataManager::ResolveAndSanitize(inputName.c_str());
+
             if (isFile)
             {
-                m_monitoredFiles.insert(inputName);
+                AZ::Data::AssetId staticAssetId;
+                EBUS_EVENT_RESULT(staticAssetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, inputName.c_str(), AZ::AzTypeInfo<StaticDataAsset>::Uuid(), true);
+                if (staticAssetId.IsValid())
+                {
+                    AddAsset(staticAssetId);
+                }
             }
-
-            bool watchResult = m_watcher.addPath(QDir::toNativeSeparators(QString(inputName.c_str())));
-            if (!watchResult)
+            else
             {
-                qDebug() << "Monitor failed on " << inputName.c_str();
-            }
+                m_monitoredPaths.insert(resolvedName);
+                AZ::IO::LocalFileIO localFileIO;
+                bool foundOK = localFileIO.FindFiles(resolvedName.c_str(), resolvedName.c_str(), [&](const char* filePath) -> bool
+                {
+                    AZStd::string thisFile{ filePath };
+                    AddPath(thisFile, true);
+                    return true; // continue iterating
+                });
+            } 
+        }
+
+        void StaticDataMonitor::RemoveAsset(const AZ::Data::AssetId& assetId)
+        {
+            AZ::Data::AssetBus::MultiHandler::BusDisconnect(assetId);
+            m_monitoredAssets.erase(assetId);
         }
 
         void StaticDataMonitor::RemovePath(const AZStd::string& inputName)
         {
-            m_monitoredFiles.erase(inputName);
-
-            QFileInfo fileInfo{ inputName.c_str() };
-
-            m_watcher.removePath(inputName.c_str());
+            m_monitoredPaths.erase(inputName);
         }
 
-
-        void StaticDataMonitor::OnFileChanged(const QString& fileName)
+        void StaticDataMonitor::OnFileChanged(const AZStd::string& fileName)
         {
-            QString fromNative = QDir::fromNativeSeparators(fileName);
-
-            EBUS_EVENT(CloudCanvas::StaticData::StaticDataRequestBus, LoadRelativeFile, fromNative.toStdString().c_str());
-        }
-
-        void StaticDataMonitor::OnDirectoryChanged(const QString& directoryName)
-        {
-            // We need to decide exactly what has changed and what to do about it.  This means first grabbing a list of the files 
-            // we care about as they currently look in this directory.  Then we run through and compare against what we were already watching
-            // and ignore those.  Then we potentially have a remaining list of adds and removes to process.
-            QString fromNative = QDir::fromNativeSeparators(directoryName);
-
-            StaticDataFileSet currentSet;
-            EBUS_EVENT_RESULT(currentSet, CloudCanvas::StaticData::StaticDataRequestBus, GetFilesForDirectory, fromNative.toStdString().c_str());
-            auto fileSet = m_monitoredFiles; // What we were previously watching
-
-            auto thisElement = fileSet.begin(); 
-            while(thisElement != fileSet.end())
-            {
-                auto lastElement = thisElement;
-                ++thisElement;
-
-                auto currentElement = currentSet.find(lastElement->c_str());
-
-                if (currentElement != currentSet.end())
-                {
-                    // We have a match, disregard this file
-                    currentSet.erase(currentElement);
-                    fileSet.erase(lastElement);
-                }
-            }
-
-            // At this point what's remaining in currentSet should be new files, and what's remaining in fileSet should be removed files
-            for (auto newFile : currentSet)
-            {
-                EBUS_EVENT(CloudCanvas::StaticData::StaticDataRequestBus, LoadRelativeFile, newFile.c_str());
-            }
-
-            for (auto removedFile : fileSet)
-            {
-                EBUS_EVENT(CloudCanvas::StaticData::StaticDataRequestBus, LoadRelativeFile, removedFile.c_str());
-                RemovePath(removedFile.c_str());
-            }
+            EBUS_EVENT(CloudCanvas::StaticData::StaticDataRequestBus, LoadRelativeFile, fileName.c_str());
         }
 
         void StaticDataMonitor::RemoveAll()
         {
 
-            auto fileList = m_monitoredFiles;
-            for (auto thisFile : fileList)
+            auto fileList = m_monitoredAssets;
+            for (auto thisAsset : fileList)
             {
-                RemovePath(thisFile.c_str());
+                RemoveAsset(thisAsset);
             }
 
-            auto directoryList = m_watcher.directories();
+            auto directoryList = m_monitoredPaths;
             for (auto thisDir : directoryList)
             {
-                RemovePath(thisDir.toStdString().c_str());
+                RemovePath(thisDir.c_str());
             }
         }
 
+        bool StaticDataMonitor::IsMonitored(const AZ::Data::AssetId& assetId)
+        {
+            if (m_monitoredAssets.find(assetId) != m_monitoredAssets.end())
+            {
+                return true;
+            }
+
+            const AZStd::string fileName = GetAssetFilenameFromAssetId(assetId);
+            AZStd::string sanitizedName{ GetSanitizedName(fileName.c_str()) };
+            AZStd::string directoryPath = StaticDataManager::GetDirectoryFromFullPath(sanitizedName);
+
+            if (m_monitoredPaths.find(directoryPath) != m_monitoredPaths.end())
+            {
+                return true;
+            }
+
+
+            return false;
+        }
+
+        void StaticDataMonitor::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> readyAsset)
+        {
+            OnCatalogAssetChanged(readyAsset.GetId());
+        }
+        void StaticDataMonitor::OnCatalogAssetChanged(const AZ::Data::AssetId& assetId)
+        {
+            if (!IsMonitored(assetId))
+            {
+                return;
+            }
+
+            const AZStd::string fileName = GetAssetFilenameFromAssetId(assetId);
+            OnFileChanged(fileName);
+        }
+
+        void StaticDataMonitor::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
+        {
+            OnCatalogAssetChanged(assetId);
+        }
+
+
+        void StaticDataMonitor::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
+        {
+            if (!IsMonitored(assetId))
+            {
+                return;
+            }
+            const AZStd::string fileName = GetAssetFilenameFromAssetId(assetId);
+            OnFileChanged(fileName);
+        }
+
+        AZStd::string StaticDataMonitor::GetAssetFilenameFromAssetId(const AZ::Data::AssetId& assetId)
+        {
+            AZStd::string filename;
+
+            AZStd::string assetCachePath = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
+            AzFramework::StringFunc::AssetDatabasePath::Normalize(assetCachePath);
+
+            AZStd::string relativePath;
+            EBUS_EVENT_RESULT(relativePath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, assetId);
+            AzFramework::StringFunc::AssetDatabasePath::Join(assetCachePath.c_str(), relativePath.c_str(), filename, true);
+
+            return filename;
+        }
     }
 }

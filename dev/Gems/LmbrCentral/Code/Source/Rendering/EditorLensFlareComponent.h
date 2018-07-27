@@ -148,6 +148,7 @@ namespace LmbrCentral
         void OnEditorSpecChange() override;
         //////////////////////////////////////////////////////////////////////////
 
+        AZStd::string GetSelectedLensFlareFullName() const;
         AZStd::string GetFlareNameFromPath(const AZStd::string& path) const;
         AZStd::string GetLibraryNameFromAsset() const;
 

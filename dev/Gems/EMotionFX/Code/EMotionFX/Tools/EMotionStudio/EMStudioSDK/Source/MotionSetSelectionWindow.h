@@ -16,7 +16,6 @@
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <MysticQt/Source/ButtonGroup.h>
 #include "EMStudioConfig.h"
-#include <MysticQt/Source/SearchButton.h>
 #include "MotionSetHierarchyWidget.h"
 #include <QDialog>
 
@@ -35,6 +34,9 @@ namespace EMStudio
 
         MCORE_INLINE MotionSetHierarchyWidget* GetHierarchyWidget()                                             { return mHierarchyWidget; }
         void Update(EMotionFX::MotionSet* motionSet, CommandSystem::SelectionList* selectionList = nullptr)     { mHierarchyWidget->Update(motionSet, selectionList); }
+
+        void Select(const AZStd::vector<MotionSetSelectionItem>& selectedItems);
+        void Select(const AZStd::vector<AZStd::string>& selectedMotionIds, EMotionFX::MotionSet* motionSet);
 
     public slots:
         void OnAccept();

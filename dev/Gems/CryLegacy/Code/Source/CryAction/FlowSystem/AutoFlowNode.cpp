@@ -9,8 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+
 #include <platform.h>
+#include <IGameFramework.h>
 #include "Nodes/FlowBaseNode.h"
 
 CAutoRegFlowNodeBase* CAutoRegFlowNodeBase::m_pFirst = nullptr;

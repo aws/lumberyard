@@ -18,12 +18,12 @@
 #include <Cry_Camera.h>
 #include <ILevelSystem.h>
 #include "ViewSystem.h"
-#include "GameObjects/GameObject.h"
-#include "CryAction.h"
-#include "IActorSystem.h"
 #include "PNoise3.h"
 #include <IAISystem.h>
-#include <DebugCamera/DebugCamera.h>
+#include "DebugCamera.h"
+#include <MathConversion.h>
+
+#include <AzCore/Casting/lossy_cast.h>
 
 #define VS_CALL_LISTENERS(func)                                                                                     \
     {                                                                                                               \
@@ -39,6 +39,61 @@
             }                                                                                                       \
         }                                                                                                           \
     }
+
+namespace LegacyViewSystem
+{
+
+void ToggleDebugCamera(IConsoleCmdArgs* pArgs)
+{
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+    DebugCamera* debugCamera = CViewSystem::s_debugCamera;
+    if (debugCamera)
+    {
+        if (!debugCamera->IsEnabled())
+        {
+            debugCamera->OnEnable();
+        }
+        else
+        {
+            debugCamera->OnNextMode();
+        }
+    }
+#endif
+}
+
+void ToggleDebugCameraInvertY(IConsoleCmdArgs* pArgs)
+{
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+    DebugCamera* debugCamera = CViewSystem::s_debugCamera;
+    if (debugCamera)
+    {
+        debugCamera->OnInvertY();
+    }
+#endif
+}
+
+void DebugCameraMove(IConsoleCmdArgs* pArgs)
+{
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+    if (pArgs->GetArgCount() != 4)
+    {
+        CryLogAlways("debugCameraMove requires 3 args, not %d.", pArgs->GetArgCount() - 1);
+        return;
+    }
+
+    DebugCamera* debugCamera = CViewSystem::s_debugCamera;
+    if (debugCamera && debugCamera->IsFree())
+    {
+        Vec3::value_type x = azlossy_cast<float>(atof(pArgs->GetArg(1)));
+        Vec3::value_type y = azlossy_cast<float>(atof(pArgs->GetArg(2)));
+        Vec3::value_type z = azlossy_cast<float>(atof(pArgs->GetArg(3)));
+        Vec3 newPos(x, y, z);
+        debugCamera->MovePosition(newPos);
+    }
+#endif
+}
+
+DebugCamera* CViewSystem::s_debugCamera = nullptr;
 
 //------------------------------------------------------------------------
 CViewSystem::CViewSystem(ISystem* pSystem)
@@ -56,6 +111,19 @@ CViewSystem::CViewSystem(ISystem* pSystem)
     , m_useDeferredViewSystemUpdate(false)
     , m_bControlsAudioListeners(true)
 {
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+    if (!s_debugCamera)
+    {
+        s_debugCamera = new DebugCamera;
+    }
+
+    REGISTER_COMMAND("debugCameraToggle", ToggleDebugCamera, VF_DEV_ONLY, "Toggle the debug camera.\n");
+    REGISTER_COMMAND("debugCameraInvertY", ToggleDebugCameraInvertY, VF_DEV_ONLY, "Toggle debug camera Y-axis inversion.\n");
+    REGISTER_COMMAND("debugCameraMove", DebugCameraMove, VF_DEV_ONLY, "Move the debug camera the specified distance (x y z).\n");
+    gEnv->pConsole->CreateKeyBind("ctrl_keyboard_key_punctuation_backslash", "debugCameraToggle");
+    gEnv->pConsole->CreateKeyBind("alt_keyboard_key_punctuation_backslash", "debugCameraInvertY");
+#endif
+
     REGISTER_CVAR2("cl_camera_noise", &m_fCameraNoise, -1, 0,
         "Adds hand-held like camera noise to the camera view. \n The higher the value, the higher the noise.\n A value <= 0 disables it.");
     REGISTER_CVAR2("cl_camera_noise_freq", &m_fCameraNoiseFrequency, 2.5326173f, 0,
@@ -68,9 +136,9 @@ CViewSystem::CViewSystem(ISystem* pSystem)
         "The default camera near plane. ");
 
     //Register as level system listener
-    if (CCryAction::GetCryAction()->GetILevelSystem())
+    if (m_pSystem->GetILevelSystem())
     {
-        CCryAction::GetCryAction()->GetILevelSystem()->AddListener(this);
+        m_pSystem->GetILevelSystem()->AddListener(this);
     }
 
     Camera::CameraSystemRequestBus::Handler::BusConnect();
@@ -91,9 +159,9 @@ CViewSystem::~CViewSystem()
     pConsole->UnregisterVariable("cl_DefaultNearPlane", true);
 
     //Remove as level system listener
-    if (CCryAction::GetCryAction()->GetILevelSystem())
+    if (m_pSystem->GetILevelSystem())
     {
-        CCryAction::GetCryAction()->GetILevelSystem()->RemoveListener(this);
+        m_pSystem->GetILevelSystem()->RemoveListener(this);
     }
 }
 
@@ -107,13 +175,10 @@ void CViewSystem::Update(float frameTime)
         return;
     }
 
-#ifndef _RELEASE
-    DebugCamera* debugCamera = CCryAction::GetCryAction()->GetDebugCamera();
-    if (debugCamera)
+    if (s_debugCamera)
     {
-        debugCamera->Update();
+        s_debugCamera->Update();
     }
-#endif // !_RELEASE
 
     CView* const pActiveView = static_cast<CView*>(GetActiveView());
 
@@ -131,9 +196,7 @@ void CViewSystem::Update(float frameTime)
         if (bIsActive)
         {
             CCamera& rCamera = pView->GetCamera();
-#ifndef _RELEASE
-            if (!debugCamera || (debugCamera && !debugCamera->IsEnabled()))
-#endif // !_RELEASE
+            if (!s_debugCamera || !s_debugCamera->IsEnabled())
             {
                 pView->UpdateAudioListener(rCamera.GetMatrix());
             }
@@ -190,12 +253,10 @@ void CViewSystem::Update(float frameTime)
         }
     }
 
-#ifndef _RELEASE
-    if (debugCamera)
+    if (s_debugCamera)
     {
-        debugCamera->PostUpdate();
+        s_debugCamera->PostUpdate();
     }
-#endif // !_RELEASE
 
     // Display debug info on screen
     if (m_nViewSystemDebug)
@@ -435,21 +496,10 @@ IView* CViewSystem::GetViewByEntityId(const AZ::EntityId& id, bool forceCreate)
             // Legacy Camera
             if (IEntity* pEntity = gEnv->pEntitySystem->GetEntity(GetLegacyEntityId(id)))
             {
-                if (CGameObjectPtr pGameObject = pEntity->GetComponent<CGameObject>())
+                if (IView* pNew = CreateView())
                 {
-                    if (IView* pNew = CreateView())
-                    {
-                        pNew->LinkTo(pGameObject.get());
-                        return pNew;
-                    }
-                }
-                else
-                {
-                    if (IView* pNew = CreateView())
-                    {
-                        pNew->LinkTo(pEntity);
-                        return pNew;
-                    }
+                    pNew->LinkTo(pEntity);
+                    return pNew;
                 }
             }
         }
@@ -537,18 +587,6 @@ void CViewSystem::SetActiveCamera(const SCameraParams& params)
             {
                 SViewParams activeViewParams = *pActiveView->GetCurrentParams();
                 activeViewParams.justActivated = true;
-                if (m_nViewSystemDebug)
-                {
-                    GameWarning("CViewSystem::SetActiveCamera(): %d", m_preSequenceViewId);
-                    if (pNewView == NULL)
-                    {
-                        GameWarning("CViewSystem::SetActiveCamera(): Switching to pre-sequence view failed!");
-                    }
-                    else
-                    {
-                        GameWarning("CViewSystem::SetActiveCamera(): Switching to pre-sequence view OK!");
-                    }
-                }
 
                 if (pNewView)
                 {
@@ -850,4 +888,4 @@ void CViewSystem::SetControlAudioListeners(bool bActive)
     }
 }
 
-
+} // namespace LegacyViewSystem

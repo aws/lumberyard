@@ -38,14 +38,14 @@ public:
     SafeString& operator =(const string& s)
     {
         assert(s.length() < _max_size);
-        strcpy(m_s, s.c_str());
+        azstrcpy(m_s, _max_size, s.c_str());
         return *this;
     }
     SafeString& operator =(const char* s)
     {
         assert(s);
         assert(strlen(s) < _max_size);
-        strcpy(m_s, s);
+        azstrcpy(m_s, _max_size, s);
         return *this;
     }
     operator const char*() const

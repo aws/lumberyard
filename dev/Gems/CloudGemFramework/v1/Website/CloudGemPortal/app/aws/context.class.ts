@@ -14,10 +14,10 @@ declare var AWSCognito: any;
 
 export enum EnumContextState {
     INITIALIZED = 0,
-    CLIENT_UPDATED = 1,        
+    CLIENT_UPDATED = 1,
     PROJECT_UPDATED = 2,
     DEPLOYMENT_UPDATED = 4,
-    CREDENTIAL_UPDATED = 8    
+    CREDENTIAL_UPDATED = 8
 }
 
 export interface ContextChange {
@@ -27,22 +27,23 @@ export interface ContextChange {
 
 export class AwsContext {
     private _configBucket: string;
-    private _region: string;    
+    private _region: string;
     private _userPoolId: string;
     private _identityPoolId: string;
     private _cognitoClientId: string;
-    private _awsClient: Function;                
+    private _awsClient: Function;
     private _s3: any;
     private _cloudFormation: any;
     private _project: AwsProject;
     private _deployment: AwsDeployment;
     private _change: BehaviorSubject<ContextChange>;
-    private _authentication: Authentication; 
-    private _usermanagement: UserManagement; 
+    private _authentication: Authentication;
+    private _usermanagement: UserManagement;
     private _cognitoIdentity: any;
     private _cognitoIdentityService: any;
+    private _cognitoUserPool: any;
     private _apigateway: any;
-    private _cloudWatchLogs: any;    
+    private _cloudWatchLogs: any;
     private _projectName: string = '';
 
     get name() {
@@ -53,21 +54,13 @@ export class AwsContext {
         if (value === undefined || value === null)
             return;
 
-        let configBucketParts = value.split('-');
+        let configBucketParts = value.split('-configuration-');
 
-        let name = []
-        for (var i = 0; i < configBucketParts.length - 2; i++) {
-            name.push(configBucketParts[i])
-        }
-
-        this._projectName = name.join('');
+        this._projectName = configBucketParts[0];
     }
 
     get cognitoUserPool(): any {
-        return new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool({
-            UserPoolId: this._userPoolId,
-            ClientId: this._cognitoClientId
-        });
+        return this._cognitoUserPool
     }
 
     get clientId(): string {
@@ -87,7 +80,7 @@ export class AwsContext {
     }
 
     set cognitoIdentity(value: any) {
-        this._cognitoIdentity = value;       
+        this._cognitoIdentity = value;
     }
 
     get cloudWatchLogs(): any {
@@ -118,8 +111,8 @@ export class AwsContext {
         return this._region;
     }
 
-    set config(value: any) {             
-        AWS.config.update(value);        
+    set config(value: any) {
+        AWS.config.update(value);
         this.transition(EnumContextState.CLIENT_UPDATED);
     }
 
@@ -127,17 +120,17 @@ export class AwsContext {
         return AWS.config
     }
 
-    set s3(value: any) {        
+    set s3(value: any) {
         this._s3 = value;
         this.transition(EnumContextState.CLIENT_UPDATED);
     }
 
     get s3(): any {
         return this._s3;
-    }   
+    }
 
     set authentication(value: Authentication) {
-        this._authentication = value;        
+        this._authentication = value;
     }
 
     get authentication(): Authentication {
@@ -152,16 +145,16 @@ export class AwsContext {
         return this._usermanagement;
     }
 
-    set cloudFormation(value: any) {        
+    set cloudFormation(value: any) {
         this._cloudFormation = value;
         this.transition(EnumContextState.CLIENT_UPDATED);
     }
 
-    get cloudFormation(): any {        
+    get cloudFormation(): any {
         return this._cloudFormation;
     }
 
-    set deployment(value: AwsDeployment) {        
+    set deployment(value: AwsDeployment) {
         this._deployment = value;
         this.transition(EnumContextState.DEPLOYMENT_UPDATED);
     }
@@ -170,15 +163,15 @@ export class AwsContext {
         return this._deployment;
     }
 
-    set project(value: AwsProject) {                
+    set project(value: AwsProject) {
         this._project = value;
         this.transition(EnumContextState.PROJECT_UPDATED);
     }
 
     get project(): AwsProject {
         return this._project;
-    }   
-    
+    }
+
     get change(): Observable<ContextChange> {
         return this._change.asObservable();
     }
@@ -192,17 +185,21 @@ export class AwsContext {
     }
 
 
-    constructor() {        
+    constructor() {
         this._change = new BehaviorSubject<ContextChange>(<ContextChange>{});
     }
 
     public init(userPoolId: string, clientId: string, identityPoolId: string, configBucket: string, region: string) {
         this.name = configBucket;
-        this._configBucket = configBucket;        
+        this._configBucket = configBucket;
         this._region = region;
         this._userPoolId = userPoolId;
         this._cognitoClientId = clientId;
-        this._identityPoolId = identityPoolId;                
+        this._identityPoolId = identityPoolId;
+        this._cognitoUserPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool({
+            UserPoolId: this._userPoolId,
+            ClientId: this._cognitoClientId
+        });
         let config = {
             region: region,
             credentials: new AWS.CognitoIdentityCredentials({
@@ -213,20 +210,20 @@ export class AwsContext {
             sslEnabled: true,
             signatureVersion: 'v4'
         };
-        
+
         this.config = config;
         this._awsClient = function (serviceName: string, options: any) {
             return new AWS[serviceName](options);
-        }       
+        }
     }
 
     public initializeServices(): void {
-        this.s3 = this.awsClient("S3", { apiVersion: "2006-03-01", region: this.region });
+        this.s3 = this.awsClient("S3", { apiVersion: "2006-03-01", region: this.region, signatureVersion: "v4" });
         this.cloudFormation = this.awsClient("CloudFormation", { apiVersion: "2010-05-15", region: this.region });
         this.cognitoIdentityService = this.awsClient("CognitoIdentityServiceProvider", { apiVersion: "2016-04-18", region: this.region });
         this.cognitoIdentity = this.awsClient("CognitoIdentity", { apiVersion: "2014-06-30", region: this.region });
         this.apiGateway = this.awsClient("APIGateway", { apiVersion: "2015-07-09", region: this.region });
-        this.cloudWatchLogs = this.awsClient("CloudWatchLogs", { apiVersion: "2014-03-28", region: this.region });        
+        this.cloudWatchLogs = this.awsClient("CloudWatchLogs", { apiVersion: "2014-03-28", region: this.region });
     }
 
     private transition(to: EnumContextState): void {
@@ -235,5 +232,5 @@ export class AwsContext {
             context : this
         });
     }
-    
+
 }

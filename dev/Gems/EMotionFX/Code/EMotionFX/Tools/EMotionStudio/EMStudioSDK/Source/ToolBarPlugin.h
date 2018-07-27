@@ -37,7 +37,7 @@ namespace EMStudio
         virtual ~ToolBarPlugin();
 
         EMStudioPlugin::EPluginType GetPluginType() const override          { return EMStudioPlugin::PLUGINTYPE_TOOLBAR; }
-        virtual void OnMainWindowClosed();
+        void OnMainWindowClosed() override;
 
         virtual bool GetIsFloatable() const                                 { return true;  }
         virtual bool GetIsVertical() const                                  { return false; }
@@ -46,12 +46,12 @@ namespace EMStudio
         virtual Qt::ToolButtonStyle GetToolButtonStyle() const              { return Qt::ToolButtonIconOnly; }
 
         virtual void SetInterfaceTitle(const char* name);
-        virtual void CreateBaseInterface(const char* objectName) override;
+        void CreateBaseInterface(const char* objectName) override;
 
-        virtual QString GetObjectName() const override                      { AZ_Assert(!mBar.isNull(), "Unexpected null bar"); return mBar->objectName(); }
-        virtual void SetObjectName(const QString& name) override            { GetToolBar()->setObjectName(name); }
+        QString GetObjectName() const override                      { AZ_Assert(!mBar.isNull(), "Unexpected null bar"); return mBar->objectName(); }
+        void SetObjectName(const QString& name) override            { GetToolBar()->setObjectName(name); }
 
-        virtual bool GetHasWindowWithObjectName(const AZStd::string& objectName) override;
+        bool GetHasWindowWithObjectName(const AZStd::string& objectName) override;
 
         virtual Qt::ToolBarArea GetToolBarCreationArea() const              { return Qt::BottomToolBarArea; }
 

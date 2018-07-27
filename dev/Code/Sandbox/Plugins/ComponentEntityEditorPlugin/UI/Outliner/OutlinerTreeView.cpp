@@ -18,6 +18,7 @@
 #include <AzCore/std/sort.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <AzQtComponents/Components/Style.h>
 
 #include <QDrag>
 #include <QPainter>
@@ -28,14 +29,16 @@ class OutlinerTreeViewProxyStyle : public QProxyStyle
 {
 public:
     OutlinerTreeViewProxyStyle()
-        : QProxyStyle(qApp->style())
+        : QProxyStyle()
         , m_linePen(QColor("#FFFFFF"), 1)
         , m_rectPen(QColor("#B48BFF"), 1)
     {
+        AzQtComponents::Style::fixProxyStyle(this, qApp->style());
     }
 
     void drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const
     {
+        // FIXME: Move to AzQtComponents Style.cpp
         //draw custom drop target art
         if (element == QStyle::PE_IndicatorItemViewItemDrop)
         {

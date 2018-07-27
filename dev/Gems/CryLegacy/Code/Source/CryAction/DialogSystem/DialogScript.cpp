@@ -14,7 +14,7 @@
 // Description : Dialog Script
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "DialogScript.h"
 #include "DialogCommon.h"
 

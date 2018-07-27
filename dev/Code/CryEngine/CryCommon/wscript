@@ -24,7 +24,6 @@ def build(bld):
         file_list          = 'crycommon.waf_files',
         platforms          = ['all'],
         configurations     = ['all'],
-        defines            = ['ENGINE_EXPORTS'],
         use                = [ 'AzCore'],
         win_test_file_list = "crycommon_testing.waf_files",
         win_cxxflags       = [ '/wd4355' ],

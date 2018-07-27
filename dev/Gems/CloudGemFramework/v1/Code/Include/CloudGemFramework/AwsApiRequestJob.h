@@ -241,12 +241,6 @@ namespace CloudGemFramework
                 // function pointer to call the function.
                 OutcomeType outcome = (AwsApiClientJobType::m_client.get()->*RequestTraits::Function)(request);
 
-                if (!CloudGemFramework::CanProcessResponse())
-                {
-                    DoCleanup();
-                    return;
-                }
-
                 if(outcome.IsSuccess())
                 {
                     result = std::move(outcome.GetResultWithOwnership());

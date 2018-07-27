@@ -20,10 +20,7 @@
 FluidTabBar::FluidTabBar(QWidget* p)
     : QTabBar(p)
 {
-    connect(this, &QTabBar::currentChanged, [this](int index)
-        {
-            AddCloseButtonToCurrentOnly();
-        });
+    connect(this, &QTabBar::currentChanged, this, &FluidTabBar::AddCloseButtonToCurrentOnly);
 }
 
 QSize FluidTabBar::sizeHint() const
@@ -103,7 +100,7 @@ void FluidTabBar::AddCloseButton(int tabIndex)
     QPushButton* closeButton = new QPushButton();
     closeButton->setObjectName("FluidTabCloseButton");
     setTabButton(tabIndex, QTabBar::RightSide, closeButton);
-    connect(closeButton, &QPushButton::clicked, [this]()
+    connect(closeButton, &QPushButton::clicked, this, [this]()
         {
             tabCloseRequested(currentIndex());
         });

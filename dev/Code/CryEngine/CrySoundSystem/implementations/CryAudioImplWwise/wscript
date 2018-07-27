@@ -27,15 +27,16 @@ def build(bld):
         configurations       = ['debug', 'debug_test', 'profile', 'profile_test', 'performance', 'release'],
         pch                  = 'StdAfx.cpp',
         use                  = ['AzCore'],
-        uselib               = ['WWISE'],
+        uselib               = ['WWISELTX'],
         includes             = ['.',
                                 '../../Common'],
 
-        # Platform Specific
-        win_cxxflags         = ['/wd4819'],
-        win_lib              = ['Ole32', 'dxguid', 'ws2_32', 'Dsound', 'XINPUT9_1_0', 'Msacm32'],
+        # Complier Specific
+        msvc_cxxflags        = ['/wd4819'],
 
-       
+        # Platform Specific
+        win_lib              = ['Ole32', 'OleAut32', 'dxguid', 'ws2_32', 'XInput', 'Winmm', 'DInput8', 'DSound'],
+
        
        
 
@@ -52,6 +53,8 @@ def build(bld):
         darwin_x64_framework = ['AVFoundation', 'AudioToolbox', 'CoreAudio'],
 
         android_lib          = ['OpenSLES'],
+
+        win_x64_clang_cxxflags = ['-Wno-deprecated-declarations'], # Wwise calls deprecated Windows functions
 
         # Testing
         test_all_file_list   = ['audioimplwwise_test.waf_files'],

@@ -168,7 +168,7 @@ QMenu* StackResourcesWidget::GetResourceContextMenu(QMouseEvent* mouseEvent)
         auto viewResource = menu->addAction("View resource in AWS console");
         connect(viewResource, &QAction::triggered, this, [this, physicalResourceId, resourceType]() { StackResourcesWidget::ViewConsoleResource(resourceType, physicalResourceId); });
         auto clipboardCopy = menu->addAction("Copy resource ID to clipboard");
-        connect(clipboardCopy, &QAction::triggered, [physicalResourceId]() {QApplication::clipboard()->setText(physicalResourceId); });
+        connect(clipboardCopy, &QAction::triggered, this, [physicalResourceId]() {QApplication::clipboard()->setText(physicalResourceId); });
     }
     return menu;
 }

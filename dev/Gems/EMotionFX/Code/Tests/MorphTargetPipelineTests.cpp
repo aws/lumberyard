@@ -112,7 +112,7 @@ namespace EMotionFX
                 }
                 blendShapeData->AddFace({{0, 1, 2}});
                 AZStd::string morphTargetName("testMorphTarget");
-                morphTargetName += AZStd::to_string(morphIndex);
+                morphTargetName += AZStd::to_string(static_cast<int>(morphIndex));
                 graph.AddChild(meshNodeIndex, morphTargetName.c_str(), blendShapeData);
             }
         }

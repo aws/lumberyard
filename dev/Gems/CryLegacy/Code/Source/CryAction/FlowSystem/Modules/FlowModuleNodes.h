@@ -19,7 +19,7 @@
 #pragma once
 
 #include <IFlowGraphModuleManager.h>
-#include "../Nodes/FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 //////////////////////////////////////////////////////////////////////////
 //

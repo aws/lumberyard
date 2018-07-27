@@ -14,7 +14,7 @@
 // Description : Implements a base class for the vehicle views
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ICryAnimation.h"
 #include "IViewSystem.h"

@@ -28,7 +28,7 @@
 #include <CloudCanvas/ICloudCanvasEditor.h>
 
 #pragma warning(push)
-#pragma warning(disable: 4251) // 
+#pragma warning(disable: 4251) //
 #include <aws/core/auth/AWSCredentialsProvider.h>
 #include <aws/core/utils/memory/stl/AWSAllocator.h>
 #include <aws/core/utils/Outcome.h>
@@ -55,7 +55,7 @@ namespace CloudGemFramework
         {
             serialize->Class<CloudCanvasPlayerIdentityComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
         }
 
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
@@ -88,12 +88,12 @@ namespace CloudGemFramework
 
     void CloudCanvasPlayerIdentityComponent::Init()
     {
+        CloudCanvasCommon::CloudCanvasCommonNotificationsBus::Handler::BusConnect();
     }
 
     void CloudCanvasPlayerIdentityComponent::Activate()
     {
         CloudCanvasPlayerIdentityBus::Handler::BusConnect();
-        CloudCanvasCommon::CloudCanvasCommonNotificationsBus::Handler::BusConnect();
     }
 
     void CloudCanvasPlayerIdentityComponent::Deactivate()
@@ -102,10 +102,9 @@ namespace CloudGemFramework
         CloudCanvasPlayerIdentityBus::Handler::BusDisconnect();
     }
 
-    void CloudCanvasPlayerIdentityComponent::OnPostInitialization()
+    void CloudCanvasPlayerIdentityComponent::ApiInitialized()
     {
         SetPlayerCredentialsProvider(Aws::MakeShared<Aws::Auth::AnonymousAWSCredentialsProvider>("PlayerIdentityInit"));
-        ResetPlayerIdentity();
     }
 
     Aws::Map<Aws::String, std::shared_ptr<TokenRetrievalStrategy> > CloudCanvasPlayerIdentityComponent::InitializeTokenRetrievalStrategies(const std::shared_ptr<Aws::Lambda::LambdaClient>& client, const char* lambdaName)
@@ -173,6 +172,47 @@ namespace CloudGemFramework
         }
     }
 
+    bool CloudCanvasPlayerIdentityComponent::BeginResetIdentity()
+    {
+        if (m_resettingIdentity)
+        {
+            // This can happen if OnBeforeIdentityUpdate is used to adjust the identity provider before acquiring credentials
+            return false;
+        }
+        m_resettingIdentity = true;
+
+        EBUS_EVENT(CloudCanvasPlayerIdentityNotificationBus, OnBeforeIdentityUpdate);
+        return true;
+    }
+
+
+    bool CloudCanvasPlayerIdentityComponent::CheckRegionHttpAccess(const AZStd::string& identityPoolId) const
+    {
+        auto regionend = identityPoolId.find(":");
+        if (regionend == AZStd::string::npos)
+        {
+            AZ_Warning("CloudCanvas", false, "Unable to retrieve region from %s", identityPoolId.c_str());
+            return false;
+        }
+        AZStd::string regionStr{ identityPoolId.substr(0, regionend) };
+        AZStd::string endpointStr{ AZStd::string::format("s3.%s.amazonaws.com", regionStr.c_str()).c_str() };
+
+        int responseCode{ 0 };
+        EBUS_EVENT_RESULT(responseCode, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetEndpointHttpResponseCode, endpointStr);
+
+        if (responseCode == 200)
+        {
+            AZ_TracePrintf("CloudCanvas", "HTTPS test for identity pool %s endpoint %s returns response code %d", identityPoolId.c_str(), endpointStr.c_str(), responseCode);
+            return true;
+        }
+        else
+        {
+            AZ_Warning("CloudCanvas", false, "HTTPS test for identity pool %s endpoint %s returns response code %d", identityPoolId.c_str(),endpointStr.c_str(), responseCode);
+            return false;
+        }
+    }
+
+
     /** This next bit is a little tricky. Here's how it works.
     * If resource management is configured to use the player access functionality, the mappings will contain cognito identity pools.
     * There will be 2. The first is for calling a lambda that knows how to exchange open id and oAuth tokens for refresh tokens and longterm tokens.
@@ -187,9 +227,15 @@ namespace CloudGemFramework
     *  This last step will actually be the way games will want to do this for steam, origin, consoles, etc.... since you can easily get auth tokens via their apis at game startup time.
     *  For those platforms, you should just call Login() the first time you launch the game and don't worry about the cvar stuff.
     */
+
+
     bool CloudCanvasPlayerIdentityComponent::ResetPlayerIdentity()
     {
-        EBUS_EVENT(CloudCanvasPlayerIdentityNotificationBus, OnBeforeIdentityUpdate);
+        if (!BeginResetIdentity())
+        {
+            return false;
+        }
+
         bool retVal = true;
 
         AZStd::string anonymousIdentityPoolId;
@@ -232,7 +278,7 @@ namespace CloudGemFramework
 
                 m_authIdentityProvider = Aws::MakeShared<TokenRetrievingPersistentIdentityProvider>(ALLOC_TAG, authIdentityPoolId.c_str(), accountId.c_str(), tokenRetrievalStrategies, identitiesFilePath.c_str());
 
-#ifdef AUTH_TOKEN_CVAR_ENABLED  // See security warning in ClientManagerImpl.h before enabling the auth_token cvar.
+#ifdef AUTH_TOKEN_CVAR_ENABLED  // See security warning in PlayerIdentityComponent.h before enabling the auth_token cvar.
                 if (GetISystem() && GetISystem()->GetGlobalEnvironment())
                 {
                     if (auto cVarAuthToken = GetISystem()->GetGlobalEnvironment()->pConsole->GetCVar("auth_token"))
@@ -281,28 +327,45 @@ namespace CloudGemFramework
 
                     defaultClientSettings->credentialsProvider = m_authCredsProvider;
                     SetPlayerCredentialsProvider(m_authCredsProvider);
+
+                    EBUS_EVENT(CloudCanvasPlayerIdentityNotificationBus, OnIdentityReceived);
                 }
                 else
                 {
-                    // The credentials provider does not return error information.
-                    // Check the logs, the AWS SDK may have logged a reason for not being able to provide AWS credentials.
-                    if (!m_authIdentityProvider->HasLogins())
+                    if (!CheckRegionHttpAccess(anonymousIdentityPoolId))
                     {
-                        // No user-specific credentials were involved in this attempt, it was an anonymous call.  Is the identity pool configured correctly to allow anonymous identities?
-                        AZ_Error("CloudCanvas", false, "Unable to get AWS credentials for the anonymous identity.  The Cognito identity pool configured as %s has to support anonymous identities.",
-                            PLAYER_AUTH_ACCESS_POOL_NAME);
+                        AZ_Warning("CloudCanvas", false, "Unable to verify https access");
                     }
                     else
                     {
-                        // It's possible that the user's credentials expired or were invalidated and the user needs to sign in again.
-                        AZ_Error("CloudCanvas", false, "Unable to get AWS credentials for the authenticated user.");
+                        // The credentials provider does not return error information.
+                        // Check the logs, the AWS SDK may have logged a reason for not being able to provide AWS credentials.
+                        if (!m_authIdentityProvider->HasLogins())
+                        {
+                            // No user-specific credentials were involved in this attempt, it was an anonymous call.  Is the identity pool configured correctly to allow anonymous identities?
+                            AZ_Error("CloudCanvas", false, "Unable to get AWS credentials for the anonymous identity.  The Cognito identity pool configured as %s has to support anonymous identities.",
+                                PLAYER_AUTH_ACCESS_POOL_NAME);
+                        }
+                        else
+                        {
+                            // It's possible that the user's credentials expired or were invalidated and the user needs to sign in again.
+                            AZ_Error("CloudCanvas", false, "Unable to get AWS credentials for the authenticated user.");
+                        }
                     }
                     retVal = false;
                 }
             }
         }
-        EBUS_EVENT(CloudCanvasPlayerIdentityNotificationBus, OnAfterIdentityUpdate);
+        EndResetIdentity();
         return retVal;
+    }
+
+    void CloudCanvasPlayerIdentityComponent::EndResetIdentity()
+    {
+        // Cleared before calling OnAfterIdentityUpdate - if changes in credentialed status (Something has expired) require further adjustments to identity
+        // it is the caller's responsibility to make sure the logic doesn't result in an infinite loop.  
+        m_resettingIdentity = false;
+        EBUS_EVENT(CloudCanvasPlayerIdentityNotificationBus, OnAfterIdentityUpdate);
     }
 
     bool CloudCanvasPlayerIdentityComponent::Login(const char* authProvider, const char* authCode, const char* refreshToken, long long tokenExpiration)
@@ -412,7 +475,7 @@ namespace CloudGemFramework
         return false;
     }
 
-    AZStd::string CloudCanvasPlayerIdentityComponent::GetIdentityId() 
+    AZStd::string CloudCanvasPlayerIdentityComponent::GetIdentityId()
     {
         if (m_authIdentityProvider)
         {
@@ -423,11 +486,13 @@ namespace CloudGemFramework
 
     std::shared_ptr<Aws::Auth::AWSCredentialsProvider> CloudCanvasPlayerIdentityComponent::GetPlayerCredentialsProvider()
     {
+        AZStd::lock_guard<AZStd::mutex> credentialsLock{ m_credentialsMutex };
         return m_credsProvider;
     }
 
     void CloudCanvasPlayerIdentityComponent::SetPlayerCredentialsProvider(std::shared_ptr<Aws::Auth::AWSCredentialsProvider> credsProvider)
     {
+        AZStd::lock_guard<AZStd::mutex> credentialsLock{ m_credentialsMutex };
         m_credsProvider = credsProvider;
     }
 

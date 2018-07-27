@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "ComponentAudio.h"
 #include <IAudioSystem.h>
 #include <ICryAnimation.h>

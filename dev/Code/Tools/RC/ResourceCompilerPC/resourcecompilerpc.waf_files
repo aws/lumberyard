@@ -48,10 +48,6 @@
             "CGA/ControllerTCB.h",
             "CGA/QuatQuantization.h",
             "CGA/TCBSpline.h"
-        ],
-        "AnimationCompiler/CryAnimation":
-        [
-            "../../../CryEngine/CryAnimation/ControllerOpt.h"
         ]
     },
     "ResourceCompilerPC_uber_2.cpp":

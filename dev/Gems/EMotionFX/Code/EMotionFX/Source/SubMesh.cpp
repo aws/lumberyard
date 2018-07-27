@@ -14,9 +14,14 @@
 #include "SubMesh.h"
 #include "SkinningInfoVertexAttributeLayer.h"
 #include "Mesh.h"
+#include <EMotionFX/Source/Allocators.h>
+
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(SubMesh, MeshAllocator, 0)
+
+
     // constructor
     SubMesh::SubMesh(Mesh* parentMesh, uint32 startVertex, uint32 startIndex, uint32 startPolygon, uint32 numVerts, uint32 numIndices, uint32 numPolygons, uint32 materialIndex, uint32 numBones)
     {
@@ -43,14 +48,14 @@ namespace EMotionFX
     // create
     SubMesh* SubMesh::Create(Mesh* parentMesh, uint32 startVertex, uint32 startIndex, uint32 startPolygon, uint32 numVerts, uint32 numIndices, uint32 numPolygons, uint32 materialIndex, uint32 numBones)
     {
-        return new SubMesh(parentMesh, startVertex, startIndex, startPolygon, numVerts, numIndices, numPolygons, materialIndex, numBones);
+        return aznew SubMesh(parentMesh, startVertex, startIndex, startPolygon, numVerts, numIndices, numPolygons, materialIndex, numBones);
     }
 
 
     // clone the submesh
     SubMesh* SubMesh::Clone(Mesh* newParentMesh)
     {
-        SubMesh* clone = new SubMesh(newParentMesh, mStartVertex, mStartIndex, mStartPolygon, mNumVertices, mNumIndices, mNumPolygons, mMaterial, mBones.GetLength());
+        SubMesh* clone = aznew SubMesh(newParentMesh, mStartVertex, mStartIndex, mStartPolygon, mNumVertices, mNumIndices, mNumPolygons, mMaterial, mBones.GetLength());
         clone->mBones = mBones;
         return clone;
     }

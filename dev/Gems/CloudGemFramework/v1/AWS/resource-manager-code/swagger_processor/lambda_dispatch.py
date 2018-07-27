@@ -721,10 +721,11 @@ def _get_body_parameter_request_template_mapping(path, operation, parameter_obje
     name = parameter_object.get_string('name').value
 
     if operation in ['head', 'get']:
-        raise ValueError('Path {} operation {} defines {} parameter with location body. Cloud Canvas does not body parameters with this operation.'.format(
+        raise ValueError('{}/{} defines paramter "{}" with location body. Cloud Canvas does not allow body parameters with the {} operation.'.format(
             path,
-            operation,
-            name))
+            operation.upper(),
+            name,
+            operation))
     
     return BODY_PARAMETER_REQUEST_TEMPLATE_MAPPING.format(name=name, comma=not_a_dangling_comma)
 

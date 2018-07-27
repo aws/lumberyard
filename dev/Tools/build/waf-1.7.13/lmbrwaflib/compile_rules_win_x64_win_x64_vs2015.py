@@ -56,8 +56,7 @@ def load_win_x64_win_x64_vs2015_common_settings(conf):
     v['ARFLAGS'] += ['/MACHINE:X64']
 
     VS2015_FLAGS = [
-        '/FS',           # Fix for issue writing to pdb files
-        '/Wv:18'         # Stick with 2013 warnings for the time being...
+        '/FS'  # Fix for issue writing to pdb files
     ]
 
     v['CFLAGS'] += VS2015_FLAGS

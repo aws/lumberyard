@@ -40,7 +40,7 @@ namespace EMotionFX
     class EMFX_API MotionSystem
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MotionSystem, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_MOTIONSYSTEMS);
+        AZ_CLASS_ALLOCATOR_DECL
         friend class MotionQueue;
 
     public:

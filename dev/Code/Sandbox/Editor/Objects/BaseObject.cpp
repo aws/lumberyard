@@ -3914,14 +3914,12 @@ void CBaseObject::OnContextMenu(QMenu* menu)
     GatherUsedResources(resources);
 
     QAction* action = menu->addAction(QObject::tr("Properties"));
-    QObject::connect(action, &QAction::triggered, [this] { OnMenuProperties();
-        });                                                                        // Remove lambda when/if CBaseObject becomes a QObject
+    QObject::connect(action, &QAction::triggered, this, &CBaseObject::OnMenuProperties);
 
     if (GetIEditor()->GetAssetTagging() != NULL && SupportsEditTags())
     {
         action = menu->addAction(QObject::tr("Edit Tags"));
-        QObject::connect(action, &QAction::triggered, [this] { OnMenuEditTags();
-            });
+        QObject::connect(action, &QAction::triggered, this, &CBaseObject::OnMenuEditTags);
     }
 
     static_cast<CEditorImpl*>(GetIEditor())->OnObjectContextMenuOpened(menu, this);

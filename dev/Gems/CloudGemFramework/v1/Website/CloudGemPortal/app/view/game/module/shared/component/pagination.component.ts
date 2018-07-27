@@ -32,7 +32,7 @@ export type paginationType = 'Numbers' | 'Token';
                     </li>
                 </ul>
                 <pre>{{'Total pages: ' + pages | devonly}}</pre>
-                <pre>{{'Current page index: ' + currentIndex | devonly}}</pre>
+                <pre>{{'Current page index: ' + currentPage | devonly}}</pre>
             </nav>
         </ng-container>
     </ng-container>
@@ -45,6 +45,7 @@ export class PaginationComponent {
     @Input() pages?: number;
     @Input() showNext?: string;
     @Input() showPrevious?: string;
+    @Input() startingPage?: number = 1;
     @Output() pageChanged = new EventEmitter<number>();
 
     // The current page of the pagination component.  
@@ -55,7 +56,7 @@ export class PaginationComponent {
     }
 
     ngOnInit() {
-        this.currentPage = 1
+        this.currentPage = this.startingPage;
     }
 
     pageFn = function (pageNum) {

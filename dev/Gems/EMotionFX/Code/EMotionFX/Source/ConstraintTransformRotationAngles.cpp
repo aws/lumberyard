@@ -10,6 +10,8 @@
 *
 */
 
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "ConstraintTransformRotationAngles.h"
 #include "EventManager.h"
 
@@ -18,6 +20,9 @@
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(ConstraintTransformRotationAngles, Integration::EMotionFXAllocator, 0)
+
+
     // Constructor, which inits on default values
     ConstraintTransformRotationAngles::ConstraintTransformRotationAngles()
     {
@@ -244,4 +249,30 @@ namespace EMotionFX
         DrawSphericalLine(AZ::Vector2(minX, minY), AZ::Vector2(minX, maxY), numSegments, color, radius, offset);
         DrawSphericalLine(AZ::Vector2(maxX, minY), AZ::Vector2(maxX, maxY), numSegments, color, radius, offset);
     }
-}   // namespace EMotionFX
+
+
+    void ConstraintTransformRotationAngles::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<ConstraintTransformRotationAngles>()
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Enum<EAxis>("", "")
+            ->Value("X Axis", AXIS_X)
+            ->Value("Y Axis", AXIS_Y)
+            ->Value("Z Axis", AXIS_Z)
+            ;
+    }
+} // namespace EMotionFX

@@ -474,12 +474,12 @@ static void CmdGotoEditor(IConsoleCmdArgs* pArgs)
     float x, y, z, wx, wy, wz;
 
     if (iArgCount == 7
-        && sscanf(pArgs->GetArg(1), "%f", &x) == 1
-        && sscanf(pArgs->GetArg(2), "%f", &y) == 1
-        && sscanf(pArgs->GetArg(3), "%f", &z) == 1
-        && sscanf(pArgs->GetArg(4), "%f", &wx) == 1
-        && sscanf(pArgs->GetArg(5), "%f", &wy) == 1
-        && sscanf(pArgs->GetArg(6), "%f", &wz) == 1)
+        && azsscanf(pArgs->GetArg(1), "%f", &x) == 1
+        && azsscanf(pArgs->GetArg(2), "%f", &y) == 1
+        && azsscanf(pArgs->GetArg(3), "%f", &z) == 1
+        && azsscanf(pArgs->GetArg(4), "%f", &wx) == 1
+        && azsscanf(pArgs->GetArg(5), "%f", &wy) == 1
+        && azsscanf(pArgs->GetArg(6), "%f", &wz) == 1)
     {
         Matrix34 tm = pRenderViewport->GetViewTM();
 
@@ -537,7 +537,14 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
 
     sip.pSharedEnvironment = AZ::Environment::GetInstance();
 
+#ifdef AZ_PLATFORM_APPLE_OSX
+    // Create a hidden QWidget. Would show a black window on macOS otherwise.
+    auto window = new QWidget();
+    QObject::connect(qApp, &QApplication::lastWindowClosed, window, &QWidget::deleteLater);
+    sip.hWnd = (HWND)window->winId();
+#else
     sip.hWnd = hwndForInputSystem;
+#endif
     sip.hWndForInputSystem = hwndForInputSystem;
 
     sip.pLogCallback = &m_logFile;
@@ -713,80 +720,79 @@ bool CGameEngine::InitGame(const char* sGameDLL)
         }
     }
 
-
-
-
-
-    if (!m_pEditorGame->Init(m_pISystem, m_pGameToEditorInterface))
+    if (m_pEditorGame && !m_pEditorGame->Init(m_pISystem, m_pGameToEditorInterface))
     {
-        Error("IEditorGame::Init(%d) failed!", m_pISystem);
-
-        return false;
+        // Failed to initialize the legacy editor game, so set it to null
+        m_pEditorGame = nullptr;
     }
 
-    // Execute Editor.lua override file.
-    IScriptSystem* pScriptSystem = m_pISystem->GetIScriptSystem();
-
-    pScriptSystem->ExecuteFile("Editor.Lua", false);
-    CStartupLogoDialog::SetText("Loading Entity Scripts...");
-    CEntityScriptRegistry::Instance()->LoadScripts();
-    CStartupLogoDialog::SetText("Loading Flowgraphs...");
-    IEditor* pEditor = GetIEditor();
-
-    if (pEditor->GetFlowGraphManager())
+    if (m_pEditorGame)
     {
-        pEditor->GetFlowGraphManager()->Init();
-    }
-
-    CStartupLogoDialog::SetText("Loading Material Effects Flowgraphs...");
-    if (GetIEditor()->GetMatFxGraphManager())
-    {
-        GetIEditor()->GetMatFxGraphManager()->Init();
-    }
-
-    CStartupLogoDialog::SetText("Initializing Flowgraph Debugger...");
-    if (GetIEditor()->GetFlowGraphDebuggerEditor())
-    {
-        GetIEditor()->GetFlowGraphDebuggerEditor()->Init();
-    }
-
-    CStartupLogoDialog::SetText("Initializing Flowgraph Module Manager...");
-    if (GetIEditor()->GetFlowGraphModuleManager())
-    {
-        GetIEditor()->GetFlowGraphModuleManager()->Init();
-    }
-
-    // Initialize prefab events after flowgraphmanager to avoid handling creation of flow node prototypes
-    CPrefabManager* pPrefabManager = pEditor->GetPrefabManager();
-    if (pPrefabManager)
-    {
-        CStartupLogoDialog::SetText("Initializing Prefab Events...");
-        CPrefabEvents* pPrefabEvents = pPrefabManager->GetPrefabEvents();
-        CRY_ASSERT(pPrefabEvents != NULL);
-        const bool bResult = pPrefabEvents->Init();
-        if (!bResult)
+        // Execute Editor.lua override file.
+        if (IScriptSystem* pScriptSystem = m_pISystem->GetIScriptSystem())
         {
-            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "CGameEngine::InitGame: Failed to init prefab events");
+            pScriptSystem->ExecuteFile("Editor.Lua", false);
         }
+        CStartupLogoDialog::SetText("Loading Entity Scripts...");
+        CEntityScriptRegistry::Instance()->LoadScripts();
+        CStartupLogoDialog::SetText("Loading Flowgraphs...");
+        IEditor* pEditor = GetIEditor();
+
+        if (pEditor->GetFlowGraphManager())
+        {
+            pEditor->GetFlowGraphManager()->Init();
+        }
+
+        CStartupLogoDialog::SetText("Loading Material Effects Flowgraphs...");
+        if (GetIEditor()->GetMatFxGraphManager())
+        {
+            GetIEditor()->GetMatFxGraphManager()->Init();
+        }
+
+        CStartupLogoDialog::SetText("Initializing Flowgraph Debugger...");
+        if (GetIEditor()->GetFlowGraphDebuggerEditor())
+        {
+            GetIEditor()->GetFlowGraphDebuggerEditor()->Init();
+        }
+
+        CStartupLogoDialog::SetText("Initializing Flowgraph Module Manager...");
+        if (GetIEditor()->GetFlowGraphModuleManager())
+        {
+            GetIEditor()->GetFlowGraphModuleManager()->Init();
+        }
+
+        // Initialize prefab events after flowgraphmanager to avoid handling creation of flow node prototypes
+        CPrefabManager* pPrefabManager = pEditor->GetPrefabManager();
+        if (pPrefabManager)
+        {
+            CStartupLogoDialog::SetText("Initializing Prefab Events...");
+            CPrefabEvents* pPrefabEvents = pPrefabManager->GetPrefabEvents();
+            CRY_ASSERT(pPrefabEvents != NULL);
+            const bool bResult = pPrefabEvents->Init();
+            if (!bResult)
+            {
+                CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "CGameEngine::InitGame: Failed to init prefab events");
+            }
+        }
+
+        if (pEditor->GetAI())
+        {
+            pEditor->GetAI()->Init(m_pISystem);
+        }
+
+        CCustomActionsEditorManager* pCustomActionsManager = pEditor->GetCustomActionManager();
+
+        if (pCustomActionsManager)
+        {
+            pCustomActionsManager->Init(m_pISystem);
+        }
+
+
+        CStartupLogoDialog::SetText("Loading Equipment Packs...");
+        // Load Equipment packs from disk and export to Game
+        pEditor->GetEquipPackLib()->Reset();
+        pEditor->GetEquipPackLib()->LoadLibs(true);
     }
-
-    if (pEditor->GetAI())
-    {
-        pEditor->GetAI()->Init(m_pISystem);
-    }
-
-    CCustomActionsEditorManager* pCustomActionsManager = pEditor->GetCustomActionManager();
-
-    if (pCustomActionsManager)
-    {
-        pCustomActionsManager->Init(m_pISystem);
-    }
-
-
-    CStartupLogoDialog::SetText("Loading Equipment Packs...");
-    // Load Equipment packs from disk and export to Game
-    pEditor->GetEquipPackLib()->Reset();
-    pEditor->GetEquipPackLib()->LoadLibs(true);
 
     // in editor we do it later, bExecuteCommandLine was set to false
     m_pISystem->ExecuteCommandLine();
@@ -1045,7 +1051,10 @@ void CGameEngine::SwitchToInGame()
     m_pISystem->GetIMovieSystem()->EnablePhysicsEvents(true);
     m_bInGameMode = true;
 
-    m_pEditorGame->SetGameMode(true);
+    if (m_pEditorGame)
+    {
+        m_pEditorGame->SetGameMode(true);
+    }
 
     CRuler* pRuler = GetIEditor()->GetRuler();
     if (pRuler)
@@ -1063,10 +1072,13 @@ void CGameEngine::SwitchToInGame()
 
     gEnv->p3DEngine->GetTimeOfDay()->EndEditMode();
     HideLocalPlayer(false);
-    m_pEditorGame->SetPlayerPosAng(m_playerViewTM.GetTranslation(), m_playerViewTM.TransformVector(FORWARD_DIRECTION));
+    if (m_pEditorGame)
+    {
+        m_pEditorGame->SetPlayerPosAng(m_playerViewTM.GetTranslation(), m_playerViewTM.TransformVector(FORWARD_DIRECTION));
+    }
     gEnv->pSystem->GetViewCamera().SetMatrix(m_playerViewTM);
 
-    IEntity* myPlayer = m_pEditorGame->GetPlayer();
+    IEntity* myPlayer = m_pEditorGame ? m_pEditorGame->GetPlayer() : nullptr;
 
     if (myPlayer)
     {
@@ -1104,20 +1116,23 @@ void CGameEngine::SwitchToInGame()
 
     // When the player starts the game inside an area trigger, it will get
     // triggered.
-    gEnv->pEntitySystem->ResetAreas();
+    if (gEnv->pEntitySystem)
+    {
+        gEnv->pEntitySystem->ResetAreas();
 
-    // Register in game entitysystem listener.
-    s_InGameEntityListener = new SInGameEntitySystemListener;
-    gEnv->pEntitySystem->AddSink(s_InGameEntityListener, IEntitySystem::OnSpawn | IEntitySystem::OnRemove, 0);
+        // Register in game entitysystem listener.
+        s_InGameEntityListener = new SInGameEntitySystemListener;
+        gEnv->pEntitySystem->AddSink(s_InGameEntityListener, IEntitySystem::OnSpawn | IEntitySystem::OnRemove, 0);
 
-    SEntityEvent event;
-    event.event = ENTITY_EVENT_RESET;
-    event.nParam[0] = 1;
-    gEnv->pEntitySystem->SendEventToAll(event);
-    event.event = ENTITY_EVENT_LEVEL_LOADED;
-    gEnv->pEntitySystem->SendEventToAll(event);
-    event.event = ENTITY_EVENT_START_GAME;
-    gEnv->pEntitySystem->SendEventToAll(event);
+        SEntityEvent event;
+        event.event = ENTITY_EVENT_RESET;
+        event.nParam[0] = 1;
+        gEnv->pEntitySystem->SendEventToAll(event);
+        event.event = ENTITY_EVENT_LEVEL_LOADED;
+        gEnv->pEntitySystem->SendEventToAll(event);
+        event.event = ENTITY_EVENT_START_GAME;
+        gEnv->pEntitySystem->SendEventToAll(event);
+    }
     m_pISystem->GetIMovieSystem()->Reset(true, false);
 
     // Transition to runtime entity context.
@@ -1212,7 +1227,10 @@ void CGameEngine::SwitchToInEditor()
     {
         event.nParam[0] = 0;
     }
-    gEnv->pEntitySystem->SendEventToAll(event);
+    if (gEnv->pEntitySystem)
+    {
+        gEnv->pEntitySystem->SendEventToAll(event);
+    }
 
     // [Anton] - order changed, see comments for CGameEngine::SetSimulationMode
     //! Send event to switch out of game.
@@ -1221,9 +1239,12 @@ void CGameEngine::SwitchToInEditor()
     // Hide all drawing of character.
     HideLocalPlayer(true);
     m_bInGameMode = false;
-    m_pEditorGame->SetGameMode(false);
+    if (m_pEditorGame)
+    {
+        m_pEditorGame->SetGameMode(false);
+    }
 
-    IEntity* myPlayer = m_pEditorGame->GetPlayer();
+    IEntity* myPlayer = m_pEditorGame ? m_pEditorGame->GetPlayer() : nullptr;
     if (myPlayer)
     {
         // Move the camera to the entity position so it doesn't shift backward each time you drop in.
@@ -1281,11 +1302,6 @@ void CGameEngine::RequestSetGameMode(bool inGame)
 void CGameEngine::SetGameMode(bool bInGame)
 {
     if (m_bInGameMode == bInGame)
-    {
-        return;
-    }
-
-    if (!m_pEditorGame)
     {
         return;
     }
@@ -1418,8 +1434,11 @@ void CGameEngine::SetSimulationMode(bool enabled, bool bOnlyPhysics)
         }
 
         // Register in game entitysystem listener.
-        s_InGameEntityListener = new SInGameEntitySystemListener;
-        gEnv->pEntitySystem->AddSink(s_InGameEntityListener, IEntitySystem::OnSpawn | IEntitySystem::OnRemove, 0);
+        if (gEnv->pEntitySystem)
+        {
+            s_InGameEntityListener = new SInGameEntitySystemListener;
+            gEnv->pEntitySystem->AddSink(s_InGameEntityListener, IEntitySystem::OnSpawn | IEntitySystem::OnRemove, 0);
+        }
     }
     else
     {
@@ -1446,12 +1465,15 @@ void CGameEngine::SetSimulationMode(bool enabled, bool bOnlyPhysics)
 
 
         // Unregister ingame entitysystem listener, and kill all remaining entities.
-        gEnv->pEntitySystem->RemoveSink(s_InGameEntityListener);
-        delete s_InGameEntityListener;
-        s_InGameEntityListener = 0;
+        if (gEnv->pEntitySystem)
+        {
+            gEnv->pEntitySystem->RemoveSink(s_InGameEntityListener);
+            delete s_InGameEntityListener;
+            s_InGameEntityListener = 0;
+        }
     }
 
-    if (!bOnlyPhysics)
+    if (!bOnlyPhysics && gEnv->pEntitySystem)
     {
         SEntityEvent event;
         event.event = ENTITY_EVENT_RESET;
@@ -1471,18 +1493,21 @@ void CGameEngine::SetSimulationMode(bool enabled, bool bOnlyPhysics)
 
     if (m_bSimulationMode && !bOnlyPhysics)
     {
-        SEntityEvent event;
-        event.event = ENTITY_EVENT_LEVEL_LOADED;
-        gEnv->pEntitySystem->SendEventToAll(event);
+        if (gEnv->pEntitySystem)
+        {
+            SEntityEvent event;
+            event.event = ENTITY_EVENT_LEVEL_LOADED;
+            gEnv->pEntitySystem->SendEventToAll(event);
 
-        event.event = ENTITY_EVENT_START_GAME;
-        gEnv->pEntitySystem->SendEventToAll(event);
+            event.event = ENTITY_EVENT_START_GAME;
+            gEnv->pEntitySystem->SendEventToAll(event);
+        }
 
         // Transition to runtime entity context.
         AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequestBus::Events::StartPlayInEditor);
     }
 
-    if (m_pISystem->GetIGame())
+    if (m_pISystem->GetIGame() && m_pISystem->GetIGame()->GetIGameFramework())
     {
         m_pISystem->GetIGame()->GetIGameFramework()->OnEditorSetGameMode(enabled + 2);
     }
@@ -1997,7 +2022,7 @@ void CGameEngine::Update()
     AZ::ComponentApplication* componentApplication = nullptr;
     EBUS_EVENT_RESULT(componentApplication, AZ::ComponentApplicationBus, GetApplication);
 
-    if (m_pEditorGame && m_bInGameMode)
+    if (m_bInGameMode)
     {
         CViewport* pRenderViewport = GetIEditor()->GetViewManager()->GetGameViewport();
 
@@ -2007,13 +2032,44 @@ void CGameEngine::Update()
             int width = 640;
             int height = 480;
             pRenderViewport->GetDimensions(&width, &height);
+
+            // Check for custom width and height cvars in use by Track View.
+            // The backbuffer size maybe have been changed, so we need to make sure the viewport
+            // is setup with the correct aspect ratio here so the captured output will look correct.
+            ICVar* cVar = gEnv->pConsole->GetCVar("TrackViewRenderOutputCapturing");
+            if (cVar && cVar->GetIVal() != 0)
+            {
+                const int customWidth = gEnv->pConsole->GetCVar("r_CustomResWidth")->GetIVal();
+                const int customHeight = gEnv->pConsole->GetCVar("r_CustomResHeight")->GetIVal();
+                if (customWidth != 0 && customHeight != 0)
+                {
+                    IEditor* editor = GetIEditor();
+                    AZ_Assert(editor, "Expected valid Editor");
+                    IRenderer* renderer = editor->GetRenderer();
+                    AZ_Assert(renderer, "Expected valid Renderer");
+
+                    int maxRes = renderer->GetMaxSquareRasterDimension();
+                    width = clamp_tpl(customWidth, 32, maxRes);
+                    height = clamp_tpl(customHeight, 32, maxRes);
+                }
+            }
+
             CCamera& cam = gEnv->pSystem->GetViewCamera();
             cam.SetFrustum(width, height, pRenderViewport->GetFOV(), cam.GetNearPlane(), cam.GetFarPlane(), cam.GetPixelAspectRatio());
         }
 
-        gEnv->pGame->GetIGameFramework()->PreUpdate(true, 0);
-        componentApplication->Tick(gEnv->pTimer->GetFrameTime(ITimer::ETIMER_GAME));
-        gEnv->pGame->GetIGameFramework()->PostUpdate(true, 0);
+        if (gEnv->pGame && gEnv->pGame->GetIGameFramework())
+        {
+            gEnv->pGame->GetIGameFramework()->PreUpdate(true, 0);
+            componentApplication->Tick(gEnv->pTimer->GetFrameTime(ITimer::ETIMER_GAME));
+            gEnv->pGame->GetIGameFramework()->PostUpdate(true, 0);
+        }
+        else if (gEnv->pSystem)
+        {
+            gEnv->pSystem->UpdatePreTickBus();
+            componentApplication->Tick(gEnv->pTimer->GetFrameTime(ITimer::ETIMER_GAME));
+            gEnv->pSystem->UpdatePostTickBus();
+        }
 
         // TODO: still necessary after AVI recording removal?
         if (pRenderViewport)
@@ -2024,8 +2080,6 @@ void CGameEngine::Update()
     }
     else
     {
-        gEnv->GetJobManager()->SetFrameStartTime(gEnv->pTimer->GetAsyncTime());
-
         // [marco] check current sound and vis areas for music etc.
         // but if in game mode, 'cos is already done in the above call to game->update()
         unsigned int updateFlags = ESYSUPDATE_EDITOR;
@@ -2065,7 +2119,7 @@ void CGameEngine::Update()
                 pFlowSystem->Update();
             }
 
-            IDialogSystem* pDialogSystem = gEnv->pGame ? gEnv->pGame->GetIGameFramework()->GetIDialogSystem() : NULL;
+            IDialogSystem* pDialogSystem = gEnv->pGame ? (gEnv->pGame->GetIGameFramework() ? gEnv->pGame->GetIGameFramework()->GetIDialogSystem() : NULL) : NULL;
 
             if (pDialogSystem)
             {
@@ -2202,12 +2256,15 @@ void CGameEngine::UnlockResources()
 
 bool CGameEngine::SupportsMultiplayerGameRules()
 {
-    return m_pEditorGame->SupportsMultiplayerGameRules();
+    return m_pEditorGame ? m_pEditorGame->SupportsMultiplayerGameRules() : false;
 }
 
 void CGameEngine::ToggleMultiplayerGameRules()
 {
-    m_pEditorGame->ToggleMultiplayerGameRules();
+    if (m_pEditorGame)
+    {
+        m_pEditorGame->ToggleMultiplayerGameRules();
+    }
 }
 
 bool CGameEngine::BuildEntitySerializationList(XmlNodeRef output)
@@ -2217,7 +2274,7 @@ bool CGameEngine::BuildEntitySerializationList(XmlNodeRef output)
 
 void CGameEngine::OnTerrainModified(const Vec2& modPosition, float modAreaRadius, bool fullTerrain)
 {
-    INavigationSystem* pNavigationSystem = gEnv->pAISystem->GetNavigationSystem();
+    INavigationSystem* pNavigationSystem = gEnv->pAISystem ? gEnv->pAISystem->GetNavigationSystem() : nullptr;
 
     if (pNavigationSystem)
     {
@@ -2241,7 +2298,7 @@ void CGameEngine::OnTerrainModified(const Vec2& modPosition, float modAreaRadius
 
 void CGameEngine::OnAreaModified(const AABB& modifiedArea)
 {
-    INavigationSystem* pNavigationSystem = gEnv->pAISystem->GetNavigationSystem();
+    INavigationSystem* pNavigationSystem = gEnv->pAISystem ? gEnv->pAISystem->GetNavigationSystem() : nullptr;
     if (pNavigationSystem)
     {
         pNavigationSystem->WorldChanged(modifiedArea);

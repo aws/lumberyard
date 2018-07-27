@@ -57,11 +57,11 @@ namespace Multiplayer
         {
             AZ_Assert(str, "Invalid value");
 
-            if (!stricmp(str, "IPv4"))
+            if (!azstricmp(str, "IPv4"))
             {
                 return GridMate::Driver::BSD_AF_INET;
             }
-            else if (!stricmp(str, "IPv6"))
+            else if (!azstricmp(str, "IPv6"))
             {
                 return GridMate::Driver::BSD_AF_INET6;
             }

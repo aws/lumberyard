@@ -233,7 +233,6 @@ void UiRadioButtonGroupComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiRadioButtonGroupBus>("UiRadioButtonGroupBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetState", &UiRadioButtonGroupBus::Events::GetCheckedRadioButton)
             ->Event("SetState", &UiRadioButtonGroupBus::Events::SetState)
             ->Event("GetAllowUncheck", &UiRadioButtonGroupBus::Events::GetAllowUncheck)
@@ -245,7 +244,6 @@ void UiRadioButtonGroupComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetChangedActionName", &UiRadioButtonGroupBus::Events::SetChangedActionName);
 
         behaviorContext->EBus<UiRadioButtonGroupNotificationBus>("UiRadioButtonGroupNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiRadioButtonGroupNotificationBusBehaviorHandler>();
     }
 }

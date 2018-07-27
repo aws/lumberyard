@@ -98,6 +98,7 @@ QMap<QString, AttributeItemLogicCallbacks::InnerCallbackType> AttributeItemLogic
 
     AddFunction(resolveVisibility)
     {
+        Q_UNUSED(thisFunctionName)
         CAttributeView* attributeView = caller->getAttributeView();
         attributeView->ResolveVisibility();
 
@@ -106,6 +107,7 @@ QMap<QString, AttributeItemLogicCallbacks::InnerCallbackType> AttributeItemLogic
 
     AddFunction(ResetPersistentState)
     {
+        Q_UNUSED(thisFunctionName)
         //Resets the sPersistentCallbackData to the initial state
         //This is used when a new particle is loaded
         sPersistentCallbackData.m_aspectRatios.clear();

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "ArgumentModel.h"
 #include "Core/Polygon.h"
 #include "Core/ModelDB.h"

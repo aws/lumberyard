@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "MemoryDataParser.h"
 #include "MemoryDataAggregator.hxx"

@@ -11,8 +11,8 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "FlowBaseNode.h"
+#include "CryLegacy_precompiled.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "FlowEntityNode.h"
 
 class CFlowNode_Attachment

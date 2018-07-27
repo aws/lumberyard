@@ -279,7 +279,6 @@ void UiLayoutCellComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiLayoutCellBus>("UiLayoutCellBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetMinWidth", &UiLayoutCellBus::Events::GetMinWidth)
             ->Event("SetMinWidth", &UiLayoutCellBus::Events::SetMinWidth)
             ->Event("GetMinHeight", &UiLayoutCellBus::Events::GetMinHeight)

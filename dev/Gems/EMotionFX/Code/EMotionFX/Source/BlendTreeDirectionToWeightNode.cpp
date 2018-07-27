@@ -10,7 +10,8 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "BlendTreeDirectionToWeightNode.h"
 #include "AnimGraphInstance.h"
@@ -20,39 +21,10 @@
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeDirectionToWeightNode::BlendTreeDirectionToWeightNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeDirectionToWeightNode, AnimGraphAllocator, 0)
 
-
-    // destructor
-    BlendTreeDirectionToWeightNode::~BlendTreeDirectionToWeightNode()
-    {
-    }
-
-
-    // create
-    BlendTreeDirectionToWeightNode* BlendTreeDirectionToWeightNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeDirectionToWeightNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeDirectionToWeightNode::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeDirectionToWeightNode::RegisterPorts()
+    BlendTreeDirectionToWeightNode::BlendTreeDirectionToWeightNode()
+        : AnimGraphNode()
     {
         // setup the input ports
         InitInputPorts(2);
@@ -65,9 +37,22 @@ namespace EMotionFX
     }
 
 
-    // register the parameters
-    void BlendTreeDirectionToWeightNode::RegisterAttributes()
+    BlendTreeDirectionToWeightNode::~BlendTreeDirectionToWeightNode()
     {
+    }
+
+
+    bool BlendTreeDirectionToWeightNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -85,20 +70,6 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeDirectionToWeightNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeDirectionToWeightNode* clone = new BlendTreeDirectionToWeightNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // the update function
     void BlendTreeDirectionToWeightNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
@@ -108,7 +79,7 @@ namespace EMotionFX
         //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
 
         // if there are less than two incoming connections, there is nothing to do
-        const uint32 numConnections = mConnections.GetLength();
+        const size_t numConnections = mConnections.size();
         if (numConnections < 2 || mDisabled)
         {
             GetOutputFloat(animGraphInstance, OUTPUTPORT_WEIGHT)->SetValue(0.0f);
@@ -171,16 +142,35 @@ namespace EMotionFX
     }
 
 
-    // get the blend node type string
-    const char* BlendTreeDirectionToWeightNode::GetTypeString() const
-    {
-        return "BlendTreeDirectionToWeightNode";
-    }
-
-
     uint32 BlendTreeDirectionToWeightNode::GetVisualColor() const
     {
         return MCore::RGBA(50, 200, 50);
     }
-}   // namespace EMotionFX
+
+
+    void BlendTreeDirectionToWeightNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeDirectionToWeightNode, AnimGraphNode>()
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeDirectionToWeightNode>("Direction To Weight", "Direction to weight attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ;
+    }
+} // namespace EMotionFX
 

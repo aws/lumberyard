@@ -54,7 +54,6 @@
             "Utils.cpp",
             "Utils.h",
             "api.h",
-            "stdafx.cpp",
             "stdafx.h",
             "EditorUI_QTAPI.h",
             "EditorUI_QT.cpp",

@@ -13,7 +13,7 @@
 #include <ISystem.h>
 #include <IFlowSystem.h>
 
-#include "../FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <GameplayEventBus.h>
 #include <AzCore/Math/Vector3.h>
 

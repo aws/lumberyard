@@ -13,6 +13,11 @@
 
 #pragma once
 
+// Shader cache directory
+#define g_shaderCache "Shaders/Cache/"
+
+#define CONCAT_PATHS(a, b) a b
+
 struct SPreprocessMasks
 {
     uint64 nRT, nRTSet;

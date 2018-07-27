@@ -73,7 +73,7 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
     //restart parameters
     static const size_t MAX_RESTART_LEVEL_NAME = 256;
     char fileName[MAX_RESTART_LEVEL_NAME];
-    strcpy(fileName, "");
+    azstrcpy(fileName, AZ_ARRAY_SIZE(fileName),  "");
     static const char logFileName[] = "@log@/Game.log";
 
     // If there are no handlers for the editor game bus, attempt to load the legacy gamedll instead
@@ -122,7 +122,7 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
     startupParams.pSharedEnvironment = AZ::Environment::GetInstance();
     startupParams.hInstance = GetModuleHandle(0);
     startupParams.sLogFileName = logFileName;
-    strcpy(startupParams.szSystemCmdLine, commandLine);
+    azstrcpy(startupParams.szSystemCmdLine, AZ_ARRAY_SIZE(startupParams.szSystemCmdLine), commandLine);
     //startupParams.pProtectedFunctions[0] = &TestProtectedFunction;
 
     engineCfg.CopyToStartupParams(startupParams);
@@ -154,33 +154,29 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
         EditorGameRequestBus::BroadcastResult(pGameStartup, &EditorGameRequestBus::Events::CreateGameStartup);
     }
 
-
-    if (!pGameStartup)
-    {
-        // failed to create the startup interface
-        if (legacyGameDllStartup)
-        {
-            CryFreeLibrary(gameDll);
-        }
-
-        const char* noPromptArg = strstr(commandLine, "-noprompt");
-        if (noPromptArg == NULL)
-        {
-            MessageBox(0, "Failed to create the GameStartup Interface!", "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
-        }
-
-        return 0;
-    }
-
-    bool oaRun = false;
-
     if (strstr(commandLine, "-norandom"))
     {
         startupParams.bNoRandom = 1;
     }
 
+    // The legacy IGameStartup and IGameFramework are now optional,
+    // if they don't exist we need to create CrySystem here instead.
+    if (!pGameStartup || !pGameStartup->Init(startupParams))
+    {
+    #if !defined(AZ_MONOLITHIC_BUILD)
+        HMODULE systemLib = CryLoadLibraryDefName("CrySystem");
+        PFNCREATESYSTEMINTERFACE CreateSystemInterface = systemLib ? (PFNCREATESYSTEMINTERFACE)CryGetProcAddress(systemLib, "CreateSystemInterface") : nullptr;
+        if (CreateSystemInterface)
+        {
+            startupParams.pSystem = CreateSystemInterface(startupParams);
+        }
+    #else
+        startupParams.pSystem = CreateSystemInterface(startupParams);
+    #endif // AZ_MONOLITHIC_BUILD
+    }
+
     // run the game
-    if (pGameStartup->Init(startupParams))
+    if (startupParams.pSystem)
     {
 #if !defined(SYS_ENV_AS_STRUCT)
         gEnv = startupParams.pSystem->GetGlobalEnvironment();
@@ -196,19 +192,19 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
         gEnv->pConsole->ExecuteString("exec autoexec.cfg");
 
         // Run the main loop
-        LumberyardLauncher::RunMainLoop(gameApp, *gEnv->pGame->GetIGameFramework());
+        LumberyardLauncher::RunMainLoop(gameApp);
 
-        bool isLevelRequested = pGameStartup->GetRestartLevel(&pRestartLevelName);
+        bool isLevelRequested = pGameStartup && pGameStartup->GetRestartLevel(&pRestartLevelName);
         if (pRestartLevelName)
         {
             if (strlen(pRestartLevelName) < MAX_RESTART_LEVEL_NAME)
             {
-                strcpy(fileName, pRestartLevelName);
+                azstrcpy(fileName, AZ_ARRAY_SIZE(fileName), pRestartLevelName);
             }
         }
 
         char pRestartMod[255];
-        bool isModRequested = pGameStartup->GetRestartMod(pRestartMod, sizeof(pRestartMod));
+        bool isModRequested = pGameStartup && pGameStartup->GetRestartMod(pRestartMod, sizeof(pRestartMod));
 
         if (isLevelRequested || isModRequested)
         {
@@ -244,7 +240,7 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
         else
         {
             // check if there is a patch to install. If there is, do it now.
-            const char* pfilename = pGameStartup->GetPatch();
+            const char* pfilename = pGameStartup ? pGameStartup->GetPatch() : nullptr;
             if (pfilename)
             {
                 STARTUPINFO si;
@@ -255,8 +251,11 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
             }
         }
 
-        pGameStartup->Shutdown();
-        pGameStartup = 0;
+        if (pGameStartup)
+        {
+            pGameStartup->Shutdown();
+            pGameStartup = 0;
+        }
 
         if (legacyGameDllStartup)
         {
@@ -269,12 +268,15 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
         const char* noPromptArg = strstr(commandLine, "-noprompt");
         if (noPromptArg == NULL)
         {
-            MessageBox(0, "Failed to initialize the GameStartup Interface!", "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
+            MessageBox(0, "Failed to initialize the CrySystem Interface!", "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
         }
 #endif
-        // if initialization failed, we still need to call shutdown
-        pGameStartup->Shutdown();
-        pGameStartup = 0;
+        if (pGameStartup)
+        {
+            // if initialization failed, we still need to call shutdown
+            pGameStartup->Shutdown();
+            pGameStartup = 0;
+        }
 
         if (legacyGameDllStartup)
         {

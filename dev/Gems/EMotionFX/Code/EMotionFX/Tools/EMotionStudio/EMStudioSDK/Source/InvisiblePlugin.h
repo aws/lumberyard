@@ -37,10 +37,10 @@ namespace EMStudio
         EMStudioPlugin::EPluginType GetPluginType() const override              { return EMStudioPlugin::PLUGINTYPE_INVISIBLE; }
 
         bool Init() override { return true; }   // for this type of plugin, perform the init inside the constructor
-        virtual bool GetHasWindowWithObjectName(const AZStd::string& objectName) override { MCORE_UNUSED(objectName); return false; }
-        virtual QString GetObjectName() const override                          { return objectName(); }
-        virtual void SetObjectName(const QString& objectName) override          { setObjectName(objectName); }
-        virtual void CreateBaseInterface(const char* objectName) override       { MCORE_UNUSED(objectName); }
+        bool GetHasWindowWithObjectName(const AZStd::string& objectName) override { MCORE_UNUSED(objectName); return false; }
+        QString GetObjectName() const override                          { return objectName(); }
+        void SetObjectName(const QString& objectName) override          { setObjectName(objectName); }
+        void CreateBaseInterface(const char* objectName) override       { MCORE_UNUSED(objectName); }
     };
 }   // namespace EMStudio
 

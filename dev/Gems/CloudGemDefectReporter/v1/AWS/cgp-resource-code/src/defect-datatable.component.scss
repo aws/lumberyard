@@ -1,0 +1,56 @@
+.dropdown-menu {
+    max-height: 400px;
+    z-index: 100;
+    overflow-y: hidden;
+}
+
+.dropdown-toggle::after {
+    display: none;
+}
+
+.btn-columns {
+    margin: 10px;
+}
+
+.column-selector-checkbox, .read-status-radio-button {
+    margin: 5px 10px 5px 10px;
+}
+
+.filter-input {
+    margin: 10px;
+    width: 90%;
+}
+
+.table-header {
+    display:inline-flex;
+}
+
+.reports-counter {
+    padding-top: 15px;
+}
+
+.status-selector{
+    margin-left: 0;
+}
+
+.column-checkbox-area, .read-status-radio-button-area {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.ngx-datatable.material {
+    box-shadow: 0 0 0 0;
+}
+
+::ng-deep .datatable-body-row {
+   cursor: pointer;
+}
+
+::ng-deep .page-count {
+    display:none;
+}
+
+.read-status {
+    font-family: "AmazonEmber-Light";
+    font-size: 14px;
+}

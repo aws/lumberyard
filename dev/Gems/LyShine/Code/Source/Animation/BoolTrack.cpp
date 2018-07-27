@@ -90,5 +90,5 @@ void UiBoolTrack::Reflect(AZ::SerializeContext* serializeContext)
 
     serializeContext->Class<UiBoolTrack, TUiAnimTrack<IBoolKey> >()
         ->Version(1)
-        ->SerializerForEmptyClass();
+        ;
 }

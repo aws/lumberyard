@@ -622,10 +622,10 @@
         }, 
         "durango_vs2015": {
             "importlibpath_debug": [
-                "bin/durango/170300/Debug"
+                "bin/durango/171100/Debug"
             ], 
             "importlibpath_release": [
-                "bin/durango/170300/Release"
+                "bin/durango/171100/Release"
             ], 
             "aws_cpp_sdk_all_shared/import": [
                 "${aws_cpp_sdk_all}.lib"
@@ -667,10 +667,10 @@
                 "${aws_cpp_sdk_identity_metrics}.lib"
             ], 
             "sharedlibpath_debug": [
-                "bin/durango/170300/Debug"
+                "bin/durango/171100/Debug"
             ], 
             "sharedlibpath_release": [
-                "bin/durango/170300/Release"
+                "bin/durango/171100/Release"
             ], 
             "aws_cpp_sdk_all_shared/shared": [
                 "${aws_cpp_sdk_all}.dll"

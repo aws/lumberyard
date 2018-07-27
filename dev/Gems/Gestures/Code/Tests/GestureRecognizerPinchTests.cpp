@@ -36,11 +36,11 @@ public:
     }
 };
 
-class MockPinchListener
-    : public Gestures::IPinchListener
+class MockPinchRecognizer
+    : public Gestures::RecognizerPinch
 {
 public:
-    MockPinchListener()
+    MockPinchRecognizer()
         : m_initCount(0)
         , m_updateCount(0)
         , m_endCount(0)
@@ -51,9 +51,9 @@ public:
     int m_updateCount;
     int m_endCount;
 
-    void OnPinchInitiated(const Gestures::RecognizerPinch& recognizer) override { ++m_initCount; }
-    void OnPinchUpdated(const Gestures::RecognizerPinch& recognizer) override { ++m_updateCount; }
-    void OnPinchEnded(const Gestures::RecognizerPinch& recognizer) override { ++m_endCount; }
+    void OnContinuousGestureInitiated() override { ++m_initCount; }
+    void OnContinuousGestureUpdated() override { ++m_updateCount; }
+    void OnContinuousGestureEnded() override { ++m_endCount; }
 };
 
 
@@ -64,119 +64,119 @@ TEST_F(PinchTests, Sanity_Pass)
 
 TEST_F(PinchTests, NoInput_DefaultConfig_NotRecognized)
 {
-    MockPinchListener mockListener;
-    Gestures::RecognizerPinch pinch(mockListener, defaultConfig);
-    ASSERT_EQ(0, mockListener.m_initCount);
+    MockPinchRecognizer mockRecognizer;
+    mockRecognizer.SetConfig(defaultConfig);
+    ASSERT_EQ(0, mockRecognizer.m_initCount);
 }
 
 TEST_F(PinchTests, Touch_OneFinger_InitNotCalled)
 {
-    MockPinchListener mockListener;
-    Gestures::RecognizerPinch pinch(mockListener, defaultConfig);
+    MockPinchRecognizer mockRecognizer;
+    mockRecognizer.SetConfig(defaultConfig);
 
-    Press(pinch, 0, Vec2(ZERO), 0.0f);
+    Press(mockRecognizer, 0, AZ::Vector2(ZERO), 0.0f);
 
-    ASSERT_EQ(0, mockListener.m_initCount);
+    ASSERT_EQ(0, mockRecognizer.m_initCount);
 }
 
 TEST_F(PinchTests, Touch_TwoFingersSlightlyApartNoMovement_InitNotCalled)
 {
-    MockPinchListener mockListener;
-    Gestures::RecognizerPinch pinch(mockListener, defaultConfig);
+    MockPinchRecognizer mockRecognizer;
+    mockRecognizer.SetConfig(defaultConfig);
 
-    Press(pinch, 0, Vec2(ZERO), 0.0f);
-    Press(pinch, 1, Vec2(0.5f), 0.0f);
+    Press(mockRecognizer, 0, AZ::Vector2(ZERO), 0.0f);
+    Press(mockRecognizer, 1, AZ::Vector2(0.5f), 0.0f);
 
     // both are down, but they haven't moved the "min pixels moved" distance
     // so the gesture has not been initialized
-    ASSERT_EQ(0, mockListener.m_initCount);
+    ASSERT_EQ(0, mockRecognizer.m_initCount);
 }
 
 TEST_F(PinchTests, PinchOutward_GreaterThanMinDistance_InitCalled)
 {
-    MockPinchListener mockListener;
+    MockPinchRecognizer mockRecognizer;
     Gestures::RecognizerPinch::Config config;
     config.minPixelsMoved = 10.0f;
-    Gestures::RecognizerPinch pinch(mockListener, config);
+    mockRecognizer.SetConfig(config);
 
-    Press(pinch, 0, Vec2(ZERO), 0.0f);
-    Press(pinch, 1, Vec2(ZERO), 0.0f);
-    Move(pinch, 0, Vec2(-5.01f, 0.0f), 1.0f);
-    Move(pinch, 1, Vec2(5.01f, 0.0f), 1.0f);
+    Press(mockRecognizer, 0, AZ::Vector2(ZERO), 0.0f);
+    Press(mockRecognizer, 1, AZ::Vector2(ZERO), 0.0f);
+    Move(mockRecognizer, 0, AZ::Vector2(-5.01f, 0.0f), 1.0f);
+    Move(mockRecognizer, 1, AZ::Vector2(5.01f, 0.0f), 1.0f);
 
-    ASSERT_EQ(1, mockListener.m_initCount);
+    ASSERT_EQ(1, mockRecognizer.m_initCount);
 }
 
 TEST_F(PinchTests, PinchInward_GreaterThanMinDistance_InitCalled)
 {
-    MockPinchListener mockListener;
+    MockPinchRecognizer mockRecognizer;
     Gestures::RecognizerPinch::Config config;
     config.minPixelsMoved = 10.0f;
-    Gestures::RecognizerPinch pinch(mockListener, config);
+    mockRecognizer.SetConfig(config);
 
-    Press(pinch, 0, Vec2(-15.01f, 0.0f), 0.0f);
-    Press(pinch, 1, Vec2(15.01f, 0.0f), 0.0f);
-    Move(pinch, 0, Vec2(-10.00f, 0.0f), 1.0f);
-    Move(pinch, 1, Vec2(10.00f, 0.0f), 1.0f);
+    Press(mockRecognizer, 0, AZ::Vector2(-15.01f, 0.0f), 0.0f);
+    Press(mockRecognizer, 1, AZ::Vector2(15.01f, 0.0f), 0.0f);
+    Move(mockRecognizer, 0, AZ::Vector2(-10.00f, 0.0f), 1.0f);
+    Move(mockRecognizer, 1, AZ::Vector2(10.00f, 0.0f), 1.0f);
 
-    ASSERT_EQ(1, mockListener.m_initCount);
+    ASSERT_EQ(1, mockRecognizer.m_initCount);
 }
 
 TEST_F(PinchTests, ReleaseBothTouches_AfterInitialized_EndedCalled)
 {
-    MockPinchListener mockListener;
+    MockPinchRecognizer mockRecognizer;
     Gestures::RecognizerPinch::Config config;
     config.minPixelsMoved = 10.0f;
-    Gestures::RecognizerPinch pinch(mockListener, config);
+    mockRecognizer.SetConfig(config);
 
-    const Vec2 end(5.01f, 0.0f);
-    Press(pinch, 0, Vec2(ZERO), 0.0f);
-    Press(pinch, 1, Vec2(ZERO), 0.0f);
-    Move(pinch, 0, -end, 1.0f);
-    Move(pinch, 1, end, 1.0f);
-    Release(pinch, 0, -end, 2.0f);
-    Release(pinch, 1, end, 2.0f);
+    const AZ::Vector2 end(5.01f, 0.0f);
+    Press(mockRecognizer, 0, AZ::Vector2(ZERO), 0.0f);
+    Press(mockRecognizer, 1, AZ::Vector2(ZERO), 0.0f);
+    Move(mockRecognizer, 0, -end, 1.0f);
+    Move(mockRecognizer, 1, end, 1.0f);
+    Release(mockRecognizer, 0, -end, 2.0f);
+    Release(mockRecognizer, 1, end, 2.0f);
 
-    ASSERT_EQ(1, mockListener.m_initCount);
-    ASSERT_EQ(1, mockListener.m_endCount);
+    ASSERT_EQ(1, mockRecognizer.m_initCount);
+    ASSERT_EQ(1, mockRecognizer.m_endCount);
 }
 
 TEST_F(PinchTests, ReleaseOneTouch_AfterInitialized_EndedCalled)
 {
-    MockPinchListener mockListener;
+    MockPinchRecognizer mockRecognizer;
     Gestures::RecognizerPinch::Config config;
     config.minPixelsMoved = 10.0f;
-    Gestures::RecognizerPinch pinch(mockListener, config);
+    mockRecognizer.SetConfig(config);
 
-    const Vec2 end(5.01f, 0.0f);
-    Press(pinch, 0, Vec2(ZERO), 0.0f);
-    Press(pinch, 1, Vec2(ZERO), 0.0f);
-    Move(pinch, 0, -end, 1.0f);
-    Move(pinch, 1, end, 1.0f);
-    Release(pinch, 0, -end, 2.0f);
-    //Release(pinch, 1, end, 2.0f);
+    const AZ::Vector2 end(5.01f, 0.0f);
+    Press(mockRecognizer, 0, AZ::Vector2(ZERO), 0.0f);
+    Press(mockRecognizer, 1, AZ::Vector2(ZERO), 0.0f);
+    Move(mockRecognizer, 0, -end, 1.0f);
+    Move(mockRecognizer, 1, end, 1.0f);
+    Release(mockRecognizer, 0, -end, 2.0f);
+    //Release(mockRecognizer, 1, end, 2.0f);
 
-    ASSERT_EQ(1, mockListener.m_initCount);
-    ASSERT_EQ(1, mockListener.m_endCount);
+    ASSERT_EQ(1, mockRecognizer.m_initCount);
+    ASSERT_EQ(1, mockRecognizer.m_endCount);
 }
 
 TEST_F(PinchTests, ReleaseTouches_PinchNeverStarted_NoInitNoEnd)
 {
-    MockPinchListener mockListener;
+    MockPinchRecognizer mockRecognizer;
     Gestures::RecognizerPinch::Config config;
     config.minPixelsMoved = 10.0f;
-    Gestures::RecognizerPinch pinch(mockListener, config);
+    mockRecognizer.SetConfig(config);
 
-    const Vec2 start(10.0f, 0.0f);
-    const Vec2 end(9.0f, 0.0f); // not enough to initiate a pinch
+    const AZ::Vector2 start(10.0f, 0.0f);
+    const AZ::Vector2 end(9.0f, 0.0f); // not enough to initiate a pinch
 
-    Press(pinch, 0, -start, 0.0f);
-    Press(pinch, 1, start, 0.0f);
-    Move(pinch, 0, -end, 1.0f);
-    Move(pinch, 1, end, 1.0f);
-    Release(pinch, 0, -end, 2.0f);
-    Release(pinch, 1, end, 2.0f);
+    Press(mockRecognizer, 0, -start, 0.0f);
+    Press(mockRecognizer, 1, start, 0.0f);
+    Move(mockRecognizer, 0, -end, 1.0f);
+    Move(mockRecognizer, 1, end, 1.0f);
+    Release(mockRecognizer, 0, -end, 2.0f);
+    Release(mockRecognizer, 1, end, 2.0f);
 
-    ASSERT_EQ(0, mockListener.m_initCount);
-    ASSERT_EQ(0, mockListener.m_endCount);
+    ASSERT_EQ(0, mockRecognizer.m_initCount);
+    ASSERT_EQ(0, mockRecognizer.m_endCount);
 }

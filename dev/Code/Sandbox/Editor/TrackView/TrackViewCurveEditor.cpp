@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "TrackViewCurveEditor.h"
 
 #include "TrackViewDialog.h"
@@ -64,10 +64,7 @@ CTrackViewCurveEditor::CTrackViewCurveEditor(QWidget* parent)
 
     m_ui->m_wndSpline->SetTimelineCtrl(&m_timelineCtrl);
 
-    connect(m_ui->m_horizonSlider, &QAbstractSlider::valueChanged, this, &CTrackViewCurveEditor::OnHorizonSliderChange);
-    connect(m_ui->m_verticlSlider, &QAbstractSlider::valueChanged, this, &CTrackViewCurveEditor::OnVerticalSliderChange);
     connect(&m_timelineCtrl, &TimelineWidget::change, this, &CTrackViewCurveEditor::OnTimelineChange);
-    connect(m_ui->m_wndSpline, &SplineWidget::scrollZoomRequested, this, &CTrackViewCurveEditor::OnSplineScrollZoom);
     connect(m_ui->m_wndSpline, &SplineWidget::change, this, &CTrackViewCurveEditor::OnSplineChange);
     connect(m_ui->m_wndSpline, &SplineWidget::timeChange, this, &CTrackViewCurveEditor::OnSplineTimeMarkerChange);
 
@@ -85,8 +82,6 @@ CTrackViewCurveEditor::CTrackViewCurveEditor(QWidget* parent)
     connect(m_ui->buttonTangentUnify,     &QToolButton::clicked, this, [&]() {OnSplineCmd(ID_TANGENT_UNIFY); });
     connect(m_ui->buttonFreezeKeys,       &QToolButton::clicked, this, [&]() {OnSplineCmd(ID_FREEZE_KEYS); });
     connect(m_ui->buttonFreezeTangents,   &QToolButton::clicked, this, [&]() {OnSplineCmd(ID_FREEZE_TANGENTS); });
-
-    ResetSliderRange();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -318,50 +313,6 @@ void CTrackViewCurveEditor::OnSplineTimeMarkerChange()
 {
     float fTime = m_ui->m_wndSpline->GetTimeMarker();
     GetIEditor()->GetAnimation()->SetTime(fTime);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CTrackViewCurveEditor::OnHorizonSliderChange()
-{
-    int pos = m_ui->m_horizonSlider->value();
-    Vec2 zoom = m_ui->m_wndSpline->GetZoom();
-
-    // Zero value is not acceptable.
-    zoom.x = max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER);
-    m_ui->m_wndSpline->SetZoom(zoom);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CTrackViewCurveEditor::OnVerticalSliderChange()
-{
-    int pos = m_ui->m_verticlSlider->value();
-    Vec2 zoom = m_ui->m_wndSpline->GetZoom();
-
-    // Zero value is not acceptable.
-    zoom.y = max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER);
-    m_ui->m_wndSpline->SetZoom(zoom);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CTrackViewCurveEditor::OnSplineScrollZoom()
-{
-    ResetSliderRange();
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CTrackViewCurveEditor::ResetSliderRange()
-{
-    Vec2 zoom = m_ui->m_wndSpline->GetZoom();
-    Vec2 minValue = zoom / 2.f;
-    Vec2 maxValue = zoom * 2.f;
-
-    const QSignalBlocker sb1(m_ui->m_horizonSlider);
-    const QSignalBlocker sb2(m_ui->m_verticlSlider);
-    m_ui->m_horizonSlider->setRange(ZOOMRANGE_TO_SLIDER(minValue.x), ZOOMRANGE_TO_SLIDER(maxValue.x));
-    m_ui->m_horizonSlider->setValue(ZOOMRANGE_TO_SLIDER((minValue.x + maxValue.x) / 2.f));
-
-    m_ui->m_verticlSlider->setRange(ZOOMRANGE_TO_SLIDER(minValue.y), ZOOMRANGE_TO_SLIDER(maxValue.y));
-    m_ui->m_verticlSlider->setValue(ZOOMRANGE_TO_SLIDER((minValue.y + maxValue.y) / 2.f));
 }
 
 //////////////////////////////////////////////////////////////////////////

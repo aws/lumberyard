@@ -71,7 +71,7 @@ namespace AzToolsFramework
         m_clearButton->setContentsMargins(0, 0, 0, 0);
         m_clearButton->setToolTip("Clear ATL control");
 
-        connect(m_controlEdit, &QLineEdit::editingFinished,
+        connect(m_controlEdit, &QLineEdit::editingFinished, this,
             [this] ()
             {
                 SetControlName(m_controlEdit->text());
@@ -179,10 +179,10 @@ namespace AzToolsFramework
         SetControlName(QString(resourceResult.c_str()));
     }
 
-    bool AudioControlSelectorWidget::IsCorrectMimeData(const QMimeData* data) const
+    bool AudioControlSelectorWidget::IsCorrectMimeData(const QMimeData* data_) const
     {
         // todo: enable drag-n-drop from Audio Controls Editor
-        Q_UNUSED(data);
+        Q_UNUSED(data_);
         return false;
     }
 

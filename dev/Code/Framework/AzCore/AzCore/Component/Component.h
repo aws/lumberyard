@@ -292,9 +292,8 @@ namespace AZ
         /**
          * The type of array that components use to specify provided, required, dependent,
          * and incompatible services.
-         * This is a fixed vector because we are typically using the array on the stack.
          */
-        typedef AZStd::fixed_vector<ComponentServiceType, 32> DependencyArrayType;
+        typedef AZStd::vector<ComponentServiceType> DependencyArrayType;
 
          /**
           * Creates an instance of the component.
@@ -411,6 +410,11 @@ namespace AZ
         ComponentDescriptorHelper()
         {
             BusConnect(AzTypeInfo<ComponentClass>::Uuid());
+        }
+
+        ~ComponentDescriptorHelper()
+        {
+            BusDisconnect();
         }
 
         /**

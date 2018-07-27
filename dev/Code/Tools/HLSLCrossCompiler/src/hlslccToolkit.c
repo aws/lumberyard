@@ -141,3 +141,27 @@ bool IsGmemReservedSlot(FRAMEBUFFER_FETCH_TYPE typeMask, const uint32_t regNumbe
 
     return false;
 }
+
+const char * GetAuxArgumentName(const SHADER_VARIABLE_TYPE varType)
+{
+    switch (varType)
+    {
+    case SVT_UINT:
+    case SVT_UINT8:
+    case SVT_UINT16:
+        return "uArg";
+    case SVT_INT:
+    case SVT_INT16:
+    case SVT_INT12:
+        return "iArg";
+    case SVT_FLOAT:
+    case SVT_FLOAT16:
+    case SVT_FLOAT10:
+        return "fArg";
+    case SVT_BOOL:
+        return "bArg";
+    default:
+        ASSERT(0);
+        return "";
+    }
+}

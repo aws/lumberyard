@@ -12,7 +12,7 @@ REM
 REM Original file Copyright Crytek GMBH or its affiliates, used under license.
 REM
 
-REM Below, "%~dp0" produces the directory containing this file and "1.4.4" is the 
+REM Below, "%~dp0" produces the directory containing this file and "1.5.8" is the 
 REM subdirectory to use.
 
-SET PYTHONPATH=%PYTHONPATH%;%~dp01.4.4
+SET PYTHONPATH=%PYTHONPATH%;%~dp01.5.8

@@ -14,10 +14,10 @@
 // Description : Implementation of the CryEngine Unit Testing framework
 
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "ExcelExport.h"
 #include "ICryXML.h"
-#include "IXmlSerializer.h"
+#include "IXMLSerializer.h"
 #include "IRCLog.h"
 #include "CryPath.h"
 #include <CryLibrary.h>
@@ -274,7 +274,8 @@ bool CExcelExportBase::SaveToFile(const char* filename) const
     string xml = m_Workbook->getXML();
     string header = GetXmlHeader();
 
-    FILE* file = fopen(filename, "wb");
+    FILE* file = nullptr; 
+    azfopen(&file, filename, "wb");
     if (file)
     {
         fprintf(file, "%s", header.c_str());

@@ -31,6 +31,8 @@ namespace EMotionFX
     class EMFX_API MorphTargetStandard
         : public MorphTarget
     {
+        AZ_CLASS_ALLOCATOR_DECL
+
     public:
         // the morph target type ID, returned by GetType()
         enum
@@ -52,9 +54,9 @@ namespace EMotionFX
         class DeformData
             : public BaseObject
         {
-            MCORE_MEMORYOBJECTCATEGORY(DeformData, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_GEOMETRY_PMORPHTARGETS);
-
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             /**
              * Relative (delta) vertex data offset values.
              * This can be used in context of: "newVertex += vertexDelta * morphTargetWeight"
@@ -263,7 +265,7 @@ namespace EMotionFX
          * This is a very slow operation and is used to convert between different unit systems (cm, meters, etc).
          * @param scaleFactor The scale factor to scale the current data by.
          */
-        void Scale(float scaleFactor);
+        void Scale(float scaleFactor) override;
 
     private:
         MCore::Array<Transformation>    mTransforms;            /**< The relative transformations for the given nodes, in local space. The rotation however is absolute. */

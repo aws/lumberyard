@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "XmlLoadGame.h"
 #include "XmlSerializeHelper.h"
 
@@ -122,7 +122,7 @@ bool CXmlLoadGame::HaveMetadata(const char* tag)
     return m_pImpl->metadata->haveAttr(tag);
 }
 
-std::unique_ptr<TSerialize> CXmlLoadGame::GetSection(const char* section)
+AZStd::unique_ptr<TSerialize> CXmlLoadGame::GetSection(const char* section)
 {
     XmlNodeRef node = m_pImpl->root->findChild(section);
     if (!node)
@@ -132,7 +132,7 @@ std::unique_ptr<TSerialize> CXmlLoadGame::GetSection(const char* section)
 
     _smart_ptr<CXmlSerializeHelper> pSerializer = new CXmlSerializeHelper;
     m_pImpl->sections.push_back(pSerializer);
-    return std::make_unique<TSerialize>(pSerializer->GetReader(node));
+    return AZStd::make_unique<TSerialize>(pSerializer->GetReader(node));
 }
 
 bool CXmlLoadGame::HaveSection(const char* section)

@@ -498,10 +498,12 @@ void ShapeEditSplitPanel::Initialize(QCheckBox* useTransformGizmoCheck, QEditorT
     QSettings settings;
     useTransformGizmoCheck->setChecked(settings.value("Editor/ShapePanel_UseTransformGizmo", false).toBool());
 
-    QObject::connect(m_useTransformGizmoCheck, &QCheckBox::toggled, [&](bool checked)
+    QObject::connect(m_useTransformGizmoCheck, &QCheckBox::toggled, m_useTransformGizmoCheck, [&](bool checked) {
+        if (m_shape)
         {
-		m_shape->SetUseAxisHelper( checked );
-	} );
+            m_shape->SetUseAxisHelper(checked);
+        }
+    });
 }
 
 void ShapeEditSplitPanel::SetShape(CShapeObject* shape)

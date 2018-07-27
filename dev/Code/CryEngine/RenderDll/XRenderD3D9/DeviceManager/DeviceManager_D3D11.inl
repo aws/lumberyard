@@ -36,7 +36,15 @@ D3DResource* CDeviceManager::AllocateStagingResource(D3DResource* pForTex, bool 
     Desc.Usage          = bUpload ? D3D11_USAGE_DYNAMIC        : D3D11_USAGE_STAGING;
     Desc.CPUAccessFlags = bUpload ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
     Desc.BindFlags      = bUpload ? D3D11_BIND_SHADER_RESOURCE : 0;
-    StagingPoolVec ::iterator it = std::find(m_stagingPool.begin(), m_stagingPool.end(), Desc);
+
+#if defined(CRY_USE_METAL)
+    // For metal when we do a subresource copy we render to the texture so need to set the render target flag
+    Desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+#endif
+
+    // BindFlags play a part in matching the descriptions. Only search after we have finished
+    // modifying the description.
+    StagingPoolVec::iterator it = std::find(m_stagingPool.begin(), m_stagingPool.end(), Desc);
 
     if (it == m_stagingPool.end())
     {
@@ -54,6 +62,11 @@ D3DResource* CDeviceManager::AllocateStagingResource(D3DResource* pForTex, bool 
             stagingDesc.Usage          = bUpload ? D3D11_USAGE_DYNAMIC        : D3D11_USAGE_STAGING;
             stagingDesc.CPUAccessFlags = bUpload ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
             stagingDesc.BindFlags      = bUpload ? D3D11_BIND_SHADER_RESOURCE : 0;
+
+#if defined(CRY_USE_METAL)
+            // For metal when we do a subresource copy we render to the texture so need to set the render target flag
+            stagingDesc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+#endif
 
             if (memcmp(&stagingDesc, &Desc, sizeof(Desc)) != 0)
             {

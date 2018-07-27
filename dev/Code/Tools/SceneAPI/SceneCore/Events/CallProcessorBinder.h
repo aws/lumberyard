@@ -53,7 +53,7 @@ namespace AZ
                 SCENE_CORE_API ProcessingResult Process(ICallContext* context) override final;
 
                 CallProcessorBinder() = default;
-                virtual ~CallProcessorBinder() = default;
+                SCENE_CORE_API virtual ~CallProcessorBinder();
 
             protected:
                 CallProcessorBinder(const CallProcessorBinder&) = delete;

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "CarrierDataEvents.h"
 #include "CarrierDataAggregator.hxx"
@@ -199,14 +199,14 @@ namespace Driller
         chart->SetChannelColor(recvChannel, QColor(255, 0, 0));
         chart->SetChannelStyle(recvChannel, StripChart::Channel::STYLE_CONNECTED_LINE);
 
-        for (auto data = bytes0.begin(); data != bytes0.end(); data++)
+        for (auto dataPoint = bytes0.begin(); dataPoint != bytes0.end(); dataPoint++)
         {
-            chart->AddData(sendChannel, 0, static_cast<float>(data->first), data->second);
+            chart->AddData(sendChannel, 0, static_cast<float>(dataPoint->first), dataPoint->second);
         }
 
-        for (auto data = bytes1.begin(); data != bytes1.end(); data++)
+        for (auto dataPoint = bytes1.begin(); dataPoint != bytes1.end(); dataPoint++)
         {
-            chart->AddData(recvChannel, 0, static_cast<float>(data->first), data->second);
+            chart->AddData(recvChannel, 0, static_cast<float>(dataPoint->first), dataPoint->second);
         }
     }
 
@@ -225,14 +225,14 @@ namespace Driller
         chart->SetChannelColor(recvChannel, QColor(255, 0, 0));
         chart->SetChannelStyle(recvChannel, StripChart::Channel::STYLE_CONNECTED_LINE);
 
-        for (auto data = packets0.begin(); data != packets0.end(); data++)
+        for (auto dataPoint = packets0.begin(); dataPoint != packets0.end(); dataPoint++)
         {
-            chart->AddData(sendChannel, 0, static_cast<float>(data->first), data->second);
+            chart->AddData(sendChannel, 0, static_cast<float>(dataPoint->first), dataPoint->second);
         }
 
-        for (auto data = packets1.begin(); data != packets1.end(); data++)
+        for (auto dataPoint = packets1.begin(); dataPoint != packets1.end(); dataPoint++)
         {
-            chart->AddData(recvChannel, 0, static_cast<float>(data->first), data->second);
+            chart->AddData(recvChannel, 0, static_cast<float>(dataPoint->first), dataPoint->second);
         }
     }
 
@@ -248,9 +248,9 @@ namespace Driller
         chart->SetChannelColor(channel, QColor(255, 0, 255));
         chart->SetChannelStyle(channel, StripChart::Channel::STYLE_CONNECTED_LINE);
 
-        for (auto data = time.begin(); data != time.end(); data++)
+        for (auto dataPoint = time.begin(); dataPoint != time.end(); dataPoint++)
         {
-            chart->AddData(channel, 0, static_cast<float>(data->first), data->second);
+            chart->AddData(channel, 0, static_cast<float>(dataPoint->first), dataPoint->second);
         }
     }
 
@@ -265,9 +265,9 @@ namespace Driller
         chart->SetChannelColor(channel, QColor(255, 255, 255));
         chart->SetChannelStyle(channel, StripChart::Channel::STYLE_CONNECTED_LINE);
 
-        for (auto data = percentage.begin(); data != percentage.end(); data++)
+        for (auto dataPoint = percentage.begin(); dataPoint != percentage.end(); dataPoint++)
         {
-            chart->AddData(channel, 0, static_cast<float>(data->first), data->second);
+            chart->AddData(channel, 0, static_cast<float>(dataPoint->first), dataPoint->second);
         }
     }
 }

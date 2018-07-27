@@ -1552,7 +1552,11 @@ namespace NCryOpenGL
 
     void PrintFBOInfo(SFrameBuffer* pFrameBuffer, bool error = true)
     {
-        static FILE* s_pFile(fopen("fbo_info.txt", "w"));
+        static FILE* s_pFile = nullptr;
+        if (!s_pFile)
+        {
+            azfopen(&s_pFile, "fbo_info.txt", "w");
+        }
         GLuint uFBOName(pFrameBuffer->m_kObject.m_kName.GetName());
         fprintf(s_pFile, "Frame buffer %d Error: %d\n", uFBOName, error);
         uint32 uAttachment;

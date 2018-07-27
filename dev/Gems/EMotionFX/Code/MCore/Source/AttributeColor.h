@@ -45,7 +45,6 @@ namespace MCore
 
         MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(&mValue); }
         MCORE_INLINE uint32 GetRawDataSize() const                  { return sizeof(RGBAColor); }
-        bool GetSupportsRawDataPointer() const override             { return true; }
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeColor::Create(mValue); }
@@ -105,18 +104,5 @@ namespace MCore
             return true;
         }
 
-
-        // write to a stream
-        bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override
-        {
-            RGBAColor streamValue = mValue;
-            Endian::ConvertRGBAColorTo(&streamValue, targetEndianType);
-            if (stream->Write(&streamValue, sizeof(RGBAColor)) == 0)
-            {
-                return false;
-            }
-
-            return true;
-        }
     };
 }   // namespace MCore

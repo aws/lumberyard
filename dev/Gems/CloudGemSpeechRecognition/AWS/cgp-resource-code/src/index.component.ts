@@ -50,7 +50,7 @@ export class SpeechToTextIndexComponent extends AbstractCloudGemIndexComponent {
     private isLoadingBots: boolean;
     private isLoadingBotVersions: boolean;
     private showBotEditor: boolean = false;
-    private selectedBotsNum;
+    private selectedBotsNum: number = 0;
 
     private aliasesOnCurrentPage: Object[];
     private isLoadingBotAliases: boolean;
@@ -143,7 +143,6 @@ export class SpeechToTextIndexComponent extends AbstractCloudGemIndexComponent {
         // end of bind scopes
 
         this.sttModes = Mode;
-        this.selectedBotsNum = 0;
         this.sortDir == "";
         this.bots = [];
         this.createBotTip = "Bots can be imported from a JSON file. Information on creating the file can be found here: https://github.com/awslabs/aws-lex-web-ui/tree/master/templates.";
@@ -516,7 +515,6 @@ export class SpeechToTextIndexComponent extends AbstractCloudGemIndexComponent {
             if (latestBot["aliases"]) {
                 delete latestBot["aliases"];
             }
-            this.selectedIntentsNum = 0;
             latestBot.save("SAVE");
         }.bind(this))
     }
@@ -1193,21 +1191,23 @@ export class SpeechToTextIndexComponent extends AbstractCloudGemIndexComponent {
      * @param model the model whose status is changed
 	**/
     public updateSelectedEntriesNum(model): void {
-        let change = model.isSelected ? -1 : 1;
+        let change = model.isSelected  ? 1 : -1;
         if (this.mainPageSubNavActiveIndex == 0) {
-            this.selectedBotsNum += change;
+            // Update the number according to the platform
+            // The value for model.isSelected on Edge is the opposite of that on Chrome or FireFox
+            this.selectedBotsNum += window.navigator.msSaveOrOpenBlob ? change : -change;
             if (model.isSelected) {
                 this.selectAllBotsRef.nativeElement.checked = false;
             }
         }
         else if (this.mainPageSubNavActiveIndex == 1) {
-            this.selectedIntentsNum += change;
+            this.selectedIntentsNum += window.navigator.msSaveOrOpenBlob ? change : -change;
             if (model.isSelected) {
                 this.selectAllIntentsRef.nativeElement.checked = false;
             }
         }
         else if (this.mainPageSubNavActiveIndex == 2) {
-            this.selectedSlotTypesNum += change;
+            this.selectedSlotTypesNum += window.navigator.msSaveOrOpenBlob ? change : -change;
             if (model.isSelected) {
                 this.selectAllSlotTypesRef.nativeElement.checked = false;
             }
@@ -1337,7 +1337,7 @@ export class SpeechToTextIndexComponent extends AbstractCloudGemIndexComponent {
                 this.bots.splice(index, 1);
             }
             if (bot.isSelected) {
-                this.selectedIntentsNum--;
+                this.selectedBotsNum--;
             }
             this.updatePaginationInfo();
             this.paginationRef.reset();

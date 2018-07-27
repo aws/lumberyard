@@ -12,10 +12,13 @@
 
 // include the required headers
 #include "MeshDeformer.h"
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MeshDeformer, DeformerAllocator, 0)
+
+
     // constructor
     MeshDeformer::MeshDeformer(Mesh* mesh)
         : BaseObject()

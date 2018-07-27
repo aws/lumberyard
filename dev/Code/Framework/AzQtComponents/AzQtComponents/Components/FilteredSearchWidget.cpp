@@ -232,11 +232,11 @@ namespace AzQtComponents
         }
 
         SearchTypeFilterList checkedTypes;
-        for (const SearchTypeFilter& filter : m_typeFilters)
+        for (const SearchTypeFilter& typeFilter : m_typeFilters)
         {
-            if (filter.enabled)
+            if (typeFilter.enabled)
             {
-                checkedTypes.append(filter);
+                checkedTypes.append(typeFilter);
             }
         }
 

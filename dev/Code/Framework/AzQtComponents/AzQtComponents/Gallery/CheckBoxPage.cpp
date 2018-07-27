@@ -51,7 +51,7 @@ checkBox->setChecked(false);
 checkBox->setTristate(true);
 
 // To set a checkBox to partially on:
-checkBox->->setCheckState(Qt::PartiallyChecked);
+checkBox->setCheckState(Qt::PartiallyChecked);
 
 // To disable the checkBox
 checkBox->setEnabled(false);

@@ -12,6 +12,7 @@
 
 // include required files
 #include "MysticQtManager.h"
+#include <MCore/Source/StringConversions.h>
 #include <QtGui/QIcon>
 
 
@@ -26,9 +27,6 @@ namespace MysticQt
     MysticQtManager::MysticQtManager()
     {
         mMainWindow = nullptr;
-
-        // create the attribute widget factory
-        mAttributeWidgetFactory = new AttributeWidgetFactory();
     }
 
 
@@ -42,9 +40,6 @@ namespace MysticQt
             delete mIcons[i];
         }
         mIcons.Clear();
-
-        // get rid of the attribute widget factory
-        delete mAttributeWidgetFactory;
     }
 
 

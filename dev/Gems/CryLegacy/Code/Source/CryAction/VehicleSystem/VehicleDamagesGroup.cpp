@@ -14,7 +14,7 @@
 // Description : Implements the base of the vehicle damages group
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "IVehicleSystem.h"
 #include "VehicleDamagesGroup.h"

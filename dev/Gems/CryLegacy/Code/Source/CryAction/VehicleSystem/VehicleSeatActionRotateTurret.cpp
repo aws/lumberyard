@@ -14,7 +14,7 @@
 // Description : Implements a seat action to rotate a turret
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "VehicleSeatActionRotateTurret.h"
 

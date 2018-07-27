@@ -232,7 +232,7 @@ struct MemReplayLabelEvent
     MemReplayLabelEvent(const char* _label)
     {
         // Assume there is room beyond this instance.
-        strcpy(this->label, _label); // we're intentionally writing beyond the end of this array, so don't use cry_strcpy()
+        azstrcpy(this->label, strlen(_label) + 1, _label); // we're intentionally writing beyond the end of this array, so don't use cry_strcpy()
     }
 } __PACKED;
 
@@ -255,7 +255,7 @@ struct MemReplayPushContextEvent
         this->threadId = _threadId;
         this->contextType = static_cast<uint32>(_type);
         this->flags = _flags;
-        strcpy(this->name, _name); // we're intentionally writing beyond the end of this array, so don't use cry_strcpy()
+        azstrcpy(this->name, strlen(_name) + 1, _name); // we're intentionally writing beyond the end of this array, so don't use cry_strcpy()
     }
 } __PACKED;
 
@@ -433,7 +433,7 @@ struct MemReplaySizerPushEvent
 
     MemReplaySizerPushEvent(const char* _name)
     {
-        strcpy(this->name, _name);
+        azstrcpy(this->name, strlen(_name) + 1, _name);
     }
 } __PACKED;
 
@@ -532,7 +532,7 @@ struct MemReplayPoolMarkEvent
         , index(_index)
         , alignment(_alignment)
     {
-        strcpy(this->name, _name);
+        azstrcpy(this->name, strlen(_name) + 1, _name);
     }
 } __PACKED;
 
@@ -567,7 +567,7 @@ struct MemReplayTextureAllocContextEvent
         , height(_height)
         , flags(_flags)
     {
-        strcpy(this->name, _name);
+        azstrcpy(this->name, strlen(_name) + 1, _name);
     }
 } __PACKED;
 
@@ -691,7 +691,7 @@ struct MemReplayRegisterFixedAddressRangeEvent
         : address(_address)
         , length(_length)
     {
-        strcpy(this->name, _name);
+        azstrcpy(this->name, strlen(_name) +1, _name);
     }
 } __PACKED;
 

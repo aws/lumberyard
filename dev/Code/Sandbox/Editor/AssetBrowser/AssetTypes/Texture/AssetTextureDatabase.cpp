@@ -13,7 +13,7 @@
 
 // Description : Implementation of AssetTextureDatabase.h
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AssetTextureDatabase.h"
 #include "AssetTextureItem.h"
 #include "ITexture.h"

@@ -983,7 +983,7 @@ namespace CharacterTool
                         nodeAttach->getAttr("PA_CapsuleX",        attach.m_simulationParams.m_vCapsule.x);
                         nodeAttach->getAttr("PA_CapsuleY",        attach.m_simulationParams.m_vCapsule.y);
                         attach.m_simulationParams.m_strDirTransJoint = nodeAttach->getAttr("PA_DirTransJointName");
-                        uint32 IsIdentical = stricmp(attach.m_simulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
+                        uint32 IsIdentical = azstricmp(attach.m_simulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
                         if (attach.m_simulationParams.m_strDirTransJoint.length() && IsIdentical)
                         {
                             attach.m_simulationParams.m_strDirTransJoint.reset();
@@ -1051,7 +1051,7 @@ namespace CharacterTool
                         nodeAttach->getAttr("P_ProjectionType",  attach.m_simulationParams.m_nProjectionType);
 
                         attach.m_simulationParams.m_strDirTransJoint = nodeAttach->getAttr("P_DirTransJointName");
-                        uint32 IsIdentical = stricmp(attach.m_simulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
+                        uint32 IsIdentical = azstricmp(attach.m_simulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
                         if (attach.m_simulationParams.m_strDirTransJoint.length() && IsIdentical)
                         {
                             attach.m_simulationParams.m_strDirTransJoint.reset();
@@ -1277,7 +1277,7 @@ namespace CharacterTool
                 for (uint32 a = 0; a < numAttachmentsInList; a++)
                 {
                     const char* strSocketName = attachments[a].m_strSocketName.c_str();
-                    if (attachments[a].m_attachmentType == CA_PROX && stricmp(strSocketName, strProxyName) == 0)
+                    if (attachments[a].m_attachmentType == CA_PROX && azstricmp(strSocketName, strProxyName) == 0)
                     {
                         arrProxies[a] = 1;
                         break;
@@ -1300,7 +1300,7 @@ namespace CharacterTool
                 for (uint32 a = 0; a < numAttachmentsInList; a++)
                 {
                     const char* strSocketName = attachments[a].m_strSocketName.c_str();
-                    if (attachments[a].m_attachmentType == CA_PROX && stricmp(strSocketName, strProxyName) == 0)
+                    if (attachments[a].m_attachmentType == CA_PROX && azstricmp(strSocketName, strProxyName) == 0)
                     {
                         arrProxies[a] = 1;
                         break;
@@ -1606,7 +1606,7 @@ namespace CharacterTool
             }
             if (attach.m_rowSimulationParams.m_nProjectionType == ProjectionSelection4::PS4_DirectedTranslation) // ACCEPTED_USE
             {
-                uint32 IsIdentical = stricmp(attach.m_rowSimulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
+                uint32 IsIdentical = azstricmp(attach.m_rowSimulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
                 if (attach.m_rowSimulationParams.m_strDirTransJoint.length() && IsIdentical == 0)
                 {
                     nodeAttach->setAttr("ROW_DirTransJointName", attach.m_rowSimulationParams.m_strDirTransJoint.c_str());
@@ -1844,7 +1844,7 @@ namespace CharacterTool
 
                 if (attach.m_simulationParams.m_nProjectionType == 3)
                 {
-                    uint32 IsIdentical = stricmp(attach.m_simulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
+                    uint32 IsIdentical = azstricmp(attach.m_simulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
                     if (attach.m_simulationParams.m_strDirTransJoint.length() && IsIdentical == 0)
                     {
                         nodeAttach->setAttr("PA_DirTransJointName", attach.m_simulationParams.m_strDirTransJoint.c_str());
@@ -1956,7 +1956,7 @@ namespace CharacterTool
                 }
                 if (attach.m_simulationParams.m_nProjectionType == ProjectionSelection4::PS4_DirectedTranslation) // ACCEPTED_USE
                 {
-                    uint32 IsIdentical = stricmp(attach.m_simulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
+                    uint32 IsIdentical = azstricmp(attach.m_simulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
                     if (attach.m_simulationParams.m_strDirTransJoint.length() && IsIdentical == 0)
                     {
                         nodeAttach->setAttr("P_DirTransJointName", attach.m_simulationParams.m_strDirTransJoint.c_str());
@@ -2312,16 +2312,16 @@ namespace CharacterTool
                 }
             }
 
-            if (stricmp(existingBindingFilename.c_str(), desc.m_strGeometryFilepath.c_str()) != 0)
+            if (azstricmp(existingBindingFilename.c_str(), desc.m_strGeometryFilepath.c_str()) != 0)
             {
                 if (!desc.m_strGeometryFilepath.empty())
                 {
                     string fileExt = PathUtil::GetExt(desc.m_strGeometryFilepath.c_str());
 
-                    bool IsCDF = (0 == stricmp(fileExt, "cdf"));
-                    bool IsCHR = (0 == stricmp(fileExt, "chr"));
-                    bool IsCGA = (0 == stricmp(fileExt, "cga"));
-                    bool IsCGF = (0 == stricmp(fileExt, "cgf"));
+                    bool IsCDF = (0 == azstricmp(fileExt, "cdf"));
+                    bool IsCHR = (0 == azstricmp(fileExt, "chr"));
+                    bool IsCGA = (0 == azstricmp(fileExt, "cga"));
+                    bool IsCGF = (0 == azstricmp(fileExt, "cgf"));
                     if (IsCDF || IsCHR || IsCGA)
                     {
                         ICharacterInstance* pIChildCharacter = characterManager->CreateInstance(desc.m_strGeometryFilepath.c_str(), CA_CharEditModel);
@@ -2474,16 +2474,16 @@ namespace CharacterTool
                 }
             }
 
-            if (stricmp(existingBindingFilename.c_str(), desc.m_strGeometryFilepath.c_str()) != 0)
+            if (azstricmp(existingBindingFilename.c_str(), desc.m_strGeometryFilepath.c_str()) != 0)
             {
                 if (!desc.m_strGeometryFilepath.empty())
                 {
                     string fileExt = PathUtil::GetExt(desc.m_strGeometryFilepath.c_str());
 
-                    bool IsCDF = (0 == stricmp(fileExt, "cdf"));
-                    bool IsCHR = (0 == stricmp(fileExt, "chr"));
-                    bool IsCGA = (0 == stricmp(fileExt, "cga"));
-                    bool IsCGF = (0 == stricmp(fileExt, "cgf"));
+                    bool IsCDF = (0 == azstricmp(fileExt, "cdf"));
+                    bool IsCHR = (0 == azstricmp(fileExt, "chr"));
+                    bool IsCGA = (0 == azstricmp(fileExt, "cga"));
+                    bool IsCGF = (0 == azstricmp(fileExt, "cgf"));
                     if (IsCDF || IsCHR || IsCGA)
                     {
                         ICharacterInstance* pIChildCharacter = characterManager->CreateInstance(desc.m_strGeometryFilepath.c_str(), CA_CharEditModel);
@@ -2623,7 +2623,7 @@ namespace CharacterTool
             }
             else
             {
-                bool isSkin = stricmp(fileExt, CRY_SKIN_FILE_EXT) == 0;
+                bool isSkin = azstricmp(fileExt, CRY_SKIN_FILE_EXT) == 0;
                 if (isSkin)
                 {
                     pISkin = characterManager->LoadModelSKINAutoRef(desc.m_strGeometryFilepath.c_str(), CA_CharEditModel);

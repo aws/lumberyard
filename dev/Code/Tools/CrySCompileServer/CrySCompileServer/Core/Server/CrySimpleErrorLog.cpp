@@ -175,13 +175,12 @@ void CCrySimpleErrorLog::SendMail()
             if (err->HasFile())
             {
                 char Filename[1024];
-                sprintf(Filename, "%d-req%d-%s", a + 1, req, err->GetFilename().c_str());
+                sprintf(Filename, "%d-req%ld-%s", a + 1, req, err->GetFilename().c_str());
 
                 char DispFilename[1024];
                 sprintf(DispFilename, "%d-%s", a + 1, err->GetFilename().c_str());
 
-                std::string sErrorFile =    SEnviropment::Instance().m_Error + Filename;
-                std::replace(sErrorFile.begin(), sErrorFile.end(), '/', '\\');
+                std::string sErrorFile =    SEnviropment::Instance().m_ErrorPath + Filename;
 
                 std::vector<uint8_t> bytes;
                 std::string text = err->GetFileContents();

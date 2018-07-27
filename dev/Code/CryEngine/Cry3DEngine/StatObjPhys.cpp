@@ -22,8 +22,6 @@
 #include "IParticles.h"
 #include "CGFContent.h"
 #include "ObjMan.h"
-#include <IJobManager.h>
-#include <IJobManager_JobDelegator.h>
 #define SMALL_MESH_NUM_INDEX 30
 
 //////////////////////////////////////////////////////////////////////////
@@ -2675,7 +2673,7 @@ int CStatObj::PhysicalizeSubobjects(IPhysicalEntity* pent, const Matrix34* pMtx,
             }
             if (psj.maxForcePush + psj.maxForcePull + psj.maxForceShift + psj.maxTorqueBend + psj.maxTorqueTwist > 4.9E20f)
             {
-                if (sscanf(properties, "%f %f %f %f %f",
+                if (azsscanf(properties, "%f %f %f %f %f",
                         &psj.maxForcePush, &psj.maxForcePull, &psj.maxForceShift, &psj.maxTorqueBend, &psj.maxTorqueTwist) == 5)
                 {
                     psj.maxForcePush *= density;

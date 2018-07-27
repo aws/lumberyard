@@ -10,45 +10,18 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "BlendTreeVector4DecomposeNode.h"
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeVector4DecomposeNode::BlendTreeVector4DecomposeNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeVector4DecomposeNode, AnimGraphAllocator, 0)
 
 
-    // destructor
-    BlendTreeVector4DecomposeNode::~BlendTreeVector4DecomposeNode()
-    {
-    }
-
-
-    // create
-    BlendTreeVector4DecomposeNode* BlendTreeVector4DecomposeNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeVector4DecomposeNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeVector4DecomposeNode::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeVector4DecomposeNode::RegisterPorts()
+    BlendTreeVector4DecomposeNode::BlendTreeVector4DecomposeNode()
+        : AnimGraphNode()
     {
         // setup the input ports
         InitInputPorts(1);
@@ -63,9 +36,22 @@ namespace EMotionFX
     }
 
 
-    // register the parameters
-    void BlendTreeVector4DecomposeNode::RegisterAttributes()
+    BlendTreeVector4DecomposeNode::~BlendTreeVector4DecomposeNode()
     {
+    }
+
+
+    bool BlendTreeVector4DecomposeNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -83,20 +69,6 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeVector4DecomposeNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeVector4DecomposeNode* clone = new BlendTreeVector4DecomposeNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // the update function
     void BlendTreeVector4DecomposeNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
@@ -104,7 +76,7 @@ namespace EMotionFX
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
         // if there are no incoming connections, there is nothing to do
-        if (mConnections.GetLength() == 0)
+        if (mConnections.size() == 0)
         {
             return;
         }
@@ -117,9 +89,28 @@ namespace EMotionFX
     }
 
 
-    // get the type string
-    const char* BlendTreeVector4DecomposeNode::GetTypeString() const
+    void BlendTreeVector4DecomposeNode::Reflect(AZ::ReflectContext* context)
     {
-        return "BlendTreeVector4DecomposeNode";
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeVector4DecomposeNode, AnimGraphNode>()
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeVector4DecomposeNode>("Vector4 Decompose", "Vector4 decompose attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ;
     }
-}   // namespace EMotionFX
+} // namespace EMotionFX

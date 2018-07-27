@@ -7,12 +7,9 @@
 #include "bstrlib.h"
 #include "stdio.h"
 #include <stdlib.h>
+#include "hlslcc.h"
 #include <internal_includes/toGLSLOperand.h>
 #include "internal_includes/debug.h"
-
-#ifndef min
-#define min(a, b)            (((a) < (b)) ? (a) : (b))
-#endif
 
 extern void AddIndentation(HLSLCrossCompilerContext* psContext);
 static int IsIntegerImmediateOpcode(OPCODE_TYPE eOpcode);

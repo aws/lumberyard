@@ -67,6 +67,10 @@
 #include <QPixmap>
 #include <QScrollBar>
 #include <QTimer>
+#include <QContextMenuEvent>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QMouseEvent>
 
 #include <UI/PropertyEditor/ui_EntityPropertyEditor.h>
 
@@ -584,6 +588,13 @@ namespace AzToolsFramework
         m_isBuildingProperties = false;
 
         setUpdatesEnabled(true);
+
+        // re-enable all actions so that things like "delete" or "cut" work again
+        QList<QAction*> actionList = actions();
+        for (QAction* action : actionList)
+        {
+            action->setEnabled(true);
+        }
     }
 
     void EntityPropertyEditor::GetAllComponentsForEntityInOrder(const AZ::Entity* entity, AZ::Entity::ComponentArrayType& componentsOnEntity)
@@ -740,7 +751,7 @@ namespace AzToolsFramework
             {
                 AZ::SliceComponent::EntityAncestorList ancestors;
                 sliceReference->GetInstanceEntityAncestry(id, ancestors, 1);
-                if (!ancestors[0].m_entity)
+                if ( ancestors.empty() || !ancestors[0].m_entity)
                 {
                     return false;
                 }
@@ -1146,10 +1157,20 @@ namespace AzToolsFramework
         if (!m_isAlreadyQueuedRefresh)
         {
             m_isAlreadyQueuedRefresh = true;
+            
+            // disable all actions until queue refresh is done, so that long queues of events like
+            // click - delete - click - delete - click .... dont all occur while the state is invalid.
+            // note that this happens when the data is already in an invalid state before this function is called...
+            // pointers are bad, components have been deleted, etc, 
+            QList<QAction*> actionList = actions();
+            for (QAction* action : actionList)
+            {
+                action->setEnabled(false);
+            }
 
-            // Refresh the properties using a singleShot (with a time of 10ms)
+            // Refresh the properties using a singleShot
             // this makes sure that the properties aren't refreshed while processing
-            // other events, and instead runs after the current events are processed.
+            // other events, and instead runs after the current events are processed
             QTimer::singleShot(0, this, &EntityPropertyEditor::UpdateContents);
 
             //saving state any time refresh gets queued because requires valid components
@@ -1341,7 +1362,9 @@ namespace AzToolsFramework
         if (!hasChanges && isLeafNode)
         {
             // Add an option to set the ForceOverride flag for this field
+            menu.setToolTipsVisible(true);
             QAction* forceOverrideAction = menu.addAction(tr("Force property override"));
+            forceOverrideAction->setToolTip(tr("Prevents a property from inheriting from its source slice"));
             connect(forceOverrideAction, &QAction::triggered, this, [this, fieldNode]()
                 {
                     ContextMenuActionSetDataFlag(fieldNode, AZ::DataPatch::Flag::ForceOverride, true);
@@ -1657,7 +1680,9 @@ namespace AzToolsFramework
 
         if (!menu.actions().empty())
         {
+            m_isShowingContextMenu = true;
             menu.exec(position);
+            m_isShowingContextMenu = false;
         }
     }
 
@@ -1758,13 +1783,13 @@ namespace AzToolsFramework
         addAction(m_actionToMoveComponentsDown);
 
         m_actionToMoveComponentsTop = aznew QAction(tr("Move component to top"), this);
-        m_actionToMoveComponentsTop->setShortcut(QKeySequence::MoveToStartOfLine);
+        m_actionToMoveComponentsTop->setShortcut(Qt::Key_Home);
         m_actionToMoveComponentsTop->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         connect(m_actionToMoveComponentsTop, &QAction::triggered, this, &EntityPropertyEditor::MoveComponentsTop);
         addAction(m_actionToMoveComponentsTop);
 
         m_actionToMoveComponentsBottom = aznew QAction(tr("Move component to bottom"), this);
-        m_actionToMoveComponentsBottom->setShortcut(QKeySequence::MoveToEndOfLine);
+        m_actionToMoveComponentsBottom->setShortcut(Qt::Key_End);
         m_actionToMoveComponentsBottom->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         connect(m_actionToMoveComponentsBottom, &QAction::triggered, this, &EntityPropertyEditor::MoveComponentsBottom);
         addAction(m_actionToMoveComponentsBottom);
@@ -2503,13 +2528,11 @@ namespace AzToolsFramework
         QAction* action = nullptr;
         action = menu.addAction(QObject::tr("Set default icon"));
         action->setToolTip(tr("Sets the icon to the first component icon after the transform or uses the transform icon"));
-        QObject::connect(action, &QAction::triggered, [this] { SetEntityIconToDefault();
-            });
+        QObject::connect(action, &QAction::triggered, this, &EntityPropertyEditor::SetEntityIconToDefault);
 
         action = menu.addAction(QObject::tr("Set custom icon"));
         action->setToolTip(tr("Choose a custom icon for this entity"));
-        QObject::connect(action, &QAction::triggered, [this] { PopupAssetBrowserForEntityIcon();
-            });
+        QObject::connect(action, &QAction::triggered, this, &EntityPropertyEditor::PopupAssetBrowserForEntityIcon);
 
         menu.exec(GetWidgetGlobalRect(m_gui->m_entityIcon).bottomLeft());
     }
@@ -2623,6 +2646,11 @@ namespace AzToolsFramework
 
     void EntityPropertyEditor::mouseMoveEvent(QMouseEvent* event)
     {
+        if (m_isAlreadyQueuedRefresh)
+        {
+            // not allowed to start operations when we are rebuilding the tree
+            return;
+        }
         StartDrag(event);
     }
 
@@ -2657,6 +2685,12 @@ namespace AzToolsFramework
 
     bool EntityPropertyEditor::HandleSelectionEvents(QObject* object, QEvent* event)
     {
+        // if we're in the middle of a tree rebuild, we can't afford to touch the internals
+        if (m_isAlreadyQueuedRefresh)
+        {
+            return false;
+        }
+
         (void)object;
         if (m_dragStarted || m_selectedEntityIds.empty())
         {
@@ -2687,11 +2721,26 @@ namespace AzToolsFramework
         }
 
         //reject input if a popup or modal window is active
+        //this does not apply to menues, because then we can not select an item
+        //while right clicking on it (context menu pops up first, selection won't happen)
         if (QApplication::activeModalWidget() != nullptr ||
-            QApplication::activePopupWidget() != nullptr ||
+            (QApplication::activePopupWidget() != nullptr &&
+             qobject_cast<QMenu*>(QApplication::activePopupWidget()) == nullptr) ||
             QApplication::focusWidget() == m_componentPalette)
         {
             return false;
+        }
+
+        // if we were clicking on a menu (just has been opened) remove the event filter
+        // as long as it is opened, otherwise clicking on the menu might result in a change
+        // of selection before the action is fired
+        if (QMenu* menu = qobject_cast<QMenu*>(QApplication::activePopupWidget()))
+        {
+            qApp->removeEventFilter(this);
+            connect(menu, &QMenu::aboutToHide, this, [this]() {
+                qApp->installEventFilter(this);
+            });
+            return false; // also get out of here without eating this specific event.
         }
 
         const QRect globalRect(mouseEvent->globalPos(), mouseEvent->globalPos());
@@ -2817,6 +2866,11 @@ namespace AzToolsFramework
 
     bool EntityPropertyEditor::IsDropAllowed(const QMimeData* mimeData, const QPoint& globalPos) const
     {
+        if (m_isAlreadyQueuedRefresh)
+        {
+            return false; // can't drop while tree is rebuilding itself!
+        }
+
         const QRect globalRect(globalPos, globalPos);
         if (!mimeData || m_selectedEntityIds.empty() || !DoesIntersectWidget(globalRect, this))
         {

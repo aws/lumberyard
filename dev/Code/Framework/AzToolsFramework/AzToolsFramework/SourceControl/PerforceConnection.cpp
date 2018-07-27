@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include <AzToolsFramework/SourceControl/PerforceConnection.h>
 #include <AzToolsFramework/Process/ProcessWatcher.h>

@@ -18,7 +18,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/unordered_map.h>
 
-#include <include/IDataBaseItem.h>
+#include <Include/IDataBaseItem.h>
 
 namespace EditorUIPlugin
 {

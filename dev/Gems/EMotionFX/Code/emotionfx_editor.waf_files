@@ -12,20 +12,56 @@
             "../Assets/Editor/Images/Icons/ActorComponent.png",
             "../Assets/Editor/Images/Icons/AnimGraphComponent.png"
         ],
-        "Source/Components": [
-            "Source/Integration/Editor/Components/EditorActorComponent.h",
-            "Source/Integration/Editor/Components/EditorActorComponent.cpp",
-            "Source/Integration/Editor/Components/EditorAnimGraphComponent.h",
-            "Source/Integration/Editor/Components/EditorAnimGraphComponent.cpp",
-            "Source/Integration/Editor/Components/EditorSimpleMotionComponent.h",
-            "Source/Integration/Editor/Components/EditorSimpleMotionComponent.cpp"
-        ],
-        "Source/Editor/PropertyWidgets":
-        [
-            "Source/Editor/PropertyWidgets/MotionSetNameHandler.h",
-            "Source/Editor/PropertyWidgets/MotionSetNameHandler.cpp",
-            "Source/Editor/PropertyWidgets/PropertyTypes.h",
-            "Source/Editor/PropertyWidgets/PropertyTypes.cpp"
-        ]
+      "Source/Components": 
+      [
+          "Source/Integration/Editor/Components/EditorActorComponent.h",
+          "Source/Integration/Editor/Components/EditorActorComponent.cpp",
+          "Source/Integration/Editor/Components/EditorAnimAudioComponent.h",
+          "Source/Integration/Editor/Components/EditorAnimAudioComponent.cpp",
+          "Source/Integration/Editor/Components/EditorAnimGraphComponent.h",
+          "Source/Integration/Editor/Components/EditorAnimGraphComponent.cpp",
+          "Source/Integration/Editor/Components/EditorSimpleMotionComponent.h",
+          "Source/Integration/Editor/Components/EditorSimpleMotionComponent.cpp"
+      ],
+      "Source/Editor":
+      [
+          "Source/Editor/ActorEditorBus.h",
+          "Source/Editor/AnimGraphEditorBus.h",
+          "Source/Editor/ObjectEditor.h",
+          "Source/Editor/ObjectEditor.cpp"
+      ],
+      "Source/Editor/PropertyWidgets":
+      [
+          "Source/Editor/PropertyWidgets/AnimGraphNodeHandler.h",
+          "Source/Editor/PropertyWidgets/AnimGraphNodeHandler.cpp",
+          "Source/Editor/PropertyWidgets/AnimGraphNodeNameHandler.h",
+          "Source/Editor/PropertyWidgets/AnimGraphNodeNameHandler.cpp",
+          "Source/Editor/PropertyWidgets/AnimGraphParameterHandler.h",
+          "Source/Editor/PropertyWidgets/AnimGraphParameterHandler.cpp",
+          "Source/Editor/PropertyWidgets/AnimGraphParameterMaskHandler.h",
+          "Source/Editor/PropertyWidgets/AnimGraphParameterMaskHandler.cpp",
+          "Source/Editor/PropertyWidgets/AnimGraphTagHandler.h",
+          "Source/Editor/PropertyWidgets/AnimGraphTagHandler.cpp",
+          "Source/Editor/PropertyWidgets/ActorMorphTargetHandler.h",
+          "Source/Editor/PropertyWidgets/ActorMorphTargetHandler.cpp",
+          "Source/Editor/PropertyWidgets/ActorNodeHandler.h",
+          "Source/Editor/PropertyWidgets/ActorNodeHandler.cpp",
+          "Source/Editor/PropertyWidgets/ActorGoalNodeHandler.h",
+          "Source/Editor/PropertyWidgets/ActorGoalNodeHandler.cpp",
+          "Source/Editor/PropertyWidgets/BlendSpaceEvaluatorHandler.h",
+          "Source/Editor/PropertyWidgets/BlendSpaceEvaluatorHandler.cpp",
+          "Source/Editor/PropertyWidgets/BlendSpaceMotionHandler.h",
+          "Source/Editor/PropertyWidgets/BlendSpaceMotionHandler.cpp",
+          "Source/Editor/PropertyWidgets/BlendSpaceMotionContainerHandler.h",
+          "Source/Editor/PropertyWidgets/BlendSpaceMotionContainerHandler.cpp",
+          "Source/Editor/PropertyWidgets/MotionSetMotionIdHandler.h",
+          "Source/Editor/PropertyWidgets/MotionSetMotionIdHandler.cpp",
+          "Source/Editor/PropertyWidgets/MotionSetNameHandler.h",
+          "Source/Editor/PropertyWidgets/MotionSetNameHandler.cpp",
+          "Source/Editor/PropertyWidgets/TransitionStateFilterLocalHandler.h",
+          "Source/Editor/PropertyWidgets/TransitionStateFilterLocalHandler.cpp",
+          "Source/Editor/PropertyWidgets/PropertyTypes.h",
+          "Source/Editor/PropertyWidgets/PropertyTypes.cpp"
+      ]
     }
 }

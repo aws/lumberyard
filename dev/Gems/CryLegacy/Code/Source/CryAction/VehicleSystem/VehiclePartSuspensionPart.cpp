@@ -13,7 +13,7 @@
 
 // Description : Implements a suspension part
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ICryAnimation.h"
 #include "IVehicleSystem.h"

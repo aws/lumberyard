@@ -16,7 +16,6 @@
 #include <EMotionFX/Source/MorphSubMotion.h>
 #include <EMotionFX/Source/KeyTrackLinear.h>
 #include <EMotionFX/Source/Node.h>
-#include <MCore/Source/AttributeSet.h>
 #include <EMotionFX/Source/Actor.h>
 #include <MCore/Source/StringConversions.h>
 

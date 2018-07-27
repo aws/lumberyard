@@ -410,20 +410,12 @@ ftype3* mul_vector_by_matrix(const matrix_tpl<ftype1>& mtx, const ftype2* psrc, 
 typedef matrix_tpl<real> matrix;
 typedef matrix_tpl<float> matrixf;
 
-#if defined(__GNUC__)
-  #define DECLARE_MTXNxM_POOL(ftype, sz) template<> \
+#define DECLARE_MTXNxM_POOL(ftype, sz) template<>   \
     ftype matrix_tpl<ftype>::mtx_pool[sz] = {};     \
     template<>                                      \
     int matrix_tpl<ftype>::mtx_pool_pos = 0;        \
     template<>                                      \
     int matrix_tpl<ftype>::mtx_pool_size = sz;
-#else
-    #define DECLARE_MTXNxM_POOL(ftype, sz) template<> \
-    ftype matrix_tpl<ftype>::mtx_pool[sz]; template<> \
-    int matrix_tpl<ftype>::mtx_pool_pos = 0;          \
-    template<>                                        \
-    int matrix_tpl<ftype>::mtx_pool_size = sz;
-#endif //__GNUC__
 
 extern int g_bHasSSE;
 #ifdef PIII_SSE

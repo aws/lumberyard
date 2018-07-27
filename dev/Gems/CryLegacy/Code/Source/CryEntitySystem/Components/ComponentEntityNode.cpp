@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "Components/ComponentEntityNode.h"
 #include "CryCharAnimationParams.h"
 #include "IMaterialEffects.h"

@@ -19,6 +19,9 @@ namespace EMotionFX
 {
     namespace Integration
     {
+        AZ_CLASS_ALLOCATOR_IMPL(MotionAsset, EMotionFXAllocator, 0);
+        AZ_CLASS_ALLOCATOR_IMPL(MotionAssetHandler, EMotionFXAllocator, 0);
+
         //////////////////////////////////////////////////////////////////////////
         MotionAsset::MotionAsset()
         {
@@ -44,7 +47,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         AZ::Data::AssetType MotionAssetHandler::GetAssetType() const
         {
-            return AZ::AzTypeInfo<MotionAsset>::Uuid();
+            return azrtti_typeid<MotionAsset>();
         }
 
         //////////////////////////////////////////////////////////////////////////

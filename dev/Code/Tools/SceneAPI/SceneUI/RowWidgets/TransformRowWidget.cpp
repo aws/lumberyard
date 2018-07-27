@@ -11,9 +11,8 @@
 */
 
 #include <QLabel>
-#include <QStyle.h>
+#include <QStyle>
 #include <QGridLayout>
-#include <AzFramework/Math/MathUtils.h>
 #include <SceneAPI/SceneUI/RowWidgets/TransformRowWidget.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyVectorCtrl.hxx>
 
@@ -58,14 +57,14 @@ namespace AZ
             void ExpandedTransform::SetTransform(const AZ::Transform& transform)
             {
                 m_translation = transform.GetTranslation();
-                m_rotation = AzFramework::ConvertTransformToEulerDegrees(transform);
+                m_rotation = transform.GetEulerDegrees();
                 m_scale = transform.RetrieveScaleExact();
             }
 
             void ExpandedTransform::GetTransform(AZ::Transform& transform) const
             {
                 transform = Transform::CreateTranslation(m_translation);
-                transform *= AzFramework::ConvertEulerDegreesToTransform(m_rotation);
+                transform *= AZ::ConvertEulerDegreesToTransform(m_rotation);
                 transform.MultiplyByScale(m_scale);
             }
 
@@ -137,7 +136,7 @@ namespace AZ
                 layout->addWidget(new QLabel("Scale"), 2, 0);
                 layout->addWidget(m_scaleWidget, 2, 1);
 
-                QObject::connect(m_translationWidget, &AzToolsFramework::PropertyVectorCtrl::valueChanged, [this]
+                QObject::connect(m_translationWidget, &AzToolsFramework::PropertyVectorCtrl::valueChanged, this, [this]
                 {
                     AzToolsFramework::PropertyVectorCtrl* widget = this->GetTranslationWidget();
                     AZ::Vector3 translation;
@@ -148,7 +147,7 @@ namespace AZ
                     AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestWrite, this);
                 });
 
-                QObject::connect(m_rotationWidget, &AzToolsFramework::PropertyVectorCtrl::valueChanged, [this]
+                QObject::connect(m_rotationWidget, &AzToolsFramework::PropertyVectorCtrl::valueChanged, this, [this]
                 {
                     AzToolsFramework::PropertyVectorCtrl* widget = this->GetRotationWidget();
                     AZ::Vector3 rotation;
@@ -159,7 +158,7 @@ namespace AZ
                     AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestWrite, this);
                 });
 
-                QObject::connect(m_scaleWidget, &AzToolsFramework::PropertyVectorCtrl::valueChanged, [this]
+                QObject::connect(m_scaleWidget, &AzToolsFramework::PropertyVectorCtrl::valueChanged, this, [this]
                 {
                     AzToolsFramework::PropertyVectorCtrl* widget = this->GetScaleWidget();
                     AZ::Vector3 scale;

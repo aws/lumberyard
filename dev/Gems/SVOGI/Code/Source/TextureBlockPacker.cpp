@@ -16,168 +16,139 @@
 
 #include "StdAfx.h"
 
-#if defined(FEATURE_SVO_GI)
 
-#include "BlockPacker.h"
+#include "TextureBlockPacker.h"
 
-const int nHS = 4;
-
-CBlockPacker3D::CBlockPacker3D(const uint32 dwLogWidth, const uint32 dwLogHeight, const uint32 dwLogDepth, const bool bNonPow)
-    : m_fLastUsed(0.0f)
-    , m_nUsedBlocks(0)
+namespace SVOGI
 {
-    if (bNonPow)
+    const AZ::u32 nHS = 4;
+
+    const AZ::u8 TextureBlock3D::s_freeBlock = 0xff;
+
+    const AZ::s32 TextureBlockPacker3D::s_invalidBlockID = -1;
+
+    TextureBlockPacker3D::TextureBlockPacker3D(const AZ::u32 dwLogWidth, const AZ::u32 dwLogHeight, const AZ::u32 dwLogDepth, bool bNonPow)
     {
-        m_dwWidth = dwLogWidth;
-        m_dwHeight = dwLogHeight;
-        m_dwDepth = dwLogDepth;
-    }
-    else
-    {
-        m_dwWidth = 1 << dwLogWidth;
-        m_dwHeight = 1 << dwLogHeight;
-        m_dwDepth = 1 << dwLogDepth;
-    }
-
-    m_BlockBitmap.resize(m_dwWidth * m_dwHeight * m_dwDepth, 0xffffffff);
-    m_BlockUsageGrid.resize(m_dwWidth * m_dwHeight * m_dwDepth / nHS / nHS / nHS, 0);
-    m_Blocks.reserve(m_dwWidth * m_dwHeight * m_dwDepth);
-}
-
-SBlockMinMax* CBlockPacker3D::GetBlockInfo(const uint32 dwBlockID)
-{
-    uint32 dwSize = (uint32)m_Blocks.size();
-
-    assert(dwBlockID < dwSize);
-    if (dwBlockID >= dwSize)
-    {
-        return NULL;
-    }
-
-    SBlockMinMax& ref = m_Blocks[dwBlockID];
-
-    if (ref.IsFree())
-    {
-        return NULL;
-    }
-
-    return &m_Blocks[dwBlockID];
-}
-
-void CBlockPacker3D::UpdateSize(int nW, int nH, int nD)
-{
-    assert(m_nUsedBlocks == 0);
-
-    m_dwWidth = nW;
-    m_dwHeight = nH;
-    m_dwDepth = nD;
-
-    m_nUsedBlocks = 0;
-
-    m_BlockBitmap.resize(m_dwWidth * m_dwHeight * m_dwDepth, 0xffffffff);
-}
-
-void CBlockPacker3D::RemoveBlock(const uint32 dwBlockID)
-{
-    uint32 dwSize = (uint32)m_Blocks.size();
-
-    assert(dwBlockID < dwSize);
-    if (dwBlockID >= dwSize)
-    {
-        return;         // to avoid crash
-    }
-    SBlockMinMax& ref = m_Blocks[dwBlockID];
-
-    assert(!ref.IsFree());
-
-    FillRect(ref, 0xffffffff);
-    m_nUsedBlocks -= (ref.m_dwMaxX - ref.m_dwMinX) * (ref.m_dwMaxY - ref.m_dwMinY) * (ref.m_dwMaxZ - ref.m_dwMinZ);
-
-    ref.MarkFree();
-
-    //  m_BlocksList.remove(&ref);
-}
-
-void CBlockPacker3D::RemoveBlock(SBlockMinMax* pInfo)
-{
-    SBlockMinMax& ref = *pInfo;
-
-    assert(!ref.IsFree());
-
-    FillRect(ref, 0xffffffff);
-    m_nUsedBlocks -= (ref.m_dwMaxX - ref.m_dwMinX) * (ref.m_dwMaxY - ref.m_dwMinY) * (ref.m_dwMaxZ - ref.m_dwMinZ);
-
-    ref.MarkFree();
-
-    //  m_BlocksList.remove(&ref);
-}
-
-SBlockMinMax* CBlockPacker3D::AddBlock(const uint32 dwLogWidth, const uint32 dwLogHeight, const uint32 dwLogDepth, void* pUserData, uint32 nCreateFrameId, uint32 nDataSize)
-{
-    if (!dwLogWidth || !dwLogHeight || !dwLogDepth)
-    {
-        assert(!"Empty block");
-    }
-
-    uint32 dwLocalWidth  = dwLogWidth;
-    uint32 dwLocalHeight = dwLogHeight;
-    uint32 dwLocalDepth  = dwLogDepth;
-
-    int nCountNeeded = dwLocalWidth * dwLocalHeight * dwLocalDepth;
-
-    int dwW = m_dwWidth / nHS;
-    int dwH = m_dwHeight / nHS;
-    int dwD = m_dwDepth / nHS;
-
-    for (int nZ = 0; nZ < dwD; nZ++)
-    {
-        for (int nY = 0; nY < dwH; nY++)
+        if (bNonPow)
         {
-            for (int nX = 0; nX < dwW; nX++)
+            m_width = dwLogWidth;
+            m_height = dwLogHeight;
+            m_depth = dwLogDepth;
+        }
+        else
+        {
+            m_width = 1 << dwLogWidth;
+            m_height = 1 << dwLogHeight;
+            m_depth = 1 << dwLogDepth;
+        }
+
+        m_blockBitmap.resize(m_width * m_height * m_depth, s_invalidBlockID);
+        m_blockUsageGrid.resize(m_width * m_height * m_depth / nHS / nHS / nHS, 0);
+        m_blocks.reserve(m_width * m_height * m_depth);
+    }
+
+    TextureBlock3D* TextureBlockPacker3D::GetBlockInfo(const AZ::s32 blockID)
+    {
+        if (blockID < 0 || blockID >= static_cast<AZ::s32>(m_blocks.size()))
+        {
+            return nullptr;
+        }
+
+        TextureBlock3D* ref = &m_blocks[blockID];
+        if (ref->IsFree())
+        {
+            return nullptr;
+        }
+
+        return ref;
+    }
+
+    void TextureBlockPacker3D::RemoveBlock(const AZ::s32 blockID)
+    {
+        TextureBlock3D* blockInfo = GetBlockInfo(blockID);
+        if (blockInfo)
+        {
+            FreeBlock(*blockInfo);
+        }
+    }
+
+    void TextureBlockPacker3D::FreeBlock(TextureBlock3D& blockInfo)
+    {
+        if (!blockInfo.IsFree())
+        {
+            FillRect(blockInfo, s_invalidBlockID);
+
+            blockInfo.MarkFree();
+        }
+    }
+
+    AZ::s32 TextureBlockPacker3D::AddBlock(const AZ::u32 dwLogWidth, const AZ::u32 dwLogHeight, const AZ::u32 dwLogDepth, const AZ::Aabb &worldBox)
+    {
+        if (!dwLogWidth || !dwLogHeight || !dwLogDepth)
+        {
+            assert(!"Empty block");
+        }
+
+        AZ::u32 dwLocalWidth = dwLogWidth;
+        AZ::u32 dwLocalHeight = dwLogHeight;
+        AZ::u32 dwLocalDepth = dwLogDepth;
+
+        AZ::u32 nCountNeeded = dwLocalWidth * dwLocalHeight * dwLocalDepth;
+
+        AZ::u32 dwW = m_width / nHS;
+        AZ::u32 dwH = m_height / nHS;
+        AZ::u32 dwD = m_depth / nHS;
+
+        for (AZ::u32 nZ = 0; nZ < dwD; nZ++)
+        {
+            for (AZ::u32 nY = 0; nY < dwH; nY++)
             {
-                uint32      dwMinX = nX * nHS;
-                uint32      dwMinY = nY * nHS;
-                uint32      dwMinZ = nZ * nHS;
-
-                uint32      dwMaxX = (nX + 1) * nHS;
-                uint32      dwMaxY = (nY + 1) * nHS;
-                uint32      dwMaxZ = (nZ + 1) * nHS;
-
-                int nCountFree = nHS * nHS * nHS - m_BlockUsageGrid[nX + nY * dwW + nZ * dwW * dwH];
-
-                if (nCountNeeded <= nCountFree)
+                for (AZ::u32 nX = 0; nX < dwW; nX++)
                 {
-                    SBlockMinMax testblock;
-                    testblock.m_pUserData = pUserData;
-                    testblock.m_nLastVisFrameId = nCreateFrameId;
-                    testblock.m_nDataSize = nDataSize;
+                    AZ::u32      dwMinX = nX * nHS;
+                    AZ::u32      dwMinY = nY * nHS;
+                    AZ::u32      dwMinZ = nZ * nHS;
 
-                    for (uint32 dwZ = dwMinZ; dwZ < dwMaxZ; dwZ += dwLocalDepth)
+                    AZ::u32      dwMaxX = (nX + 1) * nHS;
+                    AZ::u32      dwMaxY = (nY + 1) * nHS;
+                    AZ::u32      dwMaxZ = (nZ + 1) * nHS;
+
+                    AZ::u32 nCountFree = nHS * nHS * nHS - m_blockUsageGrid[nX + nY * dwW + nZ * dwW * dwH];
+
+                    if (nCountNeeded <= nCountFree)
                     {
-                        for (uint32 dwY = dwMinY; dwY < dwMaxY; dwY += dwLocalHeight)
+                        TextureBlock3D testblock;
+
+                        for (AZ::u32 dwZ = dwMinZ; dwZ < dwMaxZ; dwZ += dwLocalDepth)
                         {
-                            for (uint32 dwX = dwMinX; dwX < dwMaxX; dwX += dwLocalWidth)
+                            for (AZ::u32 dwY = dwMinY; dwY < dwMaxY; dwY += dwLocalHeight)
                             {
-                                testblock.m_dwMinX = dwX;
-                                testblock.m_dwMaxX = dwX + dwLocalWidth;
-                                testblock.m_dwMinY = dwY;
-                                testblock.m_dwMaxY = dwY + dwLocalHeight;
-                                testblock.m_dwMinZ = dwZ;
-                                testblock.m_dwMaxZ = dwZ + dwLocalDepth;
-
-                                if (IsFree(testblock))
+                                for (AZ::u32 dwX = dwMinX; dwX < dwMaxX; dwX += dwLocalWidth)
                                 {
-                                    uint32 dwBlockID = FindFreeBlockIDOrCreateNew();
+                                    testblock.m_minX = dwX;
+                                    testblock.m_maxX = dwX + dwLocalWidth;
+                                    testblock.m_minY = dwY;
+                                    testblock.m_maxY = dwY + dwLocalHeight;
+                                    testblock.m_minZ = dwZ;
+                                    testblock.m_maxZ = dwZ + dwLocalDepth;
 
-                                    m_Blocks[dwBlockID] = testblock;
+                                    testblock.m_worldBox = worldBox;
 
-                                    FillRect(testblock, dwBlockID);
+                                    testblock.m_textureBox.SetMin(AZ::Vector3((float)testblock.m_minX / (float)m_width, (float)testblock.m_minY / (float)m_height, (float)testblock.m_minZ / (float)m_depth));
+                                    testblock.m_textureBox.SetMax(AZ::Vector3((float)testblock.m_maxX / (float)m_width, (float)testblock.m_maxY / (float)m_height, (float)testblock.m_maxZ / (float)m_depth));
 
-                                    m_nUsedBlocks += dwLocalWidth * dwLocalHeight * dwLocalDepth;
+                                    testblock.m_atlasOffset = testblock.m_minZ * m_width * m_height + testblock.m_minY * m_width + testblock.m_minX;
 
-                                    //                          m_BlocksList.insertBeginning(&m_Blocks[dwBlockID]);
+                                    if (IsFree(testblock))
+                                    {
+                                        AZ::s32 blockID = FindFreeBlockIDOrCreateNew();
 
-                                    return &m_Blocks[dwBlockID];
+                                        m_blocks[blockID] = testblock;
+
+                                        FillRect(testblock, blockID);
+
+                                        return blockID;
+                                    }
                                 }
                             }
                         }
@@ -185,123 +156,118 @@ SBlockMinMax* CBlockPacker3D::AddBlock(const uint32 dwLogWidth, const uint32 dwL
                 }
             }
         }
+
+        return s_invalidBlockID;    // no space left to this block
     }
 
-    return NULL;    // no space left to this block
-}
-
-void CBlockPacker3D::UpdateUsageGrid(const SBlockMinMax& rectIn)
-{
-    SBlockMinMax rectUM;
-
-    rectUM.m_dwMinX = rectIn.m_dwMinX / nHS;
-    rectUM.m_dwMinY = rectIn.m_dwMinY / nHS;
-    rectUM.m_dwMinZ = rectIn.m_dwMinZ / nHS;
-
-    rectUM.m_dwMaxX = (rectIn.m_dwMaxX - 1) / nHS + 1;
-    rectUM.m_dwMaxY = (rectIn.m_dwMaxY - 1) / nHS + 1;
-    rectUM.m_dwMaxZ = (rectIn.m_dwMaxZ - 1) / nHS + 1;
-
-    int dwW = m_dwWidth / nHS;
-    int dwH = m_dwHeight / nHS;
-    int dwD = m_dwDepth / nHS;
-
-    for (uint32 dwZ = rectUM.m_dwMinZ; dwZ < rectUM.m_dwMaxZ; ++dwZ)
+    void TextureBlockPacker3D::UpdateUsageGrid(const TextureBlock3D& rectIn)
     {
-        for (uint32 dwY = rectUM.m_dwMinY; dwY < rectUM.m_dwMaxY; ++dwY)
+        TextureBlock3D rectUM;
+
+        rectUM.m_minX = rectIn.m_minX / nHS;
+        rectUM.m_minY = rectIn.m_minY / nHS;
+        rectUM.m_minZ = rectIn.m_minZ / nHS;
+
+        rectUM.m_maxX = (rectIn.m_maxX - 1) / nHS + 1;
+        rectUM.m_maxY = (rectIn.m_maxY - 1) / nHS + 1;
+        rectUM.m_maxZ = (rectIn.m_maxZ - 1) / nHS + 1;
+
+        AZ::u32 dwW = m_width / nHS;
+        AZ::u32 dwH = m_height / nHS;
+        AZ::u32 dwD = m_depth / nHS;
+
+        for (AZ::u32 dwZ = rectUM.m_minZ; dwZ < rectUM.m_maxZ; ++dwZ)
         {
-            for (uint32 dwX = rectUM.m_dwMinX; dwX < rectUM.m_dwMaxX; ++dwX)
+            for (AZ::u32 dwY = rectUM.m_minY; dwY < rectUM.m_maxY; ++dwY)
             {
-                SBlockMinMax rectTest = rectUM;
-
-                rectTest.m_dwMinX = dwX * nHS;
-                rectTest.m_dwMinY = dwY * nHS;
-                rectTest.m_dwMinZ = dwZ * nHS;
-
-                rectTest.m_dwMaxX = (dwX + 1) * nHS;
-                rectTest.m_dwMaxY = (dwY + 1) * nHS;
-                rectTest.m_dwMaxZ = (dwZ + 1) * nHS;
-
-                m_BlockUsageGrid[dwX + dwY * dwW + dwZ * dwW * dwH] = GetUsedSlotsCount(rectTest);
-            }
-        }
-    }
-}
-
-void CBlockPacker3D::FillRect(const SBlockMinMax& rect, uint32 dwValue)
-{
-    for (uint32 dwZ = rect.m_dwMinZ; dwZ < rect.m_dwMaxZ; ++dwZ)
-    {
-        for (uint32 dwY = rect.m_dwMinY; dwY < rect.m_dwMaxY; ++dwY)
-        {
-            for (uint32 dwX = rect.m_dwMinX; dwX < rect.m_dwMaxX; ++dwX)
-            {
-                m_BlockBitmap[dwX + dwY * m_dwWidth + dwZ * m_dwWidth * m_dwHeight] = dwValue;
-            }
-        }
-    }
-
-    UpdateUsageGrid(rect);
-}
-
-int CBlockPacker3D::GetUsedSlotsCount(const SBlockMinMax& rect)
-{
-    int nCount = 0;
-
-    for (uint32 dwZ = rect.m_dwMinZ; dwZ < rect.m_dwMaxZ; ++dwZ)
-    {
-        for (uint32 dwY = rect.m_dwMinY; dwY < rect.m_dwMaxY; ++dwY)
-        {
-            for (uint32 dwX = rect.m_dwMinX; dwX < rect.m_dwMaxX; ++dwX)
-            {
-                if (m_BlockBitmap[dwX + dwY * m_dwWidth + dwZ * m_dwWidth * m_dwHeight] != 0xffffffff)
+                for (AZ::u32 dwX = rectUM.m_minX; dwX < rectUM.m_maxX; ++dwX)
                 {
-                    nCount++;
+                    TextureBlock3D rectTest = rectUM;
+
+                    rectTest.m_minX = dwX * nHS;
+                    rectTest.m_minY = dwY * nHS;
+                    rectTest.m_minZ = dwZ * nHS;
+
+                    rectTest.m_maxX = (dwX + 1) * nHS;
+                    rectTest.m_maxY = (dwY + 1) * nHS;
+                    rectTest.m_maxZ = (dwZ + 1) * nHS;
+
+                    m_blockUsageGrid[dwX + dwY * dwW + dwZ * dwW * dwH] = GetUsedSlotsCount(rectTest);
                 }
             }
         }
     }
 
-    return nCount;
-}
-
-bool CBlockPacker3D::IsFree(const SBlockMinMax& rect)
-{
-    for (uint32 dwZ = rect.m_dwMinZ; dwZ < rect.m_dwMaxZ; ++dwZ)
+    void TextureBlockPacker3D::FillRect(const TextureBlock3D& rect, AZ::s32 value)
     {
-        for (uint32 dwY = rect.m_dwMinY; dwY < rect.m_dwMaxY; ++dwY)
+        for (AZ::u32 dwZ = rect.m_minZ; dwZ < rect.m_maxZ; ++dwZ)
         {
-            for (uint32 dwX = rect.m_dwMinX; dwX < rect.m_dwMaxX; ++dwX)
+            for (AZ::u32 dwY = rect.m_minY; dwY < rect.m_maxY; ++dwY)
             {
-                if (m_BlockBitmap[dwX + dwY * m_dwWidth + dwZ * m_dwWidth * m_dwHeight] != 0xffffffff)
+                for (AZ::u32 dwX = rect.m_minX; dwX < rect.m_maxX; ++dwX)
                 {
-                    return false;
+                    m_blockBitmap[dwX + dwY * m_width + dwZ * m_width * m_height] = value;
                 }
             }
         }
+
+        UpdateUsageGrid(rect);
     }
 
-    return true;
-}
-
-uint32 CBlockPacker3D::FindFreeBlockIDOrCreateNew()
-{
-    std::vector<SBlockMinMax>::const_iterator it, end = m_Blocks.end();
-    uint32 dwI = 0;
-
-    for (it = m_Blocks.begin(); it != end; ++it, ++dwI)
+    AZ::u32 TextureBlockPacker3D::GetUsedSlotsCount(const TextureBlock3D& rect) const
     {
-        const SBlockMinMax& ref = *it;
+        AZ::u32 nCount = 0;
 
-        if (ref.IsFree())
+        for (AZ::u32 dwZ = rect.m_minZ; dwZ < rect.m_maxZ; ++dwZ)
         {
-            return dwI;
+            for (AZ::u32 dwY = rect.m_minY; dwY < rect.m_maxY; ++dwY)
+            {
+                for (AZ::u32 dwX = rect.m_minX; dwX < rect.m_maxX; ++dwX)
+                {
+                    if (m_blockBitmap[dwX + dwY * m_width + dwZ * m_width * m_height] != s_invalidBlockID)
+                    {
+                        nCount++;
+                    }
+                }
+            }
         }
+
+        return nCount;
     }
 
-    m_Blocks.push_back(SBlockMinMax());
+    bool TextureBlockPacker3D::IsFree(const TextureBlock3D& rect) const
+    {
+        for (AZ::u32 dwZ = rect.m_minZ; dwZ < rect.m_maxZ; ++dwZ)
+        {
+            for (AZ::u32 dwY = rect.m_minY; dwY < rect.m_maxY; ++dwY)
+            {
+                for (AZ::u32 dwX = rect.m_minX; dwX < rect.m_maxX; ++dwX)
+                {
+                    if (m_blockBitmap[dwX + dwY * m_width + dwZ * m_width * m_height] != s_invalidBlockID)
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
 
-    return (uint32)m_Blocks.size() - 1;
+        return true;
+    }
+
+    AZ::s32 TextureBlockPacker3D::FindFreeBlockIDOrCreateNew()
+    {
+        AZ::s32 index = 0;
+        for (; index < m_blocks.size(); ++index)
+        {
+            if (m_blocks[index].IsFree())
+            {
+                return index; // Found free block
+            }
+        }
+
+        // Create new block
+        m_blocks.push_back(TextureBlock3D());
+
+        return index;
+    }
 }
-
-#endif

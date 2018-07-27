@@ -13,7 +13,7 @@
 
 // Description : Implements a flow node to enable/disable vehicle handbrake.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "IVehicleSystem.h"
 #include "IFlowSystem.h"

@@ -1,16 +1,11 @@
 {
     "none": {
-        "Root": [
-            "dllmain.cpp",
+        "Editor": [
 
-            "IStaticDataMonitor.h",
-            "StaticDataMonitorEditorPlugin.cpp",
-            "StaticDataMonitorEditorPlugin.h",
-            "StaticDataMonitor.cpp",
-            "StaticDataMonitor.h",
-
-	    "StaticData_precompiled.cpp",
-            "StaticData_precompiled.h"
+            "Editor/IStaticDataMonitor.h",
+            "Editor/StaticDataMonitor.cpp",
+            "Editor/StaticDataMonitor.h",
+            "Editor/StaticDataEditorGem.cpp"
 
         ]
     }

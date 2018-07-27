@@ -14,7 +14,7 @@
 // Description : Implementation of the CGraph class.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <limits>
 #include <algorithm>

@@ -97,7 +97,7 @@
   <customwidget>
    <class>CAIDebuggerView</class>
    <extends>QWidget</extends>
-   <header>AIDebuggerView.h</header>
+   <header>AI/AIDebuggerView.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

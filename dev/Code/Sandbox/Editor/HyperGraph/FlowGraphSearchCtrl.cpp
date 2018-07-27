@@ -314,7 +314,7 @@ public:
             if (m_pOptions->m_bIncludeIDs)
             {
                 char ids[32];
-                _snprintf(ids, sizeof(ids) - 1, "(ID=%d)", id);
+                azsnprintf(ids, sizeof(ids) - 1, "(ID=%d)", id);
                 ids[sizeof(ids) - 1] = 0;
                 if (matches(ids, m_pOptions->m_strFind.toUtf8().data()) != 0)
                 {

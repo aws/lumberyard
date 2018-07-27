@@ -919,7 +919,7 @@ namespace NCryOpenGL
     template <typename Impl>
     typename Impl::TViewPtr GetTexture1DView(STexture* pTexture, const typename Impl::TViewDesc& kViewDesc, CContext* pContext)
     {
-        switch (kViewDesc.ViewDimension)
+        switch (static_cast<typename Impl::EViewDimension>(kViewDesc.ViewDimension))
         {
         case Impl::DIMENSION_TEXTURE1D:
             return Impl::GetViewMip(pTexture,       kViewDesc.Texture1D,      kViewDesc.Format, GL_TEXTURE_1D,       0, 1, pContext);
@@ -932,7 +932,7 @@ namespace NCryOpenGL
     template <typename Impl>
     typename Impl::TViewPtr GetTexture2DView(STexture* pTexture, const typename Impl::TViewDesc& kViewDesc, CContext* pContext)
     {
-        switch (kViewDesc.ViewDimension)
+        switch (static_cast<typename Impl::EViewDimension>(kViewDesc.ViewDimension))
         {
         case Impl::DIMENSION_TEXTURE2D:
             return Impl::GetViewMip(pTexture,       kViewDesc.Texture2D,        kViewDesc.Format, GL_TEXTURE_2D,                   0, 1,       pContext);
@@ -947,7 +947,7 @@ namespace NCryOpenGL
     {
         if (pContext->GetDevice()->IsFeatureSupported(eF_MultiSampledTextures))
         {
-            switch (kViewDesc.ViewDimension)
+            switch (static_cast<typename Impl::EViewDimension>(kViewDesc.ViewDimension))
             {
 #if DXGL_SUPPORT_MULTISAMPLED_TEXTURES
             case Impl::DIMENSION_TEXTURE2DMS:
@@ -965,7 +965,7 @@ namespace NCryOpenGL
     template <typename Impl>
     typename Impl::TViewPtr GetTextureCubeView(STexture* pTexture, const typename Impl::TViewDesc& kViewDesc, CContext* pContext)
     {
-        switch (kViewDesc.ViewDimension)
+        switch (static_cast<D3D_SRV_DIMENSION>(kViewDesc.ViewDimension))
         {
         case D3D11_SRV_DIMENSION_TEXTURECUBE:
             return Impl::GetViewMip(pTexture, kViewDesc.TextureCube, kViewDesc.Format, GL_TEXTURE_CUBE_MAP, 0, 6, pContext);

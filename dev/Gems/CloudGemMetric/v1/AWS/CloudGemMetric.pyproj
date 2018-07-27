@@ -1,0 +1,149 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{c06682c2-f0e4-46dd-9d4a-82bcfc60cfba}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile />
+    <SearchPath>..\..\CloudGemFramework\v1\ResourceManager\</SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+    <Name>CloudGemMetric</Name>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="api-definition\LoadTest_1_0_0.json" />
+    <Content Include="lambda-code\AmoebaLauncher\.ignore" />
+    <Content Include="lambda-code\AmoebaLauncher\.import" />
+    <Content Include="lambda-code\FIFOProducer\.ignore" />
+    <Content Include="lambda-code\FIFOProducer\.import" />
+    <Content Include="lambda-code\GlueCrawlerLauncher\.ignore" />
+    <Content Include="lambda-code\GlueCrawlerLauncher\.import" />
+    <Content Include="project-code\lambda-code\CustomResource\.ignore" />
+    <Content Include="project-code\lambda-code\CustomResource\.import" />
+    <Content Include="lambda-function-code\.ignore" />
+    <Content Include="lambda-function-code\.import" />
+    <Content Include="lambda-code\FIFOConsumer\.ignore" />
+    <Content Include="lambda-code\FIFOConsumer\.import" />
+    <Content Include="lambda-code\LambdaConsumerLauncher\.ignore" />
+    <Content Include="lambda-code\LambdaConsumerLauncher\.import" />
+    <Content Include="lambda-code\ServiceLambda\.ignore" />
+    <Content Include="lambda-code\ServiceLambda\.import" />
+    <Content Include="project-template.json" />
+    <Content Include="resource-manager-code\.import" />
+    <Content Include="resource-template.json" />
+    <Content Include="swagger.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="common-code\AWSCommon\cloudwatch.py" />
+    <Compile Include="common-code\AWSCommon\dynamodb.py" />
+    <Compile Include="common-code\AWSCommon\aws_lambda.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="common-code\AWSCommon\kms.py" />
+    <Compile Include="common-code\AWSCommon\retry.py" />
+    <Compile Include="common-code\AWSCommon\glue.py" />
+    <Compile Include="common-code\AWSCommon\athena.py" />
+    <Compile Include="common-code\AWSCommon\s3.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="common-code\AWSCommon\sqs.py" />
+    <Compile Include="common-code\Constant\metric_error_code.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="common-code\Constant\metric_schema.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="common-code\Constant\metric_constant.py" />
+    <Compile Include="common-code\LoadTest\LoadTest__CloudGemMetric.py" />
+    <Compile Include="common-code\MemoryUtils\mem_util.py" />
+    <Compile Include="common-code\MetricUtils\enum_type.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="common-code\MetricUtils\payload.py" />
+    <Compile Include="common-code\MetricUtils\sensitivity.py" />
+    <Compile Include="common-code\MetricUtils\thread_pool.py" />
+    <Compile Include="common-code\MetricUtils\compression.py" />
+    <Compile Include="common-code\MetricUtils\util.py" />
+    <Compile Include="common-code\MetricUtils\worker.py" />
+    <Compile Include="common-code\ParquetUtils\parquet_reader.py" />
+    <Compile Include="common-code\ParquetUtils\parquet_writer.py" />
+    <Compile Include="lambda-code\AmoebaLauncher\amoeba_launcher.py" />
+    <Compile Include="common-code\AWSCommon\keyparts.py" />
+    <Compile Include="common-code\AWSCommon\s3crawler.py" />
+    <Compile Include="lambda-code\FIFOProducer\data_generator.py" />
+    <Compile Include="lambda-code\FIFOProducer\lambda_fifo_message_producer.py" />
+    <Compile Include="lambda-code\GlueCrawlerLauncher\glue_crawler.py" />
+    <Compile Include="lambda-code\GlueCrawlerLauncher\recovery.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="lambda-code\ServiceLambda\api\dashboard.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\loadtest_setup.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\loadtest_teardown.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\query_athena.py" />
+    <Compile Include="project-code\lambda-code\CustomResource\resource_types\Custom_AutoScaleFifoQueue.py" />
+    <Compile Include="project-code\lambda-code\CustomResource\resource_types\Custom_Glue.py" />
+    <Compile Include="project-code\lambda-code\CustomResource\resource_types\SpecialPermissions.py" />
+    <Compile Include="project-code\lambda-code\CustomResource\resource_types\__init__.py" />
+    <Compile Include="lambda-code\FIFOConsumer\aggregator.py" />
+    <Compile Include="lambda-function-code\amoeba_generator.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="lambda-code\FIFOConsumer\lambda_fifo_message_consumer.py" />
+    <Compile Include="lambda-code\FIFOConsumer\partitioner.py" />
+    <Compile Include="lambda-code\LambdaConsumerLauncher\lambda_launcher.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\amoeba.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\producer.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\context.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="lambda-code\ServiceLambda\api\graph.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="lambda-code\ServiceLambda\api\consumer.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\service_status.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\__init__.py" />
+    <Compile Include="resource-manager-code\command.py" />
+    <Compile Include="resource-manager-code\update.py" />
+    <Compile Include="test\test_integration.py">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="api-definition\" />
+    <Folder Include="common-code\" />
+    <Folder Include="common-code\AWSCommon\" />
+    <Folder Include="common-code\Constant\" />
+    <Folder Include="common-code\LoadTest\" />
+    <Folder Include="common-code\MetricUtils\" />
+    <Folder Include="common-code\MemoryUtils\" />
+    <Folder Include="common-code\ParquetUtils\" />
+    <Folder Include="lambda-code" />
+    <Folder Include="lambda-code\AmoebaLauncher\" />
+    <Folder Include="lambda-code\FIFOProducer\" />
+    <Folder Include="lambda-code\GlueCrawlerLauncher\" />
+    <Folder Include="test\" />
+    <Folder Include="project-code\lambda-code\CustomResource\" />
+    <Folder Include="project-code\lambda-code\CustomResource\resource_types\" />
+    <Folder Include="lambda-function-code\" />
+    <Folder Include="lambda-code\FIFOConsumer\" />
+    <Folder Include="lambda-code\LambdaConsumerLauncher\" />
+    <Folder Include="lambda-code\ServiceLambda\" />
+    <Folder Include="lambda-code\ServiceLambda\api\" />
+    <Folder Include="project-code\" />
+    <Folder Include="project-code\lambda-code\" />
+    <Folder Include="resource-manager-code\" />
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>

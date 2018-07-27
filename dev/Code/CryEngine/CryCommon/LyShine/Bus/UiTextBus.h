@@ -25,7 +25,7 @@ class UiTextInterface
 public: // types
 
     //! Callback type for retrieving displayed text.
-    typedef std::function<AZStd::string(const AZStd::string&)> DisplayedTextFunction;
+    typedef AZStd::function<AZStd::string(const AZStd::string&)> DisplayedTextFunction;
 
     //! Determines how text overflow should behave
     //!
@@ -120,7 +120,7 @@ public: // member functions
     virtual int GetCharIndexFromCanvasSpacePoint(AZ::Vector2 point, bool mustBeInBoundingBox) = 0;
 
     //! Returns the XY coord of the rendered character position at a given index.
-    //! Imagining a rect encompassing the character width and line height, 
+    //! Imagining a rect encompassing the character width and line height,
     //! the returned coordinate is the upper-left corner of the rect.
     //! \param index Index into displayed string.
     virtual AZ::Vector2 GetPointFromCharIndex(int index) = 0;
@@ -132,7 +132,7 @@ public: // member functions
     //!
     //! If startIndex and endIndex are the same then a one pixel wide vertical bar is highlighted.
     //!
-    //! The provided start and end indices are "character" indices into a UTF8 string. For 
+    //! The provided start and end indices are "character" indices into a UTF8 string. For
     //! example, an index of 1 could actually be mapped at buffer index 2 if the first character
     //! in the UTF8 string is a multi-byte character of size 2.
     //!

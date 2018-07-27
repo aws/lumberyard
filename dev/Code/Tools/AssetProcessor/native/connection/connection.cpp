@@ -10,8 +10,8 @@
 *
 */
 #include "connection.h"
-#include "native/connection/ConnectionWorker.h"
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/connection/connectionworker.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 #include "native/assetprocessor.h"
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include "native/utilities/ByteArrayStream.h"

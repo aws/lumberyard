@@ -14,7 +14,7 @@
 // Description : Pool definition to associate an id with settings
 
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "EntityPoolDefinition.h"
 #include "EntitySystem.h"
 #include "EntityClassRegistry.h"

@@ -29,7 +29,7 @@ MainWidget::MainWidget(QWidget *parent) :
     initializeControls();
     initializeItemViews();
 
-    connect(ui->button1, &QPushButton::clicked, []{
+    connect(ui->button1, &QPushButton::clicked, this, []{
         auto mainwindow = new QMainWindow();
         auto menu = new QMenu("File");
         auto mb = new QMenuBar();
@@ -235,7 +235,7 @@ void MainWidget::initializeControls()
     ui->buttonOrange2->setProperty("class", "Primary");
 
     ui->tabWidget->tabBar()->setTabsClosable(true);
-    connect(ui->tabWidget->tabBar(), &QTabBar::tabCloseRequested, [this](int index) {
+    connect(ui->tabWidget->tabBar(), &QTabBar::tabCloseRequested, this, [this](int index) {
         ui->tabWidget->removeTab(index);
     });
 }

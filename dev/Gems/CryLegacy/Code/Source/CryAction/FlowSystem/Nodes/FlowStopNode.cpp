@@ -13,8 +13,8 @@
 
 // Description : FlowGraph Node that sends an output upon leaving the game (either in Editor or in Pure Game mode).
 
-#include "StdAfx.h"
-#include "FlowBaseNode.h"
+#include "CryLegacy_precompiled.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 class CFlowNode_Stop
     : public CFlowBaseNode<eNCT_Instanced>

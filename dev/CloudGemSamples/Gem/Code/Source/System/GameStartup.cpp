@@ -6,6 +6,7 @@
 #include <IPlayerProfiles.h>
 #include <CryLibrary.h>
 #include <IPlatformOS.h>
+#include <PakVars.h>
 
 #define DLL_INITFUNC_CREATEGAME "CreateGameFramework"
 
@@ -39,6 +40,19 @@ IGameRef GameStartup::Init(SSystemInitParams& startupParams)
     startupParams.pGameStartup = this;
 
     CryGameFrameworkBus::BroadcastResult(m_Framework, &CryGameFrameworkRequests::InitFramework, startupParams);
+
+    // CloudGemSamples downloads files to user storage - It is a requirement to be able to access them directly
+    // through the file system.  In Release mode this is not allowed by default.  See PakVars.h : PakVars()
+    //         nPriority  = ePakPriorityPakOnly; // Only read from pak files by default
+    // We need to force this to PakFirst priority rather than PakOnly for CloudGemSamples.
+    ICVar* pakPriority = gEnv->pConsole->GetCVar("sys_PakPriority");
+    if (pakPriority && pakPriority->GetIVal() == ePakPriorityPakOnly) // ePakPriorityPakOnly
+    {
+        char pakPriorityBuf[5];
+        azsprintf(pakPriorityBuf, "%d", ePakPriorityPakFirst);
+        pakPriority->ForceSet(pakPriorityBuf);
+    }
+
     if (m_Framework)
     {
         ISystem* system = m_Framework->GetISystem();

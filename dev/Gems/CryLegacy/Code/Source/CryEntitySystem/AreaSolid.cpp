@@ -14,7 +14,7 @@
 // Description : The AreaSolid has most general functions for an area object.
 
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "AreaSolid.h"
 #include "BSPTree3D.h"
 #include <IRenderAuxGeom.h>

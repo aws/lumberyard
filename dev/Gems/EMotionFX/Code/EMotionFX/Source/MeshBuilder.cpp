@@ -19,14 +19,17 @@
 #include "VertexAttributeLayerAbstractData.h"
 #include "SubMesh.h"
 #include "SkinningInfoVertexAttributeLayer.h"
+#include <EMotionFX/Source/Allocators.h>
 #include <MCore/Source/MultiThreadManager.h>
 #include <MCore/Source/Job.h>
 #include <MCore/Source/JobList.h>
 #include <MCore/Source/JobManager.h>
 
-
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MeshBuilder, MeshAllocator, 0)
+
+    
     // constructor
     MeshBuilder::MeshBuilder(uint32 nodeNumber, uint32 numOrgVerts, uint32 maxBonesPerSubMesh, uint32 maxSubMeshVertices, bool isCollisionMesh)
         : BaseObject()
@@ -91,7 +94,7 @@ namespace EMotionFX
     // create
     MeshBuilder* MeshBuilder::Create(uint32 nodeNumber, uint32 numOrgVerts, uint32 maxBonesPerSubMesh, uint32 maxSubMeshVertices, bool isCollisionMesh)
     {
-        return new MeshBuilder(nodeNumber, numOrgVerts, maxBonesPerSubMesh, maxSubMeshVertices, isCollisionMesh);
+        return aznew MeshBuilder(nodeNumber, numOrgVerts, maxBonesPerSubMesh, maxSubMeshVertices, isCollisionMesh);
     }
 
     // init the default value to renderer's limit.

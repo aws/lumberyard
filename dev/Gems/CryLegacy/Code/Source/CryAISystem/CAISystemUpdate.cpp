@@ -14,7 +14,7 @@
 // Description : all the update related functionality here
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <stdio.h>
 
@@ -40,7 +40,6 @@
 #include <AISystemListener.h>
 
 #include "CAISystem.h"
-#include "CryAISystem.h"
 #include "AILog.h"
 #include "CTriangulator.h"
 #include "Free2DNavRegion.h"

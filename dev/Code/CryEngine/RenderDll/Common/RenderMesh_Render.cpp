@@ -18,8 +18,6 @@
 
 #include "PostProcess/PostEffects.h"
 
-#include <IJobManager_JobDelegator.h>
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 namespace
@@ -58,7 +56,7 @@ void CRenderMesh::Render(CRenderObject* pObj, const SRenderingPassInfo& passInfo
     {
         char szMesh[1024];
         cry_strcpy(szMesh, this->m_sSource);
-        strlwr(szMesh);
+        azstrlwr(szMesh, AZ_ARRAY_SIZE(szMesh));
         if (szExcl[0] == '!')
         {
             if (!strstr(&szExcl[1], m_sSource))
@@ -240,6 +238,11 @@ bool CRenderMesh::RenderChunkMergeAbleInShadowPass(CRenderChunk* pPreviousChunk,
 
     CShader* pCurrentShader       = (CShader*)rCurrentShaderItem.m_pShader;
     CShader* pPreviousShader    = (CShader*)rPreviousShaderItem.m_pShader;
+
+    if (!pCurrentShaderResource || !pPreviousShaderResource || !pCurrentShader || !pPreviousShader)
+    {
+        return false;
+    }
 
     bool bCurrentAlphaTested        = pCurrentShaderResource->CShaderResources::IsAlphaTested();
     bool bPreviousAlphaTested       = pPreviousShaderResource->CShaderResources::IsAlphaTested();

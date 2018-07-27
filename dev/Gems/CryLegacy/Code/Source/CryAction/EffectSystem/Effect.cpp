@@ -14,7 +14,7 @@
 // Description : Base class for effects managed by the effect system
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "Effect.h"
 
 

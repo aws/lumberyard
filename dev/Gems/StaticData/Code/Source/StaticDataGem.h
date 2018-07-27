@@ -11,28 +11,39 @@
 */
 #pragma once
 
+#include <AzCore/Module/Module.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+
+#if defined(USE_MONITOR)
+#include <Editor/StaticDataMonitor.h>
+#endif
 
 namespace CloudCanvas
 {
     namespace StaticData
     {
         class IStaticDataManager;
+        class StaticDataMonitor;
     }
 }
 
 namespace StaticData
 {
-    class StaticDataGem : public CryHooksModule
+    class StaticDataGem : public AZ::Module
     {
     public:
         StaticDataGem();
-        AZ_RTTI(StaticDataGem, "{6B556073-DFCF-4A7F-B763-8C1C13936B94}", CryHooksModule);
+        AZ_RTTI(StaticDataGem, "{6B556073-DFCF-4A7F-B763-8C1C13936B94}", AZ::Module);
 
-        ~StaticDataGem() override = default;
+        ~StaticDataGem();
 
-        void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override;
+        void Initialize();
 
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
+
+    private:
+
+        AZStd::shared_ptr<CloudCanvas::StaticData::StaticDataMonitor> m_monitor;
+
     };
 } // namespace StaticData

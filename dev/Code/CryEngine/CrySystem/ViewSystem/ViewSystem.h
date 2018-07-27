@@ -13,9 +13,6 @@
 
 // Description : View System interfaces.
 
-
-#ifndef CRYINCLUDE_CRYACTION_VIEWSYSTEM_VIEWSYSTEM_H
-#define CRYINCLUDE_CRYACTION_VIEWSYSTEM_VIEWSYSTEM_H
 #pragma once
 
 #include "View.h"
@@ -23,7 +20,10 @@
 #include <ILevelSystem.h>
 #include <AzFramework/Components/CameraBus.h>
 
+namespace LegacyViewSystem
+{
 
+class DebugCamera;
 
 class CViewSystem
     : public IViewSystem
@@ -96,8 +96,8 @@ public:
     CViewSystem(ISystem* pSystem);
     ~CViewSystem();
 
-    void Release() { delete this; };
-    void Update(float frameTime);
+    void Release() override { delete this; };
+    void Update(float frameTime) override;
 
     virtual void ForceUpdate(float elapsed) { Update(elapsed); }
 
@@ -153,6 +153,9 @@ private:
 
     bool m_useDeferredViewSystemUpdate;
     bool m_bControlsAudioListeners;
+
+public:
+    static DebugCamera* s_debugCamera;
 };
 
-#endif // CRYINCLUDE_CRYACTION_VIEWSYSTEM_VIEWSYSTEM_H
+} // namespace LegacyViewSystem

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "QEnumWidget.h"
 #include "BaseVariableWidget.h"
 #include "Utils.h"

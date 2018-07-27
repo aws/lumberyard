@@ -23,6 +23,16 @@ SUBFOLDERS = [
 
 def build(bld):
 
+    clang_cxxflags = [
+        '-Wno-microsoft-unqualified-friend',
+        '-Wno-deprecated-declarations',
+        '-Wno-sometimes-uninitialized',
+        '-Wno-shift-negative-value',
+        '-Wno-null-dereference',
+        '-Wno-array-bounds',
+        '-Wno-return-type',
+    ]
+
     configurations_dx11 = ['debug', 'debug_test', 'profile', 'profile_test']
     configurations_dx12 = ['debug', 'debug_test', 'profile', 'profile_test']
     if 'win' in bld.variant and bld.options.win_build_renderer == 'DX12':
@@ -53,15 +63,17 @@ def build(bld):
                                'LZ4',
                                'AMD_SHARED',
                                'NVAPI'],
-        includes            = ['..'],
+        includes            = ['..',
+                               bld.Path('Code/CryEngine/RenderDll/Common')],
         defines             = ['DIRECT3D10',
                                'XRENDERD3D10_EXPORTS',
                                'DO_RENDERSTATS',
-                               'RENDERER_EXPORTS',
-                               'ENGINE_EXPORTS',
                                '_RENDERER',
                                'EXCLUDE_CINEMIZER_SDK'],
 
+        # Compiler Specific
+        win_x64_clang_cxxflags = clang_cxxflags,
+        # Platform Specific
         win_file_list               = 'mesh_baker.waf_files',
         win_includes                = ['.',
                                        bld.Path('Code/CryEngine/CryCommon'),
@@ -104,15 +116,17 @@ def build(bld):
                                'BOOST',
                                'NVAPI'],
         dx12_only           = True,
-        includes            = ['..'],
+        includes            = ['..',
+                               bld.Path('Code/CryEngine/RenderDll/Common')],
         defines             = [ 'DIRECT3D10',
                                 'CRY_USE_DX12',
                                 'XRENDERD3D10_EXPORTS',
                                 'DO_RENDERSTATS',
                                 '_RENDERER',
-                                'RENDERER_EXPORTS',
-                                'ENGINE_EXPORTS',
                                 'EXCLUDE_CINEMIZER_SDK'],
+
+        # Compiler Specific
+        win_x64_clang_cxxflags = clang_cxxflags,
 
         #==============================
         # Windows

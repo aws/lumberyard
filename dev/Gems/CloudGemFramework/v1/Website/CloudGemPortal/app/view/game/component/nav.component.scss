@@ -22,7 +22,7 @@ nav.navbar.navbar {
     height: $nav-height;
     padding: 0;
     margin-bottom: 1px; //preserve box shadow
-    z-index: 500;
+    z-index: 1001; //do not changes this to less or leaflet will appear above header.
     position: fixed;
     top: 0;
     width: 100%;
@@ -105,7 +105,9 @@ nav.navbar.navbar {
 
 .navbar-nav {
     margin-left: auto;
-    margin-right: 20px;
+    padding-right: 20px;
+    background-color: #ffffff;    
+    padding-left: 10px;
     .dropdown {
         padding: 8px;
         margin: 8px 0;
@@ -124,7 +126,17 @@ nav.navbar.navbar {
             padding: 0;
             vertical-align: middle;
         }
-    }
+    }   
+}
+
+.navbar-collapsed {
+    border: 1px solid rgba($black,.1);
+    padding-bottom: 10px;
+    background-color: #ffffff;
+}
+
+.navbar-user-collapsed {    
+    padding-left: 15px;    
 }
 
 .deployment-dropdown {

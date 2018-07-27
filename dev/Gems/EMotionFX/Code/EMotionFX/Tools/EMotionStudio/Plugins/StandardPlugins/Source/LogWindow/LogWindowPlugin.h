@@ -52,7 +52,7 @@ namespace EMStudio
         EMStudioPlugin* Clone() override;
 
     private slots:
-        void OnFindChanged(const QString& text);
+        void OnTextFilterChanged(const QString& text);
         void OnFilterButtonPressed();
 
     private:

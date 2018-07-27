@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AssetBrowserPreviewCharacterDlg.h"
 #include "AssetCharacterItem.h"
 #include "AssetBrowser/AssetBrowserDialog.h"

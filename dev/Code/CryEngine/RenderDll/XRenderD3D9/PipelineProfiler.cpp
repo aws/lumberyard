@@ -47,7 +47,7 @@ void CRenderPipelineProfiler::BeginFrame()
 
     if (m_recordData)
     {
-        CSimpleGPUTimer::EnableTiming();
+        CD3DProfilingGPUTimer::EnableTiming();
     }
 
     uint32 nextSectionsFrameIdx = (m_sectionsFrameIdx + 1) % NumSectionsFrames;
@@ -632,7 +632,7 @@ namespace DebugUI
     void DrawText(float x, float y, float size, ColorF color, const char* format, va_list args)
     {
         char buffer[512];
-        if (vsnprintf(buffer, sizeof(buffer), format, args) == -1)
+        if (azvsnprintf(buffer, sizeof(buffer), format, args) == -1)
         {
             buffer[sizeof(buffer) - 1] = 0;
         }

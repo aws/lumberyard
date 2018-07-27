@@ -50,7 +50,6 @@
 #define PWI_NAME_TAG "PrimitiveWorldIntersection(Editor)"
 
 #define _CRT_RAND_S
-#define _HAS_EXCEPTIONS 1
 
 #ifndef NOT_USE_CRY_MEMORY_MANAGER
 // do not let QListData::realloc use QListData::CryModuleCRTRealloc

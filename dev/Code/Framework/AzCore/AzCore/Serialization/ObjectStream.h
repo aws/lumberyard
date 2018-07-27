@@ -58,6 +58,7 @@ namespace AZ
             ST_XML,
             ST_JSON,
             ST_BINARY,
+            ST_MAX // insert new types before this.
         };
 
         StreamType  GetType() const         { return m_type; }

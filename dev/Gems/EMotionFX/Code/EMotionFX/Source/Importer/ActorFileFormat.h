@@ -93,6 +93,23 @@ namespace EMotionFX
             // string : the name of the actor
         };
 
+        struct Actor_Info2
+        {
+            uint32  mNumLODs;               // the number of level of details
+            uint32  mMotionExtractionNodeIndex;// the node number of the trajectory node used for motion extraction
+            uint32  mRetargetRootNodeIndex; // the retargeting root node index, most likely pointing to the hip or pelvis or MCORE_INVALIDINDEX32 when not set
+            uint8   mUnitType;              // maps to EMotionFX::EUnitType
+            uint8   mExporterHighVersion;
+            uint8   mExporterLowVersion;
+
+            // followed by:
+            // string : source application (e.g. "3ds Max 2011", "Maya 2011")
+            // string : original filename of the 3dsMax/Maya file
+            // string : compilation date of the exporter
+            // string : the name of the actor
+        };
+
+
 
         // a node header
         struct Actor_Node

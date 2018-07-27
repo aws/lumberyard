@@ -561,7 +561,7 @@ void CLoadingProfilerSystem::SaveTimeContainersToFile(const char* name, double f
         char path[ICryPak::g_nMaxPath];
         path[sizeof(path) - 1] = 0;
 
-        gEnv->pCryPak->AdjustFileName(string(string(g_szTestResults) + "\\" + levelName).c_str(), path, ICryPak::FLAGS_PATH_REAL | ICryPak::FLAGS_FOR_WRITING);
+        gEnv->pCryPak->AdjustFileName(string(string(g_szTestResults) + "\\" + levelName).c_str(), path, AZ_ARRAY_SIZE(path), ICryPak::FLAGS_PATH_REAL | ICryPak::FLAGS_FOR_WRITING);
         gEnv->pCryPak->MakeDir(g_szTestResults);
 
         AZ::IO::HandleType handle = AZ::IO::InvalidHandle;

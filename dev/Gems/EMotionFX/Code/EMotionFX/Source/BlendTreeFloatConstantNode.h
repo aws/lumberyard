@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "EMotionFXConfig.h"
-#include "AnimGraphNode.h"
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
 
 
 namespace EMotionFX
@@ -24,20 +24,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeFloatConstantNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeFloatConstantNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeFloatConstantNode, "{033D3D2F-04D3-439F-BFC3-1BDE16BBE37A}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000148
-        };
-
-        enum
-        {
-            ATTRIB_VALUE = 0
-        };
+        AZ_RTTI(BlendTreeFloatConstantNode, "{033D3D2F-04D3-439F-BFC3-1BDE16BBE37A}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         enum
         {
@@ -49,10 +38,11 @@ namespace EMotionFX
             PORTID_OUTPUT_RESULT = 0
         };
 
-        static BlendTreeFloatConstantNode* Create(AnimGraph* animGraph);
+        BlendTreeFloatConstantNode();
+        ~BlendTreeFloatConstantNode();
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
+        void Reinit() override;
 
         uint32 GetVisualColor() const override;
         bool GetSupportsDisable() const override;
@@ -60,16 +50,13 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        void SetValue(float value);
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        BlendTreeFloatConstantNode(AnimGraph* animGraph);
-        ~BlendTreeFloatConstantNode();
-
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
-        void OnUpdateAttributes() override;
+
+        float   m_value;
     };
 
 }   // namespace EMotionFX

@@ -38,7 +38,7 @@
 #include <QMenu>
 #include <QPainter>
 #include <QtCore/QPropertyAnimation>
-#include <QtCore/qtimer>
+#include <QtCore/QTimer>
 
 #include <UI/Outliner/ui_OutlinerWidget.h>
 
@@ -726,6 +726,10 @@ void OutlinerWidget::SetupActions()
     addAction(m_actionToDeleteSelectionAndDescendants);
 
     m_actionToRenameSelection = new QAction(tr("Rename Selection"), this);
+#ifdef AZ_PLATFORM_APPLE_OSX
+    // "Alt+Return" translates to Option+Return on macOS
+    m_actionToRenameSelection->setShortcut(tr("Alt+Return"));
+#endif
     m_actionToRenameSelection->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     connect(m_actionToRenameSelection, &QAction::triggered, this, &OutlinerWidget::DoRenameSelection);
     addAction(m_actionToRenameSelection);

@@ -22,7 +22,7 @@ class UiCheckboxInterface
 public: // types
 
     //! params: sending entity id, new state
-    typedef std::function<void(AZ::EntityId, AZ::Vector2, bool)> StateChangeCallback;
+    typedef AZStd::function<void(AZ::EntityId, AZ::Vector2, bool)> StateChangeCallback;
 
 public: // member functions
 

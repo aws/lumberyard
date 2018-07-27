@@ -14,7 +14,7 @@
 // Description : TimeOfDayScheduler
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "TimeOfDayScheduler.h"
 #include "ITimeOfDay.h"
 

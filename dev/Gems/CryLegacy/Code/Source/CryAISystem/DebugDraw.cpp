@@ -15,7 +15,7 @@
 //               make nice debug output functions  instead of one huge
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #ifdef CRYAISYSTEM_DEBUG
 
@@ -616,7 +616,7 @@ void CAISystem::DebugDrawDamageControlGraph() const
             char szAlive[32] = "inf";
             if (accuracy > 0.001f)
             {
-                _snprintf(szAlive, 32, "%.1fs", aliveTime / accuracy);
+                azsnprintf(szAlive, 32, "%.1fs", aliveTime / accuracy);
             }
 
             IAIObject* pAttTarget = pPuppet->GetAttentionTarget();
@@ -1894,11 +1894,11 @@ void CAISystem::DebugDrawRadar()
 
         if (pPuppet && !pPuppet->IsAllowedToHitTarget())
         {
-            _snprintf(szMsg, 256, "%s\nAcc:%.3f\nAMBIENT", pAIActor->GetName(), accuracy);
+            azsnprintf(szMsg, 256, "%s\nAcc:%.3f\nAMBIENT", pAIActor->GetName(), accuracy);
         }
         else
         {
-            _snprintf(szMsg, 256, "%s\nAcc:%.3f\n", pAIActor->GetName(), accuracy);
+            azsnprintf(szMsg, 256, "%s\nAcc:%.3f\n", pAIActor->GetName(), accuracy);
         }
 
         dc->Draw2dLabel(pos.x + 1, pos.y - 1, 1.2f, black, true, "%s", szMsg);
@@ -2759,7 +2759,7 @@ void CAISystem::DebugDrawAgent(CAIObject* pAgentObj) const
 
     if (pPuppet)
     {
-        if (!_stricmp(gAIEnv.CVars.DrawPerceptionHandlerModifiers, pAgent->GetName()))
+        if (!azstricmp(gAIEnv.CVars.DrawPerceptionHandlerModifiers, pAgent->GetName()))
         {
             pPuppet->DebugDrawPerceptionHandlerModifiers();
         }
@@ -4943,7 +4943,7 @@ void CAISystem::DebugDrawLocate() const
         else
         {
             int groupId = -1;
-            if (sscanf(pString, "%d", &groupId) == 1)
+            if (azsscanf(pString, "%d", &groupId) == 1)
             {
                 const CAISystem::AIActorSet& enabledAIActorsSet = GetAISystem()->GetEnabledAIActorSet();
                 for (CAISystem::AIActorSet::const_iterator it = enabledAIActorsSet.begin(), itEnd = enabledAIActorsSet.end(); it != itEnd; ++it)
@@ -5696,7 +5696,7 @@ void CAISystem::AddPerceptionDebugLine(const char* tag, const Vec3& start, const
             std::list<SPerceptionDebugLine>::iterator it = m_lstDebugPerceptionLines.begin();
             for (; it != m_lstDebugPerceptionLines.end(); ++it)
             {
-                if (strlen(it->name) > 0 && _stricmp(it->name, tag) == 0)
+                if (strlen(it->name) > 0 && azstricmp(it->name, tag) == 0)
                 {
                     *it = SPerceptionDebugLine(tag, start, end, ColorB(r, g, b), time, thickness);
                     return;

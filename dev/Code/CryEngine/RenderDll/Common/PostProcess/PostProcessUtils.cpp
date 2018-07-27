@@ -165,7 +165,7 @@ bool SPostEffectsUtils::Create()
         // TODO: Only create necessary RTs for minimal ring?
         for (int i = 0; i < MAX_OCCLUSION_READBACK_TEXTURES; i++)
         {
-            sprintf(str, "$FlaresOcclusion_%d", i);
+            azsprintf(str, "$FlaresOcclusion_%d", i);
 
             CreateRenderTarget(str, CTexture::s_ptexFlaresOcclusionRing[i], CFlareSoftOcclusionQuery::s_nIDColMax, CFlareSoftOcclusionQuery::s_nIDRowMax, Clr_Unknown, 1, 0, eTF_R8G8B8A8, -1, FT_DONT_RELEASE | FT_STAGE_READBACK);
         }

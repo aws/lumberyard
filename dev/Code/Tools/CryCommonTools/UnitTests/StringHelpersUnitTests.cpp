@@ -11,7 +11,7 @@
  */
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "StringHelpers.h"
 #include <AzTest/AzTest.h>
 

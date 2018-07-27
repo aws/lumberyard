@@ -277,9 +277,9 @@ void CPhysRenderer::DrawFrame(const Vec3& pnt, const Vec3* axes, const float sca
             Vec3 p1_dir = (p1 - pnt).GetNormalized() * scale;
             Vec3 p2_dir = (p2 - pnt).GetNormalized() * scale;
 
-            sprintf(str, "%.1f", RAD2DEG(limits[0][j]));
+            sprintf_s(str, "%.1f", RAD2DEG(limits[0][j]));
             m_pRenderer->DrawLabelEx(pnt + p1_dir, 1.5f, fclr[j], true, true, str);
-            sprintf(str, "%.1f", RAD2DEG(limits[1][j]));
+            sprintf_s(str, "%.1f", RAD2DEG(limits[1][j]));
             m_pRenderer->DrawLabelEx(pnt + p2_dir, 1.5f, fclr[j], true, true, str);
 
             arc_pnts[0] = p1_dir;

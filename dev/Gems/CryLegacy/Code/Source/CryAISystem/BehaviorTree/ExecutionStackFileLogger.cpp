@@ -11,9 +11,10 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ExecutionStackFileLogger.h"
 #include <BehaviorTree/Node.h>
+#include "TypeInfo_impl.h"  // ARRAY_COUNT macro
 
 
 #ifdef USING_BEHAVIOR_TREE_EXECUTION_STACKS_FILE_LOG
@@ -70,7 +71,7 @@ namespace BehaviorTree
         filePath.append(fileName);
 
         m_logFilePath[0] = '\0';
-        if (gEnv->pCryPak->AdjustFileName(filePath.c_str(), m_logFilePath, ICryPak::FLAGS_FOR_WRITING))
+        if (gEnv->pCryPak->AdjustFileName(filePath.c_str(), m_logFilePath, AZ_ARRAY_SIZE(m_logFilePath), ICryPak::FLAGS_FOR_WRITING))
         {
             m_openState = NotYetAttemptedToOpenForWriteAccess;
         }
@@ -99,9 +100,10 @@ namespace BehaviorTree
                 time_t ltime;
                 if (time(&ltime) != (time_t)-1)
                 {
-                    if (struct tm* pTm = localtime(&ltime))
+                    tm _tm;
+                    if (localtime_s(&_tm, &ltime) != 0)
                     {
-                        strftime(startTime, ARRAY_COUNT(startTime), "%Y-%m-%d %H:%M:%S", pTm);
+                        strftime(startTime, ARRAY_COUNT(startTime), "%Y-%m-%d %H:%M:%S", &_tm);
                     }
                 }
                 header.Format("Modular Behavior Tree '%s' for agent '%s' with EntityId = %i (logging started at %s)\n\n", instance.behaviorTreeTemplate->mbtFilename.c_str(), m_agentName.c_str(), updateContext.entityId, startTime);

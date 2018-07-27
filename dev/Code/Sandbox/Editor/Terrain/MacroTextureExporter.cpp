@@ -393,7 +393,7 @@ bool MacroTextureExporter::Context::ExportTiles(const char* ctcFilename, const C
     ICryPak& cryPak = *gEnv->pCryPak;
 
     char adjustedCoverPath[ICryPak::g_nMaxPath];
-    cryPak.AdjustFileName(ctcFilename, adjustedCoverPath, ICryPak::FLAGS_NEVER_IN_PAK | ICryPak::FLAGS_NO_LOWCASE);
+    cryPak.AdjustFileName(ctcFilename, adjustedCoverPath, AZ_ARRAY_SIZE(adjustedCoverPath), ICryPak::FLAGS_NEVER_IN_PAK | ICryPak::FLAGS_NO_LOWCASE);
 
     if (!cryPak.MakeDir(adjustedCoverPath))
     {

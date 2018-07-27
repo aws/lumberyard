@@ -13,7 +13,7 @@
 #include "Visibility_precompiled.h"
 #include "EditorOccluderAreaComponent.h"
 
-#include <AZCore/Math/Crc.h>
+#include <AzCore/Math/Crc.h>
 #include <AzCore/Math/VectorConversions.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <Editor/Objects/BaseObject.h>

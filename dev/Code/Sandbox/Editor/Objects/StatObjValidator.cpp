@@ -142,7 +142,9 @@ void CStatObjValidator::Validate(IStatObj* statObj, CMaterial* editorMaterial, I
     m_description = QString();
     m_isValid = true;
 
-    IBreakableManager* pBreakableManager = GetIEditor()->GetSystem()->GetGlobalEnvironment()->pEntitySystem->GetBreakableManager();
+    IBreakableManager* pBreakableManager = GetIEditor()->GetSystem()->GetGlobalEnvironment()->pEntitySystem ?
+                                           GetIEditor()->GetSystem()->GetGlobalEnvironment()->pEntitySystem->GetBreakableManager() :
+                                           nullptr;
     _smart_ptr<IMaterial> pIMaterial = 0;
     if (editorMaterial)
     {
@@ -158,7 +160,7 @@ void CStatObjValidator::Validate(IStatObj* statObj, CMaterial* editorMaterial, I
 
     if (editorMaterial && physEntity && statObj)
     {
-        if (!pBreakableManager->IsGeometryBreakable(physEntity, statObj, pIMaterial))
+        if (pBreakableManager && !pBreakableManager->IsGeometryBreakable(physEntity, statObj, pIMaterial))
         {
             m_isValid = false;
             if (!m_description.isEmpty())

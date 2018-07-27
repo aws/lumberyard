@@ -44,6 +44,7 @@
     <file>img/vertical_arrows.png</file>
     <file>img/horizontal_arrows.png</file>
     <file>img/16x16/lineedit-clear.png</file>
+    <file>img/16x16/lineedit-clear@2x.png</file>
     <file>img/16x16/Align_object_to_surface.png</file>
     <file>img/16x16/Align_to_grid.png</file>
     <file>img/16x16/Align_to_Object.png</file>
@@ -57,7 +58,9 @@
     <file>img/16x16/Freeze.png</file>
     <file>img/16x16/Grid.png</file>
     <file>img/16x16/Helpers.png</file>
+    <file>img/16x16/Helpers@2x.png</file>
     <file>img/16x16/info.png</file>
+    <file>img/16x16/info@2x.png</file>
     <file>img/16x16/layer_editor.png</file>
     <file>img/16x16/layers.png</file>
     <file>img/16x16/Load.png</file>
@@ -89,7 +92,9 @@
     <file>img/16x16/Reset_physics_state.png</file>
     <file>img/16x16/Save.png</file>
     <file>img/16x16/Search.png</file>
+    <file>img/16x16/Search@2x.png</file>
     <file>img/16x16/Search_more.png</file>
+    <file>img/16x16/Search_more@2x.png</file>
     <file>img/16x16/Simulate_Physics_on_selected_objects.png</file>
     <file>img/16x16/Trackview.png</file>
     <file>img/16x16/Translate.png</file>
@@ -231,6 +236,7 @@
     <file>img/32x32/XY.png</file>
     <file>img/32x32/XY_copy.png</file>
     <file>img/32x32/XY2_copy.png</file>
+    <file>img/menu-check.png</file>
     <file>img/lineedit-information.png</file>
     <file>img/lineedit-invalid.png</file>
     <file>img/lineedit-question.png</file>
@@ -325,10 +331,20 @@
 </qresource>
 <qresource prefix="/AzQtComponents">
     <file>Widgets/BaseStyleSheet.qss</file>
+    <file>Widgets/BreadCrumbs.qss</file>
+    <file>Widgets/BreadCrumbsConfig.ini</file>
     <file>Widgets/Card.qss</file>
     <file>Widgets/CardConfig.ini</file>
     <file>Widgets/CheckBox.qss</file>
     <file>Widgets/CheckBoxConfig.ini</file>
+    <file>Widgets/ColorPicker.qss</file>
+    <file>Widgets/ColorPickerConfig.ini</file>
+    <file>Widgets/ColorPicker/PaletteViewConfig.ini</file>
+    <file>Widgets/EyedropperConfig.ini</file>
+    <file>Widgets/LineEdit.qss</file>
+    <file>Widgets/LineEditConfig.ini</file>
+    <file>Widgets/ComboBox.qss</file>
+    <file>Widgets/ComboBoxConfig.ini</file>
     <file>Widgets/Menu.qss</file>
     <file>Widgets/ProgressBarConfig.ini</file>
     <file>Widgets/ProgressBar.qss</file>
@@ -336,6 +352,7 @@
     <file>Widgets/PushButtonConfig.ini</file>
     <file>Widgets/RadioButton.qss</file>
     <file>Widgets/RadioButtonConfig.ini</file>
+    <file>Widgets/SegmentControl.qss</file>
     <file>Widgets/Slider.qss</file>
     <file>Widgets/SliderConfig.ini</file>
     <file>Widgets/Text.qss</file>
@@ -359,6 +376,17 @@
     <file>img/UI20/toggle-unchecked.png</file>
     <file>img/UI20/toggle-unchecked-disabled.png</file>
     <file>img/UI20/toggle-unchecked-focus.png</file>
+    <file>img/UI20/alpha-background.png</file>
+    <file>img/UI20/spinbox-cursor-scroll.png</file>
+    <file>img/UI20/spinbox-down-arrow.png</file>
+    <file>img/UI20/spinbox-up-arrow.png</file>
+</qresource>
+<qresource prefix="/ColorPickerDialog">
+    <file alias="Palette/add-normal.png">img/UI20/colorpicker/palette-add-normal.png</file>
+    <file alias="ColorGrid/eyedropper-normal.png">img/UI20/colorpicker/colorgrid-eyedropper-normal.png</file>
+    <file alias="ColorGrid/toggle-normal-on.png">img/UI20/colorpicker/colorgrid-toggle-normal-on.png</file>
+    <file alias="PaletteCard/open.png">img/UI20/colorpicker/library-open.png</file>
+    <file alias="PaletteCard/closed.png">img/UI20/colorpicker/library-closed.png</file>
 </qresource>
 <qresource prefix="/AzQtFonts">
     <file>Fonts/Open_Sans/OpenSans-BoldItalic.ttf</file>

@@ -219,9 +219,9 @@ namespace AzToolsFramework
                 }
                 else
                 {
-                    for (auto it = classes.begin(); it != classes.end(); ++it)
+                    for (auto cls = classes.begin(); cls != classes.end(); ++cls)
                     {
-                        pHandlerFound = ResolvePropertyHandler(handlerName, (*it)->m_typeId);
+                        pHandlerFound = ResolvePropertyHandler(handlerName, (*cls)->m_typeId);
                         if (pHandlerFound)
                         {
                             return pHandlerFound;
@@ -243,7 +243,7 @@ namespace AzToolsFramework
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
                 serializeContext->Class<PropertyManagerComponent, AZ::Component>()
-                    ->SerializerForEmptyClass();
+                    ;
 
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {

@@ -14,7 +14,7 @@
 // Description : implementation of the CAIActor class.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AIActor.h"
 #include "PipeUser.h"
 #include "GoalOp.h"
@@ -236,7 +236,7 @@ void CAIActor::ResetBehaviorSelectionTree(EObjectResetType type)
         MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Behavior Selection Tree: %s", behaviorSelectionTreeName);
 
         bool treeChanged = ((behaviorSelectionTreeName && !m_behaviorSelectionTree.get()) ||
-                            (behaviorSelectionTreeName != 0 && stricmp(m_behaviorSelectionTree->GetTemplate().GetName(), behaviorSelectionTreeName)));
+                            (behaviorSelectionTreeName != 0 && azstricmp(m_behaviorSelectionTree->GetTemplate().GetName(), behaviorSelectionTreeName)));
 
         if (treeChanged)
         {
@@ -1001,15 +1001,15 @@ void CAIActor::SetSignal(int nSignalID, const char* szText, IEntity* pSender, IA
             for (ai = m_State.vSignals.begin(); ai != m_State.vSignals.end(); ++ai)
             {
                 //  if ((*ai).strText == szText)
-                //if (!stricmp((*ai).strText,szText))
+                //if (!azstricmp((*ai).strText,szText))
 
 #ifdef _DEBUG
-                if (!stricmp((*ai).strText, szText) &&   !(*ai).Compare(crcCode))
+                if (!azstricmp((*ai).strText, szText) &&   !(*ai).Compare(crcCode))
                 {
                     AIWarning("Hash values are different, but strings are identical! %s - %s ", (*ai).strText, szText);
                 }
 
-                if (stricmp((*ai).strText, szText) && (*ai).Compare(crcCode))
+                if (azstricmp((*ai).strText, szText) && (*ai).Compare(crcCode))
                 {
                     AIWarning("Please report to aws.amazon.com/support. Hash values are identical, but strings are different! %s - %s ", (*ai).strText, szText);
                 }
@@ -1063,7 +1063,7 @@ void CAIActor::SetSignal(int nSignalID, const char* szText, IEntity* pSender, IA
     {
         AISIGNAL backSignal(m_State.vSignals.back());
 
-        if (!stricmp("Constructor", backSignal.strText))
+        if (!azstricmp("Constructor", backSignal.strText))
         {
             m_State.vSignals.pop_back();
             m_State.vSignals.push_back(signal);

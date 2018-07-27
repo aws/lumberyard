@@ -551,7 +551,7 @@ public:
     }
 
 
-    void OnSetValue(bool bRecursive)
+    virtual void OnSetValue(bool bRecursive)
     {
         // If have wired variables or OnSet callback, process them.
         // Send value to wired variable.

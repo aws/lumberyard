@@ -20,7 +20,8 @@
 #include <InputRequestBus.h>
 #include <AzCore/Math/Vector3.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
-#include <AzFramework/Math/MathUtils.h>
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Quaternion.h>
 
 
 namespace LmbrCentral
@@ -298,27 +299,27 @@ namespace LmbrCentral
                 ->Event("OnEventEnd", &AZ::GameplayNotificationBus::Events::OnEventEnd);
 
             behaviorContext->Class<AxisWrapper>("AxisType")
-                ->Constant("XPositive", BehaviorConstant(AzFramework::Axis::XPositive))
-                ->Constant("XNegative", BehaviorConstant(AzFramework::Axis::XNegative))
-                ->Constant("YPositive", BehaviorConstant(AzFramework::Axis::YPositive))
-                ->Constant("YNegative", BehaviorConstant(AzFramework::Axis::YNegative))
-                ->Constant("ZPositive", BehaviorConstant(AzFramework::Axis::ZPositive))
-                ->Constant("ZNegative", BehaviorConstant(AzFramework::Axis::ZNegative));
+                ->Constant("XPositive", BehaviorConstant(AZ::Transform::Axis::XPositive))
+                ->Constant("XNegative", BehaviorConstant(AZ::Transform::Axis::XNegative))
+                ->Constant("YPositive", BehaviorConstant(AZ::Transform::Axis::YPositive))
+                ->Constant("YNegative", BehaviorConstant(AZ::Transform::Axis::YNegative))
+                ->Constant("ZPositive", BehaviorConstant(AZ::Transform::Axis::ZPositive))
+                ->Constant("ZNegative", BehaviorConstant(AZ::Transform::Axis::ZNegative));
 
             behaviorContext->Class<MathUtils>("MathUtils")
-                ->Method("ConvertTransformToEulerDegrees", &AzFramework::ConvertTransformToEulerDegrees)
-                ->Method("ConvertTransformToEulerRadians", &AzFramework::ConvertTransformToEulerRadians)
+                ->Method("ConvertTransformToEulerDegrees", &AZ::ConvertTransformToEulerDegrees)
+                ->Method("ConvertTransformToEulerRadians", &AZ::ConvertTransformToEulerRadians)
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
-                ->Method("ConvertEulerDegreesToTransform", &AzFramework::ConvertEulerDegreesToTransform)
+                ->Method("ConvertEulerDegreesToTransform", &AZ::ConvertEulerDegreesToTransform)
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
-                ->Method("ConvertEulerDegreesToTransformPrecise", &AzFramework::ConvertEulerDegreesToTransformPrecise)
-                ->Method("ConvertQuaternionToEulerDegrees", &AzFramework::ConvertQuaternionToEulerDegrees)
-                ->Method("ConvertQuaternionToEulerRadians", &AzFramework::ConvertQuaternionToEulerRadians)
+                ->Method("ConvertEulerDegreesToTransformPrecise", &AZ::ConvertEulerDegreesToTransformPrecise)
+                ->Method("ConvertQuaternionToEulerDegrees", &AZ::ConvertQuaternionToEulerDegrees)
+                ->Method("ConvertQuaternionToEulerRadians", &AZ::ConvertQuaternionToEulerRadians)
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
-                ->Method("ConvertEulerRadiansToQuaternion", &AzFramework::ConvertEulerRadiansToQuaternion)
+                ->Method("ConvertEulerRadiansToQuaternion", &AZ::ConvertEulerRadiansToQuaternion)
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
-                ->Method("ConvertEulerDegreesToQuaternion", &AzFramework::ConvertEulerDegreesToQuaternion)
-                ->Method("CreateLookAt", &AzFramework::CreateLookAt);
+                ->Method("ConvertEulerDegreesToQuaternion", &AZ::ConvertEulerDegreesToQuaternion)
+                ->Method("CreateLookAt", &AZ::Transform::CreateLookAt);
 
             ShapeComponentGeneric::Reflect(behaviorContext);
 

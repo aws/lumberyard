@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ICryMannequin.h"
 
@@ -52,7 +52,7 @@ public:
                 const char* fileExt = PathUtil::GetExt(params.objectFilename.c_str());
                 if (pAttachment->GetType() == CA_SKIN)
                 {
-                    if (0 == stricmp(fileExt, "skin"))
+                    if (0 == azstricmp(fileExt, "skin"))
                     {
                         if (IAttachment* pAttach = pAttachmentManager->GetInterfaceByNameCRC(params.attachmentName.crc))
                         {
@@ -70,7 +70,7 @@ public:
                 }
                 else
                 {
-                    if (0 == _stricmp(fileExt, "cgf"))
+                    if (0 == azstricmp(fileExt, "cgf"))
                     {
                         if (m_pAttachedStatObj = gEnv->p3DEngine->LoadStatObjAutoRef(params.objectFilename.c_str(), NULL, NULL, false))
                         {

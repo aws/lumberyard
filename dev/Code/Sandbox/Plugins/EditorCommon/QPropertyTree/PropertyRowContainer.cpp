@@ -345,7 +345,7 @@ void ContainerMenuHandler::onMenuChildRemove()
 
 void PropertyRowContainer::labelChanged()
 {
-    swprintf(buttonLabel_, sizeof(buttonLabel_) / sizeof(buttonLabel_[0]), L"%i", count());
+    swprintf(buttonLabel_, sizeof(buttonLabel_) / sizeof(buttonLabel_[0]), L"%zi", count());
 }
 
 void PropertyRowContainer::serializeValue(IArchive& ar)

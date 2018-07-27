@@ -70,7 +70,8 @@ bool CImageBT::Save(const QString& fileName, const CFloatImage& image)
 
     memset(header.unused, 0, sizeof(header.unused));
 
-    FILE* file = fopen(fileName.toUtf8().data(), "wb");
+    FILE* file = nullptr;
+    azfopen(&file, fileName.toUtf8().data(), "wb");
     if (!file)
     {
         return false;
@@ -94,7 +95,8 @@ bool CImageBT::Save(const QString& fileName, const CFloatImage& image)
 
 bool CImageBT::Load(const QString& fileName, CFloatImage& image)
 {
-    FILE* file = fopen(fileName.toUtf8().data(), "rb");
+    FILE* file = nullptr;
+    azfopen(&file, fileName.toUtf8().data(), "rb");
     if (!file)
     {
         return false;

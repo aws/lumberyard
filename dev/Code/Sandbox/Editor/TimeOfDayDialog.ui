@@ -955,7 +955,7 @@
   <customwidget>
    <class>ClickableLabel</class>
    <extends>QLabel</extends>
-   <header>QtUi/ClickableLabel.h</header>
+   <header>QtUI/ClickableLabel.h</header>
   </customwidget>
   <customwidget>
    <class>SplineWidget</class>

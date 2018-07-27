@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <platform.h>
 #include <IXml.h>
 #include <StringUtils.h>
@@ -114,7 +114,7 @@ namespace
     {
         unsigned int aiTmp[10];
 
-        if (sscanf(strIn, "{%8X-%4X-%4X-%2X%2X-%2X%2X%2X%2X%2X%2X}",
+        if (azsscanf(strIn, "{%8X-%4X-%4X-%2X%2X-%2X%2X%2X%2X%2X%2X}",
                 &pGuidOut->Data1,
                 &aiTmp[0], &aiTmp[1],
                 &aiTmp[2], &aiTmp[3],

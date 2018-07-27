@@ -117,6 +117,10 @@ public:
         IDialogSystem * ());
     MOCK_METHOD0(GetIFlowSystem,
         IFlowSystem * ());
+    MOCK_METHOD0(GetIViewSystem,
+        IViewSystem * ());
+    MOCK_METHOD0(GetILevelSystem,
+        ILevelSystem * ());
     MOCK_METHOD0(GetIBudgetingSystem,
         IBudgetingSystem * ());
     MOCK_METHOD0(GetINameTable,

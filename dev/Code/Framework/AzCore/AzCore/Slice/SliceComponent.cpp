@@ -1055,6 +1055,16 @@ namespace AZ
     }
 
     //=========================================================================
+    size_t SliceComponent::GetInstantiatedEntityCount() const
+    {
+        if (!m_slicesAreInstantiated)
+        {
+            return 0;
+        }
+
+        return const_cast<SliceComponent*>(this)->GetEntityInfoMap().size();
+    }
+    //=========================================================================
     // SliceComponent::GetMetadataEntityIds
     //=========================================================================
     bool SliceComponent::GetMetadataEntityIds(EntityIdSet& metadataEntities)
@@ -1726,6 +1736,31 @@ namespace AZ
     }
 
     //=========================================================================
+    // SliceComponent::ListenForDependentAssetChanges
+    //=========================================================================
+    void SliceComponent::ListenForDependentAssetChanges()
+    {
+        if (!m_serializeContext)
+        {
+            // use the default app serialize context
+            ComponentApplicationBus::BroadcastResult(m_serializeContext, &ComponentApplicationBus::Events::GetSerializeContext);
+            if (!m_serializeContext)
+            {
+                AZ_Error("Slices", false, "SliceComponent: No serialize context provided! Failed to get component application default serialize context! ComponentApp is not started or SliceComponent serialize context should not be null!");
+            }
+        }
+
+        ListenForAssetChanges();
+
+        // Listen for asset events and set reference to myself
+        for (SliceReference& slice : m_slices)
+        {
+            // recursively listen down the slice tree.
+            slice.GetSliceAsset().Get()->GetComponent()->ListenForDependentAssetChanges();
+        }
+    }
+
+    //=========================================================================
     // SliceComponent::Activate
     //=========================================================================
     void SliceComponent::Activate()
@@ -1744,7 +1779,7 @@ namespace AZ
     //=========================================================================
     // SliceComponent::Deactivate
     //=========================================================================
-    void SliceComponent::OnAssetReloaded(Data::Asset<Data::AssetData> asset)
+    void SliceComponent::OnAssetReloaded(Data::Asset<Data::AssetData> /*asset*/)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
 
@@ -1788,7 +1823,7 @@ namespace AZ
         Data::Asset<SliceAsset> updatedAsset(m_myAsset->Clone());
         updatedAsset.Get()->SetData(updatedAssetEntity, updatedAssetComponent);
         updatedAssetComponent->SetMyAsset(updatedAsset.Get());
-       
+
         // Update data patches against the old version of the asset.
         updatedAssetComponent->PrepareSave();
 

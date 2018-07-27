@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AnimatedCharacter.h"
 #include "CryAction.h"
 #include "AnimationGraphCVars.h"
@@ -546,11 +546,11 @@ void CAnimatedCharacter::FullSerialize(TSerialize ser)
     for (int slot = 0; slot < eMCMSlot_COUNT; ++slot)
     {
         mcm[basicStringLength] = 'H';
-        itoa(slot, &mcm[basicStringLength + 1], 10);
+        azitoa(slot, &mcm[basicStringLength + 1], AZ_ARRAY_SIZE(mcm) - basicStringLength, 10);
         SerializeNamedType(uint8, mcm, EMovementControlMethod, m_movementControlMethod[eMCMComponent_Horizontal][slot]);
 
         mcm[basicStringLength] = 'V';
-        itoa(slot, &mcm[basicStringLength + 1], 10);
+        azitoa(slot, &mcm[basicStringLength + 1], AZ_ARRAY_SIZE(mcm) - basicStringLength, 10);
         SerializeNamedType(uint8, mcm, EMovementControlMethod, m_movementControlMethod[eMCMComponent_Vertical][slot]);
     }
     ser.Value("m_elapsedTimeMCM_Horizontal", m_elapsedTimeMCM[eMCMComponent_Horizontal]);

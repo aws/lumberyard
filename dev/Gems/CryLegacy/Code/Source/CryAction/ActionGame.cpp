@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IGameRulesSystem.h"
 #include "ActionGame.h"
 #include "IGameFramework.h"
@@ -405,21 +405,21 @@ bool CActionGame::Init(const SGameStartParams* pGameStartParams)
         if (pReqInput)
         {
             const char* what = pReqInput->GetString();
-            if (0 == strcmpi(what, "none"))
+            if (0 == azstricmp(what, "none"))
             {
                 flags &= ~(eGSF_RequireKeyboardMouse | eGSF_RequireController);
             }
-            else if (0 == strcmpi(what, "keyboard"))
+            else if (0 == azstricmp(what, "keyboard"))
             {
                 flags |= eGSF_RequireKeyboardMouse;
                 flags &= ~eGSF_RequireController;
             }
-            else if (0 == strcmpi(what, "gamepad"))
+            else if (0 == azstricmp(what, "gamepad"))
             {
                 flags |= eGSF_RequireController;
                 flags &= ~eGSF_RequireKeyboardMouse;
             }
-            else if (0 == strcmpi(what, "dontcare"))
+            else if (0 == azstricmp(what, "dontcare"))
             {
                 ;
             }
@@ -1317,7 +1317,7 @@ void CActionGame::PerformPlaneBreak(const EventPhysCollision& epc, SBreakEvent* 
         mtx = pEntityTrg->GetSlotWorldTM(epc.partid[1]);
         pRenderMat = (pEntityTrg->GetComponent<IComponentRender>())->GetRenderMaterial(epc.partid[1]);
         // FIXME, workaround
-        if ((pRenderMat && !_stricmp(pRenderMat->GetName(), "default") || !pRenderMat) && pStatObj && pStatObj->GetMaterial())
+        if ((pRenderMat && !azstricmp(pRenderMat->GetName(), "default") || !pRenderMat) && pStatObj && pStatObj->GetMaterial())
         {
             pRenderMat = pStatObj->GetMaterial();
         }
@@ -1856,7 +1856,7 @@ ForceObjUpdate:
             dcl.bSkipOverlappingTest = true;
             dcl.bForceSingleOwner = true;
             dcl.bDeferred = false;
-            strcpy(dcl.szMaterialName, pb2d->crack_decal_mtl);
+            azstrcpy(dcl.szMaterialName, AZ_ARRAY_SIZE(dcl.szMaterialName), pb2d->crack_decal_mtl);
             gEnv->p3DEngine->CreateDecal(dcl);
         }
     }

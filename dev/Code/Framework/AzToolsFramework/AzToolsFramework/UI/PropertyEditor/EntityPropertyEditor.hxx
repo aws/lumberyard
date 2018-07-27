@@ -234,6 +234,8 @@ namespace AzToolsFramework
         QAction* m_actionToMoveComponentsBottom;
         QAction* m_resetToSliceAction;
 
+        bool m_isShowingContextMenu = false;
+
         void CreateActions();
         void UpdateActions();
 

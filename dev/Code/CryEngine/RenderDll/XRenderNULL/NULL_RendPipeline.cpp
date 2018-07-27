@@ -114,12 +114,12 @@ void CRenderer::FX_SetStencilState(int st, uint32 nStencRef, uint32 nStencMask, 
 //=================================================================================
 
 // Initialize of the new shader pipeline (only 2d)
-void CRenderer::FX_Start(CShader* ef, int nTech, CShaderResources* Res, CRendElementBase* re)
+void CRenderer::FX_Start(CShader* ef, int nTech, CShaderResources* Res, IRenderElement* re)
 {
     m_RP.m_Frame++;
 }
 
-void CRenderer::FX_CheckOverflow(int nVerts, int nInds, CRendElementBase* re, int* nNewVerts, int* nNewInds)
+void CRenderer::FX_CheckOverflow(int nVerts, int nInds, IRenderElement* re, int* nNewVerts, int* nNewInds)
 {
 }
 

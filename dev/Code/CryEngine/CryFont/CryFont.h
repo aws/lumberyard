@@ -20,8 +20,7 @@
 
 #include <IXml.h>
 #include <AzCore/std/containers/map.h>
-#include <map>
-
+#include <AzCore/std/smart_ptr/weak_ptr.h>
 
 class CFFont;
 
@@ -56,7 +55,7 @@ private:
     typedef FontMap::iterator FontMapItor;
     typedef FontMap::const_iterator FontMapConstItor;
 
-    typedef AZStd::map<AZStd::string, std::weak_ptr<FontFamily>> FontFamilyMap;
+    typedef AZStd::map<AZStd::string, AZStd::weak_ptr<FontFamily>> FontFamilyMap;
     typedef AZStd::map<FontFamily*, FontFamilyMap::iterator> FontFamilyReverseLookupMap;
 
 private:

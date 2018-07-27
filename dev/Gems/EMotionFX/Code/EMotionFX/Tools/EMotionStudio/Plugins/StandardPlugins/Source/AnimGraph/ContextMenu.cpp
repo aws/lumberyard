@@ -31,87 +31,29 @@
 
 namespace EMStudio
 {
-    // register list widget icons
+    // Fill the given menu with anim graph objects that can be created inside the current given object and category.
     void BlendGraphWidget::RegisterItems(AnimGraphPlugin* plugin, QMenu* menu, EMotionFX::AnimGraphObject* object, EMotionFX::AnimGraphObject::ECategory category)
     {
-        // are we viewing a state machine right now?
-        const bool isStateMachine = (object) ? (object->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID) : false;
-
-        EMotionFX::AnimGraphNode* parentNode = nullptr;
-        if (object && object->GetBaseType() == EMotionFX::AnimGraphNode::BASETYPE_ID)
+        const AZStd::unordered_set<AZ::TypeId>& nodeObjectTypes = EMotionFX::AnimGraphObjectFactory::GetUITypes();
+        for (const AZ::TypeId& nodeObjectType : nodeObjectTypes)
         {
-            parentNode = static_cast<EMotionFX::AnimGraphNode*>(object);
-        }
+            EMotionFX::AnimGraphObject* curObject = EMotionFX::AnimGraphObjectFactory::Create(nodeObjectType);
 
-        AZStd::string iconString;
-
-        // for all registered objects in the object factory
-        const size_t numRegistered = EMotionFX::GetAnimGraphManager().GetObjectFactory()->GetNumRegisteredObjects();
-        for (size_t i = 0; i < numRegistered; ++i)
-        {
-            // get the node
-            EMotionFX::AnimGraphObject* curObject = EMotionFX::GetAnimGraphManager().GetObjectFactory()->GetRegisteredObject(i);
-
-            // skip the final node as special case
-            if (curObject->GetType() == EMotionFX::BlendTreeFinalNode::TYPE_ID)
+            if (mPlugin->CheckIfCanCreateObject(object, curObject, category))
             {
-                continue;
+                // Add the item
+                EMotionFX::AnimGraphNode* curNode = static_cast<EMotionFX::AnimGraphNode*>(curObject);
+                QIcon icon(NodePaletteWidget::GetNodeIconFileName(curNode).c_str());
+                QAction* action = menu->addAction(icon, curNode->GetPaletteName());
+                action->setWhatsThis(azrtti_typeid(curNode).ToString<QString>());
+                action->setData(QVariant(curNode->GetPaletteName()));
+                connect(action, SIGNAL(triggered()), plugin->GetGraphWidget(), SLOT(OnContextMenuCreateNode()));
             }
 
-            // only load icons in the category we want
-            if (curObject->GetPaletteCategory() != category)
+            if (curObject)
             {
-                continue;
+                delete curObject;
             }
-
-            // if we are at the root, we can only create in state machines
-            if (parentNode == nullptr)
-            {
-                if (curObject->GetType() != EMotionFX::AnimGraphStateMachine::TYPE_ID)
-                {
-                    continue;
-                }
-            }
-
-            // ignore other object than nodes
-            if (curObject->GetBaseType() != EMotionFX::AnimGraphNode::BASETYPE_ID)
-            {
-                continue;
-            }
-
-            // cast the anim graph object into a node
-            EMotionFX::AnimGraphNode* curNode = static_cast<EMotionFX::AnimGraphNode*>(curObject);
-
-            // if we're editing a state machine, skip nodes that can't act as a state
-            if ((isStateMachine) && (curNode->GetCanActAsState() == false))
-            {
-                continue;
-            }
-
-            // when nodes are used for sub state machines, while we are not in a state machine, continue
-            if (isStateMachine == false && curNode->GetCanBeInsideSubStateMachineOnly())
-            {
-                continue;
-            }
-
-            // disallow states that are only used by sub state machine the lower in hierarchy levels
-            if (curNode->GetCanBeInsideSubStateMachineOnly() && EMotionFX::AnimGraphStateMachine::GetHierarchyLevel(parentNode) < 2)
-            {
-                continue;
-            }
-
-            // skip if we can have only one node of the given type
-            if (curNode->GetCanHaveOnlyOneInsideParent() && parentNode->CheckIfHasChildOfType(curNode->GetType()))
-            {
-                continue;
-            }
-
-            // add the item
-            QIcon icon(NodePaletteWidget::GetNodeIconFileName(curNode).c_str());
-            QAction* action = menu->addAction(icon, curNode->GetPaletteName());
-            action->setWhatsThis(curNode->GetTypeString());
-            action->setData(QVariant(curNode->GetPaletteName()));
-            connect(action, SIGNAL(triggered()), plugin->GetGraphWidget(), SLOT(OnContextMenuCreateNode()));
         }
     }
 
@@ -140,7 +82,7 @@ namespace EMStudio
             if (selectedNodes.GetLength() == 1)
             {
                 EMotionFX::AnimGraphNode* animGraphNode = selectedNodes[0];
-                if (nodeGroup->Contains(animGraphNode->GetID()))
+                if (nodeGroup->Contains(animGraphNode->GetId()))
                 {
                     nodeGroupAction->setChecked(true);
                     isNodeInNoneGroup = false;
@@ -171,7 +113,7 @@ namespace EMStudio
     void BlendGraphWidget::OnContextMenuEvent(QWidget* parentWidget, QPoint localMousePos, QPoint globalMousePos, AnimGraphPlugin* plugin, const MCore::Array<EMotionFX::AnimGraphNode*> selectedNodes, bool graphWidgetOnlyMenusEnabled)
     {
         NavigateWidget*         navigateWidget  = plugin->GetNavigateWidget();
-        BlendGraphWidget*       blendGraphWidget = plugin->GetGraphWidget();
+        BlendGraphWidget*       blendGraphWidget= plugin->GetGraphWidget();
         BlendGraphViewWidget*   viewWidget      = plugin->GetViewWidget();
         NodeGraph*              nodeGraph       = blendGraphWidget->GetActiveGraph();
 
@@ -270,11 +212,11 @@ namespace EMStudio
             if (animGraphNode->GetParentNode())
             {
                 // if the parent is a state machine
-                if (animGraphNode->GetParentNode()->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID)
+                if (azrtti_typeid(animGraphNode->GetParentNode()) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
                 {
                     QAction* activateNodeAction = menu.addAction("Activate State");
                     activateNodeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/Run.png"));
-                    connect(activateNodeAction, SIGNAL(triggered()), navigateWidget, SLOT(OnActivateState()));
+                    connect(activateNodeAction, &QAction::triggered, viewWidget, &BlendGraphViewWidget::OnActivateState);
 
                     // get the parent state machine
                     EMotionFX::AnimGraphStateMachine* stateMachine = (EMotionFX::AnimGraphStateMachine*)animGraphNode->GetParentNode();
@@ -282,7 +224,7 @@ namespace EMStudio
                     {
                         QAction* setAsEntryStateAction = menu.addAction("Set As Entry State");
                         setAsEntryStateAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/EntryState.png"));
-                        connect(setAsEntryStateAction, SIGNAL(triggered()), navigateWidget, SLOT(OnSetAsEntryState()));
+                        connect(setAsEntryStateAction, &QAction::triggered, navigateWidget, &NavigateWidget::OnSetAsEntryState);
                     }
 
                     // action for adding a wildcard transition
@@ -292,7 +234,7 @@ namespace EMStudio
                 } // parent is a state machine
 
                 // if the parent is a state blend tree
-                if (animGraphNode->GetParentNode()->GetType() == EMotionFX::BlendTree::TYPE_ID)
+                if (azrtti_typeid(animGraphNode->GetParentNode()) == azrtti_typeid<EMotionFX::BlendTree>())
                 {
                     if (animGraphNode->GetSupportsDisable())
                     {
@@ -316,7 +258,7 @@ namespace EMStudio
             // if the parent is a state blend tree
             if (animGraphNode->GetParentNode())
             {
-                if (animGraphNode->GetParentNode()->GetType() == EMotionFX::BlendTree::TYPE_ID)
+                if (azrtti_typeid(animGraphNode->GetParentNode()) == azrtti_typeid<EMotionFX::BlendTree>())
                 {
                     if (animGraphNode->GetSupportsVisualization())
                     {
@@ -345,7 +287,7 @@ namespace EMStudio
             // make the node a virtual final node
             if (animGraphNode->GetHasOutputPose())
             {
-                if (animGraphNode->GetParentNode()  && animGraphNode->GetParentNode()->GetType() == EMotionFX::BlendTree::TYPE_ID)
+                if (animGraphNode->GetParentNode() && azrtti_typeid(animGraphNode->GetParentNode()) == azrtti_typeid<EMotionFX::BlendTree>())
                 {
                     EMotionFX::BlendTree* blendTree = static_cast<EMotionFX::BlendTree*>(animGraphNode->GetParentNode());
                     if (blendTree->GetVirtualFinalNode() != animGraphNode)
@@ -430,7 +372,7 @@ namespace EMStudio
             for (uint32 i = 0; i < numSelectedNodes; ++i)
             {
                 // make sure its a node inside a blend tree and that it supports disabling
-                if (selectedNodes[i]->GetParentNode() == nullptr || selectedNodes[i]->GetParentNode()->GetType() != EMotionFX::BlendTree::TYPE_ID)
+                if (selectedNodes[i]->GetParentNode() == nullptr || azrtti_typeid(selectedNodes[i]->GetParentNode()) != azrtti_typeid<EMotionFX::BlendTree>())
                 {
                     allBlendTreeNodes = false;
                     break;

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "ComponentPhysics.h"
 #include "Components/IComponentSerialization.h"
 
@@ -392,7 +392,7 @@ void CComponentPhysics::ProcessEvent(SEntityEvent& event)
                 {
                     m_pPhysicalEntity->GetStatus(&sp);
                     bbox.Add(sp.BBox[0] + sp.pos), bbox.Add(sp.BBox[1] + sp.pos);
-                    if (!CheckFlags(FLAG_IGNORE_XFORM_EVENT) && !std::static_pointer_cast<CComponentPhysics>(pRootPhysicsComponent)->CheckFlags(FLAG_IGNORE_XFORM_EVENT))
+                    if (!CheckFlags(FLAG_IGNORE_XFORM_EVENT) && !AZStd::static_pointer_cast<CComponentPhysics>(pRootPhysicsComponent)->CheckFlags(FLAG_IGNORE_XFORM_EVENT))
                     {
                         pp.partid = sp.partid + GetPartId0();
                         mtxPart = mtxLoc * m_pEntity->GetSlotLocalTM(sp.partid, true);
@@ -405,7 +405,7 @@ void CComponentPhysics::ProcessEvent(SEntityEvent& event)
                     if (HasPartId(m_pEntity, sp.partid))
                     {
                         bbox.Add(sp.BBox[0] + sp.pos), bbox.Add(sp.BBox[1] + sp.pos);
-                        if (!CheckFlags(FLAG_IGNORE_XFORM_EVENT) && !std::static_pointer_cast<CComponentPhysics>(pRootPhysicsComponent)->CheckFlags(FLAG_IGNORE_XFORM_EVENT))
+                        if (!CheckFlags(FLAG_IGNORE_XFORM_EVENT) && !AZStd::static_pointer_cast<CComponentPhysics>(pRootPhysicsComponent)->CheckFlags(FLAG_IGNORE_XFORM_EVENT))
                         {
                             pp.partid = sp.partid;
                             mtxPart = mtxLoc * m_pEntity->GetSlotLocalTM(sp.partid - GetPartId0(), true);
@@ -1566,7 +1566,7 @@ void CComponentPhysics::DestroyPhysicalEntity(bool bDestroyCharacters, int iMode
     }
     m_pPhysicalEntity = NULL;
 
-    if (std::shared_ptr<IComponentRender> pComponentRender = m_pEntity->GetComponent<IComponentRender>())
+    if (IComponentRenderPtr pComponentRender = m_pEntity->GetComponent<IComponentRender>())
     {
         if (IRenderNode* pRndNode = pComponentRender->GetRenderNode())
         {

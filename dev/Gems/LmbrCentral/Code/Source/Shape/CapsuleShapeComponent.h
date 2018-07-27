@@ -61,6 +61,7 @@ namespace LmbrCentral
      */
     class CapsuleShapeDebugDisplayComponent
         : public EntityDebugDisplayComponent
+        , public ShapeComponentNotificationsBus::Handler
     {
     public:
         AZ_COMPONENT(CapsuleShapeDebugDisplayComponent, "{21A6A8CD-C0AC-477D-8574-556DB46CDD3B}", EntityDebugDisplayComponent)
@@ -71,20 +72,21 @@ namespace LmbrCentral
 
         // AZ::Component
         void Activate() override;
+        void Deactivate() override;
         bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
 
         // EntityDebugDisplayComponent
         void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
 
+        // ShapeComponentNotificationsBus
+        void OnShapeChanged(ShapeChangeReasons changeReason) override;
+
     private:
         AZ_DISABLE_COPY_MOVE(CapsuleShapeDebugDisplayComponent)
 
-        // AZ::TransformNotificationBus::Handler
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-
         void GenerateVertices();
-        
+
         ShapeMesh m_capsuleShapeMesh; ///< Buffer to hold index and vertex data for CapsuleShape when drawing.
         CapsuleShapeConfig m_capsuleShapeConfig; ///< Stores configuration data for capsule shape.
     };

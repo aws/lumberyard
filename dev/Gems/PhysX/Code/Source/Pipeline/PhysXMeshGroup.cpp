@@ -149,7 +149,6 @@ namespace PhysX
                         "<span>If the area of a triangle of the hull is below this value, the triangle will be rejected. This test is done only if Check Zero Area Triangles is used.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                         ->DataElement(AZ_CRC("PlaneTolerance", 0xa8640bac), &PhysXMeshGroup::m_planeTolerance, "Plane Tolerance",
                         "<span>The value is used during hull construction. When a new point is about to be added to the hull it gets dropped when the point is closer to the hull than the planeTolerance. "
                         "The Plane Tolerance is increased according to the hull size. If 0.0f is set all points are accepted when the convex hull is created. This may lead to edge cases where the "
@@ -158,7 +157,6 @@ namespace PhysX
                         "might be required to lower the default value.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                         ->DataElement(AZ_CRC("Use16bitIndices", 0xb81adbfa), &PhysXMeshGroup::m_use16bitIndices, "Use 16-bit Indices",
                         "<span>Denotes the use of 16-bit vertex indices in Convex triangles or polygons. Otherwise, 32-bit indices are assumed.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
@@ -211,8 +209,6 @@ namespace PhysX
                         " nearby vertices. The mesh validation approach also uses the same snap-to-grid approach to identify nearby vertices. If more than one vertex snaps to a given "
                         "grid coordinate, we ensure that the distance between the vertices is at least Mesh Weld Tolerance. If this is not the case, a warning is emitted.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsTriMesh)
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                         ->DataElement(AZ_CRC("NumTrisPerLeaf", 0x391bf6d1), &PhysXMeshGroup::m_numTrisPerLeaf, "Number of Triangles Per Leaf",
                         "<span>Mesh cooking hint for max triangles per leaf limit. Fewer triangles per leaf produces larger meshes with better runtime performance and worse cooking performance."
                         " More triangles per leaf results in faster cooking speed and smaller mesh sizes, but with worse runtime performance.</span>")

@@ -114,7 +114,7 @@ private:
         {
             QMessageBox box(QMessageBox::NoIcon,
                 "New Directory",
-                "The directory already contains an " + directoryName + "directory.",
+                "The directory already contains a sub-directory named \"" + directoryName + "\".",
                 QMessageBox::Ok,
                 Q_NULLPTR,
                 Qt::Popup);
@@ -171,6 +171,7 @@ private:
         QFile f(filePath);
         if (f.open(QFile::WriteOnly | QFile::Text))
         {
+            GetIEditor()->GetAWSResourceManager()->RequestAddFile(filePath);
             f.close();
         }
         else

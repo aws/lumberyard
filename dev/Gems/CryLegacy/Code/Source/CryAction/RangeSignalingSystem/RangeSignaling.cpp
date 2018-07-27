@@ -14,7 +14,7 @@
 // Description : Signal entities based on ranges from other entities
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "RangeSignaling.h"
 #include "PersonalRangeSignaling.h"
 

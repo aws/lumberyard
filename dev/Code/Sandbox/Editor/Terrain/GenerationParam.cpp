@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "GenerationParam.h"
 #include "Noise.h"
 
@@ -34,56 +34,49 @@ CGenerationParam::CGenerationParam(QWidget* pParent /*=NULL*/)
 {
     ui->setupUi(this);
 
-    connect(ui->m_sldPasses, &QSlider::valueChanged, [this](int value)
+    connect(ui->m_sldPasses, &QSlider::valueChanged, this, [this](int value)
         {
             // Passes
             ui->m_labelPasses->setText(QString::number(value));
             UpdatePreview();
         });
 
-    connect(ui->m_sldFrequency, &QSlider::valueChanged, [this](int value)
+    connect(ui->m_sldFrequency, &QSlider::valueChanged, this, [this](int value)
         {
             // Frequency
             ui->m_labelFrequency->setText(QString::number(static_cast<double>(value) / 10.0f, 'f'));
             UpdatePreview();
         });
 
-    connect(ui->m_sldFrequencyStep, &QSlider::valueChanged, [this](int value)
+    connect(ui->m_sldFrequencyStep, &QSlider::valueChanged, this, [this](int value)
         {
             // Frequency step
             ui->m_labelFrequencyStep->setText(QString::number(static_cast<double>(value) / 10.0f, 'f'));
             UpdatePreview();
         });
 
-    connect(ui->m_sldFade, &QSlider::valueChanged, [this](int value)
+    connect(ui->m_sldFade, &QSlider::valueChanged, this, [this](int value)
         {
             // Fade
             ui->m_labelFade->setText(QString::number(static_cast<double>(value) / 10.0f, 'f'));
             UpdatePreview();
         });
 
-    connect(ui->m_sldCover, &QSlider::valueChanged, [this](int value)
-        {
-            // Cover
-            ui->m_labelCover->setText(QString::number(value));
-            UpdatePreview();
-        });
-
-    connect(ui->m_sldRandomBase, &QSlider::valueChanged, [this](int value)
+    connect(ui->m_sldRandomBase, &QSlider::valueChanged, this, [this](int value)
         {
             // Random base
             ui->m_labelRandomBase->setText(QString::number(value));
             UpdatePreview();
         });
 
-    connect(ui->m_sldSharpness, &QSlider::valueChanged, [this](int value)
+    connect(ui->m_sldSharpness, &QSlider::valueChanged, this, [this](int value)
         {
             // Sharpness
             ui->m_labelSharpness->setText(QString::number(static_cast<double>(value) / 1000.0f, 'f'));
             UpdatePreview();
         });
 
-    connect(ui->m_sldBlur, &QSlider::valueChanged, [this](int value)
+    connect(ui->m_sldBlur, &QSlider::valueChanged, this, [this](int value)
         {
             // Blurring
             ui->m_labelBlur->setText(QString::number(value));
@@ -200,7 +193,6 @@ void CGenerationParam::OnShowPreviewChanged()
 
 void CGenerationParam::FillParam(SNoiseParams& pParam) const
 {
-    pParam.iCover = ui->m_sldCover->value();
     pParam.iPasses = ui->m_sldPasses->value();
     pParam.fFrequencyStep = ui->m_sldFrequencyStep->value() / 10.0f;
     pParam.fFrequency = ui->m_sldFrequency->value() / 10.0f;
@@ -215,7 +207,6 @@ void CGenerationParam::LoadParam(const SNoiseParams& pParam)
     ui->m_sldFade->setValue(static_cast<int>(pParam.fFade * 10.0f));
     ui->m_sldFrequency->setValue(static_cast<int>(pParam.fFrequency * 10.0f));
     ui->m_sldFrequencyStep->setValue(static_cast<int>(pParam.fFrequencyStep * 10.0f));
-    ui->m_sldCover->setValue(pParam.iCover);
     ui->m_sldPasses->setValue(pParam.iPasses);
     ui->m_sldRandomBase->setValue(pParam.iRandom);
     ui->m_sldSharpness->setValue(static_cast<int>(pParam.iSharpness * 1000.0f));

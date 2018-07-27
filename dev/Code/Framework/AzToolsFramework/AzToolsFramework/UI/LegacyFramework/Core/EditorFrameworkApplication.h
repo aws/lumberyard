@@ -37,9 +37,12 @@ namespace LegacyFramework
         bool m_shouldRunAssetProcessor; // false if you want to disable auto launching the asset processor.
         bool m_saveUserSettings; // true by default - set it to false if you want not to store usersettings (ie, you have no per-user state because you're something like an asset builder!)
 
+        int m_argc;
+        char** m_argv;
+
         char m_applicationName[_MAX_PATH];
 
-        ApplicationDesc(const char* name = "Application");
+        ApplicationDesc(const char* name = "Application", int argc = 0, char** argv = nullptr);
         ApplicationDesc(const ApplicationDesc& other);
         ApplicationDesc& operator=(const ApplicationDesc& other);
     private:

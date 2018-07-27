@@ -8,7 +8,11 @@ import { ModelDebugPipe, ObjectKeysPipe, FromEpochPipe, FilterArrayPipe } from "
 import { AwsService } from "app/aws/aws.service";
 import { ApiService, UrlService, DefinitionService, AuthGuardService, PreloadingService,
      LyMetricService, GemService, BreadcrumbService, PaginationService } from './service/index';
+import { NgxChartsModule } from '@swimlane/ngx-charts';
+import { NouisliderModule } from 'ng2-nouislider';
+import { AnchorDirective } from './directive/anchor.directive';
 import { NgxDatatableModule } from '@swimlane/ngx-datatable';
+
 import {
     DateTimeRangePickerComponent,
     LoadingSpinnerComponent,
@@ -21,7 +25,10 @@ import {
     InlineEditingComponent,
     SwitchButtonComponent,
     BreadcrumbComponent,
-    DropdownComponent
+    DropdownComponent,
+    ProgressBarComponent,
+    LineChartComponent,
+    TooltipComponent    
 } from "./component/index";
 
 @NgModule({
@@ -32,6 +39,8 @@ import {
         NgbModule,
         ReactiveFormsModule,
         RouterModule,
+        NgxChartsModule,
+        NouisliderModule,
         NgxDatatableModule
     ],
     exports: [
@@ -42,6 +51,7 @@ import {
         NgbModule,
         ReactiveFormsModule,
         RouterModule,
+        NgxChartsModule,
         NgxDatatableModule,
         ModalComponent,
         DateTimeRangePickerComponent,
@@ -52,13 +62,18 @@ import {
         FilterArrayPipe,
         AutoFocusComponent,
         FooterComponent,
+        TooltipComponent,
         PieChartComponent,
-        BarChartComponent,
+        BarChartComponent,        
         TagComponent,
         InlineEditingComponent,
         SwitchButtonComponent,
         BreadcrumbComponent,
-        DropdownComponent
+        DropdownComponent,
+        ProgressBarComponent,
+        LineChartComponent,
+        NouisliderModule,
+        AnchorDirective
     ],
     declarations: [
         ModalComponent,
@@ -70,13 +85,17 @@ import {
         FilterArrayPipe,
         AutoFocusComponent,
         FooterComponent,
+        TooltipComponent,
         PieChartComponent,
-        BarChartComponent,
+        BarChartComponent,        
         TagComponent,
         InlineEditingComponent,
         SwitchButtonComponent,
         BreadcrumbComponent,
-        DropdownComponent
+        DropdownComponent,
+        ProgressBarComponent,
+        LineChartComponent,
+        AnchorDirective
     ]
 })
 export class AppSharedModule {

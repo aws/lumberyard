@@ -39,7 +39,7 @@ namespace Audio
         {
             serializeContext->Class<MicrophoneSystemComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {

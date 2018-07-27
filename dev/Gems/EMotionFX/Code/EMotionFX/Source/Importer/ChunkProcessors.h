@@ -24,6 +24,7 @@
 #include "MotionSetFileFormat.h"
 #include "NodeMapFileFormat.h"
 #include "Importer.h"
+#include <AzCore/std/containers/map.h>
 
 
 namespace EMotionFX
@@ -45,7 +46,7 @@ namespace EMotionFX
     class EMFX_API SharedData
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(SharedData, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_IMPORTER);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**
@@ -119,6 +120,13 @@ namespace EMotionFX
         static MCore::Array<AnimGraphNode*>& GetBlendNodes(MCore::Array<SharedData*>* sharedData);
 
         /**
+        * Get the table to look up a state machine that needs an entry state as they are created.
+        * @param sharedData The array which holds the shared data objects.
+        * @result The map whose keys are the indices of entry states and the values are the IDs of the state machines that need those as entry states.
+        */
+        static AZStd::map<AZ::u64, uint32>& GetEntryStateToStateMachineTable(MCore::Array<SharedData*>* sharedData);
+
+        /**
          * Checks if the strings in the file are encoded using unicode or multi-byte based on the exporter date.
          * The first official EMotion FX version to use unicode was compiled on 26th November 2012.
          */
@@ -131,7 +139,7 @@ namespace EMotionFX
         bool            mIsUnicodeFile;             /**< True in case strings in the file are saved using unicode character set, false in case they are saved using multi-byte. */
         char*           mStringStorage;             /**< The shared string buffer. */
         MCore::Array<AnimGraphNode*> mBlendNodes;  /**< Array of read anim graph nodes. */
-
+        AZStd::map<AZ::u64, uint32>  m_entryNodeIndexToStateMachineIdLookupTable;
     protected:
         /**
          * The constructor.
@@ -158,9 +166,9 @@ namespace EMotionFX
     class EMFX_API ChunkProcessor
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(ChunkProcessor, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_IMPORTER);
-
     public:
+        AZ_CLASS_ALLOCATOR_DECL
+
         /**
          * Read and process a chunk. This is the main method.
          * It will return false when we have reached the end of the file or something bad has happened while reading.
@@ -316,6 +324,7 @@ namespace EMotionFX
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorStdMaterialLayer,     FileFormat::ACTOR_CHUNK_STDMATERIALLAYER,     1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorGenericMaterial,      FileFormat::ACTOR_CHUNK_GENERICMATERIAL,      1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorInfo,                 FileFormat::ACTOR_CHUNK_INFO,                 1)
+    EMFX_CHUNKPROCESSOR(ChunkProcessorActorInfo2,                FileFormat::ACTOR_CHUNK_INFO,                 2)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorMeshLOD,              FileFormat::ACTOR_CHUNK_MESHLODLEVELS,        1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorProgMorphTarget,      FileFormat::ACTOR_CHUNK_STDPROGMORPHTARGET,   1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorNodeGroups,           FileFormat::ACTOR_CHUNK_NODEGROUPS,           1)
@@ -338,7 +347,7 @@ namespace EMotionFX
     EMFX_CHUNKPROCESSOR(ChunkProcessorAnimGraphNodeConnections,          FileFormat::ANIMGRAPH_CHUNK_NODECONNECTIONS,          1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorAnimGraphParameters,               FileFormat::ANIMGRAPH_CHUNK_PARAMETERS,               1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorAnimGraphNodeGroups,               FileFormat::ANIMGRAPH_CHUNK_NODEGROUPS,               1)
-    EMFX_CHUNKPROCESSOR(ChunkProcessorAnimGraphParameterGroups,          FileFormat::ANIMGRAPH_CHUNK_PARAMETERGROUPS,          1)
+    EMFX_CHUNKPROCESSOR(ChunkProcessorAnimGraphGroupParameters,          FileFormat::ANIMGRAPH_CHUNK_GROUPPARAMETERS,          1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorAnimGraphGameControllerSettings,   FileFormat::ANIMGRAPH_CHUNK_GAMECONTROLLERSETTINGS,   1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorAnimGraphNode,                     FileFormat::ANIMGRAPH_CHUNK_BLENDNODE,                1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorAnimGraphAdditionalInfo,           FileFormat::ANIMGRAPH_CHUNK_ADDITIONALINFO,           1)

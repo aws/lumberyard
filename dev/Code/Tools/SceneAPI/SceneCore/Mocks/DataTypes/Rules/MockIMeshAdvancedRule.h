@@ -13,7 +13,7 @@
 */
 
 #include <AzCore/std/string/string.h>
-#include <AzCore/RTTI/Rtti.h>
+#include <AzCore/RTTI/RTTI.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IMeshAdvancedRule.h>
 
 namespace AZ

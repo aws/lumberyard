@@ -15,7 +15,7 @@
 //               target  used for determining the agent s target
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "TargetTrack.h"
 #include "TargetTrackModifiers.h"
 #include "PipeUser.h"

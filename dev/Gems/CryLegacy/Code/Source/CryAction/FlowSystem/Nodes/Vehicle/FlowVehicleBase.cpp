@@ -13,7 +13,7 @@
 
 // Description : Implements a base class for vehicle flow node
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "IVehicleSystem.h"
 #include "IFlowSystem.h"

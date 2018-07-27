@@ -14,7 +14,7 @@
 // Description : Implements vehicle functionality
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <IViewSystem.h>
 #include <IItemSystem.h>
@@ -894,7 +894,7 @@ void CVehicle::InitPaint(const CVehicleParams& xmlContent)
                 if (CVehicleParams paintRef = paintsTable.getChild(i))
                 {
                     const char* paintName = paintRef.getAttr("name");
-                    if (!_stricmp(paintName, m_paintName.c_str()))
+                    if (!azstricmp(paintName, m_paintName.c_str()))
                     {
                         const char* paintMaterial = paintRef.getAttr("material");
                         if (paintMaterial && paintMaterial[0])
@@ -3623,7 +3623,7 @@ IVehicleComponent* CVehicle::GetComponent(const char* name)
 
     for (TVehicleComponentVector::iterator ite = m_components.begin(); ite != m_components.end(); ++ite)
     {
-        if (0 == strcmpi(name, (*ite)->GetName().c_str()))
+        if (0 == azstricmp(name, (*ite)->GetName().c_str()))
         {
             return (IVehicleComponent*) *ite;
         }

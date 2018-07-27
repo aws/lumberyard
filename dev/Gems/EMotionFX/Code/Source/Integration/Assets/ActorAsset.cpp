@@ -26,6 +26,7 @@
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 
 #include <Integration/Assets/ActorAsset.h>
+#include <Integration/System/SystemCommon.h>
 
 #include <I3DEngine.h>
 #include <IRenderMesh.h>
@@ -37,6 +38,10 @@ namespace EMotionFX
 {
     namespace Integration
     {
+        AZ_CLASS_ALLOCATOR_IMPL(ActorAsset, EMotionFXAllocator, 0)
+        AZ_CLASS_ALLOCATOR_IMPL(ActorAssetHandler, EMotionFXAllocator, 0)
+        AZ_CLASS_ALLOCATOR_IMPL(ActorRenderNode, EMotionFXAllocator, 0)
+
         ActorRenderNode::ActorRenderNode(AZ::EntityId entityId,
             const EMotionFXPtr<EMotionFX::ActorInstance>& actorInstance,
             const AZ::Data::Asset<ActorAsset>& asset,
@@ -906,7 +911,8 @@ namespace EMotionFX
                                 {
                                     const AZ::Vector4& sourceTangent = sourceTangents[vertexIndex];
                                     const AZ::Vector3 sourceNormal(sourceNormals[vertexIndex]);
-                                    const AZ::Vector3 bitangent = AZ::Vector3(sourceTangent.GetX(), sourceTangent.GetY(), sourceTangent.GetZ()).Cross(sourceNormal) * sourceTangent.GetW();
+                                    const AZ::Vector3 bitangent = (AZ::Vector3(sourceTangent.GetX(), sourceTangent.GetY(), sourceTangent.GetZ())
+                                        .Cross(sourceNormal) * sourceTangent.GetW()).GetNormalizedExact();
 
                                     *destTangents = SMeshTangents(
                                             Vec3(sourceTangent.GetX(), sourceTangent.GetY(), sourceTangent.GetZ()),
@@ -948,13 +954,18 @@ namespace EMotionFX
 
                                 const AZ::u32 influenceCount = AZ::GetMin<AZ::u32>(maxInfluences, sourceSkinningInfo->GetNumInfluences(originalVertex));
                                 AZ::u32 influenceIndex = 0;
+                                int weightError = 255;
 
                                 for (; influenceIndex < influenceCount; ++influenceIndex)
                                 {
                                     EMotionFX::SkinInfluence* influence = sourceSkinningInfo->GetInfluence(originalVertex, influenceIndex);
                                     destBoneMapping->boneIds[influenceIndex] = influence->GetNodeNr();
                                     destBoneMapping->weights[influenceIndex] = static_cast<AZ::u8>(AZ::GetClamp<float>(influence->GetWeight() * 255.f, 0.f, 255.f));
+                                    weightError -= destBoneMapping->weights[influenceIndex];
                                 }
+
+                                destBoneMapping->weights[0] += weightError;
+
                                 for (; influenceIndex < maxInfluences; ++influenceIndex)
                                 {
                                     destBoneMapping->boneIds[influenceIndex] = 0;
@@ -1074,7 +1085,7 @@ namespace EMotionFX
 
         AZ::Data::AssetType ActorAssetHandler::GetAssetType() const
         {
-            return AZ::AzTypeInfo<ActorAsset>::Uuid();
+            return azrtti_typeid<ActorAsset>();
         }
 
         void ActorAssetHandler::GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions)

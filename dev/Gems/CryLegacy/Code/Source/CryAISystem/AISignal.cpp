@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AISignal.h"
 #include "CryCrc32.h"
 
@@ -54,7 +54,7 @@ void AISignalExtraData::SetObjectName(const char* objectName)
     if (objectName && *objectName)
     {
         sObjectName = new char[strlen(objectName) + 1];
-        strcpy(sObjectName, objectName);
+        azstrcpy(sObjectName, strlen(objectName) + 1, objectName);
     }
 }
 
@@ -162,7 +162,7 @@ void AISIGNAL::Serialize(TSerialize ser)
 
     if (ser.IsReading())
     {
-        strcpy(strText, textString.c_str());
+        azstrcpy(strText, AZ_ARRAY_SIZE(strText), textString.c_str());
         m_nCrcText = CCrc32::Compute(textString);
     }
 

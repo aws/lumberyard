@@ -17,7 +17,6 @@
 
 
 //=============================================================
-#include <CryEngineAPI.h>
 
 #include "VertexFormats.h"
 
@@ -101,6 +100,14 @@ enum EDataType
 
 struct SGeometryInfo;
 class CRendElement;
+
+struct IRenderElementDelegate
+{
+    virtual void mfPrepare(bool bCheckOverflow) = 0;
+    virtual bool mfDraw(CShader* shader, SShaderPass* pass) = 0;
+    virtual bool mfSetSampler(int customId, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit) { return true; };
+};
+
 struct IRenderElement
 {
     virtual int mfGetMatId() = 0;
@@ -122,20 +129,23 @@ struct IRenderElement
     virtual bool mfCompile(CParserBin& Parser, SParserFrame& Frame) = 0;
     virtual bool mfDraw(CShader* ef, SShaderPass* sfm) = 0;
     virtual bool mfPreDraw(SShaderPass* sl) = 0;
-    virtual CRendElementBase* mfCopyConstruct() = 0;
+    virtual bool mfSetSampler(int customId, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit) = 0;
+    virtual void mfSetDelegate(IRenderElementDelegate* pDelegate) = 0;
+    virtual IRenderElementDelegate* mfGetDelegate() = 0;
     virtual CRenderChunk* mfGetMatInfo() = 0;
     virtual TRenderChunkArray* mfGetMatInfoList() = 0;
-
-    virtual bool mfSetSampler(int customId, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit) = 0;
-
     virtual void* mfGetPointer(ESrcPointer ePT, int* Stride, EParamType Type, ESrcPointer Dst, int Flags) = 0;
-
     virtual AZ::Vertex::Format GetVertexFormat() const = 0;
-    //virtual bool GetGeometryInfo(SGeometryInfo& streams) = 0;
-    virtual void Draw(CRenderObject* pObj, const struct SGraphicsPiplinePassContext& ctx) = 0;
+    virtual void* GetCustomData() const = 0;
+    virtual int GetCustomTexBind(int i) const = 0;
+    virtual CRendElementBase* mfCopyConstruct() = 0;
+    virtual EDataType mfGetType() = 0;
+    virtual int Size() = 0;
+    virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
+
 };
 
-class ENGINE_EXPORT_PUBLIC CRendElement
+class CRendElement
 {
 public:
     static CRendElement m_RootGlobal;
@@ -170,24 +180,20 @@ protected:
     }
 
 public:
-    ENGINE_API CRendElement();
-    ENGINE_API virtual ~CRendElement();
-    ENGINE_API virtual void Release(bool bForce = false);
-    ENGINE_API virtual const char* mfTypeString();
-
-    virtual EDataType mfGetType() { return m_Type; }
+    CRendElement();
+    virtual ~CRendElement();
+    virtual void Release(bool bForce = false);
+    virtual const char* mfTypeString();
     virtual void mfSetType(EDataType t) { m_Type = t; }
-
     virtual void GetMemoryUsage(ICrySizer* pSizer) const {}
     virtual int Size() { return 0; }
-
 
     static void ShutDown();
     static void Tick();
     static void Cleanup();
 };
 
-class ENGINE_EXPORT_PUBLIC CRendElementBase
+class CRendElementBase
     : public CRendElement
     , public IRenderElement
 {
@@ -228,34 +234,45 @@ public:
     };
 
 public:
-    ENGINE_API CRendElementBase();
-    ENGINE_API virtual ~CRendElementBase();
+    CRendElementBase();
+    virtual ~CRendElementBase();
 
-    ENGINE_API virtual void mfPrepare(bool bCheckOverflow) override; // False - mergable, True - static mesh
-    ENGINE_API virtual CRenderChunk* mfGetMatInfo() override;
-    ENGINE_API virtual TRenderChunkArray* mfGetMatInfoList() override;
-    ENGINE_API virtual int mfGetMatId() override;
-    ENGINE_API virtual void mfReset() override;
-    ENGINE_API virtual CRendElementBase* mfCopyConstruct() override;
-    ENGINE_API virtual void mfCenter(Vec3& centr, CRenderObject* pObj) override;
 
-    ENGINE_API virtual bool mfCompile(CParserBin& Parser, SParserFrame& Frame) override { return false; }
-    ENGINE_API virtual bool mfPreDraw(SShaderPass* sl) override { return true; }
-    ENGINE_API virtual bool mfUpdate(int Flags, bool bTessellation = false) override { return true; }
-    ENGINE_API virtual void mfPrecache(const SShaderItem& SH) override {}
-    ENGINE_API virtual void mfExport(struct SShaderSerializeContext& SC) override { CryFatalError("mfExport has not been implemented for this render element type"); }
-    ENGINE_API virtual void mfImport(struct SShaderSerializeContext& SC, uint32& offset) override { CryFatalError("mfImport has not been implemented for this render element type"); }
+    virtual void mfPrepare(bool bCheckOverflow) override 
+    {
+        if (m_delegate)
+        {
+            m_delegate->mfPrepare(bCheckOverflow);
+        }
+    }
+    bool mfDraw(CShader* ef, SShaderPass* sfm) override { return m_delegate ? m_delegate->mfDraw(ef, sfm) : true; }
+    bool mfSetSampler(int customId, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit) override { return m_delegate ? m_delegate->mfSetSampler(customId, nTUnit, nTState, nTexMaterialSlot, nSUnit) : false; }
+    void mfSetDelegate(IRenderElementDelegate* pDelegate) override { m_delegate = pDelegate; }
+    IRenderElementDelegate* mfGetDelegate() { return m_delegate; }   
 
-    ENGINE_API virtual void mfGetPlane(Plane& pl) override;
-    ENGINE_API virtual bool mfDraw(CShader* ef, SShaderPass* sfm) override;
-    ENGINE_API virtual void* mfGetPointer(ESrcPointer ePT, int* Stride, EParamType Type, ESrcPointer Dst, int Flags) override;
-    ENGINE_API virtual bool mfSetSampler(int customId, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit) override { return false; }
+    EDataType mfGetType() override { return m_Type; };
 
-    virtual uint16 mfGetFlags()  override { return m_Flags; }
-    virtual void mfSetFlags(uint16 fl)  override { m_Flags = fl; }
-    virtual void mfUpdateFlags(uint16 fl)  override { m_Flags |= fl; }
-    virtual void mfClearFlags(uint16 fl)  override { m_Flags &= ~fl; }
-    virtual bool mfCheckUpdate(int Flags, uint16 nFrame, bool bTessellation = false) override
+    CRenderChunk* mfGetMatInfo() override { return nullptr; }
+    TRenderChunkArray* mfGetMatInfoList() override { return nullptr; }
+    int mfGetMatId() override { return -1; }
+    void mfReset() override {};
+    CRendElementBase* mfCopyConstruct() override;
+    void mfCenter(Vec3& centr, CRenderObject* pObj) override;
+
+    bool mfCompile(CParserBin& Parser, SParserFrame& Frame) override { return false; }
+    bool mfPreDraw(SShaderPass* sl) override { return true; }
+    bool mfUpdate(int Flags, bool bTessellation = false) override { return true; }
+    void mfPrecache(const SShaderItem& SH) override {}
+    void mfExport(struct SShaderSerializeContext& SC) override { CryFatalError("mfExport has not been implemented for this render element type"); }
+    void mfImport(struct SShaderSerializeContext& SC, uint32& offset) override { CryFatalError("mfImport has not been implemented for this render element type"); }
+    void mfGetPlane(Plane& pl) override;
+    void* mfGetPointer(ESrcPointer ePT, int* Stride, EParamType Type, ESrcPointer Dst, int Flags) override { return nullptr; }
+    
+    uint16 mfGetFlags()  override { return m_Flags; }
+    void mfSetFlags(uint16 fl)  override { m_Flags = fl; }
+    void mfUpdateFlags(uint16 fl)  override { m_Flags |= fl; }
+    void mfClearFlags(uint16 fl)  override { m_Flags &= ~fl; }
+    bool mfCheckUpdate(int Flags, uint16 nFrame, bool bTessellation = false) override
     {
         if (nFrame != m_nFrameUpdated || (m_Flags & (FCEF_DIRTY | FCEF_SKINNED | FCEF_UPDATEALWAYS)))
         {
@@ -264,17 +281,22 @@ public:
         }
         return true;
     }
-    virtual void mfGetBBox(Vec3& vMins, Vec3& vMaxs) override
+    void mfGetBBox(Vec3& vMins, Vec3& vMaxs) override
     {
         vMins.Set(0, 0, 0);
         vMaxs.Set(0, 0, 0);
     }
-    virtual bool mfIsHWSkinned() override { return false; }
-    virtual int Size() override { return 0; }
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const  override {}
-    virtual AZ::Vertex::Format GetVertexFormat() const override { return AZ::Vertex::Format(eVF_Unknown); };
+    bool mfIsHWSkinned() override { return false; }
+    int Size() override { return 0; }
+    void GetMemoryUsage(ICrySizer* pSizer) const  override {}
+    AZ::Vertex::Format GetVertexFormat() const override { return AZ::Vertex::Format(eVF_Unknown); };
     virtual bool GetGeometryInfo(SGeometryInfo& streams) { return false; }
-    virtual void Draw(CRenderObject* pObj, const struct SGraphicsPiplinePassContext& ctx) override {};
+    void Draw(CRenderObject* pObj, const struct SGraphicsPiplinePassContext& ctx) {};
+    void* GetCustomData() const { return m_CustomData; }
+    int GetCustomTexBind(int index) const { return m_CustomTexBind[index]; }
+
+protected:
+    IRenderElementDelegate * m_delegate = nullptr;
 };
 
 #include "CREMesh.h"

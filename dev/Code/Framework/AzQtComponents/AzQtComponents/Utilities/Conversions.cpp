@@ -17,13 +17,12 @@ namespace AzQtComponents
 {
     QColor ToQColor(const AZ::Color& color)
     {
-        QColor result;
-        result.setRgbF(static_cast<float>(color.GetR()), static_cast<float>(color.GetG()), static_cast<float>(color.GetB()), static_cast<float>(color.GetA()));
-        return result;
+        return QColor::fromRgbF(static_cast<float>(color.GetR()), static_cast<float>(color.GetG()), static_cast<float>(color.GetB()), static_cast<float>(color.GetA()));
     }
 
     AZ::Color FromQColor(const QColor& color)
     {
-        return AZ::Color(static_cast<float>(color.redF()), static_cast<float>(color.greenF()), static_cast<float>(color.blueF()), static_cast<float>(color.alphaF()));
+        const QColor rgb = color.toRgb();
+        return AZ::Color(static_cast<float>(rgb.redF()), static_cast<float>(rgb.greenF()), static_cast<float>(rgb.blueF()), static_cast<float>(rgb.alphaF()));
     }
 } // namespace AzQtComponents

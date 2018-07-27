@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <ICryAnimation.h>
 #include <IFacialAnimation.h>
@@ -20,9 +20,6 @@
 
 #include "SkeletonAnim.h"
 #include "AttachmentSkin.h"
-
-// Must be included once in the module.
-#include <platform_impl.h>
 
 #include <IEngineModule.h>
 
@@ -107,22 +104,12 @@ public:
 static CSystemEventListner_Animation g_system_event_listener_anim;
 
 //////////////////////////////////////////////////////////////////////////
-class CEngineModule_CryAnimation
-    : public IEngineModule
+namespace LegacyCryAnimation
 {
-    CRYINTERFACE_SIMPLE(IEngineModule)
-    CRYGENERATE_SINGLETONCLASS(CEngineModule_CryAnimation, "EngineModule_CryAnimation", 0x9c73d2cd142c4256, 0xa8f0706d80cd7ad2)
-
     //////////////////////////////////////////////////////////////////////////
-    virtual const char* GetName() const {
-        return "CryAnimation";
-    };
-    virtual const char* GetCategory() const { return "CryEngine"; };
-
-    //////////////////////////////////////////////////////////////////////////
-    virtual bool Initialize(SSystemGlobalEnvironment& env, const SSystemInitParams& initParams)
+    bool InitCharacterManager(const SSystemInitParams& initParams)
     {
-        ISystem* pSystem = env.pSystem;
+        ISystem* pSystem = gEnv->pSystem;
 
         if (!CSkeletonAnimTask::Initialize())
         {
@@ -140,7 +127,7 @@ class CEngineModule_CryAnimation
         pSystem->GetISystemEventDispatcher()->RegisterListener(&g_system_event_listener_anim);
 
         g_pCharacterManager = NULL;
-        env.pCharacterManager = NULL;
+        gEnv->pCharacterManager = NULL;
         if (gEnv->IsEditor())
         {
             g_pCharacterManager = new CharacterManager;
@@ -149,18 +136,7 @@ class CEngineModule_CryAnimation
 
         return true;
     }
-};
-
-CRYREGISTER_SINGLETON_CLASS(CEngineModule_CryAnimation)
-
-CEngineModule_CryAnimation::CEngineModule_CryAnimation()
-{
-};
-
-CEngineModule_CryAnimation::~CEngineModule_CryAnimation()
-{
-};
-
+}
 
 // cached interfaces - valid during the whole session, when the character manager is alive; then get erased
 ISystem*                        g_pISystem              = NULL;
@@ -211,13 +187,12 @@ ILINE void g_LogToFile (const char* szFormat, ...)
 
 
 f32 g_fCurrTime = 0;
-int g_CpuFlags = 0;
 bool g_bProfilerOn = false;
 
 AnimStatisticsInfo g_AnimStatisticsInfo;
 
 // TypeInfo implementations for CryAnimation
 #ifndef AZ_MONOLITHIC_BUILD
-    #include "Common_TypeInfo.h"
+    #include "TypeInfo_impl.h"
     #include "CGFContent_info.h"
 #endif // AZ_MONOLITHIC_BUILD

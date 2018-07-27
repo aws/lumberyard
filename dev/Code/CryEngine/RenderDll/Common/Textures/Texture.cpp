@@ -30,8 +30,6 @@
 #include <AzCore/std/string/conversions.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
-#include <CryEngineAPI.h>
-
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
 #define TEXTURE_CPP_SECTION_1 1
@@ -283,7 +281,8 @@ SResourceView SResourceView::UnorderedAccessView(ETEX_Format nFormat, int nFirst
 CTexture::~CTexture()
 {
     // sizes of these structures should NOT exceed L2 cache line!
-#if defined(PLATFORM_64BIT)
+    // offsetof with MSVC's crt and clang produces an error
+#if defined(PLATFORM_64BIT) && !(defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG))
     COMPILE_TIME_ASSERT((offsetof(CTexture, m_composition) - offsetof(CTexture, m_pFileTexMips)) <= 64);
     COMPILE_TIME_ASSERT((offsetof(CTexture, m_pFileTexMips) % 64) == 0);
 #endif
@@ -418,7 +417,7 @@ CTexture* CTexture::NewTexture(const char* name, uint32 nFlags, ETEX_Format eTFD
     AzFramework::StringFunc::Path::GetExtension(name, fileExtension);
     if (name[0] == '$' || fileExtension.empty())
     {
-        //If the name starts with $ or it does not have any extension then it is one of the special texture 
+        //If the name starts with $ or it does not have any extension then it is one of the special texture
         // that the engine requires and we would not be modifying the name
         normalizedFile = name;
     }
@@ -765,7 +764,12 @@ bool CTexture::Reload()
         bOK = CreateDeviceTexture(pData);
         assert(bOK);
     }
-    PostCreate();
+
+    // Post Create assumes the texture loaded successfully so don't call it if that's not the case
+    if (bOK)
+    {
+        PostCreate();
+    }
 
     return bOK;
 }
@@ -817,7 +821,7 @@ CTexture* CTexture::ForName(const char* name, uint32 nFlags, ETEX_Format eTFDst)
     ESystemGlobalState currentGlobalState = GetISystem()->GetSystemGlobalState();
     const bool levelLoading = currentGlobalState == ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_START;
 
-    // Load textures immediately during level load since texture load 
+    // Load textures immediately during level load since texture load
     // requests during this phase are probably coming from a loading screen.
     if (levelLoading || !bPrecachePhase)
     {
@@ -844,7 +848,7 @@ struct CompareTextures
 {
     bool operator()(const CTexture* a, const CTexture* b)
     {
-        return (_stricmp(a->GetSourceName(), b->GetSourceName()) < 0);
+        return (azstricmp(a->GetSourceName(), b->GetSourceName()) < 0);
     }
 };
 
@@ -1936,7 +1940,7 @@ int __cdecl TexCallback(const VOID * arg1, const VOID * arg2)
     {
         return 1;
     }
-    return _stricmp(ti1->GetSourceName(), ti2->GetSourceName());
+    return azstricmp(ti1->GetSourceName(), ti2->GetSourceName());
 }
 
 int __cdecl TexCallbackMips(const VOID * arg1, const VOID * arg2)
@@ -1959,7 +1963,7 @@ int __cdecl TexCallbackMips(const VOID * arg1, const VOID * arg2)
     {
         return 1;
     }
-    return _stricmp(ti1->GetSourceName(), ti2->GetSourceName());
+    return azstricmp(ti1->GetSourceName(), ti2->GetSourceName());
 }
 
 void CTexture::Update()
@@ -2378,7 +2382,7 @@ Ang3 sDeltAngles(Ang3& Ang0, Ang3& Ang1)
     return out;
 }
 
-SEnvTexture* CTexture::FindSuitableEnvTex(Vec3& Pos, Ang3& Angs, bool bMustExist, int RendFlags, bool bUseExistingREs, CShader* pSH, CShaderResources* pRes, CRenderObject* pObj, bool bReflect, CRendElementBase* pRE, bool* bMustUpdate)
+SEnvTexture* CTexture::FindSuitableEnvTex(Vec3& Pos, Ang3& Angs, bool bMustExist, int RendFlags, bool bUseExistingREs, CShader* pSH, CShaderResources* pRes, CRenderObject* pObj, bool bReflect, IRenderElement* pRE, bool* bMustUpdate)
 {
     SEnvTexture* cm = NULL;
     float time0 = iTimer->GetAsyncCurTime();
@@ -2919,7 +2923,7 @@ void CTexture::LoadDefaultSystemTextures()
             s_ptexFlaresGather = CTexture::CreateTextureObject("$FlaresGather", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
             for (i = 0; i < MAX_OCCLUSION_READBACK_TEXTURES; i++)
             {
-                sprintf(str, "$FlaresOcclusion_%d", i);
+                azsprintf(str, "$FlaresOcclusion_%d", i);
                 s_ptexFlaresOcclusionRing[i] = CTexture::CreateTextureObject(str, 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
             }
 
@@ -2933,7 +2937,7 @@ void CTexture::LoadDefaultSystemTextures()
 #endif
             s_ptexWaterOcean = CTexture::CreateTextureObject("$WaterOceanMap", 64, 64, 1, eTT_2D, waterOceanMapFlags, eTF_Unknown, TO_WATEROCEANMAP);
             s_ptexWaterVolumeTemp = CTexture::CreateTextureObject("$WaterVolumeTemp", 64, 64, 1, eTT_2D, waterVolumeTempFlags, eTF_Unknown);
-            
+
             s_ptexWaterVolumeDDN = CTexture::CreateTextureObject("$WaterVolumeDDN", 64, 64, 1, eTT_2D, /*FT_DONT_RELEASE |*/ FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_FORCE_MIPS, eTF_Unknown,  TO_WATERVOLUMEMAP);
             s_ptexWaterVolumeRefl[0] = CTexture::CreateTextureObject("$WaterVolumeRefl", 64, 64, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_FORCE_MIPS, eTF_Unknown, TO_WATERVOLUMEREFLMAP);
             s_ptexWaterVolumeRefl[1] = CTexture::CreateTextureObject("$WaterVolumeReflPrev", 64, 64, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_FORCE_MIPS, eTF_Unknown, TO_WATERVOLUMEREFLMAPPREV);
@@ -2987,7 +2991,7 @@ void CTexture::LoadDefaultSystemTextures()
 
         for (i = 0; i < 8; i++)
         {
-            sprintf(str, "$FromRE_%d", i);
+            azsprintf(str, "$FromRE_%d", i);
             if (!s_ptexFromRE[i])
             {
                 s_ptexFromRE[i] = CTexture::CreateTextureObject(str, 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_FROMRE0 + i);
@@ -2996,13 +3000,13 @@ void CTexture::LoadDefaultSystemTextures()
 
         for (i = 0; i < 8; i++)
         {
-            sprintf(str, "$ShadowID_%d", i);
+            azsprintf(str, "$ShadowID_%d", i);
             s_ptexShadowID[i] = CTexture::CreateTextureObject(str, 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_SHADOWID0 + i);
         }
 
         for (i = 0; i < 2; i++)
         {
-            sprintf(str, "$FromRE%d_FromContainer", i);
+            azsprintf(str, "$FromRE%d_FromContainer", i);
             if (!s_ptexFromRE_FromContainer[i])
             {
                 s_ptexFromRE_FromContainer[i] = CTexture::CreateTextureObject(str, 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_FROMRE0_FROM_CONTAINER + i);

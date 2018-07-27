@@ -18,7 +18,7 @@
 #define CRYINCLUDE_CRYACTION_EFFECTSYSTEM_EFFECTSYSTEM_H
 #pragma once
 
-#include "../IEffectSystem.h"
+#include "IEffectSystem.h"
 
 class CEffectSystem
     : public IEffectSystem

@@ -455,8 +455,8 @@ namespace AssetProcessor
         QString appRoot;
         QString filename;
         QString binFolder;
-        QString appDirStr;
 
+        QString appDirStr;
         AssetUtilities::ComputeApplicationInformation(appDirStr, filename);
         rcAbsolutePathOut = QString("%1/%2").arg(appDirStr).arg(QString(LEGACY_RC_RELATIVE_PATH));
         if (!AZ::IO::SystemFile::Exists(rcAbsolutePathOut.toUtf8().data()))
@@ -466,7 +466,7 @@ namespace AssetProcessor
 
             return AZ::IO::SystemFile::Exists(rcAbsolutePathOut.toUtf8().data());
         }
-
+        
         return true;
     }
 

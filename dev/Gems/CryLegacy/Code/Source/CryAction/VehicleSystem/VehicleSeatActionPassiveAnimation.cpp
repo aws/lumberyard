@@ -22,7 +22,7 @@
 //
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "IVehicleSystem.h"
 #include "VehicleSeatActionPassiveAnimation.h"

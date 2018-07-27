@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "LightComponentSwitchNode.h"
 #include <LmbrCentral/Rendering/LightComponentBus.h>
 

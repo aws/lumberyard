@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <setjmp.h>
 
-#include <AZCore/Memory/OSAllocator.h>
-#include <AZCore/Base.h>
-#include <AZCore/std/typetraits/alignment_of.h>
+#include <AzCore/Memory/OSAllocator.h>
+#include <AzCore/Base.h>
+#include <AzCore/std/typetraits/alignment_of.h>
 
 
 #if defined(AZ_RESTRICTED_PLATFORM)

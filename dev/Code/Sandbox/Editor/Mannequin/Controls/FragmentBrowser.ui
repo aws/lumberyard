@@ -229,7 +229,7 @@
   <customwidget>
    <class>CFragmentBrowserTreeWidget</class>
    <extends>QTreeWidget</extends>
-   <header>FragmentBrowser.h</header>
+   <header>Mannequin/Controls/FragmentBrowser.h</header>
   </customwidget>
  </customwidgets>
  <resources>

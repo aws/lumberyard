@@ -422,7 +422,7 @@ inline const char* CCryFile::GetAdjustedFilename() const
     }
 
     // Gets mod path to file.
-    const char* gameUrl = m_pIPak->AdjustFileName(m_filename, szAdjustedFile, 0);
+    const char* gameUrl = m_pIPak->AdjustFileName(m_filename, szAdjustedFile, ICryPak::g_nMaxPath, 0);
 
     // Returns standard path otherwise.
     if (gameUrl != &szAdjustedFile[0])

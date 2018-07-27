@@ -14,7 +14,7 @@
 // Description : Flowgraph nodes to read/write Xml files
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowBaseXmlNode.h"
 
 ////////////////////////////////////////////////////

@@ -145,15 +145,15 @@ namespace LmbrCentral
             EBUS_EVENT_ID(m_entityId, CryPhysicsComponentRequestBus, GetPhysicsStatus, livingStatus);
 
             const Animation::MotionParameters targetMotionParameters = Animation::ExtractMotionParameters(
-                deltaTime, 
-                m_currentWorldTransform, 
-                frameMotionDelta, 
+                deltaTime,
+                m_currentWorldTransform,
+                frameMotionDelta,
                 LYVec3ToAZVec3(livingStatus.groundSlope));
 
             // Apply smoothing to blend params.
             Animation::SmoothMotionParameters(m_smoothedMotionParameters, targetMotionParameters, m_motionParamsSmoothingState, m_motionParamsSmoothingSettings, deltaTime);
 
-            // Convert character-relative travel direction into an angle for blend parameters. 
+            // Convert character-relative travel direction into an angle for blend parameters.
             // Signed, ranges from -Pi..Pi, with positive angles to the left.
             float relativeTravelAngle = 0.f;
             if (!m_smoothedMotionParameters.m_relativeTravelDelta.IsZero())
@@ -184,13 +184,13 @@ namespace LmbrCentral
             }
             else
             {
-                AZ_Warning("Character Animation", false, 
+                AZ_Warning("Character Animation", false,
                            "Unable to set out-of-range blend parameter %u. Use eMotionParamID_BlendWeight through eMotionParamID_BlendWeight7.",
                            blendParameter);
             }
         }
     }
-    
+
     float CharacterAnimationManagerComponent::CharacterInstanceEntry::GetBlendParameter(AZ::u32 blendParameter)
     {
         float value = 0.f;
@@ -202,14 +202,14 @@ namespace LmbrCentral
             {
                 if (!skeletonAnim->GetDesiredMotionParam(static_cast<EMotionParamID>(blendParameter), value))
                 {
-                    AZ_Warning("Character Animation", false, 
+                    AZ_Warning("Character Animation", false,
                                "Failed to retrieve blend parameter %u. This generally means no parametric animations (blend spaces) are playing.",
                                blendParameter);
                 }
             }
             else
             {
-                AZ_Warning("Character Animation", false, 
+                AZ_Warning("Character Animation", false,
                            "Unable to set out-of-range blend parameter %u. Use eMotionParamID_BlendWeight through eMotionParamID_BlendWeight7.",
                            blendParameter);
             }
@@ -295,7 +295,7 @@ namespace LmbrCentral
         {
             serializeContext->Class<CharacterAnimationManagerComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
@@ -306,7 +306,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ;
             }
-            
+
             serializeContext->Class<AnimationEvent>()
                 ->Version(1)
                 ->Field("name", &AnimationEvent::m_eventName)
@@ -343,7 +343,7 @@ namespace LmbrCentral
 
             // Reflect character animation buses.
             //////////////////////////////////////////////////////////////////////////
-            
+
             behaviorContext->EBus<CharacterAnimationRequestBus>("CharacterAnimationRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("SetBlendParameter", &CharacterAnimationRequestBus::Events::SetBlendParameter)
@@ -477,7 +477,7 @@ namespace LmbrCentral
             aimIK->SetState(enable);
         }
     }
-    
+
     void CharacterAnimationManagerComponent::CharacterInstanceEntry::SetAimIKTarget(const AZ::Vector3& target)
     {
         IAnimationPoseBlenderDir* aimIK = GetAimIK(m_characterInstance);
@@ -486,7 +486,7 @@ namespace LmbrCentral
             aimIK->SetTarget(AZVec3ToLYVec3(target));
         }
     }
-    
+
     void CharacterAnimationManagerComponent::CharacterInstanceEntry::SetAimIKLayer(AZ::u32 layerIndex)
     {
         IAnimationPoseBlenderDir* aimIK = GetAimIK(m_characterInstance);
@@ -495,7 +495,7 @@ namespace LmbrCentral
             aimIK->SetLayer(layerIndex);
         }
     }
-    
+
     void CharacterAnimationManagerComponent::CharacterInstanceEntry::SetAimIKFadeOutAngle(float angleRadians)
     {
         IAnimationPoseBlenderDir* aimIK = GetAimIK(m_characterInstance);
@@ -504,7 +504,7 @@ namespace LmbrCentral
             aimIK->SetFadeoutAngle(angleRadians);
         }
     }
-    
+
     void CharacterAnimationManagerComponent::CharacterInstanceEntry::SetAimIKFadeOutTime(float fadeOutTime)
     {
         IAnimationPoseBlenderDir* aimIK = GetAimIK(m_characterInstance);
@@ -513,7 +513,7 @@ namespace LmbrCentral
             aimIK->SetFadeOutSpeed(fadeOutTime);
         }
     }
-    
+
     void CharacterAnimationManagerComponent::CharacterInstanceEntry::SetAimIKFadeInTime(float fadeInTime)
     {
         IAnimationPoseBlenderDir* aimIK = GetAimIK(m_characterInstance);
@@ -522,7 +522,7 @@ namespace LmbrCentral
             aimIK->SetFadeInSpeed(fadeInTime);
         }
     }
-    
+
     void CharacterAnimationManagerComponent::CharacterInstanceEntry::SetAimIKFadeOutMinDistance(float distance)
     {
         IAnimationPoseBlenderDir* aimIK = GetAimIK(m_characterInstance);
@@ -531,7 +531,7 @@ namespace LmbrCentral
             aimIK->SetFadeOutMinDistance(distance);
         }
     }
-    
+
     void CharacterAnimationManagerComponent::CharacterInstanceEntry::SetAimIKPolarCoordinatesOffset(const AZ::Vector2& offset)
     {
         IAnimationPoseBlenderDir* aimIK = GetAimIK(m_characterInstance);
@@ -540,7 +540,7 @@ namespace LmbrCentral
             aimIK->SetPolarCoordinatesOffset(Vec2(offset.GetX(), offset.GetY()));
         }
     }
-    
+
     void CharacterAnimationManagerComponent::CharacterInstanceEntry::SetAimIKPolarCoordinatesSmoothTimeSeconds(float smoothTimeSeconds)
     {
         IAnimationPoseBlenderDir* aimIK = GetAimIK(m_characterInstance);
@@ -549,7 +549,7 @@ namespace LmbrCentral
             aimIK->SetPolarCoordinatesSmoothTimeSeconds(smoothTimeSeconds);
         }
     }
-    
+
     void CharacterAnimationManagerComponent::CharacterInstanceEntry::SetAimIKPolarCoordinatesMaxRadiansPerSecond(const AZ::Vector2& maxRadiansPerSecond)
     {
         IAnimationPoseBlenderDir* aimIK = GetAimIK(m_characterInstance);
@@ -558,7 +558,7 @@ namespace LmbrCentral
             aimIK->SetPolarCoordinatesMaxRadiansPerSecond(Vec2(maxRadiansPerSecond.GetX(), maxRadiansPerSecond.GetY()));
         }
     }
-    
+
     float CharacterAnimationManagerComponent::CharacterInstanceEntry::GetAimIKBlend()
     {
         IAnimationPoseBlenderDir* aimIK = GetAimIK(m_characterInstance);

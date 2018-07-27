@@ -566,7 +566,7 @@ namespace AudioControls
         contextMenu.addMenu(&addMenu);
 
         QAction* pAction = new QAction(tr("Rename"), this);
-        connect(pAction, &QAction::triggered,
+        connect(pAction, &QAction::triggered, m_pATLControlsTree,
             [&]()
             {
                 m_pATLControlsTree->edit(m_pATLControlsTree->currentIndex());

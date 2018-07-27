@@ -14,7 +14,7 @@
 // Description : Automatic start of facial animation when a sound is being played back.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #if 0 // TODO-MERGE-RESOLVE: 20141022 - Disabling lip sync items
 #include "LipSync_TransitionQueue.h"

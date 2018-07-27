@@ -54,7 +54,7 @@ class CEntity
     CEntity(SEntitySpawnParams& params);
 
 public:
-    using TComponentPair = std::pair<const ComponentType, IComponentPtr>;
+    using TComponentPair = AZStd::pair<const ComponentType, IComponentPtr>;
 
     // Entity destructor.
     // Should only be called from Entity System.
@@ -479,7 +479,7 @@ private:
     _smart_ptr<IMaterial> m_pMaterial;
 
     //////////////////////////////////////////////////////////////////////////
-    using TComponents = std::unordered_map<ComponentType, IComponentPtr>;
+    using TComponents = AZStd::unordered_map<ComponentType, IComponentPtr>;
     TComponents m_components;
 
     // Entity Links.
@@ -535,7 +535,7 @@ void ILINE CEntity::ForEachComponent(Function fn) const
 {
     // Detect modifications to m_components that occur during iteration.
     m_bAllowDestroyOrCreateComponent = false;
-    std::for_each(m_components.begin(), m_components.end(), fn);
+    AZStd::for_each(m_components.begin(), m_components.end(), fn);
     m_bAllowDestroyOrCreateComponent = true;
 }
 

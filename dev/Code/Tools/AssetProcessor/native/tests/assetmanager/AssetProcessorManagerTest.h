@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzTest/AzTest.h>
+#include <AzCore/std/parallel/atomic.h>
 #include <qcoreapplication.h>
 #include "native/tests/AssetProcessorTest.h"
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
@@ -20,14 +21,20 @@
 #include "native/unittests/UnitTestRunner.h"
 #include "native/AssetManager/assetProcessorManager.h"
 #include "native/utilities/PlatformConfiguration.h"
+#include "native/unittests/MockApplicationManager.h"
+
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 #include <QTemporaryDir>
+#include <QMetaObject>
 
 
 class AssetProcessorManager_Test
     : public AssetProcessor::AssetProcessorManager
 {
 public:
+    friend class GTEST_TEST_CLASS_NAME_(AssetProcessorManagerTest, AssetProcessedImpl_DifferentProductDependenciesPerProduct_SavesCorrectlyToDatabase);
+
     explicit AssetProcessorManager_Test(AssetProcessor::PlatformConfiguration* config, QObject* parent = nullptr);
     ~AssetProcessorManager_Test() override;
 public:
@@ -39,25 +46,36 @@ class AssetProcessorManagerTest
     : public AssetProcessor::AssetProcessorTest
 {
 public:
+    
+
     AssetProcessorManagerTest();
     virtual ~AssetProcessorManagerTest()
     {
     }
+
+    // utility function.  Blocks and runs the QT event pump for up to millisecondsMax and will break out as soon as the APM is idle.
+    bool BlockUntilIdle(int millisecondsMax);
+
 protected:
     void SetUp() override;
     void TearDown() override;
 
     QTemporaryDir m_tempDir;
-    AssetProcessorManager_Test* m_assetProcessorManager;
-    AssetProcessor::PlatformConfiguration* m_config;
+
+    AZStd::unique_ptr<AssetProcessorManager_Test> m_assetProcessorManager;
+    AZStd::unique_ptr<AssetProcessor::MockApplicationManager> m_mockApplicationManager;
+    AZStd::unique_ptr<AssetProcessor::PlatformConfiguration> m_config;
     UnitTestUtils::AssertAbsorber m_assertAbsorber; // absorb asserts/warnings/errors so that the unit test output is not cluttered
     QString m_gameName;
     QDir m_normalizedCacheRootDir;
+    AZStd::atomic_bool m_isIdling;
 private:
     int         m_argc;
     char**      m_argv;
     UnitTestUtils::ScopedDir m_scopeDir;
 
-    QCoreApplication* m_qApp;
+    AZStd::unique_ptr<QCoreApplication> m_qApp;
+    QMetaObject::Connection m_idleConnection;
+    
 };
 

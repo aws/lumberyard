@@ -25,13 +25,13 @@
 #include "StatCGFPhysicalize.h"
 #include "StringHelpers.h"
 #include "CGF/CGFNodeMerger.h"
-#include "Iconfig.h"
+#include "IConfig.h"
 #include "UpToDateFileHelpers.h"
 #include "Export/ExportHelpers.h"
 
 #include "IXml.h"
 #include "../../CryXML/IXMLSerializer.h"
-#include "../../CryXML/Xml/xml.h"
+#include "../../CryXML/XML/xml.h"
 
 #include <iterator>
 #include <AzCore/std/string/conversions.h>

@@ -15,6 +15,7 @@
 #include "PropertyQTConstants.h"
 #include <QtWidgets/QSlider>
 #include <QtWidgets/QHBoxLayout>
+#include <QFocusEvent>
 
 namespace AzToolsFramework
 {

@@ -325,7 +325,7 @@ namespace AZ
             IObjectFactory*     m_factory;          ///< Interface for object creation.
             ClassPersistentId   m_persistentId;     ///< Function to retrieve class instance persistent Id.
             ClassDoSave         m_doSave;           ///< Function what will choose to Save or not an instance.
-            IDataSerializer*    m_serializer;       ///< Interface for actual data serialization. If this is not NULL you can't have m_elements != NULL
+            IDataSerializer*    m_serializer;       ///< Interface for actual data serialization. If this is not NULL m_elements must be empty.
             IEventHandler*      m_eventHandler;     ///< Optional interface for Event notification (start/stop serialization, etc.)
 
             IDataContainer*     m_container;        ///< Interface if this class represents a data container. Data will be accessed using this interface.
@@ -596,7 +596,7 @@ namespace AZ
                 DataElementNode* m_dataElement = nullptr;
                 int m_currentContainerElementIndex = 0;
             };
-            
+
             using NodeStack = AZStd::list<DataElementInstanceData>;
             bool GetDataHierarchyEnumerate(ErrorHandler* errorHandler, NodeStack& nodeStack);
             bool GetClassElement(ClassElement& classElement, const DataElementNode& parentDataElement, ErrorHandler* errorHandler) const;
@@ -614,7 +614,7 @@ namespace AZ
         AZStd::vector<AZ::Uuid> FindClassId(const AZ::Crc32& classNameCrc) const;
 
         /// Find GenericClassData data based on the supplied class ID
-        GenericClassInfo* FindGenericClassInfo(const Uuid& classId) const; 
+        GenericClassInfo* FindGenericClassInfo(const Uuid& classId) const;
 
         /// Find GenericClassData data based on the supplied class ID
         AZStd::any CreateAny(const Uuid& classId);
@@ -691,7 +691,7 @@ namespace AZ
             UuidToClassMap::iterator    m_classData;
             AttributeArray*             m_currentAttributes = nullptr;
         public:
-            ~ClassBuilder() {}
+            ~ClassBuilder();
             ClassBuilder* operator->()  { return this; }
 
             /// Declare class field with address of the variable in the class
@@ -719,7 +719,11 @@ namespace AZ
             }
 
             /// For class type that are empty, we want the serializer to create on load, but have no child elements.
-            ClassBuilder* SerializerForEmptyClass();
+            ClassBuilder* SerializeWithNoData();
+
+            AZ_DEPRECATED(
+                ClassBuilder* SerializerForEmptyClass(),
+                "This function was oft misused, and as such has been removed. If you truely need this functionality, please use SerializeWithNoData()");
 
             /**
              * Implement and provide interface for event handling when necessary.

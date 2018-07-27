@@ -196,7 +196,7 @@ inline bool SortErrorsByModule(const CErrorRecord& e1, const CErrorRecord& e2)
 //////////////////////////////////////////////////////////////////////////
 void CErrorReport::Display()
 {
-    if (m_errors.empty() || !GetIEditor()->GetGame() || !m_bShowErrors)
+    if (m_errors.empty() || !m_bShowErrors)
     {
         SetImmidiateMode(true);
         return;

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <ISerialize.h>
 #include "PipeManager.h"
 #include "GoalPipe.h"
@@ -401,8 +401,12 @@ static void GetScriptFiles(const string& path, std::vector<string>& files)
             else
             {
                 // Check only lua files.
+#ifdef AZ_COMPILER_MSVC
+                _splitpath_s(fd.name, 0, 0, 0, 0, 0, 0, fext, AZ_ARRAY_SIZE(fext));
+#else
                 _splitpath(fd.name, 0, 0, 0, fext);
-                if (_stricmp(fext, ".lua") != 0)
+#endif
+                if (azstricmp(fext, ".lua") != 0)
                 {
                     continue;
                 }

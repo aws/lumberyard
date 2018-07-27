@@ -66,7 +66,7 @@ namespace Serialization
         bool SaveJsonFile(const char* gameFilename, const SStruct& obj) override
         {
             char buffer[ICryPak::g_nMaxPath];
-            const char* filename = gEnv->pCryPak->AdjustFileName(gameFilename, buffer, ICryPak::FLAGS_FOR_WRITING);
+            const char* filename = gEnv->pCryPak->AdjustFileName(gameFilename, buffer, AZ_ARRAY_SIZE(buffer), ICryPak::FLAGS_FOR_WRITING);
             JSONOArchive oa;
             if (!oa(obj))
             {
@@ -119,7 +119,7 @@ namespace Serialization
         bool SaveBinaryFile(const char* gameFilename, const SStruct& obj) override
         {
             char buffer[ICryPak::g_nMaxPath];
-            const char* filename = gEnv->pCryPak->AdjustFileName(gameFilename, buffer, ICryPak::FLAGS_FOR_WRITING);
+            const char* filename = gEnv->pCryPak->AdjustFileName(gameFilename, buffer, AZ_ARRAY_SIZE(buffer), ICryPak::FLAGS_FOR_WRITING);
             BinOArchive oa;
             obj(oa);
             return oa.save(filename);

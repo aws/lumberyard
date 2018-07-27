@@ -35,7 +35,7 @@ namespace EMotionFX
     class EMFX_API SkeletalMotion
         : public Motion
     {
-        MCORE_MEMORYOBJECTCATEGORY(SkeletalMotion, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_SKELETALMOTIONS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         // The skeletal motion type ID, returned by GetType()
@@ -126,19 +126,19 @@ namespace EMotionFX
          * @param timeValue The time value.
          * @param enableRetargeting Set to true if you like to enable motion retargeting, otherwise set to false.
          */
-        virtual void CalcNodeTransform(const MotionInstance* instance, Transform* outTransform, Actor* actor, Node* node, float timeValue, bool enableRetargeting) override;
+        void CalcNodeTransform(const MotionInstance* instance, Transform* outTransform, Actor* actor, Node* node, float timeValue, bool enableRetargeting) override;
 
         /**
          * Returns the type identification number of the motion class.
          * @result The type identification number.
          */
-        virtual uint32 GetType() const override;
+        uint32 GetType() const override;
 
         /**
          * Gets the type as a description.
          * @result The string containing the type of the motion.
          */
-        virtual const char* GetTypeString() const override;
+        const char* GetTypeString() const override;
 
         /**
          * Creates the motion links inside a given actor.
@@ -152,7 +152,7 @@ namespace EMotionFX
          * Update the maximum time of this animation. Normally called after loading a motion. The maximum time is
          * estimated by iterating through all sub-motions and locating the maximum keyframe time value.
          */
-        virtual void UpdateMaxTime() override;
+        void UpdateMaxTime() override;
 
         /**
          * Returns if this motion type should overwrite body parts that are not touched by a motion
@@ -188,7 +188,7 @@ namespace EMotionFX
          * @param outPose The output pose, which this motion will modify and write its output into.
          * @param instance The motion instance to calculate the pose for.
          */
-        virtual void Update(const Pose* inPose, Pose* outPose, MotionInstance* instance) override;
+        void Update(const Pose* inPose, Pose* outPose, MotionInstance* instance) override;
 
         /**
          * Check if the bind pose transformations of the given actor matching the one from this skeletal motion.
@@ -270,8 +270,9 @@ namespace EMotionFX
          * This is a very slow operation and is used to convert between different unit systems (cm, meters, etc).
          * @param scaleFactor The scale factor to scale the current data by.
          */
-        virtual void Scale(float scaleFactor) override;
+        void Scale(float scaleFactor) override;
 
+        void BasicRetarget(const MotionInstance* motionInstance, const SkeletalSubMotion* subMotion, uint32 nodeIndex, Transform& inOutTransform);
 
     protected:
         MCore::Array<SkeletalSubMotion*>    mSubMotions;            /**< The sub-motions. */

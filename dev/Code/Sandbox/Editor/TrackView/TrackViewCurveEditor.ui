@@ -12,15 +12,12 @@
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="1" column="0">
-    <widget class="CTrackViewSplineCtrl" name="m_wndSpline" native="true"/>
-   </item>
-   <item row="1" column="1">
-    <widget class="QSlider" name="m_verticlSlider">
-     <property name="tracking">
-      <bool>false</bool>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
+    <widget class="CTrackViewSplineCtrl" name="m_wndSpline" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
      </property>
     </widget>
    </item>
@@ -414,16 +411,6 @@
         </size>
        </property>
       </spacer>
-     </item>
-     <item>
-      <widget class="QSlider" name="m_horizonSlider">
-       <property name="tracking">
-        <bool>false</bool>
-       </property>
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
      </item>
     </layout>
    </item>

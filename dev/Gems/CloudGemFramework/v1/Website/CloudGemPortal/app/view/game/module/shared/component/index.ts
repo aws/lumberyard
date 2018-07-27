@@ -8,4 +8,5 @@ export * from './facet/facet.component'
 export * from './facet/rest-explorer.component'
 export * from './facet/cloud-watch-logs.component'
 export * from './facet/metric.component'
-export * from './thumbnail.component';
+export * from './thumbnail.component'
+export * from './graph.component'

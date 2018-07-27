@@ -11,8 +11,8 @@
 */
 
 #include <ISystem.h>
-#include "../FlowBaseNode.h"
-#include "../CryCommon/IFlowSystem.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
+#include <IFlowSystem.h>
 
 /*
 This node executes the indicated audio trigger as a one shot on the audio component attached to

@@ -452,283 +452,283 @@ CTexture* CShaderMan::mfCheckTemplateTexName(const char* mapname, ETEX_Type eTT)
         }
     }
 
-    if (!stricmp(mapname, "$ShadowPoolAtlas"))
+    if (!azstricmp(mapname, "$ShadowPoolAtlas"))
     {
         TexPic = CTexture::s_ptexRT_ShadowPool;
     }
     else
-    if (!strnicmp(mapname, "$ShadowID", 9))
+    if (!azstrnicmp(mapname, "$ShadowID", 9))
     {
         int n = atoi(&mapname[9]);
         TexPic = CTexture::s_ptexShadowID[n];
     }
     else
-    if (!stricmp(mapname, "$FromRE") || !stricmp(mapname, "$FromRE0"))
+    if (!azstricmp(mapname, "$FromRE") || !azstricmp(mapname, "$FromRE0"))
     {
         TexPic = CTexture::s_ptexFromRE[0];
     }
     else
-    if (!stricmp(mapname, "$FromRE1"))
+    if (!azstricmp(mapname, "$FromRE1"))
     {
         TexPic = CTexture::s_ptexFromRE[1];
     }
     else
-    if (!stricmp(mapname, "$FromRE2"))
+    if (!azstricmp(mapname, "$FromRE2"))
     {
         TexPic = CTexture::s_ptexFromRE[2];
     }
     else
-    if (!stricmp(mapname, "$FromRE3"))
+    if (!azstricmp(mapname, "$FromRE3"))
     {
         TexPic = CTexture::s_ptexFromRE[3];
     }
     else
-    if (!stricmp(mapname, "$FromRE4"))
+    if (!azstricmp(mapname, "$FromRE4"))
     {
         TexPic = CTexture::s_ptexFromRE[4];
     }
     else
-    if (!stricmp(mapname, "$FromRE5"))
+    if (!azstricmp(mapname, "$FromRE5"))
     {
         TexPic = CTexture::s_ptexFromRE[5];
     }
     else
-    if (!stricmp(mapname, "$FromRE6"))
+    if (!azstricmp(mapname, "$FromRE6"))
     {
         TexPic = CTexture::s_ptexFromRE[6];
     }
     else
-    if (!stricmp(mapname, "$FromRE7"))
+    if (!azstricmp(mapname, "$FromRE7"))
     {
         TexPic = CTexture::s_ptexFromRE[7];
     }
     else
-    if (!stricmp(mapname, "$VolObj_Density"))
+    if (!azstricmp(mapname, "$VolObj_Density"))
     {
         TexPic = CTexture::s_ptexVolObj_Density;
     }
     else
-    if (!stricmp(mapname, "$VolObj_Shadow"))
+    if (!azstricmp(mapname, "$VolObj_Shadow"))
     {
         TexPic = CTexture::s_ptexVolObj_Shadow;
     }
     else
-    if (!stricmp(mapname, "$ColorChart"))
+    if (!azstricmp(mapname, "$ColorChart"))
     {
         TexPic = CTexture::s_ptexColorChart;
     }
     else
-    if (!stricmp(mapname, "$FromObj"))
+    if (!azstricmp(mapname, "$FromObj"))
     {
         TexPic = CTexture::s_ptexFromObj;
     }
     else
-    if (!stricmp(mapname, "$SvoTree"))
+    if (!azstricmp(mapname, "$SvoTree"))
     {
         TexPic = CTexture::s_ptexSvoTree;
     }
     else
-    if (!stricmp(mapname, "$SvoTris"))
+    if (!azstricmp(mapname, "$SvoTris"))
     {
         TexPic = CTexture::s_ptexSvoTris;
     }
     else
-    if (!stricmp(mapname, "$SvoGlobalCM"))
+    if (!azstricmp(mapname, "$SvoGlobalCM"))
     {
         TexPic = CTexture::s_ptexSvoGlobalCM;
     }
     else
-    if (!stricmp(mapname, "$SvoRgbs"))
+    if (!azstricmp(mapname, "$SvoRgbs"))
     {
         TexPic = CTexture::s_ptexSvoRgbs;
     }
     else
-    if (!stricmp(mapname, "$SvoNorm"))
+    if (!azstricmp(mapname, "$SvoNorm"))
     {
         TexPic = CTexture::s_ptexSvoNorm;
     }
     else
-    if (!stricmp(mapname, "$SvoOpac"))
+    if (!azstricmp(mapname, "$SvoOpac"))
     {
         TexPic = CTexture::s_ptexSvoOpac;
     }
     else
-    if (!stricmp(mapname, "$FromObjCM"))
+    if (!azstricmp(mapname, "$FromObjCM"))
     {
         TexPic = CTexture::s_ptexFromObjCM;
     }
     else
-    if (!strnicmp(mapname, "$White", 6))
+    if (!azstrnicmp(mapname, "$White", 6))
     {
         TexPic = CTextureManager::Instance()->GetWhiteTexture();
     }
     else
-    if (!strnicmp(mapname, "$RT_2D", 6))
+    if (!azstrnicmp(mapname, "$RT_2D", 6))
     {
         TexPic = CTexture::s_ptexRT_2D;
     }
     else
-    if (!stricmp(mapname, "$PrevFrameScaled"))
+    if (!azstricmp(mapname, "$PrevFrameScaled"))
     {
         TexPic = CTexture::s_ptexPrevFrameScaled;
     }
     else
-    if (!stricmp(mapname, "$BackBuffer"))
+    if (!azstricmp(mapname, "$BackBuffer"))
     {
         TexPic = CTexture::s_ptexBackBuffer;
     }
     else
-    if (!stricmp(mapname, "$ModelHUD"))
+    if (!azstricmp(mapname, "$ModelHUD"))
     {
         TexPic = CTexture::s_ptexModelHudBuffer;
     }
     else
-    if (!stricmp(mapname, "$BackBufferScaled_d2"))
+    if (!azstricmp(mapname, "$BackBufferScaled_d2"))
     {
         TexPic = CTexture::s_ptexBackBufferScaled[0];
     }
     else
-    if (!stricmp(mapname, "$BackBufferScaled_d4"))
+    if (!azstricmp(mapname, "$BackBufferScaled_d4"))
     {
         TexPic = CTexture::s_ptexBackBufferScaled[1];
     }
     else
-    if (!stricmp(mapname, "$BackBufferScaled_d8"))
+    if (!azstricmp(mapname, "$BackBufferScaled_d8"))
     {
         TexPic = CTexture::s_ptexBackBufferScaled[2];
     }
     else
-    if (!stricmp(mapname, "$HDR_BackBuffer"))
+    if (!azstricmp(mapname, "$HDR_BackBuffer"))
     {
         TexPic = CTexture::s_ptexSceneTarget;
     }
     else
-    if (!stricmp(mapname, "$HDR_BackBufferScaled_d2"))
+    if (!azstricmp(mapname, "$HDR_BackBufferScaled_d2"))
     {
         TexPic = CTexture::s_ptexHDRTargetScaled[0];
     }
     else
-    if (!stricmp(mapname, "$HDR_BackBufferScaled_d4"))
+    if (!azstricmp(mapname, "$HDR_BackBufferScaled_d4"))
     {
         TexPic = CTexture::s_ptexHDRTargetScaled[1];
     }
     else
-    if (!stricmp(mapname, "$HDR_BackBufferScaled_d8"))
+    if (!azstricmp(mapname, "$HDR_BackBufferScaled_d8"))
     {
         TexPic = CTexture::s_ptexHDRTargetScaled[2];
     }
     else
-    if (!stricmp(mapname, "$HDR_FinalBloom"))
+    if (!azstricmp(mapname, "$HDR_FinalBloom"))
     {
         TexPic = CTexture::s_ptexHDRFinalBloom;
     }
     else
-    if (!stricmp(mapname, "$HDR_TargetPrev"))
+    if (!azstricmp(mapname, "$HDR_TargetPrev"))
     {
         TexPic = CTexture::s_ptexHDRTargetPrev;
     }
     else
-    if (!stricmp(mapname, "$HDR_AverageLuminance"))
+    if (!azstricmp(mapname, "$HDR_AverageLuminance"))
     {
         TexPic = CTexture::s_ptexHDRMeasuredLuminanceDummy;
     }
     else
-    if (!stricmp(mapname, "$ZTarget"))
+    if (!azstricmp(mapname, "$ZTarget"))
     {
         TexPic = CTexture::s_ptexZTarget;
     }
     else
-    if (!stricmp(mapname, "$ZTargetScaled"))
+    if (!azstricmp(mapname, "$ZTargetScaled"))
     {
         TexPic = CTexture::s_ptexZTargetScaled;
     }
     else
-    if (!stricmp(mapname, "$ZTargetScaled2"))
+    if (!azstricmp(mapname, "$ZTargetScaled2"))
     {
         TexPic = CTexture::s_ptexZTargetScaled2;
     }
     else
-    if (!stricmp(mapname, "$SceneTarget"))
+    if (!azstricmp(mapname, "$SceneTarget"))
     {
         TexPic = CTexture::s_ptexSceneTarget;
     }
     else
-    if (!stricmp(mapname, "$CloudsLM"))
+    if (!azstricmp(mapname, "$CloudsLM"))
     {
         TexPic = CTexture::s_ptexCloudsLM;
     }
     else
-    if (!stricmp(mapname, "$WaterVolumeDDN"))
+    if (!azstricmp(mapname, "$WaterVolumeDDN"))
     {
         TexPic = CTexture::s_ptexWaterVolumeDDN;
     }
     else
-    if (!stricmp(mapname, "$WaterVolumeReflPrev"))
+    if (!azstricmp(mapname, "$WaterVolumeReflPrev"))
     {
         TexPic = CTexture::s_ptexWaterVolumeRefl[1];
     }
     else
-    if (!stricmp(mapname, "$WaterVolumeRefl"))
+    if (!azstricmp(mapname, "$WaterVolumeRefl"))
     {
         TexPic = CTexture::s_ptexWaterVolumeRefl[0];
     }
     else
-    if (!stricmp(mapname, "$WaterVolumeCaustics"))
+    if (!azstricmp(mapname, "$WaterVolumeCaustics"))
     {
         TexPic = CTexture::s_ptexWaterCaustics[0];
     }
     else
-    if (!stricmp(mapname, "$WaterVolumeCausticsTemp"))
+    if (!azstricmp(mapname, "$WaterVolumeCausticsTemp"))
     {
         TexPic = CTexture::s_ptexWaterCaustics[1];
     }
     else
-    if (!stricmp(mapname, "$SceneNormalsMap"))
+    if (!azstricmp(mapname, "$SceneNormalsMap"))
     {
         TexPic = CTexture::s_ptexSceneNormalsMap;
     }
     else
-    if (!stricmp(mapname, "$SceneNormalsMapMS"))
+    if (!azstricmp(mapname, "$SceneNormalsMapMS"))
     {
         TexPic = CTexture::s_ptexSceneNormalsMapMS;
     }
     else
-    if (!stricmp(mapname, "$SceneDiffuse"))
+    if (!azstricmp(mapname, "$SceneDiffuse"))
     {
         TexPic = CTexture::s_ptexSceneDiffuse;
     }
     else
-    if (!stricmp(mapname, "$SceneSpecular"))
+    if (!azstricmp(mapname, "$SceneSpecular"))
     {
         TexPic = CTexture::s_ptexSceneSpecular;
     }
     else
-    if (!stricmp(mapname, "$SceneNormalsBent"))
+    if (!azstricmp(mapname, "$SceneNormalsBent"))
     {
         TexPic = CTexture::s_ptexSceneNormalsBent;
     }
     else
-    if (!stricmp(mapname, "$SceneDiffuseAcc"))
+    if (!azstricmp(mapname, "$SceneDiffuseAcc"))
     {
         TexPic = CTexture::s_ptexCurrentSceneDiffuseAccMap;
     }
     else
-    if (!stricmp(mapname, "$SceneSpecularAcc"))
+    if (!azstricmp(mapname, "$SceneSpecularAcc"))
     {
         TexPic = CTexture::s_ptexSceneSpecularAccMap;
     }
     else
-    if (!stricmp(mapname, "$SceneDiffuseAccMS"))
+    if (!azstricmp(mapname, "$SceneDiffuseAccMS"))
     {
         TexPic = CTexture::s_ptexSceneDiffuseAccMapMS;
     }
     else
-    if (!stricmp(mapname, "$SceneSpecularAccMS"))
+    if (!azstricmp(mapname, "$SceneSpecularAccMS"))
     {
         TexPic = CTexture::s_ptexSceneSpecularAccMapMS;
     }
     else
-    if (!stricmp(mapname, "$DefaultEnvironmentProbe"))
+    if (!azstricmp(mapname, "$DefaultEnvironmentProbe"))
     {
         TexPic = CTexture::s_defaultEnvironmentProbeDummy;
     }
@@ -810,7 +810,7 @@ STexAnim* CShaderMan::mfReadTexSequence(const char* na, int Flags, bool bFindOnl
     float fSpeed = 0.05f;
     {
         char nName[_MAX_PATH];
-        strcpy(nName, name);
+        azstrcpy(nName, _MAX_PATH, name);
         nm = strchr(nName, '(');
         if (nm)
         {
@@ -880,7 +880,7 @@ STexAnim* CShaderMan::mfReadTexSequence(const char* na, int Flags, bool bFindOnl
         dig[l] = 0;
         endn = strtol(dig, NULL, 10);
 
-        strcpy(postfix, &name[m]);
+        azstrcpy(postfix, AZ_ARRAY_SIZE(postfix), &name[m]);
     }
 
     nums = endn - startn + 1;

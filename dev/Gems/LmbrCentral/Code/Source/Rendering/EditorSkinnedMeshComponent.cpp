@@ -161,7 +161,14 @@ namespace LmbrCentral
         };
         m_mesh.m_renderOptions.m_changeCallback = renderOptionsChangeCallback;
 
-        m_mesh.CreateMesh();
+        if (m_mesh.m_isQueuedForDestroyMesh)
+        {
+            m_mesh.m_isQueuedForDestroyMesh = false;
+        }
+        else
+        {
+            m_mesh.CreateMesh();
+        }
     }
 
     void EditorSkinnedMeshComponent::Deactivate()
@@ -181,7 +188,15 @@ namespace LmbrCentral
 
         m_mesh.m_renderOptions.m_changeCallback = 0;
 
-        m_mesh.DestroyMesh();
+        if (!m_mesh.GetMeshAsset().IsReady())
+        {
+            m_mesh.m_isQueuedForDestroyMesh = true;
+        }
+        else
+        {
+            m_mesh.DestroyMesh();
+        }
+
         m_mesh.AttachToEntity(AZ::EntityId());
 
         EditorComponentBase::Deactivate();

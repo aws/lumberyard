@@ -21,10 +21,13 @@
 #include <MCore/Source/Job.h>
 #include <MCore/Source/JobList.h>
 #include <MCore/Source/JobManager.h>
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MultiThreadScheduler, ActorUpdateAllocator, 0)
+
     // constructor
     MultiThreadScheduler::MultiThreadScheduler()
         : ActorUpdateScheduler()
@@ -44,7 +47,7 @@ namespace EMotionFX
     // create
     MultiThreadScheduler* MultiThreadScheduler::Create()
     {
-        return new MultiThreadScheduler();
+        return aznew MultiThreadScheduler();
     }
 
 

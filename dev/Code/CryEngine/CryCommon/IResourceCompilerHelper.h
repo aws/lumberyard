@@ -14,8 +14,9 @@
 
 #pragma once
 
+// DO NOT USE AZSTD
+
 #include <string>
-#include <memory> // shared_ptr
 
 // IResourceCompilerHelper exists to define an interface that allows
 // remote or local compilation of resources through the "resource Compiler" executable
@@ -42,7 +43,6 @@ namespace RCPathUtil
 }
 
 class IResourceCompilerListener;
-class IResourceCompilerProcess;
 
 enum ERcExitCode
 {
@@ -62,8 +62,6 @@ class IResourceCompilerHelper
 public:
     virtual ~IResourceCompilerHelper() {}
 
-    typedef std::shared_ptr<IResourceCompilerProcess> RCProcessHandle;
-
     // defines the result of a call via this API to the RC system
     enum ERcCallResult
     {
@@ -71,7 +69,6 @@ public:
         eRcCallResult_notFound, // the RC executable is not found
         eRcCallResult_error, // the RC executable returned an error
         eRcCallResult_crash, // the RC executable did not finish
-        eRcCallResult_queued // we successfully queued an invocation (used by the async api)
     };
 
     // defines where to search for RC from
@@ -100,18 +97,6 @@ public:
         bool bNoUserDialog = false,
         const wchar_t* szWorkingDirectory = 0,
         const wchar_t* szRootPath = 0) = 0;
-
-    // this is an ASYNCHRONOUS call.  The object returned will let you check the state of, and also manipulate, the RC process executing.
-    virtual RCProcessHandle AsyncCallResourceCompiler(
-        const char* szFileName = 0,
-        const char* szAdditionalSettings = 0,
-        bool bMayShowWindow = true,
-        ERcExePath rcExePath = eRcExePath_registry,
-        bool bSilent = false,
-        bool bNoUserDialog = false,
-        const wchar_t* szWorkingDirectory = 0,
-        const wchar_t* szRootPath = 0,
-        IResourceCompilerListener* listener = 0) = 0;
 
     // InvokeResourceCompiler - a utility that calls the above CallResourceCompiler function
     // but generates appropriate settings so you don't have to specify each option.
@@ -187,18 +172,6 @@ public:
 
     virtual void OnRCMessage(MessageSeverity /*severity*/, const char* /*text*/) {}
     virtual ~IResourceCompilerListener() {}
-};
-
-// when you start an asynchronous Resource Compiler Process, you get one of these objects in return
-// as a shared pointer.  You can then use it to monitor or block on success, terminate the process, etc.
-class IResourceCompilerProcess
-{
-public:
-    virtual ~IResourceCompilerProcess() {}
-    virtual bool IsDone() = 0; // ASYNC call to check for completion
-    virtual void WaitForDone() = 0; // BLOCKING CALL to wait for completion
-    virtual void Terminate() = 0; // ASYNC CALL to terminate
-    virtual int GetExitCode() = 0; // SYNC CALL, may return  eRcExitCode_Pending if its still running
 };
 
 #endif // CRYINCLUDE_CRYCOMMON_IRESOURCECOMPILERHELPER_H

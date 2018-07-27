@@ -294,11 +294,7 @@ namespace AzFramework
         AZ::Outcome<void, AZStd::string> ReadTextFileByLine(const AZStd::string& filePath, AZStd::function<bool(const char* line)> perLineCallback)
         {
             FILE* file_handle = nullptr;
-#if defined (AZ_COMPILER_MSVC)
-            fopen_s(&file_handle, filePath.c_str(), "rt");
-#else
-            file_handle = fopen(filePath.c_str(), "rt");
-#endif
+            azfopen(&file_handle, filePath.c_str(), "rt");
             if (!file_handle)
             {
                 return AZ::Failure(AZStd::string::format("Error opening file '%s' for reading", filePath.c_str()));

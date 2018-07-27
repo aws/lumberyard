@@ -15,7 +15,7 @@
 //               furthest reachable position on the path
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "SmartPathFollower.h"
 #include "CAISystem.h"

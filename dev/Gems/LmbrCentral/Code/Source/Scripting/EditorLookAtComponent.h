@@ -18,8 +18,6 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
-#include <AzFramework/Math/MathUtils.h>
-
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 
 namespace LmbrCentral
@@ -87,7 +85,7 @@ namespace LmbrCentral
 
         // Serialized data
         AZ::EntityId m_targetId;
-        AzFramework::Axis m_forwardAxis;
+        AZ::Transform::Axis m_forwardAxis;
 
         // Transient data
         AZ::EntityId m_oldTargetId;

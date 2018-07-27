@@ -134,7 +134,7 @@ namespace EMotionFX
          * @param destPose The destination pose to blend into, additively, so displacing the current pose.
          * @param weight The weight value to use, which must be in range of [0..1], where 1.0 is the dest pose.
          */
-        void BlendAdditive(const Pose* destPose, float weight);
+        void BlendAdditiveUsingBindPose(const Pose* destPose, float weight);
 
         /**
          * Blend this pose into a specified destination pose.
@@ -145,9 +145,18 @@ namespace EMotionFX
          */
         void Blend(const Pose* destPose, float weight, const MotionInstance* instance, Pose* outPose);
 
+        Pose& PreMultiply(const Pose& other);
+        Pose& Multiply(const Pose& other);
+        Pose& MultiplyInverse(const Pose& other);
+
         void Zero();
         void NormalizeQuaternions();
         void Sum(const Pose* other, float weight);
+
+        Pose& MakeRelativeTo(const Pose& other);
+        Pose& MakeAdditive(const Pose& refPose);
+        Pose& ApplyAdditive(const Pose& additivePose);
+        Pose& ApplyAdditive(const Pose& additivePose, float weight);
 
         Pose& operator=(const Pose& other);
 
@@ -192,7 +201,7 @@ namespace EMotionFX
          * @param weight The weight value, which must be in range of [0..1].
          * @param outTransform The transform object to output the result in.
          */
-        void BlendTransformAdditive(const Transform& baseTransform, const Transform& source, const Transform& dest, float weight, Transform* outTransform);
+        void BlendTransformAdditiveUsingBindPose(const Transform& baseTransform, const Transform& source, const Transform& dest, float weight, Transform* outTransform);
 
         /**
          * Blend a single local space transform into another transform, including weight check.

@@ -17,6 +17,8 @@
 #include <sched.h>
 #endif
 
+#include <AzCore/std/parallel/mutex.h>
+
 #include "CryAssert.h"
 
 // Section dictionary

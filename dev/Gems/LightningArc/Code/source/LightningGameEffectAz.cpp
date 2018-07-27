@@ -150,6 +150,7 @@ LightningGameEffectAZ::LightningGameEffectAZ()
 LightningGameEffectAZ::~LightningGameEffectAZ()
 {
     ClearSparks();
+    CGameEffect::Release();
 }
 
 void LightningGameEffectAZ::Initialize(const SGameEffectParams* gameEffectParams)

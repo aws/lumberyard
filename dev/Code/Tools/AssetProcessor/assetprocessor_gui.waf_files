@@ -21,7 +21,7 @@
             "native/utilities/GUIApplicationManager.h",
             "native/utilities/windowscreen.cpp",
             "native/utilities/windowscreen.h",
-            "native/utilities/assetUtilEBusHelper.h",
+            "native/utilities/AssetUtilEBusHelper.h",
             "native/utilities/LogPanel.h",
             "native/utilities/LogPanel.cpp"
         ]

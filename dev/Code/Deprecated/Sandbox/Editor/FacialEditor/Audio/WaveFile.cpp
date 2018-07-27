@@ -14,7 +14,7 @@
 // Description : Implementation of simple raw wave file
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "WaveFile.h"
 //#include "AtgUtil.h"

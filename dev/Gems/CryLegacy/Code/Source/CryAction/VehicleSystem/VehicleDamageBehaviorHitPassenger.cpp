@@ -15,7 +15,7 @@
 //               passenger inside the vehicle
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IActorSystem.h"
 #include "IVehicleSystem.h"
 #include "VehicleSystem/Vehicle.h"

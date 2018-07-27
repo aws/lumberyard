@@ -80,7 +80,7 @@ namespace AZ
             const static AZ::Crc32 ViewportIcon = AZ_CRC("ViewportIcon", 0xe7f19a70);
             const static AZ::Crc32 HideIcon = AZ_CRC("HideIcon", 0xfe652ee7);
             const static AZ::Crc32 PreferNoViewportIcon = AZ_CRC("PreferNoViewportIcon", 0x04ae9cb2);
-            const static AZ::Crc32 DynamicIconOverride = AZ_CRC("DynamicIconOverride", 0xcc4cea6b);            
+            const static AZ::Crc32 DynamicIconOverride = AZ_CRC("DynamicIconOverride", 0xcc4cea6b);
 
             //! Data attributes
             const static AZ::Crc32 Min = AZ_CRC("Min", 0xa17b1dd0);

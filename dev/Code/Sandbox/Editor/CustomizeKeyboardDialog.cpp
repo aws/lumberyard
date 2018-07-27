@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "CustomizeKeyboardDialog.h"
 #include "ui_CustomizeKeyboardDialog.h"
 
@@ -243,7 +243,7 @@ CustomizeKeyboardDialog::CustomizeKeyboardDialog(KeyboardCustomizationSettings& 
     connect(m_ui->removeButton, &QPushButton::clicked, this, &CustomizeKeyboardDialog::ShortcutRemoved);
     connect(m_ui->clearButton, &QPushButton::clicked, m_actionShortcutsModel, &ActionShortcutsModel::RemoveAll);
     connect(m_ui->buttonBox, &QDialogButtonBox::clicked, this, &CustomizeKeyboardDialog::DialogButtonClicked);
-    connect(this, &QDialog::rejected, [&]() { m_settings.Load(m_settingsSnapshot); });
+    connect(this, &QDialog::rejected, this, [&]() { m_settings.Load(m_settingsSnapshot); });
 
     m_ui->categories->addItems(categories);
 }

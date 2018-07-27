@@ -20,6 +20,15 @@
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    const AZ::u32 InputDeviceMouse::MovementSampleRateDefault = 60;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    const AZ::u32 InputDeviceMouse::MovementSampleRateQueueAll = std::numeric_limits<AZ::u32>::max();
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    const AZ::u32 InputDeviceMouse::MovementSampleRateAccumulateAll = 0;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     const InputDeviceId InputDeviceMouse::Id("mouse");
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -211,11 +220,23 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceMouse::SetRawMovementSampleRate(AZ::u32 sampleRateHertz)
+    {
+        if (m_pimpl)
+        {
+            m_pimpl->SetRawMovementSampleRate(sampleRateHertz);
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceMouse::Implementation::Implementation(InputDeviceMouse& inputDevice)
         : m_inputDevice(inputDevice)
+        , m_rawMovementSampleRate()
         , m_rawButtonEventQueuesById()
         , m_rawMovementEventQueuesById()
+        , m_timeOfLastRawMovementSample(AZStd::chrono::system_clock::now())
     {
+        SetRawMovementSampleRate(MovementSampleRateDefault);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -236,14 +257,20 @@ namespace AzFramework
     void InputDeviceMouse::Implementation::QueueRawMovementEvent(const InputChannelId& inputChannelId,
                                                                  float rawMovementDelta)
     {
-        // Raw mouse movement is coalesced rather than queued to avoid flooding the event queue
+        auto now = AZStd::chrono::system_clock::now();
+        auto deltaTime = now - m_timeOfLastRawMovementSample;
         auto& rawEventQueue = m_rawMovementEventQueuesById[inputChannelId];
-        if (rawEventQueue.empty())
+
+        // Depending on the movement sample rate, multiple mouse movements within a frame are either:
+        if (rawEventQueue.empty() || deltaTime.count() > m_rawMovementSampleRate)
         {
+            // queued (to give a better response at low frame rates)
             rawEventQueue.push_back(rawMovementDelta);
+            m_timeOfLastRawMovementSample = now;
         }
         else
         {
+            // or accumulated (to avoid flooding the event queue)
             rawEventQueue.back() += rawMovementDelta;
         }
     }
@@ -279,5 +306,19 @@ namespace AzFramework
     void InputDeviceMouse::Implementation::ResetInputChannelStates()
     {
         m_inputDevice.ResetInputChannelStates();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceMouse::Implementation::SetRawMovementSampleRate(AZ::u32 sampleRateHertz)
+    {
+        // Guard against dividing by zero
+        if (sampleRateHertz == MovementSampleRateAccumulateAll)
+        {
+            m_rawMovementSampleRate = static_cast<AZStd::sys_time_t>(std::numeric_limits<AZ::u32>::max());
+        }
+        else
+        {
+            m_rawMovementSampleRate = static_cast<AZStd::sys_time_t>(1000000 / sampleRateHertz);
+        }
     }
 } // namespace AzFramework

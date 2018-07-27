@@ -10,7 +10,6 @@
 *
 */
 
-// include required headders
 #include "AnimGraphEventBuffer.h"
 #include "EventManager.h"
 #include "AnimGraphInstance.h"
@@ -18,14 +17,12 @@
 
 namespace EMotionFX
 {
-    // constructor
     AnimGraphEventBuffer::AnimGraphEventBuffer()
     {
         mEvents.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_EVENTBUFFERS);
     }
 
 
-    // destructor
     AnimGraphEventBuffer::~AnimGraphEventBuffer()
     {
     }

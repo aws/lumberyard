@@ -14,7 +14,7 @@
 #include "ProfilerEditor.h"
 #include <Woodpecker/ProfilerApplication.h>
 
-#if defined(AZ_PLATFORM_WINDOWS)
+#if defined(AZ_COMPILER_MSVC)
 #include "resource.h"
 #endif
 
@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
             procName = QFileInfo(qca.applicationFilePath()).fileName();
         }
 
-        LegacyFramework::ApplicationDesc desc(procName.toUtf8().data());
+        LegacyFramework::ApplicationDesc desc(procName.toUtf8().data(), argc, argv);
         desc.m_applicationModule = NULL;
         desc.m_enableProjectManager = false;
 

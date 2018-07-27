@@ -283,11 +283,11 @@ namespace Driller
                     for (BaseDisplayHelper* helper : dataSets)
                     {
                         KeyedDisplayHelper<size_t>* dataSet = static_cast<KeyedDisplayHelper<size_t>*>(helper);
-                        const BandwidthUsageContainer::UsageAggregationMap::const_iterator usageIter = dataSetUsage.find(dataSet->GetKey());
+                        const BandwidthUsageContainer::UsageAggregationMap::const_iterator usageAggIter = dataSetUsage.find(dataSet->GetKey());
 
-                        if (usageIter != dataSetUsage.end())
+                        if (usageAggIter != dataSetUsage.end())
                         {
-                            const BandwidthUsage& currentUsage = usageIter->second;
+                            const BandwidthUsage& currentUsage = usageAggIter->second;
 
                             overallDataSetUsage.m_bytesSent += currentUsage.m_usageAggregator.m_bytesSent;
                             overallDataSetUsage.m_bytesReceived += currentUsage.m_usageAggregator.m_bytesReceived;
@@ -299,7 +299,7 @@ namespace Driller
                                 dataSetAggregator.m_bytesReceived += currentUsage.m_usageAggregator.m_bytesReceived;
                             }
                         }
-                    }                        
+                    }
                 }
 
                 if (rpcFilter)
@@ -311,11 +311,11 @@ namespace Driller
                     for (BaseDisplayHelper* helper : rpcs)
                     {
                         KeyedDisplayHelper<size_t>* rpc = static_cast<KeyedDisplayHelper<size_t>*>(helper);
-                        const BandwidthUsageContainer::UsageAggregationMap::const_iterator usageIter = rpcUsage.find(rpc->GetKey());
+                        const BandwidthUsageContainer::UsageAggregationMap::const_iterator usageAggIter = rpcUsage.find(rpc->GetKey());
 
-                        if (usageIter != rpcUsage.end())
+                        if (usageAggIter != rpcUsage.end())
                         {
-                            const BandwidthUsage& currentUsage = usageIter->second;
+                            const BandwidthUsage& currentUsage = usageAggIter->second;
 
                             overallRPCUsage.m_bytesSent += currentUsage.m_usageAggregator.m_bytesSent;
                             overallRPCUsage.m_bytesReceived += currentUsage.m_usageAggregator.m_bytesReceived;

@@ -192,8 +192,8 @@ CWindowBackgroundDark FFFFFFFF
 <COLORDEF name="CTitleBarLightBorderLight" value="ff6e6e6e"/>
 <COLORDEF name="CTitleBarLightGradientBottom" value="ff505050"/>
 <COLORDEF name="CTitleBarLightGradientTop" value="ff5a5a5a"/>
-<COLORDEF name="CToolTipBackground" value="ffffffff"/>
-<COLORDEF name="CToolTipText" value="ff000000"/>
+<COLORDEF name="CToolTipBackground" value="ff000000"/>
+<COLORDEF name="CToolTipText" value="ffffffff"/>
 <COLORDEF name="CTreeViewBackground" value="ff222326"/>
 <COLORDEF name="CTreeViewItemFocusBackground" value="7fff9900"/>
 <COLORDEF name="CTreeViewItemHoverText" value="ffffffff"/>

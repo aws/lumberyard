@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "DebugCamera/DebugCamera.h"
 
@@ -984,7 +984,15 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
         }
     }
 
-    ModuleInitISystem(m_pSystem, "CryAction"); // Needed by GetISystem();
+#if !defined(AZ_MONOLITHIC_BUILD)
+    // Since CryAction has been moved to a gem, we only need to register factories.
+    // ISystem initialization is handled earlier as gems are initialized much later.
+    ICryFactoryRegistryImpl* pCryFactoryImpl = static_cast<ICryFactoryRegistryImpl*>(m_pSystem->GetCryFactoryRegistry());
+    if (pCryFactoryImpl)
+    {
+        pCryFactoryImpl->RegisterFactories(g_pHeadToRegFactories);
+    }
+#endif
 
     // here we have gEnv and m_pSystem
     LOADING_TIME_PROFILE_SECTION_NAMED("CCryAction::Init() after system");
@@ -2765,7 +2773,7 @@ bool CCryAction::SaveGame(const char* path, bool bQuick, bool bForceImmediate, E
 
                 char                                text[128];
 
-                _snprintf(text, sizeof(text), "Saving Checkpoint '%s'\n", checkPointName ? checkPointName : "unknown");
+                azsnprintf(text, sizeof(text), "Saving Checkpoint '%s'\n", checkPointName ? checkPointName : "unknown");
 
                 pPersistentDebug->Add2DText(text, 32.f, colour, 10.0f);
             }
@@ -3243,7 +3251,7 @@ bool CCryAction::GetNetworkSafeClassName(char* className, size_t maxn, uint16 id
     {
         if (pGameContext->ClassNameFromId(name, id))
         {
-            strncpy(className, name.c_str(), maxn);
+            azstrncpy(className, maxn, name.c_str(), maxn);
             return true;
         }
     }
@@ -3517,7 +3525,7 @@ const char* CCryAction::GetAbsLevelPath(char* const pPath, const uint32 cPathMax
 
         GetEditorLevel(0, &levelFolder);
 
-        strcpy(pPath, levelFolder);
+        azstrcpy(pPath, cPathMaxLen, levelFolder);
 
         // todo: abs path
         return pPath;
@@ -3530,7 +3538,7 @@ const char* CCryAction::GetAbsLevelPath(char* const pPath, const uint32 cPathMax
             {
                 if (ILevelInfo* pLevelInfo = pLevel->GetLevelInfo())
                 {
-                    strcpy(pPath, pLevelInfo->GetPath());
+                    azstrcpy(pPath, cPathMaxLen, pLevelInfo->GetPath());
                     return pPath;
                 }
             }
@@ -4318,6 +4326,7 @@ void CCryAction::SetupLocalView()
 // TypeInfo implementations for CryAction
 #ifndef AZ_MONOLITHIC_BUILD
     #include "Common_TypeInfo.h"
+    STRUCT_INFO_T_INSTANTIATE(Color_tpl, <uint8>)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_4
 #include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)

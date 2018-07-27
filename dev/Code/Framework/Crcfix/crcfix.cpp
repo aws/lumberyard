@@ -14,7 +14,7 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <AzCore/Memory/allocationrecords.h>
+#include <AzCore/Memory/AllocationRecords.h>
 #include <AzCore/std/chrono/chrono.h>
 #include <stdio.h>
 #include <stdlib.h>

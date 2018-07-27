@@ -19,7 +19,7 @@ class UiNavigationSettings
 {
 public: // types
 
-    using GetNavigableEntitiesFn = std::function<LyShine::EntityArray(AZ::EntityId)>;
+    using GetNavigableEntitiesFn = AZStd::function<LyShine::EntityArray(AZ::EntityId)>;
 
 public: // member functions
     AZ_CLASS_ALLOCATOR(UiNavigationSettings, AZ::SystemAllocator, 0);

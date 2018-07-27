@@ -556,7 +556,6 @@ void UiDraggableComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiDraggableInterface::DragState::Invalid>("eUiDragState_Invalid");
 
         behaviorContext->EBus<UiDraggableBus>("UiDraggableBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetDragState", &UiDraggableBus::Events::GetDragState)
             ->Event("SetDragState", &UiDraggableBus::Events::SetDragState)
             ->Event("RedoDrag", &UiDraggableBus::Events::RedoDrag)
@@ -568,7 +567,6 @@ void UiDraggableComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetCanDropOnAnyCanvas", &UiDraggableBus::Events::SetCanDropOnAnyCanvas);
 
         behaviorContext->EBus<UiDraggableNotificationBus>("UiDraggableNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiDraggableNotificationBusBehaviorHandler>();
     }
 }

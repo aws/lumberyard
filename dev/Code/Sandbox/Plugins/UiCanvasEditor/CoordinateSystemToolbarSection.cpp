@@ -44,7 +44,7 @@ CoordinateSystemToolbarSection::CoordinateSystemToolbarSection(QToolBar* parent,
         }
 
         QObject::connect(m_combobox,
-            static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),                 // IMPORTANT: We HAVE to use static_cast<>() to specify which overload of QComboBox::currentIndexChanged() we want.
+            static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), m_combobox,         // IMPORTANT: We HAVE to use static_cast<>() to specify which overload of QComboBox::currentIndexChanged() we want.
             [this](int index)
             {
                 SetCoordinateSystemFromCombobox(m_editorWindow, m_combobox, index);
@@ -66,7 +66,7 @@ CoordinateSystemToolbarSection::CoordinateSystemToolbarSection(QToolBar* parent,
         // SetSnapToGridIsChecked() after the canvas is loaded.
 
         QObject::connect(m_snapCheckbox,
-            &QCheckBox::clicked,
+            &QCheckBox::clicked, m_snapCheckbox,
             [this](bool checked)
             {
                 UpdateCanvasSnapEnabled();

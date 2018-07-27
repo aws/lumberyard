@@ -10,9 +10,10 @@
 *
 */
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include <AzTest/AzTest.h>
-#include <unordered_map>
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/containers/unordered_map.h>
 
 #include "Components/ComponentSerialization.h"
 #include "ISerialize.h"
@@ -64,7 +65,7 @@ namespace ComponetSerializationTests
             return false;
         }
 
-        void RegisterComponent(const ComponentType& type, std::shared_ptr<IComponent> component)
+        void RegisterComponent(const ComponentType& type, AZStd::shared_ptr<IComponent> component)
         {
             if (m_components.find(type) == m_components.end())
             {
@@ -80,7 +81,7 @@ namespace ComponetSerializationTests
 
     protected:
 
-        std::unordered_map<ComponentType, std::shared_ptr<IComponent> > m_components;
+        AZStd::unordered_map<ComponentType, AZStd::shared_ptr<IComponent> > m_components;
     };
 
     class ITestComponent
@@ -261,16 +262,16 @@ namespace ComponetSerializationTests
     {
         TestEntity entity;
 
-        std::shared_ptr<ComponentSerialization> serializationComponent = std::make_shared<ComponentSerialization>();
+        AZStd::shared_ptr<ComponentSerialization> serializationComponent = AZStd::make_shared<ComponentSerialization>();
         entity.RegisterComponent(ComponentSerialization::Type(), serializationComponent);
 
-        std::shared_ptr<TestComponentA> testComponentA = std::make_shared<TestComponentA>(entity);
+        AZStd::shared_ptr<TestComponentA> testComponentA = AZStd::make_shared<TestComponentA>(entity);
         entity.RegisterComponent(TestComponentA::Type(), testComponentA);
 
-        std::shared_ptr<TestComponentB> testComponentB = std::make_shared<TestComponentB>(entity);
+        AZStd::shared_ptr<TestComponentB> testComponentB = AZStd::make_shared<TestComponentB>(entity);
         entity.RegisterComponent(TestComponentB::Type(), testComponentB);
 
-        std::shared_ptr<TestComponentC> testComponentC = std::make_shared<TestComponentC>(entity);
+        AZStd::shared_ptr<TestComponentC> testComponentC = AZStd::make_shared<TestComponentC>(entity);
         entity.RegisterComponent(TestComponentC::Type(), testComponentC);
 
         XmlNodeRef node = gEnv->pSystem->CreateXmlNode("Root");

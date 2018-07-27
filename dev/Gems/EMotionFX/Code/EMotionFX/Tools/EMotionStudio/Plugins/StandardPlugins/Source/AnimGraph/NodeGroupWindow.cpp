@@ -10,7 +10,8 @@
 *
 */
 
-// include required headers
+#include <AzCore/Math/Color.h>
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include "NodeGroupWindow.h"
 #include "AnimGraphPlugin.h"
 #include "GraphNode.h"
@@ -40,6 +41,8 @@
 #include <EMotionFX/Source/AnimGraphInstance.h>
 #include <EMotionFX/CommandSystem/Source/AnimGraphParameterCommands.h>
 #include <EMotionFX/CommandSystem/Source/AnimGraphNodeGroupCommands.h>
+
+#include <AzQtComponents/Utilities/Conversions.h>
 
 
 namespace EMStudio
@@ -194,15 +197,9 @@ namespace EMStudio
         spacerWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
         buttonsLayout->addWidget(spacerWidget);
 
-        mFindWidget = new MysticQt::SearchButton(this, MysticQt::GetMysticQt()->FindIcon("Images/Icons/SearchClearButton.png"));
-        connect(mFindWidget->GetSearchEdit(), SIGNAL(textChanged(const QString&)), this, SLOT(SearchStringChanged(const QString&)));
-
-        QHBoxLayout* searchLayout = new QHBoxLayout();
-        searchLayout->addWidget(new QLabel("Find:"), 0, Qt::AlignRight);
-        searchLayout->addWidget(mFindWidget);
-        searchLayout->setSpacing(6);
-
-        buttonsLayout->addLayout(searchLayout);
+        m_searchWidget = new AzQtComponents::FilteredSearchWidget(this);
+        connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &NodeGroupWindow::OnTextFilterChanged);
+        buttonsLayout->addWidget(m_searchWidget);
 
         // create the table widget
         mTableWidget = new QTableWidget();
@@ -344,11 +341,12 @@ namespace EMStudio
             EMotionFX::AnimGraphNodeGroup* nodeGroup = animGraph->GetNodeGroup(i);
 
             // check if the node group is selected
-            const bool itemSelected = selectedNodeGroups.Find(nodeGroup->GetNameString()) != MCORE_INVALIDINDEX32;
+            const bool itemSelected = selectedNodeGroups.Find(nodeGroup->GetNameString().c_str()) != MCORE_INVALIDINDEX32;
 
             // get the color and convert to Qt color
-            const MCore::RGBAColor& color = nodeGroup->GetColor();
-            const QColor backgroundColor(color.r * 100, color.g * 100, color.b * 100, 50);
+            AZ::Color color;
+            color.FromU32(nodeGroup->GetColor());
+            const QColor backgroundColor(static_cast<float>(color.GetR()) * 100, static_cast<float>(color.GetG()) * 100, static_cast<float>(color.GetB()) * 100, 50);
 
             // create the visibility checkbox item
             QTableWidgetItem* visibilityCheckboxItem = new QTableWidgetItem();
@@ -375,7 +373,7 @@ namespace EMStudio
             mTableWidget->setItem(i, 1, colorItem);
 
             // create the color widget
-            MysticQt::ColorLabel* colorWidget = new MysticQt::ColorLabel(nodeGroup->GetColor(), nodeGroup);
+            MysticQt::ColorLabel* colorWidget = new MysticQt::ColorLabel(MCore::RGBAColor(static_cast<float>(color.GetR()), static_cast<float>(color.GetG()), static_cast<float>(color.GetB()), static_cast<float>(color.GetA())), nodeGroup);
 
             QWidget* colorLayoutWidget = new QWidget();
             colorLayoutWidget->setObjectName("colorlayoutWidget");
@@ -407,7 +405,7 @@ namespace EMStudio
             mTableWidget->setRowHeight(i, 21);
 
             // check if the current item contains the find text
-            if (QString(nodeGroup->GetName()).contains(mFindWidget->GetSearchEdit()->text(), Qt::CaseInsensitive))
+            if (QString(nodeGroup->GetName()).contains(m_searchWidgetText.c_str(), Qt::CaseInsensitive))
             {
                 mTableWidget->showRow(i);
             }
@@ -426,103 +424,6 @@ namespace EMStudio
         // update the interface
         UpdateInterface();
     }
-
-
-    /*void NodeGroupWindow::OnCellChanged(int row, int column)
-    {
-        // only do the name ones
-        if (column != 2)
-            return;
-
-        QTableWidgetItem* item = mTableWidget->item(row, column);
-        const QString newName = item->text();
-
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
-            return;
-
-        // get a pointer to the node group
-        const uint32 groupIndex = row;
-        AnimGraphNodeGroup* nodeGroup = animGraph->GetNodeGroup( groupIndex );
-
-        AZStd::string mcoreName;
-        FromQtString(newName, &mcoreName);
-
-        // if the name didn't change do nothing
-        if (nodeGroup->GetNameString().CheckIfIsEqual( mcoreName.c_str() ))
-            return;
-
-        // validate the name
-        if (ValidateName( nodeGroup, mcoreName.c_str() ) == false)
-        {
-            MCore::LogWarning("The name '%s' is either invalid or already in use by another node group, please type in another name.", mcoreName.c_str());
-            item->setText( nodeGroup->GetName() );
-        }
-        else    // trigger the rename
-        {
-            // build the command string
-            AZStd::string commandString;
-            commandString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -newName \"%s\"", animGraph->GetID(), nodeGroup->GetName(), mcoreName.c_str());
-
-            // execute the command
-            AZStd::string commandResult;
-            if (GetCommandManager()->ExecuteCommand(commandString.c_str(), commandResult) == false)
-            {
-                if (commandResult.GetIsEmpty() == false)
-                    MCore::LogError( commandResult.c_str() );
-            }
-        }
-    }*/
-
-
-    // validate a given node group name
-    /*bool NodeGroupWindow::ValidateName(AnimGraphNodeGroup* nodeGroup, const char* newName) const
-    {
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
-            return false;
-
-        AnimGraphNodeGroup* newNodeGroup = animGraph->FindNodeGroupByName(newName);
-
-        // check if the node already exists in the active anim graph
-        if (newNodeGroup && nodeGroup != newNodeGroup)   // it already exists
-            return false;
-
-        // empty node name is not allowed!
-        if (strcmp(newName, "") == 0)
-            return false;
-
-        return true;
-    }*/
-
-
-    /*void NodeGroupWindow::OnNameEdited(QTableWidgetItem* item)
-    {
-        MCORE_UNUSED(item);
-        return;
-
-        assert( sender()->inherits("QLineEdit") );
-        QLineEdit* widget = qobject_cast<QLineEdit*>( sender() );
-
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
-            return;
-
-        // get the node group index by checking the widget lookup table
-        const uint32 groupIndex = FindGroupIndexByWidget( sender() );
-        assert( groupIndex != MCORE_INVALIDINDEX32 );
-
-        // get a pointer to the node group
-        AnimGraphNodeGroup* nodeGroup = animGraph->GetNodeGroup( groupIndex );
-
-        if (ValidateName( nodeGroup, text.toAscii().data() ) == false)
-            GetManager()->SetWidgetAsInvalidInput( widget );
-        else
-            widget->setStyleSheet("");
-    }*/
 
 
     // add a new node group
@@ -789,9 +690,9 @@ namespace EMStudio
     }
 
 
-    void NodeGroupWindow::SearchStringChanged(const QString& text)
+    void NodeGroupWindow::OnTextFilterChanged(const QString& text)
     {
-        MCORE_UNUSED(text);
+        FromQtString(text, &m_searchWidgetText);
         Init();
     }
 

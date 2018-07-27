@@ -4,13 +4,9 @@
     "modules" : [
         "CryCommon",
         "Cry3DEngine",
-        "CryAISystem",
-        "CryAnimation",
-        "CryEntitySystem",
         "CryFont",
         "CryNetwork",
         "CryPhysics",
-        "CryScriptSystem",
         "CrySoundSystem",
         "CryAudioCommon",
         "CrySystem",

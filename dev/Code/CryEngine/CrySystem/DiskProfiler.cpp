@@ -134,7 +134,8 @@ void Draw2dLabel(float x, float y, float font_size, const float* pfColor, bool b
 
     if (CDiskProfiler::profile_disk == 3)
     {
-        FILE* f = fopen("streaming.log", "a+");
+        FILE* f = nullptr;
+        azfopen(&f, "streaming.log", "a+");
         if (f)
         {
             fprintf_s(f, "%s\n", buf);

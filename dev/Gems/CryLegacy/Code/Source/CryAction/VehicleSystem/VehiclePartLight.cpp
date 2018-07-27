@@ -14,7 +14,7 @@
 // Description : Implements a light part
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ICryAnimation.h"
 #include "IVehicleSystem.h"

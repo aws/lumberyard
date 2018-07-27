@@ -14,7 +14,7 @@
 // Description : Flowgraph nodes to dealing with data in Xml elements
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowBaseXmlNode.h"
 
 ////////////////////////////////////////////////////
@@ -176,7 +176,7 @@ public:
             const float amount = GetPortFloat(pActInfo, EIP_Amount);
             float value = 0.0f;
             const char* content = doc->active->getContent();
-            if (sscanf(content, "%f", &value))
+            if (azsscanf(content, "%f", &value))
             {
                 // Increment and set back
                 char newContent[32];

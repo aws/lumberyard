@@ -88,7 +88,7 @@ namespace ScriptCanvasEditor
 
         if (role == Qt::DisplayRole
             || role == Qt::EditRole)
-        {            
+        {
             AZStd::string variableName;
             ScriptCanvas::GraphVariableManagerRequestBus::EventResult(variableName, m_busId, &ScriptCanvas::GraphVariableManagerRequests::GetVariableName, variableId);
             return QVariant(variableName.c_str());
@@ -97,14 +97,14 @@ namespace ScriptCanvasEditor
         return QVariant();
     }
 
-    void EditorGraphVariableItemModel::OnVariableAdded(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
+    void EditorGraphVariableItemModel::OnVariableAddedToGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
     {
         beginInsertRows(QModelIndex(), rowCount(), rowCount());
         m_variableIds.emplace_back(variableId);
         endInsertRows();
     }
 
-    void EditorGraphVariableItemModel::OnVariableRemoved(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
+    void EditorGraphVariableItemModel::OnVariableRemovedFromGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
     {
         int index = -1;
 

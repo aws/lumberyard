@@ -44,6 +44,7 @@
 #include "AutoDirectoryRestoreFileDialog.h"
 #include "MainWindow.h"
 
+#include <AzCore/PlatformIncl.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzQtComponents/Utilities/DesktopUtilities.h>
@@ -52,6 +53,10 @@
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/Thumbnails/SourceControlThumbnailBus.h>
+
+#if defined(AZ_PLATFORM_WINDOWS)
+#include <Shellapi.h>
+#endif
 
 bool CFileUtil::s_singleFileDlgPref[IFileUtil::EFILE_TYPE_LAST] = { true, true, true, true, true };
 bool CFileUtil::s_multiFileDlgPref[IFileUtil::EFILE_TYPE_LAST] = { true, true, true, true, true };
@@ -131,7 +136,7 @@ bool CFileUtil::CompileLuaFile(const char* luaFilename)
             int index = CompilerOutput.indexOf("at line");
             if (index >= 0)
             {
-                sscanf(CompilerOutput.mid(index).toUtf8().data(), "at line %d", &line);
+                azsscanf(CompilerOutput.mid(index).toUtf8().data(), "at line %d", &line);
             }
             // Open the Lua file for editing
             EditTextFile(luaFile.toUtf8().data(), line);
@@ -259,13 +264,15 @@ void CFileUtil::EditTextureFile(const char* textureFile, bool bUseGameFolder)
     bool failedToLaunch = true;
     QByteArray textureEditorPath = gSettings.textureEditor.toUtf8();
 
-#ifdef AZ_PLATFORM_WINDOWS
+#if defined(AZ_PLATFORM_WINDOWS)
     // Use the Win32 API calls to open the right editor; the OS knows how to do this even better than
     // Qt does.
     QString fullTexturePathFixedForWindows = QString(fullTexturePath.data()).replace('/', '\\');
     QByteArray fullTexturePathFixedForWindowsUtf8 = fullTexturePathFixedForWindows.toUtf8();
     HINSTANCE hInst = ShellExecute(NULL, "open", textureEditorPath.data(), fullTexturePathFixedForWindowsUtf8.data(), NULL, SW_SHOWNORMAL);
     failedToLaunch = ((DWORD_PTR)hInst <= 32);
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+    failedToLaunch = QProcess::execute(QString("/usr/bin/open"), {"-a", gSettings.textureEditor, QString(fullTexturePath.data()) }) != 0;
 #else
     failedToLaunch = !QProcess::startDetached(gSettings.textureEditor, { QString(fullTexturePath.data()) });
 #endif
@@ -273,7 +280,7 @@ void CFileUtil::EditTextureFile(const char* textureFile, bool bUseGameFolder)
     if (failedToLaunch)
     {
         //failed
-        QString messageString = QString("Failed to open texture editor %1 with file %1").arg(textureEditorPath.data()).arg(fullTexturePath.data());
+        QString messageString = QString("Failed to open %1 with texture editor %2").arg(fullTexturePath.data()).arg(textureEditorPath.data());
         QMessageBox::warning(parentWidget, "Cannot open file!", messageString);
     }
 }
@@ -870,7 +877,7 @@ bool CFileUtil::RenameFile(const char* sourceFile, const char* targetFile, QWidg
     bool scOpSuccess = false;
     bool scOpComplete = false;
     SourceControlCommandBus::Broadcast(&SourceControlCommandBus::Events::RequestRename, sourceFile, targetFile,
-        [&scOpSuccess, &scOpComplete, sourceFile, targetFile](bool success, const SourceControlFileInfo& /*info*/)
+        [&scOpSuccess, &scOpComplete](bool success, const SourceControlFileInfo& /*info*/)
         {
             scOpSuccess = success;
             scOpComplete = true;
@@ -1050,10 +1057,15 @@ void CFileUtil::BackupFileDated(const char* filename, bool bUseBackupSubDirector
         // Generate new filename
         time_t ltime;
         time(&ltime);
-        tm* today = localtime(&ltime);
+        tm today;
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
+        localtime_s(&today, &ltime);
+#else
+        today = *localtime(&ltime);
+#endif
 
         char sTemp[128];
-        strftime(sTemp, sizeof(sTemp), ".%Y%m%d.%H%M%S.", today);
+        strftime(sTemp, sizeof(sTemp), ".%Y%m%d.%H%M%S.", &today);
         QString bakFilename = Path::RemoveExtension(filename) + sTemp + Path::GetExt(filename);
 
         if (bUseBackupSubDirectory)
@@ -1604,7 +1616,7 @@ IFileUtil::ECopyTreeResult   CFileUtil::CopyFile(const QString& strSourceFile, c
             bnLastFileWasCopied = true;
             char block[4096];
             qint64 totalRead = 0;
-            while (!source.atEnd()) 
+            while (!source.atEnd())
             {
                 qint64 in = source.read(block, sizeof(block));
                 if (in <= 0)
@@ -1889,7 +1901,7 @@ QString CFileUtil::PopupQMenu(const QString& filename, const QString& fullGamePa
 QString CFileUtil::PopupQMenu(const QString& filename, const QString& fullGamePath, QWidget* parent, bool* pIsSelected, const QStringList& extraItemsFront, const QStringList& extraItemsBack)
 {
     QMenu menu;
-    
+
     foreach(QString text, extraItemsFront)
     {
         if (!text.isEmpty())
@@ -1919,6 +1931,11 @@ QString CFileUtil::PopupQMenu(const QString& filename, const QString& fullGamePa
     return result ? result->text() : QString();
 }
 
+void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filename, const QString& fullGamePath)
+{
+    PopulateQMenu(caller, menu, filename, fullGamePath, nullptr);
+}
+
 void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filename, const QString& fullGamePath, bool* isSelected)
 {
     QString fullPath;
@@ -1941,12 +1958,13 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filen
 
     uint32 nFileAttr = CFileUtil::GetAttributes(fullPath.toUtf8().data());
 
-    // Create pop up menu.
     QAction* action;
+
+    // NOTE: isSelected being passed in implies that the menu filled from this call must have exec() called on it, and not show.
     if (isSelected)
     {
         action = new QAction(QObject::tr("Select"), nullptr);
-        QObject::connect(action, &QAction::triggered, [isSelected]() { *isSelected = true; });
+        QObject::connect(action, &QAction::triggered, action, [isSelected]() { *isSelected = true; });
         if (menu->isEmpty())
         {
             menu->addAction(action);
@@ -1959,7 +1977,7 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filen
 
 #ifdef AZ_PLATFORM_WINDOWS
     const char* exploreActionName = "Open in Explorer";
-#elif defined(AZ_PLATFORM_MAC)
+#elif defined(AZ_PLATFORM_APPLE_OSX)
     const char* exploreActionName = "Open in Finder";
 #else
     const char* exploreActionName = "Open in file browser";
@@ -1993,7 +2011,7 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filen
     });
 
     action = menu->addAction(QObject::tr("Copy Path To Clipboard"), [fullPath]() { QApplication::clipboard()->setText(fullPath); });
-    
+
     if (!filename.isEmpty() && GetIEditor()->IsSourceControlAvailable() && nFileAttr != SCC_FILE_ATTRIBUTE_INVALID)
     {
         bool isEnableSC = nFileAttr & SCC_FILE_ATTRIBUTE_MANAGED;
@@ -2038,7 +2056,7 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filen
                 }
             });
             action->setEnabled(isEnableSC);
-            
+
             action = menu->addAction(QObject::tr("Add To Source Control"), [fullPath, caller]()
             {
                 if (!CheckoutFile(fullPath.toUtf8().data(), caller))
@@ -2112,7 +2130,7 @@ void CFileUtil::GatherAssetFilenamesFromLevel(std::set<QString>& rOutFilenames, 
 
             if (pShaderRes)
             {
-                for ( auto iter= pShaderRes->GetTexturesResourceMap()->begin() ; 
+                for ( auto iter= pShaderRes->GetTexturesResourceMap()->begin() ;
                     iter!= pShaderRes->GetTexturesResourceMap()->end() ; ++iter )
                 {
                     SEfResTexture*  pTex = &(iter->second);
@@ -2183,7 +2201,7 @@ uint32 CFileUtil::GetAttributes(const char* filename, bool bUseSourceControl /*=
 
             BlockAndWait(scOpComplete, nullptr, "Getting file status...");
 
-            // we intended to use source control, but the operation failed.  
+            // we intended to use source control, but the operation failed.
             // do not fall through to checking as if bUseSourceControl was false
             if (!scOpSuccess)
             {
@@ -2195,7 +2213,7 @@ uint32 CFileUtil::GetAttributes(const char* filename, bool bUseSourceControl /*=
     CCryFile file;
     bool isCryFile = file.Open(filename, "rb");
 
-    // Using source control and our fstat succeeded.  
+    // Using source control and our fstat succeeded.
     // Translate SourceControlStatus to (legacy) ESccFileAttributes
     if (scOpSuccess)
     {

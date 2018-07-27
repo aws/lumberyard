@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #ifdef DEBUG_LUA_STATE
 #include <IEntity.h>
@@ -419,7 +419,7 @@ void CScriptSystem::GetCallStack(std::vector<SLuaStackEntry>& callstack)
             sprintf_s(buff, "`%.50s' tag method", ar.name);
             break;
         default:
-            strcpy(buff, "");
+            azstrcpy(buff, AZ_ARRAY_SIZE(buff), "");
         }
 
         SLuaStackEntry se;
@@ -482,7 +482,7 @@ static void LuaDebugHook(lua_State* L, lua_Debug* ar)
 //////////////////////////////////////////////////////////////////////////
 const char* FormatPath(char* const sLowerName, const char* sPath)
 {
-    strcpy(sLowerName, sPath);
+    azstrcpy(sLowerName, _MAX_PATH, sPath);
     int i = 0;
     while (sLowerName[i] != 0)
     {
@@ -958,7 +958,7 @@ bool CScriptSystem::_ExecuteFile(const char* sFileName, bool bRaiseError, IScrip
 
     // Translate pak alias filenames
     char translatedBuf[_MAX_PATH + 1];
-    const char* translated = gEnv->pCryPak->AdjustFileName(sFileName, translatedBuf, ICryPak::FLAGS_NO_FULL_PATH, true);
+    const char* translated = gEnv->pCryPak->AdjustFileName(sFileName, translatedBuf, AZ_ARRAY_SIZE(translatedBuf), ICryPak::FLAGS_NO_FULL_PATH, true);
 
     stack_string fileName("@");
     fileName.append(translated);
@@ -987,7 +987,7 @@ bool CScriptSystem::ExecuteFile(const char* sFileName, bool bRaiseError, bool bF
 
     char sTemp[_MAX_PATH];
     char lowerName[_MAX_PATH];
-    strcpy(sTemp, FormatPath(lowerName, sFileName));
+    azstrcpy(sTemp, _MAX_PATH, FormatPath(lowerName, sFileName));
     //ScriptFileListItor itor = std::find(m_dqLoadedFiles.begin(), m_dqLoadedFiles.end(), sTemp.c_str());
     ScriptFileListItor itor = m_dqLoadedFiles.find(CONST_TEMP_STRING(sTemp));
     if (itor == m_dqLoadedFiles.end() || bForceReload || m_forceReloadCount > 0)
@@ -1731,7 +1731,7 @@ bool CScriptSystem::GetGlobalAny(const char* sKey, ScriptAnyValue& any)
     {
         ScriptAnyValue globalAny;
         char key1[256];
-        strcpy(key1, sKey);
+        azstrcpy(key1, AZ_ARRAY_SIZE(key1), sKey);
         key1[sep - sKey] = 0;
         GetGlobalAny(key1, globalAny);
         if (globalAny.type == ANY_TTABLE)

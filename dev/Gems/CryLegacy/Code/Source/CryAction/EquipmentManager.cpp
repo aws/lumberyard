@@ -14,7 +14,7 @@
 // Description : EquipmentManager to handle item packs
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "EquipmentManager.h"
 #include "ItemSystem.h"
 #include "IActorSystem.h"

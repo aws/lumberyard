@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <Components/IComponentModuleTest.h>
 
@@ -60,7 +60,7 @@ namespace CrossModuleComponentsTests
     {
     public:
         CryActionFactoryCreationNode()
-            : ComponentFactoryCreationNode([](){ return std::make_unique<CryActionFactory>(); })
+            : ComponentFactoryCreationNode([](){ return AZStd::make_unique<CryActionFactory>(); })
         {}
     };
 
@@ -71,9 +71,9 @@ namespace CrossModuleComponentsTests
     {
         IComponentFactory<T>* factory = registry.GetFactory<T>();
         EXPECT_TRUE(factory);
-        std::weak_ptr<T> weakPtr;
+        AZStd::weak_ptr<T> weakPtr;
         {
-            std::shared_ptr<T> component = factory->CreateComponent();
+            AZStd::shared_ptr<T> component = factory->CreateComponent();
             EXPECT_TRUE(component.get() != nullptr);
             EXPECT_TRUE(component->GetComponentType() == T::Type());
             weakPtr = component;
@@ -126,7 +126,7 @@ namespace CrossModuleComponentsTests
         // IComponentModuleTest has a lot of functions that access static state,
         // but the function itself isn't static. I'm going to use 'component'
         // throughout the rest of this function to access that static state.
-        std::shared_ptr<IComponentModuleTest> component(factory->CreateComponent());
+        AZStd::shared_ptr<IComponentModuleTest> component(factory->CreateComponent());
         EXPECT_TRUE(component.get());
         {
             // Test creating component declared in another module.
@@ -152,18 +152,18 @@ namespace CrossModuleComponentsTests
         EXPECT_TRUE(component->GetStaticSharedPtrRef().use_count() == 1);
 
         // Create a shared_ptr in this module
-        std::shared_ptr<IComponentModuleTest> crossModulePtrA = component->GetStaticSharedPtrRef();
+        AZStd::shared_ptr<IComponentModuleTest> crossModulePtrA = component->GetStaticSharedPtrRef();
         EXPECT_TRUE(component->GetStaticSharedPtrRef().use_count() == 2);
         EXPECT_TRUE(crossModulePtrA.use_count() == 2);
 
         // Create a shared_ptr using a function that returns shared_ptr by value
-        std::shared_ptr<IComponentModuleTest> crossModulePtrB = component->GetStaticSharedPtr();
+        AZStd::shared_ptr<IComponentModuleTest> crossModulePtrB = component->GetStaticSharedPtr();
         EXPECT_TRUE(component->GetStaticSharedPtrRef().use_count() == 3);
         EXPECT_TRUE(crossModulePtrB.use_count() == 3);
         EXPECT_TRUE(crossModulePtrA.use_count() == 3);
 
         // Create a weak_ptr in various ways. The use_count should stay the same.
-        std::weak_ptr<IComponentModuleTest> weakPtr = crossModulePtrA;
+        AZStd::weak_ptr<IComponentModuleTest> weakPtr = crossModulePtrA;
         EXPECT_TRUE(component->GetStaticSharedPtrRef().use_count() == 3);
         EXPECT_TRUE(weakPtr.use_count() == 3);
         weakPtr = component->GetStaticSharedPtrRef();

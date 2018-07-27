@@ -136,6 +136,8 @@
             "smart_ptr/checked_delete.h",
             "smart_ptr/enable_shared_from_this.h",
             "smart_ptr/enable_shared_from_this2.h",
+            "smart_ptr/intrusive_refcount.h",
+            "smart_ptr/intrusive_base.h",
             "smart_ptr/intrusive_ptr.h",
             "smart_ptr/make_shared.h",
             "smart_ptr/scoped_array.h",

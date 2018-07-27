@@ -356,7 +356,7 @@ namespace AzFramework
 
             serializeContext->Class<TargetManagementComponent, AZ::Component>()
                 ->Version(2)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {

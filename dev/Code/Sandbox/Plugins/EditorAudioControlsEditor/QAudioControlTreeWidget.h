@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <QTreeWidget.h>
+#include <QTreeWidget>
 #include <QTreeView>
 #include <QDropEvent>
 #include <QStandardItem>

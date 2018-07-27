@@ -3,14 +3,6 @@
     {
         "EmotionFXTools/MysticQt":
         [
-            "Source/AttributeWidgetCreators.cpp",
-            "Source/AttributeWidgetCreators.h",
-            "Source/AttributeWidgetFactory.cpp",
-            "Source/AttributeWidgetFactory.h",
-            "Source/AttributeWidgets.cpp",
-            "Source/AttributeWidgets.h",
-            "Source/BarChartWidget.cpp",
-            "Source/BarChartWidget.h",
             "Source/ButtonGroup.cpp",
             "Source/ButtonGroup.h",
             "Source/ColorLabel.cpp",
@@ -36,12 +28,8 @@
             "Source/MysticQtConfig.h",
             "Source/MysticQtManager.cpp",
             "Source/MysticQtManager.h",
-            "Source/PropertyWidget.cpp",
-            "Source/PropertyWidget.h",
             "Source/RecentFiles.cpp",
             "Source/RecentFiles.h",
-            "Source/SearchButton.cpp",
-            "Source/SearchButton.h",
             "Source/Slider.cpp",
             "Source/Slider.h"
         ]

@@ -44,7 +44,7 @@ namespace Lightning
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    
+
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorLightningArcConfiguration::m_arcPresetName, "Arc Preset Name", "The name of the parameter presets to load.")
                     ->Attribute(AZ::Edit::Attributes::StringList, &EditorLightningArcComponent::GetPresetNames)
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorLightningArcConfiguration::OnPresetNameChange)
@@ -80,13 +80,13 @@ namespace Lightning
         }
     }
 
-    AZ::Crc32 EditorLightningArcConfiguration::OnPresetNameChange() 
+    AZ::Crc32 EditorLightningArcConfiguration::OnPresetNameChange()
     {
         bool newParamsFound = false;
         const LightningArcParams* newParamsPtr = nullptr;
 
         LightningArcRequestBus::BroadcastResult(newParamsFound, &LightningArcRequestBus::Events::GetArcParamsForName, m_arcPresetName, newParamsPtr);
-    
+
         if (newParamsFound)
         {
             m_arcParams = *newParamsPtr;
@@ -123,7 +123,7 @@ namespace Lightning
                 ->Field("Config", &EditorLightningArcComponent::m_config)
                 ->Field("RefreshPresets", &EditorLightningArcComponent::m_refreshPresets)
                 ;
-            
+
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<EditorLightningArcComponent>("Lightning Arc", "Produces an arcing effect that jumps to a random target entity.")
@@ -188,7 +188,7 @@ namespace Lightning
         {
             return nullptr;
         }
-        
+
         return gEnv->p3DEngine->GetMaterialManager()->LoadMaterial(materialPath.c_str());
     }
 
@@ -239,7 +239,7 @@ namespace Lightning
     {
         if (!((AZStd::string(entityToConvert->metaObject()->className()) == "CEntityObject" &&
             AZStd::string(entityToConvert->metaObject()->className()) != "CEntityObject") ||
-                (entityToConvert->inherits("CEntityObject") && 
+                (entityToConvert->inherits("CEntityObject") &&
                     static_cast<CEntityObject *>(entityToConvert)->GetEntityClass() == "LightningArc")))
         {
             // We don't know how to convert this entity, whatever it is
@@ -256,7 +256,7 @@ namespace Lightning
 
         //Retrieve the underlying legacy CLightningArc object
         IEntity* legacyEntity = entityObject->GetIEntity();
-        std::shared_ptr<CLightningArc> arc = legacyEntity->GetComponent<CLightningArc>();
+        AZStd::shared_ptr<CLightningArc> arc = legacyEntity->GetComponent<CLightningArc>();
         if (!arc)
         {
             //Entity did not have a CLightningArc component
@@ -299,7 +299,7 @@ namespace Lightning
         LightningArcRequestBus::BroadcastResult(arcParamsFound, &LightningArcRequestBus::Events::GetArcParamsForName, arcPresetName, paramsPtr);
 
         /*
-            We can't actually determine the AZ::EntityIds of the 
+            We can't actually determine the AZ::EntityIds of the
             linked legacy entities but we can push back the right number
             of targets into the vector.
         */

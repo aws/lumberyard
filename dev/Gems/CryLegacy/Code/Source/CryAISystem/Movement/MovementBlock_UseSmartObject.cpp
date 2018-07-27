@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "MovementBlock_UseSmartObject.h"
 #include "MovementActor.h"
 #include "MovementUpdateContext.h"

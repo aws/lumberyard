@@ -11,9 +11,9 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowLogNode.h"
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 CFlowLogNode::CFlowLogNode()
 {
@@ -147,7 +147,8 @@ public:
                     return;
                 }
 
-                if (!(m_file = fopen(filename.c_str(), "w+")))
+                azfopen(&m_file, filename.c_str(), "w+");
+                if (!m_file)
                 {
                     return;
                 }

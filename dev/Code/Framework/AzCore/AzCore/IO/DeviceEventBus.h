@@ -33,8 +33,8 @@ namespace AZ
         public:
             static const bool EnableEventQueue = true;
             static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::Single;
-            using MutexType = AZStd::recursive_mutex; // requests can be sent from any thread
-            using EventQueueMutexType = AZStd::recursive_mutex; // requests can also be queued from any thread
+            using MutexType = AZStd::recursive_mutex;
+            using EventQueueMutexType = ::AZStd::recursive_mutex;
 
             virtual ~DeviceRequest() = default;
 

@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <Cry_Geo.h>
 #include <Cry_GeoIntersect.h>
-#include <IJobManager_JobDelegator.h>
 #include <IStatoscope.h>
 #include <ICryAnimation.h>
 #include <CryProfileMarker.h>
@@ -3118,7 +3117,7 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
     const float sqDiagonal = m_visibleAABB.GetRadiusSqr();
     const float sqDistanceToBox = Distance::Point_AABBSq(camPos, m_visibleAABB);
     int nLod = 0;
-    uint32 lodFrequency[] = { 3, 5, 7, 11 };
+    uint32 lodFrequency[] = { 3, 5, 7, 11, 17, 25 };
 
     if (!passInfo.IsGeneralPass())
     {
@@ -3252,7 +3251,7 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
                 static_fallthrough:
             case INSTANCED:
                 nLod = (int)min(max(sqDistanceToBox / (max(GetCVars()->e_MergedMeshesLodRatio* sqDiagonal, 0.001f)), 0.f), ((float)MAX_STATOBJ_LODS_NUM - 1.f));
-                if ((nLod != m_nLod || (pass == RUT_DYNAMIC && (frameId - m_LastUpdateFrame) > (uint32)(lodFrequency[nLod& 3]))) && s_mmrm_globals.dt > 0.f)
+                if ((nLod != m_nLod || (pass == RUT_DYNAMIC && (frameId - m_LastUpdateFrame) > (uint32)(lodFrequency[nLod& MMRM_LOD_MASK]))) && s_mmrm_globals.dt > 0.f)
                 {
                     bool dispatched = false;
                     DeleteRenderMesh((RENDERMESH_UPDATE_TYPE)pass);

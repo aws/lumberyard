@@ -50,6 +50,7 @@ CAnimEnvironmentNode::CAnimEnvironmentNode(const int id)
     , m_oldSunLatitude(0.0f)
     , m_oldMoonLongitude(0.0f)
     , m_oldMoonLatitude(0.0f)
+    , m_celestialPositionsStored(false)
 {
     CAnimEnvironmentNode::Initialize();
 }
@@ -223,17 +224,22 @@ void CAnimEnvironmentNode::StoreCelestialPositions()
     gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_SKY_MOONROTATION, v);
     m_oldMoonLongitude = v.y;
     m_oldMoonLatitude = v.x;
+
+    m_celestialPositionsStored = true;
 }
 
 void CAnimEnvironmentNode::RestoreCelestialPositions()
 {
-    ITimeOfDay* pTimeOfDay = gEnv->p3DEngine->GetTimeOfDay();
-    pTimeOfDay->SetSunPos(m_oldSunLongitude, m_oldSunLatitude);
+    if (m_celestialPositionsStored)
+    {
+        ITimeOfDay* pTimeOfDay = gEnv->p3DEngine->GetTimeOfDay();
+        pTimeOfDay->SetSunPos(m_oldSunLongitude, m_oldSunLatitude);
 
-    Vec3 v;
-    v.y = m_oldMoonLongitude;
-    v.x = m_oldMoonLatitude;
-    gEnv->p3DEngine->SetGlobalParameter(E3DPARAM_SKY_MOONROTATION, v);
+        Vec3 v;
+        v.y = m_oldMoonLongitude;
+        v.x = m_oldMoonLatitude;
+        gEnv->p3DEngine->SetGlobalParameter(E3DPARAM_SKY_MOONROTATION, v);
 
-    pTimeOfDay->Update(true, false);
+        pTimeOfDay->Update(true, false);
+    }
 }

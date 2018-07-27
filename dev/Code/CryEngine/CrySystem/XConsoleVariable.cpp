@@ -44,7 +44,7 @@ CXConsoleVariableBase::CXConsoleVariableBase(CXConsole* pConsole, const char* sN
     if (nFlags & VF_COPYNAME)
     {
         m_szName = new char[strlen(sName) + 1];
-        strcpy(m_szName, sName);
+        azstrcpy(m_szName, strlen(sName) + 1, sName);
     }
     else
     {
@@ -217,11 +217,11 @@ void CXConsoleVariableCVarGroup::OnLoadConfigurationEntry(const char* szKey, con
 
     SCVarGroup* pGrp = 0;
 
-    if (_stricmp(szGroup, "default") == 0)              // needs to be before the other groups
+    if (azstricmp(szGroup, "default") == 0)              // needs to be before the other groups
     {
         pGrp = &m_CVarGroupDefault;
 
-        //      if(_stricmp(GetName(),szKey)==0)
+        //      if(azstricmp(GetName(),szKey)==0)
         if (*szKey == 0)
         {
             m_sDefaultValue = szValue;
@@ -240,7 +240,7 @@ void CXConsoleVariableCVarGroup::OnLoadConfigurationEntry(const char* szKey, con
     {
         int iGrp;
 
-        if (sscanf(szGroup, "%d", &iGrp) == 1)
+        if (azsscanf(szGroup, "%d", &iGrp) == 1)
         {
             if (m_CVarGroupStates.find(iGrp) == m_CVarGroupStates.end())
             {
@@ -322,7 +322,7 @@ string CXConsoleVariableCVarGroup::GetDetailedInfo() const
 
             char szNum[10];
 
-            sprintf(szNum, "%d", it->first);
+            azsprintf(szNum, "%d", it->first);
 
             sRet += szNum;
         }
@@ -381,7 +381,7 @@ const char* CXConsoleVariableCVarGroup::GetHelp()
     sRet += GetDetailedInfo();
 
     m_psHelp = new char[sRet.size() + 1];
-    strcpy(m_psHelp, &sRet[0]);
+    azstrcpy(m_psHelp, sRet.size() + 1, &sRet[0]);
 
     return m_psHelp;
 }
@@ -473,7 +473,7 @@ void CXConsoleVariableCVarGroup::Set(const int i)
     }
 
     char sTemp[128];
-    sprintf(sTemp, "%d", i);
+    azsprintf(sTemp, "%d", i);
 
     bool wasProcessingGroup = m_pConsole->GetIsProcessingGroup();
     m_pConsole->SetProcessingGroup(true);
@@ -587,7 +587,7 @@ bool CXConsoleVariableCVarGroup::TestCVars(const SCVarGroup& rGroup, const ICVar
             case CVAR_INT:
             {
                 int iVal;
-                if (sscanf(rValue.c_str(), "%d", &iVal) == 1)
+                if (azsscanf(rValue.c_str(), "%d", &iVal) == 1)
                 {
                     if (pVar->GetIVal() != atoi(rValue.c_str()))
                     {
@@ -606,7 +606,7 @@ bool CXConsoleVariableCVarGroup::TestCVars(const SCVarGroup& rGroup, const ICVar
             case CVAR_FLOAT:
             {
                 float fVal;
-                if (sscanf(rValue.c_str(), "%f", &fVal) == 1)
+                if (azsscanf(rValue.c_str(), "%f", &fVal) == 1)
                 {
                     if (pVar->GetFVal() != fVal)
                     {

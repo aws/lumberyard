@@ -16,7 +16,6 @@
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
 #include <AzCore/Math/Transform.h>
-#include <AzFramework/Math/MathUtils.h> // for ConvertTransformToEulerDegrees
 #include <cmath>
 
 namespace AzToolsFramework
@@ -252,7 +251,7 @@ namespace AzToolsFramework
     PropertyVectorCtrl* VectorPropertyHandlerCommon::ConstructGUI(QWidget* parent) const
     {
         PropertyVectorCtrl* newCtrl = aznew PropertyVectorCtrl(parent, m_elementCount, m_elementsPerRow, m_customLabels);
-        QObject::connect(newCtrl, &PropertyVectorCtrl::valueChanged, [newCtrl]()
+        QObject::connect(newCtrl, &PropertyVectorCtrl::valueChanged, newCtrl, [newCtrl]()
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
@@ -411,8 +410,8 @@ namespace AzToolsFramework
         VectorElement** elements = GUI->getElements();
 
         AZ::Vector3 eulerRotation(elements[0]->GetValue(), elements[1]->GetValue(), elements[2]->GetValue());
-        AZ::Transform eulerRepresentation = AzFramework::ConvertEulerDegreesToTransform(eulerRotation);
-        AZ::Quaternion newValue = AZ::Quaternion::CreateFromTransform(eulerRepresentation);
+        AZ::Quaternion newValue;
+        newValue.SetFromEulerDegrees(eulerRotation);
 
         instance = static_cast<AZ::Quaternion>(newValue);
     }
@@ -420,8 +419,8 @@ namespace AzToolsFramework
     bool QuaternionPropertyHandler::ReadValuesIntoGUI(size_t, PropertyVectorCtrl* GUI, const AZ::Quaternion& instance, InstanceDataNode*)
     {
         GUI->blockSignals(true);
-
-        AZ::Vector3 eulerRotation = AzFramework::ConvertTransformToEulerDegrees(AZ::Transform::CreateFromQuaternion(instance));
+        
+        AZ::Vector3 eulerRotation = instance.GetEulerDegrees();
 
         for (int idx = 0; idx < m_common.GetElementCount(); ++idx)
         {

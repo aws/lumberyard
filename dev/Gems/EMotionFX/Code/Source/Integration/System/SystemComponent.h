@@ -57,6 +57,7 @@ namespace EMotionFX
             SystemComponent();
             ~SystemComponent() override = default;
 
+            static void ReflectEMotionFX(AZ::ReflectContext* context);
             static void Reflect(AZ::ReflectContext* context);
 
             static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);

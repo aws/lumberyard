@@ -23,7 +23,7 @@
 #include "ViewManager.h"
 #include "Util/PakFile.h"
 
-#include <I3Dengine.h>
+#include <I3DEngine.h>
 #include <IChunkFile.h>
 #include <IIndexedMesh.h>
 #include <IRenderAuxGeom.h>

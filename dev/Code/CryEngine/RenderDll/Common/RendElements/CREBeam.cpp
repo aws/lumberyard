@@ -36,18 +36,25 @@ void CREBeam::mfPrepare(bool bCheckOverflow)
     {
         const int nThreadID = rd->m_RP.m_nProcessThreadID;
         SRenderObjData* pOD = obj->GetObjData();
-        SRenderLight* pLight = rd->EF_GetDeferredLightByID(pOD->m_nLightID);
-        if (pLight && pLight->m_Flags & DLF_PROJECT)
+        if (pOD)
         {
-            rd->m_RP.m_pRE = this;
-            rd->m_RP.m_RendNumIndices = 0;
-            rd->m_RP.m_RendNumVerts = 0;
+            SRenderLight* pLight = rd->EF_GetDeferredLightByID(pOD->m_nLightID);
+            if (pLight && pLight->m_Flags & DLF_PROJECT)
+            {
+                rd->m_RP.m_pRE = this;
+                rd->m_RP.m_RendNumIndices = 0;
+                rd->m_RP.m_RendNumVerts = 0;
+            }
+            else
+            {
+                rd->m_RP.m_pRE = NULL;
+                rd->m_RP.m_RendNumIndices = 0;
+                rd->m_RP.m_RendNumVerts = 0;
+            }
         }
         else
         {
-            rd->m_RP.m_pRE = NULL;
-            rd->m_RP.m_RendNumIndices = 0;
-            rd->m_RP.m_RendNumVerts = 0;
+            CryWarning(VALIDATOR_MODULE_RENDERER, VALIDATOR_WARNING, "Render object data is null. This may affect lighting.");
         }
     }
 }

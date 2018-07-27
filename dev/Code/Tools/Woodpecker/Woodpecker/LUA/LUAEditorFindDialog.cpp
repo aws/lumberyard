@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <AzCore/Script/ScriptAsset.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/Component/TickBus.h>
@@ -850,7 +850,7 @@ namespace LUAEditor
             for (auto& entry : iter->m_entries)
             {
                 ++currentLine;
-                QString text("\t\t\tLine %1: %2");
+                text = "\t\t\tLine %1: %2";
                 text = text.arg(entry.m_lineNumber).arg(entry.m_lineText);
                 m_FIFData.m_resultsWidget->AppendPlainText(text);
 

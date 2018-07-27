@@ -70,7 +70,7 @@ is acceptable.  Do NOT use for cryptographic purposes.
 
 static uint64_t hash64( register const uint8_t *k, register uint32_t length, register uint64_t initval )
 {
-  register uint64_t a,b,c,len;
+  uint64_t a,b,c,len;
 
   /* Set up the internal state */
   len = length;

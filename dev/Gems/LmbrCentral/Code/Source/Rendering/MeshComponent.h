@@ -196,6 +196,7 @@ namespace LmbrCentral
             bool m_visibilityOccluder; //!< Appropriate for visibility occluding.
             bool m_dynamicMesh; // Mesh can change or deform independent of transform
             bool m_hasStaticTransform;
+            bool m_affectGI; //!< Mesh affects Global Illumination.
 
             //! The Id of the entity we're associated with, for bus subscription.
             //Moved from render mesh to this struct for serialization/reflection utility
@@ -225,6 +226,7 @@ namespace LmbrCentral
 
             //Returns true if the transform is static and the mesh is not deformable.
             bool IsStatic() const;
+            bool AffectsGi() const;
             AZ::Crc32 StaticPropertyVisibility() const;
             static void Reflect(AZ::ReflectContext* context);
 
@@ -267,6 +269,9 @@ namespace LmbrCentral
 
         //! Computed LOD distance.
         float m_lodDistance;
+
+        //! Computed first LOD distance (the following are multiplies of the index)
+        float m_lodDistanceScaled;
 
         //! Identifies whether we've already registered our node with the renderer.
         bool m_isRegisteredWithRenderer;

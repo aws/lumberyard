@@ -70,25 +70,25 @@ namespace LmbrCentral
             CreateManipulators();
         }
 
-        auto containerChanged = [this]()
+        const auto containerChanged = [this]()
         {
             GenerateVertices();
 
             // destroy and recreate manipulators when container is modified (vertices are added or removed)
             DestroyManipulators();
             CreateManipulators();
-           
+
             m_polygonPrismShape.ShapeChanged();
         };
 
-        auto shapeModified = [this]()
+        const auto shapeModified = [this]()
         {
             GenerateVertices();
             m_polygonPrismShape.ShapeChanged();
             RefreshManipulators();
         };
 
-        auto vertexAdded = [this, containerChanged](size_t index)
+        const auto vertexAdded = [this, containerChanged](size_t index)
         {
             containerChanged();
 
@@ -169,7 +169,10 @@ namespace LmbrCentral
                     m_polygonPrismMesh, *displayContext);
 
                 displayContext->SetColor(m_shapeWireColor);
-                AzToolsFramework::EditorVertexSelectionUtil::DisplayVertexContainerIndices(*displayContext, m_vertexSelection, GetWorldTM(), IsSelected());
+                AzToolsFramework::EditorVertexSelectionUtil::DisplayVertexContainerIndices(
+                    *displayContext, m_vertexSelection,
+                    AzToolsFramework::TransformUniformScale(
+                        m_polygonPrismShape.GetCurrentTransform()), IsSelected());
             },
             m_polygonPrismShape.GetCurrentTransform());
     }
@@ -188,7 +191,8 @@ namespace LmbrCentral
         }
     }
 
-    void EditorPolygonPrismShapeComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
+    void EditorPolygonPrismShapeComponent::OnTransformChanged(
+        const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
     {
         // refresh bounds in all manipulators after the entity has moved
         m_vertexSelection.SetBoundsDirty();
@@ -197,8 +201,6 @@ namespace LmbrCentral
         {
             m_heightManipulator->SetBoundsDirty();
         }
-
-        GenerateVertices();
     }
 
     void EditorPolygonPrismShapeComponent::OnSelected()
@@ -274,7 +276,9 @@ namespace LmbrCentral
             m_heightManipulator->SetBoundsDirty();
 
             // ensure property grid values are refreshed
-            AzToolsFramework::ToolsApplicationNotificationBus::Broadcast(&AzToolsFramework::ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, AzToolsFramework::Refresh_Values);
+            AzToolsFramework::ToolsApplicationNotificationBus::Broadcast(
+                &AzToolsFramework::ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay,
+                AzToolsFramework::Refresh_Values);
         });
 
         m_heightManipulator->Register(managerId);
@@ -295,7 +299,9 @@ namespace LmbrCentral
     void EditorPolygonPrismShapeComponent::AfterUndoRedo()
     {
         bool selected;
-        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selected, &AzToolsFramework::ToolsApplicationRequests::IsSelected, GetEntityId());
+        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(
+            selected, &AzToolsFramework::ToolsApplicationRequests::IsSelected, GetEntityId());
+
         if (selected)
         {
             DestroyManipulators();
@@ -317,9 +323,7 @@ namespace LmbrCentral
     void EditorPolygonPrismShapeComponent::GenerateVertices()
     {
         GeneratePolygonPrismMesh(
-            m_polygonPrismShape.GetCurrentTransform(),
             m_polygonPrismShape.GetPolygonPrism()->m_vertexContainer.GetVertices(),
-            m_polygonPrismShape.GetPolygonPrism()->GetHeight(),
-            m_polygonPrismMesh);
+            m_polygonPrismShape.GetPolygonPrism()->GetHeight(), m_polygonPrismMesh);
     }
 } // namespace LmbrCentral

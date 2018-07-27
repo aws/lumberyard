@@ -16,7 +16,7 @@
 //               Hence CCCPOINT often placed at the end  where work is done
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ScriptBind_AI.h"
 #include <ISystem.h>
 #include <IAISystem.h>
@@ -395,7 +395,7 @@ void InitLookUp()
             if (nodeCell->haveAttr("ss:Index"))
             {
                 const char* pStrIdx = nodeCell->getAttr("ss:Index");
-                PREFAST_SUPPRESS_WARNING(6031) sscanf(pStrIdx, "%d", &cellIndex);
+                PREFAST_SUPPRESS_WARNING(6031) azsscanf(pStrIdx, "%d", &cellIndex);
             }
             XmlNodeRef nodeCellData = nodeCell->findChild("Data");
             if (!nodeCellData)
@@ -409,7 +409,7 @@ void InitLookUp()
                 if (item)
                 {
                     float   theValue(.0f);
-                    PREFAST_SUPPRESS_WARNING(6031) sscanf(item, "%f", &theValue);
+                    PREFAST_SUPPRESS_WARNING(6031) azsscanf(item, "%f", &theValue);
 
                     theTable.push_back(theValue);
                 }
@@ -12169,7 +12169,7 @@ public:
                     continue;
                 }
 
-                if (_stricmp(PathUtil::GetExt(fd.name), ext))
+                if (azstricmp(PathUtil::GetExt(fd.name), ext))
                 {
                     continue;
                 }
@@ -12237,7 +12237,7 @@ public:
                     }
 
                     string inttag = line.Tokenize(" ", tok);
-                    if (!inttag.empty() && !_stricmp(inttag.c_str(), internalTag))
+                    if (!inttag.empty() && !azstricmp(inttag.c_str(), internalTag))
                     {
                         isInternal = true;
                     }
@@ -12327,7 +12327,7 @@ struct DirectoryExplorer
                     continue;
                 }
 
-                if (_stricmp(PathUtil::GetExt(fd.name), PathUtil::GetExt(extension)))
+                if (azstricmp(PathUtil::GetExt(fd.name), PathUtil::GetExt(extension)))
                 {
                     continue;
                 }
@@ -12453,7 +12453,7 @@ struct BehaviorLoader
 
         while (baseName && *baseName)
         {
-            if (!_stricmp(baseName, behaviorName))
+            if (!azstricmp(baseName, behaviorName))
             {
                 AIWarning("Cyclic dependency found loading behavior '%s' in file '%s'. Cycle starts in file '%s'.",
                     behaviorName, behaviorInfo.fileName.c_str(), baseFileName);

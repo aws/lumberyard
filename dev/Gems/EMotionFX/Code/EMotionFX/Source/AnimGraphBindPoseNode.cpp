@@ -10,7 +10,8 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphBindPoseNode.h"
 #include "AnimGraphInstance.h"
@@ -20,51 +21,33 @@
 
 namespace EMotionFX
 {
-    // constructor
-    AnimGraphBindPoseNode::AnimGraphBindPoseNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphBindPoseNode, AnimGraphAllocator, 0)
 
-
-    // destructor
-    AnimGraphBindPoseNode::~AnimGraphBindPoseNode()
-    {
-    }
-
-
-    // create
-    AnimGraphBindPoseNode* AnimGraphBindPoseNode::Create(AnimGraph* animGraph)
-    {
-        return new AnimGraphBindPoseNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* AnimGraphBindPoseNode::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void AnimGraphBindPoseNode::RegisterPorts()
+    AnimGraphBindPoseNode::AnimGraphBindPoseNode()
+        : AnimGraphNode()
     {
         // setup the output ports
         InitOutputPorts(1);
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_RESULT, PORTID_OUTPUT_POSE);
     }
 
-
-    // register the parameters
-    void AnimGraphBindPoseNode::RegisterAttributes()
+    AnimGraphBindPoseNode::~AnimGraphBindPoseNode()
     {
     }
 
+
+    bool AnimGraphBindPoseNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
+    }
 
     // get the palette name
     const char* AnimGraphBindPoseNode::GetPaletteName() const
@@ -77,28 +60,6 @@ namespace EMotionFX
     AnimGraphObject::ECategory AnimGraphBindPoseNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_SOURCES;
-    }
-
-
-    // create a clone of this node
-    AnimGraphObject* AnimGraphBindPoseNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        AnimGraphBindPoseNode* clone = new AnimGraphBindPoseNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
-    // pre-create unique data object
-    void AnimGraphBindPoseNode::Init(AnimGraphInstance* animGraphInstance)
-    {
-        MCORE_UNUSED(animGraphInstance);
-        //mOutputPose.Init( animGraphInstance->GetActorInstance() );
     }
 
 
@@ -121,10 +82,28 @@ namespace EMotionFX
     }
 
 
-    // get the blend node type string
-    const char* AnimGraphBindPoseNode::GetTypeString() const
+    void AnimGraphBindPoseNode::Reflect(AZ::ReflectContext* context)
     {
-        return "AnimGraphBindPoseNode";
-    }
-}   // namespace EMotionFX
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
 
+        serializeContext->Class<AnimGraphBindPoseNode, AnimGraphNode>()
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<AnimGraphBindPoseNode>("Bind Pose", "Bind pose attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+        ;
+    }
+} // namespace EMotionFX

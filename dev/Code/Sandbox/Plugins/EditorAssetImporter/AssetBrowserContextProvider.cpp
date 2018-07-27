@@ -30,7 +30,7 @@ namespace AZ
     {
         BusConnect();
     }
-    
+
     AssetBrowserContextProvider::~AssetBrowserContextProvider()
     {
         BusDisconnect();
@@ -62,7 +62,7 @@ namespace AZ
 
     void AssetBrowserContextProvider::AddContextMenuActions(QWidget* /*caller*/, QMenu* menu, const AZStd::vector<AssetBrowserEntry*>& entries)
     {
-        auto entryIt = AZStd::find_if(entries.begin(), entries.end(), 
+        auto entryIt = AZStd::find_if(entries.begin(), entries.end(),
             [](const AssetBrowserEntry* entry) -> bool { return entry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Source; });
         if (entryIt == entries.end())
         {
@@ -74,7 +74,7 @@ namespace AZ
         {
             return;
         }
-        
+
         AZStd::string sourcePath = source->GetFullPath();
         QAction* editImportSettingsAction = menu->addAction("Edit Settings...", [sourcePath]()
         {
@@ -97,7 +97,7 @@ namespace AZ
             }
         }
 
-        openers.push_back({ "Lumberyard_FBX_Settings_Edit", "Edit Settings...", QIcon(), [this](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
+        openers.push_back({ "Lumberyard_FBX_Settings_Edit", "Edit Settings...", QIcon(), [](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
         {
             AZStd::string sourceName(fullSourceFileNameInCallback); // because the below call absolutely requires a AZStd::string.
             AssetImporterPlugin::GetInstance()->EditImportSettings(sourceName);

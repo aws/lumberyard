@@ -53,7 +53,7 @@ export class UserAdminComponent implements OnInit {
     currentTabIndex: number = 0;
     userSortDescending: boolean = true;
     roleSortDescending: boolean = true;
-    searchDropdownOptions: [{ text: string }];
+    searchDropdownOptions: { text: string }[];
     currentUserSearchDropdown: string;
 
     currentUser: any;

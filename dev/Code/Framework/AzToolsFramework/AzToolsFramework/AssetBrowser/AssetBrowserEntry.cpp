@@ -38,14 +38,7 @@ namespace AzToolsFramework
 {
     namespace AssetBrowser
     {
-#ifdef AZ_PLATFORM_WINDOWS
-        const char* PLATFORM = "pc";
-#elif defined(AZ_PLATFORM_MAC)
-        const char* currentPlatform = "osx_gl"
-#else
-        //figure out how to get the platform later, for now hardcode "pc" as the editor only runs on pc for now anyway
-        const char* PLATFORM = "pc";
-#endif
+
         const char* GEMS_FOLDER_NAME = "Gems";
 
 
@@ -525,18 +518,17 @@ namespace AzToolsFramework
             parent = CreateFolders(sourcePath.c_str(), parent);
 
             // if entry already exists don't add it
-            AssetBrowserEntry* source;
-            auto it = AZStd::find_if(parent->m_children.begin(), parent->m_children.end(),
-                    [&](const AssetBrowserEntry* child)
-                    {
-                        auto sourceChild = azrtti_cast<const SourceAssetBrowserEntry*>(child);
-                        if (sourceChild)
-                        {
-                            return sourceChild->GetSourceUuid() == combinedDatabaseEntry.m_sourceGuid;
-                        }
-                        return false;
-                    });
-            if (it == parent->m_children.end())
+            AssetBrowserEntry* source = nullptr;
+            if (EntryCache* cache = EntryCache::GetInstance())
+            {
+                auto iteratorFound = cache->m_sourceIdMap.find(combinedDatabaseEntry.m_sourceGuid);
+                if (iteratorFound != cache->m_sourceIdMap.end())
+                {
+                    source = iteratorFound->second;
+                }
+            }
+          
+            if (!source)
             {
                 source = aznew SourceAssetBrowserEntry(
                         (sourceName + sourceExtension).c_str(),
@@ -547,10 +539,7 @@ namespace AzToolsFramework
                         );
                 parent->AddChild(source);
             }
-            else
-            {
-                source = *it;
-            }
+          
 
             if (combinedDatabaseEntry.m_productName.empty())
             {
@@ -565,25 +554,28 @@ namespace AzToolsFramework
             StringFunc::Path::Split(combinedDatabaseEntry.m_productName.c_str(), nullptr, &productPath, &productName, &productExtension);
             productName += productExtension;
 
-            it = AZStd::find_if(source->m_children.begin(), source->m_children.end(),
-                    [&](const AssetBrowserEntry* child)
-                    {
-                        return child->m_name.compare(productName.c_str()) == 0;
-                    });
+            AZ::Data::AssetId productAssetId(combinedDatabaseEntry.m_sourceGuid, combinedDatabaseEntry.m_subID);
 
-            if (it == source->m_children.end())
+            // only add this if the product does not exist.
+            if (EntryCache* cache = EntryCache::GetInstance())
             {
-                auto product = aznew ProductAssetBrowserEntry(
-                        productName.c_str(),
-                        combinedDatabaseEntry.m_fingerprint,
-                        combinedDatabaseEntry.m_productID,
-                        combinedDatabaseEntry.m_jobID,
-                        combinedDatabaseEntry.m_jobKey.c_str(),
-                        AZ::Data::AssetId(combinedDatabaseEntry.m_sourceGuid, combinedDatabaseEntry.m_subID),
-                        combinedDatabaseEntry.m_assetType,
-                        combinedDatabaseEntry.m_platform.c_str());
-                source->AddChild(product);
+                auto iteratorFound = cache->m_assetIdMap.find(productAssetId);
+                if (iteratorFound != cache->m_assetIdMap.end())
+                {
+                    return;
+                }
             }
+
+            auto product = aznew ProductAssetBrowserEntry(
+                    productName.c_str(),
+                    combinedDatabaseEntry.m_fingerprint,
+                    combinedDatabaseEntry.m_productID,
+                    combinedDatabaseEntry.m_jobID,
+                    combinedDatabaseEntry.m_jobKey.c_str(),
+                    productAssetId,
+                    combinedDatabaseEntry.m_assetType,
+                    combinedDatabaseEntry.m_platform.c_str());
+            source->AddChild(product);
         }
 
         void RootAssetBrowserEntry::RemoveEntry(AssetBrowserEntry* entry)

@@ -1,0 +1,490 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/service/status": {
+            "get": {
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/events": {
+            "get": {
+                "description": "Get the most recent events.",
+                "parameters": [
+                    {
+                        "description": "The identifier for the run whose events you want to retrieve",
+                        "name": "run_id",
+                        "in": "query",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "description": "The time of the most recent event you received",
+                        "name": "time",
+                        "in": "query",
+                        "required": false,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful event fetch.",
+                        "schema": {
+                            "$ref": "#/definitions/Events"
+                        }
+                    }
+                }
+            }
+        },
+        "/clear": {
+            "post": {
+                "description": "Clears the build log.",
+                "parameters": [
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful clear command.",
+                        "schema": {
+                            "format": "boolean"
+                        }
+                    }
+                }
+            }
+        },
+        "/status": {
+            "get": {
+                "description": "Retrieves status of the current run.",
+                "parameters": [
+                    {
+                        "description": "the workflow execution ID to retrieve information for",
+                        "name": "workflow_id",
+                        "in": "query",
+                        "required": false,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status of the current run",
+                        "schema": {
+                            "$ref": "#/definitions/RunResult"
+                        }
+                    }
+                }
+            }
+        },
+        "/run": {
+            "post": {
+                "description": "Runs the build farm.",
+                "parameters": [
+                    {
+                        "description": "configurations for the Simple Workflow",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RunParams"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful run command.",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/cancel": {
+            "post": {
+                "description": "Cancels a running build.",
+                "parameters": [
+                    {
+                        "description": "workflow ID to cancel",
+                        "name": "workflow_id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful cancel command.",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/builds": {
+            "get": {
+                "description": "Get a list of existing build IDs.",
+                "parameters": [
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful build list fetch.",
+                        "schema": {
+                            "$ref": "#/definitions/BuildsResult"
+                        }
+                    }
+                }
+            }
+        },
+        "/example": {
+            "get": {
+                "description": "Example API that can be called by the game client to get data.",
+                "responses": {
+                    "200": {
+                        "description": "A successful example response.",
+                        "schema": {
+                            "$ref": "#/definitions/ExampleData"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Example API that can be called by the game client to process data.",
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ExampleData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful example response.",
+                        "schema": {
+                            "$ref": "#/definitions/ExampleData"
+                        }
+                    }
+                }
+            }
+        },
+        "/amis": {
+            "get": {
+                "description": "Get the user's private AMIs.",
+                "responses": {
+                    "200": {
+                        "description": "A successful ami fetch.",
+                        "schema": {
+                            "$ref": "#/definitions/AMIs"
+                        }
+                    }
+                }
+            }
+        },
+        "/keypairs": {
+            "get": {
+                "description": "Get the user's EC2 key pairs.",
+                "responses": {
+                    "200": {
+                        "description": "A successful key pair fetch.",
+                        "schema": {
+                            "$ref": "#/definitions/keypairs"
+                        }
+                    }
+                }
+            }
+        },
+        "/fleetconfig": {
+            "get": {
+                "description": "Get the fleet configuration.",
+                "responses": {
+                    "200": {
+                        "description": "A successful fleet configuration fetch.",
+                        "schema": {
+                            "$ref": "#/definitions/FleetConfiguration"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Save the fleet configuration.",
+                "parameters": [
+                    {
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/FleetConfiguration"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful post response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/autoscaling/config": {
+            "post": {
+                "description": "Create the autoscaling launch configuration.",
+                "parameters": [
+                    {
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AutoscalingLaunchConfiguration"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful post response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+         "/autoscaling/config/{name}": {
+            "delete": {
+                "description": "Delete the current launch configuration",
+                "parameters":[
+                    {
+                        "description": "The name of the current launch configuration.",
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "type" : "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful delete response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/autoscaling/autoscalinggroup": {
+            "post": {
+                "description": "Create an Auto Scaling group.",
+                "parameters": [
+                    {
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AutoscalingGroupConfiguration"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful post response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/autoscaling/autoscalinggroup/{name}": {
+            "delete": {
+                "description": "Delete the current fleet",
+                "parameters":[
+                    {
+                        "description": "The name of the current fleet.",
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "type" : "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful delete response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ]
+        },
+		"ExampleData": {
+			"type": "object",
+			"properties": {
+				"ExamplePropertyA": {
+					"type": "string"
+				},
+				"ExamplePropertyB": {
+					"type": "integer"
+				}
+			},
+			"required": [
+				"ExamplePropertyA",
+				"ExamplePropertyB"
+			]
+		},
+        "Events": {
+            "type": "object",
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/EventItem"
+                    }
+                },
+                "run-id": {
+                    "type": "string"
+                }
+            }
+        },
+        "EventItem": {
+            "type": "object",
+            "properties": {
+                "run-id": {
+                    "type": "string"
+                },
+                "event-id": {
+                    "type": "string"
+                },
+                "host-id": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "activity": {
+                    "type": "string"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "RunResult": {
+            "type": "object",
+            "properties": {
+            }
+        },
+        "BuildsResult": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                }
+            }
+        },
+        "RunParams": {
+            "type": "object",
+            "properties": {
+                "workflow_id": {
+                    "type": "string"
+                },
+                "run_params": {
+                    "type": "string"
+                }
+            }
+        },
+        "AMIs": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/AMIItem"
+            }
+        },
+        "AMIItem": {
+            "type": "object",
+            "properties": {
+            }
+        },
+        "keypairs": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "FleetConfiguration": {
+            "type": "object",
+            "properties": {
+            }
+        },
+        "AutoscalingLaunchConfiguration": {
+            "type": "object",
+            "properties": {
+            }
+        },
+        "AutoscalingGroupConfiguration": {
+            "type": "object",
+            "properties": {
+            }
+        }
+    }
+}

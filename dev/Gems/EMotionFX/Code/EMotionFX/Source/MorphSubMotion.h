@@ -28,7 +28,7 @@ namespace EMotionFX
     class EMFX_API MorphSubMotion
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MorphSubMotion, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_SKELETALMOTIONS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         static MorphSubMotion* Create(uint32 id);

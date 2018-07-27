@@ -75,9 +75,9 @@ namespace EMStudio
         assert(creator);
 
         // check if we already registered this one before
-        if (FindCreator(creator->GetAnimGraphNodeTypeID()))
+        if (FindCreator(creator->GetAnimGraphNodeType()))
         {
-            MCore::LogWarning("GraphNodeFactory::Register() - There has already been a creator registered for the given node type %d.", creator->GetAnimGraphNodeTypeID());
+            MCore::LogWarning("GraphNodeFactory::Register() - There has already been a creator registered for the given node type %d.", creator->GetAnimGraphNodeType());
             return false;
         }
 
@@ -118,10 +118,10 @@ namespace EMStudio
 
 
     // create a given node
-    GraphNode* GraphNodeFactory::CreateGraphNode(uint32 animGraphNodeTypeID, const char* name)
+    GraphNode* GraphNodeFactory::CreateGraphNode(const AZ::TypeId& animGraphNodeType, const char* name)
     {
         // try to locate the creator
-        GraphNodeCreator* creator = FindCreator(animGraphNodeTypeID);
+        GraphNodeCreator* creator = FindCreator(animGraphNodeType);
         if (creator == nullptr)
         {
             return nullptr;
@@ -132,10 +132,10 @@ namespace EMStudio
 
 
     // create an attribute widget
-    QWidget* GraphNodeFactory::CreateAttributeWidget(uint32 animGraphNodeTypeID)
+    QWidget* GraphNodeFactory::CreateAttributeWidget(const AZ::TypeId& animGraphNodeType)
     {
         // try to locate the creator
-        GraphNodeCreator* creator = FindCreator(animGraphNodeTypeID);
+        GraphNodeCreator* creator = FindCreator(animGraphNodeType);
         if (creator == nullptr)
         {
             return nullptr;
@@ -146,13 +146,13 @@ namespace EMStudio
 
 
     // search for the right creator
-    GraphNodeCreator* GraphNodeFactory::FindCreator(uint32 animGraphNodeTypeID) const
+    GraphNodeCreator* GraphNodeFactory::FindCreator(const AZ::TypeId& animGraphNodeType) const
     {
         // locate the creator linked to the specified type ID
         const uint32 numCreators = mCreators.GetLength();
         for (uint32 i = 0; i < numCreators; ++i)
         {
-            if (mCreators[i]->GetAnimGraphNodeTypeID() == animGraphNodeTypeID)
+            if (mCreators[i]->GetAnimGraphNodeType() == animGraphNodeType)
             {
                 return mCreators[i];
             }

@@ -32,6 +32,7 @@ SlicerEdit::SlicerEdit(
 
     QObject::connect(this,
         &SlicerEdit::editingFinished,
+        this,
         [ this, totalUnscaledSizeInPixels ]()
         {
             // User text input is always interpreted as relative value
@@ -47,6 +48,7 @@ SlicerEdit::SlicerEdit(
     QObject::connect(
         borderEditor,
         &SpriteBorderEditor::SelectedCellChanged,
+        this,
         [this](ISprite* sprite, AZ::u32 index)
         {
             m_currentCellIndex = index;

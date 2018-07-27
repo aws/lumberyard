@@ -15,7 +15,7 @@
 #define CRYINCLUDE_CRYACTION_FLOWSYSTEM_NODES_FLOWTIMENODE_H
 #pragma once
 
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 
 #endif // CRYINCLUDE_CRYACTION_FLOWSYSTEM_NODES_FLOWTIMENODE_H

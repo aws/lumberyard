@@ -14,7 +14,7 @@
 // Description : Helper functions to draw some interesting debug shapes.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <math.h>
 #include <IRenderer.h>

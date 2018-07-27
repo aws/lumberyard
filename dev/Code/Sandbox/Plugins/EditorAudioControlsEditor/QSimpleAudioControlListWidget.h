@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <QTreeWidget.h>
+#include <QTreeWidget>
 #include "AudioControl.h"
 #include "ATLControlsModel.h"
 #include "QtUtil.h"

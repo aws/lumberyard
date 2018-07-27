@@ -27,7 +27,17 @@ bool CShader::FXSetPSFloat(const CCryNameR& NameParam, const Vec4* fParams, int 
     return true;
 }
 
+bool CShader::FXSetPSFloat(const char* NameParam, const Vec4* fParams, int nParams)
+{
+    return true;
+}
+
 bool CShader::FXSetVSFloat(const CCryNameR& NameParam, const Vec4* fParams, int nParams)
+{
+    return true;
+}
+
+bool CShader::FXSetVSFloat(const char* NameParam, const Vec4* fParams, int nParams)
 {
     return true;
 }
@@ -37,11 +47,20 @@ bool CShader::FXSetGSFloat(const CCryNameR& NameParam, const Vec4* fParams, int 
     return true;
 }
 
+bool CShader::FXSetGSFloat(const char* NameParam, const Vec4* fParams, int nParams)
+{
+    return true;
+}
+
 bool CShader::FXSetCSFloat(const CCryNameR& NameParam, const Vec4* fParams, int nParams)
 {
     return true;
 }
 
+bool CShader::FXSetCSFloat(const char* NameParam, const Vec4* fParams, int nParams)
+{
+    return true;
+}
 bool CShader::FXBegin(uint32* uiPassCount, uint32 nFlags)
 {
     return true;

@@ -645,6 +645,7 @@ bool CObjectLayerManager::SaveExternalLayer(CObjectArchive* pArchive, CObjectLay
 {
     // Form file name from layer name.
     QString path = Path::AddPathSlash(GetIEditor()->GetGameEngine()->GetLevelPath()) + m_layersPath;
+    path = Path::GamePathToFullPath(path); 
     QString file = pLayer->GetExternalLayerPath();
 
     if (CFileUtil::OverwriteFile(file))
@@ -1166,7 +1167,10 @@ void CObjectLayerManager::SetupLayerSwitches(bool isOnlyClear, bool isOnlyRender
 
         if (!isOnlyRenderNodes)
         {
-            gEnv->pEntitySystem->AddLayer(pLayer->GetName().toUtf8().data(), pLayer->GetParent() ? pLayer->GetParent()->GetName().toUtf8().data() : "", pLayer->GetLayerID(), pLayer->IsPhysics(), pLayer->GetSpecs(), pLayer->IsDefaultLoaded());
+            if (gEnv->pEntitySystem)
+            {
+                gEnv->pEntitySystem->AddLayer(pLayer->GetName().toUtf8().data(), pLayer->GetParent() ? pLayer->GetParent()->GetName().toUtf8().data() : "", pLayer->GetLayerID(), pLayer->IsPhysics(), pLayer->GetSpecs(), pLayer->IsDefaultLoaded());
+            }
 
             for (int k = 0; k < objects.size(); k++)
             {
@@ -1180,14 +1184,20 @@ void CObjectLayerManager::SetupLayerSwitches(bool isOnlyClear, bool isOnlyRender
                             node->SetLayerId(pLayer->GetLayerID());
                         }
 
-                        gEnv->pEntitySystem->AddEntityToLayer(pLayer->GetName().toUtf8().data(), ((CEntityObject*)pObj)->GetEntityId());
+                        if (gEnv->pEntitySystem)
+                        {
+                            gEnv->pEntitySystem->AddEntityToLayer(pLayer->GetName().toUtf8().data(), ((CEntityObject*)pObj)->GetEntityId());
+                        }
                     }
                 }
             }
         }
     }
     // make sure parent - child relation is valid in editor
-    gEnv->pEntitySystem->LinkLayerChildren();
+    if (gEnv->pEntitySystem)
+    {
+        gEnv->pEntitySystem->LinkLayerChildren();
+    }
 
     // Hide brashes when Game mode is started
     if (!isOnlyRenderNodes)

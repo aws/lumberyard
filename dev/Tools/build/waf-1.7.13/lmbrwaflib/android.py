@@ -824,6 +824,7 @@ def create_and_add_android_launchers_to_build(conf):
             'ANDROID_USE_MAIN_OBB' : conf.get_android_use_main_obb(project),
             'ANDROID_USE_PATCH_OBB' : conf.get_android_use_patch_obb(project),
             'ANDROID_ENABLE_KEEP_SCREEN_ON' : conf.get_android_enable_keep_screen_on(project),
+            'ANDROID_DISABLE_IMMERSIVE_MODE' : conf.get_android_disable_immersive_mode(project),
 
             'ANDROID_MIN_SDK_VERSION' : conf.env['ANDROID_NDK_PLATFORM_NUMBER'],
             'ANDROID_TARGET_SDK_VERSION' : conf.env['ANDROID_SDK_VERSION_NUMBER'],
@@ -974,7 +975,7 @@ def create_and_add_android_launchers_to_build(conf):
                 clear_splash_assets(resource_node, 'drawable-land')
 
         # delete all files from the destination folder that were not copied by the script
-        all_files = proj_root.ant_glob("**", excl=['wscript', 'build.gradle', 'assets_for_apk/*'])
+        all_files = proj_root.ant_glob("**", excl=['wscript', 'build.gradle', '*.iml', 'assets_for_apk/*'])
         files_to_delete = [path for path in all_files if path.abspath() not in copied_files]
 
         for file in files_to_delete:
@@ -1340,65 +1341,51 @@ def create_debug_strip_task(self, source_file, dest_location):
 ################################################################
 @feature('c', 'cxx')
 @after_method('apply_link')
-def add_android_natives_processing(self):
-    if 'android' not in self.env['PLATFORM']:
+def android_natives_processing(self):
+
+    bld = self.bld
+    platform = bld.env['PLATFORM']
+    configuration = bld.env['CONFIGURATION']
+
+    link_task = getattr(self, 'link_task', None)
+
+    if (not bld.is_android_platform(platform)) or (not link_task) or (self._type != 'shlib'):
         return
 
-    if not getattr(self, 'link_task', None):
-        return
-
-    if self._type == 'stlib': # Do not copy static libs
-        return
-
-    output_node = self.bld.get_output_folders(self.bld.env['PLATFORM'], self.bld.env['CONFIGURATION'])[0]
-
+    output_node = self.bld.get_output_folders(platform, configuration)[0]
     project_name = getattr(self, 'project_name', None)
-    game_projects = self.bld.get_enabled_game_project_list()
 
-    for src in self.link_task.outputs:
+    game_project_builder_nodes = []
+    for game in bld.get_enabled_game_project_list():
+        if not bld.is_module_for_game_project(self.name, game, project_name):
+            continue
+
+        # If the game is a valid android project, a specific build native value will have been created during
+        # the project configuration.  Only process games with valid android project settings
+        game_build_native_key = '{}_BUILDER_NATIVES'.format(game)
+        if game_build_native_key not in self.env:
+            continue
+
+        builder_node = bld.root.find_dir(self.env[game_build_native_key])
+        if builder_node:
+            game_project_builder_nodes.append(builder_node)
+
+
+    for src in link_task.outputs:
         src_lib = output_node.make_node(src.name)
-
-        for game in game_projects:
-
-            game_build_native_key = '%s_BUILDER_NATIVES' % game
-
-            # If the game is a valid android project, a specific build native value will have been created during
-            # the project configuration.  Only process games with valid android project settings
-            if not game_build_native_key in self.env:
-                continue
-            game_build_native_node = self.bld.root.find_dir(self.env[game_build_native_key])
-
-            if self.bld.is_module_for_game_project(self.name, game, project_name):
-                self.create_debug_strip_task(src_lib, game_build_native_node)
+        for builder_node in game_project_builder_nodes:
+            self.create_debug_strip_task(src_lib, builder_node)
 
 
-################################################################
-@feature('c', 'cxx', 'copy_3rd_party_binaries')
-@after_method('apply_link')
-def add_3rd_party_library_stripping(self):
-    """
-    Strip and copy 3rd party shared libraries so they are included into the APK.
-    """
-    if 'android' not in self.env['PLATFORM'] or self.bld.spec_monolithic_build():
-        return
+    third_party_artifacts = getattr(self.env, 'COPY_3RD_PARTY_ARTIFACTS', [])
+    for artifact in third_party_artifacts:
+        _, ext = os.path.splitext(artifact.abspath())
+        # Only care about shared libraries
+        if ext != '.so':
+            continue
 
-    third_party_artifacts = self.env['COPY_3RD_PARTY_ARTIFACTS']
-    if third_party_artifacts:
-        game_projects = self.bld.get_enabled_game_project_list()
-        for source_node in third_party_artifacts:
-            _, ext = os.path.splitext(source_node.abspath())
-            # Only care about shared libraries
-            if ext == '.so':
-                for game in game_projects:
-                    game_build_native_key = '%s_BUILDER_NATIVES' % game
-
-                    # If the game is a valid android project, a specific build native value will have been created during
-                    # the project configuration.  Only process games with valid android project settings
-                    if not game_build_native_key in self.env:
-                        continue
-
-                    game_build_native_node = self.bld.root.find_dir(self.env[game_build_native_key])
-                    self.create_debug_strip_task(source_node, game_build_native_node)
+        for builder_node in game_project_builder_nodes:
+            self.create_debug_strip_task(artifact, builder_node)
 
 
 ################################################################
@@ -2269,7 +2256,13 @@ def get_device_file_timestamp(remote_file_path, device_id, as_root = False):
             timestamp_string = file_contents.strip()
 
     if timestamp_string:
-        target_time = time.mktime(time.strptime(timestamp_string, "%Y-%m-%d %H:%M:%S.%f"))
+        for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f'):
+            try:
+                target_time = time.mktime(time.strptime(timestamp_string, fmt))
+                break
+            except:
+                target_time = 0
+
         Logs.debug('android_deploy: {} time is {}'.format(remote_file_path, target_time))
         return target_time
 
@@ -2279,45 +2272,65 @@ def get_device_file_timestamp(remote_file_path, device_id, as_root = False):
 def auto_detect_device_storage_path(device_id, log_warnings = False):
     '''
     Uses the device's environment variable "EXTERNAL_STORAGE" to determine the correct
-    path to public storage that has write permissions
+    path to public storage that has write permissions.  If at any point does the env var
+    validation fail, fallback to checking known possible paths to external storage.
     '''
     def _log_debug(message):
-        Logs.debug('adb_call: {}'.format(message))
+        Logs.debug('android_deploy: {}'.format(message))
 
     def _log_warn(message):
         Logs.warn('[WARN] {}'.format(message))
 
     log_func = _log_warn if log_warnings else _log_debug
 
+    def _check_known_paths():
+        external_storage_paths = [
+            '/sdcard/',
+            '/storage/emulated/0/',
+            '/storage/emulated/legacy/',
+            '/storage/sdcard0/',
+            '/storage/self/primary/',
+        ]
+        _log_debug('Falling back to search list of known external storage paths for device {}.'.format(device_id))
+
+        for path in external_storage_paths:
+            _log_debug('Searching {}'.format(path))
+            status, _ = adb_ls(path, device_id)
+            if status:
+                return path[:-1]
+        else:
+            log_func('Failed to detect a valid path with correct permissions for device {}'.format(device_id))
+            return ''
+
     external_storage = adb_call('shell', '"set | grep EXTERNAL_STORAGE"', device = device_id)
     if not external_storage:
-        log_func('Call to get the EXTERNAL_STORAGE environment variable from device {} failed.'.format(device_id))
-        return ''
+        _log_debug('Call to get the EXTERNAL_STORAGE environment variable from device {} failed.'.format(device_id))
+        return _check_known_paths()
 
     storage_path = external_storage.split('=')
     if len(storage_path) != 2:
-        log_func('Received bad data while attempting extract the EXTERNAL_STORAGE environment variable from device {}.'.format(device_id))
-        return ''
+        _log_debug('Received bad data while attempting extract the EXTERNAL_STORAGE environment variable from device {}.'.format(device_id))
+        return _check_known_paths()
 
     var_path = storage_path[1].strip()
     status, _ = adb_ls(var_path, device_id)
     if status:
         return var_path
-    else:
-        Logs.debug('adb_call: The path specified in EXTERNAL_STORAGE seems to have permission issues, attempting to resolve with realpath for device {}.'.format(device_id))
+
+    _log_debug('The path specified in EXTERNAL_STORAGE seems to have permission issues, attempting to resolve with realpath for device {}.'.format(device_id))
 
     real_path = adb_call('shell', 'realpath', var_path, device = device_id)
     if not real_path:
-        log_func('Something happend while attempting to resolve the path from the EXTERNAL_STORAGE environment variable from device {}.'.format(device_id))
-        return ''
+        _log_debug('Something happend while attempting to resolve the path from the EXTERNAL_STORAGE environment variable for device {}.'.format(device_id))
+        return _check_known_paths()
 
     real_path = real_path.strip()
     status, _ = adb_ls(real_path, device_id)
     if status:
         return real_path
-    else:
-        log_func('Unable to validate the resolved EXTERNAL_STORAGE environment variable path from device {}.'.format(device_id))
-        return ''
+
+    _log_debug('Unable to validate the resolved EXTERNAL_STORAGE environment variable path for device {}.'.format(device_id))
+    return _check_known_paths()
 
 
 def construct_assets_path_for_game_project(ctx, game_project):
@@ -2532,8 +2545,13 @@ for configuration in ['debug', 'profile', 'release']:
                 if not hasattr(self, 'asset_deploy_mode'):
                     asset_deploy_mode = self.options.deploy_android_asset_mode.lower()
 
-                    configuration = self.env['CONFIGURATION']
-                    if configuration == 'release':
+                    is_release = (self.env['CONFIGURATION'] == 'release')
+
+                    if self.options.from_android_studio:
+                        # force a mode where assets are not packed into the APK since android studio handles the APK generation
+                        asset_deploy_mode = (ASSET_DEPLOY_PAKS if is_release else ASSET_DEPLOY_LOOSE)
+
+                    elif is_release:
                         # force release mode to use the project's settings
                         asset_deploy_mode = ASSET_DEPLOY_PROJECT_SETTINGS
 
@@ -2609,7 +2627,7 @@ for configuration in ['debug', 'profile', 'release']:
 
 
             def log_error(self, message):
-                if self.options.from_editor_deploy:
+                if self.options.from_editor_deploy or self.options.from_android_studio:
                     self.fatal(message)
                 else:
                     Logs.error(message)
@@ -2640,7 +2658,7 @@ def prepare_to_deploy_android(tsk_gen):
     configuration = bld.env['CONFIGURATION']
 
     # handle a few non-fatal early out cases
-    if not bld.is_android_platform(platform) or not bld.is_option_true('deploy_android') or bld.options.from_android_studio:
+    if not bld.is_android_platform(platform) or (not bld.is_option_true('deploy_android') and not bld.options.from_android_studio):
         bld.user_message('Skipping Android Deployment...')
         return
 
@@ -2669,7 +2687,7 @@ def prepare_to_deploy_android(tsk_gen):
     # handle the asset pre-processing
     if (asset_deploy_mode == ASSET_DEPLOY_PAKS) or (asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS):
         if bld.use_vfs():
-            bld.fatal('[ERROR] Cannot use VFS when the --deploy-android-asset-mode is set to "{}", please set remote_filesystem=0 in bootstrap.cfg'.format(asset_deploy_mode))
+            bld.fatal('[ERROR] Cannot use VFS when the --deploy-android-asset-mode is set to "{}".  Please set remote_filesystem=0 in bootstrap.cfg'.format(asset_deploy_mode))
 
         asset_cache = bld.get_asset_cache()
         layout_node = bld.get_layout_node()
@@ -2820,11 +2838,19 @@ def deploy_to_devices(tsk_gen):
     layout_node = bld.get_layout_node()
 
     do_clean = bld.is_option_true('deploy_android_clean_device')
-    deploy_executable = bld.is_option_true('deploy_android_executable')
-    deploy_assets = (asset_deploy_mode == ASSET_DEPLOY_LOOSE) or (asset_deploy_mode == ASSET_DEPLOY_PAKS)
+    deploy_executable = bld.is_option_true('deploy_android_executable') and not bld.options.from_android_studio
+
+    if bld.use_vfs():
+        if asset_deploy_mode == ASSET_DEPLOY_LOOSE:
+            deploy_assets = True
+        else:
+            # this is already checked in the prepare stage, but just to be safe...
+            bld.fatal('[ERROR] Cannot use VFS when the --deploy-android-asset-mode is set to "{}".  Please set remote_filesystem=0 in bootstrap.cfg'.format(asset_deploy_mode))
+    else:
+        deploy_assets = asset_deploy_mode in (ASSET_DEPLOY_LOOSE, ASSET_DEPLOY_PAKS)
 
     # no sense in pushing the assets if we are cleaning the device and not reinstalling the APK
-    if do_clean and not deploy_executable:
+    if do_clean and not deploy_executable and not bld.options.from_android_studio:
         deploy_assets = False
 
     Logs.debug('android_deploy: deploy options: do_clean {}, deploy_exec {}, deploy_assets {}'.format(do_clean, deploy_executable, deploy_assets))
@@ -2835,7 +2861,7 @@ def deploy_to_devices(tsk_gen):
         return
 
 
-    deploy_libs = bld.options.deploy_android_attempt_libs_only and not (do_clean or bld.options.from_editor_deploy) and not (asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS)
+    deploy_libs = bld.options.deploy_android_attempt_libs_only and not (do_clean or bld.options.from_editor_deploy or bld.options.from_android_studio) and not (asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS)
     Logs.debug('android_deploy: The option to attempt library only deploy is %s', 'ENABLED' if deploy_libs else 'DISABLED')
 
     variant = '{}_{}'.format(platform, configuration)
@@ -2849,8 +2875,9 @@ def deploy_to_devices(tsk_gen):
     game_package = bld.get_android_package_name(game)
     device_install_path = '/data/data/{}'.format(game_package)
 
-    apk_stat = os.stat(apk_name)
-    apk_size = apk_stat.st_size
+    if deploy_libs:
+        apk_stat = os.stat(apk_name)
+        apk_size = apk_stat.st_size
 
 
     relative_assets_path = construct_assets_path_for_game_project(bld, game)
@@ -2977,37 +3004,53 @@ def deploy_to_devices(tsk_gen):
                 continue
 
         if deploy_assets:
-            target_time = get_device_file_timestamp(device_timestamp_file, android_device)
 
-            if do_clean or target_time == 0:
-                bld.user_message('Copying all assets to the device {}. This may take some time...'.format(android_device))
+            if bld.use_vfs():
+                files_to_transfer = [
+                    'bootstrap.cfg',
+                    '{}/config/game.xml'.format(game).lower()
+                ]
 
-                # There is a chance that if someone ran VFS before this deploy on an empty directory the output_target directory will have
-                # already existed when we do the push command. In this case if we execute adb push command it will create an ES3 directory
-                # and put everything there, causing the deploy to be 'successful' but the game will crash as it won't be able to find the
-                # assets. Since we detected a "clean" build, wipe out the output_target folder if it exists first then do the push and
-                # everything will be just fine.
-                ls_status, _ = adb_ls(output_target, android_device)
-                if ls_status:
-                    adb_call('shell', 'rm', '-rf', output_target)
+                for file in files_to_transfer:
+                    local_node = layout_node.find_resource(file)
+                    if not local_node:
+                        bld.fatal('[ERROR] Failed to locate file {} in path {}'.format(os.path.normpath(file), layout_node.abspath()))
 
-                push_status = adb_call('push', '"{}"'.format(layout_node.abspath()), output_target, device = android_device)
-                if not push_status:
-                    # Clean up any files we may have pushed to make the next run success rate better
-                    adb_call('shell', 'rm', '-rf', output_target, device = android_device)
-                    bld.fatal('[ERROR] The ABD command to push all the files to the device failed.')
-                    continue
+                    target_file = '{}/{}'.format(output_target, file)
+                    tsk_gen.adb_copy_task(android_device, local_node, target_file)
 
             else:
-                layout_files = layout_node.ant_glob('**/*')
-                bld.user_message('Scanning {} files to determine which ones need to be copied...'.format(len(layout_files)))
-                for src_file in layout_files:
-                    # Faster to check if we should copy now rather than in the copy_task
-                    if should_copy_file(src_file, target_time):
-                        final_target_dir = '{}/{}'.format(output_target, string.replace(src_file.path_from(layout_node), '\\', '/'))
-                        tsk_gen.adb_copy_task(android_device, src_file, final_target_dir)
+                target_time = get_device_file_timestamp(device_timestamp_file, android_device)
 
-            update_device_file_timestamp(device_timestamp_file, android_device)
+                if do_clean or target_time == 0:
+                    bld.user_message('Copying all assets to the device {}. This may take some time...'.format(android_device))
+
+                    # There is a chance that if someone ran VFS before this deploy on an empty directory the output_target directory will have
+                    # already existed when we do the push command. In this case if we execute adb push command it will create an ES3 directory
+                    # and put everything there, causing the deploy to be 'successful' but the game will crash as it won't be able to find the
+                    # assets. Since we detected a "clean" build, wipe out the output_target folder if it exists first then do the push and
+                    # everything will be just fine.
+                    ls_status, _ = adb_ls(output_target, android_device)
+                    if ls_status:
+                        adb_call('shell', 'rm', '-rf', output_target)
+
+                    push_status = adb_call('push', '"{}"'.format(layout_node.abspath()), output_target, device = android_device)
+                    if not push_status:
+                        # Clean up any files we may have pushed to make the next run success rate better
+                        adb_call('shell', 'rm', '-rf', output_target, device = android_device)
+                        bld.fatal('[ERROR] The ABD command to push all the files to the device failed.')
+                        continue
+
+                else:
+                    layout_files = layout_node.ant_glob('**/*')
+                    bld.user_message('Scanning {} files to determine which ones need to be copied...'.format(len(layout_files)))
+                    for src_file in layout_files:
+                        # Faster to check if we should copy now rather than in the copy_task
+                        if should_copy_file(src_file, target_time):
+                            final_target_dir = '{}/{}'.format(output_target, string.replace(src_file.path_from(layout_node), '\\', '/'))
+                            tsk_gen.adb_copy_task(android_device, src_file, final_target_dir)
+
+                update_device_file_timestamp(device_timestamp_file, android_device)
 
         deploy_count = deploy_count + 1
 

@@ -11,6 +11,7 @@
 ########################################################################################
 
 import os
+from waflib import Utils
 
 SUBFOLDERS = [
     'Builders',
@@ -75,10 +76,12 @@ def build(bld):
         win_includes    = ['native'],  # for the resource.h file
         win_lib         = ['shell32'],
 
-        darwin_rpath      = ['@executable_path', '@executable_path/qtlibs/lib'],
+        darwin_rpath      = ['@executable_path', '@executable_path/qtlibs/lib', '@executable_path/../Frameworks'],
         darwin_frameworks = ['CoreServices'],
         darwin_cxxflags   = [ '-x', 'objective-c++' ],
         darwin_xcassets   = 'Code/Tools/AssetProcessor/qml/Images.xcassets',
+        darwin_x64_framework = ['Security'],
+        darwin_lib        = ['bsm']
     )
 
     ###########################################################################################################################################
@@ -114,10 +117,38 @@ def build(bld):
         # ==============================
         # Testing
         # ==============================
-        win_test_all_file_list = ['assetprocessor_test.waf_files'],
 
-        #because gmock still crashes (unrelated to AP) in Darwin-Debug, we'll at least enable tests in profile_test.
-        darwin_test_profile_file_list = ['assetprocessor_test.waf_files']
+        test_all_file_list = ['assetprocessor_test.waf_files'],
+    )
 
+
+def copy_asset_builder(pkg, executable_dest_node):
+    output_folder_node = pkg.get_output_folders(pkg.platform, pkg.config)[0]
+    pkg.install_files(executable_dest_node.abspath(), "AssetBuilder", cwd=output_folder_node, chmod=Utils.O755, postpone=False)
+
+    rc_folder_node = output_folder_node.make_node('rc')
+    rc_files = rc_folder_node.ant_glob("*")
+    output_folder_node = output_folder_node.make_node('rc')
+    resources_node = executable_dest_node.parent.make_node('Resources')
+    rc_dest_node = executable_dest_node.make_node('rc')
+    for file in rc_files:
+        filename, file_extension = os.path.splitext(file.abspath())
+        if file_extension in ['.ini', '.xml', '.txt']:
+            # data files need to go into the Resources directory otherwise code signing fails 
+            pkg.create_symlink_or_copy(file, resources_node.abspath(), postpone=False)
+        else:
+            # Need 0755 permissions as rc is an exeutable. 
+            pkg.create_symlink_or_copy(file, rc_dest_node.abspath(), chmod=Utils.O755, postpone=False)
+
+
+def package_darwin_x64(pkg):
+    build(pkg) # Need to call this to generate our task_generator
+    pkg.package_tool(
+        target           = 'AssetProcessor',
+        platforms        = ['darwin'],
+        configurations   = ['debug', 'profile'],
+        include_all_libs = True, 
+        dir_resources    = ['qtlibs','Builders'],
+        finalize_func    = copy_asset_builder,
     )
 

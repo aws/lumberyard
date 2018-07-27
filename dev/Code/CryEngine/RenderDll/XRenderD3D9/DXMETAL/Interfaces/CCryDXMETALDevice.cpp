@@ -34,7 +34,7 @@
 #include "CCryDXMETALTexture2D.hpp"
 #include "CCryDXMETALTexture3D.hpp"
 #include "CCryDXMETALUnorderedAccessView.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 #include "../Implementation/GLFormat.hpp"
 #include "../Implementation/GLResource.hpp"
 #include "../Implementation/GLShader.hpp"

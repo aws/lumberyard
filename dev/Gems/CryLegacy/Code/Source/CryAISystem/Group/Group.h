@@ -130,7 +130,7 @@ private:
 
             if (ser.IsReading())
             {
-                strcpy(notification, textString.c_str());
+                azstrcpy(notification, AZ_ARRAY_SIZE(notification), textString.c_str());
             }
         }
     };

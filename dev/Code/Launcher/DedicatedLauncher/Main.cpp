@@ -124,12 +124,15 @@ ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg, AzGameFrame
             // dll is not a compatible game dll
             CryFreeLibrary(gameDll);
 
-            fprintf(stderr, "Specified Game DLL %s is not valid (is missing \"CreateGameStartup\")!", gameDll);
+            fprintf(stderr, "Specified Game DLL %p is not valid (is missing \"CreateGameStartup\")!", gameDll);
             return 0;
         }
 #endif //!defined(AZ_MONOLITHIC_BUILD)
     }
+#pragma warning( push )
+#pragma warning(disable: 4996)
     strcat((char*)commandLine, (char*)buf);
+#pragma warning( pop )
 
     SSystemInitParams startupParams;
     startupParams.pSharedEnvironment = AZ::Environment::GetInstance();
@@ -138,7 +141,7 @@ ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg, AzGameFrame
 
     startupParams.bDedicatedServer = true;
 
-    strcpy(startupParams.szSystemCmdLine, commandLine);
+    azstrcpy(startupParams.szSystemCmdLine, AZ_ARRAY_SIZE(startupParams.szSystemCmdLine), commandLine);
 
 
     engineCfg.CopyToStartupParams(startupParams);
@@ -163,28 +166,32 @@ ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg, AzGameFrame
         EditorGameRequestBus::BroadcastResult(pGameStartup, &EditorGameRequestBus::Events::CreateGameStartup);
     }
 
-
-    if (!pGameStartup)
+    // The legacy IGameStartup and IGameFramework are now optional,
+    // if they don't exist we need to create CrySystem here instead.
+    if (!pGameStartup || !pGameStartup->Init(startupParams))
     {
-        // failed to create the startup interface
-        if (legacyGameDllStartup)
+    #if !defined(AZ_MONOLITHIC_BUILD)
+        HMODULE systemLib = CryLoadLibraryDefName("CrySystem");
+        PFNCREATESYSTEMINTERFACE CreateSystemInterface = systemLib ? (PFNCREATESYSTEMINTERFACE)CryGetProcAddress(systemLib, "CreateSystemInterface") : nullptr;
+        if (CreateSystemInterface)
         {
-            CryFreeLibrary(gameDll);
+            startupParams.pSystem = CreateSystemInterface(startupParams);
         }
-
-        fprintf(stderr, "Failed to create the GameStartup Interface!");
-        return 0;
+    #else
+        startupParams.pSystem = CreateSystemInterface(startupParams);
+    #endif // AZ_MONOLITHIC_BUILD
     }
 
-
-    // run the game
-    if (!pGameStartup->Init(startupParams))
+    if (!startupParams.pSystem)
     {
-        fprintf(stderr, "Failed to initialize the GameStartup Interface!");
+        fprintf(stderr, "Failed to initialize the CrySystem Interface!");
 
         // if initialization failed, we still need to call shutdown
-        pGameStartup->Shutdown();
-        pGameStartup = 0;
+        if (pGameStartup)
+        {
+            pGameStartup->Shutdown();
+            pGameStartup = 0;
+        }
 
         if (legacyGameDllStartup)
         {
@@ -202,10 +209,13 @@ ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg, AzGameFrame
     gEnv->pConsole->ExecuteString("exec autoexec.cfg");
 
     // Run the main loop
-    LumberyardLauncher::RunMainLoop(gameApp, *gEnv->pGame->GetIGameFramework());
+    LumberyardLauncher::RunMainLoop(gameApp);
 
-    pGameStartup->Shutdown();
-    pGameStartup = 0;
+    if (pGameStartup)
+    {
+        pGameStartup->Shutdown();
+        pGameStartup = 0;
+    }
 
     if (legacyGameDllStartup)
     {
@@ -281,7 +291,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #endif
 
         char cmdLine[2048];
-        strcpy(cmdLine, GetCommandLineA());
+        azstrcpy(cmdLine, GetCommandLineA());
 
         /*
             unsigned buf[4];

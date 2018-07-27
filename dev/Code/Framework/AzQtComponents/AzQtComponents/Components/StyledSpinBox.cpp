@@ -577,7 +577,7 @@ namespace AzQtComponents
 
         // Added a valueChanged signal with an int parameter to mirror the behavior
         // of the QSpinBox
-        QObject::connect(this, static_cast<void(StyledDoubleSpinBox::*)(double)>(&StyledDoubleSpinBox::valueChanged), [this](double val) {
+        QObject::connect(this, static_cast<void(StyledDoubleSpinBox::*)(double)>(&StyledDoubleSpinBox::valueChanged), this, [this](double val) {
             emit valueChanged((int)val);
         });
     }

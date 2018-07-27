@@ -94,15 +94,9 @@ namespace AzQtComponents
         connect(guest, &QWidget::windowTitleChanged,
             this, &WindowDecorationWrapper::onWindowTitleChanged);
 
-        if (m_options & OptionDisabled)
-            return;
-
-        applyFlagsAndAttributes();
-
-        guest->installEventFilter(this);
-
-        m_titleBar->setWindowTitleOverride(guest->windowTitle());
         // The wrapper is deleted when widget is destroyed
+        // Connect even if OptionDisable is used otherwise the WindowDecorationWrapper is still
+        // visible after the guest widget is closed.
         connect(guest, &QWidget::destroyed, this, [this]
         {
             // the Lumberyard Editor has code that checks for Modal widgets, and blocks on doing other things
@@ -116,6 +110,15 @@ namespace AzQtComponents
 
             deleteLater();
         });
+
+        if (m_options & OptionDisabled)
+            return;
+
+        applyFlagsAndAttributes();
+
+        guest->installEventFilter(this);
+
+        m_titleBar->setWindowTitleOverride(guest->windowTitle());
 
         updateConstraints();
     }
@@ -338,14 +341,16 @@ namespace AzQtComponents
             return;
         }
 
-        qDebug() << "WindowDecorationWrapper::childEvent" << this << w << "; flags=" << w->windowFlags()
-        << "; guest's parent=" << w->parentWidget();
+        //qDebug() << "WindowDecorationWrapper::childEvent" << this << w << "; flags=" << w->windowFlags()
+        //<< "; guest's parent=" << w->parentWidget();
 #if defined(AZ_PLATFORM_APPLE)
         // On macOS, tool windows correspond to the Floating class of windows. This means that the
         // window lives on a level above normal windows making it impossible to put a normal window
         // on top of it. Therefore we need to add Qt::Tool to QDialogs to ensure they are not hidden
         // under a Floating window.
-        if (QDialog* d = qobject_cast<QDialog*>(w))
+        // qobject_cast in QObject::childEvent is not ideal because the child object may not have
+        // been constructed yet. To be on the safe side, check the windowFlags too.
+        if ((qobject_cast<QDialog*>(w) != nullptr) || (w->windowFlags() & Qt::Dialog))
         {
             setWindowFlags(windowFlags() | Qt::Tool);
         }

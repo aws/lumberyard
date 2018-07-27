@@ -40,7 +40,6 @@ namespace MCore
 
         MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(&mValue); }
         MCORE_INLINE uint32 GetRawDataSize() const                  { return sizeof(AZ::PackedVector3f); }
-        bool GetSupportsRawDataPointer() const override             { return true; }
 
         // adjust values
         MCORE_INLINE const AZ::PackedVector3f& GetValue() const     { return mValue; }
@@ -72,8 +71,6 @@ namespace MCore
         bool ConvertToString(AZStd::string& outString) const override      { AZStd::to_string(outString, AZ::Vector3(mValue)); return true; }
         uint32 GetClassSize() const override                        { return sizeof(AttributeVector3); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_VECTOR3; }
-        void Scale(float scaleFactor) override                      { mValue = AZ::PackedVector3f(AZ::Vector3(mValue) * scaleFactor); }
-
 
     private:
         AZ::PackedVector3f  mValue;     /**< The Vector3 value. */
@@ -106,17 +103,5 @@ namespace MCore
             return true;
         }
 
-        // write to a stream
-        bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override
-        {
-            AZ::PackedVector3f streamValue = mValue;
-            Endian::ConvertVector3To(&streamValue, targetEndianType);
-            if (stream->Write(&streamValue, sizeof(AZ::PackedVector3f)) == 0)
-            {
-                return false;
-            }
-
-            return true;
-        }
     };
 }   // namespace MCore

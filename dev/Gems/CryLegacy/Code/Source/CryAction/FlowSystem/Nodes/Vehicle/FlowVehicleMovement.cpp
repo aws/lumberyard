@@ -14,7 +14,7 @@
 // Description : Implements a flow node to handle a vehicle movement features
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "IVehicleSystem.h"
 #include "IFlowSystem.h"
@@ -169,11 +169,11 @@ void CFlowVehicleMovement::Serialize(SActivationInfo* pActivationInfo, TSerializ
     char buf[16];
     for (int i = 0; i < count; ++i)
     {
-        _snprintf(buf, sizeof(buf), "partid_%i", i);
+        azsnprintf(buf, sizeof(buf), "partid_%i", i);
         buf[sizeof(buf) - 1] = 0;
         ser.Value(buf, m_partMass[i].partid);
 
-        _snprintf(buf, sizeof(buf), "mass_%i", i);
+        azsnprintf(buf, sizeof(buf), "mass_%i", i);
         buf[sizeof(buf) - 1] = 0;
         ser.Value(buf, m_partMass[i].mass);
     }

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ActorSystem.h"
 #include "CryPath.h"
 #include "CryAction.h"
@@ -331,9 +331,9 @@ void CActorSystem::Scan(const char* folderName)
             }
 
             const char* fileExtension = PathUtil::GetExt(fd.name);
-            if (_stricmp(fileExtension, "xml"))
+            if (azstricmp(fileExtension, "xml"))
             {
-                if (_stricmp(fileExtension, "binxml"))
+                if (azstricmp(fileExtension, "binxml"))
                 {
                     GameWarning("ActorSystem: File '%s' does not have 'xml' extension, skipping.", fd.name);
                 }
@@ -363,7 +363,7 @@ void CActorSystem::Scan(const char* folderName)
 //--------------------------------------------------------------------
 bool CActorSystem::ScanXML(const XmlNodeRef& root, const char* xmlFile)
 {
-    if (strcmpi(root->getTag(), "ActorParams") && strcmpi(root->getTag(), "EntityClassParams"))
+    if (azstricmp(root->getTag(), "ActorParams") && azstricmp(root->getTag(), "EntityClassParams"))
     {
         CryFixedStringT<128> errorBuffer;
         errorBuffer.Format("Root tag is '%s', expecting 'ActorParams' or 'EntityClassParams', Skipping...");

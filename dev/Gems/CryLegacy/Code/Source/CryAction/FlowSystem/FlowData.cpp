@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowData.h"
 #include "FlowSerialize.h"
 #include "IEntityPoolManager.h"
@@ -237,7 +237,7 @@ bool CFlowData::ResolvePort(const char* name, TFlowPortId& port, bool isOutput)
         {
             const char* sPortName = config.pOutputPorts[i].name;
 
-            if (NULL != sPortName && !_stricmp(name, sPortName))
+            if (NULL != sPortName && !azstricmp(name, sPortName))
             {
                 port = i;
                 return true;
@@ -254,7 +254,7 @@ bool CFlowData::ResolvePort(const char* name, TFlowPortId& port, bool isOutput)
         {
             const char* sPortName = config.pInputPorts[i].name;
 
-            if (NULL != sPortName && !_stricmp(name, sPortName))
+            if (NULL != sPortName && !azstricmp(name, sPortName))
             {
                 port = i;
                 return true;
@@ -264,7 +264,7 @@ bool CFlowData::ResolvePort(const char* name, TFlowPortId& port, bool isOutput)
             // fix for t_ stuff in current graphs these MUST NOT be stripped!
             if (sPortName != 0 && sPortName[0] == 't' && sPortName[1] == '_')
             {
-                if (!_stricmp(name, sPortName))
+                if (!azstricmp(name, sPortName))
                 {
                     port = i;
                     return true;
@@ -280,7 +280,7 @@ bool CFlowData::ResolvePort(const char* name, TFlowPortId& port, bool isOutput)
                     sPortName = sSpecial + 1;
                 }
 
-                if (!_stricmp(name, sPortName))
+                if (!azstricmp(name, sPortName))
                 {
 #ifdef FG_WARN_ABOUT_STRIPPED_PORTNAMES
                     CryLogAlways("[flow] CFlowData::ResolvePort: Deprecation warning for port name: '%s' should be '%s'",
@@ -480,7 +480,7 @@ void CFlowData::Serialize(IFlowNode::SActivationInfo* pActInfo, TSerialize ser)
     char idName[16] = "in_x";
     for (int i = startIndex; i < m_nInputs; i++)
     {
-        itoa(i, &idName[3], 10);
+        azitoa(i, &idName[3], AZ_ARRAY_SIZE(idName) - 3, 10);
         ser.ValueWithDefault(idName, m_pInputData[i], config.pInputPorts[i].defaultData);
     }
 

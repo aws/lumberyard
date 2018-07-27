@@ -10,52 +10,22 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "BlendTreeBoolLogicNode.h"
-#include <MCore/Source/AttributeSettings.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeBoolLogicNode::BlendTreeBoolLogicNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeBoolLogicNode, AnimGraphAllocator, 0)
 
-        // default on logic AND
-        mFunctionEnum   = FUNCTION_AND;
-        mFunction       = BoolLogicAND;
-        SetNodeInfo("x AND y");
-    }
-
-
-    // destructor
-    BlendTreeBoolLogicNode::~BlendTreeBoolLogicNode()
-    {
-    }
-
-
-    // create
-    BlendTreeBoolLogicNode* BlendTreeBoolLogicNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeBoolLogicNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeBoolLogicNode::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeBoolLogicNode::RegisterPorts()
+    BlendTreeBoolLogicNode::BlendTreeBoolLogicNode()
+        : AnimGraphNode()
+        , m_functionEnum(FUNCTION_AND)
+        , m_trueResult(1.0f)
+        , m_falseResult(0.0f)
+        , m_defaultValue(false)
     {
         // setup the input ports
         InitInputPorts(2);
@@ -64,42 +34,59 @@ namespace EMotionFX
 
         // setup the output ports
         InitOutputPorts(2);
-        SetupOutputPort("Float", OUTPUTPORT_VALUE,  MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_VALUE);
-        SetupOutputPort("Bool", OUTPUTPORT_BOOL,    MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_BOOL);
+        SetupOutputPort("Float", OUTPUTPORT_VALUE, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_VALUE);
+        SetupOutputPort("Bool", OUTPUTPORT_BOOL, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_BOOL);
+
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
     }
 
 
-    // register the parameters
-    void BlendTreeBoolLogicNode::RegisterAttributes()
+    BlendTreeBoolLogicNode::~BlendTreeBoolLogicNode()
     {
-        // create the function combobox
-        MCore::AttributeSettings* functionParam = RegisterAttribute("Logic Function", "logicFunction", "The logic function to use.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        functionParam->SetReinitGuiOnValueChange(true);
-        functionParam->ResizeComboValues((uint32)NUM_FUNCTIONS);
-        functionParam->SetComboValue(FUNCTION_AND,  "AND");
-        functionParam->SetComboValue(FUNCTION_OR,   "OR");
-        functionParam->SetComboValue(FUNCTION_XOR,  "XOR");
-        functionParam->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // create the static value float spinner
-        MCore::AttributeSettings* valueParam = RegisterAttribute("Static Value", "staticValue", "Value used for x or y when the input port has no connection.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        valueParam->ResizeComboValues(2);
-        valueParam->SetComboValue(0, "False");
-        valueParam->SetComboValue(1, "True");
-        valueParam->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        MCore::AttributeSettings* trueValueParam = RegisterAttribute("Float Result When True", "trueResult", "The float value returned when the expression is true.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        trueValueParam->SetDefaultValue(MCore::AttributeFloat::Create(1.0f));
-        trueValueParam->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        trueValueParam->SetMaxValue(MCore::AttributeFloat::Create(+FLT_MAX));
-
-        MCore::AttributeSettings* falseValueParam = RegisterAttribute("Float Result When False", "falseResult", "The float value returned when the expression is false.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        falseValueParam->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        falseValueParam->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        falseValueParam->SetMaxValue(MCore::AttributeFloat::Create(+FLT_MAX));
     }
 
 
+    void BlendTreeBoolLogicNode::Reinit()
+    {
+        switch (m_functionEnum)
+        {
+        case FUNCTION_AND:
+            m_function = BoolLogicAND;
+            SetNodeInfo("x AND y");
+            break;
+        case FUNCTION_OR:
+            m_function = BoolLogicOR;
+            SetNodeInfo("x OR y");
+            break;
+        case FUNCTION_XOR:
+            m_function = BoolLogicXOR;
+            SetNodeInfo("x XOR y");
+            break;
+        default:
+            AZ_Assert(false, "EMotionFX: Math function unknown.");
+        }
+
+        AnimGraphNode::Reinit();
+    }
+
+
+    bool BlendTreeBoolLogicNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
+    }
+
+    
     // get the palette name
     const char* BlendTreeBoolLogicNode::GetPaletteName() const
     {
@@ -114,25 +101,11 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeBoolLogicNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeBoolLogicNode* clone = new BlendTreeBoolLogicNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // the update function
     void BlendTreeBoolLogicNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // if there are no incoming connections, there is nothing to do
-        if (mConnections.GetLength() == 0)
+        if (mConnections.empty())
         {
             return;
         }
@@ -140,12 +113,9 @@ namespace EMotionFX
         // update all inputs
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
-        // update the condition function if needed
-        SetFunction((EFunction)((uint32)GetAttributeFloat(ATTRIB_FUNCTION)->GetValue()));
-
         // if both x and y inputs have connections
         bool x, y;
-        if (mConnections.GetLength() == 2)
+        if (mConnections.size() == 2)
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_X));
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_Y));
@@ -160,73 +130,38 @@ namespace EMotionFX
             {
                 OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_X));
                 x = GetInputNumberAsBool(animGraphInstance, INPUTPORT_X);
-                y = GetAttributeFloatAsBool(ATTRIB_STATICVALUE);
+                y = m_defaultValue;
             }
             else // only y has an input
             {
                 MCORE_ASSERT(mConnections[0]->GetTargetPort() == INPUTPORT_Y);
                 OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_Y));
-                x = GetAttributeFloatAsBool(ATTRIB_STATICVALUE);
+                x = m_defaultValue;
                 y = GetInputNumberAsBool(animGraphInstance, INPUTPORT_Y);
             }
         }
 
         // execute the logic function
-        if (mFunction(x, y))
+        if (m_function(x, y))
         {
             GetOutputFloat(animGraphInstance, OUTPUTPORT_BOOL)->SetValue(1.0f);
-            GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(GetAttributeFloat(ATTRIB_TRUEVALUE)->GetValue());
+            GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(m_trueResult);
         }
         else
         {
             GetOutputFloat(animGraphInstance, OUTPUTPORT_BOOL)->SetValue(0.0f);
-            GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(GetAttributeFloat(ATTRIB_FALSEVALUE)->GetValue());
+            GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(m_falseResult);
         }
     }
 
 
-    // get the type string
-    const char* BlendTreeBoolLogicNode::GetTypeString() const
-    {
-        return "BlendTreeBoolLogicNode";
-    }
-
-
-    // set the condition function to use
     void BlendTreeBoolLogicNode::SetFunction(EFunction func)
     {
-        // if it didn't change, don't update anything
-        if (func == mFunctionEnum)
+        m_functionEnum = func;
+        if (mAnimGraph)
         {
-            return;
+            Reinit();
         }
-
-        mFunctionEnum = func;
-        switch (mFunctionEnum)
-        {
-        case FUNCTION_AND:
-            mFunction = BoolLogicAND;
-            SetNodeInfo("x AND y");
-            return;
-        case FUNCTION_OR:
-            mFunction = BoolLogicOR;
-            SetNodeInfo("x OR y");
-            return;
-        case FUNCTION_XOR:
-            mFunction = BoolLogicXOR;
-            SetNodeInfo("x XOR y");
-            return;
-        default:
-            MCORE_ASSERT(false);        // function unknown
-        }
-        ;
-    }
-
-
-    // update the data
-    void BlendTreeBoolLogicNode::OnUpdateAttributes()
-    {
-        SetFunction((EFunction)((uint32)GetAttributeFloat(ATTRIB_FUNCTION)->GetValue()));
     }
 
 
@@ -242,5 +177,63 @@ namespace EMotionFX
     bool BlendTreeBoolLogicNode::BoolLogicAND(bool x, bool y)       { return (x && y); }
     bool BlendTreeBoolLogicNode::BoolLogicOR(bool x, bool y)        { return (x || y); }
     bool BlendTreeBoolLogicNode::BoolLogicXOR(bool x, bool y)       { return (x ^ y); }
-}   // namespace EMotionFX
 
+
+    void BlendTreeBoolLogicNode::SetDefaultValue(bool defaultValue)
+    {
+        m_defaultValue = defaultValue;
+    }
+
+    void BlendTreeBoolLogicNode::SetTrueResult(float trueResult)
+    {
+        m_trueResult = trueResult;
+    }
+
+    void BlendTreeBoolLogicNode::SetFalseResult(float falseResult)
+    {
+        m_falseResult = falseResult;
+    }
+
+    void BlendTreeBoolLogicNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeBoolLogicNode, AnimGraphNode>()
+            ->Version(1)
+            ->Field("logicFunction", &BlendTreeBoolLogicNode::m_functionEnum)
+            ->Field("defaultValue", &BlendTreeBoolLogicNode::m_defaultValue)
+            ->Field("trueResult", &BlendTreeBoolLogicNode::m_trueResult)
+            ->Field("falseResult", &BlendTreeBoolLogicNode::m_falseResult)
+        ;
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeBoolLogicNode>("Bool Logic", "Bool logic attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeBoolLogicNode::m_functionEnum, "Logic Function", "The logic function to use.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeBoolLogicNode::Reinit)
+            ->EnumAttribute(FUNCTION_AND,  "AND")
+            ->EnumAttribute(FUNCTION_OR,   "OR")
+            ->EnumAttribute(FUNCTION_XOR,  "XOR")
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeBoolLogicNode::m_defaultValue, "Default Value", "Value used for x or y when the input port has no connection.")
+            ->EnumAttribute(FUNCTION_AND,  "False")
+            ->EnumAttribute(FUNCTION_OR,   "True")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeBoolLogicNode::m_trueResult, "Float Result When True", "The float value returned when the expression is true.")
+            ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+            ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeBoolLogicNode::m_falseResult, "Float Result When False", "The float value returned when the expression is false.")
+            ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+            ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+        ;
+    }
+} // namespace EMotionFX

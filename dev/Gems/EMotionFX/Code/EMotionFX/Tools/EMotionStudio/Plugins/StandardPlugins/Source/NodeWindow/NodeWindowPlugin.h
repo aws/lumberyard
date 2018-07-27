@@ -10,21 +10,25 @@
 *
 */
 
-#ifndef __EMSTUDIO_NODEWINDOWPLUGIN_H
-#define __EMSTUDIO_NODEWINDOWPLUGIN_H
+#pragma once
 
-// include MCore
-#include "../StandardPluginsConfig.h"
-#include "../../../../EMStudioSDK/Source/DockWidgetPlugin.h"
-#include <MysticQt/Source/DialogStack.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
-#include <MysticQt/Source/PropertyWidget.h>
+#include <EMotionStudio/EMStudioSDK/Source/DockWidgetPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
+#include <MysticQt/Source/DialogStack.h>
 
+
+namespace AzToolsFramework
+{
+    class ReflectedPropertyEditor;
+}
 
 namespace EMStudio
 {
     // forward declaration
+    class ActorInfo;
     class NodeHierarchyWidget;
+    class NodeInfo;
 
     /**
      *
@@ -34,7 +38,7 @@ namespace EMStudio
         : public EMStudio::DockWidgetPlugin
     {
         Q_OBJECT
-                           MCORE_MEMORYOBJECTCATEGORY(NodeWindowPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
+        MCORE_MEMORYOBJECTCATEGORY(NodeWindowPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
         enum
@@ -56,18 +60,15 @@ namespace EMStudio
         bool GetIsVertical() const override                 { return false; }
 
         // overloaded main init function
+        void Reflect(AZ::ReflectContext* context) override;
         bool Init() override;
         EMStudioPlugin* Clone() override;
         void ReInit();
 
-        void FillNodeInfo(EMotionFX::Node* node, EMotionFX::ActorInstance* actorInstance);
-        void FillActorInfo(EMotionFX::ActorInstance* actorInstance);
-        void FillMeshInfo(const char* groupName, EMotionFX::Mesh* mesh, EMotionFX::Node* node, EMotionFX::ActorInstance* actorInstance, int lodLevel, bool colMesh);
-
     public slots:
         void OnNodeChanged();
         void VisibilityChanged(bool isVisible);
-        void FilterStringChanged(const QString& text);
+        void OnTextFilterChanged(const QString& text);
 
         void UpdateVisibleNodeIndices();
 
@@ -83,14 +84,14 @@ namespace EMStudio
 
         MysticQt::DialogStack*              mDialogStack;
         NodeHierarchyWidget*                mHierarchyWidget;
-        MysticQt::PropertyWidget*           mPropertyWidget;
+        AzToolsFramework::ReflectedPropertyEditor* m_propertyWidget;
 
         AZStd::string                       mString;
         AZStd::string                       mTempGroupName;
         MCore::Array<uint32>                mVisibleNodeIndices;
         MCore::Array<uint32>                mSelectedNodeIndices;
+
+        AZStd::unique_ptr<ActorInfo>        m_actorInfo;
+        AZStd::unique_ptr<NodeInfo>         m_nodeInfo;
     };
 } // namespace EMStudio
-
-
-#endif

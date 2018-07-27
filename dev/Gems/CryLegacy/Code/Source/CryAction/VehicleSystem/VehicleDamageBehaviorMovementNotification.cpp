@@ -14,7 +14,7 @@
 // Description : Implements a damage behavior which notify the movement class
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IVehicleSystem.h"
 #include "Vehicle.h"
 #include "VehicleDamageBehaviorMovementNotification.h"

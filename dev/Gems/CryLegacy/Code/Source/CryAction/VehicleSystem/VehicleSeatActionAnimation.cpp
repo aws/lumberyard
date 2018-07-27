@@ -13,7 +13,7 @@
 
 // Description : Implements a seat action for triggering animations
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "IVehicleSystem.h"
 #include "VehicleSeatActionAnimation.h"

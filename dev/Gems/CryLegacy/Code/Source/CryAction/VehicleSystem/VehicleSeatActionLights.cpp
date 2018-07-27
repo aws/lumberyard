@@ -14,7 +14,7 @@
 // Description : Implements a seat action to head/spot lights
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "IVehicleSystem.h"
 #include "Vehicle.h"

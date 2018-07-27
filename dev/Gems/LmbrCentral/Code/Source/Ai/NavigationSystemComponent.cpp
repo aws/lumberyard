@@ -37,7 +37,6 @@ namespace LmbrCentral
         {
             serializeContext->Class<NavigationSystemComponent, Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
                 ;
 
             serializeContext->Class<NavRayCastResult>()

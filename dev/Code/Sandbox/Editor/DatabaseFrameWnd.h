@@ -212,6 +212,8 @@ public:
     Qt::DropActions supportedDragActions() const override;
     Qt::DropActions supportedDropActions() const override;
 
+    void Clear();
+
     void Reload(CBaseLibrary* library);
 
     void Add(CBaseLibraryItem* item);

@@ -72,7 +72,7 @@ QWidget* LineEditWithDelegate::createEditor(QWidget* parent, const QStyleOptionV
     const int length = 20;
     button->setGeometry(option.rect.width() - length, 0, length, option.rect.height());
     const int row = index.row();
-    connect(button, &QPushButton::clicked, [this, row]() { const_cast<LineEditWithDelegate*>(this)->buttonClicked(row); });
+    connect(button, &QPushButton::clicked, this, [this, row]() { const_cast<LineEditWithDelegate*>(this)->buttonClicked(row); });
     return editor;
 }
 
@@ -257,7 +257,7 @@ void DialogScriptView::setModel(QAbstractItemModel* model)
 
     connect(selectionModel(), &QItemSelectionModel::selectionChanged, this, &DialogScriptView::currentColumnChanged, Qt::UniqueConnection);
     connect(selectionModel(), &QItemSelectionModel::selectionChanged, this, &DialogScriptView::CanDeleteRowChanged, Qt::UniqueConnection);
-    connect(m_model, &DialogScriptModel::modelModified, [this]() { this->SetModified(true); });
+    connect(m_model, &DialogScriptModel::modelModified, this, [this]() { this->SetModified(true); });
     connect(m_model, &DialogScriptModel::modelModified, this, &DialogScriptView::UpdateNoItemText);
     connect(m_model, &DialogScriptModel::modelModified, this, &DialogScriptView::CanDeleteRowChanged);
 

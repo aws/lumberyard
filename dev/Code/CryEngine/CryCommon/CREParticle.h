@@ -14,7 +14,6 @@
 #ifndef __CREPARTICLE_H__
 #define __CREPARTICLE_H__
 
-#include <IJobManager.h>
 #include <MemoryAccess.h>
 
 // forward declarations

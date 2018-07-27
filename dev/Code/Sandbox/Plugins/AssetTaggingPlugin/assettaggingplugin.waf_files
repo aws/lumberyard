@@ -9,8 +9,8 @@
 			"AssetTaggingPlugin.h",
 			"main.cpp",
 			"QuickPluginProfiler.h",
-			"stdafx.cpp",
-			"stdafx.h"
+			"StdAfx.cpp",
+			"StdAfx.h"
 		]
 	}
 }

@@ -111,7 +111,7 @@ struct IGame
     virtual void PrePhysicsUpdate() {}
 
     // Deprecated
-    virtual int AZ_DEPRECATED(Update(bool haveFocus, unsigned int updateFlags), "Deprecated, main loop now in launcher") { return 0; }
+    virtual int Update(bool haveFocus, unsigned int updateFlags) { return 0; }
 
     // Description:
     //      Called on the game when entering/exiting game mode in editor

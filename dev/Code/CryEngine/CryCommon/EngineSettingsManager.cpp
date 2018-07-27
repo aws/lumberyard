@@ -339,7 +339,7 @@ bool CEngineSettingsManager::GetInstalledBuildRootPathUtf16(const int index, Set
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CEngineSettingsManager::SetParentDialog(unsigned long window)
+void CEngineSettingsManager::SetParentDialog(size_t window)
 {
     m_hWndParent = window;
 }
@@ -355,7 +355,7 @@ bool CEngineSettingsManager::StoreData()
         if (!res)
         {
 #ifdef AZ_PLATFORM_WINDOWS
-            MessageBoxA((HWND)m_hWndParent, "Could not store data to registry.", "Error", MB_OK | MB_ICONERROR);
+            MessageBoxA(reinterpret_cast<HWND>(m_hWndParent), "Could not store data to registry.", "Error", MB_OK | MB_ICONERROR);
 #endif
         }
         return res;
@@ -512,7 +512,7 @@ bool CEngineSettingsManager::GetValueByRef(const char* key, SettingsManagerHelpe
         wbuffer[0] = 0;
         return false;
     }
-    wcscpy(wbuffer.getPtr(), p->value.c_str());
+    azwcscpy(wbuffer.getPtr(), wbuffer.getSizeInElements(), p->value.c_str());
     return true;
 }
 

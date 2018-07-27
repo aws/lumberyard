@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AudioComponentOneShotNodes.h"
 #include <LmbrCentral/Audio/AudioTriggerComponentBus.h>
 

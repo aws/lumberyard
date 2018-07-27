@@ -24,6 +24,8 @@
 #include <CryString.h>
 #include <smartptr.h>
 
+#include <AzCore/std/smart_ptr/shared_ptr.h>
+
 struct ISystem;
 class ICrySizer;
 
@@ -42,7 +44,7 @@ DLL_IMPORT
 ICryFont * CreateCryFontInterface(ISystem * pSystem);
 
 typedef ICryFont*(* PFNCREATECRYFONTINTERFACE)(ISystem* pSystem);
-typedef std::shared_ptr<FontFamily> FontFamilyPtr;
+typedef AZStd::shared_ptr<FontFamily> FontFamilyPtr;
 
 namespace IFFontConstants
 {
@@ -152,7 +154,7 @@ struct STextDrawContext
     bool m_kerningEnabled;
     bool m_processSpecialChars;
 
-    float m_tracking;                       //!< units are 1/1000th of ems, 1 em is equal to font size
+    float m_tracking;                       //!< extra space between characters in pixels (prior to any transform)
 
     STextDrawContext()
         : m_fxIdx(0)

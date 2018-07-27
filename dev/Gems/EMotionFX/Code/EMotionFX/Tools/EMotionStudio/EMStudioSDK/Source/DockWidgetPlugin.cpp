@@ -125,6 +125,7 @@ namespace EMStudio
 
         //  mDock->setFloating( true );
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mDock);
+        mainWindow->setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North); // put tabs on top?
 
         titleBar->UpdateIcons();
 

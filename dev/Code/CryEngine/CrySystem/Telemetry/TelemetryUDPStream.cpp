@@ -57,7 +57,10 @@ namespace Telemetry
 
         m_serverAddress.sin_family          = AF_INET;
         m_serverAddress.sin_port                = htons(1111);
+#pragma warning( push )
+#pragma warning(disable: 4996)
         m_serverAddress.sin_addr.s_addr = inet_addr(serverIP.c_str());
+#pragma warning( pop )
 #endif //WIN32
 
         m_initialized = true;

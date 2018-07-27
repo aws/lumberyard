@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "FlowInspectorDefault.h"
 #include <FlowSystem/FlowSystem.h>
@@ -297,7 +297,7 @@ CFlowInspectorDefault::NotifyFlow(IFlowGraph* pGraph, const SFlowAddress from, c
     string val;
     rec.m_data.GetValueWithConversion(val);
 
-    _snprintf(msg, sizeof(msg) - 1, "0x%p %s [%s:%s] -> [%s:%s] Val=%s",
+    azsnprintf(msg, sizeof(msg) - 1, "0x%p %s [%s:%s] -> [%s:%s] Val=%s",
         (const IFlowGraph*) rec.m_pGraph,
         name.c_str(),
         GetNodeName(rec.m_pGraph, rec.m_from).c_str(),

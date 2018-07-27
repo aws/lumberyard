@@ -14,7 +14,7 @@
 // Description : Manager per-actor signals to other actors by range
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "PersonalRangeSignaling.h"
 #include "RangeSignaling.h"
 #include "Range.h"

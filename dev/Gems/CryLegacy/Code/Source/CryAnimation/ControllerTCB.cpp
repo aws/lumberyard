@@ -14,7 +14,7 @@
 // Description : TCB controller implementation.
 
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "CharacterManager.h"
 
 JointState CControllerTCB::GetOPS(f32 ntime, Quat& rot, Vec3& pos, Diag33& scl) const

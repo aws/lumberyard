@@ -58,6 +58,21 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    AZ::Vector2 InputChannel::PositionData2D::ConvertToScreenSpaceCoordinates(float screenWidth, float screenHeight) const
+    {
+        return AZ::Vector2(m_normalizedPosition.GetX() * screenWidth,
+                           m_normalizedPosition.GetY() * screenHeight);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputChannel::PositionData2D::UpdateNormalizedPositionAndDelta(const AZ::Vector2& newPosition)
+    {
+        const AZ::Vector2 oldPosition = m_normalizedPosition;
+        m_normalizedPosition = newPosition;
+        m_normalizedPositionDelta = newPosition - oldPosition;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     class InputChannelNotificationBusBehaviorHandler
         : public InputChannelNotificationBus::Handler
         , public AZ::BehaviorEBusHandler

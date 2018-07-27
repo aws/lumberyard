@@ -586,6 +586,11 @@ namespace AzFramework
                                 RKeep(inout, pos, true);
                             }
                         }
+                        else
+                        {
+                            // strip first
+                            inout.erase(0, 1);
+                        }
                     }
 
                     if (bStripEnding)
@@ -597,6 +602,15 @@ namespace AzFramework
                             {
                                 bSomethingWasStripped = true;
                                 LKeep(inout, pos, true);
+                            }
+                        }
+                        else
+                        {
+                            // strip last
+                            const size_t length = inout.length();
+                            if (length > 0)
+                            {
+                                inout.erase(length - 1, 1);
                             }
                         }
                     }
@@ -618,6 +632,11 @@ namespace AzFramework
                                 RKeep(inout, pos, true);
                             }
                         }
+                        else
+                        {
+                            // strip first
+                            inout.erase(0, 1);
+                        }
                     }
 
                     if (bStripEnding)
@@ -629,6 +648,15 @@ namespace AzFramework
                             {
                                 bSomethingWasStripped = true;
                                 LKeep(inout, pos, true);
+                            }
+                        }
+                        else
+                        {
+                            // strip last
+                            const size_t length = inout.length();
+                            if (length > 0)
+                            {
+                                inout.erase(length - 1, 1);
                             }
                         }
                     }

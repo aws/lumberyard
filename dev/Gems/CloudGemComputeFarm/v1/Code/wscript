@@ -1,0 +1,26 @@
+
+def build(bld):
+    import lumberyard_sdks
+
+    file_list = []
+    if bld.env['PLATFORM'] == 'project_generator':
+        file_list.append('cloudgemcomputefarm.waf_files')
+        file_list.append('aws_unsupported.waf_files')
+    else:
+        if lumberyard_sdks.does_platform_support_aws_native_sdk(bld):
+            file_list.append('cloudgemcomputefarm.waf_files')
+        else:
+            file_list.append('aws_unsupported.waf_files')
+
+    bld.DefineGem(
+        
+        includes = [],
+
+        file_list = file_list,
+
+        platforms = ['all'],
+        uselib = ['AWS_CPP_SDK_CORE'],
+
+        use = ['CloudGemFrameworkStaticLibrary']
+
+    )

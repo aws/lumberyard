@@ -667,9 +667,17 @@ namespace Audio
             case eQACT_EXECUTE_TRIGGER:
             case eQACT_EXECUTE_SOURCE_TRIGGER:
             case eQACT_STOP_TRIGGER:
-            case eQACT_STOP_ALL_TRIGGERS:
             {
                 // These type of commands get always pushed back!
+                break;
+            }
+            case eQACT_STOP_ALL_TRIGGERS:
+            {
+                if (!m_aQueuedAudioCommands.empty())
+                {
+                    // only add if the last request is different...
+                    bAdd = (AZStd::find_if(m_aQueuedAudioCommands.end() - 1, m_aQueuedAudioCommands.end(), SFindCommand(refCommand.eType)) == m_aQueuedAudioCommands.end());
+                }
                 break;
             }
             case eQACT_SET_SWITCH_STATE:

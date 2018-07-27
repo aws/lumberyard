@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowScriptedNode.h"
 #include "IScriptSystem.h"
 
@@ -19,27 +19,27 @@ namespace
 {
     bool GetCategory(const char* catName, uint32& outCategory)
     {
-        if (_stricmp(catName, "approved") == 0)
+        if (azstricmp(catName, "approved") == 0)
         {
             outCategory = EFLN_APPROVED;
         }
-        else if (_stricmp(catName, "advanced") == 0)
+        else if (azstricmp(catName, "advanced") == 0)
         {
             outCategory = EFLN_ADVANCED;
         }
-        else if (_stricmp(catName, "debug") == 0)
+        else if (azstricmp(catName, "debug") == 0)
         {
             outCategory = EFLN_DEBUG;
         }
-        else if (_stricmp(catName, "legacy") == 0)
+        else if (azstricmp(catName, "legacy") == 0)
         {
             outCategory = EFLN_OBSOLETE;
         }
-        else if (_stricmp(catName, "obsolete") == 0)
+        else if (azstricmp(catName, "obsolete") == 0)
         {
             outCategory = EFLN_OBSOLETE;
         }
-        else if (_stricmp(catName, "wip") == 0)
+        else if (azstricmp(catName, "wip") == 0)
         {
             outCategory = EFLN_ADVANCED;
         }
@@ -231,7 +231,7 @@ void CFlowScriptedNode::ProcessEvent(EFlowEvent event, SActivationInfo* pActInfo
         if (pActInfo->pInputPorts[i].IsUserFlagSet())
         {
             static char buffer[256] = "OnActivate_";
-            strcpy(buffer + 11, m_pFactory->InputName(i));
+            azstrcpy(buffer + 11, AZ_ARRAY_SIZE(buffer) - 11, m_pFactory->InputName(i));
             Script::CallMethod(m_table.GetPtr(), buffer);
         }
     }

@@ -26,7 +26,7 @@ enum ELipSyncMethod
     eLSM_MatchAnimationToSoundName,
 };
 
-using IComponentAudioPtr = std::shared_ptr<struct IComponentAudio>;
+using IComponentAudioPtr = AZStd::shared_ptr<struct IComponentAudio>;
 
 struct ILipSyncProvider
 {

@@ -11,8 +11,8 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "cfgfile.h"
+#include "stdafx.h"
+#include "CfgFile.h"
 #include "Config.h"
 #include "DebugLog.h"
 #include "IRCLog.h"
@@ -46,7 +46,8 @@ bool CfgFile::Load(const string& fileName)
     m_fileName = fileName;
     m_modified = false;
 
-    FILE* file = fopen(fileName.c_str(), "rb");
+    FILE* file = nullptr;
+    azfopen(&file, fileName.c_str(), "rb");
     if (!file)
     {
         RCLog("Can't open \"%s\"", fileName.c_str());
@@ -72,7 +73,8 @@ bool CfgFile::Load(const string& fileName)
 // Save configuration file, with the stored name in m_fileName
 bool CfgFile::Save()
 {
-    FILE* file = fopen(m_fileName.c_str(), "wb");
+    FILE* file = nullptr;
+    azfopen(&file, m_fileName.c_str(), "wb");
 
     if (!file)
     {
@@ -112,7 +114,7 @@ void CfgFile::UpdateOrCreateEntry(const char* inszSection, const char* inszKey, 
 
     for (std::list<Entry>::iterator it = sec->entries.begin(); it != sec->entries.end(); ++it)
     {
-        if (_stricmp(it->key.c_str(), inszKey) == 0)              // Key found
+        if (azstricmp(it->key.c_str(), inszKey) == 0)              // Key found
         {
             if (!it->IsComment())                                    // update key
             {
@@ -144,7 +146,7 @@ void CfgFile::RemoveEntry(const char* inszSection, const char* inszKey)
 
     for (std::list<Entry>::iterator it = sec->entries.begin(); it != sec->entries.end(); ++it)
     {
-        if (_stricmp(it->key.c_str(), inszKey) == 0)
+        if (azstricmp(it->key.c_str(), inszKey) == 0)
         {
             if (!it->IsComment())
             {
@@ -275,7 +277,7 @@ void CfgFile::CopySectionKeysToConfig(const EConfigPriority ePri, int sectionInd
             {
                 for (size_t i = 0; i < suffixes.size(); ++i)
                 {
-                    if (_stricmp(suffixes[i].c_str(), e.key.c_str() + delimiterPos + 1) == 0)
+                    if (azstricmp(suffixes[i].c_str(), e.key.c_str() + delimiterPos + 1) == 0)
                     {
                         // The key's suffix is same as a suffix in keySuffixes. We add key (without suffix!) and value.
                         config->SetKeyValue(ePri, e.key.substr(0, delimiterPos).c_str(), e.value.c_str());
@@ -301,7 +303,7 @@ int CfgFile::FindSection(const char* sectionName) const
 {
     for (size_t i = 0, count = m_sections.size(); i < count; ++i)
     {
-        if (_stricmp(m_sections[i].name.c_str(), sectionName) == 0)
+        if (azstricmp(m_sections[i].name.c_str(), sectionName) == 0)
         {
             return (int)i;
         }

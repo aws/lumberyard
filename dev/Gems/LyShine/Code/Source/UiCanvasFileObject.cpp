@@ -314,13 +314,13 @@ UiCanvasFileObject* UiCanvasFileObject::LoadCanvasEntitiesFromOldFormatFile(cons
     // fill the new buffer with the new prefix, the old core and the new suffix
     char* insertPoint = newBuffer;
 
-    strncpy(insertPoint, prefixToAdd, prefixToAddLen);
+    azstrncpy(insertPoint, newBufferSize, prefixToAdd, prefixToAddLen);
     insertPoint += prefixToAddLen;
 
-    strncpy(insertPoint, oldBufferCoreStart, oldBufferCoreLen);
+    azstrncpy(insertPoint, newBufferSize - prefixToAddLen, oldBufferCoreStart, oldBufferCoreLen);
     insertPoint += oldBufferCoreLen;
 
-    strncpy(insertPoint, suffixToAdd, suffixToAddLen);
+    azstrncpy(insertPoint, newBufferSize - prefixToAddLen - oldBufferCoreLen, suffixToAdd, suffixToAddLen);
     insertPoint += suffixToAddLen;
 
     insertPoint[0] = '\0';

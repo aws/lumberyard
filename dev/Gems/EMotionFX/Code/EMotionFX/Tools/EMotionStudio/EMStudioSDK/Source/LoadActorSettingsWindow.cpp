@@ -12,6 +12,7 @@
 
 #include "EMStudioManager.h"
 #include "LoadActorSettingsWindow.h"
+#include <MCore/Source/StringConversions.h>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>

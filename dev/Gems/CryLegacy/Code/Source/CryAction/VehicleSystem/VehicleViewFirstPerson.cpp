@@ -14,7 +14,7 @@
 // Description : Implements the first person pit view for vehicles
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "IActorSystem.h"
 #include "ICryAnimation.h"

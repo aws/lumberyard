@@ -429,6 +429,10 @@ namespace AZ
         /// Connect to asset bus for dependencies.
         void ListenForAssetChanges();
 
+        /// This will listen for child asset changes and instruct all other slices in the slice
+        /// hierarchy to do the same.
+        void ListenForDependentAssetChanges();
+
         /// Returns list of the entities that are "new" for the current slice (not based on an existing slice)
         const EntityList& GetNewEntities() const;
 
@@ -445,6 +449,12 @@ namespace AZ
         * @param entities An entity ID set to add the IDs to
         */
         bool GetEntityIds(EntityIdSet& entities);
+
+        /**
+         * Returns the count of all instantiated entities, including the ones based on instances.
+         * If the slice has not been instantiated then 0 is returned.
+         */
+        size_t GetInstantiatedEntityCount() const;
 
         /**
         * Adds ID of every metadata entity that's part of this slice, including those based on instances, to the

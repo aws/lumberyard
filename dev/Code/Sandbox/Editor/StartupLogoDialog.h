@@ -32,7 +32,7 @@ class CStartupLogoDialog
     Q_OBJECT
 
 public:
-    CStartupLogoDialog(QString versionText, QWidget* pParent = nullptr);   // standard constructor
+    CStartupLogoDialog(QString versionText, QString richTextCopyrightNotice, QWidget* pParent = nullptr);   // standard constructor
     ~CStartupLogoDialog();
 
     void SetInfoText(const char* text) override;

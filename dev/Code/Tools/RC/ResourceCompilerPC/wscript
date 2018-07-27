@@ -36,7 +36,6 @@ def build(bld):
                                    bld.Path('Code/Tools/RC/ResourceCompiler'),
                                    bld.Path('Code/Tools/CryCommonTools'),
                                    bld.Path('Code/CryEngine/Cry3DEngine'),
-                                   bld.Path('Code/CryEngine/CryScriptSystem'),
                                    bld.Path('Code/Sandbox')],        
         defines                 = ['CRYTOOLS',
                                    'RESOURCECOMPILERPC_EXPORTS',
@@ -53,11 +52,12 @@ def build(bld):
         
         enable_rtti             = True,
 
+        win_x64_clang_cxxflags  = ['-fexceptions', '-Wno-nonportable-include-path', '-Wno-format'],
+
         #Platform specific
         win_lib                 = ['Gdi32',
                                     'Shell32',
                                     'Ole32'],
-        win_cxxflags            = '/GR',
         win_features            = ['ExternalLyMetrics' ],
         win_use                 = bld.make_aws_library_task_list(['LyMetricsProducer']),
         

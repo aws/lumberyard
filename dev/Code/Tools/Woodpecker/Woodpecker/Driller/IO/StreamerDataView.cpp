@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "StreamerDataView.hxx"
 #include <Woodpecker/Driller/IO/StreamerDataView.moc>

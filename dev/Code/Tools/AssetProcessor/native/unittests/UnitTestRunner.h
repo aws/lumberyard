@@ -142,6 +142,7 @@ namespace UnitTestUtils
         void Setup(QString newDir)
         {
             m_originalDir = QDir::currentPath();
+            newDir = QDir::cleanPath(newDir);
             QDir::setCurrent(newDir);
 
             m_localFileIO = aznew AZ::IO::LocalFileIO();

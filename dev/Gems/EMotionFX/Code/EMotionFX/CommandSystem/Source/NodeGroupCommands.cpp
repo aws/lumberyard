@@ -27,8 +27,8 @@ namespace CommandSystem
     // constructor
     CommandAdjustNodeGroup::CommandAdjustNodeGroup(MCore::Command* orgCommand)
         : MCore::Command("AdjustNodeGroup", orgCommand)
+        , mOldNodeGroup(nullptr)
     {
-        mOldNodeGroup = nullptr;
     }
 
 
@@ -73,7 +73,7 @@ namespace CommandSystem
             mOldNodeGroup->Destroy();
         }
 
-        mOldNodeGroup = nodeGroup->Clone();
+        mOldNodeGroup = aznew EMotionFX::NodeGroup(*nodeGroup);
 
         // check if newName is set and apply new name
         if (parameters.CheckIfHasParameter("newName"))
@@ -174,7 +174,7 @@ namespace CommandSystem
     bool CommandAdjustNodeGroup::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // return if no information about the previous node group was stored
-        if (mOldNodeGroup == nullptr)
+        if (!mOldNodeGroup)
         {
             return false;
         }
@@ -369,8 +369,8 @@ namespace CommandSystem
     // constructor
     CommandRemoveNodeGroup::CommandRemoveNodeGroup(MCore::Command* orgCommand)
         : MCore::Command("RemoveNodeGroup", orgCommand)
+        , mOldNodeGroup(nullptr)
     {
-        mOldNodeGroup = nullptr;
     }
 
 
@@ -415,7 +415,7 @@ namespace CommandSystem
             mOldNodeGroup->Destroy();
         }
 
-        mOldNodeGroup = nodeGroup->Clone();
+        mOldNodeGroup = aznew EMotionFX::NodeGroup(*nodeGroup);
 
         // remove the node group
         actor->RemoveNodeGroup(nodeGroup);
@@ -431,7 +431,7 @@ namespace CommandSystem
     bool CommandRemoveNodeGroup::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // check if old node group exists
-        if (mOldNodeGroup == nullptr)
+        if (!mOldNodeGroup)
         {
             return false;
         }
@@ -453,7 +453,7 @@ namespace CommandSystem
         // add the node to the group again
         if (name == mOldNodeGroup->GetName())
         {
-            actor->AddNodeGroup(mOldNodeGroup->Clone());
+            actor->AddNodeGroup(aznew EMotionFX::NodeGroup(*mOldNodeGroup));
         }
 
         // set the dirty flag back to the old value

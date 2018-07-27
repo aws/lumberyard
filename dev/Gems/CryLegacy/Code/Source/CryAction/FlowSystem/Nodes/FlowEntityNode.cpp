@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "FlowEntityNode.h"
 
 #include <AzCore/Component/TransformBus.h>
@@ -72,7 +72,7 @@ const char* CFlowEntityClass::CopyStr(const char* src)
     {
         int len = strlen(src);
         dst = new char[len + 1];
-        strcpy(dst, src);
+        azstrcpy(dst, len + 1, src);
     }
     return dst;
 }
@@ -3042,7 +3042,7 @@ public:
         for (int i = 0; i < shaderParams.size(); ++i)
         {
             SShaderParam& param = shaderParams[i];
-            if (_stricmp(param.m_Name, paramName) == 0)
+            if (azstricmp(param.m_Name, paramName) == 0)
             {
                 floatValue = 0.0f;
                 switch (param.m_Type)
@@ -3079,7 +3079,7 @@ public:
         for (int i = 0; i < shaderParams.size(); ++i)
         {
             SShaderParam& param = shaderParams[i];
-            if (_stricmp(param.m_Name, paramName) == 0)
+            if (azstricmp(param.m_Name, paramName) == 0)
             {
                 colorValue.Set(0, 0, 0);
                 if (param.m_Type == eType_VECTOR)
@@ -3478,7 +3478,7 @@ public:
             for (int i = 0; i < params.size(); ++i)
             {
                 SShaderParam& param = params[i];
-                if (_stricmp(param.m_Name, paramNameFloat) == 0)
+                if (azstricmp(param.m_Name, paramNameFloat) == 0)
                 {
                     float val = 0.0f;
                     switch (param.m_Type)
@@ -3500,7 +3500,7 @@ public:
                     }
                     ActivateOutput(pActInfo, EOP_Float, val);
                 }
-                if (_stricmp(param.m_Name, paramNameVec3) == 0)
+                if (azstricmp(param.m_Name, paramNameVec3) == 0)
                 {
                     Vec3 val (ZERO);
                     if (param.m_Type == eType_VECTOR)
@@ -3801,7 +3801,7 @@ public:
             for (int i = 0; i < params.size(); ++i)
             {
                 SShaderParam& param = params[i];
-                if (_stricmp(param.m_Name, paramNameFloat) == 0)
+                if (azstricmp(param.m_Name, paramNameFloat) == 0)
                 {
                     float val = 0.0f;
                     switch (param.m_Type)
@@ -3823,7 +3823,7 @@ public:
                     }
                     ActivateOutput(pActInfo, EOP_Float, val);
                 }
-                if (_stricmp(param.m_Name, paramNameVec3) == 0)
+                if (azstricmp(param.m_Name, paramNameVec3) == 0)
                 {
                     Vec3 val (ZERO);
                     if (param.m_Type == eType_VECTOR)
@@ -4044,7 +4044,7 @@ public:
             for (int i = 0; i < params.size(); ++i)
             {
                 SShaderParam& param = params[i];
-                if (_stricmp(param.m_Name, paramNameFloat) == 0)
+                if (azstricmp(param.m_Name, paramNameFloat) == 0)
                 {
                     switch (param.m_Type)
                     {
@@ -4077,7 +4077,7 @@ public:
             {
                 SShaderParam& param = params[i];
 
-                if (_stricmp(param.m_Name, paramNameColor) == 0)
+                if (azstricmp(param.m_Name, paramNameColor) == 0)
                 {
                     if (param.m_Type == eType_VECTOR)
                     {

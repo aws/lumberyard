@@ -505,26 +505,6 @@ extern void adaptFilenameToLinux(char* rAdjustedFilename);
 extern const int comparePathNames(const char* cpFirst, const char* cpSecond, unsigned int len);//returns 0 if identical
 extern void replaceDoublePathFilename(char* szFileName);//removes "\.\" to "\" and "/./" to "/"
 
-
-//////////////////////////////////////////////////////////////////////////
-inline LONG _InterlockedCompareExchange(LONG volatile* Destination, LONG Exchange, LONG Comperand)
-{
-    LONG prev = *Destination;
-    if (*Destination == Comperand)
-    {
-        *Destination = Exchange;
-    }
-    return prev;
-}
-
-//////////////////////////////////////////////////////////////////////////
-inline LONG _InterlockedExchangeAdd(LONG volatile* Addend, LONG Value)
-{
-    LONG prev = *Addend;
-    *Addend += Value;
-    return prev;
-}
-
 //////////////////////////////////////////////////////////////////////////
 extern char* _fullpath(char* absPath, const char* relPath, size_t maxLength);
 //////////////////////////////////////////////////////////////////////////
@@ -533,7 +513,6 @@ extern void _splitpath(const char* inpath, char* drv, char* dir, char* fname, ch
 
 //////////////////////////////////////////////////////////////////////////
 extern int memicmp(LPCSTR s1, LPCSTR s2, DWORD len);
-extern int strcmpi(const char* str1, const char* str2);
 
 extern "C" char* strlwr (char* str);
 extern "C" char* strupr(char* str);

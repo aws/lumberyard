@@ -338,7 +338,6 @@ void CTerrainDialog::OnTerrainGenerate()
         sDefaultParam.fFrequency = 7.0f;  // Feature Size
         sDefaultParam.fFrequencyStep = 2.0f;
         sDefaultParam.fFade = 0.46f;  // Bumpiness
-        sDefaultParam.iCover = 0;
         sDefaultParam.iRandom = 1;  // Variation
         sDefaultParam.iSharpness = 0.999f;
         sDefaultParam.iSmoothness = 0;

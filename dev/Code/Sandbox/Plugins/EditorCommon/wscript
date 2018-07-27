@@ -39,6 +39,8 @@ def build(bld):
         # Platform Specific
         darwin_enable_rtti = True,
 
+        win_x64_clang_cxxflags = ['-Wno-enum-compare-switch'],
+
         # Testing
         test_all_file_list = ['editorcommon_test.waf_files'],
     )

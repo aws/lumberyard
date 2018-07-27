@@ -14,9 +14,10 @@ import subprocess, os, shutil, plistlib
 from utils import *
 from branch_spec import spec_modules
 from gems import Gem
+from qt5 import QT5_LIBS
 from waflib import Context, Build, Utils, Logs, TaskGen
 from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
-from waf_branch_spec import PLATFORMS, CONFIGURATIONS
+from waf_branch_spec import PLATFORMS, CONFIGURATIONS, PLATFORM_CONFIGURATION_FILTER
 from contextlib import contextmanager
 from lumberyard_sdks import get_dynamic_lib_extension, get_platform_lib_prefix
 from waflib.Utils import Timer
@@ -103,22 +104,31 @@ class package_task(Task):
 
     def scan(self):
         """
-        Overrided scans to check for extra dependencies. 
+        Overrided scan to check for extra dependencies. 
         
-        This is done by inspecting the task_generator for its dependencies and
+        This function inspects the task_generator for its dependencies and
         if include_spec_dependencies has been specified to include modules that
         are specified in the spec and are potentially part of the project.
         """
 
-        if getattr(self, 'include_all_libs', False):
-            return ([], [])
+        spec_to_use = getattr(self, 'spec', 'game_and_engine')
+        gem_types = getattr(self, 'gem_types', [Gem.Module.Type.GameModule])
+        include_all_libs = getattr(self, 'include_all_libs', False)
+
+        if include_all_libs and spec_to_use != 'all':
+            spec_to_use = 'all'
 
         self.dependencies = get_dependencies_recursively_for_task_gen(self.bld, self.executable_task_gen)
+        self.dependencies.update(get_spec_dependencies(self.bld, spec_to_use, gem_types))
 
-        if getattr(self, 'include_spec_dependencies', False):
-            spec_to_use = getattr(self, 'spec', 'game_and_engine')
-            gem_types = getattr(self, 'gem_types', [Gem.Module.Type.GameModule])
-            self.dependencies = self.dependencies.union(get_spec_dependencies(self.bld, spec_to_use, gem_types))
+        # get_dependencies_recursively_for_task_gen will not pick up all the
+        # gems so if we want all libs add all the gems to the
+        # dependencies as well
+        if include_all_libs:
+            for gem in GemManager.GetInstance(self.bld).gems:
+                for module in gem.modules:
+                    gem_module_task_gen = self.bld.get_tgen_by_name(module.target_name)
+                    self.dependencies.update(get_dependencies_recursively_for_task_gen(self.bld, gem_module_task_gen))
 
         return (list(self.dependencies), [])
 
@@ -139,6 +149,7 @@ class package_task(Task):
             run_xcode_build(self.bld, self.task_gen_name, self.destination_node) 
 
         self.process_executable()
+        self.process_qt()
         self.process_resources()
         self.process_assets()
 
@@ -156,10 +167,6 @@ class package_task(Task):
 
         if executable_source_location_node != executable_dest_node:
             self.bld.install_files(executable_dest_node.abspath(), self.executable_name, cwd=executable_source_location_node, chmod=Utils.O755, postpone=False)
-            # Remove the built executable since we just copied it into the
-            # package. Leaving it laying around may cause confusion in
-            # customers
-            executable_source_node.delete()
 
             if getattr(self, 'include_all_libs', False):
                 self.bld.symlink_libraries(executable_source_location_node, executable_dest_node.abspath())
@@ -169,12 +176,98 @@ class package_task(Task):
         else:
             Logs.debug("package: source {} = dest {}".format(executable_source_location_node.abspath(), executable_dest_node.abspath()))
 
-        for dir in getattr(self, 'dir_resources', []):
-            Logs.debug("package: extra directory to link/copy into the package is: {}".format(dir))
-            self.bld.create_symlink_or_copy(executable_source_location_node.make_node(dir), executable_dest_node.make_node(dir).abspath(), postpone=False)
-
         if getattr(self, 'finalize_func', None):
             self.finalize_func(self.bld, executable_dest_node)
+
+    def process_qt(self):
+        """
+        Process Qt libraries for packaging for macOS. 
+
+        This function will copy the Qt framework/libraries that an application
+        needs into the specific location for app bundles (Framworks directory)
+        and perform any cleanup on the copied framework to conform to Apple's
+        framework bundle structure. This is required so that App bundles can
+        be properly code signed.
+        """
+        if 'darwin' not in self.bld.platform or 'qtlibs' not in getattr(self, 'dir_resources', []):
+            return
+
+        # Don't need the process_resources method to process the qtlibs folder
+        # since we are handling it
+        self.dir_resources.remove('qtlibs')
+        executable_dest_node = self.outputs[0].parent
+
+        output_folder_node = self.bld.get_output_folders(self.bld.platform, self.bld.config)[0]
+        qt_plugin_source_node = output_folder_node.make_node("qtlibs/plugins")
+        qt_plugins_dest_node = executable_dest_node.make_node("qtlibs/plugins")
+
+        # To be on the safe side check if the destination qtlibs is a link and
+        # unlink it before we creat the plugins copy/link
+        if os.path.islink(qt_plugins_dest_node.parent.abspath()):
+            os.unlink(qt_plugins_dest_node.parent.abspath())
+
+        self.bld.create_symlink_or_copy(qt_plugin_source_node, qt_plugins_dest_node.abspath(), postpone=False)
+
+        qt_libs_source_node = output_folder_node.make_node("qtlibs/lib")
+
+        # Executable dest node will be something like
+        # Application.app/Contents/MacOS. The parent will be Contents, which
+        # needs to contain the Frameworks folder according to macOS Framework
+        # bundle structure 
+        frameworks_node = executable_dest_node.parent.make_node("Frameworks")
+        frameworks_node.mkdir()
+
+        def post_copy_cleanup(dst_framework_node):
+            # Apple does not like any file in the top level directory of an
+            # embedded framework. In 5.6 Qt has perl scripts for their build in the
+            # top level directory so we will just delete them from the embedded
+            # framework since we won't be building anything.
+            pearl_files = dst_framework_node.ant_glob("*.prl")
+            for file in pearl_files:
+                file.delete()
+        
+        # on macOS there is not a clean way to get Qt dependencies on itself,
+        # so we have to scan the lib using otool and then add any of those Qt
+        # dependencies to our set.
+
+        qt_frameworks_to_copy = set()
+
+        qt5_vars = Utils.to_list(QT5_LIBS)
+        for i in qt5_vars:
+            uselib = i.upper()
+            if uselib in self.dependencies:
+                # QT for darwin does not have '5' in the name, so we need to remove it
+                darwin_adjusted_name = i.replace('Qt5','Qt')
+                framework_name = darwin_adjusted_name + ".framework"
+                src = qt_libs_source_node.make_node(framework_name).abspath()
+
+                if os.path.exists(src):
+                    qt_frameworks_to_copy.add(framework_name)
+
+                    # otool -L will generate output like this:
+                    #     @rpath/QtWebKit.framework/Versions/5/QtWebKit (compatibility version 5.6.0, current version 5.6.0)
+                    # cut -d ' ' -f 1 will slice the line by spaces and returns the first field. That results in: @rpath/QtWebKit.framework/Versions/5/QtWebKit
+                    # grep @rpath will make sure we only have QtLibraries and not system libraries
+                    # cut -d '/' -f 2 slices the line by '/' and selects the second field resulting in: QtWebKit.framework
+                    otool_command = "otool -L '%s' | cut -d ' ' -f 1 | grep @rpath.*Qt | cut -d '/' -f 2" % (os.path.join(src, darwin_adjusted_name)) 
+                    output = subprocess.check_output(otool_command, shell=True)
+                    qt_dependent_libs = re.split("\s+", output.strip())
+
+                    for lib in qt_dependent_libs:
+                        qt_frameworks_to_copy.add(lib)
+
+        for framework_name in qt_frameworks_to_copy:
+            src_node = qt_libs_source_node.make_node(framework_name)
+            src = src_node.abspath()
+            dst = frameworks_node.make_node(framework_name).abspath()
+            if os.path.islink(dst):
+                os.unlink(dst)
+            if os.path.isdir(dst):
+                shutil.rmtree(dst)
+            Logs.info("Copying Qt Framework {} to {}".format(src, dst))
+            self.bld.create_symlink_or_copy(src_node, dst)
+            if not os.path.islink(dst):
+                post_copy_cleanup(frameworks_node.make_node(framework_name))
 
     def process_resources(self):
         resources_dest_node = get_resource_node(self.bld.platform, self.executable_name, self.destination_node)
@@ -182,6 +275,13 @@ class package_task(Task):
         if resources:
             resources_dest_node.mkdir()
             self.bld.install_files(resources_dest_node.abspath(), resources)
+
+        executable_source_location_node = self.inputs[0].parent
+        executable_dest_node = self.outputs[0].parent
+
+        for dir in getattr(self, 'dir_resources', []):
+            Logs.debug("package: extra directory to link/copy into the package is: {}".format(dir))
+            self.bld.create_symlink_or_copy(executable_source_location_node.make_node(dir), executable_dest_node.make_node(dir).abspath(), postpone=False)
 
     def process_assets(self):
         """ 
@@ -209,8 +309,12 @@ class package_task(Task):
 
         if assets_source:
             if not os.path.exists(assets_source):
-                Logs.warn("[WARNING] Asset source location {} does not exist on the file system. No assets will be put into the package.".format(assets_source))
-                return
+                Logs.warn("[WARNING] Asset source location {} does not exist on the file system. Creating the assets source folder.".format(assets_source))
+                try:
+                    os.makedirs(assets_source)
+                except OSError as e:
+                    Logs.warn("[WARNING] Creating the assets source folder failed, no assets will be put into the package. {}".format(e))
+                    return
 
             if os.path.isdir(game_assets_node.abspath()):
                 if should_copy_and_not_link(self.bld):
@@ -239,17 +343,6 @@ def execute(self):
     For an executable package to be processed by this context the wscript file must implement the package_[platform] function (i.e. package_darwin_x64), which can call the package_game or package_tool methods on this context. Those functions will create the necessary package_task objects that will be executed after all directories have been recursed through. The package_game/tool functions accept keyword arguments that define how the package_task should packge executable, resources, and assets that are needed. For more information about valid keyword arguments look at the package_task.__init__ method.
     """
 
-    # On windows when waf is run with incredibuild we get called multiple times
-    # but only need to be executed once. The check for the class variable is
-    # here to make sure we run once per package command (either specified on
-    # the command line or when it is auto added). If multiple package commands
-    # are executed on the command line they will get run and this check does
-    # not interfere with that.
-    if getattr(self.__class__, 'is_running', False):
-        return
-    else:
-        self.__class__.is_running = True
-
     # When the package_* functions are called they will set the group to
     # packaging then back to build. This way we can filter out the package
     # tasks and only execute them and not the build task_generators that will
@@ -270,8 +363,8 @@ def execute(self):
     # return so that builds can complete correctly.
     try:
         self.recurse([self.run_dir])
-    except:
-        Logs.info("Could not run the package command as the build has not been run yet.")
+    except Exception as the_error:
+        Logs.info("Could not run the package command: {}.".format(the_error))
         return
 
     # display the time elapsed in the progress bar
@@ -369,6 +462,10 @@ def is_valid_package_request(pkg, **kw):
             Logs.info("Skipping packaging {} because it is not part of the spec {}".format(executable_name, pkg.options.project_spec))
             return False
 
+    if pkg.options.targets and executable_name not in pkg.options.targets.split(','):
+        Logs.debug("package: Skipping packaging {} because it is not part of the specified targets {}".format(executable_name, pkg.options.targets))
+        return False
+
     return True
 
 
@@ -459,27 +556,36 @@ def symlink_dependencies(self, dependencies, dependency_source_location_nodes, e
     lib_extension = get_dynamic_lib_extension(self)
     
     for dependency in dependencies:
-        depend_node = []
+        depend_nodes = []
         source_node = None
         for source_location in dependency_source_location_nodes:
-            depend_node = source_location.ant_glob(lib_prefix + dependency + lib_extension, ignorecase=True) 
-            if depend_node and len(depend_node) > 0:
+            depend_nodes = source_location.ant_glob(lib_prefix + dependency + lib_extension, ignorecase=True) 
+            if depend_nodes and len(depend_nodes) > 0:
                 source_node = source_location
                 break
+
+            elif 'AWS_CPP_SDK_ALL' == dependency:
+                # This is a special dependency that requests all AWS libraries to be dependencies.
+                Logs.debug('package: Processing AWS_CPP_SDK_ALL. Getting all AWS libs...')
+                depend_nodes = source_location.ant_glob("libaws-cpp*.dylib", ignorecase=True) 
+                if depend_nodes and len(depend_nodes) > 0:
+                    source_node = source_location
+                    break
 
             elif 'AWS' in dependency:
                 # AWS libraries in use/use_lib use _ to separate the name,
                 # but the actual library uses '-'. Transform the name and try
                 # the glob again to see if we pick up the dependent library
                 Logs.debug('package: Processing AWS lib so changing name to lib*{}*.dylib'.format(dependency.replace('_','-')))
-                depend_node = source_location.ant_glob("lib*" + dependency.replace('_','-') + "*.dylib", ignorecase=True) 
-                if depend_node and len(depend_node) > 0:
+                depend_nodes = source_location.ant_glob("lib*" + dependency.replace('_','-') + "*.dylib", ignorecase=True) 
+                if depend_nodes and len(depend_nodes) > 0:
                     source_node = source_location
                     break
 
-        if len(depend_node) > 0:
-            Logs.debug('package: found dependency {} in {}'.format(depend_node, source_node.abspath(), depend_node))
-            self.create_symlink_or_copy(depend_node[0], executable_dest_path, postpone=False)
+        if len(depend_nodes) > 0:
+            Logs.debug('package: found dependency {} in {}'.format(depend_nodes, source_node.abspath(), depend_nodes))
+            for dependency_node in depend_nodes:
+                self.create_symlink_or_copy(dependency_node, executable_dest_path, postpone=False)
         else:
             Logs.debug('package: Could not find the dependency {}. It may be a static library, in which case this can be ignored, or a directory that contains dependencies is missing'.format(dependency))
 
@@ -501,18 +607,33 @@ def create_symlink_or_copy(self, source_node, destination_path, **kwargs):
         if os.path.isdir(source_path_and_name):
             Logs.debug("package: -> path is a directory")
             if should_copy_and_not_link(self):
-                # recursively go through the directory and copy its stuff...
-                files_to_copy = source_node.ant_glob("**/*")
-                Logs.debug("package: -> in release so calling install_files on the directory")
-                for file in files_to_copy:
-                    self.install_files(destination_path, file, cwd=source_node, relative_trick=True, **kwargs)
+                # need to delete everything to make sure the copy is fresh
+                # otherwise can get old artifacts laying around
+                if os.path.islink(destination_path):
+                    Logs.debug("package -> removing previous link...")
+                    remove_junction(destination_path)
+                elif os.path.isdir(destination_path): 
+                    Logs.debug("package: -> removing previous directory since we are creating a link...")
+                    shutil.rmtree(destination_path)
+
+                shutil.copytree(source_path_and_name, destination_path, symlinks=True)
             else:
                 Logs.debug("package: -> can create a link")
-                if not os.path.isdir(destination_path):
+                if os.path.isdir(destination_path) and not os.path.islink(destination_path):
+                    Logs.debug("package: -> removing previous directory {} since we are creating a link...".format(destination_path))
+                    shutil.rmtree(destination_path)
+
+                if not os.path.islink(destination_path):
                     Logs.debug("package: -> calling junction_directory for {}. Does it exist? {}".format(destination_path, os.path.isdir(destination_path)))
+
+                    # Make sure that the parent directory exists otherwise the junction_directory will fail
+                    (parent, child) = os.path.split(destination_path)
+                    if not os.path.exists(parent):
+                        os.makedirs(parent)
+
                     junction_directory(source_path_and_name, destination_path)
                 else:
-                    Logs.debug("package: -> skipping creating a link as it exists already")
+                    Logs.debug("package: -> link already exists")
 
         else:
             Logs.debug("package: -> path is a file")
@@ -522,6 +643,7 @@ def create_symlink_or_copy(self, source_node, destination_path, **kwargs):
             else:
                 Logs.debug("package: -> calling symlink_as {} / {} ".format(destination_path, source_node.name))
                 self.symlink_as(destination_path + "/" + source_node.name, source_path_and_name, **kwargs)
+
     except Exception as err:
         Logs.debug("package: -> got an exception {}".format(err))
 
@@ -529,6 +651,11 @@ def create_symlink_or_copy(self, source_node, destination_path, **kwargs):
 for platform in PLATFORMS[Utils.unversioned_sys_platform()]:
     for configuration in CONFIGURATIONS:
         platform_config_key = platform + '_' + configuration
+
+        # for platform/configuration generates invalid configurations if a filter exists, don't generate all combinations
+        if platform in PLATFORM_CONFIGURATION_FILTER:
+            if configuration not in PLATFORM_CONFIGURATION_FILTER[platform]:
+                continue
 
         # Create new class to execute package command with variant
         class_attributes = {

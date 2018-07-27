@@ -15,7 +15,6 @@
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/EventManager.h>
-#include <MCore/Source/AttributeSet.h>
 
 
 //#define EMFX_DETAILED_SAVING_PERFORMANCESTATS
@@ -58,9 +57,7 @@ namespace ExporterLib
         SaveActorHeader(file, targetEndianType);
 
         // save actor info
-        AZStd::string sourceApplication = actor->GetAttributeSet()->GetStringAttribute("sourceApplication");
-        AZStd::string originalFileName  = actor->GetAttributeSet()->GetStringAttribute("originalFileName");
-        SaveActorFileInfo(file, actor->GetNumLODLevels(), actor->GetMotionExtractionNodeIndex(), sourceApplication.c_str(), originalFileName.c_str(), actor->GetName(), /*actor->GetRetargetOffset()*/ 0.0f, actor->GetUnitType(), targetEndianType);
+        SaveActorFileInfo(file, actor->GetNumLODLevels(), actor->GetMotionExtractionNodeIndex(), actor->GetRetargetRootNodeIndex(), "", "", actor->GetName(), actor->GetUnitType(), targetEndianType);
 
         // save nodes
         EMotionFX::GetEventManager().OnSubProgressText("Saving nodes");

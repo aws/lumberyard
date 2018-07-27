@@ -176,7 +176,7 @@ struct parse_context
         if (ctx.bSaving) {                                              \
             sprintf_s(str, strSize, "%d", ((type*)ctx.pobj)->member); } \
         else {                                                          \
-            int i; sscanf(str, "%d", &i);                               \
+            int i; sscanf_s(str, "%d", &i);                               \
             ((type*)ctx.pobj)->member = i;                              \
         } return 0;                                                     \
     }
@@ -310,22 +310,22 @@ struct Serializer
                     case ft_ushort:
                     case ft_uint64:
                     case ft_float:
-                        sscanf(ptr1, g_strFormats[1][pitem->itype], pdata);
+                        sscanf_s(ptr1, g_strFormats[1][pitem->itype], pdata);
                         break;
                     case ft_vector:
                     {
                         Vec3* v = (Vec3*)pdata;
-                        sscanf(ptr1, g_strFormats[1][pitem->itype], &v->x, &v->y, &v->z);
+                        sscanf_s(ptr1, g_strFormats[1][pitem->itype], &v->x, &v->y, &v->z);
                     } break;
                     case ft_quaternion:
                     {
                         quaternionf* q = (quaternionf*)pdata;
-                        sscanf(ptr1, g_strFormats[1][pitem->itype], &q->w, &q->v.x, &q->v.y, &q->v.z);
+                        sscanf_s(ptr1, g_strFormats[1][pitem->itype], &q->w, &q->v.x, &q->v.y, &q->v.z);
                     }   break;
                     case ft_matrix33:
                     {
                         Matrix33& R = *(Matrix33*)pdata;
-                        sscanf(ptr1, g_strFormats[1][pitem->itype], &R.m00, &R.m01, &R.m02, &R.m10, &R.m11, &R.m12, &R.m20, &R.m21, &R.m22);
+                        sscanf_s(ptr1, g_strFormats[1][pitem->itype], &R.m00, &R.m01, &R.m02, &R.m10, &R.m11, &R.m12, &R.m20, &R.m21, &R.m22);
                     } break;
                     case ft_entityptr:
                         *(IPhysicalEntity**)pdata = *ptr1 != 'N' ? ctx.pWorld->GetPhysicalEntityById(atol(ptr1)) : 0;
@@ -376,7 +376,7 @@ struct CMeshSerializer
         else
         {
             Vec3 v;
-            sscanf(str, "%d (%g %g %g", &i, &v.x, &v.y, &v.z);
+            sscanf_s(str, "%d (%g %g %g", &i, &v.x, &v.y, &v.z);
             if (!pMesh->m_pVertices.data)
             {
                 pMesh->m_pVertices.data = new Vec3[pMesh->m_nVertices];
@@ -402,7 +402,7 @@ struct CMeshSerializer
         else
         {
             int idx[3], idmat;
-            if (sscanf(str, "%d (%d %d %d) %d", &i, idx, idx + 1, idx + 2, &idmat) > 4 && !pMesh->m_pIds)
+            if (sscanf_s(str, "%d (%d %d %d) %d", &i, idx, idx + 1, idx + 2, &idmat) > 4 && !pMesh->m_pIds)
             {
                 pMesh->m_pIds = new char[pMesh->m_nTris];
             }
@@ -606,7 +606,7 @@ struct CHeightfieldSerializer
         }
         else
         {
-            sscanf(str, "%d", &g_nHfMats);
+            sscanf_s(str, "%d", &g_nHfMats);
             if (g_nHfMats)
             {
                 for (i = 0; i < g_nHfMats; i++)
@@ -619,7 +619,7 @@ struct CHeightfieldSerializer
                     {
                         ;
                     }
-                    sscanf(str, "%d", g_hfMats + i);
+                    sscanf_s(str, "%d", g_hfMats + i);
                 }
             }
         } return 0;
@@ -723,7 +723,7 @@ struct CTetrahedronSerializer
         }
         else
         {
-            sscanf(str, "%f %f %f %f %f %f %f %f %f", &ptet->Iinv(0, 0), &ptet->Iinv(0, 1), &ptet->Iinv(0, 2),
+            sscanf_s(str, "%f %f %f %f %f %f %f %f %f", &ptet->Iinv(0, 0), &ptet->Iinv(0, 1), &ptet->Iinv(0, 2),
                 &ptet->Iinv(1, 0), &ptet->Iinv(1, 1), &ptet->Iinv(1, 2), &ptet->Iinv(2, 0), &ptet->Iinv(2, 1), &ptet->Iinv(2, 2));
         }
         return ctx.bSaving;
@@ -738,7 +738,7 @@ struct CTetrahedronSerializer
         }
         else
         {
-            sscanf(str, "%d %d %d %d", &ptet->ivtx[0], &ptet->ivtx[1], &ptet->ivtx[2], &ptet->ivtx[3]);
+            sscanf_s(str, "%d %d %d %d", &ptet->ivtx[0], &ptet->ivtx[1], &ptet->ivtx[2], &ptet->ivtx[3]);
         }
         return ctx.bSaving;
     }
@@ -752,7 +752,7 @@ struct CTetrahedronSerializer
         }
         else
         {
-            sscanf(str, "%d %d %d %d", &ptet->ibuddy[0], &ptet->ibuddy[1], &ptet->ibuddy[2], &ptet->ibuddy[3]);
+            sscanf_s(str, "%d %d %d %d", &ptet->ibuddy[0], &ptet->ibuddy[1], &ptet->ibuddy[2], &ptet->ibuddy[3]);
         }
         return ctx.bSaving;
     }
@@ -766,7 +766,7 @@ struct CTetrahedronSerializer
         }
         else
         {
-            sscanf(str, "%f %f %f %f", &ptet->fracFace[0], &ptet->fracFace[1], &ptet->fracFace[2], &ptet->fracFace[3]);
+            sscanf_s(str, "%f %f %f %f", &ptet->fracFace[0], &ptet->fracFace[1], &ptet->fracFace[2], &ptet->fracFace[3]);
         }
         return ctx.bSaving;
     }
@@ -822,7 +822,7 @@ struct CTetrLatticeSerializer
             {
                 pLattice->m_pVtxFlags = new int[pLattice->m_nVtx];
             }
-            sscanf(str, "%d (%g %g %g) %X", &i, &v.x, &v.y, &v.z, &flags);
+            sscanf_s(str, "%d (%g %g %g) %X", &i, &v.x, &v.y, &v.z, &flags);
             pLattice->m_pVtx[i] = v;
             pLattice->m_pVtxFlags[i] = flags;
         }
@@ -1080,7 +1080,7 @@ struct CCrackSerializer
         }
         else
         {
-            sscanf(str, "%f %f %f %f %f %f %f %f %f", &pcrk->Rc(0, 0), &pcrk->Rc(0, 1), &pcrk->Rc(0, 2),
+            sscanf_s(str, "%f %f %f %f %f %f %f %f %f", &pcrk->Rc(0, 0), &pcrk->Rc(0, 1), &pcrk->Rc(0, 2),
                 &pcrk->Rc(1, 0), &pcrk->Rc(1, 1), &pcrk->Rc(1, 2), &pcrk->Rc(2, 0), &pcrk->Rc(2, 1), &pcrk->Rc(2, 2));
         }
         return ctx.bSaving;
@@ -1317,7 +1317,7 @@ struct CPhysicalPlaceholderSerializer
         else
         {
             int id;
-            sscanf(str, "%d", &id);
+            sscanf_s(str, "%d", &id);
             ((CPhysicalPlaceholder*)ctx.pobj)->m_id = -1;
             ctx.pWorld->SetPhysicalEntityId((CPhysicalPlaceholder*)ctx.pobj, id);
         }
@@ -1381,7 +1381,7 @@ struct CPhysicalEntityPartSerializer
         }
         else
         {
-            sscanf(str, "%d", &nMats);
+            sscanf_s(str, "%d", &nMats);
             if (nMats)
             {
                 pgeom->pMatMapping = new int[pgeom->nMats = nMats];
@@ -1395,7 +1395,7 @@ struct CPhysicalEntityPartSerializer
                     {
                         ;
                     }
-                    sscanf(str, "%d", pgeom->pMatMapping + i);
+                    sscanf_s(str, "%d", pgeom->pMatMapping + i);
                 }
             }
             else
@@ -2656,7 +2656,7 @@ struct CAreaSerializer
         {
             Vec2 pt;
             int i;
-            sscanf(str, "%d (%g %g", &i, &pt.x, &pt.y);
+            sscanf_s(str, "%d (%g %g", &i, &pt.x, &pt.y);
             if (!pArea->m_pt)
             {
                 pArea->m_pt = new Vec2[pArea->m_npt + 1];
@@ -2682,7 +2682,7 @@ struct CAreaSerializer
         {
             Vec3 pt;
             int i;
-            sscanf(str, "%d (%g %g %g", &i, &pt.x, &pt.y, &pt.z);
+            sscanf_s(str, "%d (%g %g %g", &i, &pt.x, &pt.y, &pt.z);
             if (!pt3d)
             {
                 pt3d = new Vec3[npt];
@@ -2909,7 +2909,7 @@ struct CPhysicalWorldSerializer
         {
             float bounciness, friction, dynFriction;
             unsigned int flags;
-            sscanf(str, "%d %g %g %g %X", &i, &bounciness, &friction, &dynFriction, &flags);
+            sscanf_s(str, "%d %g %g %g %X", &i, &bounciness, &friction, &dynFriction, &flags);
             i &= NSURFACETYPES - 1;
             pWorld->m_BouncinessTable[i] = bounciness;
             pWorld->m_DynFrictionTable[i] = dynFriction;
@@ -2987,7 +2987,7 @@ struct CPhysicalWorldSerializer
                 ReallocateList(pWorld->m_pGroupIds, 0, pWorld->m_nEntsAlloc);
                 ReallocateList(pWorld->m_pGroupNums, 0, pWorld->m_nEntsAlloc);
             }
-            sscanf(str, "(type %d", &i);
+            sscanf_s(str, "(type %d", &i);
             switch (i)
             {
             case PE_STATIC:
@@ -3073,7 +3073,7 @@ void SerializeGeometries(CPhysicalWorld* pWorld, const char* fname, int bSave)
     char str[128];
     CHeightfield hf;
     parse_context ctx;
-    ctx.f = fopen(fname, bSave ? "wt" : "rt");
+    fopen_s(&ctx.f, fname, bSave ? "wt" : "rt");
     if (!ctx.f)
     {
         return;
@@ -3165,7 +3165,7 @@ void SerializeWorld(CPhysicalWorld* pWorld, const char* fname, int bSave)
     char str[128];
     parse_context ctx;
     ctx.bSaving = bSave;
-    ctx.f = fopen(fname, bSave ? "wt" : "rt");
+    fopen_s(&ctx.f, fname, bSave ? "wt" : "rt");
     if (!ctx.f)
     {
         return;

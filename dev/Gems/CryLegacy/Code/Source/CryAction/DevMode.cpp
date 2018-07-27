@@ -15,7 +15,7 @@
 //               functionality
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "DevMode.h"
 #include "ILevelSystem.h"
 #include "CryAction.h"
@@ -386,7 +386,7 @@ std::vector<STagFileEntry> CDevMode::LoadTagFile()
                 break;
             }
 
-            if (6 != sscanf_s(readBuffer, "%f,%f,%f,%f,%f,%f",
+            if (6 != azsscanf(readBuffer, "%f,%f,%f,%f,%f,%f",
                     &ent.pos.x, &ent.pos.y, &ent.pos.z,
                     &ent.ang.x, &ent.ang.y, &ent.ang.z
                     ))
@@ -466,7 +466,7 @@ void CDevMode::SwitchHUD()
 void CDevMode::GotoSpecialSpawnPoint(int i)
 {
     char cmd[256];
-    _snprintf(cmd, sizeof(cmd) - 1, "#g_localActor:SpawnAtSpawnPoint(\"SpawnPoint%d\")", i);
+    azsnprintf(cmd, sizeof(cmd) - 1, "#g_localActor:SpawnAtSpawnPoint(\"SpawnPoint%d\")", i);
     cmd[sizeof(cmd) - 1] = '\0';
     gEnv->pConsole->ExecuteString(cmd);
 }

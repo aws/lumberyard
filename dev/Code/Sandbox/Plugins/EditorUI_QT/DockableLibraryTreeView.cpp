@@ -323,7 +323,7 @@ bool DockableLibraryTreeView::IsModified()
     return m_treeView->IsLibraryModified();
 }
 
-void DockableLibraryTreeView::Reload()
+bool DockableLibraryTreeView::Reload()
 {
     CRY_ASSERT(m_library);
     QString file = m_library->GetFilename();
@@ -347,8 +347,12 @@ void DockableLibraryTreeView::Reload()
     EBUS_EVENT_RESULT(suspendUndo, EditorLibraryUndoRequestsBus, AddScopedSuspendUndo);
     manager->DeleteLibrary(m_library->GetName(), true);
     m_library = nullptr;
-    m_library = manager->LoadLibrary(file);
-    CRY_ASSERT(m_library);
+    m_library = manager->LoadLibrary(file, true);
+    if (!m_library)
+    {
+        return false;
+    }
+
     m_treeView->SetLibrary(m_library);
 
     blockSignals(true);
@@ -357,6 +361,8 @@ void DockableLibraryTreeView::Reload()
         m_treeView->SelectItem(selectedItemPaths.takeFirst());
     }
     blockSignals(false);
+
+    return true;
 }
 
 void DockableLibraryTreeView::SelectItemFromName(const QString& nameWithoutLibrary, bool forceSelection)

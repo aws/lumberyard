@@ -189,7 +189,6 @@ void UiFaderComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiFaderBus>("UiFaderBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetFadeValue", &UiFaderBus::Events::GetFadeValue)
             ->Event("SetFadeValue", &UiFaderBus::Events::SetFadeValue)
             ->Event("Fade", &UiFaderBus::Events::Fade)
@@ -199,7 +198,6 @@ void UiFaderComponent::Reflect(AZ::ReflectContext* context)
         behaviorContext->Class<UiFaderComponent>()->RequestBus("UiFaderBus");
 
         behaviorContext->EBus<UiFaderNotificationBus>("UiFaderNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiFaderNotificationBusHandler>();
     }
 }

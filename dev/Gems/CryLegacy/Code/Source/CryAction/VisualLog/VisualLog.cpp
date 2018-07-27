@@ -15,7 +15,7 @@
 //               in the Editor Visual Log Viewer
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "VisualLog.h"
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/std/functional.h>
@@ -242,7 +242,7 @@ bool CVisualLog::OpenLogs()
 
     // Now create directory
     char sLogPath[256];
-    _snprintf(sLogPath, sizeof(sLogPath), "%s\\%s%04d", m_sLogFolder.c_str(), m_sLogFolder.c_str(), iSeqNum);
+    azsnprintf(sLogPath, sizeof(sLogPath), "%s\\%s%04d", m_sLogFolder.c_str(), m_sLogFolder.c_str(), iSeqNum);
     if (!gEnv->pFileIO->CreatePath(sLogPath))
     {
         GameWarning("[VisualLog] Unable to create directory for log files: %s", sLogPath);
@@ -253,9 +253,9 @@ bool CVisualLog::OpenLogs()
     m_iLogFolderNum = iSeqNum;
 
     char sLogFileName[256];
-    _snprintf(sLogFileName, sizeof(sLogFileName), "%s\\%s%04d.log", m_sLogPath.c_str(), m_sLogFolder.c_str(), m_iLogFolderNum);
+    azsnprintf(sLogFileName, sizeof(sLogFileName), "%s\\%s%04d.log", m_sLogPath.c_str(), m_sLogFolder.c_str(), m_iLogFolderNum);
     char sLogParamsFileName[256];
-    _snprintf(sLogParamsFileName, sizeof(sLogParamsFileName), "%s\\%s%04d_params.log", m_sLogPath.c_str(), m_sLogFolder.c_str(), m_iLogFolderNum);
+    azsnprintf(sLogParamsFileName, sizeof(sLogParamsFileName), "%s\\%s%04d_params.log", m_sLogPath.c_str(), m_sLogFolder.c_str(), m_iLogFolderNum);
 
     // Open Log Files
     m_logFileHandle = fxopen(sLogFileName, "w");
@@ -314,12 +314,12 @@ bool CVisualLog::UpdateLogs()
     }
 
     // Do some checks to make sure logging parameters haven't been tampered with
-    if (_stricmp(m_sFormat,  m_pCVVisualLogImageFormat->GetString()))
+    if (azstricmp(m_sFormat,  m_pCVVisualLogImageFormat->GetString()))
     {
         // Attempted image file format change during capture session, put it back
         m_pCVVisualLogImageFormat->Set(m_sFormat);
     }
-    if (_stricmp(m_sLogFolder,  m_pCVVisualLogFolder->GetString()))
+    if (azstricmp(m_sLogFolder,  m_pCVVisualLogFolder->GetString()))
     {
         // Attempted log folder change during capture session, put it back
         m_pCVVisualLogFolder->Set(m_sLogFolder);
@@ -328,10 +328,10 @@ bool CVisualLog::UpdateLogs()
     m_iLogFrameNum++;
 
     char sImageFileName[256];
-    _snprintf(sImageFileName, sizeof(sImageFileName), "Frame%06d.%s", m_iLogFrameNum, m_sFormat.c_str());
+    azsnprintf(sImageFileName, sizeof(sImageFileName), "Frame%06d.%s", m_iLogFrameNum, m_sFormat.c_str());
 
     char sImageFullFileName[512];
-    _snprintf(sImageFullFileName, sizeof(sImageFullFileName), "%s\\%s", m_sLogPath.c_str(), sImageFileName);
+    azsnprintf(sImageFullFileName, sizeof(sImageFullFileName), "%s\\%s", m_sLogPath.c_str(), sImageFileName);
     m_pCV_capture_file_name->Set(sImageFullFileName);
 
     // Write log for this frame
@@ -370,7 +370,7 @@ void CVisualLog::Log(const char* format, ...)
     char    szBuffer[MAX_WARNING_LENGTH];
 
     va_start(ArgList, format);
-    vsprintf_s(szBuffer, format, ArgList);
+    azvsprintf(szBuffer, format, ArgList);
     va_end(ArgList);
 
     // Add log to buffer
@@ -399,7 +399,7 @@ void CVisualLog::Log(const SVisualLogParams& params, const char* format, ...)
     char    szParamsBuffer[256];
 
     va_start(ArgList, format);
-    vsprintf_s(szBuffer, format, ArgList);
+    azvsprintf(szBuffer, format, ArgList);
     va_end(ArgList);
 
     // Add log to buffer
@@ -412,28 +412,28 @@ void CVisualLog::Log(const SVisualLogParams& params, const char* format, ...)
     m_sLogParamsBuffer += "[";
     if (params.color != m_defaultParams.color)
     {
-        _snprintf(szParamsBuffer, sizeof(szParamsBuffer), "color(%0.3f,%0.3f,%0.3f,%0.3f)",
+        azsnprintf(szParamsBuffer, sizeof(szParamsBuffer), "color(%0.3f,%0.3f,%0.3f,%0.3f)",
             params.color.r, params.color.g, params.color.b, params.color.a);
         m_sLogParamsBuffer += szParamsBuffer;
         bComma = true;
     }
     if (params.size != m_defaultParams.size)
     {
-        _snprintf(szParamsBuffer, sizeof(szParamsBuffer), "%ssize(%0.3f)",
+        azsnprintf(szParamsBuffer, sizeof(szParamsBuffer), "%ssize(%0.3f)",
             bComma ? "," : "", max(0.1f, params.size));
         m_sLogParamsBuffer += szParamsBuffer;
         bComma = true;
     }
     if (params.column != m_defaultParams.column)
     {
-        _snprintf(szParamsBuffer, sizeof(szParamsBuffer), "%scolumn(%d)",
+        azsnprintf(szParamsBuffer, sizeof(szParamsBuffer), "%scolumn(%d)",
             bComma ? "," : "", max(1, params.column));
         m_sLogParamsBuffer += szParamsBuffer;
         bComma = true;
     }
     if (params.alignColumnsToThis != m_defaultParams.alignColumnsToThis)
     {
-        _snprintf(szParamsBuffer, sizeof(szParamsBuffer), "%salign_columns_to_this(%d)",
+        azsnprintf(szParamsBuffer, sizeof(szParamsBuffer), "%salign_columns_to_this(%d)",
             bComma ? "," : "", params.alignColumnsToThis ? 1 : 0);
         m_sLogParamsBuffer += szParamsBuffer;
         bComma = true;

@@ -38,6 +38,7 @@ def build(bld):
                            ],
             use_required_gems    = True,
 
+            win_x64_clang_cxxflags = ['-Wno-ignored-pragmas'],
         ),
 
         win_features        = ['crcfix'],

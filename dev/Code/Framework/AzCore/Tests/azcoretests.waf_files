@@ -42,6 +42,7 @@
             "AZStd/Allocators.cpp",
             "AZStd/Atomics.cpp",
             "AZStd/Any.cpp",
+            "AZStd/CreateDestroy.cpp",
             "AZStd/ConcurrentContainers.cpp",
             "AZStd/DequeAndSimilar.cpp",
             "AZStd/Examples.cpp",

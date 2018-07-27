@@ -16,10 +16,13 @@
 #include "ActorInstance.h"
 #include "Node.h"
 #include "TransformData.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(AttachmentSkin, AttachmentAllocator, 0)
+
     // constructor for a skin attachment
     AttachmentSkin::AttachmentSkin(ActorInstance* attachToActorInstance, ActorInstance* attachment)
         : Attachment(attachToActorInstance, attachment)
@@ -37,7 +40,7 @@ namespace EMotionFX
     // create a skin attachment
     AttachmentSkin* AttachmentSkin::Create(ActorInstance* attachToActorInstance, ActorInstance* attachment)
     {
-        return new AttachmentSkin(attachToActorInstance, attachment);
+        return aznew AttachmentSkin(attachToActorInstance, attachment);
     }
 
 

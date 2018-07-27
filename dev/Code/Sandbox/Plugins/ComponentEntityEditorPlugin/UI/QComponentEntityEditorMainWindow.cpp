@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "UI/QComponentEntityEditorMainWindow.h"
 
 #include <AzCore/Component/Entity.h>

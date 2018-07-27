@@ -27,7 +27,7 @@ namespace EMStudio
         : GraphNode(node->GetName())
     {
         mEMFXNode           = node;
-        mID                 = node->GetID();
+        m_id                = node->GetId();
         mCanHaveChildren    = node->GetCanHaveChildren();
         mHasVisualGraph     = node->GetHasVisualGraph();
         mPlugin             = plugin;

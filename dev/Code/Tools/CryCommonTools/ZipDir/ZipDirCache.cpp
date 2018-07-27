@@ -15,7 +15,7 @@
 #include <smartptr.h>
 #include "FileUtil.h"
 #include "ZipFileFormat.h"
-#include "ZipDirStructures.h"
+#include "zipdirstructures.h"
 #include "ZipDirTree.h"
 #include "ZipDirCache.h"
 #include "ZipDirFind.h"
@@ -264,7 +264,7 @@ bool ZipDir::Cache::UnpakToDiskInternal(ZipDir::DirHeader* folder, const string&
             continue;
         }
 
-        std::vector<byte> buffer(fileEntry->desc.lSizeUncompressed);
+        AZStd::vector<AZ::u8> buffer(fileEntry->desc.lSizeUncompressed);
         if (ReadFile(fileEntry, nullptr, buffer.data()) == ZD_ERROR_SUCCESS)
         {
             file.Write(buffer.data(), buffer.size());

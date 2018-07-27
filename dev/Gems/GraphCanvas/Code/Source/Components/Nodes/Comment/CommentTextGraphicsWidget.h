@@ -124,15 +124,19 @@ namespace GraphCanvas
 
         void UpdateSizing();
         void SubmitValue();
+        void UpdateSizePolicies();
         
         bool sceneEventFilter(QGraphicsItem*, QEvent* event);
 
         const AZ::EntityId& GetEntityId() const { return m_entityId; }
+        void SetupProxyWidget();
+        void CleanupProxyWidget();
 
     private:
         CommentTextGraphicsWidget(const CommentTextGraphicsWidget&) = delete;
 
         CommentMode m_commentMode;
+        AZStd::string m_commentText;
 
         bool m_editable;
         bool m_layoutLock;
@@ -148,8 +152,6 @@ namespace GraphCanvas
         
         QPointF m_initialClick;
         bool m_pressed;
-
-        QTimer m_timer;
 
         AZ::EntityId m_entityId;
     };

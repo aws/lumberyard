@@ -23,8 +23,6 @@
 #include "3dEngine.h"
 #include "ClipVolumeManager.h"
 
-#include <IJobManager_JobDelegator.h>
-
 template<class T>
 class SaveRestore
 {
@@ -506,7 +504,7 @@ bool CParticle::RenderGeometry(SRendParams& RenParamsShared, SParticleVertexCont
         RenParamsShared.AmbientColor.b *= cColor.b;
         RenParamsShared.fAlpha = cColor.a;
 
-        const float MotionBlurAlphaMin = 0.9;
+        const float MotionBlurAlphaMin = 0.9f;
         if (RenParamsShared.fAlpha >= MotionBlurAlphaMin && params.eBlendType == ParticleParams::EBlend::Opaque)
         {
             RenParamsShared.dwFObjFlags |= FOB_DYNAMIC_OBJECT | FOB_MOTION_BLUR;
@@ -878,28 +876,41 @@ void CParticle::GetRenderMatrix(Vec3& vX, Vec3& vY, Vec3& vZ, Vec3& vT, const Qu
     }
 
     // Only apply aspect ratio to x scale for non-geometry particles (Geometry particles are always uniformly scaled off sizeY parameter).
-    float aspect = 1.0f;
-    if (!(params.nEnvFlags & REN_GEOMETRY))
+    float aspectXY = 1.0f; 
+    float aspectZY = 1.0f;
+    float sizeX = params.fSizeX.GetValueFromMod(m_BaseMods.SizeX, fRelativeAge);
+    float sizeY = params.fSizeY.GetValueFromMod(m_BaseMods.SizeY, fRelativeAge); 
+
+    if (abs(sizeY) < 0.0001f || abs(m_sizeScale.y) < 0.0001f)
     {
-        float sizeX = params.fSizeX.GetValueFromMod(m_BaseMods.SizeX, fRelativeAge);
-        float sizeY = params.fSizeY.GetValueFromMod(m_BaseMods.SizeY, fRelativeAge);
-        if (abs(sizeY) < 0.0001f || abs(m_sizeScale.y) < 0.0001f)
+        aspectXY = 0;
+        aspectZY = 0;
+    }
+    else
+    {
+        aspectXY = (sizeX / sizeY) * (m_sizeScale.x / m_sizeScale.y);
+        if (params.nEnvFlags & REN_GEOMETRY)
         {
-            aspect = 0;
-        }
-        else
-        {
-            aspect = (sizeX / sizeY) * (m_sizeScale.x / m_sizeScale.y);
+            float sizeZ = params.fSizeZ.GetValueFromMod(m_BaseMods.SizeZ, fRelativeAge);
+            aspectZY = (sizeZ / sizeY) * (m_sizeScale.z / m_sizeScale.y);
         }
     }
 
-    // Scale axes by particle size, and texture aspect/thickness
-    Vec3 vScale
-    (
-        RenderData.fSize * Context.m_vTexAspect.x * (m_bHorizontalFlippedTexture ? -1.f : 1.f) * aspect,
-        RenderData.fSize * params.fThickness,
-        RenderData.fSize * Context.m_vTexAspect.y * (m_bVerticalFlippedTexture ? -1.f : 1.f)
-    );
+    Vec3 vScale;
+    if (!(params.nEnvFlags & REN_GEOMETRY))
+    {
+        // Scale axes by particle size, and texture aspect/thickness
+        vScale = Vec3(
+            RenderData.fSize * Context.m_vTexAspect.x * (m_bHorizontalFlippedTexture ? -1.f : 1.f) * aspectXY,
+            RenderData.fSize * params.fThickness,
+            RenderData.fSize * Context.m_vTexAspect.y * (m_bVerticalFlippedTexture ? -1.f : 1.f)
+        );
+    }
+    else
+    {
+        //for geometry particle, we used scale for three axis 
+        vScale = Vec3(RenderData.fSize * aspectXY, RenderData.fSize, RenderData.fSize * aspectZY);
+    }
 
     vX *= vScale.x;
     vY *= vScale.y;
@@ -930,6 +941,26 @@ void CParticle::GetRenderMatrix(Vec3& vX, Vec3& vY, Vec3& vZ, Vec3& vT, const Qu
     if (params.fPivotY)
     {
         vT += vZ * (params.fPivotY.GetValueFromMod(m_BaseMods.PivotY, fRelativeAge) * Context.m_fPivotYScale);
+    }
+
+    //geometry paritcle's scale and pivot are using mesh obj's space
+    if (params.nEnvFlags & REN_GEOMETRY)
+    {
+        if (params.fPivotY)
+        {
+            vT += vY * (params.fPivotY.GetValueFromMod(m_BaseMods.PivotY, fRelativeAge));
+        }
+        if (params.fPivotZ)
+        {
+            vT += vZ * (params.fPivotZ.GetValueFromMod(m_BaseMods.PivotZ, fRelativeAge));
+        }
+    }
+    else
+    {
+        if (params.fPivotY)
+        {
+            vT += vZ * (params.fPivotY.GetValueFromMod(m_BaseMods.PivotY, fRelativeAge) * Context.m_fPivotYScale);
+        }
     }
 }
 
@@ -1176,7 +1207,7 @@ void CParticle::CreateBeamVertices(SLocalRenderVertices& alloc, SParticleVertexC
     }
     else if (IsSegmentEdge()) //last call on beam emitters
     {
-        FinishBeam(alloc, context);
+        FinishBeam(alloc, context, baseVert);
     }
     else // all other calls
     {
@@ -1199,20 +1230,20 @@ void CParticle::InitBeam(SLocalRenderVertices& alloc, SParticleVertexContext& co
 void CParticle::AddSegmentToBeam(SLocalRenderVertices& alloc, SParticleVertexContext& context, SVF_Particle& baseVert) const
 {
     alloc.AddQuadIndices(2, context.m_uVertexFlags & FOB_ALLOW_TESSELLATION);
-    AlignVert(context.m_PrevVert, context.m_Params, m_segmentStep * 0.5f);
-    alloc.AddDualVertices(context.m_PrevVert);
+    AlignVert(baseVert, context.m_Params, m_segmentStep * 0.5f);
+    alloc.AddDualVertices(baseVert);
     context.m_vPrevPos += m_segmentStep;
     context.m_PrevVert = baseVert;
     context.m_nSequenceParticles++;
 }
 
-void CParticle::FinishBeam(SLocalRenderVertices& alloc, SParticleVertexContext& context) const
+void CParticle::FinishBeam(SLocalRenderVertices& alloc, SParticleVertexContext& context, SVF_Particle& baseVert) const
 {
     if (context.m_nSequenceParticles++ > 0)
     {
         // End of connected polygon
-        AlignVert(context.m_PrevVert, context.m_Params, m_segmentStep);
-        alloc.AddDualVertices(context.m_PrevVert);
+        AlignVert(baseVert, context.m_Params, m_segmentStep);
+        alloc.AddDualVertices(baseVert);
         alloc.AddQuadIndices(4, context.m_uVertexFlags & FOB_ALLOW_TESSELLATION);
     }
     context.m_nSequenceParticles = 0;
@@ -1310,6 +1341,25 @@ Vec2 CParticle::CalculateConnectedTextureCoords(SParticleVertexContext& context)
     return texOffset;
 }
 
+void CParticle::ApplyCameraNonFacingFade(const SParticleVertexContext& context, SVF_Particle& vertex) const
+{
+    if (context.m_Params.bCameraNonFacingFade && 
+        context.m_CamInfo.pCamera && 
+        // Optimization because bCameraNonFacingFade won't have any impact when all particles are camera-facing
+        context.m_Params.eFacing != context.m_Params.eFacing.Camera &&
+        // Probably this code path won't be hit when eFacing is Decal but just in case...
+        context.m_Params.eFacing != context.m_Params.eFacing.Decal
+        )
+    {
+        const Vec3 particleToCamera = (context.m_vCamPos - vertex.xyz).normalized();
+        const Vec3 particleNormal = vertex.xaxis.cross(vertex.yaxis).normalized();
+
+        const float dot = particleToCamera.dot(particleNormal);
+        const float fade = context.m_Params.bCameraNonFacingFade.fFadeCurve.GetValue(abs(dot));
+        vertex.color.a = static_cast<uint8>(vertex.color.a * fade);
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////
 void CParticle::SetVertices(SLocalRenderVertices& alloc, SParticleVertexContext& Context, uint8 uAlpha) const
 {
@@ -1345,19 +1395,16 @@ void CParticle::SetVertices(SLocalRenderVertices& alloc, SParticleVertexContext&
                 AlignVert(Context.m_PrevVert, params, (BaseVert.xyz - Context.m_vPrevPos) * 0.5f);
             }
 
-
-            if (Context.m_Params.bCameraNonFacingFade && m_pFadeEmitterState)
-            {
-                float dot = m_pFadeEmitterState->m_fFadeEmitterDot;
-                BaseVert.color.a = float_to_ufrac8(params.bCameraNonFacingFade.fFadeCurve.GetValue(ufrac8_to_float(BaseVert.color.a) * dot));
-            }
-
+            
             Context.m_PrevVert.color.a = BaseVert.color.a;
-            alloc.AddDualVertices(Context.m_PrevVert);
-            Context.m_vPrevPos = Context.m_PrevVert.xyz;
-        }
-        else
-        {
+
+            ApplyCameraNonFacingFade(Context, Context.m_PrevVert);
+            
+			alloc.AddDualVertices(Context.m_PrevVert);
+			Context.m_vPrevPos = Context.m_PrevVert.xyz;
+		}
+		else
+		{
             //skip fade step for beams
             Context.m_PrevVert.color.a = 0;
             FinishConnectedSequence(alloc, Context);
@@ -1370,10 +1417,8 @@ void CParticle::SetVertices(SLocalRenderVertices& alloc, SParticleVertexContext&
 
         return;
     }
-    else if (Context.m_Params.bIsCameraNonFacingFadeParticle)
-    {
-        BaseVert.color.a = float_to_ufrac8(1.0f - params.bCameraNonFacingFade.fFadeCurve.GetValue(ufrac8_to_float(BaseVert.color.a) * m_pFadeEmitterState->m_fFadeEmitterDot));
-    }
+
+    ApplyCameraNonFacingFade(Context, BaseVert);
 
     if (m_aPosHistory)
     {
@@ -1399,45 +1444,6 @@ void CParticle::SetVertices(SLocalRenderVertices& alloc, SParticleVertexContext&
             alloc.AddQuadIndices();
         }
     }
-}
-
-void CParticle::CalculateTrailEmitterFade(SParticleVertexContext& Context)
-{
-    ResourceParticleParams const& params = Context.m_Params;
-
-    if (m_pFadeEmitterState == nullptr)
-    {
-        return;
-    }
-
-    float fRelativeAge = GetRelativeAge();
-
-    SParticleRenderData RenderData;
-    ComputeRenderData(RenderData, Context);
-
-    SVF_Particle FadeVert;
-
-    SetVertexLocation(FadeVert, m_Loc, RenderData, Context);
-
-    // Connected to previous particle. Write previous vertex, aligning to neighboring particles.
-    if (Context.m_nSequenceParticles++ == 0)
-    {
-        // Write first vertex
-        Context.m_PrevVert = FadeVert;
-        AlignVert(Context.m_PrevVert, params, (FadeVert.xyz - Context.m_PrevVert.xyz));
-    }
-    else
-    {
-        // Write subsequent vertex. Use the same value from CParticle::SetVertices()
-        AlignVert(Context.m_PrevVert, params, (FadeVert.xyz - Context.m_vPrevPos) * 0.5f);
-    }
-
-    Vec3 particleNormal = Context.m_PrevVert.xaxis.normalized() ^ Context.m_PrevVert.yaxis.normalized();
-    Vec3 camToParticle = (m_Loc.t - Context.m_vCamPos).normalized();
-    m_pFadeEmitterState->m_fFadeEmitterDot = abs(particleNormal.Dot(camToParticle));
-
-    Context.m_vPrevPos = Context.m_PrevVert.xyz;
-    Context.m_PrevVert = FadeVert;
 }
 
 void CParticle::SetTailVertices(const SVF_Particle& BaseVert, SParticleRenderData RenderData, SLocalRenderVertices& alloc, SParticleVertexContext const& Context) const
@@ -1582,21 +1588,6 @@ PREFAST_SUPPRESS_WARNING(6262)     // Function uses '33724' bytes of stack: exce
     assert(!NeedsUpdate());
 
     uint8 uAlphaCullMask = (Context.m_Params.IsConnectedParticles()) ? 1 : 0;
-
-    if (GetParams().bCameraNonFacingFade)
-    {
-        for (ParticleList<CParticle>::iterator pPart(m_Particles); pPart; ++pPart, ++auParticleAlpha)
-        {
-            if (!(*auParticleAlpha | uAlphaCullMask))
-            {
-                // Culled from previous pass
-                continue;
-            }
-
-            pPart->CalculateTrailEmitterFade(Context);
-        }
-        Context.m_nSequenceParticles = 0;
-    }
 
     // Adapter to buffer writes to vmem.
     SLocalRenderVertices alloc(RenderVerts);

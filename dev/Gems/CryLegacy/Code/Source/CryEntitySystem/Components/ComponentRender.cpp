@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "ComponentRender.h"
 #include "Components/IComponentSerialization.h"
 
@@ -27,9 +27,9 @@
 #include <IShaderParamCallback.h>
 
 #include <CryExtension/CryCreateClassInstance.h>
-#include <IJobManager_JobDelegator.h>
 
 #include <AzCore/Jobs/LegacyJobExecutor.h>
+#include <AzCore/std/sort.h>
 
 DECLARE_DEFAULT_COMPONENT_FACTORY(CComponentRender, IComponentRender)
 
@@ -1175,7 +1175,7 @@ void CComponentRender::InvalidateBounds(bool bLocal, bool bWorld)
 void CComponentRender::RegisterCharactersForRendering()
 {
     // remove potential duplicates
-    std::sort(s_arrCharactersToRegisterForRendering.begin(), s_arrCharactersToRegisterForRendering.end());
+    AZStd::sort(s_arrCharactersToRegisterForRendering.begin(), s_arrCharactersToRegisterForRendering.end());
     std::vector<CComponentRender*>::iterator itEnd = std::unique(s_arrCharactersToRegisterForRendering.begin(), s_arrCharactersToRegisterForRendering.end());
 
     for (std::vector<CComponentRender*>::iterator it = s_arrCharactersToRegisterForRendering.begin(); it != itEnd; ++it)

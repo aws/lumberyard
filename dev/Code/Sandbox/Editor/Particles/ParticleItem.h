@@ -16,7 +16,7 @@
 #pragma once
 
 #include "BaseLibraryItem.h"
-#include <I3dEngine.h>
+#include <I3DEngine.h>
 #include <IParticles.h>
 #include <Util/smartptr.h>
 #include <Util/Variable.h>

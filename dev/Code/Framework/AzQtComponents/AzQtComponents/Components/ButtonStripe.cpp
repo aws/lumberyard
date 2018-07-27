@@ -52,7 +52,7 @@ namespace AzQtComponents
             m_gridLayout->addWidget(pushButton, 0, m_gridLayout->columnCount());
             m_buttons.append(pushButton);
 
-            connect(pushButton, &QPushButton::clicked, [this, pushButton] {
+            connect(pushButton, &QPushButton::clicked, this, [this, pushButton] {
                     emit buttonClicked(m_buttons.indexOf(pushButton));
                 });
         }

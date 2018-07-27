@@ -10,6 +10,7 @@
  *
  */
 
+#include <ISystem.h>
 #include <NativeUISystemComponent.h>
 
 #include <AzFramework/API/ApplicationAPI.h>
@@ -39,7 +40,28 @@ namespace NativeUI
             return "";
         }
         
-        [rootViewController presentViewController:alert animated:YES completion:nil];
+        if (gEnv->mMainThreadId != CryGetCurrentThreadId())
+        {
+            #if !defined(_RELEASE)
+                __block dispatch_semaphore_t blockSem = dispatch_semaphore_create(0);
+                // Dialog boxes need to be triggered from the main thread.
+                CFRunLoopPerformBlock(CFRunLoopGetMain(), kCFRunLoopDefaultMode, ^(){
+                    [rootViewController presentViewController:alert animated:YES completion:nil];
+                    while (userSelection.empty())
+                    {
+                        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopOnce);
+                    }
+                    dispatch_semaphore_signal(blockSem);
+                });
+                // Wait till the user responds to the message box.
+                dispatch_semaphore_wait(blockSem, DISPATCH_TIME_FOREVER);
+            #endif
+        }
+        else
+        {
+            [rootViewController presentViewController:alert animated:YES completion:nil];
+        }
+        
         while (userSelection.empty())
         {
             AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopOnce);

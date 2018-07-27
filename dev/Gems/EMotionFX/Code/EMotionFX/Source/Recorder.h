@@ -24,7 +24,7 @@
 #include <MCore/Source/MultiThreadManager.h>
 #include "KeyTrackLinearDynamic.h"
 #include "EventInfo.h"
-
+#include <EMotionFX/Source/AnimGraphNodeId.h>
 
 namespace EMotionFX
 {
@@ -45,7 +45,7 @@ namespace EMotionFX
     class EMFX_API Recorder
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(Recorder, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_RECORDER);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**
@@ -53,14 +53,14 @@ namespace EMotionFX
          */
         struct EMFX_API RecordSettings
         {
-            MCore::Array<ActorInstance*>        mActorInstances;                /**< The actor instances to record, or specify none to record all (default=record all). */
-            MCore::Array<uint32>                mNodeHistoryTypeIDs;            /**< The array of type node type IDs to capture. Empty array means everything. */
-            MCore::Array<uint32>                mNodeHistoryTypeIDsToIgnore;    /**< The array of type node type IDs to NOT capture. Empty array means nothing to ignore. */
+            MCore::Array<ActorInstance*>        mActorInstances;              /**< The actor instances to record, or specify none to record all (default=record all). */
+            AZStd::unordered_set<AZ::TypeId>    mNodeHistoryTypes;            /**< The array of type node type IDs to capture. Empty array means everything. */
+            AZStd::unordered_set<AZ::TypeId>    mNodeHistoryTypesToIgnore;    /**< The array of type node type IDs to NOT capture. Empty array means nothing to ignore. */
             uint32  mFPS;                           /**< The rate at which to sample (default=15). */
             uint32  mNumPreAllocTransformKeys;      /**< Pre-allocate space for this amount of transformation keys per node per actor instance (default=32). */
-            uint32  mInitialAnimGraphAnimBytes;    /**< The number of bytes to allocate to store the anim graph recording (default=2*1024*1024, which is 2mb). This is only used when actually recording anim graph internal state animation. */
+            uint32  mInitialAnimGraphAnimBytes;     /**< The number of bytes to allocate to store the anim graph recording (default=2*1024*1024, which is 2mb). This is only used when actually recording anim graph internal state animation. */
             bool    mRecordTransforms;              /**< Record transformations? (default=true). */
-            bool    mRecordAnimGraphStates;        /**< Record the anim graph internal state? (default=false). */
+            bool    mRecordAnimGraphStates;         /**< Record the anim graph internal state? (default=false). */
             bool    mRecordNodeHistory;             /**< Record the node history? (default=false). */
             bool    mHistoryStatesOnly;             /**< Record only states in the node history? (default=false, and only used when mRecordNodeHistory is true). */
             bool    mRecordScale;                   /**< Record scale changes when recording transforms? */
@@ -69,8 +69,6 @@ namespace EMotionFX
 
             RecordSettings()
             {
-                mActorInstances.SetMemoryCategory(EMFX_MEMCATEGORY_RECORDER);
-                mNodeHistoryTypeIDs.SetMemoryCategory(EMFX_MEMCATEGORY_RECORDER);
                 mFPS                        = 60;
                 mNumPreAllocTransformKeys   = 32;
                 mInitialAnimGraphAnimBytes  = 1 * 1024 * 1024;  // 1 megabyte
@@ -107,7 +105,7 @@ namespace EMotionFX
             EventInfo       mEventInfo;
             uint32          mEventIndex;            /**< The index to use in combination with GetEventManager().GetEvent(index). */
             uint32          mTrackIndex;
-            uint32          mEmitterUniqueID;
+            AnimGraphNodeId mEmitterNodeId;
             uint32          mAnimGraphID;
             uint32          mColor;
             float           mStartTime;
@@ -119,7 +117,7 @@ namespace EMotionFX
                 //mEventCategoryID  = MCORE_INVALIDINDEX32; // currently unused
                 mEventIndex         = MCORE_INVALIDINDEX32;
                 mTrackIndex         = MCORE_INVALIDINDEX32;
-                mEmitterUniqueID    = MCORE_INVALIDINDEX32;
+                mEmitterNodeId      = AnimGraphNodeId();
                 mAnimGraphID        = MCORE_INVALIDINDEX32;
                 mColor              = MCore::GenerateColor();
             }
@@ -137,11 +135,11 @@ namespace EMotionFX
             uint32                  mMotionID;              // the ID of the Motion object used
             uint32                  mTrackIndex;            // the track index
             uint32                  mCachedKey;             // a cached key
-            uint32                  mNodeUniqueID;          // animgraph node unique ID (NOTE: this is NOT the name id returned by AnimGraphNode::GetID(), but the value returned by AnimGraphNode::GetUniqueID())
+            AnimGraphNodeId         mNodeId;                // animgraph node Id
             uint32                  mColor;                 // the node viz color
             uint32                  mTypeColor;             // the node type color
             uint32                  mAnimGraphID;           // the animgraph ID
-            uint32                  mNodeTypeID;            // the node type ID
+            AZ::TypeId              mNodeType;              // the node type (Uuid)
             uint32                  mCategoryID;            // the category ID
             bool                    mIsFinalized;           // is this a finalized item?
 
@@ -152,9 +150,9 @@ namespace EMotionFX
                 mMotionID       = MCORE_INVALIDINDEX32;
                 mTrackIndex     = MCORE_INVALIDINDEX32;
                 mCachedKey      = MCORE_INVALIDINDEX32;
-                mNodeUniqueID   = MCORE_INVALIDINDEX32;
+                mNodeId         = AnimGraphNodeId();
                 mAnimGraphID    = MCORE_INVALIDINDEX32;
-                mNodeTypeID     = MCORE_INVALIDINDEX32;
+                mNodeType       = AZ::TypeId::CreateNull();
                 mCategoryID     = MCORE_INVALIDINDEX32;
                 mColor          = 0xff0000ff;
                 mIsFinalized    = false;
@@ -348,7 +346,7 @@ namespace EMotionFX
         MCore::Array<AnimGraphObject*>          mObjects;
         MCore::Array<AnimGraphNode*>            mActiveNodes;       /**< A temp array to store active animgraph nodes in. */
         MCore::Mutex                            mLock;
-        AZ::Uuid                                m_sessionUuid;
+        AZ::TypeId                              m_sessionUuid;
         float                                   mRecordTime;
         float                                   mLastRecordTime;
         float                                   mCurrentPlayTime;

@@ -14,7 +14,7 @@
 // Description : Vehicle part class that spawns an entity and attaches it to the vehicle.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <IViewSystem.h>
 #include <IItemSystem.h>

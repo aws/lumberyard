@@ -109,10 +109,12 @@ namespace AzToolsFramework
             // Requests
             AssetJobsInfoRequest::Reflect(context);
             AssetJobLogRequest::Reflect(context);
+            GetScanFoldersRequest::Reflect(context);
 
             // Responses
             AssetJobsInfoResponse::Reflect(context);
             AssetJobLogResponse::Reflect(context);
+            GetScanFoldersResponse::Reflect(context);
 
             //JobInfo
             AzToolsFramework::AssetSystem::JobInfo::Reflect(context);
@@ -122,7 +124,7 @@ namespace AzToolsFramework
             if (serialize)
             {
                 serialize->Class<AssetSystemComponent, AZ::Component>()
-                    ->SerializerForEmptyClass();
+                    ;
             }
         }
 
@@ -297,6 +299,27 @@ namespace AzToolsFramework
                 watchFolder = response.m_rootFolder;
             }
             return response.m_found;
+        }
+
+        bool AssetSystemComponent::GetScanFolders(AZStd::vector<AZStd::string>& scanFolders)
+        {
+            AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+            if (!engineConnection || !engineConnection->IsConnected())
+            {
+                return false;
+            }
+
+            GetScanFoldersRequest request;
+            GetScanFoldersResponse response;
+
+            if (!SendRequest(request, response))
+            {
+                AZ_Error("Editor", false, "Failed to send GetScanFolders request");
+                return false;
+            }
+
+            scanFolders.insert(scanFolders.end(), response.m_scanFolders.begin(), response.m_scanFolders.end());
+            return !response.m_scanFolders.empty();
         }
 
         AZ::Outcome<AssetSystem::JobInfoContainer> AssetSystemComponent::GetAssetJobsInfo(const AZStd::string& path, const bool escalateJobs)

@@ -13,51 +13,51 @@
 #include "QtDownloadManager.h"
 #include "QtDownloader.h"
 
-using namespace News;
+namespace News
+{
 
 QtDownloadManager::QtDownloadManager()
-    : QObject() {}
+    : QObject()
+    , m_worker(new QtDownloader) // this will start the thread which does downloads
+{
+    // make sure the response handlers are queued connections as the worker runs in a different thread
+    connect(m_worker, &QtDownloader::failed, this, &QtDownloadManager::failedReply, Qt::QueuedConnection);
+    connect(m_worker, &QtDownloader::successfullyFinished, this, &QtDownloadManager::successfulReply, Qt::QueuedConnection);
+}
 
-QtDownloadManager::~QtDownloadManager() {}
+QtDownloadManager::~QtDownloadManager()
+{
+    // NOTE: we don't delete the QtDownloader; it deletes itself.
+    // We just tell it to stop
+    m_worker->Finish();
+}
 
 void QtDownloadManager::Download(const QString& url,
     std::function<void(QByteArray)> downloadSuccessCallback,
     std::function<void()> downloadFailCallback)
 {
-    QtDownloader* pDownloader;
-    // if there is a free downloader, use it
-    if (m_free.size() > 0)
-    {
-        pDownloader = m_free.pop();
-    }
-    // otherwise create a new one
-    else
-    {
-        pDownloader = new QtDownloader;
-        connect(
-            pDownloader, &QtDownloader::downloadFinishedSignal,
-            this, &QtDownloadManager::downloadFinishedSlot);
-        m_busy.append(pDownloader);
-    }
-
-    pDownloader->Download(url,
-        downloadSuccessCallback,
-        downloadFailCallback);
+    int downloadId = m_worker->Download(url);
+    m_downloads[downloadId] = { downloadSuccessCallback, downloadFailCallback };
 }
 
 void QtDownloadManager::Abort()
 {
-    for (auto downloader : m_busy)
-    {
-        downloader->Abort();
-    }
+    m_worker->Abort();
+    m_downloads.clear();
 }
 
-void QtDownloadManager::downloadFinishedSlot(QtDownloader* pDownloader)
+void QtDownloadManager::successfulReply(int downloadId, QByteArray data)
 {
-    // once finished move QtDownloader to a free stack
-    m_busy.removeAll(pDownloader);
-    m_free.push(pDownloader);
+    m_downloads[downloadId].downloadSuccessCallback(data);
+    m_downloads.remove(downloadId);
 }
+
+void QtDownloadManager::failedReply(int downloadId)
+{
+    m_downloads[downloadId].downloadFailCallback();
+    m_downloads.remove(downloadId);
+}
+
+} // namespace News
 
 #include "NewsShared/ResourceManagement/QtDownloadManager.moc"

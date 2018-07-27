@@ -59,6 +59,7 @@ namespace LmbrCentral
      */
     class BoxShapeDebugDisplayComponent
         : public EntityDebugDisplayComponent
+        , public ShapeComponentNotificationsBus::Handler
     {
     public:
         AZ_COMPONENT(BoxShapeDebugDisplayComponent, "{2B0F198B-6753-4191-A024-2AFE0E228D93}", EntityDebugDisplayComponent)
@@ -68,11 +69,16 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
         // AZ::Component
+        void Activate() override;
+        void Deactivate() override;
         bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
 
         // EntityDebugDisplayComponent
         void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
+
+        // ShapeComponentNotificationsBus
+        void OnShapeChanged(ShapeChangeReasons changeReason) override;
 
     private:
         AZ_DISABLE_COPY_MOVE(BoxShapeDebugDisplayComponent)

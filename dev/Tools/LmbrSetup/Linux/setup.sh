@@ -33,6 +33,7 @@ apt-get install -y libncurses5-dev
 apt-get install -y helix-cli
 apt-get install -y libcurl4-openssl-dev
 apt-get install -y python-pip
+apt-get install -y zlib1g-dev # required for AZCG
 pip install awscli
 
 # Configuration

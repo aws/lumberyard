@@ -14,7 +14,7 @@
 // Description : Checkpoint Save/Load system for Game04
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CheckPointSystem.h"
 
 //engine interfaces
@@ -126,7 +126,7 @@ XmlNodeRef CCheckpointSystem::LoadXMLNode(const char* identifier)
         if (attribName)
         {
             //check name
-            if (!_stricmp(identifier, attribName))
+            if (!azstricmp(identifier, attribName))
             {
                 return child;
             }
@@ -165,7 +165,7 @@ bool CCheckpointSystem::SaveExternalEntity(EntityId id)
 
         //create entity data
         char entityId[16];
-        _snprintf(entityId, sizeof(entityId), "%s%i", "id", id);
+        azsnprintf(entityId, sizeof(entityId), "%s%i", "id", id);
         XmlNodeRef nextEntity = GetISystem()->CreateXmlNode(entityId);
         if (nextEntity)
         {
@@ -258,7 +258,7 @@ void CCheckpointSystem::WriteActorData(XmlNodeRef parentNode)
         {
             EntityId id = pEntity->GetId();
             const char* name = pEntity->GetName(); //we have to rely on names, since Id's change on level reexport
-            _snprintf(buffer, sizeof(buffer), "%s%i", "id", id);
+            azsnprintf(buffer, sizeof(buffer), "%s%i", "id", id);
             activatedActors->setAttr(buffer, name);
         }
     }
@@ -424,7 +424,7 @@ bool CCheckpointSystem::LoadGame(const char* fileName)
     //check for level mismatch
     CryFixedStringT<32> curlevelName = CCryAction::GetCryAction()->GetLevelName();
     RepairLevelName(curlevelName);
-    if (curlevelName.empty() || _stricmp(metaData.m_levelName.c_str(), curlevelName.c_str()))
+    if (curlevelName.empty() || azstricmp(metaData.m_levelName.c_str(), curlevelName.c_str()))
     {
         if (!LoadCheckpointMap(metaData, curlevelName))
         {
@@ -504,7 +504,7 @@ bool CCheckpointSystem::LoadCheckpointMap(const SCheckpointData& metaData, CryFi
 
     curLevelName = CCryAction::GetCryAction()->GetLevelName();
     RepairLevelName(curLevelName);
-    if (_stricmp(metaData.m_levelName.c_str(), curLevelName.c_str()))
+    if (azstricmp(metaData.m_levelName.c_str(), curLevelName.c_str()))
     {
         CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_ERROR, "Failed loaded level %s from checkpoint.", metaData.m_levelName.c_str());
         return false; //still wrong level
@@ -640,23 +640,23 @@ bool CCheckpointSystem::ReadMetaData(XmlNodeRef parentNode, SCheckpointData& met
     {
         data->getAttributeByIndex(i, &key, &value);
 
-        if (!_stricmp("Version", key))
+        if (!azstricmp("Version", key))
         {
             metaData.m_versionNumber = atoi(value);
         }
-        else if (!_stricmp("CheckpointId", key))
+        else if (!azstricmp("CheckpointId", key))
         {
             metaData.m_checkPointId = EntityId(atoi(value));
         }
-        else if (!_stricmp("CheckpointName", key))
+        else if (!azstricmp("CheckpointName", key))
         {
             checkpointName = value;
         }
-        else if (!_stricmp("LevelName", key))
+        else if (!azstricmp("LevelName", key))
         {
             metaData.m_levelName = value;
         }
-        else if (!_stricmp("Timestamp", key))
+        else if (!azstricmp("Timestamp", key))
         {
             metaData.m_saveTime = value;
         }
@@ -915,7 +915,7 @@ bool CCheckpointSystem::RepairEntityId(EntityId& id, const char* pEntityName)
     {
         //test the original entity id
         IEntity* pOriginalEntity = gEnv->pEntitySystem->GetEntity(id);
-        if (pOriginalEntity && !_stricmp(pOriginalEntity->GetName(), pEntityName))
+        if (pOriginalEntity && !azstricmp(pOriginalEntity->GetName(), pEntityName))
         {
             return true; //seems correct
         }
@@ -924,7 +924,7 @@ bool CCheckpointSystem::RepairEntityId(EntityId& id, const char* pEntityName)
         {
             CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_WARNING, "Entity %s in loaded checkpoint could not be found. This means the checkpoint file is not compatible with this level version.", pEntityName);
         }
-        else if (!_stricmp(pNewEntity->GetName(), pEntityName))
+        else if (!azstricmp(pNewEntity->GetName(), pEntityName))
         {
             //if the level was re-exported, the entity id might differ
             CHECKPOINT_RESAVE_NECESSARY = true;
@@ -1118,7 +1118,7 @@ void CCheckpointSystem::ParseSavedFiles(std::vector<string>& saveNames, const ch
                     continue;
                 }
 
-                if (_stricmp(metaData.m_levelName.c_str(), pLevelName))
+                if (azstricmp(metaData.m_levelName.c_str(), pLevelName))
                 {
                     continue;
                 }

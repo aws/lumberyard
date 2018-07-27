@@ -15,17 +15,13 @@
         "Cry3DEngine",
         "CryAction",
         "CryAction_AutoFlowNode",
-        "CryAISystem",
-        "CryAnimation",
         "CryAudioCommon",
         "CryAudioImplNoSound",
         "CryAudioImplWwise",
         "CryCommon",
         "CryFont",
-        "CryInput",
         "CryNetwork",
         "CryPhysics",
-        "CryScriptSystem",
         "CrySoundSystem",
         "CrySystem",
         "CryRenderD3D11",
@@ -33,7 +29,6 @@
         "CryRenderGL",
         "CryRenderMetal",
         "CryRenderNULL",
-        "CryEntitySystem",
         "LmbrAWS"
     ]
 }

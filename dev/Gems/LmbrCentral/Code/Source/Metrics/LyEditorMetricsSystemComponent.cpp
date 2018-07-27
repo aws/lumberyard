@@ -40,6 +40,7 @@ namespace MetricsEventData
     static const char* Redo = "RedoEvent";
     static const char* Clone = "CloneEvent";
     static const char* LegacyEntityCreated = "LegacyEntityCreated";
+    static const char* EditorOperationEvent = "EditorOperation";
 
     // Attribute Keys
     static const char* SliceIdentifier = "SliceId";
@@ -54,6 +55,63 @@ namespace MetricsEventData
     static const char* SourceUuid = "Source";
     static const char* SourceExtension = "Extension";
     static const char* SourceNumberOfProducts = "NumberOfProducts";
+    static const char* EditorOperationName = "Operation";
+
+
+    const char* GetMetricNameForEvent(EEditorNotifyEvent aEventId)
+    {
+        struct EventNameInfo
+        {
+            EEditorNotifyEvent event;
+            const char* name;
+        };
+        static const EventNameInfo s_eventNameMap[] =
+        {
+            { eNotify_OnInit, "OnInit" },
+            { eNotify_OnBeginNewScene, "OnBeginNewScene" },
+            { eNotify_OnEndNewScene, "OnEndNewScene" },
+            { eNotify_OnBeginSceneOpen, "OnBeginSceneOpen" },
+            { eNotify_OnEndSceneOpen, "OnEndSceneOpen" },
+            { eNotify_OnBeginSceneSave, "OnBeginSceneSave" },
+            { eNotify_OnBeginLayerExport, "OnBeginLayerExport" },
+            { eNotify_OnEndLayerExport, "OnEndLayerExport" },
+            { eNotify_OnCloseScene, "OnCloseScene" },
+            { eNotify_OnMissionChange, "OnMissionChange" },
+            { eNotify_OnBeginLoad, "OnBeginLoad" },
+            { eNotify_OnEndLoad, "OnEndLoad" },
+            { eNotify_OnExportToGame, "OnExportToGame" },
+            { eNotify_OnEditModeChange, "OnEditModeChange" },
+            { eNotify_OnEditToolChange, "OnEditToolChange" },
+            { eNotify_OnBeginGameMode, "OnBeginGameMode" },
+            { eNotify_OnEndGameMode, "OnEndGameMode" },
+            { eNotify_OnEnableFlowSystemUpdate, "OnEnableFlowSystemUpdate" },
+            { eNotify_OnDisableFlowSystemUpdate, "OnDisableFlowSystemUpdate" },
+            { eNotify_OnSelectionChange, "OnSelectionChange" },
+            { eNotify_OnPlaySequence, "OnPlaySequence" },
+            { eNotify_OnStopSequence, "OnStopSequence" },
+            { eNotify_OnOpenGroup, "OnOpenGroup" },
+            { eNotify_OnCloseGroup, "OnCloseGroup" },
+            { eNotify_OnTerrainRebuild, "OnTerrainRebuild" },
+            { eNotify_OnBeginTerrainRebuild, "OnBeginTerrainRebuild" },
+            { eNotify_OnEndTerrainRebuild, "OnEndTerrainRebuild" },
+            { eNotify_OnLayerImportBegin, "OnLayerImportBegin" },
+            { eNotify_OnLayerImportEnd, "OnLayerImportEnd" },
+            { eNotify_OnAddAWSProfile, "OnAddAWSProfile" },
+            { eNotify_OnSwitchAWSProfile, "OnSwitchAWSProfile" },
+            { eNotify_OnSwitchAWSDeployment, "OnSwitchAWSDeployment" },
+            { eNotify_OnFirstAWSUse, "OnFirstAWSUse" }
+        };
+
+        for (const EventNameInfo& eventNameInfo : s_eventNameMap)
+        {
+            if (eventNameInfo.event == aEventId)
+            {
+                return eventNameInfo.name;
+            }
+        }
+
+        return nullptr;
+    }
 }
 
 
@@ -76,7 +134,7 @@ namespace LyEditorMetrics
         {
             serialize->Class<LyEditorMetricsSystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
@@ -113,6 +171,24 @@ namespace LyEditorMetrics
         InitializeLegacyEntityList();
         InitializeLegacyScriptEntityList();
         InitializeActionBrowserData();
+    }
+
+    void LyEditorMetricsSystemComponent::OnEditorNotifyEvent(EEditorNotifyEvent event)
+    {
+        if ((event == eNotify_OnSelectionChange) && (m_batchingSelectionStackSize != 0))
+        {
+            m_queuedSelectionChangedEvents++;
+
+            return;
+        }
+
+        const char* eventMetricName = MetricsEventData::GetMetricNameForEvent(event);
+        if (eventMetricName)
+        {
+            auto metricId = LyMetrics_CreateEvent(MetricsEventData::EditorOperationEvent);
+            LyMetrics_AddAttribute(metricId, MetricsEventData::EditorOperationName, eventMetricName);
+            LyMetrics_SubmitEvent(metricId);
+        }
     }
 
     void LyEditorMetricsSystemComponent::BeginUserAction(LyEditorMetricsSystemComponent::NavigationTrigger behaviour)
@@ -258,7 +334,7 @@ namespace LyEditorMetrics
         m_actionTracker->SendMetrics(menuIdentifier, triggerType);
     }
 
-    void LyEditorMetricsSystemComponent::AssetBrowserAction(AzToolsFramework::AssetBrowserActionType actionType, const AZ::Uuid& sourceUuid, const char* extension, int numberOfProducts) 
+    void LyEditorMetricsSystemComponent::AssetBrowserAction(AzToolsFramework::AssetBrowserActionType actionType, const AZ::Uuid& sourceUuid, const char* extension, int numberOfProducts)
     {
         const char* eventName = m_assetBrowserActionMap[actionType].c_str();
 
@@ -305,6 +381,48 @@ namespace LyEditorMetrics
         {
             m_actionTracker->UnregisterAction(action);
         }
+    }
+
+    void LyEditorMetricsSystemComponent::BeginSelectionChange()
+    {
+        BeforeEntitySelectionChanged();
+    }
+
+    void LyEditorMetricsSystemComponent::EndSelectionChange()
+    {
+        AfterEntitySelectionChanged();
+    }
+
+    void LyEditorMetricsSystemComponent::BeforeEntitySelectionChanged()
+    {
+        m_batchingSelectionStackSize++;
+    }
+
+    void LyEditorMetricsSystemComponent::AfterEntitySelectionChanged()
+    {
+        assert(m_batchingSelectionStackSize > 0);
+
+        // check if we had any and deal with them
+        if (m_batchingSelectionStackSize > 0)
+        {
+            m_batchingSelectionStackSize--;
+
+            if ((m_batchingSelectionStackSize == 0) && (m_queuedSelectionChangedEvents > 0))
+            {
+                OnEditorNotifyEvent(eNotify_OnSelectionChange);
+                m_queuedSelectionChangedEvents = 0;
+            }
+        }
+    }
+
+    void LyEditorMetricsSystemComponent::BeforeUndoRedo()
+    {
+        BeforeEntitySelectionChanged();
+    }
+
+    void LyEditorMetricsSystemComponent::AfterUndoRedo()
+    {
+        AfterEntitySelectionChanged();
     }
 
     void LyEditorMetricsSystemComponent::InitializeLegacyEntityList()
@@ -779,7 +897,7 @@ namespace LyEditorMetrics
 
         m_needToFireNavigationEvent = false;
     }
-    
+
     void LyEditorMetricsSystemComponent::SendUndoRedoMetricsEvent(const char* eventName)
     {
         LyMetrics::LyScopedMetricsEvent undoRedoMetricsEvent(eventName,
@@ -798,16 +916,54 @@ namespace LyEditorMetrics
     void LyEditorMetricsSystemComponent::Activate()
     {
         AzToolsFramework::EditorMetricsEventsBus::Handler::BusConnect();
+        AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusConnect();
 
         m_actionTracker = new ActionMetricsTracker();
+
+        IEditor* editor = nullptr;
+        EBUS_EVENT_RESULT(editor, AzToolsFramework::EditorRequests::Bus, GetEditor);
+        if (editor != nullptr)
+        {
+            editor->RegisterNotifyListener(this);
+            m_notifierRegistered = true;
+        }
+        else
+        {
+            AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
+        }
     }
 
     void LyEditorMetricsSystemComponent::Deactivate()
     {
+        if (m_notifierRegistered)
+        {
+            IEditor* editor = nullptr;
+            EBUS_EVENT_RESULT(editor, AzToolsFramework::EditorRequests::Bus, GetEditor);
+            if (editor != nullptr)
+            {
+                editor->UnregisterNotifyListener(this);
+            }
+
+            m_notifierRegistered = false;
+        }
+
         delete m_actionTracker;
         m_actionTracker = nullptr;
 
+        AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+        AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::EditorMetricsEventsBus::Handler::BusDisconnect();
+    }
+
+    void LyEditorMetricsSystemComponent::NotifyIEditorAvailable(IEditor* editor)
+    {
+        if (!m_notifierRegistered)
+        {
+            editor->RegisterNotifyListener(this);
+            m_notifierRegistered = true;
+
+            AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+        }
     }
 }
 

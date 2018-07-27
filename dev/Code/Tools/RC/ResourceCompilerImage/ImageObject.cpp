@@ -957,7 +957,8 @@ ImageObject::~ImageObject()
 
 bool ImageObject::SaveImage(const char* filename, bool bForceDX10) const
 {
-    FILE* const out = fopen(filename, "wb");
+    FILE* out = nullptr; 
+    azfopen(&out, filename, "wb");
     if (!out)
     {
         RCLogError("%s: failed to create file %s", __FUNCTION__, filename);
@@ -1087,7 +1088,8 @@ bool ImageObject::SaveExtendedData(FILE* out, bool bForceDX10) const
 
 bool ImageObject::LoadImage(const char* filename, bool bForceDX10)
 {
-    FILE* const out = fopen(filename, "rb");
+    FILE* out = nullptr; 
+    azfopen(&out, filename, "rb");
     if (!out)
     {
         RCLogError("%s: failed to open file %s", __FUNCTION__, filename);

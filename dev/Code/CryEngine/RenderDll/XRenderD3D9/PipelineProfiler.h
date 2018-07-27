@@ -34,7 +34,7 @@ struct RPProfilerSection
     int8             recLevel;  // Negative value means error in stack
     uint32           numDIPs, numPolys;
     CTimeValue       startTimeCPU, endTimeCPU;
-    CSimpleGPUTimer  gpuTimer;
+    CD3DProfilingGPUTimer  gpuTimer;
 };
 
 struct RPPSectionsFrame

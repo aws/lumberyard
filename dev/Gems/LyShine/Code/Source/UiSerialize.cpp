@@ -291,16 +291,25 @@ namespace UiSerialize
             if (behaviorContext)
             {
                 behaviorContext->Class<UiTransform2dInterface::Anchors>("UiAnchors")
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Constructor<>()
                     ->Constructor<float, float, float, float>()
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Attribute(AZ::Script::Attributes::ConstructorOverride, &UiAnchorsScriptConstructor)
                     ->Property("left", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_left))
                     ->Property("top", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_top))
                     ->Property("right", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_right))
-                    ->Property("bottom", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_bottom));
+                    ->Property("bottom", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_bottom))
+                    ->Method("SetLeft", [](UiTransform2dInterface::Anchors* thisPtr, float left) { thisPtr->m_left = left; })
+                    ->Method("SetTop", [](UiTransform2dInterface::Anchors* thisPtr, float top) { thisPtr->m_top = top; })
+                    ->Method("SetRight", [](UiTransform2dInterface::Anchors* thisPtr, float right) { thisPtr->m_right = right; })
+                    ->Method("SetBottom", [](UiTransform2dInterface::Anchors* thisPtr, float bottom) { thisPtr->m_bottom = bottom; })
+                    ->Method("SetAnchors", [](UiTransform2dInterface::Anchors* thisPtr, float left, float top, float right, float bottom)
+                    {
+                        thisPtr->m_left = left;
+                        thisPtr->m_top = top;
+                        thisPtr->m_right = right;
+                        thisPtr->m_bottom = bottom;
+                    });
             }
         }
 
@@ -361,16 +370,25 @@ namespace UiSerialize
             if (behaviorContext)
             {
                 behaviorContext->Class<UiTransform2dInterface::Offsets>("UiOffsets")
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Constructor<>()
                     ->Constructor<float, float, float, float>()
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Attribute(AZ::Script::Attributes::ConstructorOverride, &UiOffsetsScriptConstructor)
                     ->Property("left", BehaviorValueProperty(&UiTransform2dInterface::Offsets::m_left))
                     ->Property("top", BehaviorValueProperty(&UiTransform2dInterface::Offsets::m_top))
                     ->Property("right", BehaviorValueProperty(&UiTransform2dInterface::Offsets::m_right))
-                    ->Property("bottom", BehaviorValueProperty(&UiTransform2dInterface::Offsets::m_bottom));
+                    ->Property("bottom", BehaviorValueProperty(&UiTransform2dInterface::Offsets::m_bottom))
+                    ->Method("SetLeft", [](UiTransform2dInterface::Offsets* thisPtr, float left) { thisPtr->m_left = left; })
+                    ->Method("SetTop", [](UiTransform2dInterface::Offsets* thisPtr, float top) { thisPtr->m_top = top; })
+                    ->Method("SetRight", [](UiTransform2dInterface::Offsets* thisPtr, float right) { thisPtr->m_right = right; })
+                    ->Method("SetBottom", [](UiTransform2dInterface::Offsets* thisPtr, float bottom) { thisPtr->m_bottom = bottom; })
+                    ->Method("SetOffsets", [](UiTransform2dInterface::Offsets* thisPtr, float left, float top, float right, float bottom)
+                    {
+                        thisPtr->m_left = left;
+                        thisPtr->m_top = top;
+                        thisPtr->m_right = right;
+                        thisPtr->m_bottom = bottom;
+                    });
             }
         }
 
@@ -407,13 +425,22 @@ namespace UiSerialize
             if (behaviorContext)
             {
                 behaviorContext->Class<UiLayoutInterface::Padding>("UiPadding")
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Property("left", BehaviorValueProperty(&UiLayoutInterface::Padding::m_left))
                     ->Property("right", BehaviorValueProperty(&UiLayoutInterface::Padding::m_right))
                     ->Property("top", BehaviorValueProperty(&UiLayoutInterface::Padding::m_top))
-                    ->Property("bottom", BehaviorValueProperty(&UiLayoutInterface::Padding::m_bottom));
+                    ->Property("bottom", BehaviorValueProperty(&UiLayoutInterface::Padding::m_bottom))
+                    ->Method("SetLeft", [](UiLayoutInterface::Padding* thisPtr, int left) { thisPtr->m_left = left; })
+                    ->Method("SetTop", [](UiLayoutInterface::Padding* thisPtr, int top) { thisPtr->m_top = top; })
+                    ->Method("SetRight", [](UiLayoutInterface::Padding* thisPtr, int right) { thisPtr->m_right = right; })
+                    ->Method("SetBottom", [](UiLayoutInterface::Padding* thisPtr, int bottom) { thisPtr->m_bottom = bottom; })
+                    ->Method("SetPadding", [](UiLayoutInterface::Padding* thisPtr, int left, int top, int right, int bottom)
+                    {
+                        thisPtr->m_left = left;
+                        thisPtr->m_top = top;
+                        thisPtr->m_right = right;
+                        thisPtr->m_bottom = bottom;
+                    });
             }
         }
 
@@ -470,7 +497,6 @@ namespace UiSerialize
             UiInteractableComponent::Reflect(behaviorContext);
 
             behaviorContext->EBus<UiLayoutBus>("UiLayoutBus")
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("GetHorizontalChildAlignment", &UiLayoutBus::Events::GetHorizontalChildAlignment)
                 ->Event("SetHorizontalChildAlignment", &UiLayoutBus::Events::SetHorizontalChildAlignment)
                 ->Event("GetVerticalChildAlignment", &UiLayoutBus::Events::GetVerticalChildAlignment)

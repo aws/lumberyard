@@ -738,7 +738,7 @@ namespace CharacterTool {
         const char* filename = m_system->document->LoadedCharacterFilename();
         for (size_t i = 0; i < m_recentCharacters.size(); ++i)
         {
-            if (stricmp(m_recentCharacters[i].c_str(), filename) == 0)
+            if (azstricmp(m_recentCharacters[i].c_str(), filename) == 0)
             {
                 m_recentCharacters.erase(m_recentCharacters.begin() + i);
                 --i;

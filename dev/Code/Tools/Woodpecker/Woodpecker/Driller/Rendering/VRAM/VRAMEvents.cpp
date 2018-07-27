@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "VRAMEvents.h"
 #include "VRAMDataAggregator.hxx"
 

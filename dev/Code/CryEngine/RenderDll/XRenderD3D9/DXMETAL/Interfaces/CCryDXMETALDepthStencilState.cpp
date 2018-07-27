@@ -18,7 +18,7 @@
 #include "CCryDXMETALDepthStencilState.hpp"
 #include "CCryDXMETALDevice.hpp"
 #include "../Implementation/GLState.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 
 CCryDXGLDepthStencilState::CCryDXGLDepthStencilState(const D3D11_DEPTH_STENCIL_DESC& kDesc, CCryDXGLDevice* pDevice)
     : CCryDXGLDeviceChild(pDevice)

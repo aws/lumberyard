@@ -12,9 +12,12 @@
 
 // include required headers
 #include "OutlinerManager.h"
+#include <AzCore/Memory/SystemAllocator.h>
 
 namespace EMStudio
 {
+    AZ_CLASS_ALLOCATOR_IMPL(OutlinerCategoryItem, AZ::SystemAllocator, 0)
+
     OutlinerCategory::~OutlinerCategory()
     {
         const size_t numItems = mItems.size();

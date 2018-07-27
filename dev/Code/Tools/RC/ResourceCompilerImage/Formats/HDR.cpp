@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "../ImageObject.h"  // ImageToProcess
 
@@ -286,12 +286,12 @@ int RGBE_ReadHeader(FILE* fp, uint32* width, uint32* height, rgbe_header_info* i
         {
             break; /* format found so break out of loop */
         }
-        else if (info && (sscanf(buf, "GAMMA=%g", &tempf) == 1))
+        else if (info && (azsscanf(buf, "GAMMA=%g", &tempf) == 1))
         {
             info->gamma = tempf;
             info->valid |= RGBE_VALID_GAMMA;
         }
-        else if (info && (sscanf(buf, "EXPOSURE=%g", &tempf) == 1))
+        else if (info && (azsscanf(buf, "EXPOSURE=%g", &tempf) == 1))
         {
             info->exposure = tempf;
             info->valid |= RGBE_VALID_EXPOSURE;
@@ -326,7 +326,7 @@ int RGBE_ReadHeader(FILE* fp, uint32* width, uint32* height, rgbe_header_info* i
     {
         return rgbe_error(rgbe_read_error, NULL);
     }
-    if (sscanf(buf, "-Y %d +X %d", height, width) < 2)
+    if (azsscanf(buf, "-Y %d +X %d", height, width) < 2)
     {
         return rgbe_error(rgbe_format_error, "missing image size specifier");
     }
@@ -652,7 +652,7 @@ namespace
             };
             for (size_t i = 0; i < sizeof(keysBlackList) / sizeof(keysBlackList[0]); ++i)
             {
-                if (_stricmp(key, keysBlackList[i]) == 0)
+                if (azstricmp(key, keysBlackList[i]) == 0)
                 {
                     return;
                 }
@@ -690,7 +690,7 @@ namespace
                 {
                     break;
                 }
-                if (_stricmp(keyValue.c_str() + 1, defaultProp) == 0) // '+ 1' because defaultProp doesn't have "/" in the beginning
+                if (azstricmp(keyValue.c_str() + 1, defaultProp) == 0) // '+ 1' because defaultProp doesn't have "/" in the beginning
                 {
                     return;
                 }
@@ -727,7 +727,8 @@ namespace ImageHDR
 
         std::unique_ptr<ImageObject> pRet;
 
-        FILE* const pHdrFile = fopen(filenameRead, "rb");
+        FILE* pHdrFile = nullptr; 
+        azfopen(&pHdrFile, filenameRead, "rb");
         if (!pHdrFile)
         {
 #if defined(AZ_PLATFORM_WINDOWS)
@@ -804,7 +805,8 @@ namespace ImageHDR
         uint32 dwWidth, dwHeight, dwMips;
         image.get()->GetExtent(dwWidth, dwHeight, dwMips);
 
-        FILE* const pHdrFile = fopen(filenameWrite, "wb");
+        FILE* pHdrFile = nullptr; 
+        azfopen(&pHdrFile, filenameWrite, "wb");
         if (!pHdrFile)
         {
             return false;

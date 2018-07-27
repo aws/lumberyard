@@ -14,7 +14,7 @@
 // Description : Handles updates of entities against relevant areas.
 
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "Area.h"
 #include "AreaManager.h"
 #include "Components/IComponentAudio.h"

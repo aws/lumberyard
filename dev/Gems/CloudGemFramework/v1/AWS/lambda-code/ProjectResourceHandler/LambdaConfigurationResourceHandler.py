@@ -22,6 +22,8 @@ from zipfile import ZipFile, ZipInfo
 
 # Boto3
 import boto3
+import botocore
+
 from botocore.exceptions import ClientError
 
 # ServiceDirectory
@@ -37,9 +39,9 @@ from cgf_utils import properties
 from cgf_utils import role_utils
 
 CLOUD_GEM_FRAMEWORK = 'CloudGemFramework'
-
 iam = aws_utils.ClientWrapper(boto3.client('iam'))
-s3 = aws_utils.ClientWrapper(boto3.client('s3'), do_not_log_args = ['Body'])
+cfg = botocore.config.Config(read_timeout=70, connect_timeout=70)
+s3 = aws_utils.ClientWrapper(boto3.client('s3', config=cfg), do_not_log_args = ['Body'])
 
 def get_default_policy(project_service_lambda_arn):
     policy = {
@@ -95,7 +97,8 @@ PROPERTIES_SCHEMA = {
             'InterfaceId': properties.String(),
             'Optional': properties.Boolean(default = False)
         }
-    )
+    ),
+    'IgnoreAppendingSettingsToZip': properties.Boolean(default = False)
 }
 
 
@@ -125,7 +128,6 @@ def handler(event, context):
         if request_type == 'Create':
 
             project_service_lambda_arn = _get_project_service_lambda_arn(stack)
-
             assume_role_service = 'lambda.amazonaws.com'
             role_arn = role_utils.create_access_control_role(
                 stack_manager,
@@ -143,17 +145,15 @@ def handler(event, context):
 
         else:
             raise RuntimeError('Unexpected request type: {}'.format(request_type))
-
         _add_built_in_settings(props.Settings.__dict__, stack)
         # give access to project level ServiceDirectory APIs
         # Other deployment-level APIs are handled in InterfaceDependeny resolver custom resource type
         permitted_arns = _add_services_settings(stack, props.Settings.__dict__, props.Services)
         _add_service_access_policy_to_role(role_arn, permitted_arns)
         # Check if we have a folder just for this function, if not use the default
-        input_key = _get_input_key(props)
-
-        output_key = _inject_settings(props.Settings.__dict__, props.Runtime, props.ConfigurationBucket, input_key, props.FunctionName)
-
+        output_key = input_key = _get_input_key(props)
+        if not props.IgnoreAppendingSettingsToZip:
+            output_key = _inject_settings(props.Settings.__dict__, props.Runtime, props.ConfigurationBucket, input_key, props.FunctionName)
         response_data = {
             'ConfigurationBucket': props.ConfigurationBucket,
             'ConfigurationKey': output_key,
@@ -169,9 +169,8 @@ def handler(event, context):
                 'Runtime': props.Runtime
             }
         }
-
+        
     physical_resource_id = aws_utils.construct_custom_physical_resource_id_with_data(stack_arn, event['LogicalResourceId'], id_data)
-
     custom_resource_response.succeed(event, context, response_data, physical_resource_id)
 
 
@@ -379,8 +378,9 @@ def _inject_settings_python(zip_file, settings):
 
     info = ZipInfo('cgf_lambda_settings/settings.json')
     info.external_attr = 0777 << 16L # give full access to included file
-
+    print 'writing the settings', settings
     zip_file.writestr(info, content)
+    print 'completed the write of the settings to the zip file'
 
 
 def _inject_settings_nodejs(zip_file, settings):
@@ -417,13 +417,15 @@ def _inject_settings(settings, runtime, bucket, input_key, function_name):
 
     injector = _get_settings_injector(runtime)
 
+    print "Downloading the S3 file {}/{} to inject the settings property.".format(bucket, input_key)
     res = s3.get_object(Bucket=bucket, Key=input_key)
     zip_content = StringIO(res['Body'].read())
-    with ZipFile(zip_content, 'a') as zip_file:
-        injector(zip_file, settings)
-
+    zip_file = ZipFile(zip_content, mode='a')
+    injector(zip_file, settings)
+    zip_file.close()
+    print "Uploading the S3 file {}/{} to S3 file {}/{}.".format(bucket, input_key, bucket, output_key)
     res = s3.put_object(Bucket=bucket, Key=output_key, Body=zip_content.getvalue())
-
+    print "Setting injection complete for {}".format(output_key)
     zip_content.close()
 
     return output_key

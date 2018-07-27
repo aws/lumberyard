@@ -30,7 +30,7 @@ namespace Camera
         {
             serializeContext->Class<FaceTarget>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)

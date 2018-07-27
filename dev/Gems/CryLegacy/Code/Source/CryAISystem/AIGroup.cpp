@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IAISystem.h"
 #include "CAISystem.h"
 #include "AIPlayer.h"
@@ -1521,7 +1521,7 @@ void CAIGroup::DebugDraw()
                 {
                     if (m_reinforcementSpots[i].whenAllAlerted)
                     {
-                        _snprintf(msg, 64, "ALERTED: Alerted >= Enabled | %d >= %d", alertedCount, enabledCount);
+                        azsnprintf(msg, 64, "ALERTED: Alerted >= Enabled | %d >= %d", alertedCount, enabledCount);
                         text += msg;
                         if (alertedCount >= enabledCount)
                         {
@@ -1537,11 +1537,11 @@ void CAIGroup::DebugDraw()
                     {
                         if (enabledCount > 1)
                         {
-                            _snprintf(msg, 64, "COMBAT: InCombat > 0 && LiveTarget > 1 | %d > 0 && %d > 1", combatCount, liveTargetCount);
+                            azsnprintf(msg, 64, "COMBAT: InCombat > 0 && LiveTarget > 1 | %d > 0 && %d > 1", combatCount, liveTargetCount);
                         }
                         else
                         {
-                            _snprintf(msg, 64, "COMBAT: InCombat > 0 && LiveTarget > 0 | %d > 0 && %d > 0", combatCount, liveTargetCount);
+                            azsnprintf(msg, 64, "COMBAT: InCombat > 0 && LiveTarget > 0 | %d > 0 && %d > 0", combatCount, liveTargetCount);
                         }
                         text += msg;
 
@@ -1560,7 +1560,7 @@ void CAIGroup::DebugDraw()
                 {
                     if (m_reinforcementSpots[i].groupBodyCount > 0)
                     {
-                        _snprintf(msg, 64, "SIZE: Bodies < Count | %d < %d",
+                        azsnprintf(msg, 64, "SIZE: Bodies < Count | %d < %d",
                             m_reinforcementSpots[i].groupBodyCount, m_countDead);
                         text += msg;
 

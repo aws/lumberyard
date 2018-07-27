@@ -23,7 +23,7 @@
 // Generated File
 #include <Woodpecker/Driller/Replica/ui_ReplicaDataAggregatorConfigurationPanel.h>
 
-#include <Woodpecker/Driller/ChannelCOnfigurationWidget.hxx>
+#include <Woodpecker/Driller/ChannelConfigurationWidget.hxx>
 #include <Woodpecker/Driller/Replica/ReplicaDataAggregator.hxx>
 
 namespace Driller

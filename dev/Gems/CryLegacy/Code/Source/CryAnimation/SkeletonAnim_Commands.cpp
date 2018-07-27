@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "CharacterManager.h"
 #include <float.h>
 #include "CharacterInstance.h"
@@ -311,7 +311,7 @@ void CSkeletonAnim::Commands_Create(const QuatTS& location, Command::CBuffer& bu
         const bool feetLockingEnabled = (Console::GetInst().ca_LockFeetWithIK != 0);
         const bool playingAnimationsInLayer0 = (0 < numActiveAnims);
         const bool usingUpperLayers = (0 < upperLayersUsageCounter);
-        useFeetLocking = (feetLockingEnabled && playingAnimationsInLayer0 && usingUpperLayers);
+        useFeetLocking = (feetLockingEnabled && playingAnimationsInLayer0 && usingUpperLayers && pSkeletonPose->m_feetLock.Store());
         if (useFeetLocking)
         {
             Command::PoseModifier* ac = buffer.CreateCommand<Command::PoseModifier>();

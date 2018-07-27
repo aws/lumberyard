@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Unit Testing
@@ -20,6 +20,21 @@
 
 namespace ComponentFactoryRegistryTests
 {
+    class ComponentFactoryRegistryTests
+        : public ::testing::Test
+    {
+    public:
+        void SetUp() override
+        {
+            AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+        }
+
+        void TearDown() override
+        {
+            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+        }
+    };
+
     class IComponentDog
         : public IComponent
     {
@@ -66,7 +81,7 @@ namespace ComponentFactoryRegistryTests
     {
     };
 
-    TEST(ComponentFactoryRegistryTests, CUT_ComponentFactoryRegistry)
+    TEST_F(ComponentFactoryRegistryTests, CUT_ComponentFactoryRegistry)
     {
         CComponentFactoryRegistry registry;
 
@@ -75,12 +90,12 @@ namespace ComponentFactoryRegistryTests
         EXPECT_TRUE(!registry.ReleaseFactory(IComponentDog::Type()));
 
         // register dog factory
-        EXPECT_TRUE(registry.RegisterFactory(std::make_unique<DefaultComponentFactory<CComponentDog, IComponentDog> >()));
+        EXPECT_TRUE(registry.RegisterFactory(AZStd::make_unique<DefaultComponentFactory<CComponentDog, IComponentDog> >()));
         IComponentFactory<IComponentDog>* dogFactory = registry.GetFactory<IComponentDog>();
         EXPECT_TRUE(dogFactory != nullptr);
 
         // ensure it creates dogs
-        std::shared_ptr<IComponentDog> dog = dogFactory->CreateComponent();
+        AZStd::shared_ptr<IComponentDog> dog = dogFactory->CreateComponent();
         EXPECT_TRUE(dog.get() != nullptr);
         EXPECT_TRUE(dog->GetComponentType() == IComponentDog::Type());
         EXPECT_TRUE(dog->IsCComponentDog());
@@ -89,11 +104,11 @@ namespace ComponentFactoryRegistryTests
         EXPECT_TRUE(!registry.GetFactory<IComponentCat>());
 
         // double registration should fail
-        EXPECT_TRUE(!registry.RegisterFactory(std::make_unique<DefaultComponentFactory<CComponentDog, IComponentDog> >()));
+        EXPECT_TRUE(!registry.RegisterFactory(AZStd::make_unique<DefaultComponentFactory<CComponentDog, IComponentDog> >()));
 
         // registration of a factory with different concrete type
         // but same ComponentType should fail
-        EXPECT_TRUE(!registry.RegisterFactory(std::make_unique<DefaultComponentFactory<CComponentCanine, IComponentDog> >()));
+        EXPECT_TRUE(!registry.RegisterFactory(AZStd::make_unique<DefaultComponentFactory<CComponentCanine, IComponentDog> >()));
 
         // double-check that the CComponentCanine factory failed to register
         // by ensuring the CComponentDogs are still being produced
@@ -108,8 +123,8 @@ namespace ComponentFactoryRegistryTests
         EXPECT_TRUE(!registry.ReleaseFactory(IComponentDog::Type()));
 
         // register dog and cat factories
-        EXPECT_TRUE(registry.RegisterFactory(std::make_unique<DefaultComponentFactory<CComponentDog, IComponentDog> >()));
-        EXPECT_TRUE(registry.RegisterFactory(std::make_unique<DefaultComponentFactory<CComponentCat, IComponentCat> >()));
+        EXPECT_TRUE(registry.RegisterFactory(AZStd::make_unique<DefaultComponentFactory<CComponentDog, IComponentDog> >()));
+        EXPECT_TRUE(registry.RegisterFactory(AZStd::make_unique<DefaultComponentFactory<CComponentCat, IComponentCat> >()));
         dogFactory = registry.GetFactory<IComponentDog>();
         EXPECT_TRUE(dogFactory != nullptr);
         IComponentFactory<IComponentCat>* catFactory = registry.GetFactory<IComponentCat>();
@@ -119,7 +134,7 @@ namespace ComponentFactoryRegistryTests
         dog = dogFactory->CreateComponent();
         EXPECT_TRUE(dog.get() != nullptr);
         EXPECT_TRUE(dog->GetComponentType() == IComponentDog::Type());
-        std::shared_ptr<IComponentCat> cat = catFactory->CreateComponent();
+        AZStd::shared_ptr<IComponentCat> cat = catFactory->CreateComponent();
         EXPECT_TRUE(cat.get() != nullptr);
         EXPECT_TRUE(cat->GetComponentType() == IComponentCat::Type());
         EXPECT_TRUE(cat->GetComponentType() != dog->GetComponentType());

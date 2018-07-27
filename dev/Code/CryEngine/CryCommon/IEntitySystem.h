@@ -841,16 +841,36 @@ struct IEntitySystem
     //! its Initialize() called.
     //! \return The new component, or nullptr if creation failed.
     template<class TYPE>
-    std::shared_ptr<TYPE> CreateComponent();
+    AZStd::shared_ptr<TYPE> CreateComponent();
 
     //! Creates a component of given type, using the appropriate factory.
     //! The component is then registered with the given entity and initialized.
     //! \return The new component, or nullptr if creation failed.
     template<typename TYPE>
-    std::shared_ptr<TYPE> CreateComponentAndRegister(const IComponent::SComponentInitializer& componentInitializer);
+    AZStd::shared_ptr<TYPE> CreateComponentAndRegister(const IComponent::SComponentInitializer& componentInitializer);
 
     // </interfuscator:shuffle>
 };
+
+class CryLegacyEntitySystemRequests
+    : public AZ::EBusTraits
+{
+public:
+    //////////////////////////////////////////////////////////////////////////
+    // EBusTraits overrides
+    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+    static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Creates and initializes a legacy IEntitySystem instance
+    virtual IEntitySystem* InitEntitySystem() = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Shuts down and destroys a legacy IEntitySystem instance
+    virtual void ShutdownEntitySystem(IEntitySystem* entitySystem) = 0;
+};
+using CryLegacyEntitySystemRequestBus = AZ::EBus<CryLegacyEntitySystemRequests>;
 
 extern "C"
 {
@@ -864,7 +884,7 @@ typedef struct IEntitySystem* (* PFNCREATEENTITYSYSTEM)(ISystem* pISystem);
 //
 
 template<class TYPE>
-inline std::shared_ptr<TYPE> IEntitySystem::CreateComponent()
+inline AZStd::shared_ptr<TYPE> IEntitySystem::CreateComponent()
 {
     static_assert(HasTypeFunction<TYPE>::value, "Class must have DECLARE_COMPONENT_TYPE declaration to be constructable.");
     IComponentFactoryRegistry* registry = GetComponentFactoryRegistry();
@@ -883,10 +903,10 @@ inline std::shared_ptr<TYPE> IEntitySystem::CreateComponent()
 }
 
 template<typename TYPE>
-inline std::shared_ptr<TYPE> IEntitySystem::CreateComponentAndRegister(const IComponent::SComponentInitializer& componentInitializer)
+inline AZStd::shared_ptr<TYPE> IEntitySystem::CreateComponentAndRegister(const IComponent::SComponentInitializer& componentInitializer)
 {
     CRY_ASSERT(componentInitializer.m_pEntity);
-    std::shared_ptr<TYPE> pComponent(CreateComponent<TYPE>());
+    AZStd::shared_ptr<TYPE> pComponent(CreateComponent<TYPE>());
     if (!pComponent)
     {
         return nullptr;

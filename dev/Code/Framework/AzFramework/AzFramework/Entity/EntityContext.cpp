@@ -558,6 +558,12 @@ namespace AzFramework
             return false;
         }
 
+        // Flush asset database events after serialization, so all loaded asset statuses are updated.
+        if (AZ::Data::AssetManager::IsReady())
+        {
+            AZ::Data::AssetManager::Instance().DispatchEvents();
+        }
+
         AZ::SliceComponent* newRootSlice = rootEntity->FindComponent<AZ::SliceComponent>();
 
         if (!newRootSlice)
@@ -813,6 +819,8 @@ namespace AzFramework
             HandleEntitiesAdded(entities);
 
             HandleNewMetadataEntitiesCreated(*m_rootAsset.Get()->GetComponent());
+
+            m_rootAsset.Get()->GetComponent()->ListenForDependentAssetChanges();
         }
     }
 } // namespace AzFramework

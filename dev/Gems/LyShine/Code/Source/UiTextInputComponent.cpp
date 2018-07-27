@@ -1279,7 +1279,6 @@ void UiTextInputComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiTextInputBus>("UiTextInputBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetTextSelectionColor", &UiTextInputBus::Events::GetTextSelectionColor)
             ->Event("SetTextSelectionColor", &UiTextInputBus::Events::SetTextSelectionColor)
             ->Event("GetTextCursorColor", &UiTextInputBus::Events::GetTextCursorColor)
@@ -1312,7 +1311,6 @@ void UiTextInputComponent::Reflect(AZ::ReflectContext* context)
         behaviorContext->Class<UiTextInputComponent>()->RequestBus("UiTextInputBus");
 
         behaviorContext->EBus<UiTextInputNotificationBus>("UiTextInputNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiTextInputNotificationBusHandler>();
     }
 }

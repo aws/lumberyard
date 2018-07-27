@@ -63,7 +63,7 @@ std::string CCrySimpleCache::CreateFileName(const tdHash& rHash) const
     Tmp[1]  =   Name.c_str()[1];
     Tmp[2]  =   Name.c_str()[2];
 
-    return SEnviropment::Instance().m_Cache + Tmp + "/" + Name;
+    return SEnviropment::Instance().m_CachePath + Tmp + "/" + Name;
 }
 
 
@@ -144,7 +144,7 @@ void CCrySimpleCache::Add(const tdHash& rHash, const tdDataVector& rData)
             {
                 printf("Warning: Too many pending entries not saved to disk!!!");
             }
-            //CSTLHelper::AppendToFile( SEnviropment::Instance().m_Cache+"Cache.dat",buf );
+            //CSTLHelper::AppendToFile( SEnviropment::Instance().m_CachePath+"Cache.dat",buf );
         }
     }
 }
@@ -197,7 +197,7 @@ bool CCrySimpleCache::LoadCacheFile(const std::string& filename)
         {
             // Bad Entry!
             bLoadedOK = false;
-            printf("\nSkipping Invalid cache entry %d\n at file position: %I64u because signature is bad", num, nFilePos);
+            printf("\nSkipping Invalid cache entry %d\n at file position: %llu because signature is bad", num, nFilePos);
             break;
         }
 
@@ -205,7 +205,7 @@ bool CCrySimpleCache::LoadCacheFile(const std::string& filename)
         {
             // Too big entry, probably invalid.
             bLoadedOK = false;
-            printf("\nSkipping Invalid cache entry %d\n at file position: %I64u because data size is too big", num, nFilePos);
+            printf("\nSkipping Invalid cache entry %d\n at file position: %llu because data size is too big", num, nFilePos);
             break;
         }
 
@@ -223,7 +223,7 @@ bool CCrySimpleCache::LoadCacheFile(const std::string& filename)
             {
                 // Too big entry, probably invalid.
                 bLoadedOK = false;
-                printf("\nSkipping Invalid cache entry %d\n at file position: %I64u, was flagged as cache reference but size was %d", num, nFilePos, hdr.dataSize);
+                printf("\nSkipping Invalid cache entry %d\n at file position: %llu, was flagged as cache reference but size was %d", num, nFilePos, hdr.dataSize);
                 break;
             }
 
@@ -235,7 +235,7 @@ bool CCrySimpleCache::LoadCacheFile(const std::string& filename)
             {
                 // Too big entry, probably invalid.
                 bSkip = true; // don't abort reading whole file just yet - skip only this entry
-                printf("\nSkipping Invalid cache entry %d\n at file position: %I64u, data-hash references to not existing data ", num, nFilePos, hdr.dataSize);
+                printf("\nSkipping Invalid cache entry %d\n at file position: %llu, data-hash references to not existing data ", num, nFilePos);
             }
 
             if (!bSkip)
@@ -267,7 +267,7 @@ bool CCrySimpleCache::LoadCacheFile(const std::string& filename)
             AZ::u64 endTimeInMillis = AZStd::GetTimeUTCMilliSecond();
 
             Loaded  =   static_cast<uint32_t>(nFilePos * 100 / fileSize);
-            printf("\rLoad:%3d%% %6dk t=%ds Compress: (Count)%d%% %dk:%dk (MB)%d%% %dMB:%dMB", Loaded, static_cast<uint32_t>(num / 1000), (endTimeInMillis - startTimeInMillis),
+            printf("\rLoad:%3u%% %6uk t=%llus Compress: (Count)%llu%% %lluk:%lluk (MB)%llu%% %lluMB:%lluMB", Loaded, num / 1000u, (endTimeInMillis - startTimeInMillis),
                 SizeAddedCount / AZStd::GetMax((SizeAddedCount + SizeSavedCount) / 100ull, 1ull),
                 SizeAddedCount / 1000, SizeSavedCount / 1000,
                 SizeAdded / AZStd::GetMax((SizeAdded + SizeSaved) / 100ull, 1ull),
@@ -305,13 +305,13 @@ void CCrySimpleCache::ThreadFunc_SavePendingCacheEntries()
                 pPendingCacheEntry = m_PendingCacheEntries.front();
                 m_PendingCacheEntries.pop_front();
             }
-            //CSTLHelper::AppendToFile( SEnviropment::Instance().m_Cache+"Cache.dat",buf );
+            //CSTLHelper::AppendToFile( SEnviropment::Instance().m_CachePath+"Cache.dat",buf );
             bListEmpty = m_PendingCacheEntries.empty();
         }
 
         if (pPendingCacheEntry)
         {
-            CSTLHelper::AppendToFile(SEnviropment::Instance().m_Cache + "Cache.dat", *pPendingCacheEntry);
+            CSTLHelper::AppendToFile(SEnviropment::Instance().m_CachePath + "Cache.dat", *pPendingCacheEntry);
             delete pPendingCacheEntry;
         }
     } while (!bListEmpty);

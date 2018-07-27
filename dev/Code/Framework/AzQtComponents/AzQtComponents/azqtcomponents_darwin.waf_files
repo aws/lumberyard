@@ -1,0 +1,9 @@
+{
+    "auto": {
+        "Utilities": [
+            "Utilities/MouseHider_mac.mm",
+            "Utilities/QtWindowUtilities_mac.mm",
+            "Utilities/ScreenGrabber_mac.mm"
+        ]
+    }
+}

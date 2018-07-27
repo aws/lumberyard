@@ -18,13 +18,13 @@
 #include <MCore/Source/Array.h>
 #include <MCore/Source/MemoryFile.h>
 
-#include <QInputDialog>
+#include <QByteArray>
 #include <QFile>
 #include <QFileInfo>
-#include <QByteArray>
-#include <QDockWidget>
+#include <QHBoxLayout>
 #include <QMessageBox>
-
+#include <QVBoxLayout>
+#include <QPushButton>
 
 namespace EMStudio
 {
@@ -112,7 +112,8 @@ namespace EMStudio
         // Try to save the layout to a file.
         if (SaveLayout(filename.c_str()))
         {
-            GetMainWindow()->SetLastUsedApplicationModeString(saveAsWindow.GetName(), true);
+            GetMainWindow()->GetOptions().SetApplicationMode(saveAsWindow.GetName().toUtf8().data());
+            GetMainWindow()->SavePreferences();
             GetMainWindow()->UpdateLayoutsMenu();
 
             MCore::LogInfo("Successfully saved layout to file '%s'", filename.c_str());

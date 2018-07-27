@@ -16,7 +16,7 @@
 #include "EMotionFXConfig.h"
 #include "AnimGraphObjectData.h"
 #include "AnimGraphSyncTrack.h"
-
+#include <AzCore/Memory/Memory.h>
 
 namespace EMotionFX
 {
@@ -35,10 +35,11 @@ namespace EMotionFX
     class EMFX_API AnimGraphNodeData
         : public AnimGraphObjectData
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphNodeData, MCore::MCORE_SIMD_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTUNIQUEDATA);
         EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
 
     public:
+        AZ_CLASS_ALLOCATOR_DECL
+
         enum
         {
             INHERITFLAGS_BACKWARD       = 1 << 0,
@@ -51,11 +52,9 @@ namespace EMotionFX
         static AnimGraphNodeData* Create(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
 
         void Clear();
-        virtual AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override;
 
         void Init(AnimGraphInstance* animGraphInstance, AnimGraphNode* node);
         void Init(AnimGraphNodeData* nodeData);
-        virtual uint32 GetClassSize() const override                            { return sizeof(AnimGraphNodeData); }
 
         MCORE_INLINE AnimGraphNode* GetNode() const                            { return reinterpret_cast<AnimGraphNode*>(mObject); }
         MCORE_INLINE void SetNode(AnimGraphNode* node)                         { mObject = reinterpret_cast<AnimGraphObject*>(node); }
@@ -121,6 +120,6 @@ namespace EMotionFX
         AnimGraphRefCountedData*   mRefCountedData;
         AnimGraphSyncTrack         mSyncTrack;
 
-        virtual void Delete() override;
+        void Delete() override;
     };
 }   // namespace EMotionFX

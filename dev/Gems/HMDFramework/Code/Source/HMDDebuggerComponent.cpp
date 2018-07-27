@@ -16,7 +16,7 @@
 #include <AzCore/Serialization/EditContext.h>
 
 // For debug rendering
-#include "../CryAction/IViewSystem.h"
+#include <IViewSystem.h>
 #include <IGame.h>
 #include <IGameFramework.h>
 #include <IRenderAuxGeom.h>
@@ -45,7 +45,6 @@ void HMDDebuggerComponent::Reflect(AZ::ReflectContext* context)
     {
         serializeContext->Class<HMDDebuggerComponent, AZ::Component>()
             ->Version(1)
-            ->SerializerForEmptyClass()
             ;
 
         if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -163,7 +162,7 @@ void DrawHMDController(AZ::VR::ControllerIndex id, const SViewParams* viewParame
 
 void HMDDebuggerComponent::UpdateDebugInfo(float deltaTime)
 {
-    if (IViewSystem* viewSystem = gEnv->pGame->GetIGameFramework()->GetIViewSystem())
+    if (IViewSystem* viewSystem = gEnv->pSystem->GetIViewSystem())
     {
         if (IView* mainView = viewSystem->GetActiveView())
         {
@@ -188,7 +187,7 @@ void HMDDebuggerComponent::UpdateDebugInfo(float deltaTime)
 // If rendering to the HMD the camera transform is determined by the HMD orientation.
 void HMDDebuggerComponent::UpdateDebugCamera(float deltaTime)
 {
-    if (IViewSystem* viewSystem = gEnv->pGame->GetIGameFramework()->GetIViewSystem())
+    if (IViewSystem* viewSystem = gEnv->pSystem->GetIViewSystem())
     {
         if (IView* mainView = viewSystem->GetActiveView())
         {
@@ -208,7 +207,7 @@ void HMDDebuggerComponent::UpdateDebugCamera(float deltaTime)
 
             const AZ::VR::HMDDeviceInfo* deviceInfo = nullptr;
             EBUS_EVENT_RESULT(deviceInfo, AZ::VR::HMDDeviceRequestBus, GetDeviceInfo);
-            const bool nullVRDevice = deviceInfo ? stricmp(deviceInfo->manufacturer, "Null") == 0 : true; // if no manufacturer, or no device info, then nullvr device
+            const bool nullVRDevice = deviceInfo ? azstricmp(deviceInfo->manufacturer, "Null") == 0 : true; // if no manufacturer, or no device info, then nullvr device
 
             if (gEnv->pRenderer->GetIStereoRenderer()->IsRenderingToHMD() && nullVRDevice == false)
             {

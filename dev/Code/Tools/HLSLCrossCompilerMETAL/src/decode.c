@@ -390,7 +390,8 @@ uint32_t DecodeOperand (const uint32_t* pui32Tokens, Operand* psOperand)
     }
 
     if (psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH_GREATER_EQUAL ||
-        psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH_LESS_EQUAL)
+        psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH_LESS_EQUAL ||
+        psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH)
     {
         psOperand->ui32RegisterNumber = -1;
         psOperand->ui32CompMask = -1;

@@ -20,7 +20,6 @@
 #include "FixedVec2.h"
 #include "FixedVec3.h"
 #include "FixedAABB.h"
-#include "MNM_Type_info.h"
 #include "OpenList.h"
 
 #if !defined(_RELEASE) && (defined(WIN32) || defined(WIN64))

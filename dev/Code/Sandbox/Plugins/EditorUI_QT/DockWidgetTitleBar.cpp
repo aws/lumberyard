@@ -169,7 +169,7 @@ QLabel* DockWidgetTitleBar::GetLabel()
     return qobject_cast<QLabel*>(m_mainControl);
 }
 
-void DockWidgetTitleBar::SetShowMenuContextMenuCallback(std::function<QMenu*(void)> callback)
+void DockWidgetTitleBar::SetShowMenuContextMenuCallback(AZStd::function<QMenu*(void)> callback)
 {
     m_showMenuButtonContextMenuCallback = callback;
     ui->btnMenu->setVisible(true);

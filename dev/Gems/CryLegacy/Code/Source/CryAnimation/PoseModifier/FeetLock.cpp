@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <CryExtension/Impl/ClassWeaver.h>
 #include <CryExtension/Impl/ICryFactoryRegistryImpl.h>
@@ -184,15 +184,21 @@ CFeetLock::CFeetLock()
 {
     ::CryCreateClassInstance<IAnimationPoseModifier>(
         "AnimationPoseModifier_FeetPoseStore", m_store);
-    CRY_ASSERT_MESSAGE(m_store.get() != nullptr, "CFeetLock::CFeetLock: not able to allocate feet pose store");
+    //CRY_ASSERT_MESSAGE(m_store.get() != nullptr, "CFeetLock::CFeetLock: not able to allocate feet pose store");
 
     CFeetPoseStore* pStore = static_cast<CFeetPoseStore*>(m_store.get());
-    pStore->m_pFeetData = &m_FeetData[0];
+    if (pStore)
+    {
+        pStore->m_pFeetData = &m_FeetData[0];
+    }
 
     ::CryCreateClassInstance<IAnimationPoseModifier>(
         "AnimationPoseModifier_FeetPoseRestore", m_restore);
     CRY_ASSERT_MESSAGE(m_restore.get() != nullptr, "CFeetLock::CFeetLock: not able to allocate feet pose store");
 
     CFeetPoseRestore* pRestore = static_cast<CFeetPoseRestore*>(m_restore.get());
-    pRestore->m_pFeetData = &m_FeetData[0];
+    if (pRestore)
+    {
+        pRestore->m_pFeetData = &m_FeetData[0];
+    }
 }

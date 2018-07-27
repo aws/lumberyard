@@ -194,7 +194,7 @@ int CScriptBind_Boids::SetFlockParams(IFunctionHandler* pH, SmartScriptTable ent
         {
             model = ctx.models[0];
         }
-        if ((stricmp(model.c_str(), currModel.c_str()) != 0) ||
+        if ((azstricmp(model.c_str(), currModel.c_str()) != 0) ||
             (ctx.boidsCount > 0 && ctx.boidsCount != currCount))
         {
             flock->CreateBoids(ctx);

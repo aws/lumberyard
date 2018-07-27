@@ -29,7 +29,12 @@
 
 struct SRendItem;
 
-class PerInstanceConstantBufferPool
+class IPerInstanceConstantBufferPool
+{
+    virtual void SetConstantBuffer(SRendItem* renderItem) = 0;
+};
+
+class PerInstanceConstantBufferPool : public IPerInstanceConstantBufferPool
 {
 public:
     PerInstanceConstantBufferPool();
@@ -44,9 +49,9 @@ public:
     void Init();
     void Shutdown();
 
-    ENGINE_API void SetConstantBuffer(SRendItem* renderItem);
-    ENGINE_API void UpdateConstantBuffer(ConstantUpdateCB callback, float realTime);
-    ENGINE_API void Update(CRenderView& renderView, float realTime);
+    void SetConstantBuffer(SRendItem* renderItem);
+    void UpdateConstantBuffer(ConstantUpdateCB callback, float realTime);
+    void Update(CRenderView& renderView, float realTime);
     
 private:
     SRendItem* m_CurrentRenderItem;

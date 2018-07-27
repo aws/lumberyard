@@ -1253,7 +1253,6 @@ void UiScrollBoxComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiScrollBoxBus>("UiScrollBoxBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetScrollOffset", &UiScrollBoxBus::Events::GetScrollOffset)
             ->Event("SetScrollOffset", &UiScrollBoxBus::Events::SetScrollOffset)
             ->Event("GetNormalizedScrollValue", &UiScrollBoxBus::Events::GetNormalizedScrollValue)
@@ -1293,11 +1292,9 @@ void UiScrollBoxComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiScrollBoxInterface::ScrollBarVisibility::AutoHideAndResizeViewport>("eUiScrollBoxScrollBarVisibility_AutoHideAndResizeViewport");
 
         behaviorContext->EBus<UiScrollBoxNotificationBus>("UiScrollBoxNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiScrollBoxNotificationBusHandler>();
 
         behaviorContext->EBus<UiScrollableNotificationBus>("UiScrollableNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiScrollableNotificationBusHandler>();
     }
 }

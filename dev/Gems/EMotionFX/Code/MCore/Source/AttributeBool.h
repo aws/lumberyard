@@ -41,21 +41,12 @@ namespace MCore
 
         MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(&mValue); }
         MCORE_INLINE uint32 GetRawDataSize() const                  { return sizeof(bool); }
-        bool GetSupportsRawDataPointer() const override             { return true; }
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeBool::Create(mValue); }
         Attribute* CreateInstance(void* destMemory) override        { return new(destMemory) AttributeBool(); }
         const char* GetTypeString() const override                  { return "AttributeBool"; }
-        bool InitFrom(const Attribute* other) override
-        {
-            if (other->GetType() != TYPE_ID)
-            {
-                return false;
-            }
-            mValue = static_cast<const AttributeBool*>(other)->GetValue();
-            return true;
-        }
+        bool InitFrom(const Attribute* other);
         bool InitFromString(const AZStd::string& valueString) override
         {
             return AzFramework::StringFunc::LooksLikeBool(valueString.c_str(), &mValue);
@@ -92,18 +83,5 @@ namespace MCore
             return true;
         }
 
-
-        // write to a stream
-        bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override
-        {
-            MCORE_UNUSED(targetEndianType);
-            int8 streamValue = (mValue) ? 1 : 0;
-            if (stream->Write(&streamValue, sizeof(int8)) == 0)
-            {
-                return false;
-            }
-
-            return true;
-        }
     };
 }   // namespace MCore

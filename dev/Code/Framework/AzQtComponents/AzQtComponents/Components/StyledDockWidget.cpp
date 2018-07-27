@@ -119,6 +119,7 @@ namespace AzQtComponents
             return;
         }
 
+        Q_EMIT aboutToClose();
         QDockWidget::closeEvent(event);
     }
 

@@ -46,6 +46,21 @@ def exec_response_command_clang(self, cmd, **kw):
         tmp = None
         arg_max = get_command_line_limit()
 
+        # 1) Join options that carry no space are joined e.g. /Fo FilePath -> /FoFilePath
+        # 2) Join options that carry a ':' as last character : e.g. /OUT: FilePath -> /OUT:FilePath
+        if isinstance(cmd, list):
+            lst = []
+            carry = ''
+            join_with_next_list_item = ['/Fo', '/doc', '/Fi', '/Fa']
+            for a in cmd:
+                if a in join_with_next_list_item or a[-1] == ':':
+                    carry = a
+                else:
+                    lst.append(carry + a)
+                    carry = ''
+
+            cmd = lst
+
         if isinstance(cmd, list) and len(' '.join(cmd)) >= arg_max:
             program = cmd[0]  # unquoted program name, otherwise exec_command will fail
             if program == 'ar' and sys.platform.startswith('darwin'):
@@ -108,13 +123,13 @@ def wrap_class_clang(class_name):
             return exec_response_command_clang(self, cmd, **kw)
         else:
             return super(derived_class, self).exec_response_command(cmd, **kw)
-            
+
     def quote_response_command(self, *k, **kw):
         if self.env.CC_NAME in supported_compilers:
             return quote_response_command_clang(self, *k, **kw)
         else:
             return super(derived_class, self).quote_response_command(*k, **kw)
-        
+
 
     # Chain-up monkeypatch needed since these commands are in base class API
     derived_class.exec_command = exec_command
@@ -175,7 +190,7 @@ def add_pch_clang(self):
     pch_header = pch_source.change_ext('.h')
     # Generate PCH per target project idx
     # Avoids the case where two project have the same PCH output path but compile the PCH with different compiler options i.e. defines, includes, ...
-    pch_file = pch_source.change_ext('.%d.h.pch' % self.idx)
+    pch_file = pch_source.change_ext('.%d.h.pch' % self.target_uid)
 
     # Create PCH Task
     pch_task = self.create_task('pch_clang', pch_source, pch_file)
@@ -201,7 +216,7 @@ def add_pch_clang(self):
             t.env.append_value('CFLAGS', pch_flag)
 
             # if rtti is enabled for this source file then we need to make sure
-            # rtti is enabled in the pch otherwise clang will fail to compile 
+            # rtti is enabled in the pch otherwise clang will fail to compile
             if ('-fno-rtti' not in t.env['CXXFLAGS']):
                 pch_task.env['CXXFLAGS'] = list(filter(lambda r:not r.startswith('-fno-rtti'), pch_task.env['CXXFLAGS']))
 
@@ -250,7 +265,7 @@ def path_to_node(base_node, path, cached_nodes, b_drive_hack):
         node = cached_nodes[node_lookup_key]
     except KeyError:
         node = base_node.find_resource(path)
-        if not node and b_drive_hack: # To handle absolute path on C when building on another drive 
+        if not node and b_drive_hack: # To handle absolute path on C when building on another drive
             node = base_node.make_node(path)
         cached_nodes[node_lookup_key] = node
     finally:

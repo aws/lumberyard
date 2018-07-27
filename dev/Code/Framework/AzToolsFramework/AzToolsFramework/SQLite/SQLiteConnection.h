@@ -72,7 +72,8 @@ namespace AzToolsFramework
             //! Removes all statements and frees their memory.
             void FinalizeAll();
 
-            //! Returns the ID of the last row affected.
+            //! Returns the ID of the last row inserted by an INSERT query
+            //! This value is unaffected by other types of queries.
             AZ::s64 GetLastRowID();
 
             //! Returns the number of rows affected by the most recent statment.

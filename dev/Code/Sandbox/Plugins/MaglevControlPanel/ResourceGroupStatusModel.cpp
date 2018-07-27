@@ -128,7 +128,7 @@ bool ResourceGroupStatusModel::UploadLambdaCode(QString functionName)
 bool ResourceGroupStatusModel::DeleteStack()
 {
 
-    auto callback = [this](const QString& errorMessage)
+    auto callback = [](const QString& errorMessage)
     {
         if (!errorMessage.isEmpty())
         {
@@ -140,7 +140,27 @@ bool ResourceGroupStatusModel::DeleteStack()
         }
     };
 
-    ResourceManager()->GetProjectModel()->RemoveResourceGroup(ResourceGroupName(), callback);
+    ResourceManager()->GetProjectModel()->DisableResourceGroup(ResourceGroupName(), callback);
+
+    return true;
+
+}
+
+bool ResourceGroupStatusModel::EnableResourceGroup()
+{
+
+    auto callback = [](const QString& errorMessage)
+    {
+        if (!errorMessage.isEmpty())
+        {
+            QMessageBox::critical(
+                nullptr,
+                "Enable Resource Group Error",
+                errorMessage, QMessageBox::Ok);
+        }
+    };
+
+    ResourceManager()->GetProjectModel()->EnableResourceGroup(ResourceGroupName(), callback);
 
     return true;
 
@@ -247,7 +267,7 @@ QString ResourceGroupStatusModel::GetMainMessageText() const
 
 QString ResourceGroupStatusModel::GetDeleteButtonText() const
 {
-    return tr("Remove resource group");
+    return tr("Disable resource group");
 }
 
 QString ResourceGroupStatusModel::GetDeleteButtonToolTip() const
@@ -257,19 +277,29 @@ QString ResourceGroupStatusModel::GetDeleteButtonToolTip() const
 
 QString ResourceGroupStatusModel::GetDeleteConfirmationTitle() const
 {
-    return tr("Remove resource group?");
+    return tr("Disable resource group?");
 }
 
 QString ResourceGroupStatusModel::GetDeleteConfirmationMessage() const
 {
     return tr(
-        "Do you want to remove the %1 resource group from the local configuration?"
+        "Do you want to disable the %1 resource group from the local configuration?"
         "<br><br>"
         "This operation does not immediatly delete the resources in AWS. Each deployment "
         "must be updated to delete the resoures in AWS."
         "<br><br>"
         "This operation does not remove the resource group configuration data from "
         "the local disk. As long as that data exists, the resource group can be "
-        "restored by adding a new resource group with the same name."
+        "re-enabled."
         ).arg(ResourceGroupName(), ActiveDeploymentName());
+}
+
+QString ResourceGroupStatusModel::GetEnableButtonText() const
+{
+    return tr("Enable resource group");
+}
+
+QString ResourceGroupStatusModel::GetEnableButtonToolTip() const
+{
+    return tr("Enable the resource group to the Lumberyard project.");
 }

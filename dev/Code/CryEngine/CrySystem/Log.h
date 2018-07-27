@@ -194,6 +194,8 @@ private: // -------------------------------------------------------------------
     SLogHistoryItem m_history[16];
     int m_iLastHistoryItem;
 
+    static bool CheckLogFormatter(const char* formatter);
+
 #if defined(KEEP_LOG_FILE_OPEN)
     static void LogFlushFile(IConsoleCmdArgs* pArgs);
 

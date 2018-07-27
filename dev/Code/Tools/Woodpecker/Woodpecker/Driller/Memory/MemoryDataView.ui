@@ -179,7 +179,7 @@
   <customwidget>
    <class>StripChart::DataStrip</class>
    <extends>QWidget</extends>
-   <header>../stripchart.hxx</header>
+   <header>../StripChart.hxx</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

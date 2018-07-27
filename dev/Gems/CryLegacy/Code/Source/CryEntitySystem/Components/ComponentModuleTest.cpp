@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ComponentModuleTest.h"
 
@@ -19,7 +19,7 @@ namespace ComponentModuleTestStatics
 {
     static int sConstructorRunCount = 0;
     static int sDestructorRunCount = 0;
-    static std::shared_ptr<IComponentModuleTest> sSharedPtrInstance;
+    static IComponentModuleTestPtr sSharedPtrInstance;
 } // namespace ComponentModuleTestStatics
 
 CComponentModuleTest::CComponentModuleTest()
@@ -66,12 +66,12 @@ bool CComponentModuleTest::CreateStaticSharedPtr()
     return static_cast<bool>(ComponentModuleTestStatics::sSharedPtrInstance);
 }
 
-std::shared_ptr<IComponentModuleTest> CComponentModuleTest::GetStaticSharedPtr()
+IComponentModuleTestPtr CComponentModuleTest::GetStaticSharedPtr()
 {
     return ComponentModuleTestStatics::sSharedPtrInstance;
 }
 
-std::shared_ptr<IComponentModuleTest>& CComponentModuleTest::GetStaticSharedPtrRef()
+IComponentModuleTestPtr& CComponentModuleTest::GetStaticSharedPtrRef()
 {
     return ComponentModuleTestStatics::sSharedPtrInstance;
 }

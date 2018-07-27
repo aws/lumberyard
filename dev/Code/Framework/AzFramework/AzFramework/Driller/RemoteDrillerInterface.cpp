@@ -477,7 +477,7 @@ namespace AzFramework
         {
             serializeContext->Class<DrillerNetworkAgentComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
@@ -629,9 +629,9 @@ namespace AzFramework
         AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
         if (serialize)
         {
-            serialize->Class<DrillerNetworkConsoleComponent>()
+            serialize->Class<DrillerNetworkConsoleComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* editContext = serialize->GetEditContext())
             {

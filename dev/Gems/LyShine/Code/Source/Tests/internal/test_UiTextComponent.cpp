@@ -18,6 +18,11 @@
 
 namespace
 {
+    bool IsClose(float value1, float value2, float epsilon = 0.0001f)
+    {
+        return fabsf(value1 - value2) < epsilon;
+    }
+
     using FontList = AZStd::list < IFFont * >;
 
     void AssertTextNotEmpty(const AZStd::list<UiTextComponent::DrawBatch>& drawBatches)
@@ -1851,605 +1856,119 @@ namespace
         entity->Activate();
     }
 
+    void TestCharacterSpacing(CLyShine* lyshine, const AZStd::string& fontPath, float fontSize, const AZStd::string& testString, float characterSpacing, const char* testName)
+    {
+        AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
+        UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
+        AZ_Assert(canvas, "Test failed");
+
+        AZ::Entity* testElem = canvas->CreateChildElement("TrackingTestElement");
+        AZ_Assert(testElem, "Test failed");
+        CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
+        CreateComponent(testElem, LyShine::UiTextComponentUuid);
+        AZ::EntityId testElemId = testElem->GetId();
+
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
+
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetFont, fontPath);
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, fontSize);
+
+        float baseWidth;
+        EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
+
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, characterSpacing);
+        float newWidth;
+        EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
+
+        const int testStringLength = testString.length();
+        const int numGapsBetweenCharacters = testStringLength >= 1 ? testStringLength - 1 : 0;
+        const float ems = characterSpacing * 0.001f;
+        float expectedWidth = baseWidth + numGapsBetweenCharacters * ems * fontSize;
+
+        if (expectedWidth < 0.0f)
+        {
+            expectedWidth = 0.0f;
+        }
+        
+        AZ_Assert(IsClose(newWidth, expectedWidth), "Test failed: Character Spacing, %s. Expected: %f, actual: %f", testName, expectedWidth, newWidth);
+
+        lyshine->ReleaseCanvas(canvasEntityId, false);
+    }
+
+    void TestLineSpacing(CLyShine* lyshine, const AZStd::string& fontPath, float fontSize, const AZStd::string& testString, int numNewlines, float lineSpacing, const char* testName)
+    {
+        AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
+        UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
+        AZ_Assert(canvas, "Test failed");
+
+        AZ::Entity* testElem = canvas->CreateChildElement("LeadingTestElement");
+        AZ_Assert(testElem, "Test failed");
+        CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
+        CreateComponent(testElem, LyShine::UiTextComponentUuid);
+        AZ::EntityId testElemId = testElem->GetId();
+
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
+
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetFont, fontPath);
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, fontSize);
+
+        float baseHeight;
+        EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
+
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetLineSpacing, lineSpacing);
+        float newHeight;
+        EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
+
+        float expectedHeight = baseHeight + numNewlines * lineSpacing;
+
+        if (expectedHeight < 0.0f)
+        {
+            expectedHeight = 0.0f;
+        }
+
+        AZ_Assert(IsClose(newHeight, expectedHeight), "Test failed: Line Spacing, %s. Expected: %f, actual: %f", testName, expectedHeight, newHeight);
+
+        lyshine->ReleaseCanvas(canvasEntityId, false);
+    }
+
     void TrackingLeadingTests(CLyShine* lyshine)
     {
-        // Tracking
-
-        // one space
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test1");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("Hi");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-            
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-            
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, 1000.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth + 1.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // no space
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test2");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, 1000.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // bigger spacing
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test3");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("Hi");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, 4500.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth + 4.5f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // four spaces
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test4");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("abcde");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, 1000.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth + 4.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // four spaces, larger spacing
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test5");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("abcde");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, 3500.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth + 14.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // negative spacing
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test6");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("Hi");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, -1000.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth - 1.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // negative spacing, 4 spaces
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test7");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("abcde");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, -1000.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth - 4.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // smaller font size, one space
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test8");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("Hi");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, 16.0f);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, 1000.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth + 0.5f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // smaller font size, ten spaces
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test9");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("abcdefghijk");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, 16.0f);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, 1000.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth + 5.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // smaller font size, ten spaces, larger spacing
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test10");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("abcdefghijk");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, 16.0f);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, 3500.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth + 17.5f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // larger font size, one space
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test11");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("Hi");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, 64.0f);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, 1000.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth + 2.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // larger font size, seven spaces
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test12");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("abcdefgh");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, 64.0f);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, 1000.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth + 14.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // larger font size, seven spaces, larger spacing
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test13");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("abcdefgh");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, 64.0f);
-
-            float baseWidth;
-            EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, 5200.0f);
-            float newWidth;
-            EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
-
-            AZ_Assert(newWidth == baseWidth + 72.8f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-
-        // Leading
-
-        // one space
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test14");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("Hi\nHello");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            float baseHeight;
-            EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetLineSpacing, 5.0f);
-            float newHeight;
-            EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            AZ_Assert(newHeight == baseHeight + 5.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // four spaces
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test15");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("1\n2\n3\n4\n5");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            float baseHeight;
-            EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetLineSpacing, 5.0f);
-            float newHeight;
-            EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            AZ_Assert(newHeight == baseHeight + 20.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // seven spaces, larger spacing
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test16");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("1\n2\n3\n4\n5\n6\n7\n8");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            float baseHeight;
-            EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetLineSpacing, 8.3f);
-            float newHeight;
-            EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            AZ_Assert(newHeight == baseHeight + 58.1f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // one space, negative spacing
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test17");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("1\n2");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            float baseHeight;
-            EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetLineSpacing, -1.0f);
-            float newHeight;
-            EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            AZ_Assert(newHeight == baseHeight - 1.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // three spaces, negative spacing, larger spacing
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test18");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("1\n2\n3\n4");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            float baseHeight;
-            EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetLineSpacing, -2.2f);
-            float newHeight;
-            EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            AZ_Assert(newHeight == baseHeight - 6.6f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // one space, smaller font
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test19");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("1\n2");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, 18.0f);
-
-            float baseHeight;
-            EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetLineSpacing, 1.0f);
-            float newHeight;
-            EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            AZ_Assert(newHeight == baseHeight + 1.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // four spaces, smaller font
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test20");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("1\n2\n3\n4\n5");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, 18.0f);
-
-            float baseHeight;
-            EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetLineSpacing, 1.0f);
-            float newHeight;
-            EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            AZ_Assert(newHeight == baseHeight + 4.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // one space, larger font
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test21");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("1\n2");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, 64.0f);
-
-            float baseHeight;
-            EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetLineSpacing, 1.0f);
-            float newHeight;
-            EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            AZ_Assert(newHeight == baseHeight + 1.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
-        // four spaces, larger font
-        {
-            AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
-            UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
-            AZ_Assert(canvas, "Test failed");
-
-            AZ::Entity* testElem = canvas->CreateChildElement("Test22");
-            AZ_Assert(testElem, "Test failed");
-            CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
-            CreateComponent(testElem, LyShine::UiTextComponentUuid);
-            AZ::EntityId testElemId = testElem->GetId();
-
-            const AZStd::string testString("1\n2\n3\n4\n5");
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetText, testString);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, 64.0f);
-
-            float baseHeight;
-            EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            EBUS_EVENT_ID(testElemId, UiTextBus, SetLineSpacing, 1.0f);
-            float newHeight;
-            EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
-
-            AZ_Assert(newHeight == baseHeight + 4.0f, "Test failed");
-
-            lyshine->ReleaseCanvas(canvasEntityId, false);
-        }
+        // Character Spacing
+
+        TestCharacterSpacing(lyshine, "default-ui", 32.0f, "Hi", 1000.0f, "one space");
+        TestCharacterSpacing(lyshine, "default-ui", 32.0f, "W", 1000.0f, "no spaces");
+        TestCharacterSpacing(lyshine, "default-ui", 32.0f, "", 1000.0f, "empty string");
+        TestCharacterSpacing(lyshine, "default-ui", 32.0f, "Hi", 4500.0f, "bigger spacing");
+        TestCharacterSpacing(lyshine, "default-ui", 32.0f, "abcde", 1000.0f, "four spaces");
+        TestCharacterSpacing(lyshine, "default-ui", 32.0f, "abcde", 3500.0f, "four spaces, larger spacing");
+        TestCharacterSpacing(lyshine, "default-ui", 32.0f, "12345678", 5432.1f, "seven spaces, non-round spacing");
+        TestCharacterSpacing(lyshine, "default-ui", 32.0f, "12345678", 5432.1f, "seven spaces, non-round spacing, lots of kerning");
+        TestCharacterSpacing(lyshine, "default-ui", 32.0f, "Hi", -1000.0f, "negative spacing");
+        TestCharacterSpacing(lyshine, "default-ui", 32.0f, "abcde", -1000.0f, "negative spacing, 4 spaces");
+        TestCharacterSpacing(lyshine, "default-ui", 16.0f, "Hi", 1000.0f, "smaller font size, one space");
+        TestCharacterSpacing(lyshine, "default-ui", 16.0f, "abcdefghijk", 1000.0f, "smaller font size, ten spaces");
+        TestCharacterSpacing(lyshine, "default-ui", 16.0f, "abcdefghijk", 3500.0f, "smaller font size, ten spaces, larger spacing");
+        TestCharacterSpacing(lyshine, "default-ui", 64.0f, "Hi", 1000.0f, "larger font size, one space");
+        TestCharacterSpacing(lyshine, "default-ui", 64.0f, "abcdefgh", 1000.0f, "larger font size, seven spaces");
+        TestCharacterSpacing(lyshine, "default-ui", 64.0f, "abcdefgh", 5200.0f, "larger font size, seven spaces, larger spacing");
+        TestCharacterSpacing(lyshine, "default", 32.0f, "abcdefgh", 1000.0f, "default (monospace) font, seven spaces");
+        TestCharacterSpacing(lyshine, "notosans-regular", 32.0f, "WAW.AWA|WAW", 2500.0f, "noto sans font, 10 spaces, larger spacing");
+        TestCharacterSpacing(lyshine, "notosans-regular", 32.0f, "WAW.AWA|WAW", 25.0f, "noto sans font, 10 spaces, smaller spacing");
+        TestCharacterSpacing(lyshine, "notosans-regular", 32.0f, "WAW.AWA|WAW", -25.0f, "noto sans font, 10 spaces, smaller negative spacing");
+
+        // Line Spacing
+
+        TestLineSpacing(lyshine, "default-ui", 32.0f, "Hi\nHello", 1, 5.0f, "one newline");
+        TestLineSpacing(lyshine, "default-ui", 32.0f, "1\n2\n3\n4\n5", 4, 5.0f, "four newlines");
+        TestLineSpacing(lyshine, "default-ui", 32.0f, "1\n2\n3\n4\n5\n6\n7\n8", 7, 8.3f, "seven newlines, larger spacing");
+        TestLineSpacing(lyshine, "default-ui", 32.0f, "1\n2", 1, -1.0f, "one newline, negative spacing");
+        TestLineSpacing(lyshine, "default-ui", 32.0f, "1\n2\n3\n4", 3, -2.2f, "three newlines, negative spacing, larger spacing");
+        TestLineSpacing(lyshine, "default-ui", 18.0f, "1\n2", 1, 1.0f, "one newlines, smaller font");
+        TestLineSpacing(lyshine, "default-ui", 18.0f, "1\n2\n3\n4\n5", 4, 1.0f, "four newlines, smaller font");
+        TestLineSpacing(lyshine, "default-ui", 64.0f, "1\n2", 1, 1.0f, "one newlines, larger font");
+        TestLineSpacing(lyshine, "default-ui", 64.0f, "1\n2\n3\n4\n5", 4, 1.0f, "four newlines, larger font");
+        TestLineSpacing(lyshine, "default", 16.0f, "1\n2\n3\n4\n5", 4, 1.0f, "four newlines, default (mono) font");
+        TestLineSpacing(lyshine, "notosans-regular", 20.0f, "1\n2\n3\n4\n5", 4, 1.0f, "four newlines, notosans font");
     }
 
     void ComponentGetSetTextTests(CLyShine* lyshine)

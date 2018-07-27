@@ -40,7 +40,7 @@
    <item row="3" column="0" colspan="3">
     <widget class="QLabel" name="m_TransparentConfidential">
      <property name="text">
-      <string>Lumberyard and related materials Copyright © 2018 Amazon Web Services, Inc., its affiliates or licensors. By accessing or using these materials, you agree to the terms of the AWS Customer Agreement.</string>
+      <string>Specified in the StartupLogoDialog constructor.</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignHCenter|Qt::AlignTop</set>

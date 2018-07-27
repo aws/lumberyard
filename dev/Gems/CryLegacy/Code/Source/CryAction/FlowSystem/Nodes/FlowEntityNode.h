@@ -15,7 +15,7 @@
 #define CRYINCLUDE_CRYACTION_FLOWSYSTEM_NODES_FLOWENTITYNODE_H
 #pragma once
 
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "IEntityPoolManager.h"
 #include <MathConversion.h>
 

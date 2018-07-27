@@ -48,9 +48,6 @@ namespace LmbrCentral
         // AzFramework::EntityDebugDisplayEventBus
         void DisplayEntity(bool& handled) override;
 
-        // TransformNotificationBus
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-
         void ConfigurationChanged();
         void GenerateVertices();
 

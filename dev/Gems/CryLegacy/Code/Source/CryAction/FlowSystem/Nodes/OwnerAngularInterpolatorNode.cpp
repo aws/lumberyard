@@ -11,10 +11,10 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <ISystem.h>
 #include <Cry_Math.h>
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <AzFramework/Math/MathUtils.h>
 #include <AzCore/Component/TransformBus.h>
 #include <MathConversion.h>
@@ -597,7 +597,7 @@ public:
                     }
 
                     EBUS_EVENT_ID(pActInfo->entityId, AZ::TransformBus, SetWorldTM, finalTransform);
-                    currentOrientationEulerAngle = AZVec3ToLYVec3(AzFramework::ConvertTransformToEulerDegrees(finalTransform));
+                    currentOrientationEulerAngle = AZVec3ToLYVec3(AZ::ConvertTransformToEulerDegrees(finalTransform));
                 }
 
                 ActivateOutput(pActInfo, OutputPorts::CurrentRadians, currentOrientationEulerAngle);

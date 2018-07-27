@@ -16,7 +16,7 @@
 //               They can have no state and must remain abstract
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "Adapters.h"
 

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <stdio.h>
 #include <assert.h>                   // assert()
 #include <math.h>                     // floorf()
@@ -242,7 +242,8 @@ bool CSummedAreaTableFilterKernel::CreateFromKaiser(const uint32 indwSize, float
 
 bool CSummedAreaTableFilterKernel::SaveToRAW(const char* filename) const
 {
-    FILE* const out = fopen(filename, "wb");
+    FILE* out = nullptr; 
+    azfopen(&out, filename, "wb");
     if (!out)
     {
         return false;
@@ -277,7 +278,8 @@ bool CSummedAreaTableFilterKernel::CreateFromRawFile(const char* filename, const
     }
     Fill(0);
 
-    FILE* const in = fopen(filename, "rb");
+    FILE* in = nullptr; 
+    azfopen(&in, filename, "rb");
     if (!in)
     {
         return false;

@@ -29,7 +29,7 @@ namespace EMotionFX
      * The motion blend modes.
      * These blendmodes describe how the motion gets blend together with other motions currently being played.
      */
-    enum EMotionBlendMode
+    enum EMotionBlendMode : AZ::u8
     {
         BLENDMODE_OVERWRITE = 0, /**< Overwrite mode. This can be used to switch from for example walk into run. */
         BLENDMODE_ADDITIVE  = 1 /**< Additive mode. This can be used to add the given motion relatively to the current result. */
@@ -39,7 +39,7 @@ namespace EMotionFX
     /**
      * The playback mode, which defines the playback direction of the motion.
      */
-    enum EPlayMode
+    enum EPlayMode : AZ::u8
     {
         PLAYMODE_FORWARD    = 0,/**< Forward playback mode, this is the regular playback what you expect when playing a motion. */
         PLAYMODE_BACKWARD   = 1 /**< Backward playback mode, which makes the motion play from the last frame towards the first frame. */

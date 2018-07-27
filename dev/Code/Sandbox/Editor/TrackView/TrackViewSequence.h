@@ -97,6 +97,7 @@ class CTrackViewSequence
     friend class CAbstractUndoAnimNodeTransaction;
     friend class CUndoAnimNodeReparent;
     friend class CUndoTrackObject;
+    friend class CUndoComponentEntityTrackObject;
     friend class CAbstractUndoSequenceTransaction;
 
 public:
@@ -276,6 +277,19 @@ public:
         }
     }
 
+    void SetExpanded(bool expanded) override
+    {
+        if (m_pAnimSequence)
+        {
+            m_pAnimSequence->SetExpanded(expanded);
+        }
+    }
+
+    bool GetExpanded() const override
+    {
+        return m_pAnimSequence ? m_pAnimSequence->GetExpanded() : true;
+    }
+
     // Called when the 'Record' button is pressed in the toolbar
     void SetRecording(bool enableRecording);
 
@@ -283,6 +297,9 @@ public:
     // PropertyEditorEntityChangeNotificationBus handler
     void OnEntityComponentPropertyChanged(AZ::ComponentId /*changedComponentId*/) override;
     /////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // Helper function to find a sequence by entity id
+    static CTrackViewSequence* LookUpSequenceByEntityId(const AZ::EntityId& sequenceId);
 
 private:
     // These are used to avoid listener notification spam via CTrackViewSequenceNotificationContext.

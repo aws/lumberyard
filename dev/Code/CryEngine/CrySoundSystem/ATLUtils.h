@@ -47,7 +47,7 @@ namespace Audio
 
         TPointerContainer m_cReserved;
         IDType m_nIDCounter;
-        const IDType m_nReserveSize;
+        const AZStd::size_t m_nReserveSize;
         const IDType m_nMinCounterValue;
 
         CInstanceManager(const size_t nReserveSize, const IDType nMinCounterValue)

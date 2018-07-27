@@ -13,65 +13,65 @@
 
 #include "IGestureRecognizer.h"
 
+#include <AzCore/RTTI/ReflectContext.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace Gestures
 {
-    class RecognizerSwipe;
-
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    struct ISwipeListener
-    {
-        virtual ~ISwipeListener() {}
-        virtual void OnSwipeRecognized(const RecognizerSwipe& recognizer) = 0;
-    };
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    class RecognizerSwipe
-        : public IRecognizer
+    class RecognizerSwipe : public RecognizerDiscrete
     {
     public:
-        inline static float GetDefaultMaxSecondsHeld() { return 0.5f; }
-        inline static float GetDefaultMinPixelsMoved() { return 100.0f; }
-        inline static uint32_t GetDefaultPointerIndex() { return 0; }
-        inline static int32_t GetDefaultPriority() { return 0; }
+       static float GetDefaultMaxSecondsHeld() { return 0.5f; }
+       static float GetDefaultMinPixelsMoved() { return 100.0f; }
+       static uint32_t GetDefaultPointerIndex() { return 0; }
+       static int32_t GetDefaultPriority() { return AzFramework::InputChannelEventListener::GetPriorityUI() + 1; }
 
         struct Config
         {
-            inline Config()
+            AZ_CLASS_ALLOCATOR(Config, AZ::SystemAllocator, 0);
+            AZ_RTTI(Config, "{60CC943E-9973-4046-B0AE-32A5B8B5F7A5}");
+            static void Reflect(AZ::ReflectContext* context);
+
+           Config()
                 : maxSecondsHeld(GetDefaultMaxSecondsHeld())
                 , minPixelsMoved(GetDefaultMinPixelsMoved())
                 , pointerIndex(GetDefaultPointerIndex())
                 , priority(GetDefaultPriority())
             {}
+            virtual ~Config() = default;
 
             float maxSecondsHeld;
             float minPixelsMoved;
             uint32_t pointerIndex;
             int32_t priority;
         };
-        inline static const Config& GetDefaultConfig() { static Config s_cfg; return s_cfg; }
+       static const Config& GetDefaultConfig() { static Config s_cfg; return s_cfg; }
 
-        inline explicit RecognizerSwipe(ISwipeListener& listener,
-            const Config& config = GetDefaultConfig());
-        inline ~RecognizerSwipe() override;
+        AZ_CLASS_ALLOCATOR(RecognizerSwipe, AZ::SystemAllocator, 0);
+        AZ_RTTI(RecognizerSwipe, "{3030E923-531F-4CE6-BC8E-84238FA47AB9}", RecognizerDiscrete);
 
-        inline int32_t GetPriority() const override { return m_config.priority; }
-        inline bool OnPressedEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
-        inline bool OnDownEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
-        inline bool OnReleasedEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
+       explicit RecognizerSwipe(const Config& config = GetDefaultConfig());
+       ~RecognizerSwipe() override;
 
-        inline Config& GetConfig() { return m_config; }
-        inline const Config& GetConfig() const { return m_config; }
+       int32_t GetPriority() const override { return m_config.priority; }
+       bool OnPressedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
+       bool OnDownEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
+       bool OnReleasedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
 
-        inline Vec2 GetStartPosition() const { return m_startPosition; }
-        inline Vec2 GetEndPosition() const { return m_endPosition; }
+       Config& GetConfig() { return m_config; }
+       const Config& GetConfig() const { return m_config; }
+       void SetConfig(const Config& config) { m_config = config; }
 
-        inline Vec2 GetDelta() const { return GetEndPosition() - GetStartPosition(); }
-        inline Vec2 GetDirection() const { return GetDelta().GetNormalized(); }
+       AZ::Vector2 GetStartPosition() const { return m_startPosition; }
+       AZ::Vector2 GetEndPosition() const { return m_endPosition; }
 
-        inline float GetDistance() const { return GetEndPosition().GetDistance(GetStartPosition()); }
-        inline float GetDuration() const { return CTimeValue(m_endTime).GetDifferenceInSeconds(m_startTime); }
-        inline float GetVelocity() const { return GetDistance() / GetDuration(); }
+       AZ::Vector2 GetDelta() const { return GetEndPosition() - GetStartPosition(); }
+       AZ::Vector2 GetDirection() const { return GetDelta().GetNormalized(); }
+
+       float GetDistance() const { return GetEndPosition().GetDistance(GetStartPosition()); }
+       float GetDuration() const { return CTimeValue(m_endTime).GetDifferenceInSeconds(m_startTime); }
+       float GetVelocity() const { return GetDistance() / GetDuration(); }
 
     private:
         enum class State
@@ -80,7 +80,6 @@ namespace Gestures
             Pressed
         };
 
-        ISwipeListener& m_listener;
         Config m_config;
 
         ScreenPosition m_startPosition;

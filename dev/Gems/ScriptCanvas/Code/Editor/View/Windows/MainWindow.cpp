@@ -55,7 +55,7 @@
 #include <Editor/View/Widgets/LogPanel.h>
 #include <Editor/View/Widgets/VariablePanel/VariableDockWidget.h>
 
-#include <Editor/View/Windows/ui_MainWindow.h>
+#include <Editor/View/Windows/ui_mainwindow.h>
 
 #include <Editor/Model/EntityMimeDataHandler.h>
 
@@ -79,6 +79,7 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Vector4.h>
 
+#include <AzFramework/Asset/AssetCatalog.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
@@ -185,18 +186,43 @@ namespace ScriptCanvasEditor
         }
     } // anonymous namespace.
 
-    ///////////////////////////////
-    // ScriptCanvasBatchConverter
-    ///////////////////////////////
+      ///////////////////////////////
+      // ScriptCanvasBatchConverter
+      ///////////////////////////////
     class ScriptCanvasBatchConverter
         : public GraphCanvas::AssetEditorNotificationBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ScriptCanvasBatchConverter, AZ::SystemAllocator, 0);
 
-        ScriptCanvasBatchConverter(MainWindow* mainWindow, QStringList directories)
+        ScriptCanvasBatchConverter(MainWindow* mainWindow)
             : m_mainWindow(mainWindow)
             , m_processing(false)
+            , m_triggerSave(false)
+        {
+        }
+
+        ~ScriptCanvasBatchConverter()
+        {
+            ISystem* system = nullptr;
+            CrySystemRequestBus::BroadcastResult(system, &CrySystemRequestBus::Events::GetCrySystem);
+
+            ICVar* cvar = system->GetIConsole()->GetCVar("ed_KeepEditorActive");
+
+            if (cvar)
+            {
+                cvar->Set(m_originalActive);
+            }
+
+            delete m_progressDialog;
+
+            for (QDirIterator* dirIterator : m_directoryIterators)
+            {
+                delete dirIterator;
+            }
+        }
+
+        void BatchConvert(QStringList directories)
         {
             ISystem* system = nullptr;
             CrySystemRequestBus::BroadcastResult(system, &CrySystemRequestBus::Events::GetCrySystem);
@@ -238,35 +264,17 @@ namespace ScriptCanvasEditor
             TickIterator();
         }
 
-        ~ScriptCanvasBatchConverter()
-        {
-            ISystem* system = nullptr;
-            CrySystemRequestBus::BroadcastResult(system, &CrySystemRequestBus::Events::GetCrySystem);
-
-            ICVar* cvar = system->GetIConsole()->GetCVar("ed_KeepEditorActive");
-
-            if (cvar)
-            {
-                cvar->Set(m_originalActive);
-            }
-
-            delete m_progressDialog;
-
-            for (QDirIterator* dirIterator : m_directoryIterators)
-            {
-                delete dirIterator;
-            }
-        }
-
         // GraphCanvas::AssetEditorNotifications
         void PostOnActiveGraphChanged() override
         {
-            if (m_assetId.IsValid() && m_processing)
+            if (m_assetId.IsValid() && m_triggerSave)
             {
-                m_processing = false;
+                m_triggerSave = false;
 
                 m_mainWindow->SaveAsset(m_assetId, [this](bool isSuccessful)
                 {
+                    m_processing = false;
+
                     AZ::Data::AssetId assetId = m_assetId;
                     m_assetId.SetInvalid();
                     m_mainWindow->CloseScriptCanvasAsset(assetId);
@@ -281,13 +289,13 @@ namespace ScriptCanvasEditor
         {
             QDirIterator* directoryIterator = new QDirIterator(directory, QDirIterator::Subdirectories);
 
-            m_directoryIterators.emplace_back(directoryIterator);
-
-            TickIterator();
+            m_directoryIterators.insert(m_directoryIterators.begin(), directoryIterator);
         }
 
-        void BatchConvertFile(const QString& fileName)
+        bool BatchConvertFile(const QString& fileName)
         {
+            bool tickIterator = true;
+
             QByteArray utf8FileName = fileName.toUtf8();
             const bool loadBlocking = true;
             AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset;
@@ -297,37 +305,41 @@ namespace ScriptCanvasEditor
                 if (m_mainWindow->m_tabBar->FindTab(scriptCanvasAsset.GetId()) < 0)
                 {
                     m_assetId = scriptCanvasAsset.GetId();
+                    m_triggerSave = true;
                     m_processing = true;
 
                     m_progressDialog->setLabelText(QString("Converting %1...\n").arg(fileName));
                     QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
                     m_mainWindow->OpenScriptCanvasAsset(scriptCanvasAsset);
-                }
-                else
-                {
-                    TickIterator();
+
+                    tickIterator = false;
                 }
             }
+
+            return tickIterator;
         }
 
         void TickIterator()
         {
-            if (!m_directoryIterators.empty())
+            while (!m_directoryIterators.empty())
             {
                 QDirIterator* dirIterator = m_directoryIterators.back();
 
-                if (dirIterator->hasNext())
+                while (dirIterator->hasNext())
                 {
                     QString newElement = dirIterator->next();
 
                     if (newElement.endsWith("."))
                     {
-                        TickIterator();
+                        continue;
                     }
                     else if (newElement.endsWith(".scriptcanvas"))
                     {
-                        BatchConvertFile(newElement);
+                        if (!BatchConvertFile(newElement))
+                        {
+                            break;
+                        }
                     }
                     else
                     {
@@ -339,14 +351,19 @@ namespace ScriptCanvasEditor
                         }
                     }
                 }
-                else
+
+                if (!dirIterator->hasNext() && !m_processing)
                 {
                     delete dirIterator;
                     m_directoryIterators.pop_back();
-                    TickIterator();
+                }
+                else
+                {
+                    break;
                 }
             }
-            else
+
+            if (m_directoryIterators.empty() && !m_processing)
             {
                 if (m_progressDialog)
                 {
@@ -370,7 +387,8 @@ namespace ScriptCanvasEditor
 
         int m_currentTab;
         bool m_processing;
-        
+        bool m_triggerSave;
+
         QProgressDialog* m_progressDialog;
         AZ::Data::AssetId m_assetId;
     };
@@ -1076,28 +1094,45 @@ namespace ScriptCanvasEditor
 
     AZ::Outcome<int, AZStd::string> MainWindow::OpenScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex, AZ::EntityId contextId)
     {
-        if (!scriptCanvasAsset.GetId().IsValid())
+        const AZ::Data::AssetId& assetId = scriptCanvasAsset.GetId();
+
+        if (!assetId.IsValid())
         {
             return AZ::Failure(AZStd::string("Unable to open asset with invalid asset id"));
         }
 
         // Reuse the tab if available
         int outTabIndex = -1;
-        auto assetGraphSceneData = m_assetGraphSceneMapper.GetByAssetId(scriptCanvasAsset.GetId());
+        auto assetGraphSceneData = m_assetGraphSceneMapper.GetByAssetId(assetId);
         if (assetGraphSceneData)
         {
-            outTabIndex = m_tabBar->FindTab(scriptCanvasAsset.GetId());
+            outTabIndex = m_tabBar->FindTab(assetId);
             m_tabBar->setCurrentIndex(outTabIndex);
             return AZ::Success(outTabIndex);
         }
         else
         {
-            m_tabBar->InsertGraphTab(tabIndex, scriptCanvasAsset.GetId());
-            outTabIndex = m_tabBar->FindTab(scriptCanvasAsset.GetId());
+            m_tabBar->InsertGraphTab(tabIndex, assetId);
+            outTabIndex = m_tabBar->FindTab(assetId);
         }
         if (outTabIndex == -1)
         {
             return AZ::Failure(AZStd::string::format("Unable to open existing Script Canvas Asset with id %s in the Script Canvas Editor", scriptCanvasAsset.ToString<AZStd::string>().c_str()));
+        }
+        else
+        {
+            // asset successfully opened, add it to the recent file list
+            AZStd::string rootFolder;
+            AzFramework::AssetSystem::SourceAssetInfoResponse response;
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetSourceInfoBySourceUUID, assetId.m_guid, response.m_assetInfo, rootFolder);
+
+            if (response.m_found)
+            {
+                AZStd::string fullPath;
+                AzFramework::StringFunc::Path::Join(rootFolder.c_str(), response.m_assetInfo.m_relativePath.c_str(), fullPath);
+                AddRecentFile(QString::fromUtf8(fullPath.c_str()));
+                UpdateRecentMenu();
+            }
         }
 
         AZ::Data::Asset<ScriptCanvasAsset> newAsset;
@@ -1106,15 +1141,15 @@ namespace ScriptCanvasEditor
             ScriptCanvasAssetFileInfo scFileInfo;
             AZ::Data::AssetInfo assetInfo;
             AZStd::string rootFilePath;
-            AzToolsFramework::AssetSystemRequestBus::Broadcast(&AzToolsFramework::AssetSystemRequestBus::Events::GetAssetInfoById, scriptCanvasAsset.GetId(), azrtti_typeid<ScriptCanvasAsset>(), assetInfo, rootFilePath);
+            AzToolsFramework::AssetSystemRequestBus::Broadcast(&AzToolsFramework::AssetSystemRequestBus::Events::GetAssetInfoById, assetId, azrtti_typeid<ScriptCanvasAsset>(), assetInfo, rootFilePath);
             AzFramework::StringFunc::Path::Join(rootFilePath.data(), assetInfo.m_relativePath.data(), scFileInfo.m_absolutePath);
             scFileInfo.m_fileModificationState = ScriptCanvasFileState::UNMODIFIED;
-            DocumentContextRequestBus::Broadcast(&DocumentContextRequests::RegisterScriptCanvasAsset, scriptCanvasAsset.GetId(), scFileInfo);
+            DocumentContextRequestBus::Broadcast(&DocumentContextRequests::RegisterScriptCanvasAsset, assetId, scFileInfo);
             newAsset = scriptCanvasAsset;
         }
         else
         {
-            DocumentContextRequestBus::BroadcastResult(newAsset, &DocumentContextRequests::LoadScriptCanvasAssetById, scriptCanvasAsset.GetId(), false);
+            DocumentContextRequestBus::BroadcastResult(newAsset, &DocumentContextRequests::LoadScriptCanvasAssetById, assetId, false);
         }
 
         AZ::Outcome<ScriptCanvasAssetFileInfo, AZStd::string> assetInfoOutcome = AZ::Failure(AZStd::string());
@@ -1375,7 +1410,8 @@ namespace ScriptCanvasEditor
 
         AZStd::string tabName;
         AzFramework::StringFunc::Path::GetFileName(filename.data(), tabName);
-        DocumentContextRequests::SaveCB wrappedSaveCB = [this, sourceAsset, saveAsset, tabName, forceReload, saveCB](bool saveSuccess)
+        QString capturedFileName(QString::fromUtf8(filename.to_string().c_str()));
+        DocumentContextRequests::SaveCB wrappedSaveCB = [this, capturedFileName, sourceAsset, saveAsset, tabName, forceReload, saveCB](bool saveSuccess)
         {
             if (sourceAsset != saveAsset || forceReload)
             {
@@ -1402,6 +1438,12 @@ namespace ScriptCanvasEditor
             {
                 saveCB(saveSuccess);
             }
+
+            if (saveSuccess)
+            {
+                AddRecentFile(capturedFileName);
+                UpdateRecentMenu();
+            }
         };
 
         DocumentContextRequestBus::Broadcast(&DocumentContextRequests::SaveScriptCanvasAsset, filename, saveAsset, wrappedSaveCB, idChangedCB);
@@ -1420,12 +1462,7 @@ namespace ScriptCanvasEditor
             AZ::Data::Asset<ScriptCanvasAsset> newAsset;
             DocumentContextRequestBus::BroadcastResult(newAsset, &DocumentContextRequests::LoadScriptCanvasAssetById, assetInfo.m_assetId, false);
             auto openOutcome = OpenScriptCanvasAsset(newAsset);
-            if (openOutcome)
-            {
-                AddRecentFile(fullPath);
-                UpdateRecentMenu();
-            }
-            else
+            if (!openOutcome)
             {
                 AZ_Warning("Script Canvas", openOutcome, "%s", openOutcome.GetError().data());
             }
@@ -1650,7 +1687,7 @@ namespace ScriptCanvasEditor
         connect(ui->action_GlobalPreferences, &QAction::triggered, [this]() 
         {
             AZStd::intrusive_ptr<EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
-            bool originalSetting = settings && settings->m_showExcludedNodes;           
+            bool originalSetting = settings && settings->m_showExcludedNodes;
 
             ScriptCanvasEditor::SettingsDialog(ui->action_GlobalPreferences->text(), AZ::EntityId(), this).exec();
 
@@ -2412,7 +2449,8 @@ namespace ScriptCanvasEditor
             {
                 QStringList directories = directoryDialog.selectedFiles();
 
-                m_converter = aznew ScriptCanvasBatchConverter(this, directories);
+                m_converter = aznew ScriptCanvasBatchConverter(this);
+                m_converter->BatchConvert(directories);
             }
         }
     }

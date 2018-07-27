@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ViewManager.h"
 #include "SetVectorDlg.h"
 #include "ui_SetVectorDlg.h"
@@ -20,7 +20,6 @@
 #include "MainWindow.h"
 
 #include "MathConversion.h"
-#include <AzFramework/Math/MathUtils.h>
 
 /////////////////////////////////////////////////////////////////////////////
 // CSetVectorDlg dialog
@@ -125,7 +124,7 @@ Vec3 CSetVectorDlg::GetVectorFromEditor()
 				qrot = obj->GetRotation();
 			}
 
-			v = AZVec3ToLYVec3(AzFramework::ConvertQuaternionToEulerDegrees(LYQuaternionToAZQuaternion(qrot)));
+			v = AZVec3ToLYVec3(AZ::ConvertQuaternionToEulerDegrees(LYQuaternionToAZQuaternion(qrot)));
         }
     }
     if (emode == eEditModeScale)
@@ -200,7 +199,7 @@ void CSetVectorDlg::SetVector(const Vec3& v)
     {
         if (obj)
         {
-			Quat qrot = AZQuaternionToLYQuaternion(AzFramework::ConvertEulerDegreesToQuaternion(LYVec3ToAZVec3(v)));
+			Quat qrot = AZQuaternionToLYQuaternion(AZ::ConvertEulerDegreesToQuaternion(LYVec3ToAZVec3(v)));
             if (referenceCoordSys == COORDS_WORLD)
             {
                 tm = Matrix34::Create(ap.scale, qrot, ap.pos);

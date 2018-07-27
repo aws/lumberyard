@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "PropertyMiscCtrl.h"
 #include "QtViewPaneManager.h"
@@ -87,7 +87,7 @@ void UserPropertyEditor::onEditClicked()
 QWidget* UserPopupWidgetHandler::CreateGUI(QWidget *pParent)
 {
     UserPropertyEditor* newCtrl = aznew UserPropertyEditor(pParent);
-    connect(newCtrl, &UserPropertyEditor::ValueChanged, [newCtrl]()
+    connect(newCtrl, &UserPropertyEditor::ValueChanged, newCtrl, [newCtrl]()
     {
         EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
     });
@@ -139,7 +139,7 @@ LensFlarePropertyWidget::LensFlarePropertyWidget(QWidget *pParent /*= nullptr*/)
     QToolButton *mainButton = new QToolButton;
     mainButton->setText("D");
     connect(mainButton, &QToolButton::clicked, this, &LensFlarePropertyWidget::OnEditClicked);
-    connect(m_valueEdit, &QLineEdit::editingFinished, [this] () {emit ValueChanged(m_valueEdit->text());});
+    connect(m_valueEdit, &QLineEdit::editingFinished, m_valueEdit, [this] () {emit ValueChanged(m_valueEdit->text());});
 
     QHBoxLayout *mainLayout = new QHBoxLayout(this);
     mainLayout->addWidget(m_valueEdit, 1);
@@ -171,7 +171,7 @@ void LensFlarePropertyWidget::OnEditClicked()
 QWidget* LensFlareHandler::CreateGUI(QWidget *pParent)
 {
     LensFlarePropertyWidget* newCtrl = aznew LensFlarePropertyWidget(pParent);
-    connect(newCtrl, &LensFlarePropertyWidget::ValueChanged, [newCtrl]()
+    connect(newCtrl, &LensFlarePropertyWidget::ValueChanged, newCtrl, [newCtrl]()
     {
         EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
     });

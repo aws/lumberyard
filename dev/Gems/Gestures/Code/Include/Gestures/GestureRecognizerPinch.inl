@@ -9,12 +9,39 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "Gestures_precompiled.h"
+
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-Gestures::RecognizerPinch::RecognizerPinch(Gestures::IPinchListener& listener, const Config& config)
-    : m_listener(listener)
-    , m_config(config)
+inline void Gestures::RecognizerPinch::Config::Reflect(AZ::ReflectContext* context)
+{
+    if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
+    {
+        serialize->Class<Config>()
+            ->Version(0)
+            ->Field("minPixelsMoved", &Config::minPixelsMoved)
+            ->Field("maxAngleDegrees", &Config::maxAngleDegrees)
+            ->Field("priority", &Config::priority)
+        ;
+
+        if (AZ::EditContext* ec = serialize->GetEditContext())
+        {
+            ec->Class<Config>("Pinch Config", "Configuration values used to setup a gesture recognizer for pinches.")
+                ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->DataElement(AZ::Edit::UIHandlers::Default, &Config::minPixelsMoved, "Min Pixels Moved", "The min distance in pixels that must be pinched before a pinch will be recognized.")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->DataElement(AZ::Edit::UIHandlers::Default, &Config::maxAngleDegrees, "Max Angle Degrees", "The max angle in degrees that a pinch can deviate before it will be recognized.")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ;
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+inline Gestures::RecognizerPinch::RecognizerPinch(const Config& config)
+    : m_config(config)
     , m_currentState(State::Idle)
 {
     m_lastUpdateTimes[0] = 0;
@@ -22,12 +49,12 @@ Gestures::RecognizerPinch::RecognizerPinch(Gestures::IPinchListener& listener, c
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-Gestures::RecognizerPinch::~RecognizerPinch()
+inline Gestures::RecognizerPinch::~RecognizerPinch()
 {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Gestures::RecognizerPinch::OnPressedEvent(const Vec2& screenPosition, uint32_t pointerIndex)
+inline bool Gestures::RecognizerPinch::OnPressedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex)
 {
     if (pointerIndex > s_maxPinchPointerIndex)
     {
@@ -59,7 +86,7 @@ bool Gestures::RecognizerPinch::OnPressedEvent(const Vec2& screenPosition, uint3
     default:
     {
         // Should not be possible, but not fatal if we happen to get here somehow.
-        CryLogAlways("RecognizerPinch::OnPressedEvent state logic failure");
+        AZ_Warning("RecognizerPinch", false, "RecognizerPinch::OnPressedEvent state logic failure");
     }
     break;
     }
@@ -68,7 +95,7 @@ bool Gestures::RecognizerPinch::OnPressedEvent(const Vec2& screenPosition, uint3
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-inline float AngleInDegreesBetweenVectors(const Vec2& vec0, const Vec2& vec1)
+inline float AngleInDegreesBetweenVectors(const AZ::Vector2& vec0, const AZ::Vector2& vec1)
 {
     if (vec0.IsZero() || vec1.IsZero())
     {
@@ -79,7 +106,7 @@ inline float AngleInDegreesBetweenVectors(const Vec2& vec0, const Vec2& vec1)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Gestures::RecognizerPinch::OnDownEvent(const Vec2& screenPosition, uint32_t pointerIndex)
+inline bool Gestures::RecognizerPinch::OnDownEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex)
 {
     if (pointerIndex > s_maxPinchPointerIndex)
     {
@@ -98,8 +125,8 @@ bool Gestures::RecognizerPinch::OnDownEvent(const Vec2& screenPosition, uint32_t
     {
     case State::PressedBoth:
     {
-        const Vec2 vectorBetweenStartPositions = GetStartPosition1() - GetStartPosition0();
-        const Vec2 vectorBetweenCurrentPositions = GetCurrentPosition1() - GetCurrentPosition0();
+        const AZ::Vector2 vectorBetweenStartPositions = GetStartPosition1() - GetStartPosition0();
+        const AZ::Vector2 vectorBetweenCurrentPositions = GetCurrentPosition1() - GetCurrentPosition0();
         const float distanceDeltaPixels = abs(GetCurrentDistance() - GetStartDistance());
 
         if (AngleInDegreesBetweenVectors(vectorBetweenStartPositions, vectorBetweenCurrentPositions) > m_config.maxAngleDegrees)
@@ -115,14 +142,14 @@ bool Gestures::RecognizerPinch::OnDownEvent(const Vec2& screenPosition, uint32_t
             // sufficient distance for a pinch gesture to be initiated.
             m_startPositions[0] = m_currentPositions[0];
             m_startPositions[1] = m_currentPositions[1];
-            m_listener.OnPinchInitiated(*this);
+            OnContinuousGestureInitiated();
             m_currentState = State::Pinching;
         }
     }
     break;
     case State::Pinching:
     {
-        m_listener.OnPinchUpdated(*this);
+        OnContinuousGestureUpdated();
     }
     break;
     case State::Pressed0:
@@ -131,7 +158,7 @@ bool Gestures::RecognizerPinch::OnDownEvent(const Vec2& screenPosition, uint32_t
     default:
     {
         // Should not be possible, but not fatal if we happen to get here somehow.
-        CryLogAlways("RecognizerPinch::OnDownEvent state logic failure");
+        AZ_Warning("RecognizerPinch", false, "RecognizerPinch::OnDownEvent state logic failure");
     }
     break;
     }
@@ -140,7 +167,7 @@ bool Gestures::RecognizerPinch::OnDownEvent(const Vec2& screenPosition, uint32_t
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Gestures::RecognizerPinch::OnReleasedEvent(const Vec2& screenPosition, uint32_t pointerIndex)
+inline bool Gestures::RecognizerPinch::OnReleasedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex)
 {
     if (pointerIndex > s_maxPinchPointerIndex)
     {
@@ -155,7 +182,7 @@ bool Gestures::RecognizerPinch::OnReleasedEvent(const Vec2& screenPosition, uint
         if (static_cast<uint32_t>(m_currentState) != pointerIndex)
         {
             // Should not be possible, but not fatal if we happen to get here somehow.
-            CryLogAlways("RecognizerPinch::OnReleasedEvent state logic failure");
+            AZ_Warning("RecognizerPinch", false, "RecognizerPinch::OnReleasedEvent state logic failure");
             break;
         }
 
@@ -174,7 +201,7 @@ bool Gestures::RecognizerPinch::OnReleasedEvent(const Vec2& screenPosition, uint
     case State::Pinching:
     {
         m_currentPositions[pointerIndex] = screenPosition;
-        m_listener.OnPinchEnded(*this);
+        OnContinuousGestureEnded();
         m_currentState = pointerIndex ? State::Pressed0 : State::Pressed1;
     }
     break;
@@ -182,7 +209,7 @@ bool Gestures::RecognizerPinch::OnReleasedEvent(const Vec2& screenPosition, uint
     default:
     {
         // Should not be possible, but not fatal if we happen to get here somehow.
-        CryLogAlways("RecognizerPinch::OnReleasedEvent state logic failure");
+        AZ_Warning("RecognizerPinch", false, "RecognizerPinch::OnReleasedEvent state logic failure");
     }
     break;
     }

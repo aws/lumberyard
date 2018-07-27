@@ -1,0 +1,8 @@
+{
+    "none": {
+        "Tests": 
+        [
+            "Tests.cpp"
+        ]
+    }
+}

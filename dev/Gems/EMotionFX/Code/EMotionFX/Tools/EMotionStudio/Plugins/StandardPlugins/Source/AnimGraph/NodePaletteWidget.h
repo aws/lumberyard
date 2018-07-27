@@ -26,6 +26,8 @@ QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
 
 namespace EMStudio
 {
+    class AnimGraphPlugin;
+
     class NodePaletteList
         : public QListWidget
     {
@@ -59,6 +61,7 @@ namespace EMStudio
         class EventHandler
             : public EMotionFX::EventHandler
         {
+            AZ_CLASS_ALLOCATOR_DECL
         public:
             static EventHandler* Create(NodePaletteWidget* widget);
 
@@ -72,7 +75,7 @@ namespace EMStudio
             ~EventHandler();
         };
 
-        NodePaletteWidget();
+        NodePaletteWidget(AnimGraphPlugin* plugin);
         ~NodePaletteWidget();
 
         void Init(EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphNode* node);
@@ -83,9 +86,10 @@ namespace EMStudio
         void OnChangeCategoryTab(int index);
 
     private:
+        AnimGraphPlugin*            mPlugin;
         NodePaletteList*            mList;
         QTabBar*                    mTabBar;
-        EMotionFX::AnimGraphNode*  mNode;
+        EMotionFX::AnimGraphNode*   mNode;
         EventHandler*               mEventHandler;
         QVBoxLayout*                mLayout;
         QLabel*                     mInitialText;

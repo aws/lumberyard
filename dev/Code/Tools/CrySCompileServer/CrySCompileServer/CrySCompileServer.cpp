@@ -34,7 +34,7 @@
 #include <unistd.h>
 #endif
 
-namespace 
+namespace
 {
     const int STD_TCP_PORT = 61453;
     const int DEFAULT_MAX_CONNECTIONS = 255;
@@ -62,7 +62,7 @@ public:
         }
         if (azstricmp(strKey.c_str(), "TempDir") == 0)
         {
-            SEnviropment::Instance().m_Temp = AddBackSlash(strValue);
+            SEnviropment::Instance().m_TempPath = AddSlash(strValue);
         }
         if (azstricmp(strKey.c_str(), "MailServer") == 0)
         {
@@ -75,6 +75,14 @@ public:
         if (azstricmp(strKey.c_str(), "PrintErrors") == 0)
         {
             SEnviropment::Instance().m_PrintErrors = atoi(strValue.c_str()) != 0;
+        }
+        if (azstricmp(strKey.c_str(), "PrintWarnings") == 0)
+        {
+            SEnviropment::Instance().m_PrintWarnings = atoi(strValue.c_str()) != 0;
+        }
+        if (azstricmp(strKey.c_str(), "PrintCommands") == 0)
+        {
+            SEnviropment::Instance().m_PrintCommands = atoi(strValue.c_str()) != 0;
         }
         if (azstricmp(strKey.c_str(), "PrintListUpdates") == 0)
         {
@@ -135,7 +143,8 @@ public:
     //////////////////////////////////////////////////////////////////////////
     bool ParseConfig(const char* filename)
     {
-        FILE* file = fopen(filename, "rb");
+        FILE* file = nullptr;
+        azfopen(&file, filename, "rb");
         if (!file)
         {
             std::cout << "Config file not found" << std::endl;
@@ -235,11 +244,13 @@ public:
         str = str.substr(pos1 == std::string::npos ? 0 : pos1, pos2 == std::string::npos ? str.length() - 1 : pos2 - pos1 + 1);
         return str;
     }
-    std::string AddBackSlash(const std::string& str)
+    std::string AddSlash(const std::string& str)
     {
-        if (!str.empty() && str[str.size() - 1] != '\\')
+        if (!str.empty() && 
+            (str[str.size() - 1] != '\\') && 
+            (str[str.size() - 1] != '/'))
         {
-            return str + "\\";
+            return str + "/";
         }
         return str;
     }
@@ -269,12 +280,51 @@ void InitDefaults()
     SEnviropment::Instance().m_MailServer               = "example.com";
     SEnviropment::Instance().m_Caching                      =   true;
     SEnviropment::Instance().m_PrintErrors              = true;
+    SEnviropment::Instance().m_PrintWarnings            = false;
+    SEnviropment::Instance().m_PrintCommands            = false;
     SEnviropment::Instance().m_DedupeErrors             = true;
     SEnviropment::Instance().m_PrintListUpdates     = true;
     SEnviropment::Instance().m_FallbackTreshold     =   16;
     SEnviropment::Instance().m_FallbackServer           =   "";
     SEnviropment::Instance().m_WhitelistAddresses.push_back("127.0.0.1");
     SEnviropment::Instance().m_RunAsRoot = false;
+    SEnviropment::Instance().InitializePlatformAttributes();
+}
+
+bool ReadConfigFile()
+{
+    AZStd::string executableDir;
+    if (GetExecutableDirectory(executableDir))
+    {
+        AZStd::string configFilename = AZStd::string::format("%sconfig.ini", executableDir.c_str());
+
+        CConfigFile config;
+        config.ParseConfig(configFilename.c_str());
+        return true;
+    }
+    else
+    {
+        printf("error: failed to get executable directory.\n");
+        return false;
+    }
+}
+
+void RunServer(bool isRunningAsRoot)
+{
+    if (isRunningAsRoot)
+    {
+        printf("\nWARNING: Attempting to run the CrySCompileServer as a user that has admininstrator permissions. This is a security risk and not recommended. Please run the service with a user account that does not have administrator permissions.\n\n");
+    }
+
+    if (!isRunningAsRoot || SEnviropment::Instance().m_RunAsRoot)
+    {
+        CCrySimpleHTTP HTTP;
+        CCrySimpleServer();
+    }
+    else
+    {
+        printf("If you need to run CrySCompileServer with administrator permisions you can create/edit the config.ini file in the same directory as this executable and add the following line to it:\n\tAllowElevatedPermissions=1\n");
+    }
 }
 
 int main(int argc, char* argv[])
@@ -289,24 +339,24 @@ int main(int argc, char* argv[])
 
 #if defined(AZ_PLATFORM_WINDOWS)
     // Check to see if we are running as root...
-    SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
-    PSID administratorsGroup; 
+    SID_IDENTIFIER_AUTHORITY ntAuthority = { SECURITY_NT_AUTHORITY };
+    PSID administratorsGroup;
     BOOL sidAllocated = AllocateAndInitializeSid(
             &ntAuthority,
             2,
             SECURITY_BUILTIN_DOMAIN_RID,
             DOMAIN_ALIAS_RID_ADMINS,
             0, 0, 0, 0, 0, 0,
-            &administratorsGroup); 
+            &administratorsGroup);
 
-    if(sidAllocated) 
+    if(sidAllocated)
     {
         BOOL isRoot = FALSE;
-        if (!CheckTokenMembership( NULL, administratorsGroup, &isRoot)) 
+        if (!CheckTokenMembership( NULL, administratorsGroup, &isRoot))
         {
             isRoot = FALSE;
-        } 
-        FreeSid(administratorsGroup); 
+        }
+        FreeSid(administratorsGroup);
 
         isRunningAsRoot = (isRoot == TRUE);
     }
@@ -338,26 +388,17 @@ int main(int argc, char* argv[])
     jobManager = aznew AZ::JobManager(jobManagerDescription);
     globalJobContext = aznew AZ::JobContext(*jobManager);
     AZ::JobContext::SetGlobalContext(globalJobContext);
+    
+    SEnviropment::Create();
 
     InitDefaults();
-
-    CConfigFile config;
-    config.ParseConfig("config.ini");
-
-    if (isRunningAsRoot)
+    
+    if (ReadConfigFile())
     {
-        printf("\nWARNING: Attempting to run the CrySCompileServer as a user that has admininstrator permissions. This is a security risk and not recommended. Please run the service with a user account that does not have administrator permissions.\n\n");
+        RunServer(isRunningAsRoot);
     }
-
-    if (!isRunningAsRoot || SEnviropment::Instance().m_RunAsRoot)
-    {
-        CCrySimpleHTTP HTTP;
-        CCrySimpleServer();
-    }
-    else
-    {
-        printf("If you need to run CrySCompileServer with administrator permisions you can create/edit the config.ini file in the same directory as this executable and add the following line to it:\n\tAllowElevatedPermissions=1\n");
-    }
+    
+    SEnviropment::Destroy();
 
     AZ::JobContext::SetGlobalContext(nullptr);
     delete globalJobContext;

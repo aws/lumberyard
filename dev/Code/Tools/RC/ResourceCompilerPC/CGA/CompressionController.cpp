@@ -969,46 +969,46 @@ void CCompressonator::CompressController(
 }
 
 
-static BaseCompressedQuat* GetCompressedQuat(ECompressionFormat format, int count)
+static BaseCompressedQuat* GetCompressedQuat(ECompressionFormat format)
 {
     switch (format)
     {
     case eNoCompress:
     case eNoCompressQuat:
-        return new TNoCompressedQuat[count];
+        return new TNoCompressedQuat();
 
     case eShotInt3Quat:
-        return new TShortInt3CompressedQuat[count];
+        return new TShortInt3CompressedQuat();
 
     case eSmallTreeDWORDQuat:
-        return new TSmallTreeDWORDCompressedQuat[count];
+        return new TSmallTreeDWORDCompressedQuat();
 
     case eSmallTree48BitQuat:
-        return new TSmallTree48BitCompressedQuat[count];
+        return new TSmallTree48BitCompressedQuat();
 
     case eSmallTree64BitQuat:
-        return new TSmallTree64BitCompressedQuat[count];
+        return new TSmallTree64BitCompressedQuat();
 
     case eSmallTree64BitExtQuat:
-        return new TSmallTree64BitExtCompressedQuat[count];
+        return new TSmallTree64BitExtCompressedQuat();
 
     case ePolarQuat:
-        return new TPolarQuatQuat[count];
+        return new TPolarQuatQuat();
     }
 
-    return 0;
+    return nullptr;
 }
 
-static BaseCompressedVec3* GetCompressedVec3(ECompressionFormat format, int count)
+static BaseCompressedVec3* GetCompressedVec3(ECompressionFormat format)
 {
     switch (format)
     {
     case eNoCompressVec3:
     default:
-        return new TBaseCompressedVec3[count];
+        return new TBaseCompressedVec3();
     }
 
-    return 0;
+    return nullptr;
 }
 
 void CCompressonator::CompressRotations(CController* pController, ECompressionFormat rotationFormat, bool bRemoveKeys, float rotationToleranceInDegrees)
@@ -1045,7 +1045,9 @@ void CCompressonator::CompressRotations(CController* pController, ECompressionFo
 
     if (bRemoveKeys)
     {
-        std::unique_ptr<BaseCompressedQuat> compressed(GetCompressedQuat(rotationFormat, 1));
+        // note that GetCompressedQuat returns a c-array allocated with new[], so it must be deleted with delete[].
+        BaseCompressedQuat* compressed = GetCompressedQuat(rotationFormat);
+        AZ_Assert(compressed, "Could not get compressed quaterian object for rotation format");
         Quat first, last, interpolated;
 
         const float maxAngleInRadians = Util::getClamped(DEG2RAD(rotationToleranceInDegrees), 0.0f, (float)gf_PI);
@@ -1078,6 +1080,8 @@ addKey:
             pTimes->AddKeyTime(f32(m_RotTimes[iFirstKey]));
             pStorage->AddValue(m_Rotations[iFirstKey]);
         }
+
+        delete compressed;
     }
 
     for (++iFirstKey; iFirstKey < numKeys; ++iFirstKey)
@@ -1123,7 +1127,9 @@ void CCompressonator::CompressPositions(CController* pController, ECompressionFo
 
     if (bRemoveKeys)
     {
-        std::unique_ptr<BaseCompressedVec3> compressed(GetCompressedVec3(positionFormat, 1));
+        BaseCompressedVec3* compressed = GetCompressedVec3(positionFormat);
+        AZ_Assert(compressed, "Could not get compressed vector3 object for position format");
+
         Vec3 first, last, interpolated;
 
         const float squaredPositionTolerance = positionTolerance * positionTolerance;
@@ -1155,6 +1161,8 @@ addKey:
             pTimes->AddKeyTime(f32(m_PosTimes[iFirstKey]));
             pStorage->AddValue(m_Positions[iFirstKey]);
         }
+
+        delete compressed;
     }
 
     for (++iFirstKey; iFirstKey < numKeys; ++iFirstKey)

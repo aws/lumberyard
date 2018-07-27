@@ -523,14 +523,9 @@ public:
 
     struct TileTask
     {
-        TileTask()
-            : aborted(false)
-        {
-        }
-
         inline bool operator==(const TileTask& other) const
         {
-            return (meshID == other.meshID) && (x == other.y) && (y == other.y) && (z == other.z);
+            return (meshID == other.meshID) && (x == other.x) && (y == other.y) && (z == other.z);
         }
 
         inline bool operator<(const TileTask& other) const
@@ -563,8 +558,15 @@ public:
         uint16 x;
         uint16 y;
         uint16 z;
+    };
 
-        bool aborted;
+    struct TileTaskHasher
+    {
+        typedef size_t      result_type;
+        inline size_t operator()(const NavigationSystem::TileTask& tileTask) const
+        {
+            return static_cast<size_t>((uint32)tileTask.meshID ^ tileTask.x ^ tileTask.y ^ tileTask.z);
+        }
     };
 
     struct TileTaskResult
@@ -628,6 +630,9 @@ private:
     bool SpawnJob(TileTaskResult& result, NavigationMeshID meshID, const MNM::MeshGrid::Params& paramsGrid,
         uint16 x, uint16 y, uint16 z, bool mt);
     void CommitTile(TileTaskResult& result);
+
+    /// store invalid exlusion volumes to help prevent log spamming
+    AZStd::unordered_set<uint32_t> m_invalidExclusionVolumes; 
 #endif
 
     void ResetAllNavigationSystemUsers();
@@ -650,8 +655,9 @@ private:
     void ComputeAccessibility(IAIObject* pIAIObject, NavigationAgentTypeID agentTypeId = NavigationAgentTypeID(0));
 #endif
 
-    typedef std::deque<TileTask> TileTaskQueue;
+    typedef AZStd::unordered_set<TileTask, TileTaskHasher> TileTaskQueue;
     TileTaskQueue m_tileQueue;
+    AZStd::recursive_mutex m_tileQueueMutex;
 
     typedef std::vector<uint16> RunningTasks;
     RunningTasks m_runningTasks;
@@ -732,5 +738,6 @@ namespace NavigationSystemUtils
         return false;
     }
 }
+
 
 #endif // CRYINCLUDE_CRYAISYSTEM_NAVIGATION_NAVIGATIONSYSTEM_NAVIGATIONSYSTEM_H

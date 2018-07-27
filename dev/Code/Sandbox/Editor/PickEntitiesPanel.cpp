@@ -13,7 +13,7 @@
 
 #include "StdAfx.h"
 #include "PickEntitiesPanel.h"
-#include "objects/BaseObject.h"
+#include "Objects/BaseObject.h"
 #include "Objects/EntityObject.h"
 #include "Controls/PickObjectButton.h"
 #include "Viewport.h"

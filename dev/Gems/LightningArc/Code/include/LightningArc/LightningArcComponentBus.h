@@ -337,7 +337,7 @@ namespace Lightning
     using LightningArcComponentRequestBus = AZ::EBus<LightningArcComponentRequests>;
 
     class LightningArcComponentNotifications
-        : public AZ::EBusTraits
+        : public AZ::ComponentBus
     {
     public:
         // EBus Traits overrides (Configuring this Ebus)

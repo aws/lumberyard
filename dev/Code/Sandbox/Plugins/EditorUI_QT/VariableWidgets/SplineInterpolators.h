@@ -80,10 +80,10 @@ public:
                 float time, v;
                 int flags = 0;
 
-                int res = sscanf(key, "%g:%g:%d", &time, &v, &flags);
+                int res = azsscanf(key, "%g:%g:%d", &time, &v, &flags);
                 if (res != 3)
                 {
-                    res = sscanf(key, "%g:%g", &time, &v);
+                    res = azsscanf(key, "%g:%g", &time, &v);
                     if (res != 2)
                     {
                         continue;

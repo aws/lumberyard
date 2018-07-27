@@ -16,6 +16,11 @@ ctrlFile = 'setState.txt'
 global logfile
 logfile = 'Editor.log'
 
+global HIDDEN_MASK_PREFIX
+HIDDEN_MASK_PREFIX= 'hidden_mask_for_'
+global HIDDEN_MASK_PREFIX_LENGTH
+HIDDEN_MASK_PREFIX_LENGTH = len(HIDDEN_MASK_PREFIX)
+
 def getLogList(logfile):
 	logList = [x for x in open(logfile, 'r')]
 	return logList
@@ -31,8 +36,32 @@ def getCheckList(ctrlFile):
 
 	checkList = [x for x in stateList]
 	return checkList
-	
-#toggle CVars--------------------------------------------------------------------#	
+
+#Store/Restore CVars default values -----------------------------------------------------------------#
+if 'CVARS' not in globals():
+	CVARS = {}
+
+def saveDefaultValue(cVars, value):
+	if cVars not in CVARS:
+		CVARS[cVars] = value
+
+def restoreDefaultValue(cVars):
+	if cVars not in CVARS:
+		return
+
+	defaultValue = CVARS[cVars]
+	del CVARS[cVars]
+	if cVars.startswith(HIDDEN_MASK_PREFIX):
+		type = cVars[HIDDEN_MASK_PREFIX_LENGTH:]
+		general.set_hidemask(type, defaultValue)
+	else:
+		general.set_cvar(cVars, defaultValue)
+
+#toggle CVars--------------------------------------------------------------------#
+
+def updateCvars(cVars, value):
+	saveDefaultValue(cVars, value)
+	general.set_cvar(cVars, value)
 
 def toggleCvarsRestartCheck(log, state, mode, cVars, onValue, offValue, ctrlFile):
 	if log in state:
@@ -40,9 +69,9 @@ def toggleCvarsRestartCheck(log, state, mode, cVars, onValue, offValue, ctrlFile
 	else:
 		stateList = open(ctrlFile, 'w')
 		stateList.write(log)
-		stateList = open(ctrlFile, 'r') 
+		stateList = open(ctrlFile, 'r')
 		toggleCvarsV(mode, cVars, onValue, offValue, ctrlFile)
-		
+
 def toggleCvarsV(mode, cVars, onValue, offValue, ctrlFile):
 	stateList = open(ctrlFile, 'r') 
 	setState = [x for x in enumerate(stateList)] 
@@ -98,6 +127,16 @@ def toggleCvarsV(mode, cVars, onValue, offValue, ctrlFile):
 
 def toggleCvarsValue(mode, cVars, onValue, offValue):
 	currentValue = general.get_cvar(cVars)
+
+	if type(onValue) is str:
+		saveDefaultValue(cVars, currentValue)
+	elif type(onValue) is int:
+		saveDefaultValue(cVars, int(currentValue))
+	elif type(onValue) is float:
+		saveDefaultValue(cVars, float(currentValue))
+	else:
+		general.log('Failed to store default value for {0}'.format(cVars))
+
 	if currentValue == str(onValue):
 		general.set_cvar(cVars, offValue)
 	else:
@@ -261,6 +300,8 @@ def cycleCvarsFloatValue(cVars, cycleList):
 	except:
 		currentValue = -1.0
 
+	saveDefaultValue(cVars, currentValue)
+
 	# make sure we sort the list in ascending fashion
 	cycleList = sorted(cycleList)
 
@@ -284,6 +325,8 @@ def cycleCvarsIntValue(cVars, cycleList):
 		currentValue = int(currentValueAsString)
 	except:
 		currentValue = 0
+
+	saveDefaultValue(cVars, currentValue)
 
 	# find out what index we're on already
 	# default to -1 so that when we increment to the next, we'll be at 0
@@ -378,14 +421,16 @@ def cycleConsolValue(mode, cycleList):
 	logList = getLogList(logfile)
 	checkList = getCheckList(ctrlFile)
 	cycleConsolRestartCheck(logList[1],checkList, mode, cycleList, ctrlFile)
-	
+
 def toggleHideMaskValues(type):
-	if (general.get_hidemask(type)):
+	cVars = "%s%s" % (HIDDEN_MASK_PREFIX, type)
+	currentValue = general.get_hidemask(type)
+	saveDefaultValue(cVars, int(currentValue))
+	if (currentValue):
 		general.set_hidemask(type, 0)
 	else:
 		general.set_hidemask(type, 1)
 
-		
 #toggleHide------------------------------------------------------------------------#
 		
 def toggleHideRestartCheck(log, state, mode, type, onValue, offValue, ctrlFile):

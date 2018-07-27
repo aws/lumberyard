@@ -9,14 +9,15 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef __DEBUG_CAMERA_H__
-#define __DEBUG_CAMERA_H__
+#pragma once
 
-#include <IInput.h>
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
 
+namespace LegacyViewSystem
+{
 ///////////////////////////////////////////////////////////////////////////////
 class DebugCamera
-    : public IInputEventListener
+    : public AzFramework::InputChannelEventListener
 {
 public:
     enum Mode
@@ -35,9 +36,8 @@ public:
     bool IsFixed();
     bool IsFree();
 
-    // IInputEventListener
-    bool OnInputEvent(const SInputEvent& event) override;
-    // ~IInputEventListener
+    // AzFramework::InputChannelEventListener
+    bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
 
     void OnEnable();
     void OnDisable();
@@ -62,9 +62,6 @@ protected:
     float m_oldMoveScale;
     Vec3 m_position;
     Matrix33 m_view;
-
-private:
-    ICVar* m_displayInfoCVar;
 };
 
 
@@ -83,4 +80,4 @@ inline bool DebugCamera::IsFree()
     return m_cameraMode == DebugCamera::ModeFree;
 }
 
-#endif  //__DEBUG_CAMERA_H__
+} // namespace LegacyViewSystem

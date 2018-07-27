@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "PrefabManager.h"
 #include "RuntimePrefab.h"
 #include "Base64.h"
@@ -179,7 +179,7 @@ void CPrefab::Load(XmlNodeRef& itemNode)
 
                 m_entityParamsList.push_back(entityParams);
             }
-            else if (stricmp(type, "Brush") == 0)
+            else if (azstricmp(type, "Brush") == 0)
             {
                 // a brush? Parse manually
                 BrushParams brushParams;
@@ -188,7 +188,7 @@ void CPrefab::Load(XmlNodeRef& itemNode)
                     m_brushParamsList.push_back(brushParams);
                 }
             }
-            else if (stricmp(type, "Decal") == 0)
+            else if (azstricmp(type, "Decal") == 0)
             {
                 BrushParams brushParams;
                 if (ExtractDecalLoadParams(objNode, brushParams))
@@ -196,7 +196,7 @@ void CPrefab::Load(XmlNodeRef& itemNode)
                     m_brushParamsList.push_back(brushParams);
                 }
             }
-            else if (stricmp(type, "Prefab") == 0)
+            else if (azstricmp(type, "Prefab") == 0)
             {
                 // Sometimes people are placing prefabs inside prefabs.
                 // If that is the case, store a reference to the prefab and expand after the loading is done
@@ -207,7 +207,7 @@ void CPrefab::Load(XmlNodeRef& itemNode)
                     m_prefabParamsList.push_back(prefabParams);
                 }
             }
-            else if (stricmp(type, "Designer") == 0)
+            else if (azstricmp(type, "Designer") == 0)
             {
                 BrushParams brushParams;
                 if (ExtractDesignerLoadParams(objNode, brushParams))
@@ -390,7 +390,7 @@ bool CPrefabManager::LoadPrefabLibrary(const string& filename)
     {
         XmlNodeRef itemNode = xmlLibRoot->getChild(i);
         // Only accept nodes with correct name.
-        if (stricmp(itemNode->getTag(), "Prefab") != 0)
+        if (azstricmp(itemNode->getTag(), "Prefab") != 0)
         {
             continue;
         }

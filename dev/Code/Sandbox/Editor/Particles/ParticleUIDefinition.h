@@ -27,9 +27,7 @@ class EDITOR_CORE_API CParticleUIDefinition
 public:
     CParticleUIDefinition(){}
     ~CParticleUIDefinition(){}
-
-    void OnForceUpdateVariable(IVariable* pVar);
-
+    
     void AddForceUpdateVariable(IVariable* pVar);
 
     void ResetUIState();
@@ -47,20 +45,23 @@ public:
 
     void ResetParticles(CParticleItem* pParticles, SLodInfo* pLevelOfDetail = nullptr);
 
-    bool ShouldForceUpdate() const { return m_ShouldForceUpdate; }
 public:
     ParticleParams m_localParams;
     ParticleParams m_defaultParams;
     CVarBlockPtr m_vars;
-    IVariable::OnSetCallback m_onSetCallback;
+    IVariable::OnSetCallback m_onSetCallback = nullptr;
+    IParticleEffect* m_localParticleEffect = nullptr; // pointer to the particle effect that's being selected in the UI
     std::vector<IVariable*> m_pForceUpdateVars;
-    bool m_ShouldForceUpdate;
-    bool m_CanForceUpdate;
-    bool m_AspectRatioInitialized;
-    float m_AspectRatio;
+
+    float m_aspectRatioYX = 1;
+    float m_aspectRatioZX = 1;
+
+    bool m_ignoreSetToParticle = false;
 
 private:
     CVariableArray* AddGroup(const char* sName);
+
+    void CalculateAspectRatios(const ParticleParams& params);
 };
 
 #endif // CRYINCLUDE_EDITOR_CORE_PARTICLES_PARTICLEUIDEFINITION_H

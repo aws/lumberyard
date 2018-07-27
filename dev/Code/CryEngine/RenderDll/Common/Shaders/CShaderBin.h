@@ -152,7 +152,7 @@ struct SShaderBin
         if (name[0])
         {
             m_szName = (char*) g_shaderBucketAllocator.allocate(strlen(name) + 1);
-            strcpy(m_szName, name);
+            azstrcpy(m_szName, strlen(name) + 1, name);
         }
     }
 

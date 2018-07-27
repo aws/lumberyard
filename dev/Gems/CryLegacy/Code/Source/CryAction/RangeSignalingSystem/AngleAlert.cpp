@@ -14,7 +14,7 @@
 // Description : Single angle slice
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AngleAlert.h"
 #include "PersonalRangeSignaling.h"
 #include "IAIObject.h"

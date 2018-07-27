@@ -30,7 +30,7 @@ CMissingAssetRecord::SNotifier CMissingAssetRecord::GetNotifier()
     if (extension.isEmpty())
     {
         char name[MAX_PATH];
-        strcpy(name, newName.toUtf8().data());
+        azstrcpy(name, AZ_ARRAY_SIZE(name), newName.toUtf8().data());
         CryStringUtils::StripFileExtension(name);
         newName = name;
     }

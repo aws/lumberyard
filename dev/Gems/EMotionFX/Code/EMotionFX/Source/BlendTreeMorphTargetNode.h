@@ -12,10 +12,8 @@
 
 #pragma once
 
-// include the required headers
-#include "EMotionFXConfig.h"
-//#include "Pose.h"
-#include "AnimGraphNode.h"
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
 
 
 namespace EMotionFX
@@ -23,20 +21,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeMorphTargetNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeMorphTargetNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeMorphTargetNode, "{E9C9DFD0-565A-4B2D-9D0C-BB9F056D48D7}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00002445
-        };
-
-        enum
-        {
-            ATTRIB_MORPHTARGET  = 0
-        };
+        AZ_RTTI(BlendTreeMorphTargetNode, "{E9C9DFD0-565A-4B2D-9D0C-BB9F056D48D7}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         enum
         {
@@ -57,6 +44,8 @@ namespace EMotionFX
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
                 : AnimGraphNodeData(node, animGraphInstance)
                 , m_lastLodLevel(MCORE_INVALIDINDEX32)
@@ -64,38 +53,35 @@ namespace EMotionFX
             {}
             ~UniqueData() override = default;
 
-            uint32 GetClassSize() const override    { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override   { return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance); }
-
         public:
             uint32 m_lastLodLevel;
             uint32 m_morphTargetIndex;
         };
 
-        static BlendTreeMorphTargetNode* Create(AnimGraph* animGraph);
+        BlendTreeMorphTargetNode();
+        ~BlendTreeMorphTargetNode() override = default;
 
-        void Init(AnimGraphInstance* animGraphInstance) override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
+
         bool GetHasOutputPose() const override              { return true; }
         bool GetSupportsVisualization() const override      { return true; }
         bool GetSupportsDisable() const override            { return true; }
         uint32 GetVisualColor() const override              { return MCore::RGBA(159, 81, 255); }
-        const char* GetTypeString() const override;
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
-
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        void SetMorphTargetNames(const AZStd::vector<AZStd::string>& morphTargetNames);
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        BlendTreeMorphTargetNode(AnimGraph* animGraph);
-        ~BlendTreeMorphTargetNode() override = default;
-
         void Output(AnimGraphInstance* animGraphInstance) override;
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         void UpdateMorphIndices(ActorInstance* actorInstance, UniqueData* uniqueData, bool forceUpdate);
+
+        void SetNodeInfoNone();
+
+        AZStd::vector<AZStd::string>    m_morphTargetNames;
     };
 }   // namespace EMotionFX

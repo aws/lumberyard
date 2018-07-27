@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StaticData_precompiled.h"
 #include <CSVStaticData.h>
 
 #include <AzCore/std/smart_ptr/make_shared.h>

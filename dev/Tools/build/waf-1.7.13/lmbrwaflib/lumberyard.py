@@ -11,10 +11,15 @@
 import os
 import sys
 import argparse
+import random
+import zlib
+import json
+
 import re
 import traceback
 
 from waflib import Logs, Options, Utils, Configure, ConfigSet, Errors
+from waflib.TaskGen import feature, before_method
 from waflib.Configure import conf, ConfigurationContext
 from waflib.Build import BuildContext, CleanContext, Context
 from waflib import Node
@@ -61,6 +66,12 @@ NON_BUILD_COMMANDS = [
 
 REGEX_PATH_ALIAS = re.compile('@(.+)@')
 
+# list of platforms that have a deploy command registered
+DEPLOYABLE_PLATFORMS = [
+    'android_armv7_gcc',
+    'android_armv7_clang',
+    'android_armv8_clang'
+]
 
 # Table of lmbr waf modules that need to be loaded by the root waf script, grouped by tooldir where the modules need to be loaded from.
 # The module can be restricted to an un-versioned system platform value (win32, darwin, linux) by adding a ':' + the un-versioned system platform value.
@@ -75,6 +86,17 @@ LMBR_WAFLIB_MODULES = [
         'winres:win32'
     ] ) ,
     ( LMBR_WAF_TOOL_DIR , [
+        # Put the deps modules first as they wrap/intercept c/cxx calls to
+        # capture dependency information being written out to stderr. If
+        # another module declares a subclass of a c/cxx feature, like qt5 does,
+        # and it is before these modules then the subclass/feature does not get
+        # wrapped and the header dependency information is printed to the
+        # screen.
+        'gccdeps',
+        'clangdeps',
+        'msvs:win32', # msvcdeps implicitly depends on this module, so load it first
+        'msvcdeps:win32',
+
         'cry_utils',
         'project_settings',
         'branch_spec',
@@ -90,7 +112,6 @@ LMBR_WAFLIB_MODULES = [
         'generate_module_def_files',    # Load support for Module Definition Files
 
         # Visual Studio support
-        'msvs:win32',
         'msvs_override_handling:win32',
         'mscv_helper:win32',
         'vscode:win32',
@@ -104,12 +125,6 @@ LMBR_WAFLIB_MODULES = [
 
         'gui_tasks:win32',
         'gui_tasks:darwin',
-
-        'msvcdeps:win32',
-        'gccdeps',
-        'clangdeps',
-
-        'wwise',
 
         'qt5',
 
@@ -362,6 +377,8 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
 
         platform_spec_vanilla_conf = vanilla_conf.derive()
         platform_spec_vanilla_conf.detach()
+
+        platform_spec_vanilla_conf['PLATFORM'] = platform
 
         # Determine the compile rules module file and remove it and its support if it does not exist
         compile_rule_script = 'compile_rules_' + host_platform + '_' + platform
@@ -714,14 +731,14 @@ def prepare_build_environment(bld):
                     if not target in bld.spec_modules():
                         bld.fatal('[ERROR] Module "%s" is not configured to build in spec "%s" in "%s|%s"' % (target, bld.options.project_spec, platform, configuration))
 
-        deploy_cmd = 'deploy_' + platform + '_' + configuration
-        # Only deploy to specific target platforms
-        if 'build' in bld.cmd and platform in [
-    'android_armv7_gcc',
-    'android_armv7_clang',
-    'android_armv8_clang'] and deploy_cmd not in Options.commands:
-            # Only deploy if we are not trying to rebuild 3rd party libraries for the platforms above
-            if '3rd_party' != getattr(bld.options, 'project_spec', ''):
+        # command chaining for packaging and deployment
+        if bld.cmd.startswith('build') and (getattr(bld.options, 'project_spec', '') != '3rd_party'):
+            package_cmd = 'package_{}_{}'.format(platform, configuration)
+            if bld.is_option_true('package_projects_automatically') and (package_cmd not in Options.commands):
+                Options.commands.append(package_cmd)
+
+            deploy_cmd = 'deploy_{}_{}'.format(platform, configuration)
+            if (platform in DEPLOYABLE_PLATFORMS) and (deploy_cmd not in Options.commands):
                 Options.commands.append(deploy_cmd)
 
 
@@ -1047,7 +1064,117 @@ def CreateRootRelativePath(self, path):
     result_path = self.engine_node.make_node(path)
     return result_path.abspath()
 
-###############################################################################
+
+#
+# Unique Target ID Management
+#
+UID_MAP_TO_TARGET = {}
+
+# Start the UID from a minimum value to prevent collision with the previously used 'idx' values in the generated
+# names
+MIN_UID_VALUE = 1024
+
+# Constant value to cap the upper limit of the target uid.  The target uid will become part of intermediate constructed
+# files Increase this number if there are more chances of collisions with target names.  Reduce if we start getting
+# issues related to path lengths caused by the appending of the number
+MAX_UID_VALUE = 9999999
+
+
+def apply_target_uid_range(uid):
+    """
+    Apply the uid range restrictions rule based on the min and max uid values
+    :param uid:     The raw uid to apply to
+    :return:    The applied range on the input uid
+    """
+    return ((uid & 0xffffffff) + MIN_UID_VALUE) % MAX_UID_VALUE
+
+
+def find_unique_target_uid():
+    """
+    Simple function to find a unique number for the target uid
+    """
+    global UID_MAP_TO_TARGET
+    random_retry = 1024
+    random_unique_id = apply_target_uid_range(random.randint(MIN_UID_VALUE, MAX_UID_VALUE))
+    while random_retry > 0 and random_unique_id in UID_MAP_TO_TARGET:
+        random_unique_id = random.randint(MIN_UID_VALUE, MAX_UID_VALUE)
+        random_retry -= 1
+
+    if random_retry == 0:
+        raise Errors.WafError("Unable to generate a unique target id.  Current ids are : {}".format(
+            ",".join(UID_MAP_TO_TARGET.keys())))
+    return random_unique_id
+
+
+def derive_target_uid(target_name):
+    """
+    Derive a target uid based on the target name if possible.  If a collision occurs, raise a WAF Error
+    indicating the collision and suggest a unique id that doesnt collide
+    :param target_name: The target name to derive the target uid from
+    :return: The derived target uid based on the name if possible.
+    """
+    global UID_MAP_TO_TARGET
+
+    # Calculate a deterministic UID to this target initially based on the CRC32 value of the target name
+    uid = apply_target_uid_range(zlib.crc32(target_name))
+    if uid in UID_MAP_TO_TARGET and UID_MAP_TO_TARGET[uid] != target_name:
+        raise Errors.WafError(
+            "[ERROR] Unable to generate a unique target id for target '{}' due to collision with target '{}'. "
+            "Please update the target definition for target '{}' to include an override target_uid keyword (ex: {}) )"
+            "Or consider increasing the MAX_UID_VALUE defined in {}"
+                .format(target_name, UID_MAP_TO_TARGET[uid], target_name, find_unique_target_uid(), __file__))
+    UID_MAP_TO_TARGET[uid] = target_name
+    return uid
+
+
+def validate_override_target_uid(target_name, override_target_uid):
+    """
+    If an override target_uid is provided in the kw list, then valid it doesnt collide with a different target.
+    Otherwise add it to the management structures
+    :param target_name:         The target name to validate
+    :param override_target_uid: The overrride uid to validate
+    """
+    global UID_MAP_TO_TARGET
+    if override_target_uid in UID_MAP_TO_TARGET:
+        if UID_MAP_TO_TARGET[override_target_uid] != target_name:
+            raise Errors.WafError(
+                "Keyword 'target_uid' defined for target '{}' conflicts with another target module '{}'. "
+                "Please update this value to a unique value (i.e. {})"
+                    .format(target_name, UID_MAP_TO_TARGET[override_target_uid], find_unique_target_uid()))
+    else:
+        UID_MAP_TO_TARGET[override_target_uid] = target_name
+
+
+@conf
+def update_target_uid_map(ctx):
+    """
+    Update the cached target uid map
+    """
+    global UID_MAP_TO_TARGET
+    target_uid_cache_file = ctx.bldnode.make_node('target_uid.json')
+    uid_map_to_target_json = json.dumps(UID_MAP_TO_TARGET, indent=1, sort_keys=True)
+    target_uid_cache_file.write(uid_map_to_target_json)
+
+
+@conf
+def assign_target_uid(ctx, kw):
+    target = kw['target']
+    # Assign a deterministic UID to this target initially based on the CRC32 value of the target name
+    if 'target_uid' not in kw:
+        kw['target_uid'] = derive_target_uid(target)
+    else:
+        # If there is one overridden already, validate it against the known uuids
+        validate_override_target_uid(kw['target_uid'])
+
+
+
+@conf
+def process_additional_code_folders(ctx):
+    additional_code_folders = ctx.get_additional_code_folders_from_spec()
+    if len(additional_code_folders)>0:
+        ctx.recurse(additional_code_folders)
+
+
 @conf
 def Path(ctx, path):
 
@@ -1071,7 +1198,7 @@ def Path(ctx, path):
         error_file, error_line, error_function = _get_source_file_and_function()
         warning_message = "3rd Party alias '{}' specified in {}:{} ({}) is not enabled. Make sure that at least one of the " \
                           "following roles is enabled: [{}]".format(alias_key, error_file, error_line, error_function,
-                                                                    ', '.join(roles))
+                                                                    ', '.join(roles or ['None']))
         ctx.warn_once(warning_message)
 
     processed_path = ctx.PreprocessFilePath(path, _invalid_alias_callback, _alias_not_enabled_callback)

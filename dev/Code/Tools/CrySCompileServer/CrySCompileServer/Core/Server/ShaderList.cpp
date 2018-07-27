@@ -17,6 +17,8 @@
 
 #include "CrySimpleServer.hpp"
 
+#include <Core/WindowsAPIImplementation.h>
+
 #include <assert.h>
 #ifdef _MSC_VER
 #include <process.h>
@@ -49,7 +51,7 @@ void CShaderList::Tick()
 #if defined(AZ_PLATFORM_WINDOWS)
     DWORD t = GetTickCount();
 #else
-    unsigned long t = time(nullptr);
+    unsigned long t = time(nullptr)*1000; // Current time in milliseconds
 #endif
     if (t < m_lastTime || (t - m_lastTime) > 1000)  //check every second
     {
@@ -72,7 +74,7 @@ void CShaderList::Add(const std::string& rShaderListName, const char* pLine)
             CCrySimpleMutexAutoLock Lock(m_Mutex2); //load/save mutex
             m_ShaderLists[rShaderListName] = new CShaderListFile(rShaderListName);
             it  =   m_ShaderLists.find(rShaderListName);
-            it->second->Load((SEnviropment::Instance().m_Cache + rShaderListName).c_str());
+            it->second->Load((SEnviropment::Instance().m_CachePath + rShaderListName).c_str());
         }
     }
     it->second->InsertLine(pLine);
@@ -141,7 +143,8 @@ bool CShaderListFile::Load(const char* filename)
     m_filename = filename;
     m_filenametmp = filename;
     m_filenametmp += ".tmp";
-    FILE* f = fopen(filename, "rt");
+    FILE* f = nullptr;
+    azfopen(&f, filename, "rt");
     if (!f)
     {
         return false;
@@ -185,7 +188,8 @@ bool CShaderListFile::Save()
     }
 
     // write to tmp file
-    FILE* f = fopen(m_filenametmp.c_str(), "wt");
+    FILE* f = nullptr;
+    azfopen(&f, m_filenametmp.c_str(), "wt");
     if (!f)
     {
         return false;
@@ -205,7 +209,8 @@ bool CShaderListFile::Save()
     fclose(f);
 
     // first check if original file excists
-    f = fopen(m_filename.c_str(), "rt");
+    f = nullptr;
+    azfopen(&f, m_filename.c_str(), "rt");
     if (f)
     {
         fclose(f);
@@ -214,11 +219,8 @@ bool CShaderListFile::Save()
         int sleeptime = 0;
         while (remove(m_filename.c_str()))
         {
-#if defined(AZ_PLATFORM_WINDOWS)
             Sleep(100);
-#else
-            sleep(100);
-#endif
+
             sleeptime += 100;
             if (sleeptime > 5000)
             {
@@ -231,11 +233,8 @@ bool CShaderListFile::Save()
         int sleeptime = 0;
         while (rename(m_filenametmp.c_str(), m_filename.c_str()))
         {
-#if defined(AZ_PLATFORM_WINDOWS)
             Sleep(100);
-#else
-            sleep(100);
-#endif
+
             sleeptime += 100;
             if (sleeptime > 5000)
             {
@@ -274,7 +273,7 @@ int shGetHex(const char* buf)
     }
     int i = 0;
 
-    sscanf(buf, "%x", &i);
+    azsscanf(buf, "%x", &i);
 
     return i;
 }

@@ -1,4 +1,4 @@
-﻿<nav class="navbar navbar-toggleable-md navbar-light bg-faded">
+﻿<nav class="navbar navbar-toggleable-sm navbar-light bg-faded">
     <button (click)="isCollapsed = !isCollapsed" class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#cgpNavbar" aria-controls="cgpNavbar" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
@@ -28,12 +28,12 @@
             </div>
         </div>
     </div>
-    <div [ngbCollapse]="isCollapsed" class="collapse navbar-collapse" id="cgpNavbar">
-        <div class="navbar-nav">
+    <div [ngbCollapse]="isCollapsed" class="collapse navbar-collapse " id="cgpNavbar">        
+        <div class="navbar-nav" [ngClass]="{'navbar-collapsed': isCollapsed == false}">
             <a (click)="$event.preventDefault()" class="nav-item nav-link" href="#" title="Copy the Cloud Gem Portal shareable URL to the clipboard">
                 <i class="fa fa-share-square-o" (click)="onShare()"></i>
             </a>
-            <div ngbDropdown class="d-inline-block deployment-dropdown">
+            <div ngbDropdown class="d-inline-block deployment-dropdown" [ngClass]="{'navbar-user-collapsed': isCollapsed == false}">
                 <div id="account-dropdown" dropdownToggle ngbDropdownToggle>
                     <a title="{{nav.deploymentName}}">
                         {{ nav.username }}

@@ -36,7 +36,7 @@ namespace EMotionFX
     class EMFX_API SoftSkinManager
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(SoftSkinManager, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_GEOMETRY_DEFORMERS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**

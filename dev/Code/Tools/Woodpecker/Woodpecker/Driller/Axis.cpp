@@ -15,7 +15,7 @@
 #include <AzCore/Debug/Profiler.h>
 #include <QPainter>
 
-#include "axis.hxx"
+#include "Axis.hxx"
 
 namespace Charts
 {
@@ -134,14 +134,14 @@ namespace Charts
             m_windowMin += delta;
             if (m_windowMax > m_rangeMax)
             {
-                float delta = m_windowMax - m_rangeMax;
+                delta = m_windowMax - m_rangeMax;
                 m_windowMax -= delta;
                 m_windowMin -= delta;
             }
 
             if (m_windowMin < m_rangeMin)
             {
-                float delta = m_rangeMin - m_windowMin;
+                delta = m_rangeMin - m_windowMin;
                 m_windowMax += delta;
                 m_windowMin += delta;
             }

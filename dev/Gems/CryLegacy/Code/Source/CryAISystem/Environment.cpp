@@ -14,7 +14,7 @@
 // Description : Simple global struct for accessing major module pointers
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "Environment.h"
 
 

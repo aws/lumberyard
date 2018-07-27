@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "PropertyGenericCtrl.h"
 #include <QtWidgets/QHBoxLayout>
@@ -498,7 +498,7 @@ ListEditWidget::ListEditWidget(QWidget *pParent /*= nullptr*/)
     connect(expandButton, &QAbstractButton::toggled, m_listView, &QWidget::setVisible);
 
     connect(m_model, &QAbstractItemModel::dataChanged, this, &ListEditWidget::OnModelDataChange);
-    connect(m_valueEdit, &QLineEdit::editingFinished, [this](){SetValue(m_valueEdit->text(), true); } );
+    connect(m_valueEdit, &QLineEdit::editingFinished, this, [this](){SetValue(m_valueEdit->text(), true); } );
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     QHBoxLayout *topLayout = new QHBoxLayout;

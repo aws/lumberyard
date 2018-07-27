@@ -14,7 +14,7 @@
 // Description : Some Inspector filters
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "FlowFilters.h"
 #include <IFlowSystem.h>

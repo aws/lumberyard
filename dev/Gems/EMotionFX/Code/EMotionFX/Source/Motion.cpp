@@ -22,18 +22,19 @@
 #include "EventManager.h"
 #include "EventHandler.h"
 #include "MotionEventTable.h"
-#include <MCore/Source/AttributeSet.h>
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(Motion, MotionAllocator, 0)
+
+
     // constructor
     Motion::Motion(const char* name)
         : BaseObject()
     {
         mCustomData             = nullptr;
         mDefaultPlayBackInfo    = nullptr;
-        mAttributeSet           = MCore::AttributeSet::Create();
         mNameID                 = MCORE_INVALIDINDEX32;
         mID                     = MCore::GetIDGenerator().GenerateID();
         mEventTable             = MotionEventTable::Create();
@@ -78,11 +79,6 @@ namespace EMotionFX
         if (mEventTable)
         {
             mEventTable->Destroy();
-        }
-
-        if (mAttributeSet)
-        {
-            mAttributeSet->Destroy();
         }
     }
 
@@ -199,12 +195,6 @@ namespace EMotionFX
     PlayBackInfo* Motion::GetDefaultPlayBackInfo() const
     {
         return mDefaultPlayBackInfo;
-    }
-
-
-    MCore::AttributeSet* Motion::GetAttributeSet() const
-    {
-        return mAttributeSet;
     }
 
 

@@ -222,7 +222,6 @@ namespace LyShineExamples
         if (behaviorContext)
         {
             behaviorContext->EBus<UiCustomImageBus>("UiCustomImageBus")
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("GetColor", &UiCustomImageBus::Events::GetColor)
                 ->Event("SetColor", &UiCustomImageBus::Events::SetColor)
                 ->Event("GetSpritePathname", &UiCustomImageBus::Events::GetSpritePathname)

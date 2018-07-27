@@ -47,7 +47,7 @@ bool CD3D9Renderer::FontUploadTexture(class CFBitmap* pBmp, ETEX_Format eTF)
     pBmp->Get32Bpp(&pData);
 
     char szName[128];
-    sprintf(szName, "$AutoFont_%d", m_TexGenID++);
+    azsprintf(szName, "$AutoFont_%d", m_TexGenID++);
 
     int iFlags = FT_TEX_FONT | FT_DONT_STREAM | FT_DONT_RELEASE;
     CTexture* tp = CTexture::Create2DTexture(szName, pBmp->GetWidth(), pBmp->GetHeight(), 1, iFlags, (unsigned char*)pData, eTF, eTF);

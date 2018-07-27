@@ -41,8 +41,6 @@
 #include "DistanceCloudRenderNode.h"
 #include "Environment/OceanEnvironmentBus.h"
 
-#include <IJobManager_JobDelegator.h>
-
 #define CHECK_OBJECTS_BOX_WARNING_SIZE (1.0e+10f)
 #define fNodeMinSize (8.f)
 #define fObjectToNodeSizeRatio (1.f / 8.f)
@@ -115,7 +113,7 @@ bool COctreeNode::HasObjects()
 //////////////////////////////////////////////////////////////////////////
 void COctreeNode::RenderContent(int nRenderMask, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, const CCamera* pCam)
 {
-    if (GetCVars()->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass() && JobManager::InvokeAsJob("CheckOcclusion"))
+    if (GetCVars()->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass())
     {
         GetObjManager()->AddCullJobProducer();
     }
@@ -172,7 +170,7 @@ void COctreeNode::RenderContentJobEntry(int nRenderMask, const SRenderingPassInf
         RenderCommonObjects(&m_arrObjects[eRNListType_Unknown], *pCam, nRenderMask, m_bNodeCompletelyInFrustum != 0, pTerrainTexInfo, passInfo, rendItemSorter);
     }
 
-    if (GetCVars()->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass() && JobManager::InvokeAsJob("CheckOcclusion"))
+    if (GetCVars()->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass())
     {
         GetObjManager()->RemoveCullJobProducer();
     }
@@ -261,7 +259,7 @@ void COctreeNode::RenderVegetations(TDoublyLinkedList<IRenderNode>* lstObjects, 
             {
                 float fEntDistance = sqrt_tpl(fEntDistanceSq);
 
-                if (pCVars->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass() && JobManager::InvokeAsJob("CheckOcclusion"))
+                if (pCVars->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass())
                 {
                     // if object is visible, write to output queue for main thread processing
                     if (!bCheckPerObjectOcclusion || pObj->m_pInstancingInfo || GetObjManager()->CheckOcclusion_TestAABB(objBox, fEntDistance))
@@ -312,7 +310,7 @@ void COctreeNode::RenderBrushes(TDoublyLinkedList<IRenderNode>* lstObjects, cons
             assert(fEntDistance >= 0 && _finite(fEntDistance));
             if (fEntDistance < pObj->m_fWSMaxViewDist)
             {
-                if (pCVars->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass() && JobManager::InvokeAsJob("CheckOcclusion"))
+                if (pCVars->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass())
                 {
                     // if object is visible, start CBrush::Render Job
                     if (!bCheckPerObjectOcclusion || GetObjManager()->CheckOcclusion_TestAABB(objBox, fEntDistance))
@@ -375,7 +373,7 @@ void COctreeNode::RenderDecalsAndRoads(TDoublyLinkedList<IRenderNode>* lstObject
                 }
 #endif // _RELEASE
 
-                if (pCVars->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass() && JobManager::InvokeAsJob("CheckOcclusion"))
+                if (pCVars->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass())
                 {
                     // if object is visible, write to output queue for main thread processing
                     if (GetObjManager()->CheckOcclusion_TestAABB(objBox, fEntDistance))
@@ -479,7 +477,7 @@ void COctreeNode::RenderCommonObjects(TDoublyLinkedList<IRenderNode>* lstObjects
                     }
                 }
 
-                if (pCVars->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass() && JobManager::InvokeAsJob("CheckOcclusion"))
+                if (pCVars->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass())
                 {
                     // if object is visible, write to output queue for main thread processing
                     if (rnType == eERType_DistanceCloud || GetObjManager()->CheckOcclusion_TestAABB(objBox, fEntDistance))

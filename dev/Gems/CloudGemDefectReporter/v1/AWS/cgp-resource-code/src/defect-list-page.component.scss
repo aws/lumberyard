@@ -1,0 +1,21 @@
+
+
+.searchForm > input {
+    width: 75%;
+    float: left;
+    margin: 0 10px 0 0;
+}
+
+.dropdown-menu {
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+.dropdown-toggle::after {
+    display: none;
+}
+
+.sql-doc {
+    margin: 5px 5px 5px 5px;
+}

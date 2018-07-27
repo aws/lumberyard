@@ -14,7 +14,7 @@
 // Description : Manages AI proxies
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AIProxyManager.h"
 #include "AIProxy.h"
 #include "AIGroupProxy.h"

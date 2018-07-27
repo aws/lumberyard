@@ -87,7 +87,8 @@ static bool ShouldGenerateSpawner(IEntityClass* pClass)
 
 static bool OutputFile(const QString& name, const QString& data)
 {
-    FILE* f = fopen(name.toUtf8().data(), "wt");
+    FILE* f = nullptr;
+    azfopen(&f, name.toUtf8().data(), "wt");
     if (!f)
     {
         CryLogAlways("Unable to open file %s", name.toUtf8().data());
@@ -308,6 +309,11 @@ static bool GenerateSpawner(IEntityClass* pClass)
 
 void GenerateSpawners()
 {
+    if (!gEnv->pEntitySystem)
+    {
+        return;
+    }
+
     // iterate over all entity classes, and try to find those that are spawning AI's
     IEntityClass* pClass;
     IEntityClassRegistry* pReg = gEnv->pEntitySystem->GetClassRegistry();

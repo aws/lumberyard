@@ -19,6 +19,23 @@
 
 namespace CommandSystem
 {
+    const char* CommandSelect::s_SelectCmdName = "Select";
+    const char* CommandUnselect::s_unselectCmdName = "Unselect";
+    const char* CommandClearSelection::s_clearSelectionCmdName = "ClearSelection";
+    const char* CommandToggleLockSelection::s_toggleLockSelectionCmdName = "ToggleLockSelection";
+
+    CommandUnselect::CommandUnselect(MCore::Command * orgCommand)
+        : MCore::Command(s_unselectCmdName, orgCommand) 
+    { }
+
+    CommandClearSelection::CommandClearSelection(MCore::Command * orgCommand)
+        : MCore::Command(s_clearSelectionCmdName, orgCommand)
+    { }
+
+    CommandToggleLockSelection::CommandToggleLockSelection(MCore::Command * orgCommand)
+        : MCore::Command(s_toggleLockSelectionCmdName, orgCommand)
+    { }
+
     void SelectActorInstancesUsingCommands(const MCore::Array<EMotionFX::ActorInstance*>& selectedActorInstances)
     {
         SelectionList& selection = GetCommandManager()->GetCurrentSelection();
@@ -93,10 +110,6 @@ namespace CommandSystem
         {
             return true;
         }
-        if (parameters.CheckIfHasParameter("animGraphName")   )
-        {
-            return true;
-        }
         if (parameters.CheckIfHasParameter("animGraphID")     )
         {
             return true;
@@ -137,7 +150,7 @@ namespace CommandSystem
 
     // constructor
     CommandSelect::CommandSelect(MCore::Command* orgCommand)
-        : MCore::Command("Select", orgCommand)
+        : MCore::Command(s_SelectCmdName, orgCommand)
     {
     }
 
@@ -529,44 +542,6 @@ namespace CommandSystem
             }
         }
 
-
-        // add the anim graph with the given name to the selection list
-        if (parameters.CheckIfHasParameter("animGraphName"))
-        {
-            // get the anim graph name and check if it is valid
-            parameters.GetValue("animGraphName", command, &valueString);
-            if (valueString.empty())
-            {
-                outResult = "Anim graph name is empty. Cannot select anim graphs without a name.";
-                return false;
-            }
-
-            // iterate through all available anim graphs and add them to the selection
-            for (uint32 i = 0; i < numAnimGraphs; ++i)
-            {
-                // get the current motion
-                EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().GetAnimGraph(i);
-
-                if (animGraph->GetIsOwnedByRuntime())
-                {
-                    continue;
-                }
-
-                // compare the motion name to the parameter
-                if (AzFramework::StringFunc::Equal(valueString.c_str(), animGraph->GetName(), false /* no case */))
-                {
-                    if (unselect == false)
-                    {
-                        selection.AddAnimGraph(animGraph);
-                    }
-                    else
-                    {
-                        selection.RemoveAnimGraph(animGraph);
-                    }
-                }
-            }
-        }
-
         return true;
     }
 
@@ -606,7 +581,6 @@ namespace CommandSystem
         GetSyntax().AddParameter("motionInstanceIndex",    ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "SELECT_ALL");
         GetSyntax().AddParameter("nodeName",               ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "unnamed");
         GetSyntax().AddParameter("nodeIndex",              ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "SELECT_ALL");
-        GetSyntax().AddParameter("animGraphName",         ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "unnamed");
         GetSyntax().AddParameter("animGraphIndex",        ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "SELECT_ALL");
         GetSyntax().AddParameter("animGraphID",           ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "SELECT_ALL");
     }
@@ -664,7 +638,6 @@ namespace CommandSystem
         GetSyntax().AddParameter("motionInstanceIndex",    ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "SELECT_ALL");
         GetSyntax().AddParameter("nodeName",               ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "unnamed");
         GetSyntax().AddParameter("nodeIndex",              ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "SELECT_ALL");
-        GetSyntax().AddParameter("animGraphName",         ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "unnamed");
         GetSyntax().AddParameter("animGraphIndex",        ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "SELECT_ALL");
         GetSyntax().AddParameter("animGraphID",           ".",    MCore::CommandSyntax::PARAMTYPE_STRING, "SELECT_ALL");
     }

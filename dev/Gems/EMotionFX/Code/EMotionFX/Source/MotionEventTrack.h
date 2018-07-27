@@ -39,7 +39,7 @@ namespace EMotionFX
     class EMFX_API MotionEventTrack
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MotionEventTrack, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_EVENTS);
+        AZ_CLASS_ALLOCATOR_DECL
         friend class MotionEvent;
 
     public:

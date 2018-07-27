@@ -153,7 +153,6 @@ namespace LyShineExamples
                 ->Enum<(int)UiDynamicContentDatabaseInterface::ColorType::PaidColors>("eUiDynamicContentDBColorType_Paid");
 
             behaviorContext->EBus<UiDynamicContentDatabaseBus>("UiDynamicContentDatabaseBus")
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("GetNumColors", &UiDynamicContentDatabaseBus::Events::GetNumColors)
                 ->Event("GetColor", &UiDynamicContentDatabaseBus::Events::GetColor)
                 ->Event("GetColorName", &UiDynamicContentDatabaseBus::Events::GetColorName)

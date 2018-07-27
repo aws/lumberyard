@@ -14,6 +14,7 @@ import { ForgotPasswordConfirmNewPasswordAction } from './action/forgot-password
 import { EnumGroupName } from 'app/aws/user/user-management.class';
 import { LyMetricService } from 'app/shared/service/index';
 import { DateTimeUtil } from 'app/shared/class/index';
+import { Router } from '@angular/router';
 
 declare var AWS;
  
@@ -73,14 +74,15 @@ export class Authentication {
     private _isSessionExpired: boolean;
     private _actions = [];
     private _session: any;
-    private _identityId: string;
-     
+    private _identityId: string; 
+    private _user: any    
+
     get change(): Observable<AuthStateActionContext> {
         return this._actionObservable.asObservable();
     }
 
-    get user(): any {
-        return this.context.cognitoUserPool.getCurrentUser();
+    get user(): any {        
+        return this._user
     }
  
     get accessToken(): string {
@@ -134,7 +136,7 @@ export class Authentication {
         return admin_group.length > 0
     }
         
-    public constructor(private context: AwsContext, private metric: LyMetricService) {
+    public constructor(private context: AwsContext, private router: Router, private metric: LyMetricService) {
         this._actions[EnumAuthStateAction.LOGIN] = new LoginAction(this.context)
         this._actions[EnumAuthStateAction.LOGOUT] = new LogoutAction(this.context)
         this._actions[EnumAuthStateAction.UPDATE_CREDENTIAL] = new UpdateCredentialAction(this.context)        
@@ -142,18 +144,23 @@ export class Authentication {
         this._actions[EnumAuthStateAction.UPDATE_PASSWORD] = new UpdatePasswordAction(this.context)        
         this._actions[EnumAuthStateAction.FORGOT_PASSWORD] = new ForgotPasswordAction(this.context)
         this._actions[EnumAuthStateAction.FORGOT_PASSWORD_CONFIRM_NEW_PASSWORD] = new ForgotPasswordConfirmNewPasswordAction(this.context)        
-
+        this.refreshSessionOrLogout = this.refreshSessionOrLogout.bind(this)         
+        this.hookUpdateCredentials = this.hookUpdateCredentials.bind(this)
+        this.updateCredentials = this.updateCredentials.bind(this)        
         this._actionObservable = new Subject<AuthStateActionContext>();
         this.change.subscribe(context => {            
             if (context.state === EnumAuthState.LOGGED_IN
                 || context.state === EnumAuthState.PASSWORD_CHANGED               
             ) {                
-                this._session = context.output[0];                
+                this._session = context.output[0];                                
                 this.updateCredentials()
-            } else if (context.state === EnumAuthState.LOGGED_OUT) {
+            } else if (context.state === EnumAuthState.LOGGED_OUT ) {
                 this._session = undefined;                
+                this.router.navigate(["/login"]);
             } else if (context.state === EnumAuthState.USER_CREDENTIAL_UPDATED) {
-                this._identityId = context.output[1];                
+                this._identityId = context.output[1];               
+                this._user = this.context.cognitoUserPool.getCurrentUser(); 
+                this.user.refreshSession = this.user.refreshSession.bind(this) 
             }
         })
     }    
@@ -190,36 +197,42 @@ export class Authentication {
         this.execute(EnumAuthStateAction.UPDATE_PASSWORD, user, password);
     }
 
-    public refreshSessionOrLogout(observable: Observable<any> = null): Observable<any> {        
+    public refreshSessionOrLogout(observable: Observable<any> = null): Observable<any> {                
+        let auth = this
         return new Observable<any>(observer => {
             //no current user is present
-            if (!this.user) {
-                this.logout(true);                
+            //BUG: currently the local cookies for the user are deleted somewhere after 30s when logged in.
+            if (!auth.user) {
+                auth.logout(true);                
             } else {
                 // validate the session                           
-                if (this.isSessionValid) {
-                    this.executeObservableOrLogout(this, observer, observable)                    
+                if (auth.isSessionValid) {
+                    auth.executeObservableOrLogout(auth, observer, observable)                    
                 } else {
                     //this will cause the session to generate new tokens for expired ones
-                    let context = this.context;
-                    let auth = this;                                        
-                    this.user.refreshSession(this.refreshCognitoToken, function(err, session) {
-                        if (err) {
-                            console.error(err)
-                            auth.logout(true);  
-                            return;
-                        }
-                        auth.session = session;                        
-                        
-                            auth.hookUpdateCredentials(auth, (response) => {                                                                
-                                auth.context.initializeServices();
-                                auth.executeObservableOrLogout(auth, observer, observable)        
+                    let context = auth.context; 
+                    let auth2 = auth
+                    try {
+                        auth.user.refreshSession(auth.refreshCognitoToken, function (err, session) {
+                            if (err) {
+                                console.error(err)
+                                auth2.logout(true)
+                                return;
+                            }
+                            auth2.session = session;
+
+                            auth2.hookUpdateCredentials(auth2, (response) => {
+                                auth2.context.initializeServices();
+                                auth2.executeObservableOrLogout(auth2, observer, observable)
                             }, (error) => {
                                 console.error(error)
-                                auth.logout(true);
-                                })
-                            auth.updateCredentials();                                        
-                    })
+                                auth2.logout(true);
+                            })
+                            auth2.updateCredentials();
+                        })
+                    } catch(e) {
+                        auth2.logout(true)
+                    }
                 }
             }
         })

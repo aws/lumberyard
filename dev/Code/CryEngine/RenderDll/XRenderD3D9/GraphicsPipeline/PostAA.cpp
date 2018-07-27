@@ -262,13 +262,13 @@ void PostAAPass::RenderTemporalAA(
     GetUtils().SetTexture(CTexture::s_ptexZTarget, 5, FILTER_POINT);
 
     D3DShaderResourceView* depthSRV[1] = { gcpRendD3D->m_pZBufferDepthReadOnlySRV };
-    gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 16, 1);
+    gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 14, 1);
     gcpRendD3D->FX_Commit();
 
     SD3DPostEffectsUtils::DrawFullScreenTri(outputTarget->GetWidth(), outputTarget->GetHeight());
 
     depthSRV[0] = nullptr;
-    gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 16, 1);
+    gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 14, 1);
     gcpRendD3D->FX_Commit();
 
     GetUtils().ShEndPass();
@@ -294,17 +294,7 @@ void PostAAPass::Execute()
     gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3]);
 
     CTexture* inOutBuffer = CTexture::s_ptexSceneSpecular;
-    GetUtils().CopyScreenToTexture(inOutBuffer);
 
-#if defined(OPENGL_ES)
-    if (CRenderer::CV_r_AntialiasingMode != eAT_NOAA)
-    {
-        //Opengl ES only supports FXAA    
-        AZ_Warning("Rendering", CRenderer::CV_r_AntialiasingMode == eAT_FXAA, "Android only supports FXAA");
-        CRenderer::CV_r_AntialiasingMode = eAT_FXAA;
-    }
-#endif
-    
     switch (CRenderer::CV_r_AntialiasingMode)
     {
     case eAT_SMAA1TX:
@@ -451,13 +441,13 @@ void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture)
             GetUtils().SetTexture(CTexture::s_ptexZTarget, 5, FILTER_POINT);
 
             D3DShaderResourceView* depthSRV[1] = { gcpRendD3D->m_pZBufferDepthReadOnlySRV };
-            gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 16, 1);
+            gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 14, 1);
             gcpRendD3D->FX_Commit();
 
             SD3DPostEffectsUtils::DrawFullScreenTriWPOS(currentTarget->GetWidth(), currentTarget->GetHeight());
 
             depthSRV[0] = nullptr;
-            gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 16, 1);
+            gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 14, 1);
             gcpRendD3D->FX_Commit();
 
             GetUtils().ShEndPass();
@@ -584,13 +574,13 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
         GetUtils().SetTexture(CTexture::s_ptexZTarget, 5, FILTER_POINT);
 
         D3DShaderResourceView* depthSRV[1] = { gcpRendD3D->m_pZBufferDepthReadOnlySRV };
-        gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 16, 1);
+        gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 14, 1);
         gcpRendD3D->FX_Commit();
 
         SPostEffectsUtils::DrawFullScreenTri(gcpRendD3D->GetOverlayWidth(), gcpRendD3D->GetOverlayHeight());
 
         depthSRV[0] = nullptr;
-        gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 16, 1);
+        gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 14, 1);
         gcpRendD3D->FX_Commit();
 
         gcpRendD3D->FX_PopRenderTarget(0);

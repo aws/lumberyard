@@ -37,6 +37,18 @@ Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemTextToSpeech", "..\
 EndProject
 Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemSpeechRecognition", "..\..\..\CloudGemSpeechRecognition\AWS\cgp-resource-code\src\CloudGemSpeechRecognition.njsproj", "{4B6D24E8-960D-47A4-A5F0-8ABF00AF07A5}"
 EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemMetric", "..\..\..\CloudGemMetric\v1\AWS\cgp-resource-code\src\CloudGemMetric.njsproj", "{C06682C2-F0E4-46DD-9D4A-82BCFC60CFBA}"
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemWebCommunicator", "..\..\..\CloudGemWebCommunicator\AWS\cgp-resource-code\src\CloudGemWebCommunicator.njsproj", "{861857DE-0904-411C-984E-EF19FBD28060}"
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemReferral", "..\..\..\CloudGemReferral\v1\AWS\cgp-resource-code\src\CloudGemReferral.njsproj", "{38572D3E-7C9F-4490-96EA-874237F01148}"
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemRewards", "..\..\..\CloudGemRewards\v1\AWS\cgp-resource-code\src\CloudGemRewards.njsproj", "{EE563A8F-7066-43BC-A1A0-51438521A6DE}"
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemComputeFarm", "..\..\..\CloudGemComputeFarm\v1\AWS\cgp-resource-code\src\CloudGemComputeFarm.njsproj", "{CA705668-09C3-4CFC-AF1A-6452F3BAB8C7}"
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemDefectReporter", "..\..\..\CloudGemDefectReporter\v1\AWS\cgp-resource-code\src\CloudGemDefectReporter.njsproj", "{2B63EB1B-A64B-4DC6-93CC-EA81FDAD435E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -75,6 +87,30 @@ Global
 		{4B6D24E8-960D-47A4-A5F0-8ABF00AF07A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4B6D24E8-960D-47A4-A5F0-8ABF00AF07A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4B6D24E8-960D-47A4-A5F0-8ABF00AF07A5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C06682C2-F0E4-46DD-9D4A-82BCFC60CFBA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C06682C2-F0E4-46DD-9D4A-82BCFC60CFBA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C06682C2-F0E4-46DD-9D4A-82BCFC60CFBA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C06682C2-F0E4-46DD-9D4A-82BCFC60CFBA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{861857DE-0904-411C-984E-EF19FBD28060}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{861857DE-0904-411C-984E-EF19FBD28060}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{861857DE-0904-411C-984E-EF19FBD28060}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{861857DE-0904-411C-984E-EF19FBD28060}.Release|Any CPU.Build.0 = Release|Any CPU
+		{38572D3E-7C9F-4490-96EA-874237F01148}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38572D3E-7C9F-4490-96EA-874237F01148}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38572D3E-7C9F-4490-96EA-874237F01148}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38572D3E-7C9F-4490-96EA-874237F01148}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE563A8F-7066-43BC-A1A0-51438521A6DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE563A8F-7066-43BC-A1A0-51438521A6DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE563A8F-7066-43BC-A1A0-51438521A6DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE563A8F-7066-43BC-A1A0-51438521A6DE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA705668-09C3-4CFC-AF1A-6452F3BAB8C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA705668-09C3-4CFC-AF1A-6452F3BAB8C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA705668-09C3-4CFC-AF1A-6452F3BAB8C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA705668-09C3-4CFC-AF1A-6452F3BAB8C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B63EB1B-A64B-4DC6-93CC-EA81FDAD435E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B63EB1B-A64B-4DC6-93CC-EA81FDAD435E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B63EB1B-A64B-4DC6-93CC-EA81FDAD435E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B63EB1B-A64B-4DC6-93CC-EA81FDAD435E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

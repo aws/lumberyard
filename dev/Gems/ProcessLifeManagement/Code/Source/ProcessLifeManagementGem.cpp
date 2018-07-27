@@ -48,6 +48,12 @@ void ProcessLifeManagementGem::OnApplicationConstrained(ApplicationLifecycleEven
         return;
     }
 
+    if (!(gEnv && gEnv->pGame))
+    {
+        // Game is not valid
+        return;
+    }
+
     // Load/show a modal pause screen.
     if (gEnv && gEnv->pLyShine)
     {
@@ -75,7 +81,10 @@ void ProcessLifeManagementGem::OnApplicationConstrained(ApplicationLifecycleEven
     }
 
     // Pause the game.
-    gEnv->pGame->GetIGameFramework()->PauseGame(true, false);
+    if (gEnv->pGame && gEnv->pGame->GetIGameFramework())
+    {
+        gEnv->pGame->GetIGameFramework()->PauseGame(true, false);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +127,10 @@ void ProcessLifeManagementGem::OnInputChannelEvent(const InputChannel& inputChan
     if (shouldUnpause)
     {
         // Unpause the game.
-        gEnv->pGame->GetIGameFramework()->PauseGame(false, false);
+        if (gEnv->pGame && gEnv->pGame->GetIGameFramework())
+        {
+            gEnv->pGame->GetIGameFramework()->PauseGame(false, false);
+        }
 
         // Stop exclusively capturing input.
         InputChannelNotificationBus::Handler::BusDisconnect();

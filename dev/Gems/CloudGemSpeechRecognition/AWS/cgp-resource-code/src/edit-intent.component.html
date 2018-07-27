@@ -160,6 +160,27 @@
                     </div>
                 </div>
             </div>
+            <div>
+                <div class="intent-property" (click)="expandProperty('fulfillment')">
+                    <i [ngClass]="showFulfillment ? 'fa fa-caret-down' : 'fa fa-caret-right'" aria-hidden="true"></i>
+                    <h3 class="inline-header">Fulfillment</h3>
+                    <i class="fa fa-question-circle-o" aria-hidden="true" placement="right" [ngbTooltip]="'The business logic required to fulfill the user intent'"></i>
+                </div>
+                <div *ngIf="showFulfillment" class="settings-container">
+                    <label class="radio-btn-label">
+                        <input type="radio" [value]="'CodeHook'" [(ngModel)]="currentIntent.fulfillmentActivity.type" name="fulfillment" (ngModelChange)="clearLambdaFunctionArn()"/>
+                        <span></span> AWS Lambda function
+                    </label>
+                    <label class="radio-btn-label">
+                        <input type="radio" [value]="'ReturnIntent'" [(ngModel)]="currentIntent.fulfillmentActivity.type" name="fulfillment" (ngModelChange)="clearLambdaFunctionArn()"/>
+                        <span></span> Return parameters to client
+                    </label>
+                    <div *ngIf="currentIntent.fulfillmentActivity.type === 'CodeHook'">
+                        <div>Lambda function ARN</div>
+                        <input class="intent-property-entry form-control" type="text" [(ngModel)]="currentIntent.fulfillmentActivity.codeHook.uri" />
+                    </div>
+                </div>
+            </div>
             <hr>
             <div>
                 <button class="btn l-primary basic-button" (click)="saveIntent()">

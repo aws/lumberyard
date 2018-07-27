@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "LayoutWnd.h"
 #include "ViewPane.h"
 #include "QtViewPaneManager.h"
@@ -77,6 +77,7 @@ void CLayoutSplitter::CreateLayoutView(int row, int col, int id)
     assert(row >= 0 && row < 3);
     assert(col >= 0 && col < 3);
     CLayoutViewPane* viewPane = new CLayoutViewPane(this);
+    viewPane->setWindowFlags(Qt::Widget);
     insertWidget(orientation() == Qt::Horizontal ? col : row, viewPane);
     viewPane->SetId(id);
 }

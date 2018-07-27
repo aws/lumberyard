@@ -26,6 +26,9 @@
 
 namespace EMStudio
 {
+    AZ_CLASS_ALLOCATOR_IMPL(CommandBarPlugin::ProgressHandler, EMotionFX::EventHandlerAllocator, 0)
+
+
     // constructor
     CommandBarPlugin::CommandBarPlugin()
         : EMStudio::ToolBarPlugin()
@@ -177,7 +180,7 @@ namespace EMStudio
 
         UpdateLockSelectionIcon();
 
-        mProgressHandler = new ProgressHandler(this);
+        mProgressHandler = aznew ProgressHandler(this);
         EMotionFX::GetEventManager().AddEventHandler(mProgressHandler);
 
         return true;

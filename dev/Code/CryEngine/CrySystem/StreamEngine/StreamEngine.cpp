@@ -21,6 +21,8 @@
 #include "../System.h"
 #include "IPlatformOS.h"
 
+#include <AzCore/std/sort.h>
+
 #include <AzFramework/IO/FileOperations.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
@@ -158,7 +160,7 @@ IReadStreamPtr CStreamEngine::StartRead (const EStreamTaskType tSource, const ch
     return NULL;
 }
 
-size_t CStreamEngine::StartBatchRead(IReadStreamPtr* pStreamsOut, const StreamReadBatchParams* pReqs, size_t numReqs, std::function<void()>* preRequestCallback)
+size_t CStreamEngine::StartBatchRead(IReadStreamPtr* pStreamsOut, const StreamReadBatchParams* pReqs, size_t numReqs, AZStd::function<void()>* preRequestCallback)
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_SYSTEM);
 
@@ -567,7 +569,7 @@ void CStreamEngine::Update()
 
     if (m_Statistics.vecHeavyAssets.size() > MAX_HEAVY_ASSETS)
     {
-        std::sort(m_Statistics.vecHeavyAssets.begin(), m_Statistics.vecHeavyAssets.end());
+        AZStd::sort(m_Statistics.vecHeavyAssets.begin(), m_Statistics.vecHeavyAssets.end());
         m_Statistics.vecHeavyAssets.resize(MAX_HEAVY_ASSETS);
     }
 
@@ -1184,7 +1186,7 @@ namespace
             {
                 char path[ICryPak::g_nMaxPath];
                 path[sizeof(path) - 1] = 0;
-                gEnv->pCryPak->AdjustFileName("@cache@\\TestResults\\StreamingLog.txt", path, ICryPak::FLAGS_PATH_REAL | ICryPak::FLAGS_FOR_WRITING);
+                gEnv->pCryPak->AdjustFileName("@cache@\\TestResults\\StreamingLog.txt", path, AZ_ARRAY_SIZE(path), ICryPak::FLAGS_PATH_REAL | ICryPak::FLAGS_FOR_WRITING);
                 sFileName = path;
             }
             AZ::IO::HandleType fileHandle = fxopen(sFileName, (bFirstTime) ? "wt" : "at");

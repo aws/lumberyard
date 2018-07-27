@@ -48,7 +48,7 @@ namespace ChatPlay
         {
             if (m_entity != info->pEntity || IsPortActive(info, PORT))
             {
-                AZStd::string voteName = GetPortString(info, PORT);
+                AZStd::string voteName = GetPortString(info, PORT).c_str();
 
                 if (!info->pEntity)
                 {
@@ -630,7 +630,7 @@ namespace ChatPlay
                     };
                     AZStd::sort(options.begin(), options.end(), countComparator);
 
-                    auto it = options.rbegin();
+                    auto it = options.begin(); ///< Voting results were being delivered in reverse order due to sorting highest -> lowest AND using a reverse iterator
 
                     for (int i = 0; i < 4; ++i, ++it)
                     {

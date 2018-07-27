@@ -10,115 +10,98 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "BlendTreeFloatConditionNode.h"
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/AttributeSettings.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeFloatConditionNode::BlendTreeFloatConditionNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeFloatConditionNode, AnimGraphAllocator, 0)
 
-        // set the defaults
-        mFunctionEnum   = FUNCTION_EQUAL;
-        mFunction       = FloatConditionEqual;
-        SetNodeInfo("x == y");
-    }
-
-
-    // destructor
-    BlendTreeFloatConditionNode::~BlendTreeFloatConditionNode()
-    {
-    }
-
-
-    // create
-    BlendTreeFloatConditionNode* BlendTreeFloatConditionNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeFloatConditionNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeFloatConditionNode::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeFloatConditionNode::RegisterPorts()
+    BlendTreeFloatConditionNode::BlendTreeFloatConditionNode()
+        : AnimGraphNode()
+        , m_functionEnum(FUNCTION_EQUAL)
+        , m_defaultValue(0.0f)
+        , m_trueResult(1.0f)
+        , m_falseResult(0.0f)
+        , m_trueReturnMode(MODE_VALUE)
+        , m_falseReturnMode(MODE_VALUE)
     {
         // setup the input ports
         InitInputPorts(2);
         SetupInputPortAsNumber("x", INPUTPORT_X, PORTID_INPUT_X); // accept float/int/bool values
         SetupInputPortAsNumber("y", INPUTPORT_Y, PORTID_INPUT_Y); // accept float/int/bool values
-
-        // setup the output ports
+                                                          // setup the output ports
         InitOutputPorts(2);
-        SetupOutputPort("Float", OUTPUTPORT_VALUE,  MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_VALUE);
-        SetupOutputPort("Bool",  OUTPUTPORT_BOOL,   MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_BOOL);    // false on default
+        SetupOutputPort("Float", OUTPUTPORT_VALUE, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_VALUE);
+
+        SetupOutputPort("Bool", OUTPUTPORT_BOOL, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_BOOL);    // false on default
+
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
     }
 
-
-    // register the parameters
-    void BlendTreeFloatConditionNode::RegisterAttributes()
+        
+    BlendTreeFloatConditionNode::~BlendTreeFloatConditionNode()
     {
-        // create the condition function combobox
-        MCore::AttributeSettings* functionParam = RegisterAttribute("Condition Function", "conditionFunction", "The condition function to use.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        functionParam->SetReinitGuiOnValueChange(true);
-        functionParam->ResizeComboValues((uint32)NUM_FUNCTIONS);
-        functionParam->SetComboValue(FUNCTION_EQUAL,            "Is Equal");
-        functionParam->SetComboValue(FUNCTION_GREATER,          "Is Greater");
-        functionParam->SetComboValue(FUNCTION_LESS,             "Is Less");
-        functionParam->SetComboValue(FUNCTION_GREATEROREQUAL,   "Is Greater Or Equal");
-        functionParam->SetComboValue(FUNCTION_LESSOREQUAL,      "Is Less Or Equal");
-        functionParam->SetComboValue(FUNCTION_NOTEQUAL,         "Is Not Equal");
-        functionParam->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // create the static value float spinner
-        MCore::AttributeSettings* valueParam = RegisterAttribute("Static Value", "staticValue", "Value used for x or y when the input port has no connection.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        valueParam->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        valueParam->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        valueParam->SetMaxValue(MCore::AttributeFloat::Create(FLT_MAX));
-
-        MCore::AttributeSettings* trueValueParam = RegisterAttribute("Result When True", "trueResult", "The value returned when the expression is true.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        trueValueParam->SetDefaultValue(MCore::AttributeFloat::Create(1.0f));
-        trueValueParam->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        trueValueParam->SetMaxValue(MCore::AttributeFloat::Create(FLT_MAX));
-
-        MCore::AttributeSettings* falseValueParam = RegisterAttribute("Result When False", "falseResult", "The value returned when the expression is false.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        falseValueParam->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        falseValueParam->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        falseValueParam->SetMaxValue(MCore::AttributeFloat::Create(FLT_MAX));
-
-        // create the true return mode
-        MCore::AttributeSettings* trueModeParam = RegisterAttribute("True Return Mode", "trueMode", "What to return when the result is true.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        trueModeParam->ResizeComboValues(3);
-        trueModeParam->SetComboValue(MODE_VALUE, "Return True Value");
-        trueModeParam->SetComboValue(MODE_X,    "Return X");
-        trueModeParam->SetComboValue(MODE_Y,    "Return Y");
-        trueModeParam->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // create the false return mode
-        MCore::AttributeSettings* falseModeParam = RegisterAttribute("False Return Mode", "falseMode", "What to return when the result is false.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        falseModeParam->ResizeComboValues(3);
-        falseModeParam->SetComboValue(MODE_VALUE, "Return False Value");
-        falseModeParam->SetComboValue(MODE_X, "Return X");
-        falseModeParam->SetComboValue(MODE_Y, "Return Y");
-        falseModeParam->SetDefaultValue(MCore::AttributeFloat::Create(0));
     }
 
 
+    void BlendTreeFloatConditionNode::Reinit()
+    {
+        switch (m_functionEnum)
+        {
+        case FUNCTION_EQUAL:
+            m_function = FloatConditionEqual;
+            SetNodeInfo("x == y");
+            break;
+        case FUNCTION_NOTEQUAL:
+            m_function = FloatConditionNotEqual;
+            SetNodeInfo("x != y");
+            break;
+        case FUNCTION_GREATER:
+            m_function = FloatConditionGreater;
+            SetNodeInfo("x > y");
+            break;
+        case FUNCTION_LESS:
+            m_function = FloatConditionLess;
+            SetNodeInfo("x < y");
+            break;
+        case FUNCTION_GREATEROREQUAL:
+            m_function = FloatConditionGreaterOrEqual;
+            SetNodeInfo("x >= y");
+            break;
+        case FUNCTION_LESSOREQUAL:
+            m_function = FloatConditionLessOrEqual;
+            SetNodeInfo("x <= y");
+            break;
+        default:
+            AZ_Assert(false, "EMotionFX: Function unknown.");
+        }
+
+        AnimGraphNode::Reinit();
+    }
+
+
+    bool BlendTreeFloatConditionNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
+    }
+
+    
     // get the palette name
     const char* BlendTreeFloatConditionNode::GetPaletteName() const
     {
@@ -133,20 +116,6 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeFloatConditionNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeFloatConditionNode* clone = new BlendTreeFloatConditionNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // the update function
     void BlendTreeFloatConditionNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
@@ -154,16 +123,11 @@ namespace EMotionFX
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
         // if there are no incoming connections, there is nothing to do
-        const uint32 numConnections = mConnections.GetLength();
+        const size_t numConnections = mConnections.size();
         if (numConnections == 0)
         {
             return;
         }
-
-        //  AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
-
-        // update the condition function if needed
-        SetFunction((EFunction)((uint32)GetAttributeFloat(ATTRIB_FUNCTION)->GetValue()));
 
         // if both x and y inputs have connections
         float x, y;
@@ -182,118 +146,66 @@ namespace EMotionFX
             {
                 OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_X));
                 x = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_X);
-                y = GetAttributeFloat(ATTRIB_STATICVALUE)->GetValue();
+                y = m_defaultValue;
             }
             else // only y has an input
             {
                 MCORE_ASSERT(mConnections[0]->GetTargetPort() == INPUTPORT_Y);
-                x = GetAttributeFloat(ATTRIB_STATICVALUE)->GetValue();
+                x = m_defaultValue;
                 OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_Y));
                 y = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_Y);
             }
         }
 
         // execute the condition function
-        if (mFunction(x, y))
+        if (m_function(x, y))
         {
             GetOutputFloat(animGraphInstance, OUTPUTPORT_BOOL)->SetValue(1.0f); // set to true
 
-            const uint32 mode = GetAttributeFloatAsUint32(ATTRIB_TRUEMODE);
-            switch (mode)
+            switch (m_trueReturnMode)
             {
-            case MODE_VALUE:
-                GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(GetAttributeFloat(ATTRIB_TRUEVALUE)->GetValue());
-                break;
-            case MODE_X:
-                GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(x);
-                break;
-            case MODE_Y:
-                GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(y);
-                break;
-            default:
-                MCORE_ASSERT(false);    // should never happen
+                case MODE_VALUE:
+                    GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(m_trueResult);
+                    break;
+                case MODE_X:
+                    GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(x);
+                    break;
+                case MODE_Y:
+                    GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(y);
+                    break;
+                default:
+                    AZ_Assert(false, "EMotionFX: Function unknown.");
             }
-            ;
         }
         else
         {
             GetOutputFloat(animGraphInstance, OUTPUTPORT_BOOL)->SetValue(0.0f);
 
-            const uint32 mode = GetAttributeFloatAsUint32(ATTRIB_FALSEMODE);
-            switch (mode)
+            switch (m_falseReturnMode)
             {
-            case MODE_VALUE:
-                GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(GetAttributeFloat(ATTRIB_FALSEVALUE)->GetValue());
-                break;
-            case MODE_X:
-                GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(x);
-                break;
-            case MODE_Y:
-                GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(y);
-                break;
-            default:
-                MCORE_ASSERT(false);    // should never happen
+                case MODE_VALUE:
+                    GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(m_falseResult);
+                    break;
+                case MODE_X:
+                    GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(x);
+                    break;
+                case MODE_Y:
+                    GetOutputFloat(animGraphInstance, OUTPUTPORT_VALUE)->SetValue(y);
+                    break;
+                default:
+                    AZ_Assert(false, "EMotionFX: Function unknown.");
             }
-            ;
         }
     }
 
 
-    // get the type string
-    const char* BlendTreeFloatConditionNode::GetTypeString() const
-    {
-        return "BlendTreeFloatConditionNode";
-    }
-
-
-    // set the condition function to use
     void BlendTreeFloatConditionNode::SetFunction(EFunction func)
     {
-        // if it didn't change, don't update anything
-        if (func == mFunctionEnum)
+        m_functionEnum = func;
+        if (mAnimGraph)
         {
-            return;
+            Reinit();
         }
-
-        mFunctionEnum = func;
-        switch (mFunctionEnum)
-        {
-        case FUNCTION_EQUAL:
-            mFunction = FloatConditionEqual;
-            SetNodeInfo("x == y");
-            return;
-        case FUNCTION_NOTEQUAL:
-            mFunction = FloatConditionNotEqual;
-            SetNodeInfo("x != y");
-            return;
-        case FUNCTION_GREATER:
-            mFunction = FloatConditionGreater;
-            SetNodeInfo("x > y");
-            return;
-        case FUNCTION_LESS:
-            mFunction = FloatConditionLess;
-            SetNodeInfo("x < y");
-            return;
-        case FUNCTION_GREATEROREQUAL:
-            mFunction = FloatConditionGreaterOrEqual;
-            SetNodeInfo("x >= y");
-            return;
-        case FUNCTION_LESSOREQUAL:
-            mFunction = FloatConditionLessOrEqual;
-            SetNodeInfo("x <= y");
-            return;
-        default:
-            MCORE_ASSERT(false);        // function unknown
-        }
-        ;
-    }
-
-
-    // update the data
-    void BlendTreeFloatConditionNode::OnUpdateAttributes()
-    {
-        // update the condition function if needed
-        SetFunction((EFunction)((uint32)GetAttributeFloat(ATTRIB_FUNCTION)->GetValue()));
     }
 
 
@@ -313,5 +225,85 @@ namespace EMotionFX
     bool BlendTreeFloatConditionNode::FloatConditionLess(float x, float y)              { return (x < y); }
     bool BlendTreeFloatConditionNode::FloatConditionGreaterOrEqual(float x, float y)    { return (x >= y); }
     bool BlendTreeFloatConditionNode::FloatConditionLessOrEqual(float x, float y)       { return (x <= y); }
-}   // namespace EMotionFX
 
+    void BlendTreeFloatConditionNode::SetDefaultValue(float defaultValue)
+    {
+        m_defaultValue = defaultValue;
+    }
+
+    void BlendTreeFloatConditionNode::SetTrueResult(float trueResultValue)
+    {
+        m_trueResult = trueResultValue;
+    }
+
+    void BlendTreeFloatConditionNode::SetFalseResult(float falseResultValue)
+    {
+        m_falseResult = falseResultValue;
+    }
+
+    void BlendTreeFloatConditionNode::SetTrueReturnMode(EReturnMode returnMode)
+    {
+        m_trueReturnMode = returnMode;
+    }
+
+    void BlendTreeFloatConditionNode::SetFalseReturnMode(EReturnMode returnMode)
+    {
+        m_falseReturnMode = returnMode;
+    }
+
+    void BlendTreeFloatConditionNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeFloatConditionNode, AnimGraphNode>()
+            ->Version(1)
+            ->Field("conditionFunction", &BlendTreeFloatConditionNode::m_functionEnum)
+            ->Field("defaultValue", &BlendTreeFloatConditionNode::m_defaultValue)
+            ->Field("trueResult", &BlendTreeFloatConditionNode::m_trueResult)
+            ->Field("falseResult", &BlendTreeFloatConditionNode::m_falseResult)
+            ->Field("trueReturnMode", &BlendTreeFloatConditionNode::m_trueReturnMode)
+            ->Field("falseReturnMode", &BlendTreeFloatConditionNode::m_falseReturnMode)
+            ;
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeFloatConditionNode>("Float Condition", "Float condition attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeFloatConditionNode::m_functionEnum, "Condition Function", "The condition function to use.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeFloatConditionNode::Reinit)
+                ->EnumAttribute(FUNCTION_EQUAL,          "Is Equal")
+                ->EnumAttribute(FUNCTION_GREATER,        "Is Greater")
+                ->EnumAttribute(FUNCTION_LESS,           "Is Less")
+                ->EnumAttribute(FUNCTION_GREATEROREQUAL, "Is Greater Or Equal")
+                ->EnumAttribute(FUNCTION_LESSOREQUAL,    "Is Less Or Equal")
+                ->EnumAttribute(FUNCTION_NOTEQUAL,       "Is Not Equal")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeFloatConditionNode::m_defaultValue, "Default Value", "Value used for x or y when the input port has no connection.")
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeFloatConditionNode::m_trueResult, "Result When True", "The value returned when the expression is true.")
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeFloatConditionNode::m_falseResult, "Result When False", "The value returned when the expression is false.")
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeFloatConditionNode::m_trueReturnMode, "True Return Mode", "What to return when the result is true.")
+                ->EnumAttribute(MODE_VALUE, "Return True Value")
+                ->EnumAttribute(MODE_X,     "Return X")
+                ->EnumAttribute(MODE_Y,     "Return Y")
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeFloatConditionNode::m_falseReturnMode, "False Return Mode", "What to return when the result is false.")
+                ->EnumAttribute(MODE_VALUE, "Return False Value")
+                ->EnumAttribute(MODE_X,     "Return X")
+                ->EnumAttribute(MODE_Y,     "Return Y")
+            ;
+    }
+} // namespace EMotionFX

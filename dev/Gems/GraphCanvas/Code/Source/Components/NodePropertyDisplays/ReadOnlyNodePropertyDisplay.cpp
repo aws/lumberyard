@@ -52,18 +52,18 @@ namespace GraphCanvas
         m_displayLabel->setToolTip(value.c_str());
     }
 
-    QGraphicsLayoutItem* ReadOnlyNodePropertyDisplay::GetDisabledGraphicsLayoutItem() const
-    {
+    QGraphicsLayoutItem* ReadOnlyNodePropertyDisplay::GetDisabledGraphicsLayoutItem()
+{
         return m_disabledLabel;
     }
 
-    QGraphicsLayoutItem* ReadOnlyNodePropertyDisplay::GetDisplayGraphicsLayoutItem() const
-    {
+    QGraphicsLayoutItem* ReadOnlyNodePropertyDisplay::GetDisplayGraphicsLayoutItem()
+{
         return m_displayLabel;
     }
 
-    QGraphicsLayoutItem* ReadOnlyNodePropertyDisplay::GetEditableGraphicsLayoutItem() const
-    {
+    QGraphicsLayoutItem* ReadOnlyNodePropertyDisplay::GetEditableGraphicsLayoutItem()
+{
         return m_displayLabel;
     }    
 }

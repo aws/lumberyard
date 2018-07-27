@@ -600,7 +600,9 @@ namespace Serialization {
 
     bool JSONIArchive::load(const char* filename)
     {
-        if (FILE* file = fopen(filename, "rb"))
+        FILE* file = nullptr;
+        azfopen(&file, filename, "rb");
+        if (file)
         {
             fseek(file, 0, SEEK_END);
             long fileSize = ftell(file);

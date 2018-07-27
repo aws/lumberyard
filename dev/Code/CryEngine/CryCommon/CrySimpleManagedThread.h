@@ -28,8 +28,8 @@ class CrySimpleManagedThread
     : protected CrySimpleThread < >
 {
 public:
-    // Function type; user should std::bind any necessary arguments
-    typedef std::function<void()> function_type;
+    // Function type; user should AZStd::bind any necessary arguments
+    typedef AZStd::function<void()> function_type;
 
     // Factory function; creates, names and starts the thread
     static std::shared_ptr<CrySimpleManagedThread> CreateThread(const char* name, const function_type& fn);

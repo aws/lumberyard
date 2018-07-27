@@ -857,47 +857,81 @@ void CMaterial::Serialize(SerializeContext& ctx)
         //////////////////////////////////////////////////////////////////////////
         MaterialHelpers::SetVertexDeformFromXml(m_shaderResources, node);
 
-
-        ClearAllSubMaterials();
-
         // Serialize sub materials.
-        XmlNodeRef childsNode = node->findChild("SubMaterials");
-        if (childsNode)
+
+        const auto ResizeSubMaterials = [this](size_t count)
         {
-            if (!ctx.bIgnoreChilds)
+            for (size_t i = count; i < m_subMaterials.size(); ++i)
             {
-                QString name;
-                int nSubMtls = childsNode->getChildCount();
-                SetSubMaterialCount(nSubMtls);
-                for (int i = 0; i < nSubMtls; i++)
+                if (auto& pSubMtl = m_subMaterials[i])
                 {
-                    XmlNodeRef mtlNode = childsNode->getChild(i);
-                    if (mtlNode->isTag("Material"))
+                    pSubMtl->m_pParent = nullptr;
+                }
+            }
+            m_subMaterials.resize(count);
+        };
+
+        XmlNodeRef childsNode = node->findChild("SubMaterials");
+        if (childsNode && !ctx.bIgnoreChilds)
+        {
+            QString name;
+            int nSubMtls = childsNode->getChildCount();
+            ResizeSubMaterials(nSubMtls);
+            for (int i = 0; i < nSubMtls; i++)
+            {
+                auto& pSubMtl = m_subMaterials[i];
+                XmlNodeRef mtlNode = childsNode->getChild(i);
+                if (mtlNode->isTag("Material"))
+                {
+                    mtlNode->getAttr("Name", name);
+                    if (pSubMtl && pSubMtl->IsPureChild())
                     {
-                        mtlNode->getAttr("Name", name);
-                        CMaterial* pSubMtl = new CMaterial(name, MTL_FLAG_PURE_CHILD);
-                        SetSubMaterial(i, pSubMtl);
-
-                        SerializeContext childCtx(ctx);
-                        childCtx.node = mtlNode;
-                        pSubMtl->Serialize(childCtx);
-
-                        pSubMtl->m_shaderResources.m_SortPrio = nSubMtls - i - 1;
+                        pSubMtl->SetName(name);
                     }
                     else
                     {
-                        if (mtlNode->getAttr("Name", name))
+                        if (pSubMtl)
                         {
-                            CMaterial* pMtl = GetIEditor()->GetMaterialManager()->LoadMaterial(name);
-                            if (pMtl)
-                            {
-                                SetSubMaterial(i, pMtl);
-                            }
+                            pSubMtl->m_pParent = nullptr;
+                        }
+
+                        pSubMtl = new CMaterial(name, MTL_FLAG_PURE_CHILD);
+                        pSubMtl->m_pParent = this;
+                    }
+
+                    SerializeContext childCtx(ctx);
+                    childCtx.node = mtlNode;
+                    pSubMtl->Serialize(childCtx);
+
+                    pSubMtl->m_shaderResources.m_SortPrio = nSubMtls - i - 1;
+                }
+                else
+                {
+                    if (pSubMtl)
+                    {
+                        pSubMtl->m_pParent = nullptr;
+                        pSubMtl = nullptr;
+                    }
+
+                    if (mtlNode->getAttr("Name", name))
+                    {
+                        CMaterial* pMtl = GetIEditor()->GetMaterialManager()->LoadMaterial(name);
+                        if (pMtl && !pMtl->IsMultiSubMaterial())
+                        {
+                            pSubMtl = pMtl;
                         }
                     }
                 }
             }
+
+            m_subMaterials.erase(std::remove(m_subMaterials.begin(), m_subMaterials.end(), nullptr), m_subMaterials.end());
         }
+        else
+        {
+            ResizeSubMaterials(0);
+        }
+
+        UpdateMatInfo();
 
         //////////////////////////////////////////////////////////////////////////
         // Load public parameters.
@@ -1540,7 +1574,7 @@ bool CMaterial::CanModify(bool bSkipReadOnly)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CMaterial::Save(bool bSkipReadOnly)
+bool CMaterial::Save(bool bSkipReadOnly, const QString& fullPath)
 {
     // Save our parent
     if (IsPureChild())
@@ -1591,14 +1625,19 @@ bool CMaterial::Save(bool bSkipReadOnly)
     CBaseLibraryItem::SerializeContext ctx(mtlNode, false);
     Serialize(ctx);
 
-    //CMaterialManager *pMatMan = (CMaterialManager*)GetLibrary()->GetManager();
-    // get file name from material name.
-    //CString filename = pMatMan->MaterialToFilename( GetName() );
+    bool saveSucceeded = false;
+    if (fullPath.isEmpty())
+    {
+        // If no filepath was specified, get the filename using the relative path/unique identifier of this material
+        saveSucceeded = XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), mtlNode, GetFilename().toUtf8().data());
+    }
+    else
+    {
+        // If a filepath was specified, save to the specified location
+        saveSucceeded = XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), mtlNode, fullPath.toUtf8().data());
+    }
 
-    //char path[ICryPak::g_nMaxPath];
-    //filename = gEnv->pCryPak->AdjustFileName( filename,path,0 );
-
-    if (XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), mtlNode, GetFilename().toUtf8().data()))
+    if (saveSucceeded)
     {
         // If material successfully saved, clear modified flag.
         SetModified(false);
@@ -1610,13 +1649,13 @@ bool CMaterial::Save(bool bSkipReadOnly)
                 pSubMaterial->SetModified(false);
             }
         }
-
-        return true;
     }
     else
     {
-        return false;
+        AZ_Warning("Material Editor", false, "Material '%s' failed to save successfully. Check that the file is writable and has been successfully checked out in source control.", m_name.toUtf8().data());
     }
+
+    return saveSucceeded;
 }
 
 //////////////////////////////////////////////////////////////////////////

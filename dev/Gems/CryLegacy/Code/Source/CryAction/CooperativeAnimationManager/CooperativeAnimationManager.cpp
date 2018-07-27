@@ -14,7 +14,7 @@
 // Description : Central manager for synchronized animations on multiple actors
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CooperativeAnimationManager.h"
 #include "IAnimatedCharacter.h"
 

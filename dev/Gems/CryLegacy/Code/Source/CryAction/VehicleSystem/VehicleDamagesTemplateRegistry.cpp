@@ -14,7 +14,7 @@
 // Description : Implements a registry for vehicle damages templates
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "Serialization/XMLScriptLoader.h"
 #include "IVehicleSystem.h"

@@ -10,18 +10,24 @@
 #
 
 import argparse
-import logging as lg
+import logging
+
+import aztest.plugins as plugins
+
 from aztest.common import DEFAULT_OUTPUT_PATH
 from aztest.scanner import scan
 from aztest.report.HTMLReporter import generate_standalone_report
-logger = lg.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
 
 
 def get_parser():
     parser = argparse.ArgumentParser(description="AZ Test Scanner")
-    parser.add_argument('--verbosity', '-v', default='INFO', choices=lg._levelNames,
+    parser.add_argument('--verbosity', '-v', default='INFO', choices=logging._levelNames,
                         help="set the verbosity of logging")
     subparsers = parser.add_subparsers()
+    # adding plugins subparsers first allows AzTest to clobber any conflicting options, instead of vice versa
+    plugins.subparser_hook(subparsers)
 
     p_scan = subparsers.add_parser("scan", help="scans a directory for modules to test and executes them",
                                    epilog="Extra parameters are assumed to be for the test framework and will be "
@@ -48,6 +54,8 @@ def get_parser():
                         help="if set, tells the AzTestRunner to wait for a debugger to be attached before continuing")
     p_scan.add_argument('--bootstrap-config', required=False,
                         help="json configuration file to bootstrap applications for modules which require them")
+    p_scan.add_argument('--module-timeout', type=int, required=False, default=300,
+                        help='Duration in seconds before aborting and marking a test module as a failure')
 
     g_filters = p_scan.add_argument_group('Filters', "Arguments for filtering what is scanned")
     g_filters.add_argument('--limit', '-n', required=False, type=int,
@@ -81,7 +89,7 @@ def get_parser():
 def execute(args=None):
     parser = get_parser()
 
-    args, extra = parser.parse_known_args(args)
+    known_args, extra_args = parser.parse_known_args(args)
 
     # execute command
-    return args.func(args, extra)
+    return known_args.func(known_args, extra_args)

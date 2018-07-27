@@ -12,32 +12,56 @@ REM
 REM Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 REM expected usage:
-REM BuildShaderPak_DX11 shaderlist.txt
+REM BuildShaderPak_GL4 MyProject Platform
+REM Example: BuildShaderPak_GL4 FeatureTests pc
 
-REM Detect the version of VS and determine the bin64 folder
-set ORIGINALDIRECTORY=%cd%
-set MYBATCHFILEDIRECTORY=%~dp0
-cd "%MYBATCHFILEDIRECTORY%"
+if [%1] == [] GOTO MissingRequiredParam
+if [%2] == [] GOTO MissingRequiredParam
+GOTO SetParams
 
-REM Attempt to determine the best BinFolder for rc.exe and AssetProcessorBatch.exe
-call "%MYBATCHFILEDIRECTORY%\DetermineRCandAP.bat" SILENT
+:MissingRequiredParam
+echo Missing one or more required params. Example: BuildShaderPak_GL4.bat gameProjectName platform
+echo(
+echo positional arguments:
+echo    gameProjectName     The name of the game.
+echo    platform            pc or osx_gl.
+echo(
+GOTO Failed
 
-REM If a bin folder was registered, validate the presence of the binfolder/rc/rc.exe
-IF ERRORLEVEL 1 (
-    ECHO unable to determine the locations of AssetProcessor and rc.exe.  Make sure that they are available or rebuild from source
-    EXIT /b 1
-)
-ECHO Detected binary folder at %MYBATCHFILEDIRECTORY%%BINFOLDER%
+:SetParams
+set gamefoldername=%1
+set platform=%2
+set shaderflavors="gl4*"
 
-set SOURCESHADERLIST=%1
-set GAMENAME=SamplesProject
+if ["%PLATFORM%"] == ["pc"] GOTO PackShaders
+if ["%PLATFORM%"] == ["osx_gl"] GOTO PackShaders
 
-set SHADERPLATFORM=GL4
-rem other available platforms are GL4 GLES3 METAL and the Console platforms
-rem if changing the above platform, also change the below folder name to match
-set SHADERFLAVOR=GL4
+echo Incorrect Platform. Example: BuildShaderPak_GL4.bat gameProjectName platform
+echo(
+echo positional arguments:
+echo    gameProjectName     The name of the game.
+echo    platform            pc or osx_gl.
+echo(
+GOTO Failed
 
-xcopy /y %SOURCESHADERLIST% Cache\%GAMENAME%\PC\user\Cache\Shaders\shaderlist.txt*
-%BINFOLDER%\ShaderCacheGen.exe /BuildGlobalCache /ShadersPlatform=%SHADERPLATFORM%
-call .\lmbr_pak_shaders.bat %SHADERFLAVOR% %GAMENAME%
+REM ShaderCacheGen.exe is not currently able to generate the GL4 shader cache,
+REM so for the time being we must copy the compiled shaders from the PC or Mac executions.
+REM Cache\MyProject\Platform\user\cache\shaders\cache\*
+REM
+REM One ShaderCacheGen.exe can generate the metal shaders (https://issues.labcollab.net/browse/LMBR-18201),
+REM we should be able to call this directly (after copying the appropriate shaderlist.txt as is done in BuildShaderPak_DX11.bat)
+REM Bin64\ShaderCacheGen.exe /BuildGlobalCache /ShadersPlatform=%targetplatform%
 
+:PackShaders
+call .\lmbr_pak_shaders.bat %shaderflavors% %gamefoldername% %platform%
+
+if %ERRORLEVEL% NEQ 0 GOTO Failed
+GOTO Success
+
+:Failed
+echo ---- process failed ----
+exit /b 1
+
+:Success
+echo ---- Process succeeded ----
+exit /b 0

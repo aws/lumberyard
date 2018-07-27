@@ -28,21 +28,24 @@ namespace Camera
 {
     void EditorCameraComponent::Init()
     {
-        if (gEnv && gEnv->pGame && gEnv->pGame->GetIGameFramework())
+        // init happens in slice compile.  We avoid reaching out to touch system resources in init.
+    }
+
+    void EditorCameraComponent::Activate()
+    {
+        if ((!m_viewSystem)||(!m_system))
         {
-            if (m_system = gEnv->pGame->GetIGameFramework()->GetISystem())
+            // perform first-time init
+            if (m_system = gEnv->pSystem)
             {
                 // Initialize local view.
-                if (!(m_viewSystem = gEnv->pGame->GetIGameFramework()->GetIViewSystem()))
+                if (!(m_viewSystem = m_system->GetIViewSystem()))
                 {
                     AZ_Error("CameraComponent", m_viewSystem != nullptr, "The CameraComponent shouldn't be used without a local view system");
                 }
             }
         }
-    }
 
-    void EditorCameraComponent::Activate()
-    {
         if (m_viewSystem)
         {
             if (m_view == nullptr)

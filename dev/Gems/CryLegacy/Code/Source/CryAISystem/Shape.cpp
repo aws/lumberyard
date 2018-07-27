@@ -18,7 +18,7 @@
 //               Graphics Gems IV: Point in Polygon Strategies by Eric Haines
 //               http://tog.acm.org/GraphicsGems/gemsiv/ptpoly_haines/
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "Shape.h"
 #include "DebugDrawContext.h"
 

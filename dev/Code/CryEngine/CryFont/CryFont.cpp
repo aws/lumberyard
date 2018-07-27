@@ -520,7 +520,7 @@ FontFamilyPtr CCryFont::LoadFontFamily(const char* pFontFamilyName)
 FontFamilyPtr CCryFont::GetFontFamily(const char* pFontFamilyName)
 {
     auto it = m_fontFamilies.find(PathUtil::MakeGamePath(string(pFontFamilyName).Trim().MakeLower()).c_str());
-    return it != m_fontFamilies.end() ? std::shared_ptr<FontFamily>(it->second) : std::shared_ptr<FontFamily>(nullptr);
+    return it != m_fontFamilies.end() ? FontFamilyPtr(it->second) : FontFamilyPtr(nullptr);
 }
 
 void CCryFont::AddCharsToFontTextures(FontFamilyPtr pFontFamily, const char* pChars)
@@ -738,12 +738,12 @@ bool CCryFont::AddFontFamilyToMaps(const char* pFontFamilyFilename, const char* 
     }
 
     // First, insert by filename
-    AZStd::pair<AZStd::string, std::weak_ptr<FontFamily>> insertPair(loweredFilename, fontFamily);
+    AZStd::pair<AZStd::string, AZStd::weak_ptr<FontFamily>> insertPair(loweredFilename, fontFamily);
     auto iterPosition = m_fontFamilies.insert(insertPair).first;
     m_fontFamilyReverseLookup[fontFamily.get()] = iterPosition;
     
     // Then, by Font Family name
-    AZStd::pair<AZStd::string, std::weak_ptr<FontFamily>> nameInsertPair(loweredFontFamilyName, fontFamily);
+    AZStd::pair<AZStd::string, AZStd::weak_ptr<FontFamily>> nameInsertPair(loweredFontFamilyName, fontFamily);
     m_fontFamilies.insert(nameInsertPair);
 
     return true;

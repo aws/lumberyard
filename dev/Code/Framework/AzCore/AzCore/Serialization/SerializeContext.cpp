@@ -925,7 +925,7 @@ namespace AZ
         return *this;
     }
 #endif //
-    
+
     //=========================================================================
     // Convert
     //=========================================================================
@@ -1530,6 +1530,25 @@ namespace AZ
     }
 
     //=========================================================================
+    // ClassBuilder::~ClassBuilder
+    //=========================================================================
+    SerializeContext::ClassBuilder::~ClassBuilder()
+    {
+#if defined(AZ_DEBUG_BUILD)
+        if (!m_context->IsRemovingReflection())
+        {
+            if (m_classData->second.m_serializer)
+            {
+                AZ_Assert(
+                    m_classData->second.m_elements.empty(),
+                    "Classes with custom serializers provided are not permeitted to contain any elements.\n"
+                    "Common causes of this error are calling SerializeWithNoData() or passing Class() a base class then specifying a serializer.");
+            }
+        }
+#endif // AZ_DEBUG_BUILD
+    }
+
+    //=========================================================================
     // ClassBuilder::Version
     // [10/05/2012]
     //=========================================================================
@@ -1567,13 +1586,21 @@ namespace AZ
     //=========================================================================
     // ClassBuilder::Serializer
     //=========================================================================
-    SerializeContext::ClassBuilder* SerializeContext::ClassBuilder::SerializerForEmptyClass()
+    SerializeContext::ClassBuilder* SerializeContext::ClassBuilder::SerializeWithNoData()
     {
         if (m_context->IsRemovingReflection())
         {
             return this; // we have already removed the class data.
         }
         m_classData->second.m_serializer = &Serialize::StaticInstance<EmptySerializer>::s_instance;
+        return this;
+    }
+
+    //=========================================================================
+    // ClassBuilder::Serializer
+    //=========================================================================
+    SerializeContext::ClassBuilder* SerializeContext::ClassBuilder::SerializerForEmptyClass()
+    {
         return this;
     }
 
@@ -1855,9 +1882,9 @@ namespace AZ
 
         ObjectCloneData cloneData;
         ErrorHandler m_errorLogger;
-        
+
         AZ_Assert(ptr, "SerializeContext::CloneObject - Attempt to clone a nullptr.");
-        
+
         if (!ptr)
         {
             return nullptr;
@@ -1908,7 +1935,7 @@ namespace AZ
             AZ_Assert(classData->m_factory != nullptr, "We are attempting to create '%s', but no factory is provided! Either provide factory or change data member '%s' to value not pointer!", classData->m_name, elementData->m_name);
             cloneData->m_ptr = classData->m_factory->Create(classData->m_name);
         }
-        
+
         return BeginCloneElementInplace(cloneData->m_ptr, ptr, classData, elementData, data, errorHandler);
     }
 
@@ -1980,7 +2007,7 @@ namespace AZ
         {
             classData->m_eventHandler->OnWriteBegin(destPtr);
         }
-        
+
         if (classData->m_serializer)
         {
             AZStd::vector<char> buffer;
@@ -2337,7 +2364,7 @@ namespace AZ
         AZ_Error("Serialize", false, "%s\n%s", message, GetStackDescription().c_str());
         m_nErrors++;
     }
-    
+
     //=========================================================================
     // ReportWarning
     //=========================================================================

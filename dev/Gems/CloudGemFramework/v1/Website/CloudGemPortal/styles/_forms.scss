@@ -25,13 +25,20 @@ input {
 .row {
 	margin-left: 0;
 	margin-right: 0;
+	&.center {
+		align-items: center;
+	}
 }
+
 label {
 	font-size: 12px;
 	color: $darker-gray;
 	font-family: "AmazonEmber-Regular";
 	padding-bottom: 0;
 	user-select: none;
+	&.inline {
+		margin-top: 8px;
+	}
 }
 
 textarea {

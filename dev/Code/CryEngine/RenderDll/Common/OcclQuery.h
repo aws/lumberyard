@@ -46,6 +46,8 @@ public:
 
     bool IsReady();
 
+    bool IsCreated() const { return m_nOcclusionID != 0; }
+
 private:
 
     int m_nVisSamples;

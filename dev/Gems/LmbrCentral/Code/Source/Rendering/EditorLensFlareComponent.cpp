@@ -349,7 +349,7 @@ namespace LmbrCentral
 
     AZ::u32 EditorLensFlareComponent::OnLensFlareSelected()
     {
-        m_configuration.m_lensFlare = m_selectedLensFlareLibrary + "." +  m_selectedLensFlareName;
+        m_configuration.m_lensFlare = GetSelectedLensFlareFullName();
 
         //If the flare we've selected is valid we need to parse a couple of parameters from it to make sure 
         //that we display the flare as it's seen in the lens flare editor
@@ -458,7 +458,14 @@ namespace LmbrCentral
     void EditorLensFlareComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         m_asset = asset;
-        OnAssetReady(asset);
+
+        // Force the optics manager to reload the library. Otherwise, it will keep returning the old version of the lens flare
+        // each time Load() is called.
+        int unusedOutIndex = 0;
+        const bool forceReload = true;
+        gEnv->pOpticsManager->Load(GetSelectedLensFlareFullName().c_str(), unusedOutIndex, forceReload);
+            
+        RefreshLensFlare();
     }
 
     void EditorLensFlareComponent::OnAssetChanged()
@@ -510,6 +517,11 @@ namespace LmbrCentral
         }
 
         return AZStd::string();
+    }
+
+    AZStd::string EditorLensFlareComponent::GetSelectedLensFlareFullName() const
+    {
+        return m_selectedLensFlareLibrary + "." + m_selectedLensFlareName;
     }
 
 } // namespace LmbrCentral

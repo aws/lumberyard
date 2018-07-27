@@ -16,9 +16,6 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <QtWidgets/QWidget>
-#include <QtWidgets/QLabel>
-#include <QtWidgets/QLayout>
 #include <QtWidgets/QPushButton>
 #include <QtCore/QPointer>
 #include <QtCore/QElapsedTimer>
@@ -26,47 +23,17 @@
 
 #pragma once
 
+class QHBoxLayout;
+class QSpacerItem;
+class QWidget;
+
+namespace AzQtComponents
+{
+    class ElidingLabel;
+}
+
 namespace AzToolsFramework
 {
-
-    // Renders the property names with an ellipsis (...) when they are too long.
-    // In that scenario, the tooltip is modified to include the full name as well
-    // as the description.
-    // e.g.
-    // Description "Some stuff that explains it!"
-    // Displayed: "A Really Long Nam..."
-    // Tooltip:
-    // A Really Long Name
-    // Some stuff that explains it!
-    class ElidingLabel : public QWidget
-    {
-        Q_OBJECT
-
-    public:
-        explicit ElidingLabel(QWidget* parent = nullptr);
-
-        void SetText(const QString& text);
-        const QString& Text() const { return m_text; }
-
-        void SetDescription(const QString& description);
-        const QString& Description() const { return m_description; }
-
-        void RefreshStyle();
-
-    protected:
-        void paintEvent(QPaintEvent* event) override;
-        void resizeEvent(QResizeEvent* event) override;
-
-    private:
-        void Elide();
-
-        QString m_text;
-        QString m_elidedText;
-        QString m_description;
-
-        QLabel* m_label;
-    };
-
     class PropertyHandlerBase;
     class PropertyAttributeReader;
     // the purpose of a Property Row Widget is to house the user's property GUI
@@ -141,6 +108,9 @@ namespace AzToolsFramework
         QSize LabelSizeHint() const;
         void SetLabelWidth(int width);
 
+        void SetTreeIndentation(int indentation);
+        void SetLeafIndentation(int indentation);
+
         void SetSelectionEnabled(bool selectionEnabled);
         void SetSelected(bool selected);
         bool eventFilter(QObject *watched, QEvent *event) override;
@@ -172,9 +142,9 @@ namespace AzToolsFramework
 
         QWidget* m_leftAreaContainer;
 
-        ElidingLabel* m_nameLabel;
-        QLabel* m_defaultLabel; // if there is no handler, we use a m_defaultLabel label
-        InstanceDataNode* m_sourceNode;
+        AzQtComponents::ElidingLabel* m_nameLabel;
+        AzQtComponents::ElidingLabel* m_defaultLabel; // if there is no handler, we use a m_defaultLabel label
+        InstanceDataNode* m_sourceNode = nullptr;
 
         struct ChangeNotification
         {
@@ -191,35 +161,37 @@ namespace AzToolsFramework
         AZStd::vector<ChangeNotification> m_changeValidators;
         AZStd::vector<ChangeNotification> m_editingCompleteNotifiers;
         QSpacerItem* m_indent;
-        PropertyHandlerBase* m_handler; // the CURRENT handler.
-        PropertyRowWidget* m_parentRow; // not the parent widget.
+        PropertyHandlerBase* m_handler = nullptr; // the CURRENT handler.
+        PropertyRowWidget* m_parentRow = nullptr; // not the parent widget.
         AZStd::vector<PropertyRowWidget*> m_childrenRows; // children rows of this row.
 
-        QWidget* m_childWidget;
+        QWidget* m_childWidget = nullptr;
 
-        bool m_forbidExpansion;
-        bool m_autoExpand;
-        bool m_expanded;
-        bool m_containerEditable;
-        bool m_isContainer;
-        bool m_initialized;
-        bool m_isMultiSizeContainer;
-        bool m_isFixedSizeOrSmartPtrContainer;
+        bool m_forbidExpansion = false;
+        bool m_autoExpand = false;
+        bool m_expanded = false;
+        bool m_containerEditable = false;
+        bool m_isContainer = false;
+        bool m_initialized = false;
+        bool m_isMultiSizeContainer = false;
+        bool m_isFixedSizeOrSmartPtrContainer = false;
 
-        bool m_isSelected;
-        bool m_selectionEnabled;
-        bool m_readOnly; //holds whether the ReadOnly attribute was set
+        bool m_isSelected = false;
+        bool m_selectionEnabled = false;
+        bool m_readOnly = false; //holds whether the ReadOnly attribute was set
 
         QElapsedTimer m_clickStartTimer;
         QPoint m_clickPos;
 
-        int m_containerSize;
-        int m_requestedLabelWidth;
-        AZ::u32 m_identifier;
-        AZ::u32 m_handlerName;
+        int m_containerSize = 0;
+        int m_requestedLabelWidth = 0;
+        AZ::u32 m_identifier = 0;
+        AZ::u32 m_handlerName = 0;
         AZStd::string m_defaultValueString;
-        bool m_hadChildren;
-        int m_treeDepth;
+        bool m_hadChildren = false;
+        int m_treeDepth = 0;
+        int m_treeIndentation = 14;
+        int m_leafIndentation = 16;
 
         QIcon m_iconOpen;
         QIcon m_iconClosed;

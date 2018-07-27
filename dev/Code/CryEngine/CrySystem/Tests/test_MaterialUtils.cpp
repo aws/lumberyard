@@ -16,6 +16,8 @@
 #include <AzCore/IO/SystemFile.h>
 #include "MaterialUtils.h"
 
+#include <IConsole.h>
+
 
 TEST(CrySystemMaterialUtilsTests, MaterialUtilsTestBasics)
 {
@@ -29,19 +31,19 @@ TEST(CrySystemMaterialUtilsTests, MaterialUtilsTestBasics)
 TEST(CrySystemMaterialUtilsTests, MaterialUtilsTestExtensions)
 {
     char tempBuffer[AZ_MAX_PATH_LEN];
-    strcpy(tempBuffer, "blahblah.mtl");
+    azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, "blahblah.mtl");
     MaterialUtils::UnifyMaterialName(tempBuffer);
     EXPECT_TRUE(strcmp(tempBuffer, "blahblah") == 0);
 
-    strcpy(tempBuffer, "blahblah.mat.mat.abc.test.mtl");
+    azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, "blahblah.mat.mat.abc.test.mtl");
     MaterialUtils::UnifyMaterialName(tempBuffer);
     EXPECT_TRUE(strcmp(tempBuffer, "blahblah.mat.mat.abc.test") == 0);
 
-    strcpy(tempBuffer, "test/.mat.mat/blahblah.mat.mat.abc.test.mtl");
+    azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, "test/.mat.mat/blahblah.mat.mat.abc.test.mtl");
     MaterialUtils::UnifyMaterialName(tempBuffer);
     EXPECT_TRUE(strcmp(tempBuffer, "test/.mat.mat/blahblah.mat.mat.abc.test") == 0);
 
-    strcpy(tempBuffer, ".mat.mat.blahblah.mat.mat.abc.test.mtl");
+    azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, ".mat.mat.blahblah.mat.mat.abc.test.mtl");
     MaterialUtils::UnifyMaterialName(tempBuffer);
     EXPECT_TRUE(strcmp(tempBuffer, ".mat.mat.blahblah.mat.mat.abc.test") == 0);
 }
@@ -49,23 +51,23 @@ TEST(CrySystemMaterialUtilsTests, MaterialUtilsTestExtensions)
 TEST(CrySystemMaterialUtilsTests, MaterialUtilsTestPrefixes)
 {
     char tempBuffer[AZ_MAX_PATH_LEN];
-    strcpy(tempBuffer, ".\\blahblah.mat");
+    azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, ".\\blahblah.mat");
     MaterialUtils::UnifyMaterialName(tempBuffer);
     EXPECT_TRUE(strcmp(tempBuffer, "blahblah") == 0);
 
-    strcpy(tempBuffer, "./materials/blahblah.mat.mat.abc.test");
+    azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, "./materials/blahblah.mat.mat.abc.test");
     MaterialUtils::UnifyMaterialName(tempBuffer);
     EXPECT_TRUE(strcmp(tempBuffer, "materials/blahblah.mat.mat.abc") == 0);
 
-    strcpy(tempBuffer, ".\\engine\\materials\\blahblah.mat.mat.abc.test");
+    azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, ".\\engine\\materials\\blahblah.mat.mat.abc.test");
     MaterialUtils::UnifyMaterialName(tempBuffer);
     EXPECT_TRUE(strcmp(tempBuffer, "materials/blahblah.mat.mat.abc") == 0);
 
-    strcpy(tempBuffer, "engine/materials/blahblah.mat.mat.abc.test");
+    azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, "engine/materials/blahblah.mat.mat.abc.test");
     MaterialUtils::UnifyMaterialName(tempBuffer);
     EXPECT_TRUE(strcmp(tempBuffer, "materials/blahblah.mat.mat.abc") == 0);
 
-    strcpy(tempBuffer, "materials/blahblah.mat");
+    azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, "materials/blahblah.mat");
     MaterialUtils::UnifyMaterialName(tempBuffer);
     EXPECT_TRUE(strcmp(tempBuffer, "materials/blahblah") == 0);
 }
@@ -73,7 +75,15 @@ TEST(CrySystemMaterialUtilsTests, MaterialUtilsTestPrefixes)
 TEST(CrySystemMaterialUtilsTests, MaterialUtilsTestGameName)
 {
     char tempBuffer[AZ_MAX_PATH_LEN];
-    strcpy(tempBuffer, ".\\SamplesProject\\materials\\blahblah.mat.mat.abc.test");
+    
+    ICVar* pGameNameCVar = nullptr;
+    if ((gEnv)&&(gEnv->pConsole))
+    {
+        pGameNameCVar = gEnv->pConsole->GetCVar("sys_game_folder");
+    }
+
+    azsnprintf(tempBuffer, AZ_MAX_PATH_LEN, ".\\%s\\materials\\blahblah.mat.mat.abc.test", pGameNameCVar ? pGameNameCVar->GetString() : "SamplesProject");
+ 
     MaterialUtils::UnifyMaterialName(tempBuffer);
     EXPECT_TRUE(strcmp(tempBuffer, "materials/blahblah.mat.mat.abc") == 0);
 }

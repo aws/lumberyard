@@ -28,6 +28,16 @@ namespace AZ
         //AZ_DECLARE_CLASS_POOL_ALLOCATOR(Transform);
         AZ_TYPE_INFO(Transform, "{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}")
 
+        enum class Axis : AZ::u8
+        {
+            XPositive,
+            XNegative,
+            YPositive,
+            YNegative,
+            ZPositive,
+            ZNegative
+        };
+
         //===============================================================
         // Constructors
         //===============================================================
@@ -86,6 +96,15 @@ namespace AZ
 
         ///Sets the matrix to be a translation matrix, rotation part is set to identity
         static const Transform CreateTranslation(const Vector3& translation);
+
+        //! Create a "look-at" transform, given a source position and target position,
+        //! make a transform at the source position that points toward the target along a chosen
+        //! local-space axis.
+        //! @param Vector3 from The source position (world-space).
+        //! @param Vector3 to The target position (world-space).
+        //! @param Axis forwardAxis The local-space basis axis that should "look-at" the target.
+        //! @return Transform The resulting transform, or identity transform if from == to.
+        static AZ::Transform CreateLookAt(const AZ::Vector3& from, const AZ::Vector3& to, AZ::Transform::Axis forwardAxis = AZ::Transform::Axis::YPositive);
 
         /// Return a reference to the Identity transform.
         static inline const Transform&  Identity();
@@ -306,6 +325,36 @@ namespace AZ
         bool operator==(const Transform& rhs) const;
         AZ_MATH_FORCE_INLINE bool operator!=(const Transform& rhs) const    { return !operator==(rhs); }
 
+
+        //-------------------------------------------------------
+        // Euler transforms
+        //-------------------------------------------------------
+
+        //! Converts the transform to corresponding component-wise Euler angles.
+        //! @return Vector3 A vector containing component-wise rotation angles in degrees.
+        // Technique from published work available here
+        // https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2012/07/euler-angles1.pdf (Extracting Euler Angles from a Rotation Matrix - Mike Day, Insomniac Games mday@insomniacgames.com)
+        Vector3 GetEulerDegrees() const;
+        Vector3 GetEulerRadians() const;
+
+        //! Create the transform from Euler Angles (e.g. rotation angles in X, Y, and Z)
+        //!         This version uses an approxmimation for sin and cos in GetSinCos()
+        //! @param Vector3 eulerDegrees A vector containing component-wise rotation angles in degrees.
+        //! @return Transform made from the rotational components.
+        void SetFromEulerDegrees(const AZ::Vector3& eulerDegrees);
+
+        //! Create a rotation transform from Euler angles in radian around each base axis.
+        //!        This version uses precise sin/cos for a more accurate conversion.
+        //! @param Vector3 eulerDegrees A vector containing component-wise rotation angles in radian.
+        //! @return Transform made from the composite of rotations first around z-axis, and y-axis and then x-axis.
+        void SetFromEulerRadiansPrecise(const AZ::Vector3& eulerRadians);
+
+        //! Create a rotation transform from Euler angles in degree around each base axis.
+        //!        This version uses precise sin/cos for a more accurate conversion.
+        //! @param Vector3 eulerDegrees A vector containing component-wise rotation angles in degree.
+        //! @return Transform made from the composite of rotations first around z-axis, and y-axis and then x-axis.
+        void SetFromEulerDegreesPrecise(const AZ::Vector3& eulerDegrees);
+
         //------------------------------------
         // Misc. stuff
         //------------------------------------
@@ -386,6 +435,31 @@ namespace AZ
     {
         return g_transformIdentity;
     }
+
+    //! Non-member functionality belonging to the AZ namespace
+    //!
+    //! Converts a transform to corresponding component-wise Euler angles.
+    //! @param Transform transform The input transform to decompose.
+    //! @return Vector3 A vector containing component-wise rotation angles in degrees.
+    AZ::Vector3 ConvertTransformToEulerDegrees(const AZ::Transform& transform);
+    AZ::Vector3 ConvertTransformToEulerRadians(const AZ::Transform& transform);
+
+    //! Create a transform from Euler Angles (e.g. rotation angles in X, Y, and Z)
+    //! @param Vector3 eulerDegrees A vector containing component-wise rotation angles in degrees.
+    //! @return Transform A transform made from the rotational components.
+    AZ::Transform ConvertEulerDegreesToTransform(const AZ::Vector3& eulerDegrees);
+
+    //! Create a rotation transform from Euler angles in radian around each base axis.
+    //!        This version uses precise sin/cos for a more accurate conversion.
+    //! @param Vector3 eulerDegrees A vector containing component-wise rotation angles in radian.
+    //! @return Transform A transform made from the composite of rotations first around z-axis, and y-axis and then x-axis.
+    AZ::Transform ConvertEulerRadiansToTransformPrecise(const AZ::Vector3& eulerRadians);
+
+    //! Create a rotation transform from Euler angles in degree around each base axis.
+    //!        This version uses precise sin/cos for a more accurate conversion.
+    //! @param Vector3 eulerDegrees A vector containing component-wise rotation angles in degree.
+    //! @return Transform A transform made from the composite of rotations first around z-axis, 
+    AZ::Transform ConvertEulerDegreesToTransformPrecise(const AZ::Vector3& eulerDegrees);
 }
 
 #ifndef AZ_PLATFORM_WINDOWS // Remove this once all compilers support POD (MSVC already does)

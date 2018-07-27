@@ -20,18 +20,18 @@
 #include "DrillerMainWindowMessages.h"
 #include "DrillerAggregator.hxx"
 #include "ChannelControl.hxx"
-#include "combinedEventsControl.hxx"
+#include "CombinedEventsControl.hxx"
 #include "DrillerDataContainer.h"
 #include "Workspaces/Workspace.h"
 
 #include <AzToolsFramework/UI/LegacyFramework/UIFrameworkAPI.h>
 #include <AzToolsFramework/UI/LegacyFramework/CustomMenus/CustomMenusAPI.h>
-#include <AzCore/debug/trace.h>
+#include <AzCore/Debug/Trace.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/delegate/delegate.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
-#include <qtgui/QPalette.h>
+#include <QtGui/QPalette>
 
 #include <AzCore/std/sort.h>
 

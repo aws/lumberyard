@@ -14,7 +14,7 @@
 // Description : Refactoring CLeadeActions; adding Serialization support
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "UnitAction.h"
 #include "AISignal.h"
 #include <ISerialize.h>

@@ -243,11 +243,19 @@ bool CTerrainModifyTool::MouseCallback(CViewport* view, EMouseEvent event, QPoin
     // Show status help.
     if (m_pBrush->type == eBrushRiseLower)
     {
+#ifdef AZ_PLATFORM_APPLE
+        GetIEditor()->SetStatusText("⌘:Inverse Height  ⌥:Smooth  LMB:Rise/Lower/Smooth  [ ]:Change Brush Radius  <, >.:Change Height");
+#else
         GetIEditor()->SetStatusText("CTRL:Inverse Height  ALT:Smooth  LMB:Rise/Lower/Smooth  [ ]:Change Brush Radius  <, >.:Change Height");
+#endif
     }
     else
     {
+#ifdef AZ_PLATFORM_APPLE
+        GetIEditor()->SetStatusText("⌘:Query Height  ⌥:Smooth  LMB:Flatten/Smooth  [ ]:Change Brush Radius  <, >.:Change Height/Hardness");
+#else
         GetIEditor()->SetStatusText("CTRL:Query Height  ALT:Smooth  LMB:Flatten/Smooth  [ ]:Change Brush Radius  <, >.:Change Height/Hardness");
+#endif
     }
 
     return true;

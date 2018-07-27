@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <ISystem.h>
 #include <ICryAnimation.h>
 #include <IActorSystem.h>
@@ -19,7 +19,7 @@
 #include <GameObjects/GameObject.h>
 #include "IAnimatedCharacter.h"
 
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "CryAction.h"
 #include "IMovementController.h"
 #include <ICooperativeAnimationManager.h>

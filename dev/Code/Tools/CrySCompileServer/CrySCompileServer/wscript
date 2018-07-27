@@ -34,19 +34,19 @@ def build(bld):
         os_sub_path = 'osx'
 
     bld.CryConsoleApplication(
-    
+
         # Settings
         target          = 'CrySCompileServer',
         vs_filter       = 'Tools',
         copyright_org   = 'Amazon-CryTek',
         file_list       = 'cryscompileserver.waf_files',
-        platforms       = ['win'],
+        platforms       = ['win', 'darwin_x64'],
         configurations  = ['debug', 'debug_dedicated', 'profile', 'profile_dedicated'],
         disable_pch     = True,
 
         includes        = [bld.Path('Code/Tools/CrySCompileServer/CrySCompileServer')],
-        use             = ['AzFramework'],
-        uselib          = ['ZLIB'],
+        use             = ['AzCore', 'AzFramework'],
+        uselib          = ['ZLIB','DIRECTXSHADERCOMPILER'],
 
         output_folder   = bld.Path('Tools/CrySCompileServer/{}/{}'.format(os_sub_path, w_configuration)),
 
@@ -56,5 +56,6 @@ def build(bld):
         win_x64_vs2017_output_file_name = 'CrySCompileServer_vc141x64',
         win_x64_lib                     = ['wsock32'],
         win_defines                     = ['_CRT_SECURE_NO_WARNINGS', '_CONSOLE'],
-        win_cxxflags                    = ['/EHsc'],
+        msvc_cxxflags                   = ['/EHsc'],
+        clang_cxxflags                  = ['-fexceptions'],
     )

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "BreakablePlane.h"
 #include "ParticleParams.h"
 #include "IParticles.h"
@@ -1166,7 +1166,7 @@ int CBreakablePlane::ProcessImpact(const SProcessImpactIn& in, SProcessImpactOut
             pPlane->m_cellSize = pBreak2DParams->cell_size;
             pPlane->m_maxPatchTris = pBreak2DParams->max_patch_tris;
             pPlane->m_density = pBreak2DParams->shard_density;
-            strcpy(pPlane->m_mtlSubstName, pBreak2DParams->broken_mtl);
+            azstrcpy(pPlane->m_mtlSubstName, AZ_ARRAY_SIZE(pPlane->m_mtlSubstName), pBreak2DParams->broken_mtl);
             if (pPlane->SetGeometry(pStatObj, in.pRenderMat, bStatic, out.eventSeed))
             {
                 if (in.bVerify)

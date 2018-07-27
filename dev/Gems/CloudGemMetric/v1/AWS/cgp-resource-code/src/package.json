@@ -1,0 +1,7 @@
+{
+    "name": "@cloud-gems/cloudgemmetric",
+    "version": "1.0.0",
+    "description": "CloudGemMetric",
+    "private": true,
+    "dependencies": {}
+}

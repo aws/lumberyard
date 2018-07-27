@@ -15,9 +15,9 @@
 #include <AzCore/std/functional.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/std/string/string.h>
-#include <AZCore/Math/Vector2.h>
-#include <AZCore/Math/Vector3.h>
-#include <AZCore/Math/Vector4.h>
+#include <AzCore/Math/Vector2.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Vector4.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
 namespace MCore

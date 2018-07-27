@@ -46,7 +46,8 @@ bool CImageASC::Save(const QString& fileName, const CFloatImage& image)
         "nodata_value -1\n"
         , width, height);
 
-    FILE* file = fopen(fileName.toUtf8().data(), "wt");
+    FILE* file = nullptr;
+    azfopen(&file, fileName.toUtf8().data(), "wt");
     if (!file)
     {
         return false;
@@ -73,13 +74,14 @@ bool CImageASC::Save(const QString& fileName, const CFloatImage& image)
 
 bool CImageASC::Load(const QString& fileName, CFloatImage& image)
 {
-    FILE* file = fopen(fileName.toUtf8().data(), "rt");
+    FILE* file = nullptr;
+    azfopen(&file, fileName.toUtf8().data(), "rt");
     if (!file)
     {
         return false;
     }
 
-    const char seps[] = " \n\t";
+    const char seps[] = " \r\n\t";
     char* token;
 
     int32 width = 0;
@@ -99,38 +101,39 @@ bool CImageASC::Load(const QString& fileName, CFloatImage& image)
 
     // Break all of the values in the file apart into tokens.
 
-    token = strtok(str, seps);
+    char* nextToken = nullptr;
+    token = azstrtok(str, 0, seps, &nextToken);
 
     // ncols = grid width
-    validData = validData && (_stricmp(token, "ncols") == 0);
-    token = strtok(NULL, seps);
+    validData = validData && (azstricmp(token, "ncols") == 0);
+    token = azstrtok(NULL, 0, seps, &nextToken);
     width = atoi(token);
 
     // nrows = grid height
-    token = strtok(NULL, seps);
-    validData = validData && (_stricmp(token, "nrows") == 0);
-    token = strtok(NULL, seps);
+    token = azstrtok(NULL, 0, seps, &nextToken);
+    validData = validData && (azstricmp(token, "nrows") == 0);
+    token = azstrtok(NULL, 0, seps, &nextToken);
     height = atoi(token);
 
     // xllcorner = leftmost coordinate.  (Skip, we don't care about it)
-    token = strtok(NULL, seps);
-    validData = validData && (_stricmp(token, "xllcorner") == 0);
-    token = strtok(NULL, seps);
+    token = azstrtok(NULL, 0, seps, &nextToken);
+    validData = validData && (azstricmp(token, "xllcorner") == 0);
+    token = azstrtok(NULL, 0, seps, &nextToken);
 
     // yllcorner = bottommost coordinate.  (Skip, we don't care about it)
-    token = strtok(NULL, seps);
-    validData = validData && (_stricmp(token, "yllcorner") == 0);
-    token = strtok(NULL, seps);
+    token = azstrtok(NULL, 0, seps, &nextToken);
+    validData = validData && (azstricmp(token, "yllcorner") == 0);
+    token = azstrtok(NULL, 0, seps, &nextToken);
 
     // cellsize = size of each grid cell.  (Skip, we don't care about it)
-    token = strtok(NULL, seps);
-    validData = validData && (_stricmp(token, "cellsize") == 0);
-    token = strtok(NULL, seps);
+    token = azstrtok(NULL, 0, seps, &nextToken);
+    validData = validData && (azstricmp(token, "cellsize") == 0);
+    token = azstrtok(NULL, 0, seps, &nextToken);
 
     // nodata_value = the value used for missing data.  We'll replace these with 0 height.
-    token = strtok(NULL, seps);
-    validData = validData && (_stricmp(token, "nodata_value") == 0);
-    token = strtok(NULL, seps);
+    token = azstrtok(NULL, 0, seps, &nextToken);
+    validData = validData && (azstricmp(token, "nodata_value") == 0);
+    token = azstrtok(NULL, 0, seps, &nextToken);
     nodataValue = atof(token);
 
     if (!validData)
@@ -152,7 +155,7 @@ bool CImageASC::Load(const QString& fileName, CFloatImage& image)
     float maxPixel = 0.0f;
     while (token != NULL && i < size)
     {
-        token = strtok(NULL, seps);
+        token = azstrtok(NULL, 0, seps, &nextToken);
         if (token != NULL)
         {
             // Negative heights aren't supported, clamp to 0.

@@ -14,7 +14,7 @@
 // Description : Implements several utility functions for vehicles
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "VehicleUtils.h"
 

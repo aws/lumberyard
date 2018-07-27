@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/EntityBus.h>
@@ -28,7 +28,7 @@
 #include <Maestro/Types/SequenceType.h>
 #include <Maestro/Types/SequenceType.h>
 
-#include "objects/CameraObject.h"
+#include "Objects/CameraObject.h"
 
 #include <QObject>
 

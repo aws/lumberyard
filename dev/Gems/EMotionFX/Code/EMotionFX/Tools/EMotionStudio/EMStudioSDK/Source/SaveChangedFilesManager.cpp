@@ -27,6 +27,7 @@
 #include <QAbstractItemView>
 #include <QHeaderView>
 #include <QDialogButtonBox>
+#include <QCheckBox>
 
 
 namespace EMStudio

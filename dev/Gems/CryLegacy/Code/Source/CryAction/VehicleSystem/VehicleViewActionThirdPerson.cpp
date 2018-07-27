@@ -13,7 +13,7 @@
 
 // Description : Implements a third person view for vehicles
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "IViewSystem.h"
 #include "IVehicleSystem.h"
@@ -25,7 +25,7 @@
 #include <Cry_GeoIntersect.h>
 #include <Cry_GeoDistance.h>
 
-#include "../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 #if ENABLE_VEHICLE_DEBUG
 #define DEBUG_CAMERA(x) x

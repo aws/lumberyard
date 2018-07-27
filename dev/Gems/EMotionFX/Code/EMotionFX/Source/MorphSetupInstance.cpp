@@ -13,10 +13,13 @@
 // include the required headers
 #include "MorphSetupInstance.h"
 #include "MorphSetup.h"
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MorphSetupInstance, DeformerAllocator, 0)
+
+
     // default constructor
     MorphSetupInstance::MorphSetupInstance()
         : BaseObject()
@@ -42,14 +45,14 @@ namespace EMotionFX
     // create
     MorphSetupInstance* MorphSetupInstance::Create()
     {
-        return new MorphSetupInstance();
+        return aznew MorphSetupInstance();
     }
 
 
     // extended create
     MorphSetupInstance* MorphSetupInstance::Create(MorphSetup* morphSetup)
     {
-        return new MorphSetupInstance(morphSetup);
+        return aznew MorphSetupInstance(morphSetup);
     }
 
 

@@ -14,7 +14,7 @@
 // Description : entity's management
 
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "EntitySystem.h"
 #include "EntityIt.h"
 

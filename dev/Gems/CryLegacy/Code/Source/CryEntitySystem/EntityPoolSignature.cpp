@@ -16,7 +16,7 @@
 //               from the given Class
 
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "EntityPoolSignature.h"
 #include "Entity.h"
 

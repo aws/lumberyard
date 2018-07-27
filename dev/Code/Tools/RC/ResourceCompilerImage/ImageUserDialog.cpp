@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "ImageUserDialog.h"        // CImageUserDialog
 #include "ImageObject.h"            // ImageObject
 #include "resource.h"               // IDD_ ...
@@ -312,7 +312,7 @@ namespace Reduce
 
         Reduce::fillListbox(hTabResolution, platforms);
 
-        
+
     }
 } // namespace Reduce
 
@@ -446,7 +446,7 @@ bool CImageUserDialog::DoModal(CImageCompiler* inpImageCompiler)
         case WorkerActionGenerateOutputAndQuit:
         case WorkerActionGenerateOutput:
         {
-            //Set the platform based on what the user has selected from the platform list. This will allow the user to generate and preview 
+            //Set the platform based on what the user has selected from the platform list. This will allow the user to generate and preview
             //texture compressions for any platform
             const int selCount = Reduce::grabListboxSelection(m_hTab_Resolution, Reduce::s_platforms);
             if (selCount > 0)
@@ -454,10 +454,10 @@ bool CImageUserDialog::DoModal(CImageCompiler* inpImageCompiler)
                 for (int i = 0; i < static_cast<int>(Reduce::s_platforms.size()); ++i)
                 {
                     if (Reduce::s_platforms[i].bMark)
-                    {                                                
+                    {
                         m_pImageCompiler->GetConvertContext()->SetPlatformIndex(i);
                     }
-                }                                
+                }
             }
 
             GetDataFromDialog();
@@ -1505,7 +1505,7 @@ void CImageUserDialog::WndProc(int uMsg, int wParam, int lParam)
                 Reduce::s_pImageCompiler = m_pImageCompiler;
                 ChooseResolutionDialog dialog(m_hWindow);
                 Reduce::s_pImageCompiler = 0;
-                QObject::connect(&dialog, &ChooseResolutionDialog::resolutionSelected, [&](int res)
+                QObject::connect(&dialog, &ChooseResolutionDialog::resolutionSelected, &dialog, [&](int res)
                 {
                     assert(res >= Reduce::kMinReduce);
                     assert(res <= Reduce::kMaxReduce);
@@ -1647,32 +1647,32 @@ DWORD CImageUserDialog::ThreadStart()
 
     auto activated = static_cast<void(QComboBox::*)(int)>(&QComboBox::activated);
 
-    QObject::connect(m_ui->generateOutput, &QPushButton::clicked, [&]() { WndProc(WM_COMMAND, IDC_GENERATEOUTPUT); });
-    QObject::connect(m_ui->about, &QPushButton::clicked, [&]() { WndProc(WM_COMMAND, IDC_ABOUT); });
-    QObject::connect(m_ui->buttonBox, &QDialogButtonBox::accepted, [&]() { WndProc(WM_COMMAND, IDOK); });
-    QObject::connect(m_ui->buttonBox, &QDialogButtonBox::rejected, [&]() { WndProc(WM_COMMAND, IDCANCEL); });
-    QObject::connect(m_ui->zoomIn, &QPushButton::clicked, [&]() { WndProc(WM_COMMAND, IDC_ZOOMIN); });
-    QObject::connect(m_ui->zoomOut, &QPushButton::clicked, [&]() { WndProc(WM_COMMAND, IDC_ZOOMOUT); });
-    QObject::connect(m_ui->showPresetInfo, &QPushButton::clicked, [&]() { WndProc(WM_COMMAND, IDC_BTN_SHOWPRESETINFO); });
-    QObject::connect(m_ui->resolutionChoose, &QPushButton::clicked, [&]() { WndProc(WM_COMMAND, IDC_RESOLUTION_BTN_CHOOSE); });
-    QObject::connect(m_ui->resolutionHigher, &QPushButton::clicked, [&]() { WndProc(WM_COMMAND, IDC_RESOLUTION_BTN_HIGHER); });
-    QObject::connect(m_ui->resolutionLower, &QPushButton::clicked, [&]() { WndProc(WM_COMMAND, IDC_RESOLUTION_BTN_LOWER); });
-    QObject::connect(m_ui->resolutionDelPlatform, &QPushButton::clicked, [&]() { WndProc(WM_COMMAND, IDC_RESOLUTION_BTN_DELPLATFORM); });
-    QObject::connect(m_ui->presetShowAll, &QCheckBox::clicked, [&]() { WndProc(WM_COMMAND, IDC_PRESETSHOWALL); });
-    QObject::connect(m_ui->templateCombo, activated, [&]() { WndProc(WM_COMMAND, IDC_TEMPLATECOMBO); });
-    QObject::connect(m_ui->mipMaps, activated, [&]() { WndProc(WM_COMMAND, IDC_MIPMAPS); });
-    QObject::connect(m_ui->mipMethod, activated, [&]() { WndProc(WM_COMMAND, IDC_MIPMETHOD); });
-    QObject::connect(m_ui->mipOp, activated, [&]() { WndProc(WM_COMMAND, IDC_MIPOP); });
-    QObject::connect(m_ui->suppressEngineReduce, &QCheckBox::clicked, [&]() { WndProc(WM_COMMAND, IDC_SUPRESSENGINEREDUCE); });
-    QObject::connect(m_ui->maintainAlphaCoverage, &QCheckBox::clicked, [&]() { WndProc(WM_COMMAND, IDC_MAINTAINALPHACOVERAGE); });
-    QObject::connect(m_ui->nmBumpInvert_RGB, &QCheckBox::clicked, [&]() { WndProc(WM_COMMAND, IDC_NM_BUMPINVERT); });
-    QObject::connect(m_ui->nmBumpInvert_Alpha, &QCheckBox::clicked, [&]() { WndProc(WM_COMMAND, IDC_NM_BUMPINVERT); });
-    QObject::connect(m_ui->previewMode, activated, [&]() { WndProc(WM_COMMAND, IDC_PREVIEWMODE); });
-    QObject::connect(m_ui->previewOn, &QCheckBox::clicked, [&]() { WndProc(WM_COMMAND, IDC_PREVIEWON); });
-    QObject::connect(m_ui->previewTiled, &QCheckBox::clicked, [&]() { WndProc(WM_COMMAND, IDC_PREVIEWTILED); });
-    QObject::connect(m_ui->previewFiltered, &QCheckBox::clicked, [&]() { WndProc(WM_COMMAND, IDC_PREVIEWFILTERED); });
-    QObject::connect(eventFilter, &EventFilter::eventReceived, [&](QEvent* event)
-    { 
+    QObject::connect(m_ui->generateOutput, &QPushButton::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_GENERATEOUTPUT); });
+    QObject::connect(m_ui->about, &QPushButton::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_ABOUT); });
+    QObject::connect(m_ui->buttonBox, &QDialogButtonBox::accepted, m_hWindow, [&]() { WndProc(WM_COMMAND, IDOK); });
+    QObject::connect(m_ui->buttonBox, &QDialogButtonBox::rejected, m_hWindow, [&]() { WndProc(WM_COMMAND, IDCANCEL); });
+    QObject::connect(m_ui->zoomIn, &QPushButton::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_ZOOMIN); });
+    QObject::connect(m_ui->zoomOut, &QPushButton::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_ZOOMOUT); });
+    QObject::connect(m_ui->showPresetInfo, &QPushButton::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_BTN_SHOWPRESETINFO); });
+    QObject::connect(m_ui->resolutionChoose, &QPushButton::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_RESOLUTION_BTN_CHOOSE); });
+    QObject::connect(m_ui->resolutionHigher, &QPushButton::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_RESOLUTION_BTN_HIGHER); });
+    QObject::connect(m_ui->resolutionLower, &QPushButton::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_RESOLUTION_BTN_LOWER); });
+    QObject::connect(m_ui->resolutionDelPlatform, &QPushButton::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_RESOLUTION_BTN_DELPLATFORM); });
+    QObject::connect(m_ui->presetShowAll, &QCheckBox::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_PRESETSHOWALL); });
+    QObject::connect(m_ui->templateCombo, activated, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_TEMPLATECOMBO); });
+    QObject::connect(m_ui->mipMaps, activated, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_MIPMAPS); });
+    QObject::connect(m_ui->mipMethod, activated, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_MIPMETHOD); });
+    QObject::connect(m_ui->mipOp, activated, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_MIPOP); });
+    QObject::connect(m_ui->suppressEngineReduce, &QCheckBox::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_SUPRESSENGINEREDUCE); });
+    QObject::connect(m_ui->maintainAlphaCoverage, &QCheckBox::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_MAINTAINALPHACOVERAGE); });
+    QObject::connect(m_ui->nmBumpInvert_RGB, &QCheckBox::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_NM_BUMPINVERT); });
+    QObject::connect(m_ui->nmBumpInvert_Alpha, &QCheckBox::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_NM_BUMPINVERT); });
+    QObject::connect(m_ui->previewMode, activated, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_PREVIEWMODE); });
+    QObject::connect(m_ui->previewOn, &QCheckBox::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_PREVIEWON); });
+    QObject::connect(m_ui->previewTiled, &QCheckBox::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_PREVIEWTILED); });
+    QObject::connect(m_ui->previewFiltered, &QCheckBox::clicked, m_hWindow, [&]() { WndProc(WM_COMMAND, IDC_PREVIEWFILTERED); });
+    QObject::connect(eventFilter, &EventFilter::eventReceived, m_hWindow, [&](QEvent* event)
+    {
         if (event->type() == QEvent::Close)
         {
             WndProc(WM_CLOSE);
@@ -1681,7 +1681,7 @@ DWORD CImageUserDialog::ThreadStart()
     });
 
     eventFilter = new EventFilter(m_ui->widget);
-    QObject::connect(eventFilter, &EventFilter::eventReceived, [&](QEvent* event)
+    QObject::connect(eventFilter, &EventFilter::eventReceived, eventFilter, [&](QEvent* event)
     {
         switch (event->type())
         {
@@ -1843,7 +1843,7 @@ void CImageUserDialog::TriggerCancel()
     m_eWorkerAction = WorkerActionQuit;
 }
 
-void MainThreadExecutor::execute(std::function<void()> f)
+void MainThreadExecutor::execute(AZStd::function<void()> f)
 {
     static MainThreadExecutor e;
     QMetaObject::invokeMethod(&e, "executeInternal", QThread::currentThread() == e.thread() ? Qt::DirectConnection : Qt::BlockingQueuedConnection, Q_ARG(void*, &f));
@@ -1856,7 +1856,7 @@ MainThreadExecutor::MainThreadExecutor()
 
 void MainThreadExecutor::executeInternal(void* function)
 {
-    auto f = reinterpret_cast<std::function<void()>*>(function);
+    auto f = reinterpret_cast<AZStd::function<void()>*>(function);
     if (f)
     {
         (*f)();
@@ -1884,14 +1884,14 @@ ChooseResolutionDialog::ChooseResolutionDialog(QWidget* parent)
 {
     m_ui->setupUi(this);
 
-    connect(m_ui->button_2, &QPushButton::clicked, [&]() { emit resolutionSelected(-2); });
-    connect(m_ui->button_1, &QPushButton::clicked, [&]() { emit resolutionSelected(-1); });
-    connect(m_ui->button0, &QPushButton::clicked, [&]() { emit resolutionSelected(0); });
-    connect(m_ui->button1, &QPushButton::clicked, [&]() { emit resolutionSelected(1); });
-    connect(m_ui->button2, &QPushButton::clicked, [&]() { emit resolutionSelected(2); });
-    connect(m_ui->button3, &QPushButton::clicked, [&]() { emit resolutionSelected(3); });
-    connect(m_ui->button4, &QPushButton::clicked, [&]() { emit resolutionSelected(4); });
-    connect(m_ui->button5, &QPushButton::clicked, [&]() { emit resolutionSelected(5); });
+    connect(m_ui->button_2, &QPushButton::clicked, this, [&]() { emit resolutionSelected(-2); });
+    connect(m_ui->button_1, &QPushButton::clicked, this, [&]() { emit resolutionSelected(-1); });
+    connect(m_ui->button0, &QPushButton::clicked, this, [&]() { emit resolutionSelected(0); });
+    connect(m_ui->button1, &QPushButton::clicked, this, [&]() { emit resolutionSelected(1); });
+    connect(m_ui->button2, &QPushButton::clicked, this, [&]() { emit resolutionSelected(2); });
+    connect(m_ui->button3, &QPushButton::clicked, this, [&]() { emit resolutionSelected(3); });
+    connect(m_ui->button4, &QPushButton::clicked, this, [&]() { emit resolutionSelected(4); });
+    connect(m_ui->button5, &QPushButton::clicked, this, [&]() { emit resolutionSelected(5); });
 
     connect(this, &ChooseResolutionDialog::resolutionSelected, this, &QDialog::accept);
 

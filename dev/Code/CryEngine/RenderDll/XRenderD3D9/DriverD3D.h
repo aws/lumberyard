@@ -266,7 +266,11 @@ struct SStateDepth
     }
 } _ALIGN(16); \
 
+#if defined(AZ_PLATFORM_ANDROID)
+#define MAX_OCCL_QUERIES    256
+#else
 #define MAX_OCCL_QUERIES    4096
+#endif
 
 #define MAXFRAMECAPTURECALLBACK 1
 
@@ -860,7 +864,7 @@ public:
     DWORD GetBoundThreadID() const;
     void CheckContextThreadAccess() const;
 
-    void FX_PrepareDepthMapsForLight(const SRenderLight& rLight, int nLightID, bool bClearPool = false);
+    bool FX_PrepareDepthMapsForLight(const SRenderLight& rLight, int nLightID, bool bClearPool = false);
     void EF_PrepareShadowGenRenderList();
     bool EF_PrepareShadowGenForLight(SRenderLight* pLight, int nLightID);
     bool PrepareShadowGenForFrustum(ShadowMapFrustum* pCurFrustum, SRenderLight* pLight, int nLightFrustumID = 0, int nLOD = 0);
@@ -888,6 +892,8 @@ public:
 
     void RT_ResetGlass();
 
+    void RT_PostLevelLoading() override;
+
     //=============================================================
     void SetCull(ECull eCull, bool bSkipMirrorCull = false) override { D3DSetCull(eCull, bSkipMirrorCull); }
 
@@ -903,6 +909,10 @@ public:
     bool IsFullscreen() { return m_bFullScreen; }
     bool IsSuperSamplingEnabled() { return m_numSSAASamples > 1; }
     bool IsNativeScalingEnabled() { return m_width != m_nativeWidth || m_height != m_nativeHeight; }
+    
+    int GetNativeWidth() const { return m_nativeWidth; }
+    int GetNativeHeight() const { return m_nativeHeight; }
+    D3DSurface* GetBackBuffer() { return m_pBackBuffer; }
 
 #if defined(SUPPORT_DEVICE_INFO)
     static HWND CreateWindowCallback();
@@ -990,7 +1000,7 @@ public:
     virtual void RT_PrecacheDefaultShaders();
     virtual void RT_ReadFrameBuffer(unsigned char* pRGB, int nImageX, int nSizeX, int nSizeY, ERB_Type eRBType, bool bRGBA, int nScaledX, int nScaledY);
     // CRY DX12
-    virtual void RT_ClearTarget(CTexture* pTex, const ColorF& color);
+    virtual void RT_ClearTarget(ITexture* pTex, const ColorF& color);
     virtual void RT_ReleaseVBStream(void* pVB, int nStream);
     virtual void RT_ReleaseCB(void* pCB);
     virtual void RT_DrawDynVB(SVF_P3F_C4B_T2F* pBuf, uint16* pInds, uint32 nVerts, uint32 nInds, const PublicRenderPrimitiveType nPrimType);
@@ -1035,7 +1045,7 @@ public:
     virtual int  CreateRenderTarget(const char* name, int nWidth, int nHeight, const ColorF& clearColor, ETEX_Format eTF = eTF_R8G8B8A8);
     virtual bool DestroyRenderTarget(int nHandle);
     virtual bool SetRenderTarget(int nHandle, SDepthTexture* pDepthSurf = nullptr);
-    virtual SDepthTexture* CreateDepthSurface(int nWidth, int nHeight, bool bAA);
+    virtual SDepthTexture* CreateDepthSurface(int nWidth, int nHeight);
     virtual void DestroyDepthSurface(SDepthTexture* pDepthSurf);
 
     virtual bool ChangeDisplay(unsigned int width, unsigned int height, unsigned int cbpp);
@@ -1293,7 +1303,7 @@ public:
     void FX_SetupForwardShadows(bool bUseShaderPermutations = false);
     void FX_SetupShadowsForTransp();
     void FX_SetupShadowsForFog();
-    bool FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pRes, CRenderObject* pObj, SShaderTechnique* pTech, SHRenderTarget* pTarg, int nPreprType, CRendElementBase* pRE);
+    bool FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pRes, CRenderObject* pObj, SShaderTechnique* pTech, SHRenderTarget* pTarg, int nPreprType, IRenderElement* pRE);
 
     void FX_DrawShader_Fur(CShader* ef, SShaderTechnique* pTech);
 
@@ -1360,6 +1370,7 @@ public:
     bool FX_DeferredShadows(SRenderLight* pLight, int maskRTWidth, int maskRTHeight);
     void FX_DeferredShadowMaskGen(const TArray<uint32>& shadowPoolLights);
     void FX_MergeShadowMaps(ShadowMapFrustum* pDst, const ShadowMapFrustum* pSrc);
+    void FX_ClearShadowMaskTexture();
 
     void FX_DrawDebugPasses();
 
@@ -1533,7 +1544,7 @@ public:
     virtual long FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Format& vertexFormat) override;
     inline bool FX_SetStreamFlags(SShaderPass* pPass)
     {
-        if (CV_r_usehwskinning && m_RP.m_pRE && (m_RP.m_pRE->m_Flags & FCEF_SKINNED))
+        if (CV_r_usehwskinning && m_RP.m_pRE && (m_RP.m_pRE->mfGetFlags() & FCEF_SKINNED))
         {
             m_RP.m_FlagsStreams_Decl |= VSM_HWSKIN;
             m_RP.m_FlagsStreams_Stream |= VSM_HWSKIN;
@@ -1570,9 +1581,9 @@ public:
      */
 
     void FX_ClearTarget(D3DSurface* pView, const ColorF& cClear, const uint numRects = 0, const RECT* pRects = nullptr);
-    void FX_ClearTarget(CTexture* pTex, const ColorF& cClear, const uint numRects, const RECT* pRects, const bool bOptional);
-    void FX_ClearTarget(CTexture* pTex, const ColorF& cClear);
-    void FX_ClearTarget(CTexture* pTex);
+    void FX_ClearTarget(ITexture* pTex, const ColorF& cClear, const uint numRects, const RECT* pRects, const bool bOptional);
+    void FX_ClearTarget(ITexture* pTex, const ColorF& cClear);
+    void FX_ClearTarget(ITexture* pTex);
 
     void FX_ClearTarget(D3DDepthSurface* pView, const int nFlags, const float cDepth, const uint8 cStencil, const uint numRects = 0, const RECT* pRects = nullptr);
     void FX_ClearTarget(SDepthTexture* pTex, const int nFlags, const float cDepth, const uint8 cStencil, const uint numRects, const RECT* pRects, const bool bOptional);
@@ -1637,8 +1648,6 @@ public:
     virtual bool FX_RestoreRenderTarget(int nTarget) override;
     virtual bool FX_PopRenderTarget(int nTarget) override;
     virtual SDepthTexture* FX_GetDepthSurface(int nWidth, int nHeight, bool bAA) override;
-    virtual SDepthTexture* FX_CreateDepthSurface(int nWidth, int nHeight, bool bAA) override;
-
     virtual SDepthTexture* GetDepthBufferOrig() override { return &m_DepthBufferOrig; }
     virtual uint32 GetBackBufferWidth() override { return m_backbufferWidth; }
     virtual uint32 GetBackBufferHeight() override { return m_backbufferHeight; }
@@ -1916,7 +1925,7 @@ public:
     void EF_InitD3DVertexDeclarations();
     void EF_SetCameraInfo();
     void FX_SetObjectTransform(CRenderObject* obj, CShader* pSH, int nTransFlags);
-    bool FX_ObjectChange(CShader* Shader, CShaderResources* pRes, CRenderObject* pObject, CRendElementBase* pRE);
+    bool FX_ObjectChange(CShader* Shader, CShaderResources* pRes, CRenderObject* pObject, IRenderElement* pRE);
 
 private:
     bool ScreenShotInternal(const char* filename, int width);       //Helper method for Screenshot to reduce stack usage
@@ -2088,11 +2097,11 @@ public:
     {
         if (bEnabled)
         {
-            CSimpleGPUTimer::EnableTiming();
+            CD3DProfilingGPUTimer::EnableTiming();
         }
         else
         {
-            CSimpleGPUTimer::DisableTiming();
+            CD3DProfilingGPUTimer::DisableTiming();
         }
     }
 
@@ -2100,11 +2109,11 @@ public:
     {
         if (bAllow)
         {
-            CSimpleGPUTimer::AllowTiming();
+            CD3DProfilingGPUTimer::AllowTiming();
         }
         else
         {
-            CSimpleGPUTimer::DisallowTiming();
+            CD3DProfilingGPUTimer::DisallowTiming();
         }
     }
 
@@ -2183,6 +2192,8 @@ private:
 
     // For matching calls between EF_Init and FX_PipelineShutdown
     bool m_shaderPipelineInitialized = false;
+
+    bool m_clearShadowMaskTexture = false;
 
 #if defined(WIN32)
 public:

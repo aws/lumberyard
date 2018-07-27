@@ -23,6 +23,11 @@ DEFAULT_OUTPUT_PATH = "TestResults"
 
 ScanResult = namedtuple("ScanResult", ("path", "return_code", "xml_path", "error_msg"))
 
+
+class SubprocessTimeoutException(Exception):
+    pass
+
+
 class ModuleType:
     EXECUTABLE = 1
     LIBRARY = 2
@@ -63,7 +68,7 @@ def create_output_directory(output_path, no_timestamp):
                     os.remove(os.path.join(root, name))
         except Exception:
             # print error message to console and exit
-            print "ERROR! Could not delete old report files. Please close any open files in {} and try again"\
+            print "ERROR! Could not delete old report files. Please close any open files in {} and try again" \
                 .format(output_dir)
             sys.exit(1)
     else:

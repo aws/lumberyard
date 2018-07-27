@@ -118,7 +118,7 @@ int CArticulatedEntity::AddGeometry(phys_geometry* pgeom, pe_geomparams* _params
     if (pgeom && fabs_tpl(_params->mass) + fabs_tpl(_params->density) != 0 && (pgeom->V <= 0 || pgeom->Ibody.x < 0 || pgeom->Ibody.y < 0 || pgeom->Ibody.z < 0))
     {
         char errmsg[256];
-        _snprintf(errmsg, 256, "CArticulatedEntity::AddGeometry: (%s at %.1f,%.1f,%.1f) Trying to add bad geometry",
+        azsnprintf(errmsg, 256, "CArticulatedEntity::AddGeometry: (%s at %.1f,%.1f,%.1f) Trying to add bad geometry",
             m_pWorld->m_pRenderer ? m_pWorld->m_pRenderer->GetForeignName(m_pForeignData, m_iForeignData, m_iForeignFlags) : "", m_pos.x, m_pos.y, m_pos.z);
         VALIDATOR_LOG(m_pWorld->m_pLog, errmsg);
         return -1;

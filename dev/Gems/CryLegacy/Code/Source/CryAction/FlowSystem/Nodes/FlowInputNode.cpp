@@ -11,8 +11,8 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "FlowBaseNode.h"
+#include "CryLegacy_precompiled.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <CryAction.h>
 #include <CryActionCVars.h>
 #include <IGameObjectSystem.h>
@@ -171,7 +171,7 @@ public:
 
         if (keyName.empty() == false)
         {
-            if (_stricmp(keyName.c_str(), m_eventKeyName.c_str()) != 0)
+            if (azstricmp(keyName.c_str(), m_eventKeyName.c_str()) != 0)
             {
                 return false;
             }
@@ -371,7 +371,7 @@ public:
                         {
                             const SActionInput* pActionInput = pAction->GetActionInput(i);
                             CRY_ASSERT(pActionInput != nullptr);
-                            bActionFound = _stricmp(pActionInput->input, m_eventKeyName.c_str()) == 0;
+                            bActionFound = azstricmp(pActionInput->input, m_eventKeyName.c_str()) == 0;
 
                             if (bActionFound)
                             {
@@ -486,7 +486,7 @@ public:
 
     virtual void OnAction(const ActionId& action, int activationMode, float value) override
     {
-        if (strcmpi(action.c_str(), m_actionName) == 0)
+        if (azstricmp(action.c_str(), m_actionName) == 0)
         {
             m_shouldActivate = true;
             m_currentInputState = static_cast<EInputState>(activationMode);

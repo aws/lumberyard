@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "QBoolWidget.h"
 #include "BaseVariableWidget.h"
 #include "Utils.h"
@@ -28,7 +28,7 @@ QBoolWidget::QBoolWidget(CAttributeItem* parent)
     setCheckable(true);
     setChecked(QString(m_var->GetDisplayValue()) == "true");
 
-    connect(this, &QCheckBox::clicked, [this](int changedTo)
+    connect(this, &QCheckBox::clicked, this, [this](int changedTo)
         {
             bool state = changedTo != 0;
             m_var->Set(state);

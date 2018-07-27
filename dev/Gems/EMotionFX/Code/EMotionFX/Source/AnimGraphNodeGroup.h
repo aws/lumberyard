@@ -12,42 +12,45 @@
 
 #pragma once
 
-// include required files
-#include "EMotionFXConfig.h"
-#include "BaseObject.h"
+#include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
-
-#include <MCore/Source/Array.h>
-#include <MCore/Source/Color.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraphNodeId.h>
 
 
 namespace EMotionFX
 {
     class EMFX_API AnimGraphNodeGroup
-        : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphNodeGroup, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH);
-
     public:
+        AZ_RTTI(AnimGraphNodeGroup, "{27CFCB13-2799-41D1-9E9F-8182FD6C90BB}")
+        AZ_CLASS_ALLOCATOR_DECL
+
         /**
-         * Default creation.
+         * The default constructor.
          * This does not assign a name and there will be nodes inside this group on default.
          */
-        static AnimGraphNodeGroup* Create();
+        AnimGraphNodeGroup();
 
         /**
-         * Extended creation.
+         * Extended constructor.
          * @param groupName The name of the group. Please keep in mind that it is not allowed to have two groups with the same name inside a anim graph.
          */
-        static AnimGraphNodeGroup* Create(const char* groupName);
+        AnimGraphNodeGroup(const char* groupName);
 
         /**
-         * Extended creation.
+         * Another extended constructor.
          * @param groupName The name of the group. Please keep in mind that it is not allowed to have two groups with the same name inside a anim graph.
          * @param numNodes The number of nodes to create inside the group. This will have all uninitialized values for the node ids in the group, so be sure that you
          *                 set them all to some valid node index using the AnimGraphNodeGroup::SetNode(...) method. This constructor automatically calls the SetNumNodes(...) method.
          */
-        static AnimGraphNodeGroup* Create(const char* groupName, uint32 numNodes);
+        AnimGraphNodeGroup(const char* groupName, uint32 numNodes);
+
+        /**
+         * The destructor.
+         */
+        virtual ~AnimGraphNodeGroup();
 
         /**
          * Set the name of the group. Please keep in mind that group names must be unique inside the anim graph objects. So you should not have two or more groups with the same name.
@@ -68,22 +71,16 @@ namespace EMotionFX
         const AZStd::string& GetNameString() const;
 
         /**
-         * Get the unique identification number returned by the MCore::GetStringIdPool() for the given node group name.
-         * @return The unique name identification number.
-         */
-        uint32 GetNameID() const;
-
-        /**
          * Set the color of the group.
-         * @param color The color the nodes of the group will be filled with.
+         * @param color The 32-bit color in COLREF format (0xAABBGGRR) the nodes of the group will be filled with.
          */
-        void SetColor(const MCore::RGBAColor& color);
+        void SetColor(const AZ::u32& color);
 
         /**
          * Get the color of the group.
-         * @result The color the nodes of the group will be filled with.
+         * @result The 32-bit color in COLREF format (0xAABBGGRR) the nodes of the group will be filled with.
          */
-        const MCore::RGBAColor& GetColor() const;
+        AZ::u32 GetColor() const;
 
         /**
          * Check the visibility flag.
@@ -117,21 +114,21 @@ namespace EMotionFX
          * @param nodeID The value for the given node. This is the node id where this group will belong to.
          *               To get access to the actual node object use AnimGraph::RecursiveFindNodeByID( nodeID ).
          */
-        void SetNode(uint32 index, uint32 nodeID);
+        void SetNode(uint32 index, AnimGraphNodeId nodeId);
 
         /**
          * Get the node id for a given node inside the group.
          * @param index The node number inside this group, which must be in range of [0..GetNumNodes()-1].
          * @result The node id, which points inside the Actor object. Use AnimGraph::RecursiveFindNodeByID( nodeID ) to get access to the node information.
          */
-        uint32 GetNode(uint32 index) const;
+        AnimGraphNodeId GetNode(uint32 index) const;
 
         /**
          * Check if the node with the given id is inside the node group.
          * @param nodeID The node id to check.
          * @result True in case the node with the given id is inside the node group, false if not.
          */
-        bool Contains(uint32 nodeID) const;
+        bool Contains(AnimGraphNodeId nodeId) const;
 
         /**
          * Add a given node to this group.
@@ -139,7 +136,7 @@ namespace EMotionFX
          * It is much better to use SetNumNodes(...) in combination with SetNode(...) upfront if the total number of nodes is known upfront.
          * @param nodeID The value for the given node. This is the node id where this group will belong to. To get access to the actual node object use AnimGraph::RecursiveFindNodeByID( nodeID ).
          */
-        void AddNode(uint32 nodeID);
+        void AddNode(AnimGraphNodeId nodeId);
 
         /**
          * Remove a given node from the group by its node id (the value returned by AnimGraphNode::GetID().
@@ -147,7 +144,7 @@ namespace EMotionFX
          * Removing a node which is not part of this group will do nothing, except that it wastes performance as it will perform a search inside the list of nodes inside this group.
          * @param nodeID The value for the given node. This is the node id where this group will belong to. To get access to the actual node object use AnimGraph::RecursiveFindNodeByID( nodeID ).
          */
-        void RemoveNodeByID(uint32 nodeID);
+        void RemoveNodeById(AnimGraphNodeId nodeId);
 
         /**
          * Remove a given node from the group by the array element index.
@@ -164,46 +161,17 @@ namespace EMotionFX
         void RemoveAllNodes();
 
         /**
-         * Get direct access to the array of node ids that are part of this group.
-         * @result A reference to the array of nodes inside this group. Please use this with care.
-         */
-        MCore::Array<uint32>& GetNodeArray();
-
-        /**
          * Initialize the node group based on another group. Please note that the name of this group will also be copied and it is not allowed to have multiple groups with the same name in the same animgraph.
          * @param other The node group to initialize from.
          */
         void InitFrom(const AnimGraphNodeGroup& other);
 
+        static void Reflect(AZ::ReflectContext* context);
+
     protected:
-        MCore::Array<uint32>        mNodes;             /**< The node ids that are inside this group. */
-        MCore::RGBAColor            mColor;             /**< The color the nodes of the group will be filled with. */
-        uint32                      mNameID;            /**< The unique identification number for the node group name. */
-        bool                        mIsVisible;
-
-        /**
-         * The default constructor.
-         * This does not assign a name and there will be nodes inside this group on default.
-         */
-        AnimGraphNodeGroup();
-
-        /**
-         * Extended constructor.
-         * @param groupName The name of the group. Please keep in mind that it is not allowed to have two groups with the same name inside a anim graph.
-         */
-        AnimGraphNodeGroup(const char* groupName);
-
-        /**
-         * Another extended constructor.
-         * @param groupName The name of the group. Please keep in mind that it is not allowed to have two groups with the same name inside a anim graph.
-         * @param numNodes The number of nodes to create inside the group. This will have all uninitialized values for the node ids in the group, so be sure that you
-         *                 set them all to some valid node index using the AnimGraphNodeGroup::SetNode(...) method. This constructor automatically calls the SetNumNodes(...) method.
-         */
-        AnimGraphNodeGroup(const char* groupName, uint32 numNodes);
-
-        /**
-         * The destructor.
-         */
-        virtual ~AnimGraphNodeGroup();
+        AZStd::vector<AZ::u64>  mNodeIds;          /**< The node ids that are inside this group. */
+        AZStd::string           mName;             /**< The unique identification number for the node group name. */
+        AZ::u32                 mColor;            /**< The color the nodes of the group will be filled with. */
+        bool                    mIsVisible;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

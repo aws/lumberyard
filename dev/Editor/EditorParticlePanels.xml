@@ -153,6 +153,7 @@
 	</panel>
 	<panel name="Visibility">
 		<item name="View Distance Adjust" as="Visibility.View_Distance_Adjust" visibility="cpu"/>
+		<item name="Camera Non Facing Fade" as="Visibility.Camera_Non_Facing_Fade" advanced="yes" visibility="cpu"/>
 		<item name="Sort Offset" as="Visibility.Sort_Offset" visibility="cpu"/>
 		<item name="Sort Bounds Scale" as="Visibility.Sort_Bounds_Scale" advanced="yes" visibility="cpu"/>
 		<item name="Draw Near" as="Visibility.Draw_Near" advanced="yes" visibility="cpu"/>

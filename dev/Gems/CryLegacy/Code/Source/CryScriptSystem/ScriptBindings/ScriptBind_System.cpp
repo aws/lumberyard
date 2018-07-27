@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ScriptBind_System.h"
 #include <ICryAnimation.h>
 #include <IFont.h>
@@ -593,11 +593,17 @@ int CScriptBind_System::GetLocalOSTime(IFunctionHandler* pH)
 #endif
 #if SCRIPTBIND_SYSTEM_CPP_TRAIT_USE_UNIX_LOCALTIME
     time_t long_time = time(NULL);
-    struct tm* newtime = localtime(&long_time); /* Convert to local time. */
+    auto newtime = localtime(&long_time); /* Convert to local time. */
 #else
     __time64_t long_time;
     _time64(&long_time);                /* Get time as long integer. */
-    struct tm* newtime = _localtime64(&long_time); /* Convert to local time. */
+    tm _newtime;
+    errno_t timeFound = _localtime64_s(&_newtime, &long_time); /* Convert to local time. */
+    tm* newtime = nullptr;
+    if (timeFound)
+    {
+        newtime = &_newtime;
+    }
 #endif
 
     if (newtime)

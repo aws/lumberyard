@@ -85,7 +85,7 @@ public:
         template <typename Func1, typename Func2>
         ActionWrapper& Connect(Func1 signal, Func2 slot)
         {
-            QObject::connect(m_action, signal, [slot]()
+            QObject::connect(m_action, signal, m_action, [slot]()
                 {
                     if (!GetIEditor()->IsInGameMode())
                     {

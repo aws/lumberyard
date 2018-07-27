@@ -50,7 +50,7 @@ namespace LmbrCentral
             required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
             required.push_back(AZ_CRC("SplineService", 0x2b674d3c));
         }
-    
+
     private:
         TubeShape m_tubeShape;
     };
@@ -60,26 +60,29 @@ namespace LmbrCentral
      */
     class TubeShapeDebugDisplayComponent
         : public EntityDebugDisplayComponent
+        , public ShapeComponentNotificationsBus::Handler
     {
     public:
         AZ_COMPONENT(TubeShapeDebugDisplayComponent, "{FC8D0C5A-FEED-4C79-A4C6-E18A966EE8CE}", EntityDebugDisplayComponent)
 
         TubeShapeDebugDisplayComponent() = default;
-        explicit TubeShapeDebugDisplayComponent(const TubeShapeMeshConfig& tubeShapeMeshConfig);
+        explicit TubeShapeDebugDisplayComponent(const TubeShapeMeshConfig& tubeShapeMeshConfig)
+            : m_tubeShapeMeshConfig(tubeShapeMeshConfig) {}
 
         static void Reflect(AZ::ReflectContext* context);
-        
+
         // AZ::Component
         void Activate() override;
+        void Deactivate() override;
 
         // EntityDebugDisplayComponent
         void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
 
+        // ShapeComponentNotificationsBus
+        void OnShapeChanged(ShapeChangeReasons changeReason) override;
+
     private:
         AZ_DISABLE_COPY_MOVE(TubeShapeDebugDisplayComponent)
-
-        // AZ::TransformNotificationBus::Handler
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
         void GenerateVertices();
 

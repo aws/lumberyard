@@ -14,7 +14,7 @@
 // Description : Manages one-off reader/writer usages for binary serialization
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "BinarySerializeHelper.h"
 
 #if defined(AZ_RESTRICTED_PLATFORM)

@@ -1,0 +1,21 @@
+{
+    "project_name": "CloudGemDefectReportSample",
+    "product_name": "CloudGemDefectReportSample",
+    "executable_name": "CloudGemDefectReportSampleLauncher",
+    "modules" : [],
+    "project_id": "{22B7F15D-FF75-4C74-B823-7FC783487EDA}",
+
+    "android_settings" : {
+        "package_name" : "com.lumberyard.yourgame",
+        "version_number" : 1,
+        "version_name" : "1.0.0.0",
+        "orientation" : "landscape"
+    },
+
+    "durango_settings" : {
+    },
+
+    "orbis_settings": {
+    }
+
+}

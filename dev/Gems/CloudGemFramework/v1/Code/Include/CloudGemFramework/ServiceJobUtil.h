@@ -18,16 +18,6 @@
 
 namespace CloudGemFramework
 {
-    inline bool CanProcessResponse()
-    {
-        // If we're editing, we're not in game mode - don't try to process
-        if (gEnv->IsEditing())
-        {
-            return false;
-        }
-        return true;
-    }
-
     inline void ConfigureJsonServiceRequest(HttpRequestJob& request, AZStd::string jsonBody)
     {
         size_t len = jsonBody.length();

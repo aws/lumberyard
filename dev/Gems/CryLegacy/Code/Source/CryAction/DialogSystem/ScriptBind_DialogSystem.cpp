@@ -14,7 +14,7 @@
 // Description : Dialog System ScriptBinding
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ScriptBind_DialogSystem.h"
 #include "DialogSystem.h"
 #include "DialogSession.h"

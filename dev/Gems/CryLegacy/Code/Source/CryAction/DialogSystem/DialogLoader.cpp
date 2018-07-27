@@ -14,7 +14,7 @@
 // Description : Dialog Loader
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "DialogLoader.h"
 #include "DialogCommon.h"
 #include "StringUtils.h"
@@ -300,7 +300,7 @@ int CDialogLoader::LoadFromTable(XmlNodeRef tableNode, const string& groupName, 
                         scriptLine.facial.assign (content, n);
                         float w = 0.5f;
                         float t = 0.5f;
-                        int nGood = sscanf(content + n + 1, "%f%*[:; ]%f", &w, &t);
+                        int nGood = azsscanf(content + n + 1, "%f%*[:; ]%f", &w, &t);
                         if (nGood != 1 && nGood != 2)
                         {
                             GameWarning("[DIALOG] CDialogLoader::LoadFromTable: DialogScript '%s' has invalid Facial Expression Content '%s'. Using weight=%f fadetime=%f.", groupName.c_str(), content, w, t);
@@ -320,7 +320,7 @@ int CDialogLoader::LoadFromTable(XmlNodeRef tableNode, const string& groupName, 
                 if (bLineValid)
                 {
                     float val = 0.0f;
-                    int n = sscanf(content, "%f", &val);
+                    int n = azsscanf(content, "%f", &val);
                     if (n == 1)
                     {
                         scriptLine.delay = val;
@@ -366,7 +366,7 @@ bool CDialogLoader::GetActor(const char* actor, int& outID)
     }
 
     const char* found = CryStringUtils::stristr(actor, actorPrefix);
-    if (found && sscanf(found + actorPrefixLen, "%d", &outID) == 1)
+    if (found && azsscanf(found + actorPrefixLen, "%d", &outID) == 1)
     {
         return true;
     }
@@ -401,7 +401,7 @@ bool CDialogLoader::GetLookAtActor(const char* actor, int& outID, bool& outStick
     }
 
     const char* found = CryStringUtils::stristr(actor, actorPrefix);
-    if (found && sscanf(found + actorPrefixLen, "%d", &outID) == 1)
+    if (found && azsscanf(found + actorPrefixLen, "%d", &outID) == 1)
     {
         return true;
     }

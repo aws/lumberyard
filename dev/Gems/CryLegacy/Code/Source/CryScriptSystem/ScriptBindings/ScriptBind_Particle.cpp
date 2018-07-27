@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ScriptBind_Particle.h"
 #include <ISystem.h>
 #include <I3DEngine.h>
@@ -24,7 +24,6 @@
 // TypeInfo implementations
 #ifndef AZ_MONOLITHIC_BUILD
     #include "ParticleParams_TypeInfo.h"
-    #include "Common_TypeInfo.h"
 #else
     #include <CryTypeInfo.h>
 #endif

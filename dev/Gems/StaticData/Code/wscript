@@ -10,28 +10,31 @@
 #
 ########################################################################################
 SUBFOLDERS = [
-        'EditorPlugin'
     ]
 
 def build(bld):
 
-    import lumberyard_sdks
-
-    aws_files = ['static_data_sdk.waf_files']
-
     file_list = ['static_data.waf_files']
-	
-    if lumberyard_sdks.should_project_include_aws_native_sdk(bld):
-        file_list += aws_files
 
     bld.DefineGem(
-        uselib          = ['AWS_CPP_SDK_CORE'],
         includes        = [bld.Path('Code/CryEngine/CryAction'),
-                           bld.Path('Gems/StaticData/Code/EditorPlugin'),
+                           'Editor',
+                           '.'
         ],
-        file_list       = file_list,
-        pch             = '',
+        file_list       = file_list + ['staticdata_game.waf_files'],
+        disable_pch     = True,
 
+        editor = dict(
+
+            platforms = ['win', 'darwin'],
+            configurations = ['debug', 'debug_test', 'profile', 'profile_test'],
+            file_list    = file_list + ['staticdata_editor.waf_files'],
+            #==============================
+            # Settings
+            #==============================
+            use	            = ['AzToolsFramework', 'AzFramework'],
+            disable_pch = True
+            )
     )
 
     bld.recurse(SUBFOLDERS)

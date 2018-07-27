@@ -1,5 +1,6 @@
 ﻿import { Component, OnInit, ViewContainerRef } from '@angular/core';
 import { AwsService, Deployment } from 'app/aws/aws.service';
+import { AwsDeployment } from 'app/aws/deployment.class'
 import { Clipboard } from 'ts-clipboard';
 import { UrlService, LyMetricService, GemService } from "app/shared/service/index"
 import { Authentication } from "app/aws/authentication/authentication.class";
@@ -24,48 +25,46 @@ export class NavComponent {
 
     public constructor(private aws: AwsService, private urlService: UrlService, private lymetrics: LyMetricService,
         private toastr: ToastsManager, vcr: ViewContainerRef, private router: Router, private gems: GemService) {
-        this.toastr.setRootViewContainerRef(vcr);
-        var username = this.aws.context.authentication.user.username;
-        this.nav = {
-            "deploymentName": "Loading...",
-            "projectName": this.aws.context.name,
-            "deployments": this.aws.context.project.deployments,
-            "username": username.charAt(0).toUpperCase() + username.slice(1)
-        }
-
+        this.toastr.setRootViewContainerRef(vcr);        
         // Listen for the active deployment and the name when the nav is loaded.
-        this.aws.context.project.activeDeploymentSubscription.subscribe(activeDeployment => {
-            if (activeDeployment) {
-                this.router.navigateByUrl('/game/cloudgems').then(() => {
-                    this.gems.clearCurrentGems();
-                    this.nav.deploymentName = activeDeployment.settings.name;
-                });
-                lymetrics.recordEvent('DeploymentChanged', {}, {
-                    'NumberOfDeployments': this.aws.context.project.deployments.length
-                })
-            } else {
-                this.nav.deploymentName = "No Deployments";
-            }
-        });
+        if (this.aws.context.project.activeDeployment) {
+            this.setContext();
+        } else {
+            this.aws.context.project.activeDeploymentSubscription.subscribe(activeDeployment => {
+                if (activeDeployment) {
+                    let url = location.search.indexOf('target') === -1 ? '/game/cloudgems' : '/game/cloudgems' + location.search;
+                    this.router.navigateByUrl(url).then(() => {
+                        this.gems.clearCurrentGems();
+                        this.nav.deploymentName = activeDeployment.settings.name;
+                    });
+                    lymetrics.recordEvent('DeploymentChanged', {}, {
+                        'NumberOfDeployments': this.aws.context.project.deployments.length
+                    })
+                } else {
+                    this.nav.deploymentName = "No Deployments";
+                }
+            });
 
-        this.aws.context.project.settings.subscribe(settings => {
-            if(settings)
-                lymetrics.recordEvent('ProjectSettingsInitialized', {}, {
-                    'NumberOfDeployments': Object.keys(settings.deployment).length
-                })
-        });
-        this.lymetrics.recordEvent('FeatureOpened', {
-            "Name": 'cloudgems'
-        })
+            this.aws.context.project.settings.subscribe(settings => {
+                this.setContext();
+                if (settings)
+                    lymetrics.recordEvent('ProjectSettingsInitialized', {}, {
+                        'NumberOfDeployments': Object.keys(settings.deployment).length
+                    })
+            });
+            this.lymetrics.recordEvent('FeatureOpened', {
+                "Name": 'cloudgems'
+            })
+        }
     }
-
+        
     public onDeploymentClick(deployment: Deployment) {
         this.gems.isLoading = true;
-        this.aws.context.project.activeDeployment = deployment;
+        this.aws.context.project.activeDeployment = <AwsDeployment>deployment;
         this.nav.deploymentName = deployment.settings.name;
     }
 
-    signOut(): void {
+    public signOut(): void {
         this.aws.context.authentication.logout();
     }
 
@@ -104,4 +103,15 @@ export class NavComponent {
         }
 
     }
+
+    private setContext = () => {
+        var username = this.aws.context.authentication.user.username;
+        this.nav = {
+            "deploymentName": this.aws.context.project.activeDeployment ? this.aws.context.project.activeDeployment.settings.name : "No Deployments",
+            "projectName": this.aws.context.name,
+            "deployments": this.aws.context.project.deployments,
+            "username": username.charAt(0).toUpperCase() + username.slice(1)
+        }
+    }
+
 }

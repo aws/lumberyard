@@ -33,7 +33,6 @@
 #pragma warning(disable: 4018)  // signed/unsigned mismatch
 #pragma warning(disable: 4127)  // conditional expression is constant
 #pragma warning(disable: 4530)  // C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc
-#pragma warning(disable: 4996)  // 'stricmp' was declared deprecated
 #pragma warning(disable: 4503)  // decorated name length exceeded, name was truncated
 #pragma warning(disable: 6255)  // _alloca indicates failure by raising a stack overflow exception. Consider using _malloca instead. (Note: _malloca requires _freea.)
 

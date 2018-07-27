@@ -18,6 +18,7 @@
 //EditorUI_QT
 #include <../EditorUI_QT/FloatableDockPanel.h>
 
+#include <AzCore/std/functional.h>
 
 class DockWidgetTitleBar;
 class QMenu;
@@ -78,7 +79,7 @@ public:
     void AddLayoutMenuItemsTo(QMenu* menu); //Pass through to the CAttributeView would be better setup with GetMenuAction like requests. (see above)
 
     void OpenInTab(CBaseLibraryItem* item); //this will add a new tab for the item.
-    
+
     ///////////////////////////////////////////////
     //This is exposed so that we can access the Emitter.Enabled parameter due to the desire to toggle this though other UI not just the attribute view.
     bool GetEnabledParameterValue(CParticleItem* item) const;
@@ -98,7 +99,7 @@ public:
 
     void CloseTab(const QString& name);
     void CloseAllTabs();
-    
+
     SLodInfo* GetCurrentLod() { return m_currentLod; };
 
 signals:

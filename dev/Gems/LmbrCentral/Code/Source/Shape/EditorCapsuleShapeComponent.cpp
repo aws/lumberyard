@@ -17,6 +17,7 @@
 #include "CapsuleShapeComponent.h"
 #include "EditorShapeComponentConverters.h"
 #include "ShapeDisplay.h"
+#include <LmbrCentral/Geometry/GeometrySystemComponentBus.h>
 
 namespace LmbrCentral
 {
@@ -74,9 +75,9 @@ namespace LmbrCentral
     {
         DisplayShape(handled,
             [this]() { return CanDraw(); },
-            [this](AzFramework::EntityDebugDisplayRequests* /*displayContext*/)
+            [this](AzFramework::EntityDebugDisplayRequests* displayContext)
             {
-                DrawShape({ m_shapeColor, m_shapeWireColor, m_displayFilled }, m_capsuleShapeMesh);
+                DrawShape(displayContext, { m_shapeColor, m_shapeWireColor, m_displayFilled }, m_capsuleShapeMesh);
             },
             m_capsuleShape.GetCurrentTransform());
     }
@@ -106,18 +107,16 @@ namespace LmbrCentral
         }
     }
 
-    void EditorCapsuleShapeComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
-    {
-        EditorBaseShapeComponent::OnTransformChanged(local, world);
-        GenerateVertices();
-    }
-
     void EditorCapsuleShapeComponent::GenerateVertices()
     {
-        GenerateCapsuleMesh(
-            m_capsuleShape.GetCurrentTransform(), m_capsuleShape.GetCapsuleConfiguration().m_radius,
-            m_capsuleShape.GetCapsuleConfiguration().m_height, g_capsuleDebugShapeSides, g_capsuleDebugShapeCapSegments,
-            m_capsuleShapeMesh.m_vertexBuffer, m_capsuleShapeMesh.m_indexBuffer,m_capsuleShapeMesh.m_lineBuffer);
+        CapsuleGeometrySystemRequestBus::Broadcast(
+            &CapsuleGeometrySystemRequestBus::Events::GenerateCapsuleMesh,
+            m_capsuleShape.GetCapsuleConfiguration().m_radius,
+            m_capsuleShape.GetCapsuleConfiguration().m_height,
+            g_capsuleDebugShapeSides,
+            g_capsuleDebugShapeCapSegments,
+            m_capsuleShapeMesh.m_vertexBuffer,
+            m_capsuleShapeMesh.m_indexBuffer,
+            m_capsuleShapeMesh.m_lineBuffer);
     }
-
 } // namespace LmbrCentral

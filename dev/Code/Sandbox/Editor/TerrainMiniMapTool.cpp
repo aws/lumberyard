@@ -478,7 +478,7 @@ void CTerrainMiniMapTool::SendParameters(void* data, uint32 width, uint32 height
         QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Warning"), QObject::tr("Unable to save minimap XML metadata file to %1").arg(dataFile));
     }
 
-    ILevelSystem* pLevelSystem = GetISystem()->GetIGame()->GetIGameFramework()->GetILevelSystem();
+    ILevelSystem* pLevelSystem = GetISystem()->GetILevelSystem();
     QString name = pLevelSystem->GetCurrentLevel() ? pLevelSystem->GetCurrentLevel()->GetLevelInfo()->GetName() : "";
     pLevelSystem->SetEditorLoadedLevel(name.toUtf8().data(), true);
     QApplication::restoreOverrideCursor();

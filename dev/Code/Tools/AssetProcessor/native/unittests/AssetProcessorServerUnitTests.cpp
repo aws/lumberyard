@@ -23,7 +23,7 @@
 #define FEATURE_TEST_LISTEN_PORT 12125
 #define WAIT_TIME_IN_MSECS 20
 // Enable this define only if you are debugging a deadlock/timing issue etc in the AssetProcessorConnection, which you are unable to reproduce otherwise.
-// enabling this define will result in a lot more number of connections that connect/disconnect with AP and therefore will result in the unit tests taking a lot more time to complete 
+// enabling this define will result in a lot more number of connections that connect/disconnect with AP and therefore will result in the unit tests taking a lot more time to complete
 //#define DEBUG_ASSETPROCESSORCONNECTION
 
 #if defined(DEBUG_ASSETPROCESSORCONNECTION)
@@ -87,10 +87,9 @@ void AssetProcessorServerUnitTest::RunAssetProcessorConnectionStressTest(bool fa
 
     AZStd::atomic_int numberOfConnection(0);
 
-    const int totalConnections = NUMBER_OF_CONNECTION * NUMBER_OF_TRIES;
-    AZStd::mutex m_printMutex;
+    enum : int { totalConnections = NUMBER_OF_CONNECTION * NUMBER_OF_TRIES };
 
-    AZStd::function<void(int)> StartConnection = [&branchToken, &numberOfConnection, &totalConnections, &m_printMutex](int numTimeWait)
+    AZStd::function<void(int)> StartConnection = [&branchToken, &numberOfConnection](int numTimeWait)
     {
         for (int idx = 0; idx < NUMBER_OF_TRIES; ++idx)
         {
@@ -103,18 +102,13 @@ void AssetProcessorServerUnitTest::RunAssetProcessorConnectionStressTest(bool fa
             }
 
             AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(numTimeWait + idx));
-            {
-                AZStd::lock_guard<AZStd::mutex> lock(m_printMutex);
-                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "AssetProcessorConnection unittests: Disconnecting connection [%d of %d].\n", totalConnections - numberOfConnection + 1, totalConnections);
-                --numberOfConnection;
-            }
+            numberOfConnection.fetch_sub(1);
         }
     };
 
     AZStd::vector<AZStd::thread> assetProcessorConnectionList;
     for (int iteration = 0; iteration < NUMBER_OF_ITERATION; ++iteration)
     {
-        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "AssetProcessorConnection unittests: iteration [%d of %d].\n", iteration + 1, NUMBER_OF_ITERATION);
         numberOfConnection = totalConnections;
 
         for (int idx = 0; idx < NUMBER_OF_CONNECTION; ++idx)
@@ -123,7 +117,7 @@ void AssetProcessorServerUnitTest::RunAssetProcessorConnectionStressTest(bool fa
         };
 
         // We need to process all events, since AssetProcessorServer is also on the same thread
-        while (numberOfConnection)
+        while (numberOfConnection.load())
         {
             QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, WAIT_TIME_IN_MSECS);
         }

@@ -111,6 +111,9 @@ protected:
     }
     void OnInternalVariableChange(IVariable* pVar);
 
+    // Called for legacy sequences, uses CUndo. Delete when SequenceType::Legacy is removed. 
+    void OnInternalVariableChangeLegacy(IVariable* pVar);
+
 protected:
     _smart_ptr<CVarBlock> m_pVarBlock;
     std::vector<_smart_ptr<IVariable> > m_registeredVariables;

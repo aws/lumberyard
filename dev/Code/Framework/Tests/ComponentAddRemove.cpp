@@ -52,7 +52,7 @@ namespace UnitTest
         {
             if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
             {
-                serializeContext->Class<LeatherBootsComponent>()->SerializerForEmptyClass();
+                serializeContext->Class<LeatherBootsComponent, AZ::Component>();
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
                     editContext->Class<LeatherBootsComponent>("Leather Boots", "")
@@ -89,7 +89,7 @@ namespace UnitTest
         {
             if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
             {
-                serializeContext->Class<WoolSocksComponent, EditorComponentBase>()->SerializerForEmptyClass();
+                serializeContext->Class<WoolSocksComponent, EditorComponentBase>();
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
                     editContext->Class<WoolSocksComponent>("Wool Socks", "")
@@ -123,7 +123,7 @@ namespace UnitTest
         {
             if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
             {
-                serializeContext->Class<HatesSocksComponent>()->SerializerForEmptyClass();
+                serializeContext->Class<HatesSocksComponent, AZ::Component>();
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
                     editContext->Class<HatesSocksComponent>("Hates Socks", "")
@@ -156,7 +156,7 @@ namespace UnitTest
         {
             if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
             {
-                serializeContext->Class<BlueJeansComponent>()->SerializerForEmptyClass();
+                serializeContext->Class<BlueJeansComponent, AZ::Component>();
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
                     editContext->Class<BlueJeansComponent>("Blue Jeans", "")
@@ -191,7 +191,7 @@ namespace UnitTest
         {
             if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
             {
-                serializeContext->Class<WhiteBriefsComponent>()->SerializerForEmptyClass();
+                serializeContext->Class<WhiteBriefsComponent, AZ::Component>();
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
                     editContext->Class<WhiteBriefsComponent>("White Briefs", "")
@@ -225,7 +225,7 @@ namespace UnitTest
         {
             if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
             {
-                serializeContext->Class<HeartBoxersComponent>()->SerializerForEmptyClass();
+                serializeContext->Class<HeartBoxersComponent, AZ::Component>();
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
                     editContext->Class<HeartBoxersComponent>("Heart Boxers", "")
@@ -259,7 +259,7 @@ namespace UnitTest
         {
             if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
             {
-                serializeContext->Class<KnifeSheathComponent>()->SerializerForEmptyClass();
+                serializeContext->Class<KnifeSheathComponent, AZ::Component>();
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
                     editContext->Class<KnifeSheathComponent>("Knife Sheath", "")

@@ -15,7 +15,7 @@
 // Notes       : Consider converting interest values float->int
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "PersonalInterestManager.h"
 #include "CentralInterestManager.h"

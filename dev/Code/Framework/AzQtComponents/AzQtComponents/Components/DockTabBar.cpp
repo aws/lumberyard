@@ -212,7 +212,7 @@ namespace AzQtComponents
             // Action to close the specified tab, and leave the text blank since
             // it will be dynamically set using the title of the specified tab
             m_closeTabMenuAction = m_contextMenu->addAction(QString());
-            QObject::connect(m_closeTabMenuAction, &QAction::triggered, [this]() { emit closeTab(m_menuActionTabIndex); });
+            QObject::connect(m_closeTabMenuAction, &QAction::triggered, this, [this]() { emit closeTab(m_menuActionTabIndex); });
 
             // Action to close all of the tabs in our tab widget
             m_closeTabGroupMenuAction = m_contextMenu->addAction(tr("Close Tab Group"));
@@ -224,11 +224,11 @@ namespace AzQtComponents
             // Action to undock the specified tab, and leave the text blank since
             // it will be dynamically set using the title of the specified tab
             m_undockTabMenuAction = m_contextMenu->addAction(QString());
-            QObject::connect(m_undockTabMenuAction, &QAction::triggered, [this]() { emit undockTab(m_menuActionTabIndex); });
+            QObject::connect(m_undockTabMenuAction, &QAction::triggered, this, [this]() { emit undockTab(m_menuActionTabIndex); });
 
             // Action to undock the entire tab widget
             m_undockTabGroupMenuAction = m_contextMenu->addAction(tr("Undock Tab Group"));
-            QObject::connect(m_undockTabGroupMenuAction, &QAction::triggered, [this]() { emit undockTab(-1); });
+            QObject::connect(m_undockTabGroupMenuAction, &QAction::triggered, this ,[this]() { emit undockTab(-1); });
         }
 
         // Update the menu labels for the close/undock individual tab actions

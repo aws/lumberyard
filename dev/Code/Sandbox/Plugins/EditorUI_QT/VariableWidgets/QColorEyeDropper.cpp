@@ -21,6 +21,10 @@
 #define QTUI_CURSORMAP_OFFSET 20
 #define QTUI_EYEDROPPER_HEIGHT 80
 
+void setOverrideCursor(const QCursor& cursor);
+void changeOverrideCursor(const QCursor& cursor);
+void restoreOverrideCursor();
+
 QColorEyeDropper::QColorEyeDropper(QWidget* parent)
     : QWidget(parent)
     , m_isMouseInException(false)
@@ -162,7 +166,7 @@ void QColorEyeDropper::EndEyeDropperMode()
 {
     releaseKeyboard();
     releaseMouse();
-    QApplication::restoreOverrideCursor();
+    restoreOverrideCursor();
     m_EyeDropperActive = false;
     hide();
     timer->stop();
@@ -175,7 +179,7 @@ void QColorEyeDropper::StartEyeDropperMode()
     grabKeyboard();
     grabMouse();
     setMouseTracking(true);
-    QApplication::setOverrideCursor(Qt::BlankCursor);
+    setOverrideCursor(Qt::BlankCursor);
     m_EyeDropperActive = true;
     timer->start(QTUI_EYEDROPPER_TIMER);
     // Reset ExceptionWidget status
@@ -268,7 +272,7 @@ QColor QColorEyeDropper::PaintWidget(const QPoint& mousePosition)
     cursorPainter.drawPixmap(0, 95, labelPixmap);
 
     //Offset the cursor position to the center of the color viewer.
-    QApplication::changeOverrideCursor(QCursor(cursorpixmap.scaled(QTUI_CURSORMAP_SIZE, QTUI_CURSORMAP_SIZE), QTUI_CURSORMAP_SIZE/2, QTUI_EYEDROPPER_HEIGHT / 2));
+    changeOverrideCursor(QCursor(cursorpixmap.scaled(QTUI_CURSORMAP_SIZE, QTUI_CURSORMAP_SIZE), QTUI_CURSORMAP_SIZE/2, QTUI_EYEDROPPER_HEIGHT / 2));
 
     return GrabScreenColor(mousePosition);
 }

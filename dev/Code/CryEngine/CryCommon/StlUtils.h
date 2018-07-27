@@ -891,14 +891,9 @@ namespace stl
     }
 }
 
-#if _MSC_VER >= 1800
-#define DEFINE_INTRUSIVE_LINKED_LIST(Class) \
-    Class * stl::intrusive_linked_list_node<Class>::m_root_intrusive = nullptr;
-#else
 #define DEFINE_INTRUSIVE_LINKED_LIST(Class) \
     template<>                              \
     Class * stl::intrusive_linked_list_node<Class>::m_root_intrusive = nullptr;
-#endif
 
 
 // Performs a less-than compare on a serial sequence space, such that earlier values compare less-than later values.

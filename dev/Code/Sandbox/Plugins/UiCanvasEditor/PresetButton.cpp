@@ -33,14 +33,12 @@ PresetButton::PresetButton(const QString& defaultIconPath,
     setFixedSize(fixedButtonAndIconSize);
     setIconSize(fixedButtonAndIconSize);
 
-    QObject::connect(this, &QPushButton::clicked, clicked);
+    QObject::connect(this, &QPushButton::clicked, this, clicked);
 
     QObject::connect(this,
         &QAbstractButton::toggled,
-        [this](bool checked)
-        {
-            UpdateIcon(checked);
-        });
+        this,
+        &PresetButton::UpdateIcon);
 }
 
 void PresetButton::enterEvent(QEvent* ev)

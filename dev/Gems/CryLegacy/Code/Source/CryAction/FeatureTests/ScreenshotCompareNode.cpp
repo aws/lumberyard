@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <IImageHandler.h>
 #include "ScopeGuard.h"
@@ -193,7 +193,7 @@ void ScreenshotCompareNode::ProcessEvent(EFlowEvent event, SActivationInfo* pAct
             {
                 auto fullPath = FeatureTests::CreateTimeStampedFileName(screenshotFileName.c_str());
                 char fullSrcPath[ICryPak::g_nMaxPath];
-                gEnv->pCryPak->AdjustFileName(screenshotFileName.c_str(), fullSrcPath, ICryPak::FLAGS_FOR_WRITING);
+                gEnv->pCryPak->AdjustFileName(screenshotFileName.c_str(), fullSrcPath, AZ_ARRAY_SIZE(fullSrcPath), ICryPak::FLAGS_FOR_WRITING);
                 gEnv->pCryPak->CopyFileOnDisk(fullSrcPath, fullPath.c_str(), false);
             }
         }

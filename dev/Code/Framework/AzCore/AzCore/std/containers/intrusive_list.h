@@ -30,16 +30,13 @@ namespace AZStd
     struct intrusive_list_node
     {
 #ifdef AZ_DEBUG_BUILD
-        intrusive_list_node()
-            : m_next(0)
-            , m_prev(0) {}
         ~intrusive_list_node()
         {
-            AZSTD_CONTAINER_ASSERT(m_prev == 0 && m_next == 0, "AZStd::intrusive_list_node - intrusive list node is being destroyed while still a member of a list!");
+            AZSTD_CONTAINER_ASSERT(m_prev == nullptr && m_next == nullptr, "AZStd::intrusive_list_node - intrusive list node is being destroyed while still a member of a list!");
         }
 #endif
-        T* m_next;
-        T* m_prev;
+        T* m_next = nullptr;
+        T* m_prev = nullptr;
     } AZ_MAY_ALIAS; // we access the object in such way that we potentially can break strict aliasing rules
 
     /**
@@ -433,10 +430,9 @@ namespace AZStd
             node_ptr_type nextNode = nodeHook->m_next;
             Hook::to_node_ptr(prevNode)->m_next = nextNode;
             Hook::to_node_ptr(nextNode)->m_prev = prevNode;
-#ifdef AZ_DEBUG_BUILD
-            nodeHook->m_next = 0;
-            nodeHook->m_prev = 0;
-#endif
+            nodeHook->m_next = nullptr;
+            nodeHook->m_prev = nullptr;
+
             --m_numElements;
             return iterator(AZSTD_CHECKED_ITERATOR(iterator_impl, nextNode));
         }
@@ -456,10 +452,9 @@ namespace AZStd
             node_ptr_type nextNode = nodeHook->m_next;
             Hook::to_node_ptr(prevNode)->m_next = nextNode;
             Hook::to_node_ptr(nextNode)->m_prev = prevNode;
-#ifdef AZ_DEBUG_BUILD
-            nodeHook->m_next = 0;
-            nodeHook->m_prev = 0;
-#endif
+            nodeHook->m_next = nullptr;
+            nodeHook->m_prev = nullptr;
+
             --m_numElements;
             return iterator(AZSTD_CHECKED_ITERATOR(iterator_impl, nextNode));
         }
@@ -480,7 +475,7 @@ namespace AZStd
 #endif
             node_ptr_type head = get_head();
             hook_node_ptr_type headHook = Hook::to_node_ptr(head);
-#ifdef AZ_DEBUG_BUILD
+
             node_ptr_type cur = headHook->m_next;
             while (cur != head)
             {
@@ -488,7 +483,7 @@ namespace AZStd
                 cur = curHook->m_next;
                 curHook->m_next = curHook->m_prev = 0;
             }
-#endif
+
             headHook->m_next = headHook->m_prev = head;
             m_numElements = 0;
         }

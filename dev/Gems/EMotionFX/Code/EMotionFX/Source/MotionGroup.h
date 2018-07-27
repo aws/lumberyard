@@ -37,7 +37,7 @@ namespace EMotionFX
     class EMFX_API MotionGroup
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MotionGroup, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_GROUPS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**

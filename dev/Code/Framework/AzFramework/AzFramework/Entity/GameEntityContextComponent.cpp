@@ -30,8 +30,7 @@ namespace AzFramework
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<GameEntityContextComponent, AZ::Component>()
-                ->SerializerForEmptyClass()
-            ;
+                ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
@@ -243,7 +242,7 @@ namespace AzFramework
             entityIdsToBeDeleted.insert(entityIdsToBeDeleted.begin(), entityId);
         }
 
-        for (AZStd::vector<AZ::EntityId>::reverse_iterator entityIdIter = entityIdsToBeDeleted.rbegin(); 
+        for (AZStd::vector<AZ::EntityId>::reverse_iterator entityIdIter = entityIdsToBeDeleted.rbegin();
             entityIdIter != entityIdsToBeDeleted.rend(); ++entityIdIter)
         {
             AZ::Entity* currentEntity = nullptr;
@@ -263,7 +262,7 @@ namespace AzFramework
             }
         }
 
-        // Queue the entity destruction on the tick bus for safety, this guarantees that we will not attempt to destroy 
+        // Queue the entity destruction on the tick bus for safety, this guarantees that we will not attempt to destroy
         // an entity during activation.
         AZStd::function<void()> destroyEntity = [this,entityIdsToBeDeleted]() mutable
         {
@@ -403,8 +402,8 @@ namespace AzFramework
         AZ::Entity* entity = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
 
-        AZ_Error("GameEntityContext", entity, 
-            "Failed to locate entity with id %s. It is either not yet Initialized, or the Id is invalid.", 
+        AZ_Error("GameEntityContext", entity,
+            "Failed to locate entity with id %s. It is either not yet Initialized, or the Id is invalid.",
             entityId.ToString().c_str());
 
         if (entity)

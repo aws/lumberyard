@@ -300,7 +300,7 @@ ShaderLang LanguageFromString(const char* str)
 }
 
 #define MAX_PATH_CHARS 256
-#define MAX_FXC_CMD_CHARS 512
+#define MAX_FXC_CMD_CHARS 1024
 #define MAX_DEBUG_READ_CHARS 512
 
 typedef struct
@@ -534,8 +534,10 @@ int Run(const char* srcPath, const char* destPath, ShaderLang language, int flag
 #endif
 		printf("cc time: %.2f us\n", crossCompileTime);
 
+#if !defined(APPLE)
 		// https://msdn.microsoft.com/en-us/library/ms175782.aspx.  As to disable the "("'n' format specifier disabled", 0)" assertion.
 		_set_printf_count_output(1);
+#endif
 
 		if (destPath)
 		{
@@ -774,8 +776,13 @@ int main(int argc, char** argv)
             std::string fxcExe(options.fxcCmdLine.begin(), fxcPos);
             std::string fxcArguments(fxcPos, options.fxcCmdLine.end());
 
+#if defined(APPLE)
+            fprintf(stderr, "fxc.exe cannot be executed on Mac");
+            return 1;
+#else
             // Need an extra set of quotes around the full command line because the way "system" executes it using cmd.
             sprintf_s(fullFxcCmdLine, sizeof(fullFxcCmdLine), "\"\"%s\" %s \"%s\" \"%s\"\"", fxcExe.c_str(), fxcArguments.c_str(), dxbcFileName, options.shaderFile);
+#endif
 
             retValue = system(fullFxcCmdLine);
 

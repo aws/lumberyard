@@ -19,6 +19,7 @@
 
 class CLensFlareElementTree;
 class CLensFlareView;
+class CLensFlareLibrary;
 
 class CLensFlareElement
     : public CRefCountBase
@@ -88,6 +89,7 @@ private:
 
     CLensFlareElementTree* GetLensFlareTree() const;
     CLensFlareView* GetLensFlareView() const;
+    CLensFlareLibrary* GetLensFlareLibrary() const;
 
 private:
 

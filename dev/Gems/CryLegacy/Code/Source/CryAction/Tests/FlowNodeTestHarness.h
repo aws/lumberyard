@@ -18,6 +18,19 @@
 namespace
 {
     const SFlowAddress invalidFlowAddress(0, 0, false);
+
+    template <typename T>
+    bool IsEqual(const T& a, const T& b)
+    {
+        return a == b;
+    }
+
+    template<>
+    bool IsEqual<float>(const float& a, const float& b)
+    {
+        const float eps = 1.0e-6f;
+        return fabs(a - b) < eps;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -33,7 +46,6 @@ IFlowNode* CreateMathFlowNode(const char* name);
 //////////////////////////////////////////////////////////////////////////
 // Matchers
 //////////////////////////////////////////////////////////////////////////
-
 
 //////////////////////////////////////////////////////////////////////////
 //! typed output port matcher
@@ -53,7 +65,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     bool MatchAndExplain(wrapper_type wrapper, ::testing::MatchResultListener* listener) const override
     {
-        return wrapper.value == m_expected;
+        return IsEqual(wrapper.value, m_expected);
     }
 
     //////////////////////////////////////////////////////////////////////////

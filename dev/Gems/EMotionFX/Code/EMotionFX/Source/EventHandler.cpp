@@ -12,13 +12,14 @@
 
 // include required headers
 #include "EventHandler.h"
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
-    //-------------------------------------------------------------------------------
-    // class EventHandler
-    //-------------------------------------------------------------------------------
+    AZ_CLASS_ALLOCATOR_IMPL(EventHandler, EventHandlerAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphInstanceEventHandler, AnimGraphEventHandlerAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(MotionInstanceEventHandler, MotionEventHandlerAllocator, 0)
+
 
     // constructor
     EventHandler::EventHandler()
@@ -36,7 +37,7 @@ namespace EMotionFX
     // creation method
     EventHandler* EventHandler::Create()
     {
-        return new EventHandler();
+        return aznew EventHandler();
     }
 
 
@@ -61,7 +62,7 @@ namespace EMotionFX
     // creation method
     AnimGraphInstanceEventHandler* AnimGraphInstanceEventHandler::Create()
     {
-        return new AnimGraphInstanceEventHandler();
+        return aznew AnimGraphInstanceEventHandler();
     }
 
 
@@ -88,6 +89,6 @@ namespace EMotionFX
     // creation method
     MotionInstanceEventHandler* MotionInstanceEventHandler::Create()
     {
-        return new MotionInstanceEventHandler();
+        return aznew MotionInstanceEventHandler();
     }
 }   // namespace EMotionFX

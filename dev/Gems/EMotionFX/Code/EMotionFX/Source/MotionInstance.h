@@ -44,7 +44,7 @@ namespace EMotionFX
     class EMFX_API MotionInstance
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MotionInstance, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_MOTIONINSTANCES);
+        AZ_CLASS_ALLOCATOR_DECL
         friend class RepositioningLayerPass;
         friend class AnimGraphMotionNode;
         friend class MotionInstancePool;

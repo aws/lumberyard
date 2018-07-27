@@ -1561,12 +1561,12 @@ const char* PropertyRow::rowText(char *containerLabelBuffer, size_t bufsiz, cons
 	if(parent() && parent()->isContainer() && !pulledUp()){
 		if (tree->showContainerIndices()) {
 			if (tree->showContainerIndexLabels()) {
-				_snprintf(containerLabelBuffer, bufsiz, " %i. %s", 
+                azsnprintf(containerLabelBuffer, bufsiz, " %i. %s",
 					index + 1 - tree->containerIndicesZeroBased(), 
 					labelUndecorated() ? labelUndecorated() : "");
 			}
 			else {
-				_snprintf(containerLabelBuffer, bufsiz, "%i.", 
+                azsnprintf(containerLabelBuffer, bufsiz, "%i.",
 					index + 1 - tree->containerIndicesZeroBased());
 			}
 			return containerLabelBuffer;

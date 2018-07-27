@@ -54,7 +54,7 @@ def after_project_updated(hook, **kwargs):
     content_path = os.path.abspath(os.path.join(__file__, '..', '..', BUCKET_ROOT_DIRECTORY_NAME))
     upload_project_content(hook.context, content_path,
                            kwargs['args'].cognito_prod if 'args' in kwargs else None,
-                           kwargs['args'].duration_seconds if 'args' in kwargs else constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS)
+                           constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS)
 
 
 def upload_project_content(context, content_path, customer_cognito_id=None, expiration=constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS):
@@ -138,7 +138,7 @@ def write_bootstrap(context, customer_cognito_id, expiration=constant.PROJECT_CG
     else:
         raise HandledError("The index.html cloud not be set in the S3 bucket '{}'.  This Cloud Gem Portal site will not load.".format(bucket_id))
 
-    updateUserPoolEmailMessage(context, get_index_url(s3_client, bucket_id, expiration), project_config_bucket_id)
+    updateUserPoolEmailMessage(context, get_index_url(s3_client, bucket_id, constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS), project_config_bucket_id)
 
 
 def get_index(s3_client, bucket_id):

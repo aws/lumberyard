@@ -15,11 +15,12 @@
 
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/FileSystem.h>
-#include <MCore/Source/AttributeSet.h>
 
 #include <EMotionFX/Source/MotionSystem.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include <EMotionFX/Source/SkeletalMotion.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/EventManager.h>
 #include <EMotionFX/Source/WaveletSkeletalMotion.h>
@@ -31,6 +32,18 @@
 
 namespace CommandSystem
 {
+    const char* CommandStopAllMotionInstances::s_stopAllMotionInstancesCmdName = "StopAllMotionInstances";
+
+    CommandStopAllMotionInstances::CommandStopAllMotionInstances(MCore::Command* orgCommand)
+        : MCore::Command(s_stopAllMotionInstancesCmdName, orgCommand)
+    {
+
+    }
+
+    CommandStopAllMotionInstances::~CommandStopAllMotionInstances()
+    {
+    }
+
     //--------------------------------------------------------------------------------
     // CommandPlayMotion
     //--------------------------------------------------------------------------------
@@ -908,8 +921,8 @@ namespace CommandSystem
             EMotionFX::MotionSet::MotionEntry*  motionEntry = motionSet->FindMotionEntry(motion);
             if (motionEntry)
             {
-                outResult = AZStd::string::format("Cannot remove motion '%s'. Motion set named '%s' is using the motion.", motion->GetFileName(), motionSet->GetName());
-                return false;
+                // Unlink the motion from the motion entry so that it is safe to remove it.
+                motionEntry->Reset();
             }
         }
 
@@ -1141,6 +1154,17 @@ namespace CommandSystem
             {
                 MCore::LogError(valueString.c_str());
             }
+        }
+
+        // Reset unique datas for nodes that operate with motions.
+        const size_t numInst = EMotionFX::GetAnimGraphManager().GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numInst; ++i)
+        {
+            EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i);
+            EMotionFX::AnimGraph* animGraph = animGraphInstance->GetAnimGraph();
+            EMotionFX::MotionSet* motionSet = animGraphInstance->GetMotionSet();
+
+            animGraphInstance->UpdateUniqueData();
         }
     }
 

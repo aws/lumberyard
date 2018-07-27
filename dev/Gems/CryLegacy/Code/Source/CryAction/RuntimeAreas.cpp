@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "RuntimeAreas.h"
 #include "GameObjects/RuntimeAreaObject.h"
 #include <IGameObject.h>
@@ -81,7 +81,7 @@ void CRuntimeAreaManager::FillAudioControls()
 {
     XmlNodeRef const pXMLRoot(gEnv->pSystem->LoadXmlFromFile("libs/materialeffects/mergedmeshsurfacetypes.xml"));
 
-    if (pXMLRoot && _stricmp(pXMLRoot->getTag(), SXMLTags::sMergedMeshSurfaceTypesRoot) == 0)
+    if (pXMLRoot && azstricmp(pXMLRoot->getTag(), SXMLTags::sMergedMeshSurfaceTypesRoot) == 0)
     {
         size_t const nSurfaceCount = static_cast<size_t>(pXMLRoot->getChildCount());
 
@@ -89,7 +89,7 @@ void CRuntimeAreaManager::FillAudioControls()
         {
             XmlNodeRef const pSurfaceTypeNode(pXMLRoot->getChild(i));
 
-            if (pSurfaceTypeNode && _stricmp(pSurfaceTypeNode->getTag(), SXMLTags::sMergedMeshSurfaceTag) == 0)
+            if (pSurfaceTypeNode && azstricmp(pSurfaceTypeNode->getTag(), SXMLTags::sMergedMeshSurfaceTag) == 0)
             {
                 char const* const sSurfaceName = pSurfaceTypeNode->getAttr(SXMLTags::sNameAttribute);
 
@@ -160,7 +160,7 @@ void CRuntimeAreaManager::CreateAreas()
     for (size_t i = 0; i < nClusterCount; ++i)
     {
         char szName[1024];
-        sprintf(szName, "RuntimeArea_%03d", (int)i);
+        azsprintf(szName, "RuntimeArea_%03d", (int)i);
 
         IMergedMeshesManager::SMeshAreaCluster& cluster = clusters[i];
         SEntitySpawnParams areaSpawnParams;

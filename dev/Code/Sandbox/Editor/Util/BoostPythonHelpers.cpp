@@ -47,6 +47,7 @@
 #include <QApplication>
 #include <QDir>
 #include <QFile>
+#include <QProcessEnvironment>
 
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
 
@@ -2811,7 +2812,8 @@ namespace PyScript
         // Behavior for non-windows builds is still TBD, but using PYTHONHOME
         // from the envionment may work as a fallback.
 
-        QString pythonHome = getenv("LY_PYTHONHOME");
+        auto env = QProcessEnvironment::systemEnvironment();
+        QString pythonHome = env.value("LY_PYTHONHOME");
         if (pythonHome.isEmpty())
         {
 #ifdef WIN32
@@ -2819,7 +2821,7 @@ namespace PyScript
             pythonHome.replace('/', '\\');
             pythonHome.replace("@root@", rootEngineDir);
 #else
-            pythonHome = getenv("PYTHONHOME");
+            pythonHome = env.value("PYTHONHOME");
 #endif
         }
 
@@ -2909,4 +2911,5 @@ DECLARE_PYTHON_MODULE(lodtools);
 DECLARE_PYTHON_MODULE(prefab);
 DECLARE_PYTHON_MODULE(vegetation);
 DECLARE_PYTHON_MODULE(shape);
+DECLARE_PYTHON_MODULE(checkout_dialog);
 

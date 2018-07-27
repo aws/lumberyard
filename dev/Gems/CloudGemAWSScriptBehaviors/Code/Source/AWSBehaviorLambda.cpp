@@ -71,6 +71,13 @@ namespace CloudGemAWSScriptBehaviors
     {
         AZStd::vector<AZStd::string> functionNames;
         CloudGemFramework::CloudCanvasMappingsBus::BroadcastResult(functionNames, &CloudGemFramework::CloudCanvasMappingsBus::Events::GetMappingsOfType, "AWS::Lambda::Function");
+
+        if (AZStd::find(functionNames.begin(), functionNames.end(), m_inFunctionName) == functionNames.end())
+        {
+            m_inFunctionName = functionNames.size() > 0 ? functionNames[0] : "";
+        }
+        
+
         return functionNames;
     }
 

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <Tests/CryMathTestAux.h>
 
 inline void PrintTo(const Vec3& v, std::ostream* os)

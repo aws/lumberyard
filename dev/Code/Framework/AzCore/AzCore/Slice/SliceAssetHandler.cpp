@@ -32,6 +32,11 @@ namespace AZ
         AZ::AssetTypeInfoBus::MultiHandler::BusConnect(AZ::AzTypeInfo<AZ::DynamicSliceAsset>::Uuid());
     }
 
+    SliceAssetHandler::~SliceAssetHandler()
+    {
+        AZ::AssetTypeInfoBus::MultiHandler::BusDisconnect();
+    }
+
     //=========================================================================
     // CreateAsset
     //=========================================================================

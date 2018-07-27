@@ -208,7 +208,7 @@ inline void CVariableFlowNode<Vec3>::SetDisplayValue(const QString& value)
     else
     {
         float r, g, b;
-        int res = sscanf(value.toUtf8().data(), "%f,%f,%f", &r, &g, &b);
+        int res = azsscanf(value.toUtf8().data(), "%f,%f,%f", &r, &g, &b);
         if (res == 3)
         {
             r /= 255.0f;

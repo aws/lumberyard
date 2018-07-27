@@ -14,7 +14,7 @@
 // Description : Provides remote method invocation to script
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ScriptRMI.h"
 #include "ScriptSerialize.h"
 #include "Serialization/NetScriptSerialize.h"
@@ -412,7 +412,7 @@ bool CScriptRMI::BuildDispatchTable(
             }
 
             CRY_ASSERT(format.length() <= MaxRMIParameters);
-            strcpy(info.format, format.c_str());
+            azstrcpy(info.format, AZ_ARRAY_SIZE(info.format), format.c_str());
             info.funcID = funcID;
             info.reliability = reliability;
             info.attachment = attachment;
@@ -492,7 +492,7 @@ bool CScriptRMI::BuildSynchTable(SmartScriptTable vars, SmartScriptTable cls, co
                 return false;
             }
             SSynchedPropertyInfo info;
-            strcpy(info.name, iter.sKey);
+            azstrcpy(info.name, AZ_ARRAY_SIZE(info.name), iter.sKey);
             info.type = (EScriptSerializeType)type;
             properties.push_back(info);
 
@@ -929,7 +929,7 @@ bool CScriptRMI::ValidateDispatchTable(const char* clazz, SmartScriptTable dispa
             }
             memcpy(dt.name, funcData, colon - funcData);
             dt.name[colon - funcData] = 0;
-            strcpy(dt.format, colon + 1);
+            azstrcpy(dt.format, AZ_ARRAY_SIZE(dt.format), colon + 1);
         }
     }
     dispatch->EndIteration(iter);
@@ -996,7 +996,7 @@ public:
 
     void Prologue(const char* function, const char* format)
     {
-        strcpy_s(m_function, MaxSynchedPropertyNameLength, function);
+        azstrcpy(m_function, MaxSynchedPropertyNameLength, function);
         m_format = format;
     }
 

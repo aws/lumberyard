@@ -25,12 +25,15 @@
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include "../../../../EMStudioSDK/Source/MainWindow.h"
 
+#include <QCheckBox>
 #include <QDockWidget>
 #include <QGridLayout>
+#include <QPushButton>
 #include <QScrollBar>
 
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/Compare.h>
+#include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/MotionInstance.h>
 #include <EMotionFX/Source/MotionEvent.h>
@@ -810,7 +813,7 @@ namespace EMStudio
                 EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(mEventHistoryItem->mAnimGraphID);
                 if (animGraph)
                 {
-                    mEventEmitterNode = animGraph->RecursiveFindNodeByUniqueID(mEventHistoryItem->mEmitterUniqueID);
+                    mEventEmitterNode = animGraph->RecursiveFindNodeById(mEventHistoryItem->mEmitterNodeId);
                 }
             }
         }

@@ -10,12 +10,13 @@
 *
 */
 
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include "LogWindowPlugin.h"
 #include "LogWindowCallback.h"
-#include <MysticQt/Source/SearchButton.h>
 #include <MysticQt/Source/MysticQtManager.h>
 #include <QPushButton>
 #include <QLabel>
+#include <QLineEdit>
 
 
 namespace EMStudio
@@ -120,16 +121,15 @@ namespace EMStudio
         spacerWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 
         // create the find widget
-        MysticQt::SearchButton* findWidget = new MysticQt::SearchButton(nullptr, MysticQt::GetMysticQt()->FindIcon("Images/Icons/SearchClearButton.png"));
-        connect(findWidget->GetSearchEdit(), SIGNAL(textChanged(const QString&)), this, SLOT(OnFindChanged(const QString&)));
+        AzQtComponents::FilteredSearchWidget* searchWidget = new AzQtComponents::FilteredSearchWidget(windowWidget);
+        connect(searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &LogWindowPlugin::OnTextFilterChanged);
 
         // create the filter layout
         QHBoxLayout* topLayout = new QHBoxLayout();
         topLayout->addWidget(new QLabel("Filter:"));
         topLayout->addWidget(mFilterButtonGroup);
         topLayout->addWidget(spacerWidget);
-        topLayout->addWidget(new QLabel("Find:"), 0, Qt::AlignRight);
-        topLayout->addWidget(findWidget);
+        topLayout->addWidget(searchWidget);
         topLayout->setSpacing(6);
 
         // add the filter layout
@@ -155,7 +155,7 @@ namespace EMStudio
 
 
     // find changed
-    void LogWindowPlugin::OnFindChanged(const QString& text)
+    void LogWindowPlugin::OnTextFilterChanged(const QString& text)
     {
         mLogCallback->SetFind(text);
     }

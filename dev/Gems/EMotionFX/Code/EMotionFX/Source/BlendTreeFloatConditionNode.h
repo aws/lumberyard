@@ -25,15 +25,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeFloatConditionNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeFloatConditionNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeFloatConditionNode, "{1FA8AD35-8730-49AB-97FD-A602728DBF22}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000010
-        };
+        AZ_RTTI(BlendTreeFloatConditionNode, "{1FA8AD35-8730-49AB-97FD-A602728DBF22}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -52,7 +46,7 @@ namespace EMotionFX
             PORTID_OUTPUT_BOOL  = 1
         };
 
-        enum EFunction
+        enum EFunction : AZ::u8
         {
             FUNCTION_EQUAL          = 0,
             FUNCTION_GREATER        = 1,
@@ -63,27 +57,18 @@ namespace EMotionFX
             NUM_FUNCTIONS
         };
 
-        enum
-        {
-            ATTRIB_FUNCTION         = 0,
-            ATTRIB_STATICVALUE      = 1,
-            ATTRIB_TRUEVALUE        = 2,
-            ATTRIB_FALSEVALUE       = 3,
-            ATTRIB_TRUEMODE         = 4,
-            ATTRIB_FALSEMODE        = 5
-        };
-
-        enum
+        enum EReturnMode : AZ::u8
         {
             MODE_VALUE  = 0,
             MODE_X      = 1,
             MODE_Y      = 2
         };
 
-        static BlendTreeFloatConditionNode* Create(AnimGraph* animGraph);
+        BlendTreeFloatConditionNode();
+        ~BlendTreeFloatConditionNode();
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void SetFunction(EFunction func);
 
@@ -92,22 +77,26 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
+        void SetDefaultValue(float defaultValue);
+        void SetTrueResult(float trueResult);
+        void SetFalseResult(float falseResult);
+        void SetTrueReturnMode(EReturnMode returnMode);
+        void SetFalseReturnMode(EReturnMode returnMode);
 
-        AnimGraphObjectData* CreateObjectData() override;
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
         typedef bool (MCORE_CDECL * BlendTreeFloatConditionFunction)(float x, float y);
 
-        EFunction                       mFunctionEnum;
-        BlendTreeFloatConditionFunction mFunction;
-
-        BlendTreeFloatConditionNode(AnimGraph* animGraph);
-        ~BlendTreeFloatConditionNode();
+        EFunction                       m_functionEnum;
+        BlendTreeFloatConditionFunction m_function;
+        float                           m_defaultValue;
+        float                           m_trueResult;
+        float                           m_falseResult;
+        EReturnMode                     m_trueReturnMode;
+        EReturnMode                     m_falseReturnMode;
 
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
-        void OnUpdateAttributes() override;
 
         static bool MCORE_CDECL FloatConditionEqual(float x, float y);
         static bool MCORE_CDECL FloatConditionNotEqual(float x, float y);
@@ -116,4 +105,4 @@ namespace EMotionFX
         static bool MCORE_CDECL FloatConditionGreaterOrEqual(float x, float y);
         static bool MCORE_CDECL FloatConditionLessOrEqual(float x, float y);
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

@@ -32,6 +32,20 @@ namespace NRemoteCompiler
         ESRecvFailed,
     };
 
+    enum EShaderCompiler
+    {
+        eSC_Unknown,
+        eSC_Orbis_DXC, // ACCEPTED_USE
+        eSC_Durango_FXC, // ACCEPTED_USE
+        eSC_D3D11_FXC,
+        eSC_GLSL_HLSLcc,
+        eSC_METAL_HLSLcc,
+        eSC_GLSL_LLVM_DXC,
+        eSC_METAL_LLVM_DXC,
+
+        eSC_MAX
+    };
+
     class RemoteProxyState;
 
     class CShaderSrv
@@ -46,7 +60,10 @@ namespace NRemoteCompiler
         // RequestLine causes the remote compiler to compile without expecting a response.
         bool RequestLine(const string& rList, const string& rString) const;
 
-        const char* GetPlatform() const;
+        EShaderCompiler GetShaderCompiler() const;
+        const char *GetShaderCompilerName() const;
+
+        AZStd::string GetShaderCompilerFlags(EHWShaderClass eClass, UPipelineState pipelineState) const;
 
         static CShaderSrv& Instance();
 
@@ -71,6 +88,8 @@ namespace NRemoteCompiler
         bool CreateRequest(std::vector<uint8>& rVec, std::vector<std::pair<string, string> >& rNodes) const;
 
         bool EncapsulateRequestInEngineConnectionProtocol(std::vector<uint8>& rCompileData) const;
+
+        const char* GetPlatformName() const;
 
         static uint32 m_LastWorkingServer;
         RemoteProxyState* m_remoteState;

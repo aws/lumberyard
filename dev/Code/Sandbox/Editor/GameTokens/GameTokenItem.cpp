@@ -96,35 +96,35 @@ public:
 
     void Visit(int& i)
     {
-        m_ok = 1 == sscanf(m_data, "%i", &i);
+        m_ok = 1 == azsscanf(m_data, "%i", &i);
     }
 
     void Visit(float& i)
     {
-        m_ok = 1 == sscanf(m_data, "%f", &i);
+        m_ok = 1 == azsscanf(m_data, "%f", &i);
     }
 
     void Visit(double& i)
     {
-        m_ok = 1 == sscanf(m_data, "%lf", &i);
+        m_ok = 1 == azsscanf(m_data, "%lf", &i);
     }
 
     void Visit(EntityId& i)
     {
-        m_ok = 1 == sscanf(m_data, "%u", &i);
+        m_ok = 1 == azsscanf(m_data, "%u", &i);
     }
 
     void Visit(FlowEntityId& i)
     {
         FlowEntityId* scannedEntityPtr;
-        m_ok = 1 == sscanf(m_data, "%p", &scannedEntityPtr);
+        m_ok = 1 == azsscanf(m_data, "%p", &scannedEntityPtr);
         i = *scannedEntityPtr;
     }
 
     void Visit(AZ::Vector3& v)
     {
         float x(0.0f), y(0.0f), z(0.0f);
-        m_ok = 3 == sscanf(m_data, "%g,%g,%g", &x, &y, &z);
+        m_ok = 3 == azsscanf(m_data, "%g,%g,%g", &x, &y, &z);
         v.SetX(x);
         v.SetY(y);
         v.SetZ(z);
@@ -132,7 +132,7 @@ public:
 
     void Visit(Vec3& i)
     {
-        m_ok = 3 == sscanf(m_data, "%g,%g,%g", &i.x, &i.y, &i.z);
+        m_ok = 3 == azsscanf(m_data, "%g,%g,%g", &i.x, &i.y, &i.z);
     }
 
     void Visit(string& i)
@@ -144,18 +144,18 @@ public:
     void Visit(bool& b)
     {
         int i;
-        m_ok = 1 == sscanf(m_data, "%i", &i);
+        m_ok = 1 == azsscanf(m_data, "%i", &i);
         if (m_ok)
         {
             b = (i != 0);
         }
         else
         {
-            if (_stricmp(m_data, "true") == 0)
+            if (azstricmp(m_data, "true") == 0)
             {
                 m_ok = b = true;
             }
-            else if (_stricmp(m_data, "false") == 0)
+            else if (azstricmp(m_data, "false") == 0)
             {
                 m_ok = true;
                 b = false;

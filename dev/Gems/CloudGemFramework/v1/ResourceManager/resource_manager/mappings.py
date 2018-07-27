@@ -23,6 +23,8 @@ from cgf_utils import aws_utils
 from resource_manager_common import resource_type_info
 from resource_manager_common import stack_info
 
+_MAPPINGS_KEY_PREFIX = "mappings/"
+
 def list(context, args):
 
     protected = context.config.user_default_deployment in context.config.get_protected_depolyment_names()
@@ -54,18 +56,55 @@ def update(context, args, force=False):
 
     if args.deployment is None:
         return
-    
-    player_mappings_file = os.path.join(__logical_mapping_file_path(context), '{}.{}.{}'.format(args.deployment, 'player', constant.MAPPING_FILE_SUFFIX))
-    server_mappings_file = os.path.join(__logical_mapping_file_path(context), '{}.{}.{}'.format(args.deployment, 'server', constant.MAPPING_FILE_SUFFIX))
-    if force or not (os.path.exists(player_mappings_file) and os.path.exists(server_mappings_file)):
+
+    s3_client = context.aws.client('s3')
+    config_bucket = context.config.configuration_bucket_name
+
+    player_mappings_file_name = '{}.{}.{}'.format(args.deployment, 'player', constant.MAPPING_FILE_SUFFIX)
+    player_mappings_file_path = os.path.join(__logical_mapping_file_path(context), player_mappings_file_name)
+
+    server_mappings_file_name = '{}.{}.{}'.format(args.deployment, 'server', constant.MAPPING_FILE_SUFFIX)
+    server_mappings_file_path = os.path.join(__logical_mapping_file_path(context), server_mappings_file_name)
+
+    mappings_file_names = (player_mappings_file_name, server_mappings_file_name)
+    mappings_file_paths = (player_mappings_file_path, server_mappings_file_path)
+
+    if not args.ignore_cache:
+        # See if we can just grab the mappings files from s3 instead of reprocessing them.
+        force = False  # If everything goes well we can just use the files we download.
+
+        # Obtain the most recent update time for the stack
+        deployment_stack_id = context.config.get_deployment_stack_id(args.deployment)
+        last_update_time = context.stack.describe_stack(deployment_stack_id)['LastUpdatedTime']
+
+        # List the mappings file available in the config bucket
+        items = s3_client.list_objects_v2(Bucket=config_bucket, Prefix=_MAPPINGS_KEY_PREFIX)
+        existing_s3_keys = {item['Key']: item for item in items.get('Contents', [])}
+
+        # For both types of mapping files, check if a corresponding file exists in S3 and if it's newer than our
+        # current deployment. If either of them is missing or out-of-date, force the mappings to update manually.
+        for file_name, file_path in zip(mappings_file_names, mappings_file_paths):
+            s3_entry = existing_s3_keys.get(_MAPPINGS_KEY_PREFIX + file_name, None)
+
+            if not s3_entry or (last_update_time and s3_entry['LastModified'] <= last_update_time):
+                force = True
+                break
+
+            s3_client.download_file(config_bucket, _MAPPINGS_KEY_PREFIX + file_name, file_path)
+
+    if force or not (os.path.exists(player_mappings_file_path) and os.path.exists(server_mappings_file_path)):
         # __update_with_deployment will update the user settings if it is the default deployment
         __update_with_deployment(context, args)
+
+        # Upload the resultant files to s3 both for caching purposes and for non-admin users to download
+        for file_name, file_path in zip(mappings_file_names, mappings_file_paths):
+            s3_client.upload_file(file_path, config_bucket, _MAPPINGS_KEY_PREFIX + file_name)
+
     elif args.deployment == context.config.default_deployment:
         # we didn't need to get the mappings from the backend, update the user settings ourselves from local mappings
-        __update_user_mappings_from_file(context, player_mappings_file)
+        __update_user_mappings_from_file(context, player_mappings_file_path)
 
-    if context.config.release_deployment is None and context.config.default_deployment:
-        set_launcher_deployment(context, context.config.default_deployment)
+    set_launcher_deployment(context, context.config.release_deployment or context.config.default_deployment or args.deployment)
 
 
 def set_launcher_deployment(context, deployment_name):
@@ -96,7 +135,9 @@ def __update_user_mappings_from_file(context, player_mappings_file):
     
 def __update_logical_mappings_files(context, deployment_name, args=None):
     exclusions = __get_mapping_exclusions(context)
-    player_mappings = __get_mappings(context, deployment_name, exclusions, 'Player', args)
+    ## AuthenticatedPlayer is a superset of general "Player" and "AuthenticatedPlayer" permissions
+    ## The Player mappings file should include both
+    player_mappings = __get_mappings(context, deployment_name, exclusions, 'AuthenticatedPlayer', args)
 
     if context.config.default_deployment == deployment_name:
         context.config.set_user_mappings(player_mappings)

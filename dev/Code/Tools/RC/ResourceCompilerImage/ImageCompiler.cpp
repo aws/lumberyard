@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <assert.h>                         // assert()
 
 #include "IRCLog.h"                         // IRCLog
@@ -241,17 +241,17 @@ ImageObject* CImageCompiler::LoadImageFromFile(const char* lpszPathName, const c
 {
     res_specialInstructions.clear();
 
-    if (!_stricmp(lpszExtension, "tif") || !_stricmp(lpszExtension, "tiff"))
+    if (!azstricmp(lpszExtension, "tif") || !azstricmp(lpszExtension, "tiff"))
     {
         return ImageTIFF::LoadByUsingTIFFLoader(lpszPathName, GetSettingsFile(lpszPathName).c_str(), &m_Props, res_specialInstructions);
     }
 
-    if (!_stricmp(lpszExtension, "hdr"))
+    if (!azstricmp(lpszExtension, "hdr"))
     {
         return ImageHDR::LoadByUsingHDRLoader(lpszPathName, &m_Props, res_specialInstructions);
     }
 
-    if (!stricmp(lpszExtension, "dds"))
+    if (!azstricmp(lpszExtension, "dds"))
     {
         return ImageDDS::LoadByUsingDDSLoader(lpszPathName, &m_Props, res_specialInstructions);
     }
@@ -268,17 +268,17 @@ ImageObject* CImageCompiler::LoadImageFromFile(const char* lpszPathName, const c
 
 bool CImageCompiler::SaveImageToFile(const char* lpszPathName, const char* lpszExtension, const ImageObject* pImageObject)
 {
-    if (!_stricmp(lpszExtension, "tif"))
+    if (!azstricmp(lpszExtension, "tif"))
     {
         return ImageTIFF::SaveByUsingTIFFSaver(lpszPathName, GetSettingsFile(lpszPathName).c_str(), &m_Props, pImageObject);
     }
 
-    if (!_stricmp(lpszExtension, "hdr"))
+    if (!azstricmp(lpszExtension, "hdr"))
     {
         return ImageHDR::SaveByUsingHDRSaver(lpszPathName, &m_Props, pImageObject);
     }
 
-    if (!stricmp(lpszExtension, "dds"))
+    if (!azstricmp(lpszExtension, "dds"))
     {
         return ImageDDS::SaveByUsingDDSSaver(lpszPathName, &m_Props, pImageObject);
     }
@@ -1082,7 +1082,7 @@ bool CImageCompiler::AnalyzeWithProperties(bool autopreset, const char* szExtend
         fprintf(stderr, "%g,%g,%g,%g,", cMin.x, cMin.y, cMin.z, cMin.w);
         fprintf(stderr, "%g,%g,%g,%g,", cMax.x, cMax.y, cMax.z, cMax.w);
         fprintf(stderr, "%g,", -log2(cMax.x - cMin.x) + -log2(cMax.y - cMin.y) + -log2(cMax.z - cMin.z) + -log2(cMax.w - cMin.w));
-        fprintf(stderr, "%s\n", sOutputFileName);
+        fprintf(stderr, "%s\n", sOutputFileName.c_str());
     }
 
     return true;

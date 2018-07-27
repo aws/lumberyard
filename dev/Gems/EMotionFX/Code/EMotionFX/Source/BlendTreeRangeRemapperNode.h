@@ -12,7 +12,6 @@
 
 #pragma once
 
-// include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
 
@@ -27,14 +26,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeRangeRemapperNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeRangeRemapperNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
     public:
         AZ_RTTI(BlendTreeRangeRemapperNode, "{D60E6686-ECBF-4B8F-A5A5-1164EE66C248}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x02094017
-        };
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -49,18 +43,10 @@ namespace EMotionFX
             PORTID_OUTPUT_RESULT    = 1
         };
 
-        enum
-        {
-            ATTRIB_INPUTMIN     = 0,
-            ATTRIB_INPUTMAX     = 1,
-            ATTRIB_OUTPUTMIN    = 2,
-            ATTRIB_OUTPUTMAX    = 3
-        };
+        BlendTreeRangeRemapperNode();
+        ~BlendTreeRangeRemapperNode();
 
-        static BlendTreeRangeRemapperNode* Create(AnimGraph* animGraph);
-
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         uint32 GetVisualColor() const override                  { return MCore::RGBA(128, 255, 255); }
         bool GetSupportsDisable() const override                { return true; }
@@ -68,14 +54,19 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        void SetInputMin(float value);
+        void SetInputMax(float value);
+        void SetOutputMin(float value);
+        void SetOutputMax(float value);
+
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        BlendTreeRangeRemapperNode(AnimGraph* animGraph);
-        ~BlendTreeRangeRemapperNode();
-
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+
+        float m_inputMin;
+        float m_inputMax;
+        float m_outputMin;
+        float m_outputMax;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

@@ -69,10 +69,10 @@ public:
                 float time, v;
                 int flags = 0;
 
-                int res = sscanf(key, "%g:%g:%d", &time, &v, &flags);
+                int res = azsscanf(key, "%g:%g:%d", &time, &v, &flags);
                 if (res != 3)
                 {
-                    res = sscanf(key, "%g:%g", &time, &v);
+                    res = azsscanf(key, "%g:%g", &time, &v);
                     if (res != 2)
                     {
                         continue;
@@ -143,10 +143,10 @@ public:
             {
                 float time, val0, val1, val2;
                 int flags = 0;
-                int res = sscanf(key, "%g:(%g:%g:%g):%d,", &time, &val0, &val1, &val2, &flags);
+                int res = azsscanf(key, "%g:(%g:%g:%g):%d,", &time, &val0, &val1, &val2, &flags);
                 if (res != 5)
                 {
-                    res = sscanf(key, "%g:(%g:%g:%g),", &time, &val0, &val1, &val2);
+                    res = azsscanf(key, "%g:(%g:%g:%g),", &time, &val0, &val1, &val2);
                     if (res != 4)
                     {
                         continue;
@@ -596,7 +596,7 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
     float sunIntensityMultiplier(1.0f);
 
     // The ratio between night and day for adjusting luminance.   Day = 1, Night = 0, transitions = [0..1]
-    float dayNightIndicator(1.0);
+    float dayNightIndicator(1.0);   
     // The ratio [0..1] relative to high noon which represents maximum luminance.
     float midDayIndicator(1.0);
 
@@ -624,9 +624,9 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
             float   noonToDusk = p3DEngine->m_duskEnd - noonTime;
             midDayIndicator = (m_fTime - noonTime) / noonToDusk;
         }
-        midDayIndicator = cos(0.5f * midDayIndicator * 3.14159265f);     // Converting to the cosine to represent energy distribution
+        midDayIndicator = cos( 0.5f * midDayIndicator * 3.14159265f );     // Converting to the cosine to represent energy distribution
 
-                                                                         // Calculation of sun intensity and day-to-night indicator
+        // Calculation of sun intensity and day-to-night indicator
         if (m_fTime < p3DEngine->m_dawnEnd)
         {
             // dawn
@@ -681,7 +681,6 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
     p3DEngine->SetGlobalParameter(E3DPARAM_DAY_NIGHT_INDICATOR, Vec3(dayNightIndicator, midDayIndicator, 0));
 
     p3DEngine->SetSunDir(sunPos);
-
 
     // set sun, sky, and fog color
     Vec3 sunColor(Vec3(GetVar(PARAM_SUN_COLOR).fValue[ 0 ],

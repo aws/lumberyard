@@ -14,8 +14,8 @@
 // Description: FlowGraph Node that sets RTPC values.
 
 
-#include "StdAfx.h"
-#include "FlowBaseNode.h"
+#include "CryLegacy_precompiled.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "Components/IComponentAudio.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

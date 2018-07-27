@@ -13,7 +13,7 @@
 #include <ISystem.h>
 #include <IFlowSystem.h>
 
-#include "../FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 class ComponentEntitySetRotationNode
     : public CFlowBaseNode<eNCT_Instanced>

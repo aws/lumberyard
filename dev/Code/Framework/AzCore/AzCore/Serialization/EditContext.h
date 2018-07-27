@@ -446,7 +446,6 @@ namespace AZ
         if (m_serializeContext.IsRemovingReflection())
         {
             // If the serialize context is unreflecting, then the enum needs to be removed
-            AZ_Assert(m_enumData.find(enumId) != m_enumData.end(), "Enum %s not found during unreflection", displayName);
             m_enumData.erase(enumId);
             return EditContext::EnumBuilder();
         }

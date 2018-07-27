@@ -757,7 +757,25 @@ void AddBuiltinInput(HLSLCrossCompilerContext* psContext, const Declaration* psD
 int OutputNeedsDeclaring(HLSLCrossCompilerContext* psContext, const Operand* psOperand, const int count)
 {
     Shader* psShader = psContext->psShader;
+    
+    // Depth Output operands are a special case and won't have a ui32RegisterNumber,
+    // so first we have to check if the output operand is depth.
+    if (psShader->eShaderType == PIXEL_SHADER)
+    {
+        if (psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH_GREATER_EQUAL ||
+            psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH_LESS_EQUAL)
+        {
+            return 1;
+        }
+        else if (psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH)
+        {
+            return 0; // OpenGL doesn't need to declare depth output variable (gl_FragDepth)
+        }
+    }
+    
     const uint32_t declared = ((psContext->currentPhase + 1) << 3) | psShader->ui32CurrentVertexOutputStream;
+    ASSERT(psOperand->ui32RegisterNumber >= 0);
+    ASSERT(psOperand->ui32RegisterNumber < MAX_SHADER_VEC4_OUTPUT);
     if (psShader->aiOutputDeclared[psOperand->ui32RegisterNumber] != declared)
     {
         int offset;
@@ -767,15 +785,6 @@ int OutputNeedsDeclaring(HLSLCrossCompilerContext* psContext, const Operand* psO
             psShader->aiOutputDeclared[psOperand->ui32RegisterNumber + offset] = declared;
         }
         return 1;
-    }
-
-    if (psShader->eShaderType == PIXEL_SHADER)
-    {
-        if (psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH_GREATER_EQUAL ||
-            psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH_LESS_EQUAL)
-        {
-            return 1;
-        }
     }
 
     return 0;

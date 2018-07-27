@@ -73,6 +73,11 @@ namespace AzQtComponents
          * the margin ourselves.
          */
         bool isTopResizeArea(const QPoint& globalPos) const;
+        /**
+          * These will only return true ever for macOS.
+          */
+        bool isLeftResizeArea(const QPoint& globalPos) const;
+        bool isRightResizeArea(const QPoint& globalPos) const;
 
         /**
          * The title rect width minus the buttons rect.
@@ -116,9 +121,9 @@ namespace AzQtComponents
         bool isDragging() const;
         bool isLeftButtonDown() const;
         bool canDragWindow() const;
-        bool isResizingTop() const;
+        bool isResizingWindow() const;
         bool isDraggingWindow() const;
-        void resizeTop(const QPoint& globalPos);
+        void resizeWindow(const QPoint& globalPos);
         void dragWindow(const QPoint& globalPos);
 
         DockBar* m_dockBar;
@@ -134,6 +139,8 @@ namespace AzQtComponents
         bool m_autoButtons = false;
         bool m_pendingRepositioning = false;
         bool m_resizingTop = false;
+        bool m_resizingRight = false;
+        bool m_resizingLeft = false;
         qreal m_relativeDragPos = 0.0;
         qreal m_lastLocalPosX = 0.0;
         QMenu* m_contextMenu = nullptr;
@@ -149,7 +156,7 @@ namespace AzQtComponents
 
         QWindow* topLevelWindow() const;
         void updateMouseCursor(const QPoint& globalPos);
-        bool canResizeTop() const;
+        bool canResize() const;
 
         Qt::CursorShape m_originalCursor = Qt::ArrowCursor;
         QTimer m_enableMouseTrackingTimer;

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "ComponentEntityEditorPlugin.h"
 
 #include <LyViewPaneNames.h>
@@ -146,6 +146,10 @@ ComponentEntityEditorPlugin::ComponentEntityEditorPlugin(IEditor* editor)
     outlinerOptions.canHaveMultipleInstances = true;
     outlinerOptions.preferedDockingArea = Qt::LeftDockWidgetArea;
     outlinerOptions.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+
+    // this pane was originally introduced with this name, so layout settings are all saved with that name, despite the preview label being removed.
+    outlinerOptions.saveKeyName = "Entity Outliner (PREVIEW)";
+    
     RegisterViewPane<QComponentEntityEditorOutlinerWindow>(
         LyViewPane::EntityOutliner,
         LyViewPane::CategoryTools,

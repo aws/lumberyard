@@ -1,0 +1,6 @@
+<download name="CommunicatorSample" type="Map">
+ <index src="filelist.xml" dest="filelist.xml"/>
+ <files>
+  <file src="level.pak" dest="level.pak" size="42061" md5="aeba1c1fb9e5891ca1986ecae19d7fca"/>
+ </files>
+</download>

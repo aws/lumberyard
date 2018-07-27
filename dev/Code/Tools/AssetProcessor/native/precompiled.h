@@ -21,7 +21,7 @@
 #include <QStringList>
 #include <QList>
 #if !defined(BATCH_MODE)
-#include <QtQML>
+#include <QtQml>
 #include <QApplication>
 #endif
 #include <QHash>

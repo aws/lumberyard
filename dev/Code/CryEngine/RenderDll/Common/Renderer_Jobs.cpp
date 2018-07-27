@@ -174,7 +174,7 @@ static void HandleOldRTMask(CRenderObject* obj)
 
 
 ///////////////////////////////////////////////////////////////////////////////
-void CRenderer::EF_AddEf_NotVirtual(CRendElementBase* re, SShaderItem& SH, CRenderObject* obj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter)
+void CRenderer::EF_AddEf_NotVirtual(IRenderElement* re, SShaderItem& SH, CRenderObject* obj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter)
 {
 #ifndef NULL_RENDERER
     int nThreadID = passInfo.ThreadID();
@@ -409,7 +409,7 @@ void CRenderer::EF_AddEf_NotVirtual(CRendElementBase* re, SShaderItem& SH, CRend
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void CRenderer::EF_AddEf (CRendElementBase* re, SShaderItem& pSH, CRenderObject* obj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter)
+void CRenderer::EF_AddEf (IRenderElement* re, SShaderItem& pSH, CRenderObject* obj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter)
 {
     EF_AddEf_NotVirtual (re, pSH, obj, passInfo, nList, nAW, rendItemSorter);
 }
@@ -448,8 +448,10 @@ void CRenderer::GetFogVolumeContribution(uint16 idx, ColorF& rColor) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-uint32 CRenderer::EF_BatchFlags(SShaderItem& SH, CRenderObject* pObj, CRendElementBase* re, const SRenderingPassInfo& passInfo)
+uint32 CRenderer::EF_BatchFlags(SShaderItem& SH, CRenderObject* pObj, IRenderElement* renderElement, const SRenderingPassInfo& passInfo)
 {
+    CRendElementBase* re = static_cast<CRendElementBase*>(renderElement);
+
     uint32 nFlags = SH.m_nPreprocessFlags & FB_MASK;
     SShaderTechnique* const __restrict pTech = SH.GetTechnique();
     CShaderResources* const __restrict pR = (CShaderResources*)SH.m_pShaderResources;

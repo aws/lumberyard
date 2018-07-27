@@ -269,7 +269,8 @@ static const char* g_paletteColorRoleNames[QPalette::NColorRoles] = {
     "Link", "LinkVisited",
     "AlternateBase",
     "NoRole",
-    "ToolTipBase", "ToolTipText"
+    "ToolTipBase", "ToolTipText",
+    "PlaceholderText"
 };
 
 struct QPaletteSerializable

@@ -84,6 +84,7 @@ namespace LmbrCentral
         void SetGlobalSizeScale(float scale) override;
         void SetParticleSizeScaleX(float scale) override;
         void SetParticleSizeScaleY(float scale) override;
+        void SetParticleSizeScaleZ(float scale) override;
         bool GetVisibility() override;
         bool GetEnable() override;
         AZ::Color GetColorTint() override;
@@ -93,6 +94,7 @@ namespace LmbrCentral
         float GetGlobalSizeScale() override;
         float GetParticleSizeScaleX() override;
         float GetParticleSizeScaleY() override;
+        float GetParticleSizeScaleZ() override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

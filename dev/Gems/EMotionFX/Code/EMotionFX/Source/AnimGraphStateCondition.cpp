@@ -10,74 +10,77 @@
 *
 */
 
-// include the required headers
-#include "EMotionFXConfig.h"
-#include <MCore/Source/Compare.h>
-#include "AnimGraphStateCondition.h"
-#include "AnimGraph.h"
-#include "AnimGraphStateMachine.h"
-#include "AnimGraphExitNode.h"
-#include "AnimGraphInstance.h"
-#include "AnimGraphManager.h"
-#include <MCore/Source/AttributeSettings.h>
-
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/AnimGraphStateMachine.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/AnimGraphExitNode.h>
+#include <EMotionFX/Source/AnimGraphStateCondition.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
+#include <AzCore/Math/MathUtils.h>
 
 namespace EMotionFX
 {
-    // constructor
-    AnimGraphStateCondition::AnimGraphStateCondition(AnimGraph* animGraph)
-        : AnimGraphTransitionCondition(animGraph, TYPE_ID)
-    {
-        mState = nullptr;
+    const char* AnimGraphStateCondition::s_functionExitStateReached = "Trigger When Exit State Reached";
+    const char* AnimGraphStateCondition::s_functionStartedTransitioning = "Started Transitioning Into State";
+    const char* AnimGraphStateCondition::s_functionStateFullyBlendedIn = "State Fully Blended In";
+    const char* AnimGraphStateCondition::s_functionLeavingState = "Leaving State, Transitioning Out";
+    const char* AnimGraphStateCondition::s_functionStateFullyBlendedOut = "State Fully Blended Out";
+    const char* AnimGraphStateCondition::s_functionHasReachedSpecifiedPlaytime = "Has Reached Specified Playtime";
 
-        CreateAttributeValues();
-        InitInternalAttributesForAllInstances();
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphStateCondition, AnimGraphConditionAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphStateCondition::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphStateCondition::EventHandler, AnimGraphObjectUniqueDataAllocator, 0)
+
+    AnimGraphStateCondition::AnimGraphStateCondition()
+        : AnimGraphTransitionCondition()
+        , m_stateId(AnimGraphNodeId::InvalidId)
+        , m_state(nullptr)
+        , m_playTime(0.0f)
+        , m_testFunction(FUNCTION_EXITSTATES)
+    {
     }
 
 
-    // destructor
+    AnimGraphStateCondition::AnimGraphStateCondition(AnimGraph* animGraph)
+        : AnimGraphStateCondition()
+    {
+        InitAfterLoading(animGraph);
+    }
+
+
     AnimGraphStateCondition::~AnimGraphStateCondition()
     {
     }
 
 
-    // create
-    AnimGraphStateCondition* AnimGraphStateCondition::Create(AnimGraph* animGraph)
+    void AnimGraphStateCondition::Reinit()
     {
-        return new AnimGraphStateCondition(animGraph);
+        if (!AnimGraphNodeId(m_stateId).IsValid())
+        {
+            m_state = nullptr;
+            return;
+        }
+
+        m_state = mAnimGraph->RecursiveFindNodeById(m_stateId);
     }
 
 
-    // create unique data
-    AnimGraphObjectData* AnimGraphStateCondition::CreateObjectData()
+    bool AnimGraphStateCondition::InitAfterLoading(AnimGraph* animGraph)
     {
-        return new UniqueData(this, nullptr);
-    }
+        if (!AnimGraphTransitionCondition::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
 
+        InitInternalAttributesForAllInstances();
 
-    // register the attributes
-    void AnimGraphStateCondition::RegisterAttributes()
-    {
-        // register the state name
-        MCore::AttributeSettings* attributeInfo = RegisterAttribute("State", "stateID", "The state to watch.", ATTRIBUTE_INTERFACETYPE_STATESELECTION);
-        attributeInfo->SetDefaultValue(MCore::AttributeString::Create());
-
-        // create the function combobox
-        attributeInfo = RegisterAttribute("Test Function", "testFunction", "The type of test function or condition.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        attributeInfo->ResizeComboValues(6);
-        attributeInfo->SetComboValue(FUNCTION_EXITSTATES,   "Trigger When Exit State Reached");
-        attributeInfo->SetComboValue(FUNCTION_ENTERING,     "Started Transitioning Into State");
-        attributeInfo->SetComboValue(FUNCTION_ENTER,        "State Fully Blended In");
-        attributeInfo->SetComboValue(FUNCTION_EXIT,         "Leaving State, Transitioning Out");
-        attributeInfo->SetComboValue(FUNCTION_END,          "State Fully Blended Out");
-        attributeInfo->SetComboValue(FUNCTION_PLAYTIME,     "Has Reached Specified Playtime");
-        attributeInfo->SetDefaultValue(MCore::AttributeFloat::Create(FUNCTION_EXITSTATES));
-
-        // create the max playtime attribute
-        attributeInfo = RegisterAttribute("Play Time", "playtime", "The float value in seconds to test against the current playtime of the state.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        attributeInfo->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        attributeInfo->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        attributeInfo->SetMaxValue(MCore::AttributeFloat::Create(FLT_MAX));
+        Reinit();
+        return true;
     }
 
 
@@ -86,14 +89,7 @@ namespace EMotionFX
     {
         return "State Condition";
     }
-
-
-    // get the type string
-    const char* AnimGraphStateCondition::GetTypeString() const
-    {
-        return "AnimGraphStateCondition";
-    }
-
+    
 
     // get the category
     AnimGraphObject::ECategory AnimGraphStateCondition::GetPaletteCategory() const
@@ -105,107 +101,51 @@ namespace EMotionFX
     // test the condition
     bool AnimGraphStateCondition::TestCondition(AnimGraphInstance* animGraphInstance) const
     {
-        // add the unique data for the condition to the anim graph
-        const UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-
         // in case a event got triggered constantly fire true until the condition gets reset
+        const UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (uniqueData->mTriggered)
         {
             return true;
         }
 
-        // get the condition test function type
-        const int32 functionIndex = GetAttributeFloatAsInt32(ATTRIB_FUNCTION);
-
         // check what we want to do
-        switch (functionIndex)
+        switch (m_testFunction)
         {
         // reached an exit state
         case FUNCTION_EXITSTATES:
         {
             // check if the state is a valid state machine
-            if (mState && mState->GetType() == AnimGraphStateMachine::TYPE_ID)
+            if (m_state)
             {
-                // type-cast the state to a state machine
-                AnimGraphStateMachine* stateMachine = static_cast<AnimGraphStateMachine*>(mState);
-
-                // check if we have reached an exit state
-                if (stateMachine->GetExitStateReached(animGraphInstance))
+                if (azrtti_typeid(m_state) == azrtti_typeid<AnimGraphStateMachine>())
                 {
-                    return true;
+                    // type-cast the state to a state machine
+                    AnimGraphStateMachine* stateMachine = static_cast<AnimGraphStateMachine*>(m_state);
+
+                    // check if we have reached an exit state
+                    return stateMachine->GetExitStateReached(animGraphInstance);
                 }
             }
-
             break;
         }
-
-        // reached the specified play time
         case FUNCTION_PLAYTIME:
         {
-            // get the play time to check against
-            // the has reached play time condition is not part of the event handler, so we have to manually handle it here
-            const float playTime = GetAttributeFloat(ATTRIB_PLAYTIME)->GetValue();
-
             // reached the specified play time
-            if (mState)
+            if (m_state)
             {
-                const float currentLocalTime = mState->GetCurrentPlayTime(uniqueData->mAnimGraphInstance);
-                if (currentLocalTime > playTime)
+                const float currentLocalTime = m_state->GetCurrentPlayTime(uniqueData->mAnimGraphInstance);
+                // the has reached play time condition is not part of the event handler, so we have to manually handle it here
+                if (AZ::IsClose(currentLocalTime, m_playTime, AZ::g_fltEps) || currentLocalTime >= m_playTime)
                 {
                     return true;
                 }
             }
+            break;
         }
-        break;
-
         }
-        ;
 
         // no event got triggered, continue playing the state and don't autostart the transition
         return false;
-    }
-
-
-    // clonse the condition
-    AnimGraphObject* AnimGraphStateCondition::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        AnimGraphStateCondition* clone = new AnimGraphStateCondition(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
-    // update the data
-    void AnimGraphStateCondition::OnUpdateAttributes()
-    {
-        // get a pointer to the selected motion node
-        AnimGraphNode* animGraphNode = mAnimGraph->RecursiveFindNode(GetAttributeString(ATTRIB_STATE)->AsChar());
-        if (animGraphNode && animGraphNode->GetCanActAsState())
-        {
-            mState = animGraphNode;
-        }
-        else
-        {
-            mState = nullptr;
-        }
-
-        // disable GUI items that have no influence
-    #ifdef EMFX_EMSTUDIOBUILD
-        // enable all attributes
-        EnableAllAttributes(true);
-
-        // disable the playtime value
-        const int32 function = GetAttributeFloatAsInt32(ATTRIB_FUNCTION);
-        if (function != FUNCTION_PLAYTIME)
-        {
-            SetAttributeDisabled(ATTRIB_PLAYTIME);
-        }
-    #endif
     }
 
 
@@ -214,7 +154,7 @@ namespace EMotionFX
     {
         // find the unique data and reset it
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        uniqueData->mTriggered          = false;
+        uniqueData->mTriggered = false;
     }
 
 
@@ -225,27 +165,22 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (uniqueData == nullptr)
         {
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
-    }
-
-
-    // get the name of the currently used test function
-    const char* AnimGraphStateCondition::GetTestFunctionString() const
-    {
-        // get access to the combo values and the currently selected function
-        MCore::AttributeSettings*   comboAttributeInfo  = GetAnimGraphManager().GetAttributeInfo(this, ATTRIB_FUNCTION);
-        const uint32                functionIndex       = GetAttributeFloatAsUint32(ATTRIB_FUNCTION);
-
-        return comboAttributeInfo->GetComboValue(functionIndex);
     }
 
 
     // construct and output the information summary string for this object
     void AnimGraphStateCondition::GetSummary(AZStd::string* outResult) const
     {
-        *outResult = AZStd::string::format("%s: State='%s', Test Function='%s'", GetTypeString(), GetAttributeString(ATTRIB_STATE)->AsChar(), GetTestFunctionString());
+        AZStd::string stateName;
+        if (m_state)
+        {
+            stateName = m_state->GetNameString();
+        }
+
+        *outResult = AZStd::string::format("%s: State='%s', Test Function='%s'", RTTI_GetTypeName(), stateName.c_str(), GetTestFunctionString());
     }
 
 
@@ -256,12 +191,19 @@ namespace EMotionFX
 
         // add the condition type
         columnName = "Condition Type: ";
-        columnValue = GetTypeString();
+        columnValue = RTTI_GetTypeName();
         *outResult = AZStd::string::format("<table border=\"0\"><tr><td width=\"100\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // add the state name
         columnName = "State Name: ";
-        columnValue = GetAttributeString(ATTRIB_STATE)->AsChar();
+        if (m_state)
+        {
+            columnValue = m_state->GetNameString();
+        }
+        else
+        {
+            columnValue.clear();
+        }
         *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // add the test function
@@ -291,16 +233,18 @@ namespace EMotionFX
         DeleteEventHandler();
     }
 
+
     void AnimGraphStateCondition::UniqueData::CreateEventHandler()
     {
         DeleteEventHandler();
 
         if (mAnimGraphInstance)
         {
-            mEventHandler = new AnimGraphStateCondition::EventHandler(static_cast<AnimGraphStateCondition*>(mObject), this);
+            mEventHandler = aznew AnimGraphStateCondition::EventHandler(static_cast<AnimGraphStateCondition*>(mObject), this);
             mAnimGraphInstance->AddEventHandler(mEventHandler);
         }
     }
+
 
     void AnimGraphStateCondition::UniqueData::DeleteEventHandler()
     {
@@ -313,26 +257,17 @@ namespace EMotionFX
         }
     }
 
-    // callback for when we renamed a node
-    void AnimGraphStateCondition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
-    {
-        MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_STATE)->GetValue() == oldName)
-        {
-            GetAttributeString(ATTRIB_STATE)->SetValue(node->GetName());
-        }
-    }
-
 
     // callback that gets called before a node gets removed
     void AnimGraphStateCondition::OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove)
     {
         MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_STATE)->GetValue() == nodeToRemove->GetName())
+        if (m_stateId == nodeToRemove->GetId())
         {
-            GetAttributeString(ATTRIB_STATE)->SetValue("");
+            SetStateId(AnimGraphNodeId::InvalidId);
         }
     }
+
 
     //--------------------------------------------------------------------------------
     // class AnimGraphStateCondition::EventHandler
@@ -350,6 +285,35 @@ namespace EMotionFX
     // destructor
     AnimGraphStateCondition::EventHandler::~EventHandler()
     {
+    }
+
+
+    bool AnimGraphStateCondition::EventHandler::IsTargetState(const AnimGraphNode* state) const
+    {
+        const AnimGraphNode* conditionState = mCondition->GetState();
+        if (conditionState)
+        {
+            const AZStd::string& stateName = conditionState->GetNameString();
+            return (stateName.empty() || stateName == state->GetName());
+        }
+
+        return false;
+    }
+
+
+    void AnimGraphStateCondition::EventHandler::OnStateChange(AnimGraphInstance* animGraphInstance, AnimGraphNode* state, TestFunction targetFunction)
+    {
+        // check if the state and the anim graph instance are valid and return directly in case one of them is not
+        if (!state || !animGraphInstance)
+        {
+            return;
+        }
+
+        const TestFunction testFunction = mCondition->GetTestFunction();
+        if (testFunction == targetFunction && IsTargetState(state))
+        {
+            mUniqueData->mTriggered = true;
+        }
     }
 
 
@@ -375,5 +339,160 @@ namespace EMotionFX
     {
         OnStateChange(animGraphInstance, state, FUNCTION_END);
     }
-}   // namespace EMotionFX
 
+
+    void AnimGraphStateCondition::SetStateId(AnimGraphNodeId stateId)
+    {
+        m_stateId = stateId;
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
+    }
+
+
+    AnimGraphNodeId AnimGraphStateCondition::GetStateId() const
+    {
+        return m_stateId;
+    }
+
+
+    AnimGraphNode* AnimGraphStateCondition::GetState() const
+    {
+        return m_state;
+    }
+
+
+    void AnimGraphStateCondition::SetPlayTime(float playTime)
+    {
+        m_playTime = playTime;
+    }
+
+
+    float AnimGraphStateCondition::GetPlayTime() const
+    {
+        return m_playTime;
+    }
+
+
+    void AnimGraphStateCondition::SetTestFunction(TestFunction testFunction)
+    {
+        m_testFunction = testFunction;
+    }
+
+
+    AnimGraphStateCondition::TestFunction AnimGraphStateCondition::GetTestFunction() const
+    {
+        return m_testFunction;
+    }
+
+
+    const char* AnimGraphStateCondition::GetTestFunctionString() const
+    {
+        switch (m_testFunction)
+        {
+            case FUNCTION_EXITSTATES:
+            {
+                return s_functionExitStateReached;
+            }
+            case FUNCTION_ENTERING:
+            {
+                return s_functionStartedTransitioning;
+            }
+            case FUNCTION_ENTER:
+            {
+                return s_functionStateFullyBlendedIn;
+            }
+            case FUNCTION_EXIT:
+            {
+                return s_functionLeavingState;
+            }
+            case FUNCTION_END:
+            {
+                return s_functionStateFullyBlendedOut;
+            }
+            case FUNCTION_PLAYTIME:
+            {
+                return s_functionHasReachedSpecifiedPlaytime;
+            }
+            default:
+            {
+                return "Unknown test function";
+            }
+        }
+    }
+
+
+    AZ::Crc32 AnimGraphStateCondition::GetTestFunctionVisibility() const
+    {
+        return AnimGraphNodeId(m_stateId).IsValid() ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
+    }
+
+
+    AZ::Crc32 AnimGraphStateCondition::GetPlayTimeVisibility() const
+    {
+        if (GetTestFunctionVisibility() == AZ::Edit::PropertyVisibility::Hide || m_testFunction != FUNCTION_PLAYTIME)
+        {
+            return AZ::Edit::PropertyVisibility::Hide;
+        }
+
+        return AZ::Edit::PropertyVisibility::Show;
+    }
+
+
+    void AnimGraphStateCondition::GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const
+    {
+        auto itConvertedIds = convertedIds.find(m_stateId);
+        if (itConvertedIds != convertedIds.end())
+        {
+            // need to convert
+            attributesString = AZStd::string::format("-stateId %llu", itConvertedIds->second);
+        }
+    }
+
+
+    void AnimGraphStateCondition::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphStateCondition, AnimGraphTransitionCondition>()
+            ->Version(1)
+            ->Field("stateId", &AnimGraphStateCondition::m_stateId)
+            ->Field("testFunction", &AnimGraphStateCondition::m_testFunction)
+            ->Field("playTime", &AnimGraphStateCondition::m_playTime)
+            ;
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<AnimGraphStateCondition>("State Condition", "State condition attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ_CRC("AnimGraphStateId", 0x3547298f), &AnimGraphStateCondition::m_stateId, "State", "The state to watch.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphStateCondition::Reinit)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphStateCondition::GetAnimGraph)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimGraphStateCondition::m_testFunction, "Test Function", "The type of test function or condition.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateCondition::GetTestFunctionVisibility)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                ->EnumAttribute(FUNCTION_EXITSTATES,s_functionExitStateReached)
+                ->EnumAttribute(FUNCTION_ENTERING,  s_functionStartedTransitioning)
+                ->EnumAttribute(FUNCTION_ENTER,     s_functionStateFullyBlendedIn)
+                ->EnumAttribute(FUNCTION_EXIT,      s_functionLeavingState)
+                ->EnumAttribute(FUNCTION_END,       s_functionStateFullyBlendedOut)
+                ->EnumAttribute(FUNCTION_PLAYTIME,  s_functionHasReachedSpecifiedPlaytime)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphStateCondition::m_playTime, "Play Time", "The play time in seconds.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateCondition::GetPlayTimeVisibility)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0)
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ;
+    }
+} // namespace EMotionFX

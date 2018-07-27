@@ -13,7 +13,7 @@
 #pragma once
 
 #include "StandardHeaders.h"
-#include <AZCore/std/string/string.h>
+#include <AzCore/std/string/string.h>
 
 namespace MCore
 {

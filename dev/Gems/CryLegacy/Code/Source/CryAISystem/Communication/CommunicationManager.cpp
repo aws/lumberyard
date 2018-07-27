@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CommunicationManager.h"
 #include "CommunicationPlayer.h"
 
@@ -134,7 +134,7 @@ void CCommunicationManager::LoadGlobalConfiguration(const XmlNodeRef& rootNode)
 
     const char* tagName = rootNode->getTag();
 
-    if (!stricmp(tagName, "GlobalConfiguration"))
+    if (!azstricmp(tagName, "GlobalConfiguration"))
     {
         int childCount = rootNode->getChildCount();
 
@@ -142,7 +142,7 @@ void CCommunicationManager::LoadGlobalConfiguration(const XmlNodeRef& rootNode)
         {
             XmlNodeRef childNode = rootNode->getChild(i);
 
-            if (!stricmp(childNode->getTag(), "WWISE"))
+            if (!azstricmp(childNode->getTag(), "WWISE"))
             {
                 const char* prefixForPlayTriggerAttribute = "prefixForPlayTrigger";
                 if (childNode->haveAttr(prefixForPlayTriggerAttribute))
@@ -184,7 +184,7 @@ bool CCommunicationManager::LoadCommunicationSettingsXML(const char* fileName)
 
     const char* tagName = rootNode->getTag();
 
-    if (!stricmp(tagName, "Communications"))
+    if (!azstricmp(tagName, "Communications"))
     {
         int childCount = rootNode->getChildCount();
 
@@ -193,15 +193,15 @@ bool CCommunicationManager::LoadCommunicationSettingsXML(const char* fileName)
         {
             XmlNodeRef childNode = rootNode->getChild(i);
 
-            if (!stricmp(childNode->getTag(), "GlobalConfiguration"))
+            if (!azstricmp(childNode->getTag(), "GlobalConfiguration"))
             {
                 LoadGlobalConfiguration(childNode);
             }
-            else if (!stricmp(childNode->getTag(), "Variables"))
+            else if (!azstricmp(childNode->getTag(), "Variables"))
             {
                 LoadVariables(childNode, fileName);
             }
-            else if (!stricmp(childNode->getTag(), "ChannelConfig"))
+            else if (!azstricmp(childNode->getTag(), "ChannelConfig"))
             {
                 int channelCount = childNode->getChildCount();
 
@@ -214,7 +214,7 @@ bool CCommunicationManager::LoadCommunicationSettingsXML(const char* fileName)
                     }
                 }
             }
-            else if (!stricmp(childNode->getTag(), "Config"))
+            else if (!azstricmp(childNode->getTag(), "Config"))
             {
                 if (!childNode->haveAttr("name"))
                 {
@@ -253,7 +253,7 @@ bool CCommunicationManager::LoadCommunicationSettingsXML(const char* fileName)
                 {
                     XmlNodeRef commNode = childNode->getChild(c);
 
-                    if (!stricmp(commNode->getTag(), "Communication"))
+                    if (!azstricmp(commNode->getTag(), "Communication"))
                     {
                         SCommunication comm;
                         if (!LoadCommunication(commNode, comm))
@@ -435,19 +435,19 @@ bool ChoiceMethod(const XmlNodeRef& node, const char* attribute, SCommunication:
     {
         node->getAttr(attribute, &choiceMethod);
 
-        if (!stricmp(choiceMethod, "random"))
+        if (!azstricmp(choiceMethod, "random"))
         {
             method = SCommunication::Random;
         }
-        else if (!stricmp(choiceMethod, "sequence"))
+        else if (!azstricmp(choiceMethod, "sequence"))
         {
             method = SCommunication::Sequence;
         }
-        else if (!stricmp(choiceMethod, "randomsequence"))
+        else if (!azstricmp(choiceMethod, "randomsequence"))
         {
             method = SCommunication::RandomSequence;
         }
-        else if (!stricmp(choiceMethod, "match"))
+        else if (!azstricmp(choiceMethod, "match"))
         {
             method = SCommunication::Match;
         }
@@ -471,11 +471,11 @@ bool AnimationType(const XmlNodeRef& node, const char* attribute, uint32& flags)
 
         flags &= ~SCommunication::AnimationAction;
 
-        if (!stricmp(animationType, "action"))
+        if (!azstricmp(animationType, "action"))
         {
             flags |= SCommunication::AnimationAction;
         }
-        else if (stricmp(animationType, "signal"))
+        else if (azstricmp(animationType, "signal"))
         {
             AIWarning("Invalid value for attribute '%s' tag '%s' at line %d...",
                 attribute, node->getTag(), node->getLine());
@@ -544,7 +544,7 @@ bool CCommunicationManager::LoadCommunication(const XmlNodeRef& commNode, SCommu
     {
         XmlNodeRef varNode = commNode->getChild(i);
 
-        if (stricmp(varNode->getTag(), "Variation"))
+        if (azstricmp(varNode->getTag(), "Variation"))
         {
             AIWarning("Unexpected tag '%s' found at line %d...", varNode->getTag(), varNode->getLine());
 

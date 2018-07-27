@@ -14,6 +14,7 @@
 ########################################################################################
 
 def build(bld):
+
     #==============================
     # Build CryRenderGL
     #==============================
@@ -43,6 +44,7 @@ def build(bld):
                                'NVAPI'],
         includes            = [ '..', '../..',
                                 bld.Path('Code/Tools/HLSLCrossCompiler/include'),
+                                bld.Path('Code/CryEngine/RenderDll/Common'),
                                 bld.ThirdPartyPath('squish'),
                                 './Specification'],
         defines             = [ 'DO_RENDERLOG',
@@ -50,10 +52,18 @@ def build(bld):
                                 'DIRECT3D10',
                                 'XRENDERGL_EXPORTS',
                                 '_RENDERER',
-                                'RENDERER_EXPORTS',
-                                'ENGINE_EXPORTS',
                                 'EXCLUDE_CINEMIZER_SDK',
                                 'OPENGL' ],
+
+        # Compiler Specific
+        win_x64_clang_cxxflags = [ '-Wno-microsoft-unqualified-friend',
+                                '-Wno-deprecated-declarations',
+                                '-Wno-sometimes-uninitialized',
+                                '-Wno-shift-negative-value',
+                                '-Wno-null-dereference',
+                                '-Wno-array-bounds',
+                                '-Wno-return-type',
+                                '-Wno-enum-compare-switch'],
 
         # Platform Specific
         win_file_list       = ['opengl_mesh_baker.waf_files', 'opengl_loader_gl.waf_files', 'opengl_loader_wgl.waf_files'],

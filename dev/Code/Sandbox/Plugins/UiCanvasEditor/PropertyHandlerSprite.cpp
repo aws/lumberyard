@@ -18,7 +18,7 @@
 #include <QtGui/QImage>
 #include <QtGui/QPixmap>
 #include <QtWidgets/QHBoxLayout>
-#include <QtWidgets/QPushbutton>
+#include <QtWidgets/QPushButton>
 
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Memory/OSAllocator.h>
@@ -37,6 +37,7 @@ PropertySpriteCtrl::PropertySpriteCtrl(QWidget* parent)
 {
     QObject::connect(m_propertyAssetCtrl,
         &AzToolsFramework::PropertyAssetCtrl::OnAssetIDChanged,
+        this,
         [ this ](AZ::Data::AssetId newAssetID)
         {
             EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, this);
@@ -69,6 +70,7 @@ PropertySpriteCtrl::PropertySpriteCtrl(QWidget* parent)
 
         QObject::connect(slicerButton,
             &QPushButton::clicked,
+            this,
             [ this ](bool checked)
             {
                 if (!m_propertyAssetCtrl->GetCurrentAssetID().IsValid())

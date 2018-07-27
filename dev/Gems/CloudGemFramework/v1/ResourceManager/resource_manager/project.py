@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #2 $
+# $Revision: #1 $
 
 import fnmatch
 import os
@@ -357,7 +357,7 @@ def delete_stack(context, args):
 
     if context.stack.id_exists(context.config.project_stack_id):
 
-        retained_bucket_names = ["Config", "Logs"]
+        retained_bucket_names = ["Configuration", "Logs"]
         retained_bucket_ids = [context.stack.get_physical_resource_id(context.config.project_stack_id, name, optional=True, expected_type='AWS::S3::Bucket') for name in retained_bucket_names]
 
         pending_resource_status = __get_pending_resource_status(context, deleting=True)

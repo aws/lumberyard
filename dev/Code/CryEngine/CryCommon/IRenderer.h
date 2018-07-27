@@ -15,7 +15,6 @@
 
 #include "Cry_Geo.h"
 #include "Cry_Camera.h"
-#include <CryEngineAPI.h>
 #include <IFlares.h> // <> required for Interfuscator
 #include <AzCore/Casting/numeric_cast.h>
 
@@ -106,6 +105,7 @@ class IImageFile;
 class CRenderView;
 struct SDynTexture2;
 class CTexture;
+enum ETexPool : int;
 
 //////////////////////////////////////////////////////////////////////
 typedef unsigned char bvec4[4];
@@ -1069,7 +1069,6 @@ struct TransformationMatrices
 struct ISvoRenderer
 {
     virtual bool IsShaderItemUsedForVoxelization(SShaderItem& rShaderItem, IRenderNode* pRN){ return false; }
-    virtual void SetEditingHelper(const Sphere& sp){}
     virtual void Release(){}
 };
 
@@ -1522,7 +1521,7 @@ struct IRenderer
 
     // Summary:
     //  Creates new RE (RenderElement) of type (edt).
-    virtual CRendElementBase* EF_CreateRE (EDataType edt) = 0;
+    virtual IRenderElement* EF_CreateRE (EDataType edt) = 0;
 
     // Summary:
     //  Starts using of the shaders (return first index for allow recursions).
@@ -1540,7 +1539,7 @@ struct IRenderer
 
     // Summary:
     //  Adds shader to the list.
-    virtual void EF_AddEf (CRendElementBase* pRE, SShaderItem& pSH, CRenderObject* pObj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter) = 0;
+    virtual void EF_AddEf (IRenderElement* pRE, SShaderItem& pSH, CRenderObject* pObj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter) = 0;
 
     //! Draw all shaded REs in the list
     virtual void EF_EndEf3D (const int nFlags, const int nPrecacheUpdateId, const int nNearPrecacheUpdateId, const SRenderingPassInfo& passInfo) = 0;
@@ -1853,7 +1852,7 @@ struct IRenderer
     virtual int CreateRenderTarget(const char* name, int nWidth, int nHeight, const ColorF& clearColor, ETEX_Format eTF) = 0;
     virtual bool DestroyRenderTarget (int nHandle) = 0;
     virtual bool SetRenderTarget(int nHandle, SDepthTexture* pDepthSurf = nullptr) = 0;
-    virtual SDepthTexture* CreateDepthSurface(int nWidth, int nHeight, bool bAA) = 0;
+    virtual SDepthTexture* CreateDepthSurface(int nWidth, int nHeight) = 0;
     virtual void DestroyDepthSurface(SDepthTexture* pDepthSurf) = 0;
 
     virtual IOpticsElementBase* CreateOptics(EFlareType type) const = 0;
@@ -2250,11 +2249,8 @@ struct IRenderer
     // Gets an (existing) depth surface of the dimensions given
     virtual SDepthTexture* FX_GetDepthSurface(int nWidth, int nHeight, bool bAA) = 0;
 
-    // Creates a new depth surface
-    virtual SDepthTexture* FX_CreateDepthSurface(int nWidth, int nHeight, bool bAA) = 0;
-
     // Check to see if buffers are full and if so flush
-    virtual void FX_CheckOverflow(int nVerts, int nInds, CRendElementBase* re, int* nNewVerts = nullptr, int* nNewInds = nullptr) = 0;
+    virtual void FX_CheckOverflow(int nVerts, int nInds, IRenderElement* re, int* nNewVerts = nullptr, int* nNewInds = nullptr) = 0;
 
     // Perform pre render work
     virtual void FX_PreRender(int Stage) = 0;
@@ -2287,7 +2283,7 @@ struct IRenderer
     virtual void FX_DrawPrimitive(const eRenderPrimitiveType eType, const int nStartVertex, const int nVerticesCount, const int nInstanceVertices = 0) = 0;
 
     // Clear texture
-    virtual void FX_ClearTarget(CTexture* pTex) = 0;
+    virtual void FX_ClearTarget(ITexture* pTex) = 0;
 
     // Clear depth
     virtual void FX_ClearTarget(SDepthTexture* pTex) = 0;
@@ -2311,7 +2307,7 @@ struct IRenderer
     virtual bool FX_PopRenderTarget(int nTarget) = 0;
 
     // Start an effect / shader / etc..
-    virtual void FX_Start(CShader* ef, int nTech, CShaderResources* Res, CRendElementBase* re) = 0;
+    virtual void FX_Start(CShader* ef, int nTech, CShaderResources* Res, IRenderElement* re) = 0;
 
     // Pop render target on render thread
     virtual void RT_PopRenderTarget(int nTarget) = 0;
@@ -2335,6 +2331,19 @@ struct IRenderer
     virtual float GetFloatConfigurationValue(const char* varName, float defaultValue) = 0;
     virtual bool GetBooleanConfigurationValue(const char* varName, bool defaultValue) = 0;
 
+    // Methods exposed to external libraries
+    virtual void ApplyDepthTextureState(int unit, int nFilter, bool clamp) = 0;
+    virtual ITexture* GetZTargetTexture() = 0;
+    virtual int GetTextureState(const STexState& TS) = 0;
+    virtual uint32 TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, uint32 nMips, uint32 nSlices, const ETEX_Format eTF, ETEX_TileMode eTM = eTM_None) = 0;
+    virtual void ApplyForID(int nID, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit, bool useWhiteDefault) = 0;
+    virtual ITexture* Create3DTexture(const char* szName, int nWidth, int nHeight, int nDepth, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst) = 0;
+    virtual bool IsTextureExist(const ITexture* pTex) = 0;
+    virtual const char* NameForTextureFormat(ETEX_Format eTF) = 0;
+    virtual const char* NameForTextureType(ETEX_Type eTT) = 0;
+    virtual bool IsVideoThreadModeEnabled() = 0;
+    virtual IDynTexture* CreateDynTexture2(uint32 nWidth, uint32 nHeight, uint32 nTexFlags, const char* szSource, ETexPool eTexPool) = 0;
+    virtual uint32 GetCurrentTextureAtlasSize() = 0;
 private:
     // use private for EF_Query to prevent client code to submit arbitrary combinations of output data/size
     virtual void EF_QueryImpl(ERenderQueryTypes eQuery, void* pInOut0, uint32 nInOutSize0, void* pInOut1, uint32 nInOutSize1) = 0;

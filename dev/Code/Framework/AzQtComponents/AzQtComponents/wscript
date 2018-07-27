@@ -27,26 +27,37 @@ def build(bld):
 
     # using CryPipelineModule here, to prevent it from being linked monolithically in release builds.
     bld.CryPipelineModule(
-        target          = 'AzQtComponents',
+        target           = 'AzQtComponents',
 
-        vs_filter       = 'AZ Framework/AzQtComponents',
-        file_list       = ['azqtcomponents.waf_files'],
-        platforms       = ['win', 'darwin'],
-        configurations  = ['all'],
-        disable_pch     = True,
-        features        = ['qt5', 'link_running_program', 'crcfix', 'copy_to_lmbrsetup'],
-        autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
-        use             = ['AzFramework'],
-        includes        = ['..', '../../AzToolsFramework'],
-        export_includes = ['..'],
+        vs_filter        = 'AZ Framework/AzQtComponents',
 
-        win_defines     = ['WIN64'],
-        win_lib         = ['User32', 'Shell32'],
+        file_list        = ['azqtcomponents.waf_files'],
+        win_file_list    = ['azqtcomponents_win.waf_files'],
+        darwin_file_list = ['azqtcomponents_darwin.waf_files'],
 
-        msvc_cxxflags   = [
+        platforms        = ['win', 'darwin'],
+        configurations   = ['all'],
+        disable_pch      = True,
+        features         = ['qt5', 'link_running_program', 'crcfix', 'copy_to_lmbrsetup'],
+        autod_uselib     = ['QT5CORE','QT5GUI','QT5WIDGETS','QT5XML', 'QT5WINEXTRAS', 'QT5MACEXTRAS'],
+        use              = ['AzFramework'],
+        includes         = ['..', '../../AzToolsFramework'],
+        export_includes  = ['..'],
+
+        # Note that for some of the high dpi and SHAppBarMessage/ABM_GETAUTOHIDEBAREX stuff for the title bars, we require a WINNT version of 602
+        # This define does not need to be exported to any other module and won't affect our header files being included
+        win_defines      = ['WIN64', 'NOMINMAX', '_WIN32_WINNT=0x602'],
+
+        win_lib          = ['User32', 'Shell32', 'Gdi32', 'Magnification'],
+
+        msvc_cxxflags    = [
             '/W4', # warning level
             '/wd4127', # warning caused by QVector and QRect; disabling in this project because it's not useful
             '/wd4351', # warning caused by QVector and QPainter; disabling in this project because it's not useful
+        ],
+        clang_cxxflags   = [
+            '-Werror', # warnings as errors
+            '-Wall' # warning level
         ],
 
         darwin_enable_rtti = True,
@@ -91,9 +102,9 @@ def build(bld):
 
             features        = ['qt5'],
 
-            uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
+            uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS', 'QT5SVG'],
 
-            darwin_rpath    = ['@executable_path/../Bin64/qtlibs_mac/Frameworks']
+            darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib']
         )
 
 # make qss and ini files show up in generated projects, but don't process them as part of the build

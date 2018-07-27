@@ -13,7 +13,7 @@
 #pragma once
 
 #include "native/utilities/BatchApplicationManager.h"
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 #include <QFileSystemWatcher>
 #include <QMap>
 #include <QAtomicInt>

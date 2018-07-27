@@ -16,6 +16,7 @@
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <EMotionFX/CommandSystem/Source/NodeGroupCommands.h>
 #include <EMotionFX/Source/NodeGroup.h>
+#include <MCore/Source/StringConversions.h>
 
 // qt headers
 #include <QTableWidget>
@@ -26,6 +27,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QMenu>
+#include <QCheckBox>
 
 
 namespace EMStudio

@@ -211,6 +211,7 @@ namespace AzFramework
                 AZStd::string testPathWithPrefixAndExt = AZStd::string::format("%s" AZ_DYNAMIC_LIBRARY_EXTENSION, testPath.c_str(), modulePathStr);
                 if (AZ::IO::SystemFile::Exists(testPathWithPrefixAndExt.c_str()))
                 {
+                    StringFunc::Path::Normalize(testPath);
                     modulePath = testPath.c_str();
                     return;
                 }

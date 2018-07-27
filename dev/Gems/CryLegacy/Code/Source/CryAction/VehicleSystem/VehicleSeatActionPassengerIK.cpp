@@ -13,7 +13,7 @@
 
 // Description : Implements a seat action to handle IK on the passenger body
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "IActorSystem.h"
 #include "IVehicleSystem.h"

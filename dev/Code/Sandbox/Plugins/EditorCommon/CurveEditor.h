@@ -174,6 +174,7 @@ public slots:
 protected:
     struct SMouseHandler
     {
+        virtual ~SMouseHandler() = default;
         virtual void mousePressEvent(QMouseEvent* pEvent) {}
         virtual void mouseDoubleClickEvent(QMouseEvent* pEvent) {}
         virtual void mouseMoveEvent(QMouseEvent* pEvent) {}

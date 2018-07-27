@@ -3,7 +3,6 @@
     {
         "EmotionFXSDK/ExporterLib" :
         [
-            "Exporter/AnimGraphExport.cpp",
             "Exporter/DeformableAttachmentExport.cpp",
             "Exporter/EndianConversion.cpp",
             "Exporter/Exporter.h",
@@ -15,7 +14,6 @@
             "Exporter/MeshExport.cpp",
             "Exporter/MorphTargetExport.cpp",
             "Exporter/MotionEventExport.cpp",
-            "Exporter/MotionSetExport.cpp",
             "Exporter/NodeExport.cpp",
             "Exporter/SkeletalMotionExport.cpp",
             "Exporter/SkinExport.cpp",

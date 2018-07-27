@@ -13,7 +13,7 @@
 
 #include "pch.h"
 #include "stdafx.h"
-#include "Platform.h"
+#include "platform.h"
 #include "CafCompressionHelper.h"
 #include "Shared/AnimSettings.h"
 
@@ -349,7 +349,7 @@ void CafCompressionHelper::CleanUpCompressionResult(const char* createdFile)
 
     // remove all empty folders inside ANIMATION_COMPRESSION_TEMP_ROOT
     string path = createdFolder;
-    while (!path.empty() && stricmp(path.c_str(), ANIMATION_COMPRESSION_TEMP_ROOT) != 0)
+    while (!path.empty() && azstricmp(path.c_str(), ANIMATION_COMPRESSION_TEMP_ROOT) != 0)
     {
         path.TrimRight("\\/");
         if (!QDir().rmdir(path.c_str()))

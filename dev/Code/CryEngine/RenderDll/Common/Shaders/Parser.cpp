@@ -59,8 +59,10 @@ FXMacro sStaticMacros;
 
 bool SkipChar(unsigned int ch)
 {
+    // Return true if ch is any of the first 0x20 ascii characters
     bool res = ch <= 0x20;
 
+    // Also return true if ch is any of the following commented characters
     res |= (ch - 0x21) <  2; // !"
     res |= (ch - 0x26) < 10; // &'()*+,-./
     res |= (ch - 0x3A) <  6; // :;<=>?
@@ -130,7 +132,7 @@ void fxParserInit(void)
     // See: http://support.microsoft.com/kb/2448404
     // Causes cracks in tessellated meshes
     char sdkVer[4];
-    _itoa_s(D3DX_SDK_VERSION, sdkVer, 4);
+    azitoa(D3DX_SDK_VERSION, sdkVer, 4);
     fxAddMacro("D3DX_SDK_VERSION", sdkVer, sStaticMacros);
 #else
     fxAddMacro("D3DX_SDK_VERSION", "0", sStaticMacros);
@@ -326,7 +328,7 @@ float shGetFloat(const char* buf)
     }
     float f = 0;
 
-    int res =   sscanf(buf, "%f", &f);
+    int res = azsscanf(buf, "%f", &f);
     assert(res);
 
     return f;
@@ -340,7 +342,7 @@ void shGetFloat(const char* buf, float* v1, float* v2)
     }
     float f = 0, f1 = 0;
 
-    int n = sscanf(buf, "%f %f", &f, &f1);
+    int n = azsscanf(buf, "%f %f", &f, &f1);
     if (n == 1)
     {
         *v1 = f;
@@ -363,12 +365,12 @@ int shGetInt(const char* buf)
 
     if (buf[0] == '0' && buf[1] == 'x')
     {
-        int res = sscanf(&buf[2], "%x", &i);
+        int res = azsscanf(&buf[2], "%x", &i);
         assert(res);
     }
     else
     {
-        int res = sscanf(buf, "%i", &i);
+        int res = azsscanf(buf, "%i", &i);
         assert(res);
     }
 
@@ -383,7 +385,7 @@ int shGetHex(const char* buf)
     }
     int i = 0;
 
-    int res = sscanf(buf, "%x", &i);
+    int res = azsscanf(buf, "%x", &i);
     assert(res);
 
     return i;
@@ -397,12 +399,12 @@ uint64 shGetHex64(const char* buf)
     }
 #if defined(__GNUC__)
     unsigned long long i = 0;
-    int res = sscanf(buf, "%llx", &i);
+    int res = azsscanf(buf, "%llx", &i);
     assert(res);
     return (uint64)i;
 #else
     uint64 i = 0;
-    int res = sscanf(buf, "%I64x", &i);
+    int res = azsscanf(buf, "%I64x", &i);
     assert(res);
     return i;
 #endif
@@ -414,7 +416,7 @@ void shGetVector(char* buf, Vec3& v)
     {
         return;
     }
-    int res = sscanf(buf, "%f %f %f", &v[0], &v[1], &v[2]);
+    int res = azsscanf(buf, "%f %f %f", &v[0], &v[1], &v[2]);
     assert(res);
 }
 
@@ -424,7 +426,7 @@ void shGetVector(char* buf, float v[3])
     {
         return;
     }
-    int res = sscanf(buf, "%f %f %f", &v[0], &v[1], &v[2]);
+    int res = azsscanf(buf, "%f %f %f", &v[0], &v[1], &v[2]);
     assert(res);
 }
 
@@ -434,7 +436,7 @@ void shGetVector4(char* buf, Vec4& v)
     {
         return;
     }
-    int res = sscanf(buf, "%f %f %f %f", &v.x, &v.y, &v.z, &v.w);
+    int res = azsscanf(buf, "%f %f %f %f", &v.x, &v.y, &v.z, &v.w);
     assert(res);
 }
 
@@ -552,7 +554,7 @@ void shGetColor(const char* buf, ColorF& v)
     {
         n = 0;
         float scal = 1;
-        strcpy(name, buf);
+        azstrcpy(name, AZ_ARRAY_SIZE(name), buf);
         char nm[64];
         if (strchr(buf, '*'))
         {
@@ -579,12 +581,12 @@ void shGetColor(const char* buf, ColorF& v)
                 n++;
             }
             scal = shGetFloat(&buf[n]);
-            strcpy(name, nm);
+            azstrcpy(name, AZ_ARRAY_SIZE(name), nm);
         }
         n = 0;
         while (sCols[n].nam)
         {
-            if (!_stricmp(sCols[n].nam, name))
+            if (!azstricmp(sCols[n].nam, name))
             {
                 v = sCols[n].col;
                 if (scal != 1)
@@ -632,7 +634,7 @@ void shGetColor(char* buf, float v[4])
     {
         int n = 0;
         float scal = 1;
-        strcpy(name, buf);
+        azstrcpy(name, AZ_ARRAY_SIZE(name), buf);
         char nm[64];
         if (strchr(buf, '*'))
         {
@@ -659,12 +661,12 @@ void shGetColor(char* buf, float v[4])
                 n++;
             }
             scal = shGetFloat(&buf[n]);
-            strcpy(name, nm);
+            azstrcpy(name, AZ_ARRAY_SIZE(name), nm);
         }
         n = 0;
         while (sCols[n].nam)
         {
-            if (!_stricmp(sCols[n].nam, name))
+            if (!azstricmp(sCols[n].nam, name))
             {
                 v[0] = sCols[n].col[0];
                 v[1] = sCols[n].col[1];
@@ -681,7 +683,7 @@ void shGetColor(char* buf, float v[4])
             n++;
         }
     }
-    int n = sscanf(buf, "%f %f %f %f", &v[0], &v[1], &v[2], &v[3]);
+    int n = azsscanf(buf, "%f %f %f %f", &v[0], &v[1], &v[2], &v[3]);
     switch (n)
     {
     case 0:

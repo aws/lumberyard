@@ -15,8 +15,8 @@
 #pragma once
 
 #include <AzCore/base.h>
-#include <AzCore/Memory/systemallocator.h>
-#include <AzToolsFramework/Ui/PropertyEditor/PropertyEditorAPI.h>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include "CharacterEditor/AnimationBrowser.h"
 #include "ReflectedVar.h"
 #include <QtWidgets/QWidget>

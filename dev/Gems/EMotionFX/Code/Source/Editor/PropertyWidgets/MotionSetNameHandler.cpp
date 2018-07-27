@@ -17,6 +17,8 @@
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MotionSetNameHandler, AZ::SystemAllocator, 0)
+
     AZ::u32 MotionSetNameHandler::GetHandlerName() const
     {
         return AZ_CRC("MotionSetName", 0xcf534ea6);
@@ -74,9 +76,10 @@ namespace EMotionFX
         GUI->clear();
         if (m_motionSetAsset && m_motionSetAsset->Get() && m_motionSetAsset->Get()->m_emfxMotionSet)
         {
-            const EMotionFX::Integration::EMotionFXPtr<EMotionFX::MotionSet>& emfxMotionSet = m_motionSetAsset->Get()->m_emfxMotionSet;
+            const AZStd::unique_ptr<EMotionFX::MotionSet>& emfxMotionSet = m_motionSetAsset->Get()->m_emfxMotionSet;
             AZStd::vector<const MotionSet*> motionSets;
-            emfxMotionSet->RecursiveGetMotionSets(motionSets, true);
+            const bool isOwnedByRutime = emfxMotionSet->GetIsOwnedByRuntime();
+            emfxMotionSet->RecursiveGetMotionSets(motionSets, isOwnedByRutime);
 
             GUI->clear();
             for (const EMotionFX::MotionSet* motionSet : motionSets)

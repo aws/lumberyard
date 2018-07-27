@@ -25,7 +25,7 @@ namespace LegacyTimeDemoRecorder
         {
             serialize->Class<LegacyTimeDemoRecorderSystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {

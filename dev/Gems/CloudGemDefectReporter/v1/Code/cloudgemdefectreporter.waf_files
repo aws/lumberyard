@@ -1,0 +1,45 @@
+{
+    "auto": {
+        "Include": [
+            "Include/CloudGemDefectReporter/CloudGemDefectReporterBus.h",
+            "Include/CloudGemDefectReporter/DefectReporterDataStructures.h"
+        ], 
+        "Source": [
+            "Source/CloudGemDefectReporterModule.cpp", 
+            "Source/CloudGemDefectReporterSystemComponent.cpp", 
+            "Source/CloudGemDefectReporterSystemComponent.h", 
+            "Source/DefectReportManager.cpp",
+            "Source/DefectReportManager.h",
+            "Source/TransformDefectReportingComponent.cpp",
+            "Source/TransformDefectReportingComponent.h",            
+            "Source/LogCollectingComponent.cpp",
+            "Source/LogCollectingComponent.h",
+            "Source/NetworkInfoCollectingComponent.cpp",
+            "Source/NetworkInfoCollectingComponent.h",
+            "Source/NetworkInfoCollectingJob.cpp",
+            "Source/NetworkInfoCollectingJob.h",
+            "Source/Traceroute.h",
+            "Source/NSLookup.h",
+            "Source/DxDiagCollectingComponent.cpp",
+            "Source/DxDiagCollectingComponent.h",
+            "Source/DxDiag.h",
+            "Source/PostDefectReportsJob.cpp",
+            "Source/PostDefectReportsJob.h",
+            "Source/FPSDropReportingComponent.cpp",
+            "Source/FPSDropReportingComponent.h",
+            "Source/ImageLoaderSystemComponent.cpp",
+            "Source/ImageLoaderSystemComponent.h",
+            "Source/ImageLoaderBus.h",
+            "Source/jpgd.cpp",
+            "Source/jpgd.h",
+            "AWS/ServiceApi/CloudGemDefectReporterClientComponent.cpp",
+            "AWS/ServiceApi/CloudGemDefectReporterClientComponent.h"
+        ]
+    }, 
+    "none": {
+        "Source": [
+            "Source/CloudGemDefectReporter_precompiled.cpp", 
+            "Source/CloudGemDefectReporter_precompiled.h"
+        ]
+    }
+}

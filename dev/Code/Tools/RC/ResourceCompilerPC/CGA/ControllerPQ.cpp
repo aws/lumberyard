@@ -16,7 +16,7 @@
 
 #include "AnimationLoader.h"
 #include "AnimationManager.h"
-#include "Wavelets/Compression.h"
+#include "wavelets/Compression.h"
 
 #include <float.h>
 

@@ -18,7 +18,7 @@
 
 #include <CommonCrypto/CommonCrypto.h>
 
-#include <AZCore/std/string/conversions.h>
+#include <AzCore/std/string/conversions.h>
 
 @implementation InAppPurchasesDelegate
 

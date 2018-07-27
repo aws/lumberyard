@@ -30,7 +30,7 @@ namespace AzToolsFramework
             {
                 serialize->Class<EditorSelectionAccentSystemComponent, AZ::Component>()
                     ->Version(0)
-                    ->SerializerForEmptyClass();
+                    ;
 
                 if (AZ::EditContext* ec = serialize->GetEditContext())
                 {
@@ -125,12 +125,12 @@ namespace AzToolsFramework
                 }
             }
 
-            // Find Hovered entities 
+            // Find Hovered entities
             // Set their accent to 'Hover'
 
             AzToolsFramework::EntityIdList highlightedEntities;
             AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(highlightedEntities, &AzToolsFramework::ToolsApplicationRequests::GetHighlightedEntities);
-            
+
             for (const AZ::EntityId& highlightedEntity : highlightedEntities)
             {
                 AzToolsFramework::ComponentEntityEditorRequestBus::Event(highlightedEntity, &ComponentEntityEditorRequests::SetSandboxObjectAccent, ComponentEntityAccentType::Hover);

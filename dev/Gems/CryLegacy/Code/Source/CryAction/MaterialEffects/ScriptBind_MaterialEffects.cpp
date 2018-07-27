@@ -15,7 +15,7 @@
 //               from C++ if possible  Use this ScriptBind for legacy stuff
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ScriptBind_MaterialEffects.h"
 #include "MaterialEffects.h"
 

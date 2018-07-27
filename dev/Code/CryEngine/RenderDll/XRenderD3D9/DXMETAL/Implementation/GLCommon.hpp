@@ -21,30 +21,44 @@
 #include "GLPlatform.hpp"
 #import <sys/utsname.h>
 #import <Foundation/Foundation.h>
+#include <Metal/Metal.h>
 
-#ifdef  _DEBUG
-#   define DXMETAL_DEBUG_PIPELINE
-#   define DXMETAL_DEBUG_SHADER_COMPILER
-#endif // _DEBUG
+// Metal Debug Options
+#define DXMETAL_LOG_PIPELINE_ERRORS               1
+#define DXMETAL_LOG_SHADER_ERRORS                 1
+#define DXMETAL_LOG_SHADER_WARNINGS               0
+#define DXMETAL_LOG_SHADER_SOURCE                 0 // Dump shader source every time a new one is compiled
+#define DXMETAL_LOG_SHADER_REFLECTION_VALIDATION  0 // Dump verbouse shader inputs information during pipeline creation
 
-#ifdef DXMETAL_DEBUG_PIPELINE
+#if DXMETAL_LOG_PIPELINE_ERRORS
 #   define LOG_METAL_PIPELINE_ERRORS(...)               NSLog(__VA_ARGS__)
 #else
 #   define LOG_METAL_PIPELINE_ERRORS(...)
-#endif // DXMETAL_DEBUG_PIPELINE
+#endif // DXMETAL_LOG_PIPELINE_ERRORS
 
-#ifdef DXMETAL_DEBUG_SHADER_COMPILER
-#   define LOG_METAL_PIPELINE_ERRORS(...)               NSLog(__VA_ARGS__)
+#if DXMETAL_LOG_SHADER_ERRORS
 #   define LOG_METAL_SHADER_ERRORS(...)                 NSLog(__VA_ARGS__)
-// Dump shader source every time a new one is compiled
-#   define LOG_METAL_SHADER_SOURCE(...)                 NSLog(__VA_ARGS__)
-// Dump verbouse shader inputs information during pipeline creation
-#   define LOG_METAL_SHADER_REFLECTION_VALIDATION(...)  NSLog(__VA_ARGS__)
 #else
 #   define LOG_METAL_SHADER_ERRORS(...)
+#endif // DXMETAL_LOG_SHADER_ERRORS
+
+#if DXMETAL_LOG_SHADER_WARNINGS
+#   define LOG_METAL_SHADER_WARNINGS(...)               NSLog(__VA_ARGS__)
+#else
+#   define LOG_METAL_SHADER_WARNINGS(...)
+#endif // DXMETAL_LOG_SHADER_WARNINGS
+
+#if DXMETAL_LOG_SHADER_SOURCE
+#   define LOG_METAL_SHADER_SOURCE(...)                 NSLog(__VA_ARGS__)
+#else
 #   define LOG_METAL_SHADER_SOURCE(...)
+#endif // DXMETAL_LOG_SHADER_SOURCE
+
+#if DXMETAL_LOG_SHADER_REFLECTION_VALIDATION
+#   define LOG_METAL_SHADER_REFLECTION_VALIDATION(...)  NSLog(__VA_ARGS__)
+#else
 #   define LOG_METAL_SHADER_REFLECTION_VALIDATION(...)
-#endif // DXMETAL_DEBUG_SHADER_COMPILER
+#endif // DXMETAL_LOG_SHADER_REFLECTION_VALIDATION
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -109,7 +123,8 @@ namespace NCryMetal
     
     static bool s_isIosMinVersion9_0 = false;
     static bool s_isOsxMinVersion10_11 = false;
-
+    static bool s_isIOSGPUFamily3 = false;
+    
     //Cache the OS version which can then be used to query if certain API calls are enabled/disabled.
     inline void CacheMinOSVersionInfo()
     {
@@ -119,7 +134,16 @@ namespace NCryMetal
         s_isIosMinVersion9_0 = [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){9, 0, 0}];
 #endif
     }
+    
+    //Cache the GPU family which can then be used to query if certain API calls are enabled/disabled.
+    inline void CacheGPUFamilyFeaturSetInfo(id<MTLDevice> device)
+    {
+#if defined(AZ_PLATFORM_APPLE_IOS)
+        s_isIOSGPUFamily3 = [device supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1];
+#endif
+    }
 }
+
 
 enum
 {

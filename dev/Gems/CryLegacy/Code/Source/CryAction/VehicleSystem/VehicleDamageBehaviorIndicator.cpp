@@ -14,7 +14,7 @@
 // Description : implements a DamageIndicator behavior (lights, sounds,..)
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "VehicleDamageBehaviorIndicator.h"
 
 #include "Vehicle.h"

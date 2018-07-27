@@ -13,7 +13,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "SystemUtilsApple.h"
-#include <AzCore/Base.h>
+#include <AzCore/base.h>
 #include <AzCore/Debug/Trace.h>
 #include <Foundation/Foundation.h>
 #include <mach-o/dyld.h>

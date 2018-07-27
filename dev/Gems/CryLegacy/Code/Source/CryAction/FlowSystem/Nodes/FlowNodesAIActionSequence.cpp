@@ -17,11 +17,11 @@
 //               distinguish between autonomous behavior vs  scripting via FlowNodes
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <IAIActionSequence.h>
 #include <IMovementSystem.h>
 #include <MovementRequest.h>
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "VehicleSystem/VehicleSeat.h"
 #include "VehicleSystem/VehicleCVars.h"
 #include "VehicleSystem/Vehicle.h"

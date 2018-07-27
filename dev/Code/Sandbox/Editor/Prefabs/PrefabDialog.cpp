@@ -128,7 +128,7 @@ void CPrefabDialog::OnInitDialog()
     GetTreeCtrl()->setDragDropMode(QAbstractItemView::DragOnly);
 
     // The tree only allows single selection
-    connect(GetTreeCtrl()->selectionModel(), &QItemSelectionModel::selectionChanged, [this](const QItemSelection& in, const QItemSelection& out) {
+    connect(GetTreeCtrl()->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection& in, const QItemSelection& out) {
         auto inIndices = in.indexes();
         auto outIndices = out.indexes();
         OnSelChangedItemTree(inIndices.isEmpty() ? QModelIndex() : inIndices.first(), outIndices.isEmpty() ? QModelIndex() : outIndices.first());

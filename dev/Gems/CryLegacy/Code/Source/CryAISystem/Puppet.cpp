@@ -14,7 +14,7 @@
 // Description : Implementation of the CPuppet class.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "Puppet.h"
 #include "AIPlayer.h"
 #include "AIVehicle.h"

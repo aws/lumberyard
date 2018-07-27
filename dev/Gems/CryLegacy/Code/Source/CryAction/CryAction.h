@@ -525,7 +525,7 @@ private:
 
     //-- Network Stall ticker thread
 #ifdef USE_NETWORK_STALL_TICKER_THREAD
-    CNetworkStallTickerThread* m_pNetworkStallTickerThread;
+    CNetworkStallTickerThread* m_pNetworkStallTickerThread = nullptr;
     uint32                                              m_networkStallTickerReferences;
 #endif // #ifdef USE_NETWORK_STALL_TICKER_THREAD
 

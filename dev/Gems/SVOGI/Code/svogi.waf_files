@@ -1,0 +1,24 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/SVOGI/SVOGIBus.h"
+        ],
+        "Source": [
+            "Source/SVOGIModule.cpp",
+            "Source/SVOGISystemComponent.cpp",
+            "Source/SVOGISystemComponent.h",
+            "Source/SvoTree.cpp",
+            "Source/SvoTree.h",
+            "Source/TextureBlockPacker.cpp",
+            "Source/TextureBlockPacker.h",
+            "Source/SvoBrick.cpp",
+            "Source/SvoBrick.h"
+        ]
+    }
+}

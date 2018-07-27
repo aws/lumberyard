@@ -142,7 +142,7 @@ void CConsoleHelpGen::LogVersion(FILE* f) const
         char fdrive[_MAX_PATH];
         char file[_MAX_PATH];
         char fext[_MAX_PATH];
-        _splitpath(s, fdrive, fdir, file, fext);
+        _splitpath_s(s, fdrive, fdir, file, fext);
 
         KeyValue(f, "Executable", (string(file) + fext).c_str());
     }
@@ -151,9 +151,10 @@ void CConsoleHelpGen::LogVersion(FILE* f) const
         time_t ltime;
 
         time(&ltime);
-        tm* today = localtime(&ltime);
+        tm today;
+        localtime_s(&today, &ltime);
 
-        strftime(s, 128, "%c", today);
+        strftime(s, 128, "%c", &today);
         KeyValue(f, "Date(MM/DD/YY) Time", s);
     }
 
@@ -482,7 +483,8 @@ void CConsoleHelpGen::CreateSingleEntryFile(const char* szName) const
 {
     assert(m_eWorkMode == eWM_Confluence);    // only needed for confluence
 
-    FILE* f3 = fopen((string(GetFolderName()) + GetFileExtension() + "/" + FixAnchorName(szName)).c_str(), "w");
+    FILE* f3 = nullptr;
+    azfopen(&f3, (string(GetFolderName()) + GetFileExtension() + "/" + FixAnchorName(szName)).c_str(), "w");
 
     if (!f3)
     {
@@ -703,7 +705,8 @@ void CConsoleHelpGen::CreateMainPages()
     mapPrefix[      "T_"] = "Timer";
     mapPrefix[     "___"] = "Remaining";            // key defined to get it sorted in the end
 
-    FILE* f1 = fopen((string(GetFolderName()) + "/index" + GetFileExtension()).c_str(), "w");
+    FILE* f1 = nullptr;
+    azfopen(&f1, (string(GetFolderName()) + "/index" + GetFileExtension()).c_str(), "w");
     if (!f1)
     {
         return;
@@ -784,7 +787,8 @@ void CConsoleHelpGen::CreateMainPages()
             StartPrefix(f1, sCleanPrefix.c_str(), sPrefixName.c_str(), (sSubName + GetFileExtension()).c_str());
 
             string sFileOut = string(GetFolderName()) + "/" + sSubName + GetFileExtension();
-            FILE* f2 = fopen(sFileOut.c_str(), "w");
+            FILE* f2 = nullptr;
+            azfopen(&f2, sFileOut.c_str(), "w");
             if (!f2)
             {
                 fclose(f1);

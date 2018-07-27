@@ -34,7 +34,7 @@ public:
         const char* szKey = node->getAttr(szAttrName);
         for (typename std::vector<TRecord>::iterator it = m_dictionary.begin(), end = m_dictionary.end(); it != end; ++it)
         {
-            if (!_stricmp(it->first, szKey))
+            if (!azstricmp(it->first, szKey))
             {
                 tValue = it->second;
                 return true;
@@ -67,7 +67,7 @@ public:
     {
         for (typename std::vector<TRecord>::iterator it = m_dictionary.begin(), end = m_dictionary.end(); it != end; ++it)
         {
-            if (!stricmp(it->first, name))
+            if (!azstricmp(it->first, name))
             {
                 return &it->second;
             }

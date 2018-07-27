@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "ChannelControl.hxx"
 #include <Woodpecker/Driller/ChannelControl.moc>
@@ -292,77 +292,77 @@ namespace Driller
         return m_channelId;
     }
 
-    void ChannelControl::SetEndFrame(FrameNumberType frame)
+    void ChannelControl::SetEndFrame(FrameNumberType endFrame)
     {
         channelDataView->DirtyGraphData();
-        m_State.m_EndFrame = frame;
+        m_State.m_EndFrame = endFrame;
         channelDataView->update();
     }
 
-    void ChannelControl::SetSliderOffset(FrameNumberType frame)
+    void ChannelControl::SetSliderOffset(FrameNumberType frameOffset)
     {
         channelDataView->DirtyGraphData();
-        m_State.m_FrameOffset = frame;
+        m_State.m_FrameOffset = frameOffset;
         //AZ_TracePrintf("Driller"," SetSliderOffset %d = %d - %d\n", m_State.m_FrameOffset, m_State.m_EndFrame, frame);
         channelDataView->update();
     }
 
-    void ChannelControl::SetLoopBegin(FrameNumberType frame)
+    void ChannelControl::SetLoopBegin(FrameNumberType frameNum)
     {
-        if (m_State.m_LoopBegin != frame)
+        if (m_State.m_LoopBegin != frameNum)
         {
-            m_State.m_LoopBegin = frame;
+            m_State.m_LoopBegin = frameNum;
 
             FrameNumberType lastFrame = m_State.m_FrameOffset + m_State.m_FramesInView - 1;
 
-            if (frame < m_State.m_FrameOffset)
+            if (frameNum < m_State.m_FrameOffset)
             {
-                emit RequestScrollToFrame(frame);
+                emit RequestScrollToFrame(frameNum);
             }
-            else if (frame > lastFrame)
+            else if (frameNum > lastFrame)
             {
-                emit RequestScrollToFrame(m_State.m_FrameOffset + (frame - lastFrame));
+                emit RequestScrollToFrame(m_State.m_FrameOffset + (frameNum - lastFrame));
             }
 
             channelDataView->update();
         }
     }
-    void ChannelControl::SetLoopEnd(FrameNumberType frame)
+    void ChannelControl::SetLoopEnd(FrameNumberType frameNum)
     {
-        if (m_State.m_LoopEnd != frame)
+        if (m_State.m_LoopEnd != frameNum)
         {
-            m_State.m_LoopEnd = frame;
+            m_State.m_LoopEnd = frameNum;
 
             FrameNumberType lastFrame = m_State.m_FrameOffset + m_State.m_FramesInView - 1;
 
-            if (frame < m_State.m_FrameOffset)
+            if (frameNum < m_State.m_FrameOffset)
             {
-                emit RequestScrollToFrame(frame);
+                emit RequestScrollToFrame(frameNum);
             }
-            else if (frame > lastFrame)
+            else if (frameNum > lastFrame)
             {
-                emit RequestScrollToFrame(m_State.m_FrameOffset + (frame - lastFrame));
+                emit RequestScrollToFrame(m_State.m_FrameOffset + (frameNum - lastFrame));
             }
 
             channelDataView->update();
         }
     }
 
-    void ChannelControl::SetScrubberFrame(FrameNumberType frame)
+    void ChannelControl::SetScrubberFrame(FrameNumberType frameNum)
     {
-        if (m_State.m_ScrubberFrame != frame)
+        if (m_State.m_ScrubberFrame != frameNum)
         {
-            m_State.m_ScrubberFrame = frame;
+            m_State.m_ScrubberFrame = frameNum;
 
             FrameNumberType lastFrame = m_State.m_FrameOffset + m_State.m_FramesInView - 1;
 
-            if (frame < m_State.m_FrameOffset)
+            if (frameNum < m_State.m_FrameOffset)
             {
-                emit RequestScrollToFrame(frame);
+                emit RequestScrollToFrame(frameNum);
             }
-            else if (frame > lastFrame)
+            else if (frameNum > lastFrame)
             {
-                emit RequestScrollToFrame(m_State.m_FrameOffset + (frame - lastFrame));
+                emit RequestScrollToFrame(m_State.m_FrameOffset + (frameNum - lastFrame));
             }
 
             channelDataView->update();
@@ -401,11 +401,11 @@ namespace Driller
         if (m_configurationDialog == nullptr)
         {
             m_configurationDialog = aznew ChannelConfigurationDialog();
-            QVBoxLayout* verticalLayout = new QVBoxLayout();
+            QVBoxLayout* layout = new QVBoxLayout();
             
             QMargins contentMargins(3,5,3,5);
-            verticalLayout->setContentsMargins(contentMargins);			
-            verticalLayout->setSpacing(5);
+            layout->setContentsMargins(contentMargins);			
+            layout->setSpacing(5);
 
             for (ChannelProfilerWidget* profilerWidget : m_profilerWidgets)
             {
@@ -416,12 +416,12 @@ namespace Driller
                     if (configurationWidget)
                     {
                         connect(configurationWidget, SIGNAL(ConfigurationChanged()), SLOT(OnConfigurationChanged()));
-                        verticalLayout->addWidget(configurationWidget);
+                        layout->addWidget(configurationWidget);
                     }
                 }
             }
 
-            m_configurationDialog->setLayout(verticalLayout);
+            m_configurationDialog->setLayout(layout);
             m_configurationDialog->show();
             m_configurationDialog->setFocus();
 

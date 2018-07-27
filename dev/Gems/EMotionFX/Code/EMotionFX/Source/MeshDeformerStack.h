@@ -43,7 +43,7 @@ namespace EMotionFX
     class EMFX_API MeshDeformerStack
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MeshDeformer, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_GEOMETRY_DEFORMERS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**

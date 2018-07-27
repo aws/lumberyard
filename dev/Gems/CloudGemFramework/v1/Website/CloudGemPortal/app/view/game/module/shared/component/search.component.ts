@@ -1,7 +1,7 @@
 import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { SearchDropdownOption } from '../class/index';
-import { Subscription } from 'rxjs';
+import { Subscription } from 'rxjs/Subscription';
 
 import 'rxjs/add/operator/debounceTime';
 
@@ -37,12 +37,12 @@ export class SearchResult {
 export class SearchComponent implements OnInit {
     // Dropdown option hash.  Contains the text and the callback function to be used when the text input is used.
     // Optional args can be passed in to the callback function.  Otherwise the text of the dropdown will be returned
-    @Input() dropdownOptions: [{ text: string, functionCb: Function, argsCb?: any }]
+    @Input() dropdownOptions?: [{ text: string, functionCb: Function, argsCb?: any }]
     // Placeholder text for the search dropdown.  If not specified the searchDropdownOption[0] dropdown name will be used instead.
-    @Input() dropdownPlaceholderText: string;
+    @Input() dropdownPlaceholderText?: string;
     // Placeholder for the text input.  This placeholder should be relevant for all dropdown cases.
     // If none is specified the input placeholder will be blank
-    @Input() searchInputPlaceholder: string = "";
+    @Input() searchInputPlaceholder?: string = "";
     // Output for when the search input is updated.
     @Output() searchUpdated = new EventEmitter<SearchResult>();
 

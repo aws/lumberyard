@@ -231,6 +231,7 @@ namespace CloudCanvas
             {
                 requestPtr->SetStatus(DynamicContentFileInfo::FileStatus::DOWNLOAD_FAILED);
             }
+            EBUS_EVENT(CloudCanvas::DynamicContent::DynamicContentUpdateBus, DownloadFailed, requestPtr->GetFullLocalFileName());
         }
 
         AZStd::string DynamicContentTransferManager::GetRequestString(const AZStd::string& bucketName, const AZStd::string& keyName) 
@@ -933,7 +934,7 @@ namespace CloudCanvas
             // Handle this outside the loop because RemovePendingPak uses our m_pakFileMountMutex
             if (failurePak)
             {
-                AZ_Warning("CloudCanvas", false, "Attempted to open %s %d times without success - removing", failurePak->GetAliasedFilePath().c_str(), failurePak->GetOpenRetryCount());
+                AZ_Warning("CloudCanvas", false, "Attempted to open %s %d times without success - removing", failurePak->GetFullLocalFileName().c_str(), failurePak->GetOpenRetryCount());
                 RemovePendingPak(failurePak);
                 failurePak->SetStatus(DynamicContentFileInfo::FileStatus::PAK_MOUNT_FAILED);
             }
@@ -1127,9 +1128,18 @@ namespace CloudCanvas
 
         int DynamicContentTransferManager::ValidateSignature(DynamicFileInfoPtr pakInfo) const
         {
-            if (!requireSignatures && !pakInfo->GetSignature().size())
+            if (!pakInfo->GetSignature().size())
             {
-                return true;
+                if (!requireSignatures)
+                {
+                    return true;
+                }
+                AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+                if (fileIO && !fileIO->Exists(GetDefaultPublicKeyPath().c_str()))
+                {
+                    AZ_TracePrintf("CloudCanvas", "Skipping signature validation");
+                    return true;
+                }
             }
 
             AZStd::string localStr(pakInfo->GetFullLocalFileName());
@@ -1155,7 +1165,7 @@ namespace CloudCanvas
             int verifyResult = 1;
 
 #if defined(OPENSSL_ENABLED)
-            AZ_TracePrintf("CloudCanvas", "Attempting to validate signature of string %s", checkString.c_str());
+            AZ_TracePrintf("CloudCanvas", "Attempting to validate signature - Local hash is %s", checkString.c_str());
 
             if (!checkString.size())
             {
@@ -1171,6 +1181,7 @@ namespace CloudCanvas
                 // Pass if we don't have a public key and weren't given a signature
                 return signatureBuf.size() == 0;
             }
+            AZ_TracePrintf("CloudCanvas", "Found public key file at %s", GetDefaultPublicKeyPath().c_str());
 
             if (!signatureBuf.size())
             {

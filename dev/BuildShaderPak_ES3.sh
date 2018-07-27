@@ -20,10 +20,11 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-shaderflavor="gles3_0 gles3_1"
+platform="es3"
+shaderflavor="gles3*"
 gamename="$1"
 
-sh ./lmbr_pak_shaders.sh "$shaderflavor" $gamename es3
+sh ./lmbr_pak_shaders.sh "$shaderflavor" $gamename $platform
 
 if [ $? -eq 0 ]; then
     echo ---- Process succeeded ----

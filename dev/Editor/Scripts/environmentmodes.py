@@ -68,3 +68,12 @@ if len(sys.argv) > 1:
 		toggleCvarsValue('mode_%s' % mode, 'e_Wind', 1, 0)
 	elif mode == 'e_BBoxes':
 		toggleCvarsValue('mode_%s' % mode, 'e_BBoxes', 0, 1)
+	elif mode == 'default_view':
+		for cVars in ['e_Fog', 'e_Clouds', 'r_Rain', 'e_Sun', 'e_Skybox',
+					  'e_TimeOfDay', 'r_SSReflections', 'e_Shadows',
+					  'r_TransparentPasses',  'e_GI', 'r_ssdo', 'e_DynamicLights',
+					  'e_Brushes', 'e_Entities', 'e_Vegetation', 'e_Decals',
+					  'e_Terrain', 'e_Particles', 'r_Flares', 'r_Beams', 'e_FogVolumes',
+					  'e_WaterOcean', 'e_WaterVolumes', 'e_Wind', 'e_BBoxes',
+					  'hiden_mask_for_solids', 'hiden_mask_for_prefabs']:
+			restoreDefaultValue(cVars)

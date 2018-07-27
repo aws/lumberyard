@@ -14,7 +14,7 @@
 // Description : Implements vehicle animation using Mannequin
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "../Vehicle.h"
 #include "../VehicleSeat.h"

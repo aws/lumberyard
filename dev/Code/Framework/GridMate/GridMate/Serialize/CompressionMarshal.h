@@ -67,22 +67,22 @@ namespace GridMate
     };
 
     /**
-	* Writes a compressed Vector2.
-	* Values are compressed with \ref HalfMarshaler.
-	* Uses 4 bytes.
-	*/
-	class Vec2CompMarshaler
-	{
-	public:
-		typedef AZ::Vector2 DataType;
+    * Writes a compressed Vector2.
+    * Values are compressed with \ref HalfMarshaler.
+    * Uses 4 bytes.
+    */
+    class Vec2CompMarshaler
+    {
+    public:
+        typedef AZ::Vector2 DataType;
 
-		static const AZStd::size_t MarshalSize = HalfMarshaler::MarshalSize * 2;
+        static const AZStd::size_t MarshalSize = HalfMarshaler::MarshalSize * 2;
 
-		void Marshal(WriteBuffer& wb, const AZ::Vector2& vec) const;
-		void Unmarshal(AZ::Vector2& vec, ReadBuffer& rb) const;
-	};
+        void Marshal(WriteBuffer& wb, const AZ::Vector2& vec) const;
+        void Unmarshal(AZ::Vector2& vec, ReadBuffer& rb) const;
+    };
 
-	/**
+    /**
     * Writes a compressed vector.
     * Values are compressed with \ref HalfMarshaler.
     * Uses 6 bytes.
@@ -152,6 +152,34 @@ namespace GridMate
             Z_ONE = (1 << 5),
             W_NEG = (1 << 6),
         };
+    public:
+        typedef AZ::Quaternion DataType;
+
+        void Marshal(WriteBuffer& wb, const AZ::Quaternion& norQuat) const;
+        void Unmarshal(AZ::Quaternion& quat, ReadBuffer& rb) const;
+    };
+
+    /**
+    * Compressed normalized Quaternion Marshaler uses 1-4 bytes by converting to Euler angles.
+    * Angles are quantized to angle * (360/255) and stored in a single byte.
+    * A leading byte is used to indicate when are 0, or 1 and do not need to be sent in the data.
+    */
+    // quantized into a single byte so 360 degrees -> 256 different values
+    static const float kDegreesPerQuantizedValue = 1.40625;
+
+    class QuatCompNormQuantizedMarshaler
+    {
+        enum Flags
+        {
+            X_ZERO = (1 << 0),
+            Y_ZERO = (1 << 1),
+            Z_ZERO = (1 << 2),
+
+            X_ONE = (1 << 3),
+            Y_ONE = (1 << 4),
+            Z_ONE = (1 << 5),
+        };
+
     public:
         typedef AZ::Quaternion DataType;
 

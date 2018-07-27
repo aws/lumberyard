@@ -17,10 +17,13 @@
 #include "EventHandler.h"
 #include "AnimGraphStateMachine.h"
 #include "AnimGraph.h"
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(EventManager, MotionEventManagerAllocator, 0)
+
+
     // the constructor
     EventManager::EventManager()
         : BaseObject()
@@ -48,7 +51,7 @@ namespace EMotionFX
     // create
     EventManager* EventManager::Create()
     {
-        return new EventManager();
+        return aznew EventManager();
     }
 
 
@@ -765,10 +768,6 @@ namespace EMotionFX
     // call the callbacks for when we renamed a node
     void EventManager::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
     {
-        // get the root state machine and call the callbacks recursively
-        AnimGraphStateMachine* rootSM = animGraph->GetRootStateMachine();
-        rootSM->OnRenamedNode(animGraph, node, oldName);
-
         // get the number of event handlers and iterate through them
         const uint32 numEventHandlers = mEventHandlers.GetLength();
         for (uint32 i = 0; i < numEventHandlers; ++i)
@@ -781,10 +780,6 @@ namespace EMotionFX
     // call the callbacks for a node creation
     void EventManager::OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node)
     {
-        // get the root state machine and call the callbacks recursively
-        AnimGraphStateMachine* rootSM = animGraph->GetRootStateMachine();
-        rootSM->OnCreatedNode(animGraph, node);
-
         // get the number of event handlers and iterate through them
         const uint32 numEventHandlers = mEventHandlers.GetLength();
         for (uint32 i = 0; i < numEventHandlers; ++i)
@@ -843,24 +838,13 @@ namespace EMotionFX
     }
 
 
-    void EventManager::OnParameterNodeMaskChanged(BlendTreeParameterNode* parameterNode)
+    void EventManager::OnParameterNodeMaskChanged(BlendTreeParameterNode* parameterNode, const AZStd::vector<AZStd::string>& newParameterMask)
     {
         // get the number of event handlers and iterate through them
         const uint32 numEventHandlers = mEventHandlers.GetLength();
         for (uint32 i = 0; i < numEventHandlers; ++i)
         {
-            mEventHandlers[i]->OnParameterNodeMaskChanged(parameterNode);
-        }
-    }
-
-
-    void EventManager::OnConditionTriggered(AnimGraphInstance* animGraphInstance, AnimGraphTransitionCondition* condition)
-    {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
-        {
-            mEventHandlers[i]->OnConditionTriggered(animGraphInstance, condition);
+            mEventHandlers[i]->OnParameterNodeMaskChanged(parameterNode, newParameterMask);
         }
     }
 

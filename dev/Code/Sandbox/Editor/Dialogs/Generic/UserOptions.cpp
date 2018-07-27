@@ -15,7 +15,7 @@
 //               generic overwrite dialog
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "UserOptions.h"
 
 //////////////////////////////////////////////////////////////////////////

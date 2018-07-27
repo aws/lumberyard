@@ -113,12 +113,13 @@ namespace AzFramework
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Serialized Variables
-        AZ::u32 m_gamepadsEnabled;        //!< The number of enabled game-pads
-        bool    m_keyboardEnabled;        //!< Is the keyboard enabled?
-        bool    m_motionEnabled;          //!< Is motion enabled?
-        bool    m_mouseEnabled;           //!< Is the mouse enabled?
-        bool    m_touchEnabled;           //!< Is touch enabled?
-        bool    m_virtualKeyboardEnabled; //!< Is the virtual keyboard enabled?
+        AZ::u32 m_mouseMovementSampleRateHertz; //!< The mouse movement sample rate in Hertz
+        AZ::u32 m_gamepadsEnabled;              //!< The number of enabled game-pads
+        bool    m_keyboardEnabled;              //!< Is the keyboard enabled?
+        bool    m_motionEnabled;                //!< Is motion enabled?
+        bool    m_mouseEnabled;                 //!< Is the mouse enabled?
+        bool    m_touchEnabled;                 //!< Is touch enabled?
+        bool    m_virtualKeyboardEnabled;       //!< Is the virtual keyboard enabled?
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Other Variables

@@ -239,7 +239,7 @@ public:
     virtual IReadStreamPtr StartRead (const EStreamTaskType tSource, const char* szFile, IStreamCallback* pCallback = NULL, const StreamReadParams* pParams = NULL) = 0;
 
     // Pass a callback to preRequestCallback if you need to execute code right before the requests get enqueued; the callback is called only once per execution
-    virtual size_t StartBatchRead(IReadStreamPtr* pStreamsOut, const StreamReadBatchParams* pReqs, size_t numReqs, std::function<void ()>* preRequestCallback = nullptr) = 0;
+    virtual size_t StartBatchRead(IReadStreamPtr* pStreamsOut, const StreamReadBatchParams* pReqs, size_t numReqs, AZStd::function<void ()>* preRequestCallback = nullptr) = 0;
 
     // Call this methods before/after submitting large number of new requests.
     virtual void BeginReadGroup() = 0;

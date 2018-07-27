@@ -15,8 +15,9 @@
 
 // include required headers
 #include "EMStudioConfig.h"
+#include <AzCore/std/string/string.h>
 #include <MCore/Source/StandardHeaders.h>
-#include <MysticQt/Source/PropertyWidget.h>
+#include <MCore/Source/Array.h>
 #include <QDialog>
 
 
@@ -24,6 +25,11 @@
 QT_FORWARD_DECLARE_CLASS(QStackedWidget)
 QT_FORWARD_DECLARE_CLASS(QListWidget)
 QT_FORWARD_DECLARE_CLASS(QListWidgetItem)
+
+namespace AzToolsFramework
+{
+    class ReflectedPropertyEditor;
+}
 
 namespace EMStudio
 {
@@ -41,24 +47,21 @@ namespace EMStudio
         {
             MCORE_MEMORYOBJECTCATEGORY(PreferencesWindow::Category, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
-            QWidget *                    mWidget;
-            MysticQt::PropertyWidget*   mPropertyWidget;
-            QListWidgetItem*            mListWidgetItem;
-            AZStd::string               mName;
+            QWidget *                                    mWidget;
+            AzToolsFramework::ReflectedPropertyEditor*   mPropertyWidget;
+            QListWidgetItem*                             mListWidgetItem;
+            AZStd::string                                mName;
         };
 
         PreferencesWindow(QWidget* parent);
         virtual ~PreferencesWindow();
 
         void Init();
-        void AddCategoriesFromPlugin(EMStudioPlugin* plugin);
-        MysticQt::PropertyWidget* AddCategory(const char* categoryName, const char* relativeFileName, bool readOnly);
+
+        AzToolsFramework::ReflectedPropertyEditor* AddCategory(const char* categoryName, const char* relativeFileName, bool readOnly);
         void AddCategory(QWidget* widget, const char* categoryName, const char* relativeFileName, bool readOnly);
 
-        MCORE_INLINE Category* GetCategory(uint32 index)                                                    { return mCategories[index]; }
-        MCORE_INLINE uint32 GetNumCategories()                                                              { return mCategories.GetLength(); }
-        Category* FindCategoryByName(const char* categoryName) const;
-        MCORE_INLINE MysticQt::PropertyWidget* FindPropertyWidgetByName(const char* categoryName) const
+        MCORE_INLINE AzToolsFramework::ReflectedPropertyEditor* FindPropertyWidgetByName(const char* categoryName)
         {
             Category* category = FindCategoryByName(categoryName);
             if (category == nullptr)
@@ -75,6 +78,8 @@ namespace EMStudio
         void ChangePage(QListWidgetItem* current, QListWidgetItem* previous);
 
     private:
+        Category* FindCategoryByName(const char* categoryName) const;
+        
         MCore::Array<Category*>                     mCategories;
         QStackedWidget*                             mStackedWidget;
         QListWidget*                                mCategoriesWidget;

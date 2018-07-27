@@ -14,7 +14,7 @@
 // Description : Implements a wheel vehicle part
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "ICryAnimation.h"
 #include "IVehicleSystem.h"

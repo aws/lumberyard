@@ -21,7 +21,7 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/delegate/delegate.h>
-#include <AzCore/debug/TraceMessageBus.h>
+#include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Component/TickBus.h>
 

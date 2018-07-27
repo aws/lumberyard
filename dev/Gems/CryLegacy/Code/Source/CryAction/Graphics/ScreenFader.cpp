@@ -11,7 +11,7 @@
 */
 // Original file (from FadeNode.cpp) Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <IGameFramework.h>
 #include "ScreenFader.h"
 #include <MathConversion.h>

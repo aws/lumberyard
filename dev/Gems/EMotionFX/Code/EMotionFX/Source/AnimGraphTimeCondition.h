@@ -12,9 +12,8 @@
 
 #pragma once
 
-// include the required headers
-#include "EMotionFXConfig.h"
-#include "AnimGraphTransitionCondition.h"
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraphTransitionCondition.h>
 
 
 namespace EMotionFX
@@ -30,63 +29,62 @@ namespace EMotionFX
     class EMFX_API AnimGraphTimeCondition
         : public AnimGraphTransitionCondition
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphTimeCondition, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_CONDITIONS);
-
     public:
-        AZ_RTTI(AnimGraphTimeCondition, "{9CFC3B92-0D9B-4EC8-9999-625EF21A9993}", AnimGraphTransitionCondition);
-
-        enum
-        {
-            TYPE_ID = 0x00005210
-        };
-
-        enum
-        {
-            ATTRIB_COUNTDOWNTIME    = 0,
-            ATTRIB_USERANDOMIZATION = 1,
-            ATTRIB_MINRANDOMTIME    = 2,
-            ATTRIB_MAXRANDOMTIME    = 3
-        };
+        AZ_RTTI(AnimGraphTimeCondition, "{9CFC3B92-0D9B-4EC8-9999-625EF21A9993}", AnimGraphTransitionCondition)
+        AZ_CLASS_ALLOCATOR_DECL
 
         // the unique data
         class EMFX_API UniqueData
             : public AnimGraphObjectData
         {
-            MCORE_MEMORYOBJECTCATEGORY(AnimGraphTimeCondition::UniqueData, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_CONDITIONS);
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
 
         public:
-            UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance);
-            ~UniqueData();
+            AZ_CLASS_ALLOCATOR_DECL
 
-            uint32 GetClassSize() const override                                                                                    { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override        { return new (destMem) UniqueData(object, animGraphInstance); }
+            UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance);
+            ~UniqueData() override;
 
         public:
             float   mElapsedTime;       /**< The elapsed time in seconds for the given anim graph instance. */
             float   mCountDownTime;     /**< The count down time in seconds for the given anim graph instance. */
         };
 
-        static AnimGraphTimeCondition* Create(AnimGraph* animGraph);
-
-        void RegisterAttributes() override;
-
-        const char* GetTypeString() const override;
-        void GetSummary(AZStd::string* outResult) const override;
-        void GetTooltip(AZStd::string* outResult) const override;
-        const char* GetPaletteName() const override;
-        AnimGraphObjectData* CreateObjectData() override;
-
-        void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
-        bool TestCondition(AnimGraphInstance* animGraphInstance) const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        void Reset(AnimGraphInstance* animGraphInstance) override;
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
-
-    private:
+        AnimGraphTimeCondition();
         AnimGraphTimeCondition(AnimGraph* animGraph);
         ~AnimGraphTimeCondition();
 
-        void OnUpdateAttributes() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
+
+        void GetSummary(AZStd::string* outResult) const override;
+        void GetTooltip(AZStd::string* outResult) const override;
+        const char* GetPaletteName() const override;
+
+        void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+        bool TestCondition(AnimGraphInstance* animGraphInstance) const override;
+        void Reset(AnimGraphInstance* animGraphInstance) override;
+        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+
+        void SetCountDownTime(float countDownTime);
+        float GetCountDownTime() const;
+
+        void SetMinRandomTime(float minRandomTime);
+        float GetMinRandomTime() const;
+
+        void SetMaxRandomTime(float maxRandomTime);
+        float GetMaxRandomTime() const;
+
+        void SetUseRandomization(bool useRandomization);
+        bool GetUseRandomization() const;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+    private:
+        AZ::Crc32 GetRandomTimeVisibility() const;
+
+        float   m_countDownTime;
+        float   m_minRandomTime;
+        float   m_maxRandomTime;
+        bool    m_useRandomization;
     };
 }   // namespace EMotionFX

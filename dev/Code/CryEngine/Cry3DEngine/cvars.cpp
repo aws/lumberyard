@@ -90,6 +90,15 @@ void OnVegetationVisibleChange(ICVar* pArgs)
     }
 }
 
+void OnVolumetricFogChanged(ICVar* pArgs)
+{
+    const ICVar* deferredShadingCVar = gEnv->pConsole->GetCVar("r_DeferredShadingTiled");
+    if (deferredShadingCVar->GetIVal() == 0 && pArgs->GetIVal() != 0)
+    {
+        gEnv->pLog->LogWarning("e_VolumetricFog is set to 0 when r_DeferredShadingTiled is 0.");
+        Cry3DEngineBase::GetCVars()->e_VolumetricFog = 0;
+    }
+}
 
 void CVars::Init()
 {
@@ -97,8 +106,8 @@ void CVars::Init()
         "Activates global height/distance based fog");
     DefineConstIntCVar(e_FogVolumes, 1, VF_CHEAT | VF_CHEAT_ALWAYS_CHECK,
         "Activates local height/distance based fog volumes");
-    REGISTER_CVAR(e_VolumetricFog, 0, VF_NULL,
-        "Activates volumetric fog");
+    REGISTER_CVAR_CB(e_VolumetricFog, 0, VF_NULL,
+        "Activates volumetric fog", OnVolumetricFogChanged);
     DefineConstIntCVar(e_FogVolumesTiledInjection, 1, VF_NULL,
         "Activates tiled FogVolume density injection");
     REGISTER_CVAR(e_Entities, 1, VF_CHEAT | VF_CHEAT_ALWAYS_CHECK,
@@ -907,7 +916,7 @@ void CVars::Init()
     DefineConstFloatCVar(e_VolObjShadowStrength, VF_NULL,
         "Self shadow intensity of volume objects [0..1].");
 
-    DefineConstIntCVar(e_ScreenShot, 0, VF_NULL,
+    REGISTER_CVAR(e_ScreenShot, 0, VF_NULL,
         "Make screenshot combined up of multiple rendered frames\n"
         "(negative values for multiple frames, positive for a a single frame)\n"
         " 1 highres\n"
@@ -1065,6 +1074,10 @@ void CVars::Init()
 
     e_ScreenShotFileFormat = REGISTER_STRING("e_ScreenShotFileFormat", "tga",  VF_NULL,
             "Set output image file format for hires screen shots. Can be jpg or tga");
+
+    e_ScreenShotFileName = REGISTER_STRING("e_ScreenShotFileName", "", VF_NULL, 
+        "Sets the output screen shot name, can include relative directories to @user@/ScreenShots");
+
     e_SQTestTextureName = REGISTER_STRING("e_SQTestTextureName", "strfrn_advrt_boards_screen",  VF_NULL,
             "Reference texture name for streaming latency test");
     e_StreamCgfDebugFilter = REGISTER_STRING("e_StreamCgfDebugFilter", "",  VF_NULL,
@@ -1185,8 +1198,4 @@ void CVars::Init()
     REGISTER_CVAR(e_PermanentRenderObjects, 0, VF_NULL, "Creates permanent render objects for each render node");
     REGISTER_CVAR(e_StaticInstancing, 0, VF_NULL, "Enables instancing of static objects");
     REGISTER_CVAR(e_StaticInstancingMinInstNum, 10, VF_NULL, "Minimum number of common static objects in a tree node before hardware instancing is used.");
-
-#if defined(FEATURE_SVO_GI)
-    RegisterTICVars();
-#endif
 }

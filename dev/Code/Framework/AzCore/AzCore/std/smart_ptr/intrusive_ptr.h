@@ -260,6 +260,19 @@ namespace AZStd
         return dynamic_cast<T*>(p.get());
     }
 
+    template <typename T>
+    struct hash;
+
+    // hashing support for STL containers
+    template <typename T>
+    struct hash<intrusive_ptr<T>>
+    {
+        inline size_t operator()(const intrusive_ptr<T>& value) const
+        {
+            return hash<T*>()(value.get());
+        }
+    };
+
     // operator<< - not supported
 } // namespace AZStd
 

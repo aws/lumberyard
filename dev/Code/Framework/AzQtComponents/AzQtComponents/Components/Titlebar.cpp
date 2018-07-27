@@ -259,9 +259,13 @@ namespace AzQtComponents
 
     bool TitleBar::usesCustomTopBorderResizing() const
     {
+#ifdef Q_OS_WIN
         // On Win < 10 we're not overlapping the titlebar, removing it works fine there.
         // On Win < 10 we use native resizing of the top border.
         return QSysInfo::windowsVersion() >= QSysInfo::WV_WINDOWS10;
+#else
+        return true;
+#endif
     }
 
     void TitleBar::checkEnableMouseTracking()
@@ -437,9 +441,11 @@ namespace AzQtComponents
         // it's much more reliable about actually reporting a global position.
         QPoint globalPos = QCursor::pos();
 
-        if (canResizeTop() && isTopResizeArea(globalPos))
+        if (canResize() && (isTopResizeArea(globalPos) || isLeftResizeArea(globalPos) || isRightResizeArea(globalPos)))
         {
-            m_resizingTop = true;
+            m_resizingTop = isTopResizeArea(globalPos);
+            m_resizingLeft = isLeftResizeArea(globalPos);
+            m_resizingRight = isRightResizeArea(globalPos);
         }
         else if (canDragWindow())
         {
@@ -466,6 +472,8 @@ namespace AzQtComponents
     void TitleBar::mouseReleaseEvent(QMouseEvent* ev)
     {
         m_resizingTop = false;
+        m_resizingLeft = false;
+        m_resizingRight = false;
         m_pendingRepositioning = false;
         m_dragPos = QPoint();
         QWidget::mouseReleaseEvent(ev);
@@ -503,6 +511,56 @@ namespace AzQtComponents
         return false;
     }
 
+    bool TitleBar::isLeftResizeArea(const QPoint& globalPos) const
+    {
+#ifdef Q_OS_MAC
+        if (window() != parentWidget() && !isInDockWidgetWindowGroup())
+        {
+            // The immediate parent of the TitleBar must be a top level
+            // if it's not then we're docked and we're not interested in resizing the top.
+            return false;
+        }
+
+        if (QWindow* topLevelWin = topLevelWindow())
+        {
+            QPoint pt = mapFromGlobal(globalPos);
+            const bool fixedWidth = topLevelWin->maximumWidth() == topLevelWin->minimumWidth();
+            const bool maximized = topLevelWin->windowState() == Qt::WindowMaximized;
+            return !maximized && !fixedWidth && pt.x() < DockBar::ResizeTopMargin;
+        }
+
+        return false;
+#else
+        Q_UNUSED(globalPos);
+        return false;
+#endif
+    }
+
+    bool TitleBar::isRightResizeArea(const QPoint& globalPos) const
+    {
+#ifdef Q_OS_MAC
+        if (window() != parentWidget() && !isInDockWidgetWindowGroup())
+        {
+            // The immediate parent of the TitleBar must be a top level
+            // if it's not then we're docked and we're not interested in resizing the top.
+            return false;
+        }
+
+        if (QWindow* topLevelWin = topLevelWindow())
+        {
+            QPoint pt = mapFromGlobal(globalPos);
+            const bool fixedWidth = topLevelWin->maximumWidth() == topLevelWin->minimumWidth();
+            const bool maximized = topLevelWin->windowState() == Qt::WindowMaximized;
+            return !maximized && !fixedWidth && pt.x() > width() - DockBar::ResizeTopMargin;
+        }
+
+        return false;
+#else
+        Q_UNUSED(globalPos);
+        return false;
+#endif
+    }
+
     QRect TitleBar::draggableRect() const
     {
         // This is rect() - the button rect, so we can enable aero-snap dragging in that space
@@ -511,7 +569,7 @@ namespace AzQtComponents
         return r;
     }
 
-    bool TitleBar::canResizeTop() const
+    bool TitleBar::canResize() const
     {
         const QWidget *w = window();
         if (!w)
@@ -536,13 +594,39 @@ namespace AzQtComponents
             return;
         }
 
-        if (isTopResizeArea(globalPos))
+        bool usesResizeCursor = false;
+        switch (cursor().shape()) {
+        case Qt::SizeVerCursor:
+        case Qt::SizeHorCursor:
+        case Qt::SizeFDiagCursor:
+        case Qt::SizeBDiagCursor:
+            usesResizeCursor = true;
+            break;
+        default:
+            usesResizeCursor = false;
+            break;
+        }
+
+        if (!usesResizeCursor)
         {
-            if (cursor().shape() != Qt::SizeVerCursor)
-            {
-                m_originalCursor = cursor().shape();
-                setCursor(Qt::SizeVerCursor);
-            }
+            m_originalCursor = cursor().shape();
+        }
+
+        if (isTopResizeArea(globalPos) && isLeftResizeArea(globalPos))
+        {
+            setCursor(Qt::SizeFDiagCursor);
+        }
+        else if (isTopResizeArea(globalPos) && isRightResizeArea(globalPos))
+        {
+            setCursor(Qt::SizeBDiagCursor);
+        }
+        else if (isLeftResizeArea(globalPos) || isRightResizeArea(globalPos))
+        {
+            setCursor(Qt::SizeHorCursor);
+        }
+        else if (isTopResizeArea(globalPos))
+        {
+            setCursor(Qt::SizeVerCursor);
         }
         else
         {
@@ -550,15 +634,35 @@ namespace AzQtComponents
         }
     }
 
-    void TitleBar::resizeTop(const QPoint& globalPos)
+    void TitleBar::resizeWindow(const QPoint& globalPos)
     {
         QWindow *w = topLevelWindow();
         QRect geo = w->geometry();
 
-        const QRect maxGeo = geo.adjusted(0, -(w->maximumHeight() - w->height()), 0, 0);
-        const QRect minGeo = geo.adjusted(0, w->height() - w->minimumHeight(), 0, 0);
+        // maxGeo has all sides of the rectangle expanded as far as allowed
+        const QRect maxGeo = QRect(QPoint(geo.right() - w->maximumWidth(),
+                                          geo.bottom() - w->maximumHeight()),
+                                   QPoint(geo.left() + w->maximumWidth(),
+                                          geo.top() + w->maximumHeight()));
+        // same for minGeo, we just have to take care that the size doesn't become "negative"
+        const QRect minGeo = QRect(QPoint(m_resizingLeft ? geo.right() - w->minimumWidth() : geo.left(),
+                                          m_resizingTop ? geo.bottom() - w->minimumHeight() : geo.top()),
+                                   QPoint(m_resizingRight ? geo.left() + w->minimumWidth() : geo.right(),
+                                          geo.bottom()));
 
-        geo.setTop(globalPos.y());
+        if (m_resizingTop)
+        {
+            geo.setTop(qBound(maxGeo.top(), globalPos.y(), minGeo.top()));
+        }
+        if (m_resizingLeft)
+        {
+            geo.setLeft(qBound(maxGeo.left(), globalPos.x(), minGeo.left()));
+        }
+        if (m_resizingRight)
+        {
+            geo.setRight(qBound(minGeo.right(), globalPos.x(), maxGeo.right()));
+        }
+
         geo = geo.intersected(maxGeo);
         geo = geo.united(minGeo);
 
@@ -635,9 +739,9 @@ namespace AzQtComponents
         // it's much more reliable about actually reporting a global position.
         QPoint globalPos = QCursor::pos();
 
-        if (isResizingTop())
+        if (isResizingWindow())
         {
-            resizeTop(globalPos);
+            resizeWindow(globalPos);
         }
         else if (isDraggingWindow())
         {
@@ -788,9 +892,9 @@ namespace AzQtComponents
      * Helper function to determine if we are currently resizing our title bar
      * from the top of our widget
      */
-    bool TitleBar::isResizingTop() const
+    bool TitleBar::isResizingWindow() const
     {
-        return isLeftButtonDown() && m_resizingTop && canResizeTop();
+        return isLeftButtonDown() && (m_resizingTop || m_resizingLeft || m_resizingRight) && canResize();
     }
 
     /**

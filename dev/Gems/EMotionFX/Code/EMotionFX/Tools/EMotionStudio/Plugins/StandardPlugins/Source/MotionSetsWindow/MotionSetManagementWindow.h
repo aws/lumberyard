@@ -15,7 +15,6 @@
 #include "../StandardPluginsConfig.h"
 #include "../../../../EMStudioSDK/Source/DockWidgetPlugin.h"
 #include <MysticQt/Source/DialogStack.h>
-#include <MysticQt/Source/SearchButton.h>
 #include <EMotionFX/Source/MotionSet.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 #include <EMotionFX/CommandSystem/Source/MotionSetCommands.h>
@@ -27,6 +26,10 @@
 #include <QLineEdit>
 #include <QDialog>
 
+namespace AzQtComponents
+{
+    class FilteredSearchWidget;
+}
 
 namespace EMStudio
 {
@@ -78,7 +81,7 @@ namespace EMStudio
         bool Init();
         void ReInit();
 
-        void SelectItemsByName(const char* name);
+        void SelectItemsById(uint32 motionSetId);
         void GetSelectedMotionSets(AZStd::vector<EMotionFX::MotionSet*>& outSelectedMotionSets) const;
 
         static void RecursiveRemoveMotionsFromSet(EMotionFX::MotionSet* motionSet, MCore::CommandGroup& commandGroup, AZStd::vector<EMotionFX::Motion*>& failedRemoveMotions);
@@ -99,11 +102,11 @@ namespace EMStudio
         void OnSave();
         void OnSaveAs();
 
-        void SearchStringChanged(const QString& text);
+        void OnTextFilterChanged(const QString& text);
 
     private:
-        virtual void keyPressEvent(QKeyEvent* event) override;
-        virtual void keyReleaseEvent(QKeyEvent* event) override;
+        void keyPressEvent(QKeyEvent* event) override;
+        void keyReleaseEvent(QKeyEvent* event) override;
 
         void RecursiveIncreaseMotionsReferenceCount(EMotionFX::MotionSet* motionSet);
         void RecursivelyAddSets(QTreeWidgetItem* parent, EMotionFX::MotionSet* motionSet, const AZStd::vector<uint32>& selectedSetIDs);
@@ -118,7 +121,8 @@ namespace EMStudio
         QPushButton*            mOpenSetButton;
         QPushButton*            mSaveSetButton;
         QPushButton*            mSaveAsSetButton;
-        MysticQt::SearchButton* mFindWidget;
+        AzQtComponents::FilteredSearchWidget* m_searchWidget;
+        AZStd::string           m_searchWidgetText;
         MotionSetsWindowPlugin* mPlugin;
     };
 } // namespace EMStudio

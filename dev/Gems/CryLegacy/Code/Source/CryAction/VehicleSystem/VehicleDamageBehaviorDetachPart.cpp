@@ -15,7 +15,7 @@
 //               children
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ICryAnimation.h"
 #include "IVehicleSystem.h"
 #include "Vehicle.h"
@@ -265,7 +265,7 @@ IEntity* CVehicleDamageBehaviorDetachPart::SpawnDetachedEntity()
 
     // spawn the detached entity
     char pPartName[128];
-    _snprintf(pPartName, 128, "%s_DetachedPart_%s", pVehicleEntity->GetName(), m_partName.c_str());
+    azsnprintf(pPartName, 128, "%s_DetachedPart_%s", pVehicleEntity->GetName(), m_partName.c_str());
     pPartName[sizeof(pPartName) - 1] = '\0';
 
     SEntitySpawnParams spawnParams;

@@ -11,8 +11,10 @@
 */
 
 #include "WindowsAPIImplementation.h"
+
 #if defined(AZ_PLATFORM_APPLE_OSX) || defined(AZ_PLATFORM_LINUX)
 
+#include <cstring>
 #include <errno.h>
 #import <mach/mach_time.h>
 #include <libkern/OSAtomic.h>
@@ -55,6 +57,27 @@ int WSAGetLastError()
     return errno;
 }
 
+DWORD Sleep(DWORD dwMilliseconds)
+{
+    timespec req;
+    timespec rem;
+    
+    memset(&req, 0, sizeof(req));
+    memset(&rem, 0, sizeof(rem));
+    
+    time_t sec = (int)(dwMilliseconds / 1000);
+    req.tv_sec = sec;
+    req.tv_nsec = (dwMilliseconds - (sec * 1000)) * 1000000L;
+    if (nanosleep(&req, &rem) == -1)
+    {
+        nanosleep(&rem, 0);
+    }
+    
+    return 0;
+}
+
+#if defined(AZ_PLATFORM_APPLE_OSX)
+
 int32_t InterlockedIncrement(volatile int32_t* valueToIncrement)
 {
     return OSAtomicIncrement32(valueToIncrement);
@@ -79,5 +102,7 @@ int64_t InterlockedAdd64(volatile int64_t* valueToUpdate, int64_t amountToAdd)
 {
     return OSAtomicAdd64(amountToAdd, valueToUpdate);
 }
+
+#endif
 
 #endif

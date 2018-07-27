@@ -27,29 +27,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeAccumTransformNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeAccumTransformNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
     public:
-        AZ_RTTI(BlendTreeAccumTransformNode, "{2216B366-F06C-4742-B998-44F4357F45BE}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00012346
-        };
-
-        // attributes
-        enum
-        {
-            ATTRIB_NODE                 = 0,
-            ATTRIB_TRANSLATE_AXIS       = 1,
-            ATTRIB_ROTATE_AXIS          = 2,
-            ATTRIB_SCALE_AXIS           = 3,
-            ATTRIB_TRANSLATE_SPEED      = 4,
-            ATTRIB_ROTATE_SPEED         = 5,
-            ATTRIB_SCALE_SPEED          = 6,
-            ATTRIB_TRANSLATE_INVERT     = 7,
-            ATTRIB_ROTATE_INVERT        = 8,
-            ATTRIB_SCALE_INVERT         = 9
-        };
+        AZ_RTTI(BlendTreeAccumTransformNode, "{2216B366-F06C-4742-B998-44F4357F45BE}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         // input ports
         enum
@@ -68,6 +48,21 @@ namespace EMotionFX
             PORTID_INPUT_SCALE_AMOUNT       = 3
         };
 
+        enum Axis : AZ::u8
+        {
+            AXIS_X = 0,
+            AXIS_Y = 1,
+            AXIS_Z = 2
+        };
+
+        enum ScaleAxis : AZ::u8
+        {
+            SCALEAXIS_X = 0,
+            SCALEAXIS_Y = 1,
+            SCALEAXIS_Z = 2,
+            SCALEAXIS_ALL = 3
+        };
+
         // output ports
         enum
         {
@@ -84,6 +79,8 @@ namespace EMotionFX
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
                 : AnimGraphNodeData(node, animGraphInstance)
             {
@@ -97,9 +94,6 @@ namespace EMotionFX
 
             ~UniqueData() {}
 
-            uint32 GetClassSize() const override                                                                                    { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override        { return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance); }
-
         public:
             Transform   mAdditiveTransform;
             uint32      mNodeIndex;
@@ -108,10 +102,11 @@ namespace EMotionFX
             bool        mIsValid;
         };
 
-        static BlendTreeAccumTransformNode* Create(AnimGraph* animGraph);
+        BlendTreeAccumTransformNode();
+        ~BlendTreeAccumTransformNode();
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
 
@@ -125,20 +120,35 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        void SetTargetNodeName(const AZStd::string& targetNodeName);
+        void SetTranslationAxis(Axis axis);
+        void SetRotationAxis(Axis axis);
+        void SetScaleAxis(ScaleAxis axis);
+        void SetTranslateSpeed(float speed);
+        void SetRotateSpeed(float speed);
+        void SetScaleSpeed(float speed);
+        void SetInvertTranslation(bool invertTranslation);
+        void SetInvertRotation(bool invertRotation);
+        void SetInvertScale(bool invertScale);
+
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        int32           mLastTranslateAxis;
-        int32           mLastRotateAxis;
-        int32           mLastScaleAxis;
-
-        BlendTreeAccumTransformNode(AnimGraph* animGraph);
-        ~BlendTreeAccumTransformNode();
-
         void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+
+        void OnAxisChanged();
+
+        AZStd::string   m_targetNodeName;
+        float           m_translateSpeed;
+        float           m_rotateSpeed;
+        float           m_scaleSpeed;
+        Axis            m_translationAxis;
+        Axis            m_rotationAxis;
+        ScaleAxis       m_scaleAxis;
+        bool            m_invertTranslation;
+        bool            m_invertRotation;
+        bool            m_invertScale;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

@@ -14,6 +14,7 @@
 
 #include <QAbstractItemView>
 #include <QFontMetrics>
+#include <QWheelEvent>
 
 namespace AzToolsFramework
 {

@@ -21,14 +21,13 @@ namespace Gestures
     ////////////////////////////////////////////////////////////////////////////////////////////////
     class RecognizerHoldFlowNode
         : public CFlowBaseNode<eNCT_Instanced>
-        , public IHoldListener
+        , public RecognizerHold
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         RecognizerHoldFlowNode(SActivationInfo* activationInfo)
             : CFlowBaseNode()
             , m_activationInfo(*activationInfo)
-            , m_recognizer(*this)
             , m_enabled(false)
         {
         }
@@ -75,9 +74,9 @@ namespace Gestures
             {
                 InputPortConfig_Void("Enable", _HELP("Enable gesture recognizer")),
                 InputPortConfig_Void("Disable", _HELP("Disable gesture recognizer")),
-                InputPortConfig<int>("PointerIndex", m_recognizer.GetConfig().pointerIndex, _HELP("The pointer (button or finger) index to track")),
-                InputPortConfig<float>("MinSecondsHeld", m_recognizer.GetConfig().minSecondsHeld, _HELP("The min time in seconds after the initial press before a hold will be recognized")),
-                InputPortConfig<float>("MaxPixelsMoved", m_recognizer.GetConfig().maxPixelsMoved, _HELP("The max distance in pixels that can be moved before a hold stops being recognized")),
+                InputPortConfig<int>("PointerIndex", GetConfig().pointerIndex, _HELP("The pointer (button or finger) index to track")),
+                InputPortConfig<float>("MinSecondsHeld", GetConfig().minSecondsHeld, _HELP("The min time in seconds after the initial press before a hold will be recognized")),
+                InputPortConfig<float>("MaxPixelsMoved", GetConfig().maxPixelsMoved, _HELP("The max distance in pixels that can be moved before a hold stops being recognized")),
                 { 0 }
             };
 
@@ -111,15 +110,15 @@ namespace Gestures
             {
                 if (IsPortActive(activationInfo, Input_PointerIndex))
                 {
-                    m_recognizer.GetConfig().pointerIndex = GetPortInt(activationInfo, Input_PointerIndex);
+                    GetConfig().pointerIndex = GetPortInt(activationInfo, Input_PointerIndex);
                 }
                 if (IsPortActive(activationInfo, Input_MinSecondsHeld))
                 {
-                    m_recognizer.GetConfig().minSecondsHeld = GetPortFloat(activationInfo, Input_MinSecondsHeld);
+                    GetConfig().minSecondsHeld = GetPortFloat(activationInfo, Input_MinSecondsHeld);
                 }
                 if (IsPortActive(activationInfo, Input_MaxPixelsMoved))
                 {
-                    m_recognizer.GetConfig().maxPixelsMoved = GetPortFloat(activationInfo, Input_MaxPixelsMoved);
+                    GetConfig().maxPixelsMoved = GetPortFloat(activationInfo, Input_MaxPixelsMoved);
                 }
 
                 if (IsPortActive(activationInfo, Input_Disable))
@@ -143,9 +142,9 @@ namespace Gestures
         ////////////////////////////////////////////////////////////////////////////////////////////
         void Serialize(SActivationInfo* activationInfo, TSerialize ser) override
         {
-            ser.Value("pointerIndex", m_recognizer.GetConfig().pointerIndex);
-            ser.Value("minSecondsHeld", m_recognizer.GetConfig().minSecondsHeld);
-            ser.Value("maxPixelsMoved", m_recognizer.GetConfig().maxPixelsMoved);
+            ser.Value("pointerIndex", GetConfig().pointerIndex);
+            ser.Value("minSecondsHeld", GetConfig().minSecondsHeld);
+            ser.Value("maxPixelsMoved", GetConfig().maxPixelsMoved);
 
             bool enabled = m_enabled;
             ser.Value("enabled", enabled);
@@ -167,7 +166,7 @@ namespace Gestures
             if (!m_enabled)
             {
                 m_enabled = true;
-                m_recognizer.BusConnect();
+                BusConnect();
             }
         }
 
@@ -177,51 +176,50 @@ namespace Gestures
             if (m_enabled)
             {
                 m_enabled = false;
-                m_recognizer.BusDisconnect();
+                BusDisconnect();
             }
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnHoldInitiated(const RecognizerHold& recognizer) override
+        void OnContinuousGestureInitiated() override
         {
             ActivateOutput(&m_activationInfo, Output_Initiated, true);
 
-            const Vec2 startPosition = recognizer.GetStartPosition();
-            ActivateOutput(&m_activationInfo, Output_StartX, startPosition.x);
-            ActivateOutput(&m_activationInfo, Output_StartY, startPosition.y);
+            const AZ::Vector2 startPosition = GetStartPosition();
+            ActivateOutput(&m_activationInfo, Output_StartX, startPosition.GetX());
+            ActivateOutput(&m_activationInfo, Output_StartY, startPosition.GetY());
 
-            OnHoldEvent(recognizer);
+            OnHoldEvent();
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnHoldUpdated(const RecognizerHold& recognizer) override
+        void OnContinuousGestureUpdated() override
         {
             ActivateOutput(&m_activationInfo, Output_Updated, true);
 
-            OnHoldEvent(recognizer);
+            OnHoldEvent();
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnHoldEnded(const RecognizerHold& recognizer) override
+        void OnContinuousGestureEnded() override
         {
             ActivateOutput(&m_activationInfo, Output_Ended, true);
 
-            OnHoldEvent(recognizer);
+            OnHoldEvent();
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnHoldEvent(const RecognizerHold& recognizer)
+        void OnHoldEvent()
         {
-            const Vec2 currentPosition = recognizer.GetCurrentPosition();
-            ActivateOutput(&m_activationInfo, Output_CurrentX, currentPosition.x);
-            ActivateOutput(&m_activationInfo, Output_CurrentY, currentPosition.y);
+            const AZ::Vector2 currentPosition = GetCurrentPosition();
+            ActivateOutput(&m_activationInfo, Output_CurrentX, currentPosition.GetX());
+            ActivateOutput(&m_activationInfo, Output_CurrentY, currentPosition.GetY());
 
-            ActivateOutput(&m_activationInfo, Output_Duration, recognizer.GetDuration());
+            ActivateOutput(&m_activationInfo, Output_Duration, GetDuration());
         }
 
     private:
         SActivationInfo m_activationInfo;
-        RecognizerHold m_recognizer;
         bool m_enabled;
     };
 

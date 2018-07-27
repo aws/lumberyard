@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 //----- UI_ANIMATION_REVISIT - this is required to compile since something we include still uses MFC
 
@@ -416,14 +416,14 @@ void CUiAnimViewDialog::InitToolbar()
     qaction = m_playToolBar->addAction(QIcon(":/Trackview/play/tvplay-09.png"), "Undo");
     qaction->setData(ID_UNDO);
     m_actions[ID_UNDO] = qaction;
-    connect(qaction, &QAction::triggered, []()
+    connect(qaction, &QAction::triggered, this, []()
         {
             UiAnimUndoManager::Get()->Undo();
         });
     qaction = m_playToolBar->addAction(QIcon(":/Trackview/play/tvplay-10.png"), "Redo");
     qaction->setData(ID_REDO);
     m_actions[ID_REDO] = qaction;
-    connect(qaction, &QAction::triggered, []()
+    connect(qaction, &QAction::triggered, this, []()
         {
             UiAnimUndoManager::Get()->Redo();
         });

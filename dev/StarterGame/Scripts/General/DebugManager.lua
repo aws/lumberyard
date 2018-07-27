@@ -2,11 +2,11 @@ local debugmanager =
 {
 	Properties =
 	{
-		DebugTheDebugManager = { default = false },
+		DebugTheDebugManager = { default = true },
 		AI =
 		{
-			EnableAISpawning = { default = false, description = "Enable the spawning of A.I. mobs." },
-			EnableAICombat = { default = false, description = "Allow the A.I. to actively combat the player." },
+			EnableAISpawning = { default = true, description = "Enable the spawning of A.I. mobs." },
+			EnableAICombat = { default = true, description = "Allow the A.I. to actively combat the player." },
 			PreventAIDisabling = { default = false, description = "Ignores trigger volumes that enable/disable A.I." },
 		},
 		

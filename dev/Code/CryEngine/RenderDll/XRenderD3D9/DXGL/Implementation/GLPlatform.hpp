@@ -41,7 +41,7 @@ namespace NCryOpenGL
 
 #define DXGL_PROFILING 0
 
-#if defined(_MSC_VER)
+#if defined(AZ_COMPILER_MSVC)
 #define _DXGL_LOG_STRINGIFY_(x) #x
 #define _DXGL_LOG_STRINGIFY(x) _DXGL_LOG_STRINGIFY_(x)
 #define _DXGL_LOG_MSG(_TEXT, _FILE, _LINE, _FUNC) "DXGL: " _TEXT " : [@" _FUNC "] " _FILE "(" _LINE ")"

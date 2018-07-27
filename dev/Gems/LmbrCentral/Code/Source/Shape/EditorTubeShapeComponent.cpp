@@ -76,8 +76,8 @@ namespace LmbrCentral
         const AZ::u32 endSegments = m_tubeShape.GetSpline()->IsClosed() ? 0 : m_tubeShapeMeshConfig.m_endSegments;
         GenerateTubeMesh(
             m_tubeShape.GetSpline(), m_tubeShape.GetRadiusAttribute(), m_tubeShape.GetRadius(),
-            m_tubeShape.GetCurrentTransform(), endSegments, m_tubeShapeMeshConfig.m_sides,
-            m_tubeShapeMesh.m_vertexBuffer, m_tubeShapeMesh.m_indexBuffer, m_tubeShapeMesh.m_lineBuffer);
+            endSegments, m_tubeShapeMeshConfig.m_sides, m_tubeShapeMesh.m_vertexBuffer,
+            m_tubeShapeMesh.m_indexBuffer, m_tubeShapeMesh.m_lineBuffer);
     }
 
     void EditorTubeShapeComponent::DisplayEntity(bool& handled)
@@ -86,7 +86,7 @@ namespace LmbrCentral
             [this]() { return CanDraw(); },
             [this](AzFramework::EntityDebugDisplayRequests* displayContext)
             {
-                DrawShape({ m_shapeColor, m_shapeWireColor, m_displayFilled }, m_tubeShapeMesh);
+                DrawShape(displayContext, { m_shapeColor, m_shapeWireColor, m_displayFilled }, m_tubeShapeMesh);
             },
             m_tubeShape.GetCurrentTransform());
     }
@@ -120,12 +120,6 @@ namespace LmbrCentral
     void EditorTubeShapeComponent::OnAttributesCleared()
     {
         AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh, AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
-    }
-
-    void EditorTubeShapeComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
-    {
-        EditorBaseShapeComponent::OnTransformChanged(local, world);
-        GenerateVertices();
     }
 
     void EditorTubeShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)

@@ -21,6 +21,7 @@
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QWidgetAction>
+#include <QMouseEvent>
 
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/XML/rapidxml.h>
@@ -605,9 +606,6 @@ namespace AzToolsFramework
                     }
                     else
                     {
-                        QString tag, text;
-
-                        SearchCriteriaButton::SplitTagAndText(criteria, tag, text);
                         SearchCriteriaButton* newTag = aznew SearchCriteriaButton(tag, text, this);
                         connect(newTag, &SearchCriteriaButton::CloseRequested, this, &SearchCriteriaWidget::RemoveCriteria);
                         connect(newTag, &SearchCriteriaButton::RequestUpdate, this, &SearchCriteriaWidget::CollectAndEmitCriteria);

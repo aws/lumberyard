@@ -44,7 +44,7 @@ namespace ScriptCanvas
                         if (resultSlot)
                         {
                             PushOutput(variableDatum->GetData(), *resultSlot);
-                            
+
                             // Push the data for each property slot out as well
                             for (auto&& propertyAccount : m_propertyAccounts)
                             {
@@ -243,7 +243,7 @@ namespace ScriptCanvas
                     ScopedBatchOperation scopedBatchOperation(AZ_CRC("GetVariableRemoved", 0xf2d1d2eb));
                     RemoveOutputSlot();
                 }
-                VariableNodeNotificationBus::Event(GetEntityId(), &VariableNodeNotifications::OnVariableRemoved, removedVariableId);
+                VariableNodeNotificationBus::Event(GetEntityId(), &VariableNodeNotifications::OnVariableRemovedFromNode, removedVariableId);
             }
         }
     }

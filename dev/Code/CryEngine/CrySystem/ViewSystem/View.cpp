@@ -17,14 +17,16 @@
 #include <HMDBus.h>
 #include <ITimeDemoRecorder.h>
 #include "View.h"
-#include "GameObjects/GameObject.h"
 #include <AzCore/Math/MathUtils.h>
 #include <IStereoRenderer.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/Entity.h>
 #include <Components/IComponentAudio.h>
+#include <IEntityHelper.h>
+#include <MathConversion.h>
 
-//FIXME:not very pretty
+namespace LegacyViewSystem
+{
 
 static ICVar* pCamShakeMult = 0;
 static ICVar* pHmdReferencePoint = 0;
@@ -53,7 +55,7 @@ CView::CView(ISystem* pSystem)
 //------------------------------------------------------------------------
 CView::~CView()
 {
-    if (m_pAudioListener)
+    if (m_pAudioListener && gEnv->pEntitySystem)
     {
         gEnv->pEntitySystem->RemoveEntityEventListener(m_pAudioListener->GetId(), ENTITY_EVENT_DONE, this);
         gEnv->pEntitySystem->RemoveEntity(m_pAudioListener->GetId(), true);
@@ -76,14 +78,9 @@ void CView::Update(float frameTime, bool isActive)
         return;
     }
 
-    CGameObjectPtr pLinkedTo = GetLinkedGameObject();
-    if (pLinkedTo && !pLinkedTo->CanUpdateView())
-    {
-        pLinkedTo = NULL;
-    }
-    IEntity* pEntity = pLinkedTo ? 0 : GetLinkedEntity();
+    IEntity* pEntity = GetLinkedEntity();
 
-    if (pLinkedTo || pEntity || m_azEntity)
+    if (pEntity || m_azEntity)
     {
         m_viewParams.SaveLast();
 
@@ -97,21 +94,7 @@ void CView::Update(float frameTime, bool isActive)
 
         m_viewParams.frameTime = frameTime;
         //update view position/rotation
-        if (pLinkedTo)
-        {
-            pLinkedTo->UpdateView(m_viewParams);
-            if (!m_viewParams.position.IsValid())
-            {
-                m_viewParams.position = m_viewParams.GetPositionLast();
-                CRY_ASSERT_MESSAGE(0, "Camera position is invalid, reverting to old position");
-            }
-            if (!m_viewParams.rotation.IsValid())
-            {
-                m_viewParams.rotation = m_viewParams.GetRotationLast();
-                CRY_ASSERT_MESSAGE(0, "Camera rotation is invalid, reverting to old rotation");
-            }
-        }
-        else if (pEntity)
+        if (pEntity)
         {
             Matrix34 mat = pEntity->GetWorldTM();
             mat.OrthonormalizeFast();
@@ -134,12 +117,7 @@ void CView::Update(float frameTime, bool isActive)
 
         ApplyFrameAdditiveAngles(m_viewParams.rotation);
 
-        if (pLinkedTo)
-        {
-            pLinkedTo->PostUpdateView(m_viewParams);
-        }
-
-        const float fNearZ = gEnv->pGame->GetIGameFramework()->GetIViewSystem()->GetDefaultZNear();
+        const float fNearZ = gEnv->pSystem->GetIViewSystem()->GetDefaultZNear();
 
         //see if the view have to use a custom near clipping plane
         const float nearPlane = (m_viewParams.nearplane >= CAMERA_MIN_NEAR) ? (m_viewParams.nearplane) : fNearZ;
@@ -169,44 +147,10 @@ void CView::Update(float frameTime, bool isActive)
 
         m_camera.SetFrustum(pSysCam->GetViewSurfaceX(), pSysCam->GetViewSurfaceZ(), fov, nearPlane, farPlane, pSysCam->GetPixelAspectRatio());
 
-        //TODO: (14, 06, 2010, "the player view should always get updated, this due to the hud being visable, without shocking, in cutscenes - todo is to see if we can optimise this code");
-        IActor* pActor = gEnv->pGame->GetIGameFramework()->GetClientActor();
-        if (pActor)
-        {
-            CGameObjectPtr linkToObj = pActor->GetEntity()->GetComponent<CGameObject>();
-            if (linkToObj && linkToObj != pLinkedTo)
-            {
-                linkToObj->PostUpdateView(m_viewParams);
-            }
-        }
-
         //apply shake & set the view matrix
         m_viewParams.rotation *= m_viewParams.currentShakeQuat;
         m_viewParams.rotation.NormalizeSafe();
         m_viewParams.position += m_viewParams.currentShakeShift;
-
-        // Camera space Rendering calculations on Entity
-        if (pLinkedTo)
-        {
-            IEntity* pLinkedToEntity = pLinkedTo->GetEntity();
-            if (pLinkedToEntity)
-            {
-                const int slotIndex = 0;
-                uint32 entityFlags = pLinkedToEntity->GetSlotFlags(slotIndex);
-                if ((entityFlags & ENTITY_SLOT_RENDER_NEAREST) && !(entityFlags & ENTITY_SLOT_RENDER_NEAREST_NO_ATTACH_CAMERA))
-                {
-                    // Get camera pos relative to entity
-                    const Vec3 cameraLocalPos = m_viewParams.position;
-
-                    // Set entity's camera space position
-                    const Vec3 cameraSpacePos(-cameraLocalPos * m_viewParams.rotation);
-                    pLinkedToEntity->SetSlotCameraSpacePos(slotIndex, cameraSpacePos);
-
-                    // Add world pos onto camera local pos
-                    m_viewParams.position = pLinkedToEntity->GetWorldPos() + cameraLocalPos;
-                }
-            }
-        }
 
         // Blending between cameras needs to happen after Camera space rendering calculations have been applied
         // so that the m_viewParams.position is in World Space again
@@ -235,19 +179,6 @@ void CView::Update(float frameTime, bool isActive)
         }
         else if (isRenderingToHMD)
         {
-            if (pHmdReferencePoint && pHmdReferencePoint->GetIVal() == 1) // actor-centered HMD offset
-            {
-                const IEntity* pEnt = GetLinkedEntity();
-                if (const IActor* clientActor = gEnv->pGame->GetIGameFramework()->GetClientActor())
-                {
-                    if (pEnt && clientActor->GetEntity() == pEnt)
-                    {
-                        q = pEnt->GetWorldRotation();
-                        pos = pEnt->GetWorldPos();
-                    }
-                }
-            }
-
             //This HMD tracking state is used JUST for use in the visibility system.
             //RT_SetStereoCamera in D3DRendPipeline will override this info before rendering with the absolute
             //latest tracking info.
@@ -735,12 +666,8 @@ void CView::LinkTo(AZ::Entity* follow)
 }
 
 //------------------------------------------------------------------------
-void CView::LinkTo(IGameObject* follow)
+void CView::LinkTo(IGameObject*)
 {
-    CRY_ASSERT(follow);
-
-    m_linkedTo = AZ::EntityId(follow->GetEntityId());
-    m_viewParams.targetPos = follow->GetEntity()->GetWorldPos();
 }
 
 //------------------------------------------------------------------------
@@ -763,26 +690,6 @@ void CView::Unlink()
 void CView::SetFrameAdditiveCameraAngles(const Ang3& addFrameAngles)
 {
     m_frameAdditiveAngles = addFrameAngles;
-}
-
-//------------------------------------------------------------------------
-CGameObjectPtr CView::GetLinkedGameObject()
-{
-    //We should not be returning a legacy CGameObjectPtr if this object isn't linked to a legacy entity
-    if (!IsLegacyEntityId(m_linkedTo))
-    {
-        return NULL;
-    }
-
-    EntityId legacyId = GetLegacyEntityId(m_linkedTo);
-    IEntity* pEntity = gEnv->pEntitySystem->GetEntity(legacyId);
-
-    if (!pEntity)
-    {
-        return NULL;
-    }
-
-    return pEntity->GetComponent<CGameObject>();
 }
 
 //------------------------------------------------------------------------
@@ -845,7 +752,7 @@ void CView::OnEntityEvent(IEntity* pEntity, SEntityEvent& event)
 //////////////////////////////////////////////////////////////////////////
 void CView::CreateAudioListener()
 {
-    if (!m_pAudioListener)
+    if (!m_pAudioListener && gEnv->pEntitySystem)
     {
         SEntitySpawnParams oEntitySpawnParams;
         oEntitySpawnParams.sName = "AudioListener";
@@ -870,7 +777,7 @@ void CView::CreateAudioListener()
             CryFatalError("<Audio>: Audio listener creation failed in CView::CreateAudioListener!");
         }
     }
-    else
+    else if (m_pAudioListener)
     {
         m_pAudioListener->SetFlagsExtended(m_pAudioListener->GetFlagsExtended() | ENTITY_FLAG_EXTENDED_AUDIO_LISTENER);
         m_pAudioListener->InvalidateTM(ENTITY_XFORM_POS);
@@ -941,4 +848,4 @@ void CView::SetActive(bool const bActive)
     }
 }
 
-
+} // namespace LegacyViewSystem

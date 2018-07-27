@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "EntityClassRegistry.h"
 #include "EntityClass.h"
 #include "EntityScript.h"
@@ -240,7 +240,7 @@ void CEntityClassRegistry::LoadClasses(const char* sRootPath, bool bOnlyNewClass
             else
             {
                 size_t stringSize = strlen(fd.name);
-                if ((stringSize > 4) && (strcmpi(fd.name + stringSize - 4, ".ent") == 0))
+                if ((stringSize > 4) && (azstricmp(fd.name + stringSize - 4, ".ent") == 0))
                 {
                     // Ent file found, load it.
                     cry_strcpy(filename, sPath);

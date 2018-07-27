@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "VehicleModificationParams.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -125,7 +125,7 @@ XmlNodeRef CVehicleModificationParams::FindModificationNodeByName(const char* na
     {
         XmlNodeRef xmlModification = xmlModificationsGroup->getChild(i);
         const char* modificationName = xmlModification->getAttr("name");
-        if (modificationName != 0 && (strcmpi(name, modificationName) == 0))
+        if (modificationName != 0 && (azstricmp(name, modificationName) == 0))
         {
             return xmlModification;
         }

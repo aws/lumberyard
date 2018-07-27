@@ -12,7 +12,6 @@
 
 #pragma once
 
-// include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
 
@@ -25,17 +24,10 @@ namespace EMotionFX
     class EMFX_API BlendTreeBoolLogicNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeBoolLogicNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
         AZ_RTTI(BlendTreeBoolLogicNode, "{1C7C02C1-D55A-4F2B-8947-BC5163916BBA}", AnimGraphNode);
+        AZ_CLASS_ALLOCATOR_DECL
 
-        enum
-        {
-            TYPE_ID = 0x00000011
-        };
-
-        //
         enum
         {
             INPUTPORT_X         = 0,
@@ -52,7 +44,7 @@ namespace EMotionFX
             PORTID_OUTPUT_BOOL  = 1
         };
 
-        enum EFunction
+        enum EFunction : AZ::u8
         {
             FUNCTION_AND        = 0,
             FUNCTION_OR         = 1,
@@ -60,18 +52,11 @@ namespace EMotionFX
             NUM_FUNCTIONS
         };
 
-        enum
-        {
-            ATTRIB_FUNCTION         = 0,
-            ATTRIB_STATICVALUE      = 1,
-            ATTRIB_TRUEVALUE        = 2,
-            ATTRIB_FALSEVALUE       = 3
-        };
+        BlendTreeBoolLogicNode();
+        ~BlendTreeBoolLogicNode();
 
-        static BlendTreeBoolLogicNode* Create(AnimGraph* animGraph);
-
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void SetFunction(EFunction func);
 
@@ -80,24 +65,25 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        void SetDefaultValue(bool defaultValue);
+        void SetTrueResult(float trueResult);
+        void SetFalseResult(float falseResult);
+
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
         typedef bool (MCORE_CDECL * BlendTreeBoolLogicFunction)(bool x, bool y);
 
-        EFunction                   mFunctionEnum;
-        BlendTreeBoolLogicFunction  mFunction;
-
-        BlendTreeBoolLogicNode(AnimGraph* animGraph);
-        ~BlendTreeBoolLogicNode();
+        EFunction                   m_functionEnum;
+        BlendTreeBoolLogicFunction  m_function;
+        float                       m_trueResult;
+        float                       m_falseResult;
+        bool                        m_defaultValue;
 
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
-        void OnUpdateAttributes() override;
 
         static bool MCORE_CDECL BoolLogicAND(bool x, bool y);
         static bool MCORE_CDECL BoolLogicOR(bool x, bool y);
         static bool MCORE_CDECL BoolLogicXOR(bool x, bool y);
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

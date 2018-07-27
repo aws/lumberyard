@@ -17,7 +17,7 @@
 
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AIRecorder.h"
 #include "PipeUser.h"
 #include "StringUtils.h"
@@ -1236,11 +1236,18 @@ void CAIRecorder::GetCompleteFilename(char const* szFilename, bool bAppendFileCo
     else
     {
         // Get current date line
+        char szDate[128];
+
         time_t ltime;
         time(&ltime);
+#ifdef AZ_COMPILER_MSVC
+        tm _tm;
+        localtime_s(&_tm, &ltime);
+        strftime(szDate, AZ_ARRAY_SIZE(szDate), "Date(%d %b %Y) Time(%H %M %S)", &_tm);
+#else
         tm* pTm = localtime(&ltime);
-        char szDate[128];
         strftime(szDate, 128, "Date(%d %b %Y) Time(%H %M %S)", pTm);
+#endif
 
         // Get current version line
         const SFileVersion& fileVersion = gEnv->pSystem->GetFileVersion();

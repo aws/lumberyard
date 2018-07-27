@@ -24,6 +24,8 @@ def build(bld):
         win_features      = ['crcfix'],
         win_defines       = ['PHYSX_WIN'],
 
+        win_x64_clang_cxxflags = ['-Wno-return-type-c-linkage'],
+
         editor = dict(
             file_list         = ['physx.waf_files'],
             win_file_list     = ['physx_editor_win.waf_files', 'physx_win.waf_files'],
@@ -35,10 +37,12 @@ def build(bld):
             test_all_includes = [bld.Path('Code/Framework/Tests')],
             use               = ['LmbrCentral',
                                  'AzFramework',
-                                 'SceneCore', 
+                                 'SceneCore',
                                  'SceneData'],
             test_all_use      = ['AzPhysicsTests'],
             uselib            = ['QT5CORE'],
-            win_features      = ['crcfix']
+            win_features      = ['crcfix'],
+
+            win_x64_clang_cxxflags = ['-Wno-return-type-c-linkage'],
         ),
     )

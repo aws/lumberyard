@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CAISystem.h"
 #include <ISystem.h>
 #include <IConsole.h>
@@ -3541,7 +3541,7 @@ CAIObject* CPipeUser::GetOrCreateSpecialAIObject(ESpecialAIObjects type)
     default:
     {
         char    buf[64];
-        _snprintf(buf, 64, "_*Special%02d", (int)type);
+        azsnprintf(buf, 64, "_*Special%02d", (int)type);
         name += buf;
         break;
     }
@@ -3640,7 +3640,7 @@ void CPipeUser::Serialize(TSerialize ser)
     char    specialName[64];
     for (unsigned i = 0; i < COUNT_AISPECIAL; ++i)
     {
-        _snprintf(specialName, 64, "m_pSpecialObjects%d", i);
+        azsnprintf(specialName, 64, "m_pSpecialObjects%d", i);
         m_refSpecialObjects[i].Serialize(ser, specialName);
     }
 

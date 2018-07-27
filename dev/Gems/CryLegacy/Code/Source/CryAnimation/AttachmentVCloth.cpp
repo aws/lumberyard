@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "AttachmentBase.h"
 #include "CharacterManager.h"
 #include "CharacterInstance.h"
@@ -24,7 +24,6 @@
 #include <IShader.h>
 #include "ModelMesh.h"
 #include "QTangent.h"
-#include <IJobManager_JobDelegator.h>
 
 void CAttachmentVCLOTH::ReleaseSoftwareRenderMeshes()
 {

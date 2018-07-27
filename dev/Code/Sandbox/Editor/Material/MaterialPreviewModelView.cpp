@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "MaterialPreviewModelView.h"
 #include <Material/MaterialManager.h>

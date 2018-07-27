@@ -14,7 +14,7 @@
 // Description : Class Implementation for CLeaderAction (and inherited)
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "LeaderAction.h"
 #include "AILog.h"
 #include "GoalOp.h"

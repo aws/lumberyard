@@ -12,17 +12,17 @@
 
 #pragma once
 
-#include "EMotionFXConfig.h"
+#include <AzCore/IO/GenericStreams.h>
+#include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/unordered_set.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
 #include <MCore/Source/StringIdPool.h>
-#include "BaseObject.h"
 
 
 namespace EMotionFX
 {
-    // forward declarations
     class Motion;
     class MotionSetCallback;
 
@@ -30,33 +30,29 @@ namespace EMotionFX
      *
      */
     class EMFX_API MotionSet
-        : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MotionSet, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_MOTIONSETS);
-
     public:
-        /**
-         *
-         */
+        AZ_RTTI(MotionSet, "{FE63321D-3593-4214-AFA4-F620CDC17B9B}")
+        AZ_CLASS_ALLOCATOR_DECL
+
         class EMFX_API MotionEntry
-            : public BaseObject
         {
-            MCORE_MEMORYOBJECTCATEGORY(MotionSet::MotionEntry, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_MOTIONSETS);
             friend class MotionSet;
-
         public:
-            /**
-             * Creation method.
-             */
-            static MotionEntry* Create();
+            AZ_RTTI(MotionSet::MotionEntry, "{A1859687-2DE7-4B29-8A39-07836FDF5956}");
+            AZ_CLASS_ALLOCATOR_DECL
+
+            MotionEntry();
 
             /**
-             * Extended creation method.
+             * Constructor.
              * @param[in] filename The local filename of the motion.
-             * @param[in] id The string id of the motion.
+             * @param[in] motionId The motion name.
              * @param[in] motion A pointer to the motion.
              */
-            static MotionEntry* Create(const char* filename, const char* id, Motion* motion = nullptr);
+            MotionEntry(const char* filename, const AZStd::string& motionId, Motion* motion = nullptr);
+
+            virtual ~MotionEntry();
 
             /**
              * Set the filename of the motion.
@@ -89,16 +85,10 @@ namespace EMotionFX
             void SetMotion(Motion* motion)                                                                      { m_motion = motion; }
 
             /**
-             * Get the string id of the motion.
-             * @result The integer string identification number of the the motion.
-             */
-            uint32 GetStringID() const                                                                          { return m_stringId; }
-
-            /**
              * Get the id string of the motion.
              * @result The string identification of the the motion.
              */
-            const AZStd::string& GetID() const;
+            const AZStd::string& GetId() const;
 
             /**
              * Check if the last loading attempt failed or not.
@@ -131,39 +121,33 @@ namespace EMotionFX
              */
             static bool CheckIfIsAbsoluteFilename(const AZStd::string& filename);
 
+            static void Reflect(AZ::ReflectContext* context);
+
         private:
             AZStd::string   m_filename;     /**< The local filename of the motion. */
+            AZStd::string   m_id;           /**< The motion name. */
             Motion*         m_motion;       /**< A pointer to the motion. */
-            AZ::u32         m_stringId;     /**< The ID, which is generated from the string identification for the motion inside the given motion set. */
             bool            m_loadFailed;   /**< Did the last load attempt fail? */
 
-            /**
-             * Constructor.
-             */
-            MotionEntry();
-
-            /**
-             * Constructor.
-             * @param[in] filename The local filename of the motion.
-             * @param[in] stringId The string id for the motion id generated with the string id generator.
-             * @param[in] motion A pointer to the motion.
-             */
-            MotionEntry(const char* filename, AZ::u32 stringId, Motion* motion = nullptr);
-
-            /**
-             * Destructor.
-             */
-            ~MotionEntry();
-
-            /**
-             * Set the string id of the motion entry.
-             * @param[in] stringID The string identification id for the motion. MCORE_INVALIDINDEX32 for no assignment.
-             */
-            void SetStringId(uint32 stringID)                                                                   { m_stringId = stringID; }
+            void SetId(const AZStd::string& id);
         };
 
+        /**
+         * Default constructor.
+         */
+        MotionSet();
 
-        static MotionSet* Create(const char* name, MotionSet* parent = nullptr);
+        /**
+         * Constructor.
+         * @param[in] name The name of the motion set.
+         * @param[in] parent The parent motion set. This parameter is optional.
+         */
+        MotionSet(const char* name, MotionSet* parent = nullptr);
+
+        /**
+         * Destructor.
+         */
+        virtual ~MotionSet();
 
         /**
          * Set the unique identification number for the motion set.
@@ -235,8 +219,8 @@ namespace EMotionFX
          * Get the container holding the motion entries for entry traversal.
          * @result The motion entry hashmap.
          */
-        typedef AZStd::unordered_map<AZ::u32, MotionSet::MotionEntry*> EntryMap;
-        const EntryMap& GetMotionEntries() const;
+        typedef AZStd::unordered_map<AZStd::string, MotionSet::MotionEntry*> MotionEntries;
+        const MotionEntries& GetMotionEntries() const;
 
         /**
          * Gets child motions recursively.
@@ -271,18 +255,18 @@ namespace EMotionFX
         MotionEntry* FindMotionEntry(Motion* motion) const;
 
 
-        MotionEntry* FindMotionEntryByStringID(const char* motionId) const;
-        MotionEntry* RecursiveFindMotionEntryByStringID(const char* stringID) const;
-        Motion* RecursiveFindMotionByStringID(const char* stringID, bool loadOnDemand = true) const;
+        MotionEntry* FindMotionEntryById(const AZStd::string& motionId) const;
+        MotionEntry* RecursiveFindMotionEntryById(const AZStd::string& motionId) const;
+        Motion* RecursiveFindMotionById(const AZStd::string& motionId, bool loadOnDemand = true) const;
         MotionSet* RecursiveFindMotionSetByName(const AZStd::string& motionSetName, bool isOwnedByRuntime = false);
 
         /**
          * Set a new motion id for the given motion entry.
          * This will adjust the actual motion entry as well as update the hashmap.
          * @param[in] motionEntry The motion entry to change the id for.
-         * @param[in] newId The new motion id as a string.
+         * @param[in] newMotionId The new motion id.
          */
-        void SetMotionEntryId(MotionEntry* motionEntry, const char* newId);
+        void SetMotionEntryId(MotionEntry* motionEntry, const AZStd::string& newMotionId);
 
         /**
          * Load the motion for a given entry.
@@ -390,6 +374,13 @@ namespace EMotionFX
 
         MotionSetCallback* GetCallback() const;
 
+        static void Reflect(AZ::ReflectContext* context);
+
+        static MotionSet* LoadFromFile(const AZStd::string& filename, AZ::SerializeContext* context);
+        static MotionSet* LoadFromBuffer(const void* buffer, const AZStd::size_t length, AZ::SerializeContext* context);
+
+        bool SaveToFile(const AZStd::string& filename, AZ::SerializeContext* context) const;
+
         void Log();
 
         /**
@@ -398,33 +389,25 @@ namespace EMotionFX
         */
         size_t GetNumMorphMotions() const;
 
+
     private:
-        AZStd::unordered_map<AZ::u32, MotionEntry*> m_motionEntries;    /**< Hash map for storing the motion entries. Key is the 32-bit unsigned integer representing the motion id string using the string id generator. */
-        AZStd::vector<MotionSet*>                   m_childSets;        /**< The array of pointers to the child motion sets. */
-        AZStd::string                               m_name;             /**< The name of the motion set. */
-        AZStd::string                               m_filename;         /**< The filename of the motion set. */
-        mutable MCore::MutexRecursive               m_mutex;            /**< The multithread mutex. */
-        MotionSet*                                  m_parentSet;        /**< A pointer to the parent motion set. */
-        MotionSetCallback*                          m_callback;         /**< The motion set callback, which handles the loading. */
-        uint32                                      m_id;               /**< The unique identification number for the motion set. */
-        bool                                        m_dirtyFlag;        /**< The dirty flag which indicates whether the user has made changes to the motion set since the last file save operation. */
-        bool                                        m_autoUnregister;   /**< Specifies whether we will automatically unregister this motion set from the motion manager or not, when deleting this object. */
+        void RecursiveRewireParentSets(MotionSet* motionSet);
+        void InitAfterLoading();
+
+        MotionEntries                               m_motionEntries;        /**< Hash map for storing the motion entries. Key is the 32-bit unsigned integer representing the motion id string using the string id generator. */
+        AZStd::vector<MotionSet*>                   m_childSets;            /**< The array of pointers to the child motion sets. */
+        AZStd::string                               m_name;                 /**< The name of the motion set. */
+        AZStd::string                               m_filename;             /**< The filename of the motion set. */
+        mutable MCore::MutexRecursive               m_mutex;                /**< The multithread mutex. */
+        MotionSet*                                  m_parentSet;            /**< A pointer to the parent motion set. */
+        MotionSetCallback*                          m_callback;             /**< The motion set callback, which handles the loading. */
+        uint32                                      m_id;                   /**< The unique identification number for the motion set. */
+        bool                                        m_dirtyFlag;            /**< The dirty flag which indicates whether the user has made changes to the motion set since the last file save operation. */
+        bool                                        m_autoUnregister;       /**< Specifies whether we will automatically unregister this motion set from the motion manager or not, when deleting this object. */
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         bool                                        m_isOwnedByRuntime; /**< Set if this motion set belongs to the engine runtime, as opposed to the tool suite. */
 #endif // EMFX_DEVELOPMENT_BUILD
-
-        /**
-         * Constructor.
-         * @param[in] name The name of the motion set.
-         * @param[in] parent The parent motion set. This parameter is optional.
-         */
-        MotionSet(const char* name, MotionSet* parent = nullptr);
-
-        /**
-         * Destructor.
-         */
-        ~MotionSet();
     };
 
 
@@ -434,12 +417,14 @@ namespace EMotionFX
      *
      */
     class EMFX_API MotionSetCallback
-        : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MotionSetCallback, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_MOTIONSETS);
     public:
-        static MotionSetCallback* Create();
-        static MotionSetCallback* Create(MotionSet* motionSet);
+        AZ_RTTI(MotionSetCallback, "{687F0769-75F4-49B9-9BC9-FBE6EA472ED4}")
+        AZ_CLASS_ALLOCATOR_DECL
+
+        MotionSetCallback();
+        MotionSetCallback(MotionSet* motionSet);
+        virtual ~MotionSetCallback();
 
         virtual Motion* LoadMotion(MotionSet::MotionEntry* entry);
 
@@ -447,10 +432,6 @@ namespace EMotionFX
         void SetMotionSet(MotionSet* motionSet)         { m_motionSet = motionSet; }
 
     protected:
-        MotionSet*  m_motionSet;
-
-        MotionSetCallback();
-        MotionSetCallback(MotionSet* motionSet);
-        virtual ~MotionSetCallback();
+        MotionSet* m_motionSet;
     };
 } // namespace EMotionFX

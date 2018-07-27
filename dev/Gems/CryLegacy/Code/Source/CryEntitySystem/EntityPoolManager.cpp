@@ -15,7 +15,7 @@
 //               entities derived from level loading
 
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include "EntityPoolManager.h"
 #include "EntityPoolDefinition.h"
 #include "EntityPool.h"

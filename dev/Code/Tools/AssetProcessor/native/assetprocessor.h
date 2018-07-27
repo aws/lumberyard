@@ -39,16 +39,6 @@ namespace AssetProcessor
     // which do not handle this case ,therefore we will make AP fail any jobs whose either source file or output file name exceeds the windows legacy path length limit
 #define AP_MAX_PATH_LEN 260
 
-#if defined(AZ_PLATFORM_APPLE_IOS)
-    const char* const CURRENT_PLATFORM = "ios";
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-    const char* const CURRENT_PLATFORM = "osx_gl";
-#elif defined(AZ_PLATFORM_ANDROID)
-    const char* const CURRENT_PLATFORM = "es3";
-#elif defined(AZ_PLATFORM_WINDOWS)
-    const char* const CURRENT_PLATFORM = "pc";
-#endif
-
     extern AZ::s64 GetThreadLocalJobId();
     extern void SetThreadLocalJobId(AZ::s64 jobId);
 
@@ -121,9 +111,10 @@ namespace AssetProcessor
     public:
         // note that QStrings are ref-counted copy-on-write, so a move operation will not be beneficial unless this struct gains considerable heap allocated fields.
 
-        QString m_relativePathToFile;     //! contains relative path (relative to watch folder), used to identify input file and database name
-        QString m_absolutePathToFile;     //! contains the actual absolute path to the file, including watch folder.
-        AZ::Uuid m_builderGuid = AZ::Uuid::CreateNull();     //! the builder that will perform the job
+        QString m_databaseSourceName;                           //! DATABASE "SourceName" Column, which includes the 'output prefix' if present, used for keying
+        QString m_watchFolderPath;                              //! contains the absolute path to the watch folder that the file was found in.
+        QString m_pathRelativeToWatchFolder;                    //! contains the relative path (from the above watch folder) that the file was found in.
+        AZ::Uuid m_builderGuid = AZ::Uuid::CreateNull();        //! the builder that will perform the job
         AssetBuilderSDK::PlatformInfo m_platformInfo;
         AZ::Uuid m_sourceFileUUID = AZ::Uuid::CreateNull(); ///< The actual UUID of the source being processed
         QString m_jobKey;     // JobKey is used when a single input file, for a single platform, for a single builder outputs many separate jobs
@@ -133,9 +124,18 @@ namespace AssetProcessor
         bool m_checkExclusiveLock = false;      ///< indicates whether we need to check the input file for exclusive lock before we process this job
         bool m_addToDatabase = true; ///< If false, this is just a UI job, and should not affect the database.
 
+        QString GetAbsoluteSourcePath() const
+        {
+            if (!m_watchFolderPath.isEmpty())
+            {
+                return m_watchFolderPath + "/" + m_pathRelativeToWatchFolder;
+            }
+            return m_pathRelativeToWatchFolder;
+        }
+
         AZ::u32 GetHash() const
         {
-            AZ::Crc32 crc(m_relativePathToFile.toUtf8().constData());
+            AZ::Crc32 crc(m_databaseSourceName.toUtf8().constData());
             crc.Add(m_platformInfo.m_identifier.c_str());
             crc.Add(m_jobKey.toUtf8().constData());
             crc.Add(m_builderGuid.ToString<AZStd::string>().c_str());
@@ -160,8 +160,9 @@ namespace AssetProcessor
         {
             if (this != &other)
             {
-                m_relativePathToFile = std::move(other.m_relativePathToFile);
-                m_absolutePathToFile = std::move(other.m_absolutePathToFile);
+                m_watchFolderPath = std::move(other.m_watchFolderPath);
+                m_databaseSourceName = std::move(other.m_databaseSourceName);
+                m_pathRelativeToWatchFolder = std::move(other.m_pathRelativeToWatchFolder);
                 m_builderGuid = std::move(other.m_builderGuid);
                 m_platformInfo = std::move(other.m_platformInfo);
                 m_sourceFileUUID = std::move(other.m_sourceFileUUID);
@@ -175,9 +176,10 @@ namespace AssetProcessor
             return *this;
         }
 
-        JobEntry(const QString& absolutePathToFile, const QString& relativePathToFile, const AZ::Uuid& builderGuid, const AssetBuilderSDK::PlatformInfo& platformInfo, const QString& jobKey, AZ::u32 computedFingerprint, AZ::u64 jobRunKey, const AZ::Uuid &sourceUuid, bool addToDatabase=true)
-            : m_absolutePathToFile(absolutePathToFile)
-            , m_relativePathToFile(relativePathToFile)
+        JobEntry(QString watchFolderPath, QString relativePathToFile, QString databaseSourceName, const AZ::Uuid& builderGuid, const AssetBuilderSDK::PlatformInfo& platformInfo, QString jobKey, AZ::u32 computedFingerprint, AZ::u64 jobRunKey, const AZ::Uuid &sourceUuid, bool addToDatabase = true)
+            : m_watchFolderPath(watchFolderPath)
+            , m_pathRelativeToWatchFolder(relativePathToFile)
+            , m_databaseSourceName(databaseSourceName)
             , m_builderGuid(builderGuid)
             , m_platformInfo(platformInfo)
             , m_jobKey(jobKey)
@@ -213,7 +215,6 @@ namespace AssetProcessor
     public:
         JobEntry m_jobEntry;
         QString m_extraInformationForFingerprinting;
-        QString m_watchFolder; // the watch folder the file was found in
         QString m_destinationPath; // the final folder that will be where your products are placed if you give relative path names
         // destinationPath will be a cache folder.  If you tell it to emit something like "blah.dds"
         // it will put it in (destinationPath)/blah.dds for example

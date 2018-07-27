@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
 #include "TrackViewUndo.h"
@@ -25,6 +25,7 @@ class C2DBezierKeyUIControls
 {
 public:
     C2DBezierKeyUIControls()
+    : m_skipOnUIChange(false)
     {}
 
     CSmartVariableArray mv_table;
@@ -53,6 +54,8 @@ public:
         };
         return guid;
     }
+
+    bool m_skipOnUIChange;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -97,7 +100,9 @@ bool C2DBezierKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedK
             I2DBezierKey bezierKey;
             keyHandle.GetKey(&bezierKey);
 
+            m_skipOnUIChange = true;
             SyncValue(mv_value, bezierKey.value.y, true);
+            m_skipOnUIChange = false;
 
             bAssigned = true;
         }
@@ -110,7 +115,7 @@ void C2DBezierKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& se
 {
     CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
-    if (!sequence || !selectedKeys.AreAllKeysOfSameType())
+    if (!sequence || !selectedKeys.AreAllKeysOfSameType() || m_skipOnUIChange)
     {
         return;
     }

@@ -14,7 +14,7 @@
 // Description : implementation of the CAIPIDController class.
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AIPIDController.h"
 void CAIPIDController::Serialize(TSerialize ser)
 {

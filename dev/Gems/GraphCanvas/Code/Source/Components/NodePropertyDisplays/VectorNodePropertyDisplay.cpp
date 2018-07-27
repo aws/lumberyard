@@ -13,7 +13,7 @@
 
 #include <QGraphicsLinearLayout>
 #include <QGraphicsSceneDragDropEvent>
-#include <qgraphicsproxywidget.h>
+#include <QGraphicsProxyWidget>
 #include <QGraphicsView>
 #include <QMimeData>
 
@@ -119,6 +119,10 @@ namespace GraphCanvas
     //////////////////////////////
     VectorNodePropertyDisplay::VectorNodePropertyDisplay(VectorDataInterface* dataInterface)
         : m_dataInterface(dataInterface)
+        , m_disabledLabel(nullptr)
+        , m_propertyVectorCtrl(nullptr)
+        , m_proxyWidget(nullptr)
+        , m_displayWidget(nullptr)
     {    
         m_dataInterface->RegisterDisplay(this);
         
@@ -142,46 +146,6 @@ namespace GraphCanvas
         m_displayWidget->setLayout(displayLayout);
         
         m_disabledLabel = aznew GraphCanvasLabel();
-        m_proxyWidget = new QGraphicsProxyWidget();
-        
-        m_proxyWidget->setFlag(QGraphicsItem::ItemIsFocusable, true);
-        m_proxyWidget->setFocusPolicy(Qt::StrongFocus);
-        m_proxyWidget->setAcceptDrops(false);
-        
-        m_propertyVectorCtrl = aznew AzToolsFramework::PropertyVectorCtrl(nullptr, elementCount);
-        m_propertyVectorCtrl->setProperty("HasNoWindowDecorations", true);
-
-        m_propertyVectorCtrl->setProperty("DisableFocusWindowFix", true);
-
-        AzToolsFramework::VectorElement** elements = m_propertyVectorCtrl->getElements();
-
-        for (int i=0; i < m_propertyVectorCtrl->getSize(); ++i)
-        {
-            AzToolsFramework::VectorElement* element = elements[i];
-
-            element->setProperty("DisableFocusWindowFix", true);
-            element->GetSpinBox()->setProperty("DisableFocusWindowFix", true);
-        }
-
-        m_propertyVectorCtrl->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);        
-        
-        for (int i=0; i < elementCount; ++i)
-        {
-            m_propertyVectorCtrl->setLabel(i, m_dataInterface->GetLabel(i));
-            m_propertyVectorCtrl->setMinimum(m_dataInterface->GetMinimum(i));
-            m_propertyVectorCtrl->setMaximum(m_dataInterface->GetMaximum(i));
-            m_propertyVectorCtrl->setDecimals(m_dataInterface->GetDecimalPlaces(i));
-            m_propertyVectorCtrl->setDisplayDecimals(m_dataInterface->GetDisplayDecimalPlaces(i));
-            m_propertyVectorCtrl->setSuffix(m_dataInterface->GetSuffix(i));
-
-            elements[i]->GetSpinBox()->installEventFilter(aznew VectorEventFilter(this));
-        }
-        
-        QObject::connect(m_propertyVectorCtrl, &AzToolsFramework::PropertyVectorCtrl::valueAtIndexChanged, [this](int elementIndex, double newValue) { SubmitValue(elementIndex, newValue); });
-        
-        m_proxyWidget->setWidget(m_propertyVectorCtrl);
-
-        RegisterShortcutDispatcher(m_propertyVectorCtrl);
     }
     
     VectorNodePropertyDisplay::~VectorNodePropertyDisplay()
@@ -191,7 +155,7 @@ namespace GraphCanvas
         
         delete m_disabledLabel;
         delete m_displayWidget;
-        delete m_proxyWidget;
+        CleanupProxyWidget();
     }
     
     void VectorNodePropertyDisplay::RefreshStyle()
@@ -237,8 +201,11 @@ namespace GraphCanvas
 
             const Styling::StyleHelper& styleHelper = control->GetTextLabel()->GetStyleHelper();
 
-            // Get the font stylesheet from the StyleHelper and pass it along to the PropertyVector
-            m_propertyVectorCtrl->setLabelStyle(control->GetIndex(), styleHelper.GetFontStyleSheet().toUtf8().data());
+            if (m_propertyVectorCtrl)
+            {
+                // Get the font stylesheet from the StyleHelper and pass it along to the PropertyVector
+                m_propertyVectorCtrl->setLabelStyle(control->GetIndex(), styleHelper.GetFontStyleSheet().toUtf8().data());
+            }
         }
 
         m_displayWidget->setMinimumSize(elementWidth, elementHeight);
@@ -246,9 +213,12 @@ namespace GraphCanvas
         m_displayWidget->setMaximumSize(elementWidth, elementHeight);
         m_displayWidget->adjustSize();
 
-        m_propertyVectorCtrl->setMinimumSize(elementWidth, elementHeight);
-        m_propertyVectorCtrl->setMaximumSize(elementWidth, elementHeight);
-        m_propertyVectorCtrl->adjustSize();
+        if (m_propertyVectorCtrl)
+        {
+            m_propertyVectorCtrl->setMinimumSize(elementWidth, elementHeight);
+            m_propertyVectorCtrl->setMaximumSize(elementWidth, elementHeight);
+            m_propertyVectorCtrl->adjustSize();
+        }
     }
     
     void VectorNodePropertyDisplay::UpdateDisplay()
@@ -258,26 +228,31 @@ namespace GraphCanvas
             control->UpdateDisplay();
         }
 
-        for (int i = 0; i < m_vectorDisplays.size(); ++i)
+        if (m_propertyVectorCtrl)
         {
-            m_propertyVectorCtrl->setValuebyIndex(m_dataInterface->GetValue(i), i);
+            for (int i = 0; i < m_vectorDisplays.size(); ++i)
+            {
+                m_propertyVectorCtrl->setValuebyIndex(m_dataInterface->GetValue(i), i);
+            }
+            m_proxyWidget->update();
         }
-
-        m_proxyWidget->update();
     }
     
-    QGraphicsLayoutItem* VectorNodePropertyDisplay::GetDisabledGraphicsLayoutItem() const
+    QGraphicsLayoutItem* VectorNodePropertyDisplay::GetDisabledGraphicsLayoutItem()
     {
+        CleanupProxyWidget();
         return m_disabledLabel;
     }
     
-    QGraphicsLayoutItem* VectorNodePropertyDisplay::GetDisplayGraphicsLayoutItem() const
+    QGraphicsLayoutItem* VectorNodePropertyDisplay::GetDisplayGraphicsLayoutItem()
     {
+        CleanupProxyWidget();
         return m_displayWidget;
     }
     
-    QGraphicsLayoutItem* VectorNodePropertyDisplay::GetEditableGraphicsLayoutItem() const
+    QGraphicsLayoutItem* VectorNodePropertyDisplay::GetEditableGraphicsLayoutItem()
     {
+        SetupProxyWidget();
         return m_proxyWidget;
     }    
     
@@ -296,6 +271,62 @@ namespace GraphCanvas
     void VectorNodePropertyDisplay::OnFocusOut()
     {
         NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
+    }
+
+    void VectorNodePropertyDisplay::SetupProxyWidget()
+    {
+        if (!m_propertyVectorCtrl)
+        {
+            m_proxyWidget = new QGraphicsProxyWidget();
+
+            m_proxyWidget->setFlag(QGraphicsItem::ItemIsFocusable, true);
+            m_proxyWidget->setFocusPolicy(Qt::StrongFocus);
+            m_proxyWidget->setAcceptDrops(false);
+
+            int elementCount = m_dataInterface->GetElementCount();
+            m_propertyVectorCtrl = aznew AzToolsFramework::PropertyVectorCtrl(nullptr, elementCount);
+            m_propertyVectorCtrl->setProperty("HasNoWindowDecorations", true);
+
+            m_propertyVectorCtrl->setProperty("DisableFocusWindowFix", true);
+
+            AzToolsFramework::VectorElement** elements = m_propertyVectorCtrl->getElements();
+
+            for (int i = 0; i < elementCount; ++i)
+            {
+                AzToolsFramework::VectorElement* element = elements[i];
+
+                element->setProperty("DisableFocusWindowFix", true);
+                element->GetSpinBox()->setProperty("DisableFocusWindowFix", true);
+
+                m_propertyVectorCtrl->setLabel(i, m_dataInterface->GetLabel(i));
+                m_propertyVectorCtrl->setMinimum(m_dataInterface->GetMinimum(i));
+                m_propertyVectorCtrl->setMaximum(m_dataInterface->GetMaximum(i));
+                m_propertyVectorCtrl->setDecimals(m_dataInterface->GetDecimalPlaces(i));
+                m_propertyVectorCtrl->setDisplayDecimals(m_dataInterface->GetDisplayDecimalPlaces(i));
+                m_propertyVectorCtrl->setSuffix(m_dataInterface->GetSuffix(i));
+
+                element->GetSpinBox()->installEventFilter(aznew VectorEventFilter(this));
+            }
+
+            m_propertyVectorCtrl->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            QObject::connect(m_propertyVectorCtrl, &AzToolsFramework::PropertyVectorCtrl::valueAtIndexChanged, [this](int elementIndex, double newValue) { SubmitValue(elementIndex, newValue); });
+
+            m_proxyWidget->setWidget(m_propertyVectorCtrl);
+            UpdateDisplay();
+            RefreshStyle();
+            RegisterShortcutDispatcher(m_propertyVectorCtrl);
+        }
+    }
+
+    void VectorNodePropertyDisplay::CleanupProxyWidget()
+    {
+        if (m_propertyVectorCtrl)
+        {
+            UnregisterShortcutDispatcher(m_propertyVectorCtrl);
+            delete m_propertyVectorCtrl; // NB: this implicitly deletes m_proxy widget
+            m_propertyVectorCtrl = nullptr;
+            m_proxyWidget = nullptr;
+        }
     }
 
 #include <Source/Components/NodePropertyDisplays/VectorNodePropertyDisplay.moc>

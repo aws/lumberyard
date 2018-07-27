@@ -342,6 +342,12 @@ ISplineInterpolator* CVariableTypeInfoSpline::GetSpline()
     return m_pSpline;
 }
 
+void CVariableTypeInfoSpline::OnSetValue(bool bRecursive)
+{
+    m_pTypeInfo->ToValue(m_pData, m_pSpline);
+    CVariableTypeInfo::OnSetValue(bRecursive);
+}
+
 CVariableTypeInfoStruct::CVariableTypeInfoStruct(CTypeInfo::CVarInfo const& VarInfo,
     void* pAddress, const void* pAddressDefault)
     : CVariableTypeInfo(VarInfo, pAddress, pAddressDefault, ARRAY)

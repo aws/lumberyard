@@ -36,7 +36,7 @@ namespace LmbrAWS
             }
             else if (!strcmp(dataType, DATA_TYPE_BOOL))
             {
-                data.SetBool(!strcmp(valueStr, "1") || !stricmp(valueStr, "true") || !stricmp(valueStr, "y"));
+                data.SetBool(!strcmp(valueStr, "1") || !azstricmp(valueStr, "true") || !azstricmp(valueStr, "y"));
             }
             else // Default back to string
             {

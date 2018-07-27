@@ -33,7 +33,8 @@ bool COBJExporter::ExportToFile(const char* filename, const Export::IData* pExpo
 {
     CLogFile::FormatLine("Exporting OBJ file to '%s'", filename);
 
-    FILE* hFile = fopen(filename, "w");
+    FILE* hFile = nullptr;
+    azfopen(&hFile, filename, "w");
     if (!hFile)
     {
         CLogFile::FormatLine("Error while opening file '%s'!", filename);
@@ -160,7 +161,8 @@ bool COBJExporter::ExportToFile(const char* filename, const Export::IData* pExpo
     materialFilename = Path::ReplaceExtension(filename, "mtl");
 
     // Open the material file
-    hFile = fopen(materialFilename.toUtf8().data(), "w");
+    hFile = nullptr;
+    azfopen(&hFile, materialFilename.toUtf8().data(), "w");
     if (!hFile)
     {
         CLogFile::FormatLine("Error while opening file '%s'!", materialFilename.toUtf8().data());

@@ -17,6 +17,7 @@
 
 #include <Integration/System/SystemComponent.h>
 #include <Integration/Components/ActorComponent.h>
+#include <Integration/Components/AnimAudioComponent.h>
 #include <Integration/Components/AnimGraphComponent.h>
 #include <Integration/Components/SimpleMotionComponent.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
@@ -26,6 +27,7 @@
 #if defined (EMOTIONFXANIMATION_EDITOR)
 #   include <Integration/System/PipelineComponent.h>
 #   include <Integration/Editor/Components/EditorActorComponent.h>
+#   include <Integration/Editor/Components/EditorAnimAudioComponent.h>
 #   include <Integration/Editor/Components/EditorAnimGraphComponent.h>
 #   include <Integration/Editor/Components/EditorSimpleMotionComponent.h>
 #   include <SceneAPIExt/Behaviors/ActorGroupBehavior.h>
@@ -66,6 +68,7 @@ namespace EMotionFX
 
                     // Runtime components
                     ActorComponent::CreateDescriptor(),
+                    AnimAudioComponent::CreateDescriptor(),
                     AnimGraphComponent::CreateDescriptor(),
                     SimpleMotionComponent::CreateDescriptor(),
 
@@ -75,6 +78,7 @@ namespace EMotionFX
 
                     // Editor components
                     EditorActorComponent::CreateDescriptor(),
+                    EditorAnimAudioComponent::CreateDescriptor(),
                     EditorAnimGraphComponent::CreateDescriptor(),
                     EditorSimpleMotionComponent::CreateDescriptor(),
 

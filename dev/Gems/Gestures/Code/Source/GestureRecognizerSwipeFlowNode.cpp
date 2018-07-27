@@ -21,14 +21,13 @@ namespace Gestures
     ////////////////////////////////////////////////////////////////////////////////////////////////
     class RecognizerSwipeFlowNode
         : public CFlowBaseNode<eNCT_Instanced>
-        , public ISwipeListener
+        , public RecognizerSwipe
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         RecognizerSwipeFlowNode(SActivationInfo* activationInfo)
             : CFlowBaseNode()
             , m_activationInfo(*activationInfo)
-            , m_recognizer(*this)
             , m_enabled(false)
         {
         }
@@ -79,9 +78,9 @@ namespace Gestures
             {
                 InputPortConfig_Void("Enable", _HELP("Enable gesture recognizer")),
                 InputPortConfig_Void("Disable", _HELP("Disable gesture recognizer")),
-                InputPortConfig<int>("PointerIndex", m_recognizer.GetConfig().pointerIndex, _HELP("The pointer (button or finger) index to track")),
-                InputPortConfig<float>("MaxSecondsHeld", m_recognizer.GetConfig().maxSecondsHeld, _HELP("The max time in seconds after the initial press for a swipe to be recognized")),
-                InputPortConfig<float>("MinPixelsMoved", m_recognizer.GetConfig().minPixelsMoved, _HELP("The min distance in pixels that must be moved before a swipe will be recognized")),
+                InputPortConfig<int>("PointerIndex", GetConfig().pointerIndex, _HELP("The pointer (button or finger) index to track")),
+                InputPortConfig<float>("MaxSecondsHeld", GetConfig().maxSecondsHeld, _HELP("The max time in seconds after the initial press for a swipe to be recognized")),
+                InputPortConfig<float>("MinPixelsMoved", GetConfig().minPixelsMoved, _HELP("The min distance in pixels that must be moved before a swipe will be recognized")),
                 { 0 }
             };
 
@@ -119,15 +118,15 @@ namespace Gestures
             {
                 if (IsPortActive(activationInfo, Input_PointerIndex))
                 {
-                    m_recognizer.GetConfig().pointerIndex = GetPortInt(activationInfo, Input_PointerIndex);
+                    GetConfig().pointerIndex = GetPortInt(activationInfo, Input_PointerIndex);
                 }
                 if (IsPortActive(activationInfo, Input_MaxSecondsHeld))
                 {
-                    m_recognizer.GetConfig().maxSecondsHeld = GetPortFloat(activationInfo, Input_MaxSecondsHeld);
+                    GetConfig().maxSecondsHeld = GetPortFloat(activationInfo, Input_MaxSecondsHeld);
                 }
                 if (IsPortActive(activationInfo, Input_MinPixelsMoved))
                 {
-                    m_recognizer.GetConfig().minPixelsMoved = GetPortFloat(activationInfo, Input_MinPixelsMoved);
+                    GetConfig().minPixelsMoved = GetPortFloat(activationInfo, Input_MinPixelsMoved);
                 }
 
                 if (IsPortActive(activationInfo, Input_Disable))
@@ -151,9 +150,9 @@ namespace Gestures
         ////////////////////////////////////////////////////////////////////////////////////////////
         void Serialize(SActivationInfo* activationInfo, TSerialize ser) override
         {
-            ser.Value("pointerIndex", m_recognizer.GetConfig().pointerIndex);
-            ser.Value("maxSecondsHeld", m_recognizer.GetConfig().maxSecondsHeld);
-            ser.Value("minPixelsMoved", m_recognizer.GetConfig().minPixelsMoved);
+            ser.Value("pointerIndex", GetConfig().pointerIndex);
+            ser.Value("maxSecondsHeld", GetConfig().maxSecondsHeld);
+            ser.Value("minPixelsMoved", GetConfig().minPixelsMoved);
 
             bool enabled = m_enabled;
             ser.Value("enabled", enabled);
@@ -175,7 +174,7 @@ namespace Gestures
             if (!m_enabled)
             {
                 m_enabled = true;
-                m_recognizer.BusConnect();
+                BusConnect();
             }
         }
 
@@ -185,39 +184,38 @@ namespace Gestures
             if (m_enabled)
             {
                 m_enabled = false;
-                m_recognizer.BusDisconnect();
+                BusDisconnect();
             }
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnSwipeRecognized(const RecognizerSwipe& recognizer) override
+        void OnDiscreteGestureRecognized() override
         {
             ActivateOutput(&m_activationInfo, Output_Recognized, true);
 
-            const Vec2 startPosition = recognizer.GetStartPosition();
-            ActivateOutput(&m_activationInfo, Output_StartX, startPosition.x);
-            ActivateOutput(&m_activationInfo, Output_StartY, startPosition.y);
+            const AZ::Vector2 startPosition = GetStartPosition();
+            ActivateOutput(&m_activationInfo, Output_StartX, startPosition.GetX());
+            ActivateOutput(&m_activationInfo, Output_StartY, startPosition.GetY());
 
-            const Vec2 endPosition = recognizer.GetEndPosition();
-            ActivateOutput(&m_activationInfo, Output_EndX, endPosition.x);
-            ActivateOutput(&m_activationInfo, Output_EndY, endPosition.y);
+            const AZ::Vector2 endPosition = GetEndPosition();
+            ActivateOutput(&m_activationInfo, Output_EndX, endPosition.GetX());
+            ActivateOutput(&m_activationInfo, Output_EndY, endPosition.GetY());
 
-            const Vec2 delta = recognizer.GetDelta();
-            ActivateOutput(&m_activationInfo, Output_DeltaX, delta.x);
-            ActivateOutput(&m_activationInfo, Output_DeltaY, delta.y);
+            const AZ::Vector2 delta = GetDelta();
+            ActivateOutput(&m_activationInfo, Output_DeltaX, delta.GetX());
+            ActivateOutput(&m_activationInfo, Output_DeltaY, delta.GetY());
 
-            const Vec2 direction = recognizer.GetDirection();
-            ActivateOutput(&m_activationInfo, Output_DirectionX, direction.x);
-            ActivateOutput(&m_activationInfo, Output_DirectionY, direction.y);
+            const AZ::Vector2 direction = GetDirection();
+            ActivateOutput(&m_activationInfo, Output_DirectionX, direction.GetX());
+            ActivateOutput(&m_activationInfo, Output_DirectionY, direction.GetY());
 
-            ActivateOutput(&m_activationInfo, Output_Distance, recognizer.GetDistance());
-            ActivateOutput(&m_activationInfo, Output_Duration, recognizer.GetDuration());
-            ActivateOutput(&m_activationInfo, Output_Velocity, recognizer.GetVelocity());
+            ActivateOutput(&m_activationInfo, Output_Distance, GetDistance());
+            ActivateOutput(&m_activationInfo, Output_Duration, GetDuration());
+            ActivateOutput(&m_activationInfo, Output_Velocity, GetVelocity());
         }
 
     private:
         SActivationInfo m_activationInfo;
-        RecognizerSwipe m_recognizer;
         bool m_enabled;
     };
 

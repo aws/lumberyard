@@ -13,7 +13,7 @@
 
 // Description : Helper functions to draw some interesting debug shapes.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AIDebugRenderer.h"
 
 
@@ -705,7 +705,7 @@ void CAIDebugRenderer::TextToScreen(float fX, float fY, const char* format, ...)
     char buffer[512];
     va_list args;
     va_start(args, format);
-    if (vsnprintf(buffer, sizeof(buffer), format, args) == -1)
+    if (azvsnprintf(buffer, sizeof(buffer), format, args) == -1)
     {
         buffer[sizeof(buffer) - 1] = 0;
     }
@@ -720,7 +720,7 @@ void CAIDebugRenderer::TextToScreenColor(int nX, int nY, float fRed, float fGree
     char buffer[512];
     va_list args;
     va_start(args, format);
-    if (vsnprintf(buffer, sizeof(buffer), format, args) == -1)
+    if (azvsnprintf(buffer, sizeof(buffer), format, args) == -1)
     {
         buffer[sizeof(buffer) - 1] = 0;
     }

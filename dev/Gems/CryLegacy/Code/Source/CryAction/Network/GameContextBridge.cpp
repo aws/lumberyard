@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include <Network/GameContextBridge.h>
 #include <Network/GameContext.h>

@@ -87,6 +87,7 @@ namespace AzFramework
         {
             serializeContext->Class<InputSystemComponent, AZ::Component>()
                 ->Version(1)
+                ->Field("MouseMovementSampleRateHertz", &InputSystemComponent::m_mouseMovementSampleRateHertz)
                 ->Field("GamepadsEnabled", &InputSystemComponent::m_gamepadsEnabled)
                 ->Field("KeyboardEnabled", &InputSystemComponent::m_keyboardEnabled)
                 ->Field("MotionEnabled", &InputSystemComponent::m_motionEnabled)
@@ -102,14 +103,26 @@ namespace AzFramework
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Engine")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
-                    ->DataElement(AZ::Edit::UIHandlers::SpinBox, &InputSystemComponent::m_gamepadsEnabled, "Gamepads", "The number of game-pads enabled.")
+                    ->DataElement(AZ::Edit::UIHandlers::SpinBox, &InputSystemComponent::m_mouseMovementSampleRateHertz,
+                        "Mouse Movement Sample Rate", "The mouse movement sample rate in Hertz (cycles per second), which directly\n"
+                                                      "correlates to the max number of mouse movement events dispatched each frame.\n"
+                                                      "Increasing this may improve responsiveness, but could impact performance.\n"
+                                                      "Decreasing it may improve performance, but could make it less responsive.")
+                        ->Attribute(AZ::Edit::Attributes::Min, 1)
+                    ->DataElement(AZ::Edit::UIHandlers::SpinBox, &InputSystemComponent::m_gamepadsEnabled,
+                        "Gamepads", "The number of game-pads enabled.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0)
                         ->Attribute(AZ::Edit::Attributes::Max, 4)
-                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_keyboardEnabled, "Keyboard", "Is keyboard input enabled?")
-                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_motionEnabled, "Motion", "Is motion input enabled?")
-                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_mouseEnabled, "Mouse", "Is mouse input enabled?")
-                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_touchEnabled, "Touch", "Is touch enabled?")
-                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_virtualKeyboardEnabled, "Virtual Keyboard", "Is the virtual keyboard enabled?")
+                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_keyboardEnabled,
+                        "Keyboard", "Is keyboard input enabled?")
+                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_motionEnabled,
+                        "Motion", "Is motion input enabled?")
+                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_mouseEnabled,
+                        "Mouse", "Is mouse input enabled?")
+                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_touchEnabled,
+                        "Touch", "Is touch enabled?")
+                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_virtualKeyboardEnabled,
+                        "Virtual Keyboard", "Is the virtual keyboard enabled?")
                 ;
             }
         }
@@ -162,6 +175,7 @@ namespace AzFramework
         , m_mouse()
         , m_touch()
         , m_virtualKeyboard()
+        , m_mouseMovementSampleRateHertz(InputDeviceMouse::MovementSampleRateDefault)
         , m_gamepadsEnabled(4)
         , m_keyboardEnabled(true)
         , m_motionEnabled(true)
@@ -259,6 +273,11 @@ namespace AzFramework
         m_mouse.reset(m_mouseEnabled ? aznew InputDeviceMouse() : nullptr);
         m_touch.reset(m_touchEnabled ? aznew InputDeviceTouch() : nullptr);
         m_virtualKeyboard.reset(m_virtualKeyboardEnabled ? aznew InputDeviceVirtualKeyboard() : nullptr);
+
+        if (m_mouse)
+        {
+            m_mouse->SetRawMovementSampleRate(m_mouseMovementSampleRateHertz);
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

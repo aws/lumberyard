@@ -23,7 +23,8 @@
 
 namespace ExporterLib
 {
-    class Exporter : public EMotionFX::BaseObject
+    class Exporter
+        : public EMotionFX::BaseObject
     {
         MCORE_MEMORYOBJECTCATEGORY(Exporter, EMFX_DEFAULT_ALIGNMENT, EMotionFX::EMFX_MEMCATEGORY_FILEPROCESSORS);
 
@@ -34,10 +35,6 @@ namespace ExporterLib
         bool SaveActor(MCore::MemoryFile* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
         bool SaveActor(AZStd::string filenameWithoutExtension, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
 
-        // anim graph
-        bool SaveAnimGraph(MCore::MemoryFile* file, EMotionFX::AnimGraph* animGraph, MCore::Endian::EEndianType targetEndianType, const char* companyName = "");
-        bool SaveAnimGraph(AZStd::string filenameWithoutExtension, EMotionFX::AnimGraph* animGraph, MCore::Endian::EEndianType targetEndianType, const char* companyName = "");
-
         // skeletal motion
         bool SaveSkeletalMotion(MCore::MemoryFile* file, EMotionFX::SkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType, bool onlyAnimatedMorphs);
         bool SaveSkeletalMotion(AZStd::string filenameWithoutExtension, EMotionFX::SkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType, bool onlyAnimatedMorphs);
@@ -45,10 +42,6 @@ namespace ExporterLib
         // wavelet skeletal motion
         bool SaveWaveletSkeletalMotion(MCore::MemoryFile* file, EMotionFX::WaveletSkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType);
         bool SaveWaveletSkeletalMotion(AZStd::string filenameWithoutExtension, EMotionFX::WaveletSkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType);
-
-        // motion set
-        bool SaveMotionSet(MCore::MemoryFile* file, const AZStd::vector<EMotionFX::MotionSet*>& motionSets, MCore::Endian::EEndianType targetEndianType);
-        bool SaveMotionSet(AZStd::string filenameWithoutExtension, const AZStd::vector<EMotionFX::MotionSet*>& motionSets, MCore::Endian::EEndianType targetEndianType);
 
     private:
         void ResetMemoryFile(MCore::MemoryFile* file);

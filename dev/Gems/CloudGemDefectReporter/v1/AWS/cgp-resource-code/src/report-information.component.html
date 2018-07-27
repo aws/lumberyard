@@ -1,0 +1,39 @@
+﻿<h2 class="header">Report Information</h2>
+<div *ngFor="let mapping of configurationMappings">
+    <div *ngIf="mapping['category'] === 'Report Information' && reportInformation[mapping['key']]" class="row">
+        <label class="col-5 affix">{{mapping['displayName']}}</label>
+        <div class="col-7">
+            <p>{{mapping['value']}}</p>
+        </div>
+    </div>
+</div>
+<div *ngIf="reportInformation.screenshot_attachment" class="row">
+    <label class="col-5 affix">Screenshot</label>
+    <div class="col-7">
+        <label class="download-link" (click)="downloadAttachment(reportInformation.screenshot_attachment)">{{reportInformation.screenshot_attachment.id}}.{{reportInformation.screenshot_attachment.extension}}</label>
+        <img [src]="reportInformation.screenshot_attachment.url" alt="Report screenshot">
+    </div>
+</div>
+<div *ngIf="reportInformation.dxdiag_attachment" class="row">
+    <label class="col-5 affix">DxDiag</label>
+    <div class="col-7">
+        <label class="download-link" (click)="downloadAttachment(reportInformation.dxdiag_attachment)">{{reportInformation.dxdiag_attachment.id}}.{{reportInformation.dxdiag_attachment.extension}}</label>
+    </div>
+</div>
+<div *ngIf="reportInformation.log_attachment" class="row">
+    <label class="col-5 affix">Game log</label>
+    <div class="col-7">
+        <label class="download-link" (click)="downloadAttachment(reportInformation.log_attachment)">{{reportInformation.log_attachment.id}}.{{reportInformation.log_attachment.extension}}</label>
+    </div>
+</div>
+<div *ngIf="reportInformation.comments" class="row">
+    <label class="col-5 affix">Comments</label>
+    <div class="col-7">
+        <p *ngFor="let comment of reportInformation.comments let i = index">
+            {{comment.user}} - {{comment.date}} <br />
+            {{comment.content}}
+            <i class="fa fa-cog edit" data-toggle="tooltip" data-placement="top" title="Edit comment" (click)="editComment.emit(i)" ></i>
+            <i class="fa fa-trash" data-toggle="tooltip" data-placement="top" title="Delete comment" (click)="deleteComment.emit(i)"></i>
+        </p>
+    </div>
+</div>

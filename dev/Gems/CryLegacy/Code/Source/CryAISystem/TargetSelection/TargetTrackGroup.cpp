@@ -14,7 +14,7 @@
 // Description : Contains an agent's target tracks and handles updating them
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "TargetTrackGroup.h"
 #include "TargetTrackManager.h"
 #include "TargetTrack.h"

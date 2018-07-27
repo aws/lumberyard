@@ -476,7 +476,6 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiInteractableBus>("UiInteractableBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("IsHandlingEvents", &UiInteractableBus::Events::IsHandlingEvents)
             ->Event("SetIsHandlingEvents", &UiInteractableBus::Events::SetIsHandlingEvents)
             ->Event("IsHandlingMultiTouchEvents", &UiInteractableBus::Events::IsHandlingMultiTouchEvents)
@@ -485,7 +484,6 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetIsAutoActivationEnabled", &UiInteractableBus::Events::SetIsAutoActivationEnabled);
 
         behaviorContext->EBus<UiInteractableActionsBus>("UiInteractableActionsBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetHoverStartActionName", &UiInteractableActionsBus::Events::GetHoverStartActionName)
             ->Event("SetHoverStartActionName", &UiInteractableActionsBus::Events::SetHoverStartActionName)
             ->Event("GetHoverEndActionName", &UiInteractableActionsBus::Events::GetHoverEndActionName)
@@ -501,7 +499,6 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiInteractableStatesInterface::StateDisabled>("eUiInteractableState_Disabled");
 
         behaviorContext->EBus<UiInteractableStatesBus>("UiInteractableStatesBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetStateColor", &UiInteractableStatesBus::Events::GetStateColor)
             ->Event("SetStateColor", &UiInteractableStatesBus::Events::SetStateColor)
             ->Event("HasStateColor", &UiInteractableStatesBus::Events::HasStateColor)
@@ -517,7 +514,6 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
             ->Event("HasStateFont", &UiInteractableStatesBus::Events::HasStateFont);
 
         behaviorContext->EBus<UiInteractableNotificationBus>("UiInteractableNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiInteractableNotificationBusHandler>();
     }
 

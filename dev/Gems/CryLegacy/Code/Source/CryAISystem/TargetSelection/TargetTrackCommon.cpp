@@ -14,7 +14,7 @@
 // Description : Defines common helpers for the Target Track system
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "TargetTrackCommon.h"
 
 namespace TargetTrackHelpers

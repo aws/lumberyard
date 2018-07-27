@@ -3904,6 +3904,11 @@ case _D3DValue:                                     \
             }
         }
 
+        if (m_spFrameBuffer == pFrameBuffer)
+        {
+            m_spFrameBuffer = nullptr;
+        }
+
         m_pFrameBufferCache->m_kMap.erase(kFound);
     }
 

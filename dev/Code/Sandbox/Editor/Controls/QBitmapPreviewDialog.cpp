@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "QBitmapPreviewDialog.h"
 #include <Controls/ui_QBitmapPreviewDialog.h>
 #include <QPainter>

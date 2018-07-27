@@ -34,7 +34,6 @@
 
 
 #if defined(AZ_PLATFORM_WINDOWS)
-    #include <windows.h>
     #if defined(AZ_PLATFORM_WINDOWS_X64)
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Windows64

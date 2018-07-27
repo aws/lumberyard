@@ -128,7 +128,7 @@
   <customwidget>
    <class>QAudioControlsTreeView</class>
    <extends>QTreeView</extends>
-   <header>qaudiocontroltreewidget.h</header>
+   <header>QAudioControlTreeWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources>

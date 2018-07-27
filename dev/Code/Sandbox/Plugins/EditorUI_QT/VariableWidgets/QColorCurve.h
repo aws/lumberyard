@@ -15,7 +15,7 @@
 #include "QHGradientWidget.h"
 #include "BaseVariableWidget.h"
 #include "QGradientSwatchWidget.h"
-#include "qmenu.h"
+#include "QMenu"
 #include "CurveEditorContent.h"
 #include <Controls/QToolTipWidget.h>
 

@@ -10,7 +10,8 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "BlendTreeMirrorPoseNode.h"
 #include "AnimGraphInstance.h"
@@ -22,39 +23,10 @@
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeMirrorPoseNode::BlendTreeMirrorPoseNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMirrorPoseNode, AnimGraphAllocator, 0)
 
-
-    // destructor
-    BlendTreeMirrorPoseNode::~BlendTreeMirrorPoseNode()
-    {
-    }
-
-
-    // create
-    BlendTreeMirrorPoseNode* BlendTreeMirrorPoseNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeMirrorPoseNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeMirrorPoseNode::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeMirrorPoseNode::RegisterPorts()
+    BlendTreeMirrorPoseNode::BlendTreeMirrorPoseNode()
+        : AnimGraphNode()
     {
         // setup the output ports
         InitInputPorts(2);
@@ -66,9 +38,22 @@ namespace EMotionFX
     }
 
 
-    // register the parameters
-    void BlendTreeMirrorPoseNode::RegisterAttributes()
+    BlendTreeMirrorPoseNode::~BlendTreeMirrorPoseNode()
     {
+    }
+
+
+    bool BlendTreeMirrorPoseNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -83,26 +68,6 @@ namespace EMotionFX
     AnimGraphObject::ECategory BlendTreeMirrorPoseNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_MISC;
-    }
-
-
-    // create a clone of this node
-    AnimGraphObject* BlendTreeMirrorPoseNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeMirrorPoseNode* clone = new BlendTreeMirrorPoseNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-    // pre-create unique data object
-    void BlendTreeMirrorPoseNode::Init(AnimGraphInstance* animGraphInstance)
-    {
-        MCORE_UNUSED(animGraphInstance);
     }
 
 
@@ -231,19 +196,11 @@ namespace EMotionFX
     }
 
 
-    // get the blend node type string
-    const char* BlendTreeMirrorPoseNode::GetTypeString() const
-    {
-        return "BlendTreeMirrorPoseNode";
-    }
-
-
-
     // motion extraction
     void BlendTreeMirrorPoseNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // check if we have three incoming connections, if not, we can't really continue
-        if (mConnections.GetLength() == 0 || mInputPorts[INPUTPORT_POSE].mConnection == nullptr)
+        if (mConnections.size() == 0 || mInputPorts[INPUTPORT_POSE].mConnection == nullptr)
         {
             RequestRefDatas(animGraphInstance);
             AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
@@ -274,5 +231,30 @@ namespace EMotionFX
             data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
         }
     }
-}   // namespace EMotionFX
 
+
+    void BlendTreeMirrorPoseNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeMirrorPoseNode, AnimGraphNode>()
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeMirrorPoseNode>("Mirror Pose", "Mirror pose attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ;
+    }
+} // namespace EMotionFX

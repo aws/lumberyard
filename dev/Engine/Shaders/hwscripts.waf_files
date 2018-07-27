@@ -10,7 +10,6 @@
 			"HWScripts/CryFX/DeferredCaustics.cfx",
 			"HWScripts/CryFX/DeferredRain.cfx",
 			"HWScripts/CryFX/DeferredShading.cfx",
-			"HWScripts/CryFX/LightPropagationVolumes.cfx",
 			"HWScripts/CryFX/VolumeLighting.cfi"
 		],
 		"CryFX/Effects/Atmospheric":
@@ -49,24 +48,18 @@
 		],
 		"CryFX/Extensions":
 		[
-			"DeferredCaustics.ext",
-			"DeferredShading.ext",
-			"DepthOfField.ext",
 			"DistanceClouds.ext",
 			"Eye.ext",
 			"GeometryBeam.ext",
 			"Glass.ext",
 			"Hair.ext",
-			"HDRPostProcess.ext",
 			"HumanSkin.ext",
 			"Illum.ext",
 			"LensOptics.ext",
 			"LightBeam.ext",
 			"Monitor.ext",
-			"MotionBlur.ext",
 			"ParticleImposter.ext",
 			"Particles.ext",
-			"PostEffects.ext",
 			"RunTime.ext",
 			"Scopes.ext",
 			"ShadowMaskGen.ext",
@@ -83,7 +76,6 @@
 		"CryFX/ForwardShading":
 		[	
 			"HWScripts/CryFX/Eye.cfx",
-			"HWScripts/CryFX/FarTreeSprites.cfx",
 			"HWScripts/CryFX/Glass.cfx",
 			"HWScripts/CryFX/Hair.cfx",
 			"HWScripts/CryFX/HumanSkin.cfx",
@@ -116,8 +108,7 @@
 			"HWScripts/CryFX/Common.cfi",
 			"HWScripts/CryFX/FXConstantDefs.cfi",
 			"HWScripts/CryFX/FXSamplerDefs.cfi",
-			"HWScripts/CryFX/FXStreamDefs.cfi",
-			"HWScripts/CryFX/LightPropagationVolumes.cfi",			
+			"HWScripts/CryFX/FXStreamDefs.cfi",		
 			"HWScripts/CryFX/LightVolumes.cfi",
 			"HWScripts/CryFX/MeshBaker.cfi",			
 			"HWScripts/CryFX/ModificatorTC.cfi",
@@ -128,7 +119,6 @@
 		"CryFX/Include/CommonPasses":
 		[	
 			"HWScripts/CryFX/CommonDebugPass.cfi",
-			"HWScripts/CryFX/CommonEffectLayerPass.cfi",
 			"HWScripts/CryFX/CommonMotionBlurPass.cfi",
 			"HWScripts/CryFX/CommonMotionBlurPassTess.cfi",
 			"HWScripts/CryFX/CommonShadowGenPassTess.cfi",
@@ -152,7 +142,6 @@
 			"HWScripts/CryFX/NoDraw.cfx",
 			"HWScripts/CryFX/OcclusionTest.cfx",
 			"HWScripts/CryFX/ReferenceImage.cfx",
-			"HWScripts/CryFX/Scaleform.cfx",
 			"HWScripts/CryFX/SoftOcclusionQuery.cfx"
 		],
 		"CryFX/Particles":
@@ -191,8 +180,7 @@
 			"HWScripts/CryFX/Total_Illumination.cfx"
 		],
 		"CryFX/Shadows":
-		[	
-			"HWScripts/CryFX/AmbientOcclusion.cfx",
+		[
 			"HWScripts/CryFX/ShadowBlur.cfx",
 			"HWScripts/CryFX/ShadowMaskGen.cfx"
 		],

@@ -29,7 +29,7 @@ namespace EMotionFX
     class MeshBuilderSubMesh
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MeshBuilderSubMesh, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MESHBUILDER_SUBMESH);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         static MeshBuilderSubMesh* Create(uint32 materialNr, MeshBuilder* mesh);

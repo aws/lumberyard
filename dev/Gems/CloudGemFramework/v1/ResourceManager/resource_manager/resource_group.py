@@ -16,6 +16,7 @@ import util
 import json
 import copy
 from resource_manager_common import constant,service_interface
+from config import ResourceTemplateAggregator
 
 import time
 import file_util
@@ -24,6 +25,7 @@ import mappings
 import project
 import security
 import common_code
+from deployment_tags import DeploymentTag
 
 from botocore.exceptions import NoCredentialsError
 
@@ -45,7 +47,8 @@ class ResourceGroup(object):
         self.__cli_plugin_code_path = os.path.join(self.__directory_path, 'cli-plugin-code')
         self.__cgp_code_path = os.path.join(self.__directory_path, constant.GEM_CGP_DIRECTORY_NAME)
         self.__base_settings_file_path = os.path.join(self.__directory_path, constant.RESOURCE_GROUP_SETTINGS)
-        self.__game_settings_file_path = os.path.join(self.__context.config.game_directory_path, 'AWS', 'resource-group', self.__name, constant.RESOURCE_GROUP_SETTINGS)
+        self.__game_project_extensions_path = os.path.join(self.__context.config.game_directory_path, 'AWS', 'resource-group', self.__name)
+        self.__game_settings_file_path = os.path.join(self.__game_project_extensions_path, constant.RESOURCE_GROUP_SETTINGS)
         self.__base_settings = None
         self.__game_settings = None
         
@@ -56,7 +59,7 @@ class ResourceGroup(object):
 
     @property
     def is_enabled(self):
-        return self.name not in self.__context.config.local_project_settings.get(constant.DISABLED_RESOURCE_GROUPS_KEY, []);
+        return self.name not in self.__context.config.local_project_settings.get(constant.DISABLED_RESOURCE_GROUPS_KEY, [])
 
     def enable(self):
         if not self.is_enabled:
@@ -112,8 +115,13 @@ class ResourceGroup(object):
     @property
     def template(self):
         if self.__template is None:
-            self.__template = util.load_json(self.template_path, optional=False)
+            self.__template = ResourceTemplateAggregator(self.__context, self.__directory_path, self.__game_project_extensions_path).effective_template
         return self.__template
+
+    def effective_template(self, deployment_name):
+        template = self.template
+        tags = DeploymentTag(deployment_name, self.__context)
+        return tags.apply_overrides(self)
 
     def get_inter_gem_dependencies(self):
         dependencies = []
@@ -132,7 +140,7 @@ class ResourceGroup(object):
 
     def get_template_with_parameters(self, deployment_name):
 
-        resource_group_template = self.template
+        resource_group_template = self.effective_template(deployment_name)
 
         # override default parameter values if a deployment is speciified
 
@@ -550,28 +558,41 @@ class ResourceGroup(object):
 
         return file_util.create_ignore_filter_function(self.__context, destination_path, initial_content, overwrite_existing = force)
 
+    def get_base_settings(self):
+        if self.__base_settings is None:
+            self.__base_settings = self.__context.config.load_json(self.__base_settings_file_path)
+        return self.__base_settings
+
+    def add_aggregate_settings(self, context):
+        if context.config.aggregate_settings != None:
+            settings_data = self.get_base_settings()
+
+            if settings_data:
+                context.config.aggregate_settings[self.name] = settings_data
+
+    def get_game_settings(self):
+        if self.__game_settings is None:
+            self.__game_settings = self.__context.config.load_json(self.__game_settings_file_path)
+        return self.__game_settings
 
     def get_editor_setting(self, setting_name, preference = 'game_or_base'):
 
-        if self.__base_settings is None:
-            self.__base_settings = self.__context.config.load_json(self.__base_settings_file_path)
-
-        if self.__game_settings is None:
-            self.__game_settings = self.__context.config.load_json(self.__game_settings_file_path)
+        base_settings = self.get_base_settings()
+        game_settings = self.get_game_settings()
 
         setting = None
         if preference == 'game_or_base':
-            setting = self.__game_settings.get(setting_name)
+            setting = game_settings.get(setting_name)
             if setting is None:
-                setting = self.__base_settings.get(setting_name)
+                setting = base_settings.get(setting_name)
         elif preference == 'base_or_game':
-            setting = self.__base_settings.get(setting_name)
+            setting = base_settings.get(setting_name)
             if setting is None:
-                setting = self.__game_settings.get(setting_name)
+                setting = game_settings.get(setting_name)
         elif preference == 'base':
-            setting = self.__base_settings.get(setting_name)
+            setting = base_settings.get(setting_name)
         elif preference == 'game':
-            setting = self.__game_settings.get(setting_name)
+            setting = game_settings.get(setting_name)
 
         return setting
 
@@ -886,6 +907,8 @@ def before_update(deployment_uploader, resource_group_name):
 
     context.view.processing_template('{} resource group'.format(resource_group_name))
 
+    group.add_aggregate_settings(context)
+
     resource_group_template_with_parameters = group.get_template_with_parameters(deployment_name)
 
     resource_group_template_url = resource_group_uploader.upload_content(
@@ -893,7 +916,8 @@ def before_update(deployment_uploader, resource_group_name):
         json.dumps(resource_group_template_with_parameters, indent=4, sort_keys=True),
         'processed resource group template')
 
-    __zip_individual_lambda_code_folders(group, resource_group_uploader)
+    __zip_individual_lambda_code_folders(
+        group, resource_group_uploader, deployment_name)
 
     # Deprecated in 1.9. TODO: remove.
     resource_group_uploader.execute_uploader_pre_hooks()
@@ -945,9 +969,8 @@ def after_update(deployment_uploader, resource_group_name):
     )
 
 
-def __zip_individual_lambda_code_folders(group, uploader):
-
-    resources = group.template["Resources"]
+def __zip_individual_lambda_code_folders(group, uploader, deployment_name):
+    resources = group.effective_template(deployment_name)["Resources"]
     for name, description in  resources.iteritems():
         if not description["Type"] == "Custom::LambdaConfiguration":
             continue

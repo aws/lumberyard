@@ -14,7 +14,7 @@
 // Description : A dialog bar for quickly accessing menu items and cvars
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "QuickAccessBar.h"
 #include "ui_QuickAccessBar.h"
 #include "ToolBox.h"

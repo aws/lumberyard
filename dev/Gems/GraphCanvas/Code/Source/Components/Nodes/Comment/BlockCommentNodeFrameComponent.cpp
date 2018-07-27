@@ -545,7 +545,7 @@ namespace GraphCanvas
                 m_highlightDisplayStateStateSetter.AddStateController(stateController);
             }
 
-            m_highlightDisplayStateStateSetter.SetState(RootGraphicsItemDisplayState::Inspection);
+            m_highlightDisplayStateStateSetter.SetState(RootGraphicsItemDisplayState::GroupHighlight);
         }
     }
 

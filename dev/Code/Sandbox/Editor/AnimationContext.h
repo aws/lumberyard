@@ -230,13 +230,15 @@ private:
     //! Currently active animation sequence.
     CTrackViewSequence* m_pSequence;
 
-    //! Id of lastest valid sequence that was selected. Useful for restoring the selected
+    //! Id of latest valid sequence that was selected. Useful for restoring the selected
     //! sequence after undo has destroyed and recreated it.
     AZ::EntityId m_mostRecentSequenceId;
 
+    //! The current time of the most recent selected sequence. It's very useful to restore this after an undo.
+    float m_mostRecentSequenceTime;
+
     //! Id of active sequence to restore (for switching back from game mode and saving)
     AZ::EntityId m_sequenceToRestore;
-
 
     //! Time of active sequence (for switching back from game mode and saving)
     float m_sequenceRestoreTime;

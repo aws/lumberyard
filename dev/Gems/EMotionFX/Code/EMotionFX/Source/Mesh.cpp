@@ -19,10 +19,13 @@
 #include "Actor.h"
 #include "SoftSkinDeformer.h"
 #include "MeshDeformerStack.h"
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(Mesh, MeshAllocator, 0)
+
+
     // default constructor
     Mesh::Mesh()
         : BaseObject()
@@ -73,14 +76,14 @@ namespace EMotionFX
     // creation
     Mesh* Mesh::Create()
     {
-        return new Mesh();
+        return aznew Mesh();
     }
 
 
     // extended creation
     Mesh* Mesh::Create(uint32 numVerts, uint32 numIndices, uint32 numPolygons, uint32 numOrgVerts, bool isCollisionMesh)
     {
-        return new Mesh(numVerts, numIndices, numPolygons, numOrgVerts, isCollisionMesh);
+        return aznew Mesh(numVerts, numIndices, numPolygons, numOrgVerts, isCollisionMesh);
     }
 
 
@@ -890,7 +893,7 @@ namespace EMotionFX
     Mesh* Mesh::Clone()
     {
         // allocate a mesh of the same dimensions
-        Mesh* clone = new Mesh(mNumVertices, mNumIndices, mNumPolygons, mNumOrgVerts, mIsCollisionMesh);
+        Mesh* clone = aznew Mesh(mNumVertices, mNumIndices, mNumPolygons, mNumOrgVerts, mIsCollisionMesh);
 
         // copy the mesh data
         MCore::MemCopy(clone->mIndices, mIndices, sizeof(uint32) * mNumIndices);

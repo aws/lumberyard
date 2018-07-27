@@ -14,13 +14,13 @@
 // Description : place for AI action related flow graph nodes
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <IAISystem.h>
 #include <IAgent.h>
 #include <IAIActorProxy.h>
 #include "IActorSystem.h"
 #include "IVehicleSystem.h"
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "FlowNodeAIAction.h"
 #include "IAIObject.h"
 #include "IAIActor.h"

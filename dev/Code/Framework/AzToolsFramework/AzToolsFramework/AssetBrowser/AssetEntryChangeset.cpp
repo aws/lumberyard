@@ -15,6 +15,7 @@
 #include <AzToolsFramework/AssetBrowser/AssetEntryChangeset.h>
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
 namespace AzToolsFramework
 {
@@ -138,14 +139,6 @@ namespace AzToolsFramework
                 });
             }
 
-#if defined(AZ_PLATFORM_WINDOWS)
-            const char* hostPlatformName = "pc";
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-            const char* hostPlatformName = "osx_gl";
-#else
-# error Unsupported Platform
-#endif
-
             m_databaseConnection->QueryCombined(
                 [&](CombinedDatabaseEntry& combinedDatabaseEntry)
                 {
@@ -153,7 +146,7 @@ namespace AzToolsFramework
                     return true;
                 }, AZ::Uuid::CreateNull(),
                 nullptr,
-                hostPlatformName,
+                AzToolsFramework::AssetSystem::GetHostAssetPlatform(),
                 AssetSystem::JobStatus::Any);
 
             // query all sources in case they didn't produce any products
@@ -209,7 +202,7 @@ namespace AzToolsFramework
                     return true;
                 }, AZ::Uuid::CreateNull(),
                 nullptr,
-                "pc",
+                AzToolsFramework::AssetSystem::GetHostAssetPlatform(),
                 AssetSystem::JobStatus::Any);
         }
     } // namespace AssetBrowser

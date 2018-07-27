@@ -12,6 +12,10 @@
 #include <math.h>
 #include <float.h>
 
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wpointer-sign"
+#endif
+
 #ifdef _MSC_VER
 #ifndef isnan
 #define isnan(x) _isnan(x)
@@ -669,7 +673,22 @@ static void AddBuiltinInputMETAL(HLSLCrossCompilerContext* psContext, const Decl
 int OutputNeedsDeclaringMETAL(HLSLCrossCompilerContext* psContext, const Operand* psOperand, const int count)
 {
     ShaderData* psShader = psContext->psShader;
+    
+    // Depth Output operands are a special case and won't have a ui32RegisterNumber,
+    // so first we have to check if the output operand is depth.
+    if (psShader->eShaderType == PIXEL_SHADER)
+    {
+        if (psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH_GREATER_EQUAL ||
+            psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH_LESS_EQUAL ||
+            psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH)
+        {
+            return 1;
+        }
+    }
+    
     const uint32_t declared = ((psContext->currentPhase + 1) << 3) | psShader->ui32CurrentVertexOutputStream;
+    ASSERT(psOperand->ui32RegisterNumber >= 0);
+    ASSERT(psOperand->ui32RegisterNumber < MAX_SHADER_VEC4_OUTPUT);
     if (psShader->aiOutputDeclared[psOperand->ui32RegisterNumber] != declared)
     {
         int offset;
@@ -679,16 +698,6 @@ int OutputNeedsDeclaringMETAL(HLSLCrossCompilerContext* psContext, const Operand
             psShader->aiOutputDeclared[psOperand->ui32RegisterNumber + offset] = declared;
         }
         return 1;
-    }
-
-    if (psShader->eShaderType == PIXEL_SHADER)
-    {
-        if (psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH_GREATER_EQUAL ||
-            psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH_LESS_EQUAL ||
-            psOperand->eType == OPERAND_TYPE_OUTPUT_DEPTH)
-        {
-            return 1;
-        }
     }
 
     return 0;
@@ -769,7 +778,6 @@ void AddUserOutputMETAL(HLSLCrossCompilerContext* psContext, const Declaration* 
         {
         case PIXEL_SHADER:
         {
-            char* OutputName = GetDeclaredOutputNameMETAL(psContext, PIXEL_SHADER, psOperand);
             switch (psDecl->asOperands[0].eType)
             {
             case OPERAND_TYPE_OUTPUT_COVERAGE_MASK:
@@ -807,7 +815,6 @@ void AddUserOutputMETAL(HLSLCrossCompilerContext* psContext, const Declaration* 
                     bformata(metal, "float%d PixOutColor%d [[ color(%d) ]];\n", psContext->gmemOutputNumElements[psDecl->asOperands[0].ui32RegisterNumber], renderTarget, renderTarget);
                 }
                 bformata(metal, "#define Output%d output.PixOutColor%d\n", psDecl->asOperands[0].ui32RegisterNumber, renderTarget);
-                bcstrfree(OutputName);
 
                 break;
             }
@@ -888,7 +895,7 @@ void DeclareBufferVariableMETAL(HLSLCrossCompilerContext* psContext, const uint3
         int count = 0;
         for (uint32_t index = 0; index < psContext->psShader->sInfo.ui32NumResourceBindings; index++)
         {
-            if (strcmp(psContext->psShader->sInfo.psResourceBindings[index].Name, StructName->data) == 0)
+            if (strcmp(psContext->psShader->sInfo.psResourceBindings[index].Name, (const char*)StructName->data) == 0)
             {
                 count++;
                 //psContext->psShader->sInfo.psResourceBindings[index].ui32BindPoint += UAV_BUFFER_START_SLOT;
@@ -2048,7 +2055,7 @@ void TranslateDeclarationMETAL(HLSLCrossCompilerContext* psContext, const Declar
             int count = 0;
             for (uint32_t index = 0; index < psContext->psShader->sInfo.ui32NumResourceBindings; index++)
             {
-                if (strcmp(psContext->psShader->sInfo.psResourceBindings[index].Name, StructName->data) == 0)
+                if (strcmp(psContext->psShader->sInfo.psResourceBindings[index].Name, (const char*)StructName->data) == 0)
                 {
                     count++;
                     //psContext->psShader->sInfo.psResourceBindings[index].ui32BindPoint += UAV_BUFFER_START_SLOT;
@@ -2147,7 +2154,7 @@ void TranslateDeclarationMETAL(HLSLCrossCompilerContext* psContext, const Declar
             int count = 0;
             for (uint32_t index = 0; index < psContext->psShader->sInfo.ui32NumResourceBindings; index++)
             {
-                if (strcmp(psContext->psShader->sInfo.psResourceBindings[index].Name, StructName->data) == 0)
+                if (strcmp(psContext->psShader->sInfo.psResourceBindings[index].Name, (const char*)StructName->data) == 0)
                 {
                     count++;
                     //psContext->psShader->sInfo.psResourceBindings[index].ui32BindPoint += UAV_BUFFER_START_SLOT;

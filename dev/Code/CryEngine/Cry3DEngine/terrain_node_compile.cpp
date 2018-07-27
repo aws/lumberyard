@@ -78,6 +78,7 @@ int CTerrainNode::Load_T(T& f, int& nDataSize, EEndian eEndian, bool bSectorPale
         uint16* heightmap = new uint16[(ChunkSizeSqr + 7) & (~0x7)];
         if (!CTerrain::LoadDataFromFile(heightmap, ChunkSizeSqr, f, nDataSize, eEndian))
         {
+            delete[] heightmap;
             return 0;
         }
 
@@ -86,6 +87,8 @@ int CTerrainNode::Load_T(T& f, int& nDataSize, EEndian eEndian, bool bSectorPale
         ITerrain::SurfaceWeight* weights = new ITerrain::SurfaceWeight[(ChunkSizeSqr + 7) & (~0x7)];
         if (!CTerrain::LoadDataFromFile(weights, ChunkSizeSqr, f, nDataSize, eEndian))
         {
+            delete[] heightmap;
+            delete[] weights;
             return 0;
         }
 
@@ -118,6 +121,7 @@ int CTerrainNode::Load_T(T& f, int& nDataSize, EEndian eEndian, bool bSectorPale
 
             if (!CTerrain::LoadDataFromFile(pTypes, chunk.nSurfaceTypesNum, f, nDataSize, eEndian))
             {
+                delete[] pTypes;
                 return 0;
             }
 

@@ -15,10 +15,14 @@
 // include the required files
 #include "EMotionFXConfig.h"
 #include "ConstraintTransform.h"
-
 #include <MCore/Source/Matrix4.h>
 #include <AzCore/Math/Vector2.h>
+#include <Source/Integration/System/SystemCommon.h>
 
+namespace AZ
+{
+    class ReflectContext;
+}
 
 namespace EMotionFX
 {
@@ -29,9 +33,10 @@ namespace EMotionFX
     class EMFX_API ConstraintTransformRotationAngles
         : public ConstraintTransform
     {
-        MCORE_MEMORYOBJECTCATEGORY(ConstraintTransformRotationAngles, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_CONSTRAINTS);
-
     public:
+        AZ_RTTI(ConstraintTransformRotationAngles, "{A57FB6A9-A95F-4ED8-900D-4676243AF8FC}", ConstraintTransform)
+        AZ_CLASS_ALLOCATOR_DECL
+
         enum
         {
             TYPE_ID = 0x00000001
@@ -67,6 +72,8 @@ namespace EMotionFX
         float GetMaxTwistAngle() const;
         EAxis GetTwistAxis() const;
 
+        static void Reflect(AZ::ReflectContext* context);
+
     protected:
         AZ::Vector2     mMinRotationAngles;         ///< The minimum rotation angles, actually the precalculated sin(halfAngleRadians).
         AZ::Vector2     mMaxRotationAngles;         ///< The maximum rotation angles, actually the precalculated sin(halfAngleRadians).
@@ -77,4 +84,10 @@ namespace EMotionFX
         void DrawSphericalLine(const AZ::Vector2& start, const AZ::Vector2& end, uint32 numSteps, uint32 color, float radius, const MCore::Matrix& offset) const;
         AZ::Vector3 GetSphericalPos(float x, float y) const;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX
+
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(EMotionFX::ConstraintTransformRotationAngles::EAxis, "{E6426BCD-9ADF-4211-87F8-F647901F4D0E}");
+} // namespace AZ

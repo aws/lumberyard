@@ -16,7 +16,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-#include <QDialog.h>
+#include <QDialog>
 
 namespace Driller
 {

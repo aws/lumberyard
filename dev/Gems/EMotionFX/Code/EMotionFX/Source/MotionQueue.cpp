@@ -17,10 +17,13 @@
 #include "MotionSystem.h"
 #include "EMotionFXManager.h"
 #include "MotionInstancePool.h"
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MotionQueue, MotionAllocator, 0)
+
+
     // constructor
     MotionQueue::MotionQueue(ActorInstance* actorInstance, MotionSystem* motionSystem)
         : BaseObject()
@@ -43,7 +46,7 @@ namespace EMotionFX
     // create
     MotionQueue* MotionQueue::Create(ActorInstance* actorInstance, MotionSystem* motionSystem)
     {
-        return new MotionQueue(actorInstance, motionSystem);
+        return aznew MotionQueue(actorInstance, motionSystem);
     }
 
 

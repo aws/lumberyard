@@ -12,9 +12,8 @@
 
 #pragma once
 
-// include the required headers
-#include "EMotionFXConfig.h"
-#include "AnimGraphTransitionCondition.h"
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraphTransitionCondition.h>
 
 
 namespace EMotionFX
@@ -30,52 +29,57 @@ namespace EMotionFX
     class EMFX_API AnimGraphPlayTimeCondition
         : public AnimGraphTransitionCondition
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphPlayTimeCondition, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_CONDITIONS);
-
     public:
-        AZ_RTTI(AnimGraphPlayTimeCondition, "{5368D058-9552-4282-A273-AA9344E65D2E}", AnimGraphTransitionCondition);
+        AZ_RTTI(AnimGraphPlayTimeCondition, "{5368D058-9552-4282-A273-AA9344E65D2E}", AnimGraphTransitionCondition)
+        AZ_CLASS_ALLOCATOR_DECL
 
-        enum
-        {
-            TYPE_ID = 0x00029610
-        };
-
-        enum
-        {
-            ATTRIB_NODE         = 0,
-            ATTRIB_PLAYTIME     = 1,
-            ATTRIB_MODE         = 2
-        };
-
-        enum
+        enum Mode : AZ::u8
         {
             MODE_REACHEDTIME    = 0,
             MODE_REACHEDEND     = 1,
-            MODE_HASLESSTHAN    = 2,
-            MODE_NUM            = 3
+            MODE_HASLESSTHAN    = 2
         };
 
-        static AnimGraphPlayTimeCondition* Create(AnimGraph* animGraph);
+        AnimGraphPlayTimeCondition();
+        AnimGraphPlayTimeCondition(AnimGraph* animGraph);
+        ~AnimGraphPlayTimeCondition();
 
-        void RegisterAttributes() override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        const char* GetTypeString() const override;
         void GetSummary(AZStd::string* outResult) const override;
         void GetTooltip(AZStd::string* outResult) const override;
         const char* GetPaletteName() const override;
-        AnimGraphObjectData* CreateObjectData() override;
 
-        void OnUpdateAttributes() override;
         bool TestCondition(AnimGraphInstance* animGraphInstance) const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
 
-        void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName) override;
+        void SetNodeId(AnimGraphNodeId nodeId);
+        AnimGraphNodeId GetNodeId() const;
+        AnimGraphNode* GetNode() const;
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
 
-    private:
-        AnimGraphNode*     mNode;
+        void SetPlayTime(float playTime);
+        float GetPlayTime() const;
 
-        AnimGraphPlayTimeCondition(AnimGraph* animGraph);
-        ~AnimGraphPlayTimeCondition();
+        void SetMode(Mode mode);
+        Mode GetMode() const;
+        const char* GetModeString() const;
+
+        void GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const override;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+    private:
+        AZ::Crc32 GetModeVisibility() const;
+        AZ::Crc32 GetPlayTimeVisibility() const;
+
+        static const char* s_modeReachedPlayTimeX;
+        static const char* s_modeReachedEnd;
+        static const char* s_modeHasLessThanXSecondsLeft;
+
+        AnimGraphNode*      m_node;
+        AZ::u64             m_nodeId;
+        float               m_playTime;
+        Mode                m_mode;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

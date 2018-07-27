@@ -259,7 +259,7 @@ namespace GridMate
         //! to tell us it's unsafe to process minimal network updates (loading updates).
         AZStd::atomic<bool>             m_allowMinimalUpdate;
 
-        typedef std::function<void()> Task;
+        typedef AZStd::function<void()> Task;
         std::vector<Task>              m_postFrameTasks;
 
         NetSerialize::ILegacySerializeProvider* m_legacySerializeProvider;

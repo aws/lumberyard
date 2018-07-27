@@ -1159,8 +1159,8 @@ testBusHandler = TestBus.Connect(testBusHandler,1)
                 AZ_TEST_STOP_ASSERTTEST(1);
 
                 {
-                    ClassInteractingWithEBus classInstance; // setup a listener, otherwise property value can't be stored
-                    classInstance.m_data = 1010;
+                    ClassInteractingWithEBus listenerClassInstance; // setup a listener, otherwise property value can't be stored
+                    listenerClassInstance.m_data = 1010;
 
                     // get the value of the ebus property. In practice those request buses use ID to identify a single handler, then we just use m_event instead of m_broadcast
                     int data = 0;
@@ -1169,7 +1169,7 @@ testBusHandler = TestBus.Connect(testBusHandler,1)
 
                     // set the value of the ebus property.
                     virtualEBusProperty.m_setter->m_broadcast->Invoke(3030);
-                    AZ_TEST_ASSERT(classInstance.m_data == 3030);
+                    AZ_TEST_ASSERT(listenerClassInstance.m_data == 3030);
                 }
                 //////////////////////////////////////////////////////////////////////////
             }

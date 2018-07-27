@@ -77,6 +77,16 @@ void DisplayContext::DrawTri(const Vec3& p1, const Vec3& p2, const Vec3& p3)
     pRenderAuxGeom->DrawTriangle(ToWorldSpacePosition(p1), m_color4b, ToWorldSpacePosition(p2), m_color4b, ToWorldSpacePosition(p3), m_color4b);
 }
 
+void DisplayContext::DrawTriangles(const AZStd::vector<Vec3>& vertices, const ColorB& color)
+{
+    pRenderAuxGeom->DrawTriangles(vertices.begin(), vertices.size(), color);
+}
+
+void DisplayContext::DrawTrianglesIndexed(const AZStd::vector<Vec3>& vertices, const AZStd::vector<vtx_idx>& indices, const ColorB& color)
+{
+    pRenderAuxGeom->DrawTriangles(vertices.begin(), vertices.size(), indices.begin(), indices.size(), color);
+}
+
 //////////////////////////////////////////////////////////////////////////
 void DisplayContext::DrawQuad(const Vec3& p1, const Vec3& p2, const Vec3& p3, const Vec3& p4)
 {
@@ -811,6 +821,12 @@ void DisplayContext::DrawLine(const Vec3& p1, const Vec3& p2, const ColorF& col1
 void DisplayContext::DrawLine(const Vec3& p1, const Vec3& p2, const QColor& rgb1, const QColor& rgb2)
 {
     InternalDrawLine(ToWorldSpacePosition(p1), ColorB(rgb1.red(), rgb1.green(), rgb1.blue(), 255), ToWorldSpacePosition(p2), ColorB(rgb2.red(), rgb2.green(), rgb2.blue(), 255));
+}
+
+//////////////////////////////////////////////////////////////////////////
+void DisplayContext::DrawLines(const AZStd::vector<Vec3>& points, const ColorF& color)
+{
+    pRenderAuxGeom->DrawLines(points.begin(), points.size(), color);
 }
 
 //////////////////////////////////////////////////////////////////////////

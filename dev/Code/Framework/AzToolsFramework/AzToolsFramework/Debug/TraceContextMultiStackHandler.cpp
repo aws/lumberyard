@@ -126,9 +126,9 @@ namespace AzToolsFramework
             }
             else
             {
-                AZStd::shared_ptr<TraceContextStack> entry = AZStd::make_shared<TraceContextStack>();
-                m_threadStacks[(uint64_t)threadId.m_id] = entry;
-                return *entry;
+                AZStd::shared_ptr<TraceContextStack> traceContext = AZStd::make_shared<TraceContextStack>();
+                m_threadStacks[(uint64_t)threadId.m_id] = traceContext;
+                return *traceContext;
             }
         }
 

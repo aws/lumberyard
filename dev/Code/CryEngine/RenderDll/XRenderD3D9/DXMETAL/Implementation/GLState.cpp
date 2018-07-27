@@ -17,7 +17,7 @@
 
 #include <StdAfx.h>
 #include "GLState.hpp"
-#include "METALDevice.hpp"
+#include "MetalDevice.hpp"
 
 namespace NCryMetal
 {

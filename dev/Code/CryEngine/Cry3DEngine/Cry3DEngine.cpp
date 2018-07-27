@@ -204,7 +204,7 @@ void Cry3DEngineBase::PrintMessagePlus(const char* szText, ...)
     va_list arglist;
     char buf[MAX_ERROR_STRING];
     va_start(arglist, szText);
-    int count = vsnprintf(buf, sizeof(buf), szText, arglist);
+    int count = azvsnprintf(buf, sizeof(buf), szText, arglist);
     if (count == -1 || count >= sizeof(buf))
     {
         buf[sizeof(buf) - 1] = '\0';
@@ -242,12 +242,14 @@ void Cry3DEngineBase::Warning(const char* format, ...)
 void Cry3DEngineBase::Error(const char* format, ...)
 {
     //  assert(!"Cry3DEngineBase::Error");
-
-    va_list args;
-    va_start(args, format);
-    // Call to validating warning of system.
-    m_pSystem->WarningV(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR, 0, 0, format, args);
-    va_end(args);
+    if (format)
+    {
+        va_list args;
+        va_start(args, format);
+        // Call to validating warning of system.
+        m_pSystem->WarningV(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR, 0, 0, format, args);
+        va_end(args);
+    }
 
     GetLog()->UpdateLoadingScreen(0);
 }
@@ -255,11 +257,14 @@ void Cry3DEngineBase::Error(const char* format, ...)
 //////////////////////////////////////////////////////////////////////////
 void Cry3DEngineBase::FileWarning(int flags, const char* file, const char* format, ...)
 {
-    va_list args;
-    va_start(args, format);
-    // Call to validating warning of system.
-    m_pSystem->WarningV(VALIDATOR_MODULE_3DENGINE, VALIDATOR_WARNING, flags | VALIDATOR_FLAG_FILE, file, format, args);
-    va_end(args);
+    if (format)
+    {
+        va_list args;
+        va_start(args, format);
+        // Call to validating warning of system.
+        m_pSystem->WarningV(VALIDATOR_MODULE_3DENGINE, VALIDATOR_WARNING, flags | VALIDATOR_FLAG_FILE, file, format, args);
+        va_end(args);
+    }
 
     GetLog()->UpdateLoadingScreen(0);
 }

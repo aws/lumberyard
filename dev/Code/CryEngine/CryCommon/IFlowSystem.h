@@ -1370,7 +1370,7 @@ struct SFlowSystemConversion<string, FlowEntityId>
     static ILINE bool ConvertValue(const string& from, FlowEntityId& to)
     {
         FlowEntityId::StorageType id;
-        if (1 == sscanf(from.c_str(), "%llu", &id))
+        if (1 == azsscanf(from.c_str(), "%llu", &id))
         {
             to = id;
             return true;
@@ -1400,17 +1400,17 @@ struct SFlowSystemConversion<string, bool>
     static ILINE bool ConvertValue(const string& from, bool& to)
     {
         int to_i;
-        if (1 == sscanf(from.c_str(), "%d", &to_i))
+        if (1 == azsscanf(from.c_str(), "%d", &to_i))
         {
             to = !!to_i;
             return true;
         }
-        if (0 == _stricmp (from.c_str(), "true"))
+        if (0 == azstricmp(from.c_str(), "true"))
         {
             to = true;
             return true;
         }
-        if (0 == _stricmp (from.c_str(), "false"))
+        if (0 == azstricmp(from.c_str(), "false"))
         {
             to = false;
             return true;
@@ -1434,7 +1434,7 @@ struct SFlowSystemConversion<string, Vec3>
 {
     static ILINE bool ConvertValue(const string& from, Vec3& to)
     {
-        return 3 == sscanf(from.c_str(), "%g,%g,%g", &to.x, &to.y, &to.z);
+        return 3 == azsscanf(from.c_str(), "%g,%g,%g", &to.x, &to.y, &to.z);
     }
 };
 
@@ -2358,6 +2358,7 @@ struct IFlowNodeData
     virtual int GetNumInputPorts() const = 0;
     virtual int GetNumOutputPorts() const = 0;
 
+    virtual FlowEntityId GetEntityId() = 0;
     virtual EntityId GetCurrentForwardingEntity() const = 0;
     // </interfuscator:shuffle>
 };

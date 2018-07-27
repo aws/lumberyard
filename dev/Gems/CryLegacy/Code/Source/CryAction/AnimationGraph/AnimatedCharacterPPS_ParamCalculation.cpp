@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AnimatedCharacter.h"
 #include "AnimationGraphCVars.h"
 #include "PersistentDebug.h"
@@ -122,7 +122,9 @@ void CAnimatedCharacter::CalculateParamsForCurrentMotions()
 
 //--------------------------------------------------------------------------------
 
+#if !defined(MAX_EXEC_QUEUE)
 #define MAX_EXEC_QUEUE (0x8u);
+#endif // !defined(MAX_EXEC_QUEUE)
 
 void CAnimatedCharacter::SetDesiredLocalLocation(ISkeletonAnim* pSkeletonAnim, const QuatT& desiredLocalLocation, float fDeltaTime)
 {

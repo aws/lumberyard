@@ -304,6 +304,12 @@
         "version": "1.0.0"
     },
     "paths": {
+        "/loadtest": {
+            "x-cloud-gem-framework-interface-implementation": {
+                "description": "Enables X-Gem Communication between Cloud Gem Player Account & Cloud Gem Load Test",
+                "interface": "CloudGemPlayerAccount_LoadTest_1_0_0"
+            }
+        },
         "/account": {
             "get": {
                 "description": "Gets the authenticated player's account.  Admins should use GET /admin/accounts/{AccountId}",

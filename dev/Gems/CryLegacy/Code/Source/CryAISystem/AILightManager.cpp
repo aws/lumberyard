@@ -15,7 +15,7 @@
 //               provides services to make light levels queries
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "AILightManager.h"
 #include "DebugDrawContext.h"
 #include "AIPlayer.h"
@@ -153,7 +153,7 @@ void CAILightManager::DynSpotLightEvent(const Vec3& pos, const Vec3& dir, float 
             // (MATT) We used to create an attribute with CreateAIObject. CreateDummy seems more appropriate and avoids push to m_Objects list {2009/03/30}
             static int nameCounter = 0;
             char szName[256];
-            _snprintf(szName, 256, "Light of %s %d", pShooter->GetName(), nameCounter++);
+            azsnprintf(szName, 256, "Light of %s %d", pShooter->GetName(), nameCounter++);
             gAIEnv.pAIObjectManager->CreateDummyObject(refAttrib, szName);
             CAIObject* pAttrib = refAttrib.GetAIObject();
             pAttrib->SetType(AIOBJECT_ATTRIBUTE);

@@ -229,7 +229,7 @@ namespace Variables
             for (int i = 0; i < childCount; ++i)
             {
                 XmlNodeRef childNode = rootNode->getChild(i);
-                if (!stricmp(childNode->getTag(), "Variable"))
+                if (!azstricmp(childNode->getTag(), "Variable"))
                 {
                     const char* variableName = 0;
                     if (childNode->haveAttr("name"))
@@ -248,11 +248,11 @@ namespace Variables
                         const char* value = 0;
                         childNode->getAttr("default", &value);
 
-                        if (!stricmp(value, "true"))
+                        if (!azstricmp(value, "true"))
                         {
                             defaultValue = true;
                         }
-                        else if (!stricmp(value, "false"))
+                        else if (!azstricmp(value, "false"))
                         {
                             defaultValue = false;
                         }
@@ -269,7 +269,7 @@ namespace Variables
 
                     if (!iresult.second)
                     {
-                        if (!stricmp(iresult.first->second.name, variableName))
+                        if (!azstricmp(iresult.first->second.name, variableName))
                         {
                             gEnv->pLog->LogWarning("Duplicate variable declaration '%s' in file '%s' at line %d.", variableName, fileName, childNode->getLine());
                         }
@@ -457,23 +457,23 @@ namespace Variables
                         }
 
                         // keywords
-                        if (!stricmp(m_ident.c_str(), "or"))
+                        if (!azstricmp(m_ident.c_str(), "or"))
                         {
                             return 'or';
                         }
-                        else if (!stricmp(m_ident.c_str(), "and"))
+                        else if (!azstricmp(m_ident.c_str(), "and"))
                         {
                             return 'and';
                         }
-                        else if (!stricmp(m_ident.c_str(), "xor"))
+                        else if (!azstricmp(m_ident.c_str(), "xor"))
                         {
                             return 'xor';
                         }
-                        else if (!stricmp(m_ident.c_str(), "true"))
+                        else if (!azstricmp(m_ident.c_str(), "true"))
                         {
                             return 'true';
                         }
-                        else if (!stricmp(m_ident.c_str(), "false"))
+                        else if (!azstricmp(m_ident.c_str(), "false"))
                         {
                             return 'fals';
                         }
@@ -828,7 +828,7 @@ namespace Variables
             for (int i = 0; i < childCount; ++i)
             {
                 XmlNodeRef childNode = rootNode->getChild(i);
-                if (!stricmp(childNode->getTag(), "Signal"))
+                if (!azstricmp(childNode->getTag(), "Signal"))
                 {
                     const char* signalName = 0;
                     if (childNode->haveAttr("name"))

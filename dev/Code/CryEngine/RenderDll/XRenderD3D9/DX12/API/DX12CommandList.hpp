@@ -124,9 +124,8 @@ namespace DX12
                     m_nPoolFenceId,
                     m_rCmdFences.GetD3D12Fence(CMDQUEUE_COPY)->GetCompletedValue(),
                     m_rCmdFences.GetD3D12Fence(CMDQUEUE_GRAPHICS)->GetCompletedValue(),
-                    fenceValues[CMDQUEUE_COPY    ],
-                    fenceValues[CMDQUEUE_GRAPHICS]);
-
+                    static_cast<AZ::u64>(fenceValues[CMDQUEUE_COPY    ]),
+                    static_cast<AZ::u64>(fenceValues[CMDQUEUE_GRAPHICS]));
 #ifdef DX12_STATS
                 m_NumWaitsGPU += 2;
 #endif // DX12_STATS

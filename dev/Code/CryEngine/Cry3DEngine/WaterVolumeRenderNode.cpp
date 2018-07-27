@@ -17,7 +17,6 @@
 #include "MatMan.h"
 #include "TimeOfDay.h"
 #include <Cry_Geo.h>
-#include <IJobManager_JobDelegator.h>
 #include "MathConversion.h"
 
 #include <AzCore/Math/Plane.h>

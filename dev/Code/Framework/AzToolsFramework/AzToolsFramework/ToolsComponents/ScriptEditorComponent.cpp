@@ -355,19 +355,19 @@ namespace AzToolsFramework
                             AZ::ScriptDataContext valueTable;
                             if (enumValuesTable.InspectTable(enumIndex, valueTable))
                             {
-                                const char* fieldName;
-                                int fieldIndex;
+                                const char* tableFieldName;
+                                int tableFieldIndex;
                                 int enumValueIndex;
-                                while (valueTable.InspectNextElement(enumValueIndex, fieldName, fieldIndex))
+                                while (valueTable.InspectNextElement(enumValueIndex, tableFieldName, tableFieldIndex))
                                 {
-                                    if (valueTable.IsNumber(enumValueIndex) && fieldIndex == 1)
+                                    if (valueTable.IsNumber(enumValueIndex) && tableFieldIndex == 1)
                                     {
                                         double value;
                                         valueTable.ReadValue(enumValueIndex, value);
                                         enumValue.first = value;
                                         isValidValue = true;
                                     }
-                                    else if (valueTable.IsString(enumValueIndex) && fieldIndex == 2)
+                                    else if (valueTable.IsString(enumValueIndex) && tableFieldIndex == 2)
                                     {
                                         const char* value = nullptr;
                                         valueTable.ReadValue(enumValueIndex, value);
@@ -424,19 +424,19 @@ namespace AzToolsFramework
                             AZ::ScriptDataContext valueTable;
                             if (enumValuesTable.InspectTable(enumIndex, valueTable))
                             {
-                                const char* fieldName = nullptr;
-                                int fieldIndex;
+                                const char* tableFieldName = nullptr;
+                                int tableFieldIndex;
                                 int enumValueIndex;
-                                while (valueTable.InspectNextElement(enumValueIndex, fieldName, fieldIndex))
+                                while (valueTable.InspectNextElement(enumValueIndex, tableFieldName, tableFieldIndex))
                                 {
-                                    if (valueTable.IsString(enumValueIndex) && fieldIndex == 1)
+                                    if (valueTable.IsString(enumValueIndex) && tableFieldIndex == 1)
                                     {
                                         const char* value = nullptr;
                                         valueTable.ReadValue(enumValueIndex, value);
                                         enumValue.first = value;
                                         isValidValue = true;
                                     }
-                                    else if (valueTable.IsString(enumValueIndex) && fieldIndex == 2)
+                                    else if (valueTable.IsString(enumValueIndex) && tableFieldIndex == 2)
                                     {
                                         const char* value = nullptr;
                                         valueTable.ReadValue(enumValueIndex, value);

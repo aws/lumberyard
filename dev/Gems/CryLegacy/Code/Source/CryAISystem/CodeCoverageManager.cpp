@@ -25,7 +25,7 @@
 *   Hence we could wait until we have 90% of checkpoints and then load the context, keeping only new labels.
 *   Could be worth file specifying total buffer size required.
 */
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #if !defined(_RELEASE)
 

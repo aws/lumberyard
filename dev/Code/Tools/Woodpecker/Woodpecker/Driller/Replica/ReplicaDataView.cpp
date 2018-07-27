@@ -29,7 +29,7 @@
 
 #include "BaseDetailView.h"
 #include "ReplicaChunkTypeDetailView.h"
-#include "ReplicaChunkUsageDatacontainers.h"
+#include "ReplicaChunkUsageDataContainers.h"
 #include "ReplicaDataAggregator.hxx"
 #include "ReplicaDataEvents.h"
 #include "ReplicaDetailView.h"

@@ -31,6 +31,7 @@ public:
     bool UpdateStack() override;
     bool UploadLambdaCode(QString functionName) override;
     bool DeleteStack() override;
+    bool EnableResourceGroup() override;
 
     QString GetUpdateButtonText() const override;
     QString GetUpdateButtonToolTip() const override;
@@ -42,6 +43,8 @@ public:
     QString GetDeleteButtonToolTip() const override;
     QString GetDeleteConfirmationTitle() const override;
     QString GetDeleteConfirmationMessage() const override;
+    QString GetEnableButtonText() const override;
+    QString GetEnableButtonToolTip() const override;
 
     QSharedPointer<ICloudFormationTemplateModel> GetTemplateModel() override;
 

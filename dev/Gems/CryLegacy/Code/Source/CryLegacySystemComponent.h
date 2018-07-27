@@ -12,21 +12,17 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Module/DynamicModuleHandle.h>
 #include <CryLegacy/CryLegacyBus.h>
 
 #include <IGameFramework.h>
 #include <IWindowMessageHandler.h>
 #include <IPlatformOS.h>
 #include <IInput.h>
-
-#if defined(APPLE)
-#define GAME_FRAMEWORK_FILENAME  "libCryAction.dylib"
-#elif defined(LINUX)
-#define GAME_FRAMEWORK_FILENAME  "libCryAction.so"
-#else
-#define GAME_FRAMEWORK_FILENAME  "CryAction.dll"
-#endif
-
+#include <IAISystem.h>
+#include <ICryAnimation.h>
+#include <IEntitySystem.h>
+#include <IScriptSystem.h>
 
 namespace CryLegacy
 {
@@ -35,6 +31,10 @@ namespace CryLegacy
         , protected CryLegacyRequestBus::Handler
         , protected CryGameFrameworkBus::Handler
         , protected CryLegacyInputRequestBus::Handler
+        , protected CryLegacyAISystemRequestBus::Handler
+        , protected CryLegacyAnimationRequestBus::Handler
+        , protected CryLegacyEntitySystemRequestBus::Handler
+        , protected CryLegacyScriptSystemRequestBus::Handler
     {
     public:
         AZ_COMPONENT(CryLegacySystemComponent, "{D2051F81-6B46-4B23-A7F6-C19F814E63F0}");
@@ -48,11 +48,10 @@ namespace CryLegacy
 
     protected:
         ////////////////////////////////////////////////////////////////////////
-        // CryLegacyRequestBus interface implementation
+        // CryGameFrameworkBus interface implementation
+        IGameFramework* CreateFramework() override;
         IGameFramework* InitFramework(SSystemInitParams& startupParams) override;
-
         void ShutdownFramework() override;
-
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
@@ -62,15 +61,39 @@ namespace CryLegacy
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
+        // CryLegacyAISystemRequests interface implementation
+        IAISystem* InitAISystem() override;
+        void ShutdownAISystem(IAISystem* aiSystem) override;
+        ////////////////////////////////////////////////////////////////////////
+
+        ////////////////////////////////////////////////////////////////////////
+        // CryLegacyAnimationRequests interface implementation
+        bool InitCharacterManager(const SSystemInitParams& initParams) override;
+        void ShutdownCharacterManager(ICharacterManager* characterManager) override;
+        ////////////////////////////////////////////////////////////////////////
+
+        ////////////////////////////////////////////////////////////////////////
+        // CryLegacyEntitySystemRequests interface implementation
+        IEntitySystem* InitEntitySystem() override;
+        void ShutdownEntitySystem(IEntitySystem* entitySystem) override;
+        ////////////////////////////////////////////////////////////////////////
+
+        ////////////////////////////////////////////////////////////////////////
+        // CryLegacyScriptSystemRequests interface implementation
+        IScriptSystem* InitScriptSystem() override;
+        void ShutdownScriptSystem(IScriptSystem* scriptSystem) override;
+        ////////////////////////////////////////////////////////////////////////
+
+        ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Init() override;
         void Activate() override;
         void Deactivate() override;
         ////////////////////////////////////////////////////////////////////////
 
-        IGameFramework*     m_Framework = nullptr;
+        IGameFramework* m_Framework = nullptr;
 #if !defined(AZ_MONOLITHIC_BUILD)
-        HMODULE             m_FrameworkDll = nullptr;
+        AZStd::unique_ptr<AZ::DynamicModuleHandle> m_cryActionHandle;
 #endif // !defined(AZ_MONOLITHIC_BUILD)
     };
 }

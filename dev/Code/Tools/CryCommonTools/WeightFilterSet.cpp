@@ -13,7 +13,7 @@
 
 #include "StdAfx.h"
 #include <assert.h>                                     // assert()
-#include "weightfilterset.h"                    // CWeightFilterSet
+#include "WeightFilterSet.h"                    // CWeightFilterSet
 
 
 

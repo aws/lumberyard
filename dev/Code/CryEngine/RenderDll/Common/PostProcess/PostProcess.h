@@ -330,6 +330,7 @@ enum EPostProcessRenderFlag
     PSP_UPDATE_BACKBUFFER = (1 << 0),                   // updates back-buffer texture for technique
     PSP_REQUIRES_UPDATE = (1 << 1),                     // required calling update member function
     PSP_LAST_ENABLED_POSTPROCESS = (1 << 2),    // last enabled post process (used to determine if rendering directly to backbuffer required)
+    PSP_UPDATE_SCENE_SPECULAR = (1 << 3)               // updates/overwrites the scene specular texture (s_ptexSceneSpecular) for use in the current effect
 };
 
 // Post effects base structure interface. All techniques derive from this one.

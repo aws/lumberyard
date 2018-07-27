@@ -494,7 +494,7 @@ AZ::Entity* UiCanvasComponent::FindElementByHierarchicalName(const LyShine::Name
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiCanvasComponent::FindElements(std::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result)
+void UiCanvasComponent::FindElements(AZStd::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result)
 {
     // find all matching elements
     EBUS_EVENT_ID(m_rootElement, UiElementBus, FindDescendantElements, predicate, result);
@@ -1637,7 +1637,6 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiCanvasBus>("UiCanvasBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetDrawOrder", &UiCanvasBus::Events::GetDrawOrder)
             ->Event("SetDrawOrder", &UiCanvasBus::Events::SetDrawOrder)
             ->Event("GetKeepLoadedOnLevelUnload", &UiCanvasBus::Events::GetKeepLoadedOnLevelUnload)
@@ -1667,15 +1666,12 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetTooltipDisplayElement", &UiCanvasBus::Events::GetTooltipDisplayElement)
             ->Event("SetTooltipDisplayElement", &UiCanvasBus::Events::SetTooltipDisplayElement)
             ->Event("GetHoverInteractable", &UiCanvasBus::Events::GetHoverInteractable)
-            ->Event("ForceHoverInteractable", &UiCanvasBus::Events::ForceHoverInteractable)
-            ->Event("ClearAllInteractables", &UiCanvasBus::Events::ClearAllInteractables);
+            ->Event("ForceHoverInteractable", &UiCanvasBus::Events::ForceHoverInteractable);
 
         behaviorContext->EBus<UiCanvasNotificationBus>("UiCanvasNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiCanvasNotificationBusBehaviorHandler>();
 
         behaviorContext->EBus<UiAnimationBus>("UiAnimationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("StartSequence", &UiAnimationBus::Events::StartSequence)
             ->Event("StopSequence", &UiAnimationBus::Events::StopSequence)
             ->Event("AbortSequence", &UiAnimationBus::Events::AbortSequence)
@@ -1693,11 +1689,9 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)IUiAnimationListener::EUiAnimationEvent::eUiAnimationEvent_Updated>("eUiAnimationEvent_Updated");
 
         behaviorContext->EBus<UiAnimationNotificationBus>("UiAnimationNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiAnimationNotificationBusBehaviorHandler>();
 
         behaviorContext->EBus<UiCanvasInputNotificationBus>("UiCanvasInputNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiCanvasInputNotificationBusBehaviorHandler>();
     }
 }
@@ -2880,11 +2874,18 @@ void UiCanvasComponent::CreateRenderTarget()
         // Also create a depth surface to render the canvas to, we need depth for masking
         // since that uses the stencil buffer
         m_renderTargetDepthSurface = gEnv->pRenderer->CreateDepthSurface(
-                static_cast<int>(m_canvasSize.GetX()), static_cast<int>(m_canvasSize.GetY()), false);
+                static_cast<int>(m_canvasSize.GetX()), static_cast<int>(m_canvasSize.GetY()));
 
         // Register this canvas component as a game framework listener so that we can render
         // it to a texture on the PreRender event
-        gEnv->pGame->GetIGameFramework()->RegisterListener(this, "UiCanvasComponent", FRAMEWORKLISTENERPRIORITY_HUD);
+        if (gEnv->pGame && gEnv->pGame->GetIGameFramework())
+        {
+            gEnv->pGame->GetIGameFramework()->RegisterListener(this, "UiCanvasComponent", FRAMEWORKLISTENERPRIORITY_HUD);
+        }
+        else // CryAction has been moved to the optional CryLegacy Gem, so if it doesn't exist we need to do this instead
+        {
+            ISystem::CrySystemNotificationBus::Handler::BusConnect();
+        }
     }
 }
 
@@ -2893,7 +2894,14 @@ void UiCanvasComponent::DestroyRenderTarget()
 {
     if (m_renderTargetHandle > 0)
     {
-        gEnv->pGame->GetIGameFramework()->UnregisterListener(this);
+        if (gEnv->pGame && gEnv->pGame->GetIGameFramework())
+        {
+            gEnv->pGame->GetIGameFramework()->UnregisterListener(this);
+        }
+        else // CryAction has been moved to the optional CryLegacy Gem, so if it doesn't exist we need to do this instead
+        {
+            ISystem::CrySystemNotificationBus::Handler::BusDisconnect();
+        }
         gEnv->pRenderer->DestroyDepthSurface(m_renderTargetDepthSurface);
         m_renderTargetDepthSurface = nullptr;
         gEnv->pRenderer->DestroyRenderTarget(m_renderTargetHandle);

@@ -19,6 +19,8 @@
 #include <QFile>
 #include <QFontDatabase>
 #include <QStyleFactory>
+#include <QPointer>
+
 #include <AzQtComponents/Components/StylesheetPreprocessor.h>
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
@@ -78,28 +80,54 @@ namespace AzQtComponents
 
     void StyleManager::SwitchUI(QApplication* application, bool useUI10)
     {
-        QProxyStyle* proxyStyle = nullptr;
+        if (m_stylesheetCache->isUI10() == useUI10)
+        {
+            // only switch if necessary
+            return;
+        }
 
-        //////////////////////////////////////////////////////////////////////////
-        // DEPRECATED UI 1.0
         m_stylesheetCache->setIsUI10(useUI10);
-        if (useUI10)
+
+        // Save the oldStyle (before reseting stylesheet!), so we can workaround a leak in Qt
+        QPointer<QStyle> oldStyle = qApp->style();
+
+        // Clean any previous style sheet before setting styles
+        qApp->setStyleSheet(QString());
+
+        if (useUI10) // DEPRECATED UI 1.0
         {
             auto legacyStyle = new EditorProxyStyle(createBaseStyle());
             legacyStyle->setAutoWindowDecorationMode(EditorProxyStyle::AutoWindowDecorationMode_AnyWindow);
-            proxyStyle = legacyStyle;
-        }
-        //////////////////////////////////////////////////////////////////////////
 
-        if (proxyStyle == nullptr)
+            // Note: QApplication will automatically clean up the old style it's been using
+            application->setStyle(legacyStyle);
+
+            // Call refresh to load and set the stylesheets.
+            Refresh(application);
+
+            // Style chain is now: QStyleSheetStyle -> EditorProxyStyle -> Fusion
+
+            // If the previous style was a ui2.0 don't leak it.
+            // Using a QPointer so it doesn't double-delete when fixed in Qt.
+            // FIXME: Fix this in Qt
+            delete qobject_cast<Style*>(oldStyle);
+        }
+        else
         {
-            proxyStyle = new Style(createBaseStyle());
+            // Our desired chain is Style -> QStyleSheetStyle -> Fusion but since
+            // QStyleSheetStyle is private we have to do it in two steps, first set the Fusion style
+            // and create a stylesheet, so we have QStyleSheetStyle using Fusion as base.
+            // Finally create our proxy with QStyleSheetStyle as base
+
+            // Create the base style that the stylesheet style should use.
+            application->setStyle(createBaseStyle());
+
+            // Call refresh to load and set the stylesheets.
+            Refresh(application);
+
+            // Set the UI 2.0 style, using the stylesheet style as the base style
+            application->setStyle(new Style(application->style()));
         }
-
-        // Note: QApplication will automatically clean up the old style it's been using
-        application->setStyle(proxyStyle);
-
-        Refresh(application);
     }
 
     void StyleManager::InitializeFonts()

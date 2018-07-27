@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "ReflectedVar.h"
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>

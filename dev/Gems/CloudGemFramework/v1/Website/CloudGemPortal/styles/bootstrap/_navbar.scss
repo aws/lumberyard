@@ -112,6 +112,7 @@
 .navbar-toggler-right {
   position: absolute;
   right: $navbar-padding-x;
+  top: 20px;
 }
 
 // Generate series of `.navbar-toggleable-*` responsive classes for configuring
@@ -127,7 +128,7 @@
           .dropdown-menu {
             position: static;
             float: none;
-          }
+          }          
         }
 
         > .container {
@@ -160,7 +161,7 @@
         // scss-lint:disable ImportantRule
         .navbar-collapse {
           display: flex !important;
-          width: 100%;
+          width: 100%;          
         }
         // scss-lint:enable ImportantRule
 

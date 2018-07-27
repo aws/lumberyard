@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ClusterDetector.h"
 
 #define MIN_ACCEPTABLE_DISTANCE_DIFFERENCE_SQ sqr(0.1f)

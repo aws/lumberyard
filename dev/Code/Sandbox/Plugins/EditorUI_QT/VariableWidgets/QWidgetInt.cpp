@@ -14,7 +14,7 @@
 #include "QWidgetInt.h"
 
 #ifdef EDITOR_QT_UI_EXPORTS
-    #include "StdAfx.h"
+    #include "stdafx.h"
     #include "AttributeItem.h"
 #endif
 

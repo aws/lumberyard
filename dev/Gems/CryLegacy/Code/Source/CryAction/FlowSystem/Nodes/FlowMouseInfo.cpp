@@ -14,8 +14,8 @@
 // Description : Mouse Info Flownode
 
 
-#include "StdAfx.h"
-#include "FlowBaseNode.h"
+#include "CryLegacy_precompiled.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "IInput.h"
 #include <LyShine/Bus/UiCursorBus.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>

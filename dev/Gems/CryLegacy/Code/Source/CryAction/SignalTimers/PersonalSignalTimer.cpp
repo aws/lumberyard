@@ -13,7 +13,7 @@
 
 // Description : Manager per-actor signal timers
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "PersonalSignalTimer.h"
 #include "SignalTimers.h"
 #include "IUIDraw.h"

@@ -6,6 +6,10 @@
         ],
         "Resources": [
             "gui_info.plist"
+        ],
+        "utilities": [
+            "native/utilities/MacDockIconHandler.mm",
+            "native/utilities/MacDockIconHandler.h"
         ]
     }
 }

@@ -53,7 +53,7 @@ static bool CompareLayoutNames(const QString& name1, const QString& name2)
 static void AddOpenViewPaneAction(ActionManager::MenuWrapper& menu, const char* name)
 {
     QAction* action = menu->addAction(QObject::tr(name));
-    QObject::connect(action, &QAction::triggered, [name]() {
+    QObject::connect(action, &QAction::triggered, action, [name]() {
         QtViewPaneManager::instance()->OpenPane(name);
     });
 }
@@ -206,16 +206,16 @@ void LevelEditorMenuHandler::UpdateViewLayoutsMenu(ActionManager::MenuWrapper& l
         QMenu* subSubMenu = new QMenu();
 
         QAction* subSubAction = subSubMenu->addAction(tr("Load"));
-        connect(subSubAction, &QAction::triggered, [layoutName, this]() { m_mainWindow->ViewLoadPaneLayout(layoutName); });
+        connect(subSubAction, &QAction::triggered, this, [layoutName, this]() { m_mainWindow->ViewLoadPaneLayout(layoutName); });
 
         subSubAction = subSubMenu->addAction(tr("Save"));
-        connect(subSubAction, &QAction::triggered, [layoutName, this]() { m_mainWindow->ViewSavePaneLayout(layoutName); });
+        connect(subSubAction, &QAction::triggered, this, [layoutName, this]() { m_mainWindow->ViewSavePaneLayout(layoutName); });
 
         subSubAction = subSubMenu->addAction(tr("Rename..."));
-        connect(subSubAction, &QAction::triggered, [layoutName, this]() { m_mainWindow->ViewRenamePaneLayout(layoutName); });
+        connect(subSubAction, &QAction::triggered, this, [layoutName, this]() { m_mainWindow->ViewRenamePaneLayout(layoutName); });
 
         subSubAction = subSubMenu->addAction(tr("Delete"));
-        connect(subSubAction, &QAction::triggered, [layoutName, this]() { m_mainWindow->ViewDeletePaneLayout(layoutName); });
+        connect(subSubAction, &QAction::triggered, this, [layoutName, this]() { m_mainWindow->ViewDeletePaneLayout(layoutName); });
 
         action->setMenu(subSubMenu);
     }
@@ -427,7 +427,7 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
 
     // Show Selection
     auto showSelectionMenu = editMenu.Get()->addAction(tr("Show Selection"));
-    connect(showSelectionMenu, &QAction::triggered, [this]() {ToggleSelection(false); });
+    connect(showSelectionMenu, &QAction::triggered, this, [this]() {ToggleSelection(false); });
 
     // Show Last Hidden
     editMenu.AddAction(ID_EDIT_SHOW_LAST_HIDDEN);
@@ -1120,35 +1120,11 @@ QAction* LevelEditorMenuHandler::CreateViewPaneAction(const QtViewPane* view)
             action->setShortcut(view->m_options.shortcut);
         }
 
-        // copy this so that it's still valid when the lambda executes
-        QString viewPaneName = view->m_name;
-
-        QObject::connect(action, &QAction::triggered, QtViewPaneManager::instance(), [action, viewPaneName]()
-        {
-            // If this action is checkable and was just unchecked, then we
-            // should close the view pane
-            if (action->isCheckable() && !action->isChecked())
-            {
-                QtViewPaneManager::instance()->ClosePane(viewPaneName);
-            }
-            // Otherwise, this action should open the view pane
-            else
-            {
-                const QtViewPane* pane = QtViewPaneManager::instance()->OpenPane(viewPaneName);
-
-                if (pane != nullptr)
-                {
-                    QObject::connect(pane->Widget(), &QWidget::destroyed, action, [action]
-                    {
-                        action->setChecked(false);
-                    });
-                }
-            }
-        }, Qt::UniqueConnection);
+        QObject::connect(action, &QAction::triggered, this, &LevelEditorMenuHandler::checkOrOpenView, Qt::UniqueConnection);
 
         if (view->m_options.sendViewPaneNameBackToAmazonAnalyticsServers)
         {
-            AzToolsFramework::EditorMetricsEventsBus::Broadcast(&AzToolsFramework::EditorMetricsEventsBus::Events::RegisterAction, action, QString("ViewPaneMenu %1").arg(viewPaneName));
+            AzToolsFramework::EditorMetricsEventsBus::Broadcast(&AzToolsFramework::EditorMetricsEventsBus::Events::RegisterAction, action, QString("ViewPaneMenu %1").arg(view->m_name));
         }
     }
 
@@ -1200,7 +1176,7 @@ void LevelEditorMenuHandler::LoadNetPromoterScoreDialog(ActionManager::MenuWrapp
     if (!m_settings.value(g_shortTimeInterval).isNull())
     {
         auto showNetPromoterDialog = menu.Get()->addAction(tr("Show Net Promoter Score Dialog"));
-        connect(showNetPromoterDialog, &QAction::triggered, [this]() {
+        connect(showNetPromoterDialog, &QAction::triggered, this, [this]() {
             NetPromoterScoreDialog p(m_mainWindow);
             p.exec();
         });
@@ -1536,6 +1512,28 @@ void LevelEditorMenuHandler::AWSMenuClicked()
 {
     auto metricId = LyMetrics_CreateEvent("AWSMenuClickedEvent");
     LyMetrics_SubmitEvent(metricId);
+}
+
+void LevelEditorMenuHandler::checkOrOpenView()
+{
+    QAction *action = qobject_cast<QAction*>(sender());
+    const QString viewPaneName = action->objectName();
+    // If this action is checkable and was just unchecked, then we
+    // should close the view pane
+    if (action->isCheckable() && !action->isChecked())
+    {
+        QtViewPaneManager::instance()->ClosePane(viewPaneName);
+    }
+    // Otherwise, this action should open the view pane
+    else
+    {
+        const QtViewPane *pane = QtViewPaneManager::instance()->OpenPane(viewPaneName);
+
+        QObject::connect(pane->Widget(), &QWidget::destroyed, action, [action]
+        {
+            action->setChecked(false);
+        });
+    }
 }
 
 #include <Core/LevelEditorMenuHandler.moc>

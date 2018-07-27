@@ -29,7 +29,7 @@ namespace LyViewPane
     static const char* const SceneSettings = "Scene Settings (PREVIEW)";
     static const char* const AssetBrowser = "Asset Browser";
     static const char* const AssetEditor = "Asset Editor";
-    static const char* const EntityOutliner = "Entity Outliner (PREVIEW)";
+    static const char* const EntityOutliner = "Entity Outliner";
     static const char* const EntityInspector = "Entity Inspector";
     static const char* const EntityInspectorPinned = "Pinned Entity Inspector";
     static const char* const DeploymentTool = "Deployment Tool";

@@ -13,31 +13,27 @@
 
 #include "StdAfx.h"
 #include "LevelSystem.h"
-#include "Level.h"
-#include "ActorSystem.h"
 #include <IAudioSystem.h>
 #include "IMovieSystem.h"
-#include "CryAction.h"
 #include "IGameTokens.h"
 #include "IDialogSystem.h"
-#include "TimeOfDayScheduler.h"
-#include "IGameRulesSystem.h"
 #include "IMaterialEffects.h"
-#include "IPlayerProfiles.h"
 #include <IResourceManager.h>
 #include <ILocalizationManager.h>
-#include <Network/GameContext.h>
-#include <Network/GameContextBridge.h>
-#include "ICooperativeAnimationManager.h"
 #include "IDeferredCollisionEvent.h"
 #include "IPlatformOS.h"
 #include <ICustomActions.h>
-#include "CustomEvents/CustomEventsManager.h"
+#include <IGameFramework.h>
 
 #include <LoadScreenBus.h>
 
 #include <AzFramework/IO/FileOperations.h>
 #include <AzFramework/Entity/GameEntityContextBus.h>
+#include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
+
+#include "MainThreadRenderRequestBus.h"
+#include <LyShine/ILyShine.h>
+#include <AzCore/Component/TickBus.h>
 
 #include <IGameVolumes.h>
 
@@ -45,627 +41,10 @@
 #include <CryWindows.h>
 #endif
 
-#define LOCAL_WARNING(cond, msg)  do { if (!(cond)) { CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_WARNING, msg); } \
-} while (0)
-//#define LOCAL_WARNING(cond, msg)  CRY_ASSERT_MESSAGE(cond, msg)
+namespace LegacyLevelSystem
+{
 
 int CLevelSystem::s_loadCount = 0;
-
-//------------------------------------------------------------------------
-CLevelRotation::CLevelRotation()
-    : m_randFlags(ePRF_None)
-    , m_next(0)
-    , m_extInfoId(0)
-    , m_advancesTaken(0)
-    , m_hasGameModesDecks(false)
-{
-}
-
-//------------------------------------------------------------------------
-CLevelRotation::~CLevelRotation()
-{
-}
-
-//------------------------------------------------------------------------
-bool CLevelRotation::Load(ILevelRotationFile* file)
-{
-    return LoadFromXmlRootNode(file->Load(), NULL);
-}
-
-//------------------------------------------------------------------------
-bool CLevelRotation::LoadFromXmlRootNode(const XmlNodeRef rootNode, const char* altRootTag)
-{
-    if (rootNode)
-    {
-        if (!_stricmp(rootNode->getTag(), "levelrotation") || (altRootTag && !_stricmp(rootNode->getTag(), altRootTag)))
-        {
-            Reset();
-
-            TRandomisationFlags randFlags = ePRF_None;
-
-            bool r = false;
-            rootNode->getAttr("randomize", r);
-            if (r)
-            {
-                randFlags |= ePRF_Shuffle;
-            }
-
-            bool pairs = false;
-            rootNode->getAttr("maintainPairs", pairs);
-            if (pairs)
-            {
-                randFlags |= ePRF_MaintainPairs;
-            }
-
-            SetRandomisationFlags(randFlags);
-
-            bool includeNonPresentLevels = false;
-            rootNode->getAttr("includeNonPresentLevels", includeNonPresentLevels);
-
-            int n = rootNode->getChildCount();
-
-            XmlNodeRef lastLevelNode;
-
-            for (int i = 0; i < n; ++i)
-            {
-                XmlNodeRef child = rootNode->getChild(i);
-                if (child && !_stricmp(child->getTag(), "level"))
-                {
-                    const char* levelName = child->getAttr("name");
-                    if (!levelName || !levelName[0])
-                    {
-                        continue;
-                    }
-
-                    if (!includeNonPresentLevels)
-                    {
-                        if (!CCryAction::GetCryAction()->GetILevelSystem()->GetLevelInfo(levelName)) //skipping non-present levels
-                        {
-                            continue;
-                        }
-                    }
-
-                    //capture this good level child node in case it is last
-                    lastLevelNode = child;
-
-                    AddLevelFromNode(levelName, child);
-                }
-            }
-
-            //if we're a maintain pairs playlist, need an even number of entries
-            //also if there's only one entry, we should increase to 2 for safety
-            int nAdded = m_rotation.size();
-            if (nAdded == 1 || (pairs && (nAdded % 2) == 1))
-            {
-                //so duplicate last
-                const char* levelName = lastLevelNode->getAttr("name");     //we know there was at least 1 level node if we have an odd number
-                AddLevelFromNode(levelName, lastLevelNode);
-            }
-            return true;
-        }
-    }
-
-    return false;
-}
-
-//------------------------------------------------------------------------
-void CLevelRotation::AddLevelFromNode(const char* levelName, XmlNodeRef& levelNode)
-{
-    int lvl = AddLevel(levelName);
-
-    SLevelRotationEntry& level = m_rotation[ lvl ];
-
-    const char* gameRulesName = levelNode->getAttr("gamerules");
-    if (gameRulesName && gameRulesName[0])
-    {
-        AddGameMode(level, gameRulesName);
-    }
-    else
-    {
-        //look for child Game Rules nodes
-        int nModeNodes = levelNode->getChildCount();
-
-        for (int iNode = 0; iNode < nModeNodes; ++iNode)
-        {
-            XmlNodeRef modeNode = levelNode->getChild(iNode);
-
-            if (!_stricmp(modeNode->getTag(), "gameRules"))
-            {
-                gameRulesName = modeNode->getAttr("name");
-
-                if (gameRulesName && gameRulesName[0])
-                {
-                    //found some
-                    AddGameMode(level, gameRulesName);
-                }
-            }
-        }
-    }
-}
-
-//------------------------------------------------------------------------
-void CLevelRotation::Reset()
-{
-    m_randFlags = ePRF_None;
-    m_next = 0;
-    m_rotation.resize(0);
-    m_shuffle.resize(0);
-    m_extInfoId = 0;
-    m_hasGameModesDecks = false;
-}
-
-//------------------------------------------------------------------------
-int CLevelRotation::AddLevel(const char* level)
-{
-    SLevelRotationEntry entry;
-    entry.levelName = level;
-    entry.currentModeIndex = 0;
-
-    int idx = m_rotation.size();
-    m_rotation.push_back(entry);
-    m_shuffle.push_back(idx);
-    return idx;
-}
-
-//------------------------------------------------------------------------
-int CLevelRotation::AddLevel(const char* level, const char* gameMode)
-{
-    int iLevel = AddLevel(level);
-    AddGameMode(iLevel, gameMode);
-    return iLevel;
-}
-
-//------------------------------------------------------------------------
-void CLevelRotation::AddGameMode(int level, const char* gameMode)
-{
-    CRY_ASSERT(level >= 0 && level < m_rotation.size());
-    AddGameMode(m_rotation[level], gameMode);
-}
-
-//------------------------------------------------------------------------
-void CLevelRotation::AddGameMode(SLevelRotationEntry& level, const char* gameMode)
-{
-    const char* pActualGameModeName = CCryAction::GetCryAction()->GetIGameRulesSystem()->GetGameRulesName(gameMode);
-    if (pActualGameModeName)
-    {
-        int idx = level.gameRulesNames.size();
-        level.gameRulesNames.push_back(pActualGameModeName);
-        level.gameRulesShuffle.push_back(idx);
-
-        if (level.gameRulesNames.size() > 1)
-        {
-            //more than one game mode per level is a deck of game modes
-            m_hasGameModesDecks = true;
-        }
-    }
-}
-
-//------------------------------------------------------------------------
-bool CLevelRotation::First()
-{
-    Log_LevelRotation("First called");
-    m_next = 0;
-    return !m_rotation.empty();
-}
-
-//------------------------------------------------------------------------
-bool CLevelRotation::Advance()
-{
-    Log_LevelRotation("::Advance()");
-    ++m_advancesTaken;
-
-    if (m_next >= 0 && m_next < m_rotation.size())
-    {
-        SLevelRotationEntry& currLevel = m_rotation[ (m_randFlags & ePRF_Shuffle) ? m_shuffle[m_next] : m_next ];
-
-        int nModes = currLevel.gameRulesNames.size();
-
-        if (nModes > 1)
-        {
-            //also advance game mode for level
-            currLevel.currentModeIndex++;
-
-            Log_LevelRotation(" advanced level entry %d currentModeIndex to %d", m_next, currLevel.currentModeIndex);
-
-            if (currLevel.currentModeIndex >= nModes)
-            {
-                Log_LevelRotation(" looped modes");
-                currLevel.currentModeIndex = 0;
-            }
-        }
-    }
-
-    ++m_next;
-
-    Log_LevelRotation("CLevelRotation::Advance advancesTaken = %d, next = %d", m_advancesTaken, m_next);
-
-    if (m_next >= m_rotation.size())
-    {
-        return false;
-    }
-    return true;
-}
-
-
-//------------------------------------------------------------------------
-bool CLevelRotation::AdvanceAndLoopIfNeeded()
-{
-    bool looped = false;
-    if (!Advance())
-    {
-        Log_LevelRotation("AdvanceAndLoopIfNeeded Looping");
-        looped = true;
-        First();
-
-        if (m_randFlags & ePRF_Shuffle)
-        {
-            ShallowShuffle();
-        }
-    }
-
-    return looped;
-}
-
-//------------------------------------------------------------------------
-const char* CLevelRotation::GetNextLevel() const
-{
-    if (m_next >= 0 && m_next < m_rotation.size())
-    {
-        int next = (m_randFlags & ePRF_Shuffle) ? m_shuffle[m_next] : m_next;
-        return m_rotation[next].levelName.c_str();
-    }
-    return 0;
-}
-
-//------------------------------------------------------------------------
-const char* CLevelRotation::GetNextGameRules() const
-{
-    if (m_next >= 0 && m_next < m_rotation.size())
-    {
-        int next = (m_randFlags & ePRF_Shuffle) ? m_shuffle[m_next] : m_next;
-
-        const SLevelRotationEntry& nextLevel = m_rotation[next];
-
-        Log_LevelRotation("::GetNextGameRules() accessing level %d mode %d (shuffled %d)", next, nextLevel.currentModeIndex, nextLevel.gameRulesShuffle[ nextLevel.currentModeIndex ]);
-        return nextLevel.GameModeName();
-    }
-    return 0;
-}
-
-//------------------------------------------------------------------------
-const char* CLevelRotation::GetLevel(uint32 idx, bool accessShuffled /*=true*/) const
-{
-    int realIndex = GetRealRotationIndex(idx, accessShuffled);
-
-    if (realIndex >= 0)
-    {
-        return m_rotation[ realIndex ].levelName.c_str();
-    }
-
-    return 0;
-}
-
-//------------------------------------------------------------------------
-int CLevelRotation::GetNGameRulesForEntry(uint32 idx, bool accessShuffled /*=true*/) const
-{
-    int realIndex = GetRealRotationIndex(idx, accessShuffled);
-
-    if (realIndex >= 0)
-    {
-        return m_rotation[ realIndex ].gameRulesNames.size();
-    }
-
-    return 0;
-}
-
-//------------------------------------------------------------------------
-const char* CLevelRotation::GetGameRules(uint32 idx, uint32 iMode, bool accessShuffled /*=true*/) const
-{
-    int realIndex = GetRealRotationIndex(idx, accessShuffled);
-
-    if (realIndex >= 0)
-    {
-        int nRules = m_rotation[ realIndex ].gameRulesNames.size();
-
-        if (iMode < nRules)
-        {
-            if (accessShuffled && (m_randFlags & ePRF_Shuffle))
-            {
-                iMode = m_rotation[ realIndex ].gameRulesShuffle[ iMode ];
-            }
-
-            return m_rotation[ realIndex ].gameRulesNames[ iMode ].c_str();
-        }
-    }
-
-    return 0;
-}
-
-//------------------------------------------------------------------------
-const char* CLevelRotation::GetNextGameRulesForEntry(int idx) const
-{
-    int realIndex = GetRealRotationIndex(idx, true);
-
-    if (realIndex >= 0)
-    {
-#if LEVEL_ROTATION_DEBUG
-        const SLevelRotationEntry& curLevel = m_rotation[ realIndex ];
-        const char* gameModeName =  curLevel.GameModeName();
-
-        Log_LevelRotation("::GetNextGameRulesForEntry() idx %d, realIndex %d, level name %s, currentModeIndex %d, shuffled index %d, mode name %s",
-            idx, realIndex, curLevel.levelName.c_str(), curLevel.currentModeIndex, curLevel.gameRulesShuffle[ curLevel.currentModeIndex ], gameModeName);
-#endif //LEVEL_ROTATION_DEBUG
-
-        return m_rotation[ realIndex ].GameModeName();
-    }
-
-    return 0;
-}
-
-//------------------------------------------------------------------------
-const int CLevelRotation::NumAdvancesTaken() const
-{
-    return m_advancesTaken;
-}
-
-//------------------------------------------------------------------------
-void CLevelRotation::ResetAdvancement()
-{
-    Log_LevelRotation("::ResetAdvancement(), m_advancesTaken, m_next and currentModeIndex all set to 0");
-
-    m_advancesTaken = 0;
-    m_next = 0;
-
-    int nEntries = m_rotation.size();
-    for (int iLevel = 0; iLevel < nEntries; ++iLevel)
-    {
-        m_rotation[ iLevel ].currentModeIndex = 0;
-    }
-}
-
-//------------------------------------------------------------------------
-int CLevelRotation::GetLength() const
-{
-    return (int)m_rotation.size();
-}
-
-int CLevelRotation::GetTotalGameModeEntries() const
-{
-    int nLevels = m_rotation.size();
-
-    int nGameModes = 0;
-
-    for (int iLevel = 0; iLevel < nLevels; ++iLevel)
-    {
-        nGameModes += m_rotation[ iLevel ].gameRulesNames.size();
-    }
-
-    return nGameModes;
-}
-
-//------------------------------------------------------------------------
-int CLevelRotation::GetNext() const
-{
-    return m_next;
-}
-
-//------------------------------------------------------------------------
-void CLevelRotation::SetRandomisationFlags(TRandomisationFlags randMode)
-{
-    //check there's nothing in here apart from our flags
-    CRY_ASSERT((randMode & ~(ePRF_Shuffle | ePRF_MaintainPairs)) == 0);
-
-    m_randFlags = randMode;
-}
-
-//------------------------------------------------------------------------
-
-bool CLevelRotation::IsRandom() const
-{
-    return (m_randFlags & ePRF_Shuffle) != 0;
-}
-
-//------------------------------------------------------------------------
-void CLevelRotation::ChangeLevel(IConsoleCmdArgs* pArgs)
-{
-    SGameContextParams ctx;
-    const char* nextGameRules = GetNextGameRules();
-    if (nextGameRules && nextGameRules[0])
-    {
-        ctx.gameRules = nextGameRules;
-    }
-    else if (IEntity* pEntity = CCryAction::GetCryAction()->GetIGameRulesSystem()->GetCurrentGameRulesEntity())
-    {
-        ctx.gameRules = pEntity->GetClass()->GetName();
-    }
-    else if (ILevelInfo* pLevelInfo = CCryAction::GetCryAction()->GetILevelSystem()->GetLevelInfo(GetNextLevel()))
-    {
-        ctx.gameRules = pLevelInfo->GetDefaultGameType()->name;
-    }
-
-    ctx.levelName = GetNextLevel();
-
-    if (CCryAction::GetCryAction()->StartedGameContext())
-    {
-        CCryAction::GetCryAction()->ChangeGameContext(&ctx);
-    }
-    else
-    {
-        gEnv->pConsole->ExecuteString(string("sv_gamerules ") + ctx.gameRules);
-
-        string command = string("map ") + ctx.levelName;
-        if (pArgs)
-        {
-            for (int i = 1; i < pArgs->GetArgCount(); ++i)
-            {
-                command += string(" ") + pArgs->GetArg(i);
-            }
-        }
-        command += " s";
-        gEnv->pConsole->ExecuteString(command);
-    }
-
-
-    if (!Advance())
-    {
-        First();
-    }
-}
-
-//------------------------------------------------------------------------
-void CLevelRotation::Initialise(int nSeed)
-{
-    Log_LevelRotation("::Initalise()");
-    m_advancesTaken = 0;
-
-    First();
-
-    if (nSeed >= 0)
-    {
-        cry_random_seed(nSeed);
-        Log_LevelRotation(" Called cry_random_seed( %d )", nSeed);
-    }
-
-    if (!m_rotation.empty() && m_randFlags & ePRF_Shuffle)
-    {
-        ShallowShuffle();
-        ModeShuffle();
-    }
-}
-
-//------------------------------------------------------------------------
-void CLevelRotation::ModeShuffle()
-{
-    if (m_hasGameModesDecks)
-    {
-        //shuffle every map's modes.
-        int nEntries = m_rotation.size();
-
-        for (int iLevel = 0; iLevel < nEntries; ++iLevel)
-        {
-            int nModes =    m_rotation[ iLevel ].gameRulesNames.size();
-
-            std::vector<int>& gameModesShuffle = m_rotation[ iLevel ].gameRulesShuffle;
-            gameModesShuffle.resize(nModes);
-
-            for (int iMode = 0; iMode < nModes; ++iMode)
-            {
-                gameModesShuffle[ iMode ] = iMode;
-            }
-
-            for (int iMode = 0; iMode < nModes; ++iMode)
-            {
-                int idx = cry_random(0, nModes - 1);
-                Log_LevelRotation("Called cry_random()");
-                std::swap(gameModesShuffle[ iMode ], gameModesShuffle[ idx ]);
-            }
-
-#if LEVEL_ROTATION_DEBUG
-            Log_LevelRotation("ModeShuffle Level entry %d Order", iLevel);
-
-            for (int iMode = 0; iMode < nModes; ++iMode)
-            {
-                Log_LevelRotation("Slot %d Mode %d", iMode, gameModesShuffle[ iMode ]);
-            }
-#endif //LEVEL_ROTATION_DEBUG
-            m_rotation[ iLevel ].currentModeIndex = 0;
-        }
-    }
-}
-
-//------------------------------------------------------------------------
-void CLevelRotation::ShallowShuffle()
-{
-    //shuffle levels only
-    int nEntries = m_rotation.size();
-    m_shuffle.resize(nEntries);
-
-    for (int i = 0; i < nEntries; ++i)
-    {
-        m_shuffle[ i ] = i;
-    }
-
-    if (m_randFlags & ePRF_MaintainPairs)
-    {
-        Log_LevelRotation("CLevelRotation::ShallowShuffle doing pair shuffle");
-        CRY_ASSERT_MESSAGE(nEntries % 2 == 0, "CLevelRotation::Shuffle Set to maintain pairs shuffle, require even number of entries, but we have odd. Should have been handled during initialisation");
-
-        //swap, but only even indices with even indices, and the ones after the same
-        int nPairs = nEntries / 2;
-
-        for (int i = 0; i < nPairs; ++i)
-        {
-            int idx = cry_random(0, nPairs - 1);
-            Log_LevelRotation("Called cry_random()");
-            std::swap(m_shuffle[2 * i    ], m_shuffle[2 * idx     ]);
-            std::swap(m_shuffle[2 * i + 1], m_shuffle[2 * idx + 1 ]);
-        }
-    }
-    else
-    {
-        for (int i = 0; i < nEntries; ++i)
-        {
-            int idx = cry_random(0, nEntries - 1);
-            Log_LevelRotation("Called cry_random()");
-            std::swap(m_shuffle[i], m_shuffle[idx]);
-        }
-    }
-
-    Log_LevelRotation("ShallowShuffle new order:");
-
-    for (int iShuff = 0; iShuff < m_shuffle.size(); ++iShuff)
-    {
-        Log_LevelRotation(" %d - %s", m_shuffle[ iShuff ], m_rotation[ m_shuffle[ iShuff ] ].levelName.c_str());
-    }
-}
-
-//------------------------------------------------------------------------
-bool CLevelRotation::NextPairMatch() const
-{
-    bool match = true;
-    if (m_next >= 0 && m_next < m_rotation.size())
-    {
-        bool shuffled = (m_randFlags & ePRF_Shuffle) != 0;
-
-        int next = shuffled ? m_shuffle[ m_next ] : m_next;
-
-        int nextPlus1 = m_next + 1;
-        if (nextPlus1 >= m_rotation.size())
-        {
-            nextPlus1 = 0;
-        }
-        if (shuffled)
-        {
-            nextPlus1 = m_shuffle[ nextPlus1 ];
-        }
-
-        if (_stricmp(m_rotation[ next ].levelName.c_str(), m_rotation[ nextPlus1 ].levelName.c_str()) != 0)
-        {
-            match = false;
-        }
-        else if (_stricmp(m_rotation[ next ].GameModeName(), m_rotation[ nextPlus1 ].GameModeName()) != 0)
-        {
-            match = false;
-        }
-    }
-
-    return match;
-}
-
-//------------------------------------------------------------------------
-const char* CLevelRotation::SLevelRotationEntry::GameModeName() const
-{
-    if (currentModeIndex >= 0 && currentModeIndex < gameRulesNames.size())
-    {
-        //we can always use the shuffle list. If we aren't shuffled, it will still contain ordered indicies from creation
-        int iMode = gameRulesShuffle[ currentModeIndex ];
-
-        return gameRulesNames[ iMode ].c_str();
-    }
-
-    return NULL;
-}
-
 
 //------------------------------------------------------------------------
 bool CLevelInfo::SupportsGameType(const char* gameTypeName) const
@@ -673,7 +52,7 @@ bool CLevelInfo::SupportsGameType(const char* gameTypeName) const
     //read level meta data
     for (int i = 0; i < m_gamerules.size(); ++i)
     {
-        if (!_stricmp(m_gamerules[i].c_str(), gameTypeName))
+        if (!azstricmp(m_gamerules[i].c_str(), gameTypeName))
         {
             return true;
         }
@@ -685,18 +64,6 @@ bool CLevelInfo::SupportsGameType(const char* gameTypeName) const
 const char* CLevelInfo::GetDisplayName() const
 {
     return m_levelDisplayName.c_str();
-}
-
-//------------------------------------------------------------------------
-bool CLevelInfo::GetAttribute(const char* name, TFlowInputData& val) const
-{
-    TAttributeList::const_iterator it = m_levelAttributes.find(name);
-    if (it != m_levelAttributes.end())
-    {
-        val = it->second;
-        return true;
-    }
-    return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -777,13 +144,6 @@ bool CLevelInfo::ReadInfo()
 }
 
 //////////////////////////////////////////////////////////////////////////
-#if defined(AZ_PLATFORM_LINUX) && defined(_LIBCPP_VERSION) && (_LIBCPP_VERSION < 4000)
-// BUG: Workaround for a compiler bug. std::map.clear() causes a crash when optimized.
-// More info here -
-//  http://llvm.org/viewvc/llvm-project?view=revision&revision=276003
-//  https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=224917
-[[clang::optnone]]
-#endif
 void CLevelInfo::ReadMetaData()
 {
     string fullPath(GetPath());
@@ -792,7 +152,6 @@ void CLevelInfo::ReadMetaData()
     fullPath.append("/");
     fullPath.append(mapName);
     fullPath.append(".xml");
-    m_levelAttributes.clear();
 
     m_levelDisplayName = string("@ui_") + mapName;
 
@@ -810,7 +169,7 @@ void CLevelInfo::ReadMetaData()
         {
             XmlNodeRef rulesNode = mapInfo->getChild(n);
             const char* name = rulesNode->getTag();
-            if (!_stricmp(name, "Gamerules"))
+            if (!azstricmp(name, "Gamerules"))
             {
                 for (int a = 0; a < rulesNode->getNumAttributes(); ++a)
                 {
@@ -819,7 +178,7 @@ void CLevelInfo::ReadMetaData()
                     m_gamerules.push_back(value);
                 }
             }
-            else if (!_stricmp(name, "Display"))
+            else if (!azstricmp(name, "Display"))
             {
                 XmlString v;
                 if (rulesNode->getAttr("Name", v))
@@ -827,7 +186,7 @@ void CLevelInfo::ReadMetaData()
                     m_levelDisplayName = v.c_str();
                 }
             }
-            else if (!_stricmp(name, "PreviewImage"))
+            else if (!azstricmp(name, "PreviewImage"))
             {
                 const char* pFilename = NULL;
                 if (rulesNode->getAttr("Filename", &pFilename))
@@ -835,7 +194,7 @@ void CLevelInfo::ReadMetaData()
                     m_previewImagePath = pFilename;
                 }
             }
-            else if (!_stricmp(name, "BackgroundImage"))
+            else if (!azstricmp(name, "BackgroundImage"))
             {
                 const char* pFilename = NULL;
                 if (rulesNode->getAttr("Filename", &pFilename))
@@ -843,7 +202,7 @@ void CLevelInfo::ReadMetaData()
                     m_backgroundImagePath = pFilename;
                 }
             }
-            else if (!_stricmp(name, "Minimap"))
+            else if (!azstricmp(name, "Minimap"))
             {
                 foundMinimapInfo = true;
 
@@ -865,7 +224,7 @@ void CLevelInfo::ReadMetaData()
                 m_minimapInfo.fDimX = m_minimapInfo.fDimX > 0 ? m_minimapInfo.fDimX : 1;
                 m_minimapInfo.fDimY = m_minimapInfo.fDimY > 0 ? m_minimapInfo.fDimY : 1;
             }
-            else if (!_stricmp(name, "Tag"))
+            else if (!azstricmp(name, "Tag"))
             {
                 m_levelTag = ILevelSystem::TAG_UNKNOWN;
                 SwapEndian(m_levelTag, eBigEndian);
@@ -876,16 +235,7 @@ void CLevelInfo::ReadMetaData()
                     memcpy(&m_levelTag, pTag, std::min(sizeof(m_levelTag), strlen(pTag)));
                 }
             }
-            else if (!_stricmp(name, "Attributes"))
-            {
-                for (int a = 0; a < rulesNode->getChildCount(); ++a)
-                {
-                    XmlNodeRef attrib = rulesNode->getChild(a);
-                    assert(m_levelAttributes.find(attrib->getTag()) == m_levelAttributes.end());
-                    m_levelAttributes[attrib->getTag()] = TFlowInputData(string(attrib->getAttr("value")));
-                }
-            }
-            else if (!_stricmp(name, "LevelType"))
+            else if (!azstricmp(name, "LevelType"))
             {
                 const char* levelType;
                 if (rulesNode->getAttr("value", &levelType))
@@ -925,6 +275,29 @@ struct SLevelNameAutoComplete
 SLevelNameAutoComplete g_LevelNameAutoComplete;
 
 //------------------------------------------------------------------------
+static void LoadMap(IConsoleCmdArgs* args)
+{
+    if (gEnv->pSystem && gEnv->pSystem->GetILevelSystem() && !gEnv->IsEditor())
+    {
+        gEnv->pSystem->GetILevelSystem()->UnLoadLevel();
+        gEnv->pSystem->GetILevelSystem()->LoadLevel(args->GetArg(1));
+    }
+}
+
+//------------------------------------------------------------------------
+static void UnloadMap(IConsoleCmdArgs* args)
+{
+    if (gEnv->pSystem && gEnv->pSystem->GetILevelSystem() && !gEnv->IsEditor())
+    {
+        gEnv->pSystem->GetILevelSystem()->UnLoadLevel();
+        if (gEnv->p3DEngine)
+        {
+            gEnv->p3DEngine->LoadEmptyLevel();
+        }
+    }
+}
+
+//------------------------------------------------------------------------
 CLevelSystem::CLevelSystem(ISystem* pSystem, const char* levelsFolder)
     : m_pSystem(pSystem)
     , m_pCurrentLevel(0)
@@ -951,8 +324,6 @@ CLevelSystem::CLevelSystem(ISystem* pSystem, const char* levelsFolder)
     //if (!gEnv->IsEditor())
     Rescan(levelsFolder, ILevelSystem::TAG_MAIN);
 
-    // register with system to get loading progress events
-    m_pSystem->SetLoadingProgressListener(this);
     m_fLastLevelLoadTime = 0;
     m_fFilteredProgress = 0;
     m_fLastTime = 0;
@@ -963,16 +334,14 @@ CLevelSystem::CLevelSystem(ISystem* pSystem, const char* levelsFolder)
 
     m_nLoadedLevelsCount = 0;
 
-    m_extLevelRotations.resize(0);
-
+    REGISTER_COMMAND("map", LoadMap, VF_BLOCKFRAME, "Load a map");
+    REGISTER_COMMAND("unload", UnloadMap, 0, "Unload current map");
     gEnv->pConsole->RegisterAutoComplete("map", &g_LevelNameAutoComplete);
 }
 
 //------------------------------------------------------------------------
 CLevelSystem::~CLevelSystem()
 {
-    // register with system to get loading progress events
-    m_pSystem->SetLoadingProgressListener(0);
 }
 
 //------------------------------------------------------------------------
@@ -1000,39 +369,6 @@ void CLevelSystem::Rescan(const char* levelsFolder, const uint32 tag)
     for (int i = 0; i < (int)m_levelInfos.size(); i++)
     {
         g_LevelNameAutoComplete.levels.push_back(PathUtil::GetFileName(m_levelInfos[i].GetName()));
-    }
-}
-
-void CLevelSystem::LoadRotation()
-{
-    if (ICVar* pLevelRotation = gEnv->pConsole->GetCVar("sv_levelrotation"))
-    {
-        ILevelRotationFile* file = 0;
-        IPlayerProfileManager* pProfileMan = CCryAction::GetCryAction()->GetIPlayerProfileManager();
-        if (pProfileMan)
-        {
-            const char* userName = pProfileMan->GetCurrentUser();
-            IPlayerProfile* pProfile = pProfileMan->GetCurrentProfile(userName);
-            if (pProfile)
-            {
-                file = pProfile->GetLevelRotationFile(pLevelRotation->GetString());
-            }
-            else if (pProfile = pProfileMan->GetDefaultProfile())
-            {
-                file = pProfile->GetLevelRotationFile(pLevelRotation->GetString());
-            }
-        }
-        bool ok = false;
-        if (file)
-        {
-            ok = m_levelRotation.Load(file);
-            file->Complete();
-        }
-
-        if (!ok)
-        {
-            CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_WARNING, "Failed to load '%s' as level rotation!", pLevelRotation->GetString());
-        }
     }
 }
 
@@ -1073,6 +409,8 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
                 continue;
             }
 
+            CLevelInfo levelInfo;
+
             string levelFolder = (folder.empty() ? "" : (folder + "/")) + string(fd.name);
             string levelPath = m_levelsFolder + "/" + levelFolder;
             string paks = levelPath + string("/*.pak");
@@ -1089,7 +427,6 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
             }
 
             //CryLog("[DLC] ScanFolder adding level:'%s'", levelPath.c_str());
-            CLevelInfo levelInfo;
             levelInfo.m_levelPath = levelPath;
             levelInfo.m_levelPaks = paks;
             levelInfo.m_levelName = levelFolder;
@@ -1100,6 +437,7 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
 
             SwapEndian(levelInfo.m_scanTag, eBigEndian);
             SwapEndian(levelInfo.m_levelTag, eBigEndian);
+
 
             CLevelInfo* pExistingInfo = GetLevelInfoInternal(levelInfo.m_levelName);
             if (pExistingInfo && pExistingInfo->MetadataLoaded() == false)
@@ -1161,7 +499,7 @@ CLevelInfo* CLevelSystem::GetLevelInfoInternal(const char* levelName)
     // If level not found by full name try comparing with only filename
     for (std::vector<CLevelInfo>::iterator it = m_levelInfos.begin(); it != m_levelInfos.end(); ++it)
     {
-        if (!strcmpi(it->GetName(), levelName))
+        if (!azstricmp(it->GetName(), levelName))
         {
             return &(*it);
         }
@@ -1170,7 +508,7 @@ CLevelInfo* CLevelSystem::GetLevelInfoInternal(const char* levelName)
     //////////////////////////////////////////////////////////////////////////
     for (std::vector<CLevelInfo>::iterator it = m_levelInfos.begin(); it != m_levelInfos.end(); ++it)
     {
-        if (!strcmpi(PathUtil::GetFileName(it->GetName()), levelName))
+        if (!azstricmp(PathUtil::GetFileName(it->GetName()), levelName))
         {
             return &(*it);
         }
@@ -1223,27 +561,22 @@ void CLevelSystem::RemoveListener(ILevelSystemListener* pListener)
 //------------------------------------------------------------------------
 ILevel* CLevelSystem::LoadLevel(const char* _levelName)
 {
+    if (gEnv->IsEditor())
+    {
+        AZ_TracePrintf("CrySystem::CLevelSystem", "LoadLevel for %s was called in the editor - not actually loading.\n", _levelName);
+        return nullptr;
+    }
+
     gEnv->pSystem->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_LEVEL_LOAD_PREPARE, 0, 0);
     PrepareNextLevel(_levelName);
 
-    IGameFramework* gameFramework = gEnv->pGame->GetIGameFramework();
-    if (!gameFramework)
-    {
-        CryFatalError("LoadLevel failed because IGameFramework is NULL!");
-    }
-
-    gameFramework->StartNetworkStallTicker(true);
-
     ILevel* level = LoadLevelInternal(_levelName);
-
-    gameFramework->StopNetworkStallTicker();
-
     if (level)
     {
         OnLoadingComplete(level);
 
         // the editor sends these same events when you tell it to start running the actual game (Ctrl+G)
-        if (!gEnv->IsEditor())
+        if (!gEnv->IsEditor() && gEnv->pEntitySystem)
         {
             SEntityEvent entityEvent;
             entityEvent.event = ENTITY_EVENT_START_LEVEL;
@@ -1251,13 +584,6 @@ ILevel* CLevelSystem::LoadLevel(const char* _levelName)
 
             entityEvent.event = ENTITY_EVENT_START_GAME;
             gEnv->pEntitySystem->SendEventToAll(entityEvent);
-
-            // Mark the game as running.
-            CGameContext* gameContext = CCryAction::GetCryAction()->GetGameContext();
-            if (gameContext)
-            {
-                gameContext->SetGameStarted(true);
-            }
         }
     }
 
@@ -1325,11 +651,11 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
             }
         }
 
-        // Reset the camera to (0,0,0) which is the invalid/uninitialised state
+        // Reset the camera to (1,1,1) (not (0,0,0) which is the invalid/uninitialised state,
+        // to avoid the hack in the renderer to not show anything if the camera is at the origin).
         CCamera defaultCam;
+        defaultCam.SetPosition(Vec3(1.0f));
         m_pSystem->SetViewCamera(defaultCam);
-        IGameTokenSystem* pGameTokenSystem = CCryAction::GetCryAction()->GetIGameTokenSystem();
-        pGameTokenSystem->Reset();
 
         m_pLoadingLevelInfo = pLevelInfo;
         OnLoadingStart(pLevelInfo);
@@ -1364,10 +690,6 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
             pSpamDelay->Set(0.0f);
         }
 
-
-        // load all GameToken libraries this level uses incl. LevelLocal
-        pGameTokenSystem->LoadLibs(pLevelInfo->GetPath() + string("/GameTokens/*.xml"));
-
         if (gEnv->pEntitySystem)
         {
             // load layer infos before load level by 3dEngine and EntitySystem
@@ -1386,7 +708,7 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         OnLoadingLevelEntitiesStart(pLevelInfo);
 
         gEnv->pSystem->SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_START_ENTITIES);
-        if (!gEnv->pEntitySystem || !gEnv->pEntitySystem->OnLoadLevel(pLevelInfo->GetPath()))
+        if (gEnv->pEntitySystem && !gEnv->pEntitySystem->OnLoadLevel(pLevelInfo->GetPath()))
         {
             OnLoadingError(pLevelInfo, "EntitySystem failed to handle loading the level");
 
@@ -1394,18 +716,15 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         }
 
         // reset all the script timers
-        gEnv->pScriptSystem->ResetTimers();
+        if (gEnv->pScriptSystem)
+        {
+            gEnv->pScriptSystem->ResetTimers();
+        }
 
         if (gEnv->pAISystem)
         {
             gEnv->pAISystem->Reset(IAISystem::RESET_LOAD_LEVEL);
         }
-
-        // Reset TimeOfDayScheduler
-        CCryAction::GetCryAction()->GetTimeOfDayScheduler()->Reset();
-        CCryAction::GetCryAction()->OnActionEvent(SActionEvent(eAE_loadLevel));
-
-        CCryAction::GetCryAction()->CreatePhysicsQueues();
 
         // Reset dialog system
         if (gEnv->pDialogSystem)
@@ -1452,21 +771,11 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
             gEnv->pAISystem->LoadLevelData(pLevelInfo->GetPath(), pLevelInfo->GetDefaultGameType()->name);
         }
 
-        gEnv->pGame->LoadExportedLevelData(pLevelInfo->GetPath(), pLevelInfo->GetDefaultGameType()->name.c_str());
-
-        ICustomActionManager* pCustomActionManager = gEnv->pGame->GetIGameFramework()->GetICustomActionManager();
-        if (pCustomActionManager)
-        {
-            pCustomActionManager->LoadLibraryActions(CUSTOM_ACTIONS_PATH);
-        }
-
         if (gEnv->pEntitySystem)
         {
             gEnv->pEntitySystem->ReserveEntityId(1);
             gEnv->pEntitySystem->ReserveEntityId(LOCAL_PLAYER_ENTITY_ID);
         }
-
-        CCryAction::GetCryAction()->GetIGameRulesSystem()->CreateGameRules(CCryAction::GetCryAction()->GetGameContext()->GetRequestedGameRules());
 
         string missionXml = pLevelInfo->GetDefaultGameType()->xmlFile;
         string xmlFile = string(pLevelInfo->GetPath()) + "/" + missionXml;
@@ -1477,7 +786,7 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
             INDENT_LOG_DURING_SCOPE (true, "Reading '%s'", xmlFile.c_str());
             const char* script = rootNode->getAttr("Script");
 
-            if (script && script[0])
+            if (script && script[0] && gEnv->pScriptSystem)
             {
                 CryLog ("Executing script '%s'", script);
                 INDENT_LOG_DURING_SCOPE();
@@ -1486,7 +795,7 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
 
             XmlNodeRef objectsNode = rootNode->findChild("Objects");
 
-            if (objectsNode)
+            if (objectsNode && gEnv->pEntitySystem)
             {
                 gEnv->pEntitySystem->LoadEntities(objectsNode, true);
             }
@@ -1526,22 +835,12 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
             movieSys->Reset(true, false); // bSeekAllToStart needs to be false here as it's only of interest in the editor (double checked with Timur Davidenko)
         }
 
-        if (CCryAction::GetCryAction()->GetIMaterialEffects())
-        {
-            CCryAction::GetCryAction()->GetIMaterialEffects()->PreLoadAssets();
-        }
-
         if (gEnv->pFlowSystem)
         {
             gEnv->pFlowSystem->Reset(false);
         }
 
         gEnv->pSystem->SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_START_PRECACHE);
-        // Let gamerules precache anything needed
-        if (IGameRules* pGameRules = CCryAction::GetCryAction()->GetIGameRulesSystem()->GetCurrentGameRules())
-        {
-            pGameRules->PrecacheLevel();
-        }
 
         //////////////////////////////////////////////////////////////////////////
         // Notify 3D engine that loading finished
@@ -1575,8 +874,6 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
     }
 
     GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_LEVEL_LOAD_END, 0, 0);
-
-    gEnv->pConsole->GetCVar("sv_map")->Set(levelName);
 
     gEnv->pSystem->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_LEVEL_PRECACHE_START, 0, 0);
 
@@ -1632,9 +929,8 @@ void CLevelSystem::PrecacheLevelRenderData()
     ICVar* pPrecacheVar = gEnv->pConsole->GetCVar("e_PrecacheLevel");
     CRY_ASSERT(pPrecacheVar);
 
-    if (pPrecacheVar && pPrecacheVar->GetIVal() > 0)
+    if (pPrecacheVar && pPrecacheVar->GetIVal() > 0 && gEnv->pEntitySystem)
     {
-        if (gEnv->pGame)
         {
             if (I3DEngine* p3DEngine = gEnv->p3DEngine)
             {
@@ -1683,12 +979,10 @@ void CLevelSystem::PrepareNextLevel(const char* levelName)
         m_levelLoadStartTime = gEnv->pTimer->GetAsyncTime();
 
         // force a Lua deep garbage collection
+        if (gEnv->pScriptSystem)
         {
             gEnv->pScriptSystem->ForceGarbageCollection();
         }
-
-        // swap to the level heap
-        CCryAction::GetCryAction()->SwitchToLevelHeap(levelName);
 
         // Open pak file for a new level.
         pLevelInfo->OpenLevelPak();
@@ -1772,7 +1066,6 @@ void CLevelSystem::OnLoadingError(ILevelInfo* pLevelInfo, const char* error)
     if (!pLevelInfo)
     {
         CRY_ASSERT(false);
-        GameWarning("OnLoadingError without a currently loading level");
         return;
     }
 
@@ -1819,21 +1112,6 @@ void CLevelSystem::OnLoadingComplete(ILevel* pLevelInfo)
         SAnimMemoryTracker amt;
         gEnv->pCharacterManager->SetAnimMemoryTracker(amt);
     }
-    /*
-    if( IStatsTracker* tr = CCryAction::GetCryAction()->GetIGameStatistics()->GetSessionTracker() )
-    {
-        string mapName = "no_map_assigned";
-        if( pLevelInfo )
-            if (ILevelInfo * pInfo = pLevelInfo->GetLevelInfo())
-            {
-                mapName = pInfo->GetName();
-                PathUtil::RemoveExtension(mapName);
-                mapName = PathUtil::GetFileName(mapName);
-                mapName.MakeLower();
-            }
-        tr->StateValue(eSP_Map, mapName.c_str());
-    }
-    */
 
     for (std::vector<ILevelSystemListener*>::const_iterator it = m_listeners.begin(); it != m_listeners.end(); ++it)
     {
@@ -1845,7 +1123,10 @@ void CLevelSystem::OnLoadingComplete(ILevel* pLevelInfo)
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
 
     SEntityEvent loadingCompleteEvent(ENTITY_EVENT_LEVEL_LOADED);
-    gEnv->pEntitySystem->SendEventToAll(loadingCompleteEvent);
+    if (gEnv->pEntitySystem)
+    {
+        gEnv->pEntitySystem->SendEventToAll(loadingCompleteEvent);
+    }
 }
 
 //------------------------------------------------------------------------
@@ -1864,24 +1145,6 @@ void CLevelSystem::OnUnloadComplete(ILevel* pLevel)
     {
         (*it)->OnUnloadComplete(pLevel);
     }
-}
-
-//------------------------------------------------------------------------
-void CLevelSystem::OnLoadingProgress(int steps)
-{
-    float fProgress = (float)gEnv->p3DEngine->GetLoadedObjectCount();
-
-    m_fFilteredProgress = min(m_fFilteredProgress, fProgress);
-
-    float fFrameTime = gEnv->pTimer->GetAsyncCurTime() - m_fLastTime;
-
-    float t = CLAMP(fFrameTime * .25f, 0.0001f, 1.0f);
-
-    m_fFilteredProgress = fProgress * t + m_fFilteredProgress * (1.f - t);
-
-    m_fLastTime = gEnv->pTimer->GetAsyncCurTime();
-
-    OnLoadingProgress(m_pLoadingLevelInfo, (int)m_fFilteredProgress);
 }
 
 //------------------------------------------------------------------------
@@ -2030,6 +1293,22 @@ void CLevelSystem::UnLoadLevel()
     CryLog("UnLoadLevel Start");
     INDENT_LOG_DURING_SCOPE();
 
+    // Flush core buses. We're about to unload Cry modules and need to ensure we don't have module-owned functions left behind.
+    AZ::Data::AssetBus::ExecuteQueuedEvents();
+    AZ::TickBus::ExecuteQueuedEvents();
+    AZ::MainThreadRenderRequestBus::ExecuteQueuedEvents();
+
+    if (gEnv && gEnv->pSystem)
+    {
+        // clear all error messages to prevent stalling due to runtime file access check during chainloading
+        gEnv->pSystem->ClearErrorMessages();
+    }
+
+    if (gEnv && gEnv->pCryPak)
+    {
+        gEnv->pCryPak->DisableRuntimeFileAccess(false);
+    }
+
     CTimeValue tBegin = gEnv->pTimer->GetAsyncTime();
 
     // One last update to execute pending requests.
@@ -2054,19 +1333,15 @@ void CLevelSystem::UnLoadLevel()
 
     //AM: Flush render thread (Flush is not exposed - using EndFrame())
     //We are about to delete resources that could be in use
-    CCryAction* pCryAction = CCryAction::GetCryAction();
     if (gEnv->pRenderer)
     {
         gEnv->pRenderer->EndFrame();
 
         // force a black screen as last render command
-        if (!pCryAction || pCryAction->ShouldClearRenderBufferToBlackOnUnload())
-        {
-            gEnv->pRenderer->BeginFrame();
-            gEnv->pRenderer->SetState(GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA | GS_NODEPTHTEST);
-            gEnv->pRenderer->Draw2dImage(0, 0, 800, 600, -1, 0.0f, 0.0f, 1.0f, 1.0f, 0.f, 0.0f, 0.0f, 0.0f, 1.0, 0.f);
-            gEnv->pRenderer->EndFrame();
-        }
+        gEnv->pRenderer->BeginFrame();
+        gEnv->pRenderer->SetState(GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA | GS_NODEPTHTEST);
+        gEnv->pRenderer->Draw2dImage(0, 0, 800, 600, -1, 0.0f, 0.0f, 1.0f, 1.0f, 0.f, 0.0f, 0.0f, 0.0f, 1.0, 0.f);
+        gEnv->pRenderer->EndFrame();
 
         //flush any outstanding texture requests
         gEnv->pRenderer->FlushPendingTextureTasks();
@@ -2082,37 +1357,6 @@ void CLevelSystem::UnLoadLevel()
         gEnv->pScriptSystem->ResetTimers();
     }
 
-    if (pCryAction)
-    {
-        if (IItemSystem* pItemSystem = pCryAction->GetIItemSystem())
-        {
-            pItemSystem->ClearGeometryCache();
-            pItemSystem->ClearSoundCache();
-            pItemSystem->Reset();
-        }
-
-        if (ICooperativeAnimationManager* pCoopAnimManager = pCryAction->GetICooperativeAnimationManager())
-        {
-            pCoopAnimManager->Reset();
-        }
-
-        pCryAction->ClearBreakHistory();
-
-        // Custom actions (Active + Library) keep a smart ptr to flow graph and need to be cleared before get below to the gEnv->pFlowSystem->Reset(true);
-        ICustomActionManager* pCustomActionManager = pCryAction->GetICustomActionManager();
-        if (pCustomActionManager)
-        {
-            pCustomActionManager->ClearActiveActions();
-            pCustomActionManager->ClearLibraryActions();
-        }
-
-        IGameVolumes* pGameVolumes = pCryAction->GetIGameVolumesManager();
-        if (pGameVolumes)
-        {
-            pGameVolumes->Reset();
-        }
-    }
-
     // Clear level entities and prefab instances.
     EBUS_EVENT(AzFramework::GameEntityContextRequestBus, ResetGameContext);
 
@@ -2121,28 +1365,10 @@ void CLevelSystem::UnLoadLevel()
         gEnv->pEntitySystem->Unload(); // This needs to be called for editor and game, otherwise entities won't be released
     }
 
-    if (pCryAction)
-    {
-        // Custom events are used by prefab events and should have been removed once entities which have the prefab flownodes have been destroyed
-        // Just in case, clear all the events anyway
-        ICustomEventManager* pCustomEventManager = pCryAction->GetICustomEventManager();
-        CRY_ASSERT(pCustomEventManager != NULL);
-        pCustomEventManager->Clear();
-
-        pCryAction->OnActionEvent(SActionEvent(eAE_unloadLevel));
-        pCryAction->ClearPhysicsQueues();
-        pCryAction->GetTimeOfDayScheduler()->Reset();
-    }
-
     // reset a bunch of subsystems
     if (gEnv->pDialogSystem)
     {
         gEnv->pDialogSystem->Reset(true);
-    }
-
-    if (gEnv->pGame && gEnv->pGame->GetIGameFramework() && gEnv->pGame->GetIGameFramework()->GetIMaterialEffects())
-    {
-        gEnv->pGame->GetIGameFramework()->GetIMaterialEffects()->Reset(true);
     }
 
     if (gEnv->pAISystem)
@@ -2174,16 +1400,6 @@ void CLevelSystem::UnLoadLevel()
     oAudioRequestData.pData = &oAMData3;
     Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
 
-    if (pCryAction)
-    {
-        IGameObjectSystem* pGameObjectSystem = pCryAction->GetIGameObjectSystem();
-        pGameObjectSystem->Reset();
-    }
-
-    IGameTokenSystem* pGameTokenSystem = CCryAction::GetCryAction()->GetIGameTokenSystem();
-    pGameTokenSystem->RemoveLibrary("Level");
-    pGameTokenSystem->Unload();
-
     if (gEnv->pFlowSystem)
     {
         gEnv->pFlowSystem->Reset(true);
@@ -2197,11 +1413,6 @@ void CLevelSystem::UnLoadLevel()
     // Reset the camera to (0,0,0) which is the invalid/uninitialised state
     CCamera defaultCam;
     m_pSystem->SetViewCamera(defaultCam);
-
-    if (pCryAction)
-    {
-        pCryAction->OnActionEvent(SActionEvent(eAE_postUnloadLevel));
-    }
 
     OnUnloadComplete(m_pCurrentLevel);
 
@@ -2246,7 +1457,11 @@ void CLevelSystem::UnLoadLevel()
         CryComment("done");
     }
 
-
+    // Perform level unload procedures for the LyShine UI system
+    if (gEnv && gEnv->pLyShine)
+    {
+        gEnv->pLyShine->OnLevelUnload();
+    }
 
     m_bLevelLoaded = false;
 
@@ -2256,82 +1471,7 @@ void CLevelSystem::UnLoadLevel()
     // Must be sent last.
     // Cleanup all containers
     GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_LEVEL_POST_UNLOAD, 0, 0);
-}
-
-//////////////////////////////////////////////////////////////////////////
-ILevelRotation* CLevelSystem::FindLevelRotationForExtInfoId(const ILevelRotation::TExtInfoId findId)
-{
-    CLevelRotation*  pRot = NULL;
-
-    TExtendedLevelRotations::iterator  begin = m_extLevelRotations.begin();
-    TExtendedLevelRotations::iterator  end = m_extLevelRotations.end();
-    for (TExtendedLevelRotations::iterator i = begin; i != end; ++i)
-    {
-        CLevelRotation*  pIterRot = &(*i);
-        if (pIterRot->GetExtendedInfoId() == findId)
-        {
-            pRot = pIterRot;
-            break;
-        }
-    }
-
-    return pRot;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CLevelSystem::AddExtendedLevelRotationFromXmlRootNode(const XmlNodeRef rootNode, const char* altRootTag, const ILevelRotation::TExtInfoId extInfoId)
-{
-    bool  ok = false;
-
-    CRY_ASSERT(extInfoId);
-
-    if (!FindLevelRotationForExtInfoId(extInfoId))
-    {
-        m_extLevelRotations.push_back(CLevelRotation());
-        CLevelRotation*  pRot = &m_extLevelRotations.back();
-
-        if (pRot->LoadFromXmlRootNode(rootNode, altRootTag))
-        {
-            pRot->SetExtendedInfoId(extInfoId);
-            ok = true;
-        }
-        else
-        {
-            LOCAL_WARNING(0, string().Format("Couldn't add extended level rotation with id '%u' because couldn't read the xml info root node for some reason!", extInfoId));
-        }
-    }
-    else
-    {
-        LOCAL_WARNING(0, string().Format("Couldn't add extended level rotation with id '%u' because there's already one with that id!", extInfoId));
-    }
-
-    return ok;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CLevelSystem::ClearExtendedLevelRotations()
-{
-    m_extLevelRotations.clear();
-}
-
-//////////////////////////////////////////////////////////////////////////
-ILevelRotation* CLevelSystem::CreateNewRotation(const ILevelRotation::TExtInfoId id)
-{
-    CLevelRotation* pRotation = static_cast<CLevelRotation*>(FindLevelRotationForExtInfoId(id));
-
-    if (!pRotation)
-    {
-        m_extLevelRotations.push_back(CLevelRotation());
-        pRotation = &m_extLevelRotations.back();
-        pRotation->SetExtendedInfoId(id);
-    }
-    else
-    {
-        pRotation->Reset();
-        pRotation->SetExtendedInfoId(id);
-    }
-
-    return pRotation;
+    AzFramework::InputChannelRequestBus::Broadcast(&AzFramework::InputChannelRequests::ResetState);
 }
 
 DynArray<string>* CLevelSystem::GetLevelTypeList()
@@ -2339,8 +1479,4 @@ DynArray<string>* CLevelSystem::GetLevelTypeList()
     return &m_levelTypeList;
 }
 
-
-
-#undef LOCAL_WARNING
-
-
+} // namespace LegacyLevelSystem

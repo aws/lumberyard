@@ -64,7 +64,7 @@ def get_output_dir_node(tg):
     Gets the output dir from a task generator.
     """
     output_dir = tg.path.get_bld()
-    output_dir = tg.bld.bldnode.make_node('{}/{}'.format(output_dir.relpath(), tg.idx))
+    output_dir = tg.bld.bldnode.make_node('{}/{}'.format(output_dir.relpath(), tg.target_uid))
     return output_dir
 
 
@@ -333,7 +333,7 @@ class az_code_gen(Task.Task):
             # When DISABLE_DEBUG_SYMBOLS_OVERRIDE doesn't exist in the dictionary it returns []
             # which will results to false in this check.
             if self.bld.is_option_true('generate_debug_info') or self.generator.env['DISABLE_DEBUG_SYMBOLS_OVERRIDE']:
-                pdb_folder = self.generator.path.get_bld().make_node(str(self.generator.idx))
+                pdb_folder = self.generator.path.get_bld().make_node(str(self.generator.target_uid))
                 pdb_cxxflag = '/Fd{}'.format(pdb_folder.abspath())
 
                 created_task.env.append_unique('CFLAGS', pdb_cxxflag)

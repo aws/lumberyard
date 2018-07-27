@@ -18,14 +18,25 @@
 FloatableDockPanel::FloatableDockPanel(const QString& title, QWidget* parent, Qt::WindowFlags flags)
     : QDockWidget(title, parent, flags)
 {
-    connect(this, &QDockWidget::topLevelChanged, [&](bool topLevel) { onFloatingStatusChanged(topLevel);  });
+    connect(this, &QDockWidget::topLevelChanged, this, &FloatableDockPanel::onFloatingStatusChanged);
 }
 
 void FloatableDockPanel::onFloatingStatusChanged(bool floating)
 {
     if (floating)
     {
-        setWindowFlags(Qt::Window | Qt::WindowMaximizeButtonHint);
+        Qt::WindowFlags flags = Qt::Window | Qt::WindowMaximizeButtonHint;
+#if defined(AZ_PLATFORM_APPLE)
+        // On macOS, tool windows correspond to the Floating class of windows. This means that the
+        // window lives on a level above normal windows making it impossible to put a normal window
+        // on top of it. Therefore we need to add Qt::Tool to floating panels to ensure they are not
+        // hidden under their original window.
+        if (window()->windowFlags() & Qt::Tool)
+        {
+            flags |= Qt::Tool;
+        }
+#endif
+        setWindowFlags(flags);
         showMaximized();
     }
     else
@@ -34,7 +45,7 @@ void FloatableDockPanel::onFloatingStatusChanged(bool floating)
     }
 }
 
-void FloatableDockPanel::SetHotkeyHandler(QObject* obj, std::function<void(QKeyEvent* e)> hotkeyHandler)
+void FloatableDockPanel::SetHotkeyHandler(QObject* obj, AZStd::function<void(QKeyEvent* e)> hotkeyHandler)
 {
     if (obj != nullptr)
     {
@@ -43,7 +54,7 @@ void FloatableDockPanel::SetHotkeyHandler(QObject* obj, std::function<void(QKeyE
     }
 }
 
-void FloatableDockPanel::SetShortcutHandler(QObject* obj, std::function<bool(QShortcutEvent* e)> shortcutHandler)
+void FloatableDockPanel::SetShortcutHandler(QObject* obj, AZStd::function<bool(QShortcutEvent* e)> shortcutHandler)
 {
     if (obj != nullptr)
     {

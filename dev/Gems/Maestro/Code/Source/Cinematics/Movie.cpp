@@ -42,7 +42,7 @@
 #include <IRenderer.h>
 #include <IGameFramework.h>
 #include <IGame.h>
-#include "../CryAction/IViewSystem.h"
+#include <IViewSystem.h>
 #include "Maestro/Types/AnimNodeType.h"
 #include "Maestro/Types/SequenceType.h"
 #include "Maestro/Types/AnimParamType.h"
@@ -915,7 +915,7 @@ bool CMovieSystem::AbortSequence(IAnimSequence* pSequence, bool bLeaveTime)
     assert(pSequence);
 
     // to avoid any camera blending after aborting a cut scene
-    IViewSystem* pViewSystem = gEnv->pGame->GetIGameFramework()->GetIViewSystem();
+    IViewSystem* pViewSystem = gEnv->pSystem->GetIViewSystem();
     if (pViewSystem)
     {
         pViewSystem->SetBlendParams(0, 0, 0);
@@ -1993,7 +1993,7 @@ void CMovieSystem::LogUserNotificationMsg(const AZStd::string& msg)
     }
     m_notificationLogMsgs.append(msg);
 #endif
-    AZ_Warning("TrackView", false, msg.c_str());
+    AZ_Warning("TrackView", false, "%s", msg.c_str());
 }
 
 void CMovieSystem::ClearUserNotificationMsgs()

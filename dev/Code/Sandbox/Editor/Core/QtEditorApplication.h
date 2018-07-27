@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include "BoostHelpers.h"
 
+#include <AzCore/PlatformDef.h>
 #include <AzCore/UserSettings/UserSettingsProvider.h>
 
 class QFileInfo;
@@ -92,14 +93,12 @@ namespace Editor
         const QColor& GetColorByName(const QString& colorName);
 
         void EnableOnIdle(bool enable = true);
-        void ResetIdleTimer(bool isInGameMode = false);
 
         bool eventFilter(QObject* object, QEvent* event) override;
 
         QSet<int> pressedKeys() const { return m_pressedKeys; }
         int pressedMouseButtons() const { return m_pressedButtons; }
-
-#ifdef _DEBUG
+#ifdef AZ_DEBUG_BUILD
         bool notify(QObject* receiver, QEvent* ev) override;
 #endif
 
@@ -115,6 +114,13 @@ namespace Editor
         void skinChanged();
 
     private:
+        enum TimerResetFlag
+        {
+            PollState,
+            GameMode,
+            EditorMode
+        };
+        void ResetIdleTimerInterval(TimerResetFlag = PollState);
         static QColor InterpolateColors(QColor a, QColor b, float factor);
         void RefreshStyleSheet();
         void InstallFilters();

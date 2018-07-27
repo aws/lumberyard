@@ -10,169 +10,119 @@
 *
 */
 
-// include required headers
-#include "AnimGraphGameControllerSettings.h"
+#include <EMotionFX/Source/AnimGraphGameControllerSettings.h>
+#include <AzCore/Serialization/SerializeContext.h>
 
 
 namespace EMotionFX
 {
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphGameControllerSettings, AnimGraphGameControllerSettingsAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphGameControllerSettings::ParameterInfo, AnimGraphGameControllerSettingsAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphGameControllerSettings::ButtonInfo, AnimGraphGameControllerSettingsAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphGameControllerSettings::Preset, AnimGraphGameControllerSettingsAllocator, 0)
 
-    // constructor
+    AnimGraphGameControllerSettings::ParameterInfo::ParameterInfo()
+        : m_axis(MCORE_INVALIDINDEX8)
+        , m_mode(PARAMMODE_STANDARD)
+        , m_invert(true)
+        , m_enabled(true)
+    {
+    }
+
+
     AnimGraphGameControllerSettings::ParameterInfo::ParameterInfo(const char* parameterName)
+        : ParameterInfo()
     {
-        mParameterName  = parameterName;
-        mAxis           = MCORE_INVALIDINDEX8;
-        mMode           = PARAMMODE_STANDARD;
-        mInvert         = true;
-        mEnabled        = true;
-    }
-
-    // clone parameter info
-    AnimGraphGameControllerSettings::ParameterInfo* AnimGraphGameControllerSettings::ParameterInfo::Clone() const
-    {
-        ParameterInfo* result = new ParameterInfo(mParameterName.c_str());
-        result->mMode       = mMode;
-        result->mInvert     = mInvert;
-        result->mEnabled    = mEnabled;
-        result->mAxis       = mAxis;
-        return result;
-    }
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // constructor
-    AnimGraphGameControllerSettings::ButtonInfo::ButtonInfo(uint32 buttonIndex)
-    {
-        mButtonIndex    = buttonIndex;
-        mMode           = AnimGraphGameControllerSettings::BUTTONMODE_NONE;
-        mOldIsPressed   = false;
-        mEnabled        = true;
-    }
-
-    // clone button info
-    AnimGraphGameControllerSettings::ButtonInfo* AnimGraphGameControllerSettings::ButtonInfo::Clone() const
-    {
-        ButtonInfo* result = new ButtonInfo(mButtonIndex);
-        result->mMode           = mMode;
-        result->mString         = mString;
-        result->mOldIsPressed   = mOldIsPressed;
-        result->mEnabled        = mEnabled;
-        return result;
-    }
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    AnimGraphGameControllerSettings::Preset* AnimGraphGameControllerSettings::Preset::Clone() const
-    {
-        Preset* result = new Preset(mName.c_str());
-
-        const uint32 numParameterInfos = mParameterInfos.GetLength();
-        result->mParameterInfos.Resize(numParameterInfos);
-        for (uint32 i = 0; i < numParameterInfos; ++i)
-        {
-            result->mParameterInfos[i] = mParameterInfos[i]->Clone();
-        }
-
-        const uint32 numButtonInfos = mButtonInfos.GetLength();
-        result->mButtonInfos.Resize(numButtonInfos);
-        for (uint32 i = 0; i < numButtonInfos; ++i)
-        {
-            result->mButtonInfos[i] = mButtonInfos[i]->Clone();
-        }
-
-        return result;
+        m_parameterName = parameterName;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // constructor
+    AnimGraphGameControllerSettings::ButtonInfo::ButtonInfo()
+        : m_buttonIndex(MCORE_INVALIDINDEX32)
+        , m_mode(AnimGraphGameControllerSettings::BUTTONMODE_NONE)
+        , m_oldIsPressed(false)
+        , m_enabled(true)
+    {
+    }
+
+
+    AnimGraphGameControllerSettings::ButtonInfo::ButtonInfo(AZ::u32 buttonIndex)
+        : ButtonInfo()
+    {
+        m_buttonIndex = buttonIndex;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    AnimGraphGameControllerSettings::Preset::Preset()
+    {
+    }
+
+
     AnimGraphGameControllerSettings::Preset::Preset(const char* name)
-        : BaseObject()
+        : Preset()
     {
-        mName = name;
-        mParameterInfos.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_GAMECONTROLLER);
-        mButtonInfos.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_GAMECONTROLLER);
+        m_name = name;
     }
 
 
-    // destructor
     AnimGraphGameControllerSettings::Preset::~Preset()
     {
         Clear();
     }
 
 
-    // create
-    AnimGraphGameControllerSettings::Preset* AnimGraphGameControllerSettings::Preset::Create(const char* name)
-    {
-        return new AnimGraphGameControllerSettings::Preset(name);
-    }
-
-
-    // get rid of all parameter infos
     void AnimGraphGameControllerSettings::Preset::Clear()
     {
-        // get rid of the parameter infos
-        const uint32 numParameterInfos = mParameterInfos.GetLength();
-        for (uint32 i = 0; i < numParameterInfos; ++i)
+        for (ParameterInfo* parameterInfo : m_parameterInfos)
         {
-            delete mParameterInfos[i];
+            delete parameterInfo;
         }
-        mParameterInfos.Clear();
+        m_parameterInfos.clear();
 
-        // get rid of the button infos
-        const uint32 numButtonInfos = mButtonInfos.GetLength();
-        for (uint32 i = 0; i < numButtonInfos; ++i)
+        for (ButtonInfo* buttonInfo : m_buttonInfos)
         {
-            delete mButtonInfos[i];
+            delete buttonInfo;
         }
-        mButtonInfos.Clear();
+        m_buttonInfos.clear();
     }
 
 
     // find parameter info by name and create one if it doesn't exist yet
     AnimGraphGameControllerSettings::ParameterInfo* AnimGraphGameControllerSettings::Preset::FindParameterInfo(const char* parameterName)
     {
-        // get the number of parameter infos and iterate through them
-        const uint32 numParameterInfos = mParameterInfos.GetLength();
-        for (uint32 i = 0; i < numParameterInfos; ++i)
+        for (ParameterInfo* parameterInfo : m_parameterInfos)
         {
             // check if we have already created a parameter info for the given parameter
-            ParameterInfo* parameterInfo = mParameterInfos[i];
-            if (parameterInfo->mParameterName == parameterName)
+            if (parameterInfo->m_parameterName == parameterName)
             {
                 return parameterInfo;
             }
         }
 
         // create a new parameter info
-        ParameterInfo* parameterInfo = new ParameterInfo(parameterName);
-        mParameterInfos.Add(parameterInfo);
+        ParameterInfo* parameterInfo = aznew ParameterInfo(parameterName);
+        m_parameterInfos.emplace_back(parameterInfo);
         return parameterInfo;
     }
 
 
     // find the button info by index and create one if it doesn't exist
-    AnimGraphGameControllerSettings::ButtonInfo* AnimGraphGameControllerSettings::Preset::FindButtonInfo(uint32 buttonIndex)
+    AnimGraphGameControllerSettings::ButtonInfo* AnimGraphGameControllerSettings::Preset::FindButtonInfo(AZ::u32 buttonIndex)
     {
-        // get the number of buttons infos and iterate through them
-        const uint32 numButtonInfos = mButtonInfos.GetLength();
-        for (uint32 i = 0; i < numButtonInfos; ++i)
+        for (ButtonInfo* buttonInfo : m_buttonInfos)
         {
             // check if we have already created a button info for the given button
-            ButtonInfo* buttonInfo = mButtonInfos[i];
-            if (mButtonInfos[i]->mButtonIndex == buttonIndex)
+            if (buttonInfo->m_buttonIndex == buttonIndex)
             {
                 return buttonInfo;
             }
         }
 
         // create a new button info
-        ButtonInfo* buttonInfo = new ButtonInfo(buttonIndex);
-        mButtonInfos.Add(buttonInfo);
+        ButtonInfo* buttonInfo = aznew ButtonInfo(buttonIndex);
+        m_buttonInfos.emplace_back(buttonInfo);
         return buttonInfo;
     }
 
@@ -180,16 +130,13 @@ namespace EMotionFX
     // check if the parameter with the given name is being controlled by the gamepad
     bool AnimGraphGameControllerSettings::Preset::CheckIfIsParameterButtonControlled(const char* stringName)
     {
-        // get the number of buttons infos and iterate through them
-        const uint32 numButtonInfos = mButtonInfos.GetLength();
-        for (uint32 i = 0; i < numButtonInfos; ++i)
+        for (ButtonInfo* buttonInfo : m_buttonInfos)
         {
             // check if the button info is linked to the given string
-            ButtonInfo* buttonInfo = mButtonInfos[i];
-            if (buttonInfo->mString == stringName)
+            if (buttonInfo->m_string == stringName)
             {
                 // return success in case this button info isn't set to the mode none
-                if (buttonInfo->mMode != BUTTONMODE_NONE)
+                if (buttonInfo->m_mode != BUTTONMODE_NONE)
                 {
                     return true;
                 }
@@ -204,16 +151,13 @@ namespace EMotionFX
     // check if any of the button infos that are linked to the given string name is enabled
     bool AnimGraphGameControllerSettings::Preset::CheckIfIsButtonEnabled(const char* stringName)
     {
-        // get the number of buttons infos and iterate through them
-        const uint32 numButtonInfos = mButtonInfos.GetLength();
-        for (uint32 i = 0; i < numButtonInfos; ++i)
+        for (ButtonInfo* buttonInfo : m_buttonInfos)
         {
             // check if the button info is linked to the given string
-            ButtonInfo* buttonInfo = mButtonInfos[i];
-            if (buttonInfo->mString == stringName)
+            if (buttonInfo->m_string == stringName)
             {
                 // return success in case this button info is enabled
-                if (buttonInfo->mEnabled)
+                if (buttonInfo->m_enabled)
                 {
                     return true;
                 }
@@ -228,94 +172,72 @@ namespace EMotionFX
     // set all button infos that are linked to the given string name to the enabled flag
     void AnimGraphGameControllerSettings::Preset::SetButtonEnabled(const char* stringName, bool isEnabled)
     {
-        // get the number of buttons infos and iterate through them
-        const uint32 numButtonInfos = mButtonInfos.GetLength();
-        for (uint32 i = 0; i < numButtonInfos; ++i)
+        for (ButtonInfo* buttonInfo : m_buttonInfos)
         {
             // check if the button info is linked to the given string and set the enabled flag in case it is linked to the given string name
-            ButtonInfo* buttonInfo = mButtonInfos[i];
-            if (buttonInfo->mString == stringName)
+            if (buttonInfo->m_string == stringName)
             {
-                buttonInfo->mEnabled = isEnabled;
+                buttonInfo->m_enabled = isEnabled;
             }
         }
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // constructor
     AnimGraphGameControllerSettings::AnimGraphGameControllerSettings()
-        : BaseObject()
+        : m_activePresetIndex(MCORE_INVALIDINDEX32)
     {
-        mPresets.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_GAMECONTROLLER);
-        mActivePresetIndex = MCORE_INVALIDINDEX32;
     }
 
 
-    // destructor
     AnimGraphGameControllerSettings::~AnimGraphGameControllerSettings()
     {
         Clear();
     }
 
 
-    // create
-    AnimGraphGameControllerSettings* AnimGraphGameControllerSettings::Create()
-    {
-        return new AnimGraphGameControllerSettings();
-    }
-
-
-    // add a preset to the settings
     void AnimGraphGameControllerSettings::AddPreset(Preset* preset)
     {
-        mPresets.Add(preset);
+        m_presets.emplace_back(preset);
     }
 
 
-    // remove the given preset
-    void AnimGraphGameControllerSettings::RemovePreset(uint32 index)
+    void AnimGraphGameControllerSettings::RemovePreset(size_t index)
     {
-        mPresets.Remove(index);
+        delete m_presets[index];
+        m_presets.erase(m_presets.begin() + index);
     }
 
 
-    // preallocate memory for the presets
-    void AnimGraphGameControllerSettings::SetNumPresets(uint32 numPresets)
+    void AnimGraphGameControllerSettings::SetNumPresets(size_t numPresets)
     {
-        mPresets.Resize(numPresets);
+        m_presets.resize(numPresets);
     }
 
 
-    // set the preset at the given index in the preset array
-    void AnimGraphGameControllerSettings::SetPreset(uint32 index, Preset* preset)
+    void AnimGraphGameControllerSettings::SetPreset(size_t index, Preset* preset)
     {
-        mPresets[index] = preset;
+        m_presets[index] = preset;
     }
 
 
-    // get rid of all presets
     void AnimGraphGameControllerSettings::Clear()
     {
-        // get the number of presets and iterate through them
-        const uint32 numPresets = mPresets.GetLength();
-        for (uint32 i = 0; i < numPresets; ++i)
+        for (Preset* preset : m_presets)
         {
-            mPresets[i]->Destroy();
+            delete preset;
         }
-        mPresets.Clear();
+
+        m_presets.clear();
     }
 
 
-    // find the preset by name
-    uint32 AnimGraphGameControllerSettings::FindPresetIndexByName(const char* presetName) const
+    size_t AnimGraphGameControllerSettings::FindPresetIndexByName(const char* presetName) const
     {
-        // get the number of presets and iterate through them
-        const uint32 numPresets = mPresets.GetLength();
-        for (uint32 i = 0; i < numPresets; ++i)
+        const size_t presetCount = m_presets.size();
+        for (size_t i = 0; i < presetCount; ++i)
         {
-            // compare the names and return the index in case they are equal
-            if (mPresets[i]->GetNameString() == presetName)
+            if (m_presets[i]->GetNameString() == presetName)
             {
                 return i;
             }
@@ -326,15 +248,12 @@ namespace EMotionFX
     }
 
 
-    // find the index for a given preset
-    uint32 AnimGraphGameControllerSettings::FindPresetIndex(Preset* preset) const
+    size_t AnimGraphGameControllerSettings::FindPresetIndex(Preset* preset) const
     {
-        // get the number of presets and iterate through them
-        const uint32 numPresets = mPresets.GetLength();
-        for (uint32 i = 0; i < numPresets; ++i)
+        const size_t presetCount = m_presets.size();
+        for (size_t i = 0; i < presetCount; ++i)
         {
-            // compare the preset pointers and return the index in case they are equal
-            if (mPresets[i] == preset)
+            if (m_presets[i] == preset)
             {
                 return i;
             }
@@ -347,15 +266,15 @@ namespace EMotionFX
 
     void AnimGraphGameControllerSettings::SetActivePreset(Preset* preset)
     {
-        mActivePresetIndex = FindPresetIndex(preset);
+        m_activePresetIndex = static_cast<AZ::u32>(FindPresetIndex(preset));
     }
 
 
     uint32 AnimGraphGameControllerSettings::GetActivePresetIndex() const
     {
-        if (mActivePresetIndex < mPresets.GetLength())
+        if (m_activePresetIndex < m_presets.size())
         {
-            return mActivePresetIndex;
+            return m_activePresetIndex;
         }
 
         return MCORE_INVALIDINDEX32;
@@ -364,9 +283,9 @@ namespace EMotionFX
 
     AnimGraphGameControllerSettings::Preset* AnimGraphGameControllerSettings::GetActivePreset() const
     {
-        if (mActivePresetIndex < mPresets.GetLength())
+        if (m_activePresetIndex < m_presets.size())
         {
-            return mPresets[mActivePresetIndex];
+            return m_presets[m_activePresetIndex];
         }
 
         return nullptr;
@@ -376,21 +295,16 @@ namespace EMotionFX
     void AnimGraphGameControllerSettings::OnParameterNameChange(const char* oldName, const char* newName)
     {
         // check if we have any preset to save
-        const uint32 numPresets = mPresets.GetLength();
+        const size_t numPresets = m_presets.size();
         if (numPresets == 0)
         {
             return;
         }
 
-        // get the number of presets and iterate through them
-        for (uint32 i = 0; i < numPresets; ++i)
+        for (Preset* preset : m_presets)
         {
-            // get the preset
-            Preset* preset = mPresets[i];
-
-            // loop trough all parameter infos
-            const uint32 numParameterInfos = preset->GetNumParamInfos();
-            for (uint32 j = 0; j < numParameterInfos; ++j)
+            const size_t parameterInfoCount = preset->GetNumParamInfos();
+            for (size_t j = 0; j < parameterInfoCount; ++j)
             {
                 ParameterInfo* parameterInfo = preset->GetParamInfo(j);
                 if (parameterInfo == nullptr)
@@ -399,44 +313,98 @@ namespace EMotionFX
                 }
 
                 // compare the names and replace them in case they are equal
-                if (parameterInfo->mParameterName == oldName)
+                if (parameterInfo->m_parameterName == oldName)
                 {
-                    parameterInfo->mParameterName = newName;
+                    parameterInfo->m_parameterName = newName;
                 }
             }
         }
     }
 
 
-    // clone the settings
-    AnimGraphGameControllerSettings* AnimGraphGameControllerSettings::Clone() const
+    AnimGraphGameControllerSettings::Preset* AnimGraphGameControllerSettings::GetPreset(size_t index) const
     {
-        AnimGraphGameControllerSettings* result = new AnimGraphGameControllerSettings();
+        return m_presets[index];
+    }
 
-        // copy easy stuff
-        result->mActivePresetIndex = mActivePresetIndex;
 
-        // copy the presets
-        const uint32 numPresets = mPresets.GetLength();
-        result->mPresets.Resize(numPresets);
-        for (uint32 i = 0; i < numPresets; ++i)
+    size_t AnimGraphGameControllerSettings::GetNumPresets() const
+    {
+        return m_presets.size();
+    }
+
+
+    void AnimGraphGameControllerSettings::ParameterInfo::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
         {
-            result->mPresets[i] = mPresets[i]->Clone();
+            return;
         }
 
-        return result;
+        serializeContext->Class<AnimGraphGameControllerSettings::ParameterInfo>()
+            ->Version(1)
+            ->Field("parameterName", &AnimGraphGameControllerSettings::ParameterInfo::m_parameterName)
+            ->Field("mode", &AnimGraphGameControllerSettings::ParameterInfo::m_mode)
+            ->Field("invert", &AnimGraphGameControllerSettings::ParameterInfo::m_invert)
+            ->Field("enabled", &AnimGraphGameControllerSettings::ParameterInfo::m_enabled)
+            ->Field("axis", &AnimGraphGameControllerSettings::ParameterInfo::m_axis)
+            ;
     }
 
 
-    AnimGraphGameControllerSettings::Preset* AnimGraphGameControllerSettings::GetPreset(uint32 index) const
+    void AnimGraphGameControllerSettings::ButtonInfo::Reflect(AZ::ReflectContext* context)
     {
-        return mPresets[index];
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphGameControllerSettings::ButtonInfo>()
+            ->Version(1)
+            ->Field("buttonIndex", &AnimGraphGameControllerSettings::ButtonInfo::m_buttonIndex)
+            ->Field("mode", &AnimGraphGameControllerSettings::ButtonInfo::m_mode)
+            ->Field("string", &AnimGraphGameControllerSettings::ButtonInfo::m_string)
+            ->Field("enabled", &AnimGraphGameControllerSettings::ButtonInfo::m_enabled)
+            ;
     }
 
 
-    uint32 AnimGraphGameControllerSettings::GetNumPresets() const
+    void AnimGraphGameControllerSettings::Preset::Reflect(AZ::ReflectContext* context)
     {
-        return mPresets.GetLength();
-    }
-}   // namespace EMotionFX
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
 
+        serializeContext->Class<AnimGraphGameControllerSettings::Preset>()
+            ->Version(1)
+            ->Field("name", &AnimGraphGameControllerSettings::Preset::m_name)
+            ->Field("parameterInfos", &AnimGraphGameControllerSettings::Preset::m_parameterInfos)
+            ->Field("buttonInfos", &AnimGraphGameControllerSettings::Preset::m_buttonInfos)
+            ;
+    }
+
+
+    void AnimGraphGameControllerSettings::Reflect(AZ::ReflectContext* context)
+    {
+        ParameterInfo::Reflect(context);
+        ButtonInfo::Reflect(context);
+        Preset::Reflect(context);
+
+
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphGameControllerSettings>()
+            ->Version(1)
+            ->Field("activePresetIndex", &AnimGraphGameControllerSettings::m_activePresetIndex)
+            ->Field("presets", &AnimGraphGameControllerSettings::m_presets)
+            ;
+    }
+} // namespace EMotionFX

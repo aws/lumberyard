@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 #include "CAISystem.h"
 #include "AILog.h"
@@ -513,19 +513,19 @@ void CAISystem::SetAIHacksConfiguration()
 
     EConfigCompatibilityMode eCompatMode = ECCM_NONE;
 
-    if (strcmpi("crysis", sValue) == 0)
+    if (azstricmp("crysis", sValue) == 0)
     {
         eCompatMode = ECCM_CRYSIS;
     }
-    if (strcmpi("game04", sValue) == 0)
+    if (azstricmp("game04", sValue) == 0)
     {
         eCompatMode = ECCM_GAME04;
     }
-    if (strcmpi("warface", sValue) == 0)
+    if (azstricmp("warface", sValue) == 0)
     {
         eCompatMode = ECCM_WARFACE;
     }
-    if (strcmpi("crysis2", sValue) == 0)
+    if (azstricmp("crysis2", sValue) == 0)
     {
         eCompatMode = ECCM_CRYSIS2;
     }
@@ -2057,7 +2057,7 @@ void CAISystem::Reset(IAISystem::EResetReason reason)
     }
 
     const char* sStatsTarget = gAIEnv.CVars.StatsTarget;
-    if ((*sStatsTarget != '\0') && (_stricmp("none", sStatsTarget) != 0))
+    if ((*sStatsTarget != '\0') && (azstricmp("none", sStatsTarget) != 0))
     {
         Record(NULL, IAIRecordable::E_RESET, NULL);
     }
@@ -4503,7 +4503,7 @@ const char* CAISystem::CreateTemporaryGenericShape(Vec3* points, int npts, float
     ShapeMap::iterator di;
     do
     {
-        _snprintf(name, 16, "Temp%08x", cry_random(0U, (uint) ~0));
+        azsnprintf(name, 16, "Temp%08x", cry_random(0U, (uint)~0));
         di = m_mapGenericShapes.find(name);
     }
     while (di != m_mapGenericShapes.end());
@@ -4945,7 +4945,7 @@ float CAISystem::GetRayPerceptionModifier(const Vec3& start, const Vec3& end, co
 #ifdef CRYAISYSTEM_DEBUG
             if (icvDrawPerceptionDebugging != 0)
             {
-                _snprintf(text, sizeof(text), "%s-0", actorName ? actorName : "");
+                azsnprintf(text, sizeof(text), "%s-0", actorName ? actorName : "");
                 AddPerceptionDebugLine(text, start + Vec3(0.f, 0.f, -0.1f), end + Vec3(0.f, 0.f, -0.1f), 50, 255, 50, 1.f, 3.f);
             }
 #endif //CRYAISYSTEM_DEBUG
@@ -4970,7 +4970,7 @@ float CAISystem::GetRayPerceptionModifier(const Vec3& start, const Vec3& end, co
                         Vec3 intersectionPos;
                         for (int i = 0; i < nIntersects; ++i)
                         {
-                            _snprintf(text, sizeof(text), "%s-0-%d", actorName ? actorName : "", i + 1);
+                            azsnprintf(text, sizeof(text), "%s-0-%d", actorName ? actorName : "", i + 1);
                             intersectionPos = start + (intersects[i] / rayLen) * (end - start) + Vec3(0.f, 0.f, -0.1f);
                             AddPerceptionDebugLine(text,
                                 Vec3(intersectionPos.x, intersectionPos.y, shape.aabb.min.z),
@@ -5016,14 +5016,14 @@ float CAISystem::GetRayPerceptionModifier(const Vec3& start, const Vec3& end, co
                     {
                         Vec3 startPos(start + (inPos / rayLen) * (end - start) + Vec3(0.f, 0.f, -0.1f));
                         Vec3 endPos(start + (outPos / rayLen) * (end - start) + Vec3(0.f, 0.f, -0.1f));
-                        _snprintf(text, sizeof(text), "%s-%d-1", actorName ? actorName : "", out);
+                        azsnprintf(text, sizeof(text), "%s-%d-1", actorName ? actorName : "", out);
                         AddPerceptionDebugLine(text, startPos, endPos, 50, 255, 50, 1.f, 3.f);
-                        _snprintf(text, sizeof(text), "%s-%d-2", actorName ? actorName : "", out);
+                        azsnprintf(text, sizeof(text), "%s-%d-2", actorName ? actorName : "", out);
                         AddPerceptionDebugLine(text,
                             Vec3(startPos.x, startPos.y, shape.aabb.min.z),
                             Vec3(startPos.x, startPos.y, shape.aabb.max.z),
                             50, 255, 50, 1.f, 3.f);
-                        _snprintf(text, sizeof(text), "%s-%d-3", actorName ? actorName : "", out);
+                        azsnprintf(text, sizeof(text), "%s-%d-3", actorName ? actorName : "", out);
                         AddPerceptionDebugLine(text,
                             Vec3(endPos.x, endPos.y, shape.aabb.min.z),
                             Vec3(endPos.x, endPos.y, shape.aabb.max.z),
@@ -5046,11 +5046,11 @@ float CAISystem::GetRayPerceptionModifier(const Vec3& start, const Vec3& end, co
 #ifdef CRYAISYSTEM_DEBUG
                     if (icvDrawPerceptionDebugging != 0)
                     {
-                        _snprintf(text, sizeof(text), "%s-%d-1", actorName ? actorName : "", nIntersects);
+                        azsnprintf(text, sizeof(text), "%s-%d-1", actorName ? actorName : "", nIntersects);
                         Vec3 startPos(start + (intersects[nIntersects - 1] / rayLen) * (end - start) + Vec3(0.f, 0.f, -0.1f));
                         AddPerceptionDebugLine(text, startPos, end + Vec3(0.f, 0.f, -0.1f), 50, 255, 50, 1.f, 3.f);
 
-                        _snprintf(text, sizeof(text), "%s-%d-2", actorName ? actorName : "", nIntersects);
+                        azsnprintf(text, sizeof(text), "%s-%d-2", actorName ? actorName : "", nIntersects);
                         AddPerceptionDebugLine(text,
                             Vec3(startPos.x, startPos.y, shape.aabb.min.z),
                             Vec3(startPos.x, startPos.y, shape.aabb.max.z),
@@ -5233,7 +5233,7 @@ void CAISystem::Warning(const char* id, const char* format, ...) const
     memcpy(outputBuffer, id, idLen);
     va_list args;
     va_start(args, format);
-    int count = vsnprintf(outputBuffer + idLen, sizeof(outputBuffer) - idLen, format, args);
+    int count = azvsnprintf(outputBuffer + idLen, sizeof(outputBuffer) - idLen, format, args);
     if (count == -1 || count >= sizeof(outputBuffer))
     {
         outputBuffer[sizeof(outputBuffer) - 1] = '\0';
@@ -5260,7 +5260,7 @@ void CAISystem::Error(const char* id, const char* format, ...)
     memcpy(outputBuffer, id, idLen);
     va_list args;
     va_start(args, format);
-    int count = vsnprintf(outputBuffer + idLen, sizeof(outputBuffer) - idLen, format, args);
+    int count = azvsnprintf(outputBuffer + idLen, sizeof(outputBuffer) - idLen, format, args);
     if (count == -1 || count >= sizeof(outputBuffer))
     {
         outputBuffer[sizeof(outputBuffer) - 1] = '\0';
@@ -5286,7 +5286,7 @@ void CAISystem::LogProgress(const char* id, const char* format, ...)
     memcpy(outputBuffer, id, idLen);
     va_list args;
     va_start(args, format);
-    int count = vsnprintf(outputBuffer + idLen, sizeof(outputBuffer) - idLen, format, args);
+    int count = azvsnprintf(outputBuffer + idLen, sizeof(outputBuffer) - idLen, format, args);
     if (count == -1 || count >= sizeof(outputBuffer))
     {
         outputBuffer[sizeof(outputBuffer) - 1] = '\0';
@@ -5312,7 +5312,7 @@ void CAISystem::LogEvent(const char* id, const char* format, ...)
     memcpy(outputBuffer, id, idLen);
     va_list args;
     va_start(args, format);
-    int count = vsnprintf(outputBuffer + idLen, sizeof(outputBuffer) - idLen, format, args);
+    int count = azvsnprintf(outputBuffer + idLen, sizeof(outputBuffer) - idLen, format, args);
     if (count == -1 || count >= sizeof(outputBuffer))
     {
         outputBuffer[sizeof(outputBuffer) - 1] = '\0';
@@ -5338,7 +5338,7 @@ void CAISystem::LogComment(const char* id, const char* format, ...)
     memcpy(outputBuffer, id, idLen);
     va_list args;
     va_start(args, format);
-    int count = vsnprintf(outputBuffer + idLen, sizeof(outputBuffer) - idLen, format, args);
+    int count = azvsnprintf(outputBuffer + idLen, sizeof(outputBuffer) - idLen, format, args);
     if (count == -1 || count >= sizeof(outputBuffer))
     {
         outputBuffer[sizeof(outputBuffer) - 1] = '\0';
@@ -5952,7 +5952,7 @@ IFireCommandHandler* CAISystem::CreateFirecommandHandler(const char* name, IAIAc
 {
     for (std::vector<IFireCommandDesc*>::iterator it = m_firecommandDescriptors.begin(); it != m_firecommandDescriptors.end(); ++it)
     {
-        if (_stricmp((*it)->GetName(), name) == 0)
+        if (azstricmp((*it)->GetName(), name) == 0)
         {
             return (*it)->Create(pShooter);
         }
@@ -6776,7 +6776,7 @@ void CAISystem::DebugReportHitDamage(IEntity* pVictim, IEntity* pShooter, float 
         case AIOBJECT_ACTOR:
         {
             char msg[64];
-            _snprintf(msg, 64, "%.1f (%s)", damage, material);
+            azsnprintf(msg, 64, "%.1f (%s)", damage, material);
             IAIRecordable::RecorderEventData recorderEventData(msg);
 
             pVictimAI->RecordEvent(IAIRecordable::E_HIT_DAMAGE, &recorderEventData);
@@ -6808,7 +6808,7 @@ void CAISystem::DebugReportDeath(IAIObject* pVictim)
         {
             pPlayer->IncDeathCount();
             char    msg[32];
-            _snprintf(msg, 32, "Death %d", pPlayer->GetDeathCount());
+            azsnprintf(msg, 32, "Death %d", pPlayer->GetDeathCount());
             IAIRecordable::RecorderEventData recorderEventData(msg);
             pPlayer->RecordEvent(IAIRecordable::E_DEATH, &recorderEventData);
         }
@@ -7807,7 +7807,7 @@ void CAISystem::UpdateCollisionAvoidance(const AIActorVector& agents, float upda
 
 void CAISystem::DummyFunctionNumberOne(void)
 {
-    _snprintf(gEnv->szDebugStatus, SSystemGlobalEnvironment::MAX_DEBUG_STRING_LENGTH, "dummyfunctionnumberone");
+    azsnprintf(gEnv->szDebugStatus, SSystemGlobalEnvironment::MAX_DEBUG_STRING_LENGTH, "dummyfunctionnumberone");
 }
 
 void CAISystem::UpdateCollisionAvoidanceRadiusIncrement(CAIActor* actor, float updateTime)
@@ -7857,5 +7857,5 @@ void CAISystem::CallReloadTPSQueriesScript()
     }
 }
 
-
+#include "AutoTypeStructs_info.h"
 

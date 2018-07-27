@@ -21,6 +21,10 @@ body .modal-header {
     }
 }
 
+.modal.show .modal-dialog {
+   top: 20%;
+}
+
 .modal-footer {
     border-top: 0;
     button.btn {

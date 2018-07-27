@@ -269,6 +269,8 @@ struct IViewSystemListener
 struct IViewSystem
 {
     virtual ~IViewSystem() {}
+    virtual void Release() = 0;
+    virtual void Update(float frameTime) = 0;
     virtual IView* CreateView() = 0;
     virtual unsigned int AddView(IView* pView) = 0;
     virtual void RemoveView(IView* pView) = 0;

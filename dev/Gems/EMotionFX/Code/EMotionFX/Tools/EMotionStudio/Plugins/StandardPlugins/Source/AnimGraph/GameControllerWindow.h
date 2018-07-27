@@ -19,6 +19,8 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
 #include <AzCore/Debug/Timer.h>
+#include <MysticQt/Source/ComboBox.h>
+#include <MysticQt/Source/Slider.h>
 #include <MysticQt/Source/DialogStack.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphGameControllerSettings.h>
@@ -118,7 +120,7 @@ namespace EMStudio
         {
             MCORE_MEMORYOBJECTCATEGORY(GameControllerWindow::ParameterInfo, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
 
-            MCore::AttributeSettings*           mAttributeSettings;
+            const EMotionFX::Parameter*         mParameter;
             MysticQt::ComboBox*                 mAxis;
             MysticQt::ComboBox*                 mMode;
             QCheckBox*                          mInvert;
@@ -141,7 +143,7 @@ namespace EMStudio
         ParameterInfo* FindParamInfoByModeComboBox(MysticQt::ComboBox* comboBox);
         ParameterInfo* FindParamInfoByAxisComboBox(MysticQt::ComboBox* comboBox);
         ParameterInfo* FindParamInfoByCheckBox(QCheckBox* checkBox);
-        ParameterInfo* FindButtonInfoByAttributeInfo(MCore::AttributeSettings* attributeSettings);
+        ParameterInfo* FindButtonInfoByAttributeInfo(const EMotionFX::Parameter* parameter);
         ButtonInfo* FindButtonInfo(QWidget* widget);
 
         void ReInitButtonInterface(uint32 buttonIndex);

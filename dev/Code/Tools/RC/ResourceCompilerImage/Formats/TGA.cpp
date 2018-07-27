@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "Util.h"                                       // Util
 
@@ -133,7 +133,8 @@ namespace ImageTGA
 
     void WriteTga(const char* fname, int width, int height, const float* p, int step)
     {
-        FILE* f = fopen(fname, "wb");
+        FILE* f = nullptr; 
+        azfopen(&f, fname, "wb");
 
         TgaFileHeader h;
         h.setBw8(width, height);

@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include "AnimGraphHierarchyWidget.h"
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <MCore/Source/LogManager.h>
@@ -28,7 +29,7 @@
 
 namespace EMStudio
 {
-    AnimGraphHierarchyWidget::AnimGraphHierarchyWidget(QWidget* parent, bool useSingleSelection, CommandSystem::SelectionList* selectionList, uint32 visibilityFilterNodeID, bool showStatesOnly)
+    AnimGraphHierarchyWidget::AnimGraphHierarchyWidget(QWidget* parent, bool useSingleSelection, CommandSystem::SelectionList* selectionList, const AZ::TypeId& visibilityFilterNodeType, bool showStatesOnly)
         : QWidget(parent)
     {
         mCurrentSelectionList = selectionList;
@@ -38,7 +39,7 @@ namespace EMStudio
         }
 
         mShowStatesOnly = showStatesOnly;
-        mFilterNodeID = visibilityFilterNodeID;
+        mFilterNodeType = visibilityFilterNodeType;
 
         QVBoxLayout* layout = new QVBoxLayout();
         layout->setMargin(0);
@@ -46,10 +47,9 @@ namespace EMStudio
         // Create the display button group.
         QHBoxLayout* displayLayout = new QHBoxLayout();
 
-        displayLayout->addWidget(new QLabel("Find:"), 0, Qt::AlignRight);
-        mFindWidget = new MysticQt::SearchButton(this, MysticQt::GetMysticQt()->FindIcon("Images/Icons/SearchClearButton.png"));
-        displayLayout->addWidget(mFindWidget);
-        connect(mFindWidget->GetSearchEdit(), SIGNAL(textChanged(const QString&)), this, SLOT(TextChanged(const QString&)));
+        m_searchWidget = new AzQtComponents::FilteredSearchWidget(this);
+        displayLayout->addWidget(m_searchWidget);
+        connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &AnimGraphHierarchyWidget::OnTextFilterChanged);
 
         // Create the tree widget.
         mHierarchy = new QTreeWidget();
@@ -111,13 +111,13 @@ namespace EMStudio
             EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(mAnimGraphID);
             if (animGraph)
             {
-                if (mFindString.empty())
+                if (m_searchWidgetText.empty())
                 {
-                    NavigateWidget::UpdateTreeWidget(mHierarchy, animGraph, mFilterNodeID, mShowStatesOnly);
+                    NavigateWidget::UpdateTreeWidget(mHierarchy, animGraph, mFilterNodeType, mShowStatesOnly);
                 }
                 else
                 {
-                    NavigateWidget::UpdateTreeWidget(mHierarchy, animGraph, mFilterNodeID, mShowStatesOnly, mFindString.c_str());
+                    NavigateWidget::UpdateTreeWidget(mHierarchy, animGraph, mFilterNodeType, mShowStatesOnly, m_searchWidgetText.c_str());
                 }
             }
         }
@@ -151,7 +151,7 @@ namespace EMStudio
             itemName = item->text(0).toUtf8().data();
 
             // Is the item referring to a valid node?
-            if (animGraph->RecursiveFindNode(itemName.c_str()))
+            if (animGraph->RecursiveFindNodeByName(itemName.c_str()))
             {
                 AnimGraphSelectionItem selectionItem;
                 selectionItem.mAnimGraphID = mAnimGraphID;
@@ -193,10 +193,10 @@ namespace EMStudio
     }
 
 
-    void AnimGraphHierarchyWidget::TextChanged(const QString& text)
+    void AnimGraphHierarchyWidget::OnTextFilterChanged(const QString& text)
     {
-        FromQtString(text, &mFindString);
-        AZStd::to_lower(mFindString.begin(), mFindString.end());
+        FromQtString(text, &m_searchWidgetText);
+        AZStd::to_lower(m_searchWidgetText.begin(), m_searchWidgetText.end());
         Update();
     }
 

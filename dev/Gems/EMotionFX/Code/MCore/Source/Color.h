@@ -16,6 +16,7 @@
 #include "StandardHeaders.h"
 #include "Algorithms.h"
 #include "FastMath.h"
+#include <AzCore/Math/Color.h>
 
 
 namespace MCore
@@ -98,6 +99,25 @@ namespace MCore
             , g(ExtractGreen(col) / 255.0f)
             , b(ExtractBlue(col) / 255.0f)
             , a(ExtractAlpha(col) / 255.0f) {}
+
+        /**
+        * Constructor to convert from AZ::Color. This constructor is convenient until we replace the usage of this class with AZ::Color
+        * @param color The AZ::Color to construct from
+        */
+        RGBAColor(const AZ::Color& color)
+            : r(color.GetR())
+            , g(color.GetG())
+            , b(color.GetB())
+            , a(color.GetA())
+        {}
+
+        /**
+        * Automatic conversion to AZ::Color until we remove the u sage of this class with AZ::Color
+        */
+        operator AZ::Color() const
+        {
+            return AZ::Color(r, g, b, a);
+        }
 
         /**
          * Set the color component values.

@@ -26,7 +26,9 @@ def build(bld):
         uselib              = ['AWS_CPP_SDK_CORE'],
         includes            = ['include' ],
         disable_pch         = True,
-        export_includes     = [ bld.Path('Code/Tools/AwsNativeSDKInit/include')],
+        export_includes     = [ bld.Path('Code/Tools/AWSNativeSDKInit/include')],
+
+        win_x64_clang_enable_rtti = True,
     )
 
     bld.CryEngineStaticLibrary(
@@ -40,5 +42,7 @@ def build(bld):
         uselib              = ['AWS_CPP_SDK_CORE_STATIC'],
         includes            = ['include' ],
         disable_pch         = True,
-        export_includes     = [ bld.Path('Code/Tools/AwsNativeSDKInit/include')],
+        export_includes     = [ bld.Path('Code/Tools/AWSNativeSDKInit/include')],
+
+        win_x64_clang_enable_rtti = True,
     )

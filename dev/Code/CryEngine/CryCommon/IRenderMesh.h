@@ -21,7 +21,7 @@
 #include <IRenderer.h>  // PublicRenderPrimitiveType
 #include <Cry_Geo.h>
 #include <CryArray.h>
-#include <IJobManager.h>
+#include <ITimer.h>
 
 class CMesh;
 struct CRenderChunk;

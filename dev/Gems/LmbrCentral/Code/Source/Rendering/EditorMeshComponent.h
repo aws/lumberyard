@@ -28,11 +28,11 @@ struct IPhysicalEntity;
 
 namespace LmbrCentral
 {
-    /*!
-    * In-editor mesh component.
-    * Conducts some additional listening and operations to ensure immediate
-    * effects when changing fields in the editor.
-    */
+    /**
+     * In-editor mesh component.
+     * Conducts some additional listening and operations to ensure immediate
+     * effects when changing fields in the editor.
+     */
     class EditorMeshComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , public AZ::Data::AssetBus::Handler
@@ -49,67 +49,64 @@ namespace LmbrCentral
         , private AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler
     {
     public:
+        AZ_COMPONENT(EditorMeshComponent, "{FC315B86-3280-4D03-B4F0-5553D7D08432}", AzToolsFramework::Components::EditorComponentBase)
 
-        AZ_COMPONENT(EditorMeshComponent, "{FC315B86-3280-4D03-B4F0-5553D7D08432}", AzToolsFramework::Components::EditorComponentBase);
-
-        ~EditorMeshComponent() override = default;
+        ~EditorMeshComponent() = default;
 
         const float s_renderNodeRequestBusOrder = 100.f;
 
-        // AZ::Component interface implementation
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
-        // MeshComponentRequestBus interface implementation
+        // MeshComponentRequestBus
         AZ::Aabb GetWorldBounds() override;
         AZ::Aabb GetLocalBounds() override;
         void SetMeshAsset(const AZ::Data::AssetId& id) override;
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_mesh.GetMeshAsset(); }
-        void SetVisibility(bool newVisibility) override;
+        void SetVisibility(bool visible) override;
         bool GetVisibility() override;
 
-        // MaterialOwnerRequestBus interface implementation
+        // MaterialOwnerRequestBus
         void SetMaterial(_smart_ptr<IMaterial>) override;
         _smart_ptr<IMaterial> GetMaterial() override;
 
-        // MeshComponentNotificationBus interface implementation
+        // MeshComponentNotificationBus
         void OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
         void OnMeshDestroyed() override;
 
-        // RenderNodeRequestBus::Handler
+        // RenderNodeRequestBus
         IRenderNode* GetRenderNode() override;
         float GetRenderNodeRequestBusOrder() const override;
 
-        // TransformBus::Handler
+        // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-
-        // TransformBus::Handler
         void OnStaticChanged(bool isStatic) override;
 
-        // EditorVisibilityNotificationBus::Handler
+        // EditorVisibilityNotificationBus
         void OnEntityVisibilityChanged(bool visibility) override;
 
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
+        // EntityDebugDisplayEventBus
         void DisplayEntity(bool& handled) override;
 
         //! Called when you want to change the game asset through code (like when creating components based on assets).
         void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;
 
-        // MeshComponentRequestBus interface implementation
+        // LegacyMeshComponentRequests
         IStatObj* GetStatObj() override;
 
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
-        // AZ::Data::AssetBus::Handler
+        // AZ::Data::AssetBus
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
-        // EditorComponentSelectionRequestsBus::Handler
+        // EditorComponentSelectionRequestsBus
         AZ::Aabb GetEditorSelectionBounds() override;
         bool EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
         bool SupportsEditorRayIntersect() override { return true; };
 
-        // EditorComponentSelectionNotificationsBus::Handler
+        // EditorComponentSelectionNotificationsBus
         void OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent) override;
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -137,23 +134,20 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
     protected:
-
         // Editor-specific physicalization for the attached mesh. This is needed to support
         // features in the editor that rely on edit-time collision info (i.e. object snapping).
         void CreateEditorPhysics();
         void DestroyEditorPhysics();
 
-        // Decides if this mesh affects the navmesh or not
+        // Decides if this mesh affects the navmesh or not.
         void AffectNavmesh();
 
-        AZStd::string GetMeshViewportIconPath();
+        AZStd::string GetMeshViewportIconPath() const;
 
-        AzToolsFramework::EntityAccentType m_accentType = AzToolsFramework::EntityAccentType::None;  ///< State of the entity selection in the viewport.
-        MeshComponentRenderNode m_mesh;     ///< IRender node implementation.
+        AzToolsFramework::EntityAccentType m_accentType = AzToolsFramework::EntityAccentType::None; ///< State of the entity selection in the viewport.
+        MeshComponentRenderNode m_mesh; ///< IRender node implementation.
 
         IPhysicalEntity* m_physicalEntity = nullptr;  ///< Edit-time physical entity (for object snapping).
-        AZ::Vector3 m_physScale;      ///< To track scale changes, which requires re-physicalizing.
-
-
+        AZ::Vector3 m_physScale; ///< To track scale changes, which requires re-physicalizing.
     };
 } // namespace LmbrCentral

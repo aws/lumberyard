@@ -19,7 +19,6 @@
 #include "MatMan.h"
 #include "IEntitySystem.h"
 #include "IParticles.h"
-#include <IJobManager_JobDelegator.h>
 #include "Components/IComponentRender.h"
 
 #define RENDER_MESH_COLLISION_IGNORE_DISTANCE 30.0f

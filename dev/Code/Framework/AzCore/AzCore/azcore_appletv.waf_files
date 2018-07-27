@@ -9,6 +9,10 @@
         "Module":
         [
             "Module/DynamicModuleHandleLinux.cpp"
+        ],
+        "Utils" : 
+        [
+            "Utils/generic/Utils_Generic.cpp"
         ]        
     }
 }

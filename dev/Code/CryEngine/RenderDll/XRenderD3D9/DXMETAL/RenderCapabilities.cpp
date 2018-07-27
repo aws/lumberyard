@@ -62,11 +62,6 @@ namespace RenderCapabilities
 #endif
     }
     
-    void CacheMinOSVersionInfo()
-    {
-        NCryMetal::CacheMinOSVersionInfo();
-    }
-
     bool SupportsDualSourceBlending()
     {
         // Metal supports dual source blending for devices running OXS >= 10.12 or iOS >= 11.0

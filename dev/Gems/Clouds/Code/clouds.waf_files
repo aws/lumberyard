@@ -32,9 +32,7 @@
             "Source/CloudVolumeTexture.cpp",
             "Source/CloudVolumeTexture.h",
             "Source/CloudVolumePerlinNoise.cpp",
-            "Source/CloudVolumePerlinNoise.h",
-            "Source/DynamicTexture.cpp",
-            "Source/DynamicTexture.h"
+            "Source/CloudVolumePerlinNoise.h"
         ]
     }
 }

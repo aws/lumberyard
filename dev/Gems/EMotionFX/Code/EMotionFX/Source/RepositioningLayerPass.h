@@ -34,6 +34,7 @@ namespace EMotionFX
     class EMFX_API RepositioningLayerPass
         : public LayerPass
     {
+        AZ_CLASS_ALLOCATOR_DECL
     public:
         // the unique type ID of this layer pass type
         enum

@@ -14,7 +14,7 @@
 // Description : Subclass of VehiclePartEntity that can be asked to detach at a random point in the future
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 
 //This Include
 #include "VehiclePartEntityDelayedDetach.h"

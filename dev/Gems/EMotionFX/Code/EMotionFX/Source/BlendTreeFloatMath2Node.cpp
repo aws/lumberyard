@@ -10,54 +10,22 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "BlendTreeFloatMath2Node.h"
 #include <MCore/Source/Random.h>
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/AttributeSettings.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeFloatMath2Node::BlendTreeFloatMath2Node(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeFloatMath2Node, AnimGraphAllocator, 0)
 
-        // default on sinus calculation
-        mMathFunction   = MATHFUNCTION_ADD;
-        mCalculateFunc  = CalculateAdd;
-        SetNodeInfo("x + y");
-    }
-
-
-    // destructor
-    BlendTreeFloatMath2Node::~BlendTreeFloatMath2Node()
-    {
-    }
-
-
-    // create
-    BlendTreeFloatMath2Node* BlendTreeFloatMath2Node::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeFloatMath2Node(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeFloatMath2Node::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeFloatMath2Node::RegisterPorts()
+    BlendTreeFloatMath2Node::BlendTreeFloatMath2Node()
+        : AnimGraphNode()
+        , m_mathFunction(MATHFUNCTION_ADD)
+        , m_defaultValue(0.0f)
     {
         // setup the input ports
         InitInputPorts(2);
@@ -67,33 +35,82 @@ namespace EMotionFX
         // setup the output ports
         InitOutputPorts(1);
         SetupOutputPort("Result", OUTPUTPORT_RESULT, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_RESULT);
+
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
+    }
+    
+
+    BlendTreeFloatMath2Node::~BlendTreeFloatMath2Node()
+    {
     }
 
 
-    // register the parameters
-    void BlendTreeFloatMath2Node::RegisterAttributes()
+    void BlendTreeFloatMath2Node::Reinit()
     {
-        // create the math function combobox
-        MCore::AttributeSettings* functionParam = RegisterAttribute("Math Function", "mathFunction", "The math function to use.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        functionParam->SetReinitGuiOnValueChange(true);
-        functionParam->ResizeComboValues((uint32)MATHFUNCTION_NUMFUNCTIONS);
-        functionParam->SetComboValue(MATHFUNCTION_ADD,      "Add");
-        functionParam->SetComboValue(MATHFUNCTION_SUBTRACT, "Subtract");
-        functionParam->SetComboValue(MATHFUNCTION_MULTIPLY, "Multiply");
-        functionParam->SetComboValue(MATHFUNCTION_DIVIDE,   "Divide");
-        functionParam->SetComboValue(MATHFUNCTION_AVERAGE,  "Average");
-        functionParam->SetComboValue(MATHFUNCTION_RANDOMFLOAT, "Random Float");
-        functionParam->SetComboValue(MATHFUNCTION_MOD,  "Mod");
-        functionParam->SetComboValue(MATHFUNCTION_MIN,  "Minimum");
-        functionParam->SetComboValue(MATHFUNCTION_MAX,  "Maximum");
-        functionParam->SetComboValue(MATHFUNCTION_POW,  "Power");
-        functionParam->SetDefaultValue(MCore::AttributeFloat::Create(0));
+        switch (m_mathFunction)
+        {
+        case MATHFUNCTION_ADD:
+            m_calculateFunc = CalculateAdd;
+            SetNodeInfo("x + y");
+            break;
+        case MATHFUNCTION_SUBTRACT:
+            m_calculateFunc = CalculateSubtract;
+            SetNodeInfo("x - y");
+            break;
+        case MATHFUNCTION_MULTIPLY:
+            m_calculateFunc = CalculateMultiply;
+            SetNodeInfo("x * y");
+            break;
+        case MATHFUNCTION_DIVIDE:
+            m_calculateFunc = CalculateDivide;
+            SetNodeInfo("x / y");
+            break;
+        case MATHFUNCTION_AVERAGE:
+            m_calculateFunc = CalculateAverage;
+            SetNodeInfo("Average");
+            break;
+        case MATHFUNCTION_RANDOMFLOAT:
+            m_calculateFunc = CalculateRandomFloat;
+            SetNodeInfo("Random[x..y]");
+            break;
+        case MATHFUNCTION_MOD:
+            m_calculateFunc = CalculateMod;
+            SetNodeInfo("x MOD y");
+            break;
+        case MATHFUNCTION_MIN:
+            m_calculateFunc = CalculateMin;
+            SetNodeInfo("Min(x, y)");
+            break;
+        case MATHFUNCTION_MAX:
+            m_calculateFunc = CalculateMax;
+            SetNodeInfo("Max(x, y)");
+            break;
+        case MATHFUNCTION_POW:
+            m_calculateFunc = CalculatePow;
+            SetNodeInfo("Pow(x, y)");
+            break;
+        default:
+            AZ_Assert(false, "EMotionFX: Math function unknown.");
+        }
 
-        // create the static value float spinner
-        MCore::AttributeSettings* valueParam = RegisterAttribute("Static Value", "staticValue", "Value used for x or y when the input port has no connection.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        valueParam->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        valueParam->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        valueParam->SetMaxValue(MCore::AttributeFloat::Create(+FLT_MAX));
+        AnimGraphNode::Reinit();
+    }
+
+
+    bool BlendTreeFloatMath2Node::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+        
+        Reinit();
+        return true;
     }
 
 
@@ -111,20 +128,6 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeFloatMath2Node::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeFloatMath2Node* clone = new BlendTreeFloatMath2Node(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // the update function
     void BlendTreeFloatMath2Node::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
@@ -132,17 +135,14 @@ namespace EMotionFX
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
         // if there are no incoming connections, there is nothing to do
-        if (mConnections.GetLength() == 0)
+        if (mConnections.empty())
         {
             return;
         }
 
-        // update the math function if needed
-        SetMathFunction((EMathFunction)((uint32)GetAttributeFloat(ATTRIB_MATHFUNCTION)->GetValue()));
-
         // if both x and y inputs have connections
         float x, y;
-        if (mConnections.GetLength() == 2)
+        if (mConnections.size() == 2)
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_X));
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_Y));
@@ -157,19 +157,19 @@ namespace EMotionFX
             {
                 OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_X));
                 x = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_X);
-                y = GetAttributeFloat(ATTRIB_STATICVALUE)->GetValue();
+                y = m_defaultValue;
             }
             else // only y has an input
             {
                 MCORE_ASSERT(mConnections[0]->GetTargetPort() == INPUTPORT_Y);
-                x = GetAttributeFloat(ATTRIB_STATICVALUE)->GetValue();
+                x = m_defaultValue;
                 OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_Y));
                 y = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_Y);
             }
         }
 
         // apply the operation
-        const float result = mCalculateFunc(x, y);
+        const float result = m_calculateFunc(x, y);
 
         // update the output value
         //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
@@ -180,77 +180,13 @@ namespace EMotionFX
     }
 
 
-    // get the type string
-    const char* BlendTreeFloatMath2Node::GetTypeString() const
-    {
-        return "BlendTreeFloatMath2Node";
-    }
-
-
-    // set the math function to use
     void BlendTreeFloatMath2Node::SetMathFunction(EMathFunction func)
     {
-        // if it didn't change, don't update anything
-        if (func == mMathFunction)
+        m_mathFunction = func;
+        if (mAnimGraph)
         {
-            return;
+            Reinit();
         }
-
-        mMathFunction = func;
-        switch (mMathFunction)
-        {
-        case MATHFUNCTION_ADD:
-            mCalculateFunc = CalculateAdd;
-            SetNodeInfo("x + y");
-            return;
-        case MATHFUNCTION_SUBTRACT:
-            mCalculateFunc = CalculateSubtract;
-            SetNodeInfo("x - y");
-            return;
-        case MATHFUNCTION_MULTIPLY:
-            mCalculateFunc = CalculateMultiply;
-            SetNodeInfo("x * y");
-            return;
-        case MATHFUNCTION_DIVIDE:
-            mCalculateFunc = CalculateDivide;
-            SetNodeInfo("x / y");
-            return;
-        case MATHFUNCTION_AVERAGE:
-            mCalculateFunc = CalculateAverage;
-            SetNodeInfo("Average");
-            return;
-        case MATHFUNCTION_RANDOMFLOAT:
-            mCalculateFunc = CalculateRandomFloat;
-            SetNodeInfo("Random[x..y]");
-            return;
-        case MATHFUNCTION_MOD:
-            mCalculateFunc = CalculateMod;
-            SetNodeInfo("x MOD y");
-            return;
-        case MATHFUNCTION_MIN:
-            mCalculateFunc = CalculateMin;
-            SetNodeInfo("Min(x, y)");
-            return;
-        case MATHFUNCTION_MAX:
-            mCalculateFunc = CalculateMax;
-            SetNodeInfo("Max(x, y)");
-            return;
-        case MATHFUNCTION_POW:
-            mCalculateFunc = CalculatePow;
-            SetNodeInfo("Pow(x, y)");
-            return;
-        default:
-            MCORE_ASSERT(false);        // function unknown
-        }
-        ;
-    }
-
-
-    // update the data
-    void BlendTreeFloatMath2Node::OnUpdateAttributes()
-    {
-        // update the math function if needed
-        SetMathFunction((EMathFunction)((uint32)GetAttributeFloat(0)->GetValue()));
     }
 
 
@@ -294,4 +230,52 @@ namespace EMotionFX
         }
         return MCore::Math::Pow(x, y);
     }
-}   // namespace EMotionFX
+
+    void BlendTreeFloatMath2Node::SetDefaultValue(float value)
+    {
+        m_defaultValue = value;
+    }
+
+    void BlendTreeFloatMath2Node::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeFloatMath2Node, AnimGraphNode>()
+            ->Version(1)
+            ->Field("mathFunction", &BlendTreeFloatMath2Node::m_mathFunction)
+            ->Field("defaultValue", &BlendTreeFloatMath2Node::m_defaultValue)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeFloatMath2Node>("Float Math2", "Float Math2 attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeFloatMath2Node::m_mathFunction, "Math Function", "The math function to use.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeFloatMath2Node::Reinit)
+                ->EnumAttribute(MATHFUNCTION_ADD,           "Add")
+                ->EnumAttribute(MATHFUNCTION_SUBTRACT,      "Subtract")
+                ->EnumAttribute(MATHFUNCTION_MULTIPLY,      "Multiply")
+                ->EnumAttribute(MATHFUNCTION_DIVIDE,        "Divide")
+                ->EnumAttribute(MATHFUNCTION_AVERAGE,       "Average")
+                ->EnumAttribute(MATHFUNCTION_RANDOMFLOAT,   "Random Float")
+                ->EnumAttribute(MATHFUNCTION_MOD,           "Mod")
+                ->EnumAttribute(MATHFUNCTION_MIN,           "Minimum")
+                ->EnumAttribute(MATHFUNCTION_MAX,           "Maximum")
+                ->EnumAttribute(MATHFUNCTION_POW,           "Power")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeFloatMath2Node::m_defaultValue, "Default Value", "Value used for x or y when the input port has no connection.")
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ;
+    }
+} // namespace EMotionFX

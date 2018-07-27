@@ -132,7 +132,7 @@ public:
 
     virtual bool SetEntityId(const FlowEntityId id);
 
-    FlowEntityId GetEntityId()
+    FlowEntityId GetEntityId() override
     {
         FlowEntityId id(FlowEntityId::s_invalidFlowEntityID);
         if (m_hasEntity)

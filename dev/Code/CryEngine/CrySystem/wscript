@@ -25,7 +25,6 @@ def build(bld):
         platforms               = ['all'],
         configurations          = ['all'],
         pch                     = 'StdAfx.cpp',
-        defines                 = ['ENGINE_EXPORTS'],
         use                     = ['AzFramework',
                                    'GridMate',
                                    'CrashHandler'],
@@ -43,9 +42,8 @@ def build(bld):
         win_defines             = ['EXCLUDE_CINEMIZER_SDK'],
         win_file_list           = 'platformos_pc.waf_files',
         win_linkflags           = '/NODEFAULTLIB:libcmt.lib',
-        win_cxxflags            = '/EHsc',
         win_lib                 = ['wininet', 'Shell32', 'Ole32', 'Gdi32', 'ws2_32'],
-        
+
         darwin_file_list        = 'platformos_pc.waf_files',
         darwin_lib              = ['ncurses'],
 
@@ -67,6 +65,8 @@ def build(bld):
         ios_file_list           = [ 'platformos_pc.waf_files', 'autodetect_ios.waf_files' ],
 
         appletv_file_list       = 'platformos_pc.waf_files',
+
+        win_x64_clang_cxxflags  = ['-Wno-deprecated-declarations'],
 
         # Testing
         test_all_file_list      = ['crysystem_test.waf_files'],

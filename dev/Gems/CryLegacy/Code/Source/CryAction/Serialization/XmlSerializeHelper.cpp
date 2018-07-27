@@ -14,7 +14,7 @@
 // Description : Manages one-off reader/writer usages for Xml serialization
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "XmlSerializeHelper.h"
 
 //////////////////////////////////////////////////////////////////////////

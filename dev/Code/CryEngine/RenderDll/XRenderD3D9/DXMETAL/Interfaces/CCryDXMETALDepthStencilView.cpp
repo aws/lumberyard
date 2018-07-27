@@ -18,7 +18,7 @@
 #include "CCryDXMETALDepthStencilView.hpp"
 #include "CCryDXMETALDevice.hpp"
 #include "CCryDXMETALResource.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 #include "../Implementation/GLResource.hpp"
 
 CCryDXGLDepthStencilView::CCryDXGLDepthStencilView(CCryDXGLResource* pResource, const D3D11_DEPTH_STENCIL_VIEW_DESC& kDesc, CCryDXGLDevice* pDevice)

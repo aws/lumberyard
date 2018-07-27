@@ -50,7 +50,8 @@ void crtdebug(const char* s, ...)
     vsprintf(str, s, arg_ptr);
     va_end(arg_ptr);
 
-    FILE* l = fopen("crtdump.txt", "a+t");
+    FILE* l = nullptr;
+    azfopen(&l, "crtdump.txt", "a+t");
     if (l)
     {
         fprintf(l, "%s", str);
@@ -130,7 +131,8 @@ int crtReportHook(int nRptType, char* szMsg, int* retVal)
 
 void InitCrt()
 {
-    FILE* l = fopen("crtdump.txt", "w");
+    FILE* l = nullptr;
+    azfopen(&l, "crtdump.txt", "w");
     if (l)
     {
         fclose(l);

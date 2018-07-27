@@ -16,10 +16,13 @@
 #include "MeshBuilder.h"
 #include "MeshBuilderVertexAttributeLayers.h"
 #include <MCore/Source/TriangleListOptimizer.h>
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MeshBuilderSubMesh, MeshAllocator, 0)
+
+
     // constructor
     MeshBuilderSubMesh::MeshBuilderSubMesh(uint32 materialNr, MeshBuilder* mesh)
         : BaseObject()
@@ -43,7 +46,7 @@ namespace EMotionFX
     // create
     MeshBuilderSubMesh* MeshBuilderSubMesh::Create(uint32 materialNr, MeshBuilder* mesh)
     {
-        return new MeshBuilderSubMesh(materialNr, mesh);
+        return aznew MeshBuilderSubMesh(materialNr, mesh);
     }
 
 

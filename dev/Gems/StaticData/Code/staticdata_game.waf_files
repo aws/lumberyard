@@ -1,0 +1,7 @@
+{
+    "none": {
+        "Source": [
+            "Source/StaticDataGameGem.cpp"
+        ]
+    }
+}

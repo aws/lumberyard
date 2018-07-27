@@ -14,7 +14,7 @@
 // Description : Binding of network functions into script
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ScriptBind_Network.h"
 #include "GameContext.h"
 #include "ScriptSerialize.h"

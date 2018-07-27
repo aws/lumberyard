@@ -12,7 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "pch.h"
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "EffectPlayer.h"
 
 #include <ICryAnimation.h>
@@ -182,7 +182,7 @@ namespace CharacterTool {
         for (int effectIndex = 0, effectCount = m_effects.size(); effectIndex < effectCount; ++effectIndex)
         {
             IParticleEffect* pEffect = m_effects[effectIndex].pEffect;
-            if (pEffect && stricmp(pEffect->GetName(), effectName) == 0)
+            if (pEffect && azstricmp(pEffect->GetName(), effectName) == 0)
             {
                 isPlaying = true;
             }

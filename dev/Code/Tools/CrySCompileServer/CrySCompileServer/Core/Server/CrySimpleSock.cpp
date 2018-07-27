@@ -27,6 +27,9 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <errno.h>
+#include <unistd.h>
+#else
+typedef int socklen_t;
 #endif
 
 namespace
@@ -94,9 +97,24 @@ struct CCrySimpleSock::Implementation
                 // supplied here once instead of everytime we check the address during 
                 // accept calls. 
                 int mask = atoi(address.substr(maskLocation+1).c_str());
-                whitelistAddress.m_mask ^= (1 << (32 - mask)) - 1; 
-                whitelistAddress.m_mask = htonl(whitelistAddress.m_mask); 
-                whitelistAddress.m_address = inet_addr(address.substr(0, maskLocation).c_str()) & whitelistAddress.m_mask;
+                if (mask == 0)
+                {
+                    whitelistAddress.m_mask = 0;
+                    whitelistAddress.m_address = 0;
+
+                    static bool warnOnce = true;
+                    if (warnOnce)
+                    {
+                        warnOnce = false;
+                        printf("\nWARNING: Attempting to run the CrySCompileServer authorizing every IP. This is a security risk and not recommended.\nPlease use a more restrictive whitelist in the config.ini file by not using netmask 0.\n\n");
+                    }
+                }
+                else
+                {
+                    whitelistAddress.m_mask ^= (1 << (32 - mask)) - 1;
+                    whitelistAddress.m_mask = htonl(whitelistAddress.m_mask);
+                    whitelistAddress.m_address = inet_addr(address.substr(0, maskLocation).c_str()) & whitelistAddress.m_mask;
+                }
             }
             else
             {
@@ -246,11 +264,10 @@ CCrySimpleSock::CCrySimpleSock(uint16_t Port, const std::vector<AZStd::string>& 
     SockAddr.sin_port       =   htons(Port);
     if (bind(m_pImpl->m_Socket, (sockaddr*)&SockAddr, sizeof(sockaddr_in)) == SOCKET_ERROR)
     {
-#if defined(AZ_PLATFORM_WINDOWS)
-        closesocket(m_pImpl->m_Socket);
-#else
+#if !defined(AZ_PLATFORM_WINDOWS)
         shutdown(m_pImpl->m_Socket, SHUT_RDWR);
 #endif
+        closesocket(m_pImpl->m_Socket);
         CrySimple_ERROR("Could not bind server socket\n");
         return;
     }
@@ -303,6 +320,7 @@ void CCrySimpleSock::Release()
 
         // shutdown the server side of the connection since no more data will be sent
         shutdown(m_pImpl->m_Socket, SHUT_RDWR);
+        closesocket(m_pImpl->m_Socket);
 #endif
 
 #if defined(AZ_PLATFORM_WINDOWS)
@@ -312,11 +330,10 @@ void CCrySimpleSock::Release()
         WSAIoctl(m_pImpl->m_Socket, SIO_GET_EXTENSION_FUNCTION_POINTER, &guidDisconnectEx,
             sizeof(GUID), &pDisconnectEx, sizeof(pDisconnectEx), &Bytes, NULL, NULL);
         pDisconnectEx(m_pImpl->m_Socket, NULL, 0, 0); // retrieve this function pointer with WSAIoctl(WSAID_DISCONNECTEX).
-
-        closesocket(m_pImpl->m_Socket);
 #else
         shutdown(m_pImpl->m_Socket, SHUT_RDWR);
 #endif
+        closesocket(m_pImpl->m_Socket);
         m_pImpl->m_Socket = INVALID_SOCKET;
         InterlockedDecrement(&numberOfOpenSockets);
     }
@@ -341,14 +358,14 @@ CCrySimpleSock* CCrySimpleSock::Accept()
     if (m_pImpl->m_Type != ECrySimpleST_ROOT)
     {
         CrySimple_ERROR("called Accept on non root socket");
-        return 0;
+        return nullptr;
     }
 
     while (true)
     {
         sockaddr_in connectingAddress;
         int addressSize = sizeof(connectingAddress);
-        SOCKET Sock = accept(m_pImpl->m_Socket, reinterpret_cast<sockaddr*>(&connectingAddress), &addressSize);
+        SOCKET Sock = accept(m_pImpl->m_Socket, reinterpret_cast<sockaddr*>(&connectingAddress), reinterpret_cast<socklen_t*>(&addressSize));
         if (Sock == INVALID_SOCKET)
         {
 #if defined(AZ_PLATFORM_APPLE_OSX)
@@ -366,7 +383,7 @@ CCrySimpleSock* CCrySimpleSock::Accept()
 #endif
             AZ_Warning(0, false, "Errno = %d", WSAGetLastError());
             CrySimple_ERROR("Accept recived invalid socket");
-            return 0;
+            return nullptr;
         }
 
         bool allowConnection = false;
@@ -406,7 +423,7 @@ CCrySimpleSock* CCrySimpleSock::Accept()
             closesocket(Sock);
             int Error = WSAGetLastError();
             CrySimple_ERROR("Couldn't create wsa event");
-            return 0;
+            return nullptr;
         }
 
         int Status = WSAEventSelect(Sock, wsaEvent, FD_CLOSE);
@@ -415,7 +432,7 @@ CCrySimpleSock* CCrySimpleSock::Accept()
             closesocket(Sock);
             int Error = WSAGetLastError();
             CrySimple_ERROR("Couldn't create wsa event");
-            return 0;
+            return nullptr;
         }
 
         return new CCrySimpleSock(Sock, this, wsaEvent);
@@ -423,6 +440,8 @@ CCrySimpleSock* CCrySimpleSock::Accept()
         return new CCrySimpleSock(Sock, this);
 #endif
     }
+    
+    return nullptr;
 }
 
 union CrySimpleRecvSize

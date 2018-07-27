@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "ParticleSystemComponentSwitchNode.h"
 #include <LmbrCentral/Rendering/ParticleComponentBus.h>
 

@@ -183,5 +183,55 @@ namespace AzToolsFramework
                     ->Field("SourceUUID", &SourceFileNotificationMessage::m_sourceUUID);
             }
         }
+
+        //---------------------------------------------------------------------
+        unsigned int GetScanFoldersRequest::MessageType()
+        {
+            static unsigned int messageType = AZ_CRC("AssetProcessor::GetScanFoldersRequest", 0x01274152);
+            return messageType;
+        }
+
+        unsigned int GetScanFoldersRequest::GetMessageType() const
+        {
+            return MessageType();
+        }
+
+        void GetScanFoldersRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<GetScanFoldersRequest>()
+                    ->Version(1)
+                    ->SerializeWithNoData();
+            }
+        }
+
+        //---------------------------------------------------------------------
+        GetScanFoldersResponse::GetScanFoldersResponse(const AZStd::vector<AZStd::string>& scanFolders)
+            : m_scanFolders(scanFolders)
+        {
+        }
+
+        GetScanFoldersResponse::GetScanFoldersResponse(AZStd::vector<AZStd::string>&& scanFolders)
+            : m_scanFolders(AZStd::move(scanFolders))
+        {
+        }
+
+        unsigned int GetScanFoldersResponse::GetMessageType() const
+        {
+            return GetScanFoldersRequest::MessageType();
+        }
+
+        void GetScanFoldersResponse::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<GetScanFoldersResponse, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("ScanFolders", &GetScanFoldersResponse::m_scanFolders);
+            }
+        }
     } // namespace AssetSystem
 } // namespace AzToolsFramework

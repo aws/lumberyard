@@ -37,6 +37,8 @@ namespace EMotionFX
     class EMFX_API MorphMeshDeformer
         : public MeshDeformer
     {
+        AZ_CLASS_ALLOCATOR_DECL
+
     public:
         // the unique type ID of this deformer, returned by GetType()
         enum

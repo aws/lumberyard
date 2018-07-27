@@ -1,0 +1,136 @@
+{
+    "GemListFormatVersion": 2,
+    "Gems": [
+        {
+            "Path": "Gems/AWS",
+            "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
+            "Version": "0.1.0",
+            "_comment": "AWS"
+        },
+        {
+            "Path": "Gems/StartingPointInput",
+            "Uuid": "09f4bedeee614358bc36788e77f97e51",
+            "Version": "0.1.0",
+            "_comment": "StartingPointInput"
+        },
+        {
+            "Path": "Gems/LyShine",
+            "Uuid": "0fefab3f13364722b2eab3b96ce2bf20",
+            "Version": "0.1.0",
+            "_comment": "LyShine"
+        },
+        {
+            "Path": "Gems/CloudCanvasCommon",
+            "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
+            "Version": "0.1.0",
+            "_comment": "CloudCanvasCommon"
+        },
+        {
+            "Path": "Gems/CloudGemDefectReporter/v1",
+            "Uuid": "1ba66eefc07f4f6d8705b9530c5dd574",
+            "Version": "1.0.0",
+            "_comment": "CloudGemDefectReporter"
+        },
+        {
+            "Path": "Gems/LegacyGameInterface",
+            "Uuid": "3108b261962e44b6a0c1c036c693bca2",
+            "Version": "1.0.0",
+            "_comment": "LegacyGameInterface"
+        },
+        {
+            "Path": "Gems/CryLegacy",
+            "Uuid": "352fef7706634c92814c587e84d7165a",
+            "Version": "0.1.0",
+            "_comment": "CryLegacy"
+        },
+        {
+            "Path": "Gems/Maestro",
+            "Uuid": "3b9a978ed6f742a1acb99f74379a342c",
+            "Version": "0.1.0",
+            "_comment": "Maestro"
+        },
+        {
+            "Path": "Gems/CameraFramework",
+            "Uuid": "54f2763fe191432fa681ce4a354eedf5",
+            "Version": "0.1.0",
+            "_comment": "CameraFramework"
+        },
+        {
+            "Path": "Gems/InputManagementFramework",
+            "Uuid": "59b1b2acc1974aae9f18faddcaddac5b",
+            "Version": "0.1.0",
+            "_comment": "InputManagementFramework"
+        },
+        {
+            "Path": "Gems/UiBasics",
+            "Uuid": "6bb61c9e547043f0afc5019d6d460b78",
+            "Version": "0.1.0",
+            "_comment": "UiBasics"
+        },
+        {
+            "Path": "Gems/CloudGemFramework/v1",
+            "Uuid": "6fc787a982184217a5a553ca24676cfa",
+            "Version": "1.1.3",
+            "_comment": "CloudGemFramework"
+        },
+        {
+            "Path": "Gems/SceneProcessing",
+            "Uuid": "7c2578f634df4345aca98d671e39b8ab",
+            "Version": "0.1.0",
+            "_comment": "SceneProcessing"
+        },
+        {
+            "Path": "Gems/ScriptCanvas",
+            "Uuid": "869a0d0ec11a45c299917d45c81555e6",
+            "Version": "0.1.0",
+            "_comment": "ScriptCanvasGem"
+        },
+        {
+            "Path": "Gems/GraphCanvas",
+            "Uuid": "875b6fcbdeea44deaae7984ad9bb6cdc",
+            "Version": "0.1.0",
+            "_comment": "GraphCanvas"
+        },
+        {
+            "Path": "CloudGemDefectReportSample/Gem",
+            "Uuid": "99fd2a91d540451fa728e40d2e4dd16f",
+            "Version": "0.1.0"
+        },
+        {
+            "Path": "Gems/ScriptCanvasDiagnosticLibrary",
+            "Uuid": "d969b997bb7f4342ba0b3eedc378025d",
+            "Version": "0.1.0",
+            "_comment": "ScriptCanvasDiagnosticLibrary"
+        },
+        {
+            "Path": "Gems/CloudGemMetric/v1",
+            "Uuid": "e1bf83aa0ddc49418c6b5689c111cb26",
+            "Version": "1.0.0",
+            "_comment": "CloudGemMetric"
+        },
+        {
+            "Path": "Gems/CryEntityRemoval",
+            "Uuid": "f3ae24a1635e4f849535f37ef9f4b4da",
+            "Version": "0.1.0",
+            "_comment": "CryEntityRemoval"
+        },
+        {
+            "Path": "Gems/ScriptCanvasDeveloper",
+            "Uuid": "f905c05883b94fd6bddc91052c3c5a86",
+            "Version": "0.1.0",
+            "_comment": "ScriptCanvasDeveloperGem"
+        },
+        {
+            "Path": "Gems/Camera",
+            "Uuid": "f910686b6725452fbfc4671f95f733c6",
+            "Version": "0.1.0",
+            "_comment": "Camera"
+        },
+        {
+            "Path": "Gems/LmbrCentral",
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "Version": "0.1.0",
+            "_comment": "LmbrCentral"
+        }
+    ]
+}

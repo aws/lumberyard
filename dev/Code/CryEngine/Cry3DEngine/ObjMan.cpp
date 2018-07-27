@@ -271,7 +271,8 @@ void CObjManager::PreloadLevelObjects()
 
             // Parse file, every line in a file represents a resource filename.
             char seps[] = "\r\n";
-            char* token = strtok(buf, seps);
+            char *next_token = nullptr;
+            char* token = azstrtok(buf, 0, seps, &next_token);
             while (token != NULL)
             {
                 int nAliasLen = sizeof("%level%") - 1;
@@ -293,7 +294,7 @@ void CObjManager::PreloadLevelObjects()
                 //cgfStreamer.StartStreaming(cgfFilename.c_str());
                 nCgfCounter++;
 
-                token = strtok(NULL, seps);
+                token = azstrtok(NULL, 0, seps, &next_token);
 
                 //This loop can take a few seconds, so we should refresh the loading screen and call the loading tick functions to ensure that no big gaps in coverage occur.
                 SYNCHRONOUS_LOADING_TICK();
@@ -1147,7 +1148,9 @@ void StatInstGroup::Update(CVars* pCVars, int nGeomDetailScreenRes)
 
 #if defined(FEATURE_SVO_GI)
     _smart_ptr<IMaterial> pMat = pMaterial ? pMaterial : (pStatObj ? pStatObj->GetMaterial() : 0);
-    if (pMat && (Cry3DEngineBase::GetCVars()->e_svoTI_Active >= 0) && (gEnv->IsEditor() || Cry3DEngineBase::GetCVars()->e_svoTI_Apply))
+    if (pMat && (gEnv->pConsole->GetCVar("e_svoTI_Active") && 
+        gEnv->pConsole->GetCVar("e_svoTI_Active")->GetIVal() && 
+        gEnv->pConsole->GetCVar("e_GI")->GetIVal()))
     {
         pMat->SetKeepLowResSysCopyForDiffTex();
     }

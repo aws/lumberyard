@@ -48,7 +48,7 @@ namespace EMotionFX
     class EMFX_API MeshBuilder
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MeshBuilder, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MESHBUILDER);
+        AZ_CLASS_ALLOCATOR_DECL
         friend class MeshBuilderSubMesh;
 
     public:

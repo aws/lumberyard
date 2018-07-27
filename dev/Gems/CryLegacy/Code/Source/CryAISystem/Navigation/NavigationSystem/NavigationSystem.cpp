@@ -11,13 +11,12 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "NavigationSystem.h"
 #include "../MNM/TileGenerator.h"
 #include "../MNM/MeshGrid.h"
 #include "DebugDrawContext.h"
 #include "MNMPathfinder.h"
-#include <IJobManager_JobDelegator.h>
 #include "IStereoRenderer.h" //For IsRenderingToHMD
 
 #include <LmbrCentral/Ai/NavigationSeedBus.h>
@@ -396,15 +395,20 @@ void NavigationSystem::DestroyMesh(NavigationMeshID meshID)
             }
         }
 
-        TileTaskQueue::iterator qit = m_tileQueue.begin();
-        TileTaskQueue::iterator qend = m_tileQueue.end();
-
-        for (; qit != qend; ++qit)
         {
-            TileTask& task = *qit;
-            if (task.meshID == meshID)
+            AZStd::lock_guard<AZStd::recursive_mutex> tileQueueGuard(m_tileQueueMutex);
+            TileTaskQueue::iterator it = m_tileQueue.begin();
+            while (it != m_tileQueue.end())
             {
-                task.aborted = true;
+                const TileTask& task = *it;
+                if (task.meshID == meshID)
+                {
+                    it = m_tileQueue.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
             }
         }
 
@@ -492,15 +496,17 @@ void NavigationSystem::DestroyVolume(NavigationVolumeID volumeID)
     {
         NavigationBoundingVolume& volume = m_volumes[volumeID];
 
-        AgentTypes::const_iterator it = m_agentTypes.begin();
-        AgentTypes::const_iterator end = m_agentTypes.end();
+        AgentTypes::iterator it = m_agentTypes.begin();
+        AgentTypes::iterator end = m_agentTypes.end();
 
         for (; it != end; ++it)
         {
-            const AgentType& agentType = *it;
+            AgentType& agentType = *it;
 
             AgentType::Meshes::const_iterator mit = agentType.meshes.begin();
             AgentType::Meshes::const_iterator mend = agentType.meshes.end();
+
+            stl::find_and_erase(agentType.exclusions, volumeID);
 
             for (; mit != mend; ++mit)
             {
@@ -987,12 +993,12 @@ void NavigationSystem::UpdateMeshes(const float frameTime, const bool blocking, 
 
             while (!m_tileQueue.empty() && (m_runningTasks.size() < MaxRunningTaskCount))
             {
-                const TileTask& task = m_tileQueue.front();
-
-                if (task.aborted)
+                TileTask task;
                 {
-                    m_tileQueue.pop_front();
-                    continue;
+                    AZStd::lock_guard<AZStd::recursive_mutex> tileQueueGuard(m_tileQueueMutex);
+                    auto firstTask = m_tileQueue.begin();
+                    task = AZStd::move(*firstTask);
+                    m_tileQueue.erase(firstTask);
                 }
 
                 const NavigationMesh& mesh = m_meshes[task.meshID];
@@ -1012,8 +1018,6 @@ void NavigationSystem::UpdateMeshes(const float frameTime, const bool blocking, 
                     m_runningTasks.pop_back();
                     break;
                 }
-
-                m_tileQueue.pop_front();
             }
 
             // keep main thread busy too if we're blocking
@@ -1021,12 +1025,12 @@ void NavigationSystem::UpdateMeshes(const float frameTime, const bool blocking, 
             {
                 while (!m_tileQueue.empty())
                 {
-                    const TileTask& task = m_tileQueue.front();
-
-                    if (task.aborted)
+                    TileTask task;
                     {
-                        m_tileQueue.pop_front();
-                        continue;
+                        AZStd::lock_guard<AZStd::recursive_mutex> tileQueueGuard(m_tileQueueMutex);
+                        auto firstTask = m_tileQueue.begin();
+                        task = AZStd::move(*firstTask);
+                        m_tileQueue.erase(firstTask);
                     }
 
                     NavigationMesh& mesh = m_meshes[task.meshID];
@@ -1039,8 +1043,6 @@ void NavigationSystem::UpdateMeshes(const float frameTime, const bool blocking, 
                     }
 
                     CommitTile(result);
-
-                    m_tileQueue.pop_front();
                     break;
                 }
             }
@@ -1151,15 +1153,16 @@ bool NavigationSystem::SpawnJob(TileTaskResult& result, NavigationMeshID meshID,
         for (; eit != eend; ++eit)
         {
             const NavigationVolumeID exclusionVolumeID = *eit;
-            // Its okay for an exclusion volume to be invalid temporarily during creation - the user may have only clicked 2 points so far.
 
+            // Its okay for an exclusion volume to be invalid temporarily during creation - the user may have only clicked 2 points so far.
             if (m_volumes.validate(exclusionVolumeID))
             {
                 def->exclusions.push_back(m_volumes[exclusionVolumeID]);
             }
-            else
+            else if (m_invalidExclusionVolumes.find(exclusionVolumeID) == m_invalidExclusionVolumes.end())
             {
-                CryLogAlways("NavigationSystem::SpawnJob(): Detected non-valid exclusion volume (%d) for mesh '%s', skipping", (uint32)exclusionVolumeID, mesh.name.c_str());
+                m_invalidExclusionVolumes.insert(exclusionVolumeID);
+                CryLogAlways("NavigationSystem::SpawnJob(): Skipping non-valid exclusion volume (%d) for mesh '%s'", (uint32)exclusionVolumeID, mesh.name.c_str());
             }
         }
     }
@@ -1306,30 +1309,7 @@ size_t NavigationSystem::QueueMeshUpdate(NavigationMeshID meshID, const AABB& aa
         uint16 zmin = (uint16)(floor_tpl(bmin.z / (float)paramsGrid.tileSize.z));
         uint16 zmax = (uint16)(floor_tpl(bmax.z / (float)paramsGrid.tileSize.z));
 
-        TileTaskQueue::iterator it = m_tileQueue.begin();
-        TileTaskQueue::iterator rear = m_tileQueue.end();
-
-        for (; it != rear; )
-        {
-            TileTask& task = *it;
-
-            if ((task.meshID == meshID) && (task.x >= xmin) && (task.x <= xmax) &&
-                (task.y >= ymin) && (task.y <= ymax) &&
-                (task.z >= zmin) && (task.z <= zmax))
-            {
-                rear = rear - 1;
-                std::swap(task, *rear);
-
-                continue;
-            }
-            ++it;
-        }
-
-        if (rear != m_tileQueue.end())
-        {
-            m_tileQueue.erase(rear, m_tileQueue.end());
-        }
-
+        AZStd::lock_guard<AZStd::recursive_mutex> lockGuard(m_tileQueueMutex);
         for (size_t y = ymin; y <= ymax; ++y)
         {
             for (size_t x = xmin; x <= xmax; ++x)
@@ -1342,7 +1322,7 @@ size_t NavigationSystem::QueueMeshUpdate(NavigationMeshID meshID, const AABB& aa
                     task.y = (uint16)y;
                     task.z = (uint16)z;
 
-                    m_tileQueue.push_back(task);
+                    m_tileQueue.insert(task);
 
                     ++affectedCount;
                 }
@@ -1410,30 +1390,7 @@ void NavigationSystem::QueueDifferenceUpdate(NavigationMeshID meshID, const Navi
         uint16 zmin = (uint16)(floor_tpl(bmin.z / (float)paramsGrid.tileSize.z));
         uint16 zmax = (uint16)(floor_tpl(bmax.z / (float)paramsGrid.tileSize.z));
 
-        TileTaskQueue::iterator it = m_tileQueue.begin();
-        TileTaskQueue::iterator rear = m_tileQueue.end();
-
-        for (; it != rear; )
-        {
-            TileTask& task = *it;
-
-            if ((task.meshID == meshID) && (task.x >= xmin) && (task.x <= xmax) &&
-                (task.y >= ymin) && (task.y <= ymax) &&
-                (task.z >= zmin) && (task.z <= zmax))
-            {
-                rear = rear - 1;
-                std::swap(task, *rear);
-
-                continue;
-            }
-            ++it;
-        }
-
-        if (rear != m_tileQueue.end())
-        {
-            m_tileQueue.erase(rear, m_tileQueue.end());
-        }
-
+        AZStd::lock_guard<AZStd::recursive_mutex> tileQueueGuard(m_tileQueueMutex);
         for (size_t y = ymin; y <= ymax; ++y)
         {
             for (size_t x = xmin; x <= xmax; ++x)
@@ -1446,7 +1403,7 @@ void NavigationSystem::QueueDifferenceUpdate(NavigationMeshID meshID, const Navi
                     task.y = (uint16)y;
                     task.z = (uint16)z;
 
-                    m_tileQueue.push_back(task);
+                    m_tileQueue.insert(task);
                 }
             }
         }
@@ -2078,13 +2035,19 @@ void NavigationSystem::Clear()
     }
 
     m_worldAABB = AABB::RESET;
-
-    m_tileQueue.clear();
+    {
+        AZStd::lock_guard<AZStd::recursive_mutex> tileQueueGuard(m_tileQueueMutex);
+        m_tileQueue.clear();
+    }
     m_volumeDefCopy.clear();
     m_volumeDefCopy.resize(MaxVolumeDefCopyCount, VolumeDefCopy());
 
     m_offMeshNavigationManager.Clear();
     m_islandConnectionsManager.Reset();
+
+#if NAVIGATION_SYSTEM_PC_ONLY
+    m_invalidExclusionVolumes.clear();
+#endif // NAVIGATION_SYSTEM_PC_ONLY
 
     ResetAllNavigationSystemUsers();
 }
@@ -2115,7 +2078,7 @@ bool NavigationSystem::ReloadConfig()
 
     const char* tagName = rootNode->getTag();
 
-    if (!stricmp(tagName, "Navigation"))
+    if (!azstricmp(tagName, "Navigation"))
     {
         rootNode->getAttr("version", m_configurationVersion);
 
@@ -2125,7 +2088,7 @@ bool NavigationSystem::ReloadConfig()
         {
             XmlNodeRef childNode = rootNode->getChild(i);
 
-            if (!stricmp(childNode->getTag(), "AgentTypes"))
+            if (!azstricmp(childNode->getTag(), "AgentTypes"))
             {
                 size_t agentTypeCount = childNode->getChildCount();
 
@@ -2155,7 +2118,7 @@ bool NavigationSystem::ReloadConfig()
                         }
 
                         bool valid = false;
-                        if (!stricmp(attrName, "name"))
+                        if (!azstricmp(attrName, "name"))
                         {
                             if (attrValue && *attrValue)
                             {
@@ -2163,64 +2126,64 @@ bool NavigationSystem::ReloadConfig()
                                 name = attrValue;
                             }
                         }
-                        else if (!stricmp(attrName, "radius"))
+                        else if (!azstricmp(attrName, "radius"))
                         {
                             int sradius = 0;
-                            if (sscanf(attrValue, "%d", &sradius) == 1 && sradius > 0)
+                            if (azsscanf(attrValue, "%d", &sradius) == 1 && sradius > 0)
                             {
                                 valid = true;
                                 params.radiusVoxelCount = sradius;
                             }
                         }
-                        else if (!stricmp(attrName, "height"))
+                        else if (!azstricmp(attrName, "height"))
                         {
                             int sheight = 0;
-                            if (sscanf(attrValue, "%d", &sheight) == 1 && sheight > 0)
+                            if (azsscanf(attrValue, "%d", &sheight) == 1 && sheight > 0)
                             {
                                 valid = true;
                                 params.heightVoxelCount = sheight;
                             }
                         }
-                        else if (!stricmp(attrName, "climbableHeight"))
+                        else if (!azstricmp(attrName, "climbableHeight"))
                         {
                             int sclimbableheight = 0;
-                            if (sscanf(attrValue, "%d", &sclimbableheight) == 1 && sclimbableheight >= 0)
+                            if (azsscanf(attrValue, "%d", &sclimbableheight) == 1 && sclimbableheight >= 0)
                             {
                                 valid = true;
                                 params.climbableVoxelCount = sclimbableheight;
                             }
                         }
-                        else if (!stricmp(attrName, "climbableInclineGradient"))
+                        else if (!azstricmp(attrName, "climbableInclineGradient"))
                         {
                             float sclimbableinclinegradient = 0.f;
-                            if (sscanf(attrValue, "%f", &sclimbableinclinegradient) == 1)
+                            if (azsscanf(attrValue, "%f", &sclimbableinclinegradient) == 1)
                             {
                                 valid = true;
                                 params.climbableInclineGradient = sclimbableinclinegradient;
                             }
                         }
-                        else if (!stricmp(attrName, "climbableStepRatio"))
+                        else if (!azstricmp(attrName, "climbableStepRatio"))
                         {
                             float sclimbablestepratio = 0.f;
-                            if (sscanf(attrValue, "%f", &sclimbablestepratio) == 1)
+                            if (azsscanf(attrValue, "%f", &sclimbablestepratio) == 1)
                             {
                                 valid = true;
                                 params.climbableStepRatio = sclimbablestepratio;
                             }
                         }
-                        else if (!stricmp(attrName, "maxWaterDepth"))
+                        else if (!azstricmp(attrName, "maxWaterDepth"))
                         {
                             int smaxwaterdepth = 0;
-                            if (sscanf(attrValue, "%d", &smaxwaterdepth) == 1 && smaxwaterdepth >= 0)
+                            if (azsscanf(attrValue, "%d", &smaxwaterdepth) == 1 && smaxwaterdepth >= 0)
                             {
                                 valid = true;
                                 params.maxWaterDepthVoxelCount = smaxwaterdepth;
                             }
                         }
-                        else if (!stricmp(attrName, "voxelSize"))
+                        else if (!azstricmp(attrName, "voxelSize"))
                         {
                             float x, y, z;
-                            int c = sscanf(attrValue, "%g,%g,%g", &x, &y, &z);
+                            int c = azsscanf(attrValue, "%g,%g,%g", &x, &y, &z);
 
                             valid = (c == 1) || (c == 3);
                             if (c == 1)
@@ -2256,7 +2219,7 @@ bool NavigationSystem::ReloadConfig()
 
                         assert(name);
 
-                        if (!stricmp(agentType.name.c_str(), name))
+                        if (!azstricmp(agentType.name.c_str(), name))
                         {
                             AIWarning("AgentType '%s' redefinition at line %d while parsing NavigationXML '%s'...",
                                 name, agentTypeNode->getLine(), m_configName.c_str());
@@ -2288,7 +2251,7 @@ bool NavigationSystem::ReloadConfig()
                     {
                         XmlNodeRef agentTypeChildNode = agentTypeNode->getChild(childIdx);
 
-                        if (!stricmp(agentTypeChildNode->getTag(), "SmartObjectUserClasses"))
+                        if (!azstricmp(agentTypeChildNode->getTag(), "SmartObjectUserClasses"))
                         {
                             AgentType& agentType = m_agentTypes[agentTypeID - 1];
 
@@ -2299,7 +2262,7 @@ bool NavigationSystem::ReloadConfig()
                             {
                                 XmlNodeRef smartObjectClassNode = agentTypeChildNode->getChild(socIdx);
 
-                                if (!stricmp(smartObjectClassNode->getTag(), "class") && smartObjectClassNode->haveAttr("name"))
+                                if (!azstricmp(smartObjectClassNode->getTag(), "class") && smartObjectClassNode->haveAttr("name"))
                                 {
                                     stl::push_back_unique(agentType.smartObjectUserClasses, smartObjectClassNode->getAttr("name"));
                                 }
@@ -3098,6 +3061,8 @@ bool NavigationSystem::SaveToFile(const char* fileName) const PREFAST_SUPPRESS_W
     CCryFile file;
     if (false != file.Open(fileName, "wb"))
     {
+        bool issuedDataCorruptionWarning = false;
+
         const int maxTriangles = 1024;
         const int maxLinks = maxTriangles * 6;
         MNM::Tile::Triangle triangleBuffer[maxTriangles];
@@ -3184,10 +3149,11 @@ bool NavigationSystem::SaveToFile(const char* fileName) const PREFAST_SUPPRESS_W
                     It's an additional check for the consistency of the
                     saved binary data.
                 */
-                if (m_volumesManager.GetAreaID(mesh.name.c_str()) != mesh.boundary)
+                if (m_volumesManager.GetAreaID(mesh.name.c_str()) != mesh.boundary && !issuedDataCorruptionWarning)
                 {
+                    issuedDataCorruptionWarning = true;
                     CryMessageBox("Sandbox detected a possible data corruption during the save of the navigation mesh."
-                        "Trigger a full rebuild and re-export to engine to fix"
+                        "Delete the level.pak file, then re-load and re-export to engine to fix"
                         " the binary data associated with the MNM.", "Navigation Save Error", 0);
                 }
                 file.Write(&(boundaryIDuint32), sizeof(boundaryIDuint32));

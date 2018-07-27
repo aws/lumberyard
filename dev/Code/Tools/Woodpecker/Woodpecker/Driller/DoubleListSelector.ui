@@ -165,7 +165,7 @@
   <customwidget>
    <class>Driller::FilteredListView</class>
    <extends>QWidget</extends>
-   <header>Woodpecker/Driller/filteredlistview.hxx</header>
+   <header>Woodpecker/Driller/FilteredListView.hxx</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/Asset/AssetCommon.h>
 
 namespace CloudCanvas
 {
@@ -22,12 +23,15 @@ namespace CloudCanvas
         public:
             virtual ~IStaticDataMonitor() {}
 
-            virtual void RemoveAll() = 0;
+            virtual void RemoveAll() {}
 
-            virtual void AddPath(const AZStd::string& sanitizedPath, bool isFile) = 0;
-            virtual void RemovePath(const AZStd::string& sanitizedPath) = 0;
+            virtual void AddPath(const AZStd::string& sanitizedPath, bool isFile) {}
+            virtual void RemovePath(const AZStd::string& sanitizedPath) {}
 
-            virtual AZStd::string GetSanitizedName(const char* pathName) const = 0;
+            virtual void AddAsset(const AZ::Data::AssetId& assetId) {}
+            virtual void RemoveAsset(const AZ::Data::AssetId& assetId) {}
+
+            virtual AZStd::string GetSanitizedName(const char* pathName) const { return{}; }
         };
 
         class StaticDataMonitorRequestBusTraits

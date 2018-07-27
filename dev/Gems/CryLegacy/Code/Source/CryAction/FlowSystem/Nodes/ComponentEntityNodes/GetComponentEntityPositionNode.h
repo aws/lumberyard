@@ -12,9 +12,8 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include <ISystem.h>
-#include "../FlowBaseNode.h"
-#include "../CryCommon/IFlowSystem.h"
-#include "../CryCommon/Cry_Vector3.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
+#include <IFlowSystem.h>
 
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Component/TransformBus.h>

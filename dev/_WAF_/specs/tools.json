@@ -10,6 +10,9 @@
     [
         "AzQtComponents",
         "AzTestRunner",
+        "CrashHandler",
+        "ToolsCrashHandler",
+        "ToolsCrashUploader",
         "SetupAssistant",
         "SetupAssistantBatch",
         "GemRegistry",

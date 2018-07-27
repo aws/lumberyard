@@ -33,7 +33,7 @@ namespace EMotionFX
     class EMFX_API SkeletalSubMotion
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(SkeletalSubMotion, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_SKELETALMOTIONS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**

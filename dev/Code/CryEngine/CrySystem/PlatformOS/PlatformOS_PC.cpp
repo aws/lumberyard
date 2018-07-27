@@ -502,7 +502,7 @@ IPlatformOS::EZipExtractFail CPlatformOS_PC::ExtractZips(const char* path)
     //get the path to the DLC install directory
 
     char userPath[ICryPak::g_nMaxPath];
-    gEnv->pCryPak->AdjustFileName(path, userPath, 0);
+    gEnv->pCryPak->AdjustFileName(path, userPath, AZ_ARRAY_SIZE(userPath), 0);
 
     //look for zips
     IPlatformOS::IFileFinderPtr fileFinder = GetFileFinder(0);

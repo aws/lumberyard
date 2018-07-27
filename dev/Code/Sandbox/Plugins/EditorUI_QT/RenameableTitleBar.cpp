@@ -17,7 +17,7 @@
 #include <QPixmap>
 #include <QHBoxLayout>
 #include <QMouseEvent>
-#include <qstyle.h>
+#include <QStyle>
 
 #include "VariableWidgets/BaseVariableWidget.h"
 

@@ -14,16 +14,15 @@
 #include "CloudGemFramework_precompiled.h"
 
 #include <CloudGemFrameworkSystemComponent.h>
-
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 namespace CloudGemFramework
 {
     class CloudGemFrameworkModule
-        : public CryHooksModule
+        : public AZ::Module
     {
     public:
-        AZ_RTTI(CloudGemFrameworkModule, "{72F7EB98-205C-42D4-8195-94BBC350C333}", CryHooksModule);
+        AZ_RTTI(CloudGemFrameworkModule, "{72F7EB98-205C-42D4-8195-94BBC350C333}", AZ::Module);
 
         CloudGemFrameworkModule();
         virtual ~CloudGemFrameworkModule() override = default;

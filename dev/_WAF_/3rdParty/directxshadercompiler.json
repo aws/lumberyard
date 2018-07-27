@@ -1,0 +1,32 @@
+{
+    "name": "DirectXShaderCompiler",
+    "source": "@3P:DirectXShaderCompiler@",
+    "description": "DirectX Shader Compiler",
+    "aliases": {
+        "lib_names": [],
+        "shared_names": []
+    },
+    "includes": [],
+    "defines": [],
+    "lib_required": "False",
+    "platform": {
+        "win_x64_vs2013": {
+            "copy_extra": [ 
+                "bin/win_x64/release/dxcGL.exe:../../Compiler/LLVMGL/release",
+                "bin/win_x64/release/dxcMetal.exe:../../Compiler/LLVMMETAL/release",
+                "bin/win_x64/debug/dxcGL.exe:../../Compiler/LLVMGL/debug",
+                "bin/win_x64/debug/dxcMetal.exe:../../Compiler/LLVMMETAL/debug"
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013",
+        "darwin_x64": {
+            "copy_extra": [ 
+                "bin/darwin_x64/release/dxcGL:../../Compiler/LLVMGL/release",
+                "bin/darwin_x64/release/dxcMetal:../../Compiler/LLVMMETAL/release",
+                "bin/darwin_x64/debug/dxcGL:../../Compiler/LLVMGL/debug",
+                "bin/darwin_x64/debug/dxcMetal:../../Compiler/LLVMMETAL/debug"
+            ]
+        }
+    }
+}

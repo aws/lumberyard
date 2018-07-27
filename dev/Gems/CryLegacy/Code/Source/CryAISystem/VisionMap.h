@@ -21,6 +21,8 @@
 
 #include <HashGrid.h>
 
+#include <RayCastQueue.h>
+
 #ifdef CRYAISYSTEM_DEBUG
 #define VISIONMAP_DEBUG 1
 #endif

@@ -58,6 +58,9 @@
     #endif
 
     #define alignof _alignof
+    #if !defined(_HAS_EXCEPTIONS)
+        #define _HAS_EXCEPTIONS 0
+    #endif
 #elif defined(__GNUC__)
     #define alignof __alignof__
 #endif
@@ -72,6 +75,8 @@
 #if (defined(LINUX) && !defined(ANDROID)) || defined(APPLE)
 #define _FILE_OFFSET_BITS 64 // define large file support > 2GB
 #endif
+
+#include <AzCore/PlatformIncl.h>
 
 #if defined(NOT_USE_CRY_MEMORY_MANAGER)
 #include <cstring>
@@ -553,13 +558,8 @@ namespace CryMemory
 //////////////////////////////////////////////////////////////////////////
 // compile time error stuff
 //////////////////////////////////////////////////////////////////////////
-template<bool>
-struct CompileTimeError;
-template<>
-struct CompileTimeError<true> {};
 #undef STATIC_CHECK
-#define STATIC_CHECK(expr, msg) \
-    { CompileTimeError<((expr) != 0)> ERROR_##msg; (void)ERROR_##msg; }
+#define STATIC_CHECK(expr, msg) static_assert(expr, #msg)
 
 // Assert dialog box macros
 #include "CryAssert.h"
@@ -833,11 +833,11 @@ __declspec(dllimport) int __stdcall TlsSetValue(unsigned long dwTlsIndex, void* 
     #define TLS_DEFINE_DEFAULT_VALUE(type, var, value)                                \
     int var##idx;                                                                     \
     struct Init##var {                                                                \
-        Init##var() { var##idx = TlsAlloc(); TlsSetValue(var##idx, (void*)(value)); } \
+        Init##var() { var##idx = TlsAlloc(); TlsSetValue(var##idx, reinterpret_cast<void*>(value)); } \
     };                                                                                \
     Init##var g_init##var;
     #define TLS_GET(type, var) (type)TlsGetValue(var##idx)
-    #define TLS_SET(var, val) TlsSetValue(var##idx, (void*)(val))
+    #define TLS_SET(var, val) TlsSetValue(var##idx, reinterpret_cast<void*>(val))
 #elif defined(USE_PTHREAD_TLS)
     #define TLS_DECLARE(_TYPE, _VAR) extern SCryPthreadTLS<_TYPE> _VAR##TLSKey;
     #define TLS_DEFINE(_TYPE, _VAR) SCryPthreadTLS<_TYPE> _VAR##TLSKey;

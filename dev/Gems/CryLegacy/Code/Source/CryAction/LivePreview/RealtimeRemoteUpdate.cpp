@@ -17,7 +17,7 @@
 //               in the console
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "RealtimeRemoteUpdate.h"
 #include "ISystem.h"
 #include "I3DEngine.h"

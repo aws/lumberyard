@@ -247,12 +247,14 @@ VAR_INFO_ATTRS(fSoundFXParam, "Custom real-time sound modulation parameter")
 VAR_INFO_ATTRS(eSoundControlTime, "The sound control time type")
 
 ATTRS_INFO("<Group=Size>")
-VAR_INFO_ATTRS(bMaintainAspectRatio, "<ForceUpdate> Maintain particle aspect ratio")
-VAR_INFO_ATTRS(fSizeX, "<ForceUpdate> $<SoftMax=800> X size for sprites; ignored for geometry")
-VAR_INFO_ATTRS(fSizeY, "<ForceUpdate> $<SoftMax=800> Y size for sprites; size scale for geometry")
+VAR_INFO_ATTRS(bMaintainAspectRatio, "Maintain particle aspect ratio")
+VAR_INFO_ATTRS(fSizeX, "$<SoftMax=800> X size for sprites, X size scale for geometry")
+VAR_INFO_ATTRS(fSizeY, "<ForceUpdate> $<SoftMax=800> Y size for sprites; Y size scale for geometry")
+VAR_INFO_ATTRS(fSizeZ, "<ForceUpdate> $<SoftMax=800> Z size scale for geometry")
 
 VAR_INFO_ATTRS(fPivotX, "<SoftMin=-1> <SoftMax=1> Pivot offset in X direction")
 VAR_INFO_ATTRS(fPivotY, "<SoftMin=-1> <SoftMax=1> Pivot offset in Y direction")
+VAR_INFO_ATTRS(fPivotZ, "<SoftMin=-1> <SoftMax=1> Pivot offset in Z direction of geometry particle")
 VAR_INFO_ATTRS(fTailLength, "<SoftMax=10> Length of tail in seconds")
 VAR_INFO_ATTRS(fMinPixels, "<SoftMax=10> Augment true size with this many pixels")
 VAR_INFO_ATTRS(fLocalStretch, "<SoftMax=1> Stretch particle into moving direction, amount in seconds")
@@ -302,7 +304,7 @@ VAR_INFO_ATTRS(fDensity, "<SoftMax=2000> Mass density for physicslized particles
 
 
 ATTRS_INFO("<Group=Visibility>")
-VAR_INFO_ATTRS(bCameraNonFacingFade, "When on, orthagonal trail particles wil be faded out for a fade particle")
+VAR_INFO_ATTRS(bCameraNonFacingFade, "If the particle is close to orthagonal to the camera it will be faded out")
 VAR_INFO_ATTRS(fViewDistanceAdjust, "<SoftMax=1> Multiplier to automatic distance fade-out")
 VAR_INFO_ATTRS(fCameraMaxDistance, "<SoftMax=100> Max distance from camera to render particles")
 VAR_INFO_ATTRS(fCameraMinDistance, "<SoftMax=100> Min distance from camera to render particles")

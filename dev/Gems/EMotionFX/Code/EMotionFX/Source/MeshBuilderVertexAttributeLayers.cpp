@@ -13,10 +13,14 @@
 // include the required headers
 #include "MeshBuilderVertexAttributeLayers.h"
 #include <MCore/Source/Compare.h>
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MeshBuilderVertexLookup, MeshAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(MeshBuilderVertexAttributeLayer, MeshAllocator, 0)
+
+
     // creation
     MeshBuilderVertexAttributeLayerVector2* MeshBuilderVertexAttributeLayerVector2::Create(uint32 numOrgVerts, uint32 layerTypeID, bool isScale, bool isDeformable)
     {

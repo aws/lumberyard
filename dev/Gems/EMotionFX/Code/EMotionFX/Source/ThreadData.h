@@ -29,6 +29,8 @@ namespace EMotionFX
     class EMFX_API ThreadData
         : public BaseObject
     {
+        AZ_CLASS_ALLOCATOR_DECL
+
     public:
         static ThreadData* Create();
         static ThreadData* Create(uint32 threadIndex);

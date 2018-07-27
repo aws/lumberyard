@@ -1,0 +1,122 @@
+.progress-slice-container {
+    position: absolute;
+    width: 100%;
+    left: 0;
+    height: 24px;
+    transition: opacity 1s;
+}
+
+.progress-child-shaft {
+    position: absolute;
+    top: 20px;
+    background-color: #00cc00;
+    height: 0px;
+    width: 16px;
+
+    transition: height 1s linear;
+}
+
+.progress-child-shaft-left {
+    transform: translateX(-16px);
+    border-bottom-left-radius: 16px;
+}
+
+.progress-child-shaft-right {
+    border-bottom-right-radius: 16px;
+}
+
+.progress-label {
+    position: absolute;
+    top: 4px;
+    height: 16px;
+    line-height: 16px;
+    width: 480px;
+    font-weight: bold;
+    font-size: 10px;
+    padding-left: 2px;
+    color: black;
+    pointer-events: none;  // So won't obstruct hover in element beneath
+}
+
+.progress-span-base {
+    position: absolute;
+    height: 16px;
+    width: 0px;
+    top: 4px;
+}
+
+.progress-span-lead {
+    background-color: #00cc00;
+    transition: width 1s linear 0.5s;
+    width: 0px;
+    top: 0px;
+    right: 0px;
+}
+
+.progress-span-post-init {
+    transition: width 0s !important;
+}
+
+@keyframes progress-span-barber-pole {
+    from { background-position-y: 0, 0; }
+    to { background-position-y: 0, 32px; }
+}
+
+$bevel-shading: linear-gradient(to bottom, rgba(0, 0, 0, 0.125), transparent 4px,
+    transparent 10px,rgba(0, 0, 0, 0.25) 16px);
+
+.progress-span-waiting {
+    background: $bevel-shading, grey;
+    transition: width 0.5s linear;
+}
+
+.progress-span-main {
+    background: $bevel-shading, repeating-linear-gradient(
+        120deg,
+        #e1d431,
+        #e1d431 8px,
+        #d7c600 8px,
+        #d7c600 16px
+    ) !important;
+    background-size: 100% 32px !important;
+    transition: width 0.5s linear;
+    animation: progress-span-barber-pole 1.0s linear infinite;
+}
+
+.progress-span-done {
+    background: $bevel-shading, #2ca100; 
+    transition: width 0.5s linear;
+}
+
+.progress-span-tail {
+    background-color: #00cc00;
+    transition: width 0.5s linear;
+}
+
+.progress-child {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 16px;
+
+    transition: all 1s linear;
+}
+
+.progress-sibling {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+
+    transition: all 1s linear;
+}
+
+.progress-children {
+    position: absolute;
+    top: 24px;
+    width: 100%;
+}
+
+.progress-span-waiting:hover .slice-tooltip {
+    visibility: visible;
+}

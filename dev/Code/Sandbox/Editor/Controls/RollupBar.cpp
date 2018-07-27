@@ -14,7 +14,7 @@
 // Description : implementation of the CRollupBar class.
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "RollupBar.h"
 #include "MainWindow.h"
 #include "MainTools.h"

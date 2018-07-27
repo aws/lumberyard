@@ -110,7 +110,7 @@ CAttributeView::CAttributeView(QWidget* parent)
     m_scrollArea->setWidget(m_scrollAreaWidget);
     m_scrollArea->setMouseTracking(true);
     QScrollBar* vscrollBar = m_scrollArea->verticalScrollBar();
-    connect(vscrollBar, &QScrollBar::valueChanged, [this](int v)
+    connect(vscrollBar, &QScrollBar::valueChanged, this, [this](int v)
         {
             setValue(m_currLibraryName + "_scroll", QString().sprintf("%d", v));
         });
@@ -154,7 +154,7 @@ CAttributeView::~CAttributeView()
 }
 
 void CAttributeView::Clear()
-{    
+{
     m_custompanels.clear();
     // Actions need to be cleared before CAttributeItems are nuked.
     // Otherwise because of lambda function usage the deletion cycle gets corrupted3
@@ -186,7 +186,7 @@ void CAttributeView::CopyItemVariables(const CAttributeItem* item, bool recursiv
     {
         variableList.push_back(item->getVar()->Clone(false));
     }
-    
+
     if (recursive)
     {
         for (const CAttributeItem* child : item->getChildren())
@@ -217,7 +217,7 @@ void CAttributeView::GetItemVariables(CAttributeItem* item, bool recursive, /*ou
 }
 
 bool CAttributeView::CanCopyVariable(IVariable* varSrc, IVariable* varDst)
-{    
+{
     //note: the src variable is a cloned variable which is a simple string, Check CVariableTypeInfo::Clone function for more detail
     //this function should only be used for checking copy an AttributeItem's IVariable's clone to an AttributeItem's IVariable
     AZ_Assert(varSrc->GetType() == IVariable::EType::STRING, "Source Variable must be a String Variable created by CVariableTypeInfo::Clone");
@@ -227,7 +227,7 @@ bool CAttributeView::CanCopyVariable(IVariable* varSrc, IVariable* varDst)
     {
         return true;
     }
-    
+
     //no copy if there datatype not same
     if (varSrc->GetDataType() != varDst->GetDataType())
     {
@@ -263,7 +263,7 @@ void CAttributeView::pasteItem(CAttributeItem* attribute)
     GetItemVariables(attribute, recursive, toVariables, &toItems);
 
     AZ_Assert(toVariables.size() == m_variableCopyList.size(), "pasteItem should only be called if checkPasteItem return true");
-    
+
     //do the copy
     for (int varIdx = 0; varIdx<m_variableCopyList.size(); varIdx++)
     {
@@ -283,7 +283,7 @@ bool CAttributeView::checkPasteItem(CAttributeItem* attribute)
     }
 
     bool recursive = m_variableCopyList.size() > 1;
-    
+
     //recursive
     QVector<IVariable*> toVariables;
     GetItemVariables(attribute, recursive, toVariables, nullptr);
@@ -393,7 +393,7 @@ void CAttributeView::InitConfiguration(const QString& itemPath)
 void CAttributeView::FillFromConfiguration()
 {
     //this function is for bulid panels base on current config (m_config)
-    //it rebuilds custom panels. For default panels, if they already exist, no changes applied. 
+    //it rebuilds custom panels. For default panels, if they already exist, no changes applied.
     //The m_config is loaded from saved config file. it should include default panels and custom panels
 
     for (int i = 0; i < m_importedConfigs.count(); i++)
@@ -548,7 +548,7 @@ void CAttributeView::ImportPanel(const QString data, bool isFilePath)
                 CAttributeListView* dWidget = new CAttributeListView(m_scrollAreaWidget, panel.innerGroup.isCustom, panel.innerGroup.isGroupAttribute);
                 dWidget->setWidget(widget);
                 widget->setSizePolicy(QSizePolicy(widget->sizePolicy().horizontalPolicy(), QSizePolicy::Maximum));
-                connect(dWidget, &QDockWidget::topLevelChanged, [dWidget](bool isTopLevel)
+                connect(dWidget, &QDockWidget::topLevelChanged, dWidget, [dWidget](bool isTopLevel)
                     {
                         dWidget->setWindowOpacity(isTopLevel ? 0.5 : 1.0);
                     });
@@ -702,7 +702,7 @@ QDockWidget* CAttributeView::ShowEmptyCustomPanel(QString panelname, QString gro
     CAttributeListView* dWidget = new CAttributeListView(m_scrollAreaWidget, true, groupvisibility);
     dWidget->setWidget(widget);
     widget->setSizePolicy(QSizePolicy(widget->sizePolicy().horizontalPolicy(), QSizePolicy::Maximum));
-    connect(dWidget, &QDockWidget::topLevelChanged, [dWidget](bool isTopLevel)
+    connect(dWidget, &QDockWidget::topLevelChanged, dWidget, [dWidget](bool isTopLevel)
         {
             dWidget->setWindowOpacity(isTopLevel ? 0.5 : 1.0);
         });
@@ -914,7 +914,7 @@ void CAttributeView::BuildCollapseUncollapseAllMenu()
 
         // Create collapse all action
         action = m_contextMenuCollapse->addAction(NAME_COLLAPSE_ALL);
-        action->connect(action, &QAction::triggered, [this](bool state)
+        action->connect(action, &QAction::triggered, this, [this](bool state)
             {
                 for (QAction* a : m_contextMenuCollapseSinglePanelActions)
                 {
@@ -931,7 +931,7 @@ void CAttributeView::BuildCollapseUncollapseAllMenu()
 
         // Create uncollapse all action
         action = m_contextMenuCollapse->addAction(NAME_UNCOLLAPSE_ALL);
-        action->connect(action, &QAction::triggered, [this](bool state)
+        action->connect(action, &QAction::triggered, this, [this](bool state)
             {
                 for (QAction* a : m_contextMenuCollapseSinglePanelActions)
                 {
@@ -1330,7 +1330,7 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
         QString value = "";
         value = var->GetDisplayValue();
 
-        IVariable* emitterTypeVar = GetVarFromPath("Emitter.Emitter_Type"); 
+        IVariable* emitterTypeVar = GetVarFromPath("Emitter.Emitter_Type");
         bool isGPU = emitterTypeVar->GetDisplayValue() == "GPU";
 
         //enable/disable collision attributes based on physics type
@@ -1498,6 +1498,14 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
             || ParticleParams::EFacing::TypeInfo().MatchName(ParticleParams::EFacing::CameraX, value.toUtf8().data());
         SetEnabledFromPath("Advanced.Spherical_Approximation", show);
     }
+    else if (varPath.compare("Size.Maintain_Aspect_Ratio", Qt::CaseInsensitive) == 0)
+    {
+        bool value = 0;
+        var->Get(value);
+        //disable size Y and size Z if maintain aspect ratio was checked
+        SetEnabledFromPath("Size.Size_Y", !value);
+        SetEnabledFromPath("Size.Size_Z", !value);
+    }
 }
 
 void CAttributeView::SetMaxParticleCount(int maxCount)
@@ -1560,11 +1568,11 @@ bool CAttributeView::ValidateInheritance(const QString& inheritance)
         QString childShape = GetVarFromPath("Emitter.Emitter_Shape")->GetDisplayValue();
         if (parentShape != childShape)
         {
-            //message 
+            //message
             QMessageBox msgBox(this);
             msgBox.setWindowTitle(tr("Emitter shape conflict"));
             msgBox.setText(tr("Child emitter must have same emitter shape as parent if use \"Parent\" inheritance."));
-            msgBox.addButton(QMessageBox::Ok); 
+            msgBox.addButton(QMessageBox::Ok);
             msgBox.exec();
             return false;
         }
@@ -1717,7 +1725,7 @@ void CAttributeView::AddLayoutMenu(QMenu* menu)
 {
     menu->setMouseTracking(true);
     QAction* actLoad = menu->addAction(tr("Import..."));
-    connect(actLoad, &QAction::triggered, [this]()
+    connect(actLoad, &QAction::triggered, this, [this]()
         {
             QString fileName = QFileDialog::getOpenFileName(this, tr("Load attribute layout"), QString(), tr("Layout file (*.attribute_layout)"));
             if (fileName.size() > 0)
@@ -1730,12 +1738,9 @@ void CAttributeView::AddLayoutMenu(QMenu* menu)
     QMenu* actCustomMenu = menu->addMenu(tr("Custom attributes"));
     // New Attribute
     QAction* newAttribute = actCustomMenu->addAction(tr("New attribute"));
-    connect(newAttribute, &QAction::triggered, [this]()
-        {
-            CreateNewCustomPanel();
-        });
+    connect(newAttribute, &QAction::triggered, this, &CAttributeView::CreateNewCustomPanel);
     QAction* importAttribute = actCustomMenu->addAction(tr("Import attribute..."));
-    connect(importAttribute, &QAction::triggered, [this]()
+    connect(importAttribute, &QAction::triggered, this, [this]()
         {
             QString filename = QFileDialog::getOpenFileName(this, tr("Import custom attribute"), QString(), tr("Attribute file (*.custom_attribute)"));
             if (filename.size() > 0)
@@ -1749,10 +1754,7 @@ void CAttributeView::AddLayoutMenu(QMenu* menu)
 
     // Reset to Default Attributes List
     QAction* resetList = actCustomMenu->addAction(tr("Reset list"));
-    connect(resetList, &QAction::triggered, [this]()
-        {
-            emit SignalResetPresetList();
-        });
+    connect(resetList, &QAction::triggered, this, &CAttributeView::SignalResetPresetList);
 
     if (m_defaultView->isVisible())
     {
@@ -1764,7 +1766,7 @@ void CAttributeView::AddLayoutMenu(QMenu* menu)
 
     // Export
     QAction* actSave = menu->addAction(tr("Export..."));
-    connect(actSave, &QAction::triggered, [this]()
+    connect(actSave, &QAction::triggered, this, [this]()
         {
             // get save filename
             QString fileName = QFileDialog::getSaveFileName(this, tr("Save attribute layout"), QString(), tr("Layout file (*.attribute_layout)"));
@@ -1896,7 +1898,7 @@ void CAttributeView::LoadAttributeConfig(QString filepath)
 //check multiple attributes with && i.e. "group&&comment"
 void CAttributeView::ShowAllButGroup(const QString groupVar)
 {
-    if (m_attributeViewStatus == 0) // if status not changed, return 
+    if (m_attributeViewStatus == 0) // if status not changed, return
     {
         return;
     }
@@ -1925,7 +1927,7 @@ void CAttributeView::ShowAllButGroup(const QString groupVar)
 //check multiple attributes with && i.e. "group&&comment"
 void CAttributeView::HideAllButGroup(const QString groupVar)
 {
-    if (m_attributeViewStatus == 1) // if status not changed, return 
+    if (m_attributeViewStatus == 1) // if status not changed, return
     {
         return;
     }
@@ -1979,7 +1981,7 @@ bool CAttributeView::LoadAttributeXml(const QByteArray& data)
 }
 
 void CAttributeView::ResetToDefaultLayout()
-{    
+{
     //remove custom panels
     m_scrollAreaWidget->ClearCustomPanels();
 
@@ -2046,7 +2048,7 @@ bool CAttributeView::ValidateUserChangeEnum(IVariable* var, const QString& newTe
     return true;
 }
 
-        
+
 bool CAttributeView::HandleUserChangedEnum(IVariable* var, const QString& newVar)
 {
     const bool isCpuShape = (var == GetVarFromPath("Emitter.Emitter_Shape"));
@@ -2071,7 +2073,7 @@ bool CAttributeView::HandleUserChangedEnum(IVariable* var, const QString& newVar
         // Finally, deserialize the diff we saved above, over top the new parameter state.
         context.bLoading = true;
         m_currentItem->Serialize(context, &m_currentItem->GetEffect()->GetParticleParams());
-        
+
 
         m_currentItem->Update();
         emit SignalRefreshAttributes();
@@ -2097,7 +2099,7 @@ bool CAttributeView::HandleUserChangedEnum(IVariable* var, const QString& newVar
     {
         return false;
     }
-    
+
 }
 
 void CAttributeView::OnAttributeItemUndoPoint()

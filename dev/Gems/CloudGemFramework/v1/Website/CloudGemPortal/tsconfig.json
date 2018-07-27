@@ -1,10 +1,13 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
+    "baseUrl": "",
     "rootDir": "./",
     "paths": {
       "app/*": [
         "./app/*"
+      ],
+      "d3-umd": [
+        "./node_modules/d3/build/d3.min.js"
       ],
       "*": [
         "./node_modules/*"

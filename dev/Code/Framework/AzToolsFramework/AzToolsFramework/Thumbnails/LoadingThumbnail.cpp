@@ -27,8 +27,9 @@ namespace AzToolsFramework
         {
             m_loadingMovie.setFileName(LOADING_ICON_PATH);
             m_loadingMovie.setCacheMode(QMovie::CacheMode::CacheAll);
+            m_loadingMovie.setScaledSize(QSize(m_thumbnailSize, m_thumbnailSize));
             m_loadingMovie.start();
-            m_pixmap = m_loadingMovie.currentPixmap().scaled(m_thumbnailSize, m_thumbnailSize, Qt::KeepAspectRatio);
+            m_pixmap = m_loadingMovie.currentPixmap();
             m_state = State::Ready;
 
             BusConnect();
@@ -41,7 +42,7 @@ namespace AzToolsFramework
 
         void LoadingThumbnail::UpdateTime(float)
         {
-            m_pixmap = m_loadingMovie.currentPixmap().scaled(m_thumbnailSize, m_thumbnailSize, Qt::KeepAspectRatio);
+            m_pixmap = m_loadingMovie.currentPixmap();
             Q_EMIT Updated();
         }
 

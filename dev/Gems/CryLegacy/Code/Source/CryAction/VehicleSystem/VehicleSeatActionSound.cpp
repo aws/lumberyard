@@ -14,7 +14,7 @@
 // Description : Implements a seat action for sounds (ie: honk on trucks)
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "IVehicleSystem.h"
 #include "Vehicle.h"
 #include "VehicleSeat.h"

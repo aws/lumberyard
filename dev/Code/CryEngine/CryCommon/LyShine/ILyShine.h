@@ -22,7 +22,7 @@ class UiEntityContext;
 
 // The following ifdef block is the standard way of creating macros which make exporting
 // from a DLL simpler. All files within this DLL are compiled with the LYSHINE_EXPORTS
-// symbol defined in the stdafx.h. this symbol should not be defined on any project
+// symbol defined in the StdAfx.h. this symbol should not be defined on any project
 // that uses this DLL. This way any other project whose source files include this file see
 // LYSHINE_API functions as being imported from a DLL, whereas this DLL sees symbols
 // defined with this macro as being exported.

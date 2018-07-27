@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "CryLegacy_precompiled.h"
 #include <I3DEngine.h>
 #include <IRenderAuxGeom.h>
 #include "../CharacterInstance.h"
@@ -646,7 +646,7 @@ void SDirectionalBlender::AccumulateAimPoses(const SAnimationPoseModifierParams&
     }
 
     // PARANOIA: This assumption should be validated by a Unit Test
-    CRY_ASSERT(fcmp(sum, 1.0f, 0.001));
+    CRY_ASSERT(fcmp(sum, 1.0f, 0.001f));
 #endif
 
     for (uint32 i = 0; i < numAimPosesCAF; i++)

@@ -14,7 +14,7 @@
 // Description : implementation file
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "RampControl.h"
 #include <algorithm>
 

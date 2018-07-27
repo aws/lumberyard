@@ -159,7 +159,8 @@ DWORD CHTTPDownloader::DoDownload()
 
     PrepareBuffer();
 
-    FILE* hFile = fopen(m_szDstFile.c_str(), "wb");
+    FILE* hFile = nullptr;
+    azfopen(&hFile, m_szDstFile.c_str(), "wb");
 
     if (!hFile)
     {

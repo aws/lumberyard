@@ -18,7 +18,7 @@
 #include "CCryDXMETALDevice.hpp"
 #include "CCryDXMETALGIFactory.hpp"
 #include "CCryDXMETALGIOutput.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 
 CCryDXGLGIAdapter::CCryDXGLGIAdapter(CCryDXGLGIFactory* pFactory, NCryMetal::SAdapter* pGLAdapter)
     : m_spGLAdapter(pGLAdapter)

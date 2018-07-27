@@ -10,7 +10,8 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "BlendTreeFinalNode.h"
 #include "BlendTree.h"
@@ -20,39 +21,10 @@
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeFinalNode::BlendTreeFinalNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeFinalNode, AnimGraphAllocator, 0)
 
-
-    // destructor
-    BlendTreeFinalNode::~BlendTreeFinalNode()
-    {
-    }
-
-
-    // create
-    BlendTreeFinalNode* BlendTreeFinalNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeFinalNode(animGraph);
-    }
-
-
-    // create the unique data
-    AnimGraphObjectData* BlendTreeFinalNode::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeFinalNode::RegisterPorts()
+    BlendTreeFinalNode::BlendTreeFinalNode()
+        : AnimGraphNode()
     {
         // setup the input ports
         InitInputPorts(1);
@@ -64,9 +36,22 @@ namespace EMotionFX
     }
 
 
-    // register the parameters
-    void BlendTreeFinalNode::RegisterAttributes()
+    BlendTreeFinalNode::~BlendTreeFinalNode()
     {
+    }
+
+
+    bool BlendTreeFinalNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -84,35 +69,13 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeFinalNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeFinalNode* clone = new BlendTreeFinalNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
-    // init
-    void BlendTreeFinalNode::Init(AnimGraphInstance* animGraphInstance)
-    {
-        MCORE_UNUSED(animGraphInstance);
-        //  mOutputPose.Init( animGraphInstance->GetActorInstance() );
-    }
-
-
     // the main process method of the final node
     void BlendTreeFinalNode::Output(AnimGraphInstance* animGraphInstance)
     {
         AnimGraphPose* outputPose;
 
         // if there is no input, just output a bind pose
-        if (mConnections.GetLength() == 0)
+        if (mConnections.empty())
         {
             RequestPoses(animGraphInstance);
             outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
@@ -134,7 +97,7 @@ namespace EMotionFX
     void BlendTreeFinalNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // if there are no connections, output nothing
-        if (mConnections.GetLength() == 0)
+        if (mConnections.empty())
         {
             AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
             uniqueData->Clear();
@@ -151,9 +114,28 @@ namespace EMotionFX
     }
 
 
-    // get the type string
-    const char* BlendTreeFinalNode::GetTypeString() const
+    void BlendTreeFinalNode::Reflect(AZ::ReflectContext* context)
     {
-        return "BlendTreeFinalNode";
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeFinalNode, AnimGraphNode>()
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeFinalNode>("Final Node", "Final node attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ;
     }
-}   // namespace EMotionFX
+} // namespace EMotionFX

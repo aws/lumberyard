@@ -171,12 +171,12 @@ void CFolderTreeCtrl::contextMenuEvent(QContextMenuEvent* e)
 
     QMenu menu;
     QAction* editAction = menu.addAction(tr("Edit"));
-    connect(editAction, &QAction::triggered, [=]()
+    connect(editAction, &QAction::triggered, this, [=]()
         {
             this->Edit(path);
         });
     QAction* showInExplorerAction = menu.addAction(tr("Show In Explorer"));
-    connect(showInExplorerAction, &QAction::triggered, [=]()
+    connect(showInExplorerAction, &QAction::triggered, this, [=]()
         {
             this->ShowInExplorer(path);
         });

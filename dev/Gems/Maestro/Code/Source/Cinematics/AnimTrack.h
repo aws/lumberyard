@@ -206,6 +206,16 @@ public:
         m_trackMultiplier = trackMultiplier;
     }
  
+    void SetExpanded(bool expanded)
+    {
+        AZ_Assert(false, "Not expected to be used.");
+    }
+
+    bool GetExpanded() const
+    {
+        return false;
+    }
+
     static void Reflect(AZ::SerializeContext* serializeContext) {}
 
 protected:

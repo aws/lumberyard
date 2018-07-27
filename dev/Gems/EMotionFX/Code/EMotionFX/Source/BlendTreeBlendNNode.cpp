@@ -10,7 +10,8 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "BlendTreeBlendNNode.h"
 #include "AnimGraphInstance.h"
@@ -23,39 +24,13 @@
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeBlendNNode::BlendTreeBlendNNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeBlendNNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeBlendNNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
-
-    // destructor
-    BlendTreeBlendNNode::~BlendTreeBlendNNode()
-    {
-    }
-
-
-    // create
-    BlendTreeBlendNNode* BlendTreeBlendNNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeBlendNNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeBlendNNode::CreateObjectData()
-    {
-        return new UniqueData(this, nullptr, MCORE_INVALIDINDEX32, MCORE_INVALIDINDEX32);
-    }
-
-
-    // register the ports
-    void BlendTreeBlendNNode::RegisterPorts()
+    BlendTreeBlendNNode::BlendTreeBlendNNode()
+        : AnimGraphNode()
+        , m_syncMode(SYNCMODE_DISABLED)
+        , m_eventMode(EVENTMODE_MOSTACTIVE)
     {
         // setup input ports
         InitInputPorts(11);
@@ -71,46 +46,29 @@ namespace EMotionFX
         SetupInputPort("Pose 9", INPUTPORT_POSE_9, AttributePose::TYPE_ID, PORTID_INPUT_POSE_9);
         SetupInputPortAsNumber("Weight", INPUTPORT_WEIGHT, PORTID_INPUT_WEIGHT); // accept float/int/bool values
 
-        // setup output ports
+                                                                                 // setup output ports
         InitOutputPorts(1);
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
     }
 
 
-    // register the parameters
-    void BlendTreeBlendNNode::RegisterAttributes()
+    BlendTreeBlendNNode::~BlendTreeBlendNNode()
     {
-        // sync setting
-        RegisterSyncAttribute();
-
-        // event mode settings
-        RegisterEventFilterAttribute();
     }
 
 
-    // convert attributes for backward compatibility
-    // this handles attributes that got renamed or who's types have changed during the development progress
-    bool BlendTreeBlendNNode::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName)
+    bool BlendTreeBlendNNode::InitAfterLoading(AnimGraph* animGraph)
     {
-        // convert things by the base class
-        const bool result = AnimGraphObject::ConvertAttribute(attributeIndex, attributeToConvert, attributeName);
-
-        // if we try to convert the old syncMotions setting
-        // we renamed the 'syncMotions' into 'sync' and also changed the type from a bool to integer
-        if (attributeName == "syncMotions" && attributeIndex == MCORE_INVALIDINDEX32) // the invalid index means it doesn't exist in the current attributes list
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
         {
-            // if its a boolean
-            if (attributeToConvert->GetType() == MCore::AttributeBool::TYPE_ID)
-            {
-                const ESyncMode syncMode = (static_cast<const MCore::AttributeBool*>(attributeToConvert)->GetValue()) ? SYNCMODE_TRACKBASED : SYNCMODE_DISABLED;
-                GetAttributeFloat(ATTRIB_SYNC)->SetValue(static_cast<float>(syncMode));
-                return true;
-            }
+            return false;
         }
 
-        return result;
-    }
+        InitInternalAttributesForAllInstances();
 
+        Reinit();
+        return true;
+    }
 
 
     // get the palette name
@@ -127,27 +85,6 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeBlendNNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeBlendNNode* clone = new BlendTreeBlendNNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
-    // initialize (pre-allocate data)
-    void BlendTreeBlendNNode::Init(AnimGraphInstance* animGraphInstance)
-    {
-        MCORE_UNUSED(animGraphInstance);
-    }
-
-
     // pre-create the unique data
     void BlendTreeBlendNNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
@@ -155,8 +92,7 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (uniqueData == nullptr)
         {
-            //uniqueData = new UniqueData( const_cast<BlendTreeBlendNNode*>(this), animGraphInstance, MCORE_INVALIDINDEX32, MCORE_INVALIDINDEX32);
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance, MCORE_INVALIDINDEX32, MCORE_INVALIDINDEX32);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
     }
@@ -314,7 +250,7 @@ namespace EMotionFX
         AnimGraphPose* outputPose;
 
         // if there are no connections, there is nothing to do
-        if (mConnections.GetLength() == 0 || mDisabled)
+        if (mConnections.empty() || mDisabled)
         {
             RequestPoses(animGraphInstance);
             outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
@@ -408,7 +344,7 @@ namespace EMotionFX
         RequestPoses(animGraphInstance);
         outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
         *outputPose = *poseA;
-        outputPose->Blend(poseB, blendWeight);
+        outputPose->GetPose().Blend(&poseB->GetPose(), blendWeight);
 
         // visualize it
     #ifdef EMFX_EMSTUDIOBUILD
@@ -417,14 +353,6 @@ namespace EMotionFX
             actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
     #endif
-    }
-
-
-
-    // get the blend node type string
-    const char* BlendTreeBlendNNode::GetTypeString() const
-    {
-        return "BlendTreeBlendNNode";
     }
 
 
@@ -467,8 +395,7 @@ namespace EMotionFX
                 UpdateIncomingNode(animGraphInstance, nodeB, timePassedInSeconds);
         */
         // mark all incoming pose nodes as synced, except the main motion
-        const ESyncMode syncMode = (ESyncMode) static_cast<uint32>(GetAttributeFloat(ATTRIB_SYNC)->GetValue());
-        const bool syncEnabled = (syncMode != SYNCMODE_DISABLED);
+        const bool syncEnabled = (m_syncMode != SYNCMODE_DISABLED);
         if (syncEnabled)
         {
             for (uint32 i = 0; i < 10; ++i)
@@ -498,8 +425,7 @@ namespace EMotionFX
         float factorA;
         float factorB;
         float playSpeed;
-        //const ESyncMode syncMode = (ESyncMode)((uint32)GetAttributeFloat(ATTRIB_SYNC)->GetValue());
-        AnimGraphNode::CalcSyncFactors(animGraphInstance, nodeA, nodeB, syncMode, blendWeight, &factorA, &factorB, &playSpeed);
+        AnimGraphNode::CalcSyncFactors(animGraphInstance, nodeA, nodeB, m_syncMode, blendWeight, &factorA, &factorB, &playSpeed);
         uniqueData->SetPlaySpeed(playSpeed * factorA);
     }
 
@@ -531,12 +457,11 @@ namespace EMotionFX
         FindBlendNodes(animGraphInstance, &nodeA, &nodeB, &poseIndexA, &poseIndexB, &blendWeight);
 
         // check if we want to sync the motions
-        const ESyncMode syncMode = (ESyncMode)((uint32)GetAttributeFloat(ATTRIB_SYNC)->GetValue());
         if (nodeA)
         {
-            if (syncMode != SYNCMODE_DISABLED)
+            if (m_syncMode != SYNCMODE_DISABLED)
             {
-                SyncMotions(animGraphInstance, nodeA, nodeB, poseIndexA, poseIndexB, blendWeight, syncMode);
+                SyncMotions(animGraphInstance, nodeA, nodeB, poseIndexA, poseIndexB, blendWeight, m_syncMode);
             }
             else
             {
@@ -553,7 +478,7 @@ namespace EMotionFX
 
         if (nodeB)
         {
-            if (syncMode == SYNCMODE_DISABLED)
+            if (m_syncMode == SYNCMODE_DISABLED)
             {
                 nodeB->SetPlaySpeed(animGraphInstance, uniqueData->GetPlaySpeed() /* * nodeB->GetInternalPlaySpeed(animGraphInstance)*/);
                 if (animGraphInstance->GetIsObjectFlagEnabled(nodeB->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_SYNCED))
@@ -655,7 +580,7 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
 
-        FilterEvents(animGraphInstance, (EEventMode)((uint32)GetAttributeFloat(ATTRIB_EVENTMODE)->GetValue()), nodeA, nodeB, blendWeight, data);
+        FilterEvents(animGraphInstance, m_eventMode, nodeA, nodeB, blendWeight, data);
 
         // if we have just one input node
         if (nodeA == nodeB || nodeB == nullptr)
@@ -685,4 +610,46 @@ namespace EMotionFX
         delta.Blend(nodeBData->GetTrajectoryDeltaMirrored(), blendWeight);
         data->SetTrajectoryDeltaMirrored(delta);
     }
-}   // namespace EMotionFX
+
+
+    void BlendTreeBlendNNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeBlendNNode, AnimGraphNode>()
+            ->Version(1)
+            ->Field("syncMode", &BlendTreeBlendNNode::m_syncMode)
+            ->Field("eventMode", &BlendTreeBlendNNode::m_eventMode)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+        
+        editContext->Class<BlendTreeBlendNNode>("Blend N", "Blend N attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeBlendNNode::m_syncMode)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeBlendNNode::m_eventMode)
+            ;
+    }
+
+    void BlendTreeBlendNNode::SetSyncMode(ESyncMode syncMode)
+    {
+        m_syncMode = syncMode;
+    }
+
+    void BlendTreeBlendNNode::SetEventMode(EEventMode eventMode)
+    {
+        m_eventMode = eventMode;
+    }
+
+} // namespace EMotionFX

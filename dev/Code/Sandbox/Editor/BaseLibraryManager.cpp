@@ -575,7 +575,7 @@ QString CBaseLibraryManager::MakeUniqueItemName(const QString& srcName, const QS
             }
             else
             {
-                return stricmp(strOne.c_str(), strTwo.c_str()) < 0;
+                return azstricmp(strOne.c_str(), strTwo.c_str()) < 0;
             }
         }
         );

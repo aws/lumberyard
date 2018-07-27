@@ -1,0 +1,133 @@
+<facet-generator #facetgenerator
+    [context]="context" 
+    [tabs]="['Overview', 'Dashboard', 'Bookmarks', 'Recent Searches', 'Report Configuration', 'Client Configuration']" 
+    [metricIdentifier]="context.identifier"    
+    (tabClicked)="getSubNavItem($event)"></facet-generator>
+
+<!-- Overview Facet -->
+<div *ngIf="tabIndex === 0">
+
+    <h3>Search Defects</h3>
+    <form class="searchForm">
+
+        <!-- Query input -->
+        <input type="text" class="form-control" [(ngModel)]="partialInputQuery" [ngModelOptions]="{standalone: true}" placeholder="Preview with empty field or enter the parameters after the WHERE statement in a standard ANSI SQL query here..."/>
+        <div class="btn-group">
+            
+            <!-- Limit Selector dropdown button -->
+            <div class="btn-group" ngbDropdown placement="bottom-right" role="group">
+                <button class="btn btn-outline-primary btn-limit" ngbDropdownToggle>
+                    <span>
+                        {{limit}}
+                        <i class="fa fa-caret-down" aria-hidden="true"></i>
+                    </span>
+                </button>
+                <div class="dropdown-menu" ngbDropdownMenu>
+                    <button class="dropdown-item" (click)="setLimit('10')">10</button>
+                    <button class="dropdown-item" (click)="setLimit('50')">50</button>
+                    <button class="dropdown-item" (click)="setLimit('100')">100</button>
+                    <button class="dropdown-item" (click)="setLimit('ALL')">ALL</button>
+                </div>
+            </div>
+
+            <!-- Search Button-->
+            <button type="button" class="btn l-primary btn-search" (click)="datatable.fetchQueryFromInput(partialInputQuery, true)">
+                Search
+            </button>
+        </div>
+    </form>
+
+    <!-- Ngx Datatable -->
+    <defect-datatable #datatable
+        [aws]="aws"
+        [metricApiHandler]="getMetricApiHandler()"
+        [defectReporterApiHandler]="getDefectReporterApiHandler()"
+        [partialQuery]="partialInputQuery"
+        [limit]="limit"
+        [toDefectDetailsPageCallback]="toDefectDetailsPageCallback"
+        [bookmark]="false">
+    </defect-datatable>    
+
+</div>
+
+<!-- Dashboard Facet -->
+<div *ngIf="tabIndex === 1">
+
+    <div ngbDropdown>
+        <button class="btn btn-outline-primary" ngbDropdownToggle>
+            <span>
+                Select Time Period    
+                <i class="fa fa-caret-down" aria-hidden="true"></i>
+            </span>
+        </button>
+        <div ngbDropdownMenu>
+            <button class="dropdown-item" (click)="updateGraph(queryLastXHours(12))">Last 12 Hours</button>
+            <button class="dropdown-item" (click)="updateGraph(queryLastXHours(24))">Last 24 Hours</button>
+            <button class="dropdown-item" (click)="updateGraph(queryLastXDays(7))">Last 7 Days</button>
+            <button class="dropdown-item" (click)="updateGraph(queryLastXDays(30))">Last 30 Days</button>
+            <button class="dropdown-item" (click)="updateGraph(queryLastXMonths(3))">Last 3 Months</button>
+            <button class="dropdown-item" (click)="updateGraph(queryLastXMonths(6))">Last 6 Months</button>
+            <button class="dropdown-item" (click)="updateGraph(queryLastXMonths(12))">Last 12 Months</button>
+        </div>
+    </div>
+      
+    <graph [ref]="queryGraph"></graph>
+
+</div>
+
+<!-- Bookmarks Facet -->
+<div *ngIf="tabIndex === 2">
+    <!-- Ngx Datatable -->
+    <defect-datatable #bookmarktable
+        [aws]="aws"
+        [metricApiHandler]="getMetricApiHandler()"
+        [defectReporterApiHandler]="getDefectReporterApiHandler()"
+        [partialQuery]="''"
+        [limit]="limit"
+        [toDefectDetailsPageCallback]="toDefectDetailsPageCallback"
+        [bookmark]="true">
+    </defect-datatable>  
+</div>
+
+<!-- Recent Searches Facet -->
+<div *ngIf="tabIndex === 3">
+    <h2>Recent Searches</h2>
+    <div [ngSwitch]="isLoadingRecentSearches">
+        <div *ngSwitchCase="true">
+            <loading-spinner></loading-spinner>
+        </div>
+        <div *ngSwitchCase="false">
+            <div *ngIf="recentSearches && recentSearches.length > 0">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="query-params-column">QUERY PARAMETERS</th>
+                            <th class="timestamp-column">TIMESTAMP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let recentSearch of recentSearches">
+                            <td *ngIf="recentSearch['query_params'] != '*'" class="query-params-column" (click)="runRecentSearch(recentSearch['query_params'])">{{recentSearch['query_params']}}</td>
+                            <td *ngIf="recentSearch['query_params'] == '*'" class="query-params-column" (click)="runRecentSearch(recentSearch['query_params'])"></td>
+                            <td class="timestamp-column" (click)="runRecentSearch(recentSearch['query_params'])">{{recentSearch['timestamp']}}</td>
+                            <td>
+                                <div class="float-right">
+                                    <i (click)="shareRecentSearch(recentSearch)" class="fa fa-share-square-o" data-toggle="tooltip" data-placement="top" title="Share"></i>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Configure Facet -->
+<div *ngIf="tabIndex === 4">
+    <report-configuration [(mappings)]="configurationMappings"></report-configuration>
+</div>
+
+<div *ngIf="tabIndex === 5">
+    <client-configuration [context]="context"></client-configuration>
+</div>

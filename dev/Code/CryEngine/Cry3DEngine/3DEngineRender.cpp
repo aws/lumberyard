@@ -51,9 +51,7 @@
 #include "IPlatformOS.h"
 #include <CryProfileMarker.h>
 
-#if defined(FEATURE_SVO_GI)
-#include "SVO/SceneTreeManager.h"
-#endif
+
 
 #ifdef GetCharWidth
 #undef GetCharWidth
@@ -66,6 +64,7 @@
 
 #include "Components/IComponentRender.h"
 #include <AzFramework/IO/FileOperations.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +76,7 @@
 #define DISPLAY_INFO_SCALE_SMALL (1.1f)
 #define STEP_SMALL_DIFF          (2.f)
 
-#if defined(WIN32) || defined(WIN64)
+#if defined(WIN32) || defined(WIN64) || defined(MAC)
 // for panorama screenshots
 class CStitchedImage
     : public Cry3DEngineBase
@@ -149,43 +148,56 @@ public:
 
         const char* szExtension = m_rEngine.GetCVars()->e_ScreenShotFileFormat->GetString();
 
-        if (_stricmp(szExtension, "dds") != 0  &&
-            _stricmp(szExtension, "tga") != 0    &&
-            _stricmp(szExtension, "jpg") != 0)
+        if (azstricmp(szExtension, "dds") != 0  &&
+            azstricmp(szExtension, "tga") != 0    &&
+            azstricmp(szExtension, "jpg") != 0)
         {
             gEnv->pLog->LogError("Format e_ScreenShotFileFormat='%s' not supported", szExtension);
             return false;
         }
 
+        const char* sRequestedName = m_rEngine.GetCVars()->e_ScreenShotFileName->GetString();
+
         char sFileName[AZ_MAX_PATH_LEN];
 
-        snprintf(sFileName, sizeof(sFileName), "@user@/ScreenShots/%s", szDirectory);
-        gEnv->pFileIO->CreatePath(sFileName);
-
-        // find free file id
-        for (;; )
+        if (azstricmp(sRequestedName, "") != 0)
         {
-            snprintf(sFileName, sizeof(sFileName), "@user@/ScreenShots/%s/%.5d.%s", szDirectory, m_nFileId, szExtension);
+            AZStd::string folderPath;
+            AZStd::string fileName;
+            AzFramework::StringFunc::Path::Split(sRequestedName, nullptr, &folderPath, &fileName);
+            gEnv->pFileIO->CreatePath((AZStd::string("@user@/ScreenShots/") + folderPath).c_str());
+            azsnprintf(sFileName, sizeof(sFileName), "@user@/ScreenShots/%s.%s", sRequestedName, szExtension);
+        }
+        else
+        {
+            azsnprintf(sFileName, sizeof(sFileName), "@user@/ScreenShots/%s", szDirectory);
+            gEnv->pFileIO->CreatePath(sFileName);
 
-            AZ::IO::HandleType fileHandle = gEnv->pCryPak->FOpen(sFileName, "rb");
-
-            if (fileHandle == AZ::IO::InvalidHandle)
+            // find free file id
+            for (;; )
             {
-                break; // file doesn't exist
-            }
+                azsnprintf(sFileName, sizeof(sFileName), "@user@/ScreenShots/%s/%.5d.%s", szDirectory, m_nFileId, szExtension);
 
-            gEnv->pCryPak->FClose(fileHandle);
-            m_nFileId++;
+                AZ::IO::HandleType fileHandle = gEnv->pCryPak->FOpen(sFileName, "rb");
+
+                if (fileHandle == AZ::IO::InvalidHandle)
+                {
+                    break; // file doesn't exist
+                }
+
+                gEnv->pCryPak->FClose(fileHandle);
+                m_nFileId++;
+            }
         }
 
         bool bOk;
 
-        if (_stricmp(szExtension, "dds") == 0)
+        if (azstricmp(szExtension, "dds") == 0)
         {
-            bOk = gEnv->pRenderer->WriteDDS((byte*)&m_RGB[0], m_dwWidth, m_dwHeight, 4, sFileName, eTF_BC3, 1);
+            bOk = gEnv->pRenderer->WriteDDS((byte*)&m_RGB[0], m_dwWidth, m_dwHeight, 3, sFileName, eTF_BC3, 1);
         }
         else
-        if (_stricmp(szExtension, "tga") == 0)
+        if (azstricmp(szExtension, "tga") == 0)
         {
             bOk = gEnv->pRenderer->WriteTGA((byte*)&m_RGB[0], m_dwWidth, m_dwHeight, sFileName, 24, 24);
         }
@@ -224,6 +236,11 @@ public:
                 }
             }
         }
+
+        // reset filename when done so user doesn't overwrite other screen shots (unless they want to)
+        // this is done here as there is no callback for standard screenshots to allow the user to clear
+        // this when done with the screen shot, so I decided to just always clear it when done
+        m_rEngine.GetCVars()->e_ScreenShotFileName->Set("");
 
         return bOk;
     }
@@ -573,7 +590,7 @@ enum EScreenShotType
 
 void C3DEngine::ScreenshotDispatcher(const int nRenderFlags, const SRenderingPassInfo& passInfo)
 {
-#if defined(WIN32) || defined(WIN64)
+#if defined(WIN32) || defined(WIN64) || defined(MAC)
     CStitchedImage*   pStitchedImage = 0;
     const uint32  dwPanWidth          = max(1, GetCVars()->e_ScreenShotWidth);
     const uint32  dwPanHeight         = max(1, GetCVars()->e_ScreenShotHeight);
@@ -868,12 +885,10 @@ void C3DEngine::RenderWorld(const int nRenderFlags, const SRenderingPassInfo& pa
     CRYPROFILE_SCOPE_PROFILE_MARKER("RenderWorld");
     AZ_TRACE_METHOD();
 
-#if defined(FEATURE_SVO_GI)
     if (nRenderFlags & SHDF_ALLOW_AO)
     {
-        CSvoManager::OnFrameStart(passInfo);
+        SVOGILegacyRequestBus::Broadcast(&SVOGILegacyRequests::OnFrameStart, passInfo);
     }
-#endif
 
     if (m_szLevelFolder[0] != 0)
     {
@@ -1626,7 +1641,7 @@ void C3DEngine::SetSkyMaterial(_smart_ptr<IMaterial> pSkyMat)
 
 bool C3DEngine::IsHDRSkyMaterial(_smart_ptr<IMaterial> pMat) const
 {
-    return pMat && !_stricmp(pMat->GetShaderItem().m_pShader->GetName(), "SkyHDR");
+    return pMat && !azstricmp(pMat->GetShaderItem().m_pShader->GetName(), "SkyHDR");
 }
 
 void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& passInfo)
@@ -1639,8 +1654,6 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     CRY_ASSERT(m_pPartManager);
     CRY_ASSERT(m_pTerrain);
     CRY_ASSERT(m_pDecalManager);
-    CRY_ASSERT(gEnv->pGame);
-    CRY_ASSERT(gEnv->pCharacterManager);
 
     GetObjManager()->GetCullThread().SetActive(true);
 
@@ -1689,7 +1702,7 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
 
     SubmitSun(passInfo);
 
-    if (GetCVars()->e_StatObjBufferRenderTasks && JobManager::InvokeAsJob("CheckOcclusion") && m_pObjManager != nullptr)
+    if (GetCVars()->e_StatObjBufferRenderTasks && m_pObjManager != nullptr)
     {
         m_pObjManager->BeginOcclusionCulling(passInfo);
     }
@@ -1744,12 +1757,10 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
         RenderSkyBox(GetSkyMaterial(), passInfo);
     }
 
-#if defined(FEATURE_SVO_GI)
     if (nRenderFlags & SHDF_ALLOW_AO)
     {
-        CSvoManager::Render();
+        SVOGILegacyRequestBus::Broadcast(&SVOGILegacyRequests::UpdateRenderData);
     }
-#endif
 
     {
         FRAME_PROFILER_LEGACYONLY("COctreeNode::Render_Object_Nodes_NEAR", GetSystem(), PROFILE_3DENGINE);
@@ -1802,7 +1813,7 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     }
 
     // tell the occlusion culler that no new work will be submitted
-    if (GetCVars()->e_StatObjBufferRenderTasks == 1 && JobManager::InvokeAsJob("CheckOcclusion") && GetObjManager() != nullptr)
+    if (GetCVars()->e_StatObjBufferRenderTasks == 1 && GetObjManager() != nullptr)
     {
         GetObjManager()->PushIntoCullQueue(SCheckOcclusionJobData::CreateQuitJobData());
     }
@@ -1812,7 +1823,7 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
 
     gEnv->pSystem->DoWorkDuringOcclusionChecks();
 
-    if (GetCVars()->e_StatObjBufferRenderTasks && JobManager::InvokeAsJob("CheckOcclusion") && m_pObjManager != nullptr)
+    if (GetCVars()->e_StatObjBufferRenderTasks && m_pObjManager != nullptr)
     {
         m_pObjManager->RenderBufferedRenderMeshes(passInfo);
     }
@@ -1837,7 +1848,10 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
 
     m_LightVolumesMgr.Update(passInfo);
 
-    gEnv->pGame->OnRenderScene(passInfo);
+    if (gEnv->pGame != nullptr)
+    {
+        gEnv->pGame->OnRenderScene(passInfo);
+    }
 
     SetupDistanceFog();
 
@@ -1847,7 +1861,10 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     {
         m_pTerrain->UpdateSectorMeshes(passInfo);
     }
-    gEnv->pCharacterManager->UpdateStreaming(GetObjManager()->GetUpdateStreamingPrioriryRoundId(), GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast());
+    if (gEnv->pCharacterManager)
+    {
+        gEnv->pCharacterManager->UpdateStreaming(GetObjManager()->GetUpdateStreamingPrioriryRoundId(), GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast());
+    }
 
     {
         FRAME_PROFILER("Renderer::EF_EndEf3D", GetSystem(), PROFILE_RENDERER);
@@ -1893,8 +1910,6 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
     CRY_ASSERT(m_pPartManager);
     CRY_ASSERT(m_pTerrain);
     CRY_ASSERT(m_pDecalManager);
-    CRY_ASSERT(gEnv->pCharacterManager);
-    CRY_ASSERT(gEnv->pGame);
 
     if (!GetCVars()->e_Recursion)
     {
@@ -2033,13 +2048,20 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
     {
         m_pPartManager->FinishParticleRenderTasks(passInfo);
     }
-    gEnv->pGame->OnRenderScene(passInfo);
+
+    if (gEnv->pGame != nullptr)
+    {
+        gEnv->pGame->OnRenderScene(passInfo);
+    }
 
     if (m_pTerrain != nullptr)
     {
         m_pTerrain->UpdateSectorMeshes(passInfo);
     }
-    gEnv->pCharacterManager->UpdateStreaming(GetObjManager()->GetUpdateStreamingPrioriryRoundId(), GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast());
+    if (gEnv->pCharacterManager)
+    {
+        gEnv->pCharacterManager->UpdateStreaming(GetObjManager()->GetUpdateStreamingPrioriryRoundId(), GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast());
+    }
 
     {
         FRAME_PROFILER("Renderer::EF_EndEf3D", GetSystem(), PROFILE_RENDERER);
@@ -2439,10 +2461,12 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     m_pRenderer->EF_Query(EFQ_GetFogCullDistance, fogCullDist);
     m_pRenderer->EF_Query(EFQ_GetViewportDownscaleFactor, vViewportScale);
 
-    DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "CamPos=%.2f %.2f %.2f Angl=%3d %2d %3d ZN=%.2f ZF=%d FC=%.2f VS=%.2f,%.2f Zoom=%.2f Speed=%1.2f TimeOfDay=%02d:%02d",
+    DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "CamPos=%.2f %.2f %.2f Angl=%3d %2d %3d ZN=%.2f ZF=%d",
         vPos.x, vPos.y, vPos.z, (int)aAng.x, (int)aAng.y, (int)aAng.z,
-        GetRenderingCamera().GetNearPlane(), (int)GetRenderingCamera().GetFarPlane(), fogCullDist,
-        vViewportScale.x, vViewportScale.y,
+        GetRenderingCamera().GetNearPlane(), (int)GetRenderingCamera().GetFarPlane());
+
+    DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "Cam FC=%.2f VS=%.2f,%.2f Zoom=%.2f Speed=%1.2f TimeOfDay=%02d:%02d",
+        fogCullDist, vViewportScale.x, vViewportScale.y,
         GetZoomFactor(), GetAverageCameraSpeed(), hours, minutes);
 
     // get version
@@ -3213,10 +3237,6 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
         }
     }
 
-#if defined(FEATURE_SVO_GI)
-    CSvoManager::OnDisplayInfo(fTextPosX, fTextPosY, fTextStepY, DISPLAY_INFO_SCALE);
-#endif
-
 #undef MAX_PHYS_TIME
 #undef TICKS_TO_MS
 #undef CONVY
@@ -3398,7 +3418,7 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
                 ShadowMapFrustum*& pLsource = pSMI->pGSM[nLod];
                 if (nLod)
                 {
-                    strcat(szText, ", ");
+                    azstrcat(szText, AZ_ARRAY_SIZE(szText), ", ");
                 }
 
                 char* pstr = szText + strlen(szText);
@@ -3676,11 +3696,11 @@ void C3DEngine::SetupDistanceFog()
 
 void C3DEngine::ScreenShotHighRes(CStitchedImage* pStitchedImage, const int nRenderFlags, const SRenderingPassInfo& passInfo, uint32 SliceCount, f32 fTransitionSize)
 {
-#if defined(WIN32) || defined(WIN64)
+#if defined(WIN32) || defined(WIN64) || defined(MAC)
 
     //If the requested format is TGA we want the framebuffer in BGR format; otherwise we want RGB
     const char* szExtension = GetCVars()->e_ScreenShotFileFormat->GetString();
-    bool BGRA = (_stricmp(szExtension, "tga") == 0) ? true : false;
+    bool BGRA = (azstricmp(szExtension, "tga") == 0) ? true : false;
 
     // finish frame started by system
     GetRenderer()->EndFrame();
@@ -3771,7 +3791,7 @@ bool C3DEngine::ScreenShotMap(CStitchedImage* pStitchedImage,
     const uint32                  SliceCount,
     const f32                         fTransitionSize)
 {
-#if defined(WIN32) || defined(WIN64)
+#if defined(WIN32) || defined(WIN64) || defined(MAC)
 
     const uint32  nTSize = GetTerrain()->GetTerrainSize();
     const f32     fTLX   = GetCVars()->e_ScreenShotMapCenterX - GetCVars()->e_ScreenShotMapSizeX + fTransitionSize * GetRenderer()->GetWidth();
@@ -3844,11 +3864,11 @@ bool C3DEngine::ScreenShotMap(CStitchedImage* pStitchedImage,
 
 bool C3DEngine::ScreenShotPanorama(CStitchedImage* pStitchedImage, const int nRenderFlags, const SRenderingPassInfo& passInfo, uint32 SliceCount, f32 fTransitionSize)
 {
-#if defined(WIN32) || defined(WIN64)
+#if defined(WIN32) || defined(WIN64) || defined(MAC)
 
     //If the requested format is TGA we want the framebuffer in BGR format; otherwise we want RGB
     const char* szExtension = GetCVars()->e_ScreenShotFileFormat->GetString();
-    bool BGRA = (_stricmp(szExtension, "tga") == 0) ? true : false;
+    bool BGRA = (azstricmp(szExtension, "tga") == 0) ? true : false;
 
     // finish frame started by system
     GetRenderer()->EndFrame();

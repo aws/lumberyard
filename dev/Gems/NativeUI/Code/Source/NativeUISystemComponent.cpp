@@ -25,7 +25,7 @@ namespace NativeUI
         {
             serialize->Class<SystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {

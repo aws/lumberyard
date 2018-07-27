@@ -409,7 +409,7 @@ namespace GridMate
             // Note that the reliable buffer is also flushed to maintain correct ordering.
             if (dst.GetPeer()->GetUnreliableOutBuffer().Size() > GM_REPLICA_MSG_CUTOFF)
             {
-                dst.GetPeer()->SendBuffer(context.m_replicaManager->m_cfg.m_carrier, context.m_replicaManager->m_cfg.m_commChannel);
+                dst.GetPeer()->SendBuffer(context.m_replicaManager->m_cfg.m_carrier, context.m_replicaManager->m_cfg.m_commChannel, context.m_replicaManager->GetTimeForNetworkTimestamp());
             }
         }
 
@@ -424,7 +424,7 @@ namespace GridMate
             // Note that the reliable buffer is also flushed to maintain correct ordering.
             if (m_replica->m_upstreamHop->GetUnreliableOutBuffer().Size() > GM_REPLICA_MSG_CUTOFF)
             {
-                m_replica->m_upstreamHop->SendBuffer(context.m_replicaManager->m_cfg.m_carrier, context.m_replicaManager->m_cfg.m_commChannel);
+                m_replica->m_upstreamHop->SendBuffer(context.m_replicaManager->m_cfg.m_carrier, context.m_replicaManager->m_cfg.m_commChannel, context.m_replicaManager->GetTimeForNetworkTimestamp());
             }
         }
 

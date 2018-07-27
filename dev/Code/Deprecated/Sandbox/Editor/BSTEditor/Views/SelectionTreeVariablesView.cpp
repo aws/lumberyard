@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "SelectionTreeVariablesView.h"
 #include "BSTEditor/Dialogs/SelectionTree_RefBrowser.h"
 #include "BSTEditor/SelectionTreeManager.h"

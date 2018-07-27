@@ -234,6 +234,10 @@ def DefineGem(ctx, *k, **kw):
 
     # Iterate over each module and setup build
     for module in gem.modules:
+        if module.type == Gem.Module.Type.Standalone:
+            # Managed within the wscript independently
+            continue
+
         if module.name:
             module_kw = kw.get(module.name, None)
 
@@ -339,10 +343,8 @@ def DefineGem(ctx, *k, **kw):
                     if gem_for_project.name != gem.name and not gem_for_project.is_game_gem:
                         append_to_unique_list(unique_gems, gem_for_project)
 
-            is_android = ctx.is_android_platform(ctx.env['PLATFORM'])
-
             for unique_gem in unique_gems:
-                if unique_gem.id in gem.dependencies or unique_gem.is_required or is_android:
+                if unique_gem.id in gem.dependencies or unique_gem.is_required:
                     apply_gem_to_kw(ctx, kw, unique_gem)
 
         working_path = ctx.path.abspath()
@@ -361,7 +363,7 @@ def DefineGem(ctx, *k, **kw):
                     break
 
             source_contents = os.listdir(os.path.join(working_path, source_dir))
-            # see if they have a legacy stdafx precompiled header
+            # see if they have a legacy StdAfx precompiled header
             for entry in source_contents:
                 if entry.lower() == 'stdafx.cpp':
                     pch_file = entry
@@ -431,20 +433,12 @@ def DefineGem(ctx, *k, **kw):
 
         append_unique_kw_entry(module_kw, 'is_gem', True)
 
-        if gem.is_game_gem and ctx.is_monolithic_build() and ctx.is_android_platform(ctx.env['PLATFORM']) and module.type == Gem.Module.Type.GameModule:
-
-            # Special case for android & monolithic builds.  If this is the game gem for the project, it needs to apply the
-            # enabled gems here instead of the launcher where its normally applied.  (see cryengine_modules.CryLauncher_Impl
-            # for details).  In legacy game projects, this the game dll is declared as a CryEngineModule
-            setattr(ctx,'game_project',gem.name)
-            ctx.CryEngineModule(**module_kw)
-        else:
-            if module.type in [Gem.Module.Type.GameModule, Gem.Module.Type.EditorModule]:
-                ctx.CryEngineSharedLibrary(**module_kw)
-            elif module.type == Gem.Module.Type.StaticLib:
-                ctx.CryEngineStaticLibrary(**module_kw)
-            elif module.type == Gem.Module.Type.Builder:
-                ctx.BuilderPlugin(**module_kw)
+        if module.type in [Gem.Module.Type.GameModule, Gem.Module.Type.EditorModule]:
+            ctx.CryEngineSharedLibrary(**module_kw)
+        elif module.type == Gem.Module.Type.StaticLib:
+            ctx.CryEngineStaticLibrary(**module_kw)
+        elif module.type == Gem.Module.Type.Builder:
+            ctx.BuilderPlugin(**module_kw)
 
         # INTERNAL USE ONLY
         # Apply export_defines to ENTIRE BUILD. USE LIGHTLY.
@@ -523,8 +517,9 @@ class Gem(object):
             EditorModule    = 'EditorModule'
             StaticLib       = 'StaticLib'
             Builder         = 'Builder'
+            Standalone      = 'Standalone'
 
-            Types           = [GameModule, EditorModule, StaticLib, Builder]
+            Types           = [GameModule, EditorModule, StaticLib, Builder, Standalone]
 
         def requires_linking(self, ctx):
             # If NoCode, never link for any reason
@@ -537,6 +532,10 @@ class Gem(object):
 
             # Never link in Builders
             if self.type == Gem.Module.Type.Builder:
+                return False
+
+            # Never link in Standalones
+            if self.type == Gem.Module.Type.Standalone:
                 return False
 
             # Don't link in EditorModules if doing a monolithic build
@@ -790,6 +789,81 @@ class GemManager(object):
     def contains_gem(self, *gem_spec):
         return self.get_gem_by_spec(*gem_spec) != None
 
+    def add_gems_from_file(self, gems_list_file, game_project=None):
+
+        Logs.debug('gems: reading gems file at %s' % gems_list_file)
+
+        gems_list_context_msg = 'Gems list for project {}'.format(game_project) if game_project \
+                                 else 'Gems list {}'.format(gems_list_file.abspath())
+
+        gem_info_list = self.ctx.parse_json_file(gems_list_file)
+        list_reader = _create_field_reader(self.ctx, gem_info_list, gems_list_context_msg)
+
+        # Verify that the project file is an up-to-date format
+        gem_format_version = list_reader.field_int('GemListFormatVersion')
+        if gem_format_version != GEMS_FORMAT_VERSION:
+            self.ctx.cry_error(
+                'Gems list file at {} is of version {}, not expected version {}. Please update your project file.'.format(
+                    gems_list_file, gem_format_version, GEMS_FORMAT_VERSION))
+
+        for idx, gem_info_obj in enumerate(list_reader.field_req('Gems')):
+
+            # String for error reporting.
+            gem_context_msg = 'Gem {} in game project {}'.format(idx, game_project) if game_project \
+                                else 'Gem {}'.format(idx)
+
+            reader = _create_field_reader(self.ctx, gem_info_obj, gem_context_msg)
+
+            gem_id = reader.uuid()
+            version = reader.version()
+            path = os.path.normpath(reader.field_req('Path'))
+
+            gem = self.get_gem_by_spec(gem_id, version, path)
+            if not gem:
+                Logs.debug('gems: Gem not found in cache, attempting to load from disk: ({}, {}, {})'.format(gem_id,
+                                                                                                             version,
+                                                                                                             path))
+                detected_gem_versions = {}
+
+                for search_path in self.search_paths:
+                    def_file = os.path.join(search_path, path, GEMS_DEFINITION_FILE)
+                    if not os.path.isfile(def_file):
+                        continue  # Try again with the next path
+
+                    gem = Gem(self.ctx)
+                    gem.path = path
+                    gem.abspath = os.path.join(search_path, path)
+                    gem.load_from_json(self.ctx.parse_json_file(self.ctx.root.make_node(def_file)))
+
+                    # Protect against loading duplicate gems from different locations, showing a warning if detected
+                    dup_gem = detected_gem_versions.get(gem.version.__str__(), None)
+                    if dup_gem is not None:
+                        Logs.warn(
+                            '[WARN] Duplicate gem {} (version {}) found in multiple paths.  Accepting the one at {}'.format(
+                                gem.name, gem.version, dup_gem.abspath))
+                        gem = dup_gem
+                        break
+                    detected_gem_versions[gem.version.__str__()] = gem
+
+                    # Validate that the Gem loaded from the path specified actually matches the id and version.
+                    if gem.id != gem_id:
+                        self.ctx.cry_error(
+                            "Gem at path {} has ID {}, instead of ID {} specified in {}.".format(
+                                path, gem.id, gem_id, gems_list_context_msg))
+
+                    if gem.version != version:
+                        self.ctx.cry_error(
+                            "Gem at path {} has version {}, instead of version {} specified in {}.".format(
+                                path, gem.version, version, gems_list_context_msg))
+
+                    self.add_gem(gem)
+
+            if not gem:
+                self.ctx.cry_error('Failed to load from path "{}"'.format(path))
+
+            if game_project:
+                gem.games_enabled_in.append(game_project)
+
     def process(self):
         """
         Process current directory for gems
@@ -798,6 +872,7 @@ class GemManager(object):
         and build a list of all enabled gems so that those are built.
         To debug gems output during build, use --zones=gems in your command line
         """
+
 
         this_path = self.ctx.path
 
@@ -823,77 +898,29 @@ class GemManager(object):
 
         game_projects = self.ctx.get_enabled_game_project_list()
 
-        for game_project in game_projects:
-            Logs.debug('gems: Game Project: %s' % game_project)
+        if len(game_projects)>0:
+            for game_project in game_projects:
+                Logs.debug('gems: Game Project: %s' % game_project)
 
-            gems_list_file = self.ctx.get_project_node(game_project).make_node(GEMS_LIST_FILE)
+                gems_list_file = self.ctx.get_project_node(game_project).make_node(GEMS_LIST_FILE)
 
-            if not os.path.isfile(gems_list_file.abspath()):
-                if self.ctx.is_option_true('gems_optional'):
-                    Logs.debug("gems: Game has no gems file, skipping [%s]" % gems_list_file)
-                    continue # go to the next game
-                else:
-                    self.ctx.cry_error('Project {} is missing {} file.'.format(game_project, GEMS_LIST_FILE))
+                if not os.path.isfile(gems_list_file.abspath()):
+                    if self.ctx.is_option_true('gems_optional'):
+                        Logs.debug("gems: Game has no gems file, skipping [%s]" % gems_list_file)
+                        continue # go to the next game
+                    else:
+                        self.ctx.cry_error('Project {} is missing {} file.'.format(game_project, GEMS_LIST_FILE))
 
-            Logs.debug('gems: reading gems file at %s' % gems_list_file)
-
-            gem_info_list = self.ctx.parse_json_file(gems_list_file)
-            list_reader = _create_field_reader(self.ctx, gem_info_list, 'Gems list for project ' + game_project)
-
-            # Verify that the project file is an up-to-date format
-            gem_format_version = list_reader.field_int('GemListFormatVersion')
-            if gem_format_version != GEMS_FORMAT_VERSION:
-                self.ctx.cry_error(
-                    'Gems list file at {} is of version {}, not expected version {}. Please update your project file.'.format(
-                        gems_list_file, gem_format_version, GEMS_FORMAT_VERSION))
-
-            for idx, gem_info_obj in enumerate(list_reader.field_req('Gems')):
-                # String for error reporting.
-                reader = _create_field_reader(self.ctx, gem_info_obj, 'Gem {} in game project {}'.format(idx, game_project))
-
-                gem_id = reader.uuid()
-                version = reader.version()
-                path = os.path.normpath(reader.field_req('Path'))
-
-                gem = self.get_gem_by_spec(gem_id, version, path)
-                if not gem:
-                    Logs.debug('gems: Gem not found in cache, attempting to load from disk: ({}, {}, {})'.format(gem_id, version, path))
-
-                    detected_gem_versions = {}
-
-                    for search_path in self.search_paths:
-                        def_file = os.path.join(search_path, path, GEMS_DEFINITION_FILE)
-                        if not os.path.isfile(def_file):
-                            continue # Try again with the next path
-
-                        gem = Gem(self.ctx)
-                        gem.path = path
-                        gem.abspath = os.path.join(search_path, path)
-                        gem.load_from_json(self.ctx.parse_json_file(self.ctx.root.make_node(def_file)))
-
-                        # Protect against loading duplicate gems from different locations, showing a warning if detected
-                        dup_gem = detected_gem_versions.get(gem.version.__str__(),None)
-                        if dup_gem is not None:
-                            Logs.warn('[WARN] Duplicate gem {} (version {}) found in multiple paths.  Accepting the one at {}'.format(gem.name,gem.version,dup_gem.abspath))
-                            gem = dup_gem
-                            break
-                        detected_gem_versions[gem.version.__str__()] = gem
-
-                        # Validate that the Gem loaded from the path specified actually matches the id and version.
-                        if gem.id != gem_id:
-                            self.ctx.cry_error("Gem at path {} has ID {}, instead of ID {} specified in {}'s {}.".format(
-                                path, gem.id, gem_id, game_project, GEMS_LIST_FILE))
-
-                        if gem.version != version:
-                            self.ctx.cry_error("Gem at path {} has version {}, instead of version {} specified in {}'s {}.".format(
-                                path, gem.version, version, game_project, GEMS_LIST_FILE))
-
-                        self.add_gem(gem)
-
-                if not gem:
-                    self.ctx.cry_error('Failed to load from path "{}"'.format(path))
-
-                gem.games_enabled_in.append(game_project)
+                self.add_gems_from_file(gems_list_file, game_project)
+        else:
+            # If there are no enabled, valid game projects, then see if we have an override gems list from the enable specs
+            override_gems_list = self.ctx.get_override_gems_list()
+            path_check_base = this_path.abspath()
+            for override_gems_file_path in override_gems_list:
+                if not os.path.exists(os.path.join(path_check_base, override_gems_file_path)):
+                    self.ctx.cry_error('Invalid override gem file {} specified in one of the enabled specs.')
+                gems_list_file = this_path.make_node(override_gems_file_path)
+                self.add_gems_from_file(gems_list_file, None)
 
         for gem in self.gems:
             Logs.debug("gems: gem %s is used by games: %s" % (gem.name, gem.games_enabled_in))
@@ -932,6 +959,8 @@ class GemManager(object):
 
     def add_to_specs(self):
 
+        enabled_game_projects = self.ctx.get_enabled_game_project_list()
+
         specs_to_include = self.ctx.loaded_specs() + ['gems']
 
         system_specs = ('gems','all')
@@ -942,6 +971,8 @@ class GemManager(object):
                                                       visual_studio_name='Gems',
                                                       modules=['CryAction', 'CryAction_AutoFlowNode'])
 
+        # If there are enabled game projects, then specifically add the gems to each current spec that the gem is
+        # enabled for
         for spec_name in specs_to_include:
 
             # Get the defined game project per spec and only add gems from game projects
@@ -954,11 +985,15 @@ class GemManager(object):
                 game_projects = fallback_enabled_game_projects_string.split(',')
 
             if len(game_projects) == 0 and spec_name not in system_specs:
-                continue
+                # If there are no game projects enabled at all, then add the gems automatically if specified
+                if len(enabled_game_projects) == 0:
+                    for gem in self.gems:
+                        # If this is a system spec, then always add the gem
+                        self.add_gem_to_spec(gem, spec_name)
+                    continue
 
             # Add to build specs per project
             for gem in self.gems:
-
                 # If this is a system spec, then always add the gem
                 if spec_name in system_specs:
                     self.add_gem_to_spec(gem,spec_name)

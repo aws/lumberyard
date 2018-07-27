@@ -13,6 +13,7 @@
 #pragma once
 
 #include "EMotionFXConfig.h"
+#include <Source/Integration/System/SystemCommon.h>
 
 
 namespace EMotionFX
@@ -24,9 +25,10 @@ namespace EMotionFX
      */     
     class EMFX_API Constraint
     {
-        MCORE_MEMORYOBJECTCATEGORY(Constraint, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_CONSTRAINTS);
-
         public:
+            AZ_RTTI(Constraint, "{DC5998AD-EE56-4642-AAE7-EA285F0B9B0A}")
+            AZ_CLASS_ALLOCATOR(Constraint, EMotionFX::Integration::EMotionFXAllocator, 0)
+
             Constraint() {}
             virtual ~Constraint() {}
 

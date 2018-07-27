@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"                                     // precompiled headers
+#include "StdAfx.h"                                     // precompiled headers
 #include "SimpleTriangleRasterizer.h"                   // CSimpleTriangleRastizer
 #include <math.h>                                       // sqrt()
 

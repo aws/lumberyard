@@ -13,9 +13,15 @@ export class AwsDeployment implements Deployment {
     private _deploymentSettings: DeploymentSettings;    
     private _resourceGroups: BehaviorSubject<ResourceGroup[]>;       
     protected subscribedResourceGroups: string[]; 
+    private _resourceGroupList: ResourceGroup[]
+    private _isLoading: boolean = false
 
     get resourceGroup(): Observable<ResourceGroup[]> {
         return this._resourceGroups.asObservable();
+    }
+
+    get resourceGroupList(): ResourceGroup[] {
+        return this._resourceGroupList;
     }
 
     get settings(): DeploymentSettings {
@@ -30,12 +36,17 @@ export class AwsDeployment implements Deployment {
         return this.configEndpointURL + "/resource-group"
     }
 
+    get isLoading(): boolean {
+        return this._isLoading
+    }
+
     public constructor(
         private context: AwsContext,        
         private deploymentsettings: DeploymentSettings        
     ) {
         this._deploymentSettings = deploymentsettings;
         this._resourceGroups = new BehaviorSubject<ResourceGroup[]>(undefined);        
+        this._resourceGroupList = []
     }
 
     public update(): void {
@@ -45,12 +56,13 @@ export class AwsDeployment implements Deployment {
         }
 
         let region = AwsService.getRegionFromArn(this.settings.DeploymentStackId);
-                
+        this._isLoading = true;       
         this.context.cloudFormation.describeStacks({
             StackName: this.settings.DeploymentStackId
         }, (err: any, data: any) => {
             if (err) {                
                 console.log(err);
+                this._isLoading = false; 
                 return;
             }
             //finish the deployment settings configuration
@@ -84,7 +96,9 @@ export class AwsDeployment implements Deployment {
         }, (err: any, data: any) => {
             if (err) {                
                 console.log(err);
-                this._resourceGroups.next([]);
+                this._resourceGroupList = []
+                this._resourceGroups.next(this._resourceGroupList);
+                this._isLoading = false;
                 return;
             }
             let rgs: AwsResourceGroup[] = [];            
@@ -104,20 +118,26 @@ export class AwsDeployment implements Deployment {
             for (var i = 0; i < rgs.length; i++) {
                 let rg = rgs[i];
                 rg.updating.subscribe(isUpdating => {
-                    if (isUpdating)
+                    this._isLoading = false;
+                    if (isUpdating) {                        
                         return;
+                    }
 
                     updatedCount++;                    
                     if (updatedCount == rgs.length) {
-                        this._resourceGroups.next(rgs);                                         
-                    }
+                        this._resourceGroupList = rgs
+                        this._resourceGroups.next(this._resourceGroupList);                                         
+                    }                    
                 })              
                 rg.setOutputs();      
             }
 
-            if (rgs.length == 0)
-                this._resourceGroups.next([]);
-
+            if (rgs.length == 0) {
+                this._isLoading = false;
+                this._resourceGroupList = []
+                this._resourceGroups.next(this._resourceGroupList);                
+            }
+            
         });
     }
 }

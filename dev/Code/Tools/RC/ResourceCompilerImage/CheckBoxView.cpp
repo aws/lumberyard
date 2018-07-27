@@ -70,7 +70,7 @@ void CheckBoxView::SubclassWidget(QCheckBox* hWnd)
 
     this->UpdateView();
 
-    QObject::connect(check, &QCheckBox::clicked, [&](){OnChange(); });
+    QObject::connect(check, &QCheckBox::clicked, check, [&](){OnChange(); });
 }
 
 void CheckBoxView::UpdateView()

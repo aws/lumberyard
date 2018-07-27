@@ -872,7 +872,7 @@ int CParticleEntity::DoStep(float time_interval, int iCaller)
             if (!(m_flags & particle_no_path_alignment) && !m_bSliding)
             {
                 Vec3 dirbuf[3];
-                dirbuf[0] = m_gravity ^ m_heading;
+                dirbuf[0] = m_gravity.normalized() ^ m_heading;
                 dirbuf[1] = m_heading;
                 if (dirbuf[0].len2() < 0.01f)
                 {

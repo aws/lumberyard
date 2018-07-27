@@ -14,7 +14,7 @@
 #include "StdAfx.h"
 #include "smartptr.h"
 #include "ZipFileFormat.h"
-#include "ZipDirStructures.h"
+#include "zipdirstructures.h"
 #include "ZipDirTree.h"
 #include "ZipDirCacheRW.h"
 #include "ZipDirFindRW.h"

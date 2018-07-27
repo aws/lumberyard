@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include <Woodpecker/Driller/Workspaces/Workspace.h>
 #include <AzCore/Serialization/SerializeContext.h>

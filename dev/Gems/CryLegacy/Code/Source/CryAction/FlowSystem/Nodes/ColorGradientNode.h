@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "FlowBaseNode.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 class CFlowNode_ColorGradient
     : public CFlowBaseNode<eNCT_Instanced>

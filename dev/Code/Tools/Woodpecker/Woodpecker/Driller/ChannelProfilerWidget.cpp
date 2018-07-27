@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "Woodpecker/Driller/ChannelProfilerWidget.hxx"
 #include <Woodpecker/Driller/ChannelProfilerWidget.moc>

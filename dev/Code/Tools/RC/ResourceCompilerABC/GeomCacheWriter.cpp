@@ -23,7 +23,8 @@
 GeomCacheDiskWriteThread::GeomCacheDiskWriteThread(const string& fileName)
     : m_bExit(false)
 {
-    m_fileHandle = fopen(fileName, "w+b");
+    m_fileHandle = nullptr; 
+    azfopen(&m_fileHandle, fileName, "w+b");
 }
 
 GeomCacheDiskWriteThread::~GeomCacheDiskWriteThread()

@@ -15,7 +15,7 @@
 #include "stdafx.h"
 
 // CommandLauncher runs synchronous, asynchronous, and detached processes using QProcess
-class CommandLauncher 
+class CommandLauncher
 {
 public:
     CommandLauncher() { }
@@ -30,7 +30,8 @@ public:
         bool normalExit = true;
         QObject::connect(process,
             static_cast<void (QProcess::*)(int, QProcess::ExitStatus)>(&QProcess::finished), // use static_cast to specify which overload of QProcess::finished to use
-            [&, this](int exitCode, QProcess::ExitStatus exitStatus)
+            process,
+            [&](int exitCode, QProcess::ExitStatus exitStatus)
         {
             if (exitStatus != QProcess::NormalExit || exitCode != 0)
                 normalExit = false;
@@ -46,7 +47,7 @@ public:
         {
             return false;
         }
-            
+
         return normalExit;
     }
 

@@ -11,8 +11,8 @@
 */
 
 #include <ISystem.h>
-#include "../FlowBaseNode.h"
-#include "../CryCommon/IFlowSystem.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
+#include <IFlowSystem.h>
 
 /*
 This node Shows or Hides the particle component(s) on the attached entity,

@@ -12,14 +12,14 @@
 
 #pragma once
 
-#include <MCore/Source/StandardHeaders.h>
 #include <AzCore/std/containers/vector.h>
+#include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/CommandManager.h>
-#include "../StandardPluginsConfig.h"
+#include <EMotionFX/Source/AnimGraphBus.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
+#include "../StandardPluginsConfig.h"
 #include <QWidget>
-#include <MysticQt/Source/SearchButton.h>
 
 
 QT_FORWARD_DECLARE_CLASS(QPushButton)
@@ -27,6 +27,10 @@ QT_FORWARD_DECLARE_CLASS(QTreeWidget)
 QT_FORWARD_DECLARE_CLASS(QTreeWidgetItem)
 QT_FORWARD_DECLARE_CLASS(QContextMenuEvent)
 
+namespace AzQtComponents
+{
+    class FilteredSearchWidget;
+}
 
 namespace EMStudio
 {
@@ -37,6 +41,7 @@ namespace EMStudio
 
     class NavigateWidget
         : public QWidget
+        , protected EMotionFX::AnimGraphNotificationBus::Handler
     {
         MCORE_MEMORYOBJECTCATEGORY(NavigateWidget, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
         Q_OBJECT
@@ -53,6 +58,9 @@ namespace EMStudio
         NavigateWidget(AnimGraphPlugin* plugin, QWidget* parent = nullptr);
         ~NavigateWidget();
 
+        // AnimGraphNotificationBus
+        void OnSyncVisualObject(EMotionFX::AnimGraphObject* object) override;
+
         void RemoveTreeRow(const QString& name);
         void Rename(const char* oldName, const char* newName);
 
@@ -60,14 +68,15 @@ namespace EMStudio
         MCORE_INLINE QTreeWidgetItem* GetRootItem() { return mRootItem; }
 
         QTreeWidgetItem* FindItem(const QString& name);
+        QTreeWidgetItem* FindItemById(const EMotionFX::AnimGraphNodeId& id) const;
 
         void ShowGraph(EMotionFX::AnimGraphNode* node, bool updateInterface);
         void ShowGraphByNodeName(const AZStd::string& nodeName, bool updateInterface);
 
-        static QTreeWidgetItem* InsertNode(QTreeWidget* treeWidget, QTreeWidgetItem* parentItem, EMotionFX::AnimGraphNode* node, bool recursive, uint32 visibilityFilterNodeID = MCORE_INVALIDINDEX32, bool showStatesOnly = false, const char* searchFilterString = nullptr);
+        static QTreeWidgetItem* InsertNode(QTreeWidget* treeWidget, QTreeWidgetItem* parentItem, EMotionFX::AnimGraphNode* node, bool recursive, const AZ::TypeId& visibilityFilterNodeType = AZ::TypeId::CreateNull(), bool showStatesOnly = false, const char* searchFilterString = nullptr);
 
         // returns the root item
-        static QTreeWidgetItem* UpdateTreeWidget(QTreeWidget* treeWidget, EMotionFX::AnimGraph* animGraph, uint32 visibilityFilterNodeID = MCORE_INVALIDINDEX32, bool showStatesOnly = false, const char* searchFilterString = nullptr);
+        static QTreeWidgetItem* UpdateTreeWidget(QTreeWidget* treeWidget, EMotionFX::AnimGraph* animGraph, const AZ::TypeId& visibilityFilterNodeType = AZ::TypeId::CreateNull(), bool showStatesOnly = false, const char* searchFilterString = nullptr);
 
         void UpdateTreeWidget(EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphNode* nodeToShow = nullptr);
 
@@ -86,7 +95,6 @@ namespace EMStudio
         void OnItemClicked(QTreeWidgetItem* item, int column);
         void OnContextMenuRename();
         void OnDeleteSelectedNodes();
-        void OnActivateState();
         void OnSetAsEntryState();
         void OnAddWildCardTransition();
         void OnVisualizeOptions();
@@ -99,7 +107,7 @@ namespace EMStudio
         void Cut();
         void Copy();
         void Paste();
-        void OnFilterStringChanged(const QString& text);
+        void OnTextFilterChanged(const QString& text);
 
     private:
         QTreeWidget*        mTreeWidget;
@@ -110,16 +118,13 @@ namespace EMStudio
         QTreeWidgetItem*    mRootItem;
         EMotionFX::AnimGraphNode*      mVisualColorNode;
         EMotionFX::AnimGraphNode*      mVisualOptionsNode;
-        MysticQt::SearchButton*         mSearchFilter;
-        AZStd::string       mSearchString;
+        AzQtComponents::FilteredSearchWidget* m_searchWidget;
+        AZStd::string       m_searchStringText;
 
         void SetEnabledSelectedNodes(bool flag);
         void FillPasteCommandGroup(bool cutMode);
-        MCore::CommandGroup                         mPasteCommandGroup;
-        MCore::CommandGroup                         mPasteCommandGroupNoConnections;
-        AZStd::vector<AZStd::string>                mNodeNamesToCopy;
-        AZStd::vector<AZStd::string>                mNodeNamesToCopyNoConnections;
-        uint32                                      mCopyParentNodeTypeID;
+        AZStd::unordered_set<EMotionFX::AnimGraphNodeId> mNodeIdsToCopy;
+        AZ::TypeId                                  mCopyParentNodeType;
         bool                                        mCutMode;
 
         void ChangeVisibleItem(EMotionFX::AnimGraphNode* node);

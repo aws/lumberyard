@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "GetComponentEntityRotationNode.h"
 
 #include <AzCore/Math/Transform.h>
@@ -90,7 +90,7 @@ void ComponentEntityRotationNode::ProcessEvent(EFlowEvent evt, SActivationInfo* 
                     ResetHandlerForEntityId(activationInformation->entityId);
                 }
 
-                ActivateOutput(activationInformation, OutputPorts::CurrentRotation, AZVec3ToLYVec3(AzFramework::ConvertTransformToEulerDegrees(m_entityTransform)));
+                ActivateOutput(activationInformation, OutputPorts::CurrentRotation, AZVec3ToLYVec3(AZ::ConvertTransformToEulerDegrees(m_entityTransform)));
                 ActivateOutput(activationInformation, OutputPorts::Forward, AZVec3ToLYVec3(m_entityTransform.GetBasisY()));
                 ActivateOutput(activationInformation, OutputPorts::Up, AZVec3ToLYVec3(m_entityTransform.GetBasisZ()));
                 ActivateOutput(activationInformation, OutputPorts::Right, AZVec3ToLYVec3(m_entityTransform.GetBasisX()));

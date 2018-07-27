@@ -41,21 +41,12 @@ namespace MCore
 
         MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(&mValue); }
         MCORE_INLINE uint32 GetRawDataSize() const                  { return sizeof(int32); }
-        bool GetSupportsRawDataPointer() const override             { return true; }
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeInt32::Create(mValue); }
         Attribute* CreateInstance(void* destMemory) override        { return new(destMemory) AttributeInt32(); }
         const char* GetTypeString() const override                  { return "AttributeInt32"; }
-        bool InitFrom(const Attribute* other) override
-        {
-            if (other->GetType() != TYPE_ID)
-            {
-                return false;
-            }
-            mValue = static_cast<const AttributeInt32*>(other)->GetValue();
-            return true;
-        }
+        bool InitFrom(const Attribute* other);
         bool InitFromString(const AZStd::string& valueString) override
         {
             return AzFramework::StringFunc::LooksLikeInt(valueString.c_str(), &mValue);
@@ -63,7 +54,6 @@ namespace MCore
         bool ConvertToString(AZStd::string& outString) const override      { outString = AZStd::string::format("%d", mValue); return true; }
         uint32 GetClassSize() const override                        { return sizeof(AttributeInt32); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_INTSPINNER; }
-        void Scale(float scaleFactor) override                      { mValue = (int32)(mValue * scaleFactor); }
 
     private:
         int32   mValue;     /**< The signed integer value. */
@@ -91,20 +81,6 @@ namespace MCore
 
             Endian::ConvertSignedInt32(&streamValue, streamEndianType);
             mValue = streamValue;
-            return true;
-        }
-
-
-        // write to a stream
-        bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override
-        {
-            int32 streamValue = mValue;
-            Endian::ConvertSignedInt32To(&streamValue, targetEndianType);
-            if (stream->Write(&streamValue, sizeof(int32)) == 0)
-            {
-                return false;
-            }
-
             return true;
         }
     };

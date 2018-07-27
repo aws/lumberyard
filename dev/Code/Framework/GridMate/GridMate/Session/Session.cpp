@@ -2077,7 +2077,9 @@ GridMember::OnReplicaChangeOwnership(const ReplicaContext& rc)
 bool
 GridMember::OnKick(AZ::u8 reason, const RpcContext& rc)
 {
-    if (rc.m_sourcePeer == m_session->GetHost()->GetIdCompact())    //Only the host can kick
+    //  Null check m_session and m_session->GetHost(). 
+    //  2 Kick messages in quick succession can cause this to crash otherwise.
+    if (m_session && m_session->GetHost() && rc.m_sourcePeer == m_session->GetHost()->GetIdCompact())    //Only the host can kick
     {
         EBUS_DBG_EVENT(Debug::SessionDrillerBus, OnMemberKicked, m_session, this);
         EBUS_EVENT_ID(m_session->GetGridMate(), SessionEventBus, OnMemberKicked, m_session, this, reason);
@@ -2090,7 +2092,6 @@ GridMember::OnKick(AZ::u8 reason, const RpcContext& rc)
         return true; // this is called only on the master
     }
     return false;
-
 }
 
 //=========================================================================
@@ -2547,19 +2548,22 @@ SessionService::Update()
 void
 SessionService::AddGridSeach(GridSearch* search)
 {
-    AZ_Assert(AZStd::find(m_activeSearches.begin(), m_activeSearches.end(), search) == m_activeSearches.end(), "This search %p is already in the active searches list!", search);
-    AZ_Assert(AZStd::find(m_completedSearches.begin(), m_completedSearches.end(), search) == m_completedSearches.end(), "This search %p is already in the complete searches list!", search);
-
-    if (search->IsDone())
+    if(search != nullptr)
     {
-        m_completedSearches.push_back(search);
-    }
-    else
-    {
-        m_activeSearches.push_back(search);
-    }
+        AZ_Assert(AZStd::find(m_activeSearches.begin(), m_activeSearches.end(), search) == m_activeSearches.end(), "This search %p is already in the active searches list!", search);
+        AZ_Assert(AZStd::find(m_completedSearches.begin(), m_completedSearches.end(), search) == m_completedSearches.end(), "This search %p is already in the complete searches list!", search);
 
-    EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnGridSearchStart, search);
+        if (search->IsDone())
+        {
+            m_completedSearches.push_back(search);
+        }
+        else
+        {
+            m_activeSearches.push_back(search);
+        }
+
+        EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnGridSearchStart, search);
+    }
 }
 
 //=========================================================================
@@ -2568,22 +2572,25 @@ SessionService::AddGridSeach(GridSearch* search)
 void
 SessionService::ReleaseGridSearch(GridSearch* search)
 {
-    EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnGridSearchRelease, search);
-
-    if (search->IsDone())
+    if(search != nullptr)
     {
-        SearchArrayType::iterator it = AZStd::find(m_completedSearches.begin(), m_completedSearches.end(), search);
-        AZ_Assert(it != m_completedSearches.end(), "Completed search %p was NOT found in the complete list!", search);
-        m_completedSearches.erase(it);
-    }
-    else
-    {
-        SearchArrayType::iterator it = AZStd::find(m_activeSearches.begin(), m_activeSearches.end(), search);
-        AZ_Assert(it != m_activeSearches.end(), "Active search %p was NOT found in the active list!", search);
-        m_activeSearches.erase(it);
-    }
+        EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnGridSearchRelease, search);
 
-    delete search;
+        if (search->IsDone() && !m_completedSearches.empty())
+        {
+            SearchArrayType::iterator it = AZStd::find(m_completedSearches.begin(), m_completedSearches.end(), search);
+            AZ_Assert(it != m_completedSearches.end(), "Completed search %p was NOT found in the complete list!", search);
+            m_completedSearches.erase(it);
+        }
+        else if (!m_activeSearches.empty())
+        {
+            SearchArrayType::iterator it = AZStd::find(m_activeSearches.begin(), m_activeSearches.end(), search);
+            AZ_Assert(it != m_activeSearches.end(), "Active search %p was NOT found in the active list!", search);
+            m_activeSearches.erase(it);
+        }
+
+        delete search;
+    }
 }
 
 //=========================================================================

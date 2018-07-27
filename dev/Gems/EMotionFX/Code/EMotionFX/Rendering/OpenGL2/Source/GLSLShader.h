@@ -31,11 +31,11 @@ namespace RenderGL
         GLSLShader();
         virtual ~GLSLShader();
 
-        virtual void Activate() override;
-        virtual void Deactivate() override;
+        void Activate() override;
+        void Deactivate() override;
 
         uint32 FindAttributeLocation(const char* name);
-        virtual uint32 GetType() const override;
+        uint32 GetType() const override;
 
         MCORE_INLINE unsigned int GetProgram() const                                    { return mProgram; }
         bool CheckIfIsDefined(const char* attributeName);

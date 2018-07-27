@@ -14,7 +14,7 @@
 // Description : BMPHelper
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include <platform.h>
 #include "BMPHelper.h"
 #include "RichSaveGameTypes.h"

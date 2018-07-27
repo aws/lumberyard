@@ -11,8 +11,8 @@
 */
 
 #include <ISystem.h>
-#include "../FlowBaseNode.h"
-#include "../CryCommon/IFlowSystem.h"
+#include <FlowSystem/Nodes/FlowBaseNode.h>
+#include <IFlowSystem.h>
 
 /*
 This node turns the light component on the attached entity On or Off,

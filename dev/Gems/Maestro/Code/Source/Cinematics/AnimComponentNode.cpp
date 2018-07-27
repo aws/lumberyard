@@ -363,7 +363,7 @@ void CAnimComponentNode::ConvertBetweenWorldAndLocalPosition(Vec3& position, ETr
     GetParentWorldTransform(parentTransform);
     if (conversionDirection == eTransformConverstionDirection_toLocalSpace)
     {
-        parentTransform.InvertFast();
+        parentTransform.InvertFull();
     }
     pos = parentTransform * pos;
 
@@ -379,6 +379,7 @@ void CAnimComponentNode::ConvertBetweenWorldAndLocalRotation(Quat& rotation, ETr
 
     AZ::Transform parentTransform = AZ::Transform::Identity();
     GetParentWorldTransform(parentTransform);
+    parentTransform.ExtractScale();
     if (conversionDirection == eTransformConverstionDirection_toLocalSpace)
     {
         parentTransform.InvertFast();
@@ -399,7 +400,7 @@ void CAnimComponentNode::ConvertBetweenWorldAndLocalScale(Vec3& scale, ETransfor
     GetParentWorldTransform(parentTransform);
     if (conversionDirection == eTransformConverstionDirection_toLocalSpace)
     {
-        parentTransform.InvertFast();
+        parentTransform.InvertFull();
     }
     scaleTransform = parentTransform * scaleTransform;
 
@@ -480,6 +481,9 @@ Quat CAnimComponentNode::GetRotate(float time)
     if (rotTrack != nullptr && rotTrack->GetNumKeys() > 0)
     {
         rotTrack->GetValue(time, worldRot);
+
+        // Track values are always stored as relative to the parent (local), so convert to world.        
+        ConvertBetweenWorldAndLocalRotation(worldRot, eTransformConverstionDirection_toWorldSpace);
     }
     else
     {

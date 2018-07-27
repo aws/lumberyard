@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include "CryLegacy_precompiled.h"
 #include <cstdlib>
 
 #include "FlowNode_GetUsername.h"
@@ -42,18 +42,40 @@ void FlowNode_GetUsername::GetConfiguration(SFlowNodeConfig& config)
 
 void FlowNode_GetUsername::ProcessEvent(EFlowEvent event, SActivationInfo* pActInfo)
 {
-#if defined(WIN64) || defined(MAC) || defined(IOS)
+#if defined(WIN64)
     if (event == eFE_Activate && IsPortActive(pActInfo, EIP_GetUsername))
     {
-        const char* pUsername = nullptr;
+        char* pUsername = nullptr;
 
-        pUsername = std::getenv("USER");
+        _dupenv_s(&pUsername, 0, "USER");
         if (pUsername == nullptr || *pUsername == 0)
         {
-            pUsername = std::getenv("USERNAME");
+            _dupenv_s(&pUsername, 0, "USERNAME");
             if (pUsername == nullptr || *pUsername == 0)
             {
-                pUsername = std::getenv("COMPUTERNAME");
+                _dupenv_s(&pUsername, 0, "COMPUTERNAME");
+                if (pUsername == nullptr || *pUsername == 0)
+                {
+                    ActivateOutput<string>(pActInfo, EOP_Error, "Unable to find USER, USERNAME or COMPUTERNAME in environment");
+                    return;
+                }
+            }
+        }
+
+        ActivateOutput<string>(pActInfo, EOP_Username, pUsername);
+    }
+#elif defined(MAC) || defined(IOS)
+    if (event == eFE_Activate && IsPortActive(pActInfo, EIP_GetUsername))
+    {
+        char* pUsername = nullptr;
+
+        pUsername = getenv("USER");
+        if (pUsername == nullptr || *pUsername == 0)
+        {
+            pUsername = getenv("USERNAME");
+            if (pUsername == nullptr || *pUsername == 0)
+            {
+                pUsername = getenv("COMPUTERNAME");
                 if (pUsername == nullptr || *pUsername == 0)
                 {
                     ActivateOutput<string>(pActInfo, EOP_Error, "Unable to find USER, USERNAME or COMPUTERNAME in environment");

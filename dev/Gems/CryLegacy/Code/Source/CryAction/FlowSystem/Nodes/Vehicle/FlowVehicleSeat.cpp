@@ -14,7 +14,7 @@
 // Description : Implements a flow node to vehicle seats
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "CryAction.h"
 #include "IVehicleSystem.h"
 #include "VehicleSystem/Vehicle.h"

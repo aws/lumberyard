@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "PerceptionManager.h"
 #include "CAISystem.h"
 #include "Puppet.h"
@@ -862,25 +862,25 @@ void CPerceptionManager::DebugDraw(int mode)
                 switch (s.subType)
                 {
                 case AISOUND_GENERIC:
-                    _snprintf(subTypeTxt, 128, "GENERIC  R=%.1f", s.radius);
+                    azsnprintf(subTypeTxt, 128, "GENERIC  R=%.1f", s.radius);
                     break;
                 case AISOUND_COLLISION:
-                    _snprintf(subTypeTxt, 128, "COLLISION  R=%.1f", s.radius);
+                    azsnprintf(subTypeTxt, 128, "COLLISION  R=%.1f", s.radius);
                     break;
                 case AISOUND_COLLISION_LOUD:
-                    _snprintf(subTypeTxt, 128, "COLLISION LOUD  R=%.1f", s.radius);
+                    azsnprintf(subTypeTxt, 128, "COLLISION LOUD  R=%.1f", s.radius);
                     break;
                 case AISOUND_MOVEMENT:
-                    _snprintf(subTypeTxt, 128, "MOVEMENT  R=%.1f", s.radius);
+                    azsnprintf(subTypeTxt, 128, "MOVEMENT  R=%.1f", s.radius);
                     break;
                 case AISOUND_MOVEMENT_LOUD:
-                    _snprintf(subTypeTxt, 128, "MOVEMENT LOUD  R=%.1f", s.radius);
+                    azsnprintf(subTypeTxt, 128, "MOVEMENT LOUD  R=%.1f", s.radius);
                     break;
                 case AISOUND_WEAPON:
-                    _snprintf(subTypeTxt, 128, "WEAPON\nR=%.1f", s.radius);
+                    azsnprintf(subTypeTxt, 128, "WEAPON\nR=%.1f", s.radius);
                     break;
                 case AISOUND_EXPLOSION:
-                    _snprintf(subTypeTxt, 128, "EXPLOSION  R=%.1f", s.radius);
+                    azsnprintf(subTypeTxt, 128, "EXPLOSION  R=%.1f", s.radius);
                     break;
                 }
                 break;
@@ -888,28 +888,28 @@ void CPerceptionManager::DebugDraw(int mode)
                 switch (s.subType)
                 {
                 case AICOL_SMALL:
-                    _snprintf(subTypeTxt, 128, "SMALL  R=%.1f", s.radius);
+                    azsnprintf(subTypeTxt, 128, "SMALL  R=%.1f", s.radius);
                     break;
                 case AICOL_MEDIUM:
-                    _snprintf(subTypeTxt, 128, "MEDIUM  R=%.1f", s.radius);
+                    azsnprintf(subTypeTxt, 128, "MEDIUM  R=%.1f", s.radius);
                     break;
                 case AICOL_LARGE:
-                    _snprintf(subTypeTxt, 128, "LARGE  R=%.1f", s.radius);
+                    azsnprintf(subTypeTxt, 128, "LARGE  R=%.1f", s.radius);
                     break;
                 }
                 ;
                 break;
             case AISTIM_EXPLOSION:
-                _snprintf(subTypeTxt, 128, "R=%.1f", s.radius);
+                azsnprintf(subTypeTxt, 128, "R=%.1f", s.radius);
                 break;
             case AISTIM_BULLET_WHIZZ:
-                _snprintf(subTypeTxt, 128, "R=%.1f", s.radius);
+                azsnprintf(subTypeTxt, 128, "R=%.1f", s.radius);
                 break;
             case AISTIM_BULLET_HIT:
-                _snprintf(subTypeTxt, 128, "R=%.1f", s.radius);
+                azsnprintf(subTypeTxt, 128, "R=%.1f", s.radius);
                 break;
             case AISTIM_GRENADE:
-                _snprintf(subTypeTxt, 128, "R=%.1f", s.radius);
+                azsnprintf(subTypeTxt, 128, "R=%.1f", s.radius);
                 break;
             }
             ;
@@ -1924,9 +1924,9 @@ void CPerceptionManager::Serialize(TSerialize ser)
     ser.BeginGroup("PerceptionManager");
     for (unsigned i = 0; i < AI_MAX_STIMULI; ++i)
     {
-        _snprintf(name, 64, "m_stimuli%02d", i);
+        azsnprintf(name, 64, "m_stimuli%02d", i);
         ser.Value(name, m_stimuli[i]);
-        _snprintf(name, 64, "m_ignoreStimuliFrom%02d", i);
+        azsnprintf(name, 64, "m_ignoreStimuliFrom%02d", i);
         ser.Value(name, m_ignoreStimuliFrom[i]);
     }
     ser.EndGroup();

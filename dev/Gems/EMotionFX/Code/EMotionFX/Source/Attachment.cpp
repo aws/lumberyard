@@ -13,10 +13,12 @@
 // include required headers
 #include "Attachment.h"
 #include "ActorInstance.h"
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(Attachment, AttachmentAllocator, 0)
+
     // constructor
     Attachment::Attachment(ActorInstance* attachToActorInstance, ActorInstance* attachment)
         : BaseObject()

@@ -26,7 +26,7 @@ class UiInteractableActionsInterface
 {
 public: // types
 
-    typedef std::function<void(AZ::EntityId)> OnActionCallback;
+    typedef AZStd::function<void(AZ::EntityId)> OnActionCallback;
 
 public: // member functions
 

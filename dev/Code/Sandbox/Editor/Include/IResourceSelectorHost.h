@@ -106,6 +106,7 @@ struct SStaticResourceSelectorEntry;
 // See note at the beginning of the file.
 struct IResourceSelectorHost
 {
+    virtual ~IResourceSelectorHost() = default;
     virtual QString SelectResource(const SResourceSelectorContext& context, const QString& previousValue) = 0;
     virtual const char* ResourceIconPath(const char* typeName) const = 0;
     virtual Serialization::TypeID ResourceContextType(const char* typeName) const = 0;

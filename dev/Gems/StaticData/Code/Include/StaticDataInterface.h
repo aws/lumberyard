@@ -28,7 +28,8 @@ namespace CloudCanvas
             : public AZ::EBusTraits
         {
         public:
-            virtual void TypeReloaded(const AZStd::string& reloadType) = 0;
+            virtual void TypeReloaded(const AZStd::string& reloadType) {}
+            virtual void StaticDataFileAdded(const AZStd::string& filePath) {}
 
             virtual ~StaticDataUpdateGroup() {}
         };
@@ -45,7 +46,6 @@ namespace CloudCanvas
             friend class StaticDataManager;
         protected:
             virtual bool LoadData(const char* dataBuffer) = 0;
-        private:
         };
     }
 }

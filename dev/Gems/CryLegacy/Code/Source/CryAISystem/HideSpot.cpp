@@ -14,7 +14,7 @@
 // Description : Hidespot-related structures
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "HideSpot.h"
 
 

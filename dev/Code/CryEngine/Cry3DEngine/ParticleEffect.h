@@ -239,23 +239,19 @@ struct ResourceParticleParams
 
                                                                     //Confetti - Chris Hekman
                                                                     //Parameters for trail fading
-    ResourceParticleParams* pFadeTrailParams;
 
     ResourceParticleParams()
     {
-        pFadeTrailParams = nullptr;
         ComputeEnvironmentFlags();
     }
 
     ~ResourceParticleParams()
     {
-        SAFE_DELETE(pFadeTrailParams);
     }
 
     explicit ResourceParticleParams(const ParticleParams& params)
         : ParticleParams(params)
     {
-        pFadeTrailParams = nullptr;
         ComputeEnvironmentFlags();
     }
 
@@ -435,11 +431,7 @@ public:
         return m_pParticleParams && m_pParticleParams->bEnabled;
     };
 
-    /////////////////////////////////////////////////////////////////////////////
-    // Fade particle effect - Chris Confetti
-    bool HasFadeEffect() const;
-    CParticleEffect* GetFadeEffect() const;
-    void UpdateFadeEffect();
+    
     /////////////////////////////////////////////////////////////////////////////
     // Particle Level of Detail - Vera, Confetti
     /////////////////////////////////////////////////////////////////////////////
@@ -548,7 +540,6 @@ public:
 
     void GetEffectCounts(SEffectCounts& counts) const;
 
-    void SetFadeParticleParams(ResourceParticleParams* param);
 private:
     void RemoveLevelOfDetailRecursive(SLodInfo* lod);
     void ReplaceLOD(SLodInfo* lod);
@@ -567,8 +558,6 @@ private:
     //! Parenting.
     CParticleEffect*                                m_parent;
     SmartPtrArray<CParticleEffect>  m_children;
-
-    _smart_ptr<CParticleEffect> m_FadeParticle;
 
     // Level of detail array - Vera, Confetti
     SmartPtrArray<CLodParticle> m_levelofdetail;

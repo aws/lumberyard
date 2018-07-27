@@ -32,6 +32,7 @@ namespace CharacterTool
 
     struct IDockWidgetType
     {
+        virtual ~IDockWidgetType() = default;
         virtual const char* Name() const = 0;
         virtual const char* Title() const = 0;
         virtual QWidget* Create(QDockWidget* dw, System* system, QMainWindow* mainWindow) = 0;

@@ -29,7 +29,7 @@ namespace EMotionFX
     class EMFX_API MotionManager
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MotionManager, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_MOTIONMANAGER);
+        AZ_CLASS_ALLOCATOR_DECL
         friend class Initializer;
         friend class EMotionFXManager;
 

@@ -1259,7 +1259,7 @@ bool CTexture::Load(CImageFile* pImage)
     td.m_pFilePath = pImage->mfGet_filename();
 
     // base range after normalization, fe. [0,1] for 8bit images, or [0,2^15] for RGBE/HDR data
-    if ((td.m_eTF == eTF_R9G9B9E5) || (td.m_eTF == eTF_BC6UH) || (td.m_eTF == eTF_BC6UH))
+    if ((td.m_eTF == eTF_R9G9B9E5) || (td.m_eTF == eTF_BC6UH) || (td.m_eTF == eTF_BC6SH))
     {
         td.m_cMinColor /= td.m_cMaxColor.a;
         td.m_cMaxColor /= td.m_cMaxColor.a;

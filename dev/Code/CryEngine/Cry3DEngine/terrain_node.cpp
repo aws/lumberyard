@@ -591,7 +591,7 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
                     continue;
                 }
                 StatInstGroup* pGroup = &GetObjManager()->GetListStaticTypes()[DEFAULT_SID][nGroupId];
-                if (!pGroup || !pGroup->GetStatObj() || pGroup->fSize <= 0 || !pGroup->GetStatObj())
+                if (!pGroup || !pGroup->GetStatObj() || pGroup->fSize <= 0)
                 {
                     continue;
                 }

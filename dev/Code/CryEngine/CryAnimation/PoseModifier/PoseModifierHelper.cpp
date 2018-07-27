@@ -112,6 +112,10 @@ namespace PoseModifierHelper {
         assert(b2 > 0);                                                 //Hinge Joint
         int32 b3 = rIKLimbType.m_arrJointChain[3].m_idxJoint;
         assert(b3 > 0);                                                 //EndEffector
+
+        //  Take the dot product of the parallel, un-normalized vector (goal - pAbsPose[b3].t) with itself 
+        //  to get the squared distance between goal and end effector.
+        //  If this distance is low then the length from goal to end effector is very low and IK is not necessary.
         if (((goal - pAbsPose[b3].t) | (goal - pAbsPose[b3].t)) < 0.0000000001f)
         {
             return; //end-effector and new goal are very close ... IK not necessary
@@ -239,6 +243,10 @@ namespace PoseModifierHelper {
         ANIM_ASSERT(b3 > 0); //Hinge Joint2
         int32 b4 = rIKLimbType.m_arrJointChain[4].m_idxJoint;
         ANIM_ASSERT(b4 > 0); //End-Effector
+
+        //  Take the dot product of the parallel, un-normalized vector (goal - pAbsPose[b4].t) with itself 
+        //  to get the squared distance between goal and end effector.
+        //  If this distance is low then the length from goal to end effector is very low and IK is not necessary.
         if (((goal - pAbsPose[b4].t) | (goal - pAbsPose[b4].t)) < 0.0000001f)
         {
             return; //end-effector and new goal are very close ... IK not necessary

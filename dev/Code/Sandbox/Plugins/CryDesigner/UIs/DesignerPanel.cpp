@@ -250,7 +250,7 @@ void DesignerPanel::UpdateCloneArrayButtons()
         return;
     }
 
-    if (pObj->GetParent() && pObj->GetParent())
+    if (pObj->GetParent())
     {
         GetButton(eDesigner_CircleClone)->setEnabled(false);
         GetButton(eDesigner_ArrayClone)->setEnabled(false);

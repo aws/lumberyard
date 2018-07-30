@@ -791,8 +791,9 @@ int CArticulatedEntity::SetParams(const pe_params* _params, int bThreadSafe)
                 m_joints[op[1]].qext[i] = params->qext[i];
                 nChanges++;
                 if (!(m_joints[op[1]].flags & angle0_locked << i) &&
-                    isneg(m_joints[op[1]].limits[0][i] - m_joints[op[1]].qext[i]) + isneg(m_joints[op[1]].qext[i] - m_joints[op[1]].limits[1][i]) +
-                    isneg(m_joints[op[1]].limits[1][i] - m_joints[op[1]].limits[1][i]) < 2)
+                    isneg(m_joints[op[1]].limits[0][i] - m_joints[op[1]].qext[i]) + 
+                    isneg(m_joints[op[1]].qext[i] - m_joints[op[1]].limits[1][i]) +
+                    isneg(m_joints[op[1]].limits[1][i] - m_joints[op[1]].limits[0][i]) < 2)
                 {   // qext violates limits; adjust the limits
                     float diff[2];
                     diff[0] = m_joints[op[1]].limits[0][i] - m_joints[op[1]].qext[i];
@@ -2040,8 +2041,9 @@ int CArticulatedEntity::Step(float time_interval)
             for (j = 0; j < 3; j++)
             {
                 if (!(m_joints[i].flags & angle0_locked << j) &&
-                    isneg(m_joints[i].limits[0][j] - m_joints[i].qext[j]) + isneg(m_joints[i].qext[j] - m_joints[i].limits[1][j]) +
-                    isneg(m_joints[i].limits[1][j] - m_joints[i].limits[1][j]) < 2)
+                    isneg(m_joints[i].limits[0][j] - m_joints[i].qext[j]) +        
+                    isneg(m_joints[i].qext[j] - m_joints[i].limits[1][j]) +        
+                    isneg(m_joints[i].limits[1][j] - m_joints[i].limits[0][j]) < 2)
                 { // qext violates limits; adjust the limits
                     float diff[2];
                     diff[0] = m_joints[i].limits[0][j] - m_joints[i].qext[j];

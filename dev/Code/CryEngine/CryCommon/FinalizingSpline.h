@@ -635,7 +635,7 @@ namespace spline
                 if (t <= prev_t)
                 {
                     val = 0;
-                    }
+                }
                 else
                 {
                     // Find spline segment.
@@ -649,7 +649,7 @@ namespace spline
                         interpolate(t, Tvalue);
 
                         if (t <= cur_t)
-                    {
+                        {
 
                             Elem newElement;
                             newElement.set_key(prev_t, prev_v);
@@ -662,11 +662,11 @@ namespace spline
                             
                             value_type tds = Tvalue - prev_v;
                             if (pElem[0].dd == FStore(0))
-                        {
+                            {
                                 tds = 2 * tds;
                             }
-                            
-                            newElement.sc = dd - dd;
+
+                            newElement.sc = ds - dd;
                             newElement.sd = dd - value_type(tds);
 
                             newElement.dev_eval(val, 1, Tvalue);

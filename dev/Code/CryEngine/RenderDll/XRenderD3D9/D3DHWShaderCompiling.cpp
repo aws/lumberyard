@@ -39,11 +39,11 @@
     #include <D3DCompiler.h>
 #endif
 
-//  Confetti BEGIN: Igor Lobanchikov
+
 #ifdef CRY_USE_METAL
 #import <Foundation/Foundation.h>
 #endif
-//  Confetti End: Igor Lobanchikov
+
 #include "../Common/Shaders/RemoteCompiler.h"
 #include "../Common/RenderCapabilities.h"
 
@@ -3962,13 +3962,13 @@ void CHWShader_D3D::mfSubmitRequestLine(SHWSInstance* pInst, string* pRequestLin
 
 bool CHWShader_D3D::mfCompileHLSL_Int(CShader* pSH, char* prog_text, LPD3D10BLOB* ppShader, void** ppConstantTable, LPD3D10BLOB* ppErrorMsgs, string& strErr, std::vector<SCGBind>& InstBindVars)
 {
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(CRY_USE_METAL) && defined(_DEBUG)
     NSString* source = [[NSString alloc] initWithCString:prog_text
                         encoding:NSASCIIStringEncoding];
     NSLog(@ "%@", source);
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
     HRESULT hr = S_OK;
     SHWSInstance* pInst = m_pCurInst;
     const char* szProfile = mfProfileString(pInst->m_eClass);

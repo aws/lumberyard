@@ -19,9 +19,9 @@
 
 #include "CCryDXMETALDeviceChild.hpp"
 
-//  Confetti BEGIN: Igor Lobanchikov
+
 @protocol MTLSamplerState;
-//  Confetti End: Igor Lobanchikov
+
 
 namespace NCryMetal
 {
@@ -45,9 +45,9 @@ public:
     void GetDesc(D3D11_SAMPLER_DESC* pDesc);
 protected:
     D3D11_SAMPLER_DESC m_kDesc;
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     id<MTLSamplerState>        m_MetalSamplerState;
-    //  Confetti End: Igor Lobanchikov
+    
 };
 
 #endif //__CRYMETALGLSAMPLERSTATE__

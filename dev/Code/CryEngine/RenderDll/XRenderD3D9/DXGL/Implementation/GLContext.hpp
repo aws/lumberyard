@@ -93,9 +93,9 @@ namespace NCryOpenGL
 #endif
 
         static void RegisterVariables();
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         static void SetIHVDefaults();
-        //  Confetti End: Igor Lobanchikov
+        
     };
 
     // The reference values for the stencil operations
@@ -201,7 +201,7 @@ namespace NCryOpenGL
 
         GLuint m_auVertexAttribDivisors[MAX_VERTEX_ATTRIBUTES];
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         struct SVertexAttribPointer
         {
             GLint m_iSize;
@@ -228,7 +228,7 @@ namespace NCryOpenGL
             }
         };
         SVertexAttribPointer m_auVertexAttribPointer[MAX_VERTEX_ATTRIBUTES];
-        //  Confetti End: Igor Lobanchikov
+        
 
         struct SVertexAttribFormat
         {
@@ -379,7 +379,7 @@ namespace NCryOpenGL
         GLint m_iPackImageHeight;
 #endif //!DXGLES
         GLint m_iPackAlignment;
-        //  Confetti BEGIN: Igor Lobanchikov :END
+        
         GLenum m_glActiveTexture;
     };
 
@@ -397,7 +397,7 @@ namespace NCryOpenGL
         SImageUnitCache m_akImageUnits[MAX_IMAGE_UNITS];
 #endif //DXGL_SUPPORT_SHADER_IMAGES
         SInputAssemblerCache m_kInputAssembler;
-        //  Confetti BEGIN: Igor Lobanchikov :END
+        
         GLint m_akGLScissorData[DXGL_NUM_SUPPORTED_SCISSOR_RECTS * 4];
     };
 
@@ -651,12 +651,12 @@ namespace NCryOpenGL
         const CResourceName& GetCopyPixelBuffer() { return m_kCopyPixelBuffer; }
 #endif
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         inline void NamedBufferDataFast(CResourceName kBufferName, GLsizeiptr iSize, const void* pData, GLenum eUsage);
         inline void NamedBufferSubDataFast(CResourceName kBufferName, GLintptr iOffset, GLsizeiptr iSize, const void* pData);
         inline GLvoid* MapNamedBufferRangeFast(CResourceName kBufferName, GLintptr iOffset, GLsizeiptr iLength, GLbitfield uAccess);
         inline GLboolean UnmapNamedBufferFast(CResourceName kBufferName);
-        //  Confetti End: Igor Lobanchikov
+        
 
         // Confetti Begin: David Srour
         // Since binding framebuffers is deferred, we have to ensure that enabling/disabling PLS extension comes after binings.
@@ -719,14 +719,14 @@ namespace NCryOpenGL
         void FlushShaderTracingState();
 #endif
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(ANDROID)
         void FlushFrameBufferDontCareState(bool bOnBind);
 #endif
 #if defined(DXGL_USE_LAZY_CLEAR)
         void FlushFrameBufferLazyClearState();
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
 
         void SwitchFrame();
 
@@ -855,7 +855,7 @@ namespace NCryOpenGL
         GLBlitFramebufferHelper m_blitHelper;
     };
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     template <typename T>
     inline bool RefreshCache(T& kCache, T kState)
     {
@@ -922,7 +922,7 @@ namespace NCryOpenGL
         return glUnmapBuffer(GL_COPY_WRITE_BUFFER);
 #endif
     }
-    //  Confetti End: Igor Lobanchikov
+    
 
     //  Confetti Begin: David Srour
     inline void CContext::TogglePLS(bool const enable)

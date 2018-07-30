@@ -127,7 +127,7 @@ enum eTEX_Format
     eTF_PVRTC2,
     eTF_PVRTC4,
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     eTF_ASTC_4x4,
     eTF_ASTC_5x4,
     eTF_ASTC_5x5,
@@ -147,7 +147,7 @@ enum eTEX_Format
     eTF_R16U,
     eTF_R16G16U,
     eTF_R10G10B10A2UI,
-    //  Confetti End: Igor Lobanchikov
+    
 
     eTF_MaxFormat               // unused, must be always the last in the list
 };

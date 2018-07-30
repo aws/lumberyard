@@ -377,12 +377,12 @@ void SD3DPostEffectsUtils::DownsampleDepth(CTexture* pSrc, CTexture* pDst, bool 
         SetTexture(pSrc, 0, FILTER_POINT, 1);
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(CRY_USE_METAL) || defined(ANDROID)
     const Vec2& vDownscaleFactor = gcpRendD3D->m_RP.m_CurDownscaleFactor;
     gRenDev->RT_SetScissor(true, 0, 0, pDst->GetWidth() * vDownscaleFactor.x + 0.5f, pDst->GetHeight() * vDownscaleFactor.y + 0.5f);
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
 #if defined(OPENGL_ES)
     uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
@@ -400,11 +400,11 @@ void SD3DPostEffectsUtils::DownsampleDepth(CTexture* pSrc, CTexture* pDst, bool 
     RECT source = { 0, 0, pDst->GetWidth(), pDst->GetHeight() };
     DrawFullScreenTri((srcWidth + 1) / 2, (srcHeight + 1) / 2, 0.f, &source);
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(CRY_USE_METAL) || defined(ANDROID)
     gRenDev->RT_SetScissor(false, 0, 0, 0, 0);
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
     ShEndPass();
 

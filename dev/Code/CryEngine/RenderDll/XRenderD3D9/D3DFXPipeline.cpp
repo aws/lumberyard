@@ -310,10 +310,10 @@ void CD3D9Renderer::FX_ClearTargetRegion(const uint32 nAdditionalStates /* = 0*/
     int nState = GS_NODEPTHTEST;
     if (m_pNewTarget[0]->m_ClearFlags & (CLEAR_ZBUFFER | CLEAR_STENCIL))
     {
-        //  Confetti BEGIN: Igor Lobanchikov
-        //  Igor: for some reason GS_DEPTHFUNC_GREAT does not on Android anymore
+        
+        //  for some reason GS_DEPTHFUNC_GREAT does not on Android anymore
         nState = GS_DEPTHFUNC_NOTEQUAL;
-        //  Confetti End: Igor Lobanchikov
+        
 
         nState &= ~GS_NODEPTHTEST;
         nState |= GS_DEPTHWRITE;
@@ -1872,11 +1872,11 @@ void CD3D9Renderer::FX_SetColorDontCareActions(int const nTarget,
 #ifdef CRY_USE_METAL
         DXMETALSetColorDontCareActions(srt->m_pTarget, loadDontCare, storeDontCare);
 #endif
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(ANDROID)
         DXGLSetColorDontCareActions(srt->m_pTarget, loadDontCare, storeDontCare);
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
     }
 }
 
@@ -1895,11 +1895,11 @@ void CD3D9Renderer::FX_SetDepthDontCareActions(int const nTarget,
 #ifdef CRY_USE_METAL
         DXMETALSetDepthDontCareActions(srt->m_pDepth, loadDontCare, storeDontCare);
 #endif
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(ANDROID)
         DXGLSetDepthDontCareActions(srt->m_pDepth, loadDontCare, storeDontCare);
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
     }
 }
 
@@ -1918,11 +1918,11 @@ void CD3D9Renderer::FX_SetStencilDontCareActions(int const nTarget,
 #ifdef CRY_USE_METAL
         DXMETALSetStencilDontCareActions(srt->m_pDepth, loadDontCare, storeDontCare);
 #endif
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(ANDROID)
         DXGLSetStencilDontCareActions(srt->m_pDepth, loadDontCare, storeDontCare);
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
     }
 }
 

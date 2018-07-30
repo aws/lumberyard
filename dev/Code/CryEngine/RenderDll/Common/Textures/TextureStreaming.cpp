@@ -776,11 +776,11 @@ bool CTexture::StreamPrepareComposition()
         int nTopMipWidth = m_nWidth;
         int nTopMipHeight = m_nHeight;
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         const Vec2i vMipAlign = CTexture::GetBlockDim(m_eTFDst);
         nTopMipWidth = Align(nTopMipWidth, vMipAlign.x);
         nTopMipHeight = Align(nTopMipHeight, vMipAlign.y);
-        //  Confetti End: Igor Lobanchikov
+        
 
         for (int iMip = 0; iMip < m_nMips; ++iMip)
         {
@@ -999,11 +999,11 @@ bool CTexture::StreamPrepare(CImageFile* pIM)
         int nTopMipWidth = m_nWidth;
         int nTopMipHeight = m_nHeight;
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         const Vec2i vMipAlign = CTexture::GetBlockDim(m_eTFDst);
         nTopMipWidth = Align(nTopMipWidth, vMipAlign.x);
         nTopMipHeight = Align(nTopMipHeight, vMipAlign.y);
-        //  Confetti End: Igor Lobanchikov
+        
 
         for (int iMip = 0; iMip < m_nMips; ++iMip)
         {
@@ -1074,9 +1074,9 @@ bool CTexture::StreamPrepare(CImageFile* pIM)
         int nOffs = 0;
         assert(nSyncStartMip <= nSyncEndMip);
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         const Vec2i vMipAlign = CTexture::GetBlockDim(m_eTFDst);
-        //  Confetti End: Igor Lobanchikov
+        
 
         for (int iSide = 0; iSide < m_CacheFileHeader.m_nSides; iSide++)
         {
@@ -1087,12 +1087,12 @@ bool CTexture::StreamPrepare(CImageFile* pIM)
             {
                 STexMipHeader& mh = m_pFileTexMips->m_pMipHeader[iMip];
                 SMipData* mp = &mh.m_Mips[iSide];
-                //  Confetti BEGIN: Igor Lobanchikov
+                
                 if (!mp->DataArray)
                 {
                     mp->Init(mh.m_SideSize, Align(nMipW, vMipAlign.x), Align(nMipH, vMipAlign.y));
                 }
-                //  Confetti End: Igor Lobanchikov
+                
 
                 if (eTileMode != eTM_None)
                 {
@@ -1420,7 +1420,7 @@ bool CTexture::CanStreamInPlace(int nMip, STexPoolItem* pNewPoolItem)
         case eTF_EAC_RG11:
         case eTF_ETC2:
         case eTF_ETC2A:
-            //  Confetti BEGIN: Igor Lobanchikov
+            
 #ifdef CRY_USE_METAL
         case eTF_PVRTC2:
         case eTF_PVRTC4:
@@ -1441,7 +1441,7 @@ bool CTexture::CanStreamInPlace(int nMip, STexPoolItem* pNewPoolItem)
         case eTF_ASTC_12x10:
         case eTF_ASTC_12x12:
 #endif
-            //  Confetti End: Igor Lobanchikov
+            
             bFormatCompatible = true;
             break;
 

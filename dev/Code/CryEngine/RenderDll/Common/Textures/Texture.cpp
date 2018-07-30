@@ -126,9 +126,9 @@ CTexture* CTexture::s_ptexRainSSOcclusion[2];
 CTexture* CTexture::s_ptexRainDropsRT[2];
 
 CTexture* CTexture::s_ptexRT_ShadowPool;
-//  Confetti BEGIN: Igor Lobanchikov
+
 CTexture* CTexture::s_ptexRT_ShadowStub;
-//  Confetti End: Igor Lobanchikov
+
 CTexture* CTexture::s_ptexCloudsLM;
 
 CTexture* CTexture::s_ptexSceneTarget = NULL;
@@ -1541,10 +1541,10 @@ uint32 CTexture::TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, u
     }
     else
     {
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         const Vec2i BlockDim = GetBlockDim(eTF);
         const int nBytesPerBlock = CImageExtensionHelper::BytesPerBlock(eTF);
-        //  Confetti End: Igor Lobanchikov
+        
         uint32 nSize = 0;
 
         while ((nWidth || nHeight || nDepth) && nMips)
@@ -1553,9 +1553,9 @@ uint32 CTexture::TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, u
             nHeight = max(1U, nHeight);
             nDepth = max(1U, nDepth);
 
-            //  Confetti BEGIN: Igor Lobanchikov
+            
             nSize += ((nWidth + BlockDim.x - 1) / BlockDim.x) * ((nHeight + BlockDim.y - 1) / BlockDim.y) * nDepth * nBytesPerBlock;
-            //  Confetti End: Igor Lobanchikov
+            
 
             nWidth  >>= 1;
             nHeight >>= 1;
@@ -1578,11 +1578,11 @@ bool CTexture::IsInPlaceFormat(const ETEX_Format fmt)
     case eTF_R8:
     case eTF_R8S:
     case eTF_R16:
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     case eTF_R16U:
     case eTF_R16G16U:
     case eTF_R10G10B10A2UI:
-    //  Confetti End: Igor Lobanchikov
+    
     case eTF_R16F:
     case eTF_R32F:
     case eTF_R8G8:
@@ -1618,7 +1618,7 @@ bool CTexture::IsInPlaceFormat(const ETEX_Format fmt)
 
     case eTF_B8G8R8A8:
     case eTF_B8G8R8X8:
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #ifdef CRY_USE_METAL
     case eTF_PVRTC2:
     case eTF_PVRTC4:
@@ -1639,7 +1639,7 @@ bool CTexture::IsInPlaceFormat(const ETEX_Format fmt)
     case eTF_ASTC_12x10:
     case eTF_ASTC_12x12:
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
         return true;
     default:
         return false;
@@ -2776,9 +2776,9 @@ void CTexture::ReleaseSystemTextures()
     SAFE_RELEASE_FORCE(s_ptexSkyDomeRayleigh);
     SAFE_RELEASE_FORCE(s_ptexSkyDomeMoon);
     SAFE_RELEASE_FORCE(s_ptexRT_ShadowPool);
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     SAFE_RELEASE_FORCE(s_ptexRT_ShadowStub);
-    //  Confetti End: Igor Lobanchikov
+    
 
     SAFE_RELEASE_FORCE(s_ptexSceneNormalsMapMS);
     SAFE_RELEASE_FORCE(s_ptexSceneDiffuseAccMapMS);
@@ -2851,9 +2851,9 @@ void CTexture::LoadDefaultSystemTextures()
 #include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
         s_ptexRT_ShadowPool = CTexture::CreateTextureObject("$RT_ShadowPool", 0, 0, 1, eTT_2D, FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_USAGE_DEPTHSTENCIL, eTF_Unknown);
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         s_ptexRT_ShadowStub = CTexture::CreateTextureObject("$RT_ShadowStub", 0, 0, 1, eTT_2D, FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_USAGE_DEPTHSTENCIL, eTF_Unknown);
-        //  Confetti End: Igor Lobanchikov
+        
 
         s_ptexDepthBufferQuarter = CTexture::CreateTextureObject("$DepthBufferQuarter", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_USAGE_DEPTHSTENCIL, eTF_Unknown);
 

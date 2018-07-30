@@ -2486,13 +2486,12 @@ public:
     static int CV_r_GMEM_DOF_Gather1_Quality;
     static int CV_r_GMEM_DOF_Gather2_Quality;
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
+    
     static int CV_r_RainUseStencilMasking;
 
     // Confetti Thomas Zeng: 0 = disable, 1 = enable
     static int CV_r_EnableComputeDownSampling;
 
-    //  Confetti BEGIN: Igor Lobanchikov :END is respected by OpenGL ES only
     static int CV_r_ForceFixedPointRenderTargets;
 
     // Confetti Vera

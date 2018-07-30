@@ -25,7 +25,7 @@
 //////////////////////////////////////////////////////////////////////////
 // PowerVR PVRTexLib
 
-//  Igor: this is required by the latest PTRTexTool
+//  this is required by the latest PTRTexTool
 #if defined(AZ_PLATFORM_WINDOWS)
 #define _WINDLL_IMPORT
 #endif
@@ -39,7 +39,7 @@ static EPVRTPixelFormat FindPvrPixelFormat(EPixelFormat fmt)
 {
     switch (fmt)
     {
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     case ePixelFormat_ASTC_4x4:
         return ePVRTPF_ASTC_4x4;
     case ePixelFormat_ASTC_5x4:
@@ -68,7 +68,7 @@ static EPVRTPixelFormat FindPvrPixelFormat(EPixelFormat fmt)
         return ePVRTPF_ASTC_12x10;
     case ePixelFormat_ASTC_12x12:
         return ePVRTPF_ASTC_12x12;
-    //  Confetti End: Igor Lobanchikov
+    
     case ePixelFormat_PVRTC2:
         return ePVRTPF_PVRTCI_2bpp_RGBA;
     case ePixelFormat_PVRTC4:
@@ -132,7 +132,7 @@ ImageToProcess::EResult ImageToProcess::ConvertFormatWithPVRTCCompressor(const C
                     cquality = pvrtexture::eETCSlowPerceptual;
                 }
             }
-            //  Confetti BEGIN: Igor Lobanchikov
+            
             else if (fmtDst >= ePixelFormat_ASTC_4x4 && fmtDst <= ePixelFormat_ASTC_12x12)
             {
                 if (quality == eQuality_Preview)
@@ -152,7 +152,7 @@ ImageToProcess::EResult ImageToProcess::ConvertFormatWithPVRTCCompressor(const C
                     cquality = pvrtexture::eASTCThorough;
                 }
             }
-            //  Confetti End: Igor Lobanchikov
+            
             else
             {
                 if (quality == eQuality_Preview)

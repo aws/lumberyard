@@ -70,13 +70,13 @@ DeviceInfo::DeviceInfo()
     , m_driverType(D3D_DRIVER_TYPE_NULL)
     , m_creationFlags(0)
     , m_featureLevel(D3D_FEATURE_LEVEL_9_1)
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #ifdef CRY_USE_METAL
     , m_autoDepthStencilFmt(DXGI_FORMAT_R32G8X24_TYPELESS)
 #else
     , m_autoDepthStencilFmt(DXGI_FORMAT_R24G8_TYPELESS)
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
     , m_outputIndex(0)
     , m_syncInterval(0)
     , m_presentFlags(0)

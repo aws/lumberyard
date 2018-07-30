@@ -126,11 +126,11 @@
 #  define DXGL_ENABLE_COMPUTE_SHADERS      0
 #endif
 
-//  Confetti BEGIN: Igor Lobanchikov
+
 #if defined(ANDROID)
 #define USE_FAST_NAMED_APPROXIMATION
 #endif
-//  Confetti End: Igor Lobanchikov
+
 
 enum
 {

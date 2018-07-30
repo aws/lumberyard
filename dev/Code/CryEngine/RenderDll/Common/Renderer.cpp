@@ -791,7 +791,7 @@ int CRenderer::CV_r_EnableGMEMPostProcCS;
 int CRenderer::CV_r_GMEM_DOF_Gather1_Quality;
 int CRenderer::CV_r_GMEM_DOF_Gather2_Quality;
 
-//  Confetti BEGIN: Igor Lobanchikov :END
+
 int CRenderer::CV_r_RainUseStencilMasking;
 
 // Confetti Thomas Zeng: 0 = diable, 1 = enable
@@ -800,7 +800,6 @@ int CRenderer::CV_r_EnableComputeDownSampling;
 // Confetti Vera
 float CRenderer::CV_r_CubeDepthMapFarPlane;
 
-//  Confetti BEGIN: Igor Lobanchikov :END is respected by OpenGL ES only
 int CRenderer::CV_r_ForceFixedPointRenderTargets;
 
 // Fur control parameters
@@ -3421,7 +3420,7 @@ void CRenderer::InitRenderer()
         "0 Compute disabled with postprocessing on GMEM path\n"
         "1 Compute enabled with postprocessing on GMEM path\n");
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
+    
     REGISTER_CVAR3("r_RainUseStencilMasking", CV_r_RainUseStencilMasking, 0, VF_REQUIRE_APP_RESTART,
         "GMEM Deferred Rain enable stencil masking\n"
         "Usage: \n"
@@ -3447,7 +3446,6 @@ void CRenderer::InitRenderer()
         "GMEM render path doesn't support per-portal blend weight.\n"
         "0.f to 1.f weight\n");
 
-    //  Confetti BEGIN: Igor Lobanchikov :END is respected by OpenGL ES only
     REGISTER_CVAR3("r_ForceFixedPointRenderTargets", CV_r_ForceFixedPointRenderTargets, 0, VF_NULL,
         "Forces the engine to use fixed point render targets instead of floating point ones.\n"
         "This variable is respected on Android OpenGL ES only\n"
@@ -7777,9 +7775,9 @@ void CRenderer::SetTextureStreamListener(ITextureStreamListener* pListener)
 //////////////////////////////////////////////////////////////////////////
 float CRenderer::GetGPUFrameTime()
 {
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(CRY_USE_METAL) || defined(ANDROID)
-    //  TODO: Igor: if this won't work consider different frame time calculation
+    //  TODO: if this won't work consider different frame time calculation
     return gEnv->pTimer->GetRealFrameTime();
 #else
 #if 0
@@ -7803,7 +7801,7 @@ float CRenderer::GetGPUFrameTime()
     return fGPUtime;
 #endif
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 }
 
 void CRenderer::GetRenderTimes(SRenderTimes& outTimes)
@@ -8214,7 +8212,7 @@ bool CRenderer::UseHalfFloatRenderTargets()
     return true;
 #endif
 }
-//  Confetti End: Igor Lobanchikov
+
 
 Matrix44A CRenderer::GetCameraMatrix()
 {

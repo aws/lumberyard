@@ -171,7 +171,7 @@ namespace NCryOpenGL
         SShaderTextureBasedView(Type eType);
         virtual ~SShaderTextureBasedView();
 
-        //  Confetti BEGIN: Igor Lobanchikov :END
+        
         virtual bool BindTextureUnit(SSamplerState* pSamplerState, STextureUnitContext& kContext, CContext* pContext, const STextureUnitCache& kCurrentUnitCache);
         virtual bool GenerateMipmaps(CContext* pContext);
 
@@ -188,7 +188,7 @@ namespace NCryOpenGL
 
         bool Init(SBuffer* pBuffer, CContext* pContext);
 
-        //  Confetti BEGIN: Igor Lobanchikov :END
+        
         virtual bool BindTextureUnit(SSamplerState* pSamplerState, STextureUnitContext& kContext, CContext* pContext, const STextureUnitCache& kCurrentUnitCache);
 
         SBuffer* m_pBuffer;
@@ -205,7 +205,7 @@ namespace NCryOpenGL
         bool Init(STexture* pTexture, CContext* pContext);
         bool CreateUniqueView(CContext* pContext);
 
-        //  Confetti BEGIN: Igor Lobanchikov :END
+        
         virtual bool BindTextureUnit(SSamplerState* pSamplerState, STextureUnitContext& kContext, CContext* pContext, const STextureUnitCache& kCurrentUnitCache);
         virtual bool GenerateMipmaps(CContext* pContext);
 
@@ -273,11 +273,11 @@ namespace NCryOpenGL
         TContextMap m_kContextMap;
         SSharingFence m_kCreationFence;
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(ANDROID) || defined(DXGL_USE_LAZY_CLEAR)
         virtual SOutputMergerTextureView* AsSOutputMergerTextureView() { return NULL; }
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
     };
 
     struct SOutputMergerTextureView
@@ -299,11 +299,11 @@ namespace NCryOpenGL
 
         static const GLint INVALID_LAYER;
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(ANDROID) || defined(DXGL_USE_LAZY_CLEAR)
         virtual SOutputMergerTextureView* AsSOutputMergerTextureView() { return this; }
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
     };
 
     struct SDefaultFrameBufferOutputMergerView
@@ -325,7 +325,7 @@ namespace NCryOpenGL
         SDefaultFrameBufferShaderTextureView(const SShaderTextureViewConfiguration& kConfiguration);
         virtual ~SDefaultFrameBufferShaderTextureView();
 
-        //  Confetti BEGIN: Igor Lobanchikov :END
+        
         virtual bool BindTextureUnit(SSamplerState* pSamplerState, STextureUnitContext& kContext, CContext* pContext, const STextureUnitCache& kCurrentUnitCache);
 
         bool m_bUsesTexture;

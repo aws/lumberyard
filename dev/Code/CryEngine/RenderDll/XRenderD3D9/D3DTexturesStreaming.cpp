@@ -761,7 +761,7 @@ STexPoolItem* CTexture::StreamGetPoolItem(int nStartMip, int nMips, bool bShould
                 }
                 else
                 {
-                    //  Confetti BEGIN: Igor Lobanchikov
+                    
                     int nMipW = Align(max(1, m_nWidth >> nMip), vMipAlign.x);
                     int nPitch = 0;
                     const int BlockDim = vMipAlign.x;
@@ -774,7 +774,7 @@ STexPoolItem* CTexture::StreamGetPoolItem(int nStartMip, int nMips, bool bShould
                     {
                         nPitch = TextureDataSize(nMipW, 1, 1, 1, 1, m_eTFSrc);
                     }
-                    //  Confetti End: Igor Lobanchikov
+                    
 
                     ti.m_pData[nSRIdx].pSysMem = md.DataArray;
                     ti.m_pData[nSRIdx].SysMemPitch = nPitch;

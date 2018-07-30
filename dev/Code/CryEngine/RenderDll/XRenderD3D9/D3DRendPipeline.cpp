@@ -1449,11 +1449,11 @@ bool CD3D9Renderer::FX_ZScene(bool bEnable, bool bClearZBuffer, bool bRenderNorm
         FX_SetColorDontCareActions(0, false, false);
         // CONFETTI END
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #ifndef CRY_USE_METAL
         if (!bZPrePass)
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
         {
             FX_PushRenderTarget(nDiffuseTargetID, CTexture::s_ptexSceneDiffuse, NULL);
 
@@ -1499,11 +1499,11 @@ bool CD3D9Renderer::FX_ZScene(bool bEnable, bool bClearZBuffer, bool bRenderNorm
 
         FX_PopRenderTarget(0);
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #ifndef CRY_USE_METAL
         if (!bZPrePass)
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
         {
             FX_PopRenderTarget(nDiffuseTargetID);
             FX_PopRenderTarget(nDiffuseTargetID + 1);
@@ -2977,7 +2977,7 @@ void CD3D9Renderer::FX_WaterVolumesPreprocess()
         int nWidth = int(pCurrWaterVolRefl->GetWidth() * m_RP.m_CurDownscaleFactor.x);
         int nHeight = int(pCurrWaterVolRefl->GetHeight() * m_RP.m_CurDownscaleFactor.y);
 
-        //  Confetti BEGIN: Igor Lobanchikov :END
+        
         PostProcessUtils().StretchRect(CTexture::s_ptexCurrSceneTarget, CTexture::s_ptexHDRTargetPrev, false, bRgbkSrc, false, false, SPostEffectsUtils::eDepthDownsample_None, false, &gcpRendD3D->m_FullResRect);
 
         RECT rect = { 0, pCurrWaterVolRefl->GetHeight() - nHeight, nWidth, nHeight };
@@ -3129,14 +3129,14 @@ void CD3D9Renderer::FX_LinearizeDepth(CTexture* ptexZ)
 
         SetupLinearizeDepthParams(CShaderMan::s_shPostEffects);
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         RECT rect;
         rect.left = rect.top = 0;
         rect.right = LONG(ptexZ->GetWidth() * m_RP.m_CurDownscaleFactor.x);
         rect.bottom = LONG(ptexZ->GetHeight() * m_RP.m_CurDownscaleFactor.y);
 
         PostProcessUtils().DrawFullScreenTri(ptexZ->GetWidth(), ptexZ->GetHeight(), 0, &rect);
-        //  Confetti End: Igor Lobanchikov
+        
 
         D3DShaderResourceView* pNullSRV[1] = { NULL };
         m_DevMan.BindSRV(eHWSC_Pixel, pNullSRV, 15, 1);
@@ -6191,7 +6191,7 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
             FX_ProcessRenderList(EFSLIST_POSTPROCESS, BEFORE_WATER, RenderFunc, false);       // Sorted list without preprocess of all fog passes and screen shaders
             FX_ProcessRenderList(EFSLIST_POSTPROCESS, AFTER_WATER , RenderFunc, false);       // Sorted list without preprocess of all fog passes and screen shaders
 
-            //  Confetti BEGIN: Igor Lobanchikov
+            
 #if defined(CRY_USE_METAL) || defined(ANDROID)
             //  If need upscale do it here.
             {
@@ -6205,9 +6205,9 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
                     CTexture* pCurrRT = CTexture::s_ptexSceneDiffuse;
                     GetUtils().CopyScreenToTexture(pCurrRT);
 
-                    //  Igor: copy osm-guaided viewport rect. It will be destroyed soon.
+                    //  copy osm-guaided viewport rect. It will be destroyed soon.
                     RECT rcSrcRegion = gcpRendD3D->m_FullResRect;
-                    //  Igor: Since now we render to a full RT.
+                    //  Since now we render to a full RT.
                     gcpRendD3D->SetCurDownscaleFactor(Vec2(1, 1));
                     gcpRendD3D->RT_SetViewport(0, 0, gcpRendD3D->GetWidth(), gcpRendD3D->GetHeight());
 
@@ -6215,7 +6215,7 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
                 }
             }
 #endif
-            //  Confetti End: Igor Lobanchikov
+            
             bool bDrawAfterPostProcess = !(gcpRendD3D->m_RP.m_PersFlags1 & RBPF1_SKIP_AFTER_POST_PROCESS);
 
             RT_SetViewport(0, 0, GetWidth(), GetHeight());
@@ -6647,7 +6647,7 @@ void CD3D9Renderer::LogShaderImportMiss(const CShader* pShader)
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(OPENGL_ES) && DXGL_INPUT_GLSL
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
     if (glVersion == DXGLES_VERSION_30)
     {
@@ -6657,13 +6657,13 @@ void CD3D9Renderer::LogShaderImportMiss(const CShader* pShader)
     {
         shaderList = "ShaderList_GLES3_1.txt";
     }
-    //  Confetti End: Igor Lobanchikov
+    
 #elif defined(OPENGL) && DXGL_INPUT_GLSL
     shaderList = "ShaderList_GL4.txt";
 #else
     shaderList = "ShaderList_PC.txt";
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
 #ifdef SHADER_ASYNC_COMPILATION
     if (CRenderer::CV_r_shadersasynccompiling)

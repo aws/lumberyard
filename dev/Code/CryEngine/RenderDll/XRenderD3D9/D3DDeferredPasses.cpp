@@ -470,7 +470,7 @@ bool CD3D9Renderer::FX_DeferredRainGBuffer()
         return false;
     }
 
-	//  Confetti BEGIN: Igor Lobanchikov :END    
+	    
     const bool bUseStencilMask = gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && CRenderer::CV_r_RainUseStencilMasking;
 
     // If GMEM path is enabled but no framebuffer fetches are supported, then neither can this pass.
@@ -483,7 +483,7 @@ bool CD3D9Renderer::FX_DeferredRainGBuffer()
 
     PROFILE_LABEL_SCOPE("DEFERRED_RAIN_GBUFFER");
 
-	//  Confetti BEGIN: Igor Lobanchikov :END
+	
     static const int numOfDeferredStencilRainTechniques = 2;
     static CCryNameTSCRC tech[numOfDeferredStencilRainTechniques] = {CCryNameTSCRC("DeferredRainGBufferStencil"), CCryNameTSCRC("DeferredRainGBufferNoDiscard")};
     static CCryNameTSCRC techDiscard = "DeferredRainGBuffer";
@@ -536,7 +536,7 @@ bool CD3D9Renderer::FX_DeferredRainGBuffer()
         m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE1];  // Splashes
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     const int rainStencilMask = 0x40;
     for (int i = bUseStencilMask ? 0 : 1; i < numOfDeferredStencilRainTechniques; ++i)
     {
@@ -636,7 +636,7 @@ bool CD3D9Renderer::FX_DeferredRainGBuffer()
         SD3DPostEffectsUtils::DrawFullScreenTriWPOS(CTexture::s_ptexSceneNormalsMap->GetWidth(), CTexture::s_ptexSceneNormalsMap->GetHeight(), 1.0f);
         SD3DPostEffectsUtils::ShEndPass();
     }
-	//  Confetti End: Igor Lobanchikov
+	
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr)) // no need to restore... this would break GMEM path
     {
@@ -792,7 +792,7 @@ bool CD3D9Renderer::FX_DeferredSnowLayer()
     gcpRendD3D->FX_SetState(renderState);
     gcpRendD3D->FX_Commit();
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
+    
     SD3DPostEffectsUtils::DrawFullScreenTriWPOS(CTexture::s_ptexBackBuffer->GetWidth(), CTexture::s_ptexBackBuffer->GetHeight(), 0, &gcpRendD3D->m_FullResRect);
     SD3DPostEffectsUtils::ShEndPass();
 

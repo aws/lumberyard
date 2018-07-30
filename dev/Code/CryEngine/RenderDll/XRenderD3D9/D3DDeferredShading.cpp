@@ -1908,11 +1908,11 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     {
         PROFILE_LABEL_SCOPE("STENCIL_VOLUME");
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if !defined(CRY_USE_METAL) && !defined(ANDROID)
         SpecularAccEnableMRT(false);
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
 
         rd->SetDepthBoundTest(0.0f, 1.0f, false); // stencil pre-passes are rop bound, using depth bounds increases even more rop cost
         rd->FX_StencilFrustumCull((pDL->m_Flags & DLF_CASTSHADOW_MAPS) ? -4 : -1, pDL, NULL, 0);
@@ -1929,7 +1929,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         rd->SetDepthBoundTest(pDepthBounds.x, pDepthBounds.z, true);
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if !defined(CRY_USE_METAL) && !defined(ANDROID)
     if (bStencilMask)
     {
@@ -2081,13 +2081,13 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     if (CD3D9Renderer::eGT_256bpp_PATH != gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
         // Note: Shadows use slot 3 and slot 7 for shadow map and jitter map
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(ANDROID)
         m_pDepthRT->Apply(0, m_nTexStatePoint, EFTT_UNKNOWN, -2, SResourceView::DefaultView);
 #else
         m_pDepthRT->Apply(0, m_nTexStatePoint, EFTT_UNKNOWN, -1, SResourceView::DefaultView);
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
         m_pNormalsRT->Apply(1, m_nTexStatePoint, EFTT_UNKNOWN, -1, SResourceView::DefaultView);
         m_pDiffuseRT->Apply(2, m_nTexStatePoint, EFTT_UNKNOWN, -1, SResourceView::DefaultView);
         m_pSpecularRT->Apply(4, m_nTexStatePoint, EFTT_UNKNOWN, -1, SResourceView::DefaultView);
@@ -2336,7 +2336,7 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
             PROFILE_LABEL_SCOPE("CLIPVOLUMES TO STENCIL");
             if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
             {
-                //  Confetti BEGIN: Igor Lobanchikov
+                
                 if (!RenderCapabilities::SupportsStencilTextures())
                 {
                     // Because there's no support for stencil textures we can't resolve the stencil to a texture.
@@ -2349,7 +2349,7 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
                 {
                     rd->FX_PushRenderTarget(0, (CTexture*)NULL, &rd->m_DepthBufferOrigMSAA);
                 }
-                //  Confetti End: Igor Lobanchikov
+                
 
                 rd->RT_SetViewport(0, 0, m_pLBufferDiffuseRT->GetWidth(), m_pLBufferDiffuseRT->GetHeight());
             }
@@ -2409,11 +2409,11 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
     if (RenderCapabilities::SupportsStencilTextures())
     {
         PROFILE_LABEL_SCOPE("RESOLVE STENCIL");
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(CRY_USE_METAL) || defined(ANDROID)
         bool renderTargetWasPopped = SpecularAccEnableMRT(false);
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
         rd->FX_PushRenderTarget(0, m_pResolvedStencilRT, NULL, -1, false, 1);
 
         // CONFETTI BEGIN: David Srour
@@ -2438,7 +2438,7 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
         GetUtils().ShEndPass();
         rd->FX_PopRenderTarget(0);
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(CRY_USE_METAL) || defined(ANDROID)
         // Do not try to re-push a render target if one was not popped above.
         if (renderTargetWasPopped)
@@ -2446,7 +2446,7 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
             SpecularAccEnableMRT(true);
         }
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
     }
 }
 
@@ -2605,22 +2605,22 @@ bool CDeferredShading::AmbientPass(SRenderLight* pGlobalCubemap, bool& bOutdoorV
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
         pDepthBufferRT->SetShaderResourceView(rd->m_pZBufferDepthReadOnlySRV, bMSAA);        // DX11 requires explicitly bind depth then stencil to have access to both depth and stencil read from shader. Formats also must match
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #ifndef ANDROID
         pDepthBufferRT->Apply(3, m_nTexStatePoint, EFTT_UNKNOWN, -1, m_nBindResourceMsaa);
         pDepthBufferRT->SetShaderResourceView(rd->m_pZBufferStencilReadOnlySRV, bMSAA);
         pDepthBufferRT->Apply(4, m_nTexStatePoint, EFTT_UNKNOWN, -1, m_nBindResourceMsaa);
 #endif // !ANDROID
-       //  Confetti End: Igor Lobanchikov
+       
 
         m_pMSAAMaskRT->Apply(5, m_nTexStatePoint);
     }
 
     CTextureManager::Instance()->GetDefaultTexture("EnvironmentBRDF")->Apply(10, m_nTexStateLinear);
 
-    //  Confetti BEGIN: Igor Lobanchikov
-    //  Igor: this is expected by Mali drivers
-    //        this "workaround" was suggested by the Mali team as we were getting incorrect stencil/depth tests behavior due to driver bug
+    
+    //  this is expected by Mali drivers
+    //  this "workaround" was suggested by the Mali team as we were getting incorrect stencil/depth tests behavior due to driver bug
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && (gRenDev->GetFeatures() & RFT_HW_ARM_MALI))
     {
         int nPrevState = rRP.m_CurState;
@@ -2646,7 +2646,7 @@ bool CDeferredShading::AmbientPass(SRenderLight* pGlobalCubemap, bool& bOutdoorV
         rd->FX_PopVP();
         rd->FX_SetState(nPrevState);
     }
-    //  Confetti End: Igor Lobanchikov
+    
 
     SD3DPostEffectsUtils::DrawFullScreenTriWPOS(m_pLBufferDiffuseRT->GetWidth(), m_pLBufferDiffuseRT->GetHeight(), 0, &gcpRendD3D->m_FullResRect);
     SD3DPostEffectsUtils::ShEndPass();
@@ -2666,16 +2666,16 @@ bool CDeferredShading::AmbientPass(SRenderLight* pGlobalCubemap, bool& bOutdoorV
         pBlack->Apply(4, m_nTexStatePoint);
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(CRY_USE_METAL) || defined(ANDROID)
-    //  Igor: we don't want to swich RT's too often for metal
+    //  we don't want to swich RT's too often for metal
     //  We want to keep all light RTs bound regardless of
     //  specular RT usage.
     //  This trick re-enables specular RT
     SpecularAccEnableMRT(false);
     SpecularAccEnableMRT(true);
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
@@ -2790,11 +2790,11 @@ void CDeferredShading::DeferredCubemapPass(const SRenderLight* const __restrict 
 
     if (bStencilMask)
     {
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if !defined(CRY_USE_METAL) && !defined(ANDROID)
         SpecularAccEnableMRT(false);
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
         rd->SetDepthBoundTest(0.0f, 1.0f, false);
         rd->FX_StencilFrustumCull(-1, pDL, NULL, 0);
     }
@@ -2819,11 +2819,11 @@ void CDeferredShading::DeferredCubemapPass(const SRenderLight* const __restrict 
         bHasSpecular = true;
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if !defined(CRY_USE_METAL) && !defined(ANDROID)
     SpecularAccEnableMRT(bHasSpecular);
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
     if (CRenderer::CV_r_deferredshadingLightVolumes)
     {
@@ -2963,7 +2963,7 @@ void CDeferredShading::DeferredCubemapPass(const SRenderLight* const __restrict 
 
     CTextureManager::Instance()->GetDefaultTexture("EnvironmentBRDF")->Apply(10, m_nTexStateLinear);
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     //  If the texture is not loaded Metal runtime will assert
     if (texDiffuse->IsTextureLoaded() && (!bHasSpecular || texSpecular->IsTextureLoaded()))
     {
@@ -2984,7 +2984,7 @@ void CDeferredShading::DeferredCubemapPass(const SRenderLight* const __restrict 
             SD3DPostEffectsUtils::DrawFullScreenTriWPOS(m_pLBufferDiffuseRT->GetWidth(), m_pLBufferDiffuseRT->GetHeight(), pDepthBounds.x);
         }
     }
-    //  Confetti End: Igor Lobanchikov
+    
 
     SD3DPostEffectsUtils::ShEndPass();
 
@@ -3002,11 +3002,11 @@ void CDeferredShading::DeferredCubemapPass(const SRenderLight* const __restrict 
         rd->SetDepthBoundTest(0.f, 1.f, false);
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if !defined(CRY_USE_METAL) && !defined(ANDROID)
     SpecularAccEnableMRT(true);
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
     if (CRenderer::CV_r_DeferredShadingScissor)
     {
@@ -3072,14 +3072,14 @@ void CDeferredShading::ScreenSpaceReflectionPass()
 
         rd->FX_PushRenderTarget(0, dstTex, NULL);
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(CRY_USE_METAL) || defined(ANDROID)
         const Vec2& vDownscaleFactor = gcpRendD3D->m_RP.m_CurDownscaleFactor;
         rd->RT_SetViewport(0, 0, dstTex->GetWidth() * vDownscaleFactor.x + 0.5f, dstTex->GetHeight() * vDownscaleFactor.y + 0.5f);
 #else
         rd->RT_SetViewport(0, 0, dstTex->GetWidth(), dstTex->GetHeight());
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
 
 
         rd->FX_SetState(GS_NODEPTHTEST);
@@ -3106,39 +3106,39 @@ void CDeferredShading::ScreenSpaceReflectionPass()
 
     if (!CRenderer::CV_r_SSReflHalfRes)
     {
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(CRY_USE_METAL) || defined(ANDROID)
         PostProcessUtils().StretchRect(CTexture::s_ptexHDRTarget, CTexture::s_ptexHDRTargetScaled[0], false, false, false, false, SPostEffectsUtils::eDepthDownsample_None, false, &gcpRendD3D->m_HalfResRect);
 #else
         PostProcessUtils().StretchRect(CTexture::s_ptexHDRTarget, CTexture::s_ptexHDRTargetScaled[0]);
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
     }
 
     // Convolve sharp reflections
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(CRY_USE_METAL) || defined(ANDROID)
     const Vec2& vDownscaleFactor = gcpRendD3D->m_RP.m_CurDownscaleFactor;
     gRenDev->RT_SetScissor(true, 0, 0, CTexture::s_ptexHDRTargetScaled[1]->GetWidth() * vDownscaleFactor.x + 0.5f, CTexture::s_ptexHDRTargetScaled[1]->GetHeight() * vDownscaleFactor.y + 0.5f);
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
     PostProcessUtils().StretchRect(CTexture::s_ptexHDRTargetScaled[0], CTexture::s_ptexHDRTargetScaled[1]);
     PostProcessUtils().TexBlurGaussian(CTexture::s_ptexHDRTargetScaled[1], 1, 1.0f, 3.0f, false, 0, false, CTexture::s_ptexHDRTargetScaledTempRT[1]);
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(CRY_USE_METAL) || defined(ANDROID)
     gRenDev->RT_SetScissor(true, 0, 0, CTexture::s_ptexHDRTargetScaled[2]->GetWidth() * vDownscaleFactor.x + 0.5f, CTexture::s_ptexHDRTargetScaled[2]->GetHeight() * vDownscaleFactor.y + 0.5f);
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
     PostProcessUtils().StretchRect(CTexture::s_ptexHDRTargetScaled[1], CTexture::s_ptexHDRTargetScaled[2]);
     PostProcessUtils().TexBlurGaussian(CTexture::s_ptexHDRTargetScaled[2], 1, 1.0f, 3.0f, false, 0, false, CTexture::s_ptexHDRTargetScaledTempRT[2]);
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(CRY_USE_METAL) || defined(ANDROID)
     gRenDev->RT_SetScissor(true, 0, 0, CTexture::s_ptexHDRTargetScaled[3]->GetWidth() * vDownscaleFactor.x + 0.5f, CTexture::s_ptexHDRTargetScaled[3]->GetHeight() * vDownscaleFactor.y + 0.5f);
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
     PostProcessUtils().StretchRect(CTexture::s_ptexHDRTargetScaled[2], CTexture::s_ptexHDRTargetScaled[3]);
     PostProcessUtils().TexBlurGaussian(CTexture::s_ptexHDRTargetScaled[3], 1, 1.0f, 3.0f, false, 0, false, CTexture::s_ptexHDRTargetScaledTempRT[3]);
 
@@ -3160,23 +3160,23 @@ void CDeferredShading::ScreenSpaceReflectionPass()
         CTexture::s_ptexHDRTargetScaled[2]->Apply(3, m_nTexStateLinear);
         CTexture::s_ptexHDRTargetScaled[3]->Apply(4, m_nTexStateLinear);
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(CRY_USE_METAL) || defined(ANDROID)
         const Vec2& vDownscaleFactor = gcpRendD3D->m_RP.m_CurDownscaleFactor;
         gRenDev->RT_SetScissor(true, 0, 0, CTexture::s_ptexHDRTargetScaled[0]->GetWidth() * vDownscaleFactor.x + 0.5f, CTexture::s_ptexHDRTargetScaled[0]->GetHeight() * vDownscaleFactor.y + 0.5f);
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
 
         SD3DPostEffectsUtils::ShBeginPass(m_pShader, tech, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
         SD3DPostEffectsUtils::DrawFullScreenTri(dstTex->GetWidth(), dstTex->GetHeight());
         SD3DPostEffectsUtils::ShEndPass();
         rd->FX_PopRenderTarget(0);
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(CRY_USE_METAL) || defined(ANDROID)
         gRenDev->RT_SetScissor(false, 0, 0, 0, 0);
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
     }
 
     // Restore the old flags
@@ -3230,13 +3230,13 @@ void CDeferredShading::ApplySSReflections()
 
     CTextureManager::Instance()->GetDefaultTexture("EnvironmentBRDF")->Apply(5, m_nTexStateLinear);
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(CRY_USE_METAL) || defined(ANDROID)
     SD3DPostEffectsUtils::DrawFullScreenTriWPOS(pSSRTarget->GetWidth(), pSSRTarget->GetHeight(), 0, &gcpRendD3D->m_HalfResRect);
 #else
     SD3DPostEffectsUtils::DrawFullScreenTriWPOS(pSSRTarget->GetWidth(), pSSRTarget->GetHeight());
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
     SD3DPostEffectsUtils::ShEndPass();
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
@@ -4423,7 +4423,7 @@ bool CDeferredShading::ShadowLightPasses(const SRenderLight& light, const int nL
             rd->m_RP.m_TI[m_nThreadID].m_PersFlags &= ~RBPF_MIRRORCULL;
         }
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if !defined(CRY_USE_METAL) && !defined(ANDROID)
         SpecularAccEnableMRT(false);
 #endif
@@ -4463,7 +4463,7 @@ bool CDeferredShading::ShadowLightPasses(const SRenderLight& light, const int nL
             m_nRenderState |= GS_STENCIL;
         }
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if !defined(CRY_USE_METAL) && !defined(ANDROID)
         SpecularAccEnableMRT(true);
 #endif
@@ -4482,13 +4482,13 @@ bool CDeferredShading::ShadowLightPasses(const SRenderLight& light, const int nL
                 TS.m_bSRGBLookup = false;
                 TS.SetComparisonFilter(true);
                 CTexture::s_ptexRT_ShadowPool->Apply(3, CTexture::GetTexState(TS));
-                //  Confetti BEGIN: Igor Lobanchikov
-                //  Igor: this assigned comparison sampler to correct sampler slot for shadowmapped light sources
+                
+                //  this assigned comparison sampler to correct sampler slot for shadowmapped light sources
                 if (!rd->UseHalfFloatRenderTargets())
                 {
                     CTexture::SetSamplerState(CTexture::GetTexState(TS), 0, eHWSC_Pixel);
                 }
-                //  Confetti End: Igor Lobanchikov
+                
             }
             else
             {
@@ -4602,16 +4602,16 @@ void CDeferredShading::CreateDeferredMaps()
             m_pResolvedStencilRT = CTexture::s_ptexGmemStenLinDepth;
         }
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         SD3DPostEffectsUtils::CreateRenderTarget("$SceneDiffuse", CTexture::s_ptexSceneDiffuse, nWidth, nHeight, Clr_Empty, true, false, eTF_R8G8B8A8, -1, nMsaaAndSrgbFlag);
-        //  Confetti End: Igor Lobanchikov
+        
         SD3DPostEffectsUtils::CreateRenderTarget("$SceneSpecular", CTexture::s_ptexSceneSpecular, nWidth, nHeight, Clr_Empty, true, false, eTF_R8G8B8A8, -1, nMsaaAndSrgbFlag);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_4
 #include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
-        //  Confetti BEGIN: Igor Lobanchikov :END
+        
         ETEX_Format fmtZScaled = gcpRendD3D->UseHalfFloatRenderTargets() ? eTF_R16G16F : eTF_R16G16U;
         SD3DPostEffectsUtils::CreateRenderTarget("$ZTargetScaled", CTexture::s_ptexZTargetScaled, nWidth >> 1, nHeight >> 1, Clr_FarPlane, 1, 0, fmtZScaled, TO_DOWNSCALED_ZTARGET_FOR_AO);
         SD3DPostEffectsUtils::CreateRenderTarget("$ZTargetScaled2", CTexture::s_ptexZTargetScaled2, nWidth >> 2, nHeight >> 2, Clr_FarPlane, 1, 0, fmtZScaled, TO_QUARTER_ZTARGET_FOR_AO);
@@ -4635,13 +4635,13 @@ void CDeferredShading::CreateDeferredMaps()
             CTexture::s_ptexRT_ShadowPool->CreateRenderTarget(eTF_Unknown, Clr_FarPlane);
         }
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         CTexture::s_ptexRT_ShadowStub->Invalidate(1, 1, eShadTF);
         if (!CTexture::IsTextureExist(CTexture::s_ptexRT_ShadowStub))
         {
             CTexture::s_ptexRT_ShadowStub->CreateRenderTarget(eTF_Unknown, Clr_FarPlane);
         }
-        //  Confetti End: Igor Lobanchikov
+        
     }
 
     if (CRenderer::CV_r_DeferredShadingTiled > 0)

@@ -427,13 +427,13 @@ enum PublicRenderPrimitiveType
 #define RFT_FREE_0x2000       0x2000
 #define RFT_OCCLUSIONTEST     0x8000     // Support hardware occlusion test.
 
-//  Confetti BEGIN: Igor Lobanchikov :END
+
 #define RFT_HW_ARM_MALI       0x04000    // Unclassified ARM (MALI) hardware.
 #define RFT_HW_INTEL          0x10000    // Unclassified intel hardware.
 #define RFT_HW_QUALCOMM       0x10000    // Unclassified Qualcomm hardware
 #define RFT_HW_ATI            0x20000    // Unclassified ATI hardware.
 #define RFT_HW_NVIDIA         0x40000    // Unclassified NVidia hardware.
-//  Confetti BEGIN: Igor Lobanchikov :END
+
 #define RFT_HW_MASK           0x74000    // Graphics chip mask.
 
 #define RFT_HW_HDR            0x80000    // Hardware supports high dynamic range rendering.

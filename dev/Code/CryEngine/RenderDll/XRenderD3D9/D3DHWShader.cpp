@@ -2774,9 +2774,9 @@ bool CHWShader_D3D::mfSetTextures(const std::vector<SCGTexture>& Textures, EHWSh
                 break;
             }
 
-            //  Confetti BEGIN: Igor Lobanchikov
+            
             CTexture* tex = nCustomID ? CTexture::GetByID(nCustomID) : CTexture::s_ptexRT_ShadowStub;
-            //  Confetti End: Igor Lobanchikov
+            
             tex->ApplyTexture(nTUnit, eSHClass, nResViewKey);
         }
         break;

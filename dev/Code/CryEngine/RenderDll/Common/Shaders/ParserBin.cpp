@@ -59,9 +59,9 @@ ShaderBucketAllocator g_shaderBucketAllocator;
 
 IGeneralMemoryHeap* g_shaderGeneralHeap = nullptr;
 
-//  Confetti BEGIN: Igor Lobanchikov
+
 std::string g_generatedShaderPath;
-//  Confetti End: Igor Lobanchikov
+
 
 #if defined(OPENGL_ES)
 const char*  GetGLESShaderCachePath()
@@ -757,7 +757,7 @@ void CParserBin::Init()
     // Fixed point for devices that don't support float rendering
     FX_REGISTER_TOKEN(FIXED_POINT);
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
+    
     FX_REGISTER_TOKEN(GLES3_0);
 
     FX_REGISTER_TOKEN(Load);
@@ -896,7 +896,7 @@ void CParserBin::SetupForGLES3()
     gRenDev->m_cEF.m_Bin.InvalidateCache();
     gRenDev->m_cEF.mfInitLookups();
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(ANDROID) && defined(OPENGL_ES)
     assert(gcpRendD3D);
     if (!gcpRendD3D->UseHalfFloatRenderTargets())
@@ -908,7 +908,7 @@ void CParserBin::SetupForGLES3()
         gRenDev->m_cEF.m_ShadersCache = g_generatedShaderPath.c_str();
     }
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
     SAFE_DELETE(gRenDev->m_cEF.m_pGlobalExt);
     gRenDev->m_cEF.m_pGlobalExt = gRenDev->m_cEF.mfCreateShaderGenInfo("RunTime", true);

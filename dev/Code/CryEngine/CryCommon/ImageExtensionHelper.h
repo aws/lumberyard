@@ -384,14 +384,14 @@ namespace CImageExtensionHelper
         return 0;   // chunk does not exist
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     static ILINE Vec2i GetBlockDim(const ETEX_Format eTF)
     {
         if (eTF == eTF_BC1 || eTF == eTF_BC2 || eTF == eTF_BC3 || eTF == eTF_BC5U || eTF == eTF_BC5S || eTF == eTF_BC4U || eTF == eTF_BC4S || eTF == eTF_CTX1 || eTF == eTF_BC6UH || eTF == eTF_BC6SH || eTF == eTF_BC7 || eTF == eTF_EAC_R11 || eTF == eTF_EAC_RG11 || eTF == eTF_ETC2 || eTF == eTF_ETC2A)
         {
             return Vec2i(4, 4);
         }
-        //  Igor: Apple requires the following for the texture:
+        //  Apple requires the following for the texture:
         //  Height and width must be a power of 2
         //  Height and width must be at least 8
         //  Must be square
@@ -451,14 +451,14 @@ namespace CImageExtensionHelper
             return 8 / 8;
         case eTF_R16:
             return 16 / 8;
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         case eTF_R16U:
             return 16 / 8;
         case eTF_R16G16U:
             return 32 / 8;
         case eTF_R10G10B10A2UI:
             return 32 / 8;
-        //  Confetti End: Igor Lobanchikov
+        
         case eTF_R16F:
             return 16 / 8;
         case eTF_R32F:
@@ -564,7 +564,7 @@ namespace CImageExtensionHelper
         return 0;
     }
 
-    //  Confetti End: Igor Lobanchikov
+    
 
     inline bool IsBlockCompressed(ETEX_Format eTF)
     {
@@ -585,7 +585,7 @@ namespace CImageExtensionHelper
                 eTF == eTF_EAC_RG11      ||
                 eTF == eTF_PVRTC2        ||
                 eTF == eTF_PVRTC4        ||
-                //  Confetti BEGIN: Igor Lobanchikov
+                
                 eTF == eTF_ASTC_4x4      ||
                 eTF == eTF_ASTC_5x4      ||
                 eTF == eTF_ASTC_5x5      ||
@@ -600,7 +600,7 @@ namespace CImageExtensionHelper
                 eTF == eTF_ASTC_10x10    ||
                 eTF == eTF_ASTC_12x10    ||
                 eTF == eTF_ASTC_12x12
-                //  Confetti End: Igor Lobanchikov
+                
                 );
     }
 
@@ -639,7 +639,7 @@ namespace CImageExtensionHelper
                 eTF == eTF_EAC_RG11      ||
                 eTF == eTF_PVRTC2        ||
                 eTF == eTF_PVRTC4        ||
-                //  Confetti BEGIN: Igor Lobanchikov
+                
                 eTF == eTF_ASTC_4x4 ||
                 eTF == eTF_ASTC_5x4 ||
                 eTF == eTF_ASTC_5x5 ||
@@ -654,7 +654,7 @@ namespace CImageExtensionHelper
                 eTF == eTF_ASTC_10x10 ||
                 eTF == eTF_ASTC_12x10 ||
                 eTF == eTF_ASTC_12x12
-                //  Confetti End: Igor Lobanchikov
+                
                 );
     }
 
@@ -762,7 +762,7 @@ namespace CImageExtensionHelper
         case eTF_PVRTC4:
             return "PVRTC4";
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         case eTF_ASTC_4x4:
             return "ASTC_4x4";
         case eTF_ASTC_5x4:
@@ -791,7 +791,7 @@ namespace CImageExtensionHelper
             return "ASTC_12x10";
         case eTF_ASTC_12x12:
             return "ASTC_12x12";
-        //  Confetti End: Igor Lobanchikov
+        
 
         case eTF_A8L8:
             return "A8L8";
@@ -1007,7 +1007,7 @@ namespace CImageExtensionHelper
             return eTF_PVRTC4;
         }
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         if (!stricmp(sETF, "ASTC_4x4"))
         {
             return eTF_ASTC_4x4;
@@ -1064,7 +1064,7 @@ namespace CImageExtensionHelper
         {
             return eTF_ASTC_12x12;
         }
-        //  Confetti End: Igor Lobanchikov
+        
 
         if (!stricmp(sETF, "A8L8"))
         {
@@ -1429,7 +1429,7 @@ namespace DDSFormats
     const CImageExtensionHelper::DDS_PIXELFORMAT DDSPF_ETC2A =
     { sizeof(CImageExtensionHelper::DDS_PIXELFORMAT), DDS_FOURCC, MAKEFOURCC('E', 'T', '2', 'A'), 0, 0, 0, 0, 0 };
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     const CImageExtensionHelper::DDS_PIXELFORMAT DDSPF_PVRTC2 =
     { sizeof(CImageExtensionHelper::DDS_PIXELFORMAT), DDS_FOURCC, MAKEFOURCC('P', 'V', 'R', '2'), 0, 0, 0, 0, 0 };
 
@@ -1477,7 +1477,7 @@ namespace DDSFormats
 
     const CImageExtensionHelper::DDS_PIXELFORMAT DDSPF_ASTC_12x12 =
     { sizeof(CImageExtensionHelper::DDS_PIXELFORMAT), DDS_FOURCC, MAKEFOURCC('A', 'S', 'C', 'C'), 0, 0, 0, 0, 0 };
-    //  Confetti End: Igor Lobanchikov
+    
 
     const CImageExtensionHelper::DDS_PIXELFORMAT DDSPF_R32F =
     { sizeof(CImageExtensionHelper::DDS_PIXELFORMAT), DDS_FOURCC, DDS_FOURCC_R32F, 32, 0, 0, 0, 0 };
@@ -1663,7 +1663,7 @@ namespace DDSFormats
         {
             return eTF_A8;
         }
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         else if (ddspf.dwFourCC == DDSPF_PVRTC2.dwFourCC)
         {
             return eTF_PVRTC2;
@@ -1728,7 +1728,7 @@ namespace DDSFormats
         {
             return eTF_ASTC_12x12;
         }
-        //  Confetti End: Igor Lobanchikov
+        
 
         assert(0);
         return eTF_Unknown;
@@ -1884,7 +1884,7 @@ namespace DDSFormats
             case DXGI_FORMAT_PVRTC4_UNORM_SRGB:
                 return eTF_PVRTC4;
 #endif
-                //  Confetti BEGIN: Igor Lobanchikov
+                
 #if defined(ANDROID) //|| defined(CRY_USE_METAL)
             case DXGI_FORMAT_ASTC_4x4_TYPELESS:
                 return eTF_ASTC_4x4;
@@ -1971,7 +1971,7 @@ namespace DDSFormats
             case DXGI_FORMAT_ASTC_12x12_UNORM_SRGB:
                 return eTF_ASTC_12x12;
 #endif
-            //  Confetti End: Igor Lobanchikov
+            
             // only available as hardware format under DX9
             case DXGI_FORMAT_B8G8R8A8_TYPELESS:
                 return eTF_B8G8R8A8;
@@ -2086,7 +2086,7 @@ namespace DDSFormats
         case eTF_PVRTC4:
             return DDSPF_PVRTC4;
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         case eTF_ASTC_4x4:
             return DDSPF_ASTC_4x4;
         case eTF_ASTC_5x4:
@@ -2115,7 +2115,7 @@ namespace DDSFormats
             return DDSPF_ASTC_12x10;
         case eTF_ASTC_12x12:
             return DDSPF_ASTC_12x12;
-        //  Confetti End: Igor Lobanchikov
+        
         default:
             assert(0);
             return DDSPF_A8B8G8R8;

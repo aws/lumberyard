@@ -2505,13 +2505,13 @@ namespace NCryOpenGL
 
     void DXGL_DEBUG_CALLBACK_CONVENTION DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const char* message, void* userParam)
     {
-        //  Confetti BEGIN: Igor Lobanchikov
-        //  Igor: this filters out the debug messages earlier saving the performance which might be broken by excessive string creation.
+        
+        //  this filters out the debug messages earlier saving the performance which might be broken by excessive string creation.
         if ((type == GL_DEBUG_SEVERITY_LOW) || (type == GL_DEBUG_SEVERITY_NOTIFICATION))
         {
             return;
         }
-        //  Confetti End: Igor Lobanchikov
+        
 
         ::string errorMessage, sourceStr, typeStr, severityStr;
         ELogSeverity eLogSeverity = eLS_Warning;

@@ -77,7 +77,7 @@ void PixelFormatsInitializer::InitPixelFormat(EPixelFormat format, const PixelFo
 
 void PixelFormatsInitializer::InitPixelFormats()
 {
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     // Unsigned Formats
     // Data in an unsigned format must be positive. Unsigned formats use combinations of
     // (R)ed, (G)reen, (B)lue, (A)lpha, (L)uminance
@@ -153,7 +153,7 @@ void PixelFormatsInitializer::InitPixelFormats()
     InitPixelFormat(ePixelFormat_A16B16G16R16F, PixelFormatInfo(64, 4, true, "10",  1, 1, 1, 1,  64, false, D3DFMT_A16B16G16R16F, DXGI_FORMAT_R16G16B16A16_FLOAT, eSampleType_Half, "A16B16G16R16F", "four half channels", false, false, eTF_R16G16B16A16F));
     InitPixelFormat(ePixelFormat_G16R16F,      PixelFormatInfo(32, 2, false, "0",   1, 1, 1, 1,  32, false, D3DFMT_G16R16F,  DXGI_FORMAT_R16G16_FLOAT,   eSampleType_Half, "G16R16F",      "two half channel", false, false, eTF_R16G16F));
     InitPixelFormat(ePixelFormat_R16F,         PixelFormatInfo(16, 1, false, "0",   1, 1, 1, 1,  16, false, D3DFMT_R16F,     DXGI_FORMAT_R16_FLOAT,      eSampleType_Half, "R16F",         "one half channel", false, false, eTF_R16F));
-    //  Confetti End: Igor Lobanchikov
+    
 
     for (int i = 0; i < ePixelFormat_Count; ++i)
     {

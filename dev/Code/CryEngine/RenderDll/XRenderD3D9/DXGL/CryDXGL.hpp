@@ -70,8 +70,7 @@
 // TODO: Investigate what prevents framebuffer completeness in some framebuffers with depth stencil bigger than color buffers (which is ok according to the standard)
 #define CRY_OPENGL_DO_NOT_ALLOW_LARGER_RT
 
-//  Confetti BEGIN: Igor Lobanchikov
-//  Igor: need this because the engine needs to know if we are running GL ES 3.0 or GL ES 3.1
+//  need this because the engine needs to know if we are running GL ES 3.0 or GL ES 3.1
 #define DXGL_VERSION_32 320 /* DX 10.1 10.2 */
 #define DXGL_VERSION_41 410
 #define DXGL_VERSION_42 420
@@ -250,7 +249,6 @@ DXGL_EXTERN DXGL_API void DXGLProfileLabelPop(const char* szName);
 //  DXGL Extensions
 ////////////////////////////////////////////////////////////////////////////
 
-//  Confetti BEGIN: Igor Lobanchikov & David Srour
 #if defined(OPENGL_ES)
 void DXGLSetColorDontCareActions(ID3D11RenderTargetView* const rtv,
     bool const loadDontCare = false,
@@ -267,7 +265,6 @@ void DXGLTogglePLS(ID3D11DeviceContext* pDeviceContext, bool const enable);
 
 void DXGLInitializeIHVSpecifix();
 
-//  Confetti End: Igor Lobanchikov
 
 #if !DXGL_FULL_EMULATION
 

@@ -777,7 +777,7 @@ public:
     int16 m_nQuadVBSize;
 
     //////////////////////////////////////////////////////////////////////////
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #ifdef CRY_USE_METAL
     SPixFormat        m_FormatPVRTC2;     //ETC2 compressed RGB for mobile
     SPixFormat        m_FormatPVRTC4;    //ETC2a compressed RGBA for mobile
@@ -798,7 +798,7 @@ public:
     SPixFormat        m_FormatASTC_12x10;
     SPixFormat        m_FormatASTC_12x12;
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
     SPixFormatSupport m_hwTexFormatSupport;
 
     int m_fontBlendMode;

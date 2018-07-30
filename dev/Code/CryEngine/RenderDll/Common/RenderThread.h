@@ -265,12 +265,12 @@ struct SRenderThread
 #include AZ_RESTRICTED_FILE(RenderThread_h, AZ_RESTRICTED_PLATFORM)
 #endif
     HRESULT m_hResult;
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     SDXGLContextThreadLocalHandle m_kDXGLContextHandle;
     SDXGLDeviceContextThreadLocalHandle m_kDXGLDeviceContextHandle;
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-    //  Confetti End: Igor Lobanchikov
+    
     float m_fTimeIdleDuringLoading;
     float m_fTimeBusyDuringLoading;
     TArray<byte> m_Commands[RT_COMMAND_BUF_COUNT]; // m_nCurThreadFill shows which commands are filled by main thread

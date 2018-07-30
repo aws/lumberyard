@@ -546,7 +546,7 @@ bool CTexture::IsDeviceFormatTypeless(D3DFormat nFormat)
     case DXGI_FORMAT_PVRTC2_TYPELESS:
     case DXGI_FORMAT_PVRTC4_TYPELESS:
 #endif
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(ANDROID) || defined(CRY_USE_METAL)
     case DXGI_FORMAT_ASTC_4x4_TYPELESS:
     case DXGI_FORMAT_ASTC_5x4_TYPELESS:
@@ -563,7 +563,7 @@ bool CTexture::IsDeviceFormatTypeless(D3DFormat nFormat)
     case DXGI_FORMAT_ASTC_12x10_TYPELESS:
     case DXGI_FORMAT_ASTC_12x12_TYPELESS:
 #endif
-        //  Confetti End: Igor Lobanchikov
+        
         return true;
 
     default:
@@ -606,7 +606,7 @@ bool CTexture::IsDeviceFormatSRGBReadable(D3DFormat nFormat)
     case DXGI_FORMAT_PVRTC4_UNORM:
         return true;
 #endif
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #if defined(ANDROID) || defined(CRY_USE_METAL)
     case DXGI_FORMAT_ASTC_4x4_UNORM:
         return true;
@@ -637,7 +637,7 @@ bool CTexture::IsDeviceFormatSRGBReadable(D3DFormat nFormat)
     case DXGI_FORMAT_ASTC_12x12_UNORM:
         return true;
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
     default:
         break;
@@ -664,14 +664,14 @@ D3DFormat CTexture::DeviceFormatFromTexFormat(ETEX_Format eTF)
         return DXGI_FORMAT_R8_SNORM;
     case eTF_R16:
         return DXGI_FORMAT_R16_UNORM;
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     case eTF_R16U:
         return DXGI_FORMAT_R16_UINT;
     case eTF_R16G16U:
         return DXGI_FORMAT_R16G16_UINT;
     case eTF_R10G10B10A2UI:
         return DXGI_FORMAT_R10G10B10A2_UINT;
-    //  Confetti End: Igor Lobanchikov
+    
     case eTF_R16F:
         return DXGI_FORMAT_R16_FLOAT;
     case eTF_R32F:
@@ -752,7 +752,7 @@ D3DFormat CTexture::DeviceFormatFromTexFormat(ETEX_Format eTF)
     case eTF_ETC2A:
         return DXGI_FORMAT_ETC2A_UNORM;
 #endif //defined(OPENGL)
-       //  Confetti BEGIN: Igor Lobanchikov
+       
 #ifdef CRY_USE_METAL
     case eTF_PVRTC2:
         return DXGI_FORMAT_PVRTC2_UNORM;
@@ -789,7 +789,7 @@ D3DFormat CTexture::DeviceFormatFromTexFormat(ETEX_Format eTF)
     case eTF_ASTC_12x12:
         return DXGI_FORMAT_ASTC_12x12_UNORM;
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
     // only available as hardware format under DX9
     case eTF_A8L8:
@@ -843,7 +843,7 @@ D3DFormat CTexture::ConvertToSRGBFmt(D3DFormat fmt)
         return DXGI_FORMAT_ETC2A_UNORM_SRGB;
 #endif //defined(OPENGL)
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #ifdef CRY_USE_METAL
     case DXGI_FORMAT_PVRTC2_UNORM:
         return DXGI_FORMAT_PVRTC2_UNORM_SRGB;
@@ -880,7 +880,7 @@ D3DFormat CTexture::ConvertToSRGBFmt(D3DFormat fmt)
     case DXGI_FORMAT_ASTC_12x12_UNORM:
         return DXGI_FORMAT_ASTC_12x12_UNORM_SRGB;
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
     case DXGI_FORMAT_R10G10B10A2_UNORM:
         return DXGI_FORMAT_R10G10B10A2_UNORM;
     // AntonK: we don't need sRGB space for fp formats, because there is enough precision
@@ -968,14 +968,14 @@ ETEX_Format CTexture::TexFormatFromDeviceFormat(D3DFormat nFormat)
         return eTF_R8S;
     case DXGI_FORMAT_R16_UNORM:
         return eTF_R16;
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     case DXGI_FORMAT_R16_UINT:
         return eTF_R16U;
     case DXGI_FORMAT_R16G16_UINT:
         return eTF_R16G16U;
     case DXGI_FORMAT_R10G10B10A2_UINT:
         return eTF_R10G10B10A2UI;
-    //  Confetti End: Igor Lobanchikov
+    
     case DXGI_FORMAT_R16_FLOAT:
         return eTF_R16F;
     case DXGI_FORMAT_R16_TYPELESS:
@@ -1100,7 +1100,7 @@ ETEX_Format CTexture::TexFormatFromDeviceFormat(D3DFormat nFormat)
         return eTF_ETC2A;
 #endif //defined(OPENGL)
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #ifdef CRY_USE_METAL
     case DXGI_FORMAT_PVRTC2_TYPELESS:
     case DXGI_FORMAT_PVRTC2_UNORM:
@@ -1169,7 +1169,7 @@ ETEX_Format CTexture::TexFormatFromDeviceFormat(D3DFormat nFormat)
     case DXGI_FORMAT_ASTC_12x12_UNORM_SRGB:
         return eTF_ASTC_12x12;
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
     // only available as hardware format under DX9
     case DXGI_FORMAT_B8G8R8A8_TYPELESS:
@@ -1438,7 +1438,7 @@ D3DFormat CTexture::ConvertToTypelessFmt(D3DFormat fmt)
 
         // todo: add missing formats if they found required
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #ifdef CRY_USE_METAL
     case DXGI_FORMAT_PVRTC2_UNORM:
     case DXGI_FORMAT_PVRTC2_UNORM_SRGB:
@@ -1506,7 +1506,7 @@ D3DFormat CTexture::ConvertToTypelessFmt(D3DFormat fmt)
         return DXGI_FORMAT_ASTC_12x12_TYPELESS;
 
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
     // No conversion on floating point format.
     case DXGI_FORMAT_R11G11B10_FLOAT:
@@ -1637,7 +1637,7 @@ ETEX_Format CTexture::ClosestFormatSupported(ETEX_Format eTFDst, const SPixForma
         }
         return eTF_Unknown;
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     case eTF_R16U:
         if (rd->m_FormatR16U.IsValid())
         {
@@ -1661,7 +1661,7 @@ ETEX_Format CTexture::ClosestFormatSupported(ETEX_Format eTFDst, const SPixForma
             return eTF_R10G10B10A2UI;
         }
         return eTF_Unknown;
-    //  Confetti End: Igor Lobanchikov
+    
 
     case eTF_R16F:
         if (rd->m_FormatR16F.IsValid())
@@ -1978,7 +1978,7 @@ ETEX_Format CTexture::ClosestFormatSupported(ETEX_Format eTFDst, const SPixForma
         }
         return eTF_Unknown;
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
 #ifdef CRY_USE_METAL
     case eTF_PVRTC2:
         if (rd->m_FormatPVRTC2.IsValid())
@@ -2109,7 +2109,7 @@ ETEX_Format CTexture::ClosestFormatSupported(ETEX_Format eTFDst, const SPixForma
         }
         return eTF_Unknown;
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 
     default:
         assert(0);
@@ -2312,17 +2312,17 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
             {
                 //If we don't support texture views, and the user will primarily want an srgb view, then create the texture directly that way.
                 //So when the srgb view is created it succeeds.
-                //  Confetti BEGIN: Igor Lobanchikov
+                
 
                 if (!RenderCapabilities::SupportsTextureViews()
 #ifdef CRY_USE_METAL
-                    //  Igor: for some reason Metal doesn't allow to reinterprete compressed format.
+                    //  for some reason Metal doesn't allow to reinterprete compressed format.
                     //  This might be perfectly ok if they didn't block sRGB/RGB view conversion which doesn't make much sence
                     || GetBlockDim(m_eTFSrc) != Vec2i(1)
 #endif
                     )
 
-                //  Confetti End: Igor Lobanchikov
+                
                 {
 #if !defined(AZ_PLATFORM_APPLE_OSX) || defined(CRY_USE_METAL) // really only for OpenGL 4.1, metal should do this just fine
                     D3DFmt = nFormatSRGB;
@@ -2425,7 +2425,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
                     InitData[i].pSysMem = &src[nOffset];
                     if (m_eSrcTileMode == eTM_None)
                     {
-                        //  Confetti BEGIN: Igor Lobanchikov
+                        
                         const Vec2i BlockDim = GetBlockDim(m_eTFSrc);
                         if (BlockDim == Vec2i(1))
                         {
@@ -2436,7 +2436,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
                             int blockSize = CImageExtensionHelper::BytesPerBlock(m_eTFSrc);
                             InitData[i].SysMemPitch = (w + BlockDim.x - 1) / BlockDim.x * blockSize;
                         }
-                        //  Confetti End: Igor Lobanchikov
+                        
 
                         //ignored
                         InitData[i].SysMemSlicePitch = nSize;
@@ -2492,10 +2492,10 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
             D3DFmt = nFormatOrig;
         }
 
-        //  Confetti BEGIN: Igor Lobanchikov
-        // Igor: force SRGB resource creation.
+        
+        // force SRGB resource creation.
 
-        //  Igor: for some reason Metal doesn't allow to reinterprete compressed format.
+        //  for some reason Metal doesn't allow to reinterprete compressed format.
         //  This might be perfectly ok if they didn't block sRGB/RGB view conversion which doesn't make much sence
         const Vec2i BlockDim = GetBlockDim(m_eTFSrc);
         if ((m_nFlags & FT_USAGE_ALLOWREADSRGB) && (!RenderCapabilities::SupportsTextureViews()
@@ -2508,7 +2508,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
             m_bIsSRGB = true;
 #endif
         }
-        //  Confetti End: Igor Lobanchikov
+        
 
         //////////////////////////////////////////////////////////////////////////
         m_pDeviceShaderResource = static_cast<D3DShaderResourceView*> (CreateDeviceResourceView(SResourceView::ShaderResourceView(m_eTFDst, 0, -1, 0, nMips, m_bIsSRGB, false)));
@@ -3983,12 +3983,12 @@ void CTexture::RT_UpdateTextureRegion(const byte* data, int nX, int nY, int nZ, 
     D3D11_BOX rc = {aznumeric_caster(nX), aznumeric_caster(nY), 0, aznumeric_caster(nX + USize), aznumeric_caster(nY + VSize), 1};
     if (m_eTT == eTT_2D)
     {
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         if (GetBlockDim(m_eTFDst) == Vec2i(1))
         {
             int nBPPSrc = CTexture::BytesPerBlock(eTFSrc);
             int nBPPDst = CTexture::BytesPerBlock(m_eTFDst);
-            //  Confetti End: Igor Lobanchikov
+            
             if (nBPPSrc == nBPPDst)
             {
                 int nRowPitch = CTexture::TextureDataSize(USize, 1, 1, 1, 1, eTFSrc);
@@ -4009,10 +4009,10 @@ void CTexture::RT_UpdateTextureRegion(const byte* data, int nX, int nY, int nZ, 
         rc.front = nZ;
         rc.back = nZ + ZSize;
 
-        //  Confetti BEGIN: Igor Lobanchikov
+        
         int nBPPSrc = CTexture::BytesPerBlock(eTFSrc);
         int nBPPDst = CTexture::BytesPerBlock(m_eTFDst);
-        //  Confetti End: Igor Lobanchikov
+        
         if (nBPPSrc == nBPPDst)
         {
             if (m_nFlags & FT_USAGE_DYNAMIC)
@@ -4684,9 +4684,9 @@ void CTexture::GenerateCachedShadowMaps()
         // allocate texture directly for all cached cascades
         if (!CTexture::IsTextureExist(pTx) && nResolutions[i] > 0 && i < cachedCascadesCount)
         {
-            //  Confetti BEGIN: Igor Lobanchikov
+            
             CryLog("Allocating shadow map cache %d x %d: %.2f MB", nResolutions[i], nResolutions[i], sqr(nResolutions[i]) * CTexture::BytesPerBlock(texFormat) / (1024.f * 1024.f));
-            //  Confetti End: Igor Lobanchikov
+            
             pTx->CreateRenderTarget(texFormat, Clr_FarPlane);
         }
     }

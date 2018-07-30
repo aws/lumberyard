@@ -24,11 +24,11 @@
 #include "Interfaces/CCryDXGLGIFactory.hpp"
 #include "Implementation/GLShader.hpp"
 #include "Implementation/GLDevice.hpp"
-//  Confetti BEGIN: Igor Lobanchikov
+
 #if defined(ANDROID)
 #include "Implementation/GLView.hpp"
 #endif
-//  Confetti End: Igor Lobanchikov
+
 
 template <typename Factory>
 HRESULT CreateDXGIFactoryInternal(REFIID riid, void** ppFactory)
@@ -293,7 +293,7 @@ DXGL_API void DXGLProfileLabel(const char* szName)
     }
 #endif //DXGL_PROFILE_USE_GREMEDY_STRING_MARKER && DXGL_EXTENSION_LOADER
 #if DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     {
         if (glDebugMessageInsert)
         {
@@ -306,7 +306,7 @@ DXGL_API void DXGLProfileLabel(const char* szName)
         }
 #endif
     }
-    //  Confetti End: Igor Lobanchikov
+    
 #endif //DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
 }
 
@@ -319,7 +319,7 @@ DXGL_API void DXGLProfileLabelPush(const char* szName)
     }
 #endif //DXGL_PROFILE_USE_GREMEDY_STRING_MARKER && DXGL_EXTENSION_LOADER
 #if DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     {
         if (glPushDebugGroup)
         {
@@ -332,7 +332,7 @@ DXGL_API void DXGLProfileLabelPush(const char* szName)
         }
 #endif
     }
-    //  Confetti End: Igor Lobanchikov
+    
 #endif //DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
 #if defined(AZ_PLATFORM_APPLE_OSX)
     glPushGroupMarkerEXT(0, szName);
@@ -348,7 +348,7 @@ DXGL_API void DXGLProfileLabelPop(const char* szName)
     }
 #endif //DXGL_PROFILE_USE_GREMEDY_STRING_MARKER && DXGL_EXTENSION_LOADER
 #if DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     {
         if (glPopDebugGroup)
         {
@@ -361,7 +361,7 @@ DXGL_API void DXGLProfileLabelPop(const char* szName)
         }
 #endif
     }
-    //  Confetti End: Igor Lobanchikov
+    
 #endif //DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
 #if defined(AZ_PLATFORM_APPLE_OSX)
     glPopGroupMarkerEXT();
@@ -384,7 +384,7 @@ inline CCryDXGLDeviceContext* GetDXGLDeviceContext(ID3D11DeviceContext* pDeviceC
 
 #if !DXGL_FULL_EMULATION
 
-//  Confetti BEGIN: Igor Lobanchikov
+
 #if defined(OPENGL_ES)
 void DXGLSetColorDontCareActions(ID3D11RenderTargetView* const rtv,
     bool const loadDontCare,
@@ -457,7 +457,7 @@ void DXGLInitializeIHVSpecifix()
 {
     NCryOpenGL::SGlobalConfig::SetIHVDefaults();
 }
-//  Confetti End: Igor Lobanchikov
+
 
 void DXGLInitialize(uint32 uNumSharedContexts)
 {

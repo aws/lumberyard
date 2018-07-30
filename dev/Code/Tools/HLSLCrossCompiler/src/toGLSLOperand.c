@@ -682,7 +682,7 @@ void TranslateVariableNameByOperandType(HLSLCrossCompilerContext* psContext, con
                 }
                 bcatcstr(glsl, "(");
 
-                //  Igor: yet another Qualcomm's special case
+                //  yet another Qualcomm's special case
                 //  GLSL compiler thinks that -2147483648 is an integer overflow which is not
                 if (*((int*)(&psOperand->afImmediates[0])) == 2147483648)
                 {
@@ -690,7 +690,7 @@ void TranslateVariableNameByOperandType(HLSLCrossCompilerContext* psContext, con
                 }
                 else
                 {
-                    //  Igor: this is expected to fix paranoid compiler checks such as Qualcomm's
+                    //  this is expected to fix paranoid compiler checks such as Qualcomm's
                     if (*((unsigned int*)(&psOperand->afImmediates[0])) >= 2147483648)
                     {
                         bformata(glsl, "%d",
@@ -728,7 +728,7 @@ void TranslateVariableNameByOperandType(HLSLCrossCompilerContext* psContext, con
                 fpcheck(psOperand->afImmediates[2]) ||
                 fpcheck(psOperand->afImmediates[3]))
             {
-                //  Igor: this is expected to fix paranoid compiler checks such as Qualcomm's
+                //  this is expected to fix paranoid compiler checks such as Qualcomm's
                 if (ui32TOFlag & TO_FLAG_FLOAT)
                 {
                     bcatcstr(glsl, "vec4");

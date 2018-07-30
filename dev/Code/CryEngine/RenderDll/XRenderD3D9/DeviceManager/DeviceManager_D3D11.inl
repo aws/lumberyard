@@ -566,7 +566,7 @@ HRESULT CDeviceManager::CreateBuffer(
 #if defined(CRY_USE_METAL)
     nD3DUsage = (nUsage & USAGE_TRANSIENT) ? D3D11_USAGE_TRANSIENT : nD3DUsage;
 #if BUFFER_USE_STAGED_UPDATES == 0
-    //  Igor: direct access usage is allowed only if staged updates logic is off.
+    //  direct access usage is allowed only if staged updates logic is off.
     CRY_ASSERT(!(nUsage & USAGE_DIRECT_ACCESS) || !(nUsage & USAGE_STAGING));
     nD3DUsage = (nUsage & USAGE_DIRECT_ACCESS) ? D3D11_USAGE_DIRECT_ACCESS : nD3DUsage;
     
@@ -646,7 +646,7 @@ HRESULT CDeviceManager::CreateBuffer(
 
 void CDeviceManager::ExtractBasePointer(D3DBuffer* buffer, uint8*& base_ptr)
 {
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(CRY_USE_METAL) && (BUFFER_USE_STAGED_UPDATES == 0)
     base_ptr = (uint8*)DXMETALGetBufferStorage(buffer);
 #else
@@ -659,5 +659,5 @@ void CDeviceManager::ExtractBasePointer(D3DBuffer* buffer, uint8*& base_ptr)
     base_ptr = NULL;
 #   endif
 #endif
-    //  Confetti End: Igor Lobanchikov
+    
 }

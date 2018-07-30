@@ -2180,7 +2180,7 @@ void SRenderThread::ProcessCommands()
         gcpRendD3D->BindContextToThread(CryGetCurrentThreadId());
     }
 # endif
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     if (CRenderer::CV_r_multithreaded)
     {
@@ -2191,7 +2191,7 @@ void SRenderThread::ProcessCommands()
         m_kDXGLDeviceContextHandle.Set(&gcpRendD3D->GetDeviceContext(), !CRenderer::CV_r_multithreaded);
     }
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-    //  Confetti End: Igor Lobanchikov
+    
 
 
 #ifdef DO_RENDERSTATS
@@ -3315,12 +3315,12 @@ void SRenderThread::Process()
         const uint64 elapsed = CryGetTicks() - start;
         gEnv->pSystem->GetCurrentUpdateTimeStats().RenderTime = elapsed;
     }
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     m_kDXGLDeviceContextHandle.Set(NULL, !CRenderer::CV_r_multithreaded);
     m_kDXGLContextHandle.Set(NULL);
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-    //  Confetti End: Igor Lobanchikov
+    
 }
 
 void SRenderThread::ProcessLoading()
@@ -3355,12 +3355,12 @@ void SRenderThread::ProcessLoading()
             SwitchMode(false);
         }
     }
-    //  Confetti BEGIN: Igor Lobanchikov
+    
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     m_kDXGLDeviceContextHandle.Set(NULL, !CRenderer::CV_r_multithreaded);
     m_kDXGLContextHandle.Set(NULL);
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-    //  Confetti End: Igor Lobanchikov
+    
 }
 
 #ifndef STRIP_RENDER_THREAD

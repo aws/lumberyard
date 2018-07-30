@@ -386,8 +386,8 @@ enum EVerifyType
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(OPENGL)
 #include "CryLibrary.h"
-//  Confetti BEGIN: Igor Lobanchikov
-//  Igor: enable metal for ios device only. Emulator is not supported for now.
+
+//  enable metal for ios device only. Emulator is not supported for now.
 #if TARGET_OS_IPHONE || TARGET_OS_TV
 #ifndef __IPHONE_9_0
 #define __IPHONE_9_0    90000
@@ -399,7 +399,7 @@ enum EVerifyType
 #else
 #include "XRenderD3D9/DXGL/CryDXGL.hpp"
 #endif
-//  Confetti END: Igor Lobanchikov
+
 #elif defined(CRY_USE_DX12)
 #include "CryLibrary.h"
 typedef uintptr_t SOCKET;
@@ -464,7 +464,7 @@ typedef uintptr_t SOCKET;
 // On platforms that support staging buffers, special buffers are allocated that act as a staging area
 // for updating buffer contents on the fly.
 
-// Confetti Igor: when staged updates are disabled CPU will have direct access to the pool's buffers' content
+// when staged updates are disabled CPU will have direct access to the pool's buffers' content
 //  and update data directly. This cuts memory consumption and reduces the number of copies.
 //  GPU won't be used to update buffer content but it will be used to perform defragmentation.
 #if defined(AZ_RESTRICTED_PLATFORM)

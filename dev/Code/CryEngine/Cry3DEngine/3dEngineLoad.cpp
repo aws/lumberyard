@@ -763,15 +763,15 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
 
     LoadDefaultAssets();
 
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     if (m_pSkyLightManager)
     {
         m_pSkyLightManager->InitSkyDomeMesh();
-        // Igor: set default render parameters.
+        // set default render parameters.
         // for some reason this is not done later???
         m_pSkyLightManager->UpdateRenderParams();
     }
-    //  Confetti End: Igor Lobanchikov
+    
 
     // Load LevelData.xml File.
     XmlNodeRef xmlLevelData = GetSystem()->LoadXmlFromFile(GetLevelFilePath(LEVEL_DATA_FILE));

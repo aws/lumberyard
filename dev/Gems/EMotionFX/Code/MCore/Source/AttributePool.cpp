@@ -169,45 +169,56 @@ namespace MCore
         pool->mPoolType         = poolType;
         pool->mSubPoolSize      = subPoolSize;
 
-        // if we have a static pool
-        if (poolType == POOLTYPE_STATIC)
+        switch (poolType)
         {
-            pool->mAttributeData    = (uint8*)MCore::AlignedAllocate(numAttribs * pool->mAttributeSize, pool->mAttribute->GetMemoryAlignment(), MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
-
-            // call the constructors on each of the attributes
-            // also init the free list
-            pool->mFreeList.ResizeFast(numAttribs);
-            for (uint32 i = 0; i < numAttribs; ++i)
+            case MCore::AttributePool::POOLTYPE_STATIC:
             {
-                //MCore::MemCopy(pool->mAttributeData + i*pool->mAttributeSize, pool->mAttribute, pool->mAttributeSize);    // try to simulate a constructor by cloning the newly created temp attribute memory
-                pool->mFreeList[i] = (void*)(pool->mAttributeData + i * pool->mAttributeSize);
+                const size_t numBytes = numAttribs * pool->mAttributeSize;
+                const uint16 alignment = pool->mAttribute->GetMemoryAlignment();
+                pool->mAttributeData = (uint8*)MCore::AlignedAllocate(numBytes, alignment, MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
+
+                // call the constructors on each of the attributes
+                // also init the free list
+                pool->mFreeList.ResizeFast(numAttribs);
+                for (uint32 i = 0; i < numAttribs; ++i)
+                {
+                    //MCore::MemCopy(pool->mAttributeData + i*pool->mAttributeSize, pool->mAttribute, pool->mAttributeSize);    // try to simulate a constructor by cloning the newly created temp attribute memory
+                    pool->mFreeList[i] = (void*)(pool->mAttributeData + i * pool->mAttributeSize);
+                }
             }
-        }
-        else // if we have a dynamic pool
-        if (poolType == POOLTYPE_DYNAMIC)
-        {
-            pool->mSubPools.Reserve(32);
+            break;
 
-            SubPool* subPool = new SubPool();
-            subPool->mAttributeData = (uint8*)MCore::AlignedAllocate(numAttribs * pool->mAttributeSize, pool->mAttribute->GetMemoryAlignment(), MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
-            subPool->mNumAttributes = numAttribs;
-            subPool->mAttributeSize = pool->mAttributeSize;
-
-            // call the constructors on each of the attributes
-            // also init the free list
-            pool->mFreeList.ResizeFast(numAttribs);
-            for (uint32 i = 0; i < numAttribs; ++i)
+            case MCore::AttributePool::POOLTYPE_DYNAMIC:
             {
-                //MCore::MemCopy(subPool->mAttributeData + i*pool->mAttributeSize, pool->mAttribute, pool->mAttributeSize); // try to simulate a constructor by cloning the newly created temp attribute memory
-                pool->mFreeList[i] = (void*)(subPool->mAttributeData + i * pool->mAttributeSize);
-            }
+                pool->mSubPools.Reserve(32);
 
-            pool->mSubPools.Add(subPool);
+                SubPool* subPool = new SubPool();
+                const size_t numBytes = numAttribs * pool->mAttributeSize;
+                const uint16 alignment = pool->mAttribute->GetMemoryAlignment();
+                subPool->mAttributeData = (uint8*)MCore::AlignedAllocate(numBytes, alignment, MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
+                subPool->mNumAttributes = numAttribs;
+                subPool->mAttributeSize = pool->mAttributeSize;
+
+                // call the constructors on each of the attributes
+                // also init the free list
+                pool->mFreeList.ResizeFast(numAttribs);
+                for (uint32 i = 0; i < numAttribs; ++i)
+                {
+                    //MCore::MemCopy(subPool->mAttributeData + i*pool->mAttributeSize, pool->mAttribute, pool->mAttributeSize); // try to simulate a constructor by cloning the newly created temp attribute memory
+                    pool->mFreeList[i] = (void*)(subPool->mAttributeData + i * pool->mAttributeSize);
+                }
+
+                pool->mSubPools.Add(subPool);
+            }
+            break;
+
+            default:
+            {
+                MCORE_ASSERT(false); // unhandled pool type
+            }
+            break;
         }
-        else
-        {
-            MCORE_ASSERT(false); // unhandled pool type
-        }
+
         // add the new subpool to the hash table
         mPools.Add(typeID, pool);
     }
@@ -238,52 +249,61 @@ namespace MCore
         }
 
         // we have no more free attributes left
-        if (pool->mPoolType == POOLTYPE_DYNAMIC) // we're dynamic, so we can just create new ones
+        switch (pool->mPoolType)
         {
-            const uint32 numAttribs = pool->mSubPoolSize;
-
-            pool->mNumAttributes += numAttribs;
-
-            SubPool* subPool = new SubPool();
-            subPool->mAttributeData = (uint8*)MCore::AlignedAllocate(numAttribs * pool->mAttributeSize, pool->mAttribute->GetMemoryAlignment(), MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
-            subPool->mNumAttributes = numAttribs;
-            subPool->mAttributeSize = pool->mAttributeSize;
-
-            // call the constructors on each of the attributes
-            // also init the free list
-            const uint32 startIndex = pool->mFreeList.GetLength();
-            //pool->mFreeList.Reserve( numAttribs * 2 );
-            if (pool->mFreeList.GetMaxLength() < pool->mNumAttributes)
+            // we're dynamic, so we can just create new ones
+            case POOLTYPE_DYNAMIC:
             {
-                pool->mFreeList.Reserve(pool->mNumAttributes);
-            }
+                const uint32 numAttribs = pool->mSubPoolSize;
 
-            pool->mFreeList.ResizeFast(startIndex + numAttribs);
-            for (uint32 i = 0; i < numAttribs; ++i)
+                pool->mNumAttributes += numAttribs;
+
+                SubPool* subPool = new SubPool();
+                subPool->mAttributeData = (uint8*)MCore::AlignedAllocate(numAttribs * pool->mAttributeSize, pool->mAttribute->GetMemoryAlignment(), MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
+                subPool->mNumAttributes = numAttribs;
+                subPool->mAttributeSize = pool->mAttributeSize;
+
+                // call the constructors on each of the attributes
+                // also init the free list
+                const uint32 startIndex = pool->mFreeList.GetLength();
+                //pool->mFreeList.Reserve( numAttribs * 2 );
+                if (pool->mFreeList.GetMaxLength() < pool->mNumAttributes)
+                {
+                    pool->mFreeList.Reserve(pool->mNumAttributes);
+                }
+
+                pool->mFreeList.ResizeFast(startIndex + numAttribs);
+                for (uint32 i = 0; i < numAttribs; ++i)
+                {
+                    //MCore::MemCopy(subPool->mAttributeData + i*pool->mAttributeSize, pool->mAttribute, pool->mAttributeSize); // try to simulate a constructor by cloning the newly created temp attribute memory
+                    pool->mFreeList[i + startIndex] = (void*)(subPool->mAttributeData + i * pool->mAttributeSize);
+                }
+
+                pool->mSubPools.Add(subPool);
+
+                Attribute* result = (Attribute*)pool->mFreeList.GetLast();
+                pool->mFreeList.RemoveLast(); // remove it from the free list
+                pool->mNumUsedAttributes++;
+                pool->mAttribute->CreateInstance(result); // call the constructor
+                return result;
+            }
+            break;
+
+            // we are static and ran out of free attributes
+            case POOLTYPE_STATIC:
             {
-                //MCore::MemCopy(subPool->mAttributeData + i*pool->mAttributeSize, pool->mAttribute, pool->mAttributeSize); // try to simulate a constructor by cloning the newly created temp attribute memory
-                pool->mFreeList[i + startIndex] = (void*)(subPool->mAttributeData + i * pool->mAttributeSize);
+                MCore::LogError("MCore::AttributePool::RequestNewAttribute() - There are no free attributes in the static pool for attributes of type %d or 0x%x. Please increase the size of the pool or make it dynamic when calling RegisterAttributeType.", typeID, typeID);
+                MCORE_ASSERT(false); // we ran out of free attributes
+                return nullptr;
             }
+            break;
 
-            pool->mSubPools.Add(subPool);
-
-            Attribute* result = (Attribute*)pool->mFreeList.GetLast();
-            pool->mFreeList.RemoveLast(); // remove it from the free list
-            pool->mNumUsedAttributes++;
-            pool->mAttribute->CreateInstance(result); // call the constructor
-            return result;
-        }
-        else // we are static and ran out of free attributes
-        if (pool->mPoolType == POOLTYPE_STATIC)
-        {
-            MCore::LogError("MCore::AttributePool::RequestNewAttribute() - There are no free attributes in the static pool for attributes of type %d or 0x%x. Please increase the size of the pool or make it dynamic when calling RegisterAttributeType.", typeID, typeID);
-            MCORE_ASSERT(false); // we ran out of free attributes
-            return nullptr;
-        }
-        else
-        {
-            MCORE_ASSERT(false); // unhandled pool type
-            return nullptr;
+            default:
+            {
+                MCORE_ASSERT(false); // unhandled pool type
+                return nullptr;
+            }
+            break;
         }
     }
 

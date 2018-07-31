@@ -438,13 +438,9 @@ bool PropertyOArchive::operator()(Serialization::ICallback& callback, const char
 
 bool PropertyOArchive::operator()(Serialization::Object& obj, const char *name, const char *label)
 {
-    const char* typeName = obj.type().name();
-
     PropertyRowObject* row = 0;
-    if (typeName_.empty())
-         row = updateRow<PropertyRowObject>(name, label, obj.type().name(), obj);
-    else
-         row = updateRow<PropertyRowObject>(name, label, obj.type().name(), obj);
+    row = updateRow<PropertyRowObject>(name, label, obj.type().name(), obj);
+
     lastNode_ = row;
     return true;
 }

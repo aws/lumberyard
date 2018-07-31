@@ -195,7 +195,7 @@ int TryCompileShader(GLenum eShaderType, const char* inFilename, const char* sha
 
         glGetInfoLogARB (hShader, iInfoLogLength, NULL, pszInfoLog);
 
-        printf(pszInfoLog);
+        printf("%s", pszInfoLog);
 
         if (!useStdErr)
         {
@@ -506,7 +506,7 @@ int Run(const char* srcPath, const char* destPath, GLLang language, int flags, c
         {
             //Dump to file
             outputFile = fopen(destPath, "w");
-            fprintf(outputFile, result->sourceCode);
+            fprintf(outputFile, "%s", result->sourceCode);
             fclose(outputFile);
         }
 
@@ -514,7 +514,7 @@ int Run(const char* srcPath, const char* destPath, GLLang language, int flags, c
         {
             const char* jsonString = SerializeReflection(&result->reflection);
             outputFile = fopen(reflectPath, "w");
-            fprintf(outputFile, jsonString);
+            fprintf(outputFile, "%s", jsonString);
             fclose(outputFile);
         }
 

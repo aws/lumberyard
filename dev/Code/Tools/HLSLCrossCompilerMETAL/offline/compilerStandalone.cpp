@@ -543,7 +543,7 @@ int Run(const char* srcPath, const char* destPath, ShaderLang language, int flag
 		{
 			//Dump to file
 			outputFile = fopen(destPath, "w");
-			fprintf(outputFile, result->sourceCode);
+			fprintf(outputFile, "%s", result->sourceCode);
 
 			fclose(outputFile);
 		}
@@ -552,7 +552,7 @@ int Run(const char* srcPath, const char* destPath, ShaderLang language, int flag
 		{
 			const char* jsonString = SerializeReflection(&result->reflection);
 			outputFile = fopen(reflectPath, "w");
-			fprintf(outputFile, jsonString);
+			fprintf(outputFile, "%s", jsonString);
 			fclose(outputFile);
 		}
 

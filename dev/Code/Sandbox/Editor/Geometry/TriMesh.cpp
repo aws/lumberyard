@@ -277,7 +277,7 @@ void CTriMesh::SharePositions()
             if (find < 0)
             {
                 pNewVerts[nLastIndex] = pVertices[face.v[i]];
-                if (pColors)
+                if (pColors && pNewColors)
                 {
                     pNewColors[nLastIndex] = pColors[face.v[i]];
                 }

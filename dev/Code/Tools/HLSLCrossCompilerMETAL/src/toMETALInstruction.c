@@ -4189,17 +4189,8 @@ void TranslateInstructionMETAL(HLSLCrossCompilerContext* psContext, Instruction*
         } BT;
         BT  barrierType = BT_None;
 
-        if (ui32SyncFlags & SYNC_THREADS_IN_GROUP)
-        {
-            AddIndentation(psContext);
-            bcatcstr(metal, "threadgroup_barrier(");
-        }
-        else
-        {
-            AddIndentation(psContext);
-            //  Igor: simdgroup_barrier is faster than threadgroup_barrier. It is supported on iOS 10+ on all hardware.
-            bcatcstr(metal, "threadgroup_barrier(");
-        }
+        AddIndentation(psContext);
+        bcatcstr(metal, "threadgroup_barrier(");
 
         if (ui32SyncFlags & SYNC_THREAD_GROUP_SHARED_MEMORY)
         {

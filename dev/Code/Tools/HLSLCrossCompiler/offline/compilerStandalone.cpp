@@ -205,8 +205,11 @@ int TryCompileShader(GLenum eShaderType, const char* inFilename, const char* sha
 
             //Dump to file
             fopen_s(&errorFile, filename.c_str(), "w");
-
-            fclose(errorFile);
+            if (errorFile)
+            {
+                fprintf(errorFile, "%s", pszInfoLog);
+                fclose(errorFile);
+            }
         }
         else
         {
@@ -506,16 +509,22 @@ int Run(const char* srcPath, const char* destPath, GLLang language, int flags, c
         {
             //Dump to file
             outputFile = fopen(destPath, "w");
-            fprintf(outputFile, "%s", result->sourceCode);
-            fclose(outputFile);
+            if (outputFile)
+            {
+                fprintf(outputFile, "%s", result->sourceCode);
+                fclose(outputFile);
+            }
         }
 
         if (reflectPath)
         {
             const char* jsonString = SerializeReflection(&result->reflection);
             outputFile = fopen(reflectPath, "w");
-            fprintf(outputFile, "%s", jsonString);
-            fclose(outputFile);
+            if (outputFile)
+            {
+                fprintf(outputFile, "%s", jsonString);
+                fclose(outputFile);
+            }
         }
 
 #if defined(VALIDATE_OUTPUT)

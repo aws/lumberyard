@@ -196,16 +196,19 @@ int TryCompileShader(GLenum eShaderType, const char* inFilename, char* shader, d
 
 		printf(pszInfoLog);
 
-		if (!useStdErr)
-		{
-			std::string filename;
-			filename += inFilename;
-			filename += "_compileErrors.txt";
+        if (!useStdErr)
+        {
+            std::string filename;
+            filename += inFilename;
+            filename += "_compileErrors.txt";
 
-			//Dump to file
-			errorFile = fopen(filename.c_str(), "w");
-
-			fclose(errorFile);
+            //Dump to file
+            errorFile = fopen(filename.c_str(), "w");
+            if (errorFile)
+            {
+                fprintf(errorFile, "%s", pszInfoLog);
+                fclose(errorFile);
+            }
 		}
 		else
 		{
@@ -543,9 +546,11 @@ int Run(const char* srcPath, const char* destPath, ShaderLang language, int flag
 		{
 			//Dump to file
 			outputFile = fopen(destPath, "w");
-			fprintf(outputFile, "%s", result->sourceCode);
-
-			fclose(outputFile);
+            if (outputFile)
+            {
+                fprintf(outputFile, "%s", result->sourceCode);
+                fclose(outputFile);
+            }
 		}
 
 		if (reflectPath)

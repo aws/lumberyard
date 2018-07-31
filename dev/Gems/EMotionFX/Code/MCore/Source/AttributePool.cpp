@@ -154,6 +154,7 @@ namespace MCore
         Pool* pool = new Pool(typeID);
         if (pool->mAttribute == nullptr)
         {
+            delete pool;
             return;
         }
 

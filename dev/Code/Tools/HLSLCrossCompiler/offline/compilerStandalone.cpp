@@ -667,6 +667,10 @@ const char* PatchHLSLShaderFile(const char* path)
     FILE* patchedFile = fopen(patchedFileName, "wb");
     if (!patchedFile)
     {
+        if (shaderFile)
+        {
+            fclose(shaderFile);
+        }
         return NULL;
     }
 

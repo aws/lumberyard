@@ -18,6 +18,8 @@
 //////////////////////////////////////////////////////////////////////////
 CTriMesh::CTriMesh()
 {
+    pLines = NULL;
+
     pFaces = NULL;
     pVertices = NULL;
     pWSVertices = NULL;
@@ -30,6 +32,7 @@ CTriMesh::CTriMesh()
     nVertCount = 0;
     nUVCount = 0;
     nEdgeCount = 0;
+    nLinesCount = 0;
 
     selectionType = SO_ELEM_NONE;
 

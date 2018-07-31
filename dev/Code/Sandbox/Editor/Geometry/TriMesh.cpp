@@ -302,8 +302,9 @@ void CTriMesh::SharePositions()
     {
         SetColorsCount(nLastIndex);
         memcpy(pColors, pNewColors, nLastIndex * sizeof(SMeshColor));
-        delete []pNewColors;
     }
+
+    delete[]pNewColors;
 }
 
 //////////////////////////////////////////////////////////////////////////

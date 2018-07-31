@@ -1258,8 +1258,9 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                 }
                 else
                 {
-                    CUndo undo("Add TrackView Comment Node");
+                    AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Comment Node");
                     pGroupNode->CreateSubNode(commentNodeName, AnimNodeType::Comment);
+                    undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
                 }
             }
             else if (cmd == eMI_AddRadialBlur)

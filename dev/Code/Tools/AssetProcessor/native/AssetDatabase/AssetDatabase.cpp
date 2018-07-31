@@ -553,9 +553,12 @@ namespace AssetProcessor
         Statement* statement = autoFinal.Get();
         AZ_Error(LOG_NAME, statement, "Statement not found: %s", SET_DATABASE_VERSION);
 
-        statement->BindValueInt(statement->GetNamedParamIdx(":ver"), static_cast<int>(ver));
-        Statement::SqlStatus result = statement->Step();
-        AZ_Warning(LOG_NAME, result != SQLite::Statement::SqlOK, "Failed to execute SetDatabaseVersion.");
+        if (statement)
+        {
+            statement->BindValueInt(statement->GetNamedParamIdx(":ver"), static_cast<int>(ver));
+            Statement::SqlStatus result = statement->Step();
+            AZ_Warning(LOG_NAME, result != SQLite::Statement::SqlOK, "Failed to execute SetDatabaseVersion.");
+        }
     }
 
     void AssetDatabaseConnection::CreateStatements()
@@ -815,6 +818,10 @@ namespace AssetProcessor
             StatementAutoFinalizer autoFinal(*m_databaseConnection, INSERT_SCANFOLDER);
             Statement* statement = autoFinal.Get();
             AZ_Error(LOG_NAME, statement, "Could not get statement: %s", INSERT_SCANFOLDER);
+            if (!statement)
+            {
+                return false;
+            }
 
             int scanFolderIdx = statement->GetNamedParamIdx(":scanfolder");
             if(!scanFolderIdx)
@@ -884,6 +891,10 @@ namespace AssetProcessor
             StatementAutoFinalizer autoFinal(*m_databaseConnection, UPDATE_SCANFOLDER);
             Statement* statement = autoFinal.Get();
             AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_SCANFOLDER);
+            if (!statement)
+            {
+                return false;
+            }
 
             int scanFolderIDIdx = statement->GetNamedParamIdx(":scanfolderid");
             if(!scanFolderIDIdx)
@@ -955,6 +966,10 @@ namespace AssetProcessor
         StatementAutoFinalizer autoFinal(*m_databaseConnection, DELETE_SCANFOLDER);
         Statement* statement = autoFinal.Get();
         AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_SCANFOLDER);
+        if (!statement)
+        {
+            return false;
+        }
 
         int scanFolderIDIdx = statement->GetNamedParamIdx(":scanfolderid");
         if(!scanFolderIDIdx)

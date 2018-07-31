@@ -71,14 +71,17 @@ namespace MCore
     // destructor
     AttributePool::Pool::~Pool()
     {
-        if (mPoolType == POOLTYPE_STATIC)
+        switch (mPoolType)
+        {
+        case MCore::AttributePool::POOLTYPE_STATIC:
         {
             MCore::AlignedFree(mAttributeData);
             mAttributeData = nullptr;
             mFreeList.Clear();
         }
-        else
-        if (mPoolType == POOLTYPE_DYNAMIC)
+        break;
+        
+        case MCore::AttributePool::POOLTYPE_DYNAMIC:
         {
             MCORE_ASSERT(mAttributeData == nullptr);
 
@@ -92,9 +95,13 @@ namespace MCore
 
             mFreeList.Clear();
         }
-        else
+        break;
+        
+        default:
         {
             MCORE_ASSERT(false);
+        }
+        break;
         }
     }
 

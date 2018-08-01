@@ -2297,7 +2297,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
         resetSRGB = false;
         {
             m_bIsSRGB &= m_pPixelFormat->bCanReadSRGB && (m_nFlags & (FT_USAGE_MSAA | FT_USAGE_RENDERTARGET)) == 0;
-            if ((m_bIsSRGB || m_nFlags & FT_USAGE_ALLOWREADSRGB))
+            if (m_bIsSRGB || (m_nFlags & FT_USAGE_ALLOWREADSRGB))
             {
                 nFormatSRGB = ConvertToSRGBFmt(D3DFmt);
             }
@@ -2583,7 +2583,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
         {
             m_bIsSRGB &= m_pPixelFormat->bCanReadSRGB && (m_nFlags & (FT_USAGE_MSAA | FT_USAGE_RENDERTARGET)) == 0;
 
-            if ((m_bIsSRGB || m_nFlags & FT_USAGE_ALLOWREADSRGB))
+            if (m_bIsSRGB || (m_nFlags & FT_USAGE_ALLOWREADSRGB))
             {
                 nFormatSRGB = ConvertToSRGBFmt(D3DFmt);
             }

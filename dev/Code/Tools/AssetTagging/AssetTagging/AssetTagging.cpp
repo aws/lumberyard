@@ -78,6 +78,7 @@ bool CreateDatabase(IDBConnection* pConn, const std::string& schemafile, int typ
 
     if (sqlSchema[0] == '\0')
     {
+        delete[] sqlSchema;
         return false;
     }
 

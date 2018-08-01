@@ -428,7 +428,6 @@ D3DSurface* CTexture::GetSurface(int nCMSide, int nLevel)
 
     SCOPED_RENDERER_ALLOCATION_NAME_HINT(GetSourceName());
 
-    HRESULT hr = S_OK;
     D3DTexture* pID3DTexture = NULL;
     D3DTexture* pID3DTexture3D = NULL;
     D3DTexture* pID3DTextureCube = NULL;
@@ -462,12 +461,6 @@ D3DSurface* CTexture::GetSurface(int nCMSide, int nLevel)
         {
             m_pDeviceRTV = pTargSurf;
         }
-    }
-    assert(hr == S_OK);
-
-    if (FAILED(hr))
-    {
-        pTargSurf = NULL;
     }
 
     return pTargSurf;
@@ -2297,7 +2290,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
         resetSRGB = false;
         {
             m_bIsSRGB &= m_pPixelFormat->bCanReadSRGB && (m_nFlags & (FT_USAGE_MSAA | FT_USAGE_RENDERTARGET)) == 0;
-            if ((m_bIsSRGB || m_nFlags & FT_USAGE_ALLOWREADSRGB))
+            if (m_bIsSRGB || (m_nFlags & FT_USAGE_ALLOWREADSRGB))
             {
                 nFormatSRGB = ConvertToSRGBFmt(D3DFmt);
             }
@@ -2384,18 +2377,21 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
 
         if (m_nFlags & FT_USAGE_MSAA)
         {
-            m_pRenderTargetData->m_nMSAASamples = (uint8)r->m_RP.m_MSAAData.Type;
-            m_pRenderTargetData->m_nMSAAQuality = (uint8)r->m_RP.m_MSAAData.Quality;
+            AZ_Assert(m_pRenderTargetData, "Call to RT_CreateDeviceTexture failed due to null m_pRenderTargetData pointer for '%s'", GetSourceName());
+            if (m_pRenderTargetData)
+            {
+                m_pRenderTargetData->m_nMSAASamples = (uint8)r->m_RP.m_MSAAData.Type;
+                m_pRenderTargetData->m_nMSAAQuality = (uint8)r->m_RP.m_MSAAData.Quality;
 
-            TI.m_nMSAASamples = m_pRenderTargetData->m_nMSAASamples;
-            TI.m_nMSAAQuality = m_pRenderTargetData->m_nMSAAQuality;
-            hr = pDevMan->Create2DTexture(m_SrcName, nWdt, nHgt, nMips, nArraySize, nUsage, m_cClearColor, D3DFmt, (D3DPOOL)0, &m_pRenderTargetData->m_pDeviceTextureMSAA, &TI);
+                TI.m_nMSAASamples = m_pRenderTargetData->m_nMSAASamples;
+                TI.m_nMSAAQuality = m_pRenderTargetData->m_nMSAAQuality;
+                hr = pDevMan->Create2DTexture(m_SrcName, nWdt, nHgt, nMips, nArraySize, nUsage, m_cClearColor, D3DFmt, (D3DPOOL)0, &m_pRenderTargetData->m_pDeviceTextureMSAA, &TI);
+                AZ_Assert(SUCCEEDED(hr), "Call to Create2DTexture failed for '%s'.", GetSourceName());
+                m_bResolved = false;
 
-            AZ_Assert(SUCCEEDED(hr), "Call to Create2DTexture failed for '%s'.", GetSourceName());
-            m_bResolved = false;
-
-            TI.m_nMSAASamples = 1;
-            TI.m_nMSAAQuality = 0;
+                TI.m_nMSAASamples = 1;
+                TI.m_nMSAAQuality = 0;
+            }
         }
 
         if (pData[0])
@@ -2562,18 +2558,22 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
 
         if (m_nFlags & FT_USAGE_MSAA)
         {
-            m_pRenderTargetData->m_nMSAASamples = (uint8)r->m_RP.m_MSAAData.Type;
-            m_pRenderTargetData->m_nMSAAQuality = (uint8)r->m_RP.m_MSAAData.Quality;
+            AZ_Assert(m_pRenderTargetData, "Call to RT_CreateDeviceTexture failed due to null m_pRenderTargetData pointer for '%s'", GetSourceName());
+            if (m_pRenderTargetData)
+            {
+                m_pRenderTargetData->m_nMSAASamples = (uint8)r->m_RP.m_MSAAData.Type;
+                m_pRenderTargetData->m_nMSAAQuality = (uint8)r->m_RP.m_MSAAData.Quality;
 
-            TI.m_nMSAASamples = m_pRenderTargetData->m_nMSAASamples;
-            TI.m_nMSAAQuality = m_pRenderTargetData->m_nMSAAQuality;
-            hr = pDevMan->CreateCubeTexture(m_SrcName, nWdt, nMips, m_nArraySize, nUsage, m_cClearColor, D3DFmt, (D3DPOOL)0, &m_pRenderTargetData->m_pDeviceTextureMSAA, &TI);
+                TI.m_nMSAASamples = m_pRenderTargetData->m_nMSAASamples;
+                TI.m_nMSAAQuality = m_pRenderTargetData->m_nMSAAQuality;
+                hr = pDevMan->CreateCubeTexture(m_SrcName, nWdt, nMips, m_nArraySize, nUsage, m_cClearColor, D3DFmt, (D3DPOOL)0, &m_pRenderTargetData->m_pDeviceTextureMSAA, &TI);
 
-            AZ_Assert(SUCCEEDED(hr), "Call to CreateCubeTexuture failed for '%s'.", GetSourceName());
-            m_bResolved = false;
+                AZ_Assert(SUCCEEDED(hr), "Call to CreateCubeTexuture failed for '%s'.", GetSourceName());
+                m_bResolved = false;
 
-            TI.m_nMSAASamples = 1;
-            TI.m_nMSAAQuality = 0;
+                TI.m_nMSAASamples = 1;
+                TI.m_nMSAAQuality = 0;
+            }
         }
         DXGI_FORMAT nFormatOrig = D3DFmt;
         DXGI_FORMAT nFormatSRGB = D3DFmt;
@@ -2583,7 +2583,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
         {
             m_bIsSRGB &= m_pPixelFormat->bCanReadSRGB && (m_nFlags & (FT_USAGE_MSAA | FT_USAGE_RENDERTARGET)) == 0;
 
-            if ((m_bIsSRGB || m_nFlags & FT_USAGE_ALLOWREADSRGB))
+            if (m_bIsSRGB || (m_nFlags & FT_USAGE_ALLOWREADSRGB))
             {
                 nFormatSRGB = ConvertToSRGBFmt(D3DFmt);
             }

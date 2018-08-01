@@ -428,7 +428,6 @@ D3DSurface* CTexture::GetSurface(int nCMSide, int nLevel)
 
     SCOPED_RENDERER_ALLOCATION_NAME_HINT(GetSourceName());
 
-    HRESULT hr = S_OK;
     D3DTexture* pID3DTexture = NULL;
     D3DTexture* pID3DTexture3D = NULL;
     D3DTexture* pID3DTextureCube = NULL;
@@ -462,12 +461,6 @@ D3DSurface* CTexture::GetSurface(int nCMSide, int nLevel)
         {
             m_pDeviceRTV = pTargSurf;
         }
-    }
-    assert(hr == S_OK);
-
-    if (FAILED(hr))
-    {
-        pTargSurf = NULL;
     }
 
     return pTargSurf;

@@ -175,7 +175,7 @@ namespace GraphCanvas
             }
             else if (dataSlotType == DataSlotType::Reference)
             {
-                m_slotConfiguration.m_slotGroup == SlotGroups::VariableReferenceGroup;
+                m_slotConfiguration.m_slotGroup = SlotGroups::VariableReferenceGroup;
             }
             else
             {

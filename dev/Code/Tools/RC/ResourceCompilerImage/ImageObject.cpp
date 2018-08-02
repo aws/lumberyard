@@ -1195,6 +1195,7 @@ bool ImageObject::LoadExtendedData(FILE* in, bool bForceDX10)
 
             if (!pAttached->LoadImage(in, bForceDX10))
             {
+                delete pAttached;
                 return false;
             }
 

@@ -375,7 +375,7 @@ namespace GraphCanvas
 
             if (m_displayedConnection.IsValid())
             {
-                for (int i = static_cast<int>(m_connections.size()) - 1; i >= 0; ++i)
+                for (size_t i = m_connections.size() - 1; i >= 0; ++i)
                 {
                     if (m_connections[i] == m_displayedConnection)
                     {

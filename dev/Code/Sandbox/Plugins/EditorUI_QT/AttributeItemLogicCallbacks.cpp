@@ -277,8 +277,6 @@ bool AttributeItemLogicCallbacks::GetCallback(QString function, AttributeItemLog
         return false;
     }
 
-    std::string sfunction = function.toStdString();
-
     //Split the function string in to the function name, and the function arguments
     int openParPosition = function.indexOf((QChar)'(');
 
@@ -289,11 +287,7 @@ bool AttributeItemLogicCallbacks::GetCallback(QString function, AttributeItemLog
         return false;
     }
 
-    std::string sfunctionName = functionName.toStdString();
-
     QString functionArgs = function.mid(openParPosition);
-
-    std::string sfunctionArgs = functionArgs.toStdString();
 
     if (functionName.size() == 0)
     {
@@ -305,13 +299,10 @@ bool AttributeItemLogicCallbacks::GetCallback(QString function, AttributeItemLog
     {
         functionArgs = functionArgs.mid(1, functionArgs.size() - 2); //Remove parentheses
 
-        std::string sfunctionArgs = functionArgs.toStdString();
-
         QStringList arguments = functionArgs.split(QRegExp(",", Qt::CaseSensitive, QRegExp::FixedString));
 
         for (int i = 0; i < arguments.size(); i++)
         {
-            std::string arg = arguments.at(i).trimmed().toStdString();
             argumentList.push_back(arguments.at(i).trimmed());
         }
     }

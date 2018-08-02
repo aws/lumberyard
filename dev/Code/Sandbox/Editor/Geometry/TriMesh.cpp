@@ -18,6 +18,8 @@
 //////////////////////////////////////////////////////////////////////////
 CTriMesh::CTriMesh()
 {
+    pLines = NULL;
+
     pFaces = NULL;
     pVertices = NULL;
     pWSVertices = NULL;
@@ -30,6 +32,7 @@ CTriMesh::CTriMesh()
     nVertCount = 0;
     nUVCount = 0;
     nEdgeCount = 0;
+    nLinesCount = 0;
 
     selectionType = SO_ELEM_NONE;
 
@@ -274,7 +277,7 @@ void CTriMesh::SharePositions()
             if (find < 0)
             {
                 pNewVerts[nLastIndex] = pVertices[face.v[i]];
-                if (pColors)
+                if (pColors && pNewColors)
                 {
                     pNewColors[nLastIndex] = pColors[face.v[i]];
                 }
@@ -299,8 +302,9 @@ void CTriMesh::SharePositions()
     {
         SetColorsCount(nLastIndex);
         memcpy(pColors, pNewColors, nLastIndex * sizeof(SMeshColor));
-        delete []pNewColors;
     }
+
+    delete[]pNewColors;
 }
 
 //////////////////////////////////////////////////////////////////////////

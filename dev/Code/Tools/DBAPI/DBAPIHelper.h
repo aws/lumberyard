@@ -31,7 +31,7 @@ struct DBAPIPtr
 
     DBAPIPtr()
         : p(0) {}
-    DBAPIPtr(const DBAPIPtr& other) { p = other.p; other.p; }
+    DBAPIPtr(const DBAPIPtr& other) { p = other.p; }
     DBAPIPtr(T* other) { p = other; }
     ~DBAPIPtr() { Release(p); }
 
@@ -44,7 +44,7 @@ struct DBAPIPtr
     T& operator*() const { return *p; }
     T* operator->() const { return p; }
     DBAPIPtr& operator=(T* other) { Release(p); p = other; return *this; }
-    DBAPIPtr& operator=(const DBAPIPtr& other) { Release(p); p = other.p; other.p; return *this; }
+    DBAPIPtr& operator=(const DBAPIPtr& other) { Release(p); p = other.p; return *this; }
     operator bool() const {
         return p != NULL;
     }
@@ -128,7 +128,6 @@ struct TAutoTransaction
         {
             bool bSuccess = m_pConnection->Rollback();
             m_pConnection->SetAutoCommit(true);
-            m_pConnection;
             return bSuccess;
         }
 

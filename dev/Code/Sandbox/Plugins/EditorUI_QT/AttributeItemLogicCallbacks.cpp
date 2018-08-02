@@ -231,27 +231,30 @@ QMap<QString, AttributeItemLogicCallbacks::InnerCallbackType> AttributeItemLogic
             {
                 QWidgetVector* valueA = GetAttributeControl<QWidgetVector*>(args[1], caller);
                 QWidgetVector* valueB = GetAttributeControl<QWidgetVector*>(args[2], caller);
-                IVariable* valueAVariable = valueA->getVar();
-                IVariable* valueBVariable = valueB->getVar();
 
-                if (valueA && valueAVariable && valueB && valueBVariable)
+                if (valueA && valueB)
                 {
-                    float valueAValue = valueA->getGuiValue(0);
-                    float valueBValue = valueB->getGuiValue(0);
-                    float final = valueAValue;
+                    IVariable* valueAVariable = valueA->getVar();
+                    IVariable* valueBVariable = valueB->getVar();
+                    if (valueBVariable && valueAVariable)
+                    {
+                        float valueAValue = valueA->getGuiValue(0);
+                        float valueBValue = valueB->getGuiValue(0);
+                        float final = valueAValue;
 
-                    CAttributeItem* valueBItem = GetAttributeItem(args[2], caller);
-                    if (caller == valueBItem)
-                    {
-                        final = valueBValue;
-                    }
-                    if (final != valueAValue)
-                    {
-                        valueAVariable->Set(final);
-                    }
-                    if (final != valueBValue)
-                    {
-                        valueBVariable->Set(final);
+                        CAttributeItem* valueBItem = GetAttributeItem(args[2], caller);
+                        if (caller == valueBItem)
+                        {
+                            final = valueBValue;
+                        }
+                        if (final != valueAValue)
+                        {
+                            valueAVariable->Set(final);
+                        }
+                        if (final != valueBValue)
+                        {
+                            valueBVariable->Set(final);
+                        }
                     }
                 }
             }

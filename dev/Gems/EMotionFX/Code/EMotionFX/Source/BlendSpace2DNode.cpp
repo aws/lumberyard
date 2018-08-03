@@ -277,6 +277,12 @@ namespace EMotionFX
 
     void BlendSpace2DNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         // Find the unique data for this node, if it doesn't exist yet, create it.
         UniqueData* uniqueData = static_cast<BlendSpace2DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (!uniqueData)
@@ -302,6 +308,12 @@ namespace EMotionFX
 
     void BlendSpace2DNode::Output(AnimGraphInstance* animGraphInstance)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         // If the node is disabled, simply output a bind pose.
         if (mDisabled)
         {
@@ -384,6 +396,12 @@ namespace EMotionFX
 
     void BlendSpace2DNode::TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         if (mDisabled)
         {
             return;
@@ -410,6 +428,12 @@ namespace EMotionFX
 
     void BlendSpace2DNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         if (!mDisabled)
         {
             EMotionFX::BlendTreeConnection* param1Connection = GetInputPort(INPUTPORT_XVALUE).mConnection;
@@ -461,6 +485,12 @@ namespace EMotionFX
 
     void BlendSpace2DNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
 
         if (mDisabled)
@@ -503,6 +533,12 @@ namespace EMotionFX
 
     bool BlendSpace2DNode::UpdateMotionInfos(AnimGraphInstance* animGraphInstance)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
         if (!actorInstance)
         {
@@ -582,6 +618,12 @@ namespace EMotionFX
 
     void BlendSpace2DNode::ComputeMotionCoordinates(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance, AZ::Vector2& position)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         AZ_Assert(uniqueData, "Unique data not found for blend space 2D node '%s'.", GetName());
 
@@ -637,6 +679,12 @@ namespace EMotionFX
 
     void BlendSpace2DNode::RestoreMotionCoordinates(BlendSpaceMotion& motion, AnimGraphInstance* animGraphInstance)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         AZ::Vector2 computedMotionCoords;
         ComputeMotionCoordinates(motion.GetMotionId(), animGraphInstance, computedMotionCoords);
 
@@ -1142,6 +1190,12 @@ namespace EMotionFX
 
     void BlendSpace2DNode::SetBindPoseAtOutput(AnimGraphInstance* animGraphInstance)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         RequestPoses(animGraphInstance);
         AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
@@ -1151,6 +1205,12 @@ namespace EMotionFX
 
     void BlendSpace2DNode::Rewind(AnimGraphInstance* animGraphInstance)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         UniqueData* uniqueData = static_cast<BlendSpace2DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         RewindMotions(uniqueData->m_motionInfos);
     }

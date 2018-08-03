@@ -580,7 +580,7 @@ namespace ScriptCanvas
             {
                 if (const Datum* datum = GetInput(slotID))
                 {
-                    return datum && (Data::IS_A(type, datum->GetType()) || datum->IsConvertibleFrom(type));
+                    return (Data::IS_A(type, datum->GetType()) || datum->IsConvertibleFrom(type));
                 }
 
                 const Data::Type& inputType = slotIter->GetDataType();

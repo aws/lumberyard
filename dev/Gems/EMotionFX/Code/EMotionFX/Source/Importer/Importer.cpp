@@ -307,7 +307,7 @@ namespace EMotionFX
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
         // check if we want to load the actor even if an actor with the given filename is already inside the actor manager
-        if (settings == nullptr || (settings && settings->mForceLoading == false))
+        if (settings == nullptr || settings->mForceLoading == false)
         {
             // search the actor inside the actor manager and return it if it already got loaded
             Actor* actor = GetActorManager().FindActorByFileName(filename.c_str());
@@ -432,30 +432,32 @@ namespace EMotionFX
 
         // create the actor
         Actor* actor = Actor::Create("Unnamed actor");
-        actor->SetThreadIndex(actorSettings.mThreadIndex);
-
-        // set the scale mode
-        //actor->SetScaleMode( scaleMode );
-
-        // init the import parameters
-        ImportParameters params;
-        params.mSharedData      = &sharedData;
-        params.mEndianType      = endianType;
-        params.mActorSettings   = &actorSettings;
-        params.mActor           = actor;
-
-        // process all chunks
-        while (ProcessChunk(f, params))
-        {
-        }
+        MCORE_ASSERT(actor);
 
         if (actor)
         {
-            actor->SetFileName(filename);
-        }
+            actor->SetThreadIndex(actorSettings.mThreadIndex);
 
-        // post create init
-        actor->PostCreateInit(actorSettings.mMakeGeomLODsCompatibleWithSkeletalLODs, false, actorSettings.mUnitTypeConvert);
+            // set the scale mode
+            //actor->SetScaleMode( scaleMode );
+
+            // init the import parameters
+            ImportParameters params;
+            params.mSharedData = &sharedData;
+            params.mEndianType = endianType;
+            params.mActorSettings = &actorSettings;
+            params.mActor = actor;
+
+            // process all chunks
+            while (ProcessChunk(f, params))
+            {
+            }
+
+            actor->SetFileName(filename);
+
+            // post create init
+            actor->PostCreateInit(actorSettings.mMakeGeomLODsCompatibleWithSkeletalLODs, false, actorSettings.mUnitTypeConvert);
+        }
 
         // close the file and return a pointer to the actor we loaded
         f->Close();
@@ -476,7 +478,7 @@ namespace EMotionFX
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
         // check if we want to load the motion even if a motion with the given filename is already inside the motion manager
-        if (settings == nullptr || (settings && settings->mForceLoading == false))
+        if (settings == nullptr || settings->mForceLoading == false)
         {
             // search the motion inside the motion manager and return it if it already got loaded
             Motion* motion = GetMotionManager().FindMotionByFileName(filename.c_str());
@@ -597,38 +599,41 @@ namespace EMotionFX
             MCORE_ASSERT(false);    // unsupported motion type
         }
 
-        // copy over the actor settings, or use defaults
-        SkeletalMotionSettings skelMotionSettings;
-        if (settings)
+        if (motion)
         {
-            skelMotionSettings = *settings;
-        }
+            // copy over the actor settings, or use defaults
+            SkeletalMotionSettings skelMotionSettings;
+            if (settings)
+            {
+                skelMotionSettings = *settings;
+            }
 
-        // fix any possible conflicting settings
-        ValidateSkeletalMotionSettings(&skelMotionSettings);
+            // fix any possible conflicting settings
+            ValidateSkeletalMotionSettings(&skelMotionSettings);
 
-        // init the import parameters
-        ImportParameters params;
-        params.mSharedData              = &sharedData;
-        params.mEndianType              = endianType;
-        params.mSkeletalMotionSettings  = &skelMotionSettings;
-        params.mMotion                  = motion;
+            // init the import parameters
+            ImportParameters params;
+            params.mSharedData = &sharedData;
+            params.mEndianType = endianType;
+            params.mSkeletalMotionSettings = &skelMotionSettings;
+            params.mMotion = motion;
 
-        // read the chunks
-        while (ProcessChunk(f, params))
-        {
-        }
+            // read the chunks
+            while (ProcessChunk(f, params))
+            {
+            }
 
-        // update the max time and max submotion error values
-        motion->UpdateMaxTime();
+            // update the max time and max submotion error values
+            motion->UpdateMaxTime();
 
-        // make sure there is a sync track
-        motion->GetEventTable()->AutoCreateSyncTrack(motion);
+            // make sure there is a sync track
+            motion->GetEventTable()->AutoCreateSyncTrack(motion);
 
-        // scale to the EMotion FX unit type
-        if (skelMotionSettings.mUnitTypeConvert)
-        {
-            motion->ScaleToUnitType(GetEMotionFX().GetUnitType());
+            // scale to the EMotion FX unit type
+            if (skelMotionSettings.mUnitTypeConvert)
+            {
+                motion->ScaleToUnitType(GetEMotionFX().GetUnitType());
+            }
         }
 
         // close the file and return a pointer to the actor we loaded
@@ -672,7 +677,7 @@ namespace EMotionFX
         //////////////////////////////////////////
 
         // check if we want to load the motion set even if a motion set with the given filename is already inside the motion manager
-        if (settings == nullptr || (settings && settings->mForceLoading == false))
+        if (settings == nullptr || settings->mForceLoading == false)
         {
             // search the motion set inside the motion manager and return it if it already got loaded
             MotionSet* motionSet = GetMotionManager().FindMotionSetByFileName(filename.c_str());
@@ -1553,7 +1558,7 @@ namespace EMotionFX
         //////////////////////////////////////////
 
         // check if we want to load the anim graph even if a anim graph with the given filename is already inside the anim graph manager
-        if (settings == nullptr || (settings && settings->mForceLoading == false))
+        if (settings == nullptr || settings->mForceLoading == false)
         {
             // search the anim graph inside the anim graph manager and return it if it already got loaded
             AnimGraph* animGraph = GetAnimGraphManager().FindAnimGraphByFileName(filename.c_str());

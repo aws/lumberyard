@@ -432,30 +432,32 @@ namespace EMotionFX
 
         // create the actor
         Actor* actor = Actor::Create("Unnamed actor");
-        actor->SetThreadIndex(actorSettings.mThreadIndex);
-
-        // set the scale mode
-        //actor->SetScaleMode( scaleMode );
-
-        // init the import parameters
-        ImportParameters params;
-        params.mSharedData      = &sharedData;
-        params.mEndianType      = endianType;
-        params.mActorSettings   = &actorSettings;
-        params.mActor           = actor;
-
-        // process all chunks
-        while (ProcessChunk(f, params))
-        {
-        }
+        MCORE_ASSERT(actor);
 
         if (actor)
         {
-            actor->SetFileName(filename);
-        }
+            actor->SetThreadIndex(actorSettings.mThreadIndex);
 
-        // post create init
-        actor->PostCreateInit(actorSettings.mMakeGeomLODsCompatibleWithSkeletalLODs, false, actorSettings.mUnitTypeConvert);
+            // set the scale mode
+            //actor->SetScaleMode( scaleMode );
+
+            // init the import parameters
+            ImportParameters params;
+            params.mSharedData = &sharedData;
+            params.mEndianType = endianType;
+            params.mActorSettings = &actorSettings;
+            params.mActor = actor;
+
+            // process all chunks
+            while (ProcessChunk(f, params))
+            {
+            }
+
+            actor->SetFileName(filename);
+
+            // post create init
+            actor->PostCreateInit(actorSettings.mMakeGeomLODsCompatibleWithSkeletalLODs, false, actorSettings.mUnitTypeConvert);
+        }
 
         // close the file and return a pointer to the actor we loaded
         f->Close();

@@ -166,15 +166,19 @@ namespace EMotionFX
 
     void BlendSpace1DNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
-        // Find the unique data for this node, if it doesn't exist yet, create it.
-        UniqueData* uniqueData = static_cast<BlendSpace1DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (!uniqueData)
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (animGraphInstance) 
         {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
+            // Find the unique data for this node, if it doesn't exist yet, create it.
+            UniqueData* uniqueData = static_cast<BlendSpace1DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+            if (!uniqueData)
+            {
+                uniqueData = aznew UniqueData(this, animGraphInstance);
+                animGraphInstance->RegisterUniqueObjectData(uniqueData);
+            }
 
-        UpdateMotionInfos(animGraphInstance);
+            UpdateMotionInfos(animGraphInstance);
+        }
     }
 
 
@@ -192,6 +196,12 @@ namespace EMotionFX
 
     void BlendSpace1DNode::Output(AnimGraphInstance* animGraphInstance)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         // If the node is disabled, simply output a bind pose.
         if (mDisabled)
         {
@@ -272,7 +282,8 @@ namespace EMotionFX
 
     void BlendSpace1DNode::TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        if (mDisabled)
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (mDisabled || !animGraphInstance)
         {
             return;
         }
@@ -339,6 +350,12 @@ namespace EMotionFX
 
     void BlendSpace1DNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
 
         if (mDisabled)
@@ -376,6 +393,12 @@ namespace EMotionFX
 
     bool BlendSpace1DNode::UpdateMotionInfos(AnimGraphInstance* animGraphInstance)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return false;
+        }
+
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
         if (!actorInstance)
         {
@@ -497,6 +520,12 @@ namespace EMotionFX
 
     void BlendSpace1DNode::ComputeMotionCoordinates(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance, AZ::Vector2& position)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         AZ_Assert(uniqueData, "Unique data not found for blend space 1D node '%s'.", GetName());
 
@@ -709,6 +738,12 @@ namespace EMotionFX
 
     void BlendSpace1DNode::SetBindPoseAtOutput(AnimGraphInstance* animGraphInstance)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         RequestPoses(animGraphInstance);
         AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
@@ -718,6 +753,12 @@ namespace EMotionFX
 
     void BlendSpace1DNode::Rewind(AnimGraphInstance* animGraphInstance)
     {
+        AZ_Assert(animGraphInstance, "animGraphInstance is nullptr.");
+        if (!animGraphInstance)
+        {
+            return;
+        }
+
         UniqueData* uniqueData = static_cast<BlendSpace1DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         RewindMotions(uniqueData->m_motionInfos);
     }

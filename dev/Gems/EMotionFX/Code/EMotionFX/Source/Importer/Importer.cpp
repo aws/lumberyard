@@ -307,7 +307,7 @@ namespace EMotionFX
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
         // check if we want to load the actor even if an actor with the given filename is already inside the actor manager
-        if (settings == nullptr || (settings && settings->mForceLoading == false))
+        if (settings == nullptr || settings->mForceLoading == false)
         {
             // search the actor inside the actor manager and return it if it already got loaded
             Actor* actor = GetActorManager().FindActorByFileName(filename.c_str());
@@ -476,7 +476,7 @@ namespace EMotionFX
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
         // check if we want to load the motion even if a motion with the given filename is already inside the motion manager
-        if (settings == nullptr || (settings && settings->mForceLoading == false))
+        if (settings == nullptr || settings->mForceLoading == false)
         {
             // search the motion inside the motion manager and return it if it already got loaded
             Motion* motion = GetMotionManager().FindMotionByFileName(filename.c_str());
@@ -675,7 +675,7 @@ namespace EMotionFX
         //////////////////////////////////////////
 
         // check if we want to load the motion set even if a motion set with the given filename is already inside the motion manager
-        if (settings == nullptr || (settings && settings->mForceLoading == false))
+        if (settings == nullptr || settings->mForceLoading == false)
         {
             // search the motion set inside the motion manager and return it if it already got loaded
             MotionSet* motionSet = GetMotionManager().FindMotionSetByFileName(filename.c_str());
@@ -1556,7 +1556,7 @@ namespace EMotionFX
         //////////////////////////////////////////
 
         // check if we want to load the anim graph even if a anim graph with the given filename is already inside the anim graph manager
-        if (settings == nullptr || (settings && settings->mForceLoading == false))
+        if (settings == nullptr || settings->mForceLoading == false)
         {
             // search the anim graph inside the anim graph manager and return it if it already got loaded
             AnimGraph* animGraph = GetAnimGraphManager().FindAnimGraphByFileName(filename.c_str());

@@ -597,38 +597,41 @@ namespace EMotionFX
             MCORE_ASSERT(false);    // unsupported motion type
         }
 
-        // copy over the actor settings, or use defaults
-        SkeletalMotionSettings skelMotionSettings;
-        if (settings)
+        if (motion)
         {
-            skelMotionSettings = *settings;
-        }
+            // copy over the actor settings, or use defaults
+            SkeletalMotionSettings skelMotionSettings;
+            if (settings)
+            {
+                skelMotionSettings = *settings;
+            }
 
-        // fix any possible conflicting settings
-        ValidateSkeletalMotionSettings(&skelMotionSettings);
+            // fix any possible conflicting settings
+            ValidateSkeletalMotionSettings(&skelMotionSettings);
 
-        // init the import parameters
-        ImportParameters params;
-        params.mSharedData              = &sharedData;
-        params.mEndianType              = endianType;
-        params.mSkeletalMotionSettings  = &skelMotionSettings;
-        params.mMotion                  = motion;
+            // init the import parameters
+            ImportParameters params;
+            params.mSharedData = &sharedData;
+            params.mEndianType = endianType;
+            params.mSkeletalMotionSettings = &skelMotionSettings;
+            params.mMotion = motion;
 
-        // read the chunks
-        while (ProcessChunk(f, params))
-        {
-        }
+            // read the chunks
+            while (ProcessChunk(f, params))
+            {
+            }
 
-        // update the max time and max submotion error values
-        motion->UpdateMaxTime();
+            // update the max time and max submotion error values
+            motion->UpdateMaxTime();
 
-        // make sure there is a sync track
-        motion->GetEventTable()->AutoCreateSyncTrack(motion);
+            // make sure there is a sync track
+            motion->GetEventTable()->AutoCreateSyncTrack(motion);
 
-        // scale to the EMotion FX unit type
-        if (skelMotionSettings.mUnitTypeConvert)
-        {
-            motion->ScaleToUnitType(GetEMotionFX().GetUnitType());
+            // scale to the EMotion FX unit type
+            if (skelMotionSettings.mUnitTypeConvert)
+            {
+                motion->ScaleToUnitType(GetEMotionFX().GetUnitType());
+            }
         }
 
         // close the file and return a pointer to the actor we loaded

@@ -231,27 +231,30 @@ QMap<QString, AttributeItemLogicCallbacks::InnerCallbackType> AttributeItemLogic
             {
                 QWidgetVector* valueA = GetAttributeControl<QWidgetVector*>(args[1], caller);
                 QWidgetVector* valueB = GetAttributeControl<QWidgetVector*>(args[2], caller);
-                IVariable* valueAVariable = valueA->getVar();
-                IVariable* valueBVariable = valueB->getVar();
 
-                if (valueA && valueAVariable && valueB && valueBVariable)
+                if (valueA && valueB)
                 {
-                    float valueAValue = valueA->getGuiValue(0);
-                    float valueBValue = valueB->getGuiValue(0);
-                    float final = valueAValue;
+                    IVariable* valueAVariable = valueA->getVar();
+                    IVariable* valueBVariable = valueB->getVar();
+                    if (valueBVariable && valueAVariable)
+                    {
+                        float valueAValue = valueA->getGuiValue(0);
+                        float valueBValue = valueB->getGuiValue(0);
+                        float final = valueAValue;
 
-                    CAttributeItem* valueBItem = GetAttributeItem(args[2], caller);
-                    if (caller == valueBItem)
-                    {
-                        final = valueBValue;
-                    }
-                    if (final != valueAValue)
-                    {
-                        valueAVariable->Set(final);
-                    }
-                    if (final != valueBValue)
-                    {
-                        valueBVariable->Set(final);
+                        CAttributeItem* valueBItem = GetAttributeItem(args[2], caller);
+                        if (caller == valueBItem)
+                        {
+                            final = valueBValue;
+                        }
+                        if (final != valueAValue)
+                        {
+                            valueAVariable->Set(final);
+                        }
+                        if (final != valueBValue)
+                        {
+                            valueBVariable->Set(final);
+                        }
                     }
                 }
             }
@@ -274,8 +277,6 @@ bool AttributeItemLogicCallbacks::GetCallback(QString function, AttributeItemLog
         return false;
     }
 
-    std::string sfunction = function.toStdString();
-
     //Split the function string in to the function name, and the function arguments
     int openParPosition = function.indexOf((QChar)'(');
 
@@ -286,11 +287,7 @@ bool AttributeItemLogicCallbacks::GetCallback(QString function, AttributeItemLog
         return false;
     }
 
-    std::string sfunctionName = functionName.toStdString();
-
     QString functionArgs = function.mid(openParPosition);
-
-    std::string sfunctionArgs = functionArgs.toStdString();
 
     if (functionName.size() == 0)
     {
@@ -302,13 +299,10 @@ bool AttributeItemLogicCallbacks::GetCallback(QString function, AttributeItemLog
     {
         functionArgs = functionArgs.mid(1, functionArgs.size() - 2); //Remove parentheses
 
-        std::string sfunctionArgs = functionArgs.toStdString();
-
         QStringList arguments = functionArgs.split(QRegExp(",", Qt::CaseSensitive, QRegExp::FixedString));
 
         for (int i = 0; i < arguments.size(); i++)
         {
-            std::string arg = arguments.at(i).trimmed().toStdString();
             argumentList.push_back(arguments.at(i).trimmed());
         }
     }

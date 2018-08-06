@@ -3435,6 +3435,7 @@ CharacterDefinition* CharacterManager::LoadCDFFromXML(XmlNodeRef root, const cha
     uint32 numChildren = root->getChildCount();
     if (numChildren == 0)
     {
+        delete def;
         return nullptr;
     }
 

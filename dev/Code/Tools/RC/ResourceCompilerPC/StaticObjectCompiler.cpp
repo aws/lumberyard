@@ -749,7 +749,12 @@ void CStaticObjectCompiler::AnalyzeFoliage(CContentCGF* pCGF, CNodeCGF* pNodeCGF
 
             if ((branch.npt & 15) == 0)
             {
-                branch.pt = (SBranchPt*)realloc(branch.pt, (branch.npt + 16) * sizeof(SBranchPt));
+                SBranchPt* tmp = (SBranchPt*)realloc(branch.pt, (branch.npt + 16) * sizeof(SBranchPt));
+                AZ_Assert(tmp != nullptr, "realloc failed, this is possible when allocating a large data array whose size is comparable to RAM size, and also when the memory is highly segmented");
+                if (tmp)
+                {
+                    branch.pt = tmp;
+                }
             }
 
             branch.pt[branch.npt].minDist = 1;
@@ -770,7 +775,12 @@ void CStaticObjectCompiler::AnalyzeFoliage(CContentCGF* pCGF, CNodeCGF* pNodeCGF
 
         if ((nBranches & 15) == 0)
         {
-            pBranches = (SBranch*)realloc(pBranches, (nBranches + 16) * sizeof(SBranch));
+            SBranch* tmp = (SBranch*)realloc(pBranches, (nBranches + 16) * sizeof(SBranch));
+            AZ_Assert(tmp != nullptr, "realloc failed, this is possible when allocating a large data array whose size is comparable to RAM size, and also when the memory is highly segmented");
+            if (tmp)
+            {
+                pBranches = tmp;
+            }
         }
 
         pBranches[nBranches++] = branch;

@@ -2052,6 +2052,8 @@ int CTriMesh::Slice(const triangle* pcut, float minlen, float minArea)
     }
     if (!nNewTri)
     {
+        delete[] removedTri;
+        delete[] newTri;
         return 0;
     }
 

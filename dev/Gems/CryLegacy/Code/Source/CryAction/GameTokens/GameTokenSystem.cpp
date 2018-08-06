@@ -159,6 +159,8 @@ CGameTokenSystem::CGameTokenSystem()
 //////////////////////////////////////////////////////////////////////////
 CGameTokenSystem::~CGameTokenSystem()
 {
+    Unload();
+
     if (m_pScriptBind)
     {
         delete m_pScriptBind;

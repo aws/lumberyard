@@ -26,6 +26,15 @@
 #include "heightfieldbv.h"
 #include "heightfieldgeom.h"
 
+CHeightfield::~CHeightfield()
+{
+    delete[] m_pIndices;
+    delete[] m_pNormals;
+    delete[] m_pIds;
+    delete[] m_pTopology;
+    m_pTree = 0;
+}
+
 CHeightfield* CHeightfield::CreateHeightfield(heightfield* phf)
 {
     phf->stepr.x = 1.0f / phf->step.x;

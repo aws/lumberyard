@@ -23,7 +23,7 @@ class CHeightfield
 {
 public:
     CHeightfield() { m_pTree = &m_Tree; }
-    virtual ~CHeightfield() { m_pTree = 0; }
+    virtual ~CHeightfield();
 
     CHeightfield* CreateHeightfield(heightfield* phf);
     virtual int GetType() { return GEOM_HEIGHTFIELD; }

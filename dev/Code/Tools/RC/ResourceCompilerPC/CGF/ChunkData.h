@@ -30,9 +30,15 @@ struct CChunkData
     }
     void AddData(const void* pSrcData, int nSrcDataSize)
     {
-        data = (char*)realloc(data, size + nSrcDataSize);
-        memcpy(data + size, pSrcData, nSrcDataSize);
-        size += nSrcDataSize;
+        char* tmp = (char*)realloc(data, size + nSrcDataSize);
+        AZ_Assert(tmp != nullptr, "realloc failed, this is possible when allocating a large data array whose size is comparable to RAM size, and also when the memory is highly segmented");
+
+        if (tmp != nullptr)
+        {
+            data = tmp;
+            memcpy(data + size, pSrcData, nSrcDataSize);
+            size += nSrcDataSize;
+        }
     }
 };
 

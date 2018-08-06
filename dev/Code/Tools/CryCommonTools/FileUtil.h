@@ -96,6 +96,7 @@ namespace FileUtil
 
         if (ftimeModify == nullptr && ftimeCreate == nullptr && ftimeAccess == nullptr)
         {
+            FindClose(hFind);
             return true;
         }
 

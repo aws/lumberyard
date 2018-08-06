@@ -2537,6 +2537,7 @@ ColladaAnimation* ColladaLoaderImpl::ParseAnimation(XmlNodeRef node, const Scene
 
     if (!pAnimation->ParseChannel(channelNode, samplerNode, scenes, dataSources, sceneTransform, pListener))
     {
+        delete pAnimation;
         return NULL;
     }
 
@@ -5987,6 +5988,7 @@ CNodeCGF* ColladaNode::CreateNodeCGF(CMaterialCGF* rootMaterial, const CGFSubMat
                 if (geometryVertexCount != boneMapping.size())
                 {
                     RCLogError("Bone mapping length (%i) doesn't match number of vertex positions (%i)", boneMapping.size(), geometryVertexCount);
+                    delete cgfNode;
                     return 0;
                 }
             }
@@ -7472,6 +7474,7 @@ CInternalSkinningInfo* ColladaScene::CreateControllerTCBSkinningInfo(CContentCGF
             if (validAnimation == false)
             {
                 ReportError(pListener, "Number of keys consistency error in animated node '%s'", currentNodeAnims[i]->GetTargetNode()->GetID().c_str());
+                delete pCtrlSkinningInfo;
                 return NULL;
             }
         }
@@ -7848,6 +7851,8 @@ CInternalSkinningInfo* ColladaScene::CreateControllerSkinningInfo(CContentCGF* c
                 if (nodeAnims[i]->GetKeys() != numKeys)
                 {
                     ReportError(pListener, "Number of keys consistency error in animated node '%s'", nodeAnims[i]->GetTargetNode()->GetID().c_str());
+                    delete pController;
+                    delete pCtrlSkinningInfo;
                     return NULL;
                 }
             }

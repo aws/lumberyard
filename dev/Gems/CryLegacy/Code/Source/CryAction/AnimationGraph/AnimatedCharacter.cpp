@@ -428,7 +428,7 @@ bool CAnimatedCharacter::LoadAnimationGraph(IGameObject* pGameObject)
             {
                 m_pAnimDatabase1P = mannequinSys.GetAnimationDatabaseManager().Load(szAnimDatabase);
             }
-            if ((pSourceTable->GetValue("SoundDatabase", szSoundDatabase) || pSourceTable->GetValue("fileSoundDatabase", szAnimDatabase))  && szSoundDatabase)
+            if ((pSourceTable->GetValue("SoundDatabase", szSoundDatabase) || pSourceTable->GetValue("fileSoundDatabase", szSoundDatabase))  && szSoundDatabase)
             {
                 m_pSoundDatabase = mannequinSys.GetAnimationDatabaseManager().Load(szSoundDatabase);
             }

@@ -285,6 +285,7 @@ bool GlobalAnimationHeaderAIM::ReadController(IChunkFile::ChunkDesc* pChunkDesc,
                 if (pCryKey[i].nTime <= lastTime)
                 {
                     gEnv->pLog->LogError("CryAnimation: Controller contains repeated or unsorted time keys");
+                    delete pController;
                     return false;
                 }
                 lastTime = pCryKey[i].nTime;
@@ -338,6 +339,7 @@ bool GlobalAnimationHeaderAIM::ReadController(IChunkFile::ChunkDesc* pChunkDesc,
             ITrackRotationStorage* pStorage = ControllerHelper::GetRotationControllerPtr(pCtrlChunk->RotationFormat);
             if (!pStorage)
             {
+                delete pRotation;
                 return false;
             }
             pRotation->SetRotationStorage(pStorage);
@@ -364,6 +366,7 @@ bool GlobalAnimationHeaderAIM::ReadController(IChunkFile::ChunkDesc* pChunkDesc,
             TrackPositionStoragePtr pStorage = ControllerHelper::GetPositionControllerPtr(pCtrlChunk->PositionFormat);
             if (!pStorage)
             {
+                delete pPosition;
                 return false;
             }
 
@@ -458,6 +461,7 @@ bool GlobalAnimationHeaderAIM::ReadController(IChunkFile::ChunkDesc* pChunkDesc,
                 if (pCryKey[i].nTime <= lastTime)
                 {
                     gEnv->pLog->LogError("CryAnimation: Controller contains repeated or unsorted time keys");
+                    delete pController;
                     return false;
                 }
                 lastTime = pCryKey[i].nTime;
@@ -505,6 +509,7 @@ bool GlobalAnimationHeaderAIM::ReadController(IChunkFile::ChunkDesc* pChunkDesc,
             ITrackRotationStorage* pStorage = ControllerHelper::GetRotationControllerPtr(pCtrlChunk->RotationFormat);
             if (!pStorage)
             {
+                delete pRotation;
                 return false;
             }
             pRotation->SetRotationStorage(pStorage);
@@ -531,6 +536,7 @@ bool GlobalAnimationHeaderAIM::ReadController(IChunkFile::ChunkDesc* pChunkDesc,
             TrackPositionStoragePtr pStorage = ControllerHelper::GetPositionControllerPtr(pCtrlChunk->PositionFormat);
             if (!pStorage)
             {
+                delete pPosition;
                 return false;
             }
 

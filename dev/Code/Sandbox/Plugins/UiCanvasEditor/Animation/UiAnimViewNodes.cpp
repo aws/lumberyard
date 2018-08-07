@@ -746,7 +746,7 @@ void CUiAnimViewNodesCtrl::OnFillItems()
         // Additional empty record like space for scrollbar in key control
         CRecord* pGroupRec = new CRecord();
         pGroupRec->setSizeHint(0, QSize(width(), 18));
-        ui->treeWidget->addTopLevelItem(pRootGroupRec);
+        ui->treeWidget->addTopLevelItem(pGroupRec);
     }
 }
 

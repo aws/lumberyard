@@ -447,6 +447,7 @@ bool CLoaderTCB::ReadController(IChunkFile::ChunkDesc* pChunkDesc)
             ITrackRotationStorage* pStorage = ControllerHelper::GetRotationControllerPtr(pCtrlChunk->RotationFormat);
             if (!pStorage)
             {
+                delete pRotation;
                 return false;
             }
 
@@ -475,6 +476,7 @@ bool CLoaderTCB::ReadController(IChunkFile::ChunkDesc* pChunkDesc)
             TrackPositionStoragePtr pStorage = ControllerHelper::GetPositionControllerPtr(pCtrlChunk->PositionFormat);
             if (!pStorage)
             {
+                delete pPosition;
                 return false;
             }
 
@@ -580,6 +582,7 @@ bool CLoaderTCB::ReadController(IChunkFile::ChunkDesc* pChunkDesc)
             ITrackRotationStorage* pStorage = ControllerHelper::GetRotationControllerPtr(pCtrlChunk->RotationFormat);
             if (!pStorage)
             {
+                delete pRotation;
                 return false;
             }
 
@@ -608,6 +611,7 @@ bool CLoaderTCB::ReadController(IChunkFile::ChunkDesc* pChunkDesc)
             TrackPositionStoragePtr pStorage = ControllerHelper::GetPositionControllerPtr(pCtrlChunk->PositionFormat);
             if (!pStorage)
             {
+                delete pPosition;
                 return false;
             }
 

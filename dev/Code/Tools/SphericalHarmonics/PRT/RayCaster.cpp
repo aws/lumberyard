@@ -403,6 +403,7 @@ const bool NSH::CRayCaster::SetupGeometry(const TGeomVec& crGeometries, const NT
     if (!rasterCube.PreProcess(false))
     {
         GetSHLog().LogError("Preprocess for RasterCube failed\n");
+        delete[] pCache;
         return false;
     }
     //second pass

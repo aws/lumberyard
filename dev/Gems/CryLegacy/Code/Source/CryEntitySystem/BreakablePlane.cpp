@@ -1197,6 +1197,7 @@ int CBreakablePlane::ProcessImpact(const SProcessImpactIn& in, SProcessImpactOut
 
         if (in.bVerify)
         {
+            delete pPlane;
             return result;
         }
 

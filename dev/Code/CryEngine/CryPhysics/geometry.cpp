@@ -898,7 +898,7 @@ int CPrimitive::Intersect(IGeometry* _pCollider, geom_world_data* pdata1, geom_w
         gtest.contacts->id[0] = gtest.contacts->id[1];
         gtest.contacts->id[1] = i;
         i = gtest.contacts->iPrim[0];
-        gtest.contacts->iPrim[0] = gtest.contacts->id[1];
+        gtest.contacts->iPrim[0] = gtest.contacts->iPrim[1];
         gtest.contacts->iPrim[1] = i;
         pcontacts->n.Flip();
         return 1;

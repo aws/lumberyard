@@ -1710,6 +1710,7 @@ bool CExportManager::AddTerrain()
         if (nExportHeight >= 10 && y % (nExportHeight / 10) == 0 && !progress.Step(100 * y / nExportHeight))
         {
             QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Export Terrain was skipped by user."));
+            delete pMesh;
             return false;
         }
     }

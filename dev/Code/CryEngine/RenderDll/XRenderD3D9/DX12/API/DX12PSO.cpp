@@ -96,6 +96,7 @@ namespace DX12
         if (!result->Init(params))
         {
             DX12_ERROR("Could not create PSO!");
+            delete result;
             return nullptr;
         }
 
@@ -118,6 +119,7 @@ namespace DX12
         if (!result->Init(params))
         {
             DX12_ERROR("Could not create PSO!");
+            delete result;
             return nullptr;
         }
 

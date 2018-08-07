@@ -286,6 +286,7 @@ public:
             break;
         default:
             assert(0);
+            delete var;
             return 0;
         }
 

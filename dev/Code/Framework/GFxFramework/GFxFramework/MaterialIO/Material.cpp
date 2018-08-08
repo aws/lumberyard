@@ -595,15 +595,13 @@ namespace AZ
         {
             rapidxml::xml_node<char>* materialNode = m_mtlDoc.first_node(MaterialExport::g_materialString);
 
-            rapidxml::xml_node<char>* submaterialNode = nullptr;
-
             if (!materialNode)
             {
                 AZ_Assert(false, "Attempted to add material to invalid xml document.")
                 return false;
             }
 
-            submaterialNode = materialNode->first_node("SubMaterials");
+            rapidxml::xml_node<char>* submaterialNode = materialNode->first_node("SubMaterials");
 
             if (submaterialNode)
             {

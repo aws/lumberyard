@@ -4523,7 +4523,7 @@ void CHWShader_D3D::mfReset(uint32 CRC32)
         m_pCurInst = m_Insts[i];
         assert(m_pCurInst);
         PREFAST_ASSUME(m_pCurInst);
-        if (!m_pCurInst->m_bDeleted)
+        if (m_pCurInst && !m_pCurInst->m_bDeleted)
         {
             m_pCurInst->Release(m_pDevCache);
         }

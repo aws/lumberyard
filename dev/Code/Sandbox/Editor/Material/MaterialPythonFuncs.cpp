@@ -1912,10 +1912,6 @@ namespace
             {
                 SetMaterialFlag(pMaterial, MTL_FLAG_HIDEONBREAK, value.property.boolValue);
             }
-            else if (propertyName == "Hide After Breaking")
-            {
-                SetMaterialFlag(pMaterial, MTL_FLAG_HIDEONBREAK, value.property.boolValue);
-            }
             else if (propertyName == "Voxel Coverage")
             {
                 pMaterial->GetShaderResources().m_VoxelCoverage = static_cast<uint8>(value.property.floatValue * 255.0f);

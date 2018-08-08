@@ -3885,11 +3885,6 @@ int SD3DShader::Release(EHWShaderClass eSHClass, int nSize)
         return ((ID3D11GeometryShader*)pHandle)->Release();
     }
     else
-    if (eSHClass == eHWSC_Geometry)
-    {
-        return ((ID3D11GeometryShader*)pHandle)->Release();
-    }
-    else
     if (eSHClass == eHWSC_Hull)
     {
         return ((ID3D11HullShader*)pHandle)->Release();

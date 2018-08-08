@@ -1207,7 +1207,7 @@ namespace
                             pMaterial->GetShaderResources().m_LMaterial.m_Specular.b / pMaterial->GetShaderResources().m_LMaterial.m_Specular.a));
                 value.property.colorValue.r = col.red();
                 value.property.colorValue.g = col.green();
-                value.property.colorValue.b = col.green();
+                value.property.colorValue.b = col.blue();
             }
             else if (propertyName == "Glossiness")
             {

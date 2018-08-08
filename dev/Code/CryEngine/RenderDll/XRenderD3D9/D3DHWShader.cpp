@@ -3345,7 +3345,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_WATERVOLUMECAUSTICSMAP:
                 {
                     const uint32 nCurrWaterVolID = gRenDev->GetFrameID(false) % 2;
-                    CTexture* pTex = CTexture::s_ptexWaterCaustics[nCurrWaterVolID];
+                    CTexture* pTex = CTexture::s_ptexWaterCaustics[nCurrWaterVolID] ? CTexture::s_ptexWaterCaustics[nCurrWaterVolID] : CTextureManager::Instance()->GetBlackTexture();
                     pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
                 break;
@@ -3353,7 +3353,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_WATERVOLUMECAUSTICSMAPTEMP:
                 {
                     const uint32 nPrevWaterVolID = (gRenDev->GetFrameID(false) + 1) % 2;
-                    CTexture* pTex = CTexture::s_ptexWaterCaustics[nPrevWaterVolID];
+                    CTexture* pTex = CTexture::s_ptexWaterCaustics[nPrevWaterVolID] ? CTexture::s_ptexWaterCaustics[nPrevWaterVolID] : CTextureManager::Instance()->GetBlackTexture();
                     pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
                 break;

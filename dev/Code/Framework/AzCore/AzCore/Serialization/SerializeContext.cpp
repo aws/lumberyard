@@ -1376,7 +1376,6 @@ namespace AZ
         if (classElementFound)
         {
             void* dataAddress = nullptr;
-            void* reserveAddress = nullptr;
             IDataContainer* dataContainer = parentDataElement->m_classData->m_container;
             if (dataContainer) // container elements
             {
@@ -1404,7 +1403,7 @@ namespace AZ
                 dataAddress = reinterpret_cast<char*>(parentPtr) + classElement.m_offset;
             }
 
-            reserveAddress = dataAddress;
+            void* reserveAddress = dataAddress;
 
             // create a new instance if needed
             if (classElement.m_flags & SerializeContext::ClassElement::FLG_POINTER)

@@ -984,7 +984,7 @@ namespace
                         float rx = radius * 200.0f / ratio;
                         float ry = radius * 200.0f;
 
-                        if (pass == PASS_SHADOW)
+                        if (pass == PASS_SELECTION)
                         {
                             if (bSelected)
                             {

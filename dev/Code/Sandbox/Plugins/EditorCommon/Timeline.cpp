@@ -1250,7 +1250,7 @@ struct CTimeline::SMoveHandler
 
         SAnimTime minDeltaTime = SAnimTime::Min();
         SAnimTime maxDeltaTime = SAnimTime::Max();
-        SAnimTime minKeyTime = SAnimTime::Max();
+        SAnimTime minKeyTime = SAnimTime::Min();
 
         for (size_t i = 0; i < selectedElements.size(); ++i)
         {

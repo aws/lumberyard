@@ -3000,7 +3000,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 #if !defined(_RELEASE)
             string matName = "unknown";
 
-            if (pSR->m_szMaterialName)
+            if (pSR && pSR->m_szMaterialName)
             {
                 matName = pSR->m_szMaterialName;
             }

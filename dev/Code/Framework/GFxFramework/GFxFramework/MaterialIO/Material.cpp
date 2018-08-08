@@ -802,8 +802,7 @@ namespace AZ
                 return nullptr;
             }
            
-            rapidxml::xml_node<char>* submaterialNode = nullptr;
-            submaterialNode = materialNode->first_node("SubMaterials");
+            rapidxml::xml_node<char>* submaterialNode = materialNode->first_node("SubMaterials");
 
             if (submaterialNode)
             {

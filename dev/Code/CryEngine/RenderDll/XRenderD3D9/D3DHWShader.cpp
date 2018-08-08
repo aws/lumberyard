@@ -1826,7 +1826,7 @@ namespace
 
                 case ECGP_PB_GmemStencilValue:
                 {
-                    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+                    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) != CD3D9Renderer::eGT_REGULAR_PATH)
                     {
                         uint32 stencilRef = CRenderer::CV_r_VisAreaClipLightsPerPixel ? 0 : (rRP.m_RIs[0][0]->nStencRef | BIT_STENCIL_INSIDE_CLIPVOLUME);
                         stencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) | CRenderer::CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0);

@@ -3414,7 +3414,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
                         STexState pTexStateLinearClamp;
                         pTexStateLinearClamp.SetFilterMode(FILTER_LINEAR);
-                        pTexStateLinearClamp.SetClampMode(false, false, false);
+                        pTexStateLinearClamp.SetClampMode(0, 0, 0);
                         int nTexStateLinearClampID = CTexture::GetTexState(pTexStateLinearClamp);
 
                         pCloudShadowTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);

@@ -1826,7 +1826,7 @@ namespace
 
                 case ECGP_PB_GmemStencilValue:
                 {
-                    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+                    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) != CD3D9Renderer::eGT_REGULAR_PATH)
                     {
                         uint32 stencilRef = CRenderer::CV_r_VisAreaClipLightsPerPixel ? 0 : (rRP.m_RIs[0][0]->nStencRef | BIT_STENCIL_INSIDE_CLIPVOLUME);
                         stencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) | CRenderer::CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0);
@@ -3000,7 +3000,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 #if !defined(_RELEASE)
             string matName = "unknown";
 
-            if (pSR->m_szMaterialName)
+            if (pSR && pSR->m_szMaterialName)
             {
                 matName = pSR->m_szMaterialName;
             }
@@ -3345,7 +3345,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_WATERVOLUMECAUSTICSMAP:
                 {
                     const uint32 nCurrWaterVolID = gRenDev->GetFrameID(false) % 2;
-                    CTexture* pTex = CTexture::s_ptexWaterCaustics[nCurrWaterVolID];
+                    CTexture* pTex = CTexture::s_ptexWaterCaustics[nCurrWaterVolID] ? CTexture::s_ptexWaterCaustics[nCurrWaterVolID] : CTextureManager::Instance()->GetBlackTexture();
                     pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
                 break;
@@ -3353,7 +3353,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_WATERVOLUMECAUSTICSMAPTEMP:
                 {
                     const uint32 nPrevWaterVolID = (gRenDev->GetFrameID(false) + 1) % 2;
-                    CTexture* pTex = CTexture::s_ptexWaterCaustics[nPrevWaterVolID];
+                    CTexture* pTex = CTexture::s_ptexWaterCaustics[nPrevWaterVolID] ? CTexture::s_ptexWaterCaustics[nPrevWaterVolID] : CTextureManager::Instance()->GetBlackTexture();
                     pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
                 break;
@@ -3414,7 +3414,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
                         STexState pTexStateLinearClamp;
                         pTexStateLinearClamp.SetFilterMode(FILTER_LINEAR);
-                        pTexStateLinearClamp.SetClampMode(false, false, false);
+                        pTexStateLinearClamp.SetClampMode(0, 0, 0);
                         int nTexStateLinearClampID = CTexture::GetTexState(pTexStateLinearClamp);
 
                         pCloudShadowTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
@@ -3878,11 +3878,6 @@ int SD3DShader::Release(EHWShaderClass eSHClass, int nSize)
     if (eSHClass == eHWSC_Vertex)
     {
         return ((ID3D11VertexShader*)pHandle)->Release();
-    }
-    else
-    if (eSHClass == eHWSC_Geometry)
-    {
-        return ((ID3D11GeometryShader*)pHandle)->Release();
     }
     else
     if (eSHClass == eHWSC_Geometry)
@@ -4528,7 +4523,7 @@ void CHWShader_D3D::mfReset(uint32 CRC32)
         m_pCurInst = m_Insts[i];
         assert(m_pCurInst);
         PREFAST_ASSUME(m_pCurInst);
-        if (!m_pCurInst->m_bDeleted)
+        if (m_pCurInst && !m_pCurInst->m_bDeleted)
         {
             m_pCurInst->Release(m_pDevCache);
         }

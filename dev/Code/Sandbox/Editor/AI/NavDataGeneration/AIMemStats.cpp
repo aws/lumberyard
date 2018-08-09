@@ -206,7 +206,7 @@ size_t CVolumeNavRegion::MemStats()
     for (unsigned i = 0; i < m_volumes.size(); ++i)
     {
         const CVolume* vol = m_volumes[i];
-        size += sizeof(vol);
+        size += sizeof(*vol);
         if (vol)
         {
             size += vol->m_portalIndices.capacity() * sizeof(int);

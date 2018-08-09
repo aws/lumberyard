@@ -984,7 +984,7 @@ namespace
                         float rx = radius * 200.0f / ratio;
                         float ry = radius * 200.0f;
 
-                        if (pass == PASS_SHADOW)
+                        if (pass == PASS_SELECTION)
                         {
                             if (bSelected)
                             {
@@ -1250,7 +1250,7 @@ struct CTimeline::SMoveHandler
 
         SAnimTime minDeltaTime = SAnimTime::Min();
         SAnimTime maxDeltaTime = SAnimTime::Max();
-        SAnimTime minKeyTime = SAnimTime::Max();
+        SAnimTime minKeyTime = SAnimTime::Min();
 
         for (size_t i = 0; i < selectedElements.size(); ++i)
         {

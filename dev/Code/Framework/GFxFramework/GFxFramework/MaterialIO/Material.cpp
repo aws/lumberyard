@@ -538,10 +538,20 @@ namespace AZ
         void MaterialGroup::CreateMtlFile()
         {
             rapidxml::xml_node<char>* rootNode = m_mtlDoc.allocate_node(rapidxml::node_element, MaterialExport::g_materialString);
-            
+            if (!rootNode)
+            {
+                AZ_Assert(false, "Could not allocate node for xml document.");
+                return;
+            }
+
             // MtlFlags
             rapidxml::xml_attribute<char>* attr = m_mtlDoc.allocate_attribute(MaterialExport::g_mtlFlagString,
                 m_mtlDoc.allocate_string(AZStd::to_string(EMaterialFlags::MTL_64BIT_SHADERGENMASK | EMaterialFlags::MTL_FLAG_MULTI_SUBMTL).c_str()));
+            if (!attr) 
+            {
+                AZ_Assert(false, "Could not allocate attribute for xml document.");
+                return;
+            }
             rootNode->append_attribute(attr);
 
             // DccMaterialHash
@@ -551,6 +561,11 @@ namespace AZ
 
             // SubMaterials
             rapidxml::xml_node<char>* subMaterialNode = m_mtlDoc.allocate_node(rapidxml::node_element, MaterialExport::g_subMaterialString);
+            if (!subMaterialNode)
+            {
+                AZ_Assert(false, "Could not allocate subMaterialNode for xml document.");
+                return;
+            }
             rootNode->append_node(subMaterialNode);
 
             m_mtlDoc.append_node(rootNode);
@@ -595,15 +610,13 @@ namespace AZ
         {
             rapidxml::xml_node<char>* materialNode = m_mtlDoc.first_node(MaterialExport::g_materialString);
 
-            rapidxml::xml_node<char>* submaterialNode = nullptr;
-
             if (!materialNode)
             {
                 AZ_Assert(false, "Attempted to add material to invalid xml document.")
                 return false;
             }
 
-            submaterialNode = materialNode->first_node("SubMaterials");
+            rapidxml::xml_node<char>* submaterialNode = materialNode->first_node("SubMaterials");
 
             if (submaterialNode)
             {
@@ -804,8 +817,7 @@ namespace AZ
                 return nullptr;
             }
            
-            rapidxml::xml_node<char>* submaterialNode = nullptr;
-            submaterialNode = materialNode->first_node("SubMaterials");
+            rapidxml::xml_node<char>* submaterialNode = materialNode->first_node("SubMaterials");
 
             if (submaterialNode)
             {

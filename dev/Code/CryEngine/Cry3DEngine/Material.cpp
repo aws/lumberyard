@@ -498,9 +498,13 @@ void CMatInfo::SetLayerCount(uint32 nCount)
     if (!m_pMaterialLayers)
     {
         m_pMaterialLayers = new MatLayers;
+        AZ_Assert(m_pMaterialLayers, "Failed to allocate new MatLayers");
     }
 
-    m_pMaterialLayers->resize(nCount);
+    if (m_pMaterialLayers)
+    {
+        m_pMaterialLayers->resize(nCount);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

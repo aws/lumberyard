@@ -1594,7 +1594,8 @@ void CUiAnimViewNodesCtrl::ShowNextResult()
 
             if (!items.empty())
             {
-                m_currentMatchIndex = ++m_currentMatchIndex % m_matchCount;
+                ++m_currentMatchIndex;
+                m_currentMatchIndex = m_currentMatchIndex % m_matchCount;
                 ui->treeWidget->selectionModel()->clear();
                 items[m_currentMatchIndex]->setSelected(true);
             }

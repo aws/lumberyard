@@ -466,7 +466,7 @@ public:
     virtual void DecodeKey(f32 normalized_time, Vec3& quat) = 0;
     virtual size_t SizeOfThis() const
     {
-        return sizeof(this) + m_pData->GetDataRawSize();
+        return sizeof(*this) + m_pData->GetDataRawSize();
     }
     virtual void GetValueFromKey(uint32 key, Vec3& val) const
     {
@@ -521,7 +521,7 @@ public:
     virtual void DecodeKey(f32 normalized_time, Quat& quat) = 0;
     virtual size_t SizeOfThis() const
     {
-        return sizeof(this) + m_pData->GetDataRawSize();
+        return sizeof(*this) + m_pData->GetDataRawSize();
     }
 
     virtual void GetValueFromKey(uint32 key, Quat& val) const

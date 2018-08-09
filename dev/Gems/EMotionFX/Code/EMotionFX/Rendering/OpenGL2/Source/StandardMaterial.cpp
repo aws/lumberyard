@@ -119,7 +119,7 @@ namespace RenderGL
         {
             EMotionFX::StandardMaterial* stdMaterial = (mMaterial->GetType() == EMotionFX::StandardMaterial::TYPE_ID) ? static_cast<EMotionFX::StandardMaterial*>(mMaterial) : nullptr;
 
-            if (mDiffuseMap == nullptr || mDiffuseMap == gfx->GetTextureCache()->GetWhiteTexture() && stdMaterial)
+            if (stdMaterial && (mDiffuseMap == nullptr || mDiffuseMap == gfx->GetTextureCache()->GetWhiteTexture()))
             {
                 mActiveShader->SetUniform("diffuseColor", stdMaterial->GetDiffuse());
             }

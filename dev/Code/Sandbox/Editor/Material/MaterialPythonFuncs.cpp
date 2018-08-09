@@ -1207,7 +1207,7 @@ namespace
                             pMaterial->GetShaderResources().m_LMaterial.m_Specular.b / pMaterial->GetShaderResources().m_LMaterial.m_Specular.a));
                 value.property.colorValue.r = col.red();
                 value.property.colorValue.g = col.green();
-                value.property.colorValue.b = col.green();
+                value.property.colorValue.b = col.blue();
             }
             else if (propertyName == "Glossiness")
             {
@@ -1907,10 +1907,6 @@ namespace
             else if (propertyName == "Use Scattering")
             {
                 SetMaterialFlag(pMaterial, MTL_FLAG_SCATTER, value.property.boolValue);
-            }
-            else if (propertyName == "Hide After Breaking")
-            {
-                SetMaterialFlag(pMaterial, MTL_FLAG_HIDEONBREAK, value.property.boolValue);
             }
             else if (propertyName == "Hide After Breaking")
             {

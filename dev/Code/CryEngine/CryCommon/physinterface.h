@@ -3694,8 +3694,6 @@ struct IPhysicalWorld
             IPhysicalEntity** _pSkipEnts = 0, int _nSkipEnts = 0, PhysicsForeignData _pForeignData = 0, int _iForeignData = 0, ray_hit_cached* _phitLast = 0)
         {
             memset(this, 0, sizeof(*this));
-            objtypes = ent_all;
-            flags = rwi_stop_at_pierceable;
             org = _org;
             dir = _dir;
             objtypes = _objtypes;
@@ -3756,8 +3754,6 @@ struct IPhysicalWorld
             intersection_params* _pip = 0, PhysicsForeignData _pForeignData = 0, int _iForeignData = 0, IPhysicalEntity** _pSkipEnts = 0, int _nSkipEnts = 0)
         {
             memset(this, 0, sizeof(*this));
-            entTypes = ent_all;
-            geomFlagsAny = geom_colltype0 | geom_colltype_player;
             lockContacts.prw = &lockContacts.iActive;
             itype = _itype;
             pprim = _pprim;

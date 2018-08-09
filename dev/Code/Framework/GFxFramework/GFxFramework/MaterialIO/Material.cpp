@@ -538,10 +538,20 @@ namespace AZ
         void MaterialGroup::CreateMtlFile()
         {
             rapidxml::xml_node<char>* rootNode = m_mtlDoc.allocate_node(rapidxml::node_element, MaterialExport::g_materialString);
-            
+            if (!rootNode)
+            {
+                AZ_Assert(false, "Could not allocate node for xml document.");
+                return;
+            }
+
             // MtlFlags
             rapidxml::xml_attribute<char>* attr = m_mtlDoc.allocate_attribute(MaterialExport::g_mtlFlagString,
                 m_mtlDoc.allocate_string(AZStd::to_string(EMaterialFlags::MTL_64BIT_SHADERGENMASK | EMaterialFlags::MTL_FLAG_MULTI_SUBMTL).c_str()));
+            if (!attr) 
+            {
+                AZ_Assert(false, "Could not allocate attribute for xml document.");
+                return;
+            }
             rootNode->append_attribute(attr);
 
             // DccMaterialHash
@@ -551,6 +561,11 @@ namespace AZ
 
             // SubMaterials
             rapidxml::xml_node<char>* subMaterialNode = m_mtlDoc.allocate_node(rapidxml::node_element, MaterialExport::g_subMaterialString);
+            if (!subMaterialNode)
+            {
+                AZ_Assert(false, "Could not allocate subMaterialNode for xml document.");
+                return;
+            }
             rootNode->append_node(subMaterialNode);
 
             m_mtlDoc.append_node(rootNode);

@@ -2091,9 +2091,12 @@ void CMainWindow::Library_ItemPasted(IDataBaseItem* target, bool overrideSafety 
 
     CBaseLibraryManager* mngr = static_cast<CBaseLibraryManager*>(GetIEditor()->GetParticleManager());
     
-    EditorUIPlugin::ScopedLibraryModifyUndoPtr modifyUndo;    
-    AZStd::string libName = target->GetLibrary()->GetName().toUtf8().data();
-    EBUS_EVENT_RESULT(modifyUndo, EditorLibraryUndoRequestsBus, AddScopedLibraryModifyUndo, libName);
+    if (target->GetLibrary())
+    {
+        EditorUIPlugin::ScopedLibraryModifyUndoPtr modifyUndo;
+        AZStd::string libName = target->GetLibrary()->GetName().toUtf8().data();
+        EBUS_EVENT_RESULT(modifyUndo, EditorLibraryUndoRequestsBus, AddScopedLibraryModifyUndo, libName);
+    }
 
     if (strcmp(node->getTag(), "Childs") == 0)
     {

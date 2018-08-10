@@ -1953,7 +1953,7 @@ QComboBox* MainWindow::CreateSelectionMaskComboBox()
 
     connect(cb, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, [](int index)
     {
-        if (index >= 0 && index < sizeof(s_selectionMasks))
+        if (index >= 0 && index < (sizeof(s_selectionMasks) / sizeof(s_selectionMasks[0])))
         {
             gSettings.objectSelectMask = s_selectionMasks[index].mask;
         }

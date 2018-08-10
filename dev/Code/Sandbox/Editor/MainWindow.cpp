@@ -2242,7 +2242,14 @@ void MainWindow::OpenViewPane(QtViewPane* pane)
     }
     else
     {
-        qWarning() << Q_FUNC_INFO << "Invalid pane" << pane->m_id << pane->m_category << pane->m_name;
+        if (pane)
+        {
+            qWarning() << Q_FUNC_INFO << "Invalid pane" << pane->m_id << pane->m_category << pane->m_name;
+        }
+        else
+        {
+            qWarning() << Q_FUNC_INFO << "Invalid pane";
+        }
     }
 }
 

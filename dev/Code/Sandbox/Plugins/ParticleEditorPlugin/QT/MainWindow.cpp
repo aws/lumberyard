@@ -1290,10 +1290,13 @@ void CMainWindow::Library_PopulateItemContextMenu(CLibraryTreeViewItem* focusedI
     QVector<CLibraryTreeViewItem*> selectedItems = m_libraryTreeViewDock->GetSelectedTreeItems();
 
     //OPEN IN NEW TAB/////////////////////////////////////////////////////////
-    action = m_libraryTreeViewDock->GetMenuAction(DockableParticleLibraryPanel::ItemActions::OPEN_IN_NEW_TAB, itemName, tr("Open in new tab"), false, toAddTo, Qt::QueuedConnection);
-    toAddTo->addAction(action);
-    action->setDisabled(focusedItem->IsVirtualItem());
-    toAddTo->addSeparator();
+    if (focusedItem && focusedItem->IsVirtualItem())
+    {
+        action = m_libraryTreeViewDock->GetMenuAction(DockableParticleLibraryPanel::ItemActions::OPEN_IN_NEW_TAB, itemName, tr("Open in new tab"), false, toAddTo, Qt::QueuedConnection);
+        toAddTo->addAction(action);
+        action->setDisabled(focusedItem->IsVirtualItem());
+        toAddTo->addSeparator();
+    }
     //ADD NEW EMITTER/FOLDER//////////////////////////////////////////////////
     QMenu* submenu = new ContextMenu("Add New", toAddTo);
     toAddTo->addMenu(submenu);

@@ -475,7 +475,8 @@ void CShaderMan::mfInitShadersCache(byte bForLevel, FXShaderCacheCombinations* C
 
             bool bExportEntry = false;
             int size = strlen(str);
-            if (str[size - 1] == 0xa)
+            assert(size > 0);
+            if ((size > 0) && str[size - 1] == 0xa)
             {
                 str[size - 1] = 0;
             }

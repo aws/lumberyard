@@ -882,7 +882,7 @@ void CSkeletonAnim::SetAnimationNormalizedTime(CAnimation* pAnimation, f32 unche
         {
             return; //all BWeights are zero. Setting the time is not possible
         }
-        if (nMaxSegCount < 0 || nMaxAnimID < 0)
+        if (nMaxAnimID < 0)
         {
             return; //couldn't read the values. Setting the time is not possible
         }
@@ -1027,7 +1027,7 @@ f32 CSkeletonAnim::GetAnimationNormalizedTime(const CAnimation* pAnimation) cons
         {
             return 0; //all BWeights are zero. Setting the time is not possible
         }
-        if (nMaxSegCount < 0 || nMaxAnimID < 0)
+        if (nMaxAnimID < 0)
         {
             return 0; //couldn't read the values. Setting the time is not possible
         }

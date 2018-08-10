@@ -181,7 +181,7 @@ SParamDB* CShaderMan::mfGetShaderParamDB(const char* szSemantic)
 
 bool CShaderMan::mfParseParamComp(int comp, SCGParam* pCurParam, const char* szSemantic, char* params, const char* szAnnotations, SShaderFXParams& FXParams, CShader* ef, uint32 nParamFlags, EHWShaderClass eSHClass, bool bExpressionOperand)
 {
-    if (comp >= 4 || comp < -1)
+    if (comp >= 4 || comp < 0)
     {
         return false;
     }

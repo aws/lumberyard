@@ -849,8 +849,8 @@ void DisplayContext::DrawDottedLine(const Vec3& p1, const Vec3& p2, const ColorF
 //////////////////////////////////////////////////////////////////////////
 void DisplayContext::PushMatrix(const Matrix34& tm)
 {
-    assert(m_currentMatrix < 32);
-    if (m_currentMatrix < 32)
+    assert(m_currentMatrix < 31);
+    if (m_currentMatrix < 31)
     {
         m_currentMatrix++;
         m_matrixStack[m_currentMatrix] = m_matrixStack[m_currentMatrix - 1] * tm;

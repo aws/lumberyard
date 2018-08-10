@@ -423,6 +423,11 @@ struct SShaderGenComb
 
     _inline SShaderGenComb& operator = (const SShaderGenComb& src)
     {
+        if (this == &src)
+        {
+            return *this;
+        }
+
         this->~SShaderGenComb();
         new(this)SShaderGenComb(src);
         return *this;

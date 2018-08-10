@@ -1374,21 +1374,24 @@ uint32 CSkeletonAnim::EvaluateTransitionFlags(CAnimation* arrAnimFiFo, uint32 nu
                     {
                         CryFatalError("CryAnimation: I2M without Turn-Parameter"); //bad VEG
                     }
-                    uint32 nSegCount = lmg.m_nSegmentCounter[0][0];
-                    PREFAST_SUPPRESS_WARNING (6385)
-                    f32 vLockedTurnAngle = rPrevAnimation.GetParametricSampler()->m_MotionParameter[dim];
-                    if (vLockedTurnAngle > 0)
-                    {
-                        if (nSegCount)
-                        {
-                            rCurAnimation.m_DynFlags[0] |= CA_ACTIVATED;  //move to the left
-                        }
-                    }
                     else
                     {
-                        if (nSegCount && rPrevAnimation.m_fAnimTime[0] > 0.50f)
+                        uint32 nSegCount = lmg.m_nSegmentCounter[0][0];
+                        PREFAST_SUPPRESS_WARNING(6385)
+                            f32 vLockedTurnAngle = rPrevAnimation.GetParametricSampler()->m_MotionParameter[dim];
+                        if (vLockedTurnAngle > 0)
                         {
-                            rCurAnimation.m_DynFlags[0] |= CA_ACTIVATED;  //move to the right
+                            if (nSegCount)
+                            {
+                                rCurAnimation.m_DynFlags[0] |= CA_ACTIVATED;  //move to the left
+                            }
+                        }
+                        else
+                        {
+                            if (nSegCount && rPrevAnimation.m_fAnimTime[0] > 0.50f)
+                            {
+                                rCurAnimation.m_DynFlags[0] |= CA_ACTIVATED;  //move to the right
+                            }
                         }
                     }
                 }

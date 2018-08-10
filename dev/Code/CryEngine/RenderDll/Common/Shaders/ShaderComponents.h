@@ -191,6 +191,9 @@ struct SCGBind
     }
     SCGBind& operator = (const SCGBind& sb)
     {
+        if (this == &sb)
+            return *this;
+
         this->~SCGBind();
         new(this)SCGBind(sb);
         return *this;
@@ -219,6 +222,9 @@ struct SParamData
     SParamData(const SParamData& sp);
     SParamData& operator = (const SParamData& sp)
     {
+        if (this == &sp)
+            return *this;
+
         this->~SParamData();
         new(this)SParamData(sp);
         return *this;
@@ -275,6 +281,9 @@ struct SCGParam
     }
     SCGParam& operator = (const SCGParam& sp)
     {
+        if (this == &sp)
+            return *this;
+
         this->~SCGParam();
         new(this)SCGParam(sp);
         return *this;
@@ -369,6 +378,9 @@ struct SCGSampler
     }
     SCGSampler& operator = (const SCGSampler& sp)
     {
+        if (this == &sp)
+            return *this;
+
         this->~SCGSampler();
         new(this)SCGSampler(sp);
         return *this;
@@ -478,6 +490,9 @@ struct SCGTexture : SCGBind
     SCGTexture(const SCGTexture& sp);
     SCGTexture& operator = (const SCGTexture& sp)
     {
+        if (this == &sp)
+            return *this;
+
         this->~SCGTexture();
         new(this)SCGTexture(sp);
         return *this;

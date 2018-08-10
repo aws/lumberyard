@@ -328,6 +328,7 @@ namespace DX12
             break;
         default:
             AZ_Assert(0, "DescriptorPoolType not supported!");
+            return;
         }
         
         m_DescriptorPools[poolType].push_back(AZStd::pair<AZ::u32, AZ::u32>(m_FrameCounter, offset));

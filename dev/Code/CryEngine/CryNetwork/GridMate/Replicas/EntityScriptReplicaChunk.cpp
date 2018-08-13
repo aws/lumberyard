@@ -40,9 +40,9 @@ namespace GridMate
 
         AZ_STATIC_ASSERT(EntityScriptReplicaChunk::k_maxScriptableDataSets <= AZ_ARRAY_SIZE(s_nameArray),"Insufficient number of names supplied to EntityScriptDataSet::GetDataSetName()");
 
-        if (s_chunkIndex > EntityScriptReplicaChunk::k_maxScriptableDataSets && EntityScriptReplicaChunk::k_maxScriptableDataSets >= 0)
+        if ((s_chunkIndex >= EntityScriptReplicaChunk::k_maxScriptableDataSets) && (EntityScriptReplicaChunk::k_maxScriptableDataSets >= 0))
         {
-            s_chunkIndex = s_chunkIndex%EntityScriptReplicaChunk::k_maxScriptableDataSets;
+            s_chunkIndex = s_chunkIndex % EntityScriptReplicaChunk::k_maxScriptableDataSets;
         }
 
         return s_nameArray[s_chunkIndex++];

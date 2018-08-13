@@ -1189,7 +1189,7 @@ void CShapeObject::DrawTerrainLine(DisplayContext& dc, const Vec3& p1, const Vec
     }
     Vec3 pos1 = p1;
     Vec3 pos2 = p1;
-    for (int i = 0; i < steps - 1; i++)
+    for (int i = 1; i < steps - 1; i++)
     {
         pos2 = p1 + (1.0f / i) * (p2 - p1);
         pos2.z = dc.engine->GetTerrainElevation(pos2.x, pos2.y);

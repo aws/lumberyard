@@ -2460,7 +2460,7 @@ bool AlembicCompiler::CompileVertices(std::vector<AlembicCompilerVertex>& vertic
     else
     {
         assert(meshData.m_positions.size() == vertices.size());
-        if (!meshData.m_positions.size() == vertices.size())
+        if (meshData.m_positions.size() != vertices.size())
         {
             return false;
         }

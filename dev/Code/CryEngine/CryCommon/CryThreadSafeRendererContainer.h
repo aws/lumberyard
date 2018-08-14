@@ -542,7 +542,7 @@ inline CThreadSafeRendererContainer<T>::CMemoryPage::CMemoryPage()
     nMemoryBlockBegin = (nMemoryBlockBegin + nObjectAlignment - 1) & ~(nObjectAlignment - 1);
 
     // compute number of avaible elements
-    assert((nMemoryBlockEnd - nMemoryBlockBegin) > 0);
+    assert(nMemoryBlockEnd > nMemoryBlockBegin);
     m_nCapacity = (LONG)((nMemoryBlockEnd - nMemoryBlockBegin) / sizeof(T));
 
     // store pointer to store data to

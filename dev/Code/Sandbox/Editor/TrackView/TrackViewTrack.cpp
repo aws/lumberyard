@@ -598,7 +598,7 @@ void CTrackViewTrack::SelectKeys(const bool bSelected)
     {
         // Affect sub tracks
         unsigned int childCount = GetChildCount();
-        for (unsigned int childIndex = 0; childIndex < childCount; ++childCount)
+        for (unsigned int childIndex = 0; childIndex < childCount; ++childIndex)
         {
             CTrackViewTrack* pChildTrack = static_cast<CTrackViewTrack*>(GetChild(childIndex));
             pChildTrack->SelectKeys(bSelected);

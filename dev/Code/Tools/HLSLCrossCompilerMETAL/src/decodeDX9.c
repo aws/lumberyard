@@ -601,7 +601,7 @@ ShaderData* DecodeDX9BC(const uint32_t* pui32Tokens)
     uint32_t bDeclareConstantTable = 0;
     ShaderData* psShader = hlslcc_calloc(1, sizeof(ShaderData));
 
-    memset(aui32ImmediateConst, 0, 256);
+    memset(aui32ImmediateConst, 0, 256 * sizeof(uint32_t));
 
 	psShader->ui32MajorVersion = DecodeProgramMajorVersionDX9(*pui32CurrentToken);
 	psShader->ui32MinorVersion = DecodeProgramMinorVersionDX9(*pui32CurrentToken);

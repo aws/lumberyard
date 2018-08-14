@@ -4779,7 +4779,7 @@ bool CAsyncShaderTask::CompileAsyncShader(SShaderAsyncInfo* pAsync)
         D3D10CreateBlob(Data.size(), (LPD3D10BLOB*) & pAsync->m_pDevShader);
         LPD3D10BLOB pShader = (LPD3D10BLOB)*&pAsync->m_pDevShader;
         DWORD* pBuf = (DWORD*)pShader->GetBufferPointer();
-        memcpy(pBuf, &Data[0], Data.size());
+        memcpy(pBuf, &Data[0], Data.size() * sizeof(Data[0]));
 
         pAsync->m_pDevShader = (LPD3D10BLOB)pShader;
         pBuf = (DWORD*)pShader->GetBufferPointer();

@@ -784,7 +784,7 @@ void CShaderMan:: mfCreateCommonGlobalFlags(const char* szName)
         }
 
 
-        char pszFileName[256];
+        char pszFileName[512];
         sprintf_s(pszFileName, "%s%s", pszShaderExtPath, fileinfo.name);
 
         AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle;

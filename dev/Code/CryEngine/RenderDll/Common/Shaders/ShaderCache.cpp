@@ -2237,7 +2237,7 @@ void CShaderMan::_MergeShaders()
         Names[i].bProcessed = true;
         const char* szNameA = Names[i].Name.c_str();
         iLog->Log(" Merging shader resource '%s'...", szNameA);
-        char szDrv[16], szDir[256], szName[256], szExt[32], szName1[256], szName2[256];
+        char szDrv[16], szDir[256], szName[256], szExt[32], szName1[288], szName2[288];
 #ifdef AZ_COMPILER_MSVC
         _splitpath_s(szNameA, szDrv, szDir, szName, szExt);
 #else

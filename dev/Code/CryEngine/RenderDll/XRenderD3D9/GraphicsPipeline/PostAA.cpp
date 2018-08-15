@@ -588,7 +588,7 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
     }
     else
     {
-        const Vec4 temporalParams(0, 0, 0, max(1.0f + CRenderer::CV_r_AntialiasingTAASharpening, 1.0f));
+        const Vec4 temporalParams(0, 0, 0, max(0.5f + CRenderer::CV_r_AntialiasingTAASharpening, 0.5f));
         static CCryNameR paramName("TemporalParams");
         CShaderMan::s_shPostAA->FXSetPSFloat(paramName, &temporalParams, 1);
 

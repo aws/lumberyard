@@ -147,7 +147,8 @@ private: // ------------------------------------------------------------------
 
     void Init()
     {
-        FILE* out = fopen("MemoryCoverage.bmp", "wb");
+        FILE* out = nullptr;
+        azfopen(&out, "MemoryCoverage.bmp", "wb");
 
         if (out)
         {
@@ -252,7 +253,8 @@ private: // ------------------------------------------------------------------
 
     void DumpToRAWCoverage(std::vector<bool>& vCov)
     {
-        FILE* out = fopen("MemoryCoverage.bmp", "rb+");
+        FILE* out = nullptr;
+        azfopen(&out, "MemoryCoverage.bmp", "rb+");
 
         if (!out)
         {

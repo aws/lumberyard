@@ -17,10 +17,13 @@
 #include "Attachment.h"
 #include "WaveletCache.h"
 #include "EMotionFXManager.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(SingleThreadScheduler, ActorUpdateAllocator, 0)
+
     // constructor
     SingleThreadScheduler::SingleThreadScheduler()
         : ActorUpdateScheduler()
@@ -37,7 +40,7 @@ namespace EMotionFX
     // create
     SingleThreadScheduler* SingleThreadScheduler::Create()
     {
-        return new SingleThreadScheduler();
+        return aznew SingleThreadScheduler();
     }
 
 

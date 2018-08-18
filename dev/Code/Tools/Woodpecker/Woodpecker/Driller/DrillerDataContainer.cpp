@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "DrillerDataContainer.h"
 
@@ -20,7 +20,7 @@
 
 #include <AzCore/IO/SystemFile.h>  // temp for DebugHackProcessFile
 
-#include <AzCore/xml/rapidxml_print.h> // metadata is stored this way
+#include <AzCore/XML/rapidxml_print.h> // metadata is stored this way
 
 #include "Unsupported/UnsupportedDataAggregator.hxx"
 #include "Memory/MemoryDataAggregator.hxx"

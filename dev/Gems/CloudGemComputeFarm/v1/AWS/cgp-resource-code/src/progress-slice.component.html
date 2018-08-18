@@ -1,0 +1,46 @@
+<div id="container" class="progress-slice-container">
+    <div class="progress-span-base" [style.left.px]="sliceInfo.fixedParent.childLeadPos" [style.width.px]="getLeadWidth()">
+        <!-- <div class="progress-span-base progress-span-lead" [style.width.px]="getLeadWidth()"></div> -->
+        <div [ngClass]="{'progress-span-base': true, 'progress-span-lead': true, 'progress-span-post-init': sliceInfo.entered}" (transitionend)="entered()" [style.width.px]="getLeadWidth()"></div>
+    </div>
+    <div [style.left.px]="sliceInfo.mainPos" [style.width.px]="sliceInfo.mainEndPos - sliceInfo.mainPos" [ngClass]="{'progress-span-base': true, 'progress-span-waiting': true, 'progress-span-main':!sliceInfo.closeTimePos && sliceInfo.active, 'progress-span-done':sliceInfo.closeTimePos}">
+        <div class="slice-tooltip">
+            <div class="slice-tooltip-text">
+                Path: {{sliceInfo.pathStr}}
+            </div>
+            <div class="slice-tooltip-text">
+                Machine ID: {{sliceInfo.details.machineId}}
+            </div>
+            <div class="slice-tooltip-text">
+                Creation Time: {{sliceInfo.details.createTime}}
+            </div>
+            <div class="slice-tooltip-text">
+                Build Started: {{sliceInfo.details.beginTime}}
+            </div>
+            <div class="slice-tooltip-text">
+                Build Completed: {{sliceInfo.details.completeTime}}
+            </div>
+            <div class="slice-tooltip-text">
+                Build Time: {{sliceInfo.details.buildTime}}
+            </div>
+            <div class="slice-tooltip-text">
+                Total Time: {{sliceInfo.details.totalTime}}
+            </div>
+        </div>
+    </div>
+    <div class="progress-span-base progress-span-tail" [style.left.px]="sliceInfo.mainEndPos" [style.width.px]="(sliceInfo.closeTimePos ? sliceInfo.fixedParent.childTailPos : sliceInfo.mainEndPos) - sliceInfo.mainEndPos"></div>
+
+    <div class="progress-label" [style.left.px]="sliceInfo.mainPos">{{sliceInfo.label}}</div>
+
+    <div class="progress-child-shaft progress-child-shaft-left" [style.left.px]="sliceInfo.leadEndPos" [style.height.px]="sliceInfo.shaftHeight"></div>
+    <div class="progress-child-shaft progress-child-shaft-right" [style.left.px]="sliceInfo.mainPos" [style.height.px]="(sliceInfo.children.length && sliceInfo.childrenClosed) ? sliceInfo.shaftHeight : 0"></div>
+
+    <div class="progress-children">
+        <div *ngIf="sliceInfo.children.length" class="progress-child" [style.top.px]="0" [style.height.px]="sliceInfo.childrenHeight">
+            <progress-slice [sliceInfo]="sliceInfo.children[0]"></progress-slice>
+        </div>
+        <div *ngIf="sliceInfo.nextSibling" class="progress-sibling" [style.top.px]="sliceInfo.childrenHeight">
+            <progress-slice [sliceInfo]="sliceInfo.nextSibling"></progress-slice>
+        </div>
+    </div>
+</div>

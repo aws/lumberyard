@@ -14,7 +14,7 @@
 #include "StdAfx.h"
 #include "2DViewport.h"
 #include "CryEditDoc.h"
-
+#include "GameEngine.h"
 #include "Grid.h"
 #include "DisplaySettings.h"
 #include "ViewManager.h"
@@ -526,8 +526,9 @@ void Q2DViewport::showEvent(QShowEvent* event)
 //////////////////////////////////////////////////////////////////////////
 void Q2DViewport::paintEvent(QPaintEvent* event)
 {
-    // nothing to draw here, Render() draws on the over lay widget which has no updates enabeld to avoid flicker
-    setRenderOverlayVisible(true);
+    // nothing to draw here, Render() draws on the overlay widget which has no updates enabled to avoid flicker
+    CGameEngine* ge = GetIEditor()->GetGameEngine();
+    setRenderOverlayVisible(ge ? ge->IsLevelLoaded() : false);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -967,33 +968,33 @@ void Q2DViewport::DrawAxis(DisplayContext& dc)
     switch (m_axis)
     {
     case VPA_XY:
-        strcpy(xstr, "x");
-        strcpy(ystr, "y");
-        strcpy(zstr, "z");
+        azstrcpy(xstr, AZ_ARRAY_SIZE(xstr), "x");
+        azstrcpy(ystr, AZ_ARRAY_SIZE(ystr),  "y");
+        azstrcpy(zstr, AZ_ARRAY_SIZE(zstr),  "z");
         colx = colorX;
         coly = colorY;
         colz = colorZ;
         break;
     case VPA_YX:
-        strcpy(xstr, "x");
-        strcpy(ystr, "y");
-        strcpy(zstr, "z");
+        azstrcpy(xstr, AZ_ARRAY_SIZE(xstr), "x");
+        azstrcpy(ystr, AZ_ARRAY_SIZE(ystr), "y");
+        azstrcpy(zstr, AZ_ARRAY_SIZE(zstr), "z");
         colx = colorY;
         coly = colorX;
         colz = colorZ;
         break;
     case VPA_XZ:
-        strcpy(xstr, "x");
-        strcpy(ystr, "z");
-        strcpy(zstr, "y");
+        azstrcpy(xstr, AZ_ARRAY_SIZE(xstr), "x");
+        azstrcpy(ystr, AZ_ARRAY_SIZE(ystr), "z");
+        azstrcpy(zstr, AZ_ARRAY_SIZE(zstr), "y");
         colx = colorX;
         coly = colorZ;
         colz = colorY;
         break;
     case VPA_YZ:
-        strcpy(xstr, "y");
-        strcpy(ystr, "z");
-        strcpy(zstr, "x");
+        azstrcpy(xstr, AZ_ARRAY_SIZE(xstr), "y");
+        azstrcpy(ystr, AZ_ARRAY_SIZE(ystr), "z");
+        azstrcpy(zstr, AZ_ARRAY_SIZE(zstr), "x");
         colx = colorY;
         coly = colorZ;
         colz = colorX;

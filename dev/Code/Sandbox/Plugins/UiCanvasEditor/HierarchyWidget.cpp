@@ -86,6 +86,7 @@ HierarchyWidget::HierarchyWidget(EditorWindow* editorWindow)
 
     QObject::connect(this,
         &QTreeWidget::itemExpanded,
+        this,
         [this](QTreeWidgetItem* item)
         {
             CommandHierarchyItemToggleIsExpanded::Push(m_editorWindow->GetActiveStack(),
@@ -95,6 +96,7 @@ HierarchyWidget::HierarchyWidget(EditorWindow* editorWindow)
 
     QObject::connect(this,
         &QTreeWidget::itemCollapsed,
+        this,
         [this](QTreeWidgetItem* item)
         {
             CommandHierarchyItemToggleIsExpanded::Push(m_editorWindow->GetActiveStack(),

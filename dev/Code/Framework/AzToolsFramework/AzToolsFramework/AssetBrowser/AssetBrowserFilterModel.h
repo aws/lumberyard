@@ -20,6 +20,7 @@
 
 #include <QSortFilterProxyModel>
 #include <QSharedPointer>
+#include <QCollator>
 
 namespace AzToolsFramework
 {
@@ -58,6 +59,7 @@ namespace AzToolsFramework
             FilterConstType m_filter;
             QWeakPointer<const StringFilter> m_stringFilter;
             QWeakPointer<const CompositeFilter> m_assetTypeFilter;
+            QCollator m_collator;  // cache the collator as its somewhat expensive to constantly create and destroy one.
         };
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

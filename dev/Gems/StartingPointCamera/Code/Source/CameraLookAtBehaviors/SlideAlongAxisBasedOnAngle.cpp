@@ -14,7 +14,7 @@
 #include "StartingPointCamera/StartingPointCameraUtilities.h"
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzFramework/Math/MathUtils.h>
+#include <AzCore/Math/Transform.h>
 
 namespace Camera
 {

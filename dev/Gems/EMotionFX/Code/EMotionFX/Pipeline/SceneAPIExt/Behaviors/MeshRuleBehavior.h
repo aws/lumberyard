@@ -32,8 +32,8 @@ namespace EMotionFX
                 ~MeshRuleBehavior() override = default;
 
                 // From BehaviorComponent
-                void Activate();
-                void Deactivate();
+                void Activate() override;
+                void Deactivate() override;
                 static void Reflect(AZ::ReflectContext* context);
 
                 void InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target) override;

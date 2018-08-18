@@ -90,6 +90,8 @@ namespace LyShineExamplesSerialize
                 if (ec)
                 {
                     auto editInfo = ec->Class<UiCustomImageInterface::UVRect>(0, "");
+                    editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "UVRect")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly);
                     editInfo->DataElement(0, &UiCustomImageInterface::UVRect::m_left, "Left", "The lower X UV coordinate.")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show)
                         ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
@@ -108,16 +110,25 @@ namespace LyShineExamplesSerialize
             if (behaviorContext)
             {
                 behaviorContext->Class<UiCustomImageInterface::UVRect>("UVCoords")
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Constructor<>()
                     ->Constructor<float, float, float, float>()
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Attribute(AZ::Script::Attributes::ConstructorOverride, &UVCoordsScriptConstructor)
                     ->Property("left", BehaviorValueProperty(&UiCustomImageInterface::UVRect::m_left))
                     ->Property("top", BehaviorValueProperty(&UiCustomImageInterface::UVRect::m_top))
                     ->Property("right", BehaviorValueProperty(&UiCustomImageInterface::UVRect::m_right))
-                    ->Property("bottom", BehaviorValueProperty(&UiCustomImageInterface::UVRect::m_bottom));
+                    ->Property("bottom", BehaviorValueProperty(&UiCustomImageInterface::UVRect::m_bottom))
+                    ->Method("SetLeft", [](UiCustomImageInterface::UVRect* thisPtr, float left) { thisPtr->m_left = left; })
+                    ->Method("SetTop", [](UiCustomImageInterface::UVRect* thisPtr, float top) { thisPtr->m_top = top; })
+                    ->Method("SetRight", [](UiCustomImageInterface::UVRect* thisPtr, float right) { thisPtr->m_right = right; })
+                    ->Method("SetBottom", [](UiCustomImageInterface::UVRect* thisPtr, float bottom) { thisPtr->m_bottom= bottom; })
+                    ->Method("SetUVCoords", [](UiCustomImageInterface::UVRect* thisPtr, float left, float top, float right, float bottom)
+                    {
+                        thisPtr->m_left = left;
+                        thisPtr->m_top = top;
+                        thisPtr->m_right = right;
+                        thisPtr->m_bottom = bottom;
+                    });
             }
         }
     }

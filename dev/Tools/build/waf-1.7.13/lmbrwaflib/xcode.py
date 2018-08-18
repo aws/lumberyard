@@ -304,9 +304,12 @@ class PBXNativeTarget(XCodeNode):
             # does. Search for the game project and grab its plist info file.
             project_name = project_name.partition(launcherName)[0]
             game_task_gen = ctx.get_tgen_by_name(project_name)
-            target_settings['INFOPLIST_FILE'] = game_task_gen.to_nodes(getattr(game_task_gen, 'mac_plist', None)[0])[0].abspath()
-            # Since we have a plist file we are going to create an app bundle for this native target
-            node = node.change_ext('.app')
+
+            plist_info_files = getattr(game_task_gen, 'mac_plist', None)
+            if plist_info_files:
+                target_settings['INFOPLIST_FILE'] = game_task_gen.to_nodes(plist_info_files[0])[0].abspath()
+                # Since we have a plist file we are going to create an app bundle for this native target
+                node = node.change_ext('.app')
         else: 
             # Not all native target are going to have a plist file (like command line executables).  
             plist_info_files = getattr(task_generator, 'mac_plist', None)

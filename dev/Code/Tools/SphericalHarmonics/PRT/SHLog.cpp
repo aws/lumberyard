@@ -31,8 +31,10 @@ NSH::CSHLog::CSHLog()
     , m_RecordedErrorCount(0)
 {
     //create files
-    FILE* pErrorFile = fopen(scErrorFileName, "wb");
-    FILE* pLogFile = fopen(scLogFileName, "wb");
+    FILE* pErrorFile = nullptr;
+    azfopen(&pErrorFile, scErrorFileName, "wb");
+    FILE* pLogFile = nullptr;
+    azfopen(&pLogFile, scLogFileName, "wb");
     //  assert(pErrorFile);
     //  assert(pLogFile);
     if (pErrorFile)
@@ -60,7 +62,8 @@ NSH::CSHLog::~CSHLog()
 
 void NSH::CSHLog::Log(const char* cpLogText, ...)
 {
-    FILE* pLogFile = fopen(scLogFileName, "a");
+    FILE* pLogFile = nullptr;
+    azfopen(&pLogFile, scLogFileName, "a");
     //  assert(pLogFile);
     if (!pLogFile)
     {
@@ -69,7 +72,7 @@ void NSH::CSHLog::Log(const char* cpLogText, ...)
     char str[1024];
     va_list argptr;
     va_start(argptr, cpLogText);
-    vsprintf(str, cpLogText, argptr);
+    azvsprintf(str, cpLogText, argptr);
     assert(strlen(str) < 1023);
     fprintf(pLogFile, str);
     va_end(argptr);
@@ -78,7 +81,8 @@ void NSH::CSHLog::Log(const char* cpLogText, ...)
 
 void NSH::CSHLog::LogError(const char* cpLogText, ...)
 {
-    FILE* pErrorFile = fopen(scErrorFileName, "a");
+    FILE* pErrorFile = nullptr;
+    azfopen(&pErrorFile, scErrorFileName, "a");
     //  assert(pErrorFile);
     if (!pErrorFile)
     {
@@ -91,7 +95,7 @@ void NSH::CSHLog::LogError(const char* cpLogText, ...)
     char str[1024];
     va_list argptr;
     va_start(argptr, cpLogText);
-    vsprintf(str, cpLogText, argptr);
+    azvsprintf(str, cpLogText, argptr);
     assert(strlen(str) < 1023);
     fprintf(pErrorFile, str);
     printf(str);
@@ -106,7 +110,8 @@ void NSH::CSHLog::LogError(const char* cpLogText, ...)
 
 void NSH::CSHLog::LogWarning(const char* cpLogText, ...)
 {
-    FILE* pLogFile = fopen(scLogFileName, "a");
+    FILE* pLogFile = nullptr;
+    azfopen(&pLogFile, scLogFileName, "a");
     //  assert(pLogFile);
     if (!pLogFile)
     {
@@ -118,7 +123,7 @@ void NSH::CSHLog::LogWarning(const char* cpLogText, ...)
     char str[1024];
     va_list argptr;
     va_start(argptr, cpLogText);
-    vsprintf(str, cpLogText, argptr);
+    azvsprintf(str, cpLogText, argptr);
     assert(strlen(str) < 1023);
     fprintf(pLogFile, str);
     if (std::string(str).find("\n") == std::string::npos)
@@ -163,7 +168,8 @@ void NSH::CSHLog::LogTime(FILE* pFile)
 
 void NSH::CSHLog::LogTime()
 {
-    FILE* pLogFile = fopen(scLogFileName, "a");
+    FILE* pLogFile = nullptr;
+    azfopen(&pLogFile, scLogFileName, "a");
     if (!pLogFile)
     {
         return;

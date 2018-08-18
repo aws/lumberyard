@@ -1,10 +1,4 @@
 {
-    "none": {
-        "Source": [
-            "Source/StaticData_precompiled.cpp",
-            "Source/StaticData_precompiled.h"
-        ]
-    },
     "auto": {
         "Include": [
             "Include/StaticData/StaticDataBus.h",

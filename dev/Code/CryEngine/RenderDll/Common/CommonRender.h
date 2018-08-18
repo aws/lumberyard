@@ -14,7 +14,6 @@
 #pragma once
 
 
-#include <CryEngineAPI.h>
 #include "Cry_Math.h"
 
 #include "Defs.h"
@@ -42,7 +41,7 @@
 
 //////////////////////////////////////////////////////////////////////
 class CRenderer;
-extern ENGINE_API CRenderer* gRenDev;
+extern CRenderer* gRenDev;
 
 class CBaseResource;
 
@@ -220,7 +219,7 @@ public:
 
 public:
     MemReplayD3DAnnotation(ID3D11DeviceChild* pRes, size_t sz);
-    ~MemReplayD3DAnnotation();
+    virtual ~MemReplayD3DAnnotation();
 
     void AddMap(UINT nSubRes, void* pData, size_t sz);
     void RemoveMap(UINT nSubRes);

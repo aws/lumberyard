@@ -57,7 +57,7 @@ bool CMissionScript::Load()
 
     // Parse .lua file.
     IScriptSystem* script = GetIEditor()->GetSystem()->GetIScriptSystem();
-    if (!script->ExecuteFile(m_sFilename.toUtf8().data(), true, true))
+    if (!script || !script->ExecuteFile(m_sFilename.toUtf8().data(), true, true))
     {
         QString msg = QString("Unable to execute script '") + QString(GetIEditor()->GetMasterCDFolder()) + m_sFilename + "'. Check syntax ! Script not loaded.";
         CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, msg.toUtf8().data());
@@ -95,6 +95,10 @@ void CMissionScript::Edit()
 void CMissionScript::OnReset()
 {
     IScriptSystem* pScriptSystem = GetIEditor()->GetSystem()->GetIScriptSystem();
+    if (!pScriptSystem)
+    {
+        return;
+    }
 
     SmartScriptTable pMission(pScriptSystem, true);
     if (!pScriptSystem->GetGlobalValue("Mission", pMission))

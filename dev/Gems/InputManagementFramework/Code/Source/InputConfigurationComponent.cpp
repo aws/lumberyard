@@ -79,7 +79,10 @@ namespace Input
     {
         const char* profileName = nullptr;
         AZ::PlayerProfileRequestBus::BroadcastResult(profileName, &AZ::PlayerProfileRequests::GetCurrentProfileForCurrentUser);
-        m_associatedProfileName = profileName;
+        if (profileName)
+        {
+            m_associatedProfileName = profileName;
+        }
 
         AZ::PlayerProfileNotificationBus::Handler::BusConnect();
         AZ::Data::AssetBus::Handler::BusConnect(m_inputEventBindingsAsset.GetId());

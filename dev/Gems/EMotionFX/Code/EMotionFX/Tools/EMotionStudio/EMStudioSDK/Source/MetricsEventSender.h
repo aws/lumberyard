@@ -35,7 +35,7 @@ namespace EMStudio
         static void SendStartRecorderEvent(const EMotionFX::Recorder& recorder);
         static void SendStopRecorderEvent(const EMotionFX::Recorder& recorder);
 
-        static void SendCreateNodeEvent(const AZ::Uuid& typeId);
+        static void SendCreateNodeEvent(const AZ::TypeId& typeId);
         static void SendCreateConnectionEvent(bool isTransition);
 
         static void SendDeleteNodesAndConnectionsEvent(AZ::u32 numNodes, AZ::u32 numConnections);

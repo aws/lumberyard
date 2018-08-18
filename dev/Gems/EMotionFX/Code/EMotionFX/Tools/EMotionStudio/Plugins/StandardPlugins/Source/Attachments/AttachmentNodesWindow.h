@@ -63,8 +63,8 @@ namespace EMStudio
         void OnItemSelectionChanged();
 
     private:
-        virtual void keyPressEvent(QKeyEvent* event) override;
-        virtual void keyReleaseEvent(QKeyEvent* event) override;
+        void keyPressEvent(QKeyEvent* event) override;
+        void keyReleaseEvent(QKeyEvent* event) override;
 
     private:
         // the current actor

@@ -210,11 +210,11 @@ namespace MCore
         return *(gMCore.Get());
     }
 
-    MCORE_INLINE LogManager& GetLogManager()                   { return gMCore.Get()->GetLogManager(); }
-    MCORE_INLINE IDGenerator& GetIDGenerator()                 { return gMCore.Get()->GetIDGenerator(); }
-    MCORE_INLINE StringIdPool& GetStringIdPool()               { return gMCore.Get()->GetStringIdPool(); }
-    MCORE_INLINE AttributeFactory& GetAttributeFactory()       { return gMCore.Get()->GetAttributeFactory(); }
-    MCORE_INLINE AttributePool& GetAttributePool()             { return gMCore.Get()->GetAttributePool(); }
-    MCORE_INLINE JobManager& GetJobManager()                   { return gMCore.Get()->GetJobManager(); }
-    MCORE_INLINE MemoryTracker& GetMemoryTracker()             { return gMCore.Get()->GetMemoryTracker(); }
+    MCORE_INLINE LogManager& GetLogManager()                   { return GetMCore().GetLogManager(); }
+    MCORE_INLINE IDGenerator& GetIDGenerator()                 { return GetMCore().GetIDGenerator(); }
+    MCORE_INLINE StringIdPool& GetStringIdPool()               { return GetMCore().GetStringIdPool(); }
+    MCORE_INLINE AttributeFactory& GetAttributeFactory()       { return GetMCore().GetAttributeFactory(); }
+    MCORE_INLINE AttributePool& GetAttributePool()             { return GetMCore().GetAttributePool(); }
+    MCORE_INLINE JobManager& GetJobManager()                   { return GetMCore().GetJobManager(); }
+    MCORE_INLINE MemoryTracker& GetMemoryTracker()             { return GetMCore().GetMemoryTracker(); }
 } // namespace MCore

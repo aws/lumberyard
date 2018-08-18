@@ -21,7 +21,7 @@ class UiSliderInterface
 public: // types
 
     //! params: sending entity id, newValue, newPosition
-    typedef std::function<void(AZ::EntityId, float)> ValueChangeCallback;
+    typedef AZStd::function<void(AZ::EntityId, float)> ValueChangeCallback;
 
 public: // member functions
 

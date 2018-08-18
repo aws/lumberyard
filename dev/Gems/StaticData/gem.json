@@ -4,11 +4,12 @@
     "Name": "StaticData",
     "Version": "1.0.0",
     "LinkType": "Dynamic",
+    "EditorModule": true,
     "EditorTargets": ["StaticDataMonitorPlugin"],
     "IconPath": "preview.png",
     "DisplayName": "Static Data",
     "Summary": "System for key/value data parsed from CSVs and accessible through Flow Graph which can be live reloaded.  Used in the Don't Die demo to show how game data can be managed through the cloud.",
-    "Tags": ["Cloud Canvas", "AWS", "Flow Graph"],	
+    "Tags": ["Cloud Canvas"],	
     "Dependencies": [
         {
             "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",

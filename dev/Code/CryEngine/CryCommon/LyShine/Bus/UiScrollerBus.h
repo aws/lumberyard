@@ -23,7 +23,7 @@ class UiScrollerInterface
 public: // types
 
     //! params: sending entity id, newValue, newPosition
-    typedef std::function<void(AZ::EntityId, float)> ValueChangeCallback;
+    typedef AZStd::function<void(AZ::EntityId, float)> ValueChangeCallback;
 
     //! Scroller orientation
     enum class Orientation

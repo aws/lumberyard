@@ -28,14 +28,9 @@ namespace EMotionFX
     class EMFX_API AnimGraphExitNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphExitNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_STATEMACHINES);
     public:
-        AZ_RTTI(AnimGraphExitNode, "{B589D37C-2ECD-4033-8FA9-9483BB098C60}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x32521069
-        };
+        AZ_RTTI(AnimGraphExitNode, "{B589D37C-2ECD-4033-8FA9-9483BB098C60}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -52,26 +47,26 @@ namespace EMotionFX
             : public AnimGraphNodeData
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
+
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
                 : AnimGraphNodeData(node, animGraphInstance)             { mPreviousNode = nullptr; }
             ~UniqueData() {}
 
-            uint32 GetClassSize() const override                                                                                                { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override                    { return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance); }
-
-            void SetPreviousNode(AnimGraphNode* mPreviousNode);
             void Reset() override   { mPreviousNode = nullptr; }
 
         public:
             AnimGraphNode* mPreviousNode;
         };
 
-        static AnimGraphExitNode* Create(AnimGraph* animGraph);
+        AnimGraphExitNode();
+        ~AnimGraphExitNode();
+
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
 
         uint32 GetVisualColor() const override                      { return MCore::RGBA(255, 0, 0); }
         bool GetCanActAsState() const override                      { return true; }
@@ -80,30 +75,24 @@ namespace EMotionFX
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue(); }
 
         bool GetHasOutputPose() const override                      { return true; }
-        bool GetIsDeletable() const override                        { return false; }
-        bool GetIsLastInstanceDeletable() const override            { return false; }
-        bool GetCanBeInsideSubStateMachineOnly() const override     { return true; }
+        bool GetIsDeletable() const override                        { return true; }
+        bool GetIsLastInstanceDeletable() const override            { return true; }
         bool GetHasVisualOutputPorts() const override               { return false; }
         bool GetCanHaveOnlyOneInsideParent() const override         { return true; }
-        AnimGraphObjectData* CreateObjectData() override;
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-
         void RecursiveResetFlags(AnimGraphInstance* animGraphInstance, uint32 flagsToDisable) override;
         void OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* previousState, AnimGraphStateTransition* usedTransition) override;
         void Rewind(AnimGraphInstance* animGraphInstance) override;
+
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
-
-        AnimGraphExitNode(AnimGraph* animGraph);
-        ~AnimGraphExitNode();
     };
 }   // namespace EMotionFX

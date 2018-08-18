@@ -148,7 +148,8 @@ public:
     static QString PopupQMenu(const QString& filename, const QString& fullGamePath, QWidget* parent);
     static QString PopupQMenu(const QString& filename, const QString& fullGamePath, QWidget* parent, bool* pIsSelected, const QStringList& extraItemsFront);
     static QString PopupQMenu(const QString& filename, const QString& fullGamePath, QWidget* parent, bool* pIsSelected, const QStringList& extraItemsFront, const QStringList& extraItemsBack);
-    static void PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filename, const QString& fullGamePath, bool* pIsSelected = nullptr);
+
+    static void PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filename, const QString& fullGamePath);
 
     static void GatherAssetFilenamesFromLevel(std::set<QString>& rOutFilenames, bool bMakeLowerCase = false, bool bMakeUnixPath = false);
 
@@ -173,6 +174,9 @@ private:
     // True means to use the custom file dialog, false means to use the smart file open dialog.
     static bool s_singleFileDlgPref[IFileUtil::EFILE_TYPE_LAST];
     static bool s_multiFileDlgPref[IFileUtil::EFILE_TYPE_LAST];
+
+    // Keep this variant of this method private! pIsSelected is captured in a lambda, and so requires menu use exec() and never use show()
+    static void PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filename, const QString& fullGamePath, bool* pIsSelected);
 
     static bool ExtractDccFilenameFromAssetDatabase(const QString& assetFilename, QString& dccFilename);
     static bool ExtractDccFilenameUsingNamingConventions(const QString& assetFilename, QString& dccFilename);

@@ -51,10 +51,8 @@ public:
 
     virtual struct IStatObj* GetEntityStatObj(unsigned int nPartId = 0, unsigned int nSubPartId = 0, Matrix34A* pMatrix = NULL, bool bReturnOnlyVisible = false) { return NULL; }
     virtual int GetSlotCount() const;
-#if defined(FEATURE_SVO_GI)
     virtual EVoxelGIMode GetVoxelGIMode() override;
     virtual void SetDesiredVoxelGIMode(EVoxelGIMode mode) override;
-#endif
     virtual void SetName(const char* name);
     void InitEntityShadowMapInfoStructure();
     void UpdateGSMLightSourceShadowFrustum(const SRenderingPassInfo& passInfo);

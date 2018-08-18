@@ -55,7 +55,8 @@ public:
     void LevelStart() override;
     void Pause() override;
     void Resume() override;
-    void Stop() override;
+    void Stop() override;  
+    bool IsPlaying() override;
     //////////////////////////////////////////////////////////////////////////
 
 protected:

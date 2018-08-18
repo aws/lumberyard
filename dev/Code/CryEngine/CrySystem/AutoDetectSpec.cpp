@@ -114,7 +114,7 @@ static void GetCPUName(char* pName, size_t bufferSize)
         name[0] = '\0';
     }
 
-    int ret(_snprintf(pName, bufferSize, name));
+    int ret(azsnprintf(pName, bufferSize, name));
     if (ret >= bufferSize || ret < 0)
     {
         pName[bufferSize - 1] = '\0';
@@ -246,10 +246,10 @@ void Win32SysInspect::GetOS(SPlatformInfo::EWinVersion& ver, bool& is64Bit, char
             sptext[0] = '\0';
             if (sysInfo.wServicePackMajor > 0)
             {
-                _snprintf(sptext, sizeof(sptext), "SP %d ", sysInfo.wServicePackMajor);
+                azsnprintf(sptext, sizeof(sptext), "SP %d ", sysInfo.wServicePackMajor);
             }
 
-            int ret(_snprintf(pName, bufferSize, "%s %s %s(build %d.%d.%d)", windowsVersionText, is64Bit ? "64 bit" : "32 bit",
+            int ret(azsnprintf(pName, bufferSize, "%s %s %s(build %d.%d.%d)", windowsVersionText, is64Bit ? "64 bit" : "32 bit",
                     sptext, sysInfo.dwMajorVersion, sysInfo.dwMinorVersion, sysInfo.dwBuildNumber));
             if (ret >= bufferSize || ret < 0)
             {
@@ -814,7 +814,7 @@ static bool FindGPU(DXGI_ADAPTER_DESC1& adapterDesc, Win32SysInspect::DXFeatureL
 
 bool Win32SysInspect::IsDX11Supported()
 {
-    DXGI_ADAPTER_DESC1 adapterDesc = {0};
+    DXGI_ADAPTER_DESC1 adapterDesc = {};
     DXFeatureLevel featureLevel = Win32SysInspect::DXFL_Undefined;
     return FindGPU(adapterDesc, featureLevel) && featureLevel >= DXFL_11_0;
 }
@@ -832,7 +832,7 @@ bool Win32SysInspect::GetGPUInfo(char* pName, size_t bufferSize, unsigned int& v
     totLocalVidMem = 0;
     featureLevel = Win32SysInspect::DXFL_Undefined;
 
-    DXGI_ADAPTER_DESC1 adapterDesc = {0};
+    DXGI_ADAPTER_DESC1 adapterDesc = {};
     const bool gpuFound = FindGPU(adapterDesc, featureLevel);
     if (gpuFound)
     {
@@ -957,7 +957,7 @@ CGPURating::CGPURating()
         do
         {
             char filename[128];
-            _snprintf(filename, sizeof(filename), BUILDPATH_GPURATING("%s"), fd.name);
+            azsnprintf(filename, sizeof(filename), BUILDPATH_GPURATING("%s"), fd.name);
 
             AZ::IO::HandleType fileHandle = pPak->FOpen(filename, "rb");
             if (fileHandle != AZ::IO::InvalidHandle)
@@ -974,7 +974,7 @@ CGPURating::CGPURating()
                     {
                         unsigned int vendorId(0), deviceId(0);
                         int rating(0);
-                        if (_snscanf(line, sizeof(line), "%x,%x,%d", &vendorId, &deviceId, &rating) == 3)
+                        if (_snscanf_s(line, sizeof(line), "%x,%x,%d", &vendorId, &deviceId, &rating) == 3)
                         {
                             GPURatingMap::iterator it(m_gpuRatingMap.find(SGPUID(vendorId, deviceId)));
                             if (it == m_gpuRatingMap.end())

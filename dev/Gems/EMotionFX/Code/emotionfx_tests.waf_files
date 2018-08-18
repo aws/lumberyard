@@ -1,14 +1,22 @@
 {
     "auto": {
-        "Tests": [
-            "Tests/AnimGraphTransitionFixture.cpp",
-            "Tests/AnimGraphTransitionFixture.h",
-            "Tests/AnimGraphTransitionTests.cpp",
-            "Tests/EMotionFXTest.cpp",
-            "Tests/EmotionFXMathLibTests.cpp",
-            "Tests/MorphTargetRuntimeTests.cpp",
-            "Tests/SystemComponentFixture.h",
-            "Tests/SystemComponentTests.cpp"
-        ]
+      "Tests": [
+        "Tests/AnimGraphFixture.cpp",
+        "Tests/AnimGraphFixture.h",
+        "Tests/AnimGraphFuzzTests.cpp",
+        "Tests/AnimGraphTransitionFixture.cpp",
+        "Tests/AnimGraphTransitionFixture.h",
+        "Tests/AnimGraphTransitionTests.cpp",
+        "Tests/AnimGraphTransitionConditionFixture.cpp",
+        "Tests/AnimGraphTransitionConditionFixture.h",
+        "Tests/AnimGraphTransitionConditionTests.cpp",
+        "Tests/BlendTreeTransformNodeTests.cpp",
+        "Tests/EMotionFXTest.cpp",
+        "Tests/EmotionFXMathLibTests.cpp",
+        "Tests/KeyTrackLinearTests.cpp",
+        "Tests/MorphTargetRuntimeTests.cpp",
+        "Tests/SystemComponentFixture.h",
+        "Tests/SystemComponentTests.cpp"
+      ]
     }
 }

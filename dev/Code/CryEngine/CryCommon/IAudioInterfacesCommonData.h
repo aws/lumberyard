@@ -32,7 +32,8 @@
 namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    typedef AZ::u32 TATLIDType;
+    typedef AZ::u64 TATLIDType;
+    typedef AZ::u32 TATLEnumFlagsType;
     typedef TATLIDType TAudioObjectID;
     typedef TATLIDType TAudioControlID;
     typedef TATLIDType TAudioSwitchStateID;
@@ -42,7 +43,6 @@ namespace Audio
     typedef TATLIDType TAudioFileEntryID;
     typedef TATLIDType TAudioTriggerImplID;
     typedef TATLIDType TAudioTriggerInstanceID;
-    typedef TATLIDType TATLEnumFlagsType;
     typedef TATLIDType TAudioProxyID;
     typedef TATLIDType TAudioSourceId;
 
@@ -149,7 +149,7 @@ namespace Audio
         eART_AUDIO_CALLBACK_MANAGER_REQUEST = 2,
         eART_AUDIO_OBJECT_REQUEST           = 3,
         eART_AUDIO_LISTENER_REQUEST         = 4,
-        eART_AUDIO_ALL_REQUESTS             = 0xFFFFFFFF,
+        eART_AUDIO_ALL_REQUESTS             = static_cast<TATLEnumFlagsType>(-1),
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

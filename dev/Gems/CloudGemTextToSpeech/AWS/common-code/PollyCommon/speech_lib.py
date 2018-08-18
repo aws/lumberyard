@@ -42,7 +42,7 @@ def get_speech_lib(tags = [], characters = [], logic = 'And'):
         if tags != []:
             entries = []
             for tag in tags:
-                entries = entries + [e for e in original_entries if tag in e["tags"]]
+                entries = entries + [e for e in original_entries if tag in e["tags"]  and e not in entries]
         else:
             entries = original_entries
     if characters:

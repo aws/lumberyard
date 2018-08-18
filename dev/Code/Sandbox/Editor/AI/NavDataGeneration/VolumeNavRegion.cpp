@@ -1283,6 +1283,11 @@ void CVolumeNavRegion::GetNavigableSpaceEntities(std::vector<const IEntity*>& en
 {
     entities.resize(0);
 
+    if (!gEnv->pEntitySystem)
+    {
+        return;
+    }
+
     // Need points that are definitely in valid space
     IEntityItPtr entIt = gEnv->pEntitySystem->GetEntityIterator();
     const char* navName = "NavigableSpace";

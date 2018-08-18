@@ -75,9 +75,14 @@ ReplayDiskWriter::ReplayDiskWriter(const char* pSuffix)
     {
         time_t curTime;
         time(&curTime);
-        struct tm* lt = localtime(&curTime);
-
+#ifdef AZ_COMPILER_MSVC
+        struct tm lt;
+        localtime_s(&lt, &curTime);
+        strftime(m_filename, sizeof(m_filename) / sizeof(m_filename[0]), "memlog-%Y%m%d-%H%M%S.zmrl", &lt);
+#else
+        auto lt = localtime(&curTime);
         strftime(m_filename, sizeof(m_filename) / sizeof(m_filename[0]), "memlog-%Y%m%d-%H%M%S.zmrl", lt);
+#endif
     }
     else
     {
@@ -96,7 +101,10 @@ bool ReplayDiskWriter::Open()
 #include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
     cry_strcat(fn, m_filename);
-    m_fp = ::fopen(fn, "wb");
+
+    m_fp = nullptr;
+    azfopen(&m_fp, fn, "wb");
+
     return m_fp != NULL;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -733,7 +741,7 @@ bool ReplayLogStream::Open(const char* openString)
     }
     else
     {
-        strcpy(destination, "disk");
+        azstrcpy(destination, AZ_ARRAY_SIZE(destination), "disk");
     }
 
     IReplayWriter* writer = NULL;
@@ -1372,7 +1380,7 @@ void CMemReplay::AddContextV(int type, uint32 flags, const char* format, va_list
             MemReplayPushContextEvent* ev = m_stream.BeginAllocateRawEvent<MemReplayPushContextEvent>(511);
             new (ev) MemReplayPushContextEvent(threadId, "", (EMemStatContextTypes::Type) type, flags);
 
-            vsnprintf(ev->name, 512, format, args);
+            azvsnprintf(ev->name, 512, format, args);
             ev->name[511] = 0;
 
             m_stream.EndAllocateRawEvent<MemReplayPushContextEvent>(strlen(ev->name));

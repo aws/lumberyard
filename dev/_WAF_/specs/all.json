@@ -22,8 +22,6 @@
         "Cry3DEngine",
         "CryAction",
         "CryAction_AutoFlowNode",
-        "CryAISystem",
-        "CryAnimation",
         "CryAudioCommon",
         "CryAudioImplNoSound",
         "CryAudioImplWwise",
@@ -31,7 +29,6 @@
         "CryFont",
         "CryNetwork",
         "CryPhysics",
-        "CryScriptSystem",
         "CrySoundSystem",
         "CrySystem",
         "CryRenderD3D11",
@@ -66,12 +63,8 @@
         "SceneBuilder",
         "SliceBuilder",
         "TranslationBuilder",
-        "CryEntitySystem",
         "UiCanvasEditor",
         "DeploymentTool",
-        "CryExport2014",
-        "CryExport2015",
-        "CryExport2016",
         "CrySCompileServer",
         "CryXML",
         "DBAPI",
@@ -132,7 +125,6 @@
         "NewsShared",
         "SetupAssistant",
         "SetupAssistantBatch",
-        "StaticDataMonitorPlugin",
-        "DynamicContentEditorPlugin"
+        "ToolsCrashUploader"
     ]
 }

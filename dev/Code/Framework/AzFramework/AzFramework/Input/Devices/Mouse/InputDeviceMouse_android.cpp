@@ -13,7 +13,10 @@
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_android.h>
 
+#include <AzCore/Android/JNI/Object.h>
+
 #include <AzCore/Android/ApiLevel.h>
+#include <AzCore/Android/Utils.h>
 
 #include <android/input.h>
 
@@ -30,6 +33,33 @@ namespace
     // relative pointer queries were added in API 24
     const int EVENT_AXIS_RELATIVE_X = 27; // AMOTION_EVENT_AXIS_RELATIVE_X
     const int EVENT_AXIS_RELATIVE_Y = 28; // AMOTION_EVENT_AXIS_RELATIVE_Y
+
+
+    class RawMouseConnectionNotificationsAndroid
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+
+        virtual ~RawMouseConnectionNotificationsAndroid() = default;
+
+        virtual void OnMouseConnected() = 0;
+        virtual void OnMouseDisconnected() = 0;
+    };
+
+    using RawMouseConnectionNotificationsBusAndroid = AZ::EBus<RawMouseConnectionNotificationsAndroid>;
+
+
+    void JNI_OnMouseConnected(JNIEnv* jniEnv, jobject objectRef)
+    {
+        RawMouseConnectionNotificationsBusAndroid::Broadcast(&RawMouseConnectionNotificationsAndroid::OnMouseConnected);
+    }
+
+    void JNI_OnMouseDisconnected(JNIEnv* jniEnv, jobject objectRef)
+    {
+        RawMouseConnectionNotificationsBusAndroid::Broadcast(&RawMouseConnectionNotificationsAndroid::OnMouseDisconnected);
+    }
 }
 
 
@@ -40,6 +70,7 @@ namespace AzFramework
     class InputDeviceMouseAndroid
         : public InputDeviceMouse::Implementation
         , public RawInputNotificationBusAndroid::Handler
+        , public RawMouseConnectionNotificationsBusAndroid::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(InputDeviceMouseAndroid, AZ::SystemAllocator, 0);
@@ -55,7 +86,7 @@ namespace AzFramework
 
     private:
         //! \ref AzFramework::InputDeviceMouse::Implementation::IsConnected
-        bool IsConnected() const override;
+        bool IsConnected() const override { return m_isConnected; }
 
         //! \ref AzFramework::InputDeviceMouse::Implementation::SetSystemCursorState
         void SetSystemCursorState(SystemCursorState systemCursorState) override;
@@ -72,6 +103,12 @@ namespace AzFramework
         //! \ref AzFramework::InputDeviceMouse::Implementation::TickInputDevice
         void TickInputDevice() override;
 
+        //!@{
+        //! \brief Connection state callbacks from java
+        void OnMouseConnected() override { m_isConnected = true; }
+        void OnMouseDisconnected() override { m_isConnected = false; }
+        //!@}
+
         //! Special case processing of key events for certain devices that treat some mouse buttons
         //! as simulated key events
         void HandleKeyEvent(const AInputEvent* rawInputEvent);
@@ -80,8 +117,12 @@ namespace AzFramework
         void ProcessMouseButtonEvent(int buttonState, bool isPressed);
 
 
+        AZStd::unique_ptr<AZ::Android::JNI::Object> m_mouseDevice; //!< Java interface for getting connection state info
+
         AZ::Vector2 m_mouseWindowPixelPosition; //!< Cached location of the mouse, in pixel window space
         int m_mouseButtonState; //!< Cached flags of which mouse buttons are currently active
+
+        volatile bool m_isConnected; //!< Cached connection state, ie. at least 1 mouse is connected
     };
 
 
@@ -89,18 +130,44 @@ namespace AzFramework
         : InputDeviceMouse::Implementation(inputDevice)
         , m_mouseWindowPixelPosition(AZ::Vector2::CreateZero())
         , m_mouseButtonState(0)
+        , m_isConnected(false)
     {
+        // Initialize the mouse device handler
+        m_mouseDevice.reset(aznew AZ::Android::JNI::Object("com/amazon/lumberyard/input/MouseDevice"));
+        m_mouseDevice->RegisterMethod("IsConnected", "()Z");
+        m_mouseDevice->RegisterNativeMethods(
+        {
+            { "OnMouseConnected", "()V", (void*)JNI_OnMouseConnected },
+            { "OnMouseDisconnected", "()V", (void*)JNI_OnMouseDisconnected }
+        });
+
+        // create the java instance
+        bool ret = m_mouseDevice->CreateInstance("(Landroid/app/Activity;)V", AZ::Android::Utils::GetActivityRef());
+        AZ_Assert(ret, "Failed to create the MouseDevice Java instance.");
+
+        if (ret)
+        {
+            m_isConnected = m_mouseDevice->InvokeBooleanMethod("IsConnected");
+        }
+
         RawInputNotificationBusAndroid::Handler::BusConnect();
+        RawMouseConnectionNotificationsBusAndroid::Handler::BusConnect();
     }
 
     InputDeviceMouseAndroid::~InputDeviceMouseAndroid()
     {
+        RawMouseConnectionNotificationsBusAndroid::Handler::BusDisconnect();
         RawInputNotificationBusAndroid::Handler::BusDisconnect();
     }
 
 
     void InputDeviceMouseAndroid::OnRawInputEvent(const AInputEvent* rawInputEvent)
     {
+        if (!m_isConnected)
+        {
+            return;
+        }
+
         // special case for some devices that treat the right click as a back button event
         const int eventType = AInputEvent_getType(rawInputEvent);
         if (eventType == AINPUT_EVENT_TYPE_KEY)
@@ -198,18 +265,12 @@ namespace AzFramework
     }
 
 
-    bool InputDeviceMouseAndroid::IsConnected() const
-    {
-        // Unfortuantely there is no way to detect if a physical mouse is [dis]connected like there
-        // is with a physical keyboard.  However, starting with API 14 we can determine the tool
-        // type of the motion event so at least events will be processed correct meaning it *should*
-        // be fine to always return true that one is connected.
-        return true;
-    }
-
     void InputDeviceMouseAndroid::SetSystemCursorState(SystemCursorState systemCursorState)
     {
-        AZ_WarningOnce("InputDeviceMouseAndroid", false, "Calls to SetSystemCursorState are unsupported on Android.");
+        if (m_isConnected)
+        {
+            AZ_WarningOnce("InputDeviceMouseAndroid", false, "Calls to SetSystemCursorState are unsupported on Android.");
+        }
     }
 
     SystemCursorState InputDeviceMouseAndroid::GetSystemCursorState() const
@@ -218,13 +279,16 @@ namespace AzFramework
         // the cursor based on usage of the physical mouse.  The application has no control over
         // the visibily of the cursor, nor do we have control of constraining the cursor to inside the
         // applicaiton window.  Always returning UnconstrainedAndVisible is going to be the closest
-        // to accurate value we can send.
-        return SystemCursorState::UnconstrainedAndVisible;
+        // to accurate value we can send when a physical mouse is connected.
+        return (m_isConnected ? SystemCursorState::UnconstrainedAndVisible : SystemCursorState::Unknown);
     }
 
     void InputDeviceMouseAndroid::SetSystemCursorPositionNormalized(AZ::Vector2 positionNormalized)
     {
-        AZ_WarningOnce("InputDeviceMouseAndroid", false, "Calls to SetSystemCursorPositionNormalized are unsupported on Android.");
+        if (m_isConnected)
+        {
+            AZ_WarningOnce("InputDeviceMouseAndroid", false, "Calls to SetSystemCursorPositionNormalized are unsupported on Android.");
+        }
     }
 
     AZ::Vector2 InputDeviceMouseAndroid::GetSystemCursorPositionNormalized() const
@@ -244,7 +308,10 @@ namespace AzFramework
 
     void InputDeviceMouseAndroid::TickInputDevice()
     {
-        ProcessRawEventQueues();
+        if (m_isConnected)
+        {
+            ProcessRawEventQueues();
+        }
     }
 
 

@@ -14,6 +14,7 @@
 #include "PropertyQTConstants.h"
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QHBoxLayout>
+#include <QFocusEvent>
 
 namespace AzToolsFramework
 {

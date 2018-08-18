@@ -25,12 +25,27 @@ namespace CommandSystem
     MCORE_DEFINECOMMAND_START(CommandSelect, "Select object", true)
     SelectionList mData;
 public:
+    static const char* s_SelectCmdName;
     static bool Select(MCore::Command* command, const MCore::CommandLine& parameters, AZStd::string& outResult, bool unselect);
     MCORE_DEFINECOMMAND_END
 
-        MCORE_DEFINECOMMAND_1(CommandUnselect, "Unselect", "Unselect object", true, SelectionList)
+
+    MCORE_DEFINECOMMAND_1(CommandUnselect, "Unselect", "Unselect object", true, SelectionList)
+public:
+    static const char* s_unselectCmdName;
+    MCORE_DEFINECOMMAND_1_END
+
+
     MCORE_DEFINECOMMAND_1(CommandClearSelection, "ClearSelection", "Unselect all", true, SelectionList)
+public:
+    static const char* s_clearSelectionCmdName;
+    MCORE_DEFINECOMMAND_1_END
+
+
     MCORE_DEFINECOMMAND_1(CommandToggleLockSelection, "ToggleLockSelection", "Selection (un)locked.", true, bool)
+public:
+    static const char* s_toggleLockSelectionCmdName;
+    MCORE_DEFINECOMMAND_1_END
 
     // helper functions
     void COMMANDSYSTEM_API SelectActorInstancesUsingCommands(const MCore::Array<EMotionFX::ActorInstance*>& selectedActorInstances);

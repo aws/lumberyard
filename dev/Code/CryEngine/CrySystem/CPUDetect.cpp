@@ -384,11 +384,11 @@ static unsigned long __stdcall DetectProcessor(void* arg)
         p->meVendor = eCVendor_AMD;
         p->mFeatures |= GetCPUFeatureSet();
         p->mbSerialPresent = false;
-        strcpy(p->mSerialNumber, "");
+        azstrcpy(p->mSerialNumber, AZ_ARRAY_SIZE(p->mSerialNumber), "");
         GetCPUSteppingModelFamily(p->mStepping, p->mModel, p->mFamily);
-        strcpy(p->mVendor, "AMD");
+        azstrcpy(p->mVendor, AZ_ARRAY_SIZE(p->mVendor), "AMD");
         GetCPUName(p->mCpuType);
-        strcpy(p->mFpuType, HasFPUOnChip() ? "On-Chip" : "Unknown");
+        azstrcpy(p->mFpuType, AZ_ARRAY_SIZE(p->mFpuType), HasFPUOnChip() ? "On-Chip" : "Unknown");
         p->mbPhysical = true;
 
         return 1;
@@ -398,11 +398,11 @@ static unsigned long __stdcall DetectProcessor(void* arg)
         p->meVendor = eCVendor_Intel;
         p->mFeatures |= GetCPUFeatureSet();
         p->mbSerialPresent = false;
-        strcpy(p->mSerialNumber, "");
+        azstrcpy(p->mSerialNumber, AZ_ARRAY_SIZE(p->mSerialNumber), "");
         GetCPUSteppingModelFamily(p->mStepping, p->mModel, p->mFamily);
-        strcpy(p->mVendor, "Intel");
+        azstrcpy(p->mVendor, AZ_ARRAY_SIZE(p->mVendor), "Intel");
         GetCPUName(p->mCpuType);
-        strcpy(p->mFpuType, HasFPUOnChip() ? "On-Chip" : "Unknown");
+        azstrcpy(p->mFpuType, AZ_ARRAY_SIZE(p->mFpuType), HasFPUOnChip() ? "On-Chip" : "Unknown");
 
         p->mbPhysical = true;
 
@@ -920,32 +920,32 @@ static unsigned long __stdcall DetectProcessor(void* arg)
     cry_strcpy(p->mFpuType, fpu_string);
     cry_strcpy(p->mVendor, vendor_string);
 
-    if (!_stricmp(vendor_string, "Intel"))
+    if (!azstricmp(vendor_string, "Intel"))
     {
         p->meVendor = eCVendor_Intel;
     }
     else
-    if (!_stricmp(vendor_string, "Cyrix"))
+    if (!azstricmp(vendor_string, "Cyrix"))
     {
         p->meVendor = eCVendor_Cyrix;
     }
     else
-    if (!_stricmp(vendor_string, "AMD"))
+    if (!azstricmp(vendor_string, "AMD"))
     {
         p->meVendor = eCVendor_AMD;
     }
     else
-    if (!_stricmp(vendor_string, "Centaur"))
+    if (!azstricmp(vendor_string, "Centaur"))
     {
         p->meVendor = eCVendor_Centaur;
     }
     else
-    if (!_stricmp(vendor_string, "NexGen"))
+    if (!azstricmp(vendor_string, "NexGen"))
     {
         p->meVendor = eCVendor_NexGen;
     }
     else
-    if (!_stricmp(vendor_string, "UMC"))
+    if (!azstricmp(vendor_string, "UMC"))
     {
         p->meVendor = eCVendor_UMC;
     }
@@ -974,107 +974,107 @@ static unsigned long __stdcall DetectProcessor(void* arg)
         p->meModel = eCpu_80486;
     }
     else
-    if (!_stricmp(cpu_string, "Pentium MMX") || !_stricmp(cpu_string, "Pentium"))
+    if (!azstricmp(cpu_string, "Pentium MMX") || !azstricmp(cpu_string, "Pentium"))
     {
         p->meModel = eCpu_Pentium;
     }
     else
-    if (!_stricmp(cpu_string, "Pentium Pro"))
+    if (!azstricmp(cpu_string, "Pentium Pro"))
     {
         p->meModel = eCpu_PentiumPro;
     }
     else
-    if (!_stricmp(cpu_string, "Pentium II"))
+    if (!azstricmp(cpu_string, "Pentium II"))
     {
         p->meModel = eCpu_Pentium2;
     }
     else
-    if (!_stricmp(cpu_string, "Pentium III"))
+    if (!azstricmp(cpu_string, "Pentium III"))
     {
         p->meModel = eCpu_Pentium3;
     }
     else
-    if (!_stricmp(cpu_string, "Pentium 4"))
+    if (!azstricmp(cpu_string, "Pentium 4"))
     {
         p->meModel = eCpu_Pentium4;
     }
     else
-    if (!_stricmp(cpu_string, "Celeron"))
+    if (!azstricmp(cpu_string, "Celeron"))
     {
         p->meModel = eCpu_Celeron;
     }
     else
-    if (!_stricmp(cpu_string, "Pentium II Xeon"))
+    if (!azstricmp(cpu_string, "Pentium II Xeon"))
     {
         p->meModel = eCpu_Pentium2Xeon;
     }
     else
-    if (!_stricmp(cpu_string, "Pentium III Xeon"))
+    if (!azstricmp(cpu_string, "Pentium III Xeon"))
     {
         p->meModel = eCpu_Pentium3Xeon;
     }
     else
-    if (!_stricmp(cpu_string, "MediaGX"))
+    if (!azstricmp(cpu_string, "MediaGX"))
     {
         p->meModel = eCpu_CyrixMediaGX;
     }
     else
-    if (!_stricmp(cpu_string, "6x86"))
+    if (!azstricmp(cpu_string, "6x86"))
     {
         p->meModel = eCpu_Cyrix6x86;
     }
     else
-    if (!_stricmp(cpu_string, "GXm"))
+    if (!azstricmp(cpu_string, "GXm"))
     {
         p->meModel = eCpu_CyrixGXm;
     }
     else
-    if (!_stricmp(cpu_string, "6x86MX"))
+    if (!azstricmp(cpu_string, "6x86MX"))
     {
         p->meModel = eCpu_Cyrix6x86MX;
     }
     else
-    if (!_stricmp(cpu_string, "Am486 or Am5x86"))
+    if (!azstricmp(cpu_string, "Am486 or Am5x86"))
     {
         p->meModel = eCpu_Am5x86;
     }
     else
-    if (!_stricmp(cpu_string, "K5"))
+    if (!azstricmp(cpu_string, "K5"))
     {
         p->meModel = eCpu_AmK5;
     }
     else
-    if (!_stricmp(cpu_string, "K6"))
+    if (!azstricmp(cpu_string, "K6"))
     {
         p->meModel = eCpu_AmK6;
     }
     else
-    if (!_stricmp(cpu_string, "K6-2"))
+    if (!azstricmp(cpu_string, "K6-2"))
     {
         p->meModel = eCpu_AmK6_2;
     }
     else
-    if (!_stricmp(cpu_string, "K6-III"))
+    if (!azstricmp(cpu_string, "K6-III"))
     {
         p->meModel = eCpu_AmK6_3;
     }
     else
-    if (!_stricmp(cpu_string, "Athlon"))
+    if (!azstricmp(cpu_string, "Athlon"))
     {
         p->meModel = eCpu_AmAthlon;
     }
     else
-    if (!_stricmp(cpu_string, "Duron"))
+    if (!azstricmp(cpu_string, "Duron"))
     {
         p->meModel = eCpu_AmDuron;
     }
     else
-    if (!_stricmp(cpu_string, "WinChip"))
+    if (!azstricmp(cpu_string, "WinChip"))
     {
         p->meModel = eCpu_CenWinChip;
     }
     else
-    if (!_stricmp(cpu_string, "WinChip2"))
+    if (!azstricmp(cpu_string, "WinChip2"))
     {
         p->meModel = eCpu_CenWinChip2;
     }

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "ModelDB.h"
 #include "Model.h"
 #include "Viewport.h"

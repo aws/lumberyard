@@ -1,40 +1,39 @@
 {
-    "name": "crashpad",
+    "name": ["crashpad", "crashpad_handler"],
     "source": "@ROOT@/Tools/Crashpad",
     "description": "Crashpad Libraries",
+    "aliases": {
+        "crashpad_handler": [
+            "crashpad_tool_support",
+            "base",
+            "crashpad_compat",
+            "third_party/getopt",
+            "crashpad_util",
+            "crashpad_minidump",
+            "crashpad_snapshot",
+            "crashpad_client",
+            "crashpad_handler_lib",
+            "third_party/zlib"
+        ]
+    },
     "defines": [],
     "lib_required": "False",
     "platform": {
-        "win_x64_vs2013": {
-            "includes": [
-                "include/vs2013",
-                "include/vs2013/third_party/mini_chromium/mini_chromium/"
-            ],
-            "libpath_debug": [
-                "bin/windows/vs2013/Debug_x64"
-            ],
-            "libpath_release": [
-                "bin/windows/vs2013/Release_x64"
-            ],
-            "lib": [
-                "base.lib",
-                "crashpad_client.lib",
-                "crashpad_util.lib"
-            ],
-            "linkflags" : [
-                "/ignore:4099"
-            ]
-        },
         "win_x64_vs2015": {
             "includes": [
                 "include",
-                "include/third_party/mini_chromium/mini_chromium/"
+                "include/third_party/mini_chromium/mini_chromium/",
+                "include/compat/win"
+
             ],
             "libpath_debug": [
                 "bin/windows/vs2015/Debug_x64"
             ],
             "libpath_release": [
-                "bin/windows/vs2015/Release_x64"
+                "bin/windows/vs2015/Release_x64/"
+            ],
+            "crashpad_handler/lib": [
+                "${crashpad_handler}.lib"
             ],
             "lib": [
                 "base.lib",
@@ -44,6 +43,27 @@
             "linkflags" : [
                 "/ignore:4099"
             ]        
+        },        
+        "darwin_x64": {
+            "includes": [
+                "include",
+                "include/third_party/mini_chromium/mini_chromium/",
+                "include/compat/non_win"
+            ],
+            "libpath_debug": [
+                "bin/mac/Debug_x64"
+            ],
+            "libpath_release": [
+                "bin/mac/Release_x64"
+            ],
+            "crashpad_handler/lib": [
+                "lib${crashpad_handler}.a"
+            ],
+            "lib": [
+                "libbase.a",
+                "libcrashpad_client.a",
+                "libcrashpad_util.a"
+            ]     
         },
         "win_x64_vs2017": "@win_x64_vs2015"
     }

@@ -92,7 +92,8 @@ struct CBatchFileDialog::SContent
 
 static bool ReadFile(std::vector<char>* buffer, const char* path)
 {
-    FILE* f = fopen(path, "rb");
+    FILE* f = nullptr;
+    azfopen(&f, path, "rb");
     if (!f)
     {
         return false;

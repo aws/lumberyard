@@ -87,7 +87,7 @@ namespace EMotionFX
             void OnMotionSetAssetSelected();
 
             // Called at edit-time when creating the component directly from an asset.
-            void SetPrimaryAsset(const AZ::Data::AssetId& assetId);
+            void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;
 
             // Called at export-time to produce runtime entities/components.
             void BuildGameEntity(AZ::Entity* gameEntity) override;

@@ -21,8 +21,6 @@
 #include <MCore/Source/StringIdPool.h>
 #include <MCore/Source/Distance.h>
 
-MCORE_FORWARD_DECLARE(AttributeSet);
-
 
 namespace EMotionFX
 {
@@ -44,7 +42,7 @@ namespace EMotionFX
     class EMFX_API Motion
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(Motion, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_MISC);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**
@@ -288,8 +286,6 @@ namespace EMotionFX
         void SetIsOwnedByRuntime(bool isOwnedByRuntime);
         bool GetIsOwnedByRuntime() const;
 
-        MCore::AttributeSet* GetAttributeSet() const;
-
         void SetUnitType(MCore::Distance::EUnitType unitType);
         MCore::Distance::EUnitType GetUnitType() const;
 
@@ -315,7 +311,6 @@ namespace EMotionFX
         AZStd::string               mFileName;              /**< The filename of the motion. */
         PlayBackInfo*               mDefaultPlayBackInfo;   /**< The default/fallback motion playback info which will be used when no playback info is passed to the Play() function. */
         MotionEventTable*           mEventTable;            /**< The event table, which contains all events, and will make sure events get executed. */
-        MCore::AttributeSet*        mAttributeSet;          /**< The attribute set that stores custom data. */
         MCore::Distance::EUnitType  mUnitType;              /**< The type of units used. */
         MCore::Distance::EUnitType  mFileUnitType;          /**< The type of units used, inside the file that got loaded. */
         void*                       mCustomData;            /**< A pointer to custom user data that is linked with this motion object. */

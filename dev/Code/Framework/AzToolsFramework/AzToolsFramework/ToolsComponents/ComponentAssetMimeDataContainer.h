@@ -12,7 +12,7 @@
 #ifndef COMPONENT_ASSET_MIME_DATA_CONTAINER_H
 #define COMPONENT_ASSET_MIME_DATA_CONTAINER_H
 
-#include <AzCore/Base.h>
+#include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/RTTI/RTTI.h>

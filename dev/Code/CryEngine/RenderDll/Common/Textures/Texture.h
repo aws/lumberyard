@@ -27,7 +27,6 @@
 #include "Image/DDSImage.h"
 
 #include "ImageExtensionHelper.h"
-#include <CryEngineAPI.h>
 #include <AzCore/Jobs/LegacyJobExecutor.h>
 #include <AzCore/std/parallel/atomic.h>
 
@@ -432,7 +431,7 @@ inline void SDynTexture::operator delete(void* ptr)
 
 //==============================================================================
 
-enum ETexPool
+enum ETexPool : int
 {
     eTP_Clouds,
     eTP_Sprites,
@@ -515,7 +514,7 @@ struct SDynTexture2
     virtual bool IsValid();
     bool _IsValid() { return IsValid(); }
 
-    ENGINE_API SDynTexture2(uint32 nWidth, uint32 nHeight, uint32 nTexFlags, const char* szSource, ETexPool eTexPool);
+    SDynTexture2(uint32 nWidth, uint32 nHeight, uint32 nTexFlags, const char* szSource, ETexPool eTexPool);
     SDynTexture2(const char* szSource, ETexPool eTexPool);
     ~SDynTexture2();
 
@@ -1728,7 +1727,7 @@ public:
     virtual void SetMinColor(const ColorF& cMinColor)  { m_cMinColor = cMinColor; }
     virtual const ColorF& GetMaxColor() const { return m_cMaxColor; }
     virtual void SetMaxColor(const ColorF& cMaxColor)  { m_cMaxColor = cMaxColor; }
-    virtual const ColorF& GetClearColor() const { return m_cClearColor; }
+    virtual const ColorF& GetClearColor() const override { return m_cClearColor; }
     virtual void SetClearColor(const ColorF& cClearColor) { m_cClearColor = cClearColor; }
 
     virtual void GetMemoryUsage(ICrySizer* pSizer) const;
@@ -1746,8 +1745,8 @@ public:
     virtual const bool IsParticularMipStreamed(float fMipFactor) const;
 
     // Internal functions
-    const ETEX_Format GetDstFormat() const { return m_eTFDst; }
-    const ETEX_Format GetSrcFormat() const { return m_eTFSrc; }
+    const ETEX_Format GetDstFormat() const override { return m_eTFDst; }
+    const ETEX_Format GetSrcFormat() const override { return m_eTFSrc; }
     const ETEX_Type GetTexType() const { return m_eTT; }
     const uint32 StreamGetNumSlices() const
     {
@@ -1770,7 +1769,7 @@ public:
 
     void RT_ReleaseDevice();
 
-    static _inline bool IsTextureExist(const CTexture* pTex) { return pTex && pTex->GetDevTexture(); }
+    static _inline bool IsTextureExist(const ITexture* pTex) { return pTex && pTex->GetDevTexture(); }
 
     const bool IsNoTexture() const { return m_bNoTexture; };
     void SetNeedRestoring() { m_bNeedRestoring = true; }
@@ -2148,7 +2147,7 @@ public:
         }
     }
 
-    ENGINE_API static void ApplyForID(int nID, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit, bool useWhiteDefault);
+    static void ApplyForID(int nID, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit, bool useWhiteDefault);
 
     static const CCryNameTSCRC& mfGetClassName();
     static CTexture* GetByID(int nID);
@@ -2159,11 +2158,11 @@ public:
     static CTexture* CreateTextureObject(const char* name, uint32 nWidth, uint32 nHeight, int nDepth, ETEX_Type eTT, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
     
     // Methods exposed to external libraries
-    ENGINE_API static CTexture* CreateRenderTarget(const char* name, uint32 nWidth, uint32 nHeight, const ColorF& cClear, ETEX_Type eTT, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
-    ENGINE_API static void ApplyDepthTextureState(int unit, int nFilter, bool clamp);
-    ENGINE_API static CTexture* GetZTargetTexture();
-    ENGINE_API static int GetTextureState(const STexState& TS);
-    ENGINE_API static uint32 TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, uint32 nMips, uint32 nSlices, const ETEX_Format eTF, ETEX_TileMode eTM = eTM_None);
+    static CTexture* CreateRenderTarget(const char* name, uint32 nWidth, uint32 nHeight, const ColorF& cClear, ETEX_Type eTT, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
+    static void ApplyDepthTextureState(int unit, int nFilter, bool clamp);
+    static CTexture* GetZTargetTexture();
+    static int GetTextureState(const STexState& TS);
+    static uint32 TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, uint32 nMips, uint32 nSlices, const ETEX_Format eTF, ETEX_TileMode eTM = eTM_None);
 
     static void InitStreaming();
     static void InitStreamingDev();
@@ -2192,7 +2191,7 @@ public:
     static bool ReloadFile_Request(const char* szFileName);
     static void ReloadTextures();
     static CTexture* Create2DTexture(const char* szName, int nWidth, int nHeight, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst, bool bAsyncDevTexCreation = false);
-    ENGINE_API static CTexture* Create3DTexture(const char* szName, int nWidth, int nHeight, int nDepth, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
+    static CTexture* Create3DTexture(const char* szName, int nWidth, int nHeight, int nDepth, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
     static CTexture* Create2DCompositeTexture(const char* szName, int nWidth, int nHeight, int nMips, int nFlags, ETEX_Format eTFDst, const STexComposition* pCompositions, size_t nCompositions);
     static void Update();
     static void RT_LoadingUpdate();
@@ -2223,7 +2222,7 @@ public:
     void UpdateTexStates();
     bool SetFilterMode(int nFilter);
     bool SetClampingMode(int nAddressU, int nAddressV, int nAddressW);
-    ENGINE_API void UpdateTextureRegion(const byte* data, int nX, int nY, int nZ, int USize, int VSize, int ZSize, ETEX_Format eTFSrc);
+    void UpdateTextureRegion(const uint8_t* data, int nX, int nY, int nZ, int USize, int VSize, int ZSize, ETEX_Format eTFSrc);
     void RT_UpdateTextureRegion(const byte* data, int nX, int nY, int nZ, int USize, int VSize, int ZSize, ETEX_Format eTFSrc);
     bool Create2DTexture(int nWidth, int nHeight, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
     bool Create3DTexture(int nWidth, int nHeight, int nDepth, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
@@ -2282,7 +2281,7 @@ public:
     static D3DFormat ConvertToSignedFmt(D3DFormat fmt);
     static D3DFormat ConvertToTypelessFmt(D3DFormat fmt);
 
-    static SEnvTexture* FindSuitableEnvTex(Vec3& Pos, Ang3& Angs, bool bMustExist, int RendFlags, bool bUseExistingREs, CShader* pSH, CShaderResources* pRes, CRenderObject* pObj, bool bReflect, CRendElementBase* pRE, bool* bMustUpdate);
+    static SEnvTexture* FindSuitableEnvTex(Vec3& Pos, Ang3& Angs, bool bMustExist, int RendFlags, bool bUseExistingREs, CShader* pSH, CShaderResources* pRes, CRenderObject* pObj, bool bReflect, IRenderElement* pRE, bool* bMustUpdate);
     static bool RenderEnvironmentCMHDR(int size, Vec3& Pos, TArray<unsigned short>& vecData);
     static void DrawCubeSide(Vec3& Pos, int tex_size, int side, float fMaxDist);
     static void DrawSceneToCubeSide(Vec3& Pos, int tex_size, int side);

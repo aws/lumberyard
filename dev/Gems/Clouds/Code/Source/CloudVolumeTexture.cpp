@@ -25,7 +25,7 @@ namespace CloudsGem
 
         if (m_texture)
         {
-            gRenDev->RemoveTexture(m_texture->GetTextureID());
+            gEnv->pRenderer->RemoveTexture(m_texture->GetTextureID());
         }
 #endif
     }
@@ -42,9 +42,10 @@ namespace CloudsGem
 
         if (!m_texture)
         {
+            static uint32_t id = 0;
             char name[128];
             name[sizeof(name) - 1] = '\0';
-            _snprintf(name, sizeof(name) - 1, "$VolObj_%d", gRenDev->m_TexGenID++);
+            azsnprintf(name, sizeof(name) - 1, "$CloudVolObj_%d", id++);
 
             const uint32_t totalByteCount = width * height * depth;
             m_stagingData.resize(totalByteCount * STAGING_BUFFER_FRAME_COUNT);
@@ -57,7 +58,8 @@ namespace CloudsGem
             }
 
             int flags(FT_DONT_STREAM);
-            m_texture = CTexture::Create3DTexture(name, width, height, depth, 1, flags, pData, eTF_A8, eTF_A8);
+            IRenderer* renderer = gEnv->pRenderer;
+            m_texture = renderer->Create3DTexture(name, width, height, depth, 1, flags, pData, eTF_A8, eTF_A8);
 
             m_width = width;
             m_height = height;

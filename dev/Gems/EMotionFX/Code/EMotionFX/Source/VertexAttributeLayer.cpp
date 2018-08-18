@@ -13,10 +13,14 @@
 // include headers
 #include "VertexAttributeLayer.h"
 #include <MCore/Source/StringIdPool.h>
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(VertexAttributeLayer, MeshAllocator, 0)
+
+
     // constructor
     VertexAttributeLayer::VertexAttributeLayer(uint32 numAttributes, bool keepOriginals)
         : BaseObject()

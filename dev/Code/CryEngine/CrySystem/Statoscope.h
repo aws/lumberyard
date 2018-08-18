@@ -313,7 +313,7 @@ protected:
 
     void WriteValue(char*& p, const char* pStr)
     {
-        strcpy(p, pStr);
+        azstrcpy(p, strlen(pStr) + 1, pStr);
         p += strlen(pStr) + 1;
         Align(p);
     }

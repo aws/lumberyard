@@ -38,10 +38,10 @@
 #include "IAIActor.h"
 #include "IGameFramework.h"
 #include "MannequinTrack.h"
-#include "../CryAction/IActorSystem.h"
-#include "../CryAction/ICryMannequinDefs.h"
-#include "../CryAction/ICryMannequin.h"
-#include "../CryAction/IAnimatedCharacter.h"
+#include "IActorSystem.h"
+#include "ICryMannequinDefs.h"
+#include "ICryMannequin.h"
+#include "IAnimatedCharacter.h"
 
 #include <IEntityHelper.h>
 #include "Components/IComponentEntityNode.h"
@@ -1141,8 +1141,8 @@ void CAnimEntityNode::ReleaseSounds()
         return;
     }
 
-    // Get or create sound proxy if necessary.
-    IComponentAudioPtr pAudioComponent = pEntity->GetOrCreateComponent<IComponentAudio>();
+    // Get sound proxy component if it exists.
+    IComponentAudioPtr pAudioComponent = pEntity->GetComponent<IComponentAudio>();
 
     if (pAudioComponent)
     {
@@ -1609,7 +1609,7 @@ void CAnimEntityNode::ApplyEventKey(CEventTrack* track, int keyIndex, IEventKey&
             {
                 Vec3 vTemp(0, 0, 0);
                 float x = 0, y = 0, z = 0;
-                int res = sscanf(key.eventValue.c_str(), "%f,%f,%f", &x, &y, &z);
+                int res = azsscanf(key.eventValue.c_str(), "%f,%f,%f", &x, &y, &z);
                 assert(res == 3);
                 vTemp(x, y, z);
                 scriptComponent->CallEvent(key.event.c_str(), vTemp);

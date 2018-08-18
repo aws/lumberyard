@@ -25,7 +25,7 @@
 #include "ActorManager.h"
 #include "MorphSetupInstance.h"
 #include "MotionEvent.h"
-
+#include <EMotionFX/Source/Allocators.h>
 #include <MCore/Source/DiskFile.h>
 #include <MCore/Source/Matrix4.h>
 #include <MCore/Source/Compare.h>
@@ -33,6 +33,9 @@
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(Recorder, RecorderAllocator, 0)
+
+
     // constructor
     Recorder::Recorder()
         : BaseObject()
@@ -60,7 +63,7 @@ namespace EMotionFX
     // create a new recorder
     Recorder* Recorder::Create()
     {
-        return new Recorder();
+        return aznew Recorder();
     }
 
 
@@ -292,27 +295,6 @@ namespace EMotionFX
 
                     actorInstanceData.mAnimGraphData->mDataBufferSize  = mRecordSettings.mInitialAnimGraphAnimBytes;
                 }
-                /*
-                            // iterate over all anim graph instances
-                            const uint32 numInstances = GetAnimGraphManager().GetNumAnimGraphInstances();
-                            for (uint32 i=0; i<numInstances; ++i)
-                            {
-                                AnimGraphInstance* animGraphInstance = GetAnimGraphManager().GetAnimGraphInstance(i);
-                                if (animGraphInstance->GetActorInstance() != actorInstance)
-                                    continue;
-
-                                // add a new entry
-                                actorInstanceData.mAnimGraphDatas.AddEmpty();
-                                AnimGraphInstanceData& animGraphInstanceData = actorInstanceData.mAnimGraphDatas.GetLast();
-
-                                animGraphInstanceData.mAnimGraphInstance = animGraphInstance;
-
-                                // allocate initial space
-                                if (mRecordSettings.mInitialAnimGraphAnimBytes > 0)
-                                    animGraphInstanceData.mDataBuffer  = (uint8*)MCore::Allocate(mRecordSettings.mInitialAnimGraphAnimBytes, EMFX_MEMCATEGORY_RECORDER);
-
-                                animGraphInstanceData.mDataBufferSize  = mRecordSettings.mInitialAnimGraphAnimBytes;
-                            }*/
             } // if recording animgraphs
         } // for all actor instances
     }
@@ -592,7 +574,7 @@ namespace EMotionFX
                 currentFrame.mTimeValue = mRecordTime;
 
                 // save the parameter values
-                const uint32 numParams = animGraphInstance->GetAnimGraph()->GetNumParameters();
+                const uint32 numParams = static_cast<uint32>(animGraphInstance->GetAnimGraph()->GetNumValueParameters());
                 currentFrame.mParameterValues.SetMemoryCategory(EMFX_MEMCATEGORY_RECORDER);
                 currentFrame.mParameterValues.Resize(numParams);
                 for (uint32 p = 0; p < numParams; ++p)
@@ -1085,7 +1067,7 @@ namespace EMotionFX
                 uint32 index = MCORE_INVALIDINDEX32;
                 for (uint32 x = 0; x < numActiveNodes; ++x)
                 {
-                    if (mActiveNodes[x]->GetUniqueID() == curItem->mNodeUniqueID)
+                    if (mActiveNodes[x]->GetId() == curItem->mNodeId)
                     {
                         index = x;
                         break;
@@ -1104,7 +1086,7 @@ namespace EMotionFX
                 }
 
                 // check if the node changed during recording
-                if (mActiveNodes[index]->GetType() == AnimGraphMotionNode::TYPE_ID)
+                if (azrtti_typeid(mActiveNodes[index]) == azrtti_typeid<AnimGraphMotionNode>())
                 {
                     AnimGraphMotionNode* motionNode = static_cast<AnimGraphMotionNode*>(mActiveNodes[index]);
                     MotionInstance* motionInstance = motionNode->FindMotionInstance(animGraphInstance);
@@ -1129,30 +1111,30 @@ namespace EMotionFX
                     continue;
                 }
 
-                const uint32 typeID = activeNode->GetType();
+                const AZ::TypeId typeID = azrtti_typeid(activeNode);
 
                 // if the parent isn't a state machine then it isn't a state
                 if (mRecordSettings.mHistoryStatesOnly)
                 {
-                    if (activeNode->GetParentNode()->GetType() != AnimGraphStateMachine::TYPE_ID)
+                    if (azrtti_typeid(activeNode->GetParentNode()) != azrtti_typeid<AnimGraphStateMachine>())
                     {
                         continue;
                     }
                 }
 
                 // make sure this node is on our capture list
-                if (mRecordSettings.mNodeHistoryTypeIDs.GetLength() > 0)
+                if (!mRecordSettings.mNodeHistoryTypes.empty())
                 {
-                    if (mRecordSettings.mNodeHistoryTypeIDs.Contains(typeID) == false)
+                    if (mRecordSettings.mNodeHistoryTypes.find(typeID) == mRecordSettings.mNodeHistoryTypes.end())
                     {
                         continue;
                     }
                 }
 
                 // skip node types we do not want to capture
-                if (mRecordSettings.mNodeHistoryTypeIDsToIgnore.GetLength() > 0)
+                if (!mRecordSettings.mNodeHistoryTypesToIgnore.empty())
                 {
-                    if (mRecordSettings.mNodeHistoryTypeIDsToIgnore.Contains(typeID))
+                    if (mRecordSettings.mNodeHistoryTypesToIgnore.find(typeID) != mRecordSettings.mNodeHistoryTypesToIgnore.end())
                     {
                         continue;
                     }
@@ -1164,21 +1146,21 @@ namespace EMotionFX
                 {
                     item = new NodeHistoryItem();
                     item->mName             = activeNode->GetName();
-                    item->mAnimGraphID     = animGraphInstance->GetAnimGraph()->GetID();
+                    item->mAnimGraphID      = animGraphInstance->GetAnimGraph()->GetID();
                     item->mStartTime        = mRecordTime;
                     item->mIsFinalized      = false;
                     item->mTrackIndex       = FindFreeNodeHistoryItemTrack(actorInstanceData, item);
-                    item->mNodeUniqueID     = activeNode->GetUniqueID();
+                    item->mNodeId           = activeNode->GetId();
                     item->mColor            = activeNode->GetVisualizeColor();
                     item->mTypeColor        = activeNode->GetVisualColor();
                     item->mCategoryID       = (uint32)activeNode->GetPaletteCategory();
-                    item->mNodeTypeID       = typeID;
+                    item->mNodeType         = typeID;
                     item->mGlobalWeights.Reserve(1024);
                     item->mLocalWeights.Reserve(1024);
                     item->mPlayTimes.Reserve(1024);
 
                     // get the motion instance
-                    if (typeID == AnimGraphMotionNode::TYPE_ID)
+                    if (typeID == azrtti_typeid<AnimGraphMotionNode>())
                     {
                         AnimGraphMotionNode* motionNode = static_cast<AnimGraphMotionNode*>(activeNode);
                         MotionInstance* motionInstance = motionNode->FindMotionInstance(animGraphInstance);
@@ -1224,12 +1206,12 @@ namespace EMotionFX
         for (uint32 i = 0; i < numItems; ++i)
         {
             NodeHistoryItem* curItem = historyItems[i];
-            if (curItem->mNodeUniqueID == node->GetUniqueID() && curItem->mStartTime <= recordTime && curItem->mIsFinalized == false)
+            if (curItem->mNodeId == node->GetId() && curItem->mStartTime <= recordTime && curItem->mIsFinalized == false)
             {
                 return curItem;
             }
 
-            if (curItem->mNodeUniqueID == node->GetUniqueID() && curItem->mStartTime <= recordTime && curItem->mEndTime >= recordTime && curItem->mIsFinalized)
+            if (curItem->mNodeId == node->GetId() && curItem->mStartTime <= recordTime && curItem->mEndTime >= recordTime && curItem->mIsFinalized)
             {
                 return curItem;
             }
@@ -1435,8 +1417,8 @@ namespace EMotionFX
                     item->mEventInfo    = eventInfo;
                     item->mIsTickEvent  = eventInfo.mEvent->GetIsTickEvent();
                     item->mStartTime    = mRecordTime;
-                    item->mAnimGraphID = animGraphInstance->GetAnimGraph()->GetID();
-                    item->mEmitterUniqueID = eventInfo.mEmitter->GetUniqueID();
+                    item->mAnimGraphID  = animGraphInstance->GetAnimGraph()->GetID();
+                    item->mEmitterNodeId = eventInfo.mEmitter->GetId();
                     item->mColor        = eventInfo.mEmitter->GetVisualizeColor();
 
                     item->mTrackIndex   = FindFreeEventHistoryItemTrack(actorInstanceData, item);

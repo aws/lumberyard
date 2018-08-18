@@ -56,13 +56,13 @@ namespace MCommon
          * Returns the type identification number of the orthographic camera class.
          * @result The type identification number.
          */
-        uint32 GetType() const;
+        uint32 GetType() const override;
 
         /**
          * Gets the type as a description. This for example could be "Front" or "Top".
          * @result The string containing the type of the camera.
          */
-        const char* GetTypeString() const;
+        const char* GetTypeString() const override;
 
         MCORE_INLINE void SetMode(ViewMode viewMode)                { mMode = viewMode; }
         MCORE_INLINE ViewMode GetMode() const                       { return mMode; }
@@ -72,7 +72,7 @@ namespace MCommon
          * Recalculate the view frustum, the projection and the view matrix.
          * @param timeDelta The time (in seconds) passed since the last call.
          */
-        void Update(float timeDelta = 0.0f);
+        void Update(float timeDelta = 0.0f) override;
 
         /**
          * Process input and update the camera transformation based on that.
@@ -85,20 +85,20 @@ namespace MCommon
          * @param right ButtonPressed True if the right mouse button currently is being pressed, false if not.
          * @param keyboardKeyFlags Integer used as bit array for 32 different camera specific keyboard button states.
          */
-        void ProcessMouseInput(int32 mouseMovementX, int32 mouseMovementY, bool leftButtonPressed, bool middleButtonPressed, bool rightButtonPressed, uint32 keyboardKeyFlags);
+        void ProcessMouseInput(int32 mouseMovementX, int32 mouseMovementY, bool leftButtonPressed, bool middleButtonPressed, bool rightButtonPressed, uint32 keyboardKeyFlags) override;
 
         /**
          * Reset all camera attributes to their default settings.
          * @param flightTime The time of the interpolated flight between the actual camera position and the reset target.
          */
-        void Reset(float flightTime = 0.0f);
+        void Reset(float flightTime = 0.0f) override;
 
         /**
          * Translate and zoom the camera so that we are seeing a closeup of our given bounding box.
          * @param boundingBox The bounding box around the object we want to look at.
          * @param flightTime The time of the interpolated flight between the actual camera position and the target.
          */
-        void ViewCloseup(const MCore::AABB& boundingBox, float flightTime);
+        void ViewCloseup(const MCore::AABB& boundingBox, float flightTime) override;
 
         void AutoUpdateLimits() override;
 
@@ -120,7 +120,7 @@ namespace MCommon
          * @param screenY The mouse position y value or another vertical screen coordinate in range [0, screenHeight].
          * @return The unprojected ray.
          */
-        virtual MCore::Ray Unproject(int32 screenX, int32 screenY);
+        MCore::Ray Unproject(int32 screenX, int32 screenY) override;
 
         MCORE_INLINE void SetCurrentDistance(float distance)                    { mCurrentDistance = distance; }
         MCORE_INLINE float GetCurrentDistance() const                           { return mCurrentDistance; }

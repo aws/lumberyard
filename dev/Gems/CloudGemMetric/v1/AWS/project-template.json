@@ -1,0 +1,261 @@
+{
+    "Resources": {
+        "MetricCustomResourceTypes": {
+            "Type": "Custom::ResourceTypes",
+            "DependsOn": [
+                "CoreResourceTypes"
+            ],
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "LambdaConfiguration": {
+                    "Fn::GetAtt": [
+                        "MetricCustomResourceConfiguration",
+                        "ComposedLambdaConfiguration"
+                    ]
+                },
+                "LambdaTimeout": 300,
+                "Definitions": {
+                    "Custom::SQSScaler": {
+                        "ArnFormat": "arn:aws:sqs:{region}:{account_id}:",                        
+                        "HandlerFunction": {
+                            "Function": "Custom_AutoScaleFifoQueue.handler",
+                            "PolicyStatement": [
+                                {
+                                    "Sid": "CustomFifoQueuePermissions",
+                                    "Action": [
+                                        "sqs:GetQueueAttributes",
+                                        "sqs:CreateQueue",
+                                        "sqs:ListQueues",
+                                        "sqs:DeleteQueue",
+                                        "cloudformation:DescribeStacks",
+                                        "cloudformation:ListStackResources"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                }
+                            ]
+                        },
+                        "PermissionMetadata": {
+                            "DefaultRoleMappings": [
+                                {
+                                    "AbstractRole": "FIFOConsumer",
+                                    "Action": [
+                                        "sqs:ReceiveMessage"
+                                    ],
+                                    "ResourceSuffix": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    { "Ref": "AWS::StackName" },
+                                                    "-*"
+                                                ]
+                                            ]
+                                        }
+                                },
+                                {
+                                    "AbstractRole": "FIFOProducer",
+                                    "Action": [                                        
+                                        "sqs:SendMessage"
+                                    ],
+                                    "ResourceSuffix": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    { "Ref": "AWS::StackName" },
+                                                    "-*"
+                                                ]
+                                            ]
+                                        }
+                                },
+                                {
+                                    "AbstractRole": [ "FIFOConsumer", "FIFOProducer", "LambdaConsumerLauncher"],
+                                    "Action": [
+                                        "sqs:GetQueueAttributes",
+                                        "sqs:CreateQueue",
+                                        "sqs:ListQueues"
+                                    ],
+                                    "ResourceSuffix": "*"
+                                }                                                                                 
+                            ]
+                        }
+                    },                                  
+                    "Custom::Glue": {
+                        "ArnFormat": "arn:aws:cloudformation:{region}:{account_id}:",
+                        "HandlerFunction": {
+                            "Function": "Custom_Glue.handler",
+                            "PolicyStatement": [
+                                {
+                                    "Sid": "CustomGluePermissions1",
+                                    "Action": [
+                                        "cloudformation:DescribeStacks",
+                                        "cloudformation:ListStackResources",
+                                        "glue:CreateDatabase",
+                                        "glue:CreateCrawler",
+                                        "glue:DeleteDatabase",
+                                        "glue:UpdateCrawler",
+                                        "glue:DeleteCrawler",
+                                        "glue:GetDatabase",
+                                        "glue:StopCrawlerSchedule",
+                                        "glue:GetCrawler",
+                                        "glue:GetDatabases",
+                                        "glue:GetDatabase"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Sid": "CustomGluePermissions2",
+                                    "Action": [
+                                        "iam:PassRole"                              
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": {
+                                        "Fn::Join": [ "", [ "arn:aws:iam::", {"Ref": "AWS::AccountId"}, ":role/", {"Ref": "AWS::StackName"}, "-*" ] ] 
+                                    }
+                                }
+                            ]                           
+                        }                       
+                    },
+                    "Custom::SpecialPermissions": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "SpecialPermissions.handler"
+                        },
+                        "PermissionMetadata": {
+                            "DefaultRoleMappings": [
+                                {
+                                    "AbstractRole": "ServiceLambda",
+                                    "Action": [
+                                        "cloudwatch:GetMetricStatistics",
+                                        "athena:BatchGetQueryExecution",
+                                        "athena:CancelQueryExecution",
+                                        "athena:StartQueryExecution",
+                                        "athena:StopQueryExecution",
+                                        "athena:GetQueryExecution",
+                                        "athena:GetQueryResults",
+                                        "athena:CancelQueryExecution",
+                                        "glue:GetPartitions",
+                                        "glue:GetPartition",
+                                        "glue:GetCrawler",
+                                        "glue:GetDatabase",
+                                        "glue:GetTable"
+                                    ],
+                                    "ResourceSuffix": ""
+                                },
+                                {
+                                    "AbstractRole": "GlueCrawlerLauncher",
+                                    "Action": [                                        
+                                        "glue:BatchCreatePartition",
+                                        "athena:StartQueryExecution",
+                                        "glue:GetCrawler",
+                                        "glue:DeleteDatabase",
+                                        "glue:GetPartitions",
+                                        "glue:UpdateTable",
+                                        "glue:BatchDeletePartition",
+                                        "glue:StopCrawler",
+                                        "glue:DeleteTable",
+                                        "glue:UpdateCrawler",
+                                        "athena:ListQueryExecutions",
+                                        "glue:ImportCatalogToGlue",
+                                        "glue:StartCrawler",
+                                        "athena:StopQueryExecution",
+                                        "glue:CreatePartition",
+                                        "glue:StopCrawlerSchedule",
+                                        "athena:RunQuery",
+                                        "glue:UpdatePartition",
+                                        "glue:UpdateDatabase",
+                                        "glue:CreateTable",
+                                        "glue:GetTables",
+                                        "glue:UpdateUserDefinedFunction",
+                                        "glue:DeleteCrawler",
+                                        "glue:DeleteUserDefinedFunction",
+                                        "glue:GetTable",
+                                        "glue:CreateCrawler",
+                                        "glue:GetDatabase",
+                                        "glue:GetMapping",
+                                        "glue:GetPartition",
+                                        "glue:BatchDeleteConnection",
+                                        "glue:StartCrawlerSchedule",
+                                        "athena:GetQueryExecution",
+                                        "glue:UpdateDevEndpoint",
+                                        "athena:GetTables",
+                                        "glue:BatchDeleteTable",
+                                        "athena:GetTable",
+                                        "glue:DeletePartition",
+                                        "athena:BatchGetQueryExecution"                                               
+                                    ],
+                                    "ResourceSuffix": ""
+                                },
+                                {
+                                    "AbstractRole": "FIFOConsumer",
+                                    "Action": [
+                                        "cloudwatch:GetMetricStatistics",
+                                        "cloudwatch:PutMetricData",
+                                        "sqs:SendMessageBatch",
+                                        "sqs:ChangeMessageVisibilityBatch",
+                                        "sqs:ChangeMessageVisibility",
+                                        "sqs:DeleteMessage",
+                                        "sqs:GetQueueAttributes",
+                                        "sqs:DeleteMessageBatch",
+                                        "glue:GetCrawler",
+                                        "glue:UpdateCrawler"
+                                    ],
+                                    "ResourceSuffix": ""
+                                },
+                                {
+                                    "AbstractRole": ["FIFOConsumer"],
+                                    "Action": [                                        
+                                        "iam:PassRole"
+                                    ],
+                                    "ResourceSuffix": {
+                                            "Fn::Join": [ "", [ "arn:aws:iam::", {"Ref": "AWS::AccountId"}, ":role/", {"Ref": "AWS::StackName"}, "-*" ] ] 
+                                        }
+                                },
+                                {
+                                    "AbstractRole": ["FIFOConsumer", "FIFOProducer", "ServiceLambda", "LambdaConsumerLauncher", "GlueCrawlerLauncher", "AmoebaLauncher"],
+                                    "Action": [
+                                        "cloudformation:DescribeStacks"
+                                    ],
+                                    "ResourceSuffix": {
+                                            "Fn::Join": [ "", [ "arn:aws:cloudformation:", {"Ref": "AWS::Region"}, ":", {"Ref": "AWS::AccountId"}, ":stack/", {"Ref": "AWS::StackName"}, "*" ] ]
+                                        }
+                                },
+                                {
+                                    "AbstractRole": "AmoebaLauncher",
+                                    "Action": [
+                                        "glue:GetCrawler"
+                                    ],
+                                    "ResourceSuffix": ""
+                                }
+                            ]
+                        }
+                    }                 
+                }
+            }
+        },
+        "MetricCustomResourceConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "Configuration"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "CustomResource",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        }
+    }
+}

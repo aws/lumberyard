@@ -129,8 +129,14 @@ void FurPasses::ExecuteFinPass()
         CD3D9Renderer* const __restrict rd = gcpRendD3D;
         PROFILE_LABEL_SCOPE("FUR_FINS");
 
+        uint64  nSavedFlags = rd->m_RP.m_FlagsShader_RT;
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_GPU_PARTICLE_TURBULENCE]; // Indicates fin pass
+        FurPasses::GetInstance().ApplyFurDebugFlags();
+
         rd->m_RP.m_pRenderFunc = &FinRenderFunc;
         rd->FX_ProcessRenderList(GetFurRenderList(), FB_FUR, false /*bSetRenderFunc*/);
+
+        rd->m_RP.m_FlagsShader_RT = nSavedFlags;
     }
 }
 
@@ -243,10 +249,7 @@ float FurPasses::GetFurShellPassPercent()
 
     static CCryNameTSCRC techFurFins("FurFins");
     rd->m_RP.m_pShader->FXSetTechnique(techFurFins);
-    uint64 nSavedFlags = rd->m_RP.m_FlagsShader_RT;
-    rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_GPU_PARTICLE_TURBULENCE]; // Indicates fin pass
-    FurPasses::GetInstance().ApplyFurDebugFlags();
 
     rd->FX_FlushShader_General();
-    rd->m_RP.m_FlagsShader_RT = nSavedFlags;
 }
+

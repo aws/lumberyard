@@ -15,6 +15,7 @@
 #include "EMotionFXConfig.h"
 #include "Constraint.h"
 #include "Transform.h"
+#include <Source/Integration/System/SystemCommon.h>
 
 
 namespace EMotionFX
@@ -26,9 +27,10 @@ namespace EMotionFX
      */     
     class EMFX_API ConstraintTransform : public Constraint
     {
-        MCORE_MEMORYOBJECTCATEGORY(ConstraintTransform, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_CONSTRAINTS);
-
         public:
+            AZ_RTTI(ConstraintTransform, "{8C821457-C3C2-4DAD-B552-A7318B420A9C}", Constraint)
+            AZ_CLASS_ALLOCATOR(ConstraintTransform, EMotionFX::Integration::EMotionFXAllocator, 0)
+
             ConstraintTransform() : Constraint()                    { mTransform.Identity(); }
             ~ConstraintTransform() override                         { }
 

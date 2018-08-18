@@ -14,8 +14,8 @@
 #include "StdAfx.h"
 #include "MannequinModelViewport.h"
 
-#include "../../CryEngine/CryEntitySystem/Components/ComponentRender.h"
-#include "../objects/EntityObject.h"
+#include "Components/IComponentRender.h"
+#include "../Objects/EntityObject.h"
 #include "Components/IComponentPhysics.h"
 #include "ICryMannequin.h"
 #include "IGameFramework.h"

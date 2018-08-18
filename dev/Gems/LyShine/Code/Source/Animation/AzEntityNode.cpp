@@ -32,7 +32,6 @@
 #include "IAIObject.h"
 #include "IAIActor.h"
 #include "IGameFramework.h"
-#include "../CryAction/IActorSystem.h"
 
 #include <IEntityHelper.h>
 #include "Components/IComponentEntityNode.h"

@@ -1,0 +1,7 @@
+{
+    "name": "@cloud-gems/cloudgemdefectreporter",
+    "version": "1.0.0",
+    "description": "CloudGemDefectReporter",
+    "private": true,
+    "dependencies": {}
+}

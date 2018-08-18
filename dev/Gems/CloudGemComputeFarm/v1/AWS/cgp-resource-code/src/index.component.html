@@ -1,0 +1,45 @@
+﻿<facet-generator [context]="context" 
+        [tabs]="['Overview', 'Build Configuration', 'Fleet Management']"
+        [metricIdentifier]="context.identifier"
+        (tabClicked)="idx=$event"
+        ></facet-generator>
+
+
+<div *ngIf="idx == 0 || !idx">
+    <view-header #header [index]="indexView" [workflowConfig]="workflowConfig"></view-header>
+    <h2>Progress Visualization</h2>
+    <select class="form-control" name="view-option" [(ngModel)]="viewOption">
+        <option value="0">Activity View</option>
+        <option value="1">Progress View</option>
+    </select>
+
+    <div [ngSwitch]="dataLoaded">
+        <div *ngSwitchCase="false">
+            <div *ngIf="liveRunner && liveRunner.fetchingEvents" class="loading-spinner-container">
+                <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+            </div>
+        </div>
+        <div *ngSwitchCase="true">
+            <div *ngIf="viewOption == 0 || !viewOption" class="activity-table">
+                <div class="activity-row" *ngFor="let row of tableView.tableRows">
+                    <table-view-row [row]="row"></table-view-row>
+                </div>
+            </div>
+            <div *ngIf="viewOption == 1">
+                <div *ngIf="progressView.progressRoot != null" class="progress-chart">
+                    <progress-slice [sliceInfo]="progressView.progressRoot"></progress-slice>
+                    <div class="progress-checkmark" [style.left.px]="progressView.progressRoot.mainEndPos + 4" [style.transform]="'scale(' + (progressView.progressRoot.closeTimePos ? 1 : 0) + ')'">&#x2713;</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div *ngIf="idx == 1">
+    <swf-configuration [context]="context" [workflowConfig]="workflowConfig"></swf-configuration>
+</div>
+<div *ngIf="idx == 2">
+    <fleet-management [context]="context"></fleet-management>
+</div>
+
+
+

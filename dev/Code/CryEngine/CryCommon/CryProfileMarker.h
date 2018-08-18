@@ -18,7 +18,6 @@
 #define CRYINCLUDE_CRYCOMMON_CRYPROFILEMARKER_H
 #pragma once
 
-#include <IJobManager.h>
 ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
 // forward declaration for Implementation functions, these will be different
@@ -101,13 +100,12 @@ namespace CryProfile
         }
 
         // Set marker
-        gEnv->pJobManager->PushProfilingMarker(markerName);
         CryProfile::detail::PushProfilingMarker(markerName);
         va_end(args);
     }
 
     //////////////////////////////////////////////////////////////////////////
-    inline void PopProfilingMarker() { gEnv->pJobManager->PopProfilingMarker(); CryProfile::detail::PopProfilingMarker(); }
+    inline void PopProfilingMarker() { CryProfile::detail::PopProfilingMarker(); }
 
     //////////////////////////////////////////////////////////////////////////
     // class to define a profile scope, to represent time events in profile tools

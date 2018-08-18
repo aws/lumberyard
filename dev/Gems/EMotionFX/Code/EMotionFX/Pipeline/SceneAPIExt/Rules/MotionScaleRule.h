@@ -39,7 +39,7 @@ namespace EMotionFX
                 void SetScaleFactor(float value);
 
                 // IMotionScaleRule overrides
-                virtual float GetScaleFactor() const;
+                float GetScaleFactor() const override;
 
                 static void Reflect(AZ::ReflectContext* context);
 

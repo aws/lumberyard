@@ -227,7 +227,12 @@ namespace AZ
                 if (childClass)
                 {
                     AZ_Assert(childNode.m_element.m_version <= childClass->m_version, "Serialize was parsing old version class and found newer version element! This should be impossible!");
-                    if (childNode.m_element.m_version < childClass->m_version || childClass->IsDeprecated())
+
+                    // Only proceed if:
+                    // * the child node is out of date AND the class does not have a custom serializer
+                    // * OR the class is deprecated
+                    if ((childNode.m_element.m_version < childClass->m_version && !childClass->m_serializer)
+                        || childClass->IsDeprecated())
                     {
                         if (!ConvertOldVersion(sc, childNode, *childNode.m_element.m_stream, childClass))
                         {
@@ -697,6 +702,17 @@ namespace AZ
                     {
                         // create a new instance if we are referencing it by pointer
                         AZ_Assert(classData->m_factory != nullptr, "We are attempting to create '%s', but no factory is provided! Either provide factory or change data member '%s' to value not pointer!", classData->m_name, classElement->m_name);
+
+                        // If there is a value stored at the data address
+                        // already, destroy it. This prevents leaks where the
+                        // default constructor of object A allocates an object
+                        // B and stores B in a field in A that is also
+                        // serialized.
+                        if (!classContainer && *reinterpret_cast<void**>(dataAddress))
+                        {
+                            classData->m_factory->Destroy(*reinterpret_cast<void**>(dataAddress));
+                        }
+
                         void* newDataAddress = classData->m_factory->Create(classData->m_name);
 
                         // we need to account for additional offsets if we have a pointer to
@@ -782,12 +798,6 @@ namespace AZ
                                 // and will not complete until the asset is loaded.
                                 if (assetFlags == static_cast<u8>(Data::AssetFlags::OBJECTSTREAM_PRE_LOAD))
                                 {
-                                    AZ_Warning("Serialization", asset->GetStatus() != Data::AssetData::AssetStatus::Loading,
-                                        "Dependent asset from element \"%s\" %s is already loading asynchronously.",
-                                        element.m_name,
-                                        asset->ToString<AZ::OSString>().c_str());
-
-
                                     // Conduct a blocking load within the current thread.
                                     AZ_Assert(Data::AssetManager::IsReady(), "AssetManager has not been started!");
                                     *asset = Data::AssetManager::Instance().GetAsset(asset->GetId(), asset->GetType(), true, m_filterDesc.m_assetCB, true /*blocking*/);
@@ -855,10 +865,16 @@ namespace AZ
                     // read the class value
                     if (!classData->m_serializer->Load(dataAddress, *currentStream, element.m_version, element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE))
                     {
-                        AZStd::string error = AZStd::string::format("Failed to load value for element '%s'(0x%x) of type '%s' found in '%s'!", element.m_name ? element.m_name : "NULL", element.m_nameCrc, classData->m_name, parentClassInfo->m_name);
-                        
                         result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                     }
+                }
+
+                // If it is a container, clear it before loading the child
+                // nodes, otherwise we end up with more elements than the ones
+                // we should have
+                if (classData->m_container && dataAddress)
+                {
+                    classData->m_container->ClearElements(dataAddress, m_sc);
                 }
 
                 // Read child nodes
@@ -1935,7 +1951,7 @@ namespace AZ
                     }
                     else
                     {
-                        m_errorLogger.ReportError("Unknown stream tag (first byte): '\0' binary, '<' xml or '{' json!");
+                        m_errorLogger.ReportError("Unknown stream tag (first byte): '\\0' binary, '<' xml or '{' json!");
                         // this is considered a "fatal" error since the entire stream is unreadable.
                         result = false;
                     }

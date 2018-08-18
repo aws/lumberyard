@@ -87,7 +87,7 @@ namespace LmbrCentral
                 AZ::Transform targetTM = AZ::Transform::CreateIdentity();
                 EBUS_EVENT_ID_RESULT(targetTM, m_targetId, AZ::TransformBus, GetWorldTM);
 
-                AZ::Transform lookAtTransform = AzFramework::CreateLookAt(
+                AZ::Transform lookAtTransform = AZ::Transform::CreateLookAt(
                     currentTM.GetPosition(),
                     targetTM.GetPosition(),
                     m_forwardAxis

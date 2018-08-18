@@ -641,7 +641,7 @@ void CCloudGroup::BrowseFile()
 
     if (!m_exportFile.isEmpty())
     {
-        strcpy(path, m_exportFile.toUtf8().data());
+        azstrcpy(path, AZ_ARRAY_SIZE(path), m_exportFile.toUtf8().data());
         char* ch1 = strrchr(path, '/');
         char* ch2 = strrchr(path, '\\');
         if (ch2 > ch1)
@@ -661,7 +661,7 @@ void CCloudGroup::BrowseFile()
 
     if (!(*path))
     {
-        strcpy(path, Path::GamePathToFullPath("Libs/Clouds/").toUtf8().data());
+        azstrcpy(path, AZ_ARRAY_SIZE(path), Path::GamePathToFullPath("Libs/Clouds/").toUtf8().data());
     }
 
     if (CFileUtil::SelectSaveFile("Clouds (*.xml)", "xml", path, fileName))
@@ -705,7 +705,7 @@ void CCloudGroup::Import()
 bool CCloudGroup::ImportExportFolder(const QString& fileName)
 {
     char path[MAX_PATH];
-    strcpy(path, fileName.toUtf8().data());
+    azstrcpy(path, AZ_ARRAY_SIZE(path), fileName.toUtf8().data());
     char* ch1 = strrchr(path, '\\');
     char* ch2 = strrchr(path, '/');
     if (ch2 > ch1)
@@ -716,13 +716,13 @@ bool CCloudGroup::ImportExportFolder(const QString& fileName)
     {
         char folder[MAX_PATH];
         *(ch1 + 1) = 0;
-        strcpy(folder, path);
+        azstrcpy(folder, AZ_ARRAY_SIZE(folder), path);
         
         QDirIterator dirIterator(QString::fromLatin1(path), {"*.cld"}, QDir::Files, QDirIterator::NoIteratorFlags);
         while (dirIterator.hasNext())
         {
             QFileInfo fileInfo(dirIterator.next());
-            strcpy(path, fileInfo.fileName().toUtf8().data());
+            azstrcpy(path, AZ_ARRAY_SIZE(path), fileInfo.fileName().toUtf8().data());
             char* ch1 = strrchr(path, '.');
             if (ch1)
             {
@@ -731,7 +731,7 @@ bool CCloudGroup::ImportExportFolder(const QString& fileName)
                     QString file = folder;
                     file += fileInfo.fileName();
                     ImportFS(file);
-                    strcpy(ch1, ".xml");
+                    azstrcpy(ch1, AZ_ARRAY_SIZE(ch1), ".xml");
                     m_exportFile = folder;
                     m_exportFile += path;
                     Export();

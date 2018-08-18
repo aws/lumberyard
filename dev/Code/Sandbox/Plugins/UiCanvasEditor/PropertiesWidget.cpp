@@ -40,6 +40,7 @@ PropertiesWidget::PropertiesWidget(EditorWindow* editorWindow,
     {
         QObject::connect(&m_refreshTimer,
             &QTimer::timeout,
+            this,
             [ this ]()
             {
                 Refresh(m_refreshLevel, (!m_componentTypeToRefresh.IsNull() ? &m_componentTypeToRefresh : nullptr));

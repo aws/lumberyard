@@ -168,12 +168,10 @@ void UiButtonComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiButtonBus>("UiButtonBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetOnClickActionName", &UiButtonBus::Events::GetOnClickActionName)
             ->Event("SetOnClickActionName", &UiButtonBus::Events::SetOnClickActionName);
 
         behaviorContext->EBus<UiButtonNotificationBus>("UiButtonNotificationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiButtonNotificationBusBehaviorHandler>();
     }
 }

@@ -728,14 +728,14 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    IATLListenerData* CAudioSystemImpl_NoSound::NewDefaultAudioListenerObjectData()
+    IATLListenerData* CAudioSystemImpl_NoSound::NewDefaultAudioListenerObjectData(const TATLIDType nListenerID)
     {
         auto pNewObject = azcreate(IATLListenerData, (), Audio::AudioImplAllocator, "ATLListenerData-Default");
         return pNewObject;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    IATLListenerData* CAudioSystemImpl_NoSound::NewAudioListenerObjectData(const uint nIndex)
+    IATLListenerData* CAudioSystemImpl_NoSound::NewAudioListenerObjectData(const TATLIDType nListenerID)
     {
         auto pNewObject = azcreate(IATLListenerData, (), Audio::AudioImplAllocator, "ATLListenerData");
         return pNewObject;

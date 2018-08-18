@@ -11,7 +11,7 @@
 */
 #include "AssetRequestHandler.h"
 
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 
 #include <AzCore/Serialization/Utils.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
@@ -137,6 +137,30 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
         return true;
     }
+    else if (message->GetMessageType() == AzToolsFramework::AssetSystem::GetScanFoldersRequest::MessageType())
+    {
+        AzToolsFramework::AssetSystem::GetScanFoldersRequest* request = azrtti_cast<AzToolsFramework::AssetSystem::GetScanFoldersRequest*>(message);
+        if (!request)
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Invalid Message Type: Message is not of type %d.Incoming message type is %d.\n", 
+                AzToolsFramework::AssetSystem::GetScanFoldersRequest::MessageType(), message->GetMessageType());
+            return true;
+        }
+
+        bool success = true;;
+        AZStd::vector<AZStd::string> scanFolders;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(success, &AzToolsFramework::AssetSystemRequestBus::Events::GetScanFolders, scanFolders);
+        if (!success)
+        {
+            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Could not acquire a list of scan folders from the database.");
+        }
+
+
+        AzToolsFramework::AssetSystem::GetScanFoldersResponse response(AZStd::move(scanFolders));
+        AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
+        return true;
+    }
+
     else if (message->GetMessageType() == RegisterSourceAssetRequest::MessageType())
     {
         RegisterSourceAssetRequest* request = azrtti_cast<RegisterSourceAssetRequest*>(message);

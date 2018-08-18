@@ -21,7 +21,7 @@
 #include <GameLift/Session/GameLiftServerService.h>
 
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
-#include <AWSNativeSDKInit/AWSnativeSDKInit.h>
+#include <AWSNativeSDKInit/AWSNativeSDKInit.h>
 #endif
 
 namespace GameLift

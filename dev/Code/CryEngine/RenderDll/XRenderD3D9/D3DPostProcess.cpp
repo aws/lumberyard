@@ -384,9 +384,7 @@ void SD3DPostEffectsUtils::DownsampleDepth(CTexture* pSrc, CTexture* pDst, bool 
 #endif
     //  Confetti End: Igor Lobanchikov
 
-#if defined(OPENGL_ES)
-    uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
-    if (glVersion == DXGLES_VERSION_30)
+    if (GetShaderLanguage() == eSL_GLES3_0)
     {
         // There's a bug in Qualcomm OpenGL ES 3.0 drivers that cause the device
         // shader compiler to crash if we use "textureSize" in the shader to get the texture dimensions.
@@ -394,7 +392,6 @@ void SD3DPostEffectsUtils::DownsampleDepth(CTexture* pSrc, CTexture* pDst, bool 
         static CCryNameR texSizeParam("DownsampleDepth_DepthTex_Dimensions");
         CShaderMan::s_shPostEffects->FXSetPSFloat(texSizeParam, &texSize, 1);
     }
-#endif // defined(OPENGL_ES)
 
     // Handle uneven source size by dropping last row/column
     RECT source = { 0, 0, pDst->GetWidth(), pDst->GetHeight() };
@@ -1494,34 +1491,52 @@ bool CREPostProcess:: mfDraw(CShader* ef, SShaderPass* sfm)
     CPostEffectDebugVec& activeParams = pPostMgr->GetActiveEffectsParamsDebug();
 #endif
 
+    AZStd::vector<CPostEffect*> effectsToRender;
     for (CPostEffectItor pItor = pPostMgr->GetEffects().begin(), pItorEnd = pPostMgr->GetEffects().end(); pItor != pItorEnd; ++pItor)
     {
-        CPostEffect* pCurrEffect = (*pItor);
-        if (pCurrEffect->Preprocess())
+        CPostEffect* effectToPreprocess = (*pItor);
+        if (effectToPreprocess->Preprocess())
         {
-            uint32 nRenderFlags = pCurrEffect->GetRenderFlags();
-            if (nRenderFlags & PSP_UPDATE_BACKBUFFER)
-            {
-                PostProcessUtils().CopyScreenToTexture(CTexture::s_ptexBackBuffer);
-            }
-# ifndef _RELEASE
-            SPostEffectsDebugInfo* pDebugInfo = NULL;
-            for (uint32 i = 0, nNumEffects = activeEffects.size(); i < nNumEffects; ++i)
-            {
-                if ((pDebugInfo = &activeEffects[i]) && pDebugInfo->pEffect == pCurrEffect)
-                {
-                    pDebugInfo->fTimeOut = POSTSEFFECTS_DEBUGINFO_TIMEOUT;
-                    break;
-                }
-                pDebugInfo = NULL;
-            }
-            if (pDebugInfo == NULL)
-            {
-                activeEffects.push_back(SPostEffectsDebugInfo(pCurrEffect));
-            }
-#endif
-            pCurrEffect->Render();
+            effectsToRender.push_back(effectToPreprocess);
         }
+    }
+
+    for (auto effectIter = effectsToRender.begin(); effectIter != effectsToRender.end(); ++effectIter)
+    {
+        CPostEffect* currentEffect = (*effectIter);
+        uint32 nRenderFlags = currentEffect->GetRenderFlags();
+        if (nRenderFlags & PSP_UPDATE_BACKBUFFER)
+        {
+            PostProcessUtils().CopyScreenToTexture(CTexture::s_ptexBackBuffer);
+        }
+        if (nRenderFlags & PSP_UPDATE_SCENE_SPECULAR)
+        {
+            PostProcessUtils().CopyScreenToTexture(CTexture::s_ptexSceneSpecular);
+        }
+# ifndef _RELEASE
+        SPostEffectsDebugInfo* pDebugInfo = NULL;
+        for (uint32 i = 0, nNumEffects = activeEffects.size(); i < nNumEffects; ++i)
+        {
+            if ((pDebugInfo = &activeEffects[i]) && pDebugInfo->pEffect == currentEffect)
+            {
+                pDebugInfo->fTimeOut = POSTSEFFECTS_DEBUGINFO_TIMEOUT;
+                break;
+            }
+            pDebugInfo = NULL;
+        }
+        if (pDebugInfo == NULL)
+        {
+            activeEffects.push_back(SPostEffectsDebugInfo(currentEffect));
+        }
+#endif
+        if (CRenderer::CV_r_SkipNativeUpscale > 0 && AZStd::next(effectIter) == effectsToRender.end())
+        {
+            gcpRendD3D->FX_PopRenderTarget(0);
+            gcpRendD3D->RT_SetViewport(0,0, gcpRendD3D->GetNativeWidth(), gcpRendD3D->GetNativeHeight());
+            gcpRendD3D->FX_SetRenderTarget(0, gcpRendD3D->GetBackBuffer(), &gcpRendD3D->m_DepthBufferOrigMSAA);
+            gcpRendD3D->FX_SetActiveRenderTargets();
+        }
+        currentEffect->Render();
     }
 
 # ifndef _RELEASE

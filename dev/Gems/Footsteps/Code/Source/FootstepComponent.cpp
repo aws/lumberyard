@@ -26,7 +26,7 @@ namespace Footsteps
         {
             serialize->Class<FootstepComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {

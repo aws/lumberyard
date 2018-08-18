@@ -114,6 +114,13 @@ namespace AzQtComponents
         static void applySmallIconStyle(QToolButton* button);
 
         /*!
+        * Applies the attached button styling to a QToolButton.
+        * Same as
+        *   AzQtComponents::Style::addClass(button, "AttachedButton");
+        */
+        static void applyAttachedStyle(QToolButton* button);
+
+        /*!
         * Loads the button config data from a settings object.
         */
         static Config loadConfig(QSettings& settings);
@@ -142,7 +149,7 @@ namespace AzQtComponents
 
 
         // internal methods
-        static void drawSmallIconButton(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
+        static void drawSmallIconButton(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config, bool drawFrame = true);
         static void drawSmallIconFrame(const Style* style, const QStyleOption* option, const QRect& frame, QPainter* painter, const Config& config);
         static void drawSmallIconLabel(const Style* style, const QStyleOptionToolButton* buttonOption, QStyle::State state, const QRect& buttonArea, QPainter* painter, const QWidget* widget, const Config& config);
         static void drawSmallIconArrow(const Style* style, const QStyleOptionToolButton* buttonOption, QStyle::State state, const QRect& buttonArea, QPainter* painter, const QWidget* widget, const Config& config);

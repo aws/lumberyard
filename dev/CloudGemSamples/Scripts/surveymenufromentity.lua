@@ -1,14 +1,14 @@
 surveymenu =
 {
-    Properties =
-    {
+	Properties =
+	{
 		
-    },
+	},
 }
 
 function surveymenu:OnActivate()
 	-- For handling tick events.
-    self.tickBusHandler = TickBus.Connect(self,self.entityId);
+	self.tickBusHandler = TickBus.Connect(self,self.entityId);
 	
 	self.activeSurveysList = {}
 	self.currentSurvey = {}
@@ -16,9 +16,10 @@ function surveymenu:OnActivate()
 	self.currentQuestionIndex = 1
 	self.currentQuestionEntityID = EntityId()
 	self.maxAnswerChars = 1
+	self.checkboxConnections = {}
 	
 	-- Let's load the canvas
-    self.canvasEntityId = UiCanvasManagerBus.Broadcast.LoadCanvas("Levels/InGameSurveySample/UI/InGameSurveyMenu.uicanvas")
+	self.canvasEntityId = UiCanvasManagerBus.Broadcast.LoadCanvas("Levels/InGameSurveySample/UI/InGameSurveyMenu.uicanvas")
 	--UiCanvasBus.Event.SetEnabled(self.canvasEntityId, false)
 	
 	-- SHYNE --
@@ -44,13 +45,13 @@ function surveymenu:OnActivate()
 	self.BackButton = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "BackButton")
 	UiElementBus.Event.SetIsEnabled(self.BackButton, false)
 	
-    -- Listen for action strings broadcast by the canvas
+	-- Listen for action strings broadcast by the canvas
 	self.buttonHandler = UiCanvasNotificationBus.Connect(self, self.canvasEntityId)
 
-    local util = require("scripts.util")
-    util.SetMouseCursorVisible(true)
+	local util = require("scripts.util")
+	util.SetMouseCursorVisible(true)
 	
-    self.notificationHandler = CloudGemInGameSurveyNotificationBus.Connect(self, self.entityId)
+	self.notificationHandler = CloudGemInGameSurveyNotificationBus.Connect(self, self.entityId)
 	local emptyString = ""
 	CloudGemInGameSurveyRequestBus.Event.GetActiveSurvey_metadata(self.entityId, 10, emptyString, emptyString, nil)
 end
@@ -61,19 +62,39 @@ function surveymenu:OnTick(deltaTime,timePoint)
 end
 
 function surveymenu:OnDeactivate()
-    self.notificationHandler:Disconnect();
-    self.tickBusHandler:Disconnect();
+	self.notificationHandler:Disconnect();
+	self.tickBusHandler:Disconnect();
 	self.buttonHandler:Disconnect()
+	self:ResetCheckboxConnections(nil, 0)
+end
+
+
+function surveymenu:OnCheckboxStateChange(entityId, checked)
+	self:UpdateButtons()
+end
+
+function surveymenu:ResetCheckboxConnections(layout, checkboxCount)
+	for idx = 1, #self.checkboxConnections do
+		self.checkboxConnections[idx]:Disconnect()
+	end
+	
+	self.checkboxConnections = {}
+	
+	for idx = 1, checkboxCount do
+		local checkboxElement = UiElementBus.Event.GetChild(layout, idx - 1)
+		local handler = UiCheckboxNotificationBus.Connect(self, checkboxElement)
+		table.insert(self.checkboxConnections, handler)
+	end
 end
 
 -- STEP ONE SURVEY METADATA
 function surveymenu:OnGetActiveSurvey_metadataRequestSuccess(response)
 
 	Debug.Log("OnGetActiveSurvey_metadataRequestSuccess succeeded")
-    
-    for surveyCount = 1, #response.metadata_list do
+	
+	for surveyCount = 1, #response.metadata_list do
 		table.insert(self.activeSurveysList, response.metadata_list[surveyCount])	
-    end
+	end
 	
 	if #self.activeSurveysList >= 1 then
 		CloudGemInGameSurveyRequestBus.Event.GetActiveSurveys(self.entityId, self.activeSurveysList[1].survey_id, 0, 10000, nil)
@@ -81,37 +102,37 @@ function surveymenu:OnGetActiveSurvey_metadataRequestSuccess(response)
 end
 
 function surveymenu:OnGetActiveSurvey_metadataRequestError(errorMsg)
-	Debug.Log("GetActiveSurveys Error")
+	Debug.Log("GetActiveSurveys Error " .. errorMsg)
 end
 
 --STEP 2 GET THE CURRENT SURVEY
 function surveymenu:OnGetActiveSurveysRequestSuccess(response)
-    Debug.Log("GetActiveSurveys succeeded")
+	Debug.Log("GetActiveSurveys succeeded")
 	self.currentSurvey = response
 	self.currentQuestionIndex = 1
-    self.answerList = CloudGemInGameSurvey_AnswerList()
+	self.answerList = CloudGemInGameSurvey_AnswerList()
 	
-    for questionCount = 1, #self.currentSurvey.questions do
+	for questionCount = 1, #self.currentSurvey.questions do
 		-- Prebuild our answer list
 		local answer = CloudGemInGameSurvey_Answer()
 		answer.question_id = self.currentSurvey.questions[questionCount].question_id
 		self.answerList.answers:push_back(answer)
-    end
+	end
 	self:UpdateQuestion()
 	self:UpdateButtons()
 end
 
 function surveymenu:OnGetActiveSurveysRequestError(errorMsg)
-    Debug.Log("GetActiveSurveys Error")
+	Debug.Log("GetActiveSurveys Error")
 end
 
 
 
 function surveymenu:OnAction(entityId, actionName)
-    if actionName == "NextQuestion" then
+	if actionName == "NextQuestion" then
 		self:SaveResults()
 		self.currentQuestionIndex = self.currentQuestionIndex + 1
-       	self:UpdateQuestion()
+		self:UpdateQuestion()
 		self:UpdateButtons()
 	elseif actionName == "PreviousQuestion" then
 		self:SaveResults()
@@ -126,7 +147,7 @@ function surveymenu:OnAction(entityId, actionName)
 		self:UpdateCharCounter()
 	elseif actionName == "SliderValueChange" then
 		self:UpdateSliderValueDisplay()
-    end
+	end
 end
 
 function surveymenu:UpdateQuestion()
@@ -168,6 +189,8 @@ function surveymenu:UpdateQuestion()
 				local checkboxText = UiElementBus.Event.FindChildByName(checkboxElement, "Text")
 				UiTextBus.Event.SetText(checkboxText, tostring(question.predefines[predefineCount]))
 			end
+			
+			self:ResetCheckboxConnections(layoutColumnEntityId, numPredefines)
 			
 			-- since we support that back option, we need to restore the saved values
 			-- Checkboxes
@@ -240,8 +263,8 @@ function surveymenu:UpdateQuestion()
 			
 		end
 		
-    	local displayEntity = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "SurveyQuestion")
-    	UiTextBus.Event.SetText(displayEntity, self.currentSurvey.questions[self.currentQuestionIndex].title)
+		local displayEntity = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "SurveyQuestion")
+		UiTextBus.Event.SetText(displayEntity, self.currentSurvey.questions[self.currentQuestionIndex].title)
 	end
 end
 
@@ -267,13 +290,35 @@ end
 
 function surveymenu:UpdateButtons()
 	if self.currentSurvey ~= nil then
+		local canAdvance = true
+		
+		if self.currentQuestionIndex <= #self.currentSurvey.questions then
+			local question = self.currentSurvey.questions[self.currentQuestionIndex]
+			local questionType = question.type
+			local multiple_select = question.multiple_select
+			
+			if questionType == "predefined" and multiple_select then
+				-- Only allow advancement if at least one of the checkboxes is selected
+				local numPredefines = #question.predefines
+				local layoutColumnEntityId = UiElementBus.Event.GetChild(self.CheckboxQuestionBody, 0)
+				canAdvance = false
+
+				for predefineCount = 1, numPredefines do
+					local checkboxElement = UiElementBus.Event.GetChild(layoutColumnEntityId, predefineCount-1)
+					local isChecked = UiCheckboxBus.Event.GetState(checkboxElement)
+					canAdvance = canAdvance or isChecked
+					Debug.Log("Checked: " .. tostring(canAdvance))
+				end
+			end
+		end
+	
 		local numQuestions = #self.currentSurvey.questions
 		if self.currentQuestionIndex >= numQuestions then
 			-- Disable next question button and enable Submit button
 			UiElementBus.Event.SetIsEnabled(self.NextQuestionButton, false)
-			UiElementBus.Event.SetIsEnabled(self.SubmitResultsButton, true)
+			UiElementBus.Event.SetIsEnabled(self.SubmitResultsButton, canAdvance)
 		else
-			UiElementBus.Event.SetIsEnabled(self.NextQuestionButton, true)
+			UiElementBus.Event.SetIsEnabled(self.NextQuestionButton, canAdvance)
 			UiElementBus.Event.SetIsEnabled(self.SubmitResultsButton, false)
 		end
 		

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "QCurveEditorImp.h"
 #include "AttributeItem.h"
 #include "Utils.h"
@@ -17,7 +17,7 @@
 // Qt
 #include <QAction>
 #include <QMenu>
-#include <QMath.h>
+#include <qmath.h>
 
 // Cry
 #include <Cry_Color.h>
@@ -75,21 +75,18 @@ QCurveEditorImp::QCurveEditorImp(CAttributeItem* parent)
 
     //create a backup of the spline before the movement,
     //we need to do this because the movement will trick the undo into comparing the two most recent moves
-    connect(this, &QCurveEditorImp::SignalKeyMoveStarted, [this]()
+    connect(this, &QCurveEditorImp::SignalKeyMoveStarted, this, [this]()
         {
             m_splineCache = m_pSpline->Backup();
         });
 
     // Updates internal spline, to make sure the curve is updated
     // also during dragging of the key
-    connect(this, &QCurveEditorImp::SignalKeyMoved, [this]()
-        {
-            syncToInterpolator();
-        });
+    connect(this, &QCurveEditorImp::SignalKeyMoved, this, &QCurveEditorImp::syncToInterpolator);
 
     // This event is triggered when the key is released
     // we restore the spline to it's pre-move state to ensure undo gets recorded properly
-    connect(this, &QCurveEditorImp::SignalContentChanged, [=]()
+    connect(this, &QCurveEditorImp::SignalContentChanged, this, [=]()
         {
             if (m_splineCache)
             {

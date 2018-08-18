@@ -51,6 +51,7 @@ namespace LmbrCentral
 
     private:
         //! Serialized data
+        bool m_defaultListenerState = true;
         AZ::EntityId m_rotationEntity;
         AZ::EntityId m_positionEntity;
         AZ::Vector3 m_fixedOffset = AZ::Vector3::CreateZero();

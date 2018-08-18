@@ -241,12 +241,12 @@ AzToolsFramework--AssetBrowser--SearchWidget QPushButton#m_buttonClearFilter
 /* ============================================================= */
 
 /* Style for pulse highlight widgets (outliner highlight, etc) */
-AzToolsFramework--OutlinerWidget QWidget[PulseHighlight="true"]
+OutlinerWidget QWidget[PulseHighlight="true"]
 {
     background-color: @MenuItemSelectedColor;
 }
 
-AzToolsFramework--OutlinerWidget QLineEdit
+OutlinerWidget QLineEdit
 {
     background: #FFFFFFFF;
 }
@@ -2349,4 +2349,53 @@ AzQtComponents--Card #SeparatorContainer
     margin-left: 2px;
     margin-right: 2px;
     border: none;
+}
+
+
+/* Some new UI 2.0 style spinboxes, put in here so that we can use the new SpinBoxes with the old style */
+
+AzQtComponents--SpinBox::up-button:disabled,
+AzQtComponents--DoubleSpinBox::up-button:disabled,
+AzQtComponents--SpinBox::down-button:disabled,
+AzQtComponents--DoubleSpinBox::down-button:disabled
+{
+    image: none;
+    border-color: rgba(0, 0, 0, 0);
+    background-color: rgba(0, 0, 0, 0);
+}
+
+AzQtComponents--SpinBox::up-button,
+AzQtComponents--DoubleSpinBox::up-button,
+AzQtComponents--SpinBox::down-button,
+AzQtComponents--DoubleSpinBox::down-button
+{
+    width: 14px;
+    height: 6px;
+    border-width: 1px;
+
+    image: none;
+    border-color: rgba(0, 0, 0, 0);
+    background-color: rgba(0, 0, 0, 0);
+}
+
+AzQtComponents--SpinBox::up-button[hovered=true],
+AzQtComponents--DoubleSpinBox::up-button[hovered=true],
+AzQtComponents--SpinBox::down-button[hovered=true],
+AzQtComponents--DoubleSpinBox::down-button[hovered=true]
+{
+    border-color: #222222;
+    border-style: solid;
+    background-color: #333333;
+}
+
+AzQtComponents--SpinBox::up-button[hovered=true],
+AzQtComponents--DoubleSpinBox::up-button[hovered=true]
+{
+    image: url(:/stylesheet/img/UI20/spinbox-up-arrow.png);
+}
+
+AzQtComponents--SpinBox::down-button:hovered[hovered=true],
+AzQtComponents--DoubleSpinBox::down-button:hovered[hovered=true]
+{
+    image: url(:/stylesheet/img/UI20/spinbox-down-arrow.png);
 }

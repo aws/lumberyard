@@ -13,7 +13,7 @@
 
 #include <platform.h>
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <assert.h>               // assert()
 #include "UIMIPControlPanel.h"    // CUIMIPControlPanel
 #include "resource.h"
@@ -170,7 +170,7 @@ void CUIMIPControlPanel::SetDataToDialog(const IConfig* pConfig, const CImagePro
         assert(hwnd);
         const int iSel = m_GenIndexToControl[rProp.GetMipGenerationMethodIndex()];
         hwnd->setCurrentIndex(iSel);
-        hwnd->setEnabled(_stricmp(pConfig->GetAsString("mipgentype", "<>", "<>", eCP_PriorityAll & (~eCP_PriorityFile)).c_str(), "<>")  == 0);
+        hwnd->setEnabled(azstricmp(pConfig->GetAsString("mipgentype", "<>", "<>", eCP_PriorityAll & (~eCP_PriorityFile)).c_str(), "<>")  == 0);
     }
 
     {
@@ -178,6 +178,6 @@ void CUIMIPControlPanel::SetDataToDialog(const IConfig* pConfig, const CImagePro
         assert(hwnd);
         const int iSel = rProp.GetMipGenerationEvalIndex();
         hwnd->setCurrentIndex(iSel);
-        hwnd->setEnabled(stricmp(pConfig->GetAsString("mipgeneval", "<>", "<>", eCP_PriorityAll & (~eCP_PriorityFile)).c_str(), "<>")  == 0);
+        hwnd->setEnabled(azstricmp(pConfig->GetAsString("mipgeneval", "<>", "<>", eCP_PriorityAll & (~eCP_PriorityFile)).c_str(), "<>")  == 0);
     }
 }

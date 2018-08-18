@@ -40,8 +40,7 @@ CTrackViewSequence::CTrackViewSequence(IAnimSequence* pSequence)
     : CTrackViewAnimNode(pSequence, nullptr, nullptr)
     , m_pAnimSequence(pSequence)
 {
-    assert(m_pAnimSequence);
-    SetExpanded(true);
+    AZ_Assert(m_pAnimSequence, "Expected valid m_pAnimSequence");
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -67,6 +66,7 @@ CTrackViewSequence::~CTrackViewSequence()
             IAnimNode* animNode = m_pAnimSequence->GetNode(i);
             if (animNode->GetType() == AnimNodeType::AzEntity)
             {
+                Maestro::EditorSequenceComponentRequestBus::Event(m_pAnimSequence->GetSequenceEntityId(), &Maestro::EditorSequenceComponentRequestBus::Events::RemoveEntityToAnimate, animNode->GetAzEntityId());
                 ConnectToBusesForRecording(animNode->GetAzEntityId(), false);
             }
         }
@@ -1016,6 +1016,9 @@ void CTrackViewSequence::DeleteSelectedKeys()
         CTrackViewKeyHandle skey = selectedKeys.GetKey(k);
         skey.Delete();
     }
+
+    // The selected keys are deleted, so notify the selection was just changed.
+    OnKeySelectionChanged();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1414,7 +1417,6 @@ IAnimSequence::EAnimSequenceFlags CTrackViewSequence::GetFlags() const
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::DeselectAllKeys()
 {
-    assert(CUndo::IsRecording());
     CTrackViewSequenceNotificationContext context(this);
 
     CTrackViewKeyBundle selectedKeys = GetSelectedKeys();
@@ -1723,4 +1725,23 @@ bool CTrackViewSequence::IsActiveSequence() const
 const float CTrackViewSequence::GetTime() const
 {
     return m_time;
+}
+
+//////////////////////////////////////////////////////////////////////////
+CTrackViewSequence* CTrackViewSequence::LookUpSequenceByEntityId(const AZ::EntityId& sequenceId)
+{
+    CTrackViewSequence* sequence = nullptr;
+
+    IEditor* editor = nullptr;
+    EBUS_EVENT_RESULT(editor, AzToolsFramework::EditorRequests::Bus, GetEditor);
+    if (editor)
+    {
+        ITrackViewSequenceManager* sequenceManager = editor->GetSequenceManager();
+        if (sequenceManager)
+        {
+            sequence = sequenceManager->GetSequenceByEntityId(sequenceId);
+        }
+    }
+
+    return sequence;
 }

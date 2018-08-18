@@ -178,7 +178,7 @@
             "Woodpecker/Driller/Replica/BaseDetailViewQObject.hxx",                        
             "Woodpecker/Driller/Replica/BaseDetailView.inl",
             "Woodpecker/Driller/Replica/BaseDetailView.h",
-            "Woodpecker/Driller/Replica/BaseDetailView.ui",
+            "Woodpecker/Driller/Replica/basedetailview.ui",
             "Woodpecker/Driller/Replica/OverallReplicaDetailView.cpp",
             "Woodpecker/Driller/Replica/OverallReplicaDetailView.hxx",
             "Woodpecker/Driller/Replica/overallreplicadetailview.ui",

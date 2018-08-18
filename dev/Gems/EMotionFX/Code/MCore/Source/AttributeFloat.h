@@ -41,21 +41,12 @@ namespace MCore
 
         MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(&mValue); }
         MCORE_INLINE uint32 GetRawDataSize() const                  { return sizeof(float); }
-        bool GetSupportsRawDataPointer() const override             { return true; }
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeFloat::Create(mValue); }
         Attribute* CreateInstance(void* destMemory) override        { return new(destMemory) AttributeFloat(); }
         const char* GetTypeString() const override                  { return "AttributeFloat"; }
-        bool InitFrom(const Attribute* other) override
-        {
-            if (other->GetType() != TYPE_ID)
-            {
-                return false;
-            }
-            mValue = static_cast<const AttributeFloat*>(other)->GetValue();
-            return true;
-        }
+        bool InitFrom(const Attribute* other) override;
         bool InitFromString(const AZStd::string& valueString) override
         {
             return AzFramework::StringFunc::LooksLikeFloat(valueString.c_str(), &mValue);
@@ -63,7 +54,6 @@ namespace MCore
         bool ConvertToString(AZStd::string& outString) const override      { outString = AZStd::string::format("%.8f", mValue); return true; }
         uint32 GetClassSize() const override                        { return sizeof(AttributeFloat); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_FLOATSPINNER; }
-        void Scale(float scaleFactor) override                      { mValue *= scaleFactor; }
 
     private:
         float   mValue;     /**< The float value. */
@@ -91,20 +81,6 @@ namespace MCore
 
             Endian::ConvertFloat(&streamValue, streamEndianType);
             mValue = streamValue;
-            return true;
-        }
-
-
-        // write to a stream
-        bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override
-        {
-            float streamValue = mValue;
-            Endian::ConvertFloatTo(&streamValue, targetEndianType);
-            if (stream->Write(&streamValue, sizeof(float)) == 0)
-            {
-                return false;
-            }
-
             return true;
         }
     };

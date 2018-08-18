@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "UnsupportedDataParser.h"
 #include "UnsupportedDataAggregator.hxx"

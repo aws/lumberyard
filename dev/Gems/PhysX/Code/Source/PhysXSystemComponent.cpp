@@ -31,7 +31,6 @@ namespace PhysX
                 ->Version(0)
                 ->Field("Enabled", &PhysXSystemComponent::m_enabled)
                 ->Field("CreateDefaultWorld", &PhysXSystemComponent::m_createDefaultWorld)
-                ->SerializerForEmptyClass()
             ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())

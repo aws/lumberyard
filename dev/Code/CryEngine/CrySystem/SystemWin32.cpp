@@ -95,17 +95,12 @@ const char g_szGroupCore[] = "CryEngine";
 const char* g_szModuleGroups[][2] = {
     {"Editor.exe", g_szGroupCore},
     {"CrySystem.dll", g_szGroupCore},
-    {"CryScriptSystem.dll", g_szGroupCore},
     {"CryNetwork.dll", g_szGroupCore},
     {"CryPhysics.dll", g_szGroupCore},
     {"CrySoundSystem.dll", g_szGroupCore},
     {"CryFont.dll", g_szGroupCore},
-    {"CryAISystem.dll", g_szGroupCore},
-    {"CryEntitySystem.dll", g_szGroupCore},
     {"Cry3DEngine.dll", g_szGroupCore},
-    //{"Game.dll", g_szGroupCore}, // you may need to change this to your own gamedll name.
     {"CryAction.dll", g_szGroupCore},
-    {"CryAnimation.dll", g_szGroupCore},
     {"CryRenderD3D9.dll", g_szGroupCore},
     {"CryRenderD3D10.dll", g_szGroupCore},
     {"CryRenderOGL.dll", g_szGroupCore},
@@ -180,7 +175,7 @@ void CSystem::DumpMemoryUsageStatistics(bool bUseKB)
 
 #if defined(WIN32)
 #pragma pack(push,1)
-const struct PEHeader_DLL
+struct PEHeader_DLL
 {
     DWORD signature;
     IMAGE_FILE_HEADER _head;
@@ -883,7 +878,7 @@ void CSystem::DebugStats(bool checkpoint, bool leaks)
             {
                 if (dbgmodules[m].heap == handles[i])
                 {
-                    strcpy(hinfo, dbgmodules[m].name.c_str());
+                    azstrcpy(hinfo, AZ_ARRAY_SIZE(hinfo), dbgmodules[m].name.c_str());
                 }
             }
         }
@@ -1013,7 +1008,7 @@ static void DumpHeap32 (const HEAPLIST32& hl, DumpHeap32Stats& stats)
 class CStringOrder
 {
 public:
-    bool operator () (const char* szLeft, const char* szRight) const {return _stricmp(szLeft, szRight) < 0; }
+    bool operator () (const char* szLeft, const char* szRight) const {return azstricmp(szLeft, szRight) < 0; }
 };
 typedef std::map<const char*, unsigned, CStringOrder> StringToSizeMap;
 void AddSize (StringToSizeMap& mapSS, const char* szString, unsigned nSize)
@@ -1034,7 +1029,7 @@ const char* GetModuleGroup (const char* szString)
 {
     for (unsigned i = 0; i < sizeof(g_szModuleGroups) / sizeof(g_szModuleGroups[0]); ++i)
     {
-        if (_stricmp(szString, g_szModuleGroups[i][0]) == 0)
+        if (azstricmp(szString, g_szModuleGroups[i][0]) == 0)
         {
             return g_szModuleGroups[i][1];
         }
@@ -1121,7 +1116,7 @@ void CSystem::DumpWinHeaps()
         {
             dwProcessID = me.th32ProcessID;
             const char* szGroup = GetModuleGroup (me.szModule);
-            CryLogAlways ("%08X %8X  %25s   - %s", me.modBaseAddr, me.modBaseSize, me.szModule, _stricmp(szGroup, "Other") ? szGroup : "");
+            CryLogAlways ("%08X %8X  %25s   - %s", me.modBaseAddr, me.modBaseSize, me.szModule, azstricmp(szGroup, "Other") ? szGroup : "");
             dwTotalModuleSize += me.modBaseSize;
             AddSize (mapGroupSize, szGroup, me.modBaseSize);
         } while (Module32Next(hSnapshot, &me));
@@ -1224,13 +1219,21 @@ static const char* GetLastSystemErrorMessage()
 //////////////////////////////////////////////////////////////////////////
 void CSystem::FatalError(const char* format, ...)
 {
+    // Guard against reentrancy - out of memory fatal errors can become reentrant since logging can try to alloc.
+    static bool currentlyReportingError = false;
+    if (currentlyReportingError == true)
+    {
+        return;
+    }
+    currentlyReportingError = true;
+
     // format message
     va_list ArgList;
     char szBuffer[MAX_WARNING_LENGTH];
     const char* sPrefix = "";
-    strcpy(szBuffer, sPrefix);
+    azstrcpy(szBuffer, MAX_WARNING_LENGTH, sPrefix);
     va_start(ArgList, format);
-    _vsnprintf(szBuffer + strlen(sPrefix), MAX_WARNING_LENGTH - strlen(sPrefix), format, ArgList);
+    azvsnprintf(szBuffer + strlen(sPrefix), MAX_WARNING_LENGTH - strlen(sPrefix), format, ArgList);
     va_end(ArgList);
 
     // get system error message before any attempt to write into log
@@ -1325,9 +1328,9 @@ void CSystem::ReportBug(const char* format, ...)
     va_list ArgList;
     char szBuffer[MAX_WARNING_LENGTH];
     const char* sPrefix = "";
-    strcpy(szBuffer, sPrefix);
+    azstrcpy(szBuffer, MAX_WARNING_LENGTH, sPrefix);
     va_start(ArgList, format);
-    _vsnprintf(szBuffer + strlen(sPrefix), MAX_WARNING_LENGTH - strlen(sPrefix), format, ArgList);
+    azvsnprintf(szBuffer + strlen(sPrefix), MAX_WARNING_LENGTH - strlen(sPrefix), format, ArgList);
     va_end(ArgList);
 
     IDebugCallStack::instance()->ReportBug(szBuffer);
@@ -1454,7 +1457,7 @@ void CSystem::LogSystemInfo()
 
     // log system language
     GetLocaleInfo(LOCALE_SYSTEM_DEFAULT, LOCALE_SENGLANGUAGE, szLanguageBuffer, sizeof(szLanguageBuffer));
-    sprintf(szBuffer, "System language: %s", szLanguageBuffer);
+    azsprintf(szBuffer, "System language: %s", szLanguageBuffer);
     CryLogAlways(szBuffer);
 
     // log Windows directory
@@ -1469,12 +1472,12 @@ void CSystem::LogSystemInfo()
     //////////////////////////////////////////////////////////////////////
 
     str = "Local time is ";
-    _strtime(szBuffer);
+    _strtime_s(szBuffer);
     str += szBuffer;
     str += " ";
-    _strdate(szBuffer);
+    _strdate_s(szBuffer);
     str += szBuffer;
-    sprintf(szBuffer, ", system running for %d minutes", GetTickCount() / 60000);
+    azsprintf(szBuffer, ", system running for %lu minutes", GetTickCount() / 60000);
     str += szBuffer;
     CryLogAlways(str);
 
@@ -1483,7 +1486,7 @@ void CSystem::LogSystemInfo()
     //////////////////////////////////////////////////////////////////////
 
     GlobalMemoryStatusEx(&MemoryStatus);
-    sprintf(szBuffer, "%I64dMB physical memory installed, %I64dMB available, %I64dMB virtual memory installed, %ld percent of memory in use",
+    azsprintf(szBuffer, "%I64dMB physical memory installed, %I64dMB available, %I64dMB virtual memory installed, %ld percent of memory in use",
         MemoryStatus.ullTotalPhys  / 1048576 + 1,
         MemoryStatus.ullAvailPhys / 1048576,
         MemoryStatus.ullTotalVirtual / 1048576,
@@ -1498,7 +1501,7 @@ void CSystem::LogSystemInfo()
         uint64 PagefileUsage = memCounters.PagefileUsage;
         uint64 PeakPagefileUsage = memCounters.PeakPagefileUsage;
         uint64 WorkingSetSize = memCounters.WorkingSetSize;
-        sprintf(szBuffer, "PageFile usage: %I64dMB, Working Set: %I64dMB, Peak PageFile usage: %I64dMB,",
+        azsprintf(szBuffer, "PageFile usage: %I64dMB, Working Set: %I64dMB, Peak PageFile usage: %I64dMB,",
             (uint64)PagefileUsage / (1024 * 1024),
             (uint64)WorkingSetSize / (1024 * 1024),
             (uint64)PeakPagefileUsage / (1024 * 1024));
@@ -1513,7 +1516,7 @@ void CSystem::LogSystemInfo()
     GetPrivateProfileString("boot.description", "display.drv",
         "(Unknown graphics card)", szProfileBuffer, sizeof(szProfileBuffer),
         "system.ini");
-    sprintf(szBuffer, "Current display mode is %dx%dx%d, %s",
+    azsprintf(szBuffer, "Current display mode is %lux%lux%lu, %s",
         DisplayConfig.dmPelsWidth, DisplayConfig.dmPelsHeight,
         DisplayConfig.dmBitsPerPel, szProfileBuffer);
     CryLogAlways(szBuffer);
@@ -1559,7 +1562,7 @@ void CSystem::LogSystemInfo()
     }
     else
     {
-        sprintf(szBuffer, " keyboard and %i+ button mouse installed",
+        azsprintf(szBuffer, " keyboard and %i+ button mouse installed",
             GetSystemMetrics(SM_CMOUSEBUTTONS));
         CryLogAlways(str + szBuffer);
     }
@@ -1705,6 +1708,9 @@ void CSystem::EnableFloatExceptions(int type)
 
 #endif //#if defined(WIN32) && !defined(WIN64)
 
+#pragma warning( push )
+#pragma warning(disable: 4996)
+
     _controlfp(_DN_FLUSH, _MCW_DN);
 
     if (type == 0)
@@ -1729,6 +1735,7 @@ void CSystem::EnableFloatExceptions(int type)
             _controlfp(_EM_INEXACT, _MCW_EM);
         }
     }
+#pragma warning( pop )
 
 #endif //#if defined(WIN32) && !defined(WIN64)
 

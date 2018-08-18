@@ -1,0 +1,28 @@
+
+def build(bld):
+    import lumberyard_sdks
+
+    file_list = []
+    if bld.env['PLATFORM'] == 'project_generator':
+        file_list.append('cloudgemmetric.waf_files')
+        file_list.append('aws_unsupported.waf_files')
+    else:
+        if lumberyard_sdks.does_platform_support_aws_native_sdk(bld):
+            file_list.append('cloudgemmetric.waf_files')
+        else:
+            file_list.append('aws_unsupported.waf_files')
+    
+    if (type(bld.env['PLATFORM']) == str and not bld.env['PLATFORM'].startswith('win')) or (type(bld.env['PLATFORM']) == list and not any(platformname.startswith('win') for platformname in bld.env['PLATFORM'])):
+        file_list.append('cloudgemmetric_locale_null.waf_files')
+
+    bld.DefineGem(
+        
+        file_list = file_list,
+        win_file_list = ['cloudgemmetric_windows.waf_files'],
+
+        platforms = ['all'],
+        uselib = ['AWS_CPP_SDK_CORE'],
+
+        use = ['CloudGemFrameworkStaticLibrary']
+
+    )

@@ -703,6 +703,7 @@ void CParticleManager::Update()
 
         bool bStatoscopeEffectStats = false;
         bool bCollectCounts = (GetCVars()->e_ParticlesDebug & 1)
+            || (GetCVars()->e_ParticlesProfile & 1)
             || m_pWidget && m_pWidget->ShouldUpdate()
             || gEnv->pStatoscope->RequiresParticleStats(bStatoscopeEffectStats);
 
@@ -1096,7 +1097,7 @@ bool CParticleManager::LoadLibrary(cstr sParticlesLibrary, cstr sParticlesLibrar
             for_container (TEffectsList, it, m_Effects)
             {
                 CParticleEffect* pEffect = it->second;
-                if (pEffect && strnicmp(pEffect->GetName(), sPrefix, sPrefix.size()) == 0)
+                if (pEffect && azstrnicmp(pEffect->GetName(), sPrefix, sPrefix.size()) == 0)
                 {
                     pEffect->LoadResources(true);
                 }
@@ -1283,7 +1284,7 @@ bool CParticleManager::LoadLibrary(cstr sParticlesLibrary, XmlNodeRef& libNode, 
     m_LoadedLibs[sParticlesLibrary] = libNode;
 
     // Load special defaults effects, if created (no warning otherwise).
-    if (!m_pDefaultEffect && _stricmp(sParticlesLibrary, "System") != 0 && gEnv->pCryPak->IsFileExist(EFFECTS_SUBPATH "System.xml"))
+    if (!m_pDefaultEffect && azstricmp(sParticlesLibrary, "System") != 0 && gEnv->pCryPak->IsFileExist(EFFECTS_SUBPATH "System.xml"))
     {
         SetDefaultEffect("System.Default");
     }

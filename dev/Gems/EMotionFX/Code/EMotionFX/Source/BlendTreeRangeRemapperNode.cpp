@@ -10,83 +10,49 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "BlendTreeRangeRemapperNode.h"
-#include <MCore/Source/AttributeSettings.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeRangeRemapperNode::BlendTreeRangeRemapperNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeRangeRemapperNode, AnimGraphAllocator, 0)
 
 
-    // destructor
-    BlendTreeRangeRemapperNode::~BlendTreeRangeRemapperNode()
-    {
-    }
-
-
-    // create
-    BlendTreeRangeRemapperNode* BlendTreeRangeRemapperNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeRangeRemapperNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeRangeRemapperNode::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeRangeRemapperNode::RegisterPorts()
+    BlendTreeRangeRemapperNode::BlendTreeRangeRemapperNode()
+        : AnimGraphNode()
+        , m_inputMin(0.0f)
+        , m_inputMax(1.0f)
+        , m_outputMin(0.0f)
+        , m_outputMax(1.0f)
     {
         // setup the input ports
         InitInputPorts(1);
         SetupInputPortAsNumber("x", INPUTPORT_X, PORTID_INPUT_X); // accept float/int/bool values
 
-        // setup the output ports
+                                                                  // setup the output ports
         InitOutputPorts(1);
         SetupOutputPort("Result", OUTPUTPORT_RESULT, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_RESULT);
     }
 
 
-    // register the parameters
-    void BlendTreeRangeRemapperNode::RegisterAttributes()
+    BlendTreeRangeRemapperNode::~BlendTreeRangeRemapperNode()
     {
-        // input min
-        MCore::AttributeSettings* param = RegisterAttribute("Input Min", "inputMin", "The minimum incoming value. Values smaller than this will be clipped.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        param->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        param->SetMaxValue(MCore::AttributeFloat::Create(+FLT_MAX));
+    }
 
-        // input max
-        param = RegisterAttribute("Input Max", "inputMax", "The maximum incoming value. Values bigger than this will be clipped.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(1.0f));
-        param->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        param->SetMaxValue(MCore::AttributeFloat::Create(+FLT_MAX));
 
-        // output min
-        param = RegisterAttribute("Output Min", "outputMin", "The minimum outcoming value. The minimum incoming value will be mapped to the minimum outcoming value. The output port can't hold a smaller value than this.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        param->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        param->SetMaxValue(MCore::AttributeFloat::Create(+FLT_MAX));
+    bool BlendTreeRangeRemapperNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
 
-        // output max
-        param = RegisterAttribute("Output Max", "outputMax", "The maximum outcoming value. The maximum incoming value will be mapped to the maximum outcoming value. The output port can't hold a bigger value than this.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(1.0f));
-        param->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        param->SetMaxValue(MCore::AttributeFloat::Create(+FLT_MAX));
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -104,20 +70,6 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeRangeRemapperNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeRangeRemapperNode* clone = new BlendTreeRangeRemapperNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // the update function
     void BlendTreeRangeRemapperNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
@@ -126,7 +78,7 @@ namespace EMotionFX
 
         //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
         // if there are no incoming connections, there is nothing to do
-        const uint32 numConnections = mConnections.GetLength();
+        const size_t numConnections = mConnections.size();
         if (numConnections == 0 || mDisabled)
         {
             if (numConnections > 0) // pass the input value as output in case we are disabled
@@ -149,23 +101,18 @@ namespace EMotionFX
             return;
         }
 
-        const float minInput    = GetAttributeFloat(ATTRIB_INPUTMIN)->GetValue();
-        const float maxInput    = GetAttributeFloat(ATTRIB_INPUTMAX)->GetValue();
-        const float minOutput   = GetAttributeFloat(ATTRIB_OUTPUTMIN)->GetValue();
-        const float maxOutput   = GetAttributeFloat(ATTRIB_OUTPUTMAX)->GetValue();
-
         // clamp it so that the value is in the valid input range
-        x = MCore::Clamp<float>(x, minInput, maxInput);
+        x = MCore::Clamp<float>(x, m_inputMin, m_inputMax);
 
         // apply the simple linear conversion
         float result;
-        if (MCore::Math::Abs(maxInput - minInput) > MCore::Math::epsilon)
+        if (MCore::Math::Abs(m_inputMax - m_inputMin) > MCore::Math::epsilon)
         {
-            result = ((x - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
+            result = ((x - m_inputMin) / (m_inputMax - m_inputMin)) * (m_outputMax - m_outputMin) + m_outputMin;
         }
         else
         {
-            result = minOutput;
+            result = m_outputMin;
         }
 
         // update the output value
@@ -173,10 +120,65 @@ namespace EMotionFX
     }
 
 
-    // get the blend node type string
-    const char* BlendTreeRangeRemapperNode::GetTypeString() const
+    void BlendTreeRangeRemapperNode::SetInputMin(float value)
     {
-        return "BlendTreeRangeRemapperNode";
+        m_inputMin = value;
     }
-}   // namespace EMotionFX
 
+    void BlendTreeRangeRemapperNode::SetInputMax(float value)
+    {
+        m_inputMax = value;
+    }
+
+    void BlendTreeRangeRemapperNode::SetOutputMin(float value)
+    {
+        m_outputMin = value;
+    }
+
+    void BlendTreeRangeRemapperNode::SetOutputMax(float value)
+    {
+        m_outputMax = value;
+    }
+
+    void BlendTreeRangeRemapperNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeRangeRemapperNode, AnimGraphNode>()
+            ->Version(1)
+            ->Field("inputMin", &BlendTreeRangeRemapperNode::m_inputMin)
+            ->Field("inputMax", &BlendTreeRangeRemapperNode::m_inputMax)
+            ->Field("outputMin", &BlendTreeRangeRemapperNode::m_outputMin)
+            ->Field("outputMax", &BlendTreeRangeRemapperNode::m_outputMax)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeRangeRemapperNode>("Range Remapper", "Range remapper attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeRangeRemapperNode::m_inputMin, "Input Min", "The minimum incoming value. Values smaller than this will be clipped.")
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeRangeRemapperNode::m_inputMax, "Input Max", "The maximum incoming value. Values bigger than this will be clipped.")
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeRangeRemapperNode::m_outputMin, "Output Min", "The minimum outcoming value. The minimum incoming value will be mapped to the minimum outcoming value. The output port can't hold a smaller value than this.")
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeRangeRemapperNode::m_outputMax, "Output Max", "The maximum outcoming value. The maximum incoming value will be mapped to the maximum outcoming value. The output port can't hold a bigger value than this.")
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ;
+    }
+} // namespace EMotionFX

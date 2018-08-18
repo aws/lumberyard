@@ -13,6 +13,7 @@
 #include <AzQtComponents/Components/DockTabWidget.h>
 #include <AzQtComponents/Components/DockTabBar.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
+#include <AzQtComponents/Components/RepolishMinimizer.h>
 
 #include <QContextMenuEvent>
 #include <QDockWidget>
@@ -59,6 +60,7 @@ namespace AzQtComponents
         page->setTitleBarWidget(new QWidget());
 
         // Let the QTabWidget handle the rest
+        AzQtComponents::RepolishMinimizer minimizer;
         int tab = QTabWidget::addTab(page, page->windowTitle());
 
         // Make sure that changes to the window title get reflected by the tab too
@@ -103,6 +105,7 @@ namespace AzQtComponents
             // the index twice, which could inadvertently remove two different widgets.
             // We accomplish the unparent by re-parenting the dock widget to the
             // main editor window, which will allow it to be restored properly later.
+            AzQtComponents::RepolishMinimizer minimizer;
             dockWidget->setParent(m_mainEditorWindow);
         }
     }

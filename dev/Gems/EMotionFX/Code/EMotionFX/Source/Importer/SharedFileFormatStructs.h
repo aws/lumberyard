@@ -11,6 +11,7 @@
 */
 
 #pragma once
+#include <MCore/Source/Config.h>
 
 namespace EMotionFX
 {

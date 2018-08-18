@@ -41,7 +41,7 @@ void UnitTestWorker::Process()
 
     //Sort the List based on priority
     qSort(m_Tests.begin(), m_Tests.end(),
-        [this](const UnitTestRun* first, const UnitTestRun* second) -> bool
+        [](const UnitTestRun* first, const UnitTestRun* second) -> bool
         {
             return first->UnitTestPriority() < second->UnitTestPriority();
         }
@@ -100,13 +100,13 @@ void UnitTestWorker::RunTests()
         return;
     }
 
-    connect(front, &UnitTestRun::UnitTestPassed, [front, this]()
+    connect(front, &UnitTestRun::UnitTestPassed, this, [front, this]()
         {
             AZ_TracePrintf(AssetProcessor::ConsoleChannel, "[OK]  %s ... \n", front->GetName());
             QMetaObject::invokeMethod(this, "RunTests", Qt::QueuedConnection);
             front->deleteLater();
         });
-    connect(front, &UnitTestRun::UnitTestFailed, [front, this](QString message)
+    connect(front, &UnitTestRun::UnitTestFailed, this, [front, this](QString message)
         {
             // note, print the line and file on the next line so that VS recognizes it as clickable
             AZ_TracePrintf(AssetProcessor::ConsoleChannel, "[FAIL]  %s:\n%s\n", front->GetName(), message.toUtf8().data());

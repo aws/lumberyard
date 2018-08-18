@@ -1,23 +1,12 @@
 {
-    "description"           : "Configuration to build only the Resource Compiler",
-    "visual_studio_name"    : "ResourceCompiler",
-    "disable_game_projects"  : true,
-    "platforms"             : ["win"],
-    "configurations"        : ["debug","profile"],
+    "description"           : "REMOVED - legacy RC spec",
+    "visual_studio_name"    : "RC",
+    "comment"               : "This file is meant to do nothing except exist and handle the case where the resource_compiler spec is lingering in user settings.",
+    "disable_game_projects" : true,
+    "platforms" : [],
+    "configurations" : [],
 
     "modules" :
     [
-        "CryCommon",
-        "CryPhysicsRC",
-        "ResourceCompiler",
-        "ResourceCompilerABC",
-        "ResourceCompilerImage",
-        "ResourceCompilerPC",
-        "ResourceCompilerXML",
-        "ResourceCompilerScene",
-        "ResourceCompilerSlice",
-        "ResourceCompilerUiCanvas",
-        "CryXML",
-        "CrySystem"
     ]
 }

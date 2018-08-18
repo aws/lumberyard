@@ -193,7 +193,6 @@ namespace AzFramework
                 EBUS_EVENT_ID_RESULT(physicsEnabled, id, PhysicsComponentRequestBus, IsPhysicsEnabled);
                 if (physicsEnabled)
                 {
-                    typename Bus::template CallstackEntryIterator<typename Bus::InterfaceType**> callstack(nullptr, &id); // Workaround for GetCurrentBusId in callee
                     handler->OnPhysicsEnabled();
                 }
             }
@@ -329,6 +328,9 @@ namespace AzFramework
 
         //! Maximum number of collisions to be recorded per frame.
         int m_maxRecordedCollisions = 1;
+
+        //! Make physics components report state changes, so when they are moved by a transform modification, they trigger physics update events.
+        bool m_reportStateUpdates = false;
     };
 
     /*!

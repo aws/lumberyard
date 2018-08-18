@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include <AzAssetBrowser/ui_AzAssetBrowserWindow.h>
 
@@ -55,7 +55,7 @@ AzAssetBrowserWindow::AzAssetBrowserWindow(QWidget* parent)
         m_filterModel.data(), &AssetBrowserFilterModel::filterUpdatedSlot);
     connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::selectionChangedSignal,
         this, &AzAssetBrowserWindow::SelectionChangedSlot);
-    connect(m_ui->m_searchParametersWidget, &SearchParametersWidget::ClearAllSignal,
+    connect(m_ui->m_searchParametersWidget, &SearchParametersWidget::ClearAllSignal, this,
         [=]() { m_ui->m_searchWidget->ClearAssetTypeFilter(); });
     connect(m_ui->m_assetBrowserTreeViewWidget, &QAbstractItemView::doubleClicked, this, &AzAssetBrowserWindow::DoubleClickedItem);
 

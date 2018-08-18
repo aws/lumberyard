@@ -22,10 +22,6 @@ namespace EMotionFX
     class MotionInstance;
     class Node;
 
-
-    // use 1 byte packed data, to pack this class as small as possible
-#include <MCore/Source/PackPush1.h>
-
     /**
      * A motion link.
      * This class links for example nodes with submotions. So that we know what keytracks modify what node.
@@ -69,8 +65,4 @@ namespace EMotionFX
     private:
         uint16 mSubMotionIndex;     /**< The submotion index. */
     };
-
-
-    // restore the struct member alignment again
-#include <MCore/Source/PackPop.h>
 } // namespace EMotionFX

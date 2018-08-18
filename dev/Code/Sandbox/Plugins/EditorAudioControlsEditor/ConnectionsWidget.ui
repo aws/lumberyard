@@ -151,7 +151,7 @@
   <customwidget>
    <class>QConnectionListWidget</class>
    <extends>QListWidget</extends>
-   <header>qconnectionlistwidget.h</header>
+   <header>QConnectionListWidget.h</header>
   </customwidget>
   <customwidget>
    <class>QPropertyTree</class>

@@ -16,7 +16,7 @@
 #include <AzCore/base.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/UserSettings/UserSettings.h>
-#include <AZCore/Component/ComponentApplication.h>
+#include <AzCore/Component/ComponentApplication.h>
 
 #include <AzFramework/IO/LocalFileIO.h>
 

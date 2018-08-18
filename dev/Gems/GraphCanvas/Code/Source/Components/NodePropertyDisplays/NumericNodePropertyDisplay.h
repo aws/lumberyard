@@ -11,14 +11,14 @@
 */
 #pragma once
 
-#include <qevent.h>
-#include <qlineedit.h>
-#include <qgraphicsproxywidget.h>
+#include <QLineEdit>
 
 #include <AzToolsFramework/UI/PropertyEditor/DHQSpinbox.hxx>
 
 #include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/NumericDataInterface.h>
+
+class QGraphicsProxyWidget;
 
 namespace GraphCanvas
 {
@@ -77,9 +77,9 @@ namespace GraphCanvas
         void RefreshStyle() override;
         void UpdateDisplay() override;
         
-        QGraphicsLayoutItem* GetDisabledGraphicsLayoutItem() const override;
-        QGraphicsLayoutItem* GetDisplayGraphicsLayoutItem() const override;
-        QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() const override;
+        QGraphicsLayoutItem* GetDisabledGraphicsLayoutItem() override;
+        QGraphicsLayoutItem* GetDisplayGraphicsLayoutItem() override;
+        QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() override;
         ////
     
     private:
@@ -87,6 +87,8 @@ namespace GraphCanvas
         void EditStart();
         void SubmitValue();
         void EditFinished();
+        void SetupProxyWidget();
+        void CleanupProxyWidget();
     
         NumericDataInterface*   m_dataInterface;
     

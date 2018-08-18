@@ -249,7 +249,7 @@ namespace AZ
             int64_t slashRPosition = -1;
             do
             {
-                if (*currentPosition != '\r' && *currentPosition != '\n' && static_cast<uint64_t>(len) < bufferSize - 1)
+                if (*currentPosition != '\r' && *currentPosition != '\n' && static_cast<uint64_t>(len) < bytesRead - 1)
                 {
                     len++;
                     currentPosition++;

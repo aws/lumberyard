@@ -1,10 +1,17 @@
 {
-    "AzCore_uber_win.cpp": {
-        "Debug": [
+    "AzCore_uber_win.cpp": 
+    {
+        "Debug": 
+        [
             "Debug/StackTracerWinCpp.inl"
         ],
-        "Module": [
+        "Module": 
+        [
             "Module/DynamicModuleHandleWindows.cpp"
+        ],
+        "Utils" : 
+        [
+            "Utils/windows/Utils_Windows.cpp"
         ]
     }
 }

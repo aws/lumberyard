@@ -384,7 +384,7 @@ void CLensFlareEditor::Paste(const QModelIndex& hSelectedTreeItem, XmlNodeRef no
     if (!sourceGroupName.isEmpty())
     {
         unsigned int nAnswer = CryMessageBox("Do you want to create a new group(YES) or add to the selected group(NO)?", "Question", MB_YESNOCANCEL);
-        if (nAnswer == ID_CANCEL)
+        if (nAnswer == IDCANCEL)
         {
             return;
         }

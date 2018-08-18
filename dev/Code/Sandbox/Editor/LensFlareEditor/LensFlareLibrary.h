@@ -16,6 +16,8 @@
 #pragma once
 #include "BaseLibrary.h"
 
+struct IVariable;
+
 class CRYEDIT_API CLensFlareLibrary
     : public CBaseLibrary
 {
@@ -27,5 +29,7 @@ public:
     virtual void Serialize(XmlNodeRef& node, bool bLoading);
 
     IOpticsElementBasePtr GetOpticsOfItem(const char* szflareName);
+
+    void OnInternalVariableChange(IVariable* pVar);
 };
 #endif // CRYINCLUDE_EDITOR_LENSFLAREEDITOR_LENSFLARELIBRARY_H

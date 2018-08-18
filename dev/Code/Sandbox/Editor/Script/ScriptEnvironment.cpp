@@ -38,6 +38,11 @@ void EditorScriptEnvironment::OnEditorNotifyEvent(EEditorNotifyEvent event)
 
 void EditorScriptEnvironment::RegisterWithScriptSystem()
 {
+    if (!gEnv->pScriptSystem)
+    {
+        return;
+    }
+
     Init(gEnv->pScriptSystem, gEnv->pSystem);
     SetGlobalName("Editor");
 

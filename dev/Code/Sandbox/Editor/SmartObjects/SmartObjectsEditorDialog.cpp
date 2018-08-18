@@ -1581,7 +1581,7 @@ CSmartObjectsEditorDialog::CSmartObjectsEditorDialog()
     centralWidget->layout()->addWidget(m_View);
     setCentralWidget(centralWidget);
 
-    connect(m_topLabel, &SmartObjectsEditorDialogLabel::closeRequested, [this]() {
+    connect(m_topLabel, &SmartObjectsEditorDialogLabel::closeRequested, this, [this]() {
         m_bFilterCanceled = true;
         m_bSinkNeeded = true;
     });
@@ -1598,7 +1598,7 @@ CSmartObjectsEditorDialog::CSmartObjectsEditorDialog()
     connect(m_View, &QWidget::customContextMenuRequested, this, &CSmartObjectsEditorDialog::OnContextMenu);
     connect(m_View->header(), &QWidget::customContextMenuRequested, this, &CSmartObjectsEditorDialog::OnReportColumnRClick);
     connect(m_View->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CSmartObjectsEditorDialog::OnReportSelChanged);
-    connect(m_View, &QAbstractItemView::clicked, [&](const QModelIndex& index) { OnReportHyperlink(index); });
+    connect(m_View, &QAbstractItemView::clicked, this, &CSmartObjectsEditorDialog::OnReportHyperlink);
     connect(m_Tree->selectionModel(), &QItemSelectionModel::currentChanged, this, &CSmartObjectsEditorDialog::OnTreeSelChanged);
 
     connect(m_Description, &QTextEdit::textChanged, this, &CSmartObjectsEditorDialog::OnDescriptionEdit);
@@ -3161,7 +3161,7 @@ void CSmartObjectsEditorDialog::OnReportColumnRClick(const QPoint& point)
 {
     QMenu menu;
 
-    connect(menu.addAction(tr("Name/Description")), &QAction::triggered, [=]()
+    connect(menu.addAction(tr("Name/Description")), &QAction::triggered, m_View, [=]()
         {
             m_View->header()->setSectionHidden(SmartObjectsEditorModel::ColumnName, false);
             m_View->header()->setSectionHidden(SmartObjectsEditorModel::ColumnDescription, false);
@@ -3171,7 +3171,7 @@ void CSmartObjectsEditorDialog::OnReportColumnRClick(const QPoint& point)
             m_View->header()->setSectionHidden(SmartObjectsEditorModel::ColumnObjectState, true);
             m_View->header()->setSectionHidden(SmartObjectsEditorModel::ColumnAction, true);
         });
-    connect(menu.addAction(tr("Name/User/Object")), &QAction::triggered, [=]()
+    connect(menu.addAction(tr("Name/User/Object")), &QAction::triggered, m_View, [=]()
         {
             m_View->header()->setSectionHidden(SmartObjectsEditorModel::ColumnName, false);
             m_View->header()->setSectionHidden(SmartObjectsEditorModel::ColumnDescription, true);
@@ -3194,7 +3194,7 @@ void CSmartObjectsEditorDialog::OnReportColumnRClick(const QPoint& point)
             QAction* action = menu.addAction(sCaption);
             action->setCheckable(true);
             action->setChecked(!m_View->header()->isSectionHidden(i));
-            connect(action, &QAction::triggered, [=]() {m_View->header()->setSectionHidden(i, !action->isChecked()); });
+            connect(action, &QAction::triggered, this, [=]() {m_View->header()->setSectionHidden(i, !action->isChecked()); });
         }
     }
 

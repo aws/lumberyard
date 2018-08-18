@@ -15,9 +15,13 @@
 #include "Node.h"
 #include "MorphTarget.h"
 #include <MCore/Source/StringConversions.h>
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MorphTarget, DeformerAllocator, 0)
+
+
     // the constructor
     MorphTarget::MorphTarget(const char* name)
         : BaseObject()

@@ -153,13 +153,12 @@ namespace PrefabHelpers
                 // file.filename because the former preserves case
                 AZStd::string filename;
                 AzFramework::StringFunc::Path::GetFileName(fullFileName.toUtf8().data(), filename);
-                qint64 fileSize = file.size;
 
                 QAction* action = new QAction(filename.c_str(), prefabMenu);
                 QObject::connect(action,
                     &QAction::triggered,
                     hierarchy,
-                    [filepath, fileSize, hierarchy, addAtRoot, optionalPos](bool checked)
+                    [filepath, hierarchy, addAtRoot, optionalPos](bool checked)
                     {
                         if (addAtRoot)
                         {

@@ -679,7 +679,7 @@ public:
             static const int count = sizeof(selector) / sizeof(selector[0]);
             for (size_t i = 0; i < count; ++i)
             {
-                if (_stricmp(optionValue.c_str(), selector[i].name) == 0)
+                if (azstricmp(optionValue.c_str(), selector[i].name) == 0)
                 {
                     return selector[i].compressor;
                 }
@@ -743,7 +743,7 @@ public:
         if (!sHex.empty())
         {
             uint32 dw32BitValue = 0;
-            if (sscanf(sHex, "%x", &dw32BitValue) == 1)
+            if (azsscanf(sHex, "%x", &dw32BitValue) == 1)
             {
                 return (int64)dw32BitValue;
             }
@@ -1217,27 +1217,27 @@ public:
         const string sTypeName = m_pCC->config->GetAsString("cm_ftype", "cosine", "cosine");
 
         uint32 type;
-        if (_stricmp(sTypeName.c_str(), "disc") == 0)
+        if (azstricmp(sTypeName.c_str(), "disc") == 0)
         {
             type = 0;
         }
-        else if (_stricmp(sTypeName.c_str(), "cone") == 0)
+        else if (azstricmp(sTypeName.c_str(), "cone") == 0)
         {
             type = 1;
         }
-        else if (_stricmp(sTypeName.c_str(), "cosine") == 0)
+        else if (azstricmp(sTypeName.c_str(), "cosine") == 0)
         {
             type = 2;
         }
-        else if (_stricmp(sTypeName.c_str(), "gaussian") == 0)
+        else if (azstricmp(sTypeName.c_str(), "gaussian") == 0)
         {
             type = 3;
         }
-        else if (_stricmp(sTypeName.c_str(), "cosine_power") == 0)
+        else if (azstricmp(sTypeName.c_str(), "cosine_power") == 0)
         {
             type = 4;
         }
-        else if (_stricmp(sTypeName.c_str(), "ggx") == 0)
+        else if (azstricmp(sTypeName.c_str(), "ggx") == 0)
         {
             type = 5;
         }

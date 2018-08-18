@@ -308,6 +308,11 @@ namespace AzToolsFramework
                 EditorComponentDescriptorBus::Handler::BusConnect(AZ::AzTypeInfo<ComponentClass>::Uuid());
             }
 
+            ~EditorComponentDescriptorDefault()
+            {
+                EditorComponentDescriptorBus::Handler::BusDisconnect();
+            }
+
             /**
              * Checks whether two components are the same.
              * @param thisComponent The first component to compare.

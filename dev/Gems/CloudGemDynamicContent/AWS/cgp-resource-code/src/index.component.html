@@ -89,7 +89,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group row" [class.has-danger]="!currentDynamicContent.validation.date.isValid" *ngIf="currentDynamicContent.stage == 'Private' || currentDynamicContent.stage == 'Scheduled'">
+            <div class="form-group row" [class.has-danger]="!(currentDynamicContent.start.valid && currentDynamicContent.end.valid)" *ngIf="currentDynamicContent.stage == 'Private' || currentDynamicContent.stage == 'Scheduled'">
                 <label for="schedule" class="col-3 col-form-label affix form-control-label"> Scheduling </label>
                 <div class="col-9 col-push-3 form-control-danger">
                     <datetime-range-picker (dateTimeRange)="dprModelUpdated($event)"
@@ -101,8 +101,9 @@
                                            [hasEnd]="currentDynamicContent.end.isScheduled"
                                            [isStartRequired]="currentDynamicContent.hasRequiredStartDateTime"
                                            [isEndRequired]="currentDynamicContent.hasRequiredEndDateTime"></datetime-range-picker>
-                    <div *ngIf="!currentDynamicContent.validation.date.isValid" class="form-control-feedback">{{currentDynamicContent.validation.date.message}}</div>
+                    <div *ngIf="!(currentDynamicContent.start.valid && currentDynamicContent.end.valid)" class="form-control-feedback">{{currentDynamicContent.datetime.message}}</div>
                 </div>
+                <!--<pre>{{ currentDynamicContent | json | devonly }}</pre>-->
             </div>
             <div class="form-group row" *ngIf="currentDynamicContent.children && currentDynamicContent.children.length>0">
                 <label for="priority" class="col-3 col-form-label affix"> Package Children </label>

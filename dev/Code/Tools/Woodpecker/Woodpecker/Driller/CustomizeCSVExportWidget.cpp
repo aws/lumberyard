@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "Woodpecker/Driller/CustomizeCSVExportWidget.hxx"
 #include <Woodpecker/Driller/CustomizeCSVExportWidget.moc>

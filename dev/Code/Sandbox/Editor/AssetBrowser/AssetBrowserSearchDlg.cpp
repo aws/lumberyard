@@ -13,7 +13,7 @@
 
 // Description : Implementation of AssetBrowserSearchDlg.h
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AssetBrowserSearchDlg.h"
 #include "AssetBrowserDialog.h"
 #include "AssetBrowserManager.h"

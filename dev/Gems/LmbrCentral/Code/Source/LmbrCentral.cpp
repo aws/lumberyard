@@ -66,6 +66,7 @@
 #include "Animation/MotionParameterSmoothingComponent.h"
 #include "Animation/CharacterAnimationManagerComponent.h"
 #include "Ai/NavigationSystemComponent.h"
+#include "Geometry/GeometrySystemComponent.h"
 
 // Unhandled asset types
 // Animation
@@ -202,6 +203,7 @@ namespace LmbrCentral
             PolygonPrismShapeComponent::CreateDescriptor(),
             StereoRendererComponent::CreateDescriptor(),
             NavigationSystemComponent::CreateDescriptor(),
+            GeometrySystemComponent::CreateDescriptor(),
             FogVolumeComponent::CreateDescriptor(),
             RandomTimedSpawnerComponent::CreateDescriptor(),
             GeometryCacheComponent::CreateDescriptor(),
@@ -237,6 +239,7 @@ namespace LmbrCentral
                    azrtti_typeid<CharacterAnimationManagerComponent>(),
                    azrtti_typeid<StereoRendererComponent>(),
                    azrtti_typeid<NavigationSystemComponent>(),
+                   azrtti_typeid<GeometrySystemComponent>(),
 #if AZ_LOADSCREENCOMPONENT_ENABLED
                    azrtti_typeid<LoadScreenComponent>(),
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
@@ -257,7 +260,6 @@ namespace LmbrCentral
 
             serializeContext->Class<LmbrCentralSystemComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
             ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -471,7 +473,7 @@ namespace LmbrCentral
     void LmbrCentralSystemComponent::OnAssetEventsDispatched()
     {
         AZ_Assert((!gEnv) || (gEnv->mMainThreadId == CryGetCurrentThreadId()), "OnAssetEventsDispatched from a non-main thread - the AssetBus should only be called from the main thread!");
-        
+
         // Pump deferred engine loading events.
         if (gEnv && gEnv->mMainThreadId == CryGetCurrentThreadId())
         {

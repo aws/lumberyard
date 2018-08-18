@@ -21,7 +21,6 @@
 
 EMFX_FORWARD_DECLARE(AnimGraphNode)
 
-
 namespace EMStudio
 {
     class AnimGraphPlugin;

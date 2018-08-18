@@ -498,7 +498,7 @@ bool CNavigation::ValidateBigObstacles()
             if (pStatObj)
             {
                 char msg[256];
-                _snprintf(msg, 256, "Big object\n(%.f, %.f, %.f).", calc_pos.x, calc_pos.y, calc_pos.z);
+                azsnprintf(msg, 256, "Big object\n(%.f, %.f, %.f).", calc_pos.x, calc_pos.y, calc_pos.z);
                 OBB obb;
                 obb.SetOBBfromAABB(Matrix33(TM), pStatObj->GetAABB());
                 m_validationErrorMarkers.push_back(SValidationErrorMarker(msg, TM.GetTranslation(), obb, ColorB(255, 196, 0)));
@@ -1360,7 +1360,7 @@ bool CNavigation::ForbiddenAreaOverlap(const CAIShape* pShape)
                 name.c_str(), v0.x, v0.y, v0.z);
 
             char msg[256];
-            _snprintf(msg, 256, "Identical points\n(%.f, %.f, %.f).", v0.x, v0.y, v0.z);
+            azsnprintf(msg, 256, "Identical points\n(%.f, %.f, %.f).", v0.x, v0.y, v0.z);
             m_validationErrorMarkers.push_back(SValidationErrorMarker(msg, v0, ColorB(255, 0, 0)));
 
             return true;
@@ -1393,7 +1393,7 @@ bool CNavigation::ForbiddenAreaOverlap(const CAIShape* pShape)
                     name.c_str(), pos.x, pos.y, pos.z);
 
                 char msg[256];
-                _snprintf(msg, 256, "Self-intersection\n(%.f, %.f, %.f).", pos.x, pos.y, pos.z);
+                azsnprintf(msg, 256, "Self-intersection\n(%.f, %.f, %.f).", pos.x, pos.y, pos.z);
                 m_validationErrorMarkers.push_back(SValidationErrorMarker(msg, pos, ColorB(255, 0, 0)));
 
                 return true;
@@ -1406,7 +1406,7 @@ bool CNavigation::ForbiddenAreaOverlap(const CAIShape* pShape)
                 name.c_str(), pt.x, pt.y, pt.z);
 
             char msg[256];
-            _snprintf(msg, 256, "Mutual-intersection\n(%.f, %.f, %.f).", pt.x, pt.y, pt.z);
+            azsnprintf(msg, 256, "Mutual-intersection\n(%.f, %.f, %.f).", pt.x, pt.y, pt.z);
             m_validationErrorMarkers.push_back(SValidationErrorMarker(msg, pt, ColorB(255, 0, 0)));
 
             return true;
@@ -1549,7 +1549,7 @@ bool DoesShapeSelfIntersect(const ShapePointContainer& shape, Vec3& badPt,
             badPt = *li;
 
             char msg[256];
-            _snprintf(msg, 256, "Degenerate edge\n(%.f, %.f, %.f).", badPt.x, badPt.y, badPt.z);
+            azsnprintf(msg, 256, "Degenerate edge\n(%.f, %.f, %.f).", badPt.x, badPt.y, badPt.z);
             validationErrorMarkers.push_back(CNavigation::SValidationErrorMarker(msg, badPt, ColorB(255, 0, 0)));
 
             return true;
@@ -1595,7 +1595,7 @@ bool DoesShapeSelfIntersect(const ShapePointContainer& shape, Vec3& badPt,
                 badPt = Lineseg(*li, *linext).GetPoint(s);
 
                 char msg[256];
-                _snprintf(msg, 256, "Self-intersection\n(%.f, %.f, %.f)", badPt.x, badPt.y, badPt.z);
+                azsnprintf(msg, 256, "Self-intersection\n(%.f, %.f, %.f)", badPt.x, badPt.y, badPt.z);
                 validationErrorMarkers.push_back(CNavigation::SValidationErrorMarker(msg, badPt, ColorB(255, 0, 0)));
 
                 return true;
@@ -3004,7 +3004,7 @@ bool CNavigation::CalculateForbiddenAreas()
                         obb.SetOBBfromAABB(Matrix33::CreateIdentity(), pointsBounds);
 
                         char msg[256];
-                        _snprintf(msg, 256, "New area bounds mismatch\n(%.f, %.f, %.f).", center.x, center.y, center.z);
+                        azsnprintf(msg, 256, "New area bounds mismatch\n(%.f, %.f, %.f).", center.x, center.y, center.z);
                         m_validationErrorMarkers.push_back(SValidationErrorMarker(msg, center, obb, ColorB(255, 0, 196)));
                     }
 
@@ -3039,7 +3039,7 @@ bool CNavigation::CalculateForbiddenAreas()
                             obb.SetOBBfromAABB(Matrix33::CreateIdentity(), pointsBounds);
 
                             char msg[256];
-                            _snprintf(msg, 256, "Negative Area\n(%.f, %.f, %.f).", center.x, center.y, center.z);
+                            azsnprintf(msg, 256, "Negative Area\n(%.f, %.f, %.f).", center.x, center.y, center.z);
                             m_validationErrorMarkers.push_back(SValidationErrorMarker(msg, center, obb, ColorB(255, 0, 196)));
                         }
                         else
@@ -3369,7 +3369,7 @@ bool CNavigation::CombineForbiddenAreas(CAIShapeContainer& areasContainer)
             obb.SetOBBfromAABB(Matrix33::CreateIdentity(), aabb);
 
             char msg[256];
-            _snprintf(msg, 256, "Intersect mismatch\n(%.f, %.f, %.f).", center.x, center.y, center.z);
+            azsnprintf(msg, 256, "Intersect mismatch\n(%.f, %.f, %.f).", center.x, center.y, center.z);
             m_validationErrorMarkers.push_back(SValidationErrorMarker(msg, center, obb, ColorB(255, 0, 196)));
         }
         else
@@ -3567,7 +3567,7 @@ bool CNavigation::CombineForbiddenAreas(CAIShapeContainer& areasContainer)
                     obb.SetOBBfromAABB(Matrix33::CreateIdentity(), originalCombinedAABB);
 
                     char msg[256];
-                    _snprintf(msg, 256, "Combined bounds mismatch\n(%.f, %.f, %.f).", center.x, center.y, center.z);
+                    azsnprintf(msg, 256, "Combined bounds mismatch\n(%.f, %.f, %.f).", center.x, center.y, center.z);
                     m_validationErrorMarkers.push_back(SValidationErrorMarker(msg, center, obb, ColorB(255, 0, 196)));
                 }
             }

@@ -14,7 +14,7 @@
 
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
-#include <QCombobox>
+#include <QComboBox>
 
 namespace EMotionFX
 {
@@ -30,7 +30,7 @@ namespace EMotionFX
         Q_OBJECT
 
     public:
-        AZ_CLASS_ALLOCATOR(MotionSetNameHandler, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR_DECL
 
         MotionSetNameHandler()
             : m_motionSetAsset(nullptr)

@@ -15,7 +15,7 @@
 #include <QDebug>
 #include <AzCore/std/bind/bind.h>
 #include <AzCore/std/functional.h>
-#include "native/utilities/AssetUtils.h"
+#include "native/utilities/assetUtils.h"
 
 #define UNIT_TEST_CONNECT_PORT 12125
 

@@ -13,15 +13,17 @@
 // include required headers
 #include "KeyboardShortcutsWindow.h"
 
+#include <QContextMenuEvent>
 #include <QVBoxLayout>
 #include <QGridLayout>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QHeaderView>
 #include <QTableWidget>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QFileDialog>
-#include <QtCore/QSettings>
+#include <QSettings>
 
 #include "EMStudioManager.h"
 #include <MCore/Source/LogManager.h>
@@ -100,14 +102,14 @@ namespace EMStudio
         {
             mListWidget->setCurrentRow(0);
         }
-
-        connect(this, SIGNAL(setVisible(bool)), this, SLOT(OnSetVisible(bool)));
     }
 
 
-    void KeyboardShortcutsWindow::OnSetVisible(bool isVisible)
+    void KeyboardShortcutsWindow::setVisible(bool visible)
     {
-        if (isVisible)
+        QWidget::setVisible(visible);
+
+        if (visible)
         {
             ReInit();
         }
@@ -286,7 +288,11 @@ namespace EMStudio
 
         if (ctrl)
         {
-            keyText += "CTRL + ";
+            #if defined(AZ_PLATFORM_APPLE)
+                keyText += "COMMAND + ";
+            #else
+                keyText += "CTRL + ";
+            #endif  
         }
         if (alt)
         {

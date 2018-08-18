@@ -13,7 +13,7 @@
 
 // Description : Implementation of AssetBrowserPreviewModelDlg.h
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AssetBrowserPreviewModelDlg.h"
 #include "AssetModelItem.h"
 #include "AssetBrowser/AssetBrowserDialog.h"

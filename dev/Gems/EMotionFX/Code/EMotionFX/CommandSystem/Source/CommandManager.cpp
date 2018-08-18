@@ -11,27 +11,27 @@
 */
 
 // include the required headers
-#include "CommandManager.h"
-#include "ActorCommands.h"
-#include "MotionCommands.h"
-#include "MotionEventCommands.h"
-#include "MotionSetCommands.h"
-#include "MotionCompressionCommands.h"
-#include "SelectionCommands.h"
-#include "ImporterCommands.h"
-#include "AnimGraphCommands.h"
-#include "AnimGraphNodeCommands.h"
-#include "AnimGraphNodeGroupCommands.h"
-#include "AnimGraphConnectionCommands.h"
-#include "AnimGraphParameterCommands.h"
-#include "AnimGraphConditionCommands.h"
-#include "MorphTargetCommands.h"
-#include "AttachmentCommands.h"
-#include "LODCommands.h"
-#include "NodeGroupCommands.h"
-#include "AnimGraphParameterGroupCommands.h"
-#include "ActorInstanceCommands.h"
-#include "MiscCommands.h"
+#include <EMotionFX/CommandSystem/Source/ActorCommands.h>
+#include <EMotionFX/CommandSystem/Source/ActorInstanceCommands.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphCommands.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphConditionCommands.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphConnectionCommands.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphGroupParameterCommands.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphNodeCommands.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphNodeGroupCommands.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphParameterCommands.h>
+#include <EMotionFX/CommandSystem/Source/AttachmentCommands.h>
+#include <EMotionFX/CommandSystem/Source/CommandManager.h>
+#include <EMotionFX/CommandSystem/Source/ImporterCommands.h>
+#include <EMotionFX/CommandSystem/Source/LODCommands.h>
+#include <EMotionFX/CommandSystem/Source/MiscCommands.h>
+#include <EMotionFX/CommandSystem/Source/MorphTargetCommands.h>
+#include <EMotionFX/CommandSystem/Source/MotionCommands.h>
+#include <EMotionFX/CommandSystem/Source/MotionCompressionCommands.h>
+#include <EMotionFX/CommandSystem/Source/MotionEventCommands.h>
+#include <EMotionFX/CommandSystem/Source/MotionSetCommands.h>
+#include <EMotionFX/CommandSystem/Source/NodeGroupCommands.h>
+#include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 
 
 namespace CommandSystem
@@ -127,22 +127,21 @@ namespace CommandSystem
         RegisterCommand(new CommandAnimGraphCreateParameter());
         RegisterCommand(new CommandAnimGraphRemoveParameter());
         RegisterCommand(new CommandAnimGraphAdjustParameter());
-        RegisterCommand(new CommandAnimGraphSwapParameters());
+        RegisterCommand(new CommandAnimGraphMoveParameter());
         RegisterCommand(new CommandLoadAnimGraph());
-        RegisterCommand(new CommandAdjustAnimGraph());
         RegisterCommand(new CommandCreateAnimGraph());
         RegisterCommand(new CommandRemoveAnimGraph());
-        RegisterCommand(new CommandCloneAnimGraph());
         RegisterCommand(new CommandActivateAnimGraph());
         RegisterCommand(new CommandAnimGraphSetEntryState());
         RegisterCommand(new CommandAnimGraphAddCondition());
         RegisterCommand(new CommandAnimGraphRemoveCondition());
+        RegisterCommand(new CommandAnimGraphAdjustCondition());
         RegisterCommand(new CommandAnimGraphAddNodeGroup());
         RegisterCommand(new CommandAnimGraphRemoveNodeGroup());
         RegisterCommand(new CommandAnimGraphAdjustNodeGroup());
-        RegisterCommand(new CommandAnimGraphAddParameterGroup());
-        RegisterCommand(new CommandAnimGraphRemoveParameterGroup());
-        RegisterCommand(new CommandAnimGraphAdjustParameterGroup());
+        RegisterCommand(new CommandAnimGraphAddGroupParameter());
+        RegisterCommand(new CommandAnimGraphRemoveGroupParameter());
+        RegisterCommand(new CommandAnimGraphAdjustGroupParameter());
 
         // register misc commands
         RegisterCommand(new CommandRecorderClear());

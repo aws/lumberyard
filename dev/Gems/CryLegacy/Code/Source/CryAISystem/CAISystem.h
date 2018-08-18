@@ -1,0 +1,1361 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+// Original file Copyright Crytek GMBH or its affiliates, used under license.
+
+#ifndef CRYINCLUDE_CRYAISYSTEM_CAISYSTEM_H
+#define CRYINCLUDE_CRYAISYSTEM_CAISYSTEM_H
+#pragma once
+
+#include "IAISystem.h"
+#include "ObjectContainer.h"
+#include "Formation.h"
+#include "Graph.h"
+#include "PipeManager.h"
+#include "AIObject.h"
+#include "AICollision.h"
+#include "AIGroup.h"
+#include "AIQuadTree.h"
+#include "MiniQueue.h"
+#include "AIRadialOcclusion.h"
+#include "AILightManager.h"
+#include "AIDynHideObjectManager.h"
+#include "Shape.h"
+#include "ShapeContainer.h"
+#include "Shape2.h"
+#include "Navigation.h"
+#include "HideSpot.h"
+#include "VisionMap.h"
+#include "Group/Group.h"
+#include "Factions/FactionMap.h"
+#include "AIObjectManager.h"
+#include "GlobalPerceptionScaleHandler.h"
+#include "ClusterDetector.h"
+#include <BehaviorTree/IBehaviorTreeGraft.h>
+
+#ifdef CRYAISYSTEM_DEBUG
+    #include "AIDbgRecorder.h"
+    #include "AIRecorder.h"
+#endif //CRYAISYSTEM_DEBUG
+
+#define AIFAF_VISIBLE_FROM_REQUESTER    0x0001  // Requires whoever is requesting the anchor to also have a line of sight to it.
+//#define AIFAF_VISIBLE_TARGET                  0x0002  // Requires that there is a line of sight between target and anchor.
+#define AIFAF_INCLUDE_DEVALUED              0x0004  // Don't care if the object is devalued.
+#define AIFAF_INCLUDE_DISABLED              0x0008  // Don't care if the object is disabled.
+#define AIFAF_HAS_FORMATION                     0x0010  // Want only formations owners.
+#define AIFAF_LEFT_FROM_REFPOINT            0x0020  // Requires that the anchor is left from the target.
+#define AIFAF_RIGHT_FROM_REFPOINT           0x0040  // Requires that the anchor is right from the target.
+#define AIFAF_INFRONT_OF_REQUESTER      0x0080  // Requires that the anchor is within a 30-degree cone in front of requester.
+#define AIFAF_SAME_GROUP_ID                     0x0100  // Want same group id.
+#define AIFAF_DONT_DEVALUE                      0x0200  // Do not devalue the object after having found it.
+#define AIFAF_USE_REFPOINT_POS              0x0400  // Use ref point position instead of AI object pos.
+
+struct ICoordinationManager;
+struct ITacticalPointSystem;
+struct AgentPathfindingProperties;
+struct IFireCommandDesc;
+struct IVisArea;
+struct IAISignalExtraData;
+
+class CAIActionManager;
+class ICentralInterestManager;
+class CPerceptionManager;
+class CAIHideObject;
+
+class CScriptBind_AI;
+
+#define AGENT_COVER_CLEARANCE 0.35f
+#define VIEW_RAY_PIERCABILITY 10
+#define HIT_COVER ((geom_colltype_ray << rwi_colltype_bit) | rwi_colltype_any | (VIEW_RAY_PIERCABILITY & rwi_pierceability_mask))
+#define HIT_SOFT_COVER (geom_colltype14 << rwi_colltype_bit)
+#define COVER_OBJECT_TYPES (ent_terrain | ent_static | ent_rigid | ent_sleeping_rigid)
+
+const static int NUM_ALERTNESS_COUNTERS = 4;
+
+
+
+// Listener for path found events.
+struct IAIPathFinderListerner
+{
+    virtual ~IAIPathFinderListerner(){}
+    virtual void OnPathResult(int id, const std::vector<unsigned>* pathNodes) = 0;
+};
+
+
+
+enum EGetObstaclesInRadiusFlags
+{
+    OBSTACLES_COVER = 0x01,
+    OBSTACLES_SOFT_COVER = 0x02,
+};
+
+enum EPuppetUpdatePriority
+{
+    AIPUP_VERY_HIGH,
+    AIPUP_HIGH,
+    AIPUP_MED,
+    AIPUP_LOW,
+};
+
+enum AsyncState
+{
+    AsyncFailed = 0,
+    AsyncReady,
+    AsyncInProgress,
+    AsyncComplete,
+};
+
+// Description:
+//   Fire command handler descriptor/factory.
+struct IFireCommandDesc
+{
+    virtual ~IFireCommandDesc(){}
+    //   Returns the name identifier of the handler.
+    virtual const char* GetName() = 0;
+    // Summary:
+    //   Creates new instance of a fire command handler.
+    virtual IFireCommandHandler*    Create(IAIActor* pShooter) = 0;
+    // Summary:
+    //   Deletes the factory.
+    virtual void Release() = 0;
+};
+
+//====================================================================
+// CAISystem
+//====================================================================
+class CAISystem
+    : public IAISystem
+    , public ISystemEventListener
+{
+public:
+    //-------------------------------------------------------------
+
+    /// Flags used by the GetDangerSpots.
+    enum EDangerSpots
+    {
+        DANGER_DEADBODY =   0x01,       // Include dead bodies.
+        DANGER_EXPLOSIVE = 0x02,    // Include explosives - unexploded grenades.
+        DANGER_EXPLOSION_SPOT = 0x04,   // Include recent explosions.
+        DANGER_ALL = DANGER_DEADBODY | DANGER_EXPLOSIVE,
+    };
+
+
+    CAISystem(ISystem* pSystem);
+    ~CAISystem();
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //IAISystem/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //Basic////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    virtual bool Init();
+    virtual bool CompleteInit();
+    virtual bool PostInit();
+
+    virtual void Reload();
+    virtual void Reset(EResetReason reason);//TODO this is called by lots of people including destructor, but causes NEW ALLOCATIONS! Needs big refactor!
+    virtual void Release();
+
+    virtual void DummyFunctionNumberOne(void);
+
+    //If disabled most things early out
+    virtual void Enable(bool enable = true);
+    virtual void SetActorProxyFactory(IAIActorProxyFactory* pFactory);
+    virtual IAIActorProxyFactory* GetActorProxyFactory() const;
+    virtual void SetGroupProxyFactory(IAIGroupProxyFactory* pFactory);
+    virtual IAIGroupProxyFactory* GetGroupProxyFactory() const;
+    virtual IAIGroupProxy* GetAIGroupProxy(int groupID);
+
+    //Every frame (multiple time steps per frame possible?)     //TODO find out
+    //  currentTime - AI time since game start in seconds (GetCurrentTime)
+    //  frameTime - since last update (GetFrameTime)
+    virtual void Update(CTimeValue currentTime, float frameTime);
+
+    virtual bool RegisterListener(IAISystemListener* pListener);
+    virtual bool UnregisterListener(IAISystemListener* pListener);
+    void OnAgentDeath(EntityId deadEntityID, EntityId killerID);
+
+    // Registers AI event listener. Only events overlapping the sphere will be sent.
+    // Register can be called again to update the listener position, radius and flags.
+    // If pointer to the listener is specified it will be used instead of the pointer to entity.
+    virtual void RegisterAIEventListener(IAIEventListener* pListener, const Vec3& pos, float rad, int flags);
+    virtual void UnregisterAIEventListener(IAIEventListener* pListener);
+
+    virtual void Event(int eventT, const char*);
+    virtual IAISignalExtraData* CreateSignalExtraData() const;
+    virtual void FreeSignalExtraData(IAISignalExtraData* pData) const;
+    virtual void SendSignal(unsigned char cFilter, int nSignalId, const char* szText,  IAIObject* pSenderObject, IAISignalExtraData* pData = NULL, uint32 crcCode = 0);
+    virtual void SendAnonymousSignal(int nSignalId, const char* szText, const Vec3& pos, float fRadius, IAIObject* pSenderObject, IAISignalExtraData* pData = NULL);
+    virtual void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam);
+
+    //Basic////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //Time/Updates/////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //Over-ride auto-disable for distant AIs
+    virtual bool GetUpdateAllAlways() const;
+
+    // Returns the current time (seconds since game began) that AI should be working with -
+    // This may be different from the system so that we can support multiple updates per
+    // game loop/update.
+    ILINE CTimeValue GetFrameStartTime() const
+    {
+        return m_frameStartTime;
+    }
+
+    ILINE float GetFrameStartTimeSeconds() const
+    {
+        return m_frameStartTimeSeconds;
+    }
+
+    // Time interval between this and the last update
+    ILINE float GetFrameDeltaTime() const
+    {
+        return m_frameDeltaTime;
+    }
+
+    // returns the basic AI system update interval
+    virtual float GetUpdateInterval() const;
+
+    // profiling
+    virtual int GetAITickCount();
+
+    //Time/Updates/////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //FileIO///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // save/load
+    virtual void Serialize(TSerialize ser);
+    virtual void SerializeObjectIDs(TSerialize ser);
+
+    //! Set a path for the current level as working folder for level-specific metadata
+    virtual void SetLevelPath(const char* sPath);
+
+    /// this called before loading (level load/serialization)
+    virtual void FlushSystem(bool bDeleteAll = false);
+    virtual void FlushSystemNavigation(bool bDeleteAll = false);
+
+    virtual void LayerEnabled(const char* layerName, bool enabled, bool serialized);
+
+    virtual void LoadNavigationData(const char* szLevel, const char* szMission, const bool bRequiredQuickLoading = false, bool bAfterExporting = false);
+    // reads areas from file. clears the existing areas
+    virtual void ReadAreasFromFile(const char* fileNameAreas);
+
+    virtual void LoadCover(const char* szLevel, const char* szMission);
+
+    virtual void LoadLevelData(const char* szLevel, const char* szMission, const bool bRequiredQuickLoading = false);
+
+    virtual void OnMissionLoaded();
+
+    //FileIO///////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //Debugging////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // AI DebugDraw
+    virtual IAIDebugRenderer* GetAIDebugRenderer();
+    virtual IAIDebugRenderer* GetAINetworkDebugRenderer();
+    virtual void SetAIDebugRenderer             (IAIDebugRenderer* pAIDebugRenderer);
+    virtual void SetAINetworkDebugRenderer(IAIDebugRenderer* pAINetworkDebugRenderer);
+
+    virtual void SetAgentDebugTarget(const EntityId id) { m_agentDebugTarget = id; }
+    virtual EntityId GetAgentDebugTarget() const { return m_agentDebugTarget; }
+
+    // debug recorder
+    virtual bool    IsRecording(const IAIObject* pTarget, IAIRecordable::e_AIDbgEvent event) const;
+    virtual void    Record(const IAIObject* pTarget, IAIRecordable::e_AIDbgEvent event, const char* pString) const;
+    virtual void    GetRecorderDebugContext(SAIRecorderDebugContext*& pContext);
+    virtual void    AddDebugLine(const Vec3& start, const Vec3& end, uint8 r, uint8 g, uint8 b, float time);
+    virtual void    AddDebugSphere(const Vec3& pos, float radius, uint8 r, uint8 g, uint8 b, float time);
+
+    virtual void    DebugReportHitDamage(IEntity* pVictim, IEntity* pShooter, float damage, const char* material);
+    virtual void    DebugReportDeath(IAIObject* pVictim);
+
+    // functions to let external systems (e.g. lua) access the AI logging functions.
+    // the external system should pass in an identifier (e.g. "<Lua> ")
+    virtual void Warning(const char* id, const char* format, ...) const PRINTF_PARAMS(3, 4);
+    virtual void Error(const char* id, const char* format, ...) PRINTF_PARAMS(3, 4);
+    virtual void LogProgress(const char* id, const char* format, ...) PRINTF_PARAMS(3, 4);
+    virtual void LogEvent(const char* id, const char* format, ...) PRINTF_PARAMS(3, 4);
+    virtual void LogComment(const char* id, const char* format, ...) PRINTF_PARAMS(3, 4);
+
+    // Draws a fake tracer around the player.
+    virtual void DebugDrawFakeTracer(const Vec3& pos, const Vec3& dir);
+
+    virtual void GetMemoryStatistics(ICrySizer* pSizer);
+
+    // debug members ============= DO NOT USE
+    virtual void DebugDraw();
+
+    //Debugging////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //Get Subsystems///////////////////////////////////////////////////////////////////////////////////////////////
+    virtual IAIRecorder* GetIAIRecorder();
+    virtual INavigation* GetINavigation();
+    virtual IAIPathFinder* GetIAIPathFinder();
+    virtual IMNMPathfinder* GetMNMPathfinder() const;
+    virtual ICentralInterestManager* GetCentralInterestManager(void);
+    virtual ICentralInterestManager const* GetCentralInterestManager(void) const;
+    virtual ITacticalPointSystem* GetTacticalPointSystem(void);
+    virtual ICommunicationManager* GetCommunicationManager() const;
+    virtual ICoverSystem* GetCoverSystem() const;
+    virtual INavigationSystem* GetNavigationSystem() const;
+    virtual ICollisionAvoidanceSystem* GetCollisionAvoidanceSystem() const;
+    virtual ISelectionTreeManager* GetSelectionTreeManager() const;
+    virtual BehaviorTree::IBehaviorTreeManager* GetIBehaviorTreeManager() const;
+    virtual BehaviorTree::IGraftManager* GetIGraftManager() const;
+    virtual ITargetTrackManager* GetTargetTrackManager() const;
+    virtual struct IMovementSystem* GetMovementSystem() const;
+    virtual AIActionSequence::ISequenceManager* GetSequenceManager() const;
+    virtual IClusterDetector* GetClusterDetector() const;
+
+    virtual ISmartObjectManager* GetSmartObjectManager();
+    virtual IAIObjectManager* GetAIObjectManager();
+    //Get Subsystems///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //AI Actions///////////////////////////////////////////////////////////////////////////////////////////////////
+    virtual IAIActionManager* GetAIActionManager();
+    //AI Actions///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //Leader/Formations////////////////////////////////////////////////////////////////////////////////////////////
+    virtual void EnumerateFormationNames(unsigned int maxNames, const char** names, unsigned int* nameCount) const;
+    virtual int GetGroupCount(int nGroupID, int flags = GROUP_ALL, int type = 0);
+    virtual IAIObject* GetGroupMember(int groupID, int index, int flags = GROUP_ALL, int type = 0);
+    //Leader/Formations////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //Goal Pipes///////////////////////////////////////////////////////////////////////////////////////////////////
+    //TODO: get rid of this; => it too many confusing uses to remove just yet
+    virtual int AllocGoalPipeId() const;
+    //Goal Pipes///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //Navigation / Pathfinding/////////////////////////////////////////////////////////////////////////////////////
+    virtual bool CreateNavigationShape(const SNavigationShapeParams& params);
+    virtual void DeleteNavigationShape(const char* szPathName);
+    virtual bool DoesNavigationShapeExists(const char* szName, EnumAreaType areaType, bool road = false);
+    virtual void EnableGenericShape(const char* shapeName, bool state);
+
+    const char* GetEnclosingGenericShapeOfType(const Vec3& pos, int type, bool checkHeight);
+    bool IsPointInsideGenericShape(const Vec3& pos, const char* shapeName, bool checkHeight);
+    float DistanceToGenericShape(const Vec3& pos, const char* shapeName, bool checkHeight);
+    bool ConstrainInsideGenericShape(Vec3& pos, const char* shapeName, bool checkHeight);
+    const char* CreateTemporaryGenericShape(Vec3* points, int npts, float height, int type);
+
+    // Pathfinding properties
+    virtual void AssignPFPropertiesToPathType(const string& sPathType, const AgentPathfindingProperties& properties);
+    virtual const AgentPathfindingProperties* GetPFPropertiesOfPathType(const string& sPathType);
+    virtual string GetPathTypeNames();
+
+    /// Register a spherical region that causes damage (so should be avoided in pathfinding). pID is just
+    /// a unique identifying - so if this is called multiple times with the same pID then the damage region
+    /// will simply be moved. If radius <= 0 then the region is disabled.
+    virtual void RegisterDamageRegion(const void* pID, const Sphere& sphere);
+
+
+    //Navigation / Pathfinding/////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //Hide spots///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // Returns specified number of nearest hidespots. It considers the hidespots in graph and anchors.
+    // Any of the pointers to return values can be null. Returns number of hidespots found.
+    virtual unsigned int GetHideSpotsInRange(IAIObject* requester, const Vec3& reqPos,
+        const Vec3& hideFrom, float minRange, float maxRange, bool collidableOnly, bool validatedOnly,
+        unsigned int maxPts, Vec3* coverPos, Vec3* coverObjPos, Vec3* coverObjDir, float* coverRad, bool* coverCollidable);
+    // Returns a point which is a valid distance away from a wall in front of the point.
+    virtual void AdjustDirectionalCoverPosition(Vec3& pos, const Vec3& dir, float agentRadius, float testHeight);
+
+    //Hide spots///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //Perception///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //TODO PerceptionManager://Some stuff in this section maps to that..
+
+    // current global AI alertness value (what's the most alerted puppet)
+    virtual int GetAlertness() const;
+    virtual int GetAlertness(const IAIAlertnessPredicate& alertnessPredicate);
+    virtual void SetAssesmentMultiplier(unsigned short type, float fMultiplier);
+    virtual void SetFactionThreatMultiplier(uint8 factionID, float fMultiplier);
+    virtual void SetPerceptionDistLookUp(float* pLookUpTable, int tableSize);   //look up table to be used when calculating visual time-out increment
+    // Global perception scale handler functionalities
+    virtual void UpdateGlobalPerceptionScale(const float visualScale, const float audioScale, EAIFilterType filterType = eAIFT_All, const char* factionName = NULL);
+    virtual float GetGlobalVisualScale(const IAIObject* pAIObject) const;
+    virtual float GetGlobalAudioScale(const IAIObject* pAIObject) const;
+    virtual void DisableGlobalPerceptionScaling();
+    virtual void RegisterGlobalPerceptionListener(IAIGlobalPerceptionListener* pListner);
+    virtual void UnregisterGlobalPerceptionlistener(IAIGlobalPerceptionListener* pListner);
+    /// Fills the array with possible dangers, returns number of dangers.
+    virtual unsigned int GetDangerSpots(const IAIObject* requester, float range, Vec3* positions, unsigned int* types, unsigned int n, unsigned int flags);
+    virtual void RegisterStimulus(const SAIStimulus& stim);
+    virtual void IgnoreStimulusFrom(EntityId sourceId, EAIStimulusType type, float time);
+    virtual void DynOmniLightEvent(const Vec3& pos, float radius, EAILightEventType type, EntityId shooterId, float time = 5.0f);
+    virtual void DynSpotLightEvent(const Vec3& pos, const Vec3& dir, float radius, float fov, EAILightEventType type, EntityId shooterId, float time = 5.0f);
+    virtual IVisionMap* GetVisionMap() { return gAIEnv.pVisionMap; }
+    virtual IFactionMap& GetFactionMap() { return *gAIEnv.pFactionMap; }
+
+    //Perception///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //WTF are these?///////////////////////////////////////////////////////////////////////////////////////////////
+    virtual IAIObject* GetBeacon(unsigned short nGroupID);
+    virtual void UpdateBeacon(unsigned short nGroupID, const Vec3& vPos, IAIObject* pOwner = 0);
+
+    virtual IFireCommandHandler* CreateFirecommandHandler(const char* name, IAIActor* pShooter);
+
+    virtual bool ParseTables(int firstTable, bool parseMovementAbility, IFunctionHandler* pH, AIObjectParams& aiParams, bool& updateAlways);
+
+    void AddCombatClass(int combatClass, float* pScalesVector, int size, const char* szCustomSignal);
+    float ProcessBalancedDamage(IEntity* pShooterEntity, IEntity* pTargetEntity, float damage, const char* damageType);
+    void NotifyDeath(IAIObject* pVictim);
+
+    // !!! added to resolve merge conflict: to be removed in dev/c2 !!!
+    virtual float GetFrameStartTimeSecondsVirtual() const
+    {
+        return GetFrameStartTimeSeconds();
+    }
+
+    //WTF are these?///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    //IAISystem/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //Light frame profiler for AI support
+    // Add nTicks to the number of Ticks spend this frame in particle functions
+    virtual void AddFrameTicks(uint64 nTicks)  { m_nFrameTicks += nTicks; }
+
+    // Reset Ticks Counter
+    virtual void ResetFrameTicks()  {m_nFrameTicks = 0; }
+
+    // Get number of Ticks accumulated over this frame
+    virtual uint64 NumFrameTicks() const { return m_nFrameTicks; }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //CAISystem/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // CActiveAction needs to access action manager
+    CPerceptionManager* GetPerceptionManager();
+    CAILightManager* GetLightManager();
+    CAIDynHideObjectManager* GetDynHideObjectManager();
+
+    bool InitSmartObjects();
+
+
+
+
+
+
+
+
+    typedef std::vector< std::pair<string, const SpecialArea*> > VolumeRegions;
+
+    /// Returns true if all the links leading out of the node have radius < fRadius
+    bool ExitNodeImpossible(CGraphLinkManager& linkManager, const GraphNode* pNode, float fRadius) const;
+
+    /// Returns true if all the links leading into the node have radius < fRadius
+    bool EnterNodeImpossible(CGraphNodeManager& nodeManager, CGraphLinkManager& linkManager, const GraphNode* pNode, float fRadius) const;
+
+    void InvalidatePathsThroughArea(const ListPositions& areaShape);
+
+
+
+    typedef VectorSet<CWeakRef<CAIActor> > AIActorSet;
+    typedef std::vector<CAIActor*> AIActorVector;
+
+
+    bool GetNearestPunchableObjectPosition(IAIObject* pRef, const Vec3& searchPos, float searchRad, const Vec3& targetPos, float minSize, float maxSize, float minMass, float maxMass, Vec3& posOut, Vec3& dirOut, IEntity** objEntOut);
+    void DumpStateOf(IAIObject* pObject);
+    IAIObject* GetBehindObjectInRange(IAIObject* pRef, unsigned short nType, float fRadiusMin, float fRadiusMax);
+    IAIObject* GetRandomObjectInRange(IAIObject* pRef, unsigned short nType, float fRadiusMin, float fRadiusMax, bool bFaceAttTarget = false);
+    IAIObject* GetNearestObjectOfTypeInRange(const Vec3& pos, unsigned int type, float fRadiusMin, float fRadiusMax, IAIObject* pSkip = NULL, int nOption = 0);
+    IAIObject* GetNearestObjectOfTypeInRange(IAIObject* pObject, unsigned int type, float fRadiusMin, float fRadiusMax, int nOption = 0);
+
+    //// Iterates over AI objects within specified shape.
+    //// Parameter 'name' specify the enclosing shape and parameter 'checkHeight' specifies if hte height of the shape is taken into account too,
+    //// for other parameters see GetFirstAIObject.
+    IAIObjectIter* GetFirstAIObjectInShape(EGetFirstFilter filter, short n, const char* shapeName, bool checkHeight);
+    IAIObject* GetNearestToObjectInRange(IAIObject* pRef, unsigned short nType, float fRadiusMin, float fRadiusMax, float inCone = -1, bool bFaceAttTarget = false, bool bSeesAttTarget = false, bool bDevalue = true);
+
+    //// Devalues an AI object for the refence object only or for whole group.
+    void Devalue(IAIObject* pRef, IAIObject* pObject, bool group, float fDevalueTime = 20.f);
+
+    CAIObject* GetPlayer() const;
+
+
+
+
+    void NotifyEnableState(CAIActor* pAIActor, bool state);
+    EPuppetUpdatePriority CalcPuppetUpdatePriority(CPuppet* pPuppet) const;
+
+    //// non-virtual, accessed from CAIObject.
+    //// notifies that AIObject has changed its position, which is important for smart objects
+    void NotifyAIObjectMoved(IEntity* pEntity, SEntityEvent event);
+    virtual void NotifyTargetDead(IAIObject* pDeadObject);
+
+    virtual IPathFollowerPtr CreateAndReturnNewDefaultPathFollower(const PathFollowerParams& params, const IPathObstacles& pathObstacleObject);
+
+    const AIActorSet& GetEnabledAIActorSet() const;
+
+    void AddToFaction(CAIObject* pObject, uint8 factionID);
+
+
+    IAIObject* GetLeaderAIObject(int iGroupId);
+    IAIObject* GetLeaderAIObject(IAIObject* pObject);
+    IAIGroup* GetIAIGroup(int groupid);
+    void SetLeader(IAIObject* pObject);
+    CLeader* GetLeader(int nGroupID);
+    CLeader* GetLeader(const CAIActor* pSoldier);
+    CLeader* CreateLeader(int nGroupID);
+    CAIGroup*   GetAIGroup(int nGroupID);
+    // removes specified object from group
+    void RemoveFromGroup(int nGroupID, CAIObject* pObject);
+    // adds an object to a group
+    void AddToGroup(CAIActor* pObject, int nGroupId = -1);
+    int GetBeaconGroupId(CAIObject* pBeacon);
+    void UpdateGroupStatus(int groupId);
+
+
+
+
+
+
+
+    CFormation* GetFormation(CFormation::TFormationID id);
+    bool ScaleFormation(IAIObject* pOwner, float fScale);
+    bool SetFormationUpdate(IAIObject* pOwner, bool bUpdate);
+    void AddFormationPoint(const char* name, const FormationNode& nodeDescriptor);
+    IAIObject* GetFormationPoint(IAIObject* pObject);
+    int  GetFormationPointClass(const char* descriptorName, int position);
+    bool ChangeFormation(IAIObject* pOwner, const char* szFormationName, float fScale);
+    void CreateFormationDescriptor(const char* name);
+    void FreeFormationPoint(CWeakRef<CAIObject> refOwner);
+    bool IsFormationDescriptorExistent(const char* name);
+    CFormation* CreateFormation(CWeakRef<CAIObject> refOwner, const char* szFormationName, Vec3 vTargetPos = ZERO);
+    string GetFormationNameFromCRC32(unsigned int nCrc32ForFormationName) const;
+    void ReleaseFormation(CWeakRef<CAIObject> refOwner, bool bDelete);
+    void ReleaseFormationPoint(CAIObject* pReserved);
+    // changes the formation's scale factor for the given group id
+    bool SameFormation(const CPuppet* pHuman, const CAIVehicle* pVehicle);
+
+
+
+
+
+
+
+
+    void FlushAllAreas();
+
+
+    SShape* GetGenericShapeOfName(const char* shapeName);
+    const ShapeMap& GetGenericShapes() const;
+
+
+
+
+
+
+
+
+
+    /// Indicates if a human would be visible if placed at the specified position
+    /// If fullCheck is false then only a camera frustum check will be done. If true
+    /// then more precise (perhaps expensive) checking will be done.
+    bool WouldHumanBeVisible(const Vec3& footPos, bool fullCheck) const;
+
+    const ShapeMap& GetOcclusionPlanes() const;
+
+    bool CheckPointsVisibility(const Vec3& from, const Vec3& to, float rayLength, IPhysicalEntity* pSkipEnt = 0, IPhysicalEntity* pSkipEntAux = 0);
+    bool CheckObjectsVisibility(const IAIObject* pObj1, const IAIObject* pObj2, float rayLength);
+    float   GetVisPerceptionDistScale(float distRatio);     //distRatio (0-1) 1-at sight range
+    float GetRayPerceptionModifier(const Vec3& start, const Vec3& end, const char* actorName);
+
+    // returns value in range [0, 1]
+    // calculate how much targetPos is obstructed by water
+    // takes into account water depth and density
+    float   GetWaterOcclusionValue(const Vec3& targetPos) const;
+
+    bool CheckVisibilityToBody(CAIActor* pObserver, CAIActor* pBody, float& closestDistSq, IPhysicalEntity* pSkipEnt = 0);
+
+
+
+
+
+
+
+
+
+
+
+    /// Returns positions of currently occupied hide point objects excluding the requesters hide spot.
+    void    GetOccupiedHideObjectPositions(const CPipeUser* pRequester, std::vector<Vec3>& hideObjectPositions);
+
+    /// Finds all hidespots (and their path range) within path range of startPos, along with the navigation graph nodes traversed.
+    /// Each hidespot contains info about where it came from. If you want smart-object hidespots you need to pass in an entity
+    /// so it can be checked to see if it could use the smart object. pLastNavNode/pLastHideNode are just used as a hint.
+    /// Smart Objects are only considered if pRequester != 0
+    MultimapRangeHideSpots& GetHideSpotsInRange(MultimapRangeHideSpots& result, MapConstNodesDistance& traversedNodes, const Vec3& startPos, float maxDist,
+        IAISystem::tNavCapMask navCapMask, float passRadius, bool skipNavigationTest,
+        IEntity* pSmartObjectUserEntity = 0, unsigned lastNavNodeIndex = 0, const class CAIObject* pRequester = 0);
+
+    bool IsHideSpotOccupied(CPipeUser* pRequester, const Vec3& pos) const;
+
+    void    AdjustOmniDirectionalCoverPosition(Vec3& pos, Vec3& dir, float hideRadius, float agentRadius, const Vec3& hideFrom, const bool hideBehind = true);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //combat classes scale
+    float   GetCombatClassScale(int shooterClass, int targetClass);
+
+    typedef std::map<const void*, Sphere> TDamageRegions;
+    /// Returns the regions game code has flagged as causing damage
+    const TDamageRegions& GetDamageRegions() const;
+
+
+
+
+
+
+
+
+
+
+
+
+
+    static void ReloadConsoleCommand(IConsoleCmdArgs*);
+    static void CheckGoalpipes(IConsoleCmdArgs*);
+    static void DumpCodeCoverageCheckpoints(IConsoleCmdArgs* pArgs);
+    static void StartAIRecorder(IConsoleCmdArgs*);
+    static void StopAIRecorder(IConsoleCmdArgs*);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Clear out AI system for clean script reload
+    void ClearForReload(void);
+
+
+
+
+
+
+    void SetupAIEnvironment();
+    void SetAIHacksConfiguration();
+
+    /// Our own internal serialisation - just serialise our state (but not the things
+    /// we own that are capable of serialising themselves)
+    void SerializeInternal(TSerialize ser);
+
+
+    void SingleDryUpdate(CAIActor* pAIActor);
+
+    void UpdateAmbientFire();
+    void UpdateExpensiveAccessoryQuota();
+    void UpdateAuxSignalsMap();
+    void UpdateCollisionAvoidance(const AIActorVector& agents, float updateTime);
+
+
+
+    void CheckVisibilityBodiesOfType(unsigned short int aiObjectType);
+    int RayOcclusionPlaneIntersection(const Vec3& start, const Vec3& end);
+    int RayObstructionSphereIntersection(const Vec3& start, const Vec3& end);
+
+
+
+    // just steps through objects - for debugging
+    void DebugOutputObjects(const char* txt) const;
+
+
+    virtual bool IsEnabled() const;
+
+
+    void UnregisterAIActor(CWeakRef<CAIActor> destroyedObject);
+
+
+    ///////////////////////////////////////////////////
+    IAIActorProxyFactory* m_actorProxyFactory;
+    IAIGroupProxyFactory* m_groupProxyFactory;
+    CAIObjectManager m_AIObjectManager;
+    CPipeManager m_PipeManager;
+    CGraph* m_pGraph;
+    CNavigation* m_pNavigation;
+    CAIActionManager* m_pAIActionManager;
+    CSmartObjectManager* m_pSmartObjectManager;
+    bool m_bUpdateSmartObjects;
+    bool m_IsEnabled;//TODO eventually find how to axe this!
+    ///////////////////////////////////////////////////
+
+    std::vector<short>  m_priorityObjectTypes;
+    std::vector<CAIObject*> m_priorityTargets;
+
+    AIObjects m_mapGroups;
+    AIObjects m_mapFaction;
+
+    // This map stores the AI group info.
+    typedef std::map<int, CAIGroup*> AIGroupMap;
+    AIGroupMap  m_mapAIGroups;
+
+    //AIObject Related Data structs:
+    AIActorSet m_enabledAIActorsSet;  // Set of enabled AI Actors
+    AIActorSet m_disabledAIActorsSet; // Set of disabled AI Actors
+    float m_enabledActorsUpdateError;
+    int     m_enabledActorsUpdateHead;
+    int     m_totalActorsUpdateCount;
+    float m_disabledActorsUpdateError;
+    int     m_disabledActorsHead;
+    bool    m_iteratingActorSet;
+
+
+    typedef std::map<tAIObjectID, CAIHideObject> DebugHideObjectMap;
+    DebugHideObjectMap m_DebugHideObjects;
+
+
+    struct BeaconStruct
+    {
+        CCountedRef<CAIObject> refBeacon;
+        CWeakRef<CAIObject> refOwner;
+    };
+    typedef std::map<unsigned short, BeaconStruct> BeaconMap;
+    BeaconMap           m_mapBeacons;
+
+
+    typedef std::map<CWeakRef<CAIObject>, CFormation*> FormationMap;  // (MATT) Could be a pipeuser or such? {2009/03/18}
+    FormationMap    m_mapActiveFormations;
+    typedef std::map<string, CFormationDescriptor> FormationDescriptorMap;
+    FormationDescriptorMap m_mapFormationDescriptors;
+
+    //AIObject Related Data structs:
+    ///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+    ////////////////////////////////////////////////////////////////////
+    //Subsystems
+    CAILightManager m_lightManager;
+    CAIDynHideObjectManager m_dynHideObjectManager;
+    SAIRecorderDebugContext m_recorderDebugContext;
+    //Subsystems
+    ////////////////////////////////////////////////////////////////////
+
+
+    ////////////////////////////////////////////////////////////////////
+    //pathfinding data structures
+    typedef std::map<string, AgentPathfindingProperties> PFPropertiesMap;
+    PFPropertiesMap mapPFProperties;
+    ShapeMap m_mapOcclusionPlanes;
+    ShapeMap m_mapGenericShapes;
+    ////////////////////////////////////////////////////////////////////
+
+
+
+    ////////////////////////////////////////////////////////////////////
+    //scripting data structures
+    CScriptBind_AI* m_pScriptAI;
+
+    std::vector<const IPhysicalEntity*> m_walkabilityPhysicalEntities;
+    IGeometry* m_walkabilityGeometryBox;
+
+
+    ////////////////////////////////////////////////////////////////////
+    //system listeners
+    typedef VectorSet<IAISystemListener*> SystemListenerSet;
+    SystemListenerSet m_setSystemListeners;
+    //system listeners
+    ////////////////////////////////////////////////////////////////////
+
+
+
+    typedef std::map<int, float> MapMultipliers;
+    MapMultipliers  m_mapMultipliers;
+    MapMultipliers  m_mapFactionThreatMultipliers;
+
+
+    //<<FIXME>> just used for profiling:
+    //typedef std::map<tAIObjectID,float> TimingMap;
+    //TimingMap m_mapDEBUGTiming;
+
+    //typedef std::map<string,float> NamedTimingMap;
+    //NamedTimingMap m_mapDEBUGTimingGOALS;
+
+    int m_AlertnessCounters[NUM_ALERTNESS_COUNTERS];
+
+    // (MATT) For now I bloat CAISystem with this, but it should move into some new struct of Environment.
+    // Stores level path for metadata - i.e. the code coverage data files {2009/02/17}
+    string m_sWorkingFolder;
+
+
+
+    float m_DEBUG_screenFlash;
+
+
+
+
+
+    bool m_bCodeCoverageFailed;
+
+
+    unsigned int m_nTickCount;
+    bool m_bInitialized;
+
+
+
+
+
+    IVisArea* m_pAreaList[100];
+
+
+
+    float m_frameDeltaTime;
+    float m_frameStartTimeSeconds;
+    CTimeValue m_fLastPuppetUpdateTime;
+    CTimeValue m_frameStartTime;
+    CTimeValue m_lastVisBroadPhaseTime;
+    CTimeValue m_lastAmbientFireUpdateTime;
+    CTimeValue m_lastExpensiveAccessoryUpdateTime;
+    CTimeValue m_lastGroupUpdateTime;
+
+    PerceptionModifierShapeMap m_mapPerceptionModifiers;
+
+
+
+
+
+    std::vector<IFireCommandDesc*> m_firecommandDescriptors;
+
+    TDamageRegions m_damageRegions;
+
+
+
+    struct SAIDelayedExpAccessoryUpdate
+    {
+        SAIDelayedExpAccessoryUpdate(CPuppet* _pPuppet, int _timeMs, bool _state)
+            : pPuppet(_pPuppet)
+            , timeMs(_timeMs)
+            , state(_state)
+        {
+        }
+        CPuppet* pPuppet;
+        int timeMs;
+        bool state;
+    };
+    std::vector<SAIDelayedExpAccessoryUpdate>   m_delayedExpAccessoryUpdates;
+
+
+    struct AuxSignalDesc
+    {
+        float fTimeout;
+        string strMessage;
+        void Serialize(TSerialize ser)
+        {
+            ser.Value("AuxSignalDescTimeOut", fTimeout);
+            ser.Value("AuxSignalDescMessage", strMessage);
+        }
+    };
+    typedef std::multimap<short, AuxSignalDesc> MapSignalStrings;
+    MapSignalStrings    m_mapAuxSignalsFired;
+
+    // combat classes
+    // vector of target selection scale multipliers
+    struct SCombatClassDesc
+    {
+        std::vector<float> mods;
+        string customSignal;
+    };
+    std::vector<SCombatClassDesc>   m_CombatClasses;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    class AILinearLUT
+    {
+        int m_size;
+        float* m_pData;
+
+    public:
+        AILinearLUT()
+            : m_size(0)
+            , m_pData(0) {}
+        ~AILinearLUT()
+        {
+            if (m_pData)
+            {
+                delete [] m_pData;
+            }
+        }
+
+        // Returns the size of the table.
+        int GetSize() const { return m_size; }
+        // Returns the value is specified sample.
+        float   GetSampleValue(int i) const { return m_pData[i]; }
+
+        /// Set the lookup table from a array of floats.
+        void Set(float* values, int n)
+        {
+            delete [] m_pData;
+            m_size = n;
+            m_pData = new float[n];
+            for (int i = 0; i < n; ++i)
+            {
+                m_pData[i] = values[i];
+            }
+        }
+
+        // Returns linearly interpolated value, t in range [0..1]
+        float   GetValue(float t) const
+        {
+            const int   last = m_size - 1;
+
+            // Convert 't' to a sample.
+            t *= (float)last;
+            const int   n = (int)floorf(t);
+
+            // Check for out of range cases.
+            if (n < 0)
+            {
+                return m_pData[0];
+            }
+            if (n >= last)
+            {
+                return m_pData[last];
+            }
+
+            // Linear interpolation between the two adjacent samples.
+            const float a = t - (float)n;
+            return m_pData[n] + (m_pData[n + 1] - m_pData[n]) * a;
+        }
+    };
+
+    AILinearLUT m_VisDistLookUp;
+
+
+
+
+
+
+    ////////////////////////////////////////////////////////////////////
+    //Debugging / Logging subsystems
+
+#ifdef CRYAISYSTEM_DEBUG
+    CAIDbgRecorder m_DbgRecorder;
+    CAIRecorder m_Recorder;
+
+    struct SPerceptionDebugLine
+    {
+        SPerceptionDebugLine(const char* name_, const Vec3& start_, const Vec3& end_, const ColorB& color_, float time_, float thickness_)
+            : start(start_)
+            , end(end_)
+            , color(color_)
+            , time(time_)
+            , thickness(thickness_)
+        {
+            if (name_)
+            {
+                azsnprintf(name, sizeof(name), "%s", name_);
+            }
+            else
+            {
+                * name = '\0';
+            }
+        }
+
+        Vec3        start, end;
+        ColorB  color;
+        float       time;
+        float       thickness;
+        char        name[64];
+    };
+    std::list<SPerceptionDebugLine> m_lstDebugPerceptionLines;
+
+    struct SDebugFakeTracer
+    {
+        SDebugFakeTracer(const Vec3& _p0, const Vec3& _p1, float _a, float _t)
+            : p0(_p0)
+            , p1(_p1)
+            , a(_a)
+            , t(_t)
+            , tmax(_t) {}
+        Vec3    p0, p1;
+        float a;
+        float t, tmax;
+    };
+    std::vector<SDebugFakeTracer>   m_DEBUG_fakeTracers;
+
+    struct SDebugFakeDamageInd
+    {
+        SDebugFakeDamageInd() {}
+        SDebugFakeDamageInd(const Vec3& _pos, float _t)
+            : p(_pos)
+            , t(_t)
+            , tmax(_t) {}
+        std::vector<Vec3> verts;
+        Vec3    p;
+        float   t, tmax;
+    };
+    std::vector<SDebugFakeDamageInd>    m_DEBUG_fakeDamageInd;
+
+    struct SDebugFakeHitEffect
+    {
+        SDebugFakeHitEffect()
+            : r(.0f)
+            , t(.0f)
+            , tmax(.0f) {}
+        SDebugFakeHitEffect(const Vec3& _p, const Vec3& _n, float _r, float _t, ColorB _c)
+            : p(_p)
+            , n(_n)
+            , r(_r)
+            , t(_t)
+            , tmax(_t)
+            , c(_c) {}
+        Vec3    p, n;
+        float   r, t, tmax;
+        ColorB c;
+    };
+    std::vector<SDebugFakeHitEffect>    m_DEBUG_fakeHitEffect;
+
+    void UpdateDebugStuff();
+
+    void DebugDrawEnabledActors();
+    void DebugDrawEnabledPlayers() const;
+    void DebugDrawUpdate() const;
+    void DebugDrawFakeTracers() const;
+    void DebugDrawFakeHitEffects() const;
+    void DebugDrawFakeDamageInd() const;
+    void DebugDrawPlayerRanges() const;
+    void DebugDrawPerceptionIndicators();
+    void DebugDrawPerceptionModifiers();
+    void DebugDrawTargetTracks() const;
+    void DebugDrawDebugAgent();
+    void DebugDrawCodeCoverage() const;
+    void DebugDrawPerceptionManager();
+    void DebugDrawNavigation() const;
+    void DebugDrawGraph(int debugDrawVal) const;
+    void DebugDrawLightManager();
+    void DebugDrawP0AndP1() const;
+    void DebugDrawPuppetPaths();
+    void DebugDrawCheckCapsules() const;
+    void DebugDrawCheckRay() const;
+    void DebugDrawCheckWalkability();
+    void DebugDrawCheckWalkabilityTime() const;
+    void DebugDrawCheckFloorPos() const;
+    void DebugDrawCheckGravity() const;
+    void DebugDrawGetTeleportPos() const;
+    void DebugDrawDebugShapes();
+    void DebugDrawGroupTactic();
+    void DebugDrawDamageParts() const;
+    void DebugDrawStanceSize() const;
+    void DebugDrawForceAGAction() const;
+    void DebugDrawForceAGSignal() const;
+    void DebugDrawForceStance() const;
+    void DebugDrawForcePosture() const;
+    void DebugDrawPlayerActions() const;
+    void DebugDrawPath();
+    void DebugDrawPathAdjustments() const;
+    void DebugDrawPathSingle(const CPipeUser* pPipeUser) const;
+    void DebugDrawAgents() const;
+    void DebugDrawAgent(CAIObject* pAgent) const;
+    void DebugDrawStatsTarget(const char* pName);
+    void DebugDrawBehaviorSelection(const char* agentName);
+    void DebugDrawFormations() const;
+    void DebugDrawGraph(CGraph* pGraph, const std::vector<Vec3>* focusPositions = 0, float radius = 0.0f) const;
+    void DebugDrawGraphErrors(CGraph* pGraph) const;
+    void DebugDrawType() const;
+    void DebugDrawTypeSingle(CAIObject* pAIObj) const;
+    void DebugDrawPendingEvents(CPuppet* pPuppet, int xPos, int yPos) const;
+    void DebugDrawTargetsList() const;
+    void DebugDrawTargetUnit(CAIObject* pAIObj) const;
+    void DebugDrawStatsList() const;
+    void DebugDrawLocate() const;
+    void DebugDrawLocateUnit(CAIObject* pAIObj) const;
+    void DebugDrawSteepSlopes();
+    void DebugDrawVegetationCollision();
+    void DebugDrawGroups();
+    void DebugDrawOneGroup(float x, float& y, float& w, float fontSize, short groupID, const ColorB& textColor,
+        const ColorB& worldColor, bool drawWorld);
+    void DebugDrawHideSpots();
+    void DebugDrawDynamicHideObjects();
+    void DebugDrawMyHideSpot(CAIObject* pAIObj) const;
+    void DebugDrawSelectedHideSpots() const;
+    void DebugDrawCrowdControl();
+    void DebugDrawRadar();
+    void DebugDrawDistanceLUT();
+    void DrawRadarPath(CPipeUser* pPipeUser, const Matrix34& world, const Matrix34& screen);
+    void DebugDrawRecorderRange() const;
+    void DebugDrawShooting() const;
+    void DebugDrawAreas() const;
+    void DebugDrawAmbientFire() const;
+    void DebugDrawInterestSystem(int iLevel) const;
+    void DebugDrawExpensiveAccessoryQuota() const;
+    void DebugDrawDamageControlGraph() const;
+    void DebugDrawAdaptiveUrgency() const;
+    enum EDrawUpdateMode
+    {
+        DRAWUPDATE_NONE = 0,
+        DRAWUPDATE_NORMAL,
+        DRAWUPDATE_WARNINGS_ONLY,
+    };
+    bool DebugDrawUpdateUnit(CAIActor* pTargetAIActor, int row, EDrawUpdateMode mode) const;
+    void DebugDrawTacticalPoints();
+
+    void DEBUG_AddFakeDamageIndicator(CAIActor* pShooter, float t);
+
+    void DebugDrawSelectedTargets();
+
+    struct SDebugLine
+    {
+        SDebugLine(const Vec3& start_, const Vec3& end_, const ColorB& color_, float time_, float thickness_)
+            : start(start_)
+            , end(end_)
+            , color(color_)
+            , time(time_)
+            , thickness(thickness_)
+        {}
+        Vec3        start, end;
+        ColorB  color;
+        float       time;
+        float       thickness;
+    };
+    std::vector<SDebugLine> m_vecDebugLines;
+    Vec3 m_lastStatsTargetTrajectoryPoint;
+    std::list<SDebugLine> m_lstStatsTargetTrajectory;
+
+    struct SDebugBox
+    {
+        SDebugBox(const Vec3& pos_, const OBB& obb_, const ColorB& color_, float time_)
+            : pos(pos_)
+            , obb(obb_)
+            , color(color_)
+            , time(time_)
+        {}
+        Vec3        pos;
+        OBB         obb;
+        ColorB  color;
+        float       time;
+    };
+    std::vector<SDebugBox>  m_vecDebugBoxes;
+
+    struct SDebugSphere
+    {
+        SDebugSphere (const Vec3& pos_, float radius_, const ColorB& color_, float time_)
+            : pos(pos_)
+            , radius(radius_)
+            , color(color_)
+            , time(time_)
+        { }
+        Vec3        pos;
+        float       radius;
+        ColorB  color;
+        float       time;
+    };
+    std::vector<SDebugSphere> m_vecDebugSpheres;
+
+    struct SDebugCylinder
+    {
+        SDebugCylinder (const Vec3& pos_, const Vec3& dir_, float radius_, float height_, const ColorB& color_, float time_)
+            : pos(pos_)
+            , dir(dir_)
+            , height(height_)
+            , radius(radius_)
+            , color(color_)
+            , time(time_)
+        { }
+        Vec3        pos;
+        Vec3        dir;
+        float       radius;
+        float       height;
+        ColorB  color;
+        float       time;
+    };
+    std::vector<SDebugCylinder> m_vecDebugCylinders;
+
+    struct SDebugCone
+    {
+        SDebugCone (const Vec3& pos_, const Vec3& dir_, float radius_, float height_, const ColorB& color_, float time_)
+            : pos(pos_)
+            , dir(dir_)
+            , height(height_)
+            , radius(radius_)
+            , color(color_)
+            , time(time_)
+        { }
+        Vec3        pos;
+        Vec3        dir;
+        float       radius;
+        float       height;
+        ColorB  color;
+        float       time;
+    };
+    std::vector<SDebugCone> m_vecDebugCones;
+
+    void DrawDebugShape (const SDebugLine&);
+    void DrawDebugShape (const SDebugBox&);
+    void DrawDebugShape (const SDebugSphere&);
+    void DrawDebugShape (const SDebugCylinder&);
+    void DrawDebugShape (const SDebugCone&);
+    template <typename ShapeContainer>
+    void DrawDebugShapes (ShapeContainer& shapes, float dt);
+
+    void AddDebugLine(const Vec3& start, const Vec3& end, const ColorB& color, float time, float thickness = 1.0f);
+
+    void AddDebugBox(const Vec3& pos, const OBB& obb, uint8 r, uint8 g, uint8 b, float time);
+    void AddDebugCylinder(const Vec3& pos, const Vec3& dir, float radius, float length, const ColorB& color, float time);
+    void AddDebugCone(const Vec3& pos, const Vec3& dir, float radius, float length, const ColorB& color, float time);
+
+    void AddPerceptionDebugLine(const char* tag, const Vec3& start, const Vec3& end, uint8 r, uint8 g, uint8 b, float time, float thickness);
+
+#endif //CRYAISYSTEM_DEBUG
+
+    // returns fLeft > fRight
+    static bool CompareFloatsFPUBugWorkaround(float fLeft, float fRight);
+
+private:
+    void ResetAIActorSets(bool clearSets);
+
+    void DetachFromTerritoryAllAIObjectsOfType(const char* szTerritoryName, unsigned short int nType);
+
+    void UpdateCollisionAvoidanceRadiusIncrement(CAIActor* actor, float updateTime);
+    inline bool IsParticipatingInCollisionAvoidance(CAIActor* actor) const;
+
+    //Debugging / Logging subsystems
+    ////////////////////////////////////////////////////////////////////
+
+private:
+    void RegisterFirecommandHandler(IFireCommandDesc* desc);
+
+    void CallReloadTPSQueriesScript();
+
+    CGlobalPerceptionScaleHandler m_globalPerceptionScale;
+
+
+
+    //CAISystem/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    uint64  m_nFrameTicks; // counter for light ai system profiler
+
+    AIActorVector m_tmpFullUpdates;
+    AIActorVector m_tmpDryUpdates;
+    AIActorVector m_tmpAllUpdates;
+
+    EntityId m_agentDebugTarget;
+};
+
+
+
+
+#endif // CRYINCLUDE_CRYAISYSTEM_CAISYSTEM_H

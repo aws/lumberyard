@@ -43,7 +43,9 @@ namespace AzQtComponents
         void closeEvent(QCloseEvent* ev);
         void paintEvent(QPaintEvent* ev);
 
-        QMainWindow* m_mainWindow;
+    private:
+        void setPixmapVisible(bool);
+        QMainWindow* const m_mainWindow;
         QPixmap m_pixmap;
         bool m_visible = false; // maintain our own flag, so that we're always ready to render ignoring Qt's widget caching system
         bool m_clipToWidgets = false;

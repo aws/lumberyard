@@ -23,9 +23,17 @@
 #include <QObject>
 #include <QFile>
 
+QT_FORWARD_DECLARE_CLASS(QMenu)
+
+namespace AZ
+{
+    class ReflectContext;
+}
+
 namespace EMStudio
 {
     // forward declaration
+    class PluginOptions;
     class PreferencesWindow;
     class RenderPlugin;
 
@@ -52,11 +60,12 @@ namespace EMStudio
             : QObject() {}
         virtual ~EMStudioPlugin() {}
 
-        virtual const char* GetCompileDate() const = 0;
+        virtual const char* GetCompileDate() const { return MCORE_DATE; }
         virtual const char* GetName() const = 0;
         virtual uint32 GetClassID() const = 0;
-        virtual const char* GetCreatorName() const = 0;
-        virtual float GetVersion() const = 0;
+        virtual const char* GetCreatorName() const { return "Amazon.com, Inc."; }
+        virtual float GetVersion() const { return 1.0f; }
+        virtual void Reflect(AZ::ReflectContext*) {}
         virtual bool Init() = 0;
         virtual EMStudioPlugin* Clone() = 0;
         virtual EMStudioPlugin::EPluginType GetPluginType() const = 0;
@@ -89,7 +98,7 @@ namespace EMStudio
 
         virtual void Render(RenderPlugin* renderPlugin, RenderInfo* renderInfo)             { MCORE_UNUSED(renderPlugin); MCORE_UNUSED(renderInfo); }
 
-        virtual void AddSettings(PreferencesWindow* preferencesWindow)                      { MCORE_UNUSED(preferencesWindow); }
+        virtual PluginOptions* GetOptions() { return nullptr; }
 
         virtual void WriteLayoutData(MCore::MemoryFile& outFile)                            { MCORE_UNUSED(outFile); }
         virtual bool ReadLayoutSettings(QFile& file, uint32 dataSize, uint32 dataVersion)   { MCORE_UNUSED(file); MCORE_UNUSED(dataSize); MCORE_UNUSED(dataVersion); return true; }
@@ -109,6 +118,8 @@ namespace EMStudio
         virtual void CreateBaseInterface(const char* objectName) = 0;
 
         virtual bool AllowMultipleInstances() const     { return false; }
+
+        virtual void AddWindowMenuEntries(QMenu* parent) { }
     };
 }   // namespace EMStudio
 

@@ -159,16 +159,6 @@ CRendElementBase::~CRendElementBase()
     }
 }
 
-
-void CRendElementBase::mfPrepare(bool bCheckOverflow)
-{
-}
-
-CRenderChunk* CRendElementBase::mfGetMatInfo() {return NULL; }
-TRenderChunkArray* CRendElementBase::mfGetMatInfoList() {return NULL; }
-int CRendElementBase::mfGetMatId() {return -1; }
-void CRendElementBase::mfReset() {}
-
 const char* CRendElement::mfTypeString()
 {
     switch (m_Type)
@@ -248,9 +238,6 @@ void CRendElementBase::mfGetPlane(Plane& pl)
     pl.n = Vec3(0, 0, 1);
     pl.d = 0;
 }
-
-bool CRendElementBase::mfDraw(CShader* ef, SShaderPass* sfm) {return false; }
-void* CRendElementBase::mfGetPointer(ESrcPointer ePT, int* Stride, EParamType Type, ESrcPointer Dst, int Flags) {return NULL; }
 
 //=============================================================================
 

@@ -76,13 +76,17 @@ IOpticsElementBase* COpticsManager::ParseOpticsRecursively(IOpticsElementBase* p
     return pOptics;
 }
 
-bool COpticsManager::Load(const char* fullFlareName, int& nOutIndex)
+
+bool COpticsManager::Load(const char* fullFlareName, int& nOutIndex, bool forceReload /*= false*/)
 {
-    int nOpticsIndex = FindOpticsIndex(fullFlareName);
-    if (nOpticsIndex >= 0)
+    if (!forceReload)
     {
-        nOutIndex = nOpticsIndex;
-        return true;
+        int nOpticsIndex = FindOpticsIndex(fullFlareName);
+        if (nOpticsIndex >= 0)
+        {
+            nOutIndex = nOpticsIndex;
+            return true;
+        }
     }
 
     string strFullFlareName(fullFlareName);
@@ -100,7 +104,7 @@ bool COpticsManager::Load(const char* fullFlareName, int& nOutIndex)
         return false;
     }
 
-    if (m_SearchedOpticsSet.find(fullFlareName) != m_SearchedOpticsSet.end())
+    if (!forceReload && m_SearchedOpticsSet.find(fullFlareName) != m_SearchedOpticsSet.end())
     {
         return false;
     }
@@ -139,7 +143,7 @@ bool COpticsManager::Load(const char* fullFlareName, int& nOutIndex)
         {
             return false;
         }
-        return AddOptics(pOptics, fullFlareName, nOutIndex);
+        return AddOptics(pOptics, fullFlareName, nOutIndex, forceReload);
     }
 
     return false;
@@ -207,20 +211,34 @@ IOpticsElementBase* COpticsManager::GetOptics(int nIndex)
     return m_OpticsList[nIndex];
 }
 
-bool COpticsManager::AddOptics(IOpticsElementBase* pOptics, const char* name, int& nOutNewIndex)
+bool COpticsManager::AddOptics(IOpticsElementBase* pOptics, const char* name, int& nOutNewIndex, bool allowReplace /*= false*/)
 {
     if (name == NULL)
     {
         return false;
     }
-    if (m_OpticsMap.find(name) != m_OpticsMap.end())
+
+    auto opticsIter = m_OpticsMap.find(name);
+    if (opticsIter != m_OpticsMap.end())
     {
-        return false;
+        if (allowReplace)
+        {
+            nOutNewIndex = opticsIter->second;
+            m_OpticsList[nOutNewIndex] = pOptics;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
-    nOutNewIndex = (int)m_OpticsList.size();
-    m_OpticsList.push_back(pOptics);
-    m_OpticsMap[name] = nOutNewIndex;
-    return true;
+    else
+    {
+        nOutNewIndex = (int)m_OpticsList.size();
+        m_OpticsList.push_back(pOptics);
+        m_OpticsMap[name] = nOutNewIndex;
+        return true;
+    }
 }
 
 bool COpticsManager::Rename(const char* fullFlareName, const char* newFullFlareName)

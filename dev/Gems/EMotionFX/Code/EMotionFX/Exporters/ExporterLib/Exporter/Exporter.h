@@ -141,25 +141,13 @@ namespace ExporterLib
     // actors
     const char* GetActorExtension(bool includingDot = true);
     void SaveActorHeader(MCore::Stream* file, MCore::Endian::EEndianType targetEndianType);
-    void SaveActorFileInfo(MCore::Stream* file, uint32 numLODLevels, uint32 motionExtractionNodeIndex, const char* sourceApp, const char* orgFileName, const char* actorName, float retargetRootOffset, MCore::Distance::EUnitType unitType, MCore::Endian::EEndianType targetEndianType);
+    void SaveActorFileInfo(MCore::Stream* file, uint32 numLODLevels, uint32 motionExtractionNodeIndex, uint32 retargetRootNodeIndex, const char* sourceApp, const char* orgFileName, const char* actorName, MCore::Distance::EUnitType unitType, MCore::Endian::EEndianType targetEndianType);
 
     void SaveActor(MCore::MemoryFile* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
     bool SaveActor(AZStd::string& filename, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
 
     // deformable attachments
     void SaveDeformableAttachments(const char* fileNameWithoutExtension, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType, MCore::CommandManager* commandManager = nullptr);
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Anim Graph
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////
-    void SaveAnimGraph(MCore::MemoryFile* file, EMotionFX::AnimGraph* animGraph, MCore::Endian::EEndianType targetEndianType, const char* companyName = "");
-    const char* GetAnimGraphFileExtension(bool includingDot = true);
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Motion Set
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////
-    void SaveMotionSets(MCore::Stream* file, const AZStd::vector<EMotionFX::MotionSet*>& motionSets, MCore::Endian::EEndianType targetEndianType);
-    const char* GetMotionSetFileExtension(bool includingDot = true);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Shared By All Motion Types

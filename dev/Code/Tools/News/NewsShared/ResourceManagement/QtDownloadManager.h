@@ -16,7 +16,7 @@
 #include <functional>
 
 #include <QObject>
-#include <QStack>
+#include <QMap>
 
 namespace News
 {
@@ -31,10 +31,8 @@ namespace News
         QtDownloadManager();
         ~QtDownloadManager();
 
-        //! Download a file from url and return it as QByteArray
+        //! Asynchronously download a file from the input url and return it as QByteArray via the success callback
         /*!
-        This function retrieves a free QtDownloader from object pool, if none are found, creates a new one
-        and starts the download process.
         \param url - file url to download
         \param downloadSuccessCallback - if download is successful pass file's data as QByteArray
         \param downloadFailCallback - if download failed, pass error message
@@ -42,13 +40,21 @@ namespace News
         void Download(const QString& url,
             std::function<void(QByteArray)> downloadSuccessCallback,
             std::function<void()> downloadFailCallback);
+
+        //! Aborts all currently active downloads. Success/failure callbacks will not be called.
         void Abort();
 
     private:
-        QStack<QtDownloader*> m_free;
-        QList<QtDownloader*> m_busy;
+        void successfulReply(int downloadId, QByteArray data);
+        void failedReply(int downloadId);
 
-    private Q_SLOTS:
-        void downloadFinishedSlot(QtDownloader* pDownloader);
+        QtDownloader* m_worker = nullptr;
+
+        struct DownloadResponses
+        {
+            std::function<void(QByteArray)> downloadSuccessCallback;
+            std::function<void()> downloadFailCallback;
+        };
+        QMap<int, DownloadResponses> m_downloads;
     };
 }

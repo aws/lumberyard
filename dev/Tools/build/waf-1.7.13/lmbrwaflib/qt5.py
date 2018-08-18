@@ -120,6 +120,7 @@ Qt5DesignerComponents
 Qt5Designer
 Qt5Gui
 Qt5Help
+Qt5MacExtras
 Qt5MultimediaQuick_p
 Qt5Multimedia
 Qt5MultimediaWidgets
@@ -141,6 +142,7 @@ Qt5Svg
 Qt5Test
 Qt5WebKit
 Qt5WebKitWidgets
+Qt5WebChannel
 Qt5Widgets
 Qt5WinExtras
 Qt5X11Extras
@@ -156,8 +158,9 @@ QOBJECT_RE = re.compile(r'\s*Q_OBJECT\s*', flags=re.MULTILINE)
 
 
 # Derive a specific moc_files.<idx> folder name based on the base bldnode and idx
-def get_target_qt5_root(ctx, target_name):
-    base_qt_node = ctx.bldnode.make_node('qt5/{}'.format(target_name))
+def get_target_qt5_root(ctx, target_name, idx):
+
+    base_qt_node = ctx.bldnode.make_node('qt5/{}.{}'.format(target_name,idx))
     return base_qt_node
 
 # Change a target node from a changed extension to one marked as QT code generated
@@ -186,7 +189,7 @@ def change_target_qt5_node(ctx, project_path, target_name, relpath_target, idx):
     target_node_subdir = os.path.dirname(restricted_path)
 
     # Change the output target to the specific moc file folder
-    output_qt_dir = get_target_qt5_root(ctx, target_name).make_node(target_node_subdir)
+    output_qt_dir = get_target_qt5_root(ctx, target_name,idx).make_node(target_node_subdir)
     output_qt_dir.mkdir()
 
     output_qt_node = output_qt_dir.make_node(os.path.split(relpath_target)[1])
@@ -257,7 +260,7 @@ class qxx(Task.classes['cxx']):
         use the tool slow_qt5 instead (and enjoy the slow builds... :-( )
         """
 
-        cache_key = '{}.{}'.format(h_node.abspath(),self.generator.idx)
+        cache_key = '{}.{}'.format(h_node.abspath(),self.generator.target_uid)
 
         try:
             moc_cache = self.generator.bld.moc_cache
@@ -273,7 +276,7 @@ class qxx(Task.classes['cxx']):
                                                  self.generator.path,
                                                  self.generator.name,
                                                  relpath_target,
-                                                 self.generator.idx)
+                                                 self.generator.target_uid)
 
             tsk = moc_cache[cache_key] = Task.classes['moc'](env=self.env, generator=self.generator)
             tsk.set_inputs(h_node)
@@ -427,7 +430,7 @@ def create_rcc_task(self, node):
                                         self.path,
                                         self.name,
                                         relpath_target,
-                                        self.idx)
+                                        self.target_uid)
 
         qrc_task = self.create_task('rcc', node, rcnode)
         self.rcc_tasks.append(qrc_task)
@@ -441,7 +444,7 @@ def create_rcc_task(self, node):
                                         self.path,
                                         self.name,
                                         relpath_target,
-                                        self.idx)
+                                        self.target_uid)
 
         qrc_task = self.create_task('rcc', node, rcnode)
         self.rcc_tasks.append(qrc_task)
@@ -499,7 +502,7 @@ def create_uic_task(self, node):
                                          self.path,
                                          self.name,
                                          relpath_target,
-                                         self.idx)
+                                         self.target_uid)
     uictask.outputs = [target_node]
     self.uic_tasks.append(uictask)
 
@@ -529,10 +532,14 @@ def apply_qt5_includes(self):
         return
 
     base_moc_node = get_target_qt5_root(self.bld,
-                                        self.name)
+                                        self.name,
+                                        self.target_uid)
     if not hasattr(self, 'includes'):
         self.includes = []
     self.includes.append(base_moc_node)
+
+    if self.env.PLATFORM == 'win_x64_clang':
+        self.env.append_unique('CXXFLAGS', '-Wno-ignored-pragmas')
 
 
 @feature('qt5')
@@ -572,7 +579,7 @@ def apply_qt5(self):
                                                  self.path,
                                                  self.name,
                                                  relpath_target,
-                                                 self.idx)
+                                                 self.target_uid)
             qmtask = self.create_task('ts2qm', x, new_qm_node)
             qmtasks.append(qmtask)
 
@@ -591,7 +598,7 @@ def apply_qt5(self):
                                                  self.path,
                                                  self.name,
                                                  relpath_target,
-                                                 self.idx)
+                                                 self.target_uid)
             t = self.create_task('qm2rcc', qmnodes, new_rc_node)
 
             for x in qmtasks:
@@ -683,7 +690,7 @@ class automoc(Task.Task):
                                               self.generator.path,
                                               self.generator.name,
                                               relpath_target,
-                                              self.generator.idx)
+                                              self.generator.target_uid)
 
             moc_task = self.generator.create_task('moc', moc_header, moc_node)
             # Include the precompiled header, if applicable
@@ -887,7 +894,7 @@ bin_cache = {}
 QT_SDK_MISSING = Set()
 
 
-@conf 
+@conf
 def get_qt_version(self):
     # at the end, try to find qmake in the paths given
     # keep the one with the highest version
@@ -961,6 +968,7 @@ def find_qt5_binaries(self, platform):
         'win_x64_vs2013': 'msvc2013_64',
         'win_x64_vs2015': 'msvc2015_64',
         'win_x64_vs2017': 'msvc2015_64',  # Not an error, VS2017 links with VS2015 binaries
+        'win_x64_clang': 'msvc2015_64',
         'darwin_x64': 'clang_64',
         'linux_x64': 'gcc_64'
     }
@@ -1341,12 +1349,13 @@ def options(opt):
 
     opt.add_option('--translate', action="store_true", help="collect translation strings", dest="trans_qt5", default=False)
 
-SUPPORTED_QTLIB_PLATFORMS = ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_vs2017', 'darwin_x64', 'linux_x64']
+SUPPORTED_QTLIB_PLATFORMS = ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_vs2017', 'win_x64_clang', 'darwin_x64', 'linux_x64']
 
 PLATFORM_TO_QTGA_SUBFOLDER = {
     "win_x64_vs2013": ["win32/vc120/qtga.dll", "win32/vc120/qtgad.dll", "win32/vc120/qtgad.pdb"],
     "win_x64_vs2015": ["win32/vc140/qtga.dll", "win32/vc140/qtgad.dll", "win32/vc140/qtgad.pdb"],
     "win_x64_vs2017": ["win32/vc140/qtga.dll", "win32/vc140/qtgad.dll", "win32/vc140/qtgad.pdb"],  # Not an error, VS2017 links with VS2015 binaries
+    "win_x64_clang": ["win32/vc140/qtga.dll", "win32/vc140/qtgad.dll", "win32/vc140/qtgad.pdb"],
     "darwin_x64": ["macx/libqtga.dylib", "macx/libqtga_debug.dylib"],
     "linux_x64": []
 }
@@ -1499,7 +1508,7 @@ def qtlib_bootstrap(self, platform, configuration):
         if 'lib' in patterns:
             lib_pattern = patterns['lib']
         num_files_copied += _copy_folder(ctx.env.QT_LIB_DIR, dst_qtlib, 'lib', lib_pattern, is_required_pattern)
-        
+
         # special setup for linux_x64 platform
         if platform == 'linux_x64':
             _prepare_lib_folder_for_linux(os.path.join(dst_qtlib, 'lib'))
@@ -1578,7 +1587,7 @@ def qtlib_bootstrap(self, platform, configuration):
 
     # For windows, we will bootstrap copy the Qt Dlls to the main and rc subfolder
     # (for non-test and non-dedicated configurations)
-    if platform in ['win_x64_vs2017', 'win_x64_vs2015', 'win_x64_vs2013'] and configuration in \
+    if platform in ['win_x64_clang', 'win_x64_vs2017', 'win_x64_vs2015', 'win_x64_vs2013'] and configuration in \
             ['debug', 'profile', 'debug_test', 'profile_test', 'debug_dedicated', 'profile_dedicated']:
 
         copy_timer = Utils.Timer()

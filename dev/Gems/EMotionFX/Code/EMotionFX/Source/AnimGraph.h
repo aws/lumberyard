@@ -12,60 +12,60 @@
 
 #pragma once
 
-// include the required headers
-#include "EMotionFXConfig.h"
+#include <AzCore/Outcome/Outcome.h>
+#include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
+#include <EMotionFX/Source/AnimGraphNodeId.h>
+#include <EMotionFX/Source/BaseObject.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/Parameter/GroupParameter.h>
+#include <EMotionFX/Source/Parameter/ValueParameter.h>
 #include <MCore/Source/Distance.h>
-#include "BaseObject.h"
-
-MCORE_FORWARD_DECLARE(AttributeSettingsSet);
-MCORE_FORWARD_DECLARE(AttributeSettings);
-MCORE_FORWARD_DECLARE(AttributeSet);
-
 
 namespace EMotionFX
 {
     // forward declarations
+    class AnimGraphGameControllerSettings;
     class AnimGraphInstance;
-    class BlendTree;
-    class AnimGraphStateMachine;
+    class AnimGraphMotionNode;
     class AnimGraphNode;
     class AnimGraphNodeGroup;
-    class AnimGraphParameterGroup;
-    class AnimGraphTransitionCondition;
-    class AnimGraphGameControllerSettings;
-    class AnimGraphMotionNode;
     class AnimGraphObject;
-
+    class AnimGraphStateMachine;
+    class AnimGraphTransitionCondition;
+    class BlendTree;
+    
     //
     class EMFX_API AnimGraph
-        : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraph, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH);
-
     public:
-        static AnimGraph* Create(const char* name);
+        AZ_RTTI(AnimGraph, "{BD543125-CFEE-426C-B0AC-129F2A4C6BC8}")
+        AZ_CLASS_ALLOCATOR_DECL
 
-        AnimGraph* Clone(const char* name);
+        AnimGraph();
+        virtual ~AnimGraph();
 
-        void RecursiveUpdateAttributes();
-        void RecursiveResetIsOutputReadyFlag(AnimGraphInstance* animGraphInstance);
+        void Reinit();
+        bool InitAfterLoading();
 
-        const char* GetName() const;
+        /// Recursive update unique datas for all corresponding anim graph instances.
+        void UpdateUniqueData();
+
         const char* GetFileName() const;
-        const AZStd::string& GetNameString() const;
         const AZStd::string& GetFileNameString() const;
-        void SetName(const char* name);
         void SetFileName(const char* fileName);
 
         AnimGraphStateMachine* GetRootStateMachine() const;
         void SetRootStateMachine(AnimGraphStateMachine* stateMachine);
 
-        AnimGraphNode* RecursiveFindNode(const char* name) const;
-        AnimGraphNode* RecursiveFindNodeByID(uint32 id) const;         // name ID
-        AnimGraphNode* RecursiveFindNodeByUniqueID(uint32 id) const;   // unique ID
+        AnimGraphNode* RecursiveFindNodeByName(const char* nodeName) const;
+        bool IsNodeNameUnique(const AZStd::string& newNameCandidate, const AnimGraphNode* forNode) const;
+        AnimGraphNode* RecursiveFindNodeById(AnimGraphNodeId nodeId) const;
 
-        void RecursiveCollectNodesOfType(uint32 nodeTypeID, MCore::Array<AnimGraphNode*>* outNodes) const; // note: outNodes is NOT cleared internally, nodes are added to the array
-        void RecursiveCollectTransitionConditionsOfType(uint32 conditionTypeID, MCore::Array<AnimGraphTransitionCondition*>* outConditions) const; // note: outNodes is NOT cleared internally, nodes are added to the array
+
+        void RecursiveCollectNodesOfType(const AZ::TypeId& nodeType, MCore::Array<AnimGraphNode*>* outNodes) const; // note: outNodes is NOT cleared internally, nodes are added to the array
+        void RecursiveCollectTransitionConditionsOfType(const AZ::TypeId& conditionType, MCore::Array<AnimGraphTransitionCondition*>* outConditions) const; // note: outNodes is NOT cleared internally, nodes are added to the array
 
         uint32 RecursiveCalcNumNodes() const;
 
@@ -86,103 +86,205 @@ namespace EMotionFX
 
         void DecreaseInternalAttributeIndices(uint32 decreaseEverythingHigherThan);
 
-        AZStd::string GenerateNodeName(const MCore::Array<AZStd::string>& nameReserveList, const char* prefix = "Node") const;
-
-        void SetNumParameters(uint32 numParams);
-
-        void SetDescription(const char* description);
-        const char* GetDescription() const;
+        AZStd::string GenerateNodeName(const AZStd::unordered_set<AZStd::string>& nameReserveList, const char* prefix = "Node") const;
 
         //-------------------------------------------------------------------------------------------------------------
 
         /**
-         * Get the total number of parameters inside the anim graph. This will be the number of parameters from all groups as well as the ones
-         * that are not part of any parameter group.
-         * @result The number of parameters.
-         */
-        uint32 GetNumParameters() const;
+        * Get the total number of parameters inside this anim graph. This will be the number of parameters from all group parameters
+        * counting the groups (therefore is the amount of parameters that have a value)
+        * @result The number of parameters.
+        */
+        size_t GetNumParameters() const;
 
         /**
-         * Get a pointer to the given parameter.
-         * @param[in] index The index of the parameter to return.
-         * @result A pointer to the attribute info which represents the parameter.
+         * Get the total number of value parameters inside this anim graph. This will be the number of parameters from all group parameters.
+         * without counting the groups.
+         * @result The number of value parameters.
          */
-        MCore::AttributeSettings* GetParameter(uint32 index) const;
+        size_t GetNumValueParameters() const;
+
+        /**
+        * Find a parameter given an index.
+        * @param[in] index The index of the parameter to return (index based on all parameters, returned parameter could be a group).
+        * @result A pointer to the parameter.
+        */
+        const Parameter* FindParameter(size_t index) const;
+
+        /**
+         * Find a value parameter given an index.
+         * @param[in] index The index of the value parameter to return (index based on all the graph's value parameters).
+         * @result A pointer to the value parameter.
+         */
+        const ValueParameter* FindValueParameter(size_t index) const;
+
+        /**
+        * Get all the group parameters contained in this anim graph, recursively. This means that if a group is contained in
+        * another group within this anim graph, it is returned as well.
+        * @result The group parameters contained in this anim graph, recursively.
+        */
+        GroupParameterVector RecursivelyGetGroupParameters() const;
+
+        /**
+        * Get all the value parameters contained in this anim graph, recursively. This means that if a group contains more value
+        * parameters, those are returned as well.
+        * @result The value parameters contained in this anim graph, recursively.
+        */
+        const ValueParameterVector& RecursivelyGetValueParameters() const;
+
+        /**
+        * Get all the parameters contained directly by this anim graph. This means that if this anim graph contains a group which contains
+        * more parameters, those are not returned (but the group is).
+        * @result The parameters contained directly by this anim graph.
+        */
+        const ParameterVector& GetChildParameters() const;
+
+        /**
+        * Get all the value parameters contained directly by this anim graph. This means that if this anim graph contains a group which contains
+        * more value parameters, those are not returned.
+        * @result The value parameters contained directly by this anim graph.
+        */
+        ValueParameterVector GetChildValueParameters() const;
 
         /**
          * Find parameter by name.
          * @param[in] paramName The name of the parameter to search for.
-         * @result A pointer to the attribute info with the given name. nullptr will be returned in case it has not been found.
+         * @result A pointer to the parameter with the given name. nullptr will be returned in case it has not been found.
          */
-        MCore::AttributeSettings* FindParameter(const char* paramName) const;
+        const Parameter* FindParameterByName(const AZStd::string& paramName) const;
+
+        /**
+        * Find a value parameter by name. The above function is more generic and this more specific. If the client already knows that
+        * is searching for a value parameter, this function will be faster to execute.
+        * @param[in] paramName The name of the value parameter to search for.
+        * @result A pointer to the value parameter with the given name. nullptr will be returned in case it has not been found.
+        */
+        const ValueParameter* FindValueParameterByName(const AZStd::string& paramName) const;
+
+        /**
+        * Find a group parameter by name.
+        * @param groupName The group name to search for.
+        * @result A pointer to the group parameter with the given name. nullptr will be returned in case it has not been found.
+        */
+        const GroupParameter* FindGroupParameterByName(const AZStd::string& groupName) const;
+
+        /**
+        * Find the group parameter the given parameter is part of.
+        * @param[in] parameter The parameter to search the group parameter for.
+        * @result A pointer to the group parameter in which the given parameter is in. nullptr will be returned in case the parameter is not part of a group parameter.
+        */
+        const GroupParameter* FindParentGroupParameter(const Parameter* parameter) const;
 
         /**
          * Find parameter index by name.
          * @param[in] paramName The name of the parameter to search for.
-         * @result The index of the attribute info with the given name. MCORE_INVALIDINDEX32 will be returned in case it has not been found.
+         * @result The index of the parameter with the given name. AZ::Failure will be returned in case it has not been found.
          */
-        uint32 FindParameterIndex(const char* paramName) const;
+        AZ::Outcome<size_t> FindParameterIndexByName(const AZStd::string& paramName) const;
 
         /**
-         * Add the given attribute info as a parameter.
-         * The attribute info will be fully mananged and destroyed by the anim graph.
-         * @param[in] paramInfo A pointer to the attribute info to add.
-         */
-        void AddParameter(MCore::AttributeSettings* paramInfo);
+        * Find value parameter index by name. Index is relative to other value parameters.
+        * @param[in] paramName The name of the value parameter to search for.
+        * @result The index of the parameter with the given name. AZ::Failure will be returned in case it has not been found.
+        */
+        AZ::Outcome<size_t> FindValueParameterIndexByName(const AZStd::string& paramName) const;
 
         /**
-         * Insert the given attribute info as a parameter.
-         * The attribute info will be fully mananged and destroyed by the anim graph.
-         * @param[in] paramInfo A pointer to the attribute info to insert.
+        * Find parameter index by parameter.
+        * @param[in] parameter The parameter to search for.
+        * @result The index of the parameter. AZ::Failure will be returned in case it has not been found.
+        */
+        AZ::Outcome<size_t> FindParameterIndex(const Parameter* parameter) const;
+
+        /**
+        * Find value parameter index by parameter. Index is relative to other value parameters.
+        * @param[in] parameter The parameter to search for.
+        * @result The index of the parameter. AZ::Failure will be returned in case it has not been found.
+        */
+        AZ::Outcome<size_t> FindValueParameterIndex(const ValueParameter* parameter) const;
+
+        /**
+        * Find parameter index by parameter. Index is relative to its siblings.
+        * @param[in] parameter The parameter to search for.
+        * @result The index of the parameter. AZ::Failure will be returned in case it has not been found.
+        */
+        AZ::Outcome<size_t> FindRelativeParameterIndex(const Parameter* parameter) const;
+
+        /**
+         * Add the given parameter.
+         * The parameter will be fully managed and destroyed by this anim graph.
+         * @param[in] parameter A pointer to the parameter to add.
+         * @param[in] parent Parent group parameter. If nullptr, the parameter will be added to the root group parameter
+         * @result true if the parameter was added
+         */
+        bool AddParameter(Parameter* parameter, const GroupParameter* parent = nullptr);
+
+        /**
+         * Insert the given parameter at the specified index. The index is relative to the parent.
+         * The parameter will be fully managed and destroyed by this anim graph.
          * @param[in] index The index at which position the new parameter shall be inserted.
+         * @param[in] parameter A pointer to the attribute info to insert.
+         * @param[in] parent Parent group parameter. If nullptr, the parameter will be added to the root group parameter
+         * @result success if the parameter was added, the returned index is the absolute index among all parameter values
          */
-        void InsertParameter(MCore::AttributeSettings* paramInfo, uint32 index);
+        bool InsertParameter(size_t index, Parameter* parameter, const GroupParameter* parent = nullptr);
 
-        void SetParameter(uint32 index, MCore::AttributeSettings* paramInfo);
+        /**
+        * Rename a parameter's name.
+        * @param[in] parameter Parameter to rename.
+        * @param[in] newName New name.
+        */
+        bool RenameParameter(Parameter* parameter, const AZStd::string& newName);
 
-        void RemoveParameter(uint32 index, bool delFromMem = true);
-        bool RemoveParameter(const char* paramName, bool delFromMem = true);
-        void RemoveAllParameters(bool delFromMem = true);
+        /**
+        * Removes the parameter specified by index. The parameter will be deleted.
+        * @param[in] parameter The parameter to remove.
+        */
+        bool RemoveParameter(Parameter* parameter);
 
-        void SwapParameters(uint32 whatIndex, uint32 withIndex);
+        /**
+        * Iterate over all group parameters and make sure the given parameter is not part of any of the groups anymore.
+        * @param[in] parameterIndex The index of the parameter to be removed from all group parameters.
+        */
+        bool TakeParameterFromParent(const Parameter* parameter);
 
         //-------------------------------------------------------------------------------------------------------------
 
         /**
-         * Get the unique identification number for the anim graph.
+         * Get the unique identification number for this anim graph.
          * @return The unique identification number.
          */
         uint32 GetID() const;
 
         /**
-         * Set the unique identification number for the anim graph.
+         * Set the unique identification number for this anim graph.
          * @param[in] id The unique identification number.
          */
         void SetID(uint32 id);
 
         /**
-         * Set the dirty flag which indicates whether the user has made changes to the anim graph. This indicator is set to true
-         * when the user changed something like adding a node. When the user saves the anim graph, the indicator is usually set to false.
+         * Set the dirty flag which indicates whether the user has made changes to this anim graph. This indicator is set to true
+         * when the user changed something like adding a node. When the user saves this anim graph, the indicator is usually set to false.
          * @param dirty The dirty flag.
          */
         void SetDirtyFlag(bool dirty);
 
         /**
-         * Get the dirty flag which indicates whether the user has made changes to the anim graph. This indicator is set to true
-         * when the user changed something like adding a node. When the user saves the anim graph, the indicator is usually set to false.
+         * Get the dirty flag which indicates whether the user has made changes to this anim graph. This indicator is set to true
+         * when the user changed something like adding a node. When the user saves this anim graph, the indicator is usually set to false.
          * @return The dirty flag.
          */
         bool GetDirtyFlag() const;
 
         /**
-         * Set if we want to automatically unregister the anim graph from the anim graph manager when we delete the anim graph.
+         * Set if we want to automatically unregister this anim graph from this anim graph manager when we delete this anim graph.
          * On default this is set to true.
-         * @param enabled Set to true when you wish to automatically have the anim graph unregistered, otherwise set it to false.
+         * @param enabled Set to true when you wish to automatically have this anim graph unregistered, otherwise set it to false.
          */
         void SetAutoUnregister(bool enabled);
 
         /**
-         * Check if the anim graph is automatically being unregistered from the anim graph manager when the anim graph motion gets deleted or not.
+         * Check if this anim graph is automatically being unregistered from this anim graph manager when this anim graph motion gets deleted or not.
          * @result Returns true when it will get automatically deleted, otherwise false is returned.
          */
         bool GetAutoUnregister() const;
@@ -210,30 +312,16 @@ namespace EMotionFX
         /**
          * Find a node group based on the name and return a pointer.
          * @param groupName The group name to search for.
-         * @result A pointer to the node group with the given name. nullptr will be returned in case there is no node group in the anim graph with the given name.
+         * @result A pointer to the node group with the given name. nullptr will be returned in case there is no node group in this anim graph with the given name.
          */
         AnimGraphNodeGroup* FindNodeGroupByName(const char* groupName) const;
 
         /**
          * Find a node group index based on the name and return its index.
          * @param groupName The group name to search for.
-         * @result The index of the node group inside the anim graph, MCORE_INVALIDINDEX32 in case the node group wasn't found.
+         * @result The index of the node group inside this anim graph, MCORE_INVALIDINDEX32 in case the node group wasn't found.
          */
         uint32 FindNodeGroupIndexByName(const char* groupName) const;
-
-        /**
-         * Find a node group based on the name id and return a pointer.
-         * @param groupNameID The identification number returned by AnimGraphNodeGroup::GetNameID().
-         * @result A pointer to the node group with the given name. nullptr will be returned in case there is no node group in the anim graph with the given id.
-         */
-        AnimGraphNodeGroup* FindNodeGroupByNameID(uint32 groupNameID) const;
-
-        /**
-         * Find a node group index based on the name id and return its index.
-         * @param groupNameID The identification number returned by AnimGraphNodeGroup::GetNameID().
-         * @result The index of the node group inside the anim graph, MCORE_INVALIDINDEX32 in case the node group wasn't found.
-         */
-        uint32 FindNodeGroupIndexByNameID(uint32 groupNameID) const;
 
         /**
          * Add the given node group.
@@ -261,83 +349,15 @@ namespace EMotionFX
          */
         AnimGraphNodeGroup* FindNodeGroupForNode(AnimGraphNode* animGraphNode) const;
 
-        //-------------------------------------------------------------------------------------------------------------
-
         /**
-         * Get the number of parameter groups.
-         * @result The number of parameter groups.
-         */
-        uint32 GetNumParameterGroups() const;
-
-        /**
-         * Get a pointer to the given parameter group.
-         * @param index The parameter group index, which must be in range of [0..GetNumParameterGroups()-1].
-         */
-        AnimGraphParameterGroup* GetParameterGroup(uint32 index) const;
-
-        /**
-         * Find a parameter group based on the name and return a pointer.
-         * @param groupName The group name to search for.
-         * @result A pointer to the parameter group with the given name. nullptr will be returned in case there is no parameter group in the anim graph with the given name.
-         */
-        AnimGraphParameterGroup* FindParameterGroupByName(const char* groupName) const;
-
-        /**
-         * Find a parameter group index based on the name and return its index.
-         * @param groupName The group name to search for.
-         * @result The index of the parameter group inside the anim graph, MCORE_INVALIDINDEX32 in case the parameter group wasn't found.
-         */
-        uint32 FindParameterGroupIndexByName(const char* groupName) const;
-
-        /**
-         * Add the given parameter group.
-         * @param[in] parameterGroup A pointer to the new parameter group to add.
-         */
-        void AddParameterGroup(AnimGraphParameterGroup* parameterGroup);
-
-        /**
-         * Insert a parameter group at the given location.
-         * @param[in] parameterGroup A pointer to the new parameter group to add.
-         * @param[in] index The index position where to add the new parameter group.
-         */
-        void InsertParameterGroup(AnimGraphParameterGroup* parameterGroup, uint32 index);
-
-        /**
-         * Remove the parameter group at the given index.
-         * @param[in] index The parameter group index to remove. This value must be in range of [0..GetNumParameterGroups()-1].
-         * @param[in] delFromMem Set to true (default) when you wish to also delete the specified group from memory.
-         */
-        void RemoveParameterGroup(uint32 index, bool delFromMem = true);
-
-        /**
-         * Remove all parameter groups.
-         * @param[in] delFromMem Set to true (default) when you wish to also delete the parameter groups from memory.
-         */
-        void RemoveAllParameterGroups(bool delFromMem = true);
-
-        /**
-         * Find the parameter group the given parameter is part of and return a pointer to it.
-         * @param[in] parameterIndex The index of the parameter to search the parameter group for.
-         * @result A pointer to the parameter group in which the given parameter is in. nullptr will be returned in case the parameter is not part of a parameter group.
-         */
-        AnimGraphParameterGroup* FindParameterGroupForParameter(uint32 parameterIndex) const;
-
-        /**
-         * Find the index for the given parameter group.
-         * @param[in] parameterGroup A pointer to the parameter group of which we want to find the index inside the anim graph.
-         * @result The index to the given parameter group in range [0..GetNumParameterGroups()-1]. MCORE_INVALIDINDEX32 will be returned in case the parameter group is not part of the anim graph.
-         */
-        uint32 FindParameterGroupIndex(AnimGraphParameterGroup* parameterGroup) const;
-
-        /**
-         * Iterate over all parameter groups and make sure the given parameter is not part of any of the groups anymore.
-         * @param[in] parameterIndex The index of the parameter to be removed from all parameter groups.
-         */
-        void RemoveParameterFromAllGroups(uint32 parameterIndex);
+        * Finds cycles and removes connections that produce them. This method is intended to be used after loading
+        * @param[out] outRemovedConnectionsMessage if specified, it will compose a message of the connections that were removed
+        */
+        void FindAndRemoveCycles(AZStd::string* outRemovedConnectionsMessage = nullptr);
 
         //-------------------------------------------------------------------------------------------------------------
 
-        AnimGraphGameControllerSettings* GetGameControllerSettings() const;
+        AnimGraphGameControllerSettings& GetGameControllerSettings();
         bool GetRetargetingEnabled() const;
         void SetRetargetingEnabled(bool enabled);
 
@@ -345,56 +365,55 @@ namespace EMotionFX
         void AddObject(AnimGraphObject* object);       // registers the object in the array and modifies the object's object index value
         void RemoveObject(AnimGraphObject* object);    // doesn't actually remove it from memory, just removes it from the list
 
-        MCORE_INLINE uint32 GetNumObjects() const                                                          { return mObjects.GetLength(); }
-        MCORE_INLINE AnimGraphObject* GetObject(uint32 index) const                                        { return mObjects[index]; }
+        uint32 GetNumObjects() const                                                          { return mObjects.GetLength(); }
+        AnimGraphObject* GetObject(uint32 index) const                                        { return mObjects[index]; }
         void ReserveNumObjects(uint32 numObjects);
 
-        MCORE_INLINE uint32 GetNumNodes() const                                                            { return mNodes.GetLength(); }
-        MCORE_INLINE AnimGraphNode* GetNode(uint32 index) const                                            { return mNodes[index]; }
+        uint32 GetNumNodes() const                                                            { return mNodes.GetLength(); }
+        AnimGraphNode* GetNode(uint32 index) const                                            { return mNodes[index]; }
         void ReserveNumNodes(uint32 numNodes);
+        uint32 CalcNumMotionNodes() const;
 
-        MCORE_INLINE uint32 GetNumMotionNodes() const                                                      { return mMotionNodes.GetLength(); }
-        MCORE_INLINE AnimGraphMotionNode* GetMotionNode(uint32 index) const                                { return mMotionNodes[index]; }
-
-        MCORE_INLINE uint32 GetNumAnimGraphInstances() const                                               { return mAnimGraphInstances.GetLength(); }
-        MCORE_INLINE AnimGraphInstance* GetAnimGraphInstance(uint32 index) const                           { return mAnimGraphInstances[index]; }
-        void ReserveNumAnimGraphInstances(uint32 numInstances);
+        size_t GetNumAnimGraphInstances() const                                               { return m_animGraphInstances.size(); }
+        AnimGraphInstance* GetAnimGraphInstance(size_t index) const                           { return m_animGraphInstances[index]; }
+        void ReserveNumAnimGraphInstances(size_t numInstances);
         void AddAnimGraphInstance(AnimGraphInstance* animGraphInstance);
         void RemoveAnimGraphInstance(AnimGraphInstance* animGraphInstance);
-
-        MCore::AttributeSet* GetAttributeSet() const;
 
         void Lock();
         void Unlock();
 
+        static void Reflect(AZ::ReflectContext* context);
+
+        static AnimGraph* LoadFromFile(const AZStd::string& filename, AZ::SerializeContext* context);
+        static AnimGraph* LoadFromBuffer(const void* buffer, const AZStd::size_t length, AZ::SerializeContext* context);
+
+        bool SaveToFile(const AZStd::string& filename, AZ::SerializeContext* context) const;
+
+        void RemoveInvalidConnections(bool logWarnings=false);
 
     private:
-        void RecursiveCalcStatistics(Statistics& outStatistics, AnimGraphNode* animGraphNode, uint32 currentHierarchyDepth=0) const;
+        void RecursiveCalcStatistics(Statistics& outStatistics, AnimGraphNode* animGraphNode, uint32 currentHierarchyDepth = 0) const;
 
-        AnimGraph(const char* name);
-        ~AnimGraph();
+        void OnRetargetingEnabledChanged();
 
-        MCore::AttributeSettingsSet*            mParameterSettings;
-        MCore::AttributeSet*                    mAttributeSet;
-        MCore::Array<AnimGraphNodeGroup*>       mNodeGroups;
-        MCore::Array<AnimGraphParameterGroup*>  mParameterGroups;
-        MCore::Array<AnimGraphObject*>          mObjects;
-        MCore::Array<AnimGraphNode*>            mNodes;
-        MCore::Array<AnimGraphMotionNode*>      mMotionNodes;
-        MCore::Array<AnimGraphInstance*>        mAnimGraphInstances;
-        AZStd::string                           mName;
-        AZStd::string                           mFileName;
-        AZStd::string                           mDescription;
-        AnimGraphStateMachine*                  mRootStateMachine;
-        AnimGraphGameControllerSettings*        mGameControllerSettings;
-        MCore::Mutex                            mLock;
-        uint32                                  mID;                    /**< The unique identification number for the anim graph. */
-        bool                                    mAutoUnregister;        /**< Specifies whether we will automatically unregister this anim graph set from the anim graph manager or not, when deleting this object. */
-        bool                                    mRetarget;              /**< Is retargeting enabled on default? */
-        bool                                    mDirtyFlag;             /**< The dirty flag which indicates whether the user has made changes to the anim graph since the last file save operation. */
+        GroupParameter                                  m_rootParameter;   /**< root group parameter. */
+        ValueParameterVector                            m_valueParameters;      /**< Cached version of all parameters with values. */
+        AZStd::vector<AnimGraphNodeGroup*>              mNodeGroups;
+        MCore::Array<AnimGraphObject*>                  mObjects;
+        MCore::Array<AnimGraphNode*>                    mNodes;
+        AZStd::vector<AnimGraphInstance*>               m_animGraphInstances;
+        AZStd::string                                   mFileName;
+        AnimGraphStateMachine*                          mRootStateMachine;
+        AnimGraphGameControllerSettings*                mGameControllerSettings;
+        MCore::Mutex                                    mLock;
+        uint32                                          mID;                    /**< The unique identification number for this anim graph. */
+        bool                                            mAutoUnregister;        /**< Specifies whether we will automatically unregister this anim graph set from this anim graph manager or not, when deleting this object. */
+        bool                                            mRetarget;              /**< Is retargeting enabled on default? */
+        bool                                            mDirtyFlag;             /**< The dirty flag which indicates whether the user has made changes to this anim graph since the last file save operation. */
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
-        bool                                    mIsOwnedByRuntime;      /**< Set if the anim graph is used/owned by the engine runtime. */
+        bool                                            mIsOwnedByRuntime;      /**< Set if the anim graph is used/owned by the engine runtime. */
 #endif // EMFX_DEVELOPMENT_BUILD
     };
 }   // namespace EMotionFX

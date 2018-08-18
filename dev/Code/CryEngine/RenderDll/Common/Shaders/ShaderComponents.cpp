@@ -32,7 +32,7 @@ static void sParseTexMatrix(const char* szScr, const char* szAnnotations, std::v
         for (i = 0; i < pSamplers->size(); i++)
         {
             STexSamplerFX* sm = &(*pSamplers)[i];
-            if (!_stricmp(sm->m_szName.c_str(), szSampler))
+            if (!azstricmp(sm->m_szName.c_str(), szSampler))
             {
                 vpp->m_nID = (UINT_PTR)sm->m_pTarget;
                 break;
@@ -219,7 +219,7 @@ bool CShaderMan::mfParseParamComp(int comp, SCGParam* pCurParam, const char* szS
         }
         return true;
     }
-    if (!_stricmp(szSemantic, "NULL"))
+    if (!azstricmp(szSemantic, "NULL"))
     {
         return true;
     }
@@ -405,11 +405,11 @@ bool CShaderMan::mfParseFXParameter(SShaderFXParams& FXParams, SFXParam* pr, con
             nComps++;
             if ((cur.at(0) == '-' && isdigit(uint8(cur.at(1)))) || isdigit(uint8(cur.at(0))))
             {
-                sprintf(scr, "Comp = %s", cur.c_str());
+                azsprintf(scr, "Comp = %s", cur.c_str());
             }
             else
             {
-                sprintf(scr, "Comp '%s'", cur.c_str());
+                azsprintf(scr, "Comp '%s'", cur.c_str());
             }
             Semantic += scr;
         }
@@ -523,7 +523,7 @@ bool CShaderMan::mfParseFXSampler(SShaderFXParams& FXParams, SFXSampler* pr, con
     int n = 0;
     while (szName = sSamplers[n].szName)
     {
-        if (!stricmp(szName, szSemantic))
+        if (!azstricmp(szName, szSemantic))
         {
             assert(sSamplers[n].eSamplerType < 256);
             CGpr.m_eCGSamplerType = sSamplers[n].eSamplerType;
@@ -670,7 +670,7 @@ bool CShaderMan::mfParseFXTexture(
     {   // Run over all slots and try to associates the semantic name.
         // The semantic enum will be used in 'mfSetTexture' for setting texture 
         // loading and default properties.
-        if (!stricmp(szName, szSemantic))
+        if (!azstricmp(szName, szSemantic))
         {
             static_assert(ECGT_COUNT <= 256, "ECGTexture does not fit into 1 byte.");
             // Set the association with the texture enum as per above
@@ -698,7 +698,7 @@ bool SShaderParam::GetValue(const char* szName, DynArrayRef<SShaderParam>* Param
             continue;
         }
 
-        if (!_stricmp(sp->m_Name, szName))
+        if (!azstricmp(sp->m_Name, szName))
         {
             bRes = true;
             switch (sp->m_Type)

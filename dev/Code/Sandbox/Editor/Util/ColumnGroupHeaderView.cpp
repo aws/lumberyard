@@ -12,57 +12,13 @@
 #include "StdAfx.h"
 
 #include "ColumnGroupHeaderView.h"
-
 #include "ColumnGroupProxyModel.h"
 
-#include <QProxyStyle>
 #include <QStyleOptionHeader>
 #include <QPainter>
 #include <QEvent>
 #include <QMouseEvent>
 #include <QDebug>
-
-class ColumnGroupProxyStyle
-    : public QProxyStyle
-{
-public:
-    ColumnGroupProxyStyle(ColumnGroupHeaderView* view)
-        : QProxyStyle(view->style())
-        , m_view(view)
-    {
-        Q_ASSERT(m_view);
-    }
-
-    void drawControl(ControlElement element,
-        const QStyleOption* option,
-        QPainter* painter,
-        const QWidget* widget = 0) const override
-    {
-        if (element == QStyle::CE_Header)
-        {
-            auto model = qobject_cast<ColumnGroupProxyModel*>(m_view->model());
-            if (model)
-            {
-                auto opt = qstyleoption_cast<const QStyleOptionHeader*>(option);
-                auto newOpt(*opt);
-                newOpt.sortIndicator = QStyleOptionHeader::None;
-                if (model->IsColumnSorted(opt->section))
-                {
-                    auto sortOrder = model->SortOrder(opt->section);
-                    newOpt.sortIndicator = (sortOrder == Qt::AscendingOrder)
-                        ? QStyleOptionHeader::SortDown : QStyleOptionHeader::SortUp;
-                }
-                QProxyStyle::drawControl(element, &newOpt, painter, widget);
-                return;
-            }
-        }
-
-        QProxyStyle::drawControl(element, option, painter, widget);
-    }
-
-private:
-    ColumnGroupHeaderView* m_view;
-};
 
 
 ColumnGroupHeaderView::ColumnGroupHeaderView(QWidget* parent)
@@ -70,7 +26,6 @@ ColumnGroupHeaderView::ColumnGroupHeaderView(QWidget* parent)
     , m_groupModel(nullptr)
     , m_showGroups(false)
 {
-    setStyle(new ColumnGroupProxyStyle(this));
     setSectionsMovable(true);
     setStretchLastSection(true);
     setSortIndicatorShown(false);

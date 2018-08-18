@@ -136,9 +136,9 @@ public:
         RenderLabel(m_posX2, m_posY1, m_xAxisLabel.c_str());
         RenderLabel(m_posX1, m_posY2, m_yAxisLabel.c_str());
         char num[] = {' ', ' ', ' ', ' '};
-        itoa(m_maxValue, num, 10);
+        azitoa(m_maxValue, num, AZ_ARRAY_SIZE(num), 10);
         RenderLabel(m_posX1, m_posY2 + m_textScale, num);
-        itoa(m_minValue, num, 10);
+        azitoa(m_minValue, num, AZ_ARRAY_SIZE(num), 10);
         RenderLabel(m_posX1 - m_textScale, m_posY1, num);
     }
 

@@ -56,12 +56,12 @@ CMannNewSubADBFilterDialog::CMannNewSubADBFilterDialog(SMiniSubADB* pData, IAnim
     connect(m_ui->NAME_EDIT, &QLineEdit::textChanged, this, &CMannNewSubADBFilterDialog::OnFilenameChanged);
     connect(m_ui->FRAG2USED, &QToolButton::clicked, this, &CMannNewSubADBFilterDialog::OnFrag2Used);
     connect(m_ui->USED2FRAG, &QToolButton::clicked, this, &CMannNewSubADBFilterDialog::OnUsed2Frag);
-    connect(m_ui->FRAG_ID_LIST->selectionModel(), &QItemSelectionModel::selectionChanged,
+    connect(m_ui->FRAG_ID_LIST->selectionModel(), &QItemSelectionModel::selectionChanged, m_ui->FRAG2USED,
         [&](const QItemSelection& selected, const QItemSelection&)
         {
             m_ui->FRAG2USED->setEnabled(selected.size() > 0);
         });
-    connect(m_ui->FRAG_USED_ID_LIST->selectionModel(), &QItemSelectionModel::selectionChanged,
+    connect(m_ui->FRAG_USED_ID_LIST->selectionModel(), &QItemSelectionModel::selectionChanged, m_ui->USED2FRAG,
         [&](const QItemSelection& selected, const QItemSelection&)
         {
             m_ui->USED2FRAG->setEnabled(selected.size() > 0);

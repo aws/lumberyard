@@ -14,6 +14,7 @@
 #include "MorphTargetsWindowPlugin.h"
 #include <EMotionFX/Source/MorphSetup.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
+#include <MCore/Source/StringConversions.h>
 #include <QLabel>
 #include <QPixmap>
 #include <QVBoxLayout>

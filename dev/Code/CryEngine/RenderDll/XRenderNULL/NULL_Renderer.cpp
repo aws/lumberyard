@@ -472,7 +472,7 @@ bool CNULLRenderer::SetRenderTarget(int nHandle, SDepthTexture* pDepthSurf)
     return true;
 }
 
-SDepthTexture* CNULLRenderer::CreateDepthSurface(int nWidth, int nHeight, bool bAA)
+SDepthTexture* CNULLRenderer::CreateDepthSurface(int nWidth, int nHeight)
 {
     return nullptr;
 }
@@ -640,7 +640,7 @@ ITexture* CNULLRenderer::EF_CreateCompositeTexture(int type, const char* szName,
     return CTextureManager::Instance()->GetNoTexture();
 }
 
-void CNULLRenderer::FX_ClearTarget(CTexture* pTex)
+void CNULLRenderer::FX_ClearTarget(ITexture* pTex)
 {
 }
 
@@ -676,7 +676,7 @@ bool CNULLRenderer::FX_PopRenderTarget(int nTarget)
     return true;
 }
 
-SDepthTexture* CNULLRenderer::FX_CreateDepthSurface(int nWidth, int nHeight, bool bAA)
+IDynTexture* CNULLRenderer::CreateDynTexture2(uint32 nWidth, uint32 nHeight, uint32 nTexFlags, const char* szSource, ETexPool eTexPool)
 {
     return nullptr;
 }

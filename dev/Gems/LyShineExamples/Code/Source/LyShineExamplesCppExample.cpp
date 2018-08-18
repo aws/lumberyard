@@ -128,7 +128,6 @@ namespace LyShineExamples
         if (behaviorContext)
         {
             behaviorContext->EBus<LyShineExamplesCppExampleBus>("LyShineExamplesCppExampleBus")
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("CreateCanvas", &LyShineExamplesCppExampleBus::Events::CreateCanvas)
                 ->Event("DestroyCanvas", &LyShineExamplesCppExampleBus::Events::DestroyCanvas);
         }

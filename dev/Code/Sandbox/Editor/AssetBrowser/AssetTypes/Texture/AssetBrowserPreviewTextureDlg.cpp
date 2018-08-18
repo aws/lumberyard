@@ -13,7 +13,7 @@
 
 // Description : Implementation of AssetBrowserPreviewTextureDlg.h
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AssetBrowser/AssetBrowserPreviewDlg.h"
 #include "AssetBrowserPreviewTextureDlg.h"
 #include "AssetTextureItem.h"

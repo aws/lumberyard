@@ -34,7 +34,7 @@ namespace EMotionFX
     class EMFX_API TransformData
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(TransformData, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_TRANSFORMDATA);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**

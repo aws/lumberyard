@@ -10,16 +10,16 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "Annotations.hxx"
 #include <Woodpecker/Driller/Workspaces/Workspace.h>
 #include <AzCore/std/sort.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/UserSettings/UserSettings.h>
 #include <AzCore/IO/SystemFile.h>
-#include <AzCore/IO/genericstreams.h>
+#include <AzCore/IO/GenericStreams.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <AzCore/Serialization/objectstream.h>
+#include <AzCore/Serialization/ObjectStream.h>
 
 
 

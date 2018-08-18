@@ -41,6 +41,8 @@ namespace AZ
 
         TICK_PHYSICS        = 200,     ///< Suggested tick handler position for physics components.
 
+        TICK_ATTACHMENT     = 500,     ///< Suggested tick handler position for attachment components.
+
         TICK_DEFAULT        = 1000,    ///< Default tick handler position when the handler is constructed.
 
         TICK_UI             = 2000,    ///< Suggested tick handler position for UI components.

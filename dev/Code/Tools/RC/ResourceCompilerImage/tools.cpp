@@ -13,7 +13,7 @@
 #include <platform.h>
 #if defined(AZ_PLATFORM_WINDOWS)
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "tools.h"
 
 

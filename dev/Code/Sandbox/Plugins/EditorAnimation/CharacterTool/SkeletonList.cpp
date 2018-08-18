@@ -134,7 +134,7 @@ namespace CharacterTool
         for (size_t i = 0; i < m_skeletonList.size(); ++i)
         {
             const SEntry& entry = m_skeletonList[i];
-            if (stricmp(entry.path.c_str(), path) == 0)
+            if (azstricmp(entry.path.c_str(), path) == 0)
             {
                 return entry.alias;
             }
@@ -148,7 +148,7 @@ namespace CharacterTool
         for (size_t i = 0; i < m_skeletonList.size(); ++i)
         {
             const SEntry& entry = m_skeletonList[i];
-            if (stricmp(entry.alias.c_str(), name) == 0)
+            if (azstricmp(entry.alias.c_str(), name) == 0)
             {
                 return entry.path;
             }

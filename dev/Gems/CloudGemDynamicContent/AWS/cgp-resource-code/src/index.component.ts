@@ -30,12 +30,12 @@ export enum DynamicContentStage {
 export class DynamicContentIndexComponent extends AbstractCloudGemIndexComponent {
     @Input() context: any;
     private _apiHandler: DynamicContentApi;
-    private stages: [{ displayName: string, state: string, value: number, tree: Array<any> }];
+    private stages: { displayName: string, state: string, value: number, tree: Array<any> }[];
     private bucket: string;
     private bucketHeight: string;
     private mode: DynamicContentMode;
     private currentDynamicContent: any;
-    private transitionStages: [{ name: string, val: number }];
+    private transitionStages: { name: string, val: number }[];
     private isLoading: boolean;
     private hasNoContent: boolean;
     private publicStage: { displayName: string, state: string, value: number, tree: Array<any> };
@@ -90,8 +90,12 @@ export class DynamicContentIndexComponent extends AbstractCloudGemIndexComponent
         let startDate = model.StagingStart ? new Date(model.StagingStart) : null;
         let endDate = model.StagingEnd ? new Date(model.StagingEnd) : null;
 
+        
         this.currentDynamicContent.start = DateTimeRangePickerComponent.default(startDate);
-        this.currentDynamicContent.end = DateTimeRangePickerComponent.default(endDate);
+        let datetime = DateTimeRangePickerComponent.default(endDate)
+        if (!model.StagingEnd)
+            datetime.time.minute = 1;
+        this.currentDynamicContent.end = datetime;
 
         this.currentDynamicContent.start.isScheduled = DateTimeUtil.isValid(startDate);
         this.currentDynamicContent.end.isScheduled = DateTimeUtil.isValid(endDate);
@@ -120,57 +124,38 @@ export class DynamicContentIndexComponent extends AbstractCloudGemIndexComponent
         this.getContent();
     }
 
-    protected dprModelUpdated(model): void {
-        // trigger new round of change detection
-        setTimeout(() => {
-            this.currentDynamicContent.start = model.start;
-            this.currentDynamicContent.end = model.end;
-            this.currentDynamicContent.start.valid = true;
-            this.currentDynamicContent.end.valid = true;
-            this.currentDynamicContent.end.valid = true;
-            this.currentDynamicContent.start.isScheduled = model.hasStart;
-            this.currentDynamicContent.end.isScheduled = model.hasEnd;
-            this.currentDynamicContent.hasRequiredStartDateTime = (this.currentDynamicContent.stage === 'Scheduled' && !model.hasEnd) ? true : false;
-            this.currentDynamicContent.hasRequiredEndDateTime = (this.currentDynamicContent.stage === 'Scheduled' && !model.hasStart) ? true : false;
-        });
+    protected dprModelUpdated(model): void {        
+        this.currentDynamicContent.start = model.start;
+        this.currentDynamicContent.end = model.end;
+        this.currentDynamicContent.start.valid = model.start.valid;
+        this.currentDynamicContent.end.valid = model.end.valid;        
+        this.currentDynamicContent.start.isScheduled = model.hasStart;
+        this.currentDynamicContent.end.isScheduled = model.hasEnd;
+        this.currentDynamicContent.hasRequiredStartDateTime = (this.currentDynamicContent.stage === 'Scheduled' && !model.hasEnd) ? true : false;
+        this.currentDynamicContent.hasRequiredEndDateTime = (this.currentDynamicContent.stage === 'Scheduled' && !model.hasStart) ? true : false;
+        this.currentDynamicContent.datetime = {
+            valid: model.valid,
+            message: model.date.message
+        }
     }
 
     protected validate(model): boolean {
         let isValid: boolean = true;
 
-        let stageIdx = Number(this.currentDynamicContent.stage);
-        isValid = isValid && stageIdx >= 0
-        if (DynamicContentStage.Public == stageIdx) {
+        let stageIdx: keyof typeof DynamicContentStage = this.currentDynamicContent.stage;        
+        if (DynamicContentStage[DynamicContentStage.Public] == this.currentDynamicContent.stage) {
             this.currentDynamicContent.end.isScheduled = false;
             this.currentDynamicContent.start.isScheduled = false;
         } else {
-            if (this.currentDynamicContent.start.isScheduled) {
-                isValid = isValid && this.validateDate(model.start);
-            }
-            if (this.currentDynamicContent.end.isScheduled) {
-                isValid = isValid && this.validateDate(model.end);
-            }
-
-            if (this.currentDynamicContent.start.isScheduled && this.currentDynamicContent.end.isScheduled) {
-                let start = DateTimeUtil.toObjDate(model.start);
-                let end = DateTimeUtil.toObjDate(model.end);
-                let isValidDateRange = (start < end);
-                isValid = isValid && isValidDateRange
-                if (!isValidDateRange) {
-                    this.currentDynamicContent.validation.date = { message: "The start date must be less than the end date." }
-                    this.currentDynamicContent.validation.date.isValid = false;
-                }
-            }
+            isValid = isValid && model.datetime.valid;
         }
 
         return isValid;
     }
 
-    private validateDate(model): boolean {
-        return model && model.date && model.date.year && model.date.month && model.date.day ? true : false;
-    }
-
     protected onSubmit(model): void {
+        if (!this.validate(model))
+            return
 
         var submitStage = "PRIVATE";
         for (let stage of this.stages) {

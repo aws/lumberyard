@@ -28,7 +28,7 @@
 #include <IRenderer.h>
 #include <IGameFramework.h>
 #include <IGame.h>
-#include "../CryAction/IViewSystem.h"
+#include <IViewSystem.h>
 
 //////////////////////////////////////////////////////////////////////////
 // Serialization for anim nodes & param types
@@ -584,7 +584,7 @@ bool UiAnimationSystem::AbortSequence(IUiAnimSequence* pSequence, bool bLeaveTim
     assert(pSequence);
 
     // to avoid any camera blending after aborting a cut scene
-    IViewSystem* pViewSystem = gEnv->pGame->GetIGameFramework()->GetIViewSystem();
+    IViewSystem* pViewSystem = gEnv->pSystem->GetIViewSystem();
     if (pViewSystem)
     {
         pViewSystem->SetBlendParams(0, 0, 0);

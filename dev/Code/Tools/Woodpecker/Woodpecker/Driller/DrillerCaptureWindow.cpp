@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "DrillerCaptureWindow.hxx"
 #include <Woodpecker/Driller/DrillerCaptureWindow.moc>
@@ -19,7 +19,7 @@
 #include "DrillerAggregator.hxx"
 #include "ChannelControl.hxx"
 #include "ChannelProfilerWidget.hxx"
-#include "combinedEventsControl.hxx"
+#include "CombinedEventsControl.hxx"
 #include "DrillerDataContainer.h"
 #include "DrillerMainWindow.hxx"
 #include "DrillerOperationTelemetryEvent.h"
@@ -28,12 +28,12 @@
 #include <AzToolsFramework/UI/LegacyFramework/UIFrameworkAPI.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 
-#include <AzCore/debug/trace.h>
+#include <AzCore/Debug/Trace.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/delegate/delegate.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
-#include "qtgui/QPalette.h"
+#include "QtGui/QPalette"
 #include "Annotations/AnnotationHeaderView.hxx"
 #include "Annotations/ConfigureAnnotationsWindow.hxx"
 
@@ -1447,10 +1447,10 @@ namespace Driller
             // fall through to prompting the user for a DRL to use
             else
             {
-                QString fileName = QFileDialog::getOpenFileName(this, "Find Driller File", localFileName, "Driller Files (*.drl)");
-                if (!fileName.isNull())
+                QString userFileName = QFileDialog::getOpenFileName(this, "Find Driller File", localFileName, "Driller Files (*.drl)");
+                if (!userFileName.isNull())
                 {
-                    successFileName = fileName;
+                    successFileName = userFileName;
                 }
             }
 

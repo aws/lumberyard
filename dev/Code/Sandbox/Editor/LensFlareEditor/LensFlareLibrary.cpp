@@ -87,3 +87,9 @@ IOpticsElementBasePtr CLensFlareLibrary::GetOpticsOfItem(const char* szflareName
 
     return pOptics;
 }
+
+
+void CLensFlareLibrary::OnInternalVariableChange(IVariable* pVar)
+{
+    SetModified(true);
+}

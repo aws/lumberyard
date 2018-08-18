@@ -33,7 +33,7 @@ namespace EMotionFX
     class EMFX_API MotionInstancePool
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MotionInstancePool, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONINSTANCEPOOL)
+        AZ_CLASS_ALLOCATOR_DECL
         friend class MotionInstance;
 
     public:

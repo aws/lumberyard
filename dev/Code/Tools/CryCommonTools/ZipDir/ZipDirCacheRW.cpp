@@ -15,7 +15,7 @@
 #include <smartptr.h>
 #include "Util.h"
 #include "ZipFileFormat.h"
-#include "ZipDirStructures.h"
+#include "zipdirstructures.h"
 #include "ZipDirTree.h"
 #include "ZipDirList.h"
 #include "ZipDirCache.h"
@@ -802,7 +802,8 @@ static void PackFileFromDisc(PackFileJob* job)
     lt.LowPart = ft.dwLowDateTime;
     job->modTime = lt.QuadPart;
 
-    FILE* f = fopen(job->realFilename, "rb");
+    FILE* f = nullptr; 
+    azfopen(&f, job->realFilename, "rb");
     if (!f)
     {
         job->status = PACKFILE_FAILED;
@@ -1651,7 +1652,8 @@ bool ZipDir::CacheRW::RelinkZip()
     {
         string strNewFilePath = m_strFilePath + "$" + GetRandomName(nAttempt);
 
-        FILE* f = fopen (strNewFilePath.c_str(), "wb");
+        FILE* f = nullptr; 
+        azfopen(&f, strNewFilePath.c_str(), "wb");
         if (f)
         {
             bool bOk = RelinkZip(f);
@@ -1672,7 +1674,8 @@ bool ZipDir::CacheRW::RelinkZip()
             if (localFileIO.Rename(strNewFilePath.c_str(), m_strFilePath.c_str()) == 0)
             {
                 // successfully renamed - reopen
-                m_pFile = fopen (m_strFilePath.c_str(), "r+b");
+                m_pFile = nullptr; 
+                azfopen(&m_pFile, m_strFilePath.c_str(), "r+b");
                 return m_pFile == NULL;
             }
             else

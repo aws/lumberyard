@@ -27,7 +27,6 @@
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 
 #include <MathConversion.h>
-#include <AzFramework/Math/MathUtils.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/Components/TransformComponent.h>
 
@@ -99,6 +98,8 @@ namespace LmbrCentral
                 ->Event("GetParticleSizeScaleX", &ParticleComponentRequestBus::Events::GetParticleSizeScaleX)
                 ->Event("SetParticleSizeScaleY", &ParticleComponentRequestBus::Events::SetParticleSizeScaleY)
                 ->Event("GetParticleSizeScaleY", &ParticleComponentRequestBus::Events::GetParticleSizeScaleY)
+                ->Event("SetParticleSizeScaleZ", &ParticleComponentRequestBus::Events::SetParticleSizeScaleZ)
+                ->Event("GetParticleSizeScaleZ", &ParticleComponentRequestBus::Events::GetParticleSizeScaleZ)
                 ->Event("SetLifetimeStrength", &ParticleComponentRequestBus::Events::SetLifetimeStrength)
                 ->Event("EnableAudio", &ParticleComponentRequestBus::Events::EnableAudio)
                 ->Event("SetRTPC", &ParticleComponentRequestBus::Events::SetRTPC)
@@ -115,6 +116,7 @@ namespace LmbrCentral
                 ->VirtualProperty("GlobalSizeScale", "GetGlobalSizeScale", "SetGlobalSizeScale")
                 ->VirtualProperty("ParticleSizeScaleX", "GetParticleSizeScaleX", "SetParticleSizeScaleX")
                 ->VirtualProperty("ParticleSizeScaleY", "GetParticleSizeScaleY", "SetParticleSizeScaleY")
+                ->VirtualProperty("ParticleSizeScaleZ", "GetParticleSizeScaleZ", "SetParticleSizeScaleZ")
                 ;
         }
     }
@@ -141,6 +143,7 @@ namespace LmbrCentral
                 Field("GlobalSizeScale", &ParticleEmitterSettings::m_sizeScale)->
                 Field("ParticleSizeX", &ParticleEmitterSettings::m_particleSizeScaleX)->
                 Field("ParticleSizeY", &ParticleEmitterSettings::m_particleSizeScaleY)->
+                Field("ParticleSizeZ", &ParticleEmitterSettings::m_particleSizeScaleZ)->
                 Field("ParticleSizeRandom", &ParticleEmitterSettings::m_particleSizeScaleRandom)->
                 Field("Speed Scale", &ParticleEmitterSettings::m_speedScale)->
                 Field("Strength", &ParticleEmitterSettings::m_strength)->
@@ -173,6 +176,7 @@ namespace LmbrCentral
                 ->Property("PulsePeriod", BehaviorValueProperty(&ParticleEmitterSettings::m_pulsePeriod))
                 ->Property("ParticleSizeScaleX", BehaviorValueProperty(&ParticleEmitterSettings::m_particleSizeScaleX))
                 ->Property("ParticleSizeScaleY", BehaviorValueProperty(&ParticleEmitterSettings::m_particleSizeScaleY))
+                ->Property("ParticleSizeScaleZ", BehaviorValueProperty(&ParticleEmitterSettings::m_particleSizeScaleZ))
                 ->Property("ParticleSizeRandom", BehaviorValueProperty(&ParticleEmitterSettings::m_particleSizeScaleRandom))
                 ->Property("LifetimeStrength", BehaviorValueProperty(&ParticleEmitterSettings::m_strength))
                 ->Property("IgnoreRotation", BehaviorValueProperty(&ParticleEmitterSettings::m_ignoreRotation))
@@ -384,6 +388,17 @@ namespace LmbrCentral
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
+    void ParticleComponent::SetParticleSizeScaleZ(float scale)
+    {
+        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        {
+            return;
+        }
+
+        m_settings.m_particleSizeScaleZ = scale;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
     void ParticleComponent::SetPulsePeriod(float pulse)
     {
         if (pulse < 0)
@@ -490,6 +505,11 @@ namespace LmbrCentral
         return m_settings.m_particleSizeScaleY;
     }
 
+    float ParticleComponent::GetParticleSizeScaleZ()
+    {
+        return m_settings.m_particleSizeScaleZ;
+    }
+
     float ParticleComponent::GetPulsePeriod()
     {
         return m_settings.m_pulsePeriod;
@@ -529,7 +549,8 @@ namespace LmbrCentral
 
     void ParticleEmitter::Set(const AZStd::string& emitterName, const ParticleEmitterSettings& settings)
     {
-        if (emitterName.empty())
+        // dedicated servers do not load particles, so lets early out.
+        if (emitterName.empty() || gEnv->IsDedicated())
         {
             return;
         }
@@ -543,7 +564,7 @@ namespace LmbrCentral
             int featureMask = RFT_COMPUTE_SHADERS | RFT_HW_VERTEX_STRUCTUREDBUF;
             if (m_effect->GetParticleParams().eEmitterType == ParticleParams::EEmitterType::GPU && (gEnv->pRenderer->GetFeatures() & featureMask) != featureMask)
             {
-                AZ_Warning("Particle Component", "GPU Particles are not supported for this platform. Emitter using GPU particles is: %s", emitterName.c_str());
+                AZ_Warning("Particle Component", false, "GPU Particles are not supported for this platform. Emitter using GPU particles is: %s", emitterName.c_str());
                 return;
             }
             //Spawn an emitter with the setting
@@ -551,7 +572,7 @@ namespace LmbrCentral
         }
         else
         {
-            AZ_Warning("Particle Component", "Could not find particle emitter: %s", emitterName.c_str());
+            AZ_Warning("Particle Component", false, "Could not find particle emitter: %s", emitterName.c_str());
         }
     }
     
@@ -572,6 +593,7 @@ namespace LmbrCentral
         params.sAudioRTPC = settings.m_audioRTPC.c_str();
         params.particleSizeScale.x = settings.m_particleSizeScaleX;
         params.particleSizeScale.y = settings.m_particleSizeScaleY;
+        params.particleSizeScale.z = settings.m_particleSizeScaleZ;
         params.particleSizeScaleRandom = settings.m_particleSizeScaleRandom;
         return params;
     }

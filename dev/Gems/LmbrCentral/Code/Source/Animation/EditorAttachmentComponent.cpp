@@ -15,7 +15,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Math/Quaternion.h>
-#include <AzFramework/Math/MathUtils.h>
+#include <AzCore/Math/Transform.h>
 #include <ICryAnimation.h>
 
 namespace LmbrCentral
@@ -123,7 +123,7 @@ namespace LmbrCentral
 
     AZ::Transform EditorAttachmentComponent::GetTargetOffset() const
     {
-        AZ::Transform offset = AzFramework::ConvertEulerDegreesToTransformPrecise(m_rotationOffset);
+        AZ::Transform offset = AZ::ConvertEulerDegreesToTransformPrecise(m_rotationOffset);
         offset.SetTranslation(m_positionOffset);
         offset.MultiplyByScale(m_scaleOffset);
         return offset;

@@ -50,9 +50,9 @@ namespace GridMate
 
     inline ILevelSystem* GetLevelSystem()
     {
-        if (auto* gameFramework = GetGameFramework())
+        if (gEnv->pSystem)
         {
-            return gameFramework->GetILevelSystem();
+            return gEnv->pSystem->GetILevelSystem();
         }
 
         return nullptr;

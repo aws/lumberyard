@@ -17,7 +17,7 @@
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
-#include <AZCore/Component/TransformBus.h>
+#include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Physics/PhysicsComponentBus.h>
 #include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <LmbrCentral/Scripting/TagComponentBus.h>

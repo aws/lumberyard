@@ -108,7 +108,7 @@ typedef union UnINT64
 struct SRendItem
 {
     uint32 SortVal;
-    CRendElementBase* pElem;
+    IRenderElement* pElem;
     union
     {
         uint32 ObjSort;
@@ -719,7 +719,7 @@ struct SRenderPipeline
     CShader* m_pReplacementShader;
     CRenderObject* m_pCurObject;
     CRenderObject* m_pIdendityRenderObject;
-    CRendElementBase* m_pRE;
+    IRenderElement* m_pRE;
     CRendElementBase* m_pEventRE;
     int m_RendNumVerts;
     uint32 m_nBatchFilter;           // Batch flags ( FB_ )
@@ -1033,6 +1033,11 @@ public:
         pSizer->AddObject(m_RIs);
         pSizer->AddObject(m_RTStats);
     }
+
+    void SetRenderElement(IRenderElement* renderElement)
+    {
+        m_pRE = renderElement;
+    }
 };
 
 extern CryCriticalSection m_sREResLock;
@@ -1157,12 +1162,12 @@ struct SCompareItem_Terrain
 {
     bool operator()(const SRendItem& a, const SRendItem& b) const
     {
-        CRendElementBase* pREa = a.pElem;
-        CRendElementBase* pREb = b.pElem;
+        IRenderElement* pREa = a.pElem;
+        IRenderElement* pREb = b.pElem;
 
-        if (pREa->m_CustomTexBind[0] != pREb->m_CustomTexBind[0])
+        if (pREa->GetCustomTexBind(0) != pREb->GetCustomTexBind(0))
         {
-            return pREa->m_CustomTexBind[0] < pREb->m_CustomTexBind[0];
+            return pREa->GetCustomTexBind(0) < pREb->GetCustomTexBind(0);
         }
 
         return a.ObjSort < b.ObjSort;
@@ -1177,22 +1182,22 @@ struct SCompareItem_TerrainLayers
         //if (a.ObjSort != b.ObjSort)
         //  return a.ObjSort < b.ObjSort;
 
-        float pSurfTypeA = ((float*)a.pElem->m_CustomData)[8];
-        float pSurfTypeB = ((float*)b.pElem->m_CustomData)[8];
+        float pSurfTypeA = ((float*)a.pElem->GetCustomData())[8];
+        float pSurfTypeB = ((float*)b.pElem->GetCustomData())[8];
         if (pSurfTypeA != pSurfTypeB)
         {
             return (pSurfTypeA < pSurfTypeB);
         }
 
-        pSurfTypeA = ((float*)a.pElem->m_CustomData)[9];
-        pSurfTypeB = ((float*)b.pElem->m_CustomData)[9];
+        pSurfTypeA = ((float*)a.pElem->GetCustomData())[9];
+        pSurfTypeB = ((float*)b.pElem->GetCustomData())[9];
         if (pSurfTypeA != pSurfTypeB)
         {
             return (pSurfTypeA < pSurfTypeB);
         }
 
-        pSurfTypeA = ((float*)a.pElem->m_CustomData)[11];
-        pSurfTypeB = ((float*)b.pElem->m_CustomData)[11];
+        pSurfTypeA = ((float*)a.pElem->GetCustomData())[11];
+        pSurfTypeB = ((float*)b.pElem->GetCustomData())[11];
         return (pSurfTypeA < pSurfTypeB);
     }
 };

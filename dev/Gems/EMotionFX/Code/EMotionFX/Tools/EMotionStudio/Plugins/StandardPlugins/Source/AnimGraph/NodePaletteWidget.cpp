@@ -32,6 +32,8 @@
 
 namespace EMStudio
 {
+    AZ_CLASS_ALLOCATOR_IMPL(NodePaletteWidget::EventHandler, EMotionFX::EventHandlerAllocator, 0)
+
     // return the mime data
     QMimeData* NodePaletteList::mimeData(const QList<QListWidgetItem*> items) const
     {
@@ -40,10 +42,13 @@ namespace EMStudio
             return nullptr;
         }
 
+        const QListWidgetItem* item = items.at(0);
+
         // create the data and set the text
         QMimeData* mimeData = new QMimeData();
-        QString textData = "EMotionFX::AnimGraphNode;" + items.at(0)->toolTip(); // the tooltip contains the class name
-        textData += ";" + items.at(0)->text(); // add the palette name as generated name prefix (spaces will be removed from it
+        QString textData = "EMotionFX::AnimGraphNode;";
+        textData += item->data(Qt::UserRole).toString().toUtf8().data();
+        textData += ";" + item->text(); // add the palette name as generated name prefix (spaces will be removed from it
         mimeData->setText(textData);
 
         return mimeData;
@@ -79,7 +84,7 @@ namespace EMStudio
 
     NodePaletteWidget::EventHandler* NodePaletteWidget::EventHandler::Create(NodePaletteWidget* widget)
     {
-        return new NodePaletteWidget::EventHandler(widget);
+        return aznew NodePaletteWidget::EventHandler(widget);
     }
 
 
@@ -102,8 +107,9 @@ namespace EMStudio
 
 
     // constructor
-    NodePaletteWidget::NodePaletteWidget()
+    NodePaletteWidget::NodePaletteWidget(AnimGraphPlugin* plugin)
         : QWidget()
+        , mPlugin(plugin)
     {
         mNode   = nullptr;
         mTabBar = nullptr;
@@ -212,8 +218,8 @@ namespace EMStudio
 
     AZStd::string NodePaletteWidget::GetNodeIconFileName(EMotionFX::AnimGraphNode* node)
     {
-        AZStd::string filename      = AZStd::string::format("/Images/AnimGraphPlugin/%s.png", node->GetTypeString());
-        AZStd::string fullFilename  = AZStd::string::format("%s/Images/AnimGraphPlugin/%s.png", MysticQt::GetDataDir().c_str(), node->GetTypeString());
+        AZStd::string filename      = AZStd::string::format("/Images/AnimGraphPlugin/%s.png", node->RTTI_GetTypeName());
+        AZStd::string fullFilename  = AZStd::string::format("%s/Images/AnimGraphPlugin/%s.png", MysticQt::GetDataDir().c_str(), node->RTTI_GetTypeName());
 
         if (QFile::exists(fullFilename.c_str()) == false)
         {
@@ -227,71 +233,25 @@ namespace EMStudio
     // register list widget icons
     void NodePaletteWidget::RegisterItems(EMotionFX::AnimGraphObject* object, EMotionFX::AnimGraphObject::ECategory category)
     {
-        // clear the list
         mList->clear();
 
-        // are we viewing a state machine right now?
-        const bool isStateMachine = (object) ? (object->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID) : false;
-        EMotionFX::AnimGraphNode* parentNode = nullptr;
-        if (object && object->GetBaseType() == EMotionFX::AnimGraphNode::BASETYPE_ID)
+        const AZStd::unordered_set<AZ::TypeId>& nodeObjectTypes = EMotionFX::AnimGraphObjectFactory::GetUITypes();
+        for (const AZ::TypeId& nodeObjectType : nodeObjectTypes)
         {
-            parentNode = static_cast<EMotionFX::AnimGraphNode*>(object);
-        }
+            EMotionFX::AnimGraphObject* curObject = EMotionFX::AnimGraphObjectFactory::Create(nodeObjectType);
 
-        // for all registered objects in the object factory
-        const size_t numRegistered = EMotionFX::GetAnimGraphManager().GetObjectFactory()->GetNumRegisteredObjects();
-        for (size_t i = 0; i < numRegistered; ++i)
-        {
-            // get the node
-            EMotionFX::AnimGraphObject* curObject = EMotionFX::GetAnimGraphManager().GetObjectFactory()->GetRegisteredObject(i);
-
-            // ignore other object than nodes
-            if (curObject->GetBaseType() != EMotionFX::AnimGraphNode::BASETYPE_ID)
+            if (mPlugin->CheckIfCanCreateObject(object, curObject, category))           
             {
-                continue;
+                EMotionFX::AnimGraphNode* curNode = static_cast<EMotionFX::AnimGraphNode*>(curObject);
+                QListWidgetItem* item = new QListWidgetItem(MysticQt::GetMysticQt()->FindIcon(GetNodeIconFileName(curNode).c_str()), curNode->GetPaletteName(), mList, NodePaletteList::NODETYPE_BLENDNODE);
+                item->setToolTip(curNode->RTTI_GetTypeName());
+                item->setData(Qt::UserRole, azrtti_typeid(curNode).ToString<AZStd::string>().c_str());
             }
 
-            // only load icons in the category we want
-            if (curObject->GetPaletteCategory() != category)
+            if (curObject)
             {
-                continue;
+                delete curObject;
             }
-
-            // if we are at the root, we can only create in state machines
-            if (object == nullptr)
-            {
-                if (curObject->GetType() != EMotionFX::AnimGraphStateMachine::TYPE_ID)
-                {
-                    continue;
-                }
-            }
-
-            // cnvert the anim graph object into a node
-            EMotionFX::AnimGraphNode* curNode = static_cast<EMotionFX::AnimGraphNode*>(curObject);
-
-            // disallow states that are only used by sub state machine the lower in hierarchy levels
-            if (object)
-            {
-                if (curNode->GetCanBeInsideSubStateMachineOnly() && EMotionFX::AnimGraphStateMachine::GetHierarchyLevel(parentNode) < 2)
-                {
-                    continue;
-                }
-            }
-
-            // if we're editing a state machine, skip nodes that can't act as a state
-            if ((isStateMachine) && (curNode->GetCanActAsState() == false))
-            {
-                continue;
-            }
-
-            // skip if we can have only one node of the given type
-            if (parentNode && curNode->GetCanHaveOnlyOneInsideParent() && parentNode->CheckIfHasChildOfType(curNode->GetType()))
-            {
-                continue;
-            }
-
-            QListWidgetItem* item = new QListWidgetItem(MysticQt::GetMysticQt()->FindIcon(GetNodeIconFileName(curNode).c_str()), curNode->GetPaletteName(), mList, NodePaletteList::NODETYPE_BLENDNODE);
-            item->setToolTip(curNode->GetTypeString());
         }
     }
 
@@ -301,24 +261,26 @@ namespace EMStudio
     {
         switch (index)
         {
-        case 0:
-            RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_SOURCES);
-            return;
-        case 1:
-            RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_BLENDING);
-            return;
-        case 2:
-            RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS);
-            return;
-        case 3:
-            RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_LOGIC);
-            return;
-        case 4:
-            RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_MATH);
-            return;
-        case 5:
-            RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_MISC);
-            return;
+            case 0:
+                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_SOURCES);
+                return;
+            case 1:
+                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_BLENDING);
+                return;
+            case 2:
+                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS);
+                return;
+            case 3:
+                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_LOGIC);
+                return;
+            case 4:
+                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_MATH);
+                return;
+            case 5:
+                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_MISC);
+                return;
+            default:
+                AZ_Assert(false, "Unsupported category tab.")
         };
     }
 } // namespace EMStudio

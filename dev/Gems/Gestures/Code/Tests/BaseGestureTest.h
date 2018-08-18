@@ -34,7 +34,7 @@ public:
         gEnv->pGame = nullptr; // for persistent debug
 
         // simulated position
-        m_pos = Vec2(0.0f, 0.0f);
+        m_pos = AZ::Vector2(0.0f, 0.0f);
     }
 
     void TearDown() override
@@ -68,7 +68,7 @@ protected:
 
     void MoveTo(float x, float y)
     {
-        m_pos = Vec2(x, y);
+        m_pos = AZ::Vector2(x, y);
     }
 
     void MouseDownAt(Gestures::IRecognizer& recognizer, float sec)
@@ -83,19 +83,19 @@ protected:
 
     // more direct interface
 
-    void Press(Gestures::IRecognizer& recognizer, uint index, Vec2 pos, float sec)
+    void Press(Gestures::IRecognizer& recognizer, uint index, AZ::Vector2 pos, float sec)
     {
         SetTime(sec);
         recognizer.OnPressedEvent(pos, index);
     }
 
-    void Move(Gestures::IRecognizer& recognizer, uint index, Vec2 pos, float sec)
+    void Move(Gestures::IRecognizer& recognizer, uint index, AZ::Vector2 pos, float sec)
     {
         SetTime(sec);
         recognizer.OnDownEvent(pos, index);
     }
 
-    void Release(Gestures::IRecognizer& recognizer, uint index, Vec2 pos, float sec)
+    void Release(Gestures::IRecognizer& recognizer, uint index, AZ::Vector2 pos, float sec)
     {
         SetTime(sec);
         recognizer.OnReleasedEvent(pos, index);
@@ -104,7 +104,7 @@ protected:
 private:
     SSystemGlobalEnvironment* m_env;
     StubTimer* m_stubTimer;
-    Vec2 m_pos;
+    AZ::Vector2 m_pos;
 };
 
 

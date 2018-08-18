@@ -205,7 +205,7 @@ public:
     bool CanModify(bool bSkipReadOnly = true);
 
     // Save material to file.
-    virtual bool Save(bool bSkipReadOnly = true);
+    virtual bool Save(bool bSkipReadOnly = true, const QString& fullPath = "");
 
     // Dummy material is just a placeholder item for materials that have not been found on disk.
     void SetDummy(bool bDummy) { m_bDummyMaterial = bDummy; }

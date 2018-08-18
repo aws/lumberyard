@@ -384,7 +384,7 @@ FRAMEBUFFER_FETCH_TYPE CollectGmemInfo(HLSLCrossCompilerContext* psContext)
 {
     FRAMEBUFFER_FETCH_TYPE fetchType = FBF_NONE;
     Shader* psShader = psContext->psShader;
-    ZeroMemory(psContext->rendertargetUse, sizeof(psContext->rendertargetUse));
+    memset(psContext->rendertargetUse, 0x00, sizeof(psContext->rendertargetUse));
     for (uint32_t i = 0; i < psShader->ui32DeclCount; ++i)
     {
         Declaration* decl = psShader->psDecl + i;
@@ -1216,6 +1216,85 @@ const char* GetVersionString(GLLang language)
     }
 }
 
+// Force precision of vertex output position to highp.
+// Using mediump or lowp for the position of the vertex can cause rendering artifacts in OpenGL ES.
+void ForcePositionOutputToHighp(Shader* shader)
+{
+    // Only sensible in vertex shaders
+    if (shader->eShaderType != VERTEX_SHADER)
+    {
+        return;
+    }
+
+    // Find the output position declaration
+    Declaration* posDeclaration = NULL;
+    for (uint32_t i = 0; i < shader->ui32DeclCount; ++i)
+    {
+        Declaration* decl = shader->psDecl + i;
+        if (decl->eOpcode == OPCODE_DCL_OUTPUT_SIV)
+        {
+            if (decl->asOperands[0].eSpecialName == NAME_POSITION)
+            {
+                posDeclaration = decl;
+                break;
+            }
+
+            if (decl->asOperands[0].eSpecialName != NAME_UNDEFINED)
+            {
+                continue;
+            }
+
+            // This might be SV_Position (because d3dcompiler is weird). Get signature and check
+            InOutSignature *sig = NULL;
+            GetOutputSignatureFromRegister(decl->asOperands[0].ui32RegisterNumber, decl->asOperands[0].ui32CompMask, 0, &shader->sInfo, &sig);
+            ASSERT(sig != NULL);
+            if ((sig->eSystemValueType == NAME_POSITION || strcmp(sig->SemanticName, "POS") == 0) && sig->ui32SemanticIndex == 0)
+            {
+                sig->eMinPrec = MIN_PRECISION_DEFAULT;
+                posDeclaration = decl;
+                break;
+            }
+        }
+        else if (decl->eOpcode == OPCODE_DCL_OUTPUT)
+        {
+            InOutSignature *sig = NULL;
+            GetOutputSignatureFromRegister(decl->asOperands[0].ui32RegisterNumber, decl->asOperands[0].ui32CompMask, 0, &shader->sInfo, &sig);
+            ASSERT(sig != NULL);
+            if ((sig->eSystemValueType == NAME_POSITION || strcmp(sig->SemanticName, "POS") == 0) && sig->ui32SemanticIndex == 0)
+            {
+                sig->eMinPrec = MIN_PRECISION_DEFAULT;
+                posDeclaration = decl;
+                break;
+            }
+        }
+    }
+
+    // Do nothing if we don't find suitable output. This may well be INTERNALTESSPOS for tessellation etc.
+    if (!posDeclaration)
+    {
+        return;
+    }
+
+    posDeclaration->asOperands[0].eMinPrecision = OPERAND_MIN_PRECISION_DEFAULT;
+    posDeclaration->asOperands[0].eSpecialName = NAME_POSITION;
+    // Go through all the instructions and update the operand.
+    for (uint32_t i = 0; i < shader->ui32InstCount; ++i)
+    {
+        Instruction *inst = shader->psInst + i;
+        for (uint32_t j = 0; j < inst->ui32FirstSrc; ++j)
+        {
+            Operand op = inst->asOperands[j];
+            // Since it's an output declaration we know that there's only one
+            // operand and it's in the first slot.
+            if (op.eType == OPERAND_TYPE_OUTPUT && op.ui32RegisterNumber == posDeclaration->asOperands[0].ui32RegisterNumber)
+            {
+                op.eMinPrecision = OPERAND_MIN_PRECISION_DEFAULT;
+                op.eSpecialName = NAME_POSITION;
+            }
+        }
+    }
+}
+
 void TranslateToGLSL(HLSLCrossCompilerContext* psContext, GLLang* planguage, const GlExtensions* extensions)
 {
     bstring glsl;
@@ -1548,6 +1627,10 @@ void TranslateToGLSL(HLSLCrossCompilerContext* psContext, GLLang* planguage, con
         }
     }
 
+    // Declare auxiliary variables used to save intermediate results to bypass driver issues
+    SHADER_VARIABLE_TYPE auxVarType = SVT_UINT;
+    bformata(psContext->glsl, "highp %s %s1;\n", GetConstructorForTypeGLSL(psContext, auxVarType, 4, false), GetAuxArgumentName(auxVarType));
+
     if (psContext->flags & HLSLCC_FLAG_TRACING_INSTRUMENTATION)
     {
         CreateTracingInfo(psShader);
@@ -1680,6 +1763,7 @@ HLSLCC_API int HLSLCC_APIENTRY TranslateHLSLFromMem(const char* shader, size_t s
 
     if (psShader)
     {
+        ForcePositionOutputToHighp(psShader);
         HLSLCrossCompilerContext sContext;
 
         sContext.psShader = psShader;

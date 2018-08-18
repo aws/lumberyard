@@ -67,7 +67,7 @@ namespace dyad
 
     private:
         // Instances of "Action" are used to control the Dyad thread
-        typedef std::function<void()> Action;
+        typedef AZStd::function<void()> Action;
 
         // Counter used to assign unique ids to streams on creation
         static StreamId ms_nextStreamId;
@@ -76,7 +76,7 @@ namespace dyad
         std::shared_ptr<CrySimpleManagedThread> m_thread;
 
         // Action queue; access must be synchronized with the dyad thread
-        std::queue<Action> m_actions;
+        AZStd::queue<Action> m_actions;
 
         // Used to synchronize access to the action queue
         CryCriticalSectionNonRecursive m_actionLock;
@@ -107,8 +107,8 @@ namespace dyad
 CDyad::CDyad()
 {
     m_runThread = true;
-    auto function = std::bind(&CDyad::ThreadFunction, this);
-    m_thread = CrySimpleManagedThread::CreateThread("dyad", std::move(function));
+    auto function = AZStd::bind(&CDyad::ThreadFunction, this);
+    m_thread = CrySimpleManagedThread::CreateThread("dyad", AZStd::move(function));
 }
 
 CDyad::~CDyad()
@@ -146,7 +146,7 @@ void CDyad::Update()
     }
 
     // Exchange action queue (lock prevents concurrent changes from user threads)
-    std::queue<Action> actions;
+    AZStd::queue<Action> actions;
     m_actionLock.Lock();
     m_actions.swap(actions);
     m_actionLock.Unlock();

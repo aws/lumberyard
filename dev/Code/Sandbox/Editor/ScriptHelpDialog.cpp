@@ -14,7 +14,7 @@
 // Description : For listing available script commands with their descriptions
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ScriptHelpDialog.h"
 #include "Util/BoostPythonHelpers.h"
 #include <ui_ScriptHelpDialog.h>

@@ -17,10 +17,9 @@
 #include <SceneAPI/SceneCore/DataTypes/Rules/IRule.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IBoneData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshData.h>
-
 #include <SceneAPIExt/Groups/ActorGroup.h>
-#include <SceneAPIExt/Rules/MetaDataRule.h>
 #include <SceneAPIExt/Behaviors/ActorGroupBehavior.h>
+
 
 namespace EMotionFX
 {

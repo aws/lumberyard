@@ -12,9 +12,9 @@
 
 #pragma once
 
-// include the required headers
-#include "EMotionFXConfig.h"
 #include <AzCore/RTTI/RTTI.h>
+#include <EMotionFX/Source/AnimGraphNodeId.h>
+#include "EMotionFXConfig.h"
 
 
 namespace EMotionFX
@@ -29,42 +29,49 @@ namespace EMotionFX
      */
     class EMFX_API BlendTreeConnection
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeConnection, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_CONNECTIONS);
-
     public:
         AZ_RTTI(BlendTreeConnection, "{B48FFEDB-87FB-4085-AE54-0302AC49373A}");
+        AZ_CLASS_ALLOCATOR_DECL
 
         BlendTreeConnection();
         BlendTreeConnection(AnimGraphNode* sourceNode, uint16 sourcePort, uint16 targetPort);
         virtual ~BlendTreeConnection();
 
+        void Reinit();
+        bool InitAfterLoading(AnimGraph* animGraph);
+
         bool GetIsValid() const;
-        BlendTreeConnection* Clone(AnimGraph* animGraph);
 
-        MCORE_INLINE AnimGraphNode* GetSourceNode() const          { return mBlendNode; }
-        MCORE_INLINE uint16 GetSourcePort() const                   { return mSourcePort; }
-        MCORE_INLINE uint16 GetTargetPort() const                   { return mTargetPort; }
+        void SetSourceNode(AnimGraphNode* node);
+        AZ_FORCE_INLINE AnimGraphNode* GetSourceNode() const        { return m_sourceNode; }
+        AZ_FORCE_INLINE AnimGraphNodeId GetSourceNodeId() const     { return m_sourceNodeId; }
 
-        MCORE_INLINE void SetSourceNode(AnimGraphNode* node)       { mBlendNode = node; }
-        MCORE_INLINE void SetSourcePort(uint16 sourcePort)          { mSourcePort = sourcePort; }
-        MCORE_INLINE void SetTargetPort(uint16 targetPort)          { mTargetPort = targetPort; }
+        MCORE_INLINE AZ::u16 GetSourcePort() const                  { return mSourcePort; }
+        MCORE_INLINE AZ::u16 GetTargetPort() const                  { return mTargetPort; }
 
-        MCORE_INLINE uint32 GetID() const                           { return mID; }
-        MCORE_INLINE void SetID(uint32 id)                          { mID = id; }
+        MCORE_INLINE void SetSourcePort(AZ::u16 sourcePort)         { mSourcePort = sourcePort; }
+        MCORE_INLINE void SetTargetPort(AZ::u16 targetPort)         { mTargetPort = targetPort; }
+
+        MCORE_INLINE AZ::u32 GetId() const                          { return mId; }
+        MCORE_INLINE void SetId(AZ::u32 id)                         { mId = id; }
 
         #ifdef EMFX_EMSTUDIOBUILD
-        MCORE_INLINE void SetIsVisited(bool visited)            { mVisited = visited; }
-        MCORE_INLINE bool GetIsVisited() const                  { return mVisited; }
+        MCORE_INLINE void SetIsVisited(bool visited)                { mVisited = visited; }
+        MCORE_INLINE bool GetIsVisited() const                      { return mVisited; }
         #endif
 
+        static void Reflect(AZ::ReflectContext* context);
+
     private:
-        AnimGraphNode*         mBlendNode;         /**< The source node from which the incoming connection comes. */
-        uint32                  mID;                /**< The unique ID value of the connection. */
-        uint16                  mSourcePort;        /**< The source port number, so the output port number of the node where the connection comes from. */
-        uint16                  mTargetPort;        /**< The target port number, which is the input port number of the target node. */
+        AnimGraph*              m_animGraph;
+        AnimGraphNode*          m_sourceNode;       /**< The source node from which the incoming connection comes. */
+        AZ::u64                 m_sourceNodeId;
+        AZ::u32                 mId;                /**< The unique ID value of the connection. */
+        AZ::u16                 mSourcePort;        /**< The source port number, so the output port number of the node where the connection comes from. */
+        AZ::u16                 mTargetPort;        /**< The target port number, which is the input port number of the target node. */
 
         #ifdef EMFX_EMSTUDIOBUILD
         bool                mVisited;               /**< True when during updates this connection was used. */
         #endif
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

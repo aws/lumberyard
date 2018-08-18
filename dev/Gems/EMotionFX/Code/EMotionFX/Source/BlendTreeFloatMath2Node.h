@@ -12,7 +12,6 @@
 
 #pragma once
 
-// include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
 
@@ -25,15 +24,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeFloatMath2Node
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeFloatMath2Node, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeFloatMath2Node, "{9F5FA0EE-B6EE-420C-9015-26E5F17AAA3E}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000009
-        };
+        AZ_RTTI(BlendTreeFloatMath2Node, "{9F5FA0EE-B6EE-420C-9015-26E5F17AAA3E}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -50,14 +43,7 @@ namespace EMotionFX
             PORTID_OUTPUT_RESULT    = 0
         };
 
-        enum
-        {
-            ATTRIB_MATHFUNCTION = 0,
-            ATTRIB_STATICVALUE  = 1
-        };
-
-        // available math functions
-        enum EMathFunction
+        enum EMathFunction : AZ::u8
         {
             MATHFUNCTION_ADD            = 0,
             MATHFUNCTION_SUBTRACT       = 1,
@@ -72,31 +58,29 @@ namespace EMotionFX
             MATHFUNCTION_NUMFUNCTIONS
         };
 
-        static BlendTreeFloatMath2Node* Create(AnimGraph* animGraph);
+        BlendTreeFloatMath2Node();
+        ~BlendTreeFloatMath2Node();
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void SetMathFunction(EMathFunction func);
-        void OnUpdateAttributes() override;
 
         uint32 GetVisualColor() const override;
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        void SetDefaultValue(float value);
+
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
         typedef float (MCORE_CDECL * BlendTreeMath2Function)(float x, float y);
 
-        EMathFunction           mMathFunction;
-        BlendTreeMath2Function  mCalculateFunc;
-
-        BlendTreeFloatMath2Node(AnimGraph* animGraph);
-        ~BlendTreeFloatMath2Node();
+        BlendTreeMath2Function  m_calculateFunc;
+        EMathFunction           m_mathFunction;
+        float                   m_defaultValue;
 
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
 

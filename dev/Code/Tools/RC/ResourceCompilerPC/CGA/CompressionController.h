@@ -24,12 +24,14 @@ struct GlobalAnimationHeaderCAF;
 
 struct BaseCompressedQuat
 {
+    virtual ~BaseCompressedQuat() = default;
     virtual void FromQuat(Quat& q) = 0;
     virtual Quat ToQuat() const = 0;
 };
 
 struct BaseCompressedVec3
 {
+    virtual ~BaseCompressedVec3() = default;
     virtual void FromVec3(Vec3& v) = 0;
     virtual Vec3 ToVec3() const = 0;
 };
@@ -38,6 +40,7 @@ template<class _Realization>
 struct CompressedQuatImpl
     : public BaseCompressedQuat
 {
+    ~CompressedQuatImpl() override = default;
     virtual void FromQuat(Quat& q)
     {
         val.ToInternalType(q);
@@ -64,6 +67,7 @@ template<class _Realization>
 struct CompressedVec3Impl
     : public BaseCompressedVec3
 {
+    ~CompressedVec3Impl() override = default;
     virtual void FromVec3(Vec3& q)
     {
         val.ToInternalType(q);

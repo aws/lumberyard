@@ -29,6 +29,9 @@
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(SkeletalMotion, MotionAllocator, 0)
+
+
     // constructor
     SkeletalMotion::SkeletalMotion(const char* name)
         : Motion(name)
@@ -49,7 +52,7 @@ namespace EMotionFX
     // create
     SkeletalMotion* SkeletalMotion::Create(const char* name)
     {
-        return new SkeletalMotion(name);
+        return aznew SkeletalMotion(name);
     }
 
 
@@ -148,34 +151,7 @@ namespace EMotionFX
         // if we want to use retargeting
         if (enableRetargeting)
         {
-            const Transform& bindPoseTransform = bindPose->GetLocalTransform(nodeIndex);
-
-            AZ::Vector3 posOffset(0.0f, 0.0f, 0.0f);
-            AZ::Vector3 nodeOrgPos = bindPoseTransform.mPosition;
-
-            /*      // if we deal with the root node
-                    if (actor->GetRetargetRootIndex() == nodeIndex)
-                    {
-                        const int32 upIndex = MCore::GetCoordinateSystem().GetUpIndex();
-                        if (Math::Abs(nodeOrgPos[upIndex]) > 0.0001f)
-                            posOffset[upIndex] = actor->GetRetargetOffset() * (outTransform->mPosition[upIndex] / nodeOrgPos[upIndex]);
-                        else
-                            posOffset[upIndex] = actor->GetRetargetOffset();
-                    }
-                    else*/
-            posOffset = nodeOrgPos - subMotion->GetBindPosePos();
-
-            // calculate the displacement
-            //Vector3 posOffset   = orgTransforms[nodeIndex].mPosition - subMotion->GetBindPosePos();
-
-            EMFX_SCALECODE
-            (
-                AZ::Vector3 scaleOffset = bindPoseTransform.mScale - subMotion->GetBindPoseScale();
-                outTransform->mScale += scaleOffset;
-            )
-
-            // apply the displacements
-            outTransform->mPosition += posOffset;
+            BasicRetarget(instance, subMotion, nodeIndex, *outTransform);
         }
 
         // mirror
@@ -395,6 +371,46 @@ namespace EMotionFX
     }
     */
 
+    void SkeletalMotion::BasicRetarget(const MotionInstance* motionInstance, const SkeletalSubMotion* subMotion, uint32 nodeIndex, Transform& inOutTransform)
+    {
+        // Special case handling on translation of root nodes.
+        // Scale the translation amount based on the height difference between the bind pose height of the 
+        // retarget root node and the bind pose of that node stored in the motion.
+        // All other nodes get their translation data displaced based on the position difference between the
+        // parent relative space positions in the actor instance's bind pose and the motion bind pose.
+        const ActorInstance* actorInstance = motionInstance->GetActorInstance();
+        const Actor* actor = actorInstance->GetActor();
+        const Pose* bindPose = actorInstance->GetTransformData()->GetBindPose();
+        const uint32 retargetRootIndex = actor->GetRetargetRootNodeIndex();
+        const Node* node = actor->GetSkeleton()->GetNode(nodeIndex);
+        bool needsDisplacement = true;
+        if ((retargetRootIndex == nodeIndex || node->GetIsRootNode()) && retargetRootIndex != MCORE_INVALIDINDEX32)
+        {
+            const MotionLink* retargetRootLink = motionInstance->GetMotionLink(actor->GetRetargetRootNodeIndex());
+            if (retargetRootLink->GetIsActive())
+            {
+                const float subMotionHeight = mSubMotions[retargetRootLink->GetSubMotionIndex()]->GetBindPosePos().GetZ();
+                if (fabs(subMotionHeight) >= AZ::g_fltEps)
+                {
+                    const float heightFactor = bindPose->GetLocalTransform(retargetRootIndex).mPosition.GetZ() / subMotionHeight;
+                    inOutTransform.mPosition *= heightFactor;
+                    needsDisplacement = false;
+                }
+            }
+        }
+
+        const Transform& bindPoseTransform = bindPose->GetLocalTransform(nodeIndex);
+        if (needsDisplacement)
+        {
+            const AZ::Vector3 displacement = bindPoseTransform.mPosition - subMotion->GetBindPosePos();
+            inOutTransform.mPosition += displacement;
+        }
+
+        const AZ::Vector3 scaleOffset = bindPoseTransform.mScale - subMotion->GetBindPoseScale();
+        inOutTransform.mScale += scaleOffset;
+    }
+
+
     // the main update method
     void SkeletalMotion::Update(const Pose* inPose, Pose* outPose, MotionInstance* instance)
     {
@@ -479,53 +495,8 @@ namespace EMotionFX
             // perform basic retargeting
             if (instance->GetRetargetingEnabled())
             {
-                const Transform& bindPoseTransform = bindPose->GetLocalTransform(nodeNumber);
-
-                AZ::Vector3 posOffset(0.0f, 0.0f, 0.0f);
-                AZ::Vector3 nodeOrgPos = bindPoseTransform.mPosition;
-                /*
-                            // if we deal with the root node
-                            if (instance->GetRetargetRootIndex() == nodeNumber)
-                            {
-                                const float bindPoseHeight = subMotion->GetBindPosePos().y;
-                                if (Math::Abs(bindPoseHeight) > 0.0001f)
-                                {
-                                    posOffset.x = 0.0f;
-                                    posOffset.y = instance->GetRetargetRootOffset() * MCore::Clamp<float>(outTransform->mPosition.y / bindPoseHeight, 0.0f, 1.0f);
-                                    posOffset.z = 0.0f;
-                                    //posOffset = Vector3(0.0f, instance->GetRetargetRootOffset() * (outTransform->mPosition.y / nodeOrgPos.y), 0.0f);
-                                }
-                                else
-                                    posOffset = Vector3(0.0f, instance->GetRetargetRootOffset(), 0.0f);
-                            }
-                            else
-                                posOffset = nodeOrgPos - subMotion->GetBindPosePos();
-                */
-
-                /*          // if we deal with the root node
-                            if (actor->GetRetargetRootIndex() == nodeNumber)
-                            {
-                                const int32 upIndex = MCore::GetCoordinateSystem().GetUpIndex();
-                                if (Math::Abs(nodeOrgPos[upIndex]) > 0.0001f)
-                                    posOffset[upIndex] = actor->GetRetargetOffset() * (outTransform->mPosition[upIndex] / nodeOrgPos[upIndex]);
-                                else
-                                    posOffset[upIndex] = actor->GetRetargetOffset();
-                            }
-                            else*/
-                posOffset = nodeOrgPos - subMotion->GetBindPosePos();
-
-                // calculate the displacement
-                //          Vector3 posOffset   = orgTransforms[nodeNumber].mPosition - subMotion->GetBindPosePos();
-
-                EMFX_SCALECODE
-                (
-                    AZ::Vector3 scaleOffset = bindPoseTransform.mScale - subMotion->GetBindPoseScale();
-                    outTransform.mScale += scaleOffset;
-                )
-
-                // apply the displacements
-                outTransform.mPosition  += posOffset;
-            } // if retargeting enabled
+                BasicRetarget(instance, subMotion, nodeNumber, outTransform);
+            }
 
             outPose->SetLocalTransformDirect(nodeNumber, outTransform);
         } // for all transforms
@@ -821,8 +792,8 @@ namespace EMotionFX
             {
                 MCore::LogWarning("Bind pose translation of the node '%s' (%f, %f, %f) does not match the skeletal submotion bind pose translation (%f, %f, %f).",
                     node->GetName(),
-                    nodeTranslation.GetX(), nodeTranslation.GetY(), nodeTranslation.GetZ(),
-                    submotionTranslation.GetX(), submotionTranslation.GetY(), submotionTranslation.GetZ());
+                    static_cast<float>(nodeTranslation.GetX()), static_cast<float>(nodeTranslation.GetY()), static_cast<float>(nodeTranslation.GetZ()),
+                    static_cast<float>(submotionTranslation.GetX()), static_cast<float>(submotionTranslation.GetY()), static_cast<float>(submotionTranslation.GetZ()));
                 bindPosesMatching = false;
             }
 
@@ -844,8 +815,8 @@ namespace EMotionFX
                 {
                     MCore::LogWarning("Bind pose scale of the node '%s' (%f, %f, %f) does not match the skeletal submotion bind pose scale (%f, %f, %f).",
                         node->GetName(),
-                        nodeScale.GetX(), nodeScale.GetY(), nodeScale.GetZ(),
-                        submotionScale.GetX(), submotionScale.GetY(), submotionScale.GetZ());
+                        static_cast<float>(nodeScale.GetX()), static_cast<float>(nodeScale.GetY()), static_cast<float>(nodeScale.GetZ()),
+                        static_cast<float>(submotionScale.GetX()), static_cast<float>(submotionScale.GetY()), static_cast<float>(submotionScale.GetZ()));
                     bindPosesMatching = false;
                 }
                 /*

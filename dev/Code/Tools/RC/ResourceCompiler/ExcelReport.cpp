@@ -14,7 +14,7 @@
 // Description : Implementation of the CryEngine Unit Testing framework
 
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "AssetFileInfo.h"
 #include "CryPath.h"
 #include "ExcelReport.h"

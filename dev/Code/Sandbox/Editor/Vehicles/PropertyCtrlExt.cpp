@@ -14,7 +14,7 @@
 // Description : Implementation of CPropertyCtrlExt.
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PropertyCtrlExt.h"
 
 #include "Objects/EntityObject.h"

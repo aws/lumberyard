@@ -114,8 +114,7 @@ namespace UnitTest
         unsigned long long,
         wchar_t,
         int*,
-        const int*,
-        IntWrapper
+        const int*
     >;
 
     using IntegralAtomicTypes = ::testing::Types<

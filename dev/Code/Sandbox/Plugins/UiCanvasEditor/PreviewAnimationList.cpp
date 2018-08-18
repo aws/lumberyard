@@ -108,6 +108,7 @@ void PreviewAnimationList::AddToolBarButton(const QIcon& icon, Action action, co
     QPushButton* button = new QPushButton(icon, "", this);
     QObject::connect(button,
         &QPushButton::clicked,
+        this,
         [this, action](bool) { DoActionOnSelectedAnimations(action); });
     button->setToolTip(QString(tooltip));
     m_toolBar->addWidget(button);

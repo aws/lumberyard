@@ -12,7 +12,7 @@
 *
 */
 
-#include <AzCore/RTTI/Rtti.h>
+#include <AzCore/RTTI/RTTI.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISceneNodeGroup.h>
 
 namespace EMotionFX

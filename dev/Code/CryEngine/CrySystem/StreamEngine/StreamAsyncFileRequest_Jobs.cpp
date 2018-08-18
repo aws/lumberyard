@@ -13,7 +13,6 @@
 
 #include <StdAfx.h>
 #include <AzCore/Debug/Profiler.h>
-#include <IJobManager_JobDelegator.h>
 
 #include "StreamAsyncFileRequest.h"
 

@@ -47,7 +47,7 @@ namespace Snow
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorSnowComponent::UpdateSnow)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorSnowComponent::m_snowOptions, "Options", "Options for snow simulation")
                     ;
-                
+
                 editContext->Class<SnowOptions>("Snow Options", "Modify the snowfall appearance. Snow or Frost amount must be greater than 0 to enable")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
@@ -62,7 +62,7 @@ namespace Snow
                         ->Attribute(AZ::Edit::Attributes::Max, 16000.f) //16K Max for large maps
                         ->Attribute(AZ::Edit::Attributes::Step, 1.0f)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SnowOptions::OnChanged)
-                    
+
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &SnowOptions::m_snowAmount, "Snow Amount", "Amount of snow on the surface")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                         ->Attribute(AZ::Edit::Attributes::Max, 100.f)
@@ -141,7 +141,7 @@ namespace Snow
 
         auto changeCallback = [this]() { this->UpdateSnow(); };
         m_snowOptions.m_changeCallback = changeCallback;
-    
+
         //Get initial position
         m_currentWorldTransform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(m_currentWorldTransform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
@@ -155,12 +155,12 @@ namespace Snow
         AZ::TickBus::Handler::BusDisconnect();
 
         m_snowOptions.m_changeCallback = nullptr;
-        
+
         TurnOffSnow();
 
         //If any other snow components exist, broadcast to them that they should re-update the snow params
         //This is useful if two snow components exist and one is deleted; some other component's snow params sould
-        //still be applied. This is just for preview in-editor. 
+        //still be applied. This is just for preview in-editor.
         Snow::SnowComponentRequestBus::Broadcast(&Snow::SnowComponentRequestBus::Events::UpdateSnow);
 
         EditorComponentBase::Deactivate();
@@ -180,7 +180,7 @@ namespace Snow
             TurnOffSnow();
             return;
         }
-        
+
         UpdateSnowSettings(m_currentWorldTransform, m_snowOptions);
     }
 
@@ -234,7 +234,7 @@ namespace Snow
 
         //Retrieve the underlying legacy CSnow object
         IEntity* legacyEntity = entityObject->GetIEntity();
-        std::shared_ptr<CSnow> snow = legacyEntity->GetComponent<CSnow>();
+        AZStd::shared_ptr<CSnow> snow = legacyEntity->GetComponent<CSnow>();
         if (!snow)
         {
             //Entity did not have a CSnow component
@@ -268,7 +268,7 @@ namespace Snow
         // the component.
 
         // Because the snow object is a Lua based entity this is the easiest way to retrieve its parameters
-        
+
         //Snow Surface Settings
         float radius;
         float snowAmount;

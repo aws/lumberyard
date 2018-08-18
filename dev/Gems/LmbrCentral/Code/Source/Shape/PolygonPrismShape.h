@@ -13,7 +13,6 @@
 #pragma once
 
 #include <AzCore/Component/TransformBus.h>
-#include <Cry_Math.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
 
@@ -31,8 +30,8 @@ namespace LmbrCentral
      */
     struct PolygonPrismMesh
     {
-        AZStd::vector<Vec3> m_triangles;
-        AZStd::vector<Vec3> m_lines;
+        AZStd::vector<AZ::Vector3> m_triangles;
+        AZStd::vector<AZ::Vector3> m_lines;
     };
 
     /**
@@ -98,7 +97,7 @@ namespace LmbrCentral
                 const AZ::PolygonPrism& polygonPrism) override;
 
             friend PolygonPrismShape;
-            
+
             AZ::Aabb m_aabb; ///< Aabb of polygon prism shape.
             AZStd::vector<AZ::Vector3> m_triangles; ///< Triangles comprising the polygon prism shape (for intersection testing).
         };
@@ -113,9 +112,7 @@ namespace LmbrCentral
      * Generate mesh used for rendering top and bottom of PolygonPrism shape.
      */
     void GeneratePolygonPrismMesh(
-        const AZ::Transform& worldFromLocal,
-        const AZStd::vector<AZ::Vector2> vertices,
-        const float height,
+        const AZStd::vector<AZ::Vector2>& vertices, float height,
         PolygonPrismMesh& polygonPrismMeshOut);
 
     void DrawPolygonPrismShape(

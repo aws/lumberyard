@@ -28,6 +28,7 @@
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
 #include <QElapsedTimer>
 #include <QMutexLocker>
@@ -592,6 +593,16 @@ namespace AssetProcessor
         return false;
     }
 
+    bool AssetCatalog::GetScanFolders(AZStd::vector<AZStd::string>& scanFolders)
+    {
+        int scanFolderCount = m_platformConfig->GetScanFolderCount();
+        for (int i = 0; i < scanFolderCount; ++i)
+        {
+            scanFolders.push_back(m_platformConfig->GetScanFolderAt(i).ScanPath().toUtf8().constData());
+        }
+        return true;
+    }
+
     bool ConvertDatabaseProductPathToProductFileName(QString dbPath, QString& productFileName)
     {
         QString gameName = AssetUtilities::ComputeGameName();
@@ -763,7 +774,19 @@ namespace AssetProcessor
                 AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
 
                 //We should have the asset now, we can now find the full asset path
-                QString productName = AssetUtilities::GuessProductNameInDatabase(normalisedAssetPath, m_db.get());
+                // we have to check each platform individually until we get a hit.
+                const auto& platforms = m_platformConfig->GetEnabledPlatforms();
+                QString productName;
+                for (const AssetBuilderSDK::PlatformInfo& platformInfo : platforms)
+                {
+                    QString platformName = QString::fromUtf8(platformInfo.m_identifier.c_str());
+                    productName = AssetUtilities::GuessProductNameInDatabase(normalisedAssetPath, platformName, m_db.get());
+                    if (!productName.isEmpty())
+                    {
+                        break;
+                    }
+                }
+
                 if (!productName.isEmpty())
                 {
                     //Now find the input name for the path,if we are here this should always return true since we were able to find the productName before
@@ -868,13 +891,13 @@ namespace AssetProcessor
         if ((!platformName) || (platformName[0] == 0))
         {
             // get the first available platform, preferring the host platform.
-            if (m_platforms.contains(CURRENT_PLATFORM))
+            if (m_platforms.contains(AzToolsFramework::AssetSystem::GetHostAssetPlatform()))
             {
-                tempPlatformName = QString::fromUtf8(CURRENT_PLATFORM);
+                tempPlatformName = QString::fromUtf8(AzToolsFramework::AssetSystem::GetHostAssetPlatform());
             }
             else
             {
-                // the CURRENT_PLATFORM "pc" or "osx" is not actually enabled for this compilation (maybe "server" or similar is in a build job).
+                // the GetHostAssetPlatform() "pc" or "osx" is not actually enabled for this compilation (maybe "server" or similar is in a build job).
                 // in that case, we'll use the first we find!
                 tempPlatformName = m_platforms[0];
             }

@@ -56,23 +56,25 @@ namespace EMStudio
         // overloaded
         bool CheckIfIsCreateConnectionValid(uint32 portNr, GraphNode* portNode, NodePort* port, bool isInputPort) override;
         static bool CheckIfIsRelinkConnectionValid(NodeConnection* connection, GraphNode* newTargetNode, uint32 newTargetPortNr, bool isTargetInput);
-        bool CreateConnectionMustBeCurved();
-        bool CreateConnectionShowsHelpers();
+        bool CheckIfIsValidTransition(GraphNode* sourceState, GraphNode* targetState) override;
+        bool CheckIfIsValidTransitionSource(GraphNode* sourceState) override;
+        bool CreateConnectionMustBeCurved() override;
+        bool CreateConnectionShowsHelpers() override;
 
         // callbacks
-        virtual void OnDrawOverlay(QPainter& painter);
-        virtual void OnMoveStart();
-        virtual void OnMoveNode(GraphNode* node, int32 x, int32 y);
-        virtual void OnMoveEnd();
-        virtual void OnNodeCollapsed(GraphNode* node, bool isCollapsed);
-        virtual void OnShiftClickedNode(GraphNode* node);
-        virtual void OnVisualizeToggle(GraphNode* node, bool visualizeEnabled);
-        virtual void OnEnabledToggle(GraphNode* node, bool enabled);
-        virtual void OnSetupVisualizeOptions(GraphNode* node);
-        virtual void ReplaceTransition(NodeConnection* connection, QPoint startOffset, QPoint endOffset, GraphNode* sourceNode, GraphNode* targetNode);
+        void OnDrawOverlay(QPainter& painter) override;
+        void OnMoveStart() override;
+        void OnMoveNode(GraphNode* node, int32 x, int32 y) override;
+        void OnMoveEnd() override;
+        void OnNodeCollapsed(GraphNode* node, bool isCollapsed) override;
+        void OnShiftClickedNode(GraphNode* node) override;
+        void OnVisualizeToggle(GraphNode* node, bool visualizeEnabled) override;
+        void OnEnabledToggle(GraphNode* node, bool enabled) override;
+        void OnSetupVisualizeOptions(GraphNode* node) override;
+        void ReplaceTransition(NodeConnection* connection, QPoint startOffset, QPoint endOffset, GraphNode* sourceNode, GraphNode* targetNode) override;
 
-        void OnSelectionChanged();
-        void OnCreateConnection(uint32 sourcePortNr, GraphNode* sourceNode, bool sourceIsInputPort, uint32 targetPortNr, GraphNode* targetNode, bool targetIsInputPort, const QPoint& startOffset, const QPoint& endOffset);
+        void OnSelectionChanged() override;
+        void OnCreateConnection(uint32 sourcePortNr, GraphNode* sourceNode, bool sourceIsInputPort, uint32 targetPortNr, GraphNode* targetNode, bool targetIsInputPort, const QPoint& startOffset, const QPoint& endOffset) override;
 
         void DeleteSelectedItems(NodeGraph* nodeGraph);
 
@@ -95,21 +97,21 @@ namespace EMStudio
         bool PreparePainting() override;
 
     protected:
-        void dropEvent(QDropEvent* event);
-        void dragEnterEvent(QDragEnterEvent* event);
-        void dragLeaveEvent(QDragLeaveEvent* event);
-        void dragMoveEvent(QDragMoveEvent* event);
+        void dropEvent(QDropEvent* event) override;
+        void dragEnterEvent(QDragEnterEvent* event) override;
+        void dragLeaveEvent(QDragLeaveEvent* event) override;
+        void dragMoveEvent(QDragMoveEvent* event) override;
 
-        void mouseDoubleClickEvent(QMouseEvent* event);
-        void mousePressEvent(QMouseEvent* event);
-        void mouseReleaseEvent(QMouseEvent* event);
+        void mouseDoubleClickEvent(QMouseEvent* event) override;
+        void mousePressEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
 
         //void contextMenuEvent(QContextMenuEvent* event);
 
         void OnContextMenuEvent(QPoint mousePos, QPoint globalMousePos);
 
         //      void paintEvent(QPaintEvent* event);
-        bool event(QEvent* event);
+        bool event(QEvent* event) override;
 
     public slots:
         void OnMouseClickTimeout();
@@ -120,8 +122,8 @@ namespace EMStudio
         void DisableSelectedTransitions()                   { SetSelectedTransitionsEnabled(false); }
 
     private:
-        void keyReleaseEvent(QKeyEvent* event);
-        void keyPressEvent(QKeyEvent* event);
+        void keyReleaseEvent(QKeyEvent* event) override;
+        void keyPressEvent(QKeyEvent* event) override;
 
     private:
         QPoint                      mContextMenuEventMousePos;
@@ -129,7 +131,7 @@ namespace EMStudio
         bool                        mLastRightClick;
         bool                        mDoubleClickHappened;
         QPoint                      mLastGlobalMousePos;
-        EMotionFX::AnimGraphNode*  mCurrentNode;
+        EMotionFX::AnimGraphNode*   mCurrentNode;
         MCore::CommandGroup         mMoveGroup;
         AZStd::string               mMoveString;
         AZStd::string               mTextString;

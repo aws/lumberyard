@@ -105,7 +105,7 @@ namespace AZ
 
             serializeContext->Class<AssetManagerComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
 
             if (EditContext* editContext = serializeContext->GetEditContext())
             {

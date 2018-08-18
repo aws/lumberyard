@@ -14,7 +14,6 @@
 #pragma once
 
 #include <IRenderer.h>
-#include <CryEngineAPI.h>
 #include "Cry_Camera.h"
 
 //================================================================================

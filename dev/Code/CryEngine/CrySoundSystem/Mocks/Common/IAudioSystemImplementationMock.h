@@ -111,9 +111,9 @@ namespace Audio
 
         MOCK_METHOD1(DeleteAudioObjectData, void(IATLAudioObjectData* const));
 
-        MOCK_METHOD0(NewDefaultAudioListenerObjectData, IATLListenerData*());
+        MOCK_METHOD1(NewDefaultAudioListenerObjectData, IATLListenerData*(const TATLIDType));
 
-        MOCK_METHOD1(NewAudioListenerObjectData, IATLListenerData*(const uint));
+        MOCK_METHOD1(NewAudioListenerObjectData, IATLListenerData*(const TATLIDType));
 
         MOCK_METHOD1(DeleteAudioListenerObjectData, void(IATLListenerData* const));
 

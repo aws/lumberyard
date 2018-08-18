@@ -709,15 +709,24 @@ struct IPlatformOS
     // KeyboardStart
     //   Starts the virtual keyboard
     virtual bool AZ_DEPRECATED(KeyboardStart(unsigned int inUserIndex, unsigned int flags, const char* title, const char* initialInput, int maxInputLength, IVirtualKeyboardEvents* pInCallback),
-                               "IPlatformOS::KeyboardStart has been deprecated, use InputTextEntryRequestBus::TextEntryStart instead") = 0;
+        "IPlatformOS::KeyboardStart has been deprecated, use InputTextEntryRequestBus::TextEntryStart instead") 
+    {
+        return false;
+    }
 
     // KeyboardIsRunning:
     //   Returns whether the virtual keyboard is currently displayed
-    virtual bool AZ_DEPRECATED(KeyboardIsRunning(), "IPlatformOS::KeyboardIsRunning has been deprecated, use InputTextEntryRequestBus::HasTextEntryStarted instead") = 0;
+    virtual bool AZ_DEPRECATED(KeyboardIsRunning(), "IPlatformOS::KeyboardIsRunning has been deprecated, use InputTextEntryRequestBus::HasTextEntryStarted instead") 
+    {
+        return false; 
+    }
 
     // KeyboardCancel
     //   Cancels the on screen keyboard if it is running
-    virtual bool AZ_DEPRECATED(KeyboardCancel(), "IPlatformOS::KeyboardCancel has been deprecated, use InputTextEntryRequestBus::TextEntryStop instead") = 0;
+    virtual bool AZ_DEPRECATED(KeyboardCancel(), "IPlatformOS::KeyboardCancel has been deprecated, use InputTextEntryRequestBus::TextEntryStop instead") 
+    { 
+        return false;
+    }
 
     //////////////////////////////////////////////////////////////////////////
     // String Verification

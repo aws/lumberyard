@@ -56,8 +56,7 @@ namespace MCore
     {                                                                                                                  \
         MCORE_MEMORYOBJECTCATEGORY(CLASSNAME, MCore::MCORE_DEFAULT_ALIGNMENT, MCore::MCORE_MEMCATEGORY_COMMANDSYSTEM); \
     public:                                                                                                            \
-        CLASSNAME(MCore::Command * orgCommand = nullptr)                                                               \
-            : MCore::Command(COMMANDSTRING, orgCommand) {}                                                             \
+        CLASSNAME(MCore::Command * orgCommand = nullptr);                                                              \
         virtual ~CLASSNAME();                                                                                          \
         bool Execute(const MCore::CommandLine & parameters, AZStd::string & outResult);                                \
         bool Undo(const MCore::CommandLine & parameters, AZStd::string & outResult);                                   \
@@ -69,7 +68,8 @@ namespace MCore
         OLDVALUETYPE& GetData() { return mData; }                                                                      \
     protected:                                                                                                         \
         OLDVALUETYPE mData;                                                                                            \
-    };
+
+#define MCORE_DEFINECOMMAND_1_END };
 
 
     // define for easy command class creation in two steps

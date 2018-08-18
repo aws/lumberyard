@@ -120,7 +120,8 @@ protected:
     char* OpenAndReadCFG(const char* filename, int& length)
     {
         char* sAllText = nullptr;
-        FILE* file = fopen(filename, "rb");
+        FILE* file = nullptr;
+        azfopen(&file, filename, "rb");
         if (file != nullptr)
         {
             fseek(file, 0, SEEK_END);

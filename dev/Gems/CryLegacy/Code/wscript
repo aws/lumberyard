@@ -1,10 +1,47 @@
 
 
 def build(bld):
+
+    # CryAction_AutoFlowNode is used to define the storage location for the symbols that
+    # are used in the automatic flow node registration system (see CAutoRegFlowNodeBase)
+    #
+    # These symbols must be present in every executable or shared object that uses the
+    # automatic registration pattern. Creating this modules independently of CryAction
+    # allows us to depend on it from multiple locations -- e.g. Gems --
+    # without pulling in a dependency on CryAction itself.
+    #
+    # (This works in all builds including monolithic)
+    bld.CryEngineStaticLibrary(
+        target          = 'CryAction_AutoFlowNode',
+        vs_filter       = 'CryEngine',
+        copyright_org   = 'Amazon-CryTek',
+        file_list       = 'Source/CryAction/cryaction_autoflownode.waf_files',
+        export_includes = 'Source/CryAction',
+        platforms       = ['all'],
+        configurations  = ['all'],
+        use             = ['AzCore']
+    )
+
     bld.DefineGem(
         # Add custom build options here
-        includes            = [bld.Path('Code/CryEngine/CryAction')],
+        includes            = [bld.Path('Code/CryEngine/CryAction'),
+                               bld.Path('Gems/CryLegacy/Code/Source/CryAction'),
+                               bld.Path('Gems/CryLegacy/Code/Source/CryAISystem'),
+                               bld.Path('Gems/CryLegacy/Code/Source/CryAnimation'),
+                               bld.Path('Gems/CryLegacy/Code/Source/CryEntitySystem'),
+                               bld.Path('Gems/CryLegacy/Code/Source/CryScriptSystem')],
+
+        use                 = ['CryAction_AutoFlowNode','AzFramework'],
+
+        win_x64_lib         = [ 'Ws2_32', 'Shell32', 'mswsock', 'gdi32', 'wininet', 'Ole32' ],
+        win_x64_linkflags   = '/NODEFAULTLIB:libcmt.lib',
+
+        darwin_lib          = ['curl'],
+        appletv_framework   = ['security'],
 
         win_file_list       = [
                               ],
+
+        # Testing
+        test_all_uselib     = ['AWS_CPP_SDK_GAMELIFT', 'AWS_CPP_SDK_CORE']
     )

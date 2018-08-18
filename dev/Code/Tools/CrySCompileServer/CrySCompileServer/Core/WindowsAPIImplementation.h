@@ -10,8 +10,7 @@
 *
 */
 
-#ifndef MacSpecific_h
-#define MacSpecific_h
+#pragma once
 
 #include <AzCore/base.h>
 #include <AzCore/PlatformDef.h>
@@ -47,7 +46,10 @@ bool QueryPerformanceFrequency(LARGE_INTEGER* frequency);
 
 int WSAGetLastError();
 
+DWORD Sleep(DWORD dwMilliseconds);
+
 #if defined(AZ_PLATFORM_LINUX)
+
 namespace PthreadImplementation
 {
     static pthread_mutex_t g_interlockMutex;
@@ -82,8 +84,6 @@ int32_t InterlockedDecrement(volatile int32_t* valueToDecrement);
 int64_t InterlockedDecrement(volatile int64_t* valueToDecrement);
 
 int64_t InterlockedAdd64(volatile int64_t* valueToUpdate, int64_t amountToAdd);
-
-#endif
 
 #endif
 

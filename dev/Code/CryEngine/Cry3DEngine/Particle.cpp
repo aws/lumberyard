@@ -184,7 +184,15 @@ void CParticle::Move(SParticleState& state, float fTime, STargetForces const& fo
 
     ParticleParams::EEmitterShapeType emitterShape = GetEmitter()->GetParams().GetEmitterShape();
 
-    Vec3 currentVelocity = params.vVelocity.GetVector(GetEmitter()->GetRelativeAge(), fRelativeAge);
+    Vec3 currentVelocity(0.0f);
+    if (emitterShape == ParticleParams::EEmitterShapeType::CIRCLE ||
+        emitterShape == ParticleParams::EEmitterShapeType::SPHERE ||
+        emitterShape == ParticleParams::EEmitterShapeType::BOX ||
+        emitterShape == ParticleParams::EEmitterShapeType::POINT)
+    {
+        currentVelocity = params.vVelocity.GetVector(GetEmitter()->GetRelativeAge(), fRelativeAge);
+    }
+
     Vec3 vVelUser = (currentVelocity + m_preEmissionRandomVelocity) * fTime;
 
     QuatTS locCur(IDENTITY);
@@ -587,34 +595,6 @@ bool CParticle::CheckCollision(ray_hit& hit, float fStepTime, SParticleUpdateCon
     return hit.dist < 1.f;
 }
 
-
-void CParticle::InitFadeParticle(float fAge)
-{
-    assert(m_pFadeEmitterState);
-    assert(m_pEmitter);
-
-    m_pEmitter->AddRef();
-
-    // Init allocations.
-    m_aPosHistory = 0;
-    if (int nSteps = GetContainer().GetHistorySteps())
-    {
-        if ((m_aPosHistory = static_cast<SParticleHistory*>(ParticleObjectAllocator().Allocate(sizeof(SParticleHistory) * nSteps))))
-        {
-            for (int n = 0; n < nSteps; n++)
-            {
-                m_aPosHistory[n].SetUnused();
-            }
-        }
-    }
-
-    float fEmissionStrength = m_pEmitter->GetStrength(-fAge);
-    m_BaseMods.Color = GetParams().cColor.GetVarMod(fEmissionStrength, m_BaseMods.ColorLerp);
-
-    m_pFadeEmitterState->AddRef();
-    m_pFadeEmitterState->m_fFadeEmitterDot = 0;
-}
-
 void CParticle::Init(SParticleUpdateContext const& context, float fAge, CParticleSubEmitter* pEmitter, const EmitParticleData& data)
 {
     assert(pEmitter);
@@ -629,14 +609,7 @@ void CParticle::Init(SParticleUpdateContext const& context, float fAge, CParticl
     SpawnParams const& spawnParams = GetMain().GetSpawnParams();
 
     m_originalEmitterLocation = Vec3(0, 0, 0);
-
-    m_pFadeEmitterState = nullptr;
-    if (params.bCameraNonFacingFade)
-    {
-        m_pFadeEmitterState = new SFadeEmitterState();
-        m_pFadeEmitterState->AddRef();
-        m_pFadeEmitterState->m_fFadeEmitterDot = 0;
-    }
+    
     // Init allocations.
     m_aPosHistory = 0;
     if (int nSteps = rContainer.GetHistorySteps())
@@ -691,8 +664,10 @@ void CParticle::Init(SParticleUpdateContext const& context, float fAge, CParticl
     m_BaseMods.SizeX = params.fSizeX.GetVarMod(fEmissionStrength);
     // We copy the size X modifier in case we're maintaining aspect ratio because it just contains the randomness/emitter strength component of the size
     m_BaseMods.SizeY = params.bMaintainAspectRatio ? m_BaseMods.SizeX : static_cast<TFixed<unsigned char, 1>>(params.fSizeY.GetVarMod(fEmissionStrength));
+    m_BaseMods.SizeZ = params.bMaintainAspectRatio ? m_BaseMods.SizeX : static_cast<TFixed<unsigned char, 1>>(params.fSizeZ.GetVarMod(fEmissionStrength));
     m_BaseMods.PivotX = params.fPivotX.GetVarMod(fEmissionStrength);
     m_BaseMods.PivotY = params.fPivotY.GetVarMod(fEmissionStrength);
+    m_BaseMods.PivotZ = params.fPivotZ.GetVarMod(fEmissionStrength);
     m_BaseMods.StretchOrTail = params.fTailLength ? params.fTailLength.GetVarMod(fEmissionStrength) : params.fStretch.GetVarMod(fEmissionStrength);
 
     m_BaseMods.AirResistance = params.fAirResistance.GetVarMod(fEmissionStrength);
@@ -1298,11 +1273,6 @@ void CParticle::Update(SParticleUpdateContext const& context, float fFrameTime, 
     SPhysEnviron const& PhysEnv = GetMain().GetPhysEnviron();
     ResourceParticleParams const& params = rContainer.GetParams();
 
-    //Do not update, as these particles are duplicates and are already updated by the trail particle.
-    if (params.bIsCameraNonFacingFadeParticle)
-    {
-        return;
-    }
     // Process only up to lifetime of particle, and handle negative initial age.
     if (m_fAge + fFrameTime <= 0.f)
     {
@@ -1984,15 +1954,6 @@ CParticle::~CParticle()
     }
 
     ParticleObjectAllocator().Deallocate(m_aPosHistory, sizeof(SParticleHistory) * m_pContainer->GetHistorySteps());
-
-    if (m_pFadeEmitterState)
-    {
-        m_pFadeEmitterState->Release();
-        if (m_pFadeEmitterState->NumRefs() == 0)
-        {
-            delete m_pFadeEmitterState;
-        }
-    }
 }
 
 char GetMinAxis(Vec3 const& vVec)

@@ -17,10 +17,13 @@
 #include "EventHandler.h"
 #include "AnimGraphEventBuffer.h"
 #include <MCore/Source/StringIdPool.h>
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MotionEventTrack, MotionEventAllocator, 0)
+
+
     // constructor
     MotionEventTrack::MotionEventTrack(Motion* motion)
         : BaseObject()
@@ -57,14 +60,14 @@ namespace EMotionFX
     // creation
     MotionEventTrack* MotionEventTrack::Create(Motion* motion)
     {
-        return new MotionEventTrack(motion);
+        return aznew MotionEventTrack(motion);
     }
 
 
     // creation
     MotionEventTrack* MotionEventTrack::Create(const char* name, Motion* motion)
     {
-        return new MotionEventTrack(name, motion);
+        return aznew MotionEventTrack(name, motion);
     }
 
 

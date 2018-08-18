@@ -36,6 +36,7 @@ namespace EMotionFX
     class EMFX_API MultiThreadScheduler
         : public ActorUpdateScheduler
     {
+        AZ_CLASS_ALLOCATOR_DECL
     public:
         /**
          * The unique type ID of this scheduler, as returned by the GetType() method.
@@ -75,31 +76,31 @@ namespace EMotionFX
          * Get the name of this class, or a description.
          * @result The string containing the name of the scheduler.
          */
-        virtual const char* GetName() const override        { return "MultiThreadScheduler"; }
+        const char* GetName() const override        { return "MultiThreadScheduler"; }
 
         /**
          * Get the unique type ID of the scheduler type.
          * All schedulers will have another ID, so that you can use this to identify what scheduler you are dealing with.
          * @result The unique ID of the scheduler type.
          */
-        virtual uint32 GetType() const override             { return TYPE_ID; }
+        uint32 GetType() const override             { return TYPE_ID; }
 
         /**
          * The main method which will execute all callbacks, which on their turn will check for visibilty, perform updates and render.
          * @param timePassedInSeconds The time passed, in seconds, since the last call to the update.
          */
-        virtual void Execute(float timePassedInSeconds) override;
+        void Execute(float timePassedInSeconds) override;
 
         /**
          * LOG the schedule using the LOG method.
          * This can for example show the update order, in which order the actor instances will be updated.
          */
-        virtual void Print() override;
+        void Print() override;
 
         /**
          * Clear the schedule.
          */
-        virtual void Clear() override;
+        void Clear() override;
 
         /**
          * Remove all empty scheduler steps.
@@ -111,14 +112,14 @@ namespace EMotionFX
          * @param actorInstance The actor instance to insert.
          * @param startStep An offset in the schedule where to start trying to insert the actor instances.
          */
-        virtual void RecursiveInsertActorInstance(ActorInstance* actorInstance, uint32 startStep = 0) override;
+        void RecursiveInsertActorInstance(ActorInstance* actorInstance, uint32 startStep = 0) override;
 
         /**
          * Recursively remove an actor instance and its attachments from the schedule.
          * @param actorInstance The actor instance to remove.
          * @param startStep An offset in the schedule where to start trying to remove from.
          */
-        virtual void RecursiveRemoveActorInstance(ActorInstance* actorInstance, uint32 startStep = 0) override;
+        void RecursiveRemoveActorInstance(ActorInstance* actorInstance, uint32 startStep = 0) override;
 
         /**
          * Remove a single actor instance from the schedule. This will not remove its attachments.
@@ -126,7 +127,7 @@ namespace EMotionFX
          * @param startStep An offset in the schedule where to start trying to remove from.
          * @result Returns the offset in the schedule where the actor instance was removed.
          */
-        virtual uint32 RemoveActorInstance(ActorInstance* actorInstance, uint32 startStep = 0) override;
+        uint32 RemoveActorInstance(ActorInstance* actorInstance, uint32 startStep = 0) override;
 
         void Lock();
         void Unlock();

@@ -52,7 +52,6 @@ namespace OSVR
         {
             serializeContext->Class<OSVRDevice, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
                 ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -125,13 +124,13 @@ namespace OSVR
             auto start = AZStd::chrono::system_clock::now();
             AZStd::chrono::milliseconds difference(0);
             AZStd::chrono::milliseconds timeout = AZStd::chrono::seconds(30);
-        
+
             //Try for a while to connect to the display
             while (difference < timeout && !startupSucceded)
             {
                 startupSucceded = m_cppDisp->checkStartup();
                 m_cppCtx->update();
-        
+
                 difference = AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start);
             }
             if (startupSucceded != true)
@@ -141,7 +140,7 @@ namespace OSVR
                 return false;
             }
         }
-        
+
         if (m_cppDisp->getNumViewers() < 1)
         {
             LogMessage("Failed to retrieve number of viewers.");
@@ -151,35 +150,35 @@ namespace OSVR
 
         /*
             Retrieve simpler C style structures from C++ classes
-            See header for a more indepth explanation 
+            See header for a more indepth explanation
         */
         m_clientContext = m_cppCtx->get();
         m_displayConfig = m_cppDisp->getDisplayConfig();
 
         LogMessage("Gathering additional info...");
-        
+
         //Retrieve Metadata from OSVR in JSON format
         const char* path = "/display";
         char* jsonString;
-        
+
         if (!GetOSVRParameters(path, jsonString))
         {
             Shutdown();
             return false;
         }
-        
+
         //Parse json for info about the display in order to fill the deviceInfo
         rapidjson::Document description;
         description.Parse(jsonString);
-        
+
         rapidjson::Value& hmd = description["hmd"];
         rapidjson::Value& device = hmd["device"];
         rapidjson::Value& resolutions = hmd["resolutions"];
         rapidjson::Value& fieldOfView = hmd["field_of_view"];
-        
+
         uint32_t renderWidth = 0;
         uint32_t renderHeight = 0;
-        
+
         //Go through every "resolution" on the display and determine the total render size
         for (rapidjson::SizeType i = 0; i < resolutions.Size(); ++i)
         {
@@ -307,8 +306,8 @@ namespace OSVR
         ID3D11Device* d3dDevice = static_cast<ID3D11Device*>(renderDevice);
 
         //We have to initialize the render manager here because it's the only place where the render device is passed into the system
-        //If we don't pass in the device and context into OSVR it's possible that it will create a different device than the one that we create 
-        //these textures with. In that case OSVR will be unable to present due to a device mismatch. 
+        //If we don't pass in the device and context into OSVR it's possible that it will create a different device than the one that we create
+        //these textures with. In that case OSVR will be unable to present due to a device mismatch.
         if (m_renderManager == nullptr)
         {
             LogMessage("Connecting to rendering system...");
@@ -479,7 +478,7 @@ namespace OSVR
 
         //When the OSVR_ViewportDescription is returned from OSVR it contains pixel values but when we use it to
         //supply a viewport it's actually expecting clip space. It is only expecting clip space for the display seen by that eye.
-        //If we were to supply one texture for both eyes, then we would use this viewport to specify which part of the texture would be seen by which eye. 
+        //If we were to supply one texture for both eyes, then we would use this viewport to specify which part of the texture would be seen by which eye.
         OSVR_ViewportDescription viewport;
         viewport.left = 0;
         viewport.lower = 0;
@@ -496,7 +495,7 @@ namespace OSVR
             LogMessage("Failed to present left eye!");
             return;
         }
-        
+
         if (osvrRenderManagerPresentRenderBufferD3D11(presentState, *rightRenderTarget, frameInfo.renderInfo[1], viewport) != OSVR_RETURN_SUCCESS)
         {
             LogMessage("Failed to present right eye!");
@@ -533,7 +532,7 @@ namespace OSVR
 
     void OSVRDevice::OutputHMDInfo()
     {
-        //Some versions of the OSVR SDK have been returning UTF-8 strings that CryLogAlways doesn't like to handle properly; converting to AZ strings seems to work. 
+        //Some versions of the OSVR SDK have been returning UTF-8 strings that CryLogAlways doesn't like to handle properly; converting to AZ strings seems to work.
         //Without this I've had the manufacturer name return garbage when passed to CryLogAlways.
         AZStd::string deviceName = m_deviceInfo.productName != nullptr ? m_deviceInfo.productName : "unknown";
         AZStd::string manufacturerName = m_deviceInfo.manufacturer != nullptr ? m_deviceInfo.manufacturer : "unknown";
@@ -630,7 +629,7 @@ namespace OSVR
         OSVRFrameInfo& frameInfo = GetOSVRFrameInfo();
         frameInfo.renderInfo[0] = leftEyeInfo;
         frameInfo.renderInfo[1] = rightEyeInfo;
-        
+
 
         //Retrieve poses and apply them to the tracking state
         AZ::VR::TrackingState::StatusFlags flags = AZ::VR::HMDStatus_OrientationTracked | AZ::VR::HMDStatus_CameraPoseTracked;
@@ -643,7 +642,7 @@ namespace OSVR
 
         m_trackingState.statusFlags = flags;
 
-        //Retrieve Pose 
+        //Retrieve Pose
         OSVR_PoseState poseState;
         osvrClientGetViewerPose(m_displayConfig, 0, &poseState);
 
@@ -652,7 +651,7 @@ namespace OSVR
 
         //Retrieve Dynamics
         //TODO: When this is easily accessible from OSVR
-        
+
     }
 
 } //namespace OSVR

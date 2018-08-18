@@ -13,12 +13,11 @@
 
 #pragma once
 
-#include <AzCore/Memory/SystemAllocator.h>
-
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Quaternion.h>
+#include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
 #include <MCore/Source/Vector.h>

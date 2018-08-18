@@ -159,7 +159,7 @@ namespace
         return newKey;
     }
 
-    QPainterPath CreatePathFromCurve(const SCurveEditorCurve& curve, ECurveEditorCurveType curveType, std::function<Vec2(Vec2)> transformFunc)
+    QPainterPath CreatePathFromCurve(const SCurveEditorCurve& curve, ECurveEditorCurveType curveType, AZStd::function<Vec2(Vec2)> transformFunc)
     {
         QPainterPath path;
 
@@ -207,7 +207,7 @@ namespace
         return path;
     }
 
-    QPainterPath CreateExtrapolatedPathFromCurve(const SCurveEditorCurve& curve, std::function<Vec2(Vec2)> transformFunc, float windowWidth)
+    QPainterPath CreateExtrapolatedPathFromCurve(const SCurveEditorCurve& curve, AZStd::function<Vec2(Vec2)> transformFunc, float windowWidth)
     {
         QPainterPath path;
 
@@ -248,7 +248,7 @@ namespace
         return stroker.createStroke(path);
     }
 
-    QPainterPath CreateDiscontinuityPathFromCurve(const SCurveEditorCurve& curve, ECurveEditorCurveType curveType, std::function<Vec2(Vec2)> transformFunc)
+    QPainterPath CreateDiscontinuityPathFromCurve(const SCurveEditorCurve& curve, ECurveEditorCurveType curveType, AZStd::function<Vec2(Vec2)> transformFunc)
     {
         QPainterPath path;
 
@@ -308,7 +308,7 @@ namespace
         painter.drawRect(QRectF(point - kPointRectExtent, point + kPointRectExtent));
     }
 
-    void DrawKeys(QPainter& painter, const QPalette& palette, const SCurveEditorCurve& curve, ECurveEditorCurveType curveType, std::function<Vec2(Vec2)> transformFunc, const bool bDrawHandles)
+    void DrawKeys(QPainter& painter, const QPalette& palette, const SCurveEditorCurve& curve, ECurveEditorCurveType curveType, AZStd::function<Vec2(Vec2)> transformFunc, const bool bDrawHandles)
     {
         const QColor tangentColor = CurveEditorHelpers::Interpolate(QColor(), QColor(curve.m_color.r, curve.m_color.g, curve.m_color.b, curve.m_color.a), 0.3f);
         const QPen tangentPen = QPen(tangentColor, 2.5);
@@ -356,7 +356,7 @@ namespace
         }
     }
 
-    void ForEachKey(SCurveEditorContent& content, std::function<void (SCurveEditorCurve& curve, SCurveEditorKey& key)> fun)
+    void ForEachKey(SCurveEditorContent& content, AZStd::function<void (SCurveEditorCurve& curve, SCurveEditorKey& key)> fun)
     {
         for (auto iter = content.m_curves.begin(); iter != content.m_curves.end(); ++iter)
         {
@@ -492,6 +492,7 @@ namespace
 
 struct CCurveEditor::SMouseHandler
 {
+    virtual ~SMouseHandler() = default;
     virtual void mousePressEvent(QMouseEvent* pEvent) {}
     virtual void mouseDoubleClickEvent(QMouseEvent* pEvent) {}
     virtual void mouseMoveEvent(QMouseEvent* pEvent) {}

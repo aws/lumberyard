@@ -146,6 +146,9 @@ const char* IDebugCallStack::TranslateExceptionCode(DWORD dwExcept)
 
 void IDebugCallStack::PutVersion(char* str)
 {
+#pragma warning( push )
+#pragma warning(disable: 4996)
+
     if (!gEnv || !gEnv->pSystem)
     {
         return;
@@ -197,6 +200,7 @@ void IDebugCallStack::PutVersion(char* str)
     strcat(str, s);
     strcat(str, "\n");
 #endif
+#pragma warning( pop )
 }
 
 

@@ -26,8 +26,6 @@
 #include "AnimGraphPosePool.h"
 
 
-MCORE_FORWARD_DECLARE(AttributeSet);
-
 namespace EMotionFX
 {
     // forward declarations
@@ -47,7 +45,7 @@ namespace EMotionFX
     class EMFX_API ActorInstance
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(ActorInstance, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ACTORINSTANCES);
+        AZ_CLASS_ALLOCATOR_DECL
         friend class Attachment;
 
     public:
@@ -337,7 +335,7 @@ namespace EMotionFX
          * @param timePassedInSeconds The time passed in seconds, since the last frame or update.
          * @param processDisabledDeformers When set to true, even mesh deformers that are disabled will even be processed.
          */
-        void UpdateMeshDeformers(float timePassedInSeconds, bool processDisabledDeformers=false);
+        void UpdateMeshDeformers(float timePassedInSeconds, bool processDisabledDeformers = false);
 
         /**
         * Update/Process the morph mesh deformers.
@@ -573,7 +571,7 @@ namespace EMotionFX
              * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
              * @param scale The scale to use.
              */
-            MCORE_INLINE void SetLocalScale(const AZ::Vector3 & scale)            {
+            MCORE_INLINE void SetLocalScale(const AZ::Vector3& scale)            {
                 mLocalTransform.mScale = scale;
             }
 
@@ -592,7 +590,7 @@ namespace EMotionFX
          * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
          * @result The local space position.
          */
-        MCORE_INLINE const AZ::Vector3 & GetLocalPosition() const                 {
+        MCORE_INLINE const AZ::Vector3& GetLocalPosition() const                 {
             return mLocalTransform.mPosition;
         }
 
@@ -608,7 +606,7 @@ namespace EMotionFX
         MCORE_INLINE const MCore::Quaternion& GetGlobalRotation() const             { return mGlobalTransform.mRotation;    }
         EMFX_SCALECODE
         (
-            MCORE_INLINE const AZ::Vector3 & GetGlobalScale() const                 { return mGlobalTransform.mScale;
+            MCORE_INLINE const AZ::Vector3& GetGlobalScale() const                 { return mGlobalTransform.mScale;
             }
         )
 
@@ -928,8 +926,6 @@ namespace EMotionFX
         void SetEyeBlinker(EyeBlinker* blinker);
         EyeBlinker* GetEyeBlinker() const;
 
-        MCore::AttributeSet* GetAttributeSet() const;
-
         AnimGraphPose* RequestPose(uint32 threadIndex);
         void FreePose(uint32 threadIndex, AnimGraphPose* pose);
 
@@ -954,8 +950,6 @@ namespace EMotionFX
         Transform               mGlobalTransform;
         Transform               mParentGlobalTransform;
         Transform               mTrajectoryDelta;
-
-        MCore::AttributeSet*    mAttributeSet;          /**< The attribute set, to store custom data. */
 
         MCore::Array<Attachment*>               mAttachments;       /**< The attachments linked to this actor instance. */
         MCore::Array<Actor::Dependency>         mDependencies;      /**< The actor dependencies, which specify which Actor objects this instance is dependent on. */

@@ -20,13 +20,14 @@
 #include "SkinningInfoVertexAttributeLayer.h"
 #include "TransformData.h"
 #include "ActorInstance.h"
-
-//#include <MCore/Source/MatrixDecomposer.h>
+#include <EMotionFX/Source/Allocators.h>
 #include <MCore/Source/LogManager.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(DualQuatSkinDeformer, DeformerAllocator, 0)
+
     // constructor
     DualQuatSkinDeformer::DualQuatSkinDeformer(Mesh* mesh)
         : MeshDeformer(mesh)
@@ -45,7 +46,7 @@ namespace EMotionFX
     // creation
     DualQuatSkinDeformer* DualQuatSkinDeformer::Create(Mesh* mesh)
     {
-        return new DualQuatSkinDeformer(mesh);
+        return aznew DualQuatSkinDeformer(mesh);
     }
 
 
@@ -67,7 +68,7 @@ namespace EMotionFX
     MeshDeformer* DualQuatSkinDeformer::Clone(Mesh* mesh)
     {
         // create the new cloned deformer
-        DualQuatSkinDeformer* result = new DualQuatSkinDeformer(mesh);
+        DualQuatSkinDeformer* result = aznew DualQuatSkinDeformer(mesh);
 
         // copy the bone info (for precalc/optimization reasons)
         result->mBones = mBones;

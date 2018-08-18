@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "AnnotationHeaderView.hxx"
 #include "AnnotationsDataView.hxx"
@@ -63,20 +63,20 @@ namespace Driller
         annotationDataView->update();
     }
 
-    void AnnotationHeaderView::SetEndFrame(FrameNumberType frame)
+    void AnnotationHeaderView::SetEndFrame(FrameNumberType frameNum)
     {
         QSize size = annotationDataView->size();
         int nextHeight = size.height();
 
         (void)nextHeight;
 
-        m_State.m_EndFrame = frame;
+        m_State.m_EndFrame = frameNum;
         annotationDataView->update();
     }
 
-    void AnnotationHeaderView::SetSliderOffset(FrameNumberType frame)
+    void AnnotationHeaderView::SetSliderOffset(FrameNumberType frameNum)
     {
-        m_State.m_FrameOffset = frame;
+        m_State.m_FrameOffset = frameNum;
         annotationDataView->update();
     }
 

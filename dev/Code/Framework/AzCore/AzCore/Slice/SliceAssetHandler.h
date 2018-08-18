@@ -31,6 +31,7 @@ namespace AZ
         AZ_RTTI(SliceAssetHandler, "{4DA1A81B-EEFE-4129-97A2-258233437A88}", Data::AssetHandler);
 
         SliceAssetHandler(SerializeContext* context = nullptr);
+        ~SliceAssetHandler();
 
         // Called by the asset manager to create a new asset. No loading should occur during this call
         Data::AssetPtr CreateAsset(const Data::AssetId& id, const Data::AssetType& type) override;

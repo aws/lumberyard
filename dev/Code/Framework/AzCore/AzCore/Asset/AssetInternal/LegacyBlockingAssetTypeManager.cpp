@@ -51,8 +51,6 @@ namespace AZ
                     // Use the lock to ensure that we're pushing into the per thread info vector atomically.
                     // Locking here is the magic that allows us to only block getting the size of the perThread
                     // collection everywhere else in this code.
-                    AZStd::unique_lock<AZStd::mutex> lock(m_perThreadSizeMutex);
-
                     BlockingThreadInfo newThreadInfo(threadToBlockOn);
                     blockingJobIndex = m_perThreadInfo.push_back(newThreadInfo);
                 }

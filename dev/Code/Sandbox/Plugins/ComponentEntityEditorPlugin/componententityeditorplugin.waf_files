@@ -15,6 +15,11 @@
 
     "auto":
     {
+        "Root":
+        [
+            "ComponentEntityDebugPrinter.h",
+            "ComponentEntityDebugPrinter.cpp"
+        ],
         "UI": [
             "UI/QComponentEntityEditorMainWindow.h",
             "UI/QComponentEntityEditorMainWindow.cpp",

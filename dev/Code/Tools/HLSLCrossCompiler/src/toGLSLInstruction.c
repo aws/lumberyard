@@ -215,6 +215,9 @@ static void AddComparision(HLSLCrossCompilerContext* psContext, Instruction* psI
             constructor = "uvec";
         }
 
+        bstring varName = bfromcstr(GetAuxArgumentName(SVT_UINT));
+        bcatcstr(varName, "1");
+
         //Component-wise compare
         AddIndentation(psContext);
         if (psContext->psShader->ui32MajorVersion < 4)
@@ -223,8 +226,13 @@ static void AddComparision(HLSLCrossCompilerContext* psContext, Instruction* psI
         }
         else
         {
-            BeginAssignment(psContext, &psInst->asOperands[0], TO_FLAG_UNSIGNED_INTEGER, psInst->bSaturate);
+            // Qualcomm driver workaround. Save the operation result into
+            // a temporary variable before assigning it to the register.
+            bconcat(glsl, varName);
+            AddSwizzleUsingElementCount(psContext, minElemCount);
+            bcatcstr(glsl, " = ");
         }
+
         bformata(glsl, "uvec%d(%s(%s4(", minElemCount, glslOpcode[eType], constructor);
         TranslateOperand(psContext, &psInst->asOperands[1], typeFlag);
         bcatcstr(glsl, ")");
@@ -243,7 +251,11 @@ static void AddComparision(HLSLCrossCompilerContext* psContext, Instruction* psI
         }
         else
         {
-            bcatcstr(glsl, ")) * 0xFFFFFFFFu");
+            bcatcstr(glsl, ")) * 0xFFFFFFFFu;\n");
+            AddIndentation(psContext);
+            BeginAssignment(psContext, &psInst->asOperands[0], TO_FLAG_UNSIGNED_INTEGER, psInst->bSaturate);
+            bconcat(glsl, varName);
+            AddSwizzleUsingElementCount(psContext, minElemCount);
             EndAssignment(psContext, &psInst->asOperands[0], TO_FLAG_UNSIGNED_INTEGER, psInst->bSaturate);
         }
         bcatcstr(glsl, ";\n");

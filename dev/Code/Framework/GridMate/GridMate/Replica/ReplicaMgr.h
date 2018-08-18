@@ -160,7 +160,7 @@ namespace GridMate {
 
         WriteBuffer& GetReliableOutBuffer() { return m_reliableOutBuffer; }
         WriteBuffer& GetUnreliableOutBuffer() { return m_unreliableOutBuffer; }
-        void SendBuffer(Carrier* carrier, unsigned char commChannel);
+        void SendBuffer(Carrier* carrier, unsigned char commChannel, const AZ::u32 replicaManagerTimer);
         void ResetBuffer();
         CallbackBuffer& GetReliableCallbackBuffer() { return m_reliableCallbacks; }
         CallbackBuffer& GetUnreliableCallbackBuffer() { return m_unreliableCallbacks; }
@@ -180,13 +180,36 @@ namespace GridMate {
             Role_SyncHost = 1 << 0,
         };
 
-        AZ::Crc32 m_myPeerId; // id for the local peer
-        Carrier* m_carrier; // pointer to underlying carrier
-        unsigned char m_commChannel; // carrier comm channel to use
-        AZ::u32 m_roles; // roles for this replica manager
-        unsigned int m_targetSendTimeMS; // target milliseconds between sends
-        unsigned int m_targetSendLimitBytesPerSec; // incoming bandwidth limit per peer in bytes per second (0 - unlimited)
-        float m_targetSendLimitBurst; // burst in bandwidth will be allowed for the given amount of time maximum. burst will only be allowed if bandwidth is not capped at the time of burst
+        // default value for m_targetFixedTimeStepsPerSecond, used to indicate fixed time step is disabled
+        static const AZ::s16 k_fixedTimeStepDisabled = -1;
+
+        // id for the local peer
+        AZ::Crc32 m_myPeerId; 
+
+        // pointer to underlying carrier
+        Carrier* m_carrier; 
+
+        // carrier comm channel to use
+        unsigned char m_commChannel;
+
+        // roles for this replica manager
+        AZ::u32 m_roles; 
+
+        // target milliseconds between sends
+        unsigned int m_targetSendTimeMS;
+
+        // incoming bandwidth limit per peer in bytes per second (0 - unlimited)
+        unsigned int m_targetSendLimitBytesPerSec; 
+
+        // burst in bandwidth will be allowed for the given amount of time maximum. burst will only be allowed if bandwidth is not capped at the time of burst
+        float m_targetSendLimitBurst; 
+
+        // -1 (default) means use real time (time from Carrier) when adding timestamp to send buffer read in Unmarshal and propagated to datasets and replicas 
+        // as m_lastUpdateTime, otherwise specify a value that indicates the target server frame rate and the server will send a fixed time step in packets. 
+        // This should match your intended target frame rate.
+        // This feature would really only be useful if you are running a server, since clients should be time stamping with their local time. The idea would be 
+        // that the application should read a config file or cvar to know when to set this value.
+        AZ::s16 m_targetFixedTimeStepsPerSecond;
 
         ReplicaMgrDesc(const AZ::Crc32& myPeerId = AZ::Crc32()
             , Carrier* carrier = NULL
@@ -201,6 +224,7 @@ namespace GridMate {
             , m_targetSendTimeMS(targetSendTimeMS)
             , m_targetSendLimitBytesPerSec(targetSendLimitBytesPerSec)
             , m_targetSendLimitBurst(10.f)
+            , m_targetFixedTimeStepsPerSecond(k_fixedTimeStepDisabled)
         {
         }
     };
@@ -217,6 +241,66 @@ namespace GridMate {
         * Breaks object migration, including host migration.
         */
         bool m_enableStrictSourceValidation = false;
+    };
+
+    //-----------------------------------------------------------------------------
+    // FixedTimeStep
+    //-----------------------------------------------------------------------------
+    class FixedTimeStep
+    {
+    public:
+        static const AZ::u16 k_millisecondsPerSecond = 1000;
+
+        FixedTimeStep() 
+            : m_updateCount(0)
+            , m_updateCountTargetPerSecond(0)
+            , m_currentTime(0)
+            , m_seconds(0)
+        {
+        }
+
+        void UpdateFixedTimeStep()
+        {
+            m_updateCount++;
+
+            // every second update the seconds count
+            if (m_updateCount % m_updateCountTargetPerSecond == 0)
+            {
+                m_seconds += 1;
+            }
+
+            // generate a ratio of the progress through the current second, this solves rounding issues created by trying to accumulate repeating decimal values (16.66666 for example) 
+            const AZ::u64 oneSecondRatio = (k_millisecondsPerSecond * (m_updateCount % m_updateCountTargetPerSecond)) / m_updateCountTargetPerSecond;
+
+            // update the time to be the second count plus the ratio of our progress through the current second
+            m_currentTime = (m_seconds * k_millisecondsPerSecond) + oneSecondRatio;
+        }
+
+        void SetTargetUpdateRate(AZ::u32 updateCountTargetPerSecond)
+        {
+            AZ_Warning("GridMate", (updateCountTargetPerSecond == 0), "Calling SetTargetUpdateRate() while the system is updating will lead to inconsistencies in timing, this value should be set ONCE!\n");
+
+            if (updateCountTargetPerSecond > k_millisecondsPerSecond)
+            {
+                AZ_Warning("GridMate", false, "SetTargetUpdateRate() is clamping rate from requested [%u] to max value of [%u]!\n", updateCountTargetPerSecond, k_millisecondsPerSecond);
+                updateCountTargetPerSecond = k_millisecondsPerSecond;
+            }
+            m_updateCountTargetPerSecond = updateCountTargetPerSecond;
+
+            // this could allow for changing on the fly but it would need to ensure that if it were in the middle of a second, that the new rate would result in landing on the 
+        }
+
+        AZ::u64 GetCurrentTime() const
+        {
+            return m_currentTime;
+        }
+
+    private:
+        AZ::u64 m_updateCount;
+        AZ::u32 m_updateCountTargetPerSecond;
+
+        AZ::u64 m_currentTime;     // the local time which we will time stamp outgoing changes with in calls to SendBuffer(), updated once a frame and guaranteed to be consistent between sends that occur on the same frame.
+        AZ::u64 m_seconds;         // an accumulation of seconds used when calculating m_fixedTimeStepCurrentTime
     };
 
     //-----------------------------------------------------------------------------
@@ -274,6 +358,8 @@ namespace GridMate {
         AZStd::chrono::system_clock::time_point m_lastCheckTime; // last time we tried to send
         AZStd::chrono::system_clock::time_point m_nextSendTime; // next expected send slot
 
+        FixedTimeStep m_fixedTimeStep;
+
         ReplicaPeer m_self; // the local peer
         AZStd::recursive_mutex  m_mutexRemotePeers; // mutex for remote peers
         ReplicaPeerList         m_remotePeers;      // remote peers
@@ -299,9 +385,10 @@ namespace GridMate {
         ReplicaTaskManager<NullProcessPolicy, NullPriorityPolicy> m_peerUpdateTasks;
 
         TimeContext m_currentFrameTime;
+        AZ::u32 m_latchedCarrierTime;   // timer that is constant across a frame
 
         ReplicationSecurityOptions m_securityOptions;
-        bool m_autoBroadcast; ///< should replicas be automatically broadcasted to every session member?
+        bool m_autoBroadcast; ///< should replicas be automatically broadcast to every session member?
 
         // forbidding replica manager copying
         ReplicaManager(const ReplicaManager&) AZ_DELETE_METHOD;
@@ -447,6 +534,10 @@ namespace GridMate {
         bool HasValidHost() const { return m_sessionInfo->GetReplica() && m_sessionInfo->GetReplica()->IsActive() && m_sessionInfo->m_pHostPeer && !m_sessionInfo->m_pHostPeer->IsOrphan(); }
         PeerId GetLocalPeerId() const { return m_cfg.m_myPeerId; }
         TimeContext GetTime() const;
+
+        AZ::u32 GetTimeForNetworkTimestamp() const;
+        void UpdateFixedTimeStep();
+        bool IsUsingFixedTimeStep() const { return m_cfg.m_targetFixedTimeStepsPerSecond != ReplicaMgrDesc::k_fixedTimeStepDisabled; }
 
         void SetSendTimeInterval(unsigned int sendTimeMs); // Set time interval between sends (in milliseconds), 0 will bound sends to GridMate tick rate
         unsigned int GetSendTimeInterval() const; // Returns time interval between sends (in milliseconds)

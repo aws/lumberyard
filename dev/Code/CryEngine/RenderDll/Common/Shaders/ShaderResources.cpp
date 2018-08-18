@@ -15,6 +15,9 @@
 #include "ShaderResources.h"
 #include "GraphicsPipeline/Common/GraphicsPipelineStateSet.h"
 
+#include <AzCore/std/sort.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
+
 #ifndef  NULL_RENDERER
     #include "DriverD3D.h"
 #endif // ! NULL_RENDERER
@@ -183,7 +186,7 @@ CShaderResources::~CShaderResources()
 
 CShaderResources::CShaderResources()
 {
-    m_pipelineStateCache = std::make_shared<CGraphicsPipelineStateLocalCache>();
+    m_pipelineStateCache = AZStd::make_shared<CGraphicsPipelineStateLocalCache>();
     Reset();
 }
 
@@ -192,7 +195,7 @@ CShaderResources::CShaderResources(SInputShaderResources* pSrc)
     assert(pSrc);
     PREFAST_ASSUME(pSrc);
 
-    m_pipelineStateCache = std::make_shared<CGraphicsPipelineStateLocalCache>();
+    m_pipelineStateCache = AZStd::make_shared<CGraphicsPipelineStateLocalCache>();
     Reset();
 
     if (!pSrc)
@@ -457,11 +460,12 @@ void CShaderResources::UpdateConstants(IShader* pISH)
 
 namespace
 {
-    void WriteConstants(SFXParam* requestedParameter, DynArray<SShaderParam>& parameters, Vec4* outConstants)
+    void WriteConstants(SFXParam* requestedParameter, DynArray<SShaderParam>& parameters, AZStd::vector<Vec4>& outConstants)
     {
         const AZ::u32 parameterFlags = requestedParameter->GetFlags();
         const AZ::u8  paramStageSetter = requestedParameter->m_OffsetStageSetter;
         const AZ::u32 registerOffset = requestedParameter->m_Register[paramStageSetter];
+        AZ_Assert(registerOffset < outConstants.size(), "Requested parameter beyond the bounds of the constant buffer.");
         float* outputData = &outConstants[registerOffset][0];
 
         for (AZ::u32 componentIdx = 0; componentIdx < 4; componentIdx++)
@@ -571,7 +575,7 @@ void CShaderResources::Rebuild(IShader* abstractShader, AzRHI::ConstantBufferUsa
 	// the exception when the different stages have different slots offsets, however the slots' offsets range 
 	// is always valid since it's covered by the minimum and maximum gathering that happens during the 
 	// slots go over.
-    std::sort(usedParameters.begin(), usedParameters.end(), [] (const SFXParam* lhs, const SFXParam* rhs)
+    AZStd::sort(usedParameters.begin(), usedParameters.end(), [] (const SFXParam* lhs, const SFXParam* rhs)
     {
         return lhs->m_Register[0] < rhs->m_Register[0];
     });
@@ -611,7 +615,7 @@ void CShaderResources::Rebuild(IShader* abstractShader, AzRHI::ConstantBufferUsa
 
                 for (AZ::u32 i = 0; i < usedParameters.size(); i++)
                 {
-                    WriteConstants(usedParameters[i], publicParameters, m_Constants.data());
+                    WriteConstants(usedParameters[i], publicParameters, m_Constants);
                 }
             }
         }

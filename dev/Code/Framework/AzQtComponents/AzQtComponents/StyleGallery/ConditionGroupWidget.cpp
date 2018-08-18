@@ -138,7 +138,7 @@ void ConditionGroupWidget::updateButtons()
                 if (isLast) {
                     connect(button, &QToolButton::clicked, this, &ConditionGroupWidget::appendCondition);
                 } else {
-                    connect(button, &QToolButton::clicked, [this, i] {
+                    connect(button, &QToolButton::clicked, this, [this, i] {
                         removeCondition(i);
                     });
                 }

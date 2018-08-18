@@ -24,16 +24,18 @@
 
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 #include <native/utilities/BuilderManager.h>
 
 #include <QtConcurrent/QtConcurrentRun>
 #include <QDir>
+#include <QList>
+#include <QPair>
 #include <QDateTime>
 #include <QElapsedTimer>
 
 #include "native/utilities/PlatformConfiguration.h"
-#include "native/utilities/AssetUtils.h"
+#include "native/utilities/assetUtils.h"
 #include "native/assetprocessor.h"
 
 namespace
@@ -112,7 +114,7 @@ namespace AssetProcessor
     void RCJob::Init(JobDetails& details)
     {
         m_jobDetails = AZStd::move(details);
-        m_queueElementID = QueueElementID(GetInputFileRelativePath(), GetPlatformInfo().m_identifier.c_str(), GetJobKey());
+        m_queueElementID = QueueElementID(GetJobEntry().m_databaseSourceName, GetPlatformInfo().m_identifier.c_str(), GetJobKey());
     }
 
     const JobEntry& RCJob::GetJobEntry() const
@@ -183,10 +185,6 @@ namespace AssetProcessor
         m_JobEscalation = jobEscalation;
     }
 
-    void RCJob::SetInputFileAbsolutePath(QString absolutePath)
-    {
-        m_jobDetails.m_jobEntry.m_absolutePathToFile = absolutePath.toUtf8().data();
-    }
     void RCJob::SetCheckExclusiveLock(bool value)
     {
         m_jobDetails.m_jobEntry.m_checkExclusiveLock = value;
@@ -214,19 +212,9 @@ namespace AssetProcessor
         return QString();
     }
 
-    QString RCJob::GetInputFileAbsolutePath() const
-    {
-        return m_jobDetails.m_jobEntry.m_absolutePathToFile;
-    }
-
     const AZ::Uuid& RCJob::GetInputFileUuid() const
     {
         return m_jobDetails.m_jobEntry.m_sourceFileUUID;
-    }
-
-    QString RCJob::GetInputFileRelativePath() const
-    {
-        return m_jobDetails.m_jobEntry.m_relativePathToFile;
     }
 
     QString RCJob::GetFinalOutputPath() const
@@ -260,21 +248,16 @@ namespace AssetProcessor
 
         processJobRequest.m_platformInfo = GetPlatformInfo();
         processJobRequest.m_builderGuid = GetBuilderGuid();
-        processJobRequest.m_sourceFile = GetInputFileRelativePath().toUtf8().data();
+        processJobRequest.m_sourceFile = GetJobEntry().m_pathRelativeToWatchFolder.toUtf8().data();
         processJobRequest.m_sourceFileUUID = GetInputFileUuid();
-        processJobRequest.m_watchFolder = GetWatchFolder().toUtf8().data();
-        processJobRequest.m_fullPath = GetInputFileAbsolutePath().toUtf8().data();
+        processJobRequest.m_watchFolder = GetJobEntry().m_watchFolderPath.toUtf8().data();
+        processJobRequest.m_fullPath = GetJobEntry().GetAbsoluteSourcePath().toUtf8().data();
         processJobRequest.m_jobId = GetJobEntry().m_jobRunKey;
     }
 
     QString RCJob::GetJobKey() const
     {
         return m_jobDetails.m_jobEntry.m_jobKey;
-    }
-
-    QString RCJob::GetWatchFolder() const
-    {
-        return m_jobDetails.m_watchFolder;
     }
 
     AZ::Uuid RCJob::GetBuilderGuid() const
@@ -355,6 +338,7 @@ namespace AssetProcessor
             SetState(terminated);
             Q_EMIT Finished();
         }
+        listener.BusDisconnect();
     }
 
     void RCJob::ExecuteBuilderCommand(BuilderParams builderParams)
@@ -375,7 +359,7 @@ namespace AssetProcessor
         }
         // Lock and unlock the source file to ensure it is not still open by another process.
         // This prevents premature processing of some source files that are opened for writing, but are zero bytes for longer than the modification threshhold
-        QString inputFile(builderParams.m_rcJob->GetJobEntry().m_absolutePathToFile);
+        QString inputFile = builderParams.m_rcJob->GetJobEntry().GetAbsoluteSourcePath();
         if (builderParams.m_rcJob->GetJobEntry().m_checkExclusiveLock && QFile::exists(inputFile))
         {
             // We will only continue once we get exclusive lock on the source file
@@ -516,21 +500,39 @@ namespace AssetProcessor
             {
                 result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
             }
-
-            
         }
 
         bool shouldRemoveTempFolder = true;
 
+        if (result.m_resultCode == AssetBuilderSDK::ProcessJobResult_Success)
+        {
+            // do a final check of this job to make sure its not making colliding subIds.
+            AZStd::unordered_set<AZ::u32> subIdsFound;
+            for (const AssetBuilderSDK::JobProduct& product : result.m_outputProducts)
+            {
+                if (!subIdsFound.insert(product.m_productSubID).second)
+                {
+                    // if this happens the element was already in the set.
+                    AZ_Error(AssetBuilderSDK::ErrorWindow, false, "The builder created more than one asset with the same subID (%u) when emitting product %s\n  Builders should set a unique m_productSubID value for each product, as this is used as part of the address of the asset.", product.m_productSubID, product.m_productFileName.c_str());
+                    result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                    break;
+                }
+            }
+        }
+
         switch (result.m_resultCode)
         {
         case AssetBuilderSDK::ProcessJobResult_Success:
-            if (!CopyCompiledAssets(builderParams, result))
+            // make sure there's no subid collision inside a job.
             {
-                result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
-                shouldRemoveTempFolder = false;
+                
+                if (!CopyCompiledAssets(builderParams, result))
+                {
+                    result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                    shouldRemoveTempFolder = false;
+                }
+                shouldRemoveTempFolder = shouldRemoveTempFolder && !s_createRequestFileForSuccessfulJob;
             }
-            shouldRemoveTempFolder = shouldRemoveTempFolder && !s_createRequestFileForSuccessfulJob;
             break;
 
         case AssetBuilderSDK::ProcessJobResult_Crashed:
@@ -560,11 +562,29 @@ namespace AssetProcessor
 
     bool RCJob::CopyCompiledAssets(BuilderParams& params, AssetBuilderSDK::ProcessJobResponse& response)
     {
+        if (response.m_outputProducts.empty())
+        {
+            // early out here for performance - no need to do anything at all here so don't waste time with IsDir or Exists or anything.
+            return true;
+        }
+
         QDir outputDirectory(params.m_finalOutputDir);
         QString         tempFolder = params.m_processJobRequest.m_tempDirPath.c_str();
         QDir            tempDir(tempFolder);
 
-        //if outputDirectory does not exist then create it
+        if (params.m_finalOutputDir.isEmpty())
+        {
+            AZ_Assert(false, "CopyCompiledAssets:  params.m_finalOutputDir is empty for an asset processor job.  This should not happen and is because of a recent code change.  Check history of any new builders or rcjob.cpp\n");
+            return false;
+        }
+
+        if (!tempDir.exists())
+        {
+            AZ_Assert(false, "PCopyCompiledAssets:  params.m_processJobRequest.m_tempDirPath is empty for an asset processor job.  This should not happen and is because of a recent code change!  Check history of RCJob.cpp and any new builder code changes.\n");
+            return false;
+        }
+
+        // if outputDirectory does not exist then create it
         if (!outputDirectory.exists())
         {
             if (!outputDirectory.mkpath("."))
@@ -574,6 +594,16 @@ namespace AssetProcessor
             }
         }
 
+        // copy the built products into the appropriate location in the real cache and update the job status accordingly.
+        // note that we go to the trouble of first doing all the checking for disk space and existence of the source files
+        // before we notify the AP or start moving any of the files so that failures cause the least amount of damage possible.
+
+        // this vector is a set of pairs where the first of each pair is the source file (absolute) we intend to copy
+        // and  the second is the product destination we intend to copy it to.
+        QList< QPair<QString, QString> > outputsToCopy;
+        outputsToCopy.reserve(static_cast<int>(response.m_outputProducts.size()));
+        qint64 totalFileSizeRequired = 0;
+
         for (AssetBuilderSDK::JobProduct& product : response.m_outputProducts)
         {
             // each Output Product communicated by the builder will either be
@@ -581,7 +611,7 @@ namespace AssetProcessor
             // * an absolute path in the temp folder, and we attempt to move also
             // * an absolute path outside the temp folder, in which we assume you'd like to just copy a file somewhere.
 
-            QString outputProduct = QString(product.m_productFileName.c_str()); // could be a relative path.
+            QString outputProduct = QString::fromUtf8(product.m_productFileName.c_str()); // could be a relative path.
             QFileInfo fileInfo(outputProduct);
 
             if (fileInfo.isRelative())
@@ -600,44 +630,80 @@ namespace AssetProcessor
 
             if (productFile.length() >= AP_MAX_PATH_LEN)
             {
-                AZ_TracePrintf(AssetBuilderSDK::WarningWindow, "Warning: Product %s path length (%d) exceeds the max path length (%d) allowed.\n", productFile.toUtf8().data(), productFile.length(), AP_MAX_PATH_LEN);
+                AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Cannot copy file: Product '%s' path length (%d) exceeds the max path length (%d) allowed on disk\n", productFile.toUtf8().data(), productFile.length(), AP_MAX_PATH_LEN);
                 return false;
             }
-
-            bool hasSpace = false;
-            bool isCopyJob = !(absolutePathOfSource.startsWith(tempFolder, Qt::CaseInsensitive));
-            QFile inFile(absolutePathOfSource);
-                
-            AssetProcessor::DiskSpaceInfoBus::BroadcastResult(hasSpace, &AssetProcessor::DiskSpaceInfoBusTraits::CheckSufficientDiskSpace, outputDirectory.absolutePath(), inFile.size(), false);
-
-            if(!hasSpace)
+            
+            QFileInfo inFile(absolutePathOfSource);
+            if (!inFile.exists())
             {
-                AZ_Error(AssetProcessor::ConsoleChannel, false, "Cannot %s file, not enough disk space: %s", isCopyJob ? "copy" : "move", productFile.toStdString().c_str());
+                AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Cannot copy file - product file with absolute path '%s' attempting to save into cache could not be found", absolutePathOfSource.toUtf8().constData());
                 return false;
             }
-
-            EBUS_EVENT(AssetProcessor::ProcessingJobInfoBus, BeginIgnoringCacheFileDelete, productFile.toUtf8().data());
-            if (!MoveCopyFile(absolutePathOfSource, productFile, isCopyJob)) // this has its own traceprintf for failure
-            {
-                EBUS_EVENT(AssetProcessor::ProcessingJobInfoBus, StopIgnoringCacheFileDelete, productFile.toUtf8().data(), true);
-                return false;
-            }
-
-            EBUS_EVENT(AssetProcessor::ProcessingJobInfoBus, StopIgnoringCacheFileDelete, productFile.toUtf8().data(), false);
-
-            //we now ensure that the file is writable
-            if ((QFile::exists(productFile)) && (!AssetUtilities::MakeFileWritable(productFile)))
-            {
-                AZ_TracePrintf(AssetBuilderSDK::WarningWindow, "Unable to change permission for the file: %s.\n", productFile.toUtf8().data());
-            }
-
-            // replace the product file name in the result with the lower cased
-            // output path to the file. Needed since this is stored in the DB and
-            // the AssetProcessor expects product names to be all lower cased.
-            product.m_productFileName = productFile.toLower().toUtf8().data();
+            
+            totalFileSizeRequired += inFile.size();
+            outputsToCopy.push_back(qMakePair(absolutePathOfSource, productFile));
+            
+            // also update the product file name to be the final resting place of this product in the cache (normalized!)
+            product.m_productFileName = AssetUtilities::NormalizeFilePath(productFile).toUtf8().constData();
         }
 
-        return true;
+        // now we can check if there's enough space for ALL the files before we copy any.
+        bool hasSpace = false;
+        AssetProcessor::DiskSpaceInfoBus::BroadcastResult(hasSpace, &AssetProcessor::DiskSpaceInfoBusTraits::CheckSufficientDiskSpace, outputDirectory.absolutePath(), totalFileSizeRequired, false);
+
+        if (!hasSpace)
+        {
+            AZ_Error(AssetProcessor::ConsoleChannel, false, "Cannot save file to cache, not enough disk space to save all the products of %s.  Total needed: %lli bytes", params.m_processJobRequest.m_sourceFile.c_str(), totalFileSizeRequired);
+            return false;
+        }
+
+        // if we get here, we are good to go in terms of disk space and sources existing, so we make the best attempt we can.
+        // first, we broadcast the name of ALL of the outputs we are about to change:
+        for (const QPair<QString, QString>& filePair : outputsToCopy)
+        {
+            const QString& productAbsolutePath = filePair.second;
+            // note that this absolute path is a real file system path, and the following API requires normalized paths:
+            QString normalized = AssetUtilities::NormalizeFilePath(productAbsolutePath);
+            AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::BeginIgnoringCacheFileDelete, normalized.toUtf8().constData());
+        }
+
+        // after we do the above notify its important that we do not early exit this function without undoing those locks.
+
+        bool anyFileFailed = false;
+
+        for (const QPair<QString, QString>& filePair : outputsToCopy)
+        {
+            const QString& sourceAbsolutePath = filePair.first;
+            const QString& productAbsolutePath = filePair.second;
+
+            bool isCopyJob = !(sourceAbsolutePath.startsWith(tempFolder, Qt::CaseInsensitive));
+
+            if (!MoveCopyFile(sourceAbsolutePath, productAbsolutePath, isCopyJob)) // this has its own traceprintf for failure
+            {
+                // MoveCopyFile will have output to the log.  No need to double output here.
+                anyFileFailed = true;
+                continue;
+            }
+            
+            //we now ensure that the file is writable - this is just a warning if it fails, not a complete failure.
+            if (!AssetUtilities::MakeFileWritable(productAbsolutePath))
+            {
+                AZ_TracePrintf(AssetBuilderSDK::WarningWindow, "Unable to change permission for the file: %s.\n", productAbsolutePath.toUtf8().data());
+            }
+        }
+
+        // once we're done, regardless of success or failure, we 'unlock' those files for further process.
+        // if we failed, also re-trigger them to rebuild (the bool param at the end of the ebus call)
+        for (const QPair<QString, QString>& filePair : outputsToCopy)
+        {
+            const QString& productAbsolutePath = filePair.second;
+            // note that this absolute path is a real file system path, and the following API requires normalized paths:
+            QString normalized = AssetUtilities::NormalizeFilePath(productAbsolutePath);
+            AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::StopIgnoringCacheFileDelete, normalized.toUtf8().constData(), anyFileFailed);
+        }
+        
+        return !anyFileFailed;
     }
 } // namespace AssetProcessor
 

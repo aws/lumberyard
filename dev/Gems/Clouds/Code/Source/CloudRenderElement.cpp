@@ -15,7 +15,6 @@
 
 #include "CloudRenderElement.h"
 #include "CloudImposterRenderElement.h"
-#include "DynamicTexture.h"
 
 namespace CloudsGem
 {
@@ -53,8 +52,9 @@ namespace CloudsGem
 
     CloudRenderElement::CloudRenderElement()
     {
-        mfSetType(eDATA_Gem);
-        mfSetFlags(FCEF_TRANSFORM);
+        m_gemRE = gEnv->pRenderer->EF_CreateRE(eDATA_Gem);
+        m_gemRE->mfSetFlags(FCEF_TRANSFORM);
+        m_gemRE->mfSetDelegate(this);
     }
 
     void CloudRenderElement::DrawBillboards(const CameraViewParameters& camera)
@@ -98,7 +98,8 @@ namespace CloudsGem
         SShaderTechnique* shaderTechnique = renderPipeline->m_pCurTechnique;
         SShaderPass* pPass = renderPipeline->m_pCurPass;
         CShaderResources* shaderResources = renderPipeline->m_pShaderResources;
-        CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(renderObject->GetRE());
+        IRenderElementDelegate* renderElement = renderObject->GetRE()->mfGetDelegate();
+        CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(renderElement);
         Vec3 vPos = imposter->GetPosition();
 
         uint32 nPasses;
@@ -149,8 +150,7 @@ namespace CloudsGem
         if (renderer->GetRecursionLevel() > 0)
         {
             Vec4 vCloudColorScale(m_fCloudColorScale, 0, 0, 0);
-            static CCryNameR g_CloudColorScaleName("g_CloudColorScale");
-            shader->FXSetPSFloat(g_CloudColorScaleName, &vCloudColorScale, 1);
+            shader->FXSetPSFloat("g_CloudColorScale", &vCloudColorScale, 1);
         }
 
         renderer->FX_Commit();
@@ -334,7 +334,8 @@ namespace CloudsGem
 
             if (pRenderPipeline->m_pCurObject && pRenderPipeline->m_pCurObject->GetRE())
             {
-                CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(pRenderPipeline->m_pCurObject->GetRE());
+                IRenderElementDelegate* renderElement = pRenderPipeline->m_pCurObject->GetRE()->mfGetDelegate();
+                CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(renderElement);
                 imposter->SetScreenImposterState(true);
             }
         }
@@ -343,7 +344,8 @@ namespace CloudsGem
     void CloudRenderElement::UpdateWorldSpaceBounds(CRenderObject* renderObject)
     {
         SRenderPipeline* pRenderPipeline = gEnv->pRenderer->GetRenderPipeline();
-        CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(pRenderPipeline->m_pCurObject->GetRE());
+        IRenderElementDelegate* renderElement = pRenderPipeline->m_pCurObject->GetRE()->mfGetDelegate();
+        CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(renderElement);
         AZ_Assert(imposter, "Render element was null.");
         if (imposter)
         {
@@ -359,12 +361,15 @@ namespace CloudsGem
 
         if (bCheckOverflow)
         {
-            renderer->FX_CheckOverflow(0, 0, this);
+            renderer->FX_CheckOverflow(0, 0, m_gemRE);
         }
 
         SRenderPipeline* renderPipeline = renderer->GetRenderPipeline();
         CRenderObject* renderObject = renderPipeline->m_pCurObject;
-        CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(renderObject->GetRE());
+
+        IRenderElement* renderElement = renderObject->GetRE();
+        IRenderElementDelegate* renderElementDelegate = renderElement ? renderElement->mfGetDelegate() : nullptr;
+        CloudImposterRenderElement* imposter = renderElementDelegate ? static_cast<CloudImposterRenderElement*>(renderElementDelegate) : nullptr;
         SRenderObjData* objectData = renderObject->GetObjData();
         assert(objectData);
         if (objectData)
@@ -372,7 +377,7 @@ namespace CloudsGem
             if (!imposter)
             {
                 imposter = new CloudImposterRenderElement();
-                renderObject->m_pRE = imposter;
+                renderObject->SetRE(imposter->GetRE());
 
                 // Setup alpha blending
                 imposter->SetState(GS_BLSRC_ONE | GS_BLDST_ONEMINUSSRCALPHA | GS_ALPHATEST_GREATER);
@@ -406,7 +411,7 @@ namespace CloudsGem
             UpdateImposter(renderObject);
 
             renderPipeline->m_pCurObject = renderObject;
-            renderPipeline->m_pRE = this;
+            renderPipeline->SetRenderElement(m_gemRE);
             renderPipeline->m_RendNumIndices = 0;
             renderPipeline->m_RendNumVerts = 4;
             renderPipeline->m_FirstVertex = 0;
@@ -420,7 +425,8 @@ namespace CloudsGem
         SRenderPipeline* renderPipeline = renderer->GetRenderPipeline();
         CRenderObject* renderObject = renderPipeline->m_pCurObject;
         SRenderObjData* objectData = renderObject->GetObjData();
-        CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(renderObject->GetRE());
+        IRenderElementDelegate* renderElement = renderObject->GetRE()->mfGetDelegate();
+        CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(renderElement);
 
         if (!imposter->PrepareForUpdate())
         {
@@ -444,12 +450,12 @@ namespace CloudsGem
         int nLogY = imposter->GetLogResolutionY();
         int iResX = 1 << nLogX;
         int iResY = 1 << nLogY;
-        while (iResX > DynamicTexture::s_CurTexAtlasSize)
+        while (iResX > renderer->GetCurrentTextureAtlasSize())
         {
             nLogX--;
             iResX = 1 << nLogX;
         }
-        while (iResY > DynamicTexture::s_CurTexAtlasSize)
+        while (iResY > renderer->GetCurrentTextureAtlasSize())
         {
             nLogY--;
             iResY = 1 << nLogY;
@@ -474,7 +480,7 @@ namespace CloudsGem
             texturePtr = imposter->IsScreenImposter() ? imposter->GetScreenTexture() : imposter->GetTexture();
             if (!*texturePtr)
             {
-                *texturePtr = new DynamicTexture(iResX, iResY, FT_STATE_CLAMP, "CloudImposter2");
+                *texturePtr = renderer->CreateDynTexture2(iResX, iResY, FT_STATE_CLAMP, "CloudImposter", eTP_Clouds);
             }
             IDynTexture* texture = *texturePtr;
             if (texture)
@@ -511,14 +517,16 @@ namespace CloudsGem
         return true;
     }
 
-    bool CloudRenderElement::mfDisplay(bool bDisplayFrontOfSplit)
+    bool CloudRenderElement::Display(bool bDisplayFrontOfSplit)
     {
 #if !defined(DEDICATED_SERVER)
         IRenderer* renderer = gEnv->pRenderer;
         SRenderPipeline* renderPipeline = renderer->GetRenderPipeline();
 
         CRenderObject* renderObject = renderPipeline->m_pCurObject;
-        CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(renderObject->GetRE());
+        IRenderElementDelegate* renderElement = renderObject->GetRE()->mfGetDelegate();
+        CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(renderElement);
+
         Vec3 vPos = imposter->GetPosition();
         CShader* shader = renderPipeline->m_pShader;
         SShaderTechnique* shaderTechnique = renderPipeline->m_pCurTechnique;
@@ -560,7 +568,7 @@ namespace CloudsGem
         }
 
         // set depth texture for soft clipping of cloud against scene geometry
-        CTexture::ApplyDepthTextureState(1, FILTER_POINT, true);
+        renderer->ApplyDepthTextureState(1, FILTER_POINT, true);
 
         int State = GS_BLSRC_ONE | GS_BLDST_ONEMINUSSRCALPHA | GS_ALPHATEST_GREATER;
         if (imposter->IsSplit())
@@ -616,23 +624,20 @@ namespace CloudsGem
             shader->FXBeginPass(0);
 
             // Set color scale name
-            static CCryNameR g_CloudColorScaleName("g_CloudColorScale");
-            shader->FXSetPSFloat(g_CloudColorScaleName, &vCloudColorScale, 1);
+            shader->FXSetPSFloat("g_CloudColorScale", &vCloudColorScale, 1);
 
             // Set position
-            static CCryNameR LightningPosName("LightningPos");
             Vec3 highlightPosition;
             gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_SKY_HIGHLIGHT_POS, highlightPosition);
             Vec4 lightningPosition(highlightPosition.x, highlightPosition.y, highlightPosition.z, 0.0f);
-            shader->FXSetVSFloat(LightningPosName, &lightningPosition, 1);
+            shader->FXSetVSFloat("LightningPos", &lightningPosition, 1);
 
             // Set color and size
-            static CCryNameR LightningColSizeName("LightningColSize");
             Vec3 lightColor, lightSize;
             gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_SKY_HIGHLIGHT_COLOR, lightColor);
             gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_SKY_HIGHLIGHT_SIZE, lightSize);
             Vec4 lightningColorSize(lightColor.x, lightColor.y, lightColor.z, lightSize.x * 0.01f);
-            shader->FXSetVSFloat(LightningColSizeName, &lightningColorSize, 1);
+            shader->FXSetVSFloat("LightningColSize", &lightningColorSize, 1);
 
             renderPipeline->m_nCommitFlags |= FC_MATERIAL_PARAMS;
             renderer->FX_Commit();
@@ -656,7 +661,7 @@ namespace CloudsGem
                 auxFlags.SetDepthTestFlag(e_DepthTestOff);
                 renderer->GetIRenderAuxGeom()->SetRenderFlags(auxFlags);
 
-                const SMinMaxBox& worldSpaceBounds = imposter->mfGetWorldSpaceBounds();
+                const SMinMaxBox worldSpaceBounds = imposter->GetWorldSpaceBounds();
                 renderer->GetIRenderAuxGeom()->DrawAABB(AABB(worldSpaceBounds.GetMin(), worldSpaceBounds.GetMax()), false, Col_White, eBBD_Faceted);
             }
 
@@ -679,7 +684,7 @@ namespace CloudsGem
             int impostersDraw = renderer->GetIntegerConfigurationValue("r_ImpostersDraw", 0);
             if (impostersDraw & 4)
             {
-                const SMinMaxBox& worldSpaceBounds = imposter->mfGetWorldSpaceBounds();
+                const SMinMaxBox worldSpaceBounds = imposter->GetWorldSpaceBounds();
                 renderer->GetIRenderAuxGeom()->DrawAABB(AABB(worldSpaceBounds.GetMin(), worldSpaceBounds.GetMax()), false, Col_Red, eBBD_Faceted);
             }
 
@@ -713,28 +718,24 @@ namespace CloudsGem
             shader->FXBeginPass(0);
 
             // Cloud world space position
-            static CCryNameR vCloudWSPosName("vCloudWSPos");
             Vec4 pos(imposter->GetPosition(), 1);
-            shader->FXSetVSFloat(vCloudWSPosName, &pos, 1);
+            shader->FXSetVSFloat("vCloudWSPos", &pos, 1);
 
             // Cloud color scale
-            static CCryNameR g_CloudColorScaleName("g_CloudColorScale");
-            shader->FXSetPSFloat(g_CloudColorScaleName, &vCloudColorScale, 1);
+            shader->FXSetPSFloat("g_CloudColorScale", &vCloudColorScale, 1);
 
             // Light position
-            static CCryNameR LightningPosName("LightningPos");
             Vec3 lPos;
             gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_SKY_HIGHLIGHT_POS, lPos);
             Vec4 lightningPosition(lPos.x, lPos.y, lPos.z, col.a);
-            shader->FXSetVSFloat(LightningPosName, &lightningPosition, 1);
+            shader->FXSetVSFloat("LightningPos", &lightningPosition, 1);
 
             // Pack light color and size
-            static CCryNameR LightningColSizeName("LightningColSize");
             Vec3 lightColor, lightSize;
             gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_SKY_HIGHLIGHT_COLOR, lightColor);
             gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_SKY_HIGHLIGHT_SIZE, lightSize);
             Vec4 lightningColorSize(lightColor.x, lightColor.y, lightColor.z, lightSize.x * 0.01f);
-            shader->FXSetVSFloat(LightningColSizeName, &lightningColorSize, 1);
+            shader->FXSetVSFloat("LightningColSize", &lightningColorSize, 1);
 
             float fNear = imposter->GetNear();
             float fFar = imposter->GetFar();
@@ -789,12 +790,13 @@ namespace CloudsGem
         if (impostersDraw)
         {
             SRenderPipeline* pRenderPipeline = gEnv->pRenderer->GetRenderPipeline();
-            CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(pRenderPipeline->m_pCurObject->GetRE());
+            IRenderElementDelegate* renderElement = pRenderPipeline->m_pCurObject->GetRE()->mfGetDelegate();
+            CloudImposterRenderElement* imposter = static_cast<CloudImposterRenderElement*>(renderElement);
 
-            mfDisplay(false);
+            Display(false);
             if (imposter->IsSplit())
             {
-                mfDisplay(true);
+                Display(true);
             }
         }
 #endif

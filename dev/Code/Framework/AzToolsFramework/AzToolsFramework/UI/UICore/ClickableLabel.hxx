@@ -17,7 +17,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 
 #include <QWidget>
-#include <QLabel.h>
+#include <QLabel>
 #include <QMouseEvent>
 
 namespace AzToolsFramework

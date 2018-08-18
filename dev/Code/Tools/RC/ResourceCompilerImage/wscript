@@ -35,7 +35,7 @@ def build(bld):
     darwin_copy_dependent_files = []
 
     bld.CryResourceCompilerModule(
-        
+
         #==============================
         # Settings
         #==============================
@@ -64,24 +64,25 @@ def build(bld):
         #==============================
         # Windows
         #==============================
-        win_cflags                  = ['/W3', '/EHsc'],
         win_defines                 = ['_WIN64'],
         win_copy_dependent_files    = win_copy_dependent_files,
         win_export_definitions      = 'ImageExports.def',
         win_lib                     = win_lib,
         win_libpath                 = win_libpath,
-        win_cxxflags= [
+        msvc_cflags                 = ['/W3', '/EHsc'],
+        msvc_cxxflags = [
             '/wd4819',      # Invalid characters not in default code page.  Source contain characters above extended ascii, including in comments.
         ],
-        
+
         #==============================
         # Darwin
         #==============================
         darwin_copy_dependent_files = darwin_copy_dependent_files,
-        darwin_cflags               = ['-Wno-shift-count-overflow',
+        clang_cflags                = ['-Wno-shift-count-overflow',
                                     '-Wno-shift-negative-value'],
-        darwin_cxxflags             = ['-Wno-shift-count-overflow',
-                                    '-Wno-sometimes-uninitialized', # required fpr squish library to compile
+        clang_cxxflags              = ['-fexceptions',
+                                    '-Wno-shift-count-overflow',
+                                    '-Wno-sometimes-uninitialized', # required for squish library to compile
                                     '-Wno-shift-negative-value'],
 
         # Testing

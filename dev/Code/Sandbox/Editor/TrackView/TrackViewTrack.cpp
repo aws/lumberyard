@@ -120,6 +120,37 @@ bool CTrackViewTrack::SnapTimeToNextKey(float& time) const
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CTrackViewTrack::SetExpanded(bool expanded)
+{
+    if (m_pAnimTrack)
+    {
+        CTrackViewSequence* sequence = GetSequence();
+        if (nullptr != sequence)
+        {
+            if (GetExpanded() != expanded)
+            {
+                m_pAnimTrack->SetExpanded(expanded);
+
+                if (expanded)
+                {
+                    sequence->OnNodeChanged(this, ITrackViewSequenceListener::eNodeChangeType_Expanded);
+                }
+                else
+                {
+                    sequence->OnNodeChanged(this, ITrackViewSequenceListener::eNodeChangeType_Collapsed);
+                }
+            }
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CTrackViewTrack::GetExpanded() const
+{
+    return (m_pAnimTrack) ? m_pAnimTrack->GetExpanded() : false;
+}
+
+//////////////////////////////////////////////////////////////////////////
 CTrackViewKeyHandle CTrackViewTrack::GetPrevKey(const float time)
 {
     CTrackViewKeyHandle keyHandle;

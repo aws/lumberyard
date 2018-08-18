@@ -27,7 +27,8 @@
             "NetBindingMocks.h",
             "TransformComponent.cpp",
             "GridMocks.h",
-            "InterestManagerComponentTests.cpp"
+            "InterestManagerComponentTests.cpp",
+            "SQLiteConnectionTests.cpp"
         ]
     }
 }

@@ -18,6 +18,7 @@ import util
 import json
 import datetime
 import botocore
+import boto3
 from boto3 import Session
 from botocore.exceptions import ProfileNotFound
 from botocore.exceptions import ClientError
@@ -270,7 +271,6 @@ class AWSContext(object):
         self.__args = args
 
     def __init_session(self):
-
         if self.__args.aws_access_key or self.__args.aws_secret_key:
 
             if self.__args.profile:
@@ -281,7 +281,7 @@ class AWSContext(object):
             self.__session = Session(
                 aws_access_key_id = self.__args.aws_access_key,
                 aws_secret_access_key = self.__args.aws_secret_key)
-
+            self.__set_boto3_environment_variables(self.__args.aws_access_key, self.__args.aws_secret_key)
         else:
             
             if self.__args.profile:
@@ -304,6 +304,14 @@ class AWSContext(object):
                 except (ProfileNotFound) as e:
                     raise HandledError('The AWS session failed to locate AWS credentials from the environment. Ensure that an AWS profile is present with command \'lmbr_aws list-profiles\' or using the Credentials Manager (AWS -> Credentials manager) in Lumberyard.  The AWS error message is \'{}\''.format(e.message))
 
+            credentials = self.__session.get_credentials()
+
+            if not credentials:
+                raise HandledError(
+                    'The AWS session failed to locate AWS credentials for profile {}. Ensure that an AWS profile is present with command \'lmbr_aws list-profiles\' or using the Credentials Manager (AWS -> Credentials manager) in Lumberyard.'.format(profile))
+
+            credentials = credentials.get_frozen_credentials()
+            self.__set_boto3_environment_variables(credentials.access_key, credentials.secret_key)
         self.__add_cloud_canvas_attribution(self.__session)
 
 
@@ -316,9 +324,14 @@ class AWSContext(object):
             aws_access_key_id = credentials.get('AccessKeyId'), 
             aws_secret_access_key = credentials.get('SecretAccessKey'),
             aws_session_token = credentials.get('SessionToken'))
-
+        self.__set_boto3_environment_variables(credentials.get('AccessKeyId'), credentials.get('SecretAccessKey') )
+        
         self.__add_cloud_canvas_attribution(self.__session)
 
+    def __set_boto3_environment_variables(self, access_key, secret_key):
+        #set the environment attributes that boto3 utilizes in case some initializes directly from the boto3 library
+        os.environ["AWS_ACCESS_KEY_ID"] = access_key
+        os.environ["AWS_SECRET_ACCESS_KEY"] = secret_key 
 
     def __add_cloud_canvas_attribution(self, session):
         if session._session.user_agent_extra is None:

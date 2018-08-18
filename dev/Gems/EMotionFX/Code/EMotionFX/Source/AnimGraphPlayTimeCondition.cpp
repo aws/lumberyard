@@ -10,72 +10,71 @@
 *
 */
 
-// include the required headers
-#include "EMotionFXConfig.h"
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/Random.h>
-#include <MCore/Source/AttributeSettings.h>
-#include "AnimGraphPlayTimeCondition.h"
-#include "AnimGraph.h"
-#include "AnimGraphNode.h"
-#include "AnimGraphInstance.h"
-#include "EMotionFXManager.h"
-#include "AnimGraphManager.h"
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/AnimGraphPlayTimeCondition.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    AnimGraphPlayTimeCondition::AnimGraphPlayTimeCondition(AnimGraph* animGraph)
-        : AnimGraphTransitionCondition(animGraph, TYPE_ID)
+    const char* AnimGraphPlayTimeCondition::s_modeReachedPlayTimeX = "Reached Play Time X";
+    const char* AnimGraphPlayTimeCondition::s_modeReachedEnd = "Reached End";
+    const char* AnimGraphPlayTimeCondition::s_modeHasLessThanXSecondsLeft = "Less Than X Seconds Left";
+
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphPlayTimeCondition, AnimGraphAllocator, 0)
+
+    AnimGraphPlayTimeCondition::AnimGraphPlayTimeCondition()
+        : AnimGraphTransitionCondition()
+        , m_node(nullptr)
+        , m_playTime(1.0f)
+        , m_mode(MODE_REACHEDTIME)
     {
-        mNode = nullptr;
-        CreateAttributeValues();
-        InitInternalAttributesForAllInstances();
     }
 
 
-    // destructor
+    AnimGraphPlayTimeCondition::AnimGraphPlayTimeCondition(AnimGraph* animGraph)
+        : AnimGraphPlayTimeCondition()
+    {
+        InitAfterLoading(animGraph);
+    }
+
+
     AnimGraphPlayTimeCondition::~AnimGraphPlayTimeCondition()
     {
     }
 
 
-    // create
-    AnimGraphPlayTimeCondition* AnimGraphPlayTimeCondition::Create(AnimGraph* animGraph)
+    void AnimGraphPlayTimeCondition::Reinit()
     {
-        return new AnimGraphPlayTimeCondition(animGraph);
+        if (!AnimGraphNodeId(m_nodeId).IsValid())
+        {
+            m_node = nullptr;
+            return;
+        }
+
+        m_node = mAnimGraph->RecursiveFindNodeById(m_nodeId);
     }
 
 
-    // create unique data
-    AnimGraphObjectData* AnimGraphPlayTimeCondition::CreateObjectData()
+    bool AnimGraphPlayTimeCondition::InitAfterLoading(AnimGraph* animGraph)
     {
-        return AnimGraphObjectData::Create(this, nullptr);
-    }
+        if (!AnimGraphTransitionCondition::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
 
+        InitInternalAttributesForAllInstances();
 
-    // register the attributes
-    void AnimGraphPlayTimeCondition::RegisterAttributes()
-    {
-        // create the node selection picker attribute
-        MCore::AttributeSettings* attribInfo = RegisterAttribute("Node", "nodeID", "The node to use.", ATTRIBUTE_INTERFACETYPE_ANIMGRAPHNODEPICKER);
-        attribInfo->SetDefaultValue(MCore::AttributeString::Create());
-
-        // create the play time value float spinner
-        attribInfo = RegisterAttribute("Play Time", "countDownTime", "The play time in seconds.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        attribInfo->SetDefaultValue(MCore::AttributeFloat::Create(1.0f));
-        attribInfo->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        attribInfo->SetMaxValue(MCore::AttributeFloat::Create(FLT_MAX));
-
-        // the mode
-        MCore::AttributeSettings* modeParam = RegisterAttribute("Mode", "mode", "The way how to check the given play time set in this condition with the playtime from the node.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        modeParam->ResizeComboValues(MODE_NUM);
-        modeParam->SetComboValue(MODE_REACHEDTIME,  "Reached Play Time X");
-        modeParam->SetComboValue(MODE_REACHEDEND,   "Reached End");
-        modeParam->SetComboValue(MODE_HASLESSTHAN,  "Less Than X Seconds Left");
-        //modeParam->SetComboValue(MODE_HASMORETHAN, "More Than X Seconds Left");
-        modeParam->SetDefaultValue(MCore::AttributeFloat::Create(0));
+        Reinit();
+        return true;
     }
 
 
@@ -86,30 +85,21 @@ namespace EMotionFX
     }
 
 
-    // get the type string
-    const char* AnimGraphPlayTimeCondition::GetTypeString() const
-    {
-        return "AnimGraphPlayTimeCondition";
-    }
-
-    
     // test the condition
     bool AnimGraphPlayTimeCondition::TestCondition(AnimGraphInstance* animGraphInstance) const
     {
         // if no node has been selected yet, always return false
-        if (mNode == nullptr)
+        if (!m_node)
         {
             return false;
         }
 
-        // get the playtime and the mode from the attributes
-        const float x           = GetAttributeFloat(ATTRIB_PLAYTIME)->GetValue();
-        const int32 mode        = static_cast<int32>(GetAttributeFloat(ATTRIB_MODE)->GetValue());
-        const float playTime    = mNode->GetCurrentPlayTime(animGraphInstance);
-        const float duration    = mNode->GetDuration(animGraphInstance);
+        const float x           = m_playTime;
+        const float playTime    = m_node->GetCurrentPlayTime(animGraphInstance);
+        const float duration    = m_node->GetDuration(animGraphInstance);
         const float timeLeft    = duration - playTime;// TODO: what about backwards playing a node?
 
-        switch (mode)
+        switch (m_mode)
         {
         // has the selected node reached the given playtime?
         case MODE_REACHEDTIME:
@@ -149,85 +139,68 @@ namespace EMotionFX
     }
 
 
-    // clonse the condition
-    AnimGraphObject* AnimGraphPlayTimeCondition::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        AnimGraphPlayTimeCondition* clone = new AnimGraphPlayTimeCondition(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // construct and output the information summary string for this object
     void AnimGraphPlayTimeCondition::GetSummary(AZStd::string* outResult) const
     {
-        MCore::AttributeSettings* modeParam = GetAnimGraphManager().GetAttributeInfo(this, ATTRIB_MODE);
-        const int32 mode = GetAttributeFloatAsInt32(ATTRIB_MODE);
-        *outResult += AZStd::string::format("%s: NodeName='%s', Play Time=%.2f secs, Mode='%s'", GetTypeString(), GetAttributeString(ATTRIB_NODE)->AsChar(), GetAttributeFloat(ATTRIB_PLAYTIME)->GetValue(), modeParam->GetComboValue(mode));
+        AZStd::string nodeName;
+        if (m_node)
+        {
+            nodeName = m_node->GetNameString();
+        }
+
+        *outResult = AZStd::string::format("%s: NodeName='%s', Play Time=%.2f secs, Mode='%s'", RTTI_GetTypeName(), nodeName.c_str(), m_playTime, GetModeString());
     }
 
 
     // construct and output the tooltip for this object
     void AnimGraphPlayTimeCondition::GetTooltip(AZStd::string* outResult) const
     {
-        MCore::AttributeSettings* modeParam = GetAnimGraphManager().GetAttributeInfo(this, ATTRIB_MODE);
-        const int32 mode = GetAttributeFloatAsInt32(ATTRIB_MODE);
-
         AZStd::string columnName, columnValue;
 
         // add the condition type
         columnName = "Condition Type: ";
-        columnValue = GetTypeString();
+        columnValue = RTTI_GetTypeName();
         *outResult = AZStd::string::format("<table border=\"0\"><tr><td width=\"105\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // add the node
+        AZStd::string nodeName;
+        if (m_node)
+        {
+            nodeName = m_node->GetNameString();
+        }
+
         columnName = "Node: ";
-        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), GetAttributeString(ATTRIB_NODE)->AsChar());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), nodeName.c_str());
 
         // add the time
         columnName = "Play Time: ";
-        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%.2f secs</td>", columnName.c_str(), GetAttributeFloat(ATTRIB_PLAYTIME)->GetValue());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%.2f secs</td>", columnName.c_str(), m_playTime);
 
         // add the mode
         columnName = "Mode: ";
-        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), modeParam->GetComboValue(mode));
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), GetModeString());
     }
 
 
-    // update the data
-    void AnimGraphPlayTimeCondition::OnUpdateAttributes()
+    void AnimGraphPlayTimeCondition::SetNodeId(AnimGraphNodeId nodeId)
     {
-        // get a pointer to the selected node
-        mNode = mAnimGraph->RecursiveFindNode(GetAttributeString(ATTRIB_NODE)->AsChar());
-
-        // disable GUI items that have no influence
-    #ifdef EMFX_EMSTUDIOBUILD
-        // enable all attributes
-        EnableAllAttributes(true);
-
-        // disable the interface elements in case no node has been selected yet
-        if (mNode == nullptr)
+        m_nodeId = nodeId;
+        if (mAnimGraph)
         {
-            SetAttributeDisabled(ATTRIB_PLAYTIME);
-            SetAttributeDisabled(ATTRIB_MODE);
+            Reinit();
         }
-    #endif
     }
 
 
-    // callback for when we renamed a node
-    void AnimGraphPlayTimeCondition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
+    AnimGraphNodeId AnimGraphPlayTimeCondition::GetNodeId() const
     {
-        MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_NODE)->GetValue() == oldName)
-        {
-            GetAttributeString(ATTRIB_NODE)->SetValue(node->GetName());
-        }
+        return m_nodeId;
+    }
+
+
+    AnimGraphNode* AnimGraphPlayTimeCondition::GetNode() const
+    {
+        return m_node;
     }
 
 
@@ -235,9 +208,129 @@ namespace EMotionFX
     void AnimGraphPlayTimeCondition::OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove)
     {
         MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_NODE)->GetValue() == nodeToRemove->GetName())
+        if (m_nodeId == nodeToRemove->GetId())
         {
-            GetAttributeString(ATTRIB_NODE)->SetValue("");
+            SetNodeId(AnimGraphNodeId::InvalidId);
         }
+    }
+
+
+    void AnimGraphPlayTimeCondition::SetPlayTime(float playTime)
+    {
+        m_playTime = playTime;
+    }
+
+
+    float AnimGraphPlayTimeCondition::GetPlayTime() const
+    {
+        return m_playTime;
+    }
+
+
+    void AnimGraphPlayTimeCondition::SetMode(Mode mode)
+    {
+        m_mode = mode;
+    }
+
+
+    AnimGraphPlayTimeCondition::Mode AnimGraphPlayTimeCondition::GetMode() const
+    {
+        return m_mode;
+    }
+
+
+    const char* AnimGraphPlayTimeCondition::GetModeString() const
+    {
+        switch (m_mode)
+        {
+            case MODE_REACHEDTIME:
+            {
+                return s_modeReachedPlayTimeX;
+            }
+            case MODE_REACHEDEND:
+            {
+                return s_modeReachedEnd;
+            }
+            case MODE_HASLESSTHAN:
+            {
+                return s_modeHasLessThanXSecondsLeft;
+            }
+            default:
+            {
+                return "Unknown mode";
+            }
+        }
+    }
+
+
+    AZ::Crc32 AnimGraphPlayTimeCondition::GetModeVisibility() const
+    {
+        return AnimGraphNodeId(m_nodeId).IsValid() ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
+    }
+
+
+    AZ::Crc32 AnimGraphPlayTimeCondition::GetPlayTimeVisibility() const
+    {
+        if (GetModeVisibility() == AZ::Edit::PropertyVisibility::Hide || m_mode == MODE_REACHEDEND)
+        {
+            return AZ::Edit::PropertyVisibility::Hide;
+        }
+
+        return AZ::Edit::PropertyVisibility::Show;
+    }
+
+
+    void AnimGraphPlayTimeCondition::GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const
+    {
+        auto itConvertedIds = convertedIds.find(m_nodeId);
+        if (itConvertedIds != convertedIds.end())
+        {
+            // need to convert
+            attributesString = AZStd::string::format("-nodeId %llu", itConvertedIds->second);
+        }
+    }
+
+
+    void AnimGraphPlayTimeCondition::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphPlayTimeCondition, AnimGraphTransitionCondition>()
+            ->Version(1)
+            ->Field("nodeId", &AnimGraphPlayTimeCondition::m_nodeId)
+            ->Field("mode", &AnimGraphPlayTimeCondition::m_mode)
+            ->Field("playTime", &AnimGraphPlayTimeCondition::m_playTime)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<AnimGraphPlayTimeCondition>("Play Time Condition", "Play time condition attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ_CRC("AnimGraphNodeId", 0xadadb878), &AnimGraphPlayTimeCondition::m_nodeId, "Node", "The node to use.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphPlayTimeCondition::Reinit)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphPlayTimeCondition::GetAnimGraph)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimGraphPlayTimeCondition::m_mode, "Mode", "The way how to check the given play time set in this condition with the playtime from the node.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphPlayTimeCondition::GetModeVisibility)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                ->EnumAttribute(MODE_REACHEDTIME, s_modeReachedPlayTimeX)
+                ->EnumAttribute(MODE_REACHEDEND, s_modeReachedEnd)
+                ->EnumAttribute(MODE_HASLESSTHAN, s_modeHasLessThanXSecondsLeft)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphPlayTimeCondition::m_playTime, "Play Time", "The play time in seconds.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphPlayTimeCondition::GetPlayTimeVisibility)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0)
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ;
     }
 } // namespace EMotionFX

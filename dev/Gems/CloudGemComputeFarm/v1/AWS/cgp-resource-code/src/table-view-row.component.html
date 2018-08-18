@@ -1,0 +1,29 @@
+<div class="activity-row-contents">
+    <div class="host-label">
+        {{row.hostId}}
+    </div>
+    <div class="activity-timeline">
+        <div *ngFor="let slice of row.slices" [ngClass]="{'activity-slice': true, 'activity-slice-open':slice.open, 'activity-slice-closed':!slice.open}" [ngStyle]="{'left.px': slice.left, 'width.px': slice.width}">
+            <div class="slice-tooltip">
+                <div class="slice-tooltip-text">
+                    Activity: {{slice.details.activity}}
+                </div>
+                <div class="slice-tooltip-text">
+                    Path: {{slice.startEvent.path}}
+                </div>
+                <div class="slice-tooltip-text">
+                    Started: {{slice.details.beginTime}}
+                </div>
+                <div class="slice-tooltip-text">
+                    Completed: {{slice.details.completeTime}}
+                </div>
+                <div class="slice-tooltip-text">
+                    Total Time: {{slice.details.totalTime}}
+                </div>
+            </div>
+        </div>
+        <div class="activity-label" [ngStyle]="{'left.px': row.statusPos}">
+            {{row.status}}
+        </div>
+    </div>
+</div>

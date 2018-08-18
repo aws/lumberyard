@@ -13,10 +13,14 @@
 // include the required headers
 #include "SkinningInfoVertexAttributeLayer.h"
 #include "Actor.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(SkinningInfoVertexAttributeLayer, MeshAllocator, 0)
+
+
     // constructor
     SkinningInfoVertexAttributeLayer::SkinningInfoVertexAttributeLayer(uint32 numAttributes, bool allocData)
         : VertexAttributeLayer(numAttributes, false)
@@ -41,7 +45,7 @@ namespace EMotionFX
     // create
     SkinningInfoVertexAttributeLayer* SkinningInfoVertexAttributeLayer::Create(uint32 numAttributes, bool allocData)
     {
-        return new SkinningInfoVertexAttributeLayer(numAttributes, allocData);
+        return aznew SkinningInfoVertexAttributeLayer(numAttributes, allocData);
     }
 
 
@@ -82,7 +86,7 @@ namespace EMotionFX
     // the uv vertex attribute layer
     VertexAttributeLayer* SkinningInfoVertexAttributeLayer::Clone()
     {
-        SkinningInfoVertexAttributeLayer* clone = new SkinningInfoVertexAttributeLayer(mNumAttributes);
+        SkinningInfoVertexAttributeLayer* clone = aznew SkinningInfoVertexAttributeLayer(mNumAttributes);
 
         // copy over the data
         clone->mData    = mData;

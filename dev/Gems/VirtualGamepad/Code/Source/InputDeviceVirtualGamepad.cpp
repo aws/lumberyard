@@ -111,7 +111,12 @@ namespace VirtualGamepad
     ////////////////////////////////////////////////////////////////////////////////////////////////
     bool InputDeviceVirtualGamepad::IsConnected() const
     {
-        return IsSupported();
+        // Touch input must be connected
+        const InputDevice* inputDevice = nullptr;
+        InputDeviceRequestBus::EventResult(inputDevice,
+                                           InputDeviceTouch::Id,
+                                           &InputDeviceRequests::GetInputDevice);
+        return inputDevice && inputDevice->IsConnected();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

@@ -15,7 +15,7 @@
 #include "smartptr.h"
 #include <zlib.h>
 #include "ZipFileFormat.h"
-#include "ZipDirStructures.h"
+#include "zipdirstructures.h"
 #include <time.h>
 #include <AzCore/std/time.h>
 
@@ -309,10 +309,13 @@ void ZipDir::FileEntry::OnNewFileData(void* pUncompressed, unsigned nSize, unsig
 {
     time_t nTime;
     time(&nTime);
-    tm* t = localtime(&nTime);
 #if defined(AZ_PLATFORM_WINDOWS)
-    this->nLastModTime = DOSTime(t);
-    this->nLastModDate = DOSDate(t);
+    tm t;
+    localtime_s(&t, &nTime);
+    this->nLastModTime = DOSTime(&t);
+    this->nLastModDate = DOSDate(&t);
+#else
+    
 #endif
     this->nNTFS_LastModifyTime = AZStd::GetTimeUTCMilliSecond();
     

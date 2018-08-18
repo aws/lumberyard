@@ -49,7 +49,13 @@ namespace AzToolsFramework
     {
         m_pComboBox->blockSignals(true);
 
-        bool indexWasFound = str.empty(); // Value may just not be populated. Don't warn if that's the case.
+        bool indexWasFound = false;
+        if (str.empty())
+        {
+            // Value may just not be populated. Don't warn if that's the case.
+            indexWasFound = true;
+            m_pComboBox->setCurrentIndex(-1);
+        }
 
         for (size_t enumValIndex = 0; enumValIndex < m_values.size(); enumValIndex++)
         {
@@ -61,9 +67,17 @@ namespace AzToolsFramework
             }
         }
 
-        if (!indexWasFound && m_pComboBox->isEditable())
+        if (!indexWasFound)
         {
-            m_pComboBox->setEditText(QString(str.c_str()));
+            if (m_pComboBox->isEditable())
+            {
+                m_pComboBox->setEditText(QString(str.c_str()));
+            }
+            else
+            {
+                // item not found void out the combo box
+                m_pComboBox->setCurrentIndex(-1);
+            }
         }
 
         AZ_Warning("AzToolsFramework", indexWasFound == true, "No index in property enum for value %s", str.c_str());

@@ -20,6 +20,8 @@
 #include "IRenderer.h"
 #include <LyShine/IUiRenderer.h>
 #include <LyShine/Bus/UiTransformBus.h>
+#include <LyShine/Bus/UiElementBus.h>
+#include <LyShine/Bus/UiVisualBus.h>
 
 static const char* s_maskIncrProfileMarker = "UI_MASK_STENCIL_INCR";
 static const char* s_maskDecrProfileMarker = "UI_MASK_STENCIL_DECR";
@@ -46,6 +48,14 @@ UiMaskComponent::~UiMaskComponent()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiMaskComponent::SetupBeforeRenderingComponents(Pass pass)
 {
+    if (IUiRenderer::Get()->IsRenderingToMask())
+    {
+        // We are in the process of rendering a child element into the mask for another Mask component.
+        // Additional masking while rendering a mask is not supported.
+        AZ_Warning("UI", false, "An element with a Mask component is being used as a Child Mask Element.");
+        return;
+    }
+
     if (pass == Pass::First)
     {
         // record the base state at the start of the render for this element
@@ -108,16 +118,53 @@ void UiMaskComponent::SetupBeforeRenderingComponents(Pass pass)
             IUiRenderer::Get()->SetBaseState(m_priorBaseState | colorMask | alphaTest);
         }
     }
+
+    if (m_childMaskElement.IsValid() && pass == Pass::First)
+    {
+        // There is a child mask element. Remember whether it is enabled since we disable it during normal rendering
+        // of the child elements.
+        EBUS_EVENT_ID_RESULT(m_priorChildMaskElementIsEnabled, m_childMaskElement, UiElementBus, IsEnabled);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiMaskComponent::SetupAfterRenderingComponents(Pass pass)
 {
+    if (IUiRenderer::Get()->IsRenderingToMask())
+    {
+        // We are in the process of rendering a child element into the mask for another Mask component.
+        // Additional masking while rendering a mask is not supported.
+        return;
+    }
+
+    if (m_childMaskElement.IsValid())
+    {
+        // We have already rendered any visual component on this entity into the stencil buffer.
+        // But we have a child mask element, which is an additional entity that gets rendered into the
+        // stencil buffer.
+
+        // if the child mask element was disabled then we don't want to render it as part of the mask
+        // This allows the game to programatically enable and disable parts of the mask
+        if (m_priorChildMaskElementIsEnabled)
+        {
+            // enable the rendering of the child mask element
+            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, SetIsEnabled, true);
+
+            // Render the child mask element, this can render a whole hierarchy into the stencil buffer
+            // as part of the mask.
+            IUiRenderer::Get()->SetIsRenderingToMask(true);
+            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, RenderElement, false, false);
+            IUiRenderer::Get()->SetIsRenderingToMask(false);
+        }
+    }
+
     if (m_enableMasking)
     {
-        // masking is enabled so on the first pass we want to increment the stencil ref stored
-        // in the UiRenderer and used by all normal rendering. On the second pass we want to
-        // decrement it so it is back to what it was before rendering the children of this mask
+        // Masking is enabled so on the first pass we want to increment the stencil ref stored
+        // in the UiRenderer and used by all normal rendering, this is so that it matches the
+        // increments to the stencil buffer that we have just done by rendering the mask.
+        // On the second pass we want to decrement the stencil ref so it is back to what it
+        // was before rendering the normal children of this mask element.
         if (pass == Pass::First)
         {
             IUiRenderer::Get()->IncrementStencilRef();
@@ -154,14 +201,37 @@ void UiMaskComponent::SetupAfterRenderingComponents(Pass pass)
         // remove any color mask or alpha test that we set in pre-render
         IUiRenderer::Get()->SetBaseState(m_priorBaseState);
     }
+
+    if (m_childMaskElement.IsValid())
+    {
+        if (pass == Pass::First)
+        {
+            // disable the rendering of the child mask with the other children
+            // There will always be a second pass if there is a child mask element
+            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, SetIsEnabled, false);
+        }
+        else
+        {
+            // re-enable the rendering of the child mask (if it was enabled before we changed it)
+            // This allows the game code to turn the child mask element on and off if so desired.
+            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, SetIsEnabled, m_priorChildMaskElementIsEnabled);
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiMaskComponent::SetupAfterRenderingChildren(bool& isSecondComponentsPassRequired)
 {
+    if (IUiRenderer::Get()->IsRenderingToMask())
+    {
+        // We are in the process of rendering a child element into the mask for another Mask component.
+        // Additional masking while rendering a mask is not supported.
+        return;
+    }
+
     // When we are doing masking we need to request a second pass of rendering the components
     // in order to decrement the stencil buffer
-    if (m_enableMasking || m_drawMaskVisualInFrontOfChildren)
+    if (m_enableMasking || m_drawMaskVisualInFrontOfChildren || m_childMaskElement.IsValid())
     {
         isSecondComponentsPassRequired = true;
     }
@@ -235,14 +305,54 @@ bool UiMaskComponent::IsPointMasked(AZ::Vector2 point)
     // it is never masked if the flag to mask interactions is not checked
     if (m_maskInteraction)
     {
-        // Right now we only do a check for the rectangle. If the point is outside of the rectacngle
+        // Initially consider it outside all of the mask visuals. If it is inside any we return false.
+        isMasked = true;
+
+        // Right now we only do a check for the rectangle. If the point is outside of the rectangle
         // then it is masked.
         // In the future we will add the option to check the alpha of the mask texture for interaction masking
-        bool isInRect = false;
-        EBUS_EVENT_ID_RESULT(isInRect, GetEntityId(), UiTransformBus, IsPointInRect, point);
-        if (!isInRect)
+
+        // first check this element if there is a visual component
+        if (UiVisualBus::FindFirstHandler(GetEntityId()))
         {
-            isMasked = true;
+            bool isInRect = false;
+            EBUS_EVENT_ID_RESULT(isInRect, GetEntityId(), UiTransformBus, IsPointInRect, point);
+            if (isInRect)
+            {
+                return false;
+            }
+        }
+
+        // If there is a child mask element
+        if (m_childMaskElement.IsValid())
+        {
+            // if it has a Visual component check if the point is in its rect
+            if (UiVisualBus::FindFirstHandler(m_childMaskElement))
+            {
+                bool isInRect = false;
+                EBUS_EVENT_ID_RESULT(isInRect, m_childMaskElement, UiTransformBus, IsPointInRect, point);
+                if (isInRect)
+                {
+                    return false;
+                }
+            }
+
+            // get any descendants of the child mask element that have visual components
+            LyShine::EntityArray childMaskElements;
+            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, FindDescendantElements, 
+                [](const AZ::Entity* descendant) { return UiVisualBus::FindFirstHandler(descendant->GetId()) != nullptr; },
+                childMaskElements);
+
+            // if the point is in any of their rects then it is not masked out
+            for (auto child : childMaskElements)
+            {
+                bool isInRect = false;
+                EBUS_EVENT_ID_RESULT(isInRect, child->GetId(), UiTransformBus, IsPointInRect, point);
+                if (isInRect)
+                {
+                    return false;
+                }
+            }
         }
     }
 
@@ -265,7 +375,8 @@ void UiMaskComponent::Reflect(AZ::ReflectContext* context)
             ->Field("DrawBehind", &UiMaskComponent::m_drawMaskVisualBehindChildren)
             ->Field("DrawInFront", &UiMaskComponent::m_drawMaskVisualInFrontOfChildren)
             ->Field("UseAlphaTest", &UiMaskComponent::m_useAlphaTest)
-            ->Field("MaskInteraction", &UiMaskComponent::m_maskInteraction);
+            ->Field("MaskInteraction", &UiMaskComponent::m_maskInteraction)
+            ->Field("ChildMaskElement", &UiMaskComponent::m_childMaskElement);
 
         AZ::EditContext* ec = serializeContext->GetEditContext();
         if (ec)
@@ -292,6 +403,10 @@ void UiMaskComponent::Reflect(AZ::ReflectContext* context)
 
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiMaskComponent::m_maskInteraction, "Mask interaction",
                 "Check this box to prevent children hidden by the mask from getting input events.");
+
+            editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiMaskComponent::m_childMaskElement, "Child mask element",
+                "A child element that is rendered as part of the mask.")
+                ->Attribute(AZ::Edit::Attributes::EnumValues, &UiMaskComponent::PopulateChildEntityList);
         }
     }
 
@@ -299,7 +414,6 @@ void UiMaskComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiMaskBus>("UiMaskBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetIsMaskingEnabled", &UiMaskBus::Events::GetIsMaskingEnabled)
             ->Event("SetIsMaskingEnabled", &UiMaskBus::Events::SetIsMaskingEnabled)
             ->Event("GetIsInteractionMaskingEnabled", &UiMaskBus::Events::GetIsInteractionMaskingEnabled)
@@ -331,4 +445,31 @@ void UiMaskComponent::Deactivate()
     UiRenderControlBus::Handler::BusDisconnect();
     UiMaskBus::Handler::BusDisconnect();
     UiInteractionMaskBus::Handler::BusDisconnect();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// PRIVATE MEMBER FUNCTIONS
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+UiMaskComponent::EntityComboBoxVec UiMaskComponent::PopulateChildEntityList()
+{
+    EntityComboBoxVec result;
+
+    // add a first entry for "None"
+    result.push_back(AZStd::make_pair(AZ::EntityId(AZ::EntityId()), "<None>"));
+
+    // Get a list of all child elements
+    LyShine::EntityArray matchingElements;
+    EBUS_EVENT_ID(GetEntityId(), UiElementBus, FindDescendantElements,
+        [](const AZ::Entity* entity) { return true; },
+        matchingElements);
+
+    // add their names to the StringList and their IDs to the id list
+    for (auto childEntity : matchingElements)
+    {
+        result.push_back(AZStd::make_pair(AZ::EntityId(childEntity->GetId()), childEntity->GetName()));
+    }
+
+    return result;
 }

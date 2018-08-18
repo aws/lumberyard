@@ -245,6 +245,38 @@ namespace AZ
          */
         const Vector3 operator*(const Vector3& v) const;
 
+        //-------------------------------------------------------
+        // Euler transforms
+        //-------------------------------------------------------
+
+        //! Create, from the quaternion, a set of Euler angles of rotations around first z-axis,
+        //!        then y-axis and then x-axis.
+        //! @return Vector3 A vector containing component-wise rotation angles in degrees.
+        AZ::Vector3 GetEulerDegrees() const;
+
+        //! Create, from the quaternion, a set of Euler angles of rotations around first z-axis,
+        //!        then y-axis and then x-axis.
+        //! @return Vector3 A vector containing component-wise rotation angles in radians.
+        AZ::Vector3 GetEulerRadians() const;
+
+        //! Set the quaternion from composite rotations of Euler angles in the order of 
+        //!        rotation around first z-axis, then y-axis and then x-axis.
+        //! @param Vector3 eulerRadians A vector containing component-wise rotation angles in radians.
+        //! @return Quaternion made from composition of rotations around principle axes.
+        void SetFromEulerRadians(const AZ::Vector3& eulerRadians);
+
+        //! Set the quaternion from composite rotations of Euler angles in the order of 
+        //!        rotation around first z-axis, then y-axis and then x-axis.
+        //! @param Vector3 eulerDegrees A vector containing component-wise rotation angles in degrees.
+        //! @return Quaternion made from composition of rotations around principle axes.
+        void SetFromEulerDegrees(const AZ::Vector3& eulerDegrees);
+
+        //! Populate axis and angle of rotation from Quaternion
+        //! @param Quaternion quat A source quaternion
+        //! @param Vector3 outAxis A Vector3 defining the rotation axis.
+        //! @param float outAngle A float rotation angle around the axis in radians.
+        void ConvertToAxisAngle(AZ::Vector3& outAxis, float& outAngle) const;
+
         //===============================================================
         // Miscellaneous
         //===============================================================
@@ -273,6 +305,38 @@ namespace AZ
         float m_y, m_z, m_w;
         #endif
     };
+
+    //! Non-member functionality belonging to the AZ namespace
+    //!
+    //! Create, from a quaternion, a set of Euler angles of rotations around first z-axis,
+    //!        then y-axis and then x-axis.
+    //! @param Quaternion a quaternion representing the rotation
+    //! @return Vector3 A vector containing component-wise rotation angles in degrees.
+    AZ::Vector3 ConvertQuaternionToEulerDegrees(const AZ::Quaternion& q);
+
+    //! Create, from a quaternion, a set of Euler angles of rotations around first z-axis,
+    //!        then y-axis and then x-axis.
+    //! @param Quaternion a quaternion representing the rotation
+    //! @return Vector3 A vector containing component-wise rotation angles in radians.
+    AZ::Vector3 ConvertQuaternionToEulerRadians(const AZ::Quaternion& q);
+
+    //! Create a quaternion from composite rotations of Euler angles in the order of 
+    //!        rotation around first z-axis, then y-axis and then x-axis.
+    //! @param Vector3 eulerRadians A vector containing component-wise rotation angles in radians.
+    //! @return Quaternion a quaternion made from composition of rotations around principle axes.
+    AZ::Quaternion ConvertEulerRadiansToQuaternion(const AZ::Vector3& eulerRadians);
+
+    //! Create a quaternion from composite rotations of Euler angles in the order of 
+    //!        rotation around first z-axis, then y-axis and then x-axis.
+    //! @param Vector3 eulerDegrees A vector containing component-wise rotation angles in degrees.
+    //! @return Quaternion a quaternion made from composition of rotations around principle axes.
+    AZ::Quaternion ConvertEulerDegreesToQuaternion(const AZ::Vector3& eulerDegrees);
+
+    //! Populate axis and angle of rotation from Quaternion
+    //! @param Quaternion quat A source quaternion
+    //! @param Vector3 outAxis A Vector3 defining the rotation axis.
+    //! @param float outAngle A float rotation angle around the axis in radians.
+    void ConvertQuaternionToAxisAngle(const AZ::Quaternion& quat, AZ::Vector3& outAxis, float& outAngle);
 }
 
 #ifndef AZ_PLATFORM_WINDOWS // Remove this once all compilers support POD (MSVC already does)

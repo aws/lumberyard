@@ -12,16 +12,13 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "stdafx.h"
-#define WIN32_LEAN_AND_MEAN
 
 // Insert your headers here
 #include <platform.h>
 #include <ISystem.h>
 
-#include <windows.h>
 #include <ShellAPI.h>
 #include <StringUtils.h>
-#include <platform.h>
 #include <platform_impl.h>
 
 #include <ParseEngineConfig.h>
@@ -89,7 +86,7 @@ int main_wrapped(int argc, char* argv[])
 
         MessageBox(0, errorStr.c_str(), "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
 
-        return false;
+        return 1;
     }
 
     PFNCREATESYSTEMINTERFACE CreateSystemInterface =
@@ -128,7 +125,7 @@ int main_wrapped(int argc, char* argv[])
 
         MessageBox(0, errorStr.c_str(), "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
 
-        return false;
+        return 1;
     }
 
     ////////////////////////////////////

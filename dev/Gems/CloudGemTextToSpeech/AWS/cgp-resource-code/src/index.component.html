@@ -45,7 +45,7 @@
         </div>
         <div class="content-container" *ngSwitchCase="false">
             <div *ngIf="(!speechLibrary || speechLibrary.length == 0) && !tagFilterApplied">
-                No speechLibrary
+                No Speech Library
             </div>
             <div *ngIf="speechLibrary.length > 0 || tagFilterApplied">
                 <table class="table table-hover speech-lib float-left">
@@ -203,7 +203,7 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th class="character-column" (click)="sortTable('Characters')">
+                            <th class="character-name-column" (click)="sortTable('Characters')">
                                 NAME
                                 <i *ngIf="this.sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true"></i>
                                 <i *ngIf="this.sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true"></i>
@@ -219,7 +219,7 @@
                     </thead>
                     <tbody>
                         <tr *ngFor="let character of charactersOnCurrentPage; let i = index" [ngClass]="i == 0 && highlightNewRow? 'new-row' : ''">
-                            <td class="character-column">
+                            <td class="character-name-column">
                                 <inline-editing [(content)]="character.name" type="text" (startEditing)="onEditableFieldsClicked(character)" [isEditing]="character.isEditing"></inline-editing>
                             </td>
                             <td class="language-column">
@@ -244,8 +244,8 @@
                                         <button class="btn l-primary edit-button" (click)="save(character)">Save</button>
                                         <button class="btn btn-outline-primary edit-button" (click)="cancel(character)">Cancel</button>
                                     </span>
-                                    <i [ngClass]="character.previewLabelText == 'Preview' ? 'fa fa-volume-up preview-icon' : 'fa fa-refresh fa-spin preview-icon'" data-toggle="tooltip" data-placement="top" title="Preview" (click)="preview(character, 'character')"></i>
-                                    <label class="preview-label" (click)="preview(character, 'character')">{{character.previewLabelText}}</label>
+                                    <i *ngIf="character.isUploaded" [ngClass]="character.previewLabelText == 'Preview' ? 'fa fa-volume-up preview-icon' : 'fa fa-refresh fa-spin preview-icon'" data-toggle="tooltip" data-placement="top" title="Preview" (click)="preview(character, 'character')"></i>
+                                    <label *ngIf="character.isUploaded" class="preview-label" (click)="preview(character, 'character')">{{character.previewLabelText}}</label>
                                     <i (click)="editModal(character)" class="fa fa-cog" data-toggle="tooltip" data-placement="top" title="Edit SSML Tags"></i>
                                     <i (click)="deleteModal(character)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
                                 </div>

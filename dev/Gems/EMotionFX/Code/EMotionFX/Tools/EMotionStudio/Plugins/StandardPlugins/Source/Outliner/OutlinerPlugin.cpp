@@ -13,6 +13,7 @@
 // include required headers
 #include "OutlinerPlugin.h"
 #include <AzCore/std/containers/vector.h>
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include "../../../../EMStudioSDK/Source/OutlinerManager.h"
 #include <QStyledItemDelegate>
@@ -25,6 +26,7 @@
 #include <QSplitter>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QPushButton>
 
 
 namespace EMStudio
@@ -349,15 +351,8 @@ namespace EMStudio
         categoryWidget->setLayout(categoryLayout);
 
         // create the find widget
-        mFindWidget = new MysticQt::SearchButton(nullptr, MysticQt::GetMysticQt()->FindIcon("Images/Icons/SearchClearButton.png"));
-        connect(mFindWidget->GetSearchEdit(), SIGNAL(textChanged(const QString&)), this, SLOT(OnSearchStringChanged(const QString&)));
-
-        // create the search layout
-        QHBoxLayout* searchLayout = new QHBoxLayout();
-        searchLayout->addWidget(new QLabel("Find:"), 0, Qt::AlignRight);
-        searchLayout->addWidget(mFindWidget);
-        searchLayout->setSpacing(6);
-        searchLayout->setMargin(0);
+        m_searchWidget = new AzQtComponents::FilteredSearchWidget(mDock);
+        connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &OutlinerPlugin::OnTextFilterChanged);
 
         // create the viewer list widget
         mViewerListWidget = new OutlinerListWidget();
@@ -440,7 +435,7 @@ namespace EMStudio
 
         // create the viewer layout
         QVBoxLayout* viewerLayout = new QVBoxLayout();
-        viewerLayout->addLayout(searchLayout);
+        viewerLayout->addWidget(m_searchWidget);
         viewerLayout->addWidget(mViewerListWidget);
         viewerLayout->addWidget(mViewerTableWidget);
         viewerLayout->addWidget(viewerInfosWidget);
@@ -502,8 +497,10 @@ namespace EMStudio
     }
 
 
-    void OutlinerPlugin::OnSearchStringChanged(const QString& text)
+    void OutlinerPlugin::OnTextFilterChanged(const QString& text)
     {
+        FromQtString(text, &m_searchWidgetText);
+
         if (mIconViewMode)
         {
             // get the number of items in the list
@@ -852,7 +849,7 @@ namespace EMStudio
                 listWidgetItem->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/OutlinerPlugin/UnknownCategory.png"));
             }
             mViewerListWidget->addItem(listWidgetItem);
-            const bool itemContainsText = listWidgetItem->text().contains(mFindWidget->GetSearchEdit()->text(), Qt::CaseInsensitive);
+            const bool itemContainsText = listWidgetItem->text().contains(m_searchWidgetText.c_str(), Qt::CaseInsensitive);
             listWidgetItem->setHidden(!itemContainsText);
 
             // update the num items label
@@ -891,7 +888,7 @@ namespace EMStudio
             mViewerTableWidget->setItem(newRowIndex, 0, nameTableWidgetItem);
             mViewerTableWidget->setItem(newRowIndex, 1, categoryTableWidgetItem);
             mViewerTableWidget->setRowHeight(newRowIndex, 21);
-            const bool itemContainsText = nameTableWidgetItem->text().contains(mFindWidget->GetSearchEdit()->text(), Qt::CaseInsensitive);
+            const bool itemContainsText = nameTableWidgetItem->text().contains(m_searchWidgetText.c_str(), Qt::CaseInsensitive);
             mViewerTableWidget->setRowHidden(newRowIndex, !itemContainsText);
 
             // enable the sorting
@@ -1048,7 +1045,7 @@ namespace EMStudio
                     item->setText("<no name>");
                     item->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/OutlinerPlugin/UnknownCategory.png"));
                 }
-                const bool itemContainsText = item->text().contains(mFindWidget->GetSearchEdit()->text(), Qt::CaseInsensitive);
+                const bool itemContainsText = item->text().contains(m_searchWidgetText.c_str(), Qt::CaseInsensitive);
                 item->setHidden(!itemContainsText);
             }
         }
@@ -1073,7 +1070,7 @@ namespace EMStudio
                     nameTableWidgetItem->setToolTip("");
                     mViewerTableWidget->item(i, 1)->setToolTip("");
                 }
-                const bool itemContainsText = nameTableWidgetItem->text().contains(mFindWidget->GetSearchEdit()->text(), Qt::CaseInsensitive);
+                const bool itemContainsText = nameTableWidgetItem->text().contains(m_searchWidgetText.c_str(), Qt::CaseInsensitive);
                 mViewerTableWidget->setRowHidden(i, !itemContainsText);
             }
             mViewerTableWidget->setSortingEnabled(true);
@@ -1289,7 +1286,7 @@ namespace EMStudio
                             listWidgetItem->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/OutlinerPlugin/UnknownCategory.png"));
                         }
                         mViewerListWidget->addItem(listWidgetItem);
-                        const bool itemContainsText = listWidgetItem->text().contains(mFindWidget->GetSearchEdit()->text(), Qt::CaseInsensitive);
+                        const bool itemContainsText = listWidgetItem->text().contains(m_searchWidgetText.c_str(), Qt::CaseInsensitive);
                         listWidgetItem->setHidden(!itemContainsText);
                     }
                 }
@@ -1328,7 +1325,7 @@ namespace EMStudio
                             listWidgetItem->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/OutlinerPlugin/UnknownCategory.png"));
                         }
                         mViewerListWidget->addItem(listWidgetItem);
-                        const bool itemContainsText = listWidgetItem->text().contains(mFindWidget->GetSearchEdit()->text(), Qt::CaseInsensitive);
+                        const bool itemContainsText = listWidgetItem->text().contains(m_searchWidgetText.c_str(), Qt::CaseInsensitive);
                         listWidgetItem->setHidden(!itemContainsText);
                     }
                 }
@@ -1373,7 +1370,7 @@ namespace EMStudio
                         mViewerTableWidget->setItem(newRowIndex, 0, nameTableWidgetItem);
                         mViewerTableWidget->setItem(newRowIndex, 1, categoryTableWidgetItem);
                         mViewerTableWidget->setRowHeight(newRowIndex, 21);
-                        const bool itemContainsText = nameTableWidgetItem->text().contains(mFindWidget->GetSearchEdit()->text(), Qt::CaseInsensitive);
+                        const bool itemContainsText = nameTableWidgetItem->text().contains(m_searchWidgetText.c_str(), Qt::CaseInsensitive);
                         mViewerTableWidget->setRowHidden(newRowIndex, !itemContainsText);
                     }
                 }
@@ -1408,7 +1405,7 @@ namespace EMStudio
                         mViewerTableWidget->setItem(newRowIndex, 0, nameTableWidgetItem);
                         mViewerTableWidget->setItem(newRowIndex, 1, categoryTableWidgetItem);
                         mViewerTableWidget->setRowHeight(newRowIndex, 21);
-                        const bool itemContainsText = nameTableWidgetItem->text().contains(mFindWidget->GetSearchEdit()->text(), Qt::CaseInsensitive);
+                        const bool itemContainsText = nameTableWidgetItem->text().contains(m_searchWidgetText.c_str(), Qt::CaseInsensitive);
                         mViewerTableWidget->setRowHidden(newRowIndex, !itemContainsText);
                     }
                 }

@@ -300,7 +300,7 @@ namespace GridMate
             sessionProperties.push_back(param);
         }
 
-        m_sessionParams.m_numPublicSlots = params.m_gameSession->GetMaximumPlayerSessionCount();
+        m_sessionParams.m_numPublicSlots = params.m_gameSession->GetMaximumPlayerSessionCount() + 1;    //+1 for dedicated server
 
         //////////////////////////////////////////////////////////////////////////
         // start up the session state we will bind it later

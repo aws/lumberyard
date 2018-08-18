@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-// stdafx.cpp : source file that includes just the standard includes
+// StdAfx.cpp : source file that includes just the standard includes
 //  CryAISystem.pch will be the pre-compiled header
 //  stdafx.obj will contain the pre-compiled type information
 

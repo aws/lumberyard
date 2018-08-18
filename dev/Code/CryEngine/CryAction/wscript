@@ -15,62 +15,17 @@
 
 def build(bld):
 
-    # CryAction_AutoFlowNode is used to define the storage location for the symbols that
-    # are used in the automatic flow node registration system (see CAutoRegFlowNodeBase)
-    #
-    # These symbols must be present in every executable or shared object that uses the
-    # automatic registration pattern. Creating this modules independently of CryAction
-    # allows us to depend on it from multiple locations -- e.g. Gems --
-    # without pulling in a dependency on CryAction itself.
-    #
-    # (This works in all builds including monolithic)
-    bld.CryEngineStaticLibrary(
-        target          = 'CryAction_AutoFlowNode',
-        vs_filter       = 'CryEngine',
-        copyright_org   = 'Amazon-CryTek',
-        file_list       = 'cryaction_autoflownode.waf_files',
-        platforms       = ['all'],
-        configurations  = ['all'],
-        defines         = ['ENGINE_EXPORTS'],
-        use             = ['AzCore']
-    )
-
     bld.CryEngineModule(
 
         # Settings
         target                  = 'CryAction',
         vs_filter               = 'CryEngine',
         copyright_org           = 'Amazon-CryTek',
-        file_list               = [
-                                    'cryaction.waf_files',
-                                  ],
+        file_list               = ['cryaction.waf_files'],
+        win_test_all_file_list  = ['cryaction_tests.waf_files'],
+        darwin_test_all_file_list = ['cryaction_tests.waf_files'],
         platforms               = ['all'],
         configurations          = ['all'],
-        pch                     = 'StdAfx.cpp',
-        defines                 = ['ENGINE_EXPORTS'],
-        use                     = ['CryAction_AutoFlowNode',
-                                   'AzFramework',
-                                   'GridMate'],
-
-        use_required_gems       = True,
-
-        # Platform Specific
-        win_lib                 = ['Ws2_32', 'Shell32'],
-           
-        darwin_lib              = ['curl'],
-
-       
-       
-
-        appletv_framework      = [ 'security' ],
-
-       
-
-        # Testing
-        test_all_uselib         = [ 'AWS_CPP_SDK_GAMELIFT', 
-                                    'AWS_CPP_SDK_CORE'
-                                  ],
-        win_test_all_file_list  = ['cryaction_test.waf_files'],
-        darwin_test_all_file_list = ['cryaction_test.waf_files'],
+        use                     = ['AzCore'],
     )
 

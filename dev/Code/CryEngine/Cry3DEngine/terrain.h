@@ -178,16 +178,16 @@ public:
     CTerrain(const STerrainInfo& TerrainInfo);
     ~CTerrain();
 
-    float GetZ(Meter x, Meter y) const;
-    float GetBilinearZ(MeterF x1, MeterF y1) const;
+    virtual float GetZ(Meter x, Meter y) const;
+    virtual float GetBilinearZ(MeterF x1, MeterF y1) const;
 
-    SurfaceWeight GetSurfaceWeight(Meter x, Meter y) const;
+    virtual SurfaceWeight GetSurfaceWeight(Meter x, Meter y) const;
 
-    Vec3 GetTerrainSurfaceNormal(Vec3 vPos, float fRange);
-    void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33);
+    virtual Vec3 GetTerrainSurfaceNormal(Vec3 vPos, float fRange);
+    virtual void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33);
 
-    bool IsHole(Meter x, Meter y) const;
-    bool IsMeshQuadFlipped(const Meter x, const Meter y, const Meter nUnitSize) const;
+    virtual bool IsHole(Meter x, Meter y) const;
+    virtual bool IsMeshQuadFlipped(const Meter x, const Meter y, const Meter nUnitSize) const;
 
     struct SRayTrace
     {

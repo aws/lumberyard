@@ -14,7 +14,6 @@
 
 #include "CloudGemTextToSpeech/TextToSpeech.h"
 
-#include <CryAction.h>
 #include <fstream>
 
 #include <md5.h>
@@ -195,7 +194,7 @@ namespace CloudGemTextToSpeech
         AZStd::string userMarksFile = ResolvePath((userCachePath + hash + "-" + speechMarks + SPEECH_MARKS_FILE_EXT).c_str(), false);
 
         // Check both caches for the files you need.
-        if (userCachePath.length() > 0 && (AZ::IO::SystemFile::Exists(userVoiceFile.c_str()) && (userMarksFile.empty() || AZ::IO::SystemFile::Exists(userMarksFile.c_str()))))
+        if (userCachePath.length() > 0 && ( AZ::IO::SystemFile::Exists(userVoiceFile.c_str())) && (speechMarks.empty() || AZ::IO::SystemFile::Exists(userMarksFile.c_str())))
         {
             if (!speechMarks.empty())
             {

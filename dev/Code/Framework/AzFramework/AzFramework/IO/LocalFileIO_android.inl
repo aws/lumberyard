@@ -395,21 +395,21 @@ namespace AZ
 
                 if (dir != nullptr)
                 {
-                    struct dirent entry;
-                    struct dirent* previousEntry = nullptr;
-
                     // because the absolute path might actually be SHORTER than the alias ("c:/r/dev" -> "@devroot@"), we need to
                     // use a static buffer here.
                     char tempBuffer[AZ_MAX_PATH_LEN];
 
-                    int lastError = readdir_r(dir, &entry, &previousEntry);
+                    // clear the errno state so we can distinguish between errors and end of stream
+                    errno = 0;
+                    struct dirent* entry = readdir(dir);
+
                     // List all the other files in the directory.
-                    while (previousEntry != nullptr && lastError == 0)
+                    while (entry != nullptr)
                     {
-                        if (NameMatchesFilter(entry.d_name, filter))
+                        if (NameMatchesFilter(entry->d_name, filter))
                         {
                             AZ::OSString foundFilePath = CheckForTrailingSlash(resolvedPath);
-                            foundFilePath += entry.d_name;
+                            foundFilePath += entry->d_name;
                             // if aliased, de-alias!
                             azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, foundFilePath.c_str());
                             ConvertToAlias(tempBuffer, AZ_MAX_PATH_LEN);
@@ -419,10 +419,10 @@ namespace AZ
                                 break;
                             }
                         }
-                        lastError = readdir_r(dir, &entry, &previousEntry);
+                        entry = readdir(dir);
                     }
 
-                    if (lastError != 0)
+                    if (errno != 0)
                     {
                         closedir(dir);
                         return ResultCode::Error;

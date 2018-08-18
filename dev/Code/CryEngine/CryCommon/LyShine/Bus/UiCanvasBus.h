@@ -111,7 +111,7 @@ public: // member functions
     virtual AZ::Entity* FindElementByHierarchicalName(const LyShine::NameType& name) = 0;
 
     //! Find all elements on this canvas matching the predicate
-    virtual void FindElements(std::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result) = 0;
+    virtual void FindElements(AZStd::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result) = 0;
 
     //! Get the front-most element whose bounds include the given point in canvas space
     //! \return nullptr if no match

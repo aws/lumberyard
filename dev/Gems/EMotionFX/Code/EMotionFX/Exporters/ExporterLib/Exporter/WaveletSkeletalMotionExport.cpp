@@ -18,7 +18,6 @@
 #include <MCore/Source/D4Wavelet.h>
 #include <MCore/Source/CDF97Wavelet.h>
 #include <MCore/Source/DiskFile.h>
-#include <MCore/Source/AttributeSet.h>
 #include <EMotionFX/Source/WaveletSkeletalMotion.h>
 #include <EMotionFX/Source/Importer/Importer.h>
 

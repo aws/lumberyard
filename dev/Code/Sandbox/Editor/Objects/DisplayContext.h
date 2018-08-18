@@ -106,6 +106,8 @@ struct SANDBOX_API DisplayContext
     void DrawQuadGradient(const Vec3& p1, const Vec3& p2, const Vec3& p3, const Vec3& p4, ColorB firstColor, ColorB secondColor);
     // Draw 3D Triangle.
     void DrawTri(const Vec3& p1, const Vec3& p2, const Vec3& p3);
+    void DrawTriangles(const AZStd::vector<Vec3>& vertices, const ColorB& color);
+    void DrawTrianglesIndexed(const AZStd::vector<Vec3>& vertices, const AZStd::vector<vtx_idx>& indices, const ColorB& color);
     // Draw wireframe box.
     void DrawWireBox(const Vec3& min, const Vec3& max);
     // Draw filled box
@@ -115,6 +117,7 @@ struct SANDBOX_API DisplayContext
     void DrawLine(const Vec3& p1, const Vec3& p2);
     void DrawLine(const Vec3& p1, const Vec3& p2, const ColorF& col1, const ColorF& col2);
     void DrawLine(const Vec3& p1, const Vec3& p2, const QColor& rgb1, const QColor& rgb2);
+    void DrawLines(const AZStd::vector<Vec3>& vertices, const ColorF& color);
     void DrawPolyLine(const Vec3* pnts, int numPoints, bool cycled = true);
 
     // Vera, Confetti

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "SubdivisionModifier.h"
 #include "Polygon.h"
 #include "Convexes.h"

@@ -1,0 +1,86 @@
+﻿<button class="btn btn-outline-primary" (click)="uploadModal()" [disabled]="mode == SwfModes.UploadProgress">
+    <span *ngIf="mode != SwfModes.UploadProgress">Upload Data</span>
+    <span *ngIf="mode == SwfModes.UploadProgress">Uploading... <i class="fa fa-spinner fa-spin fa-md" aria-hidden="true"></i></span>
+</button>
+
+<button class="btn btn-outline-primary" (click)="downloadBuildResultsModal()" [disabled]="mode == SwfModes.UploadProgress">
+    Download Build Result
+</button>
+<h2 class="header">Configuration</h2>
+<div>
+    <div *ngFor="let property of configurationProperties" class="form-group row">
+        <label class="col-3 col-form-label affix">{{property.name}}</label>
+        <span class="col-8">
+            <input [type]="property.type == 'number' ? 'number' : 'text'" class="form-control" [ngModel]="workflowConfig.getProperty(property.name)" (ngModelChange)="workflowConfig.setProperty(property.name, $event)">
+        </span>
+    </div>
+</div>
+
+<!-- Upload modal -->
+<modal #uploadModal *ngIf="mode === SwfModes.Upload"
+    title="Upload data to process"
+    [autoOpen]="true"
+    [onDismiss]="dismissModal"
+    [onClose]="dismissModal"
+    [hasSubmit]="true"
+    [submitButtonText]="'Upload'"
+    (modalSubmitted)="submitUpload()"
+>
+    <div class="modal-body">
+        <div class="row">
+            <div class="col-3">
+                File to upload:
+            </div>
+            <div class="col-9">
+                <input #uploadFile type="file" [(ngModel)]="filePath" (change)="changeUploadFile($event)" class="upload-image" />
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-3">
+                Destination path/key:
+            </div>
+            <div class="col-9">
+                <input #uploadPath type="text" [(ngModel)]="s3Path" class="form-control s3-path" [(ngModel)]="s3Path" name="s3-path" placeholder="Enter the destination S3 path/key">
+            </div>
+        </div>
+        <div *ngIf="displayUploadError" class="row error-message">
+            You must provide both a file to upload and a destination path/key in S3.
+        </div>
+    </div>
+</modal>
+
+
+<!-- Download build result modal -->
+<modal #buildResultModal *ngIf="mode === SwfModes.Download"
+       title="Download build results"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Download'"
+       (modalSubmitted)="downloadBuildResults()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <table class="table table-hover speech-lib float-left">
+            <thead>
+                <tr>
+                    <th class="select-column">
+                        <input #selectAllSpeeches type="checkbox" [id]="'select-all'" [name]="'select-all'" [(ngModel)]="selectAllResults" (click)="selectAll()">
+                        <label [attr.for]="'select-all'"></label>
+                    </th>
+                    <th class="result-column">BUILD RESULT</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let result of buildResults let i = index">
+                    <td class="select-column">
+                        <input type="checkbox" [id]="result['key']" [(ngModel)]="result['isSelected']">
+                        <label [attr.for]="result['key']"></label>
+                    </td>
+                    <td class="result-column">{{result["key"]}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</modal>
+

@@ -10,45 +10,18 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "BlendTreeVector2DecomposeNode.h"
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeVector2DecomposeNode::BlendTreeVector2DecomposeNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeVector2DecomposeNode, AnimGraphAllocator, 0)
 
 
-    // destructor
-    BlendTreeVector2DecomposeNode::~BlendTreeVector2DecomposeNode()
-    {
-    }
-
-
-    // create
-    BlendTreeVector2DecomposeNode* BlendTreeVector2DecomposeNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeVector2DecomposeNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeVector2DecomposeNode::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeVector2DecomposeNode::RegisterPorts()
+    BlendTreeVector2DecomposeNode::BlendTreeVector2DecomposeNode()
+        : AnimGraphNode()
     {
         // setup the input ports
         InitInputPorts(1);
@@ -60,10 +33,23 @@ namespace EMotionFX
         SetupOutputPort("y", OUTPUTPORT_Y, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_Y);
     }
 
-
-    // register the parameters
-    void BlendTreeVector2DecomposeNode::RegisterAttributes()
+        
+    BlendTreeVector2DecomposeNode::~BlendTreeVector2DecomposeNode()
     {
+    }
+
+
+    bool BlendTreeVector2DecomposeNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -81,20 +67,6 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* BlendTreeVector2DecomposeNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeVector2DecomposeNode* clone = new BlendTreeVector2DecomposeNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // the update function
     void BlendTreeVector2DecomposeNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
@@ -102,7 +74,7 @@ namespace EMotionFX
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
         // if there are no incoming connections, there is nothing to do
-        if (mConnections.GetLength() == 0)
+        if (mConnections.size() == 0)
         {
             return;
         }
@@ -113,9 +85,28 @@ namespace EMotionFX
     }
 
 
-    // get the type string
-    const char* BlendTreeVector2DecomposeNode::GetTypeString() const
+    void BlendTreeVector2DecomposeNode::Reflect(AZ::ReflectContext* context)
     {
-        return "BlendTreeVector2DecomposeNode";
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeVector2DecomposeNode, AnimGraphNode>()
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeVector2DecomposeNode>("Vector2 Decompose", "Vector2 decompose attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ;
     }
-}   // namespace EMotionFX
+} // namespace EMotionFX

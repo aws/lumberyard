@@ -446,9 +446,11 @@ namespace LmbrCentral
 
     }
 
+    extern AZStd::shared_ptr<IPhysicalEntity> CreateIPhysicalEntitySharedPtr(IPhysicalEntity* rawPhysicalEntityPtr);
+    
     void CharacterPhysicsComponent::EnablePhysics()
     {
-        if (m_physicalEntity)
+        if (IsPhysicsEnabled())
         {
             return;
         }
@@ -461,7 +463,7 @@ namespace LmbrCentral
         positionParameters.pMtx3x4 = &cryTransform;
 
         // Create physical entity
-        m_physicalEntity = gEnv->pPhysicalWorld->CreatePhysicalEntity(
+        IPhysicalEntity* rawPhysicalEntityPtr = gEnv->pPhysicalWorld->CreatePhysicalEntity(
             PE_LIVING, // type
             &positionParameters, // params
             static_cast<uint64>(GetEntityId()), // pForeignData
@@ -469,6 +471,14 @@ namespace LmbrCentral
             -1, // id
             nullptr // IGeneralMemoryHeap
         );
+
+        m_physicalEntity = CreateIPhysicalEntitySharedPtr(rawPhysicalEntityPtr);
+        if (!m_physicalEntity)
+        {
+            AZ_Printf("SkinnedCharacterPhysicsComponent", "SkinnedCharacterPhysicsComponent::EnablePhysics no physical entity on entity id %s", GetEntityId().ToString().c_str());
+
+            return;
+        }
 
         pe_simulation_params simParams;
         m_physicalEntity->GetParams(&simParams);
@@ -487,8 +497,7 @@ namespace LmbrCentral
         // If anything goes wrong, destroy m_physicalEntity
         if (!ConfigurePhysicalEntity())
         {
-            gEnv->pPhysicalWorld->DestroyPhysicalEntity(m_physicalEntity);
-            m_physicalEntity = nullptr;
+            m_physicalEntity.reset();
             return;
         }
 
@@ -508,7 +517,7 @@ namespace LmbrCentral
 
     void CharacterPhysicsComponent::DisablePhysics()
     {
-        if (!m_physicalEntity)
+        if (!IsPhysicsEnabled())
         {
             return;
         }
@@ -530,13 +539,12 @@ namespace LmbrCentral
         }
 
 
-        gEnv->pPhysicalWorld->DestroyPhysicalEntity(m_physicalEntity);
-        m_physicalEntity = nullptr;
+        m_physicalEntity.reset();
     }
 
     IPhysicalEntity* CharacterPhysicsComponent::GetPhysicalEntity()
     {
-        return m_physicalEntity;
+        return m_physicalEntity.get();
     }
 
     void CharacterPhysicsComponent::GetPhysicsParameters(pe_params& outParameters)

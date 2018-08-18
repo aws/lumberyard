@@ -16,7 +16,7 @@
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
 #include <MCore/Source/Array.h>
-#include <AZCore/std/string/string.h>
+#include <AzCore/std/string/string.h>
 
 namespace EMotionFX
 {
@@ -42,7 +42,7 @@ namespace EMotionFX
     class EMFX_API Node
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(Node, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_NODES);
+        AZ_CLASS_ALLOCATOR_DECL
         friend class Actor;
 
     public:
@@ -91,7 +91,7 @@ namespace EMotionFX
          * Get the parent node as node pointer.
          * @result Returns the pointer to the parent node, or nullptr in case there is no parent.
          */
-        Node* GetParentNode();
+        Node* GetParentNode() const;
 
         /**
          * Recursively go through the parents until a root node is reached and store all parents inside an array.

@@ -1,0 +1,15 @@
+{
+    "GemSettings":
+    {
+        "CloudGemWebCommunicator":
+        {
+            "Channels":
+            [
+                {
+                    "Name": "CloudGemWebCommunicator",
+                    "Types": ["BROADCAST", "PRIVATE"]
+                }
+            ]
+        }
+    }
+}

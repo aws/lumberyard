@@ -12,7 +12,7 @@
 
 // include required headers
 #include "BaseObject.h"
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {

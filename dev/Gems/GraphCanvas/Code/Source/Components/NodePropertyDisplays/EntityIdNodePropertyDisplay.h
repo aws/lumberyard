@@ -11,8 +11,7 @@
 */
 #pragma once
 
-#include <qevent.h>
-#include <qobject.h>
+class QEvent;
 
 #include <AzCore/Component/EntityBus.h>
 
@@ -73,9 +72,9 @@ namespace GraphCanvas
         void RefreshStyle() override;
         void UpdateDisplay() override;
         
-        QGraphicsLayoutItem* GetDisabledGraphicsLayoutItem() const override;
-        QGraphicsLayoutItem* GetDisplayGraphicsLayoutItem() const override;
-        QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() const override;
+        QGraphicsLayoutItem* GetDisabledGraphicsLayoutItem() override;
+        QGraphicsLayoutItem* GetDisplayGraphicsLayoutItem() override;
+        QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() override;
         ////
 
         // AZ::EntityBus
@@ -99,6 +98,8 @@ namespace GraphCanvas
         void EditStart();
         void EditFinished();
         void SubmitValue();
+        void SetupProxyWidget();
+        void CleanupProxyWidget();
     
         EntityIdDataInterface*  m_dataInterface;
         EntityIdGraphicsEventFilter* m_eventFilter;

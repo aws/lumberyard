@@ -1,0 +1,8 @@
+{
+    "name": "@cloud-gems/cloudgemwebcommunicator",
+    "version": "1.0.0",
+    "description": "Cloud Gem - Web Communicator",
+    "private": true,
+    "dependencies": {
+    }
+}

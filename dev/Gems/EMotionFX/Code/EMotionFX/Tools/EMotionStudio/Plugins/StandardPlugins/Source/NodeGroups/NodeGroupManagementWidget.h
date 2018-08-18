@@ -86,8 +86,8 @@ namespace EMStudio
         void checkboxClicked(bool checked);
 
     private:
-        virtual void keyPressEvent(QKeyEvent* event) override;
-        virtual void keyReleaseEvent(QKeyEvent* event) override;
+        void keyPressEvent(QKeyEvent* event) override;
+        void keyReleaseEvent(QKeyEvent* event) override;
 
         void contextMenuEvent(QContextMenuEvent* event) override;
 

@@ -13,7 +13,6 @@
 #pragma once
 
 #include <AzCore/Math/Vector3.h>
-#include <AzFramework/Math/MathUtils.h>
 #include <ScriptCanvas/Core/NodeFunctionGeneric.h>
 #include <ScriptCanvas/Data/NumericData.h>
 #include <ScriptCanvas/Libraries/Math/MathNodeUtilities.h>

@@ -364,7 +364,7 @@ void CBirdsFlock::LeaveLandingPoint(Vec3& point)
 
 bool CBirdsFlock::IsPlayerInProximity(const Vec3& pos) const
 {
-    const IActor* pClientPlayer = gEnv->pGame->GetIGameFramework()->GetClientActor();
+    const IActor* pClientPlayer = gEnv->pGame && gEnv->pGame->GetIGameFramework() ? gEnv->pGame->GetIGameFramework()->GetClientActor() : nullptr;
     if (pClientPlayer != NULL && pClientPlayer->GetEntity())
     {
         return Distance::Point_PointSq(pos, pClientPlayer->GetEntity()->GetPos()) < m_bc.fSpawnRadius * m_bc.fSpawnRadius;

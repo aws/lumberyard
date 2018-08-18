@@ -368,7 +368,7 @@ namespace GridMate
 
                     if (entity)
                     {
-                        AZ_Assert(0 == stricmp(entity->GetName(), m_spawnParams.m_entityName.c_str()),
+                        AZ_Assert(0 == azstricmp(entity->GetName(), m_spawnParams.m_entityName.c_str()),
                             "Entity mismatch detected! Local entity with id %u is named \"%s\", "
                             "but the server's version is named \"%s\".",
                             entity->GetId(),

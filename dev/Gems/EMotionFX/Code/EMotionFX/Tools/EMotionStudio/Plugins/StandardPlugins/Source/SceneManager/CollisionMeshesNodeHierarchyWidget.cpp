@@ -11,8 +11,10 @@
 */
 
 // include the required headers
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include "CollisionMeshesNodeHierarchyWidget.h"
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
+#include <MCore/Source/StringConversions.h>
 #include <EMotionFX/Source/Mesh.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include <QLabel>
@@ -54,10 +56,9 @@ namespace EMStudio
         spacerWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
         displayLayout->addWidget(spacerWidget);
 
-        displayLayout->addWidget(new QLabel("Find:"), 0, Qt::AlignRight);
-        mFindWidget = new MysticQt::SearchButton(this, MysticQt::GetMysticQt()->FindIcon("Images/Icons/SearchClearButton.png"));
-        connect(mFindWidget->GetSearchEdit(), SIGNAL(textChanged(const QString&)), this, SLOT(TextChanged(const QString&)));
-        displayLayout->addWidget(mFindWidget);
+        m_searchWidget = new AzQtComponents::FilteredSearchWidget(this);
+        connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &CollisionMeshesNodeHierarchyWidget::OnTextFilterChanged);
+        displayLayout->addWidget(m_searchWidget);
 
         // create the tree widget
         mHierarchy = new QTreeWidget();
@@ -171,7 +172,6 @@ namespace EMStudio
         mHierarchy->blockSignals(false);
     }
 
-
     void CollisionMeshesNodeHierarchyWidget::AddActorInstance(EMotionFX::ActorInstance* actorInstance)
     {
         EMotionFX::Actor*   actor       = actorInstance->GetActor();
@@ -216,7 +216,7 @@ namespace EMStudio
     {
         AZStd::string loweredNodeName = nodeName;
         AZStd::to_lower(loweredNodeName.begin(), loweredNodeName.end());
-        if ((isMeshNode) && (mFindString.empty() || loweredNodeName.find(mFindString) != AZStd::string::npos))
+        if ((isMeshNode) && (m_searchWidgetText.empty() || loweredNodeName.find(m_searchWidgetText) != AZStd::string::npos))
         {
             return true;
         }
@@ -394,10 +394,10 @@ namespace EMStudio
     }
 
 
-    void CollisionMeshesNodeHierarchyWidget::TextChanged(const QString& text)
+    void CollisionMeshesNodeHierarchyWidget::OnTextFilterChanged(const QString& text)
     {
-        FromQtString(text, &mFindString);
-        AZStd::to_lower(mFindString.begin(), mFindString.end());
+        FromQtString(text, &m_searchWidgetText);
+        AZStd::to_lower(m_searchWidgetText.begin(), m_searchWidgetText.end());
         Update();
     }
 

@@ -560,6 +560,32 @@ namespace EMotionFX
     }
 
 
+    Transform& Transform::ApplyAdditive(const Transform& additive)
+    {
+        mPosition += additive.mPosition;
+        mRotation = mRotation * additive.mRotation;
+
+        EMFX_SCALECODE
+        (
+            mScale += additive.mScale;
+        )
+        return *this;
+    }
+
+
+    Transform& Transform::ApplyAdditive(const Transform& additive, float weight)
+    {
+        mPosition += additive.mPosition * weight;
+        mRotation = mRotation.NLerp(mRotation * additive.mRotation, weight);
+
+        EMFX_SCALECODE
+        (
+            mScale += additive.mScale * weight;
+        )
+        return *this;
+    }
+
+
     // sum the transforms
     Transform& Transform::Add(const Transform& other, float weight)
     {

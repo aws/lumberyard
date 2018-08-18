@@ -62,11 +62,23 @@ NoResourceWidget::NoResourceWidget(ResourceManagementView* view, const QSharedPo
     connect(deleteButton, &QPushButton::clicked, this, &NoResourceWidget::DeleteStack);
     AddButton(deleteButton);
 
+    auto enableButton = new QPushButton{};
+    enableButton->setObjectName("EnableButton");
+    enableButton->setText(m_resourceGroupStatusModel->GetEnableButtonText());
+    enableButton->setToolTip(m_resourceGroupStatusModel->GetEnableButtonToolTip());
+    enableButton->setDisabled(m_resourceGroupStatusModel->StackIsBusy());
+    connect(enableButton, &QPushButton::clicked, this, &NoResourceWidget::DeleteStack);
+    AddButton(enableButton);
 }
 
 void NoResourceWidget::DeleteStack()
 {
     m_view->DeleteStack(m_resourceGroupStatusModel);
+}
+
+void NoResourceWidget::EnableResourceGroup()
+{
+    m_resourceGroupStatusModel->EnableResourceGroup();
 }
 
 void NoResourceWidget::OnAddResource()

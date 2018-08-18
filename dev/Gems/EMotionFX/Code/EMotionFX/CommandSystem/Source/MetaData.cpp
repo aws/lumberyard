@@ -10,7 +10,6 @@
 *
 */
 
-#include <MCore/Source/AttributeSet.h>
 #include <EMotionFX/Source/Motion.h>
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/MotionEventTrack.h>
@@ -162,14 +161,18 @@ namespace CommandSystem
         if (motionExtractionNode)
         {
             outMetaDataString += "AdjustActor -actorID $(ACTORID) ";
+            outMetaDataString += AZStd::string::format("-motionExtractionNodeName \"%s\"\n", motionExtractionNode->GetName());
+        }
+    }
 
-            // Add the motion extraction node in case its set.
-            if (motionExtractionNode)
-            {
-                outMetaDataString += AZStd::string::format("-motionExtractionNodeName \"%s\" ", motionExtractionNode->GetName());
-            }
 
-            outMetaDataString += "\n";
+    void MetaData::GenerateRetargetRootMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString)
+    {
+        EMotionFX::Node* retargetRootNode = actor->GetRetargetRootNode();
+        if (retargetRootNode)
+        {
+            outMetaDataString += "AdjustActor -actorID $(ACTORID) ";
+            outMetaDataString += AZStd::string::format("-retargetRootNodeName \"%s\"\n", retargetRootNode->GetName());
         }
     }
 
@@ -229,6 +232,7 @@ namespace CommandSystem
         GeneratePhonemeMetaData(actor, metaDataString);
         GenerateAttachmentMetaData(actor, metaDataString);
         GenerateMotionExtractionMetaData(actor, metaDataString);
+        GenerateRetargetRootMetaData(actor, metaDataString);
         GenerateMirrorSetupMetaData(actor, metaDataString);
 
         return metaDataString;

@@ -4,6 +4,14 @@
     },
     "auto": {
         "Gallery": [
+            "Gallery/BreadCrumbsPage.ui",
+            "Gallery/BreadCrumbsPage.cpp",
+            "Gallery/BreadCrumbsPage.h",
+
+            "Gallery/BrowseEditPage.ui",
+            "Gallery/BrowseEditPage.cpp",
+            "Gallery/BrowseEditPage.h",
+
             "Gallery/ButtonPage.ui",
             "Gallery/ButtonPage.cpp",
             "Gallery/ButtonPage.h",
@@ -16,9 +24,25 @@
             "Gallery/CheckBoxPage.cpp",
             "Gallery/CheckBoxPage.h",
 
+            "Gallery/ColorPickerPage.ui",
+            "Gallery/ColorPickerPage.cpp",
+            "Gallery/ColorPickerPage.h",
+
+            "Gallery/ComboBoxPage.ui",
+            "Gallery/ComboBoxPage.cpp",
+            "Gallery/ComboBoxPage.h",
+
             "Gallery/ComponentDemoWidget.ui",
             "Gallery/ComponentDemoWidget.cpp",
             "Gallery/ComponentDemoWidget.h",
+
+            "Gallery/GradientSliderPage.ui",
+            "Gallery/GradientSliderPage.cpp",
+            "Gallery/GradientSliderPage.h",
+
+            "Gallery/LineEditPage.ui",
+            "Gallery/LineEditPage.cpp",
+            "Gallery/LineEditPage.h",
 
             "Gallery/main.cpp",
 
@@ -30,13 +54,29 @@
             "Gallery/RadioButtonPage.cpp",
             "Gallery/RadioButtonPage.h",
 
+            "Gallery/SegmentControlPage.ui",
+            "Gallery/SegmentControlPage.cpp",
+            "Gallery/SegmentControlPage.h",
+
             "Gallery/SliderPage.ui",
             "Gallery/SliderPage.cpp",
             "Gallery/SliderPage.h",
 
+            "Gallery/SpinBoxPage.ui",
+            "Gallery/SpinBoxPage.cpp",
+            "Gallery/SpinBoxPage.h",
+
+            "Gallery/SvgLabelPage.ui",
+            "Gallery/SvgLabelPage.cpp",
+            "Gallery/SvgLabelPage.h",
+
             "Gallery/ToggleSwitchPage.ui",
             "Gallery/ToggleSwitchPage.cpp",
-            "Gallery/ToggleSwitchPage.h"
+            "Gallery/ToggleSwitchPage.h",
+
+            "Gallery/TypographyPage.ui",
+            "Gallery/TypographyPage.cpp",
+            "Gallery/TypographyPage.h"
         ]
     }
 }

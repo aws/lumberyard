@@ -50,7 +50,6 @@ CParticleContainer::CParticleContainer(CParticleContainer* pParent, CParticleEmi
     , m_pGPUData(0)
     , m_LodBlend(0.f)
     , m_LodOverlap(0.f)
-    , m_FadeEffectContainer(nullptr)
 {
     assert(pEffect);
     assert(pEffect->IsActive() || gEnv->IsEditing());
@@ -239,11 +238,7 @@ CParticle* CParticleContainer::AddParticle(SParticleUpdateContext& context, cons
     {
         float fNewDist = part.GetMinDist(context.vMainCamPos);
 
-        Array<SParticleUpdateContext::SSortElem>* particles = &context.aFadeParticleSort;
-        if (context.aFadeParticleSort.empty())
-        {
-            particles = &context.aParticleSort;
-        }
+        Array<SParticleUpdateContext::SSortElem>* particles = &context.aParticleSort;
 
         if (!particles->empty())
         {
@@ -812,34 +807,11 @@ void CParticleContainer::UpdateParticleStates(SParticleUpdateContext& context)
         ++pPart;
     }
 
-    //Check if there are Emitter Fading particles. If there are, we create a sortlist for them.
-    if (params.IsConnectedParticles() && GetEffect()->HasFadeEffect())
-    {
-        uint32 fadeEnvFlags = GetFadeEffectContainer()->GetEnvironmentFlags();
-        if ((fadeEnvFlags & REN_SORT) && context.nSortQuality > 0)
-        {
-            int nMaxParticles = GetMaxParticleCount(context);
-            STACK_ARRAY(SParticleUpdateContext::SSortElem, aFadeParticleSort, nMaxParticles);
-            context.aFadeParticleSort.set(aFadeParticleSort, nMaxParticles);
-            GetFadeEffectContainer()->FillFadeParticleSortArray(context);
-        }
-    }
-
-    if (!params.bIsCameraNonFacingFadeParticle)
-    {
-        // Emit new particles.
-        UpdateEmitters(&context);
-    }
+    UpdateEmitters(&context);
 }
 
 void CParticleContainer::UpdateEmitters(SParticleUpdateContext* pUpdateContext)
 {
-    //Do not emit particles when you have a camera non facing fade particle.
-    if (GetParams().bIsCameraNonFacingFadeParticle)
-    {
-        return;
-    }
-
     for_all_ptrs(CParticleSubEmitter, e, m_Emitters)
     {
         if (e->UpdateState())
@@ -1433,33 +1405,6 @@ void CParticleContainer::OffsetPosition(const Vec3& delta)
     for (ParticleList<CParticle>::iterator pPart(m_Particles); pPart; ++pPart)
     {
         pPart->OffsetPosition(delta);
-    }
-}
-
-
-void CParticleContainer::FillFadeParticleSortArray(SParticleUpdateContext& context)
-{
-    const ResourceParticleParams& params = GetParams();
-    float fLifetimeCheck = 0.f;
-
-    if (context.aFadeParticleSort.empty())
-    {
-        return;
-    }
-    SParticleUpdateContext::SSortElem* pElem = context.aFadeParticleSort.begin();
-    for (ParticleList<CParticle>::iterator pPart(m_Particles); pPart; )
-    {
-        assert(pElem < context.aFadeParticleSort.end());
-        pElem->pPart = pPart;
-        pElem->fDist = -pPart->GetMinDist(context.vMainCamPos);
-
-        if (context.nSortQuality == 1 && pElem > context.aFadeParticleSort.begin() && pElem->fDist < pElem[-1].fDist)
-        {
-            // Force progressive sort order.
-            pElem->fDist = pElem[-1].fDist;
-        }
-        pElem++;
-        ++pPart;
     }
 }
 

@@ -27,14 +27,9 @@ namespace EMotionFX
     class EMFX_API AnimGraphEntryNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphEntryNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
     public:
-        AZ_RTTI(AnimGraphEntryNode, "{3F02348C-07CC-4303-B1C9-D4585CE04529}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x38020071
-        };
+        AZ_RTTI(AnimGraphEntryNode, "{3F02348C-07CC-4303-B1C9-D4585CE04529}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -47,33 +42,27 @@ namespace EMotionFX
             PORTID_OUTPUT_POSE = 0
         };
 
-        static AnimGraphEntryNode* Create(AnimGraph* animGraph);
+        AnimGraphEntryNode();
+        ~AnimGraphEntryNode();
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         uint32 GetVisualColor() const override                      { return MCore::RGBA(50, 200, 50); }
         bool GetCanActAsState() const override                      { return true; }
         bool GetSupportsVisualization() const override              { return true; }
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue(); }
         bool GetHasOutputPose() const override                      { return true; }
-        bool GetCanBeInsideSubStateMachineOnly() const override     { return true; }
         bool GetHasVisualOutputPorts() const override               { return false; }
         bool GetCanHaveOnlyOneInsideParent() const override         { return true; }
-        AnimGraphObjectData* CreateObjectData() override;
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-
         AnimGraphNode* FindSourceNode(AnimGraphInstance* animGraphInstance);
 
-    private:
-        AnimGraphEntryNode(AnimGraph* animGraph);
-        ~AnimGraphEntryNode();
+        static void Reflect(AZ::ReflectContext* context);
 
+    private:
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;

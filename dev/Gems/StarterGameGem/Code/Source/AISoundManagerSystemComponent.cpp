@@ -58,7 +58,6 @@ namespace StarterGameGem
         {
             serializeContext->Class<AISoundManagerSystemComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
                 ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())

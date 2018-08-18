@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "../ImageObject.h"  // ImageToProcess
 
@@ -84,13 +84,13 @@ namespace ImageQImage
     bool IsExtensionSupported(const char* extension)
     {
         // This is the list of file extensions supported by this loader/saver
-        return !stricmp(extension, "bmp") ||
-               !stricmp(extension, "gif") ||
-               !stricmp(extension, "jpg") ||
-               !stricmp(extension, "jpeg") ||
-               !stricmp(extension, "jpe") ||
-               !stricmp(extension, "tga") ||
-               !stricmp(extension, "png");
+        return !azstricmp(extension, "bmp") ||
+               !azstricmp(extension, "gif") ||
+               !azstricmp(extension, "jpg") ||
+               !azstricmp(extension, "jpeg") ||
+               !azstricmp(extension, "jpe") ||
+               !azstricmp(extension, "tga") ||
+               !azstricmp(extension, "png");
     }
 
     bool UpdateAndSaveSettings(const char* settingsFilename, const string& settings)
@@ -129,7 +129,7 @@ namespace ImageQImage
                 };
                 for (size_t i = 0; i < sizeof(keysBlackList) / sizeof(keysBlackList[0]); ++i)
                 {
-                    if (stricmp(key, keysBlackList[i]) == 0)
+                    if (azstricmp(key, keysBlackList[i]) == 0)
                     {
                         return;
                     }
@@ -164,7 +164,7 @@ namespace ImageQImage
                     {
                         break;
                     }
-                    if (stricmp(keyValue.c_str() + 1, defaultProp) == 0)  // '+ 1' because defaultProp doesn't have "/" in the beginning
+                    if (azstricmp(keyValue.c_str() + 1, defaultProp) == 0)  // '+ 1' because defaultProp doesn't have "/" in the beginning
                     {
                         return;
                     }

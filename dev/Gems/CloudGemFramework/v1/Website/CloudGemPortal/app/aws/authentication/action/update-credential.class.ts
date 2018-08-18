@@ -31,7 +31,7 @@ export class UpdateCredentialAction implements AuthStateAction {
         AWS.config.credentials = creds;
 
         var callback = function (err) {
-            if (err) {
+            if (err || AWS.config.credentials == null) {
                 subject.next(<AuthStateActionContext>{
                     state: EnumAuthState.USER_CREDENTIAL_UPDATE_FAILED,
                     output: [err.code + " : " + err.message]
@@ -44,15 +44,22 @@ export class UpdateCredentialAction implements AuthStateAction {
             });
         }
 
-        AWS.config.credentials.refresh((err) => {
-            if (AWS.config.credentials.accessKeyId === undefined) {
-                AWS.config.credentials.refresh((err) => {
-                    callback(err);
-                })
-                return;
-            }
-            callback(err)
-        });
+        if (AWS.config.credentials == null) {
+            subject.next(<AuthStateActionContext>{
+                state: EnumAuthState.USER_CREDENTIAL_UPDATE_FAILED,
+                output: ["Credentials no longer exist."]
+            });
+        } else {
+            AWS.config.credentials.refresh((err) => {
+                if (AWS.config.credentials.accessKeyId === undefined) {
+                    AWS.config.credentials.refresh((err) => {
+                        callback(err);
+                    })
+                    return;
+                }
+                callback(err)
+            });
+        }
     }
 
 }

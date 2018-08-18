@@ -10,7 +10,7 @@
 *
 */
 
-#include <QLabel.h>
+#include <QLabel>
 #include <AzCore/std/bind/bind.h>
 #include <RowWidgets/ui_NodeTreeSelectionWidget.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>

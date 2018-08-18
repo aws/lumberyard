@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "DependencyList.h"
 
@@ -150,7 +150,8 @@ void CDependencyList::RemoveInputFiles(const std::vector<string>& inputFilesToRe
 
 void CDependencyList::Save(const char* filename) const
 {
-    FILE* const file = fopen(filename, "wt");
+    FILE* file = nullptr; 
+    azfopen(&file, filename, "wt");
 
     if (!file)
     {
@@ -167,7 +168,8 @@ void CDependencyList::Save(const char* filename) const
 
 void CDependencyList::SaveOutputOnly(const char* filename) const
 {
-    FILE* const file = fopen(filename, "wt");
+    FILE* file = nullptr; 
+    azfopen(&file, filename, "wt");
 
     if (!file)
     {
@@ -184,7 +186,8 @@ void CDependencyList::SaveOutputOnly(const char* filename) const
 
 void CDependencyList::Load(const char* filename)
 {
-    FILE* const file = fopen(filename, "rt");
+    FILE* file = nullptr; 
+    azfopen(&file, filename, "rt");
 
     if (!file)
     {

@@ -18,6 +18,20 @@ namespace AZ
     namespace Utils
     {
         //common cross platform Utils go here
+
+        //! Terminates the application without going through the shutdown procedure.
+        //! This is used when due to abnormal circumstances the application can no
+        //! longer continue. On most platforms and in most configurations this will
+        //! lead to a crash report, though this is not guaranteed.
+        void RequestAbnormalTermination();
+
+        //! Shows a platform native error message. This message box is available even before
+        //! the engine is fully initialized. This function will do nothing on platforms
+        //! that can't meet this requirement. Do not not use this function for common
+        //! message boxes as it's designed to only be used in situations where the engine
+        //! is booting or shutting down. NativeMessageBox will not return until the user
+        //! has closed the message box.
+        void NativeErrorMessageBox(const char* title, const char* message);
     }
 }
 

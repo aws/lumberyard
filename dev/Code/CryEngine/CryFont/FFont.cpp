@@ -577,7 +577,7 @@ void CFFont::RenderCallback(float x, float y, float z, const char* pStr, const b
             float trackingOffset = 0.0f;
             if (nextCh)
             {
-                trackingOffset = ctx.m_tracking * scaleInfo.scale.x;
+                trackingOffset = ctx.m_tracking;
             }
 
             float px = charX + charOffsetX * scaleInfo.scale.x; // in pixels
@@ -875,7 +875,7 @@ Vec2 CFFont::GetTextSizeUInternal(const char* pStr, const bool asciiMultiLine, c
             // Adjust char width with tracking only if there is a next character
             if (nextCh)
             {
-                charX += ctx.m_tracking * scaleInfo.scale.x;
+                charX += ctx.m_tracking;
             }
 
             charX += advance + kerningOffset.x;

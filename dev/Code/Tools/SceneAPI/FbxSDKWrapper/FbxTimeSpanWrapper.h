@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <SceneAPI/FbxSDKWrapper/FbxTimeWrapper.h>
 #include <fbxsdk.h>
 
 namespace AZ
@@ -24,9 +25,10 @@ namespace AZ
             FbxTimeSpanWrapper(const FbxTimeSpan& fbxTimeSpan);
             virtual ~FbxTimeSpanWrapper() = default;
             
-            virtual double GetStartTime() const;
-            virtual double GetStopTime() const;
+            virtual FbxTimeWrapper GetStartTime() const;
+            virtual FbxTimeWrapper GetStopTime() const;
             virtual double GetFrameRate() const;
+            int64_t GetNumFrames() const;
 
         protected:
             FbxTimeSpan m_fbxTimeSpan;

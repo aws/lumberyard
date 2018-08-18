@@ -21,6 +21,65 @@ SliderPage::SliderPage(QWidget* parent)
 {
     ui->setupUi(this);
 
+    ui->percentage->setToolTipFormatting("Opacity ", "%");
+    ui->percentage->setRange(0, 100);
+
+    AzQtComponents::Slider::applyMidPointStyle(ui->midPointSliderDisabled);
+    AzQtComponents::Slider::applyMidPointStyle(ui->midPointSliderEnabled);
+    AzQtComponents::Slider::applyMidPointStyle(ui->verticalMidPointSliderEnabled);
+    AzQtComponents::Slider::applyMidPointStyle(ui->verticalMidPointSliderDisabled);
+
+    AzQtComponents::Slider::applyMidPointStyle(ui->doubleMidPointSliderDisabled);
+    AzQtComponents::Slider::applyMidPointStyle(ui->doubleMidPointSliderEnabled);
+    AzQtComponents::Slider::applyMidPointStyle(ui->doubleVerticalMidPointSliderEnabled);
+    AzQtComponents::Slider::applyMidPointStyle(ui->doubleVerticalMidPointSliderDisabled);
+
+    {
+        ui->sliderEnabled->setValue(20);
+        ui->sliderDisabled->setValue(40);
+
+        ui->verticalSliderEnabled->setValue(20);
+        ui->verticalSliderDisabled->setValue(0);
+
+        ui->doubleSliderEnabled->setRange(0, 10);
+        ui->doubleSliderEnabled->setValue(6.0);
+
+        ui->doubleSliderDisabled->setValue(0);
+    }
+
+    {
+        int min = -10;
+        int max = 10;
+
+        ui->midPointSliderDisabled->setRange(min, max);
+        ui->midPointSliderDisabled->setValue(5);
+
+        ui->midPointSliderEnabled->setRange(min, max);
+        ui->midPointSliderEnabled->setValue(2);
+
+        ui->verticalMidPointSliderEnabled->setRange(min, max);
+        ui->verticalMidPointSliderEnabled->setValue(-2);
+
+        ui->verticalMidPointSliderDisabled->setRange(min, max);
+        ui->verticalMidPointSliderDisabled->setValue(-5);
+    }
+
+    {
+        int min = -20;
+        int max = 20;
+        ui->doubleMidPointSliderDisabled->setRange(min, max);
+        ui->doubleMidPointSliderDisabled->setValue(10.0);
+
+        ui->doubleMidPointSliderEnabled->setRange(min, max);
+        ui->doubleMidPointSliderEnabled->setValue(4);
+
+        ui->doubleVerticalMidPointSliderEnabled->setRange(min, max);
+        ui->doubleVerticalMidPointSliderEnabled->setValue(-4.0);
+
+        ui->doubleVerticalMidPointSliderDisabled->setRange(min, max);
+        ui->doubleVerticalMidPointSliderDisabled->setValue(-10.0);
+    }
+
     QString exampleText = R"(
 
 A Slider is a wrapper around a QSlider.<br/>
@@ -53,7 +112,7 @@ sliderDouble->setValue(0.0);
 
 // Listen for changes; same format for SliderInt as SliderDouble
 connect(sliderDouble, &SliderDouble::valueChanged, sliderDouble, [sliderDouble](double newValue){
-    qDebug() << "Slider value changed to " << newValue;
+    qDebug() &lt;&lt; "Slider value changed to " &lt;&lt; newValue;
 });
 
 </pre>

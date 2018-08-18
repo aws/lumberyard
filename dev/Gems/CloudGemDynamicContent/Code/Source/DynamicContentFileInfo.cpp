@@ -133,7 +133,7 @@ namespace CloudCanvas
             if ( IsMounted())
             {
                 AZ_TracePrintf("CloudCanvas", "Unmounting pak for %s.", GetFileName().c_str());
-                gEnv->pCryPak->ClosePack(GetAliasedFilePath().c_str());
+                gEnv->pCryPak->ClosePack(GetFullLocalFileName().c_str());
             }
             else
             {

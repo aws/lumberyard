@@ -74,4 +74,7 @@
  <macro title="Cycle_Lods" shortcut="" icon="icons\lods.png" tooltip="Cycle through the available lods">
   <command type="1" text="general.run_file_parameters('viewmodes.py','lods_level')" bVariableToggle="0"/>
  </macro>
+ <macro title="" shortcut="" icon="icons\placeholder.png" tooltip="Reset the view to default configuration">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','default_view')" bVariableToggle="0"/>
+ </macro>
 </toolboxmacros>

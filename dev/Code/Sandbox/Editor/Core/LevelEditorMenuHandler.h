@@ -62,6 +62,9 @@ private:
     QMenu* CreateViewMenu();
     QMenu* CreateHelpMenu();
 
+    void checkOrOpenView();
+
+
     QMap<QString, QList<QtViewPane*>> CreateMenuMap(QMap<QString, QList<QtViewPane*>>& menuMap, QtViewPanes& allRegisteredViewPanes);
     void CreateMenuOptions(QMap<QString, QList<QtViewPane*>>* menuMap, ActionManager::MenuWrapper& menu, const char* category);
 

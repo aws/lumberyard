@@ -238,7 +238,7 @@ bool CAsyncPakManager::LoadPakToMemAsync(const char* pPath, bool bLevelLoadOnly)
     else
     {
         char szFullPathBuf[ICryPak::g_nMaxPath];
-        const char* szFullPath = gEnv->pCryPak->AdjustFileName(pPath, szFullPathBuf, ICryPak::FOPEN_HINT_QUIET | ICryPak::FLAGS_PATH_REAL);
+        const char* szFullPath = gEnv->pCryPak->AdjustFileName(pPath, szFullPathBuf, AZ_ARRAY_SIZE(szFullPathBuf), ICryPak::FOPEN_HINT_QUIET | ICryPak::FLAGS_PATH_REAL);
 
         // Check if the pak file actually exists before trying to load
         if (!gEnv->pCryPak->IsFileExist(szFullPath, ICryPak::eFileLocation_Any))

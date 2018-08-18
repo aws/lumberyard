@@ -16,7 +16,6 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include "../StandardPluginsConfig.h"
-#include <MysticQt/Source/SearchButton.h>
 #include <MysticQt/Source/ButtonGroup.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <QDialog>
@@ -29,6 +28,10 @@ QT_FORWARD_DECLARE_CLASS(QTreeWidget)
 QT_FORWARD_DECLARE_CLASS(QTreeWidgetItem)
 QT_FORWARD_DECLARE_CLASS(QLineEdit)
 
+namespace AzQtComponents
+{
+    class FilteredSearchWidget;
+}
 
 struct AnimGraphSelectionItem
 {
@@ -45,14 +48,14 @@ namespace EMStudio
         MCORE_MEMORYOBJECTCATEGORY(AnimGraphHierarchyWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH)
 
     public:
-        AnimGraphHierarchyWidget(QWidget* parent, bool useSingleSelection, CommandSystem::SelectionList* selectionList = nullptr, uint32 visibilityFilterNodeID = MCORE_INVALIDINDEX32, bool showStatesOnly = false);
+        AnimGraphHierarchyWidget(QWidget* parent, bool useSingleSelection, CommandSystem::SelectionList* selectionList = nullptr, const AZ::TypeId& visibilityFilterNodeType = AZ::TypeId::CreateNull(), bool showStatesOnly = false);
         virtual ~AnimGraphHierarchyWidget();
 
         void SetSelectionMode(bool useSingleSelection);
         void Update(uint32 animGraphID, CommandSystem::SelectionList* selectionList = nullptr);
         void FireSelectionDoneSignal();
         MCORE_INLINE QTreeWidget* GetTreeWidget()                                                               { return mHierarchy; }
-        MCORE_INLINE MysticQt::SearchButton* GetSearchButton()                                                  { return mFindWidget; }
+        MCORE_INLINE AzQtComponents::FilteredSearchWidget* GetSearchWidget()                                    { return m_searchWidget; }
 
         // Calls UpdateSelection() and then returns the member array containing the selected items.
         AZStd::vector<AnimGraphSelectionItem>& GetSelectedItems();
@@ -64,13 +67,13 @@ namespace EMStudio
         void Update();
         void UpdateSelection();
         void ItemDoubleClicked(QTreeWidgetItem* item, int column);
-        void TextChanged(const QString& text);
+        void OnTextFilterChanged(const QString& text);
 
     private:
         QTreeWidget*                            mHierarchy;
-        MysticQt::SearchButton*                 mFindWidget;
-        AZStd::string                           mFindString;
-        uint32                                  mFilterNodeID;
+        AzQtComponents::FilteredSearchWidget*   m_searchWidget;
+        AZStd::string                           m_searchWidgetText;
+        AZ::TypeId                              mFilterNodeType;
         uint32                                  mAnimGraphID;
         bool                                    mShowStatesOnly;
         AZStd::vector<AnimGraphSelectionItem>   mSelectedNodes;

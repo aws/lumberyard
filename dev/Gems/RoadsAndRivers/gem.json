@@ -1,0 +1,29 @@
+{
+    "Dependencies": [
+        {
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "LmbrCentral"
+        }
+    ],
+    "GemFormatVersion": 4,
+    "Uuid": "b7c7bf6c8acf4c33acb5f2a372760d3b",
+    "Name": "RoadsAndRivers",
+    "DisplayName": "Roads and rivers",
+    "Version": "0.1.0",
+    "Summary": "Adds components for roads and rivers",
+    "Tags": ["Roads", "Rivers", "Terrain"],
+    "IconPath": "preview.png",
+    "Modules": [
+        {
+            "Type": "GameModule"
+        },
+        {
+            "Name": "Editor",
+            "Type": "EditorModule",
+            "Extends": "GameModule"
+        }
+    ]
+}

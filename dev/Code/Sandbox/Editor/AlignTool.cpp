@@ -45,7 +45,7 @@ void CAlignPickCallback::OnPick(CBaseObject* picked)
     float fPickedLength = pickedAABB.max.y - pickedAABB.min.y;
 
     bool bKeepScale = CheckVirtualKey(Qt::Key_Shift);
-    bool bKeepRotation = CheckVirtualKey(Qt::Key_Menu);
+    bool bKeepRotation = CheckVirtualKey(Qt::Key_Alt);
     bool bAlignToBoundBox = CheckVirtualKey(Qt::Key_Control);
     bool bApplyTransform = !bKeepScale && !bKeepRotation && !bAlignToBoundBox;
 

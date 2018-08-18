@@ -56,7 +56,7 @@ namespace AudioAnimationEvents
                 ->Version(0)
                 ->Field("Tracks Entity Position",&AudioAnimationEventsProxyComponent::m_tracksEntityPosition )
                 ->Field("Audio Event Name",&AudioAnimationEventsProxyComponent::m_audioEventName )
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {

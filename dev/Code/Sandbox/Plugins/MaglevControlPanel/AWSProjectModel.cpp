@@ -214,7 +214,7 @@ FileNode::FileNode(const QString& path, AWSProjectModel* projectModel, bool doNo
 {
 }
 
-QVariant FileNode::data(int role) const 
+QVariant FileNode::data(int role) const
 {
     auto result = PathNode::data(role);
     if (result.isValid() && m_fileContentModel && m_fileContentModel->IsModified())
@@ -254,7 +254,7 @@ QSharedPointer<IFileContentModel> FileNode::GetFileContentModel()
     return m_fileContentModel;
 }
 
-void FileNode::VisitDetail(IAWSProjectDetailVisitor* visitor) 
+void FileNode::VisitDetail(IAWSProjectDetailVisitor* visitor)
 {
     visitor->VisitProjectDetail(GetFileContentModel());
 }
@@ -1488,7 +1488,7 @@ QModelIndex AWSProjectModel::ProjectStackIndex() const
 void AWSProjectModel::AddResourceGroup(const QString& resourceGroupName, bool includeExampleResources, AsyncOperationCallback callback)
 {
 
-    auto _callback = [this, callback](const QString& key, const QVariant value)
+    auto _callback = [callback](const QString& key, const QVariant value)
     {
         if (key == "success")
         {
@@ -1509,10 +1509,10 @@ void AWSProjectModel::AddResourceGroup(const QString& resourceGroupName, bool in
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void AWSProjectModel::RemoveResourceGroup(const QString& resourceGroupName, AsyncOperationCallback callback)
+void AWSProjectModel::DisableResourceGroup(const QString& resourceGroupName, AsyncOperationCallback callback)
 {
 
-    auto _callback = [this, callback](const QString& key, const QVariant value)
+    auto _callback = [callback](const QString& key, const QVariant value)
     {
         if (key == "success")
         {
@@ -1526,7 +1526,30 @@ void AWSProjectModel::RemoveResourceGroup(const QString& resourceGroupName, Asyn
 
     QVariantMap args;
     args["resource_group"] = resourceGroupName;
-    ResourceManager()->ExecuteAsync(_callback, "remove-resource-group", args);
+    ResourceManager()->ExecuteAsync(_callback, "disable-resource-group", args);
+
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void AWSProjectModel::EnableResourceGroup(const QString& resourceGroupName, AsyncOperationCallback callback)
+{
+
+    auto _callback = [callback](const QString& key, const QVariant value)
+    {
+        if (key == "success")
+        {
+            callback(QString{});
+        }
+        else if (key == "error")
+        {
+            callback(value.toString());
+        }
+    };
+
+    QVariantMap args;
+    args["resource_group"] = resourceGroupName;
+    ResourceManager()->ExecuteAsync(_callback, "enable-resource-group", args);
 
 }
 
@@ -1535,7 +1558,7 @@ void AWSProjectModel::RemoveResourceGroup(const QString& resourceGroupName, Asyn
 void AWSProjectModel::AddServiceApi(const QString& resourceGroupName, AsyncOperationCallback callback)
 {
 
-    auto _callback = [this, callback](const QString& key, const QVariant value)
+    auto _callback = [callback](const QString& key, const QVariant value)
     {
         if (key == "success")
         {
@@ -1569,7 +1592,7 @@ void AWSProjectModel::CreateDeploymentStack(const QString& deploymentName, bool 
     args["confirm_aws_usage"] = true;
     args["confirm_security_change"] = true;
     ResourceManager()->ExecuteAsync(
-        ResourceManager()->GetDeploymentStatusModel(deploymentName)->GetStackEventsModelInternal()->GetRequestId(), 
+        ResourceManager()->GetDeploymentStatusModel(deploymentName)->GetStackEventsModelInternal()->GetRequestId(),
         "create-deployment-stack", args);
 }
 
@@ -1582,7 +1605,7 @@ void AWSProjectModel::DeleteDeploymentStack(const QString& deploymentName)
     args["deployment"] = deploymentName;
     args["confirm_resource_deletion"] = true;
     ResourceManager()->ExecuteAsync(
-        model->GetStackEventsModelInternal()->GetRequestId(), 
+        model->GetStackEventsModelInternal()->GetRequestId(),
         "delete-deployment-stack", args);
 }
 

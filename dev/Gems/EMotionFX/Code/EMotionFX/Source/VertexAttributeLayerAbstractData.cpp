@@ -12,10 +12,14 @@
 
 // include the required headers
 #include "VertexAttributeLayerAbstractData.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(VertexAttributeLayerAbstractData, MeshAllocator, 0)
+
+
     // constructor
     VertexAttributeLayerAbstractData::VertexAttributeLayerAbstractData(uint32 numAttributes, uint32 typeID, uint32 attribSizeInBytes, bool keepOriginals)
         : VertexAttributeLayer(numAttributes, keepOriginals)
@@ -42,7 +46,7 @@ namespace EMotionFX
     // create
     VertexAttributeLayerAbstractData* VertexAttributeLayerAbstractData::Create(uint32 numAttributes, uint32 typeID, uint32 attribSizeInBytes, bool keepOriginals)
     {
-        return new VertexAttributeLayerAbstractData(numAttributes, typeID, attribSizeInBytes, keepOriginals);
+        return aznew VertexAttributeLayerAbstractData(numAttributes, typeID, attribSizeInBytes, keepOriginals);
     }
 
 
@@ -78,7 +82,7 @@ namespace EMotionFX
     VertexAttributeLayer* VertexAttributeLayerAbstractData::Clone()
     {
         // create the clone
-        VertexAttributeLayerAbstractData* clone = new VertexAttributeLayerAbstractData(mNumAttributes, mTypeID, mAttribSizeInBytes, mKeepOriginals);
+        VertexAttributeLayerAbstractData* clone = aznew VertexAttributeLayerAbstractData(mNumAttributes, mTypeID, mAttribSizeInBytes, mKeepOriginals);
 
         // copy over the data
         uint8* cloneData = (uint8*)clone->GetData();

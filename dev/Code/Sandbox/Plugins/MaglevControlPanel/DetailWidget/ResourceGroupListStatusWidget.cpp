@@ -51,13 +51,6 @@ void ResourceGroupListStatusWidget::CreateUI()
     connect(m_updateButton, &QPushButton::clicked, this, &ResourceGroupListStatusWidget::UpdateActiveDeployment);
     stackListWidget->AddButton(m_updateButton);
 
-    auto addButton = new QPushButton {
-        m_resourceGroupListStatusModel->GetAddButtonText()
-    };
-    addButton->setToolTip(m_resourceGroupListStatusModel->GetAddButtonToolTip());
-    connect(addButton, &QPushButton::clicked, m_view, &ResourceManagementView::OnMenuNewResourceGroup);
-    stackListWidget->AddButton(addButton);
-
     UpdateUI();
 }
 

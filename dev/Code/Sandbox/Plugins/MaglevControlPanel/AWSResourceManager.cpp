@@ -175,7 +175,7 @@ void AWSResourceManager::ExecuteAsyncWithRetry(AWSResourceManager::RequestId req
 {
     if (!m_retryableRequestMap.contains(requestId)) // only one at a time
     {
-        
+
         qDebug() << "AWSResourceManager::ExecuteAsyncWithRetry - submitting" << "- requestId:" << requestId << "- command:" << command << "- args:" << args;
 
         m_retryableRequestMap[requestId] = RetryableRequest{ command, args };
@@ -233,6 +233,23 @@ void AWSResourceManager::OnBeginGameMode()
 // switch deployments while in game mode
 void AWSResourceManager::CheckGameConfigurations()
 {
+    bool shouldApplyMapping = true;
+    bool mappingIsProtected{ false };
+    EBUS_EVENT_RESULT(mappingIsProtected, CloudGemFramework::CloudCanvasMappingsBus, IsProtectedMapping);
+    static const char* PROTECTED_MAPPING_MSG_TITLE = "AWS Mapping Is Protected";
+    static const char* PROTECTED_MAPPING_MSG_TEXT = "Warning: The AWS resource mapping file is marked as protected and shouldn't be used for normal development work. Are you sure you want to continue?";
+    if (mappingIsProtected)
+    {
+        shouldApplyMapping = CryMessageBox(PROTECTED_MAPPING_MSG_TEXT, PROTECTED_MAPPING_MSG_TITLE, MB_ICONEXCLAMATION | MB_YESNO) == IDYES ? true : false;
+        // if this flag isn't set properly it's possible for a flow graph or other code to still apply the configuration
+        EBUS_EVENT(CloudGemFramework::CloudCanvasMappingsBus, SetIgnoreProtection, shouldApplyMapping);
+    }
+
+    if (shouldApplyMapping)
+    {
+        EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, ApplyConfiguration);
+    }
+
     if (!GetIEditor()->IsInGameMode())
     {
         return;
@@ -244,28 +261,8 @@ void AWSResourceManager::CheckGameConfigurations()
 void AWSResourceManager::RefreshGameConfigurations()
 {
     RefreshHasResourceGroupsStatus();
-    
-    if (GetDeploymentModel()->IsActiveDeploymentSet())
-    {
 
-        bool shouldApplyMapping = true;
-        bool mappingIsProtected{ false };
-        EBUS_EVENT_RESULT(mappingIsProtected, CloudGemFramework::CloudCanvasMappingsBus, IsProtectedMapping);
-        static const char* PROTECTED_MAPPING_MSG_TITLE = "AWS Mapping Is Protected";
-        static const char* PROTECTED_MAPPING_MSG_TEXT = "Warning: The AWS resource mapping file is marked as protected and shouldn't be used for normal development work. Are you sure you want to continue?";
-        if (mappingIsProtected)
-        {
-            shouldApplyMapping = CryMessageBox(PROTECTED_MAPPING_MSG_TEXT, PROTECTED_MAPPING_MSG_TITLE, MB_ICONEXCLAMATION | MB_YESNO) == IDYES ? true : false;
-            // if this flag isn't set properly it's possible for a flow graph or other code to still apply the configuration
-            EBUS_EVENT(CloudGemFramework::CloudCanvasMappingsBus, SetIgnoreProtection, shouldApplyMapping);
-        }
-
-        if (shouldApplyMapping)
-        {
-            EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, ApplyConfiguration);
-        }
-    }
-    else
+    if (!GetDeploymentModel()->IsActiveDeploymentSet())
     {
         if (HasResourcGroups())
         {
@@ -487,7 +484,7 @@ void AWSResourceManager::ProcessOutputSuccess(AWSResourceManager::RequestId requ
     auto i = m_retryableRequestMap.find(requestId);
     if (i != m_retryableRequestMap.end())
     {
-        
+
         qDebug() << "AWSResourceManager::ProcessOutputSuccess - erased retryable" << "- requestId:" << requestId << "- value:" << value;
         m_retryableRequestMap.erase(i);
 
@@ -498,7 +495,7 @@ void AWSResourceManager::ProcessOutputSuccess(AWSResourceManager::RequestId requ
             m_failedRequestMap.erase(j);
             if (m_failedRequestMap.isEmpty() && (m_initializationState == InitializationState::UnknownState || m_initializationState == InitializationState::ErrorLoadingState))
             {
-                // All failed requests have succeeded but we are still in an 
+                // All failed requests have succeeded but we are still in an
                 // unkown or error state. Refreshing the project description will
                 // cause the initialization state to be updated.
                 qDebug() << "AWSResourceManager::ProcessOutputSuccess - refreshing project description";
@@ -523,7 +520,7 @@ void AWSResourceManager::ProcessOutputCreateAdmin(RequestId requestId, const QVa
     QMap<QString, QVariant> message = value.toMap();
 
     QDialog loginInfo;
-    loginInfo.setWindowFlags(Qt::WindowCloseButtonHint);   
+    loginInfo.setWindowFlags(Qt::WindowCloseButtonHint);
     loginInfo.setWindowTitle("Cloud Gem Portal Administrator Account Creation");
     loginInfo.setMinimumHeight(140);
     loginInfo.setFixedWidth(350);
@@ -547,7 +544,7 @@ void AWSResourceManager::ProcessOutputCreateAdmin(RequestId requestId, const QVa
     buttonBox->addButton(createButton, QDialogButtonBox::ActionRole);
     connect(createButton, &QPushButton::clicked, &loginInfo, &QDialog::accept);
     loginInfoLayout->addWidget(buttonBox);
-    
+
     loginInfo.setLayout(loginInfoLayout);
 
     loginInfo.exec();
@@ -619,8 +616,8 @@ void AWSResourceManager::ProcessOutputProjectDescription(AWSResourceManager::Req
 
     if (m_initializationState == IAWSResourceManager::ErrorLoadingState)
     {
-        
-        // If we are in an error state the first time Refresh() is called, 
+
+        // If we are in an error state the first time Refresh() is called,
         // we need to manually refresh the status models.
 
         const bool FORCE = true;
@@ -666,7 +663,7 @@ void AWSResourceManager::UpdateSourceControlStates()
 {
     if (m_projectModel)
     {
-        
+
         using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
 
         QSharedPointer<IFileSourceControlModel> projectSettingsSource = m_projectSettingsSourceControlModel;
@@ -777,7 +774,7 @@ void AWSResourceManager::SetProjectInitialized(bool isInitialized, bool isInitia
     }
 
     if (oldState != m_initializationState)
-    {       
+    {
         CheckGameConfigurations();
         ProjectInitializedChanged();
     }
@@ -985,7 +982,7 @@ void AWSResourceManager::OnFileChanged(FileChangeMonitor::MonitoredFileType file
         assert(0);
         break;
     }
-    
+
     if (m_initializationState == InitializationState::ErrorLoadingState)
     {
         RetryLoading();
@@ -1186,8 +1183,35 @@ void AWSResourceManager::RequestEditGemsFile()
     {
         sourceControlModel->SetFlags(fileInfo.m_flags);
         sourceControlModel->SetStatus(fileInfo.m_status);
-        if (!wasSuccess) {
+        if (!wasSuccess)
+        {
             QMessageBox::critical(GetIEditor()->GetEditorMainWindow(), "Checkout error", "Failed to check file out from source control: " + path);
+        }
+    }
+    );
+}
+
+void AWSResourceManager::RequestAddFile(const QString& path)
+{
+    using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
+    SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, path.toStdString().c_str(), true, [path](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
+    {
+        if (!wasSuccess)
+        {
+            QMessageBox::critical(GetIEditor()->GetEditorMainWindow(), "Mark for add error", "Failed to mark the file for add: " + path);
+        }
+    }
+    );
+}
+
+void AWSResourceManager::RequestDeleteFile(const QString& path)
+{
+    using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
+    SCCommandBus::Broadcast(&SCCommandBus::Events::RequestDelete, path.toStdString().c_str(), [path](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
+    {
+        if (!wasSuccess && fileInfo.HasFlag(AzToolsFramework::SCF_Tracked))
+        {
+            QMessageBox::critical(GetIEditor()->GetEditorMainWindow(), "Mark for delete error", "Failed to mark the file for delete: " + path);
         }
     }
     );
@@ -1291,19 +1315,19 @@ void AWSResourceManager::RefreshHasResourceGroupsStatus()
     }
 }
 
-void AWSResourceManager::OpenCGP() 
+void AWSResourceManager::OpenCGP()
 {
 
-    auto callback = [this](const QString& key, const QVariant& value)
+    auto callback = [](const QString& key, const QVariant& value)
     {
         if (key == "error")
         {
             QMessageBox::critical(GetIEditor()->GetEditorMainWindow(), "Cloud Gem Portal", value.toString());
-        }       
+        }
     };
 
     bool failOnLoadError = true;
-    QVariantMap args;       
+    QVariantMap args;
     ExecuteAsync(callback, "cloud-gem-portal", args, failOnLoadError);
 
 }

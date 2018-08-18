@@ -115,28 +115,28 @@ CInfoBar::CInfoBar(QWidget* parent)
 
     connect(this, &CInfoBar::ActionTriggered, MainWindow::instance()->GetActionManager(), &ActionManager::ActionTriggered);
 
-    connect(ui->m_lockSelection, &QAbstractButton::toggled, [this](bool checked) {
+    connect(ui->m_lockSelection, &QAbstractButton::toggled, ui->m_lockSelection, [this](bool checked) {
         ui->m_lockSelection->setToolTip(checked ? tr("Unlock Object Selection") : tr("Lock Object Selection"));
     });
-    connect(ui->m_vectorLock, &QAbstractButton::toggled, [this](bool checked) {
+    connect(ui->m_vectorLock, &QAbstractButton::toggled, ui->m_vectorLock, [this](bool checked) {
         ui->m_vectorLock->setToolTip(checked ? tr("Unlock Axis Vectors") : tr("Lock Axis Vectors"));
     });
-    connect(ui->m_terrainCollision, &QAbstractButton::toggled, [this](bool checked) {
+    connect(ui->m_terrainCollision, &QAbstractButton::toggled, ui->m_terrainCollision, [this](bool checked) {
         ui->m_terrainCollision->setToolTip(checked ? tr("Disable Terrain Camera Collision (Q)") : tr("Enable Terrain Camera Collision (Q)"));
     });
-    connect(ui->m_physicsBtn, &QAbstractButton::toggled, [this](bool checked) {
+    connect(ui->m_physicsBtn, &QAbstractButton::toggled, ui->m_physicsBtn, [this](bool checked) {
         ui->m_physicsBtn->setToolTip(checked ? tr("Disable Physics/AI (Ctrl+P)") : tr("Enable Physics/AI (Ctrl+P)"));
     });
-    connect(ui->m_physSingleStepBtn, &QAbstractButton::toggled, [this](bool checked) {
+    connect(ui->m_physSingleStepBtn, &QAbstractButton::toggled, ui->m_physSingleStepBtn, [this](bool checked) {
         ui->m_physSingleStepBtn->setToolTip(checked ? tr("Disable Physics/AI Single-step Mode ('<' in Game Mode)") : tr("Enable Physics/AI Single-step Mode ('<' in Game Mode)"));
     });
-    connect(ui->m_syncPlayerBtn, &QAbstractButton::toggled, [this](bool checked) {
+    connect(ui->m_syncPlayerBtn, &QAbstractButton::toggled, ui->m_syncPlayerBtn, [this](bool checked) {
         ui->m_syncPlayerBtn->setToolTip(checked ? tr("Synchronize Player with Camera") : tr("Move Player and Camera Separately"));
     });
-    connect(ui->m_muteBtn, &QAbstractButton::toggled, [this](bool checked) {
+    connect(ui->m_muteBtn, &QAbstractButton::toggled, ui->m_muteBtn, [this](bool checked) {
         ui->m_muteBtn->setToolTip(checked ? tr("Un-mute Audio") : tr("Mute Audio"));
     });
-    connect(ui->m_vrBtn, &QAbstractButton::toggled, [this](bool checked) {
+    connect(ui->m_vrBtn, &QAbstractButton::toggled, ui->m_vrBtn, [this](bool checked) {
         ui->m_vrBtn->setToolTip(checked ? tr("Disable VR Preview") : tr("Enable VR Preview"));
     });
 }
@@ -333,7 +333,7 @@ void CInfoBar::OnVectorUpdate(bool followTerrain)
     {
         if (obj)
         {
-            Quat qrot = AZQuaternionToLYQuaternion(AzFramework::ConvertEulerDegreesToQuaternion(LYVec3ToAZVec3(v)));
+            Quat qrot = AZQuaternionToLYQuaternion(AZ::ConvertEulerDegreesToQuaternion(LYVec3ToAZVec3(v)));
 
             if (referenceCoordSys == COORDS_WORLD)
             {
@@ -354,7 +354,7 @@ void CInfoBar::OnVectorUpdate(bool followTerrain)
                 refObj = pGroup->GetObject(0);
                 AffineParts ap;
                 ap.SpectralDecompose(refObj->GetWorldTM());
-                Vec3 oldEulerRotation = AZVec3ToLYVec3(AzFramework::ConvertQuaternionToEulerDegrees(LYQuaternionToAZQuaternion(ap.rot)));
+                Vec3 oldEulerRotation = AZVec3ToLYVec3(AZ::ConvertQuaternionToEulerDegrees(LYQuaternionToAZQuaternion(ap.rot)));
                 Vec3 diff = v - oldEulerRotation;
                 GetIEditor()->GetSelection()->Rotate((Ang3)diff, referenceCoordSys);
             }
@@ -629,7 +629,7 @@ void CInfoBar::IdleUpdate()
                 }
 
                 // Always convert objRot to v in order to ensure that the inspector and info bar are always in sync
-                v = AZVec3ToLYVec3(AzFramework::ConvertQuaternionToEulerDegrees(LYQuaternionToAZQuaternion(objRot)));
+                v = AZVec3ToLYVec3(AZ::ConvertQuaternionToEulerDegrees(LYQuaternionToAZQuaternion(objRot)));
             }
             enable = true;
             min = -10000;

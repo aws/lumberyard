@@ -226,12 +226,17 @@ namespace AzToolsFramework
             {
                 if (savedCallback)
                 {
+                    #pragma warning(push)
+                    #pragma warning(disable: 4573)	// the usage of 'X' requires the compiler to capture 'this' but the current default capture mode 
+
                     auto conn = AZStd::make_shared<QMetaObject::Connection>();
-                    *conn = connect(this, &AssetEditorWidget::OnAssetSavedSignal, [conn, savedCallback]()
+                    *conn = connect(this, &AssetEditorWidget::OnAssetSavedSignal, this, [conn, savedCallback]()
                             {
                                 disconnect(*conn);
                                 savedCallback();
                             });
+
+                    #pragma warning(pop)
                 }
                 SaveAsset();
             }

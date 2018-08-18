@@ -46,61 +46,19 @@ namespace EMStudio
         /**
          * update the actor instance.
          */
-        void Update(const AZ::Vector3& value) override
-        {
-            ManipulatorCallback::Update(value);
-
-            // update the position, if actorinstance is still valid
-            uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
-            if (actorInstanceID != MCORE_INVALIDINDEX32)
-            {
-                mActorInstance->SetLocalPosition(value);
-            }
-        }
+        void Update(const AZ::Vector3& value) override;
 
         /**
          * update old transformation values of the callback
          */
-        void UpdateOldValues() override
-        {
-            // update the rotation, if actorinstance is still valid
-            uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
-            if (actorInstanceID != MCORE_INVALIDINDEX32)
-            {
-                mOldValueVec = mActorInstance->GetLocalPosition();
-            }
-        }
+        void UpdateOldValues() override;
 
         /**
          * apply the transformation.
          */
-        void ApplyTransformation() override
-        {
-            EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
-            if (actorInstance)
-            {
-                AZ::Vector3 newPos = actorInstance->GetLocalPosition();
-                actorInstance->SetLocalPosition(mOldValueVec);
-
-                if (AZ::Vector3(mOldValueVec - newPos).GetLength() >= MCore::Math::epsilon)
-                {
-                    AZStd::string outResult;
-                    if (GetCommandManager()->ExecuteCommand(
-                        AZStd::string::format("AdjustActorInstance -actorInstanceID %i -pos %s",  actorInstance->GetID(), AZStd::to_string(newPos).c_str()), 
-                        outResult) == false)
-                    {
-                        MCore::LogError(outResult.c_str());
-                    }
-                    else
-                    {
-                        UpdateOldValues();
-                    }
-                }
-            }
-        }
+        void ApplyTransformation() override;
 
         bool GetResetFollowMode() const override                { return true; }
-    protected:
     };
 
 
@@ -131,64 +89,17 @@ namespace EMStudio
         /**
          * update the actor instance.
          */
-        void Update(const MCore::Quaternion& value) override
-        {
-            // update the rotation, if actorinstance is still valid
-            uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
-            if (actorInstanceID != MCORE_INVALIDINDEX32)
-            {
-                // temporarily update the actor instance
-                mActorInstance->SetLocalRotation((value * mActorInstance->GetLocalRotation()).Normalize());
-
-                // update the callback parent
-                ManipulatorCallback::Update(mActorInstance->GetLocalRotation());
-            }
-        }
+        void Update(const MCore::Quaternion& value) override;
 
         /**
          * update old transformation values of the callback
          */
-        void UpdateOldValues() override
-        {
-            // update the rotation, if actorinstance is still valid
-            uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
-            if (actorInstanceID != MCORE_INVALIDINDEX32)
-            {
-                mOldValueQuat = mActorInstance->GetLocalRotation();
-            }
-        }
+        void UpdateOldValues() override;
 
         /**
          * apply the transformation.
          */
-        void ApplyTransformation() override
-        {
-            EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
-            if (actorInstance)
-            {
-                MCore::Quaternion newRot = actorInstance->GetLocalRotation();
-                actorInstance->SetLocalRotation(mOldValueQuat);
-
-                const float dot = newRot.Dot(mOldValueQuat);
-                if (dot < 1.0f - MCore::Math::epsilon && dot > -1.0f + MCore::Math::epsilon)
-                {
-                    AZStd::string outResult;
-                    if (GetCommandManager()->ExecuteCommand(
-                        AZStd::string::format("AdjustActorInstance -actorInstanceID %i -rot \"%s\"", 
-                            actorInstance->GetID(), 
-                            AZStd::to_string(AZ::Vector4(newRot.x, newRot.y, newRot.z, newRot.w)).c_str()).c_str(), 
-                        outResult) == false)
-                    {
-                        MCore::LogError(outResult.c_str());
-                    }
-                    else
-                    {
-                        UpdateOldValues();
-                    }
-                }
-            }
-        }
-    protected:
+        void ApplyTransformation() override;
     };
 
     class ScaleManipulatorCallback
@@ -213,84 +124,24 @@ namespace EMStudio
         /**
          * function to get the current value.
          */
-        AZ::Vector3 GetCurrValueVec() override
-        {
-            uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
-            if (actorInstanceID != MCORE_INVALIDINDEX32)
-            {
-                return mActorInstance->GetLocalScale();
-            }
-            else
-            {
-                return AZ::Vector3(1.0f, 1.0f, 1.0f);
-            }
-        }
+        AZ::Vector3 GetCurrValueVec() override;
 
         /**
          * update the actor instance.
          */
-        void Update(const AZ::Vector3& value) override
-        {
-            // update the position, if actorinstance is still valid
-            uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
-            if (actorInstanceID != MCORE_INVALIDINDEX32)
-            {
-                float minScale = 0.001f;
-                AZ::Vector3 scale = AZ::Vector3(
-                        MCore::Max(float(mOldValueVec.GetX() * value.GetX()), minScale),
-                        MCore::Max(float(mOldValueVec.GetY() * value.GetY()), minScale),
-                        MCore::Max(float(mOldValueVec.GetZ() * value.GetZ()), minScale));
-                mActorInstance->SetLocalScale(scale);
-
-                // update the callback
-                ManipulatorCallback::Update(scale);
-            }
-        }
+        void Update(const AZ::Vector3& value) override;
 
         /**
          * update old transformation values of the callback
          */
-        void UpdateOldValues() override
-        {
-            // update the rotation, if actorinstance is still valid
-            uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
-            if (actorInstanceID != MCORE_INVALIDINDEX32)
-            {
-                mOldValueVec = mActorInstance->GetLocalScale();
-            }
-        }
+        void UpdateOldValues() override;
 
         /**
          * apply the transformation.
          */
-        void ApplyTransformation() override
-        {
-            EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
-            if (actorInstance)
-            {
-                AZ::Vector3 newScale = actorInstance->GetLocalScale();
-                actorInstance->SetLocalScale(mOldValueVec);
-
-                if (AZ::Vector3(mOldValueVec - newScale).GetLength() >= MCore::Math::epsilon)
-                {
-                    AZStd::string outResult;
-                    if (GetCommandManager()->ExecuteCommand(
-                            AZStd::string::format("AdjustActorInstance -actorInstanceID %i -scale %s", actorInstance->GetID(),
-                                AZStd::to_string(newScale).c_str()).c_str(),
-                        outResult) == false)
-                    {
-                        MCore::LogError(outResult.c_str());
-                    }
-                    else
-                    {
-                        UpdateOldValues();
-                    }
-                }
-            }
-        }
+        void ApplyTransformation() override;
 
         bool GetResetFollowMode() const override                { return true; }
-    protected:
     };
 } // namespace MCommon
 

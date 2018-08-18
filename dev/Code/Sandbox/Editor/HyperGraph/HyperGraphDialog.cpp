@@ -14,7 +14,7 @@
 #include "StdAfx.h"
 #include <IAIAction.h>
 #include <IAISystem.h>
-#include "Ai/AIManager.h"
+#include "AI/AIManager.h"
 #include "HyperGraphDialog.h"
 #include "IViewPane.h"
 #include "HyperGraphManager.h"
@@ -1535,10 +1535,7 @@ QHyperGraphComponentsPanel::QHyperGraphComponentsPanel(QWidget* parent)
     //  ui->treeView->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     ui->treeView->header()->resizeSection(0, 180);
 
-    connect(ui->lineEdit, &QLineEdit::textChanged, [=](const QString& str)
-    {
-        m_model->SetSearchKeyword(str);
-    });
+    connect(ui->lineEdit, &QLineEdit::textChanged, m_model, &CFlowGraphManagerPrototypeFilteredModel::SetSearchKeyword);
 
     ui->treeView->setContextMenuPolicy(Qt::ActionsContextMenu);
     ui->treeView->addAction(ui->actionShow_Header);

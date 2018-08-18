@@ -243,7 +243,7 @@ public:
                         continue;
                     }
 
-                    if (!_stricmp(info.editType, s_paramTypes[i].prefix))
+                    if (!azstricmp(info.editType, s_paramTypes[i].prefix))
                     {
                         dataType = s_paramTypes[i].dataType;
                         break;
@@ -722,7 +722,7 @@ CEntityScript::CEntityScript(IEntityClass* pClass)
 //////////////////////////////////////////////////////////////////////////
 CEntityScript::~CEntityScript()
 {
-    if (m_pOnPropertyChangedFunc)
+    if (m_pOnPropertyChangedFunc && gEnv->pScriptSystem)
     {
         gEnv->pScriptSystem->ReleaseFunc(m_pOnPropertyChangedFunc);
     }
@@ -867,6 +867,10 @@ bool CEntityScript::ParseScript()
 {
     // Parse .lua file.
     IScriptSystem* script = GetIEditor()->GetSystem()->GetIScriptSystem();
+    if (!script)
+    {
+        return false;
+    }
 
     SmartScriptTable pEntity(script, true);
     if (!script->GetGlobalValue(GetName().toUtf8().data(), pEntity))
@@ -1093,7 +1097,8 @@ void CEntityScript::GotoMethod(const QString& method)
 void CEntityScript::AddMethod(const QString& method)
 {
     // Add a new method to the file. and start Editing it.
-    FILE* f = fopen(GetFile().toUtf8().data(), "at");
+    FILE* f = nullptr;
+    azfopen(&f, GetFile().toUtf8().data(), "at");
     if (f)
     {
         fprintf(f, "\n");
@@ -1134,7 +1139,8 @@ const QString& CEntityScript::GetDisplayPath()
 //////////////////////////////////////////////////////////////////////////
 int CEntityScript::FindLineNum(const QString& line)
 {
-    FILE* fileHandle = fopen(GetFile().toUtf8().data(), "rb");
+    FILE* fileHandle = nullptr;
+    azfopen(&fileHandle, GetFile().toUtf8().data(), "rb");
     if (!fileHandle)
     {
         return -1;
@@ -1151,7 +1157,8 @@ int CEntityScript::FindLineNum(const QString& line)
     fread(text, size, 1, fileHandle);
     text[size] = 0;
 
-    char* token = strtok(text, "\n");
+    char* nextToken = nullptr;
+    char* token = azstrtok(text, 0, "\n", &nextToken);
     while (token)
     {
         if (strstr(token, line.toUtf8().data()) != 0)
@@ -1159,7 +1166,7 @@ int CEntityScript::FindLineNum(const QString& line)
             lineFound = lineNum;
             break;
         }
-        token = strtok(NULL, "\n");
+        token = azstrtok(NULL, 0, "\n", &nextToken);
         lineNum++;
     }
 
@@ -1185,6 +1192,11 @@ void CEntityScript::CopyProperties2ToScriptTable(IEntity* pEntity, CVarBlock* pV
 void CEntityScript::CopyPropertiesToScriptInternal(IEntity* pEntity, CVarBlock* pVarBlock, bool bCallUpdate, const char* tableKey)
 {
     if (!IsValid())
+    {
+        return;
+    }
+
+    if (!gEnv->pScriptSystem)
     {
         return;
     }
@@ -1252,6 +1264,10 @@ void CEntityScript::VarToScriptTable(IVariable* pVariable, IScriptTable* pScript
     assert(pVariable);
 
     IScriptSystem* pScriptSystem = GetIEditor()->GetSystem()->GetIScriptSystem();
+    if (!pScriptSystem)
+    {
+        return;
+    }
 
     if (pVariable->GetType() == IVariable::ARRAY)
     {
@@ -1345,6 +1361,11 @@ void CEntityScript::CopyPropertiesFromScriptInternal(IEntity* pEntity, CVarBlock
         return;
     }
 
+    if (!gEnv->pScriptSystem)
+    {
+        return;
+    }
+
     assert(pEntity != 0);
     assert(pVarBlock != 0);
 
@@ -1374,6 +1395,10 @@ void CEntityScript::ScriptTableToVar(IScriptTable* pScriptTable, IVariable* pVar
     assert(pVariable);
 
     IScriptSystem* pScriptSystem = GetIEditor()->GetSystem()->GetIScriptSystem();
+    if (!pScriptSystem)
+    {
+        return;
+    }
 
     if (pVariable->GetType() == IVariable::ARRAY)
     {
@@ -1569,6 +1594,11 @@ void    CEntityScript::SetEventsTable(CEntityObject* pEntity)
 //////////////////////////////////////////////////////////////////////////
 void CEntityScript::UpdateTextureIcon(IEntity* pEntity)
 {
+    if (!gEnv->pScriptSystem)
+    {
+        return;
+    }
+
     // Try to call a function GetEditorIcon on the script, to give it a change to return
     // a custom icon.
     IScriptTable* pScriptTable = pEntity->GetScriptTable();
@@ -1593,14 +1623,20 @@ CEntityScriptRegistry* CEntityScriptRegistry::m_instance = 0;
 
 CEntityScriptRegistry::CEntityScriptRegistry()
 {
-    gEnv->pEntitySystem->GetClassRegistry()->RegisterListener(this);
+    if (gEnv->pEntitySystem)
+    {
+        gEnv->pEntitySystem->GetClassRegistry()->RegisterListener(this);
+    }
 }
 
 CEntityScriptRegistry::~CEntityScriptRegistry()
 {
     m_instance = 0;
     m_scripts.Clear();
-    gEnv->pEntitySystem->GetClassRegistry()->UnregisterListener(this);
+    if (gEnv->pEntitySystem)
+    {
+        gEnv->pEntitySystem->GetClassRegistry()->UnregisterListener(this);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1686,8 +1722,10 @@ void CEntityScriptRegistry::GetScripts(std::vector<CEntityScript*>& scripts)
 //////////////////////////////////////////////////////////////////////////
 void CEntityScriptRegistry::Reload()
 {
-    IEntityClassRegistry* pClassRegistry = gEnv->pEntitySystem->GetClassRegistry();
-    pClassRegistry->LoadClasses("Entities", true);
+    if (IEntityClassRegistry* pClassRegistry = gEnv->pEntitySystem->GetClassRegistry())
+    {
+        pClassRegistry->LoadClasses("Entities", true);
+    }
     LoadScripts();
 }
 
@@ -1697,6 +1735,10 @@ void CEntityScriptRegistry::LoadScripts()
     m_scripts.Clear();
 
     IEntityClassRegistry* pClassRegistry = gEnv->pEntitySystem->GetClassRegistry();
+    if (!pClassRegistry)
+    {
+        return;
+    }
 
     IEntityClass* pClass = NULL;
     pClassRegistry->IteratorMoveFirst();

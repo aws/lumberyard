@@ -201,9 +201,15 @@ def load_json(path, default = None, optional = True):
     try:
         if os.path.isfile(path):
             with open(path, 'r') as file:
-                return json.load(file)
+                data = file.read()
+            if len(data):
+                return json.loads(data)
+            elif not optional:
+                raise HandledError('Could not load {}. The file is empty.'.format(path))
+            else:
+                return copy.deepcopy(default)
         elif not optional:
-            raise HandledError('Cloud not load {}. The file does not exist.'.format(path))
+            raise HandledError('Could not load {}. The file does not exist.'.format(path))
         else:
             return copy.deepcopy(default)
     except Exception as e:
@@ -241,6 +247,13 @@ def delete_bucket_contents(context, stack_name, logical_bucket_id, physical_buck
                 {
                     'Key': version['Key'],
                     'VersionId': version['VersionId']
+                })
+
+        for marker in list_res.get('DeleteMarkers', []):
+            delete_list.append(
+                {
+                    'Key': marker['Key'],
+                    'VersionId': marker['VersionId']
                 })
 
         if delete_list:

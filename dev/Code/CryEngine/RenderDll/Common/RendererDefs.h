@@ -130,7 +130,7 @@
 #define DRIVERD3D_CPP_TRAIT_HANDLEDISPLAYPROPERTYCHANGES_NATIVERES 1
 #endif
 
-#if !defined(IOS) && !defined(APPLETV) && !defined(ANDROID)
+#if !defined(APPLETV)
 #define DRIVERD3D_CPP_TRAIT_HANDLEDISPLAYPROPERTYCHANGES_CALCRESOLUTIONS 1
 #endif
 
@@ -199,8 +199,8 @@
 #define D3D_OK  S_OK
 #endif
 
-#if !defined(_RELEASE)
-# define RENDERER_ENABLE_BREAK_ON_ERROR 0
+#if !defined(CRY_USE_DX12) && !defined(OPENGL) && !defined(_RELEASE)        
+# define RENDERER_ENABLE_BREAK_ON_ERROR 0       ///< Define causes compile errors on DX12 and OpenGL
 #endif
 #if !defined(RENDERER_ENABLE_BREAK_ON_ERROR)
 # define RENDERER_ENABLE_BREAK_ON_ERROR 0
@@ -264,7 +264,7 @@ namespace Lumberyard
 #endif
 
 #if !defined(NULL_RENDERER) && (!defined(_RELEASE) || defined(PERFORMANCE_BUILD))
-#define ENABLE_SIMPLE_GPU_TIMERS
+#define ENABLE_PROFILING_GPU_TIMERS
 #define ENABLE_FRAME_PROFILER_LABELS
 #endif
 
@@ -346,6 +346,8 @@ enum EVerifyType
 #elif defined(APPLETV)
     #define EXCLUDE_SQUISH_SDK
 #elif defined(CRY_USE_METAL)
+    #define EXCLUDE_SQUISH_SDK
+#elif defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG)
     #define EXCLUDE_SQUISH_SDK
 #endif
 
@@ -456,7 +458,7 @@ typedef uintptr_t SOCKET;
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(CRY_USE_DX12)
+#elif defined(CRY_USE_DX12) || defined(CRY_USE_METAL)
 # define BUFFER_ENABLE_DIRECT_ACCESS 1
 #endif
 

@@ -342,6 +342,7 @@ bool RootOpticsElement::ProcessAll(CShader* shader, SFlareLight& light, bool bFo
         validateGlobalVars(aux);
         if (bForceRender || m_globalFlareBrightness > 0.001f || m_globalShaftBrightness > 0.001f)
         {
+            gcpRendD3D->m_RP.m_PersFlags2 |= RBPF2_LENS_OPTICS_COMPOSITE;
             COpticsGroup::Render(shader, vSrcWorldPos, vSrcProjPos, aux);
         }
     }

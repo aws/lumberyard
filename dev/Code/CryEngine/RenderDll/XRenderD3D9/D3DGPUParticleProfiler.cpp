@@ -31,6 +31,11 @@ class CGPUParticleProfilerData
 public:
     CGPUParticleProfilerData()
     {
+        // Regardless of state, GPU Particle Profiler can only sample performance when GPU timers are enabled.
+        // Because profiling has a specific use-case (and not intended for regular operation), 
+        // we explicitly enable timers as a design-exception.
+        CD3DProfilingGPUTimer::EnableTiming();
+
         timersCurrentFrame = 0;
         for (unsigned int i = 0; i < s_GPUParticles_GPUTimersTotalBufferCount; ++i)
         {
@@ -95,7 +100,7 @@ public:
     }
 
 private:
-    CSimpleGPUTimer timers[s_GPUParticles_GPUTimersTotalBufferCount];
+    CD3DProfilingGPUTimer timers[s_GPUParticles_GPUTimersTotalBufferCount];
     int timersActive[s_GPUParticles_GPUTimersFrames];
     int timersCurrentFrame;
 };

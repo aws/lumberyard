@@ -19,7 +19,6 @@
 #include <EMotionFX/Source/Motion.h>
 #include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/WaveletSkeletalMotion.h>
-#include <MysticQt/Source/SearchButton.h>
 #include <EMotionFX/Source/PlayBackInfo.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 #include <EMotionFX/CommandSystem/Source/SelectionList.h>
@@ -34,6 +33,10 @@ QT_FORWARD_DECLARE_CLASS(QAction)
 QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 
+namespace AzQtComponents
+{
+    class FilteredSearchWidget;
+}
 
 namespace EMStudio
 {
@@ -104,12 +107,12 @@ namespace EMStudio
         void OnStopSelectedMotionsButton();
         void OnStopAllMotionsButton();
         void OnSave();
-        void SearchStringChanged(const QString& text);
+        void OnTextFilterChanged(const QString& text);
         void OnAddMotionsInSelectedMotionSets();
 
     private:
-        virtual void keyPressEvent(QKeyEvent* event) override;
-        virtual void keyReleaseEvent(QKeyEvent* event) override;
+        void keyPressEvent(QKeyEvent* event) override;
+        void keyReleaseEvent(QKeyEvent* event) override;
 
         void contextMenuEvent(QContextMenuEvent* event) override;
         void UpdateSelection(const CommandSystem::SelectionList& selectionList);
@@ -124,8 +127,8 @@ namespace EMStudio
         QPushButton*                                            mClearMotionsButton;
         QPushButton*                                            mSaveButton;
         MotionWindowPlugin*                                     mMotionWindowPlugin;
-        AZStd::string                                           mFindString;
-        MysticQt::SearchButton*                                 mFindWidget;
+        AzQtComponents::FilteredSearchWidget*                   m_searchWidget;
+        AZStd::string                                           m_searchWidgetText;
     };
 
 } // namespace EMStudio

@@ -33,7 +33,9 @@ namespace AssetProcessor
     static const int s_IdleBuilderPumpingDelayMS = 100;
 
     //! Amount of time in seconds to wait for a builder to start up and connect
-    static const int s_StartupConnectionWaitTimeS = 30;
+    // sometimes, builders take a long time to start because of things like virus scanners scanning each
+    // builder DLL, so we give them a large margin.
+    static const int s_StartupConnectionWaitTimeS = 120;
 
     static const int s_MillisecondsInASecond = 1000;
 
@@ -205,7 +207,7 @@ namespace AssetProcessor
         ApplicationServerBus::BroadcastResult(portNumber, &ApplicationServerBus::Events::GetServerListeningPort);
 
         auto params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="%s" -gamecache="%s" -gameroot="%s" -port %d)",
-                task, builderGuid.c_str(), gameName.toStdString().c_str(), projectCacheRoot.absolutePath().toStdString().c_str(), gameRoot.toStdString().c_str(), portNumber);
+                task, builderGuid.c_str(), gameName.toUtf8().constData(), projectCacheRoot.absolutePath().toUtf8().constData(), gameRoot.toUtf8().constData(), portNumber);
 
         if (moduleFilePath && moduleFilePath[0])
         {

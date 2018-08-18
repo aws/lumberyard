@@ -17,14 +17,12 @@
 
 #include <AzCore/base.h>
 #include <AzCore/PlatformDef.h>
+#include <AzCore/PlatformIncl.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #   if !defined(_WIN32_WINNT)
 #       define _WIN32_WINNT 0x0501
 #   endif
-
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
 
 // Windows platform requires either a long or an unsigned long/uint64 for the
 // Interlock instructions.

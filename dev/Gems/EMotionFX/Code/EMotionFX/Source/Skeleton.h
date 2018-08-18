@@ -28,7 +28,7 @@ namespace EMotionFX
     class EMFX_API Skeleton
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(Skeleton, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_SKELETON);
+        AZ_CLASS_ALLOCATOR_DECL
     public:
 
         static Skeleton* Create();

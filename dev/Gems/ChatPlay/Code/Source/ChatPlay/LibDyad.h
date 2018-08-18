@@ -145,7 +145,7 @@ namespace dyad
     // Threading: Handlers are invoked on the Dyad thread. Handlers that block
     // or otherwise interrupt processing will disrupt all Dyad operations.
     //
-    typedef std::function<void(CDyadEvent&)> EventHandler;
+    typedef AZStd::function<void(CDyadEvent&)> EventHandler;
 
     class IDyad
     {
@@ -169,7 +169,7 @@ namespace dyad
         // to connect to something immediately or the stream will be destroyed by
         // dyad on the next update.
         //
-        typedef std::function<void(CDyadStream&)> CreateCallback;
+        typedef AZStd::function<void(CDyadStream&)> CreateCallback;
 
         // Create a new dyad stream.
         //
@@ -184,7 +184,7 @@ namespace dyad
         virtual StreamId CreateStream(const EventHandler& handler, const CreateCallback& callback) = 0;
 
         // Action to perform on a stream
-        typedef std::function<void(CDyadStream&)> StreamAction;
+        typedef AZStd::function<void(CDyadStream&)> StreamAction;
 
         // Perform an action on a stream (posts to the Dyad thread)
         // Note: Will not be invoked if the stream no longer exists

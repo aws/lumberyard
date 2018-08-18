@@ -11,21 +11,23 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "CryAction.h"
-#include <AzCore/std/typetraits/aligned_storage.h>
-#include <AzCore/std/typetraits/alignment_of.h>
+#include <IGameFramework.h>
+#include <platform_impl.h>
 
 #define CRYACTION_API DLL_EXPORT
+
+#if !defined(AZ_MONOLITHIC_BUILD) // Module init functions, only required when building as a DLL.
+AZ_DECLARE_MODULE_INITIALIZATION
+#endif // !defined(AZ_MONOLITHIC_BUILD)
 
 extern "C"
 {
 CRYACTION_API IGameFramework* CreateGameFramework()
 {
-    // at this point... we have no dynamic memory allocation, and we cannot
-    // rely on atexit() doing the right thing; the only recourse is to
-    // have a static buffer that we use for this object
-    static AZStd::aligned_storage<sizeof(CCryAction), AZStd::alignment_of<CCryAction>::value>::type cryAction_buffer;
-    return new (&cryAction_buffer)CCryAction();
+    IGameFramework* gameFramework = nullptr;
+    CryGameFrameworkBus::BroadcastResult(gameFramework, &CryGameFrameworkRequests::CreateFramework);
+    AZ_Assert(gameFramework, "Legacy CreateGameFramework function called, but nothing is subscribed to the CryGameFrameworkRequests.\n"
+                             "Please use the Project Configurator to enable the CryLegacy gem for your project.");
+    return gameFramework;
 }   
 }

@@ -60,6 +60,7 @@ namespace AzFramework
         void OnLowMemory() override;
         void OnWindowInit() override;
         void OnWindowDestroy() override;
+        void OnWindowRedrawNeeded() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Application::Implementation
@@ -156,6 +157,12 @@ namespace AzFramework
     void ApplicationAndroid::OnWindowDestroy()
     {
         EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationWindowDestroy);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::OnWindowRedrawNeeded()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationWindowRedrawNeeded);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

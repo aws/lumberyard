@@ -19,7 +19,7 @@
 #include "CCryDXMETALDevice.hpp"
 #include "CCryDXMETALResource.hpp"
 #include "../Implementation/GLResource.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 
 
 CCryDXGLShaderResourceView::CCryDXGLShaderResourceView(CCryDXGLResource* pResource, const D3D11_SHADER_RESOURCE_VIEW_DESC& kDesc, CCryDXGLDevice* pDevice)

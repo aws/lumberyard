@@ -90,7 +90,7 @@ namespace AzFramework
         //!
         //! Supplementary ISO Key
         //! - The additional key (found to the right of the left-shift key) on ISO keyboards
-        //! - Its use should be avoided if you wish to supprt the widest range of keyboard devices
+        //! - Its use should be avoided if you wish to support the widest range of keyboard devices
         //!
         //! Windows System Keys
         //! - The windows specific pause/break, print/sysrq, and scroll lock keys

@@ -15,8 +15,8 @@
 
 #include "IEntitySystem.h"
 #include "RayCastQueue.h"
-#include "CryAction.h"
-#include "CryActionPhysicQueues.h"
+#include "../../../CryLegacy/Code/Source/CryAction/CryAction.h"
+#include "../../../CryLegacy/Code/Source/CryAction/CryActionPhysicQueues.h"
 
 #include "DeferredActionQueue.h"
 

@@ -213,10 +213,10 @@ public:
     virtual ~IOpticsManager(){}
     virtual void Reset() = 0;
     virtual IOpticsElementBase* Create(EFlareType type) const = 0;
-    virtual bool Load(const char* fullFlareName, int& nOutIndex) = 0;
+    virtual bool Load(const char* fullFlareName, int& nOutIndex, bool forceReload = false) = 0;
     virtual bool Load(XmlNodeRef& rootNode, int& nOutIndex) = 0;
     virtual IOpticsElementBase* GetOptics(int nIndex) = 0;
-    virtual bool AddOptics(IOpticsElementBase* pOptics, const char* name, int& nOutNewIndex) = 0;
+    virtual bool AddOptics(IOpticsElementBase* pOptics, const char* name, int& nOutNewIndex, bool allowReplace = false) = 0;
     virtual bool Rename(const char* fullFlareName, const char* newFullFlareName) = 0;
     virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
     virtual void Invalidate() = 0;

@@ -12,8 +12,9 @@
 
 #pragma once
 
-// include required headers
-#include "EMotionFXConfig.h"
+#include <AzCore/Memory/Memory.h>
+#include <AzCore/RTTI/RTTI.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
 #include <MCore/Source/MemoryObject.h>
 
 
@@ -28,6 +29,8 @@ namespace EMotionFX
         : public MCore::MemoryObject
     {
     public:
+        AZ_RTTI(BaseObject, "{82AC952B-8F47-4929-BC59-6D453B482570}")
+
         /**
          * The constructor.
          */
@@ -44,6 +47,6 @@ namespace EMotionFX
          * Unlike Destroy, this really forces a delete on the object's memory, calling the destructor and releasing the allocated memory.
          * Basically it internally does a "delete this;".
          */
-        virtual void Delete() override;
+        void Delete() override;
     };
 }   // namespace EMotionFX

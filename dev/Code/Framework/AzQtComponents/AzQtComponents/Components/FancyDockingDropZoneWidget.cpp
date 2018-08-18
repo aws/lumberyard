@@ -53,6 +53,7 @@ namespace AzQtComponents
         , m_screen(screen)
         , m_dropZoneState(dropZoneState)
     {
+        m_dropZoneState->registerListener(this);
         setAttribute(Qt::WA_TranslucentBackground);
         setAttribute(Qt::WA_TransparentForMouseEvents);
         setAttribute(Qt::WA_NoSystemBackground);
@@ -64,6 +65,7 @@ namespace AzQtComponents
 
     FancyDockingDropZoneWidget::~FancyDockingDropZoneWidget()
     {
+        m_dropZoneState->unregisterListener(this);
     }
 
     QScreen* FancyDockingDropZoneWidget::GetScreen()
@@ -124,7 +126,7 @@ namespace AzQtComponents
             return;
         }
 
-        if (!m_dropZoneState->dragging)
+        if (!m_dropZoneState->dragging())
         {
             return;
         }
@@ -135,12 +137,13 @@ namespace AzQtComponents
         {
             QPainter painter(this);
 
-            if (m_dropZoneState->dropOnto)
+            QWidget* dropOnto = m_dropZoneState->dropOnto();
+            if (dropOnto)
             {
-                QMainWindow* mainWindow = qobject_cast<QMainWindow*>(m_dropZoneState->dropOnto);
+                QMainWindow* mainWindow = qobject_cast<QMainWindow*>(dropOnto);
                 if (!mainWindow)
                 {
-                    mainWindow = qobject_cast<QMainWindow*>(m_dropZoneState->dropOnto->parentWidget());
+                    mainWindow = qobject_cast<QMainWindow*>(dropOnto->parentWidget());
                 }
 
                 // If our drop target isn't a main window, then retrieve the master main window.
@@ -156,7 +159,8 @@ namespace AzQtComponents
             // Draw all of the normal drop zones if they exist (if a dock widget is hovered over)
             painter.setPen(Qt::NoPen);
             painter.setOpacity(g_Constants.dropZoneOpacity);
-            for (auto it = m_dropZoneState->dropZones.cbegin(); it != m_dropZoneState->dropZones.cend(); ++it)
+            auto dropZones = m_dropZoneState->dropZones();
+            for (auto it = dropZones.cbegin(); it != dropZones.cend(); ++it)
             {
                 const Qt::DockWidgetArea area = it.key();
                 const QPolygon& dropZoneShape = it.value();
@@ -181,10 +185,10 @@ namespace AzQtComponents
 
         // If this drop zone is currently hovered over, then set the on hover color
         // and the hover opacity as it fades in
-        if (area == m_dropZoneState->dropArea && !m_dropZoneState->onAbsoluteDropZone)
+        if (area == m_dropZoneState->dropArea() && !m_dropZoneState->onAbsoluteDropZone())
         {
-            painter.setOpacity(m_dropZoneState->dropZoneHoverOpacity);
-            painter.setBrush(m_dropZoneState->dropZoneColorOnHover);
+            painter.setOpacity(m_dropZoneState->dropZoneHoverOpacity());
+            painter.setBrush(m_dropZoneState->dropZoneColorOnHover());
         }
         // Otherwise, set the normal color
         else
@@ -203,7 +207,7 @@ namespace AzQtComponents
             // If the center drop zone isn't currently hovered over, then draw the
             // circle first so that the tab icon is drawn on top
             const QRect& dropZoneRect = dropZoneShape.boundingRect();
-            if (area != m_dropZoneState->dropArea)
+            if (area != m_dropZoneState->dropArea())
             {
                 painter.drawEllipse(dropZoneRect);
             }
@@ -224,7 +228,7 @@ namespace AzQtComponents
             // If the center drop zone is currently hovered over, then draw the
             // circle for the drop zone after the tab icon so it gets drawn on
             // top so they both get the hover color
-            if (area == m_dropZoneState->dropArea)
+            if (area == m_dropZoneState->dropArea())
             {
                 painter.setOpacity(opacity);
                 painter.drawEllipse(dropZoneRect);
@@ -242,19 +246,19 @@ namespace AzQtComponents
     void FancyDockingDropZoneWidget::fillAbsoluteDropZone(QPainter& painter)
     {
         // Draw the absolute drop zone if it is valid with the proper color (on hover vs normal)
-        if (m_dropZoneState->absoluteDropZoneRect.isValid())
+        if (shouldFillAbsoluteDropZone())
         {
             // negate the window position to offset everything by that much
             QPoint offset = mapFromGlobal(m_relativeTo->mapToGlobal(QPoint(0, 0)));
 
-            QRect absoluteDropZoneRect = m_dropZoneState->absoluteDropZoneRect.translated(offset);
+            QRect absoluteDropZoneRect = m_dropZoneState->absoluteDropZoneRect().translated(offset);
 
             painter.save();
 
-            if (m_dropZoneState->onAbsoluteDropZone)
+            if (m_dropZoneState->onAbsoluteDropZone())
             {
-                painter.setOpacity(m_dropZoneState->dropZoneHoverOpacity);
-                painter.setBrush(m_dropZoneState->dropZoneColorOnHover);
+                painter.setOpacity(m_dropZoneState->dropZoneHoverOpacity());
+                painter.setBrush(m_dropZoneState->dropZoneColorOnHover());
             }
             else
             {
@@ -266,19 +270,32 @@ namespace AzQtComponents
         }
     }
 
+    bool FancyDockingDropZoneWidget::shouldFillAbsoluteDropZone() const
+    {
+        // Draw the absolute drop zone if it is valid with the proper color (on hover vs normal)
+        return m_dropZoneState->absoluteDropZoneRect().isValid();
+    }
+
+    bool FancyDockingDropZoneWidget::shouldPaintDropBorderLines() const
+    {
+        // Don't draw the border lines if we don't have a valid drop target, or if
+        // there are no normal drop zones
+        return m_dropZoneState->dropOnto() && m_dropZoneState->hasDropZones();
+    }
+
     void FancyDockingDropZoneWidget::paintDropBorderLines(QPainter& painter)
     {
         // Don't draw the border lines if we don't have a valid drop target, or if
         // there are no normal drop zones
-        if (!m_dropZoneState->dropOnto || !m_dropZoneState->dropZones.size())
+        if (!shouldPaintDropBorderLines())
         {
             return;
         }
 
         // Retrieve the outer (dock widget) and inner corner points so that we can draw the lines
         // separating their borders.
-        QWidget* dropOnto = m_dropZoneState->dropOnto;
-        QRect dockDropZoneRect = m_dropZoneState->dockDropZoneRect;
+        QWidget* dropOnto = m_dropZoneState->dropOnto();
+        QRect dockDropZoneRect = m_dropZoneState->dockDropZoneRect();
         const QPoint topLeft = mapFromGlobal(dropOnto->mapToGlobal(dockDropZoneRect.topLeft()));
         const QPoint topRight = mapFromGlobal(dropOnto->mapToGlobal(dockDropZoneRect.topRight()));
         const QPoint bottomLeft = mapFromGlobal(dropOnto->mapToGlobal(dockDropZoneRect.bottomLeft()));
@@ -286,7 +303,7 @@ namespace AzQtComponents
 
         // negate the window position to offset everything by that much
         QPoint offset = mapFromGlobal(m_relativeTo->mapToGlobal(QPoint(0, 0)));
-        QRect innerDropZoneRect = m_dropZoneState->innerDropZoneRect.translated(offset);
+        QRect innerDropZoneRect = m_dropZoneState->innerDropZoneRect().translated(offset);
         const QPoint innerTopLeft = innerDropZoneRect.topLeft();
         const QPoint innerTopRight = innerDropZoneRect.topRight();
         const QPoint innerBottomLeft = innerDropZoneRect.bottomLeft();
@@ -303,9 +320,9 @@ namespace AzQtComponents
         painter.drawLine(bottomRight, innerBottomRight);
 
         // If we have a valid absolute drop zone, then draw a border line between it and the drop zone it shares a side with
-        if (m_dropZoneState->absoluteDropZoneRect.isValid())
+        if (m_dropZoneState->absoluteDropZoneRect().isValid())
         {
-            switch (m_dropZoneState->absoluteDropZoneArea)
+            switch (m_dropZoneState->absoluteDropZoneArea())
             {
             case Qt::LeftDockWidgetArea:
                 painter.drawLine(topLeft, bottomLeft);

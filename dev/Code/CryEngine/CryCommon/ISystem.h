@@ -11,8 +11,8 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-// In Mac, including ISystem without including platform.h first fails because platform.h 
-// includes CryThread.h which includes CryThread_pthreads.h which uses ISystem (gEnv). 
+// In Mac, including ISystem without including platform.h first fails because platform.h
+// includes CryThread.h which includes CryThread_pthreads.h which uses ISystem (gEnv).
 // So plaform.h needs the contents of ISystem.h.
 // By including platform.h outside of the guard, we give platform.h the right include order
 #include <platform.h> // Needed for LARGE_INTEGER (for consoles).
@@ -100,6 +100,8 @@ struct ICharacterManager;
 struct SFileVersion;
 struct INameTable;
 struct IBudgetingSystem;
+struct ILevelSystem;
+struct IViewSystem;
 struct IFlowSystem;
 struct IDialogSystem;
 namespace DRS {
@@ -982,7 +984,6 @@ struct SSystemGlobalEnvironment
     IRenderer*                 pRenderer;
     IHardwareMouse*            pHardwareMouse;
     IMaterialEffects*          pMaterialEffects;
-    JobManager::IJobManager*   pJobManager;
     ISoftCodeMgr*                            pSoftCodeMgr;
     IOverloadSceneManager*       pOverloadSceneManager;
     IServiceNetwork*              pServiceNetwork;
@@ -1134,14 +1135,7 @@ struct SSystemGlobalEnvironment
 #if defined(CONSOLE)
         return false;
 #else
-        if (!pGame)
-        {
-            return bEditor;
-        }
-        else
-        {
-            return bEditor && !bEditorGameMode;
-        }
+        return bEditor && !bEditorGameMode;
 #endif
     }
 
@@ -1163,12 +1157,6 @@ struct SSystemGlobalEnvironment
     ILINE void SetCutsceneIsPlaying(const bool isPlaying)
     {
         m_isCutscenePlaying = isPlaying;
-    }
-
-    // Getter function for jobmanager
-    ILINE JobManager::IJobManager* GetJobManager()
-    {
-        return pJobManager;
     }
 
     ILINE bool IsInToolMode() const
@@ -1422,6 +1410,8 @@ struct ISystem
     virtual IHardwareMouse* GetIHardwareMouse() = 0;
     virtual IDialogSystem* GetIDialogSystem() = 0;
     virtual IFlowSystem* GetIFlowSystem() = 0;
+    virtual IViewSystem* GetIViewSystem() = 0;
+    virtual ILevelSystem* GetILevelSystem() = 0;
     virtual IBudgetingSystem* GetIBudgetingSystem() = 0;
     virtual INameTable* GetINameTable() = 0;
     virtual IDiskProfiler* GetIDiskProfiler() = 0;
@@ -1871,6 +1861,18 @@ struct ISystem
     // Create an instance of a Local File IO object (which reads directly off the local filesystem, instead of,
     // for example, reading from the network or a pack or USB or such.
     virtual std::shared_ptr<AZ::IO::FileIOBase> CreateLocalFileIO() = 0;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // EBus interface used to listen for cry system notifications
+    class CrySystemNotifications : public AZ::EBusTraits
+    {
+    public:
+        virtual ~CrySystemNotifications() = default;
+
+        // Override to be notified right before the call to ISystem::Render
+        virtual void OnPreRender() {}
+    };
+    using CrySystemNotificationBus = AZ::EBus<CrySystemNotifications>;
 };
 
 //JAT - this is a very important function for the dedicated server - it lets us run >1000 players per piece of server hardware
@@ -1967,12 +1969,12 @@ public:
     }
 };
 
-#ifdef AZ_PROFILE_TELEMETRY 
+#ifdef AZ_PROFILE_TELEMETRY
 
 #define LOADING_TIME_PROFILE_SECTION AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore)
-#define LOADING_TIME_PROFILE_SECTION_ARGS(...) AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::AzCore, __VA_ARGS__) 
-#define LOADING_TIME_PROFILE_SECTION_NAMED(sectionName) AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, sectionName) 
-#define LOADING_TIME_PROFILE_SECTION_NAMED_ARGS(sectionName, args) AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::AzCore, sectionName, args) 
+#define LOADING_TIME_PROFILE_SECTION_ARGS(...) AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::AzCore, __VA_ARGS__)
+#define LOADING_TIME_PROFILE_SECTION_NAMED(sectionName) AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, sectionName)
+#define LOADING_TIME_PROFILE_SECTION_NAMED_ARGS(sectionName, args) AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::AzCore, sectionName, args)
 
 #else
 
@@ -2323,6 +2325,8 @@ static void AssertConsoleExists(void)
 // Summary:
 //   Preferred way to unregister a CVar
 #define UNREGISTER_CVAR(_name)                                                      (ASSERT_CONSOLE_EXISTS, gEnv->pConsole == 0 ? (void)0 : gEnv->pConsole->UnregisterVariable(_name))
+//   Preferred way to unregister a console command
+#define UNREGISTER_COMMAND(_name)                                                           (ASSERT_CONSOLE_EXISTS, gEnv->pConsole == 0 ? (void)0 : gEnv->pConsole->RemoveCommand(_name))
 
 ////////////////////////////////////////////////////////////////////////////////
 //

@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #ifdef AZ_PLATFORM_APPLE
 #include <errno.h>

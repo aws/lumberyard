@@ -419,6 +419,7 @@ class DeploymentInfo(StackInfo):
         self.__deployment_access_info = deployment_access_info
         self.__resource_group_infos = None
         self.__deployment_access_stack_arn = deployment_access_stack_arn
+        self.__resource_group_settings = None
 
     def __repr__(self):
         return 'DeploymentInfo(stack_name="{}")'.format(self.stack_name)
@@ -471,12 +472,29 @@ class DeploymentInfo(StackInfo):
                         resource_group_info = ResourceGroupInfo(
                             self.stack_manager,
                             stack_id, 
-                            resource_group_name=resource.logical_id, 
+                            resource_group_name=resource.logical_id,
                             session=self.session, 
                             deployment_info=self)
                         resource_group_infos.append(resource_group_info)
             self.__resource_group_infos = resource_group_infos
         return self.__resource_group_infos
+
+    @property
+    def resource_group_settings(self):
+        if self.__resource_group_settings is None:
+            s3_client = aws_utils.ClientWrapper(self.session.client("s3"))
+            settings_data = s3_client.get_object(Bucket = self.project_stack.configuration_bucket, Key='{}/{}/{}'.format(constant.RESOURCE_SETTINGS_FOLDER,self.deployment_name,constant.DEPLOYMENT_RESOURCE_GROUP_SETTINGS))
+            self.__resource_group_settings = json.loads(settings_data['Body'].read())
+        return self.__resource_group_settings
+
+    def get_gem_settings(self, gem_name):
+        gem_settings = {}
+        for resource_gem_name, resource_gem_settings in self.resource_group_settings.iteritems():
+            requested_gem_settings = resource_gem_settings.get(constant.GEM_SETTINGS_NAME, {}).get(gem_name)
+            if requested_gem_settings:
+                gem_settings[resource_gem_name] = requested_gem_settings
+        return gem_settings
+
 
     @property
     def is_deployment_stack(self):

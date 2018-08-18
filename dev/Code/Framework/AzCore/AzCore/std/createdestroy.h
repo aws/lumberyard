@@ -199,6 +199,18 @@ namespace AZStd
             }
             return result;
         }
+
+        template <class BidirectionalIterator1, class ForwardIterator>
+        inline ForwardIterator reverse_copy(const BidirectionalIterator1& first, const BidirectionalIterator1& last, ForwardIterator dest)
+        {
+            BidirectionalIterator1 iter(last);
+            while (iter != first)
+            {
+                *(dest++) = *(--iter);
+            }
+
+            return dest;
+        }
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -491,6 +503,12 @@ namespace AZStd
         }
         return result;
     }*/
+
+    template <class BidirectionalIterator, class OutputIterator>
+    OutputIterator reverse_copy(BidirectionalIterator first, BidirectionalIterator last, OutputIterator dest)
+    {
+        return AZStd::Internal::reverse_copy(first, last, dest);
+    }
 
     template<class BidirectionalIterator1, class BidirectionalIterator2>
     BidirectionalIterator2  copy_backward(BidirectionalIterator1 first, BidirectionalIterator1 last, BidirectionalIterator2 result)

@@ -8,7 +8,8 @@
             "Mocks/ICryPakMock.h",
             "Mocks/ILogMock.h",
             "Mocks/ISystemMock.h",
-            "Mocks/ITimerMock.h"
+            "Mocks/ITimerMock.h",
+            "Mocks/ICVarMock.h"
         ],
         "Mocks/Common_h":
         [

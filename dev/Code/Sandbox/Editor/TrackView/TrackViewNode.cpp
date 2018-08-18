@@ -15,7 +15,8 @@
 #include "TrackViewAnimNode.h"
 #include "TrackViewTrack.h"
 #include "TrackViewSequence.h"
-#include "Maestro/Types/AnimNodeType.h"
+#include <Maestro/Types/AnimNodeType.h>
+#include <Maestro/Bus/EditorSequenceComponentBus.h>
 
 ////////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyConstHandle::GetKey(IKey* pKey) const
@@ -292,7 +293,6 @@ CTrackViewKeyHandle CTrackViewKeyBundle::GetSingleSelectedKey()
 CTrackViewNode::CTrackViewNode(CTrackViewNode* pParent)
     : m_pParentNode(pParent)
     , m_bSelected(false)
-    , m_bExpanded(false)
     , m_bHidden(false)
 {
 }
@@ -363,7 +363,7 @@ CTrackViewNode* CTrackViewNode::GetAboveNode() const
 
     // Find last node in sibling tree
     CTrackViewNode* pCurrentNode = pPrevSibling;
-    while (pCurrentNode && pCurrentNode->GetChildCount() > 0 && pCurrentNode->IsExpanded())
+    while (pCurrentNode && pCurrentNode->GetChildCount() > 0 && pCurrentNode->GetExpanded())
     {
         pCurrentNode = pCurrentNode->GetChild(pCurrentNode->GetChildCount() - 1);
     }
@@ -375,7 +375,7 @@ CTrackViewNode* CTrackViewNode::GetAboveNode() const
 CTrackViewNode* CTrackViewNode::GetBelowNode() const
 {
     const unsigned int childCount = GetChildCount();
-    if (childCount > 0 && IsExpanded())
+    if (childCount > 0 && GetExpanded())
     {
         return GetChild(0);
     }
@@ -516,26 +516,6 @@ const CTrackViewSequence* CTrackViewNode::GetSequenceConst() const
     return nullptr;
 }
 
-
-
-//////////////////////////////////////////////////////////////////////////
-void CTrackViewNode::SetExpanded(bool bExpanded)
-{
-    if (bExpanded != m_bExpanded)
-    {
-        m_bExpanded = bExpanded;
-
-        if (bExpanded)
-        {
-            GetSequence()->OnNodeChanged(this, ITrackViewSequenceListener::eNodeChangeType_Expanded);
-        }
-        else
-        {
-            GetSequence()->OnNodeChanged(this, ITrackViewSequenceListener::eNodeChangeType_Collapsed);
-        }
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewNode::AddNode(CTrackViewNode* pNode)
 {
@@ -622,7 +602,7 @@ bool CTrackViewNode::operator<(const CTrackViewNode& otherNode) const
         if (thisTypeOrder == otherTypeOrder)
         {
             // Same node type, sort by name
-            return stricmp(thisAnimNode.GetName(), otherAnimNode.GetName()) < 0;
+            return azstricmp(thisAnimNode.GetName(), otherAnimNode.GetName()) < 0;
         }
 
         return thisTypeOrder < otherTypeOrder;
@@ -634,7 +614,7 @@ bool CTrackViewNode::operator<(const CTrackViewNode& otherNode) const
         if (thisTrack.GetParameterType() == otherTrack.GetParameterType())
         {
             // Same parameter type, sort by name
-            return stricmp(thisTrack.GetName(), otherTrack.GetName()) < 0;
+            return azstricmp(thisTrack.GetName(), otherTrack.GetName()) < 0;
         }
 
         return thisTrack.GetParameterType() < otherTrack.GetParameterType();

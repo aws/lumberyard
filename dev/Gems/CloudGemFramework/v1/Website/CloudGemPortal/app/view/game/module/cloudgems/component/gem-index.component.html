@@ -12,33 +12,36 @@
         <h1 class="col-8 gems-heading"> {{ (gems.currentGem) ? (gems.currentGem).displayName : 'Cloud Gems'}} </h1>
     </ng-container>
 </div>
-<!-- Show all the thumbnails of the gems -->
-<div class="thumbnails-container gem-container" *ngIf="!(gems.currentGem)">
-    <ng-container [ngSwitch]="gems.currentGems.length === 0 && !gems.isLoading">
-        <!-- Case where there are no gems in the current deployment  -->
-        <div *ngSwitchCase="true">
-            <p>There were no Cloud Gems found.   You can enable Cloud Gems throuh your Lumberyard Editor Project Configurator.  In the Lumberyard Editor, go to File -> Project Settings -> Configure Gems.</p>
-            <p *ngIf="gems.currentGems.length === 0  && !gems.isLoading">Enable Cloud Gems for your project through the Lumberyard Project Configurator. For more information, view the <a href="http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-cloud-gems-intro.html">Cloud Gems documentation</a>.</p>
-        </div>
-        <!-- Case for when there are could gems in the current deployment -->
-        <div *ngSwitchCase="false">
-            <ng-container [ngSwitch]="gems.isLoading">
-                <div *ngSwitchCase="true">
-                    <loading-spinner size="lg"></loading-spinner>
-                </div>
-                <div *ngSwitchCase="false">
-                    <span *ngFor="let gem of gems.currentGems">
-                        <span [routerLink]="['/game/cloudgems/', gem.context.identifier]">
-                            <gem-factory [cloudGem]="gem" [thumbnailOnly]="!(gems.currentGem)" [refreshContent]="forceRefresh"></gem-factory>
+
+<ng-container *ngIf="aws.context.project.isInitialized">
+    <!-- Show all the thumbnails of the gems -->
+    <div class="thumbnails-container gem-container" *ngIf="!(gems.currentGem)">
+        <ng-container [ngSwitch]="gems.currentGems.length === 0 && !isDeploymentLoading() && !gems.isLoading">
+            <!-- Case where there are no gems in the current deployment  -->
+            <div *ngSwitchCase="true">
+                <p>There were no Cloud Gems found.   You can enable Cloud Gems throuh your Lumberyard Editor Project Configurator.  In the Lumberyard Editor, go to File -> Project Settings -> Configure Gems.</p>
+                <p *ngIf="gems.currentGems.length === 0  && !gems.isLoading">Enable Cloud Gems for your project through the Lumberyard Project Configurator. For more information, view the <a href="http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-cloud-gems-intro.html">Cloud Gems documentation</a>.</p>
+            </div>
+            <!-- Case for when there are could gems in the current deployment -->
+            <div *ngSwitchCase="false">
+                <ng-container [ngSwitch]="gems.isLoading">
+                    <div *ngSwitchCase="true">
+                        <loading-spinner size="lg"></loading-spinner>
+                    </div>
+                    <div *ngSwitchCase="false">
+                        <span *ngFor="let gem of gems.currentGems">
+                            <span [routerLink]="['/game/cloudgems/', gem.context.identifier]">
+                                <gem-factory [cloudGem]="gem" [thumbnailOnly]="!(gems.currentGem)" [refreshContent]="forceRefresh"></gem-factory>
+                            </span>
                         </span>
-                    </span>
-                </div>
-            </ng-container>
-        </div>
-    </ng-container>
-</div>
-<!-- Show the specific gem the user clicked on -->
-<span *ngIf="gems.currentGem">
-    <gem-factory [cloudGem]="gems.currentGem" [refreshContent]="forceRefresh" ></gem-factory>
-</span>
+                    </div>
+                </ng-container>
+            </div>
+        </ng-container>
+    </div>
+    <!-- Show the specific gem the user clicked on -->
+    <span *ngIf="gems.currentGem">
+        <gem-factory [cloudGem]="gems.currentGem" [refreshContent]="forceRefresh"></gem-factory>
+    </span>
+</ng-container>
 <router-outlet></router-outlet>

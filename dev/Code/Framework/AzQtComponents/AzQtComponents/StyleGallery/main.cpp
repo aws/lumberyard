@@ -171,6 +171,7 @@ int main(int argv, char **argc)
     AzQtComponents::PrepareQtPaths();
 
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
     QApplication app(argv, argc);
     AzQtComponents::LumberyardStylesheet stylesheet(&app);
@@ -193,14 +194,14 @@ int main(int argv, char **argc)
     auto fileMenu = new QMenu();
     action->setMenu(fileMenu);
     auto openDock = fileMenu->addAction("Open dockwidget");
-    QObject::connect(openDock, &QAction::triggered, [&w] {
+    QObject::connect(openDock, &QAction::triggered, w, [&w] {
         auto dock = new AzQtComponents::StyledDockWidget(QLatin1String("Amazon Lumberyard"), w);
         auto button = new QPushButton("Click to dock");
         auto wid = new QWidget();
         auto widLayout = new QVBoxLayout(wid);
         widLayout->addWidget(button);
         wid->resize(300, 200);
-        QObject::connect(button, &QPushButton::clicked, [dock]{
+        QObject::connect(button, &QPushButton::clicked, dock, [dock]{
             dock->setFloating(!dock->isFloating());
         });
         w->addDockWidget(Qt::BottomDockWidgetArea, dock);
@@ -213,7 +214,7 @@ int main(int argv, char **argc)
 
     QAction* newAction = fileMenu->addAction("Test StyledDetailsTableView");
     newAction->setShortcut(QKeySequence::Delete);
-    QObject::connect(newAction, &QAction::triggered, [w]() {
+    QObject::connect(newAction, &QAction::triggered, w, [w]() {
         QDialog temp(w);
         temp.setWindowTitle("StyleTableWidget Test");
 
@@ -268,7 +269,7 @@ int main(int argv, char **argc)
     });
 
     QAction* refreshAction = fileMenu->addAction("Refresh Stylesheet");
-    QObject::connect(refreshAction, &QAction::triggered, [&stylesheet, &app]() {
+    QObject::connect(refreshAction, &QAction::triggered, refreshAction, [&stylesheet, &app]() {
         stylesheet.Refresh(&app);
     });
 
@@ -279,7 +280,7 @@ int main(int argv, char **argc)
 
     w->addToolBar(toolBar());
 
-    QObject::connect(widget, &MainWidget::reloadCSS, [] {
+    QObject::connect(widget, &MainWidget::reloadCSS, widget, [] {
         qDebug() << "Reloading CSS";
         qApp->setStyleSheet(QString());
         qApp->setStyleSheet("file:///style.qss");

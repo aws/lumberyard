@@ -392,7 +392,7 @@ size_t CryCrtSize(void* p)
 };
 
 // Redefine new & delete for entire module.
-#if !defined(NOT_USE_CRY_MEMORY_MANAGER) && !defined(NEW_OVERRIDEN)
+#if !defined(NOT_USE_CRY_MEMORY_MANAGER) && !defined(NEW_OVERRIDEN) && !(defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG))
 
 #if defined(CRY_FORCE_MALLOC_NEW_ALIGN)
 #    define ModuleMalloc(size) CryModuleMemalign(size, TARGET_DEFAULT_ALIGN)

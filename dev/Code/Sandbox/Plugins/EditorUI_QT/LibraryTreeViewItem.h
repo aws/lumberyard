@@ -62,6 +62,8 @@ public:
     QString ToString();
     bool FromString(const QString& value);
 
+    QVariant data(int column, int role) const override;
+
 protected:
     QString BuildPath();
 

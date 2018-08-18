@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <AzCore/PlatformIncl.h>
+
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>

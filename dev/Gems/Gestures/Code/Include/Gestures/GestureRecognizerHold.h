@@ -13,62 +13,60 @@
 
 #include "IGestureRecognizer.h"
 
+#include <AzCore/RTTI/ReflectContext.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace Gestures
 {
-    class RecognizerHold;
-
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    struct IHoldListener
-    {
-        virtual ~IHoldListener() {}
-        virtual void OnHoldInitiated(const RecognizerHold& recognizer) {}
-        virtual void OnHoldUpdated(const RecognizerHold& recognizer) {}
-        virtual void OnHoldEnded(const RecognizerHold& recognizer) {}
-    };
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    class RecognizerHold
-        : public IRecognizer
+    class RecognizerHold : public RecognizerContinuous
     {
     public:
-        inline static float GetDefaultMinSecondsHeld() { return 2.0f; }
-        inline static float GetDefaultMaxPixelsMoved() { return 20.0f; }
-        inline static uint32_t GetDefaultPointerIndex() { return 0; }
-        inline static int32_t GetDefaultPriority() { return 0; }
+        static float GetDefaultMinSecondsHeld() { return 2.0f; }
+        static float GetDefaultMaxPixelsMoved() { return 20.0f; }
+        static uint32_t GetDefaultPointerIndex() { return 0; }
+        static int32_t GetDefaultPriority() { return AzFramework::InputChannelEventListener::GetPriorityUI() + 1; }
 
         struct Config
         {
-            inline Config()
+            AZ_CLASS_ALLOCATOR(Config, AZ::SystemAllocator, 0);
+            AZ_RTTI(Config, "{3D854AD1-73C0-4E26-A609-F20FC04F78F3}");
+            static void Reflect(AZ::ReflectContext* context);
+
+            Config()
                 : minSecondsHeld(GetDefaultMinSecondsHeld())
                 , maxPixelsMoved(GetDefaultMaxPixelsMoved())
                 , pointerIndex(GetDefaultPointerIndex())
                 , priority(GetDefaultPriority())
             {}
+            virtual ~Config() = default;
 
             float minSecondsHeld;
             float maxPixelsMoved;
             uint32_t pointerIndex;
             int32_t priority;
         };
-        inline static const Config& GetDefaultConfig() { static Config s_cfg; return s_cfg; }
+        static const Config& GetDefaultConfig() { static Config s_cfg; return s_cfg; }
 
-        inline explicit RecognizerHold(IHoldListener& listener,
-            const Config& config = GetDefaultConfig());
+        AZ_CLASS_ALLOCATOR(RecognizerHold, AZ::SystemAllocator, 0);
+        AZ_RTTI(RecognizerHold, "{7FC9AB8D-0A94-40A6-8FE0-84C752D786DC}", RecognizerContinuous);
+
+        explicit RecognizerHold(const Config& config = GetDefaultConfig());
         ~RecognizerHold() override;
 
-        inline int32_t GetPriority() const override { return m_config.priority; }
-        inline bool OnPressedEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
-        inline bool OnDownEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
-        inline bool OnReleasedEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
+        int32_t GetPriority() const override { return m_config.priority; }
+        bool OnPressedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
+        bool OnDownEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
+        bool OnReleasedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
 
-        inline Config& GetConfig() { return m_config; }
-        inline const Config& GetConfig() const { return m_config; }
+        Config& GetConfig() { return m_config; }
+        const Config& GetConfig() const { return m_config; }
+        void SetConfig(const Config& config) { m_config = config; }
 
-        inline Vec2 GetStartPosition() const { return m_startPosition; }
-        inline Vec2 GetCurrentPosition() const { return m_currentPosition; }
+        AZ::Vector2 GetStartPosition() const { return m_startPosition; }
+        AZ::Vector2 GetCurrentPosition() const { return m_currentPosition; }
 
-        inline float GetDuration() const { return gEnv->pTimer->GetFrameStartTime().GetDifferenceInSeconds(m_startTime); }
+        float GetDuration() const { return gEnv->pTimer->GetFrameStartTime().GetDifferenceInSeconds(m_startTime); }
 
     private:
         enum class State
@@ -78,7 +76,6 @@ namespace Gestures
             Held
         };
 
-        IHoldListener& m_listener;
         Config m_config;
 
         int64 m_startTime;

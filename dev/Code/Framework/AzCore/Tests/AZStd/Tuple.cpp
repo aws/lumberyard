@@ -17,8 +17,6 @@
 #include <AzCore/std/string/string_view.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/tuple.h>
-
-
 #include "UserTypes.h"
 
 namespace UnitTest
@@ -473,27 +471,6 @@ namespace UnitTest
                 EXPECT_EQ(y2, AZStd::get<1>(t));
                 EXPECT_EQ(&y, &AZStd::get<1>(t));
             }
-#if !defined(AZ_COMPILER_MSVC)
-            // VS2015 is improperly parsing is_copy_assignable
-            {
-                // test that the implicitly generated copy assignment operator
-                // is properly deleted
-                using T = AZStd::tuple<AZStd::unique_ptr<AZ::s32>>;
-                AZ_TEST_STATIC_ASSERT(!AZStd::is_copy_assignable<T>::value);
-            }
-            {
-                using T = AZStd::tuple<AZ::s32, NonAssignable>;
-                AZ_TEST_STATIC_ASSERT(!AZStd::is_copy_assignable<T>::value);
-            }
-            {
-                using T = AZStd::tuple<AZ::s32, CopyAssignable>;
-                AZ_TEST_STATIC_ASSERT(AZStd::is_copy_assignable<T>::value);
-            }
-            {
-                using T = AZStd::tuple<AZ::s32, MoveAssignable>;
-                AZ_TEST_STATIC_ASSERT(!AZStd::is_copy_assignable<T>::value);
-            }
-#endif
         }
 
         struct CountAssign
@@ -598,35 +575,6 @@ namespace UnitTest
                 EXPECT_EQ(y2, AZStd::get<1>(t));
                 EXPECT_EQ(&y, &AZStd::get<1>(t));
             }
-#if !defined(AZ_COMPILER_MSVC)
-            {
-                // test that the implicitly generated move assignment operator
-                // is properly deleted
-                using T = AZStd::tuple<AZStd::unique_ptr<int>>;
-                AZ_TEST_STATIC_ASSERT(AZStd::is_move_assignable<T>::value);
-                AZ_TEST_STATIC_ASSERT(!AZStd::is_copy_assignable<T>::value);
-
-            }
-            {
-                using T = AZStd::tuple<int, NonAssignable>;
-                AZ_TEST_STATIC_ASSERT(!AZStd::is_move_assignable<T>::value);
-            }
-            {
-                using T = AZStd::tuple<int, MoveAssignable>;
-                AZ_TEST_STATIC_ASSERT(AZStd::is_move_assignable<T>::value);
-            }
-            {
-                // The move should decay to a copy.
-                CountAssign::reset();
-                using T = AZStd::tuple<CountAssign, CopyAssignable>;
-                AZ_TEST_STATIC_ASSERT(AZStd::is_move_assignable<T>::value);
-                T t1;
-                T t2;
-                t1 = AZStd::move(t2);
-                EXPECT_EQ(1, CountAssign::copied);
-                EXPECT_EQ(0, CountAssign::moved);
-            }
-#endif
         }
     }
 

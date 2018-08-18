@@ -16,8 +16,6 @@
 
 #include "../StandardPluginsConfig.h"
 #include <MCore/Source/MemoryCategoriesCore.h>
-#include <MysticQt/Source/DoubleSpinbox.h>
-#include <MysticQt/Source/IntSpinbox.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <EMotionFX/CommandSystem/Source/ActorCommands.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>

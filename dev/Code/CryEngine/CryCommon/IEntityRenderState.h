@@ -363,10 +363,8 @@ struct IRenderNode
         VM_Dynamic, // Real-time every-frame voxelization on GPU
     };
 
-#if defined(FEATURE_SVO_GI)
     virtual EVoxelGIMode GetVoxelGIMode() { return VM_None; }
     virtual void SetDesiredVoxelGIMode(EVoxelGIMode voxelMode) {}
-#endif
 
     virtual void SetMinSpec(int nMinSpec) { m_dwRndFlags &= ~ERF_SPEC_BITS_MASK; m_dwRndFlags |= (nMinSpec << ERF_SPEC_BITS_SHIFT) & ERF_SPEC_BITS_MASK; };
 
@@ -564,6 +562,7 @@ struct IVegetation
 struct IBrush
     : public IRenderNode
 {
+    virtual float GetScale(void) const = 0;
     virtual const Matrix34& GetMatrix() const = 0;
     virtual void SetDrawLast(bool enable) = 0;
 };

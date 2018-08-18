@@ -76,7 +76,7 @@ public:
             QString destString = "https://console.aws.amazon.com/";
             destString += "cloudwatch/?#";
             destString += "logStream:group=/aws/lambda/" + functionId;
-            connectUntilDeleted(viewCloudWatchLogs, &QAction::triggered, this, [this, destString]() { GetIEditor()->LaunchAWSConsole(destString); });
+            connectUntilDeleted(viewCloudWatchLogs, &QAction::triggered, this, [destString]() { GetIEditor()->LaunchAWSConsole(destString); });
         }
 
         return menu;
@@ -100,7 +100,7 @@ public:
                     selectedFunctionId = stackResourcesModel->data(stackResourcesModel->index(row, IStackResourcesModel::PhysicalResourceIdColumn), Qt::ToolTipRole).toString();
             }
         }
-        
+
         return selectedFunctionId;
     }
 

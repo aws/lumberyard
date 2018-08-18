@@ -108,7 +108,7 @@ namespace TempDynBuffer
     void TempDynBufferBase<T, bindType, Validator>::AllocateInternal(size_t numElements, size_t elementSize)
     {
         m_validator.Check(Default);
-        BUFFER_USAGE usageType = gRenDev->m_pRT->m_eVideoThreadMode != SRenderThread::eVTM_Disabled
+        BUFFER_USAGE usageType = m_renderer->IsVideoThreadModeEnabled()
             ? BU_WHEN_LOADINGTHREAD_ACTIVE // use a separate pool for everything in video rendering mode
             : BU_TRANSIENT_RT; // default to transient_RT
         m_handle = m_DevBufMan.Create(bindType, usageType, numElements * elementSize);

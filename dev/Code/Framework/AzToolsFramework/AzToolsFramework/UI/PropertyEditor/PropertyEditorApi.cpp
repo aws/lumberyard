@@ -65,9 +65,9 @@ namespace AzToolsFramework
         // Seed the list.
         AZStd::list<InstanceDataNode> nodeList(node.GetChildren().begin(), node.GetChildren().end());
 
-        for (auto& node : nodeList)
+        for (auto& child : nodeList)
         {
-            NodeDisplayVisibility visibility = CalculateNodeDisplayVisibility(node, isSlicePushUI);
+            NodeDisplayVisibility visibility = CalculateNodeDisplayVisibility(child, isSlicePushUI);
             if (visibility == NodeDisplayVisibility::Visible)
             {
                 return true;
@@ -75,7 +75,7 @@ namespace AzToolsFramework
 
             // Queue the rest of the list.
             // This is creates breadth-first traversal.
-            nodeList.insert(nodeList.end(), node.GetChildren().begin(), node.GetChildren().end());
+            nodeList.insert(nodeList.end(), child.GetChildren().begin(), child.GetChildren().end());
         }
 
         return false;

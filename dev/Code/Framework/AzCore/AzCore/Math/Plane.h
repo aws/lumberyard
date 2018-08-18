@@ -58,6 +58,17 @@ namespace AZ
             result.Set(a, b, c, d);
             return result;
         }
+        ///
+        ///Assumes counter clockwise(right handed) winding.
+        ///
+        static AZ_MATH_FORCE_INLINE const Plane CreateFromTriangle(const Vector3& v0, const Vector3& v1, const Vector3& v2)
+        {
+            Plane result;
+            Vector3 normal = ((v1 - v0).Cross(v2 - v0)).GetNormalized();
+            float dist = -(normal.Dot(v0));
+            result.Set(normal, dist);
+            return result;
+        }
 
         AZ_MATH_FORCE_INLINE void           Set(const Vector4& plane)               { m_plane = plane; }
         AZ_MATH_FORCE_INLINE void           Set(const Vector3& normal, float d)     { m_plane.Set(normal, d); }

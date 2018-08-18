@@ -22,6 +22,9 @@ namespace EMotionFX
 {
     namespace Integration
     {
+        AZ_CLASS_ALLOCATOR_IMPL(MotionSetAsset, EMotionFXAllocator, 0)
+        AZ_CLASS_ALLOCATOR_IMPL(MotionSetAssetHandler, EMotionFXAllocator, 0)
+
         /**
          * Custom callback registered with EMotion FX for the purpose of intercepting
          * motion load requests. We want to pipe all requested loads through our
@@ -45,7 +48,7 @@ namespace EMotionFX
                 // It should already be loaded through a motion set.
                 const char* motionFile = entry->GetFilename();
                 AZ::Data::AssetId motionAssetId;
-                EBUS_EVENT_RESULT(motionAssetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, motionFile, AZ::AzTypeInfo<MotionAsset>::Uuid(), false);
+                EBUS_EVENT_RESULT(motionAssetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, motionFile, azrtti_typeid<MotionAsset>(), false);
                 if (motionAssetId.IsValid())
                 {
                     for (const auto& motionAsset : m_assetData->m_motionAssets)
@@ -72,6 +75,17 @@ namespace EMotionFX
         {
         }
 
+
+        MotionSetAsset::~MotionSetAsset()
+        {
+            for (auto& motionAsset : m_motionAssets)
+            {
+                motionAsset.Get()->Release();
+            }
+            m_motionAssets.clear();
+        }
+
+
         //////////////////////////////////////////////////////////////////////////
         void MotionSetAsset::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
         {
@@ -96,11 +110,11 @@ namespace EMotionFX
             if (!asset.Get()->m_isReloadPending)
             {
                 AZStd::function<void()> notifyReload = [asset]()
-                {
-                    using namespace AZ::Data;
-                    AssetBus::Event(asset.GetId(), &AssetBus::Events::OnAssetReloaded, asset);
-                    asset.Get()->m_isReloadPending = false;
-                };
+                    {
+                        using namespace AZ::Data;
+                        AssetBus::Event(asset.GetId(), &AssetBus::Events::OnAssetReloaded, asset);
+                        asset.Get()->m_isReloadPending = false;
+                    };
                 AZ::TickBus::QueueFunction(notifyReload);
             }
         }
@@ -111,7 +125,7 @@ namespace EMotionFX
             MotionSetAsset* assetData = asset.GetAs<MotionSetAsset>();
             EMotionFX::Importer::MotionSetSettings motionSettings;
             motionSettings.m_isOwnedByRuntime = true;
-            assetData->m_emfxMotionSet = EMotionFXPtr<EMotionFX::MotionSet>::MakeFromNew(EMotionFX::GetImporter().LoadMotionSet(
+            assetData->m_emfxMotionSet.reset(EMotionFX::GetImporter().LoadMotionSet(
                 assetData->m_emfxNativeData.data(),
                 assetData->m_emfxNativeData.size(),
                 &motionSettings));
@@ -122,8 +136,29 @@ namespace EMotionFX
                 return false;
             }
 
+            // The following code is required to be set so the FileManager detects changes to the files loaded
+            // through this method. Once EMotionFX is integrated to the asset system this can go away.
+            AZStd::string assetFilename;
+            EBUS_EVENT_RESULT(assetFilename, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, asset.GetId());
+            const char* devAssetsPath = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devassets@");
+            if (devAssetsPath)
+            {
+                AZStd::string assetSourcePath = devAssetsPath;
+
+                AzFramework::StringFunc::AssetDatabasePath::Normalize(assetSourcePath);
+                AZStd::string filename;
+                AzFramework::StringFunc::AssetDatabasePath::Join(assetSourcePath.c_str(), assetFilename.c_str(), filename, true);
+
+                assetData->m_emfxMotionSet->SetFilename(filename.c_str());
+            }
+            else
+            {
+                AZ_Warning("EMotionFX", false, "Failed to retrieve asset source path with alias '@devassets@'. Cannot set absolute filename for '%s'", assetFilename.c_str());
+                assetData->m_emfxMotionSet->SetFilename(assetFilename.c_str());
+            }
+
             // Get the motions in the motion set.
-            const EMotionFX::MotionSet::EntryMap& motionEntries = assetData->m_emfxMotionSet->GetMotionEntries();
+            const EMotionFX::MotionSet::MotionEntries& motionEntries = assetData->m_emfxMotionSet->GetMotionEntries();
             for (const auto& item : motionEntries)
             {
                 const EMotionFX::MotionSet::MotionEntry* motionEntry = item.second;
@@ -136,7 +171,7 @@ namespace EMotionFX
                 if (motionAssetId.IsValid())
                 {
                     AZ::Data::Asset<MotionAsset> motionAsset = AZ::Data::AssetManager::Instance().
-                        GetAsset<MotionAsset>(motionAssetId, true, nullptr, true);
+                            GetAsset<MotionAsset>(motionAssetId, true, nullptr, true);
 
                     if (motionAsset)
                     {
@@ -166,7 +201,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         AZ::Data::AssetType MotionSetAssetHandler::GetAssetType() const
         {
-            return AZ::AzTypeInfo<MotionSetAsset>::Uuid();
+            return azrtti_typeid<MotionSetAsset>();
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -180,6 +215,5 @@ namespace EMotionFX
         {
             return "EMotion FX Motion Set";
         }
-
     } // namespace Integration
 } // namespace EMotionFX

@@ -3955,7 +3955,7 @@ void CTexture::Apply(int nTUnit, int nState, int nTexMatSlot, int nSUnit, SResou
     }
 }
 
-void CTexture::UpdateTextureRegion(const byte* data, int nX, int nY, int nZ, int USize, int VSize, int ZSize, ETEX_Format eTFSrc)
+void CTexture::UpdateTextureRegion(const uint8_t* data, int nX, int nY, int nZ, int USize, int VSize, int ZSize, ETEX_Format eTFSrc)
 {
     gRenDev->m_pRT->RC_UpdateTextureRegion(this, data, nX, nY, nZ, USize, VSize, ZSize, eTFSrc);
 }
@@ -4976,7 +4976,7 @@ void CD3D9Renderer::DrawAllDynTextures(const char* szFilter, const bool bLogName
     SDynTexture2::TextureSet2Itor itor;
     char name[256]; //, nm[256];
     cry_strcpy(name, szFilter);
-    strlwr(name);
+    azstrlwr(name, AZ_ARRAY_SIZE(name));
     TArray<CTexture*> UsedRT;
     int nMaxCount = CV_r_ShowDynTexturesMaxCount;
 
@@ -5025,7 +5025,7 @@ void CD3D9Renderer::DrawAllDynTextures(const char* szFilter, const bool bLogName
             {
                 char nameBuffer[128];
                 cry_strcpy(nameBuffer, tp->GetName());
-                strlwr(nameBuffer);
+                azstrlwr(nameBuffer, AZ_ARRAY_SIZE(nameBuffer));
                 if (CryStringUtils::MatchWildcard(nameBuffer, name))
                 {
                     UsedRT.AddElem(tp);

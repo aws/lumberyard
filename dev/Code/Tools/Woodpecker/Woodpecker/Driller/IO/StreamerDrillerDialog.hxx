@@ -17,7 +17,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 
 #include "Woodpecker/Driller/DrillerMainWindowMessages.h"
-#include "Woodpecker/Driller/stripchart.hxx"
+#include "Woodpecker/Driller/StripChart.hxx"
 
 #include <QMainWindow>
 #include <QDialog>

@@ -14,6 +14,12 @@
             "_comment": "AWS"
         },
         {
+            "Path": "Gems/StartingPointInput",
+            "Uuid": "09f4bedeee614358bc36788e77f97e51",
+            "Version": "0.1.0",
+            "_comment": "StartingPointInput"
+        },
+        {
             "Path": "Gems/LyShine",
             "Uuid": "0fefab3f13364722b2eab3b96ce2bf20",
             "Version": "0.1.0",
@@ -30,6 +36,12 @@
             "Uuid": "21cba308da7040439f88fc3a45c71e18",
             "Version": "0.1.0",
             "_comment": "CloudGemMessageOfTheDay"
+        },
+        {
+            "Path": "Gems/CloudGemWebCommunicator",
+            "Uuid": "327bb13034c1459da8478826edba71f1",
+            "Version": "0.1.0",
+            "_comment": "CloudGemWebCommunicator"
         },
         {
             "Path": "Gems/CryLegacy",
@@ -54,6 +66,12 @@
             "Uuid": "4a4bf593603c4f329c76c2a10779311b",
             "Version": "1.0.0",
             "_comment": "StaticData"
+        },
+        {
+            "Path": "Gems/InputManagementFramework",
+            "Uuid": "59b1b2acc1974aae9f18faddcaddac5b",
+            "Version": "0.1.0",
+            "_comment": "InputManagementFramework"
         },
         {
             "Path": "Gems/UiBasics",
@@ -104,12 +122,6 @@
             "_comment": "CloudGemLeaderboard"
         },
         {
-            "Path": "Gems/CryLegacyAnimation",
-            "Uuid": "b4807336b070494d974275a581593ed8",
-            "Version": "0.1.0",
-            "_comment": "CryLegacyAnimation"
-        },
-        {
             "Path": "Gems/CloudGemTextToSpeech",
             "Uuid": "bf49ab6b1b624e16854dcbaa94b1aa24",
             "Version": "0.1.0",
@@ -120,6 +132,18 @@
             "Uuid": "c9c25313197f489a8e9e8e6037fc62eb",
             "Version": "0.1.0",
             "_comment": "UserLoginDefault"
+        },
+        {
+            "Path": "Gems/ScriptCanvasDiagnosticLibrary",
+            "Uuid": "d969b997bb7f4342ba0b3eedc378025d",
+            "Version": "0.1.0",
+            "_comment": "ScriptCanvasDiagnosticLibrary"
+        },
+        {
+            "Path": "Gems/CloudGemMetric/v1",
+            "Uuid": "e1bf83aa0ddc49418c6b5689c111cb26",
+            "Version": "1.0.0",
+            "_comment": "CloudGemMetric"
         },
         {
             "Path": "Gems/Microphone",
@@ -148,7 +172,8 @@
         {
             "Path": "CloudGemSamples/Gem",
             "Uuid": "fcbd8e2e64af487fb1faecd2a133a0ce",
-            "Version": "0.1.0"
+            "Version": "0.1.0",
+            "_comment": "CloudGemSamples"
         },
         {
             "Path": "Gems/CloudGemPlayerAccount",

@@ -96,6 +96,12 @@
                                 "lex:GetBuiltinIntent"
                             ]
                         }
+                    },
+                    "Custom::LambdaPermissions": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "Custom_Lambda_Permission.handler"
+                        }
                     }
                 }
             }

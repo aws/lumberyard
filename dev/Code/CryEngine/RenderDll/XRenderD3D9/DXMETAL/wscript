@@ -39,7 +39,7 @@ def build(bld):
                                 '_RENDERER',
                                 'DXSDK="'+bld.Path('Code/SDKs/DXSDK/Include')+'/"',
                                 'OPENGL', 
-                                'CRY_USE_METAL'], # Defining this will get stdafx.h to include the correct header file for OpenGl/Metal
+                                'CRY_USE_METAL'], # Defining this will get StdAfx.h to include the correct header file for OpenGl/Metal
         lib                 = [ 'HLSLcc' ],
 
 

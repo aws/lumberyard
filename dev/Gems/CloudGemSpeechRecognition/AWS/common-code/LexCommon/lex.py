@@ -15,6 +15,7 @@ import lex_file_util
 import datetime
 import json
 import re
+import uuid
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
 
@@ -234,6 +235,11 @@ def get_custom_intent(name, version = "$LATEST"):
     return intent
 
 def put_intent(intent_section):
+    if intent_section['intent'].get('dialogCodeHook', {}).get('uri', ''):
+        __add_lambda_invoke_permission(intent_section['intent']['dialogCodeHook']['uri'])    
+    if intent_section['intent'].get('fulfillmentActivity', {}).get('type', '') == 'CodeHook':
+         __add_lambda_invoke_permission(intent_section['intent']['fulfillmentActivity']['codeHook']['uri'])
+
     client = boto3.client('lex-models')
     try:
         put_intent_response = client.put_intent(**intent_section['intent'])
@@ -587,3 +593,12 @@ def build_bot(name):
     except ParamValidationError as e:
             return "ERROR: Unknown parameter in input."
     return "READY"
+
+def __add_lambda_invoke_permission(function_name):
+    client = boto3.client('lambda')
+    client.add_permission(
+        Action='lambda:InvokeFunction',
+        FunctionName=function_name,
+        Principal='lex.amazonaws.com',
+        StatementId=str(uuid.uuid4()),
+    )

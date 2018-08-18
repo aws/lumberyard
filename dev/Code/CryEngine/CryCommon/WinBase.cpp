@@ -128,7 +128,7 @@ struct SAssertData
     SAssertData(const int cLine, const char* cpFile)
         : line(cLine)
     {
-        strcpy(fileName, cpFile);
+        azstrcpy(fileName, AZ_ARRAY_SIZE(fileName), cpFile);
     }
 
     SAssertData(const SAssertData& crAssertData)
@@ -148,7 +148,11 @@ struct SAssertData
 void HandleAssert(const char* cpMessage, const char* cpFunc, const char* cpFile, const int cLine)
 {
 #if defined(OUTPUT_ASSERT_TO_FILE)
-    static FILE* pAssertLogFile = fopen("Assert.log", "w+");
+    static FILE* pAssertLogFile = nullptr;
+    if (!pAssertLogFile)
+    {
+        azfopen(&pAssertLogFile, "Assert.log", "w+");
+    }
 #endif
     bool report = true;
     static std::set<SAssertData> assertSet;
@@ -194,14 +198,14 @@ bool IsBadReadPtr(void* ptr, unsigned int size)
 //////////////////////////////////////////////////////////////////////////
 char* _strtime(char* date)
 {
-    strcpy(date, "0:0:0");
+    azstrcpy(date, AZ_ARRAY_SIZE(date), "0:0:0");
     return date;
 }
 
 //////////////////////////////////////////////////////////////////////////
 char* _strdate(char* date)
 {
-    strcpy(date, "0");
+    azstrcpy(date, AZ_ARRAY_SIZE(date), "0");
     return date;
 }
 
@@ -368,7 +372,7 @@ void _makepath(char* path, const char* drive, const char* dir, const char* filen
             cry_strcat(tmp, ext);
         }
     }
-    strcpy(path, tmp);
+    azstrcpy(path, strlen(tmp) + 1, tmp);
 }
 
 char* _ui64toa(unsigned long long value,   char* str, int radix)
@@ -503,7 +507,7 @@ void _splitpath(const char* inpath, char* drv, char* dir, char* fname, char* ext
     {
         if (dir)
         {
-            strcpy(dir, (inPath.substr((string::size_type)0, (string::size_type)(s + 1))).c_str());    //assign directory
+            azstrcpy(dir, AZ_MAX_PATH_LEN, (inPath.substr((string::size_type)0, (string::size_type)(s + 1))).c_str());    //assign directory
         }
         fName = inPath.substr((string::size_type)(s + 1));                    //assign remaining string as rest
     }
@@ -530,14 +534,14 @@ void _splitpath(const char* inpath, char* drv, char* dir, char* fname, char* ext
             }
             if (fname)
             {
-                strcpy(fname, fName.c_str());   //assign filename
+                azstrcpy(fname, fName.size() + 1, fName.c_str());   //assign filename
             }
         }
         else
         {
             if (ext)
             {
-                strcpy(ext, (fName.substr(s)).c_str());     //assign extension including .
+                azstrcpy(ext, AZ_MAX_PATH_LEN, (fName.substr(s)).c_str());     //assign extension including .
             }
             if (fname)
             {
@@ -547,7 +551,7 @@ void _splitpath(const char* inpath, char* drv, char* dir, char* fname, char* ext
                 }
                 else
                 {
-                    strcpy(fname, (fName.substr((string::size_type)0, s)).c_str());  //assign filename
+                    azstrcpy(fname, AZ_MAX_PATH_LEN, (fName.substr((string::size_type)0, s)).c_str());  //assign filename
                 }
             }
         }
@@ -568,21 +572,6 @@ int memicmp(LPCSTR s1, LPCSTR s2, DWORD len)
         s2++;
     }
     return ret;
-}
-
-//////////////////////////////////////////////////////////////////////////
-int strcmpi(const char* str1, const char* str2)
-{
-    for (;; )
-    {
-        int ret = tolower(*str1) - tolower(*str2);
-        if (ret || !*str1)
-        {
-            return ret;
-        }
-        str1++;
-        str2++;
-    }
 }
 
 //-----------------------------------------other stuff-------------------------------------------------------------------
@@ -640,7 +629,7 @@ void GlobalMemoryStatus(LPMEMORYSTATUS lpmem)
     lpmem->dwAvailPhys     = 16 * 1024 * 1024;
     lpmem->dwTotalPageFile = 16 * 1024 * 1024;
     lpmem->dwAvailPageFile = 16 * 1024 * 1024;
-    f = ::fopen("/proc/meminfo", "r");
+    azfopen(&f, "/proc/meminfo", "r");
     if (f)
     {
         char buffer[256];
@@ -652,37 +641,37 @@ void GlobalMemoryStatus(LPMEMORYSTATUS lpmem)
         lpmem->dwTotalPageFile = lpmem->dwAvailPageFile = 0;
         while (fgets(buffer, sizeof(buffer), f))
         {
-            if (sscanf(buffer, "Mem: %d %d %d %d %d %d", &total, &used, &free, &shared, &buffers, &cached))
+            if (azsscanf(buffer, "Mem: %d %d %d %d %d %d", &total, &used, &free, &shared, &buffers, &cached))
             {
                 lpmem->dwTotalPhys += total;
                 lpmem->dwAvailPhys += free + buffers + cached;
             }
-            if (sscanf(buffer, "Swap: %d %d %d", &total, &used, &free))
+            if (azsscanf(buffer, "Swap: %d %d %d", &total, &used, &free))
             {
                 lpmem->dwTotalPageFile += total;
                 lpmem->dwAvailPageFile += free;
             }
-            if (sscanf(buffer, "MemTotal: %d", &total))
+            if (azsscanf(buffer, "MemTotal: %d", &total))
             {
                 lpmem->dwTotalPhys = total * 1024;
             }
-            if (sscanf(buffer, "MemFree: %d", &free))
+            if (azsscanf(buffer, "MemFree: %d", &free))
             {
                 lpmem->dwAvailPhys = free * 1024;
             }
-            if (sscanf(buffer, "SwapTotal: %d", &total))
+            if (azsscanf(buffer, "SwapTotal: %d", &total))
             {
                 lpmem->dwTotalPageFile = total * 1024;
             }
-            if (sscanf(buffer, "SwapFree: %d", &free))
+            if (azsscanf(buffer, "SwapFree: %d", &free))
             {
                 lpmem->dwAvailPageFile = free * 1024;
             }
-            if (sscanf(buffer, "Buffers: %d", &buffers))
+            if (azsscanf(buffer, "Buffers: %d", &buffers))
             {
                 lpmem->dwAvailPhys += buffers * 1024;
             }
-            if (sscanf(buffer, "Cached: %d", &cached))
+            if (azsscanf(buffer, "Cached: %d", &cached))
             {
                 lpmem->dwAvailPhys += cached * 1024;
             }
@@ -826,7 +815,7 @@ void replaceDoublePathFilename(char* szFileName)
     {
         s.replace(loc, 3, "\\");
     }
-    strcpy((char*)szFileName, s.c_str());
+    azstrcpy((char*)szFileName, AZ_MAX_PATH_LEN, s.c_str());
 }
 
 const int comparePathNames(const char* cpFirst, const char* cpSecond, unsigned int len)
@@ -911,7 +900,7 @@ static bool FixOnePathElement(char* path)
     {
         if (strcasecmp(dent->d_name, name) == 0)
         {
-            strcpy(name, dent->d_name);
+            azstrcpy(name, AZ_MAX_PATH_LEN, dent->d_name);
             found = true;
             break;
         }
@@ -1163,42 +1152,130 @@ int CryMessageBox(const char* lpText, const char* lpCaption, unsigned int uType)
 #ifdef WIN32
 #   error WIN32 is defined in WinBase.cpp (it is a non-Windows file)
 #elif defined(MAC)
-    const int stringSize = strlen(lpText);
-    CFStringRef strText = CFStringCreateWithCString(NULL, lpText, stringSize);
-    CFStringRef strCaption = CFStringCreateWithCString(NULL, lpCaption, strlen(lpCaption));
+    CFStringRef strText = CFStringCreateWithCString(NULL, lpText, kCFStringEncodingMacRoman);
+    CFStringRef strCaption = CFStringCreateWithCString(NULL, lpCaption, kCFStringEncodingMacRoman);
+
+    CFStringRef strOk = CFSTR("OK");
+    CFStringRef strCancel = CFSTR("Cancel");
+    CFStringRef strRetry = CFSTR("Retry");
+    CFStringRef strYes = CFSTR("Yes");
+    CFStringRef strNo = CFSTR("No");
+    CFStringRef strAbort = CFSTR("Abort");
+    CFStringRef strIgnore = CFSTR("Ignore");
+    CFStringRef strTryAgain = CFSTR("Try Again");
+    CFStringRef strContinue = CFSTR("Continue");
+
+    CFStringRef defaultButton = nullptr;
+    CFStringRef alternativeButton = nullptr;
+    CFStringRef otherButton = nullptr;
+
+    switch (uType & 0xf)
+    {
+        case MB_OKCANCEL:
+            defaultButton = strOk;
+            alternativeButton = strCancel;
+            break;
+        case MB_ABORTRETRYIGNORE:
+            defaultButton = strAbort;
+            alternativeButton = strRetry;
+            otherButton = strIgnore;
+            break;
+        case MB_YESNOCANCEL:
+            defaultButton = strYes;
+            alternativeButton = strNo;
+            otherButton = strCancel;
+            break;
+        case MB_YESNO:
+            defaultButton = strYes;
+            alternativeButton = strNo;
+            break;
+        case MB_RETRYCANCEL:
+            defaultButton = strRetry;
+            alternativeButton = strCancel;
+            break;
+        case MB_CANCELTRYCONTINUE:
+            defaultButton = strCancel;
+            alternativeButton = strTryAgain;
+            otherButton = strContinue;
+            break;
+        case MB_OK:
+        default:
+            defaultButton = strOk;
+            break;
+    }
 
     CFOptionFlags kResult;
     CFUserNotificationDisplayAlert(
-        0, // no timeout
+        0,                                 // no timeout
         kCFUserNotificationNoteAlertLevel, //change it depending message_type flags ( MB_ICONASTERISK.... etc.)
-        NULL, //icon url, use default, you can change it depending message_type flags
-        NULL, //not used
-        NULL, //localization of strings
-        strText, //header text
-        strCaption, //message text
-        NULL, //default "ok" text in button
-        CFSTR("Cancel"), //alternate button title
-        NULL, //other button title, null--> no other button
-        &kResult //response flags
-        );
+        NULL,                              //icon url, use default, you can change it depending message_type flags
+        NULL,                              //not used
+        NULL,                              //localization of strings
+        strText,                           //header text
+        strCaption,                        //message text
+        defaultButton,                     //default "ok" text in button
+        alternativeButton,                 //alternate button title
+        otherButton,                       //other button title, null--> no other button
+        &kResult                           //response flags
+    );
 
-    if (strCaption)
-    {
-        CFRelease(strCaption);
-    }
-    if (strText)
-    {
-        CFRelease(strText);
-    }
+    CFRelease(strCaption);
+    CFRelease(strText);
 
     if (kResult == kCFUserNotificationDefaultResponse)
     {
-        return 1;   // IDOK on Win32
+        switch (uType & 0xf)
+        {
+            case MB_OK:
+            case MB_OKCANCEL:
+            default:
+                return IDOK;
+            case MB_ABORTRETRYIGNORE:
+                return IDABORT;
+            case MB_YESNOCANCEL:
+            case MB_YESNO:
+                return IDYES;
+            case MB_RETRYCANCEL:
+                return IDRETRY;
+            case MB_CANCELTRYCONTINUE:
+                return IDCANCEL;
+        }
     }
-    else
+    else if (kResult == kCFUserNotificationAlternateResponse)
     {
-        return 2;   // IDCANCEL on Win32
+        switch (uType & 0xf)
+        {
+            case MB_OKCANCEL:
+            case MB_RETRYCANCEL:
+                return IDCANCEL;
+            case MB_ABORTRETRYIGNORE:
+                return IDRETRY;
+            case MB_YESNOCANCEL:
+            case MB_YESNO:
+                return IDNO;
+            case MB_CANCELTRYCONTINUE:
+                return IDTRYAGAIN;
+            default:
+                assert(false);
+                return IDCANCEL;
+        }
     }
+    else if (kResult == kCFUserNotificationOtherResponse)
+    {
+        switch (uType & 0xf)
+        {
+            case MB_ABORTRETRYIGNORE:
+                return IDIGNORE;
+            case MB_YESNOCANCEL:
+                return IDCANCEL;
+            case MB_CANCELTRYCONTINUE:
+                return IDCONTINUE;
+            default:
+                assert(false);
+                return IDCANCEL;
+        }
+    }
+    return 0;
 #else
     printf("Messagebox: cap: %s  text:%s\n", lpCaption ? lpCaption : " ", lpText ? lpText : " ");
     return 0;
@@ -1328,24 +1405,8 @@ DLL_EXPORT unsigned char _InterlockedCompareExchange128(int64 volatile* dst, int
     return (char)bEquals;
 }
 #elif defined(INTERLOCKED_COMPARE_EXCHANGE_128_NOT_SUPPORTED)
-DLL_EXPORT unsigned char _InterlockedCompareExchange128(int64 volatile* dst, int64 exchangehigh, int64 exchangelow, int64* comperand)
-{
-    // Here there be dragons...
-    //
     // arm64 processors do not provide a cmpxchg16b (or equivalent) instruction,
     // so _InterlockedCompareExchange128 is not implemented on arm64 platforms.
-    //
-    // Various attempts were made to emulate this in a thread safe manner, but
-    // all ultimately failed as there is nothing stopping systems doing things
-    // in other threads with the memory that gets passed into this function to
-    // be compared and swapped.
-    //
-    // Ideally we simply wouldn't define this function at all for arm64 platforms,
-    // but the cry job system still compiles it in, although it is never actually
-    // called because we set JOBMANAGER_DISABLED 1 in IJobManager.h for arm64.
-    AZ_Assert(false, "_InterlockedCompareExchange128 called on an arm64 platform, which is not supported.");
-    return 0;
-}
 #endif
 
 threadID CryGetCurrentThreadId()
@@ -1480,7 +1541,7 @@ const bool GetFilenameNoCase
 {
     assert(file);
     assert(pAdjustedFilename);
-    strcpy(pAdjustedFilename, file);
+    azstrcpy(pAdjustedFilename, AZ_MAX_PATH_LEN, file);
 
     // Fix the dirname case.
     const int cLen = strlen(file);

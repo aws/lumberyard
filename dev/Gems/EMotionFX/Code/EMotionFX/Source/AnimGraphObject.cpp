@@ -10,13 +10,14 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/AttributeFactory.h>
-#include <MCore/Source/AttributeSettings.h>
 #include <MCore/Source/AttributePool.h>
-#include <MCore/Source/AttributeSet.h>
 #include <MCore/Source/MCoreSystem.h>
+#include <MCore/Source/ReflectionSerializer.h>
+#include <EMotionFX/Source/AnimGraphBus.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphObject.h"
 #include "AnimGraphAttributeTypes.h"
@@ -28,573 +29,50 @@
 
 namespace EMotionFX
 {
-    // declare static variable
-    //Array<AnimGraphObject::AttributeInfoSet*>    AnimGraphObject::mAttributeInfoSets;
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphObject, AnimGraphAllocator, 0)
 
-
-    // constructor
-    AnimGraphObject::AnimGraphObject(AnimGraph* animGraph, uint32 typeID)
-        : BaseObject()
+    AnimGraphObject::AnimGraphObject()
+        : mAnimGraph(nullptr)
+        , mObjectIndex(MCORE_INVALIDINDEX32)
     {
-        mAttributeValues.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTS);
-
-        // reserve some memory
-        mAnimGraph         = animGraph;
-        mObjectIndex        = MCORE_INVALIDINDEX32;
-        mTypeID             = typeID;
     }
 
 
-    // destructor
+    AnimGraphObject::AnimGraphObject(AnimGraph* animGraph)
+        : AnimGraphObject()
+    {
+        mAnimGraph = animGraph;
+    }
+
+
     AnimGraphObject::~AnimGraphObject()
     {
-        RemoveAllAttributeValues(true);
-    }
-
-
-    // remove all attribute values
-    void AnimGraphObject::RemoveAllAttributeValues(bool delFromMem)
-    {
-        if (delFromMem)
-        {
-            const uint32 numAttribs = mAttributeValues.GetLength();
-            for (uint32 i = 0; i < numAttribs; ++i)
-            {
-                if (mAttributeValues[i])
-                {
-                    mAttributeValues[i]->Destroy();
-                }
-            }
-        }
-
-        mAttributeValues.Clear();
     }
 
 
     // unregister itself
     void AnimGraphObject::Unregister()
     {
-        // delete the attribute info set
-        AnimGraphManager::AttributeInfoSet* attributeInfoSet = GetAnimGraphManager().FindAttributeInfoSet(this);
-        GetAnimGraphManager().RemoveAttributeInfoSet(GetType(), false);
-        delete attributeInfoSet;
-
-        // delete the object data pool type
-        GetAnimGraphManager().GetObjectDataPool().UnregisterObjectType(GetType());
     }
 
-
-
-    // copy over base class settings
-    void AnimGraphObject::CopyBaseObjectTo(AnimGraphObject* object)
-    {
-        // clone the attribute flags
-    #ifdef EMFX_EMSTUDIOBUILD
-        object->mAttributeFlags = mAttributeFlags;
-        object->mAttributeFlags.Resize(GetNumAttributes());
-    #else
-        MCORE_UNUSED(object);
-    #endif
-        /*
-            // clone the attribute values
-            const uint32 numAttribs = mAttributeValues.GetLength();
-            MCORE_ASSERT( object->mAttributeValues.GetLength() == 0 );
-            object->mAttributeValues.Resize( numAttribs );
-            for (uint32 i=0; i<numAttribs; ++i)
-                object->mAttributeValues[i] = mAttributeValues[i]->Clone();*/
-    }
-
-
-    uint32 AnimGraphObject::GetNumAttributes() const
-    {
-        return GetAnimGraphManager().GetNumAttributes(this);
-    }
-
-
-    MCore::AttributeSettings* AnimGraphObject::RegisterAttribute(const char* name, const char* internalName, const char* description, uint32 interfaceType)
-    {
-        return GetAnimGraphManager().RegisterAttribute(this, name, internalName, description, interfaceType);
-    }
-
-
-
-    // create attribute values
-    void AnimGraphObject::CreateAttributeValues()
-    {
-        // get rid of existing values
-        RemoveAllAttributeValues(true);
-
-        // create the attribute values
-        const uint32 numAttributes = GetNumAttributes();
-        mAttributeValues.Resize(numAttributes);
-    #ifdef EMFX_EMSTUDIOBUILD
-        mAttributeFlags.Resize(numAttributes);
-    #endif
-
-        // initialize the values to their default values
-        AnimGraphManager& animGraphManager = GetAnimGraphManager();
-        for (uint32 i = 0; i < numAttributes; ++i)
-        {
-            mAttributeValues[i] = animGraphManager.GetAttributeInfo(this, i)->GetDefaultValue()->Clone();
-
-        #ifdef EMFX_EMSTUDIOBUILD
-            mAttributeFlags[i]  = 0;    // reset the flag
-        #endif
-        }
-    }
-
-
-    // generate a command line string from the current parameter values
-    // this builds a string like: "-numIterations 10 -maxValue 3.54665474 -enabled true"
-    AZStd::string AnimGraphObject::CreateAttributesString() const
-    {
-        AZStd::string result;
-        AZStd::string valueString;
-        result.reserve(1024);
-
-        // for all attributes
-        const AnimGraphManager& animGraphManager = GetAnimGraphManager();
-        const uint32 numAttribs = GetNumAttributes();
-        for (uint32 a = 0; a < numAttribs; ++a)
-        {
-            const MCore::AttributeSettings* attribInfo = animGraphManager.GetAttributeInfo(const_cast<AnimGraphObject*>(this), a);
-
-            // get the parameter value
-            if (GetAttribute(a)->ConvertToString(valueString) == false)
-            {
-                MCore::LogWarning("EMotionFX::AnimGraphObject::CreateParameterString() - failed to convert the value for attribute '%s' into a string (probably dont know how to handle the data type).", attribInfo->GetInternalName());
-            }
-            else
-            {
-                result += (a == 0) ? "" : " ";
-                result += "-";
-                result += attribInfo->GetInternalName();
-                result += " {";
-                result += valueString;
-                result += "}";
-            }
-        }
-
-        return result;
-    }
-
-
-    // init current attribute values from an attribute string
-    void AnimGraphObject::InitAttributesFromString(const char* attribString)
-    {
-        InitAttributesFromCommandLine(MCore::CommandLine(attribString));
-    }
-
-
-    // find the parameter index for a parameter with a given internal name
-    uint32 AnimGraphObject::FindAttributeByInternalName(const char* internalName) const
-    {
-        const AnimGraphManager& animGraphManager = GetAnimGraphManager();
-        const uint32 numAttribs = animGraphManager.GetNumAttributes(this);
-        for (uint32 a = 0; a < numAttribs; ++a)
-        {
-            MCore::AttributeSettings* attributeInfo = animGraphManager.GetAttributeInfo(this, a);
-            if (AzFramework::StringFunc::Equal(attributeInfo->GetInternalNameString().c_str(), internalName, false /* no case */))
-            {
-                return a;
-            }
-        }
-
-        return MCORE_INVALIDINDEX32;
-    }
-
-
-    // init parameter values by a command line
-    void AnimGraphObject::InitAttributesFromCommandLine(const MCore::CommandLine& commandLine)
-    {
-        AZStd::string attribName;
-        AZStd::string attribValue;
-
-        // for all attributes in the command line
-        const uint32 numAttributes = commandLine.GetNumParameters();
-        for (uint32 a = 0; a < numAttributes; ++a)
-        {
-            // get the name and value
-            attribName  = commandLine.GetParameterName(a);
-            attribValue = commandLine.GetParameterValue(a);
-
-            // find the attribute number
-            const uint32 attribIndex = FindAttributeByInternalName(attribName.c_str());
-            if (attribIndex == MCORE_INVALIDINDEX32)
-            {
-                MCore::LogWarning("EMotionFX::AnimGraphObject::InitAttributesFromCommandLine() - Failed to find internal attribute with name '%s' for object type '%s'", attribName.c_str(), GetTypeString());
-                continue;
-            }
-
-            // init the attribute value by converting the string into the actual value type
-            // so for example converting a "5.3546,10.234" into Vector2 data
-            if (GetAttribute(attribIndex)->InitFromString(attribValue) == false)
-            {
-                MCore::LogWarning("EMotionFX::AnimGraphObject::InitAttributesFromCommandLine() - Failed to convert the value string '%s' for attribute '%s' into real data for object type '%s'", attribValue.c_str(), attribName.c_str(), GetTypeString());
-            }
-        }
-    }
-
-
-    // get the data type for a given interface type
-    uint32 AnimGraphObject::InterfaceTypeToDataType(uint32 interfaceType)
-    {
-        switch (interfaceType)
-        {
-        // MCore Attribute types
-        case MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER:
-            return MCore::AttributeFloat::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_FLOATSLIDER:
-            return MCore::AttributeFloat::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_INTSPINNER:
-            return MCore::AttributeFloat::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_INTSLIDER:
-            return MCore::AttributeFloat::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX:
-            return MCore::AttributeFloat::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX:
-            return MCore::AttributeFloat::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR2:
-            return MCore::AttributeVector2::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3GIZMO:
-            return MCore::AttributeVector3::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR4:
-            return MCore::AttributeVector4::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_FILEBROWSE:
-            return MCore::AttributeString::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_COLOR:
-            return MCore::AttributeColor::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_STRING:
-            return MCore::AttributeString::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3:
-            return MCore::AttributeVector3::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_PROPERTYSET:
-            return MCore::AttributeSet::TYPE_ID;
-        
-        // EMotionFX AnimGraphAttributeTypes
-        case ATTRIBUTE_INTERFACETYPE_NODENAMES:
-            return AttributeNodeMask::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_MOTIONPICKER:
-            return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_PARAMETERPICKER:
-            return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_BLENDTREEMOTIONNODEPICKER:
-            return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_MOTIONEVENTTRACKPICKER:
-            return MCore::AttributeInt32::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_NODESELECTION:
-            return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_ROTATION:
-            return AttributeRotation::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_GOALNODESELECTION:
-            return AttributeGoalNode::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_MOTIONEXTRACTIONCOMPONENTS:
-            return MCore::AttributeInt32::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_PARAMETERNAMES:
-            return AttributeParameterMask::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_STATESELECTION:
-            return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_STATEFILTERLOCAL:
-            return AttributeStateFilterLocal::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_ANIMGRAPHNODEPICKER:
-            return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_MULTIPLEMOTIONPICKER:
-            return MCore::AttributeArray::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_TAG:
-            return MCore::AttributeFloat::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_TAGPICKER:
-            return MCore::AttributeArray::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONS:
-            return MCore::AttributeArray::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONPICKER:
-            return MCore::AttributeString::TYPE_ID;
-
-        default:
-            MCore::LogWarning("Unknown data type for interface type %d.", interfaceType);
-            return 0;
-        }
-        ;
-    }
-
-    // write the attributes
-    bool AnimGraphObject::WriteAttributes(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const
-    {
-        const AnimGraphManager& animGraphManager = GetAnimGraphManager();
-
-        // get the number of attributes and iterate through them
-        const uint32 numAttributes = GetNumAttributes();
-        for (uint32 i = 0; i < numAttributes; ++i)
-        {
-            MCore::Attribute*           attribute       = GetAttribute(i);
-            MCore::AttributeSettings*   attributeInfo   = animGraphManager.GetAttributeInfo(const_cast<AnimGraphObject*>(this), i);
-            uint32                      numCharacters   = static_cast<uint32>(attributeInfo->GetInternalNameString().size());
-            uint32                      attributeType   = attribute->GetType();
-            uint32                      attributeSize   = attribute->GetStreamSize();
-
-            if (attributeInfo->GetInternalNameString().size() == 0)
-            {
-                numCharacters = 0;
-            }
-
-            // convert endian
-            MCore::Endian::ConvertUnsignedInt32To(&attributeType, targetEndianType);
-            MCore::Endian::ConvertUnsignedInt32To(&attributeSize, targetEndianType);
-
-            // write the attribute type
-            if (stream->Write(&attributeType, sizeof(uint32)) == 0)
-            {
-                return false;
-            }
-
-            // write the attribute size
-            if (stream->Write(&attributeSize, sizeof(uint32)) == 0)
-            {
-                return false;
-            }
-
-            // write the attribute name string
-            const uint32 numChars = numCharacters;
-            MCore::Endian::ConvertUnsignedInt32To(&numCharacters, targetEndianType);
-            stream->Write(&numCharacters, sizeof(uint32));
-            if (numChars > 0)
-            {
-                if (stream->Write(attributeInfo->GetInternalName(), attributeInfo->GetInternalNameString().size()) == 0)
-                {
-                    return false;
-                }
-            }
-
-            // save the actual attribute data
-            if (attribute->Write(stream, targetEndianType) == false)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-
-    // read the attributes
-    bool AnimGraphObject::ReadAttributes(MCore::Stream* stream, uint32 numAttributes, uint32 version, MCore::Endian::EEndianType endianType)
-    {
-        MCORE_UNUSED(version);
-
-        // our string that we use to read string data
-        AZStd::string name;
-        name.reserve(32);
-
-        // for all attributes
-        for (uint32 i = 0; i < numAttributes; ++i)
-        {
-            // read the attribute size
-            uint32 attribType;
-            if (stream->Read(&attribType, sizeof(uint32)) == 0)
-            {
-                return false;
-            }
-            MCore::Endian::ConvertUnsignedInt32(&attribType, endianType);
-
-            // read the attribute size
-            uint32 attributeSize;
-            if (stream->Read(&attributeSize, sizeof(uint32)) == 0)
-            {
-                return false;
-            }
-            MCore::Endian::ConvertUnsignedInt32(&attributeSize, endianType);
-
-            // first read the number of characters
-            uint32 numCharacters;
-            if (stream->Read(&numCharacters, sizeof(uint32)) == 0)
-            {
-                return false;
-            }
-            MCore::Endian::ConvertUnsignedInt32(&numCharacters, endianType);
-
-            // read the string
-            if (numCharacters > 0)
-            {
-                name.resize(numCharacters);
-                if (stream->Read(name.data(), numCharacters) == 0)
-                {
-                    return false;
-                }
-            }
-
-            // read the data
-            const uint32 index = FindAttributeByInternalName(name.c_str());
-            if (index == MCORE_INVALIDINDEX32)
-            {
-                // try to convert the attribute
-                MCore::Attribute* tempAttribute = MCore::GetAttributeFactory().CreateAttributeByType(attribType);
-                if (tempAttribute)
-                {
-                    // try to read it
-                    if (tempAttribute->Read(stream, endianType) == false)
-                    {
-                        return false;
-                    }
-
-                    // try to convert the attribute
-                    if (ConvertAttribute(index, tempAttribute, name) == false)
-                    {
-                        MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as it doesn't exist in the object and cannot be converted (fileAttribType=%s, objectType=%s).", name.c_str(), tempAttribute->GetTypeString(), GetTypeString());
-                    }
-                    else
-                    {
-                        MCore::LogWarning("AnimGraphObject::ReadAttributes() - Successfully converted attribute '%s' from which the key name changed (fileAttribType=%s, objectType=%s).", name.c_str(), tempAttribute->GetTypeString(), GetTypeString());
-                    }
-
-                    // get rid of the temp attribute again
-                    MCore::GetAttributePool().Free(tempAttribute);
-                }
-                else
-                {
-                    MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as the attribute is not found in the node (objectType='%s').", name.c_str(), GetTypeString());
-
-                    // skip the attribute data
-                    uint8 tempByte;
-                    for (uint32 b = 0; b < attributeSize; ++b)
-                    {
-                        stream->Read(&tempByte, 1);
-                    }
-                }
-            }
-            else
-            {
-                // check if the attribute type inside the file is different from the one of the anim graph object
-                if (GetAttribute(index)->GetType() != attribType)
-                {
-                    // try to convert the attribute
-                    MCore::Attribute* tempAttribute = MCore::GetAttributeFactory().CreateAttributeByType(attribType);
-                    if (tempAttribute)
-                    {
-                        // try to read it
-                        if (tempAttribute->Read(stream, endianType) == false)
-                        {
-                            return false;
-                        }
-
-                        // try to convert the attribute
-                        if (ConvertAttribute(index, tempAttribute, name) == false)
-                        {
-                            MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as the attribute type changed (fileAttribType=%s, nodeAttribType=%s, objectType=%s). The conversion failed.", name.c_str(), tempAttribute->GetTypeString(), GetAttribute(index)->GetTypeString(), GetTypeString());
-                        }
-                        else
-                        {
-                            MCore::LogWarning("AnimGraphObject::ReadAttributes() - Converted attribute attribute '%s' from type (fileAttribType=%s, nodeAttribType=%s, objectType=%s).", name.c_str(), tempAttribute->GetTypeString(), GetAttribute(index)->GetTypeString(), GetTypeString());
-                        }
-
-                        // get rid of the temp attribute again
-                        MCore::GetAttributePool().Free(tempAttribute);
-                    }
-                    else
-                    {
-                        MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as the attribute type changed (fileAttribType=%d, nodeAttribType=%d (%s), objectType=%s). We also cannot convert the attribute.", name.c_str(), attribType, GetAttribute(index)->GetType(), GetAttribute(index)->GetTypeString(), GetTypeString());
-
-                        // skip the attribute data
-                        uint8 tempByte;
-                        for (uint32 b = 0; b < attributeSize; ++b)
-                        {
-                            stream->Read(&tempByte, 1);
-                        }
-                    }
-                }
-                else
-                if (GetAttribute(index)->Read(stream, endianType) == false)
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-
-    // skip reading the attributes
-    bool AnimGraphObject::SkipReadAttributes(MCore::Stream* stream, uint32 numAttributes, uint32 version, MCore::Endian::EEndianType endianType)
-    {
-        MCORE_UNUSED(version);
-
-        // for all attributes
-        for (uint32 i = 0; i < numAttributes; ++i)
-        {
-            // read the attribute size
-            uint32 attribType;
-            if (stream->Read(&attribType, sizeof(uint32)) == 0)
-            {
-                return false;
-            }
-            MCore::Endian::ConvertUnsignedInt32(&attribType, endianType);
-
-            // read the attribute size
-            uint32 attributeSize;
-            if (stream->Read(&attributeSize, sizeof(uint32)) == 0)
-            {
-                return false;
-            }
-            MCore::Endian::ConvertUnsignedInt32(&attributeSize, endianType);
-
-            // first read the number of characters
-            uint32 numCharacters;
-            if (stream->Read(&numCharacters, sizeof(uint32)) == 0)
-            {
-                return false;
-            }
-            MCore::Endian::ConvertUnsignedInt32(&numCharacters, endianType);
-
-            uint8 tempByte;
-
-            // skip reading the string
-            if (numCharacters > 0)
-            {
-                // skip the attribute data
-                for (uint32 c = 0; c < numCharacters; ++c)
-                {
-                    stream->Read(&tempByte, 1);
-                }
-            }
-
-            // skip reading the attribute data
-            for (uint32 c = 0; c < attributeSize; ++c)
-            {
-                stream->Read(&tempByte, 1);
-            }
-        }
-
-        return true;
-    }
-
-    /*
-    // get an attribute as float value
-    float AnimGraphObject::GetAttributeAsFloat(const Attribute* attribute) const
-    {
-        const uint32 typeID = attribute->GetType();
-        switch (typeID)
-        {
-            case AttributeFloat::TYPE_ID:   return static_cast<const AttributeFloat*>(attribute)->GetValue();
-            case AttributeInt32::TYPE_ID:   return static_cast<const AttributeInt32*>(attribute)->GetValue();
-            case AttributeBool::TYPE_ID:    return static_cast<const AttributeBool*>(attribute)->GetValue();
-            default:
-                return 0.0f;
-        };
-    }
-    */
 
     // construct and output the information summary string for this object
     void AnimGraphObject::GetSummary(AZStd::string* outResult) const
     {
-        AZStd::string attributeString = CreateAttributesString();
-        *outResult = AZStd::string::format("%s: %s", GetTypeString(), attributeString.c_str());
+        *outResult = AZStd::string::format("%s: %s", RTTI_GetTypeName(), MCore::ReflectionSerializer::Serialize(this).GetValue().c_str());
     }
 
 
     // construct and output the tooltip for this object
     void AnimGraphObject::GetTooltip(AZStd::string* outResult) const
     {
-        AZStd::string attributeString = CreateAttributesString();
-        *outResult = AZStd::string::format("%s: %s", GetTypeString(), attributeString.c_str());
+        *outResult = AZStd::string::format("%s: %s", RTTI_GetTypeName(), MCore::ReflectionSerializer::Serialize(this).GetValue().c_str());
+    }
+
+
+    const char* AnimGraphObject::GetHelpUrl() const
+    {
+        return "";
     }
 
 
@@ -632,26 +110,6 @@ namespace EMotionFX
     }
 
 
-#ifdef EMFX_EMSTUDIOBUILD
-    // enable or disable all the anim graph attributes
-    void AnimGraphObject::EnableAllAttributes(bool enabled)
-    {
-        const uint32 numAttributes = GetNumAttributes();
-        for (uint32 i = 0; i < numAttributes; ++i)
-        {
-            if (enabled)
-            {
-                mAttributeFlags[i] &= ~FLAG_DISABLED;
-            }
-            else
-            {
-                mAttributeFlags[i] |= FLAG_DISABLED;
-            }
-        }
-    }
-#endif
-
-
     // on default create a base class object
     void AnimGraphObject::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
@@ -659,9 +117,17 @@ namespace EMotionFX
         AnimGraphObjectData* data = animGraphInstance->FindUniqueObjectData(this);
         if (data == nullptr) // doesn't exist
         {
-            //AnimGraphObjectData* newData = new AnimGraphObjectData(this, animGraphInstance);
-            AnimGraphObjectData* newData = GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(GetType(), this, animGraphInstance);
+            AnimGraphObjectData* newData = aznew AnimGraphObjectData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(newData);
+        }
+    }
+
+
+    void AnimGraphObject::UpdateUniqueDatas()
+    {
+        if (mAnimGraph)
+        {
+            mAnimGraph->UpdateUniqueData();
         }
     }
 
@@ -674,44 +140,6 @@ namespace EMotionFX
         {
             uniqueData->Reset();
         }
-    }
-
-
-    // register a sync attribute
-    MCore::AttributeSettings* AnimGraphObject::RegisterSyncAttribute()
-    {
-        MCore::AttributeSettings* attributeInfo = RegisterAttribute("Sync Mode", "sync", "The synchronization method to use. Event track based will use event tracks, full clip based will ignore the events and sync as a full clip. If set to Event Track Based while no sync events exist inside the track a full clip based sync will be performed instead.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        attributeInfo->ResizeComboValues(3);
-        attributeInfo->SetComboValue(SYNCMODE_DISABLED,     "Disabled");
-        attributeInfo->SetComboValue(SYNCMODE_TRACKBASED,   "Event Track Based");
-        attributeInfo->SetComboValue(SYNCMODE_CLIPBASED,    "Full Clip Based");
-        //  attributeInfo->SetDefaultValue( MCore::AttributeFloat::Create(SYNCMODE_TRACKBASED) );
-        attributeInfo->SetDefaultValue(MCore::AttributeFloat::Create(SYNCMODE_DISABLED));
-        attributeInfo->SetFlag(MCore::AttributeSettings::FLAGINDEX_REINITGUI_ONVALUECHANGE, true);
-        return attributeInfo;
-    }
-
-
-    // register the event filter mode
-    MCore::AttributeSettings* AnimGraphObject::RegisterEventFilterAttribute()
-    {
-        MCore::AttributeSettings* attributeInfo = RegisterAttribute("Event Filter Mode", "eventMode", "The event filter mode, which controls which events are passed further up the hierarchy.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        attributeInfo->ResizeComboValues(4);
-        attributeInfo->SetComboValue(EVENTMODE_MASTERONLY,  "Master Node Only");
-        attributeInfo->SetComboValue(EVENTMODE_SLAVEONLY,   "Servant Node Only");
-        attributeInfo->SetComboValue(EVENTMODE_BOTHNODES,   "Both Nodes");
-        attributeInfo->SetComboValue(EVENTMODE_MOSTACTIVE,  "Most Active");
-        attributeInfo->SetDefaultValue(MCore::AttributeFloat::Create(EVENTMODE_MOSTACTIVE));
-        attributeInfo->SetFlag(MCore::AttributeSettings::FLAGINDEX_REINITGUI_ONVALUECHANGE, true);
-        return attributeInfo;
-    }
-
-
-    // get a goal node attribute
-    AttributeGoalNode* AnimGraphObject::GetAttributeGoalNode(uint32 index)
-    {
-        MCORE_ASSERT(mAttributeValues[index]->GetType() == AttributeGoalNode::TYPE_ID);
-        return static_cast<AttributeGoalNode*>(mAttributeValues[index]);
     }
 
 
@@ -750,59 +178,6 @@ namespace EMotionFX
         uniqueData->SetHasError(hasError);
     }
 
-
-    // convert attributes
-    bool AnimGraphObject::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName)
-    {
-        MCORE_UNUSED(attributeName);
-        if (attributeIndex == MCORE_INVALIDINDEX32)
-        {
-            return false;
-        }
-
-        // if we have a float, but the attributes come in as bool or int, conver them into a float
-        if (GetAnimGraphManager().GetAttributeInfo(this, attributeIndex)->GetDefaultValue()->GetType() == MCore::AttributeFloat::TYPE_ID)
-        {
-            if (attributeToConvert->GetType() == MCore::AttributeInt32::TYPE_ID)
-            {
-                GetAttributeFloat(attributeIndex)->SetValue((float)static_cast<const MCore::AttributeInt32*>(attributeToConvert)->GetValue());
-                return true;
-            }
-            else
-            if (attributeToConvert->GetType() == MCore::AttributeBool::TYPE_ID)
-            {
-                const bool value = static_cast<const MCore::AttributeBool*>(attributeToConvert)->GetValue();
-                GetAttributeFloat(attributeIndex)->SetValue((value) ? 1.0f : 0.0f);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-
-    // recursively clone
-    AnimGraphObject* AnimGraphObject::RecursiveClone(AnimGraph* animGraph, AnimGraphObject* parentObject)
-    {
-        MCORE_UNUSED(parentObject);
-
-        // clone the node
-        AnimGraphObject* result = Clone(animGraph);
-
-        // add it to the animgraph
-        animGraph->AddObject(result);
-
-        // copy values
-        const uint32 numAttributes = mAttributeValues.GetLength();
-        for (uint32 i = 0; i < numAttributes; ++i)
-        {
-            result->mAttributeValues[i]->InitFrom(mAttributeValues[i]);
-        }
-
-        return result;
-    }
-
-
     // init the internal attributes
     void AnimGraphObject::InitInternalAttributes(AnimGraphInstance* animGraphInstance)
     {
@@ -834,11 +209,188 @@ namespace EMotionFX
             return;
         }
 
-        const uint32 numInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (uint32 i = 0; i < numInstances; ++i)
+        const size_t numInstances = mAnimGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numInstances; ++i)
         {
             InitInternalAttributes(mAnimGraph->GetAnimGraphInstance(i));
         }
     }
 
-}   // namespace EMotionFX
+
+    void AnimGraphObject::SyncVisualObject()
+    {
+        AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnSyncVisualObject, this);
+    }
+
+
+    void AnimGraphObject::CalculateMotionExtractionDelta(EExtractionMode extractionMode, AnimGraphRefCountedData* sourceRefData, AnimGraphRefCountedData* targetRefData, float weight, bool hasMotionExtractionNodeInMask, Transform& outTransform, Transform& outTransformMirrored)
+    {
+        // Calculate the motion extraction output based on the motion extraction mode.
+        switch (extractionMode)
+        {
+            // Blend between the source and target.
+            case EXTRACTIONMODE_BLEND:
+            {
+                if (hasMotionExtractionNodeInMask)
+                {
+                    if (weight < MCore::Math::epsilon || !targetRefData)     // Weight is 0.
+                    {
+                        outTransform = sourceRefData->GetTrajectoryDelta();
+                        outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
+                    }
+                    else if (weight < 1.0f - MCore::Math::epsilon)     // Weight between 0 and 1.
+                    {
+                        outTransform = sourceRefData->GetTrajectoryDelta();
+                        outTransform.Blend(targetRefData->GetTrajectoryDelta(), weight);
+                        outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
+                        outTransformMirrored.Blend(targetRefData->GetTrajectoryDeltaMirrored(), weight);
+                    }
+                    else     // Weight is 1.
+                    {
+                        outTransform = targetRefData->GetTrajectoryDelta();
+                        outTransformMirrored = targetRefData->GetTrajectoryDeltaMirrored();
+                    }
+                }
+                else
+                {
+                    outTransform = sourceRefData->GetTrajectoryDelta();
+                    outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
+                }
+            }
+            break;
+
+            // Output only the target state's delta.
+            case EXTRACTIONMODE_TARGETONLY:
+            {
+                if (hasMotionExtractionNodeInMask)
+                {
+                    if (targetRefData)
+                    {
+                        outTransform = targetRefData->GetTrajectoryDelta();
+                        outTransformMirrored = targetRefData->GetTrajectoryDeltaMirrored();
+                    }
+                    else
+                    {
+                        outTransform = sourceRefData->GetTrajectoryDelta();
+                        outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
+                    }
+                }
+                else
+                {
+                    outTransform.ZeroWithIdentityQuaternion();
+                    outTransformMirrored.ZeroWithIdentityQuaternion();
+                }
+            }
+            break;
+
+            // Output only the source state's delta.
+            case EXTRACTIONMODE_SOURCEONLY:
+            {
+                outTransform = sourceRefData->GetTrajectoryDelta();
+                outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
+            }
+            break;
+
+            default:
+                AZ_Assert(false, "Unknown motion extraction mode used.");
+        }
+    }
+
+
+    void AnimGraphObject::CalculateMotionExtractionDeltaAdditive(EExtractionMode extractionMode, AnimGraphRefCountedData* sourceRefData, AnimGraphRefCountedData* targetRefData, Transform basePoseTransform, float weight, bool hasMotionExtractionNodeInMask, Transform& outTransform, Transform& outTransformMirrored)
+    {
+        if (!hasMotionExtractionNodeInMask)
+        {
+            outTransform = sourceRefData->GetTrajectoryDelta();
+            outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
+            return;
+        }
+
+        // Calculate the motion extraction output based on the motion extraction mode.
+        switch (extractionMode)
+        {
+            // Blend between the source and target.
+            case EXTRACTIONMODE_BLEND:
+            {
+                if (weight < MCore::Math::epsilon || !targetRefData)     // Weight is 0 or there is no target ref data.
+                {
+                    outTransform = sourceRefData->GetTrajectoryDelta();
+                    outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
+                }
+                else     // Weight between 0 and 1.
+                {
+                    outTransform = sourceRefData->GetTrajectoryDelta();
+                    outTransform.BlendAdditive(targetRefData->GetTrajectoryDelta(), basePoseTransform, weight);
+                    outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
+                    outTransformMirrored.BlendAdditive(targetRefData->GetTrajectoryDeltaMirrored(), basePoseTransform, weight);
+                }
+            }
+            break;
+
+            // Output only the target state's delta if it is available.
+            case EXTRACTIONMODE_TARGETONLY:
+            {
+                if (targetRefData)
+                {
+                    outTransform = sourceRefData->GetTrajectoryDelta();
+                    outTransform.BlendAdditive(targetRefData->GetTrajectoryDelta(), basePoseTransform, 1.0f);       // TODO: could eliminate the lerp internally
+                    outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
+                    outTransformMirrored.BlendAdditive(targetRefData->GetTrajectoryDeltaMirrored(), basePoseTransform, 1.0f);       // TODO: could eliminate the lerp internally
+                }
+                else
+                {
+                    outTransform = sourceRefData->GetTrajectoryDelta();
+                    outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
+                }
+            }
+            break;
+
+            // Output only the source state's delta.
+            case EXTRACTIONMODE_SOURCEONLY:
+            {
+                outTransform = sourceRefData->GetTrajectoryDelta();
+                outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
+            }
+            break;
+
+            default:
+                AZ_Assert(false, "Unknown motion extraction mode used.");
+        }
+    }
+
+
+    void AnimGraphObject::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphObject>()
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Enum<ESyncMode>("Sync Mode", "The synchronization method to use. Event track based will use event tracks, full clip based will ignore the events and sync as a full clip. If set to Event Track Based while no sync events exist inside the track a full clip based sync will be performed instead.")
+            ->Value("Disabled", SYNCMODE_DISABLED)
+            ->Value("Event Track Based", SYNCMODE_TRACKBASED)
+            ->Value("Full Clip Based", SYNCMODE_CLIPBASED);
+
+        editContext->Enum<EEventMode>("Event Filter Mode", "The event filter mode, which controls which events are passed further up the hierarchy.")
+            ->Value("Master Node Only", EVENTMODE_MASTERONLY)
+            ->Value("Servant Node Only", EVENTMODE_SLAVEONLY)
+            ->Value("Both Nodes", EVENTMODE_BOTHNODES)
+            ->Value("Most Active", EVENTMODE_MOSTACTIVE);
+
+        editContext->Enum<EExtractionMode>("Extraction Mode", "The motion extraction blend mode to use.")
+            ->Value("Blend", EXTRACTIONMODE_BLEND)
+            ->Value("Target Only", EXTRACTIONMODE_TARGETONLY)
+            ->Value("Source Only", EXTRACTIONMODE_SOURCEONLY);
+    }
+} // namespace EMotionFX

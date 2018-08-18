@@ -166,7 +166,7 @@ namespace ScriptCanvas
                     ScopedBatchOperation scopedBatchOperation(AZ_CRC("SetVariableRemoved", 0xd7da59f5));
                     RemoveInputSlot();
                 }
-                VariableNodeNotificationBus::Event(GetEntityId(), &VariableNodeNotifications::OnVariableRemoved, removedVariableId);
+                VariableNodeNotificationBus::Event(GetEntityId(), &VariableNodeNotifications::OnVariableRemovedFromNode, removedVariableId);
             }
         }
     }

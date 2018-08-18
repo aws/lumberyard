@@ -41,7 +41,7 @@ public:
     }
     ~TUiAnimSplineTrack()
     {
-        delete m_spline;
+        m_spline.reset();
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -63,7 +63,7 @@ public:
     virtual void GetKeyValueRange(float& fMin, float& fMax) const { fMin = m_fMinKeyValue; fMax = m_fMaxKeyValue; };
     virtual void SetKeyValueRange(float fMin, float fMax){ m_fMinKeyValue = fMin; m_fMaxKeyValue = fMax; };
 
-    ISplineInterpolator* GetSpline() const { return m_spline; };
+    ISplineInterpolator* GetSpline() const { return m_spline.get(); };
 
     virtual bool IsKeySelected(int key) const
     {
@@ -367,7 +367,7 @@ private:
     int m_refCount;
 
     typedef UiSpline::TrackSplineInterpolator<ValueType> Spline;
-    Spline* m_spline;
+    AZStd::intrusive_ptr<Spline> m_spline;
     ValueType m_defaultValue;
 
     //! Keys of float track.
@@ -381,6 +381,8 @@ private:
     float m_fMaxKeyValue;
 
     UiAnimParamData m_componentParamData;
+    
+    static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement) {};
 };
 
 //////////////////////////////////////////////////////////////////////////

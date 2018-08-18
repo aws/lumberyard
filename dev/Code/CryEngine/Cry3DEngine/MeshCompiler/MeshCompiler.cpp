@@ -534,8 +534,8 @@ namespace mesh_compiler
 
     static void debugDumpMesh(CMesh& mesh, const char* filename)
     {
-        FILE* f;
-        f = fopen(filename, "wb");
+        FILE* f = nullptr;
+        azfopen(&f, filename, "wb");
         if (!f)
         {
             return;

@@ -20,7 +20,7 @@
 #include <IGameplayRecorder.h>
 #include <IInput.h>
 #include <ITimeDemoRecorder.h>
-#include <TestSystem/ITestModule.h>
+#include <ITestModule.h>
 
 struct SRecordedGameEvent;
 

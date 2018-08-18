@@ -14,6 +14,7 @@
 #include "IntSpinbox.h"
 #include "MysticQtManager.h"
 #include <MCore/Source/LogManager.h>
+#include <MCore/Source/StringConversions.h>
 #include <QtGui/QMouseEvent>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QVBoxLayout>

@@ -41,6 +41,9 @@ public:
 
     //! Invoked when the load screen should be stopped.
     virtual void Stop() = 0;
+
+    //! Invoked to find out if loading screen is playing.
+    virtual bool IsPlaying() = 0;
 };
 
 using LoadScreenBus = AZ::EBus<LoadScreenInterface>;

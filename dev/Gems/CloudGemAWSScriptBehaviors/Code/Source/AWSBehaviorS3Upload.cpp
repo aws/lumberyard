@@ -118,8 +118,10 @@ namespace CloudGemAWSScriptBehaviors
             &config
             );
 
-        Aws::String awsLocalFileName(m_localFileName.c_str());
-        std::shared_ptr<Aws::IOStream> fileToUpload = Aws::MakeShared<Aws::FStream>(UPLOAD_CLASS_TAG, awsLocalFileName.c_str(), std::ios::binary | std::ios::in);
+        AZStd::array<char, AZ::IO::MaxPathLength> resolvedPath;
+        AZ::IO::FileIOBase::GetInstance()->ResolvePath(m_localFileName.c_str(), resolvedPath.data(), resolvedPath.size());
+
+        std::shared_ptr<Aws::IOStream> fileToUpload = Aws::MakeShared<Aws::FStream>(UPLOAD_CLASS_TAG, resolvedPath.data(), std::ios::binary | std::ios::in);
 
         if (fileToUpload->good())
         {
@@ -132,7 +134,9 @@ namespace CloudGemAWSScriptBehaviors
         else
         {
             Aws::StringStream ss;
-            ss << strerror(errno);
+            char buf[1024];
+            azstrerror_s(buf, sizeof(buf), errno);
+            ss << buf;
             EBUS_EVENT(AWSBehaviorS3UploadNotificationsBus, OnError, ss.str().c_str());
         }
     }

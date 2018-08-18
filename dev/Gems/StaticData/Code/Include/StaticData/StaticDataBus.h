@@ -26,23 +26,19 @@ namespace CloudCanvas
         using StaticDataTypeList = AZStd::vector<StaticDataTagType>;
         using StaticDataFileSet = AZStd::unordered_set<AZStd::string>;
 
-        class IStaticDataMonitor;
-
         class IStaticDataManager 
             : public AZ::ComponentBus
         {
         public:
-            virtual ReturnInt GetIntValue(const char* tagName, const char* structName, const char* fieldName, bool& wasSuccess) = 0;
-            virtual ReturnStr GetStrValue(const char* tagName, const char* structName, const char* fieldName, bool& wasSuccess) = 0;
-            virtual ReturnDouble GetDoubleValue(const char* tagName, const char* structName, const char* fieldName, bool& wasSuccess) = 0;
+            virtual ReturnInt GetIntValue(const char* tagName, const char* structName, const char* fieldName, bool& wasSuccess) { return 0; }
+            virtual ReturnStr GetStrValue(const char* tagName, const char* structName, const char* fieldName, bool& wasSuccess) { return{}; }
+            virtual ReturnDouble GetDoubleValue(const char* tagName, const char* structName, const char* fieldName, bool& wasSuccess) { return 0.0; }
 
-            virtual bool ReloadTagType(const char* tagName) = 0;
-            virtual void LoadRelativeFile(const char* relativeFile) = 0;
+            virtual bool ReloadTagType(const char* tagName) { return false; }
+            virtual void LoadRelativeFile(const char* relativeFile) {}
 
             virtual StaticDataTypeList GetDataTypeList() = 0;
-            virtual StaticDataFileSet GetFilesForDirectory(const char* dirName) = 0;
-
-            friend class StaticDataMonitor;
+            virtual StaticDataFileSet GetFilesForDirectory(const char* dirName) { return{}; }
         };
 
         using StaticDataRequestBus = AZ::EBus<IStaticDataManager>;

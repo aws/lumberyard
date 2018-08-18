@@ -42,8 +42,6 @@ namespace EMotionFX
 
         void LinkToActorInstance(ActorInstance* actorInstance);
         void InitFromBindPose(ActorInstance* actorInstance);
-        void Blend(const AnimGraphPose* dest, float weight);
-        void BlendAdditive(const AnimGraphPose* dest, float weight);
 
         MCORE_INLINE uint32 GetNumNodes() const                 { return mPose.GetNumTransforms(); }
         MCORE_INLINE const Pose& GetPose() const                { return mPose; }

@@ -841,21 +841,6 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::SetTriggerFlag(const TAudioControlID nTriggerID, const EATLTriggerStatus eStatusFlag, bool bOn)
-    {
-        uint32& nBitField = m_cTriggers[nTriggerID].nFlags;// this creates an entry if nTriggerID is not yet present in m_cTriggers
-
-        if (bOn)
-        {
-            nBitField |= eStatusFlag;
-        }
-        else
-        {
-            nBitField &= ~eStatusFlag;
-        }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CATLAudioObject::Clear()
     {
         CATLAudioObjectBase::Clear();
@@ -1091,7 +1076,7 @@ namespace Audio
                         fFontSize,
                         fObjectTextColor,
                         false,
-                        "%s  ID: %u  RefCnt: %2" PRISIZE_T "  Dist: %4.1fm",
+                        "%s  ID: %llu  RefCnt: %2" PRISIZE_T "  Dist: %4.1fm",
                         pDebugNameStore->LookupAudioObjectName(nObjectID),
                         nObjectID,
                         GetRefCount(),
@@ -1280,7 +1265,7 @@ namespace Audio
                             1.2f,
                             aLabelColor,
                             true,
-                            "ObjID: %u\n#Hits: %2.1f\nOccl: %3.2f",
+                            "ObjID: %llu\n#Hits: %2.1f\nOccl: %3.2f",
                             m_vRayInfos[i].nAudioObjectID, // a const member, will not be overwritten by a thread filling the obstruction data in
                             m_vRayDebugInfos[i].fAvgHits,
                             m_vRayDebugInfos[i].fOcclusionValue);

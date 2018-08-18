@@ -16,7 +16,7 @@ def build(bld):
         includes     = [bld.Path('Code/CryEngine')],
         win_features = ['crcfix'],
         editor = dict(
-            platforms   = ['win', 'darwin'],
+            platforms  = ['win', 'darwin'],
             defines    = ['WATER_GEM_EDITOR'],
             uselib     = ['QT5CORE',
                           'QT5GUI',
@@ -34,5 +34,14 @@ def build(bld):
                           bld.Path('Code/Sandbox/Editor'),
                           bld.Path('Code/Sandbox/Editor/Include'),
                           bld.Path('Code/CryEngine')],
+
+            # For the macOS we require the AWS libs in order to link the editor
+            # because there are implicit dependencies on LyMetrics/LyIdentity
+            # and those libraries use AWS. Not including them here results in
+            # a failure to build the gem due to missing symbols
+            darwin_uselib = ['AWS_CPP_SDK_CORE',
+                             'AWS_CPP_SDK_COGNITO_IDENTITY',
+                             'AWS_CPP_SDK_MOBILEANALYTICS',
+                             'AWS_CPP_SDK_IDENTITY_MANAGEMENT']
         ),
     )

@@ -324,7 +324,7 @@ namespace Lightning
             LightningGameEffectAZ::Target(targetId));
 
         //Trigger OnSpark event
-        LightningArcComponentNotificationBus::Broadcast(&LightningArcComponentNotificationBus::Events::OnSpark);
+        LightningArcComponentNotificationBus::Event(GetEntityId(), &LightningArcComponentNotificationBus::Events::OnSpark);
     }
 
 } //namespace Lightning

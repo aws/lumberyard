@@ -15,7 +15,6 @@
 #define CRYINCLUDE_CRY3DENGINE_OBJMAN_H
 #pragma once
 
-#include "CryEngineAPI.h"
 
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/lock.h>

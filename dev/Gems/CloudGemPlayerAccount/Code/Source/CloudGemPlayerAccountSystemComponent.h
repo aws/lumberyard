@@ -27,6 +27,7 @@
 #include <CloudGemPlayerAccount/CloudGemPlayerAccountBus.h>
 
 #include <CloudCanvas/CloudCanvasIdentityBus.h>
+
 /** This component provides the ability to manage user accounts via a Cognito User Pool.
     Users can register an account, recover their password, log in, update account details, etc.
 
@@ -34,12 +35,6 @@
     of this component and it should exist for the lifetime of the application.
     This is *not* currently enforced in any way and may change in the future.
 */
-
-namespace CloudGemFramework
-{
-    template<class ClientType>
-    class AwsApiClientJobConfig;
-}
 namespace CloudGemPlayerAccount
 {
     typedef std::function<void(const BasicResultInfo& basicResult, const Model::AuthenticationResultType& authenticationResult)> AuthenticateWithRefreshTokenHandler;
@@ -58,8 +53,7 @@ namespace CloudGemPlayerAccount
         static const char* SERVICE_NAME;
 
         AZ_COMPONENT(CloudGemPlayerAccountSystemComponent, "{76F24D04-D36F-41EF-BE80-976190C379B6}");
-        CloudGemPlayerAccountSystemComponent() = default;
-
+		CloudGemPlayerAccountSystemComponent() = default;
         static void Reflect(AZ::ReflectContext* context);
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
@@ -157,7 +151,6 @@ namespace CloudGemPlayerAccount
         std::mutex m_tokenAccessMutex;  // Used to make sure that access tokens aren't being read as they're being written to
 
         std::shared_ptr<Aws::Auth::AWSCredentialsProvider> m_anonymousCredentialsProvider;
-        AZStd::shared_ptr<CloudGemFramework::AwsApiClientJobConfig<Aws::CognitoIdentityProvider::CognitoIdentityProviderClient>> m_clientConfig;
 
         AZStd::atomic_ulong m_nextRequestId{1};
     };

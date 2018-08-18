@@ -26,7 +26,6 @@ def build(bld):
         platforms       = ['all'],
         configurations  = ['all'],
         pch             = 'StdAfx.cpp',
-        defines         = ['ENGINE_EXPORTS'],
         use             = ['AzCore'],
 
         # Platform Specific

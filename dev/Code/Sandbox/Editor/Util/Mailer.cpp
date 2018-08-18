@@ -44,7 +44,8 @@ bool CMailer::SendMail(const char* subject,
     int i = 0;
     for (unsigned int k = 0; k < _attachments.size(); k++)
     {
-        FILE* file = fopen(_attachments[k], "r");
+        FILE* file = nullptr;
+        azfopen(&file, _attachments[k], "r");
         if (!file)
         {
             continue;

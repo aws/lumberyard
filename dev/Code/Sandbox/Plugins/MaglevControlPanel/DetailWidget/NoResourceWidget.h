@@ -34,4 +34,5 @@ protected:
     void OnAddResource();
     void OnImportResource(QPushButton* importResourceButton);
     void DeleteStack();
+    void EnableResourceGroup();
 };

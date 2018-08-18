@@ -47,7 +47,7 @@ namespace EMotionFX
     class EMFX_API WaveletCache
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(WaveletCache, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_WAVELETCACHE);
+        AZ_CLASS_ALLOCATOR_DECL
 
         friend class WaveletSkeletalMotion;
 
@@ -59,7 +59,7 @@ namespace EMotionFX
         class EMFX_API DecompressedChunk
             : public BaseObject
         {
-            MCORE_MEMORYOBJECTCATEGORY(WaveletCache::DecompressedChunk, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_WAVELETCACHE);
+            AZ_CLASS_ALLOCATOR_DECL
 
         public:
             static DecompressedChunk* Create();

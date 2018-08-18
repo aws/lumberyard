@@ -77,7 +77,10 @@
  <macro title="Wind" shortcut="" icon="icons\wind.png" tooltip="toggles Wind on / off">
   <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Wind')" bVariableToggle="0"/>
  </macro>
-  <macro title="BBoxes" shortcut="" icon="icons\bounding_box.png" tooltip="toggles BBoxes on / off">
+ <macro title="BBoxes" shortcut="" icon="icons\bounding_box.png" tooltip="toggles BBoxes on / off">
   <command type="1" text="general.run_file_parameters('environmentmodes.py','e_BBoxes')" bVariableToggle="0"/>
+ </macro>
+ <macro title="" shortcut="" icon="icons\placeholder.png" tooltip="Reset the view to default configuration">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','default_view')" bVariableToggle="0"/>
  </macro>
 </toolboxmacros>

@@ -114,6 +114,11 @@ namespace UnitTest
         {
             BusConnect();
         }
+
+        ~MyDrilledObject()
+        {
+            BusDisconnect();
+        }
         //////////////////////////////////////////////////////////////////////////
         // MyDrillerCommandBus
         virtual MyDrilledObject* RequestDrilledObject()

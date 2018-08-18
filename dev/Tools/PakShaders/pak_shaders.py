@@ -9,7 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 import os, fnmatch, sys
-import argparse, zipfile, re
+import argparse, zipfile, re, glob
 
 def _create_zip(source_path, zip_file_path, append, filter_list, ignore_list, compression_level, zip_internal_path = ''):
     """
@@ -41,13 +41,11 @@ def _create_zip(source_path, zip_file_path, append, filter_list, ignore_list, co
 
     return True
 
-def pak_shaders(source_path, output_folder, shader_types):
+# Create or append a pak file with all the shaders found in source_path.
+def pak_shaders_in_folder(source_path, output_folder, shader_type, append):
     """
     Creates the shadercache.pak and the shadercachestartup.pak using the shader files located at source_path.
     """
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
     ignore_list = ['shaderlist.txt', 'shadercachemisses.txt']
     shaders_cache_startup_filters = ['Common.cfib', 'FXConstantDefs.cfib', 'FXSamplerDefs.cfib', 'FXSetupEnvVars.cfib',
                                      'FXStreamDefs.cfib', 'fallback.cfxb', 'FixedPipelineEmu.cfxb','Scaleform.cfxb',
@@ -65,32 +63,54 @@ def pak_shaders(source_path, output_folder, shader_types):
                                      os.path.join('CGPShaders', 'Stereo', '*'),
                                      os.path.join('CGVShaders', 'Stereo', '*')]
 
+    print 'Packing shader source folder %s' % (source_path)
     result = True
+    if os.path.exists(source_path):
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
+        # We want the files to be added to the "shaders/cache/$shader_type" path inside the pak file.
+        zip_interal_path = os.path.join('shaders', 'cache', shader_type)
+
+        result &= _create_zip(source_path, os.path.join(output_folder, 'shadercache.pak'), append, ['*.*'], ignore_list, zipfile.ZIP_STORED, zip_interal_path)
+        result &= _create_zip(source_path, os.path.join(output_folder, 'shadercachestartup.pak'), append, shaders_cache_startup_filters, ignore_list, zipfile.ZIP_STORED, zip_interal_path)
+    else:
+        print '[Error] Shader source folder is not available at %s. Shader type: %s.' % (source_path, shader_type)
+        result = False
+    return result
+
+# Generate a shaders pak file with all the shader types indicated.
+# NOTE: A shader type can specify an specific source path or not. Examples:
+#       - 'metal,specific/path/to/shaders': Use the folder specified as the source path to all metal shaders.
+#       - 'metal': Use source_path/metal as source path to all metal shaders. Wildcard usage is allowed, for example 'gles3*'.
+def pak_shaders(source_path, output_folder, shader_types):
     shader_flavors_packed = 0
     for shader_info in shader_types:
         # First element is the type, the second (if present) is the specific source
         shader_type = shader_info[0]
-        # We want the files to be added to the "shaders/cache/$shader_type" path inside the pak file.
-        zip_interal_path = os.path.join('shaders', 'cache', shader_type)
         if len(shader_info) > 1:
             shader_type_source = shader_info[1]
+            if pak_shaders_in_folder(shader_type_source, output_folder, shader_type, shader_flavors_packed > 0):
+                shader_flavors_packed = shader_flavors_packed + 1
+            else:
+                return False
         else:
-            # No specific source path for this shader type so use the global source path
-            shader_type_source = os.path.join(source_path, shader_type)
-           
-        if os.path.exists(shader_type_source):
-            # First shader flavor creates a new zip file. The next ones just add files to the zip.
-            append = shader_flavors_packed > 0
-            result &= _create_zip(shader_type_source, os.path.join(output_folder, 'shadercache.pak'), append, ['*.*'], ignore_list, zipfile.ZIP_STORED, zip_interal_path)
-            result &= _create_zip(shader_type_source, os.path.join(output_folder, 'shadercachestartup.pak'), append, shaders_cache_startup_filters, ignore_list, zipfile.ZIP_STORED, zip_interal_path)
-            shader_flavors_packed = shader_flavors_packed + 1
-        else:
-            print '[Warn] Skipping shader type %s because source folder is not available at %s' % (shader_type, shader_type_source)
+            # No specific source path for this shader type so use the global source path. Wildcard allowed.
+            listing = glob.glob(os.path.join(source_path, shader_type))
+            for shader_type_source in listing:
+                if os.path.isdir(shader_type_source):
+                    # Since the shader_type can use wildcard we have to obtain the actual shader type found by removing source_path
+                    # Example: If shader_type is 'gl4*' then now will be 'gl4_4'
+                    shader_type = shader_type_source[len(source_path)+1:]
+                    if pak_shaders_in_folder(shader_type_source, output_folder, shader_type, shader_flavors_packed > 0):
+                        shader_flavors_packed = shader_flavors_packed + 1
+                    else:
+                        return False
 
     if shader_flavors_packed == 0:
         print 'Failed to pack any shader type'
 
-    return shader_flavors_packed > 0 and result
+    return shader_flavors_packed > 0
 
 def pair_arg(arg):
     return [str(x) for x in arg.split(',')]

@@ -102,9 +102,9 @@ namespace LUAEditor
         m_gui->m_foldingWidget->setEnabled(true);
         m_gui->m_foldingWidget->SetTextEdit(m_gui->m_resultsList);
         connect(m_gui->m_resultsList, &AzToolsFramework::PlainTextEdit::BlockDoubleClicked, this, &FindResults::OnBlockDoubleClicked);
-        connect(m_gui->m_resultsList, &AzToolsFramework::PlainTextEdit::cursorPositionChanged, [&]() { m_gui->m_foldingWidget->update(); });
-        connect(m_gui->m_resultsList, &AzToolsFramework::PlainTextEdit::Scrolled, [&]() { m_gui->m_foldingWidget->update(); });
-        connect(m_gui->m_foldingWidget, &FoldingWidget::TextBlockFoldingChanged, [&]() {m_gui->m_resultsList->update(); });
+        connect(m_gui->m_resultsList, &AzToolsFramework::PlainTextEdit::cursorPositionChanged, this, [&]() { m_gui->m_foldingWidget->update(); });
+        connect(m_gui->m_resultsList, &AzToolsFramework::PlainTextEdit::Scrolled, this, [&]() { m_gui->m_foldingWidget->update(); });
+        connect(m_gui->m_foldingWidget, &FoldingWidget::TextBlockFoldingChanged, this, [&]() {m_gui->m_resultsList->update(); });
         connect(m_gui->m_resultsList->document(), &QTextDocument::contentsChange, m_gui->m_foldingWidget, &FoldingWidget::OnContentChanged);
 
         auto settings = AZ::UserSettings::CreateFind<SyntaxStyleSettings>(AZ_CRC("LUA Editor Text Settings", 0xb6e15565), AZ::UserSettings::CT_GLOBAL);

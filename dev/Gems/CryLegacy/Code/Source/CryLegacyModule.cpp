@@ -10,7 +10,6 @@
 *
 */
 #include "CryLegacy_precompiled.h"
-#include <platform_impl.h>
 
 #include "CryLegacySystemComponent.h"
 

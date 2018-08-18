@@ -236,6 +236,9 @@ namespace CryThreadUtil
     ///////////////////////////////////////////////////////////////////////////
     void EnableFloatExceptions(EFPE_Severity eFPESeverity)
     {
+#pragma warning( push )
+#pragma warning(disable: 4996)
+
         // Optimization
         // Enable DAZ/FZ
         // Denormals Are Zeros
@@ -290,7 +293,9 @@ namespace CryThreadUtil
             }
         }
 #endif // _RELEASE
-    }
+
+#pragma warning( pop )
+}
 
     //////////////////////////////////////////////////////////////////////////
     void EnableFloatExceptions(threadID nThreadId, EFPE_Severity eFPESeverity)

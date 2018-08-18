@@ -264,12 +264,6 @@ namespace CloudGemFramework
 
         void ProcessResponse(const std::shared_ptr<Aws::Http::HttpResponse>& response) override
         {
-            if (!CloudGemFramework::CanProcessResponse())
-            {
-                DoCleanup();
-                return;
-            }
-
             if (ServiceClientJobType::IsCancelled())
             {
                 RequestType::error.type = Error::TYPE_NETWORK_ERROR;

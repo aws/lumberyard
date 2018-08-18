@@ -40,7 +40,7 @@ namespace EMStudio
                  MCORE_MEMORYOBJECTCATEGORY(BlendNodeSelectionWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH)
 
     public:
-        BlendNodeSelectionWindow(QWidget* parent, bool useSingleSelection, CommandSystem::SelectionList* selectionList = nullptr, uint32 visibilityFilterNodeID = MCORE_INVALIDINDEX32, bool showStatesOnly = false);
+        BlendNodeSelectionWindow(QWidget* parent, bool useSingleSelection, CommandSystem::SelectionList* selectionList = nullptr, const AZ::TypeId& visibilityFilterNode = AZ::TypeId::CreateNull(), bool showStatesOnly = false);
         virtual ~BlendNodeSelectionWindow();
 
         MCORE_INLINE AnimGraphHierarchyWidget* GetAnimGraphHierarchyWidget()                                          { return mHierarchyWidget; }

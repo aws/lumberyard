@@ -12,15 +12,19 @@
 
 #pragma once
 
-// include the required headers
+#include <AzCore/RTTI/ReflectContext.h>
+#include <EMotionFX/Source/AnimGraphNodeId.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphObject.h"
+
 
 namespace EMotionFX
 {
     // forward declarations
     class AnimGraphInstance;
+    class AnimGraphStateMachine;
     class AnimGraphTransitionCondition;
+    class AnimGraphStateMachine;
     class Transform;
     class Pose;
 
@@ -32,74 +36,77 @@ namespace EMotionFX
     class EMFX_API AnimGraphStateTransition
         : public AnimGraphObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphStateTransition, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_TRANSITIONS);
-
     public:
-        AZ_RTTI(AnimGraphStateTransition, "{E69C8C6E-7066-43DD-B1BF-0D2FFBDDF457}", AnimGraphObject);
+        AZ_RTTI(AnimGraphStateTransition, "{E69C8C6E-7066-43DD-B1BF-0D2FFBDDF457}", AnimGraphObject)
+        AZ_CLASS_ALLOCATOR_DECL
 
-        enum
-        {
-            BASETYPE_ID = 0x00000002
-        };
-        enum
-        {
-            TYPE_ID = 0x00001000
-        };
-
-        enum
+        enum EInterpolationType : AZ::u8
         {
             INTERPOLATIONFUNCTION_LINEAR        = 0,
             INTERPOLATIONFUNCTION_EASECURVE     = 1
-        };
-
-        enum
-        {
-            ATTRIB_DISABLED                     = 0,
-            ATTRIB_PRIORITY                     = 1,
-            ATTRIB_CANBEINTERRUPTED             = 2,
-            ATTRIB_CANINTERRUPTOTHERTRANSITIONS = 3,
-            ATTRIB_ALLOWSELFINTERRUPTION        = 4,
-            ATTRIB_ALLOWEDSTATES                = 5,
-            ATTRIB_BLENDTIME                    = 6,
-            ATTRIB_SYNC                         = 7,
-            ATTRIB_EVENTMODE                    = 8,
-            ATTRIB_INTERPOLATIONTYPE            = 9,
-            ATTRIB_EASEIN_SMOOTH                = 10,
-            ATTRIB_EASEOUT_SMOOTH               = 11
         };
 
         class EMFX_API UniqueData
             : public AnimGraphObjectData
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
+
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance, AnimGraphNode* sourceNode);
             ~UniqueData() {}
 
-            uint32 GetClassSize() const override                                                                                    { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override        { return new (destMem) UniqueData(object, animGraphInstance, nullptr); }
-
         public:
-            AnimGraphNode* mSourceNode;
+            AnimGraphNode*  mSourceNode;
             float           mBlendWeight;
             float           mBlendProgress;
             float           mTotalSeconds;
             bool            mIsDone;
         };
 
-        static AnimGraphStateTransition* Create(AnimGraph* animGraph);
+        class StateFilterLocal final
+        {
+        public:
+            AZ_RTTI(AnimGraphStateTransition::StateFilterLocal, "{591DDCDE-F85D-4F35-957F-F2428ADE8579}")
+            AZ_CLASS_ALLOCATOR_DECL
+
+            bool IsEmpty() const;
+            void Clear();
+
+            size_t GetNumStates() const;
+            AnimGraphNodeId GetStateId(size_t index) const;
+            AZStd::vector<AnimGraphNodeId> CollectStateIds() const;
+            void SetStateIds(const AZStd::vector<AnimGraphNodeId>& stateIds);
+
+            size_t GetNumGroups() const;
+            const AZStd::string& GetGroupName(size_t index) const;
+            const AZStd::vector<AZStd::string>& GetGroups() const;
+            void SetGroups(const AZStd::vector<AZStd::string>& groups);
+
+            // Collect all individual states as well as the ones coming from node groups.
+            AZStd::vector<AnimGraphNodeId> CollectStates(AnimGraphStateMachine* stateMachine) const;
+
+            bool Contains(AnimGraph* animGraph, AnimGraphNodeId stateId) const;
+
+            static void Reflect(AZ::ReflectContext* context);
+
+        private:
+            AZStd::vector<AZ::u64> m_stateIds;
+            AZStd::vector<AZStd::string> m_nodeGroupNames;
+        };
+
+        AnimGraphStateTransition();
+        virtual ~AnimGraphStateTransition();
+
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
-        virtual void Init(AnimGraphInstance* animGraphInstance) override;
-        virtual void OnUpdateAttributes() override;
-        virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName) override;
-        virtual void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node) override;
-        virtual void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
-        virtual void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
-        virtual void RegisterAttributes() override;
-        virtual void RecursiveCollectObjects(MCore::Array<AnimGraphObject*>& outObjects) const override;
+        void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
+        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        void RecursiveCollectObjects(MCore::Array<AnimGraphObject*>& outObjects) const override;
         void ExtractMotion(AnimGraphInstance* animGraphInstance, Transform* outTransform, Transform* outTransformMirrored) const;
-        AnimGraphObject* RecursiveClone(AnimGraph* animGraph, AnimGraphObject* parentObject) override;
 
         void OnStartTransition(AnimGraphInstance* animGraphInstance);
         void OnEndTransition(AnimGraphInstance* animGraphInstance);
@@ -109,31 +116,35 @@ namespace EMotionFX
         void CalcTransitionOutput(AnimGraphInstance* animGraphInstance, AnimGraphPose& from, AnimGraphPose& to, AnimGraphPose* outputPose) const;
 
         bool CheckIfIsReady(AnimGraphInstance* animGraphInstance) const;
+
+        void SetBlendTime(float blendTime);
         float GetBlendTime(AnimGraphInstance* animGraphInstance) const;
 
-        void RegisterPorts() {}
-        virtual bool ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName) override;
-
-        uint32 GetBaseType() const override;
-        const char* GetTypeString() const override;
         const char* GetPaletteName() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
-        AnimGraphObjectData* CreateObjectData() override;
 
         uint32 GetVisualColor() const;
         bool GetIsStateTransitionNode() const;
 
-        int32 GetPriority() const;
+        void SetPriority(AZ::u32 priority);
+        AZ::u32 GetPriority() const;
 
+        void SetCanBeInterrupted(bool canBeInterrupted);
         bool GetCanBeInterrupted() const;
+
+        void SetCanInterruptOtherTransitions(bool canInterruptOtherTransitions);
         bool GetCanInterruptOtherTransitions() const;
+
+        void SetCanInterruptItself(bool canInterruptItself);
         bool GetCanInterruptItself() const;
 
         void SetIsDisabled(bool isDisabled);
         bool GetIsDisabled() const;
 
+        void SetSyncMode(AnimGraphStateTransition::ESyncMode syncMode);
         ESyncMode GetSyncMode() const;
+
+        void SetEventFilterMode(AnimGraphObject::EEventMode eventMode);
         EEventMode GetEventFilterMode() const;
 
         /**
@@ -158,50 +169,89 @@ namespace EMotionFX
         void SetSourceNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* sourceNode);
         void SetSourceNode(AnimGraphNode* node);
         AnimGraphNode* GetSourceNode(AnimGraphInstance* animGraphInstance) const;
-        MCORE_INLINE AnimGraphNode* GetSourceNode() const                                      { return mSourceNode; }
+        AnimGraphNode* GetSourceNode() const;
+        AZ_FORCE_INLINE AnimGraphNodeId GetSourceNodeId() const                                     { return m_sourceNodeId; }
 
         void SetTargetNode(AnimGraphNode* node);
-        MCORE_INLINE AnimGraphNode* GetTargetNode() const                                      { return mTargetNode; }
+        AnimGraphNode* GetTargetNode() const;
+        AZ_FORCE_INLINE AnimGraphNodeId GetTargetNodeId() const                                     { return m_targetNodeId; }
 
         void SetVisualOffsets(int32 startX, int32 startY, int32 endX, int32 endY);
+        int32 GetVisualStartOffsetX() const;
+        int32 GetVisualStartOffsetY() const;
+        int32 GetVisualEndOffsetX() const;
+        int32 GetVisualEndOffsetY() const;
+
+        EExtractionMode GetExtractionMode() const;
+        void SetExtractionMode(EExtractionMode mode);
 
         /**
          * Check if the transition is a wildcard transition. A wildcard transition is a transition that will be used in case there is no other path from the current
          * to the destination state. It is basically a transition from all nodes to the destination node of the wildcard transition. A wildcard transition does not have a fixed source node.
          * @result True in case the transition is a wildcard transition, false if not.
          */
-        MCORE_INLINE bool GetIsWildcardTransition() const                                       { return mIsWildcardTransition; }
+        bool GetIsWildcardTransition() const                                                    { return mIsWildcardTransition; }
 
-        int32 GetVisualStartOffsetX() const;
-        int32 GetVisualStartOffsetY() const;
-        int32 GetVisualEndOffsetX() const;
-        int32 GetVisualEndOffsetY() const;
+        bool CanWildcardTransitionFrom(AnimGraphNode* sourceNode) const;
 
-        MCORE_INLINE uint32 GetNumConditions() const                                            { return mConditions.GetLength(); }
-        MCORE_INLINE AnimGraphTransitionCondition* GetCondition(uint32 index) const            { return mConditions[index]; }
-        uint32 FindConditionIndex(AnimGraphTransitionCondition* condition) const;
+        MCORE_INLINE size_t GetNumConditions() const                                            { return mConditions.size(); }
+        MCORE_INLINE AnimGraphTransitionCondition* GetCondition(size_t index) const            { return mConditions[index]; }
+        size_t FindConditionIndex(AnimGraphTransitionCondition* condition) const;
+
+        AnimGraphStateMachine* GetStateMachine() const;
 
         void AddCondition(AnimGraphTransitionCondition* condition);
-        void InsertCondition(AnimGraphTransitionCondition* condition, uint32 index);
-        void ReserveConditions(uint32 numConditions);
-        void RemoveCondition(uint32 index, bool delFromMem = true);
+        void InsertCondition(AnimGraphTransitionCondition* condition, size_t index);
+        void ReserveConditions(size_t numConditions);
+        void RemoveCondition(size_t index, bool delFromMem = true);
         void RemoveAllConditions(bool delFromMem = true);
         void ResetConditions(AnimGraphInstance* animGraphInstance);
 
-    protected:
-        AnimGraphStateTransition(AnimGraph* animGraph);
-        virtual ~AnimGraphStateTransition();
+        void SetGroups(const AZStd::vector<AZStd::string>& groups);
+        void SetStateIds(const AZStd::vector<AnimGraphNodeId>& stateIds);
 
+        void SetInterpolationType(AnimGraphStateTransition::EInterpolationType interpolationType);
+        void SetEaseInSmoothness(float easeInSmoothness);
+        void SetEaseOutSmoothness(float easeInSmoothness);
+
+        // Returns an attribute string (MCore::CommandLine formatted) if this condition is affected by a convertion of
+        // node ids. The method will return the attribute string that will be used to patch this condition on a command
+        virtual void GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+    protected:
         float CalculateWeight(float linearWeight) const;
 
-        MCore::Array<AnimGraphTransitionCondition*>    mConditions;
-        AnimGraphNode*                                 mSourceNode;
-        AnimGraphNode*                                 mTargetNode;
-        int32                                           mStartOffsetX;
-        int32                                           mStartOffsetY;
-        int32                                           mEndOffsetX;
-        int32                                           mEndOffsetY;
+        AZ::Crc32 GetEaseInOutSmoothnessVisibility() const;
+        AZ::Crc32 GetVisibilityHideWhenExitOrEntry() const;
+        AZ::Crc32 GetVisibilityAllowedStates() const;
+
+        AZStd::vector<AnimGraphTransitionCondition*>    mConditions;
+        StateFilterLocal                                m_allowTransitionsFrom;
+
+        AnimGraphNode*                                  mSourceNode;
+        AnimGraphNode*                                  mTargetNode;
+        AZ::u64                                         m_sourceNodeId;
+        AZ::u64                                         m_targetNodeId;
         uint32                                          mID;                        /**< The unique identification number. */
+
+        float                                           m_transitionTime;
+        float                                           m_easeInSmoothness;
+        float                                           m_easeOutSmoothness;
+        AZ::s32                                         mStartOffsetX;
+        AZ::s32                                         mStartOffsetY;
+        AZ::s32                                         mEndOffsetX;
+        AZ::s32                                         mEndOffsetY;
+        AZ::u32                                         m_priority;
+        AnimGraphObject::ESyncMode                      m_syncMode;
+        AnimGraphObject::EEventMode                     m_eventMode;
+        AnimGraphObject::EExtractionMode                m_extractionMode;
+        EInterpolationType                              m_interpolationType;
         bool                                            mIsWildcardTransition;      /**< Flag which indicates if the state transition is a wildcard transition or not. */
+        bool                                            m_isDisabled;
+        bool                                            m_canBeInterruptedByOthers;
+        bool                                            m_canInterruptOtherTransitions;
+        bool                                            m_allowSelfInterruption;
     };
 }   // namespace EMotionFX

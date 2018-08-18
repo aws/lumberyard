@@ -53,7 +53,10 @@ namespace LmbrCentral
     void EditorNavigationSeedComponent::TriggerReachaibilityRecalculation() const
     {
         // We have to call the legacy method to account for Legacy seeds that might be out there
-        gEnv->pAISystem->GetNavigationSystem()->CalculateAccessibility();
+        if (gEnv->pAISystem)
+        {
+            gEnv->pAISystem->GetNavigationSystem()->CalculateAccessibility();
+        }
     }
 
     AZ::u32 EditorNavigationSeedComponent::OnAgentTypeChanged() const
@@ -67,9 +70,12 @@ namespace LmbrCentral
         AZ::Vector3 translation = AZ::Vector3::CreateZero();
         AZ::TransformBus::EventResult(translation, m_entity->GetId(), &AZ::TransformInterface::GetWorldTranslation);
 
-        auto navigationSystem = gEnv->pAISystem->GetNavigationSystem();
-        auto agentType = navigationSystem->GetAgentTypeID(m_agentType.c_str());
-        navigationSystem->ComputeAccessibility(AZVec3ToLYVec3(translation), agentType);
+        if (gEnv->pAISystem)
+        {
+            auto navigationSystem = gEnv->pAISystem->GetNavigationSystem();
+            auto agentType = navigationSystem->GetAgentTypeID(m_agentType.c_str());
+            navigationSystem->ComputeAccessibility(AZVec3ToLYVec3(translation), agentType);
+        }
     }
 
     void EditorNavigationSeedComponent::OnTransformChanged(const AZ::Transform&, const AZ::Transform&)

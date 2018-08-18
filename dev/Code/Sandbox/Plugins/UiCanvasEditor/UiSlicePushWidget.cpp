@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QDialogButtonBox>
@@ -73,11 +73,7 @@ namespace UiCanvasEditor
         button->setFixedSize(200, 40);
         layout->addWidget(button);
 
-        connect(button, &QPushButton::released, 
-            [this]()
-            {
-                emit OnCloseClicked();
-            });
+        connect(button, &QPushButton::released, this, &NoChangesOverlay::OnCloseClicked);
 
         setLayout(layout);
 
@@ -513,11 +509,7 @@ namespace UiCanvasEditor
         if (0 == m_fieldTree->topLevelItemCount())
         {
             NoChangesOverlay* overlay = new NoChangesOverlay(this);
-            connect(overlay, &NoChangesOverlay::OnCloseClicked, 
-                [this]() 
-                { 
-                    OnCancelClicked();
-                });
+            connect(overlay, &NoChangesOverlay::OnCloseClicked, this, &UiSlicePushWidget::OnCancelClicked);
         }
     }
 

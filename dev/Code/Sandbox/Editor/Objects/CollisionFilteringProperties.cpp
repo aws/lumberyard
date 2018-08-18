@@ -33,7 +33,7 @@ CCollisionFilteringProperties::CCollisionFilteringProperties()
         //=====================================================
         // Get the names of the collision classes from the game
         //=====================================================
-        IGamePhysicsSettings* physicsSettings = gEnv->pGame ? gEnv->pGame->GetIGameFramework()->GetIGamePhysicsSettings() : 0;
+        IGamePhysicsSettings* physicsSettings = gEnv->pGame && gEnv->pGame->GetIGameFramework() ? gEnv->pGame->GetIGameFramework()->GetIGamePhysicsSettings() : 0;
         for (int i = 0; i < k_maxCollisionClasses; i++)
         {
             const char* name = physicsSettings ? physicsSettings->GetCollisionClassName(i) : "";

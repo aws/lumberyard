@@ -15,7 +15,7 @@
 #define CRYINCLUDE_CRYSCOMPILESERVER_CORE_MAILER_H
 #pragma once
 
-#include "common.h"
+#include "Common.h"
 #include "Server/CrySimpleSock.hpp"
 #include <string>
 #include <set>

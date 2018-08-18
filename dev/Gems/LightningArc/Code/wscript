@@ -16,7 +16,7 @@ def build(bld):
         #==============================
         # Common
         #==============================
-        includes    = [ 'Include' ,
+        includes    = [ 'include' ,
                         bld.Path('Code/CryEngine/CryCommon'),
                         bld.Path('Code/CryEngine/CryAction'),
                         bld.Path('Gems/LmbrCentral/Code/include')
@@ -24,7 +24,7 @@ def build(bld):
         
         editor = dict(
             defines     = ['LIGHTNING_EDITOR'],
-            includes    = ['Include',
+            includes    = ['include',
                            bld.Path('Code/CryEngine/CryCommon'),
                            bld.Path('Code/CryEngine/CryAction'),
                            bld.Path('Gems/LmbrCentral/Code/include'),

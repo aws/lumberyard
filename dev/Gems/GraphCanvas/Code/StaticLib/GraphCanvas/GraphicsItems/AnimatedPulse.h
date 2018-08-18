@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <QGraphicsItem.h>
+#include <QGraphicsItem>
 
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Memory/SystemAllocator.h>

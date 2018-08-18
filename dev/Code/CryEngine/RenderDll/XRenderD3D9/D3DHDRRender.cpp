@@ -1177,7 +1177,7 @@ void CHDRPostProcess::ProcessLensOptics()
             gcpRendD3D->FX_SetColorDontCareActions(0, false, false);
             gcpRendD3D->FX_ClearTarget(pLensOpticsComposite, Clr_Transparent);            
 
-            gcpRendD3D->m_RP.m_PersFlags2 |= RBPF2_NOPOSTAA | RBPF2_LENS_OPTICS_COMPOSITE;
+            gcpRendD3D->m_RP.m_PersFlags2 |= RBPF2_NOPOSTAA;
 
             GetUtils().Log(" +++ Begin lens-optics scene +++ \n");
             gcpRendD3D->FX_ProcessRenderList(EFSLIST_LENSOPTICS, FB_GENERAL);
@@ -1767,9 +1767,9 @@ void CHDRPostProcess::DrawDebugViews()
         char str[256];
         SDrawTextInfo ti;
         ti.color[1] = 0;
-        sprintf(str, "Average Luminance (cd/m2): %.2f", fLuminance * RENDERER_LIGHT_UNIT_SCALE);
+        azsprintf(str, "Average Luminance (cd/m2): %.2f", fLuminance * RENDERER_LIGHT_UNIT_SCALE);
         rd->Draw2dText(5, 35, str, ti);
-        sprintf(str, "Estimated Illuminance (lux): %.1f", fIlluminance * RENDERER_LIGHT_UNIT_SCALE);
+        azsprintf(str, "Estimated Illuminance (lux): %.1f", fIlluminance * RENDERER_LIGHT_UNIT_SCALE);
         rd->Draw2dText(5, 55, str, ti);
 
         Vec4 vHDRSetupParams[5];
@@ -1781,7 +1781,7 @@ void CHDRPostProcess::DrawDebugViews()
             float sceneKey = 1.03f - 2.0f / (2.0f + log(fLuminance + 1.0f) / log(2.0f));
             float exposure = clamp_tpl<float>(sceneKey / fLuminance, vHDRSetupParams[4].y, vHDRSetupParams[4].z);
 
-            sprintf(str, "Exposure: %.2f  SceneKey: %.2f", exposure, sceneKey);
+            azsprintf(str, "Exposure: %.2f  SceneKey: %.2f", exposure, sceneKey);
             rd->Draw2dText(5, 75, str, ti);
         }
         else
@@ -1791,7 +1791,7 @@ void CHDRPostProcess::DrawDebugViews()
             float autoCompensation = (clamp_tpl<float>(sceneKey, 0.1f, 5.2f) - 3.0f) / 2.0f * vHDRSetupParams[3].z;
             float finalExposure = clamp_tpl<float>(exposure - autoCompensation, vHDRSetupParams[3].x, vHDRSetupParams[3].y);
 
-            sprintf(str, "Measured EV: %.1f  Auto-EC: %.1f  Final EV: %.1f", exposure, autoCompensation, finalExposure);
+            azsprintf(str, "Measured EV: %.1f  Auto-EC: %.1f  Final EV: %.1f", exposure, autoCompensation, finalExposure);
             rd->Draw2dText(5, 75, str, ti);
         }
 

@@ -14,16 +14,15 @@
 #include "CloudCanvasCommon_precompiled.h"
 
 #include <CloudCanvasCommonSystemComponent.h>
-
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 namespace CloudCanvasCommon
 {
     class CloudCanvasCommonModule
-        : public CryHooksModule
+        : public AZ::Module
     {
     public:
-        AZ_RTTI(CloudCanvasCommonModule, "{C921462C-CE57-436A-80D5-AA0CED1338F7}", CryHooksModule);
+        AZ_RTTI(CloudCanvasCommonModule, "{C921462C-CE57-436A-80D5-AA0CED1338F7}", AZ::Module);
 
         CloudCanvasCommonModule();
         virtual ~CloudCanvasCommonModule() override = default;

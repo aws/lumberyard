@@ -542,10 +542,10 @@
         }, 
         "orbis_vs2015": {
             "libpath_debug": [
-                "lib/orbis/4.500/Debug"
+                "lib/orbis/5.000/Debug"
             ], 
             "libpath_release": [
-                "lib/orbis/4.500/Release"
+                "lib/orbis/5.000/Release"
             ], 
             "aws_cpp_sdk_all_static/lib": [
                 "lib${aws_cpp_sdk_all}.a"
@@ -589,10 +589,10 @@
         }, 
         "durango_vs2015": {
             "libpath_debug": [
-                "lib/durango/170300/Debug"
+                "lib/durango/171100/Debug"
             ], 
             "libpath_release": [
-                "lib/durango/170300/Release"
+                "lib/durango/171100/Release"
             ], 
             "aws_cpp_sdk_all_static/lib": [
                 "${aws_cpp_sdk_all}.lib"

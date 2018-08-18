@@ -66,6 +66,11 @@ namespace ScriptCanvasEditor
                 break;
             }
         }
+        if (!indexWasFound)
+        {
+            m_pComboBox->setCurrentIndex(-1);
+        }
+
         AZ_Warning("Script Canvas", indexWasFound == true, "GenericValue could not be found in the combo box");
 
     }

@@ -21,14 +21,13 @@ namespace Gestures
     ////////////////////////////////////////////////////////////////////////////////////////////////
     class RecognizerRotateFlowNode
         : public CFlowBaseNode<eNCT_Instanced>
-        , public IRotateListener
+        , public RecognizerRotate
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         RecognizerRotateFlowNode(SActivationInfo* activationInfo)
             : CFlowBaseNode()
             , m_activationInfo(*activationInfo)
-            , m_recognizer(*this)
             , m_enabled(false)
         {
         }
@@ -76,8 +75,8 @@ namespace Gestures
             {
                 InputPortConfig_Void("Enable", _HELP("Enable gesture recognizer")),
                 InputPortConfig_Void("Disable", _HELP("Disable gesture recognizer")),
-                InputPortConfig<float>("MaxPixelsMoved", m_recognizer.GetConfig().maxPixelsMoved, _HELP("The max distance in pixels that the touches can move towards or away from each other before a rotate will be recognized")),
-                InputPortConfig<float>("MinAngleDegrees", m_recognizer.GetConfig().minAngleDegrees, _HELP("The min angle in degrees that must be rotated before the gesture will be recognized")),
+                InputPortConfig<float>("MaxPixelsMoved", GetConfig().maxPixelsMoved, _HELP("The max distance in pixels that the touches can move towards or away from each other before a rotate will be recognized")),
+                InputPortConfig<float>("MinAngleDegrees", GetConfig().minAngleDegrees, _HELP("The min angle in degrees that must be rotated before the gesture will be recognized")),
                 { 0 }
             };
 
@@ -113,11 +112,11 @@ namespace Gestures
             {
                 if (IsPortActive(activationInfo, Input_MaxPixelsMoved))
                 {
-                    m_recognizer.GetConfig().maxPixelsMoved = GetPortFloat(activationInfo, Input_MaxPixelsMoved);
+                    GetConfig().maxPixelsMoved = GetPortFloat(activationInfo, Input_MaxPixelsMoved);
                 }
                 if (IsPortActive(activationInfo, Input_MinAngleDegrees))
                 {
-                    m_recognizer.GetConfig().minAngleDegrees = GetPortFloat(activationInfo, Input_MinAngleDegrees);
+                    GetConfig().minAngleDegrees = GetPortFloat(activationInfo, Input_MinAngleDegrees);
                 }
 
                 if (IsPortActive(activationInfo, Input_Disable))
@@ -141,8 +140,8 @@ namespace Gestures
         ////////////////////////////////////////////////////////////////////////////////////////////
         void Serialize(SActivationInfo* activationInfo, TSerialize ser) override
         {
-            ser.Value("maxPixelsMoved", m_recognizer.GetConfig().maxPixelsMoved);
-            ser.Value("minAngleDegrees", m_recognizer.GetConfig().minAngleDegrees);
+            ser.Value("maxPixelsMoved", GetConfig().maxPixelsMoved);
+            ser.Value("minAngleDegrees", GetConfig().minAngleDegrees);
 
             bool enabled = m_enabled;
             ser.Value("enabled", enabled);
@@ -164,7 +163,7 @@ namespace Gestures
             if (!m_enabled)
             {
                 m_enabled = true;
-                m_recognizer.BusConnect();
+                BusConnect();
             }
         }
 
@@ -174,53 +173,52 @@ namespace Gestures
             if (m_enabled)
             {
                 m_enabled = false;
-                m_recognizer.BusDisconnect();
+                BusDisconnect();
             }
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnRotateInitiated(const RecognizerRotate& recognizer) override
+        void OnContinuousGestureInitiated() override
         {
             ActivateOutput(&m_activationInfo, Output_Initiated, true);
 
-            const Vec2 startPosition = recognizer.GetStartMidpoint();
-            ActivateOutput(&m_activationInfo, Output_StartX, startPosition.x);
-            ActivateOutput(&m_activationInfo, Output_StartY, startPosition.y);
-            ActivateOutput(&m_activationInfo, Output_StartDistance, recognizer.GetStartDistance());
+            const AZ::Vector2 startPosition = GetStartMidpoint();
+            ActivateOutput(&m_activationInfo, Output_StartX, startPosition.GetX());
+            ActivateOutput(&m_activationInfo, Output_StartY, startPosition.GetY());
+            ActivateOutput(&m_activationInfo, Output_StartDistance, GetStartDistance());
 
-            OnRotateEvent(recognizer);
+            OnRotateEvent();
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnRotateUpdated(const RecognizerRotate& recognizer) override
+        void OnContinuousGestureUpdated() override
         {
             ActivateOutput(&m_activationInfo, Output_Updated, true);
 
-            OnRotateEvent(recognizer);
+            OnRotateEvent();
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnRotateEnded(const RecognizerRotate& recognizer) override
+        void OnContinuousGestureEnded() override
         {
             ActivateOutput(&m_activationInfo, Output_Ended, true);
 
-            OnRotateEvent(recognizer);
+            OnRotateEvent();
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnRotateEvent(const RecognizerRotate& recognizer)
+        void OnRotateEvent()
         {
-            const Vec2 currentPosition = recognizer.GetCurrentMidpoint();
-            ActivateOutput(&m_activationInfo, Output_CurrentX, currentPosition.x);
-            ActivateOutput(&m_activationInfo, Output_CurrentY, currentPosition.y);
-            ActivateOutput(&m_activationInfo, Output_CurrentDistance, recognizer.GetCurrentDistance());
+            const AZ::Vector2 currentPosition = GetCurrentMidpoint();
+            ActivateOutput(&m_activationInfo, Output_CurrentX, currentPosition.GetX());
+            ActivateOutput(&m_activationInfo, Output_CurrentY, currentPosition.GetY());
+            ActivateOutput(&m_activationInfo, Output_CurrentDistance, GetCurrentDistance());
 
-            ActivateOutput(&m_activationInfo, Output_RotationDegrees, recognizer.GetSignedRotationInDegrees());
+            ActivateOutput(&m_activationInfo, Output_RotationDegrees, GetSignedRotationInDegrees());
         }
 
     private:
         SActivationInfo m_activationInfo;
-        RecognizerRotate m_recognizer;
         bool m_enabled;
     };
 

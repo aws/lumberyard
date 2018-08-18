@@ -1965,6 +1965,10 @@ end
 
 function aicontroller:SetStrafeFacing()
 	self.setStrafeFacingId = GameplayNotificationId(self.entityId, "SetStrafeFacing", "float");
-	GameplayNotificationBus.Event.OnEventBegin(self.setStrafeFacingId, self.aimDirection);
+	local flatAiming = Vector3(self.aimDirection.x, self.aimDirection.y, 0.0);
+	if(flatAiming:GetLengthSq() > 0) then
+		flatAiming:Normalize();
+		GameplayNotificationBus.Event.OnEventBegin(self.setStrafeFacingId, flatAiming);
+	end
 end
 return aicontroller;

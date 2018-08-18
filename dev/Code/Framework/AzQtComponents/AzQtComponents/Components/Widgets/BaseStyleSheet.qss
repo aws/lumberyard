@@ -34,13 +34,19 @@ QDockWidget
 
 QTextEdit,
 QPlainText,
-QLineEdit
+QLineEdit,
+QSpinBox,
+QDoubleSpinBox,
+QComboBox
 {
-    background-color: white;
+    background-color: #e9e9e9;
     color: black;
     font-family: "Amazon Ember";
+    border-radius: 2px;
+    border-width: 0px;
+    font-size: 12px;
+    line-height: 16px;
 }
-
 
 @import "Text.qss";
 @import "PushButton.qss";
@@ -49,5 +55,13 @@ QLineEdit
 @import "RadioButton.qss";
 @import "ToolTip.qss";
 @import "ProgressBar.qss";
+@import "ColorPicker.qss";
 @import "Slider.qss";
 @import "Card.qss";
+@import "BrowseEdit.qss";
+@import "BreadCrumbs.qss";
+@import "LineEdit.qss";
+@import "ComboBox.qss";
+@import "SegmentControl.qss";
+@import "SpinBox.qss";
+@import "ScrollBar.qss";

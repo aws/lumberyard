@@ -32,6 +32,8 @@ namespace EMStudio
         : public EMotionFX::EventHandler
     {
     public:
+        AZ_CLASS_ALLOCATOR(SceneManagerPluginEventHandler, EMotionFX::EventHandlerAllocator, 0)
+
         void OnDeleteActor(EMotionFX::Actor* actor) override
         {
             if (actor == nullptr)
@@ -438,7 +440,7 @@ namespace EMStudio
         }
 
         // add the event handler
-        mEventHandler = new SceneManagerPluginEventHandler();
+        mEventHandler = aznew SceneManagerPluginEventHandler();
         EMotionFX::GetEventManager().AddEventHandler(mEventHandler);
 
         return true;

@@ -44,16 +44,27 @@ def build(bld):
         includes            = ['..',
                                bld.ThirdPartyPath('squish'),
                                bld.Path('Code/CryEngine/RenderDll/XRenderD3D9')],
-        defines             = ['NULL_RENDERER', '_RENDERER', 'RENDERER_EXPORTS', 'ENGINE_EXPORTS' ],
+        defines             = ['NULL_RENDERER', '_RENDERER' ],
         use                 = ['AzFramework'],
         uselib              = ['LZMA',
                                'LZSS'],
         additional_settings = bld.Settings( files = '../Common/lzss.cpp', disable_pch = True ),
 
+        # Compiler Specific
+        msvc_cxxflags       = ['/Zm200'],
+
         # Platform Specific
-        win_cxxflags     = '/Zm200',
         win_lib          = [ 'opengl32', 'glu32', 'Shell32', 'Gdi32', 'Ole32' ],
         win_libpath      = [ bld.Path('Code/CryEngine/RenderDll/XRenderD3D9') ],
+
+        win_x64_clang_cxxflags = [
+                                '-Wno-microsoft-unqualified-friend',
+                                '-Wno-deprecated-declarations',
+                                '-Wno-sometimes-uninitialized',
+                                '-Wno-shift-negative-value',
+                                '-Wno-null-dereference',
+                                '-Wno-array-bounds',
+                                '-Wno-return-type' ],
 
         # Testing
         test_all_file_list = ['core_null_renderer_test.waf_files'],

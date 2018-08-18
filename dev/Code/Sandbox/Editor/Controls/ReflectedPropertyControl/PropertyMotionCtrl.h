@@ -15,7 +15,7 @@
 #pragma once
 
 #include <AzCore/base.h>
-#include <AzCore/Memory/systemallocator.h>
+#include <AzCore/Memory/SystemAllocator.h>
 #include "ReflectedVar.h"
 #include <QtWidgets/QWidget>
 #include <QPointer>

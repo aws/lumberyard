@@ -12,6 +12,7 @@
 
 #include "EMotionFX_precompiled.h"
 #include <Integration/Assets/AnimGraphAsset.h>
+#include <EMotionFX/Source/Allocators.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 
 
@@ -19,12 +20,13 @@ namespace EMotionFX
 {
     namespace Integration
     {
-        //////////////////////////////////////////////////////////////////////////
+        AZ_CLASS_ALLOCATOR_IMPL(AnimGraphAsset, EMotionFXAllocator, 0)
+        AZ_CLASS_ALLOCATOR_IMPL(AnimGraphAssetHandler, EMotionFXAllocator, 0)
+
         AnimGraphAsset::AnimGraphAsset()
         {
         }
 
-        //////////////////////////////////////////////////////////////////////////
         AnimGraphAsset::AnimGraphInstancePtr AnimGraphAsset::CreateInstance(
             EMotionFX::ActorInstance* actorInstance,
             EMotionFX::MotionSet* motionSet)
@@ -41,33 +43,62 @@ namespace EMotionFX
             return animGraphInstance;
         }
 
+        void AnimGraphAsset::SetData(EMotionFX::AnimGraph* animGraph)
+        {
+            m_emfxAnimGraph.reset(animGraph);
+            m_status = static_cast<int>(AZ::Data::AssetData::AssetStatus::Ready);
+        }
+
         //////////////////////////////////////////////////////////////////////////
         bool AnimGraphAssetHandler::OnInitAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
         {
             AnimGraphAsset* assetData = asset.GetAs<AnimGraphAsset>();
-            assetData->m_emfxAnimGraph = EMotionFXPtr<EMotionFX::AnimGraph>::MakeFromNew(EMotionFX::GetImporter().LoadAnimGraph(
+            assetData->m_emfxAnimGraph.reset(EMotionFX::GetImporter().LoadAnimGraph(
                 assetData->m_emfxNativeData.data(),
                 assetData->m_emfxNativeData.size()));
 
             if (assetData->m_emfxAnimGraph)
             {
                 assetData->m_emfxAnimGraph->SetIsOwnedByRuntime(true);
+
+                assetData->m_emfxAnimGraph->FindAndRemoveCycles();
+
+                // The following code is required to be set so the FileManager detects changes to the files loaded
+                // through this method. Once EMotionFX is integrated to the asset system this can go away.
+                AZStd::string assetFilename;
+                EBUS_EVENT_RESULT(assetFilename, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, asset.GetId());
+                const char* devAssetsPath = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devassets@");
+                if (devAssetsPath)
+                {
+                    AZStd::string assetSourcePath = devAssetsPath;
+
+                    AzFramework::StringFunc::AssetDatabasePath::Normalize(assetSourcePath);
+                    AZStd::string filename;
+                    AzFramework::StringFunc::AssetDatabasePath::Join(assetSourcePath.c_str(), assetFilename.c_str(), filename, true);
+
+                    assetData->m_emfxAnimGraph->SetFileName(filename.c_str());
+                }
+                else
+                {
+                    AZ_Warning("EMotionFX", false, "Failed to retrieve asset source path with alias '@devassets@'. Cannot set absolute filename for '%s'", assetFilename.c_str());
+                    assetData->m_emfxAnimGraph->SetFileName(assetFilename.c_str());
+                }
             }
 
             AZ_Error("EMotionFX", assetData->m_emfxAnimGraph, "Failed to initialize anim graph asset %s", asset.ToString<AZStd::string>().c_str());
-            return (assetData->m_emfxAnimGraph);
+            return static_cast<bool>(assetData->m_emfxAnimGraph);
         }
 
 
         void AnimGraphAssetHandler::DestroyAsset(AZ::Data::AssetPtr ptr)
         {
             AnimGraphAsset* animGraphAsset = static_cast<AnimGraphAsset*>(ptr);
-            EMotionFXPtr<EMotionFX::AnimGraph> animGraph = animGraphAsset->GetAnimGraph();
+            EMotionFX::AnimGraph* animGraph = animGraphAsset->GetAnimGraph();
 
             if (animGraph)
             {
                 // Get rid of all anim graph instances that refer to the anim graph we're about to destroy.
-                EMotionFX::GetAnimGraphManager().RemoveAnimGraphInstances(animGraph.get());
+                EMotionFX::GetAnimGraphManager().RemoveAnimGraphInstances(animGraph);
             }
 
             delete ptr;
@@ -76,7 +107,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         AZ::Data::AssetType AnimGraphAssetHandler::GetAssetType() const
         {
-            return AZ::AzTypeInfo<AnimGraphAsset>::Uuid();
+            return azrtti_typeid<AnimGraphAsset>();
         }
 
         //////////////////////////////////////////////////////////////////////////

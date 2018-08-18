@@ -10,10 +10,10 @@
 *
 */
 
-#ifndef __EMSTUDIO_STATEFILTERSELECTIONDIALOG_H
-#define __EMSTUDIO_STATEFILTERSELECTIONDIALOG_H
+#pragma once
 
 #include <MCore/Source/StandardHeaders.h>
+#include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/AnimGraphTransitionCondition.h>
 #include "../StandardPluginsConfig.h"
 #include <QDialog>
@@ -32,16 +32,16 @@ namespace EMStudio
         : public QDialog
     {
         Q_OBJECT
-                 MCORE_MEMORYOBJECTCATEGORY(StateFilterSelectionWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
+        MCORE_MEMORYOBJECTCATEGORY(StateFilterSelectionWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
 
     public:
-        StateFilterSelectionWindow(AnimGraphPlugin* plugin, QWidget* parent);
+        StateFilterSelectionWindow(QWidget* parent);
         ~StateFilterSelectionWindow();
 
-        void ReInit(EMotionFX::AnimGraph* animGraph, const MCore::Array<AZStd::string>& oldNodeSelection, const MCore::Array<AZStd::string>& oldGroupSelection);
+        void ReInit(EMotionFX::AnimGraphStateMachine* stateMachine, const AZStd::vector<EMotionFX::AnimGraphNodeId>& oldNodeSelection, const AZStd::vector<AZStd::string>& oldGroupSelection);
 
-        const MCore::Array<AZStd::string>& GetSelectedNodeNames() const                 { return mSelectedNodeNames; }
-        const MCore::Array<AZStd::string>& GetSelectedGroupNames() const                    { return mSelectedGroupNames; }
+        const AZStd::vector<EMotionFX::AnimGraphNodeId> GetSelectedNodeIds() const       { return m_selectedNodeIds; }
+        const AZStd::vector<AZStd::string>& GetSelectedGroupNames() const                { return mSelectedGroupNames; }
 
     protected slots:
         void OnSelectionChanged();
@@ -64,15 +64,12 @@ namespace EMStudio
 
         EMotionFX::AnimGraphNodeGroup* FindGroupByWidget(QTableWidgetItem* widget) const;
         EMotionFX::AnimGraphNode* FindNodeByWidget(QTableWidgetItem* widget) const;
-        void AddRow(uint32 rowIndex, const char* name, bool isGroup, bool isSelected, const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 1.0f, 1.0f));
+        void AddRow(uint32 rowIndex, const char* name, bool isGroup, bool isSelected, const QColor& color = QColor(255, 255, 255));
 
-        MCore::Array<WidgetLookup>  mWidgetTable;
-        MCore::Array<AZStd::string> mSelectedGroupNames;
-        MCore::Array<AZStd::string> mSelectedNodeNames;
-        AnimGraphPlugin*           mPlugin;
-        QTableWidget*               mTableWidget;
-        EMotionFX::AnimGraph*      mAnimGraph;
+        AZStd::vector<WidgetLookup>         mWidgetTable;
+        AZStd::vector<AZStd::string>        mSelectedGroupNames;
+        AZStd::vector<EMotionFX::AnimGraphNodeId> m_selectedNodeIds;
+        QTableWidget*                       mTableWidget;
+        EMotionFX::AnimGraphStateMachine*   m_stateMachine;
     };
 } // namespace EMStudio
-
-#endif

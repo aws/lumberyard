@@ -122,7 +122,7 @@ namespace AZ
                         object->OnUserRemoved();
                         m_manifestVector.erase(it);
                         QTimer::singleShot(0, this, 
-                            [this, object]()
+                            [this]()
                             {
                                 UpdatePropertyGrid();
                                 EmitObjectChanged(m_ownerObject);
@@ -186,7 +186,7 @@ namespace AZ
                     }
 
                     QAction* objectCreateAction = new QAction(displayName.c_str(), m_ui->m_addObjectButton);
-                    connect(objectCreateAction, &QAction::triggered, 
+                    connect(objectCreateAction, &QAction::triggered, this,
                         [this, manifestClassData, displayName]() 
                         {
                             this->AddNewObject(manifestClassData->m_factory, displayName); 

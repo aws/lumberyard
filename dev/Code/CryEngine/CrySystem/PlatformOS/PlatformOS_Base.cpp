@@ -150,31 +150,6 @@ bool PlatformOS_Base::UserGetOnlineName(unsigned int userIndex, IPlatformOS::TUs
     return UserGetName(userIndex, outName);
 }
 
-bool PlatformOS_Base::KeyboardStart(unsigned int inUserIndex, unsigned int flags, const char* title, const char* initialInput, int maxInputLength, IVirtualKeyboardEvents* pInCallback)
-{
-    AzFramework::InputTextEntryRequests::VirtualKeyboardOptions options;
-    options.m_initialText = initialInput;
-    options.m_titleText = title;
-    AzFramework::InputTextEntryRequestBus::Event(AzFramework::InputDeviceVirtualKeyboard::Id,
-        &AzFramework::InputTextEntryRequests::TextEntryStart, options);
-    return true;
-}
-
-bool PlatformOS_Base::KeyboardIsRunning()
-{
-    bool hasTextEntryStarted = false;
-    AzFramework::InputTextEntryRequestBus::EventResult(hasTextEntryStarted,
-                                                        AzFramework::InputDeviceVirtualKeyboard::Id,
-                                                        &AzFramework::InputTextEntryRequests::HasTextEntryStarted);
-    return hasTextEntryStarted;
-}
-
-bool PlatformOS_Base::KeyboardCancel()
-{
-    AzFramework::InputTextEntryRequestBus::Event(AzFramework::InputDeviceVirtualKeyboard::Id,
-                                                 &AzFramework::InputTextEntryRequests::TextEntryStop);
-    return true;
-}
 
 void PlatformOS_Base::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
 {

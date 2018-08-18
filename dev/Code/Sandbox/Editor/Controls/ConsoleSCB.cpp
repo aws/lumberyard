@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ConsoleSCB.h"
 #include "QtViewPaneManager.h"
 #include "Core/QtEditorApplication.h"
@@ -589,7 +589,7 @@ ConsoleTextEdit::ConsoleTextEdit(QWidget* parent)
     deleteAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     deleteAction->setShortcut(QKeySequence::Delete);
     deleteAction->setEnabled(false);
-    connect(deleteAction, &QAction::triggered, [=]() { textCursor().removeSelectedText(); } );
+    connect(deleteAction, &QAction::triggered, this, [=]() { textCursor().removeSelectedText(); } );
     addAction(deleteAction);
 
     QAction* clearAction = m_contextMenu->addAction(tr("Clear"));
@@ -1071,10 +1071,10 @@ ConsoleVariableEditor::ConsoleVariableEditor(QWidget* parent)
     setWindowTitle(tr("Console Variables"));
 
     // Disable the vertical scroll bar when we have an edit in progress
-    QObject::connect(m_itemDelegate, &ConsoleVariableItemDelegate::editInProgress, [this]() {
+    QObject::connect(m_itemDelegate, &ConsoleVariableItemDelegate::editInProgress, this, [this]() {
         m_tableView->verticalScrollBar()->setDisabled(true);
     });
-    QObject::connect(m_itemDelegate, &ConsoleVariableItemDelegate::closeEditor, [this]() {
+    QObject::connect(m_itemDelegate, &ConsoleVariableItemDelegate::closeEditor, this, [this]() {
         m_tableView->verticalScrollBar()->setEnabled(true);
     });
 

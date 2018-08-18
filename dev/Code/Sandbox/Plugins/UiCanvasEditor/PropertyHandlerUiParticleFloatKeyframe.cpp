@@ -47,7 +47,7 @@ PropertyUiParticleFloatKeyframeCtrl::PropertyUiParticleFloatKeyframeCtrl(QWidget
     m_timeCtrl->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
     m_timeCtrl->setToolTip(tr("Time in the range [0,1]."));
 
-    QObject::connect(m_timeCtrl, &AzToolsFramework::PropertyDoubleSpinCtrl::valueChanged, [this]()
+    QObject::connect(m_timeCtrl, &AzToolsFramework::PropertyDoubleSpinCtrl::valueChanged, this, [this]()
         {
             EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, this);
         });
@@ -64,7 +64,7 @@ PropertyUiParticleFloatKeyframeCtrl::PropertyUiParticleFloatKeyframeCtrl(QWidget
     m_multiplierCtrl->setMinimumWidth(AzToolsFramework::PropertyQTConstant_MinimumWidth);
     m_multiplierCtrl->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
 
-    QObject::connect(m_multiplierCtrl, &AzToolsFramework::PropertyDoubleSpinCtrl::valueChanged, [this]()
+    QObject::connect(m_multiplierCtrl, &AzToolsFramework::PropertyDoubleSpinCtrl::valueChanged, this, [this]()
         {
             EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, this);
         });
@@ -94,7 +94,7 @@ PropertyUiParticleFloatKeyframeCtrl::PropertyUiParticleFloatKeyframeCtrl(QWidget
     m_inTangentCtrl->addEnumValue(linearTangent);
     m_inTangentCtrl->addEnumValue(stepTangent);
 
-    QObject::connect(m_inTangentCtrl, &AzToolsFramework::PropertyEnumComboBoxCtrl::valueChanged, [this]()
+    QObject::connect(m_inTangentCtrl, &AzToolsFramework::PropertyEnumComboBoxCtrl::valueChanged, this, [this]()
         {
             EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, this);
         });
@@ -111,7 +111,7 @@ PropertyUiParticleFloatKeyframeCtrl::PropertyUiParticleFloatKeyframeCtrl(QWidget
     m_outTangentCtrl->addEnumValue(linearTangent);
     m_outTangentCtrl->addEnumValue(stepTangent);
 
-    QObject::connect(m_outTangentCtrl, &AzToolsFramework::PropertyEnumComboBoxCtrl::valueChanged, [this]()
+    QObject::connect(m_outTangentCtrl, &AzToolsFramework::PropertyEnumComboBoxCtrl::valueChanged, this, [this]()
         {
             EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, this);
         });

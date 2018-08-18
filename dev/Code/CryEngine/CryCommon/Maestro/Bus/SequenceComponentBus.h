@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <AzFramework/Math/MathUtils.h>
+#include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -268,7 +268,7 @@ namespace Maestro
             AZ::Quaternion GetQuaternionValue() const override
             {
                 // treat m_value as Euler Angles in degrees
-                return AzFramework::ConvertEulerDegreesToQuaternion(m_value);
+                return AZ::ConvertEulerDegreesToQuaternion(m_value);
             }
             float GetFloatValue() const override
             {
@@ -300,7 +300,7 @@ namespace Maestro
             }
             bool SetValue(const AZ::Quaternion& quaternionValue) override
             {
-                m_value = AzFramework::ConvertQuaternionToEulerDegrees(quaternionValue);
+                m_value = AZ::ConvertQuaternionToEulerDegrees(quaternionValue);
                 return true;
             }
             bool SetValue(float floatValue) override
@@ -374,7 +374,7 @@ namespace Maestro
             AZ::Vector3 GetVector3Value() const override
             {
                 // convert Quaternion to Euler angles
-                return AzFramework::ConvertQuaternionToEulerDegrees(m_value);
+                return AZ::ConvertQuaternionToEulerDegrees(m_value);
             }
             AZ::Quaternion GetQuaternionValue() const override
             {
@@ -407,7 +407,7 @@ namespace Maestro
             bool SetValue(const AZ::Vector3& vector3Value) override
             {
                 // convert from Euler angles
-                m_value = AzFramework::ConvertEulerRadiansToQuaternion(vector3Value);
+                m_value = AZ::ConvertEulerRadiansToQuaternion(vector3Value);
                 return false;
             }
             bool SetValue(const AZ::Quaternion& quaternionValue) override

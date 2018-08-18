@@ -10,20 +10,21 @@
 *
 */
 
-#include "BlendSpace2DNode.h"
-#include "AnimGraphInstance.h"
-#include "AnimGraphManager.h"
-#include "BlendSpaceManager.h"
-#include "ActorInstance.h"
-#include "MotionInstance.h"
-#include "AnimGraphAttributeTypes.h"
-#include "AnimGraph.h"
-#include "MotionSet.h"
-#include "EMotionFXManager.h"
-#include <MCore/Source/DelaunayTriangulator.h>
-#include <MCore/Source/AttributeSettings.h>
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/std/sort.h>
-#include <AzCore/std/algorithm.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <MCore/Source/DelaunayTriangulator.h>
+#include <EMotionFX/Source/BlendSpace2DNode.h>
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/BlendSpaceManager.h>
+#include <EMotionFX/Source/BlendSpaceParamEvaluator.h>
+#include <EMotionFX/Source/ActorInstance.h>
+#include <EMotionFX/Source/MotionInstance.h>
+#include <EMotionFX/Source/MotionSet.h>
+
 
 namespace
 {
@@ -110,6 +111,9 @@ namespace EMotionFX
 {
     const float BlendSpace2DNode::s_epsilonForBarycentricCoords = 0.001f;
 
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpace2DNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpace2DNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
+
     BlendSpace2DNode::Triangle::Triangle(uint16_t indexA, uint16_t indexB, uint16_t indexC)
     {
         m_vertIndices[0] = indexA;
@@ -117,42 +121,120 @@ namespace EMotionFX
         m_vertIndices[2] = indexC;
     }
 
+
+    BlendSpace2DNode::BlendSpace2DNode()
+        : BlendSpaceNode(nullptr, "")
+        , m_evaluatorX(nullptr)
+        , m_evaluatorTypeX(azrtti_typeid<BlendSpaceParamEvaluatorNone>())
+        , m_calculationMethodX(ECalculationMethod::AUTO)
+        , m_evaluatorY(nullptr)
+        , m_evaluatorTypeY(azrtti_typeid<BlendSpaceParamEvaluatorNone>())
+        , m_calculationMethodY(ECalculationMethod::AUTO)
+        , m_syncMode(SYNCMODE_DISABLED)
+        , m_currentPositionSetInteractively(false)
+    {
+        InitInputPorts(2);
+        SetupInputPortAsNumber("X", INPUTPORT_XVALUE, PORTID_INPUT_XVALUE);
+        SetupInputPortAsNumber("Y", INPUTPORT_YVALUE, PORTID_INPUT_YVALUE);
+
+        InitOutputPorts(1);
+        SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
+    }
+
+
+    BlendSpace2DNode::~BlendSpace2DNode()
+    {
+    }
+
+
+    void BlendSpace2DNode::Reinit()
+    {
+        const BlendSpaceManager* blendSpaceManager = GetAnimGraphManager().GetBlendSpaceManager();
+        m_evaluatorX = blendSpaceManager->FindEvaluatorByType(m_evaluatorTypeX);
+        m_evaluatorY = blendSpaceManager->FindEvaluatorByType(m_evaluatorTypeY);
+
+        for (BlendSpaceMotion& motion : m_motions)
+        {
+            motion.SetDimension(2);
+        }
+
+        AnimGraphNode::Reinit();
+
+        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numAnimGraphInstances; ++i)
+        {
+            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
+
+            OnUpdateUniqueData(animGraphInstance);
+        }
+    }
+
+
+    bool BlendSpace2DNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
+    }
+
+
+    BlendSpace2DNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+        : AnimGraphNodeData(node, animGraphInstance)
+        , m_allMotionsHaveSyncTracks(false)
+        , m_rangeMin(0, 0)
+        , m_rangeMax(0, 0)
+        , m_currentPosition(0, 0)
+        , m_normCurrentPosition(0, 0)
+        , m_masterMotionIdx(0)
+        , m_hasDegenerateTriangles(false)
+    {
+    }
+
+
     BlendSpace2DNode::UniqueData::~UniqueData()
     {
         BlendSpaceNode::ClearMotionInfos(m_motionInfos);
     }
 
-    BlendSpace2DNode* BlendSpace2DNode::Create(AnimGraph* animGraph)
+
+    AZ::Vector2 BlendSpace2DNode::UniqueData::ConvertToNormalizedSpace(const AZ::Vector2& pt) const
     {
-        return new BlendSpace2DNode(animGraph);
+        return (pt - m_rangeCenter) * m_normalizationScale;
     }
+
+
+    void BlendSpace2DNode::UniqueData::Reset()
+    {
+        BlendSpaceNode::ClearMotionInfos(m_motionInfos);
+    }
+
 
     bool BlendSpace2DNode::GetValidCalculationMethodsAndEvaluators() const
     {
-        const ECalculationMethod calculationMethodX = GetBlendSpaceCalculationMethod(ATTRIB_CALCULATION_METHOD_X);
-        const ECalculationMethod calculationMethodY = GetBlendSpaceCalculationMethod(ATTRIB_CALCULATION_METHOD_Y);
-
         // If both calculation methods are manual, we have valid blend space param evaluators
-        if (calculationMethodX == ECalculationMethod::MANUAL
-            && calculationMethodY == ECalculationMethod::MANUAL)
+        if (m_calculationMethodX == ECalculationMethod::MANUAL &&
+            m_calculationMethodY == ECalculationMethod::MANUAL)
         {
             return true;
         }
         else
         {
-            const BlendSpaceParamEvaluator* evaluatorX = GetBlendSpaceParamEvaluator(ATTRIB_EVALUATOR_X);
-            const BlendSpaceParamEvaluator* evaluatorY = GetBlendSpaceParamEvaluator(ATTRIB_EVALUATOR_Y);
+            AZ_Assert(m_calculationMethodX == ECalculationMethod::MANUAL || m_evaluatorX, "Expected non-null blend space param evaluator for X-Axis with auto calculation method");
+            AZ_Assert(m_calculationMethodY == ECalculationMethod::MANUAL || m_evaluatorY, "Expected non-null blend space param evaluator for Y-Axis with auto calculation method");
 
-            AZ_Assert(calculationMethodX == ECalculationMethod::MANUAL || evaluatorX, "Expected non-null blend space param evaluator for X-Axis with auto calculation method");
-            AZ_Assert(calculationMethodY == ECalculationMethod::MANUAL || evaluatorY, "Expected non-null blend space param evaluator for Y-Axis with auto calculation method");
-
-            if ((calculationMethodX == ECalculationMethod::AUTO && evaluatorX->IsNullEvaluator())
-                || (calculationMethodY == ECalculationMethod::AUTO && evaluatorY->IsNullEvaluator()))
+            if ((m_calculationMethodX == ECalculationMethod::AUTO && m_evaluatorX->IsNullEvaluator())
+                || (m_calculationMethodY == ECalculationMethod::AUTO && m_evaluatorY->IsNullEvaluator()))
             {
                 // If any of the calculation methods is auto and it doesnt have an evaluator, then is invalid
                 return false;
             }
-            else if (evaluatorX == evaluatorY)
+            else if (m_evaluatorX == m_evaluatorY)
             {
                 // if both evaluators are the same, then it is invalid
                 return false;
@@ -166,15 +248,31 @@ namespace EMotionFX
 
     const char* BlendSpace2DNode::GetAxisLabel(int axisIndex) const
     {
-        AZ_Assert((axisIndex == 0) || (axisIndex == 1), "Invalid axis index");
-
-        const uint32 attribIndex = (axisIndex == 0) ? ATTRIB_EVALUATOR_X : ATTRIB_EVALUATOR_Y;
-        BlendSpaceParamEvaluator* evaluator = GetBlendSpaceParamEvaluator(attribIndex);
-        if (!evaluator || evaluator->IsNullEvaluator())
+        switch (axisIndex)
         {
-            return (axisIndex == 0) ? "X-Axis" : "Y-Axis";
+        case 0:
+        {
+            if (!m_evaluatorX || m_evaluatorX->IsNullEvaluator())
+            {
+                return "X-Axis";
+            }
+
+            return m_evaluatorX->GetName();
         }
-        return evaluator->GetName();
+        case 1:
+        {
+            if (!m_evaluatorY || m_evaluatorY->IsNullEvaluator())
+            {
+                return "Y-Axis";
+            }
+
+            return m_evaluatorY->GetName();
+        }
+        default:
+        {
+            return "Invalid axis index";
+        }
+        }
     }
 
     void BlendSpace2DNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
@@ -183,47 +281,13 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<BlendSpace2DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (!uniqueData)
         {
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
 
         UpdateMotionInfos(animGraphInstance);
     }
 
-    void BlendSpace2DNode::Init(AnimGraphInstance* animGraphInstance)
-    {
-        MCORE_UNUSED(animGraphInstance);
-    }
-
-    void BlendSpace2DNode::RegisterPorts()
-    {
-        InitInputPorts(2);
-        SetupInputPortAsNumber("X", INPUTPORT_XVALUE, PORTID_INPUT_XVALUE);
-        SetupInputPortAsNumber("Y", INPUTPORT_YVALUE, PORTID_INPUT_YVALUE);
-
-        InitOutputPorts(1);
-        SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
-    }
-
-    void BlendSpace2DNode::RegisterAttributes()
-    {
-        RegisterCalculationMethodAttribute("Calculation method (X-Axis)", "calculationMethodX", "Calculation method for the X Axis");
-        RegisterBlendSpaceEvaluatorAttribute("X-Axis Evaluator", "evaluatorX", "Evaluator for the X axis value of motions");
-        RegisterCalculationMethodAttribute("Calculation method (Y-Axis)", "calculationMethodY", "Calculation method for the Y Axis");
-        RegisterBlendSpaceEvaluatorAttribute("Y-Axis Evaluator", "evaluatorY", "Evaluator for the Y axis value of motions");
-        RegisterSyncAttribute();
-        RegisterMasterMotionAttribute();
-        RegisterBlendSpaceEventFilterAttribute();
-
-        MCore::AttributeSettings* attribute = RegisterAttribute("Motions", "motions", "Source motions for blend space", ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONS);
-        attribute->SetReinitGuiOnValueChange(true);
-        attribute->SetDefaultValue(MCore::AttributeArray::Create(AttributeBlendSpaceMotion::TYPE_ID));
-    }
-
-    const char* BlendSpace2DNode::GetTypeString() const
-    {
-        return "BlendSpace2DNode";
-    }
 
     const char* BlendSpace2DNode::GetPaletteName() const
     {
@@ -235,79 +299,6 @@ namespace EMotionFX
         return AnimGraphObject::CATEGORY_BLENDING;
     }
 
-    // This implementation currently just does what the other node classes in the
-    // EMFX code base are doing. This is not a proper implementation of
-    // "Clone" since "CopyBaseObjectTo" currently copies only the AnimGraphObject
-    AnimGraphObject* BlendSpace2DNode::Clone(AnimGraph* animGraph)
-    {
-        BlendSpace2DNode* clone = new BlendSpace2DNode(animGraph);
-
-        CopyBaseObjectTo(clone);
-
-        return clone;
-    }
-
-    AnimGraphObjectData* BlendSpace2DNode::CreateObjectData()
-    {
-        return new UniqueData(this, nullptr);
-    }
-
-    // Called when the attributes change.
-    void BlendSpace2DNode::OnUpdateAttributes()
-    {
-        if (mAttributeValues.GetIsEmpty())
-        {
-            return;
-        }
-
-        // Mark AttributeBlendSpaceMotion attributes as belonging to 2D blend space
-        MCore::AttributeArray* attributeArray = GetMotionAttributeArray();
-        if (attributeArray)
-        {
-            const uint32 numMotions = attributeArray->GetNumAttributes();
-            for (uint32 i = 0; i < numMotions; ++i)
-            {
-                AttributeBlendSpaceMotion* attrib = static_cast<AttributeBlendSpaceMotion*>(attributeArray->GetAttribute(i));
-                attrib->SetDimension(2);
-            }
-        }
-
-        const uint32 numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (uint32 i = 0; i < numAnimGraphInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-
-            OnUpdateUniqueData(animGraphInstance);
-        }
-
-        // disable GUI items that have no influence
-#ifdef EMFX_EMSTUDIOBUILD
-        EnableAllAttributes(true);
-
-        // Here, disable any attribute as needed.
-        const ECalculationMethod calculationMethodX = static_cast<ECalculationMethod>(static_cast<int>(GetAttributeFloat(ATTRIB_CALCULATION_METHOD_X)->GetValue()));
-        if (calculationMethodX == ECalculationMethod::MANUAL)
-        {
-            SetAttributeDisabled(ATTRIB_EVALUATOR_X);
-            GetAttributeFloat(ATTRIB_EVALUATOR_X)->SetValue(0.0f);
-        }
-        else // Automatic calculation method
-        {
-            SetAttributeEnabled(ATTRIB_EVALUATOR_X);
-        }
-
-        const ECalculationMethod calculationMethodY = static_cast<ECalculationMethod>(static_cast<int>(GetAttributeFloat(ATTRIB_CALCULATION_METHOD_Y)->GetValue()));
-        if (calculationMethodY == ECalculationMethod::MANUAL)
-        {
-            SetAttributeDisabled(ATTRIB_EVALUATOR_Y);
-            GetAttributeFloat(ATTRIB_EVALUATOR_Y)->SetValue(0.0f);
-        }
-        else // Automatic calculation method
-        {
-            SetAttributeEnabled(ATTRIB_EVALUATOR_Y);
-        }
-#endif
-    }
 
     void BlendSpace2DNode::Output(AnimGraphInstance* animGraphInstance)
     {
@@ -399,8 +390,7 @@ namespace EMotionFX
         }
 
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        const ESyncMode syncMode = (ESyncMode)((uint32)GetAttributeFloat(ATTRIB_SYNC)->GetValue());
-        DoTopDownUpdate(animGraphInstance, syncMode, uniqueData->m_masterMotionIdx,
+        DoTopDownUpdate(animGraphInstance, m_syncMode, uniqueData->m_masterMotionIdx,
             uniqueData->m_motionInfos, uniqueData->m_allMotionsHaveSyncTracks);
 
         for (int i = 0; i < 2; ++i)
@@ -447,24 +437,25 @@ namespace EMotionFX
         uniqueData->m_normCurrentPosition = uniqueData->ConvertToNormalizedSpace(uniqueData->m_currentPosition);
 
         // Set the duration and current play time etc to the master motion index, or otherwise just the first motion in the list if syncing is disabled.
-        const ESyncMode syncMode = (ESyncMode)((uint32)GetAttributeFloat(ATTRIB_SYNC)->GetValue());
         AZ::u32 motionIndex = (uniqueData->m_masterMotionIdx != MCORE_INVALIDINDEX32) ? uniqueData->m_masterMotionIdx : MCORE_INVALIDINDEX32;
-        if (syncMode == ESyncMode::SYNCMODE_DISABLED || motionIndex == MCORE_INVALIDINDEX32)
+        if (m_syncMode == ESyncMode::SYNCMODE_DISABLED || motionIndex == MCORE_INVALIDINDEX32)
+        {
             motionIndex = 0;
+        }
 
         UpdateBlendingInfoForCurrentPoint(*uniqueData);
 
-        DoUpdate(timePassedInSeconds, uniqueData->m_blendInfos, syncMode, uniqueData->m_masterMotionIdx, uniqueData->m_motionInfos);
+        DoUpdate(timePassedInSeconds, uniqueData->m_blendInfos, m_syncMode, uniqueData->m_masterMotionIdx, uniqueData->m_motionInfos);
 
         if (!uniqueData->m_motionInfos.empty())
         {
             const MotionInfo& motionInfo = uniqueData->m_motionInfos[motionIndex];
-            uniqueData->SetDuration( motionInfo.m_motionInstance ? motionInfo.m_motionInstance->GetDuration() : 0.0f );
-            uniqueData->SetCurrentPlayTime( motionInfo.m_currentTime );
-            uniqueData->SetSyncTrack( motionInfo.m_syncTrack );
-            uniqueData->SetSyncIndex( motionInfo.m_syncIndex );
-            uniqueData->SetPreSyncTime( motionInfo.m_preSyncTime);
-            uniqueData->SetPlaySpeed( motionInfo.m_playSpeed );               
+            uniqueData->SetDuration(motionInfo.m_motionInstance ? motionInfo.m_motionInstance->GetDuration() : 0.0f);
+            uniqueData->SetCurrentPlayTime(motionInfo.m_currentTime);
+            uniqueData->SetSyncTrack(motionInfo.m_syncTrack);
+            uniqueData->SetSyncIndex(motionInfo.m_syncIndex);
+            uniqueData->SetPreSyncTime(motionInfo.m_preSyncTime);
+            uniqueData->SetPlaySpeed(motionInfo.m_playSpeed);
         }
     }
 
@@ -506,22 +497,9 @@ namespace EMotionFX
         data->ClearEventBuffer();
         data->ZeroTrajectoryDelta();
 
-        const EBlendSpaceEventMode eventFilterMode = (EBlendSpaceEventMode)((uint32)GetAttributeFloat(ATTRIB_EVENTMODE)->GetValue());
-        DoPostUpdate(animGraphInstance, uniqueData->m_masterMotionIdx, uniqueData->m_blendInfos, uniqueData->m_motionInfos, eventFilterMode, data);
+        DoPostUpdate(animGraphInstance, uniqueData->m_masterMotionIdx, uniqueData->m_blendInfos, uniqueData->m_motionInfos, m_eventFilterMode, data);
     }
 
-    BlendSpace2DNode::BlendSpace2DNode(AnimGraph* animGraph)
-        : BlendSpaceNode(animGraph, nullptr, TYPE_ID)
-        , m_currentPositionSetInteractively(false)
-    {
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
-
-    BlendSpace2DNode::~BlendSpace2DNode()
-    {
-    }
 
     bool BlendSpace2DNode::UpdateMotionInfos(AnimGraphInstance* animGraphInstance)
     {
@@ -541,29 +519,25 @@ namespace EMotionFX
         }
 
         // Initialize motion instance and parameter value arrays.
-        MCore::AttributeArray* attributeArray = GetMotionAttributeArray();
-        const uint32 numMotions = attributeArray->GetNumAttributes();
+        const size_t motionCount = m_motions.size();
         AZ_Assert(uniqueData->m_motionInfos.empty(), "This is assumed to have been cleared already");
-        uniqueData->m_motionInfos.reserve(numMotions);
+        uniqueData->m_motionInfos.reserve(motionCount);
 
         MotionInstancePool& motionInstancePool = GetMotionInstancePool();
 
-        const AZStd::string masterMotionId(GetAttributeString(ATTRIB_SYNC_MASTERMOTION)->GetValue().c_str());
         uniqueData->m_masterMotionIdx = 0;
 
         PlayBackInfo playInfo;// TODO: Init from attributes
-        for (uint32 i = 0; i < numMotions; ++i)
+        for (BlendSpaceMotion& blendSpaceMotion : m_motions)
         {
-            AttributeBlendSpaceMotion* attribute = static_cast<AttributeBlendSpaceMotion*>(attributeArray->GetAttribute(i));
-
-            const AZStd::string& motionId = attribute->GetMotionId();
-            Motion* motion = motionSet->RecursiveFindMotionByStringID(motionId.c_str());
+            const AZStd::string& motionId = blendSpaceMotion.GetMotionId();
+            Motion* motion = motionSet->RecursiveFindMotionById(motionId);
             if (!motion)
             {
-                attribute->SetFlag(AttributeBlendSpaceMotion::TypeFlags::InvalidMotion);
+                blendSpaceMotion.SetFlag(BlendSpaceMotion::TypeFlags::InvalidMotion);
                 continue;
             }
-            attribute->UnsetFlag(AttributeBlendSpaceMotion::TypeFlags::InvalidMotion);
+            blendSpaceMotion.UnsetFlag(BlendSpaceMotion::TypeFlags::InvalidMotion);
 
             MotionInstance* motionInstance = motionInstancePool.RequestNew(motion, actorInstance, playInfo.mStartNodeIndex);
             motionInstance->InitFromPlayBackInfo(playInfo, true);
@@ -578,13 +552,13 @@ namespace EMotionFX
             motionInstance->SetWeight(1.0f, 0.0f);
             AddMotionInfo(uniqueData->m_motionInfos, motionInstance);
 
-            if (motionId == masterMotionId)
+            if (motionId == m_syncMasterMotionId)
             {
                 uniqueData->m_masterMotionIdx = (AZ::u32)uniqueData->m_motionInfos.size() - 1;
             }
         }
         uniqueData->m_allMotionsHaveSyncTracks = DoAllMotionsHaveSyncTracks(uniqueData->m_motionInfos);
-        
+
         UpdateMotionPositions(*uniqueData);
 
         ComputeNormalizationInfo(*uniqueData);
@@ -606,32 +580,31 @@ namespace EMotionFX
         m_currentPositionSetInteractively = point;
     }
 
-    void BlendSpace2DNode::ComputeMotionPosition(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance, AZ::Vector2& position)
+    void BlendSpace2DNode::ComputeMotionCoordinates(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance, AZ::Vector2& position)
     {
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         AZ_Assert(uniqueData, "Unique data not found for blend space 2D node '%s'.", GetName());
 
-        const uint32 attributeIndex = FindBlendSpaceMotionAttributeIndexByMotionId(ATTRIB_MOTIONS, motionId);
-        if (attributeIndex == MCORE_INVALIDINDEX32)
+        const size_t motionIndex = FindMotionIndexByMotionId(m_motions, motionId);
+        if (motionIndex == MCORE_INVALIDINDEX32)
         {
-            AZ_Assert(false, "Can't find blend space motion attribute for motion id '%s'.", motionId.c_str());
+            AZ_Assert(false, "Can't find blend space motion for motion id '%s'.", motionId.c_str());
             return;
         }
 
         // If the motion is invalid, we dont have anything to update.
-        MCore::AttributeArray* motionsAttribute = GetMotionAttributeArray();
-        AttributeBlendSpaceMotion* motionAttribute = static_cast<AttributeBlendSpaceMotion*>(motionsAttribute->GetAttribute(attributeIndex));
-        if (motionAttribute->TestFlag(AttributeBlendSpaceMotion::TypeFlags::InvalidMotion))
+        const BlendSpaceMotion& blendSpaceMotion = m_motions[motionIndex];
+        if (blendSpaceMotion.TestFlag(BlendSpaceMotion::TypeFlags::InvalidMotion))
         {
             return;
         }
-        
+
         // Compute the unique data motion index by skipping those motions from the attribute that are invalid
         uint32 uniqueDataMotionIndex = 0;
-        for (uint32 i = 0; i < attributeIndex; ++i)
+        for (size_t i = 0; i < motionIndex; ++i)
         {
-            AttributeBlendSpaceMotion* theMotionAttribute = static_cast<AttributeBlendSpaceMotion*>(motionsAttribute->GetAttribute(i));
-            if (theMotionAttribute->TestFlag(AttributeBlendSpaceMotion::TypeFlags::InvalidMotion))
+            const BlendSpaceMotion& currentBlendSpaceMotion = m_motions[i];
+            if (currentBlendSpaceMotion.TestFlag(BlendSpaceMotion::TypeFlags::InvalidMotion))
             {
                 continue;
             }
@@ -640,22 +613,19 @@ namespace EMotionFX
                 ++uniqueDataMotionIndex;
             }
         }
-        
+
         AZ_Assert(uniqueDataMotionIndex < uniqueData->m_motionInfos.size(), "Invalid amount of motion infos in unique data");
         const MotionInstance* motionInstance = uniqueData->m_motionInfos[uniqueDataMotionIndex].m_motionInstance;
         const BlendSpaceManager* blendSpaceManager = GetAnimGraphManager().GetBlendSpaceManager();
 
         position = AZ::Vector2::CreateZero();
-        
+
         for (int i = 0; i < 2; ++i)
         {
-            const uint32 calcMethodAttrib = (i == 0) ? ATTRIB_CALCULATION_METHOD_X : ATTRIB_CALCULATION_METHOD_Y;
-            const ECalculationMethod calculationMethod = static_cast<ECalculationMethod>(static_cast<int>(GetAttributeFloat(calcMethodAttrib)->GetValue()));
+            const ECalculationMethod calculationMethod = (i == 0) ? m_calculationMethodX : m_calculationMethodY;
             if (calculationMethod == ECalculationMethod::AUTO)
             {
-                const uint32 evaluatorAttrib = (i == 0) ? ATTRIB_EVALUATOR_X : ATTRIB_EVALUATOR_Y;
-                const size_t evaluatorIndex = static_cast<size_t>(GetAttributeFloatAsUint32(evaluatorAttrib));
-                BlendSpaceParamEvaluator* evaluator = blendSpaceManager->GetParameterEvaluator(evaluatorIndex);
+                BlendSpaceParamEvaluator* evaluator = (i == 0) ? m_evaluatorX : m_evaluatorY;
                 if (evaluator && !evaluator->IsNullEvaluator())
                 {
                     position.SetElement(i, evaluator->ComputeParamValue(*motionInstance));
@@ -665,43 +635,159 @@ namespace EMotionFX
     }
 
 
-    void BlendSpace2DNode::RestoreMotionCoords(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance)
+    void BlendSpace2DNode::RestoreMotionCoordinates(BlendSpaceMotion& motion, AnimGraphInstance* animGraphInstance)
     {
-        const ECalculationMethod calculationMethodX = static_cast<ECalculationMethod>(static_cast<int>(GetAttributeFloat(ATTRIB_CALCULATION_METHOD_X)->GetValue()));
-        const ECalculationMethod calculationMethodY = static_cast<ECalculationMethod>(static_cast<int>(GetAttributeFloat(ATTRIB_CALCULATION_METHOD_Y)->GetValue()));
-
         AZ::Vector2 computedMotionCoords;
-        ComputeMotionPosition(motionId, animGraphInstance, computedMotionCoords);
-
-        const uint32 attributeIndex = FindBlendSpaceMotionAttributeIndexByMotionId(ATTRIB_MOTIONS, motionId);
-        if (attributeIndex == MCORE_INVALIDINDEX32)
-        {
-            AZ_Assert(false, "Can't find blend space motion attribute for motion id '%s'.", motionId.c_str());
-            return;
-        }
-
-        MCore::AttributeArray* motionsAttribute = GetMotionAttributeArray();
-        AttributeBlendSpaceMotion* motionAttribute = static_cast<AttributeBlendSpaceMotion*>(motionsAttribute->GetAttribute(attributeIndex));
+        ComputeMotionCoordinates(motion.GetMotionId(), animGraphInstance, computedMotionCoords);
 
         // Reset the motion coordinates in case the user manually set the value and we're in automatic mode.
-        if (calculationMethodX == ECalculationMethod::AUTO)
+        if (m_calculationMethodX == ECalculationMethod::AUTO)
         {
-            motionAttribute->SetXCoordinate(computedMotionCoords.GetX());
-            motionAttribute->MarkXCoordinateSetByUser(false);
+            motion.SetXCoordinate(computedMotionCoords.GetX());
+            motion.MarkXCoordinateSetByUser(false);
         }
 
-        if (calculationMethodY == ECalculationMethod::AUTO)
+        if (m_calculationMethodY == ECalculationMethod::AUTO)
         {
-            motionAttribute->SetYCoordinate(computedMotionCoords.GetY());
-            motionAttribute->MarkYCoordinateSetByUser(false);
+            motion.SetYCoordinate(computedMotionCoords.GetY());
+            motion.MarkYCoordinateSetByUser(false);
         }
     }
 
 
-    MCore::AttributeArray* BlendSpace2DNode::GetMotionAttributeArray() const
+    void BlendSpace2DNode::SetMotions(const AZStd::vector<BlendSpaceMotion>& motions)
     {
-        return GetAttributeArray(ATTRIB_MOTIONS);
+        m_motions = motions;
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
     }
+
+
+    const AZStd::vector<BlendSpaceNode::BlendSpaceMotion>& BlendSpace2DNode::GetMotions() const
+    {
+        return m_motions;
+    }
+
+
+    void BlendSpace2DNode::SetSyncMasterMotionId(const AZStd::string& syncMasterMotionId)
+    {
+        m_syncMasterMotionId = syncMasterMotionId;
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
+    }
+
+
+    const AZStd::string& BlendSpace2DNode::GetSyncMasterMotionId() const
+    {
+        return m_syncMasterMotionId;
+    }
+
+
+    void BlendSpace2DNode::SetEvaluatorTypeX(const AZ::TypeId& evaluatorType)
+    {
+        m_evaluatorTypeX = evaluatorType;
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
+    }
+
+
+    const AZ::TypeId& BlendSpace2DNode::GetEvaluatorTypeX() const
+    {
+        return m_evaluatorTypeX;
+    }
+
+
+    BlendSpaceParamEvaluator* BlendSpace2DNode::GetEvaluatorX() const
+    {
+        return m_evaluatorX;
+    }
+
+
+    void BlendSpace2DNode::SetCalculationMethodX(ECalculationMethod calculationMethod)
+    {
+        m_calculationMethodX = calculationMethod;
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
+    }
+
+
+    BlendSpaceNode::ECalculationMethod BlendSpace2DNode::GetCalculationMethodX() const
+    {
+        return m_calculationMethodX;
+    }
+
+
+    void BlendSpace2DNode::SetEvaluatorTypeY(const AZ::TypeId& evaluatorType)
+    {
+        m_evaluatorTypeY = evaluatorType;
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
+    }
+
+
+    const AZ::TypeId& BlendSpace2DNode::GetEvaluatorTypeY() const
+    {
+        return m_evaluatorTypeY;
+    }
+
+
+    BlendSpaceParamEvaluator* BlendSpace2DNode::GetEvaluatorY() const
+    {
+        return m_evaluatorY;
+    }
+
+
+    void BlendSpace2DNode::SetCalculationMethodY(ECalculationMethod calculationMethod)
+    {
+        m_calculationMethodY = calculationMethod;
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
+    }
+
+
+    BlendSpaceNode::ECalculationMethod BlendSpace2DNode::GetCalculationMethodY() const
+    {
+        return m_calculationMethodY;
+    }
+
+
+
+    void BlendSpace2DNode::SetSyncMode(ESyncMode syncMode)
+    {
+        m_syncMode = syncMode;
+    }
+
+
+    BlendSpaceNode::ESyncMode BlendSpace2DNode::GetSyncMode() const
+    {
+        return m_syncMode;
+    }
+
+
+
+    void BlendSpace2DNode::SetEventFilterMode(EBlendSpaceEventMode eventFilterMode)
+    {
+        m_eventFilterMode = eventFilterMode;
+    }
+
+
+    BlendSpaceNode::EBlendSpaceEventMode BlendSpace2DNode::GetEventFilterMode() const
+    {
+        return m_eventFilterMode;
+    }
+
 
     void BlendSpace2DNode::UpdateMotionPositions(UniqueData& uniqueData)
     {
@@ -711,11 +797,9 @@ namespace EMotionFX
         BlendSpaceParamEvaluator* evaluatorX = nullptr;
         BlendSpaceParamEvaluator* evaluatorY = nullptr;
 
-        const ECalculationMethod calculationMethodX = static_cast<ECalculationMethod>(static_cast<int>(GetAttributeFloat(ATTRIB_CALCULATION_METHOD_X)->GetValue()));
-        if (calculationMethodX == ECalculationMethod::AUTO)
+        if (m_calculationMethodX == ECalculationMethod::AUTO)
         {
-            const size_t evaluatorIndex = static_cast<size_t>(GetAttributeFloatAsUint32(ATTRIB_EVALUATOR_X));
-            evaluatorX = blendSpaceManager->GetParameterEvaluator(evaluatorIndex);
+            evaluatorX = m_evaluatorX;
             if (evaluatorX && evaluatorX->IsNullEvaluator())
             {
                 // "Null evaluator" is really not an evaluator.
@@ -723,11 +807,9 @@ namespace EMotionFX
             }
         }
 
-        const ECalculationMethod calculationMethodY = static_cast<ECalculationMethod>(static_cast<int>(GetAttributeFloat(ATTRIB_CALCULATION_METHOD_Y)->GetValue()));
-        if (calculationMethodY == ECalculationMethod::AUTO)
+        if (m_calculationMethodY == ECalculationMethod::AUTO)
         {
-            const size_t evaluatorIndex = static_cast<size_t>(GetAttributeFloatAsUint32(ATTRIB_EVALUATOR_Y));
-            evaluatorY = blendSpaceManager->GetParameterEvaluator(evaluatorIndex);
+            evaluatorY = m_evaluatorY;
             if (evaluatorY && evaluatorY->IsNullEvaluator())
             {
                 // "Null evaluator" is really not an evaluator.
@@ -735,18 +817,17 @@ namespace EMotionFX
             }
         }
 
-        const MCore::AttributeArray* attributeArray = GetMotionAttributeArray();
-        // the motions in the attributes could not match the ones in the unique data. The attribute could have some invalid motions
-        const uint32 attributeMotionCount = attributeArray->GetNumAttributes();
+        // It is possible that the blend setup motions are not matching the ones in the unique data, some of the blend setup motions could be invalid.
+        const size_t motionCount = m_motions.size();
         const size_t uniqueDataMotionCount = uniqueData.m_motionInfos.size();
 
         // Iterate through all motions and calculate their location in the blend space.
         uniqueData.m_motionCoordinates.resize(uniqueDataMotionCount);
         size_t iUniqueDataMotionIndex = 0;
-        for (uint32 iAttributeMotionIndex = 0; iAttributeMotionIndex < attributeMotionCount; ++iAttributeMotionIndex)
+        for (uint32 iAttributeMotionIndex = 0; iAttributeMotionIndex < motionCount; ++iAttributeMotionIndex)
         {
-            const AttributeBlendSpaceMotion* attribute = static_cast<AttributeBlendSpaceMotion*>(attributeArray->GetAttribute(iAttributeMotionIndex));
-            if (attribute->TestFlag(AttributeBlendSpaceMotion::TypeFlags::InvalidMotion))
+            const BlendSpaceMotion& blendSpaceMotion = m_motions[iAttributeMotionIndex];
+            if (blendSpaceMotion.TestFlag(BlendSpaceMotion::TypeFlags::InvalidMotion))
             {
                 continue;
             }
@@ -756,9 +837,9 @@ namespace EMotionFX
 
             // X
             // Did the user set the x coordinate manually? If so, use the shared value from the attribute.
-            if (attribute->IsXCoordinateSetByUser() || !evaluatorX)
+            if (blendSpaceMotion.IsXCoordinateSetByUser() || !evaluatorX)
             {
-                point.SetX(attribute->GetXCoordinate());
+                point.SetX(blendSpaceMotion.GetXCoordinate());
             }
             else
             {
@@ -769,9 +850,9 @@ namespace EMotionFX
 
             // Y
             // Did the user set the y coordinate manually? If so, use the shared value from the attribute.
-            if (attribute->IsYCoordinateSetByUser() || !evaluatorY)
+            if (blendSpaceMotion.IsYCoordinateSetByUser() || !evaluatorY)
             {
-                point.SetY(attribute->GetYCoordinate());
+                point.SetY(blendSpaceMotion.GetYCoordinate());
             }
             else
             {
@@ -1067,11 +1148,103 @@ namespace EMotionFX
         outputPose->InitFromBindPose(actorInstance);
     }
 
+
     void BlendSpace2DNode::Rewind(AnimGraphInstance* animGraphInstance)
     {
         UniqueData* uniqueData = static_cast<BlendSpace2DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         RewindMotions(uniqueData->m_motionInfos);
     }
 
-} // namespace EMotionFX
 
+    AZ::Crc32 BlendSpace2DNode::GetEvaluatorXVisibility() const
+    {
+        if (m_calculationMethodX == ECalculationMethod::MANUAL)
+        {
+            return AZ::Edit::PropertyVisibility::Hide;
+        }
+
+        return AZ::Edit::PropertyVisibility::Show;
+    }
+
+
+    AZ::Crc32 BlendSpace2DNode::GetEvaluatorYVisibility() const
+    {
+        if (m_calculationMethodY == ECalculationMethod::MANUAL)
+        {
+            return AZ::Edit::PropertyVisibility::Hide;
+        }
+
+        return AZ::Edit::PropertyVisibility::Show;
+    }
+
+
+    AZ::Crc32 BlendSpace2DNode::GetSyncOptionsVisibility() const
+    {
+        if (m_syncMode == ESyncMode::SYNCMODE_DISABLED)
+        {
+            return AZ::Edit::PropertyVisibility::Hide;
+        }
+
+        return AZ::Edit::PropertyVisibility::Show;
+    }
+
+
+    void BlendSpace2DNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendSpace2DNode, BlendSpaceNode>()
+            ->Version(1)
+            ->Field("calculationMethodX", &BlendSpace2DNode::m_calculationMethodX)
+            ->Field("evaluatorTypeX", &BlendSpace2DNode::m_evaluatorTypeX)
+            ->Field("calculationMethodY", &BlendSpace2DNode::m_calculationMethodY)
+            ->Field("evaluatorTypeY", &BlendSpace2DNode::m_evaluatorTypeY)
+            ->Field("syncMode", &BlendSpace2DNode::m_syncMode)
+            ->Field("syncMasterMotionId", &BlendSpace2DNode::m_syncMasterMotionId)
+            ->Field("eventFilterMode", &BlendSpace2DNode::m_eventFilterMode)
+            ->Field("motions", &BlendSpace2DNode::m_motions)
+        ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendSpace2DNode>("Blend Space 1D", "Blend space 1D attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendSpace2DNode::m_calculationMethodX, "Calculation method (X-Axis)", "Calculation method for the X Axis")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace2DNode::Reinit)
+            ->DataElement(AZ_CRC("BlendSpaceEvaluator", 0x9a3f7d07), &BlendSpace2DNode::m_evaluatorTypeX, "X-Axis Evaluator", "Evaluator for the X axis value of motions")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendSpace2DNode::GetEvaluatorXVisibility)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace2DNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendSpace2DNode::m_calculationMethodY, "Calculation method (Y-Axis)", "Calculation method for the Y Axis")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace2DNode::Reinit)
+            ->DataElement(AZ_CRC("BlendSpaceEvaluator", 0x9a3f7d07), &BlendSpace2DNode::m_evaluatorTypeY, "Y-Axis Evaluator", "Evaluator for the Y axis value of motions")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendSpace2DNode::GetEvaluatorYVisibility)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace2DNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendSpace2DNode::m_syncMode)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ_CRC("BlendSpaceMotion", 0x9be98fb7), &BlendSpace2DNode::m_syncMasterMotionId, "Sync Master Motion", "The master motion used for motion synchronization.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendSpace2DNode::GetSyncOptionsVisibility)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace2DNode::Reinit)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendSpace2DNode::m_eventFilterMode)
+            ->DataElement(AZ_CRC("BlendSpaceMotionContainer", 0x8025d37d), &BlendSpace2DNode::m_motions, "Motions", "Source motions for blend space")
+            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace2DNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+        ;
+    }
+} // namespace EMotionFX

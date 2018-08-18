@@ -1,28 +1,16 @@
-﻿<div class="coming-soon-top-heading row">
-	<h1 class="col-8 push-2"> Stay Tuned, More Cloud Gem Features Are Coming Soon! </h1>
-	<h2 class="col-8 push-2"> We're working on a full suite of customizable microservices powered by AWS that will enable you to build games faster by helping you add powerful capabilities to your game with minimal effort. </h2>
+﻿<div *ngIf="dependencyservice.featureMap != null && (dependencyservice.featureMap | json) != ({} | json)">                         
+    <div *ngFor="let feature of dependencyservice.featureMap | objKeys">
+        
+            <thumbnail *ngFor="let child of dependencyservice.featureMap[feature]" url="/game/{{child.route_path}}" icon="https://m.media-amazon.com/images/G/01/cloudcanvas/images/{{child.image}}">
+                <div class="thumbnail-label-section row no-gutters">
+                    <div> {{child.name}} </div>
+                </div>
+                <div class="expanded-section row no-gutters">
+                    <div class="col-12">
+                        {{child.description}}
+                    </div>
+                </div>
+            </thumbnail>
+        
+    </div>
 </div>
-<div class="coming-soon-content row">
-	<div class="col-4">
-		<img src="https://m.media-amazon.com/images/G/01/cloudcanvas/images/Icon_User._V536349069_.png">
-		<h2> User Management </h2>
-		<p> 
-			Easily add a user registration and login solution to your game that can support millions of player accounts, with comprehensive security and administrative features.
-		</p>
-	</div>
-	<div class="col-4">
-		<img src="https://m.media-amazon.com/images/G/01/cloudcanvas/images/Icon_Analytics._V536349140_.png">
-		<h2> Analytics </h2>
-		<p> 
-			Gain insights into your players and see real-time data visualizations, generate reports on player behavior, and easily add your own custom metrics to track.
-		</p>
-	</div>
-	<div class="col-4">
-		<img src="https://m.media-amazon.com/images/G/01/cloudcanvas/images/Icon_Gem._V536349141_.png">
-		<h2> Have an Idea for a Cloud Gem? </h2>
-		<p> 
-			Head over to our Amazon <a href="https://gamedev.amazon.com/forums/spaces/133/cloud-canvas.html" target="_blank"> GameDev Forums </a> and suggestions for what you think would be a great Cloud Gem to support your game.
-		</p>
-	</div>
-</div>
-

@@ -526,7 +526,6 @@ void UiLayoutGridComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiLayoutGridInterface::StartingDirection::VerticalOrder>("eUiLayoutGridStartingDirection_VerticalOrder");
 
         behaviorContext->EBus<UiLayoutGridBus>("UiLayoutGridBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetPadding", &UiLayoutGridBus::Events::GetPadding)
             ->Event("SetPadding", &UiLayoutGridBus::Events::SetPadding)
             ->Event("GetSpacing", &UiLayoutGridBus::Events::GetSpacing)

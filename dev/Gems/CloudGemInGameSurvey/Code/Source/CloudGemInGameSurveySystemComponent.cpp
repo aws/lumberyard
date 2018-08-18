@@ -16,7 +16,7 @@ namespace CloudGemInGameSurvey
         {
             serialize->Class<CloudGemInGameSurveySystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {

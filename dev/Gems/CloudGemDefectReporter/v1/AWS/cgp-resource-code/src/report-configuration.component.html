@@ -1,0 +1,32 @@
+﻿<h2>Data Mappings</h2>
+<button class="btn l-primary" (click)="addNewMapping()">
+    Add Mapping
+</button>
+<div class="configuration-container">
+    <div class="row mapping">
+        <div class="col-3">
+            <label>KEY</label>
+        </div>
+        <div class="col-3">
+            <label>DISPLAY NAME</label>
+        </div>
+        <div class="col-3">
+            <label>DISPLAY CATEGORY</label>
+        </div>
+    </div>
+    <div *ngFor="let mapping of mappings let i = index" class="row mapping">
+        <div class="col-3">
+            <input class="form-control" type="text" [(ngModel)]="mapping['key']" (ngModelChange)="updateMappings()"/>
+        </div>
+        <div class="col-3">
+            <input class="form-control" type="text" [(ngModel)]="mapping['displayName']" (ngModelChange)="updateMappings()"/>
+        </div>
+        <div class="col-3">
+            <dropdown class="display-category" placeholderText="Category" [currentOption]="{text: mapping['category']}" (dropdownChanged)="updateCategory($event, mapping)"
+                      [options]="tableDropdownOptions"></dropdown>
+        </div>
+        <div class="float-right">
+            <i (click)="deleteMapping(i)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+        </div>
+    </div>
+</div>

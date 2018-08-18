@@ -12,35 +12,50 @@ REM
 REM Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 REM expected usage:
-REM BuildShaderPak_Metal MyProject (eg. FeatureTests)
+REM BuildShaderPak_Metal MyProject Platform
+REM Example: BuildShaderPak_Metal FeatureTests ios
 
 if [%1] == [] GOTO MissingRequiredParam
+if [%2] == [] GOTO MissingRequiredParam
 GOTO SetParams
 
 :MissingRequiredParam
-echo Missing one or more required params. Example: BuildShaderPak_Metal.bat gameProjectName
+echo Missing one or more required params. Example: BuildShaderPak_Metal.bat gameProjectName platform
 echo(
 echo positional arguments:
 echo    gameProjectName     The name of the game.
+echo    platform            ios or osx_gl.
 echo(
 GOTO Failed
 
 :SetParams
 set gamefoldername=%1
-set shaderflavors="metal/gmem128 metal/gmem256"
-set targetplatform=ios
+set platform=%2
+set shaderflavors="metal"
+
+if ["%PLATFORM%"] == ["ios"] GOTO PackShaders
+if ["%PLATFORM%"] == ["osx_gl"] GOTO PackShaders
+
+echo Incorrect Platform. Example: BuildShaderPak_Metal.bat gameProjectName platform
+echo(
+echo positional arguments:
+echo    gameProjectName     The name of the game.
+echo    platform            ios or osx_gl.
+echo(
+GOTO Failed
 
 REM ShaderCacheGen.exe is not currently able to generate the metal shader cache,
-REM so for the time being we must copy the compiled shaders from the iOS device.
-REM AppData/Documents/shaders/cache/* -> Cache\MyProject\ios\user\cache\shaders\cache\*
+REM so for the time being we must copy the compiled shaders from the iOS device or Mac app.
+REM AppData/Documents/shaders/cache/* -> Cache\MyProject\Platform\user\cache\shaders\cache\*
 REM
 REM One ShaderCacheGen.exe can generate the metal shaders (https://issues.labcollab.net/browse/LMBR-18201),
 REM we should be able to call this directly (after copying the appropriate shaderlist.txt as is done in BuildShaderPak_DX11.bat)
 REM Bin64\ShaderCacheGen.exe /BuildGlobalCache /ShadersPlatform=%targetplatform%
 
-echo Packing Shaders...
-call .\lmbr_pak_shaders.bat %shaderflavors% %gamefoldername% %targetplatform%
+:PackShaders
+call .\lmbr_pak_shaders.bat %shaderflavors% %gamefoldername% %platform%
 
+if %ERRORLEVEL% NEQ 0 GOTO Failed
 GOTO Success
 
 :Failed

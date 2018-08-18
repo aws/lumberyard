@@ -10,26 +10,51 @@
 *
 */
 
-#include "EMotionFXConfig.h"
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/AttributeSettings.h>
-#include "AnimGraphMotionCondition.h"
-#include "AnimGraph.h"
-#include "AnimGraphManager.h"
-#include "AnimGraphMotionNode.h"
-#include "AnimGraphInstance.h"
+#include <MCore/Source/Random.h>
+#include <EMotionFX/Source/Allocators.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/AnimGraphMotionNode.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/AnimGraphMotionCondition.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/MotionSet.h>
-#include "EMotionFXManager.h"
 
 
 namespace EMotionFX
 {
-    AnimGraphMotionCondition::AnimGraphMotionCondition(AnimGraph* animGraph)
-        : AnimGraphTransitionCondition(animGraph, TYPE_ID)
+    const char* AnimGraphMotionCondition::s_functionMotionEvent = "Motion Event";
+    const char* AnimGraphMotionCondition::s_functionHasEnded = "Has Ended";
+    const char* AnimGraphMotionCondition::s_functionHasReachedMaxNumLoops = "Has Reached Max Num Loops";
+    const char* AnimGraphMotionCondition::s_functionHasReachedPlayTime = "Has Reached Specified Play Time";
+    const char* AnimGraphMotionCondition::s_functionHasLessThan = "Has Less Play Time Left";
+    const char* AnimGraphMotionCondition::s_functionIsMotionAssigned = "Is Motion Assigned?";
+    const char* AnimGraphMotionCondition::s_functionIsMotionNotAssigned = "Is Motion Not Assigned?";
+
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphMotionCondition, AnimGraphConditionAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphMotionCondition::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphMotionCondition::EventHandler, AnimGraphObjectUniqueDataAllocator, 0)
+
+    AnimGraphMotionCondition::AnimGraphMotionCondition()
+        : AnimGraphTransitionCondition()
+        , m_motionNodeId(AnimGraphNodeId::InvalidId)
+        , m_motionNode(nullptr)
+        , m_numLoops(1)
+        , m_playTime(0.0f)
+        , m_testFunction(FUNCTION_HASENDED)
     {
-        mMotionNode = nullptr;
-        CreateAttributeValues();
-        InitInternalAttributesForAllInstances();
+    }
+
+
+    AnimGraphMotionCondition::AnimGraphMotionCondition(AnimGraph* animGraph)
+        : AnimGraphMotionCondition()
+    {
+        InitAfterLoading(animGraph);
     }
 
 
@@ -38,55 +63,30 @@ namespace EMotionFX
     }
 
 
-    AnimGraphMotionCondition* AnimGraphMotionCondition::Create(AnimGraph* animGraph)
+    void AnimGraphMotionCondition::Reinit()
     {
-        return new AnimGraphMotionCondition(animGraph);
+        if (!AnimGraphNodeId(m_motionNodeId).IsValid())
+        {
+            m_motionNode = nullptr;
+            return;
+        }
+
+        AnimGraphNode* node = mAnimGraph->RecursiveFindNodeById(m_motionNodeId);
+        m_motionNode = azdynamic_cast<AnimGraphMotionNode*>(node);
     }
 
 
-    AnimGraphObjectData* AnimGraphMotionCondition::CreateObjectData()
+    bool AnimGraphMotionCondition::InitAfterLoading(AnimGraph* animGraph)
     {
-        return new UniqueData(this, nullptr, nullptr);
-    }
+        if (!AnimGraphTransitionCondition::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
 
+        InitInternalAttributesForAllInstances();
 
-    void AnimGraphMotionCondition::RegisterAttributes()
-    {
-        // Register the source motion file name.
-        MCore::AttributeSettings* attributeInfo = RegisterAttribute("Motion", "motionID", "The motion node to use.", ATTRIBUTE_INTERFACETYPE_BLENDTREEMOTIONNODEPICKER);
-        attributeInfo->SetDefaultValue(MCore::AttributeString::Create());
-
-        // Create the function combobox.
-        attributeInfo = RegisterAttribute("Test Function", "testFunction", "The type of test function or condition.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        attributeInfo->ResizeComboValues(7);
-        attributeInfo->SetComboValue(FUNCTION_EVENT,                    "Motion Event");
-        attributeInfo->SetComboValue(FUNCTION_HASENDED,                 "Has Ended");
-        attributeInfo->SetComboValue(FUNCTION_HASREACHEDMAXNUMLOOPS,    "Has Reached Max Num Loops");
-        attributeInfo->SetComboValue(FUNCTION_PLAYTIME,                 "Has Reached Specified Play Time");
-        attributeInfo->SetComboValue(FUNCTION_PLAYTIMELEFT,             "Has Less Play Time Left");
-        attributeInfo->SetComboValue(FUNCTION_ISMOTIONASSIGNED,         "Is Motion Assigned?");
-        attributeInfo->SetComboValue(FUNCTION_ISMOTIONNOTASSIGNED,      "Is Motion Not Assigned?");
-        attributeInfo->SetDefaultValue(MCore::AttributeFloat::Create(FUNCTION_HASENDED));
-
-        // Create the number of loops attribute.
-        attributeInfo = RegisterAttribute("Num Loops", "numLoops", "The int value to test against the number of loops the motion already played.", MCore::ATTRIBUTE_INTERFACETYPE_INTSPINNER);
-        attributeInfo->SetDefaultValue(MCore::AttributeFloat::Create(1));
-        attributeInfo->SetMinValue(MCore::AttributeFloat::Create(1));
-        attributeInfo->SetMaxValue(MCore::AttributeFloat::Create(100000000.0f));
-
-        // Create the max playtime attribute.
-        attributeInfo = RegisterAttribute("Time Value", "playtime", "The float value in seconds to test against.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        attributeInfo->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        attributeInfo->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        attributeInfo->SetMaxValue(MCore::AttributeFloat::Create(std::numeric_limits<float>::max()));
-
-        // Register the event type.
-        attributeInfo = RegisterAttribute("Event Type", "eventType", "The event type to catch.", MCore::ATTRIBUTE_INTERFACETYPE_STRING);
-        attributeInfo->SetDefaultValue(MCore::AttributeString::Create());
-
-        // Register the event parameter.
-        attributeInfo = RegisterAttribute("Event Parameter", "eventParam", "The event parameter to catch.", MCore::ATTRIBUTE_INTERFACETYPE_STRING);
-        attributeInfo->SetDefaultValue(MCore::AttributeString::Create());
+        Reinit();
+        return true;
     }
 
 
@@ -96,23 +96,16 @@ namespace EMotionFX
     }
 
 
-    const char* AnimGraphMotionCondition::GetTypeString() const
-    {
-        return "AnimGraphMotionCondition";
-    }
-
-    
     bool AnimGraphMotionCondition::TestCondition(AnimGraphInstance* animGraphInstance) const
     {
         // Make sure the motion node to which the motion condition is linked to is valid.
-        if (!mMotionNode)
+        if (!m_motionNode)
         {
             return false;
         }
 
         // Early condition function check pass for the 'Is motion assigned?'. We can do this before retrieving the unique data.
-        const int32 functionIndex = GetAttributeFloatAsInt32(ATTRIB_FUNCTION);
-        if (functionIndex == FUNCTION_ISMOTIONASSIGNED || functionIndex == FUNCTION_ISMOTIONNOTASSIGNED)
+        if (m_testFunction == FUNCTION_ISMOTIONASSIGNED || m_testFunction == FUNCTION_ISMOTIONNOTASSIGNED)
         {
             const EMotionFX::MotionSet* motionSet = animGraphInstance->GetMotionSet();
             if (!motionSet)
@@ -121,13 +114,13 @@ namespace EMotionFX
             }
 
             // Iterate over motion entries from the motion node and check if there are motions assigned to them.
-            const AZ::u32 numMotions = mMotionNode->GetNumMotions();
-            for (AZ::u32 i = 0; i < numMotions; ++i)
+            const size_t numMotions = m_motionNode->GetNumMotions();
+            for (size_t i = 0; i < numMotions; ++i)
             {
-                const char* motionId = mMotionNode->GetMotionID(i);
-                const EMotionFX::MotionSet::MotionEntry* motionEntry = motionSet->FindMotionEntryByStringID(motionId);
-                
-                if (functionIndex == FUNCTION_ISMOTIONASSIGNED)
+                const char* motionId = m_motionNode->GetMotionId(i);
+                const EMotionFX::MotionSet::MotionEntry* motionEntry = motionSet->FindMotionEntryById(motionId);
+
+                if (m_testFunction == FUNCTION_ISMOTIONASSIGNED)
                 {
                     // Any unassigned motion entry will make the condition to fail.
                     if (!motionEntry || (motionEntry && motionEntry->GetFilenameString().empty()))
@@ -152,11 +145,11 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (!uniqueData)
         {
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(AnimGraphMotionCondition::TYPE_ID, const_cast<AnimGraphMotionCondition*>(this), animGraphInstance);
+            uniqueData = aznew UniqueData(const_cast<AnimGraphMotionCondition*>(this), animGraphInstance, nullptr);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
 
-        MotionInstance* motionInstance = mMotionNode->FindMotionInstance(animGraphInstance);
+        MotionInstance* motionInstance = m_motionNode->FindMotionInstance(animGraphInstance);
         if (!motionInstance)
         {
             return false;
@@ -175,162 +168,65 @@ namespace EMotionFX
         // In case a motion event got triggered or a motion has looped constantly fire true until the condition gets reset.
         if (uniqueData->mTriggered)
         {
+            uniqueData->mTriggered = false;
             return true;
         }
 
         // Process the condition depending on the function used.
-        switch (functionIndex)
+        switch (m_testFunction)
         {
-            // Has motion finished playing?
-            case FUNCTION_HASENDED:
+        // Has motion finished playing?
+        case FUNCTION_HASENDED:
+        {
+            // Special case for non looping motions only.
+            if (!motionInstance->GetIsPlayingForever())
             {
-                // Special case for non looping motions only.
-                if (!motionInstance->GetIsPlayingForever())
-                {
-                    // Get the play time and the animation length.
-                    const float currentTime = motionInstance->GetCurrentTime();
-                    const float maxTime     = motionInstance->GetMaxTime();
+                // Get the play time and the animation length.
+                const float currentTime = m_motionNode->GetCurrentPlayTime(animGraphInstance);
+                const float maxTime     = motionInstance->GetMaxTime();
 
-                    // Differentiate between the play modes.
-                    const EPlayMode playMode = motionInstance->GetPlayMode();
-                    if (playMode == PLAYMODE_FORWARD)
-                    {
-                        // Return true in case the current playtime has reached the animation end.
-                        if (currentTime >= maxTime - MCore::Math::epsilon)
-                        {
-                            return true;
-                        }
-                    }
-                    else if (playMode == PLAYMODE_BACKWARD)
-                    {
-                        // Return true in case the current playtime has reached the animation start.
-                        if (currentTime <= MCore::Math::epsilon)
-                        {
-                            return true;
-                        }
-                    }
+                // Differentiate between the play modes.
+                const EPlayMode playMode = motionInstance->GetPlayMode();
+                if (playMode == PLAYMODE_FORWARD)
+                {
+                    // Return true in case the current playtime has reached the animation end.
+                    return currentTime >= maxTime - MCore::Math::epsilon;
+                }
+                else if (playMode == PLAYMODE_BACKWARD)
+                {
+                    // Return true in case the current playtime has reached the animation start.
+                    return currentTime <= MCore::Math::epsilon;
                 }
             }
-            break;
+        }
+        break;
 
-            // Less than a given amount of play time left.
-            case FUNCTION_PLAYTIMELEFT:
-            {
-                // Get the play time to check against.
-                const float playTimeValue = GetAttributeFloat(ATTRIB_PLAYTIME)->GetValue();
-                const float timeLeft = motionInstance->GetMaxTime() - motionInstance->GetCurrentTime();
+        // Less than a given amount of play time left.
+        case FUNCTION_PLAYTIMELEFT:
+        {
+            const float timeLeft = motionInstance->GetMaxTime() - m_motionNode->GetCurrentPlayTime(animGraphInstance);
+            return timeLeft <= m_playTime || AZ::IsClose(timeLeft, m_playTime, 0.0001f);
+        }
+        break;
 
-                // Check if we are past that.
-                if (timeLeft <= playTimeValue)
-                {
-                    return true;
-                }
-            }
-            break;
+        // Maximum number of loops.
+        case FUNCTION_HASREACHEDMAXNUMLOOPS:
+        {
+            return motionInstance->GetNumCurrentLoops() >= m_numLoops;
+        }
+        break;
 
-            // Maximum number of loops.
-            case FUNCTION_HASREACHEDMAXNUMLOOPS:
-            {
-                if ((int32)motionInstance->GetNumCurrentLoops() >= GetAttributeFloat(ATTRIB_NUMLOOPS)->GetValue())
-                {
-                    return true;
-                }
-            }
-            break;
-
-            // Reached the specified play time.
-            // The has reached play time condition is not part of the event handler, so we have to manually handle it here.
-            case FUNCTION_PLAYTIME:
-            {
-                // Get the play time to check against.
-                const float playTime = GetAttributeFloat(ATTRIB_PLAYTIME)->GetValue();
-
-                // Reached the specified play time.
-                if (uniqueData->mMotionInstance->GetCurrentTime() > playTime)
-                {
-                    return true;
-                }
-            }
-            break;
+        // Reached the specified play time.
+        // The has reached play time condition is not part of the event handler, so we have to manually handle it here.
+        case FUNCTION_PLAYTIME:
+        {
+            return m_motionNode->GetCurrentPlayTime(animGraphInstance) >= (m_playTime - AZ::g_fltEps);
+        }
+        break;
         }
 
         // No event got triggered, continue playing the state and don't autostart the transition.
         return false;
-    }
-
-
-    AnimGraphObject* AnimGraphMotionCondition::Clone(AnimGraph* animGraph)
-    {
-        AnimGraphMotionCondition* clone = new AnimGraphMotionCondition(animGraph);
-        CopyBaseObjectTo(clone);
-        return clone;
-    }
-
-
-    void AnimGraphMotionCondition::OnUpdateAttributes()
-    {
-        // Get a pointer to the selected motion node.
-        AnimGraphNode* animGraphNode = mAnimGraph->RecursiveFindNode(GetAttributeString(ATTRIB_MOTIONNODE)->AsChar());
-        if (animGraphNode && animGraphNode->GetType() == AnimGraphMotionNode::TYPE_ID)
-        {
-            mMotionNode = static_cast<AnimGraphMotionNode*>(animGraphNode);
-        }
-        else
-        {
-            mMotionNode = nullptr;
-        }
-
-        // Disable GUI items that have no influence.
-    #ifdef EMFX_EMSTUDIOBUILD
-        // Enable all attributes.
-        EnableAllAttributes(true);
-
-        // Disable the range value if we're not using a function that needs the range.
-        const int32 function = GetAttributeFloatAsInt32(ATTRIB_FUNCTION);
-        switch (function)
-        {
-            case FUNCTION_EVENT:
-                SetAttributeDisabled(ATTRIB_NUMLOOPS);
-                SetAttributeDisabled(ATTRIB_PLAYTIME);
-                break;
-
-            case FUNCTION_HASENDED:
-                SetAttributeDisabled(ATTRIB_EVENTTYPE);
-                SetAttributeDisabled(ATTRIB_EVENTPARAMETER);
-                SetAttributeDisabled(ATTRIB_NUMLOOPS);
-                SetAttributeDisabled(ATTRIB_PLAYTIME);
-                break;
-
-            case FUNCTION_HASREACHEDMAXNUMLOOPS:
-                SetAttributeDisabled(ATTRIB_EVENTTYPE);
-                SetAttributeDisabled(ATTRIB_EVENTPARAMETER);
-                SetAttributeDisabled(ATTRIB_PLAYTIME);
-                break;
-
-            case FUNCTION_PLAYTIME:
-                SetAttributeDisabled(ATTRIB_EVENTTYPE);
-                SetAttributeDisabled(ATTRIB_EVENTPARAMETER);
-                SetAttributeDisabled(ATTRIB_NUMLOOPS);
-                break;
-
-            case FUNCTION_PLAYTIMELEFT:
-                SetAttributeDisabled(ATTRIB_EVENTTYPE);
-                SetAttributeDisabled(ATTRIB_EVENTPARAMETER);
-                SetAttributeDisabled(ATTRIB_NUMLOOPS);
-                break;
-
-            case FUNCTION_ISMOTIONASSIGNED:
-            case FUNCTION_ISMOTIONNOTASSIGNED:
-                SetAttributeDisabled(ATTRIB_EVENTTYPE);
-                SetAttributeDisabled(ATTRIB_EVENTPARAMETER);
-                SetAttributeDisabled(ATTRIB_NUMLOOPS);
-                SetAttributeDisabled(ATTRIB_PLAYTIME);
-                break;
-
-            default:
-                MCORE_ASSERT(false);
-        }
-    #endif
     }
 
 
@@ -350,31 +246,146 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (!uniqueData)
         {
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(AnimGraphMotionCondition::TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance, nullptr);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
     }
 
 
-    AnimGraphMotionCondition::EFunction AnimGraphMotionCondition::GetFunction() const
+    void AnimGraphMotionCondition::SetTestFunction(TestFunction testFunction)
     {
-        return (EFunction)((uint32)(GetAttributeFloat(ATTRIB_FUNCTION)->GetValue()));
+        m_testFunction = testFunction;
+    }
+
+
+    AnimGraphMotionCondition::TestFunction AnimGraphMotionCondition::GetTestFunction() const
+    {
+        return m_testFunction;
     }
 
 
     const char* AnimGraphMotionCondition::GetTestFunctionString() const
     {
-        // Get access to the combo values and the currently selected function.
-        const MCore::AttributeSettings* comboAttributeInfo  = GetAnimGraphManager().GetAttributeInfo(this, ATTRIB_FUNCTION);
-        const uint32                    functionIndex       = GetAttributeFloatAsUint32(ATTRIB_FUNCTION);
+        switch (m_testFunction)
+        {
+            case FUNCTION_EVENT:
+            {
+                return s_functionMotionEvent;
+            }
+            case FUNCTION_HASENDED:
+            {
+                return s_functionHasEnded;
+            }
+            case FUNCTION_HASREACHEDMAXNUMLOOPS:
+            {
+                return s_functionHasReachedMaxNumLoops;
+            }
+            case FUNCTION_PLAYTIME:
+            {
+                return s_functionHasReachedPlayTime;
+            }
+            case FUNCTION_PLAYTIMELEFT:
+            {
+                return s_functionHasLessThan;
+            }
+            case FUNCTION_ISMOTIONASSIGNED:
+            {
+                return s_functionIsMotionAssigned;
+            }
+            case FUNCTION_ISMOTIONNOTASSIGNED:
+            {
+                return s_functionIsMotionNotAssigned;
+            }
+            default:
+            {
+                return "None";
+            }
+        }
+    }
 
-        return comboAttributeInfo->GetComboValue(functionIndex);
+
+    void AnimGraphMotionCondition::SetEventType(const AZStd::string& eventType)
+    {
+        m_eventType = eventType;
+    }
+
+
+    const AZStd::string& AnimGraphMotionCondition::GetEventType() const
+    {
+        return m_eventType;
+    }
+
+
+
+    void AnimGraphMotionCondition::SetEventParameter(const AZStd::string& eventParameter)
+    {
+        m_eventParameter = eventParameter;
+    }
+
+
+    const AZStd::string& AnimGraphMotionCondition::GetEventParameter() const
+    {
+        return m_eventParameter;
+    }
+
+
+    void AnimGraphMotionCondition::SetMotionNodeId(AnimGraphNodeId motionNodeId)
+    {
+        m_motionNodeId = motionNodeId;
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
+    }
+
+
+    AnimGraphNodeId AnimGraphMotionCondition::GetMotionNodeId() const
+    {
+        return m_motionNodeId;
+    }
+
+
+    AnimGraphNode* AnimGraphMotionCondition::GetMotionNode() const
+    {
+        return m_motionNode;
+    }
+
+
+
+    void AnimGraphMotionCondition::SetNumLoops(AZ::u32 numLoops)
+    {
+        m_numLoops = numLoops;
+    }
+
+
+    AZ::u32 AnimGraphMotionCondition::GetNumLoops() const
+    {
+        return m_numLoops;
+    }
+
+
+
+    void AnimGraphMotionCondition::SetPlayTime(float playTime)
+    {
+        m_playTime = playTime;
+    }
+
+
+    float AnimGraphMotionCondition::GetPlayTime() const
+    {
+        return m_playTime;
     }
 
 
     void AnimGraphMotionCondition::GetSummary(AZStd::string* outResult) const
     {
-        *outResult += AZStd::string::format("%s: Motion Node Name='%s', Test Function='%s'", GetTypeString(), GetAttributeString(ATTRIB_MOTIONNODE)->AsChar(), GetTestFunctionString());
+        AZStd::string nodeName;
+        if (m_motionNode)
+        {
+            nodeName = m_motionNode->GetNameString();
+        }
+
+        *outResult = AZStd::string::format("%s: Motion Node Name='%s', Test Function='%s'", RTTI_GetTypeName(), nodeName.c_str(), GetTestFunctionString());
     }
 
 
@@ -385,13 +396,18 @@ namespace EMotionFX
 
         // Add the condition type.
         columnName = "Condition Type: ";
-        columnValue = GetTypeString();
-        *outResult += AZStd::string::format("<table border=\"0\"><tr><td width=\"130\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
+        columnValue = RTTI_GetTypeName();
+        *outResult = AZStd::string::format("<table border=\"0\"><tr><td width=\"130\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // Add the motion node name.
+        AZStd::string nodeName;
+        if (m_motionNode)
+        {
+            nodeName = m_motionNode->GetNameString();
+        }
+
         columnName = "Motion Node Name: ";
-        columnValue = GetAttributeString(ATTRIB_MOTIONNODE)->AsChar();
-        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td><nobr>%s</nobr></td>", columnName.c_str(), nodeName.c_str());
 
         // Add the test function.
         columnName = "Test Function: ";
@@ -447,14 +463,16 @@ namespace EMotionFX
     void AnimGraphMotionCondition::EventHandler::OnEvent(const EventInfo& eventInfo)
     {
         // Make sure the condition function is the right one.
-        if (mCondition->GetFunction() != FUNCTION_EVENT)
+        if (mCondition->GetTestFunction() != FUNCTION_EVENT)
         {
             return;
         }
 
         // Check if the triggered motion event is of the given type and parameter from the motion condition.
-        if ((mCondition->GetAttributeString(ATTRIB_EVENTPARAMETER)->GetValue().empty() || mCondition->GetAttributeString(ATTRIB_EVENTPARAMETER)->GetValue() == *eventInfo.mParameters) &&
-            (mCondition->GetAttributeString(ATTRIB_EVENTTYPE)->GetValue().empty() || AzFramework::StringFunc::Equal(mCondition->GetAttributeString(ATTRIB_EVENTTYPE)->GetValue().c_str(), GetEventManager().GetEventTypeString(eventInfo.mTypeID), true /* case sensitive */)))
+        const AZStd::string& eventParameter = mCondition->GetEventParameter();
+        const AZStd::string& eventType = mCondition->GetEventType();
+        if ((eventParameter.empty() || eventParameter == *eventInfo.mParameters) &&
+            (eventType.empty() || AzFramework::StringFunc::Equal(eventType.c_str(), GetEventManager().GetEventTypeString(eventInfo.mTypeID), true /* case sensitive */)))
         {
             if (eventInfo.mIsEventStart)
             {
@@ -470,7 +488,7 @@ namespace EMotionFX
 
     void AnimGraphMotionCondition::EventHandler::OnHasLooped()
     {
-        if (mCondition->GetFunction() != FUNCTION_HASENDED)
+        if (mCondition->GetTestFunction() != FUNCTION_HASENDED)
         {
             return;
         }
@@ -481,7 +499,7 @@ namespace EMotionFX
 
     void AnimGraphMotionCondition::EventHandler::OnIsFrozenAtLastFrame()
     {
-        if (mCondition->GetFunction() != FUNCTION_HASENDED)
+        if (mCondition->GetTestFunction() != FUNCTION_HASENDED)
         {
             return;
         }
@@ -490,29 +508,110 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphMotionCondition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
-    {
-        MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_MOTIONNODE)->GetValue() == oldName)
-        {
-            GetAttributeString(ATTRIB_MOTIONNODE)->SetValue(node->GetName());
-        }
-    }
-
-
     // Callback that gets called before a node gets removed.
     void AnimGraphMotionCondition::OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove)
     {
         MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_MOTIONNODE)->GetValue() == nodeToRemove->GetName())
+        if (m_motionNodeId == nodeToRemove->GetId())
         {
-            GetAttributeString(ATTRIB_MOTIONNODE)->SetValue("");
+            SetMotionNodeId(AnimGraphNodeId::InvalidId);
         }
     }
 
 
     AnimGraphMotionCondition::EventHandler* AnimGraphMotionCondition::EventHandler::Create(AnimGraphMotionCondition* condition, UniqueData* uniqueData)
     {
-        return new AnimGraphMotionCondition::EventHandler(condition, uniqueData);
+        return aznew AnimGraphMotionCondition::EventHandler(condition, uniqueData);
+    }
+
+
+    AZ::Crc32 AnimGraphMotionCondition::GetNumLoopsVisibility() const
+    {
+        return m_testFunction == FUNCTION_HASREACHEDMAXNUMLOOPS ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
+    }
+
+
+    AZ::Crc32 AnimGraphMotionCondition::GetPlayTimeVisibility() const
+    {
+        if (m_testFunction == FUNCTION_PLAYTIME || m_testFunction == FUNCTION_PLAYTIMELEFT)
+        {
+            return AZ::Edit::PropertyVisibility::Show;
+        }
+        
+        return AZ::Edit::PropertyVisibility::Hide;
+    }
+
+
+    AZ::Crc32 AnimGraphMotionCondition::GetEventPropertiesVisibility() const
+    {
+        return m_testFunction == FUNCTION_EVENT ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
+    }
+
+
+    void AnimGraphMotionCondition::GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const
+    {
+        auto itConvertedIds = convertedIds.find(GetMotionNodeId());
+        if (itConvertedIds != convertedIds.end())
+        {
+            // need to convert
+            attributesString = AZStd::string::format("-motionNodeId %llu", itConvertedIds->second);
+        }
+    }
+
+    void AnimGraphMotionCondition::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphMotionCondition, AnimGraphTransitionCondition>()
+            ->Version(1)
+            ->Field("motionNodeId", &AnimGraphMotionCondition::m_motionNodeId)
+            ->Field("testFunction", &AnimGraphMotionCondition::m_testFunction)
+            ->Field("numLoops", &AnimGraphMotionCondition::m_numLoops)
+            ->Field("playTime", &AnimGraphMotionCondition::m_playTime)
+            ->Field("eventType", &AnimGraphMotionCondition::m_eventType)
+            ->Field("eventParameter", &AnimGraphMotionCondition::m_eventParameter)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<AnimGraphMotionCondition>("Motion Condition", "Motion condition attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ_CRC("AnimGraphMotionNodeId", 0xe19a0672), &AnimGraphMotionCondition::m_motionNodeId, "Motion", "The motion node to use.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphMotionCondition::Reinit)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphMotionCondition::GetAnimGraph)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimGraphMotionCondition::m_testFunction, "Test Function", "The type of test function or condition.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                ->EnumAttribute(FUNCTION_EVENT,                 s_functionMotionEvent)
+                ->EnumAttribute(FUNCTION_HASENDED,              s_functionHasEnded)
+                ->EnumAttribute(FUNCTION_HASREACHEDMAXNUMLOOPS, s_functionHasReachedMaxNumLoops)
+                ->EnumAttribute(FUNCTION_PLAYTIME,              s_functionHasReachedPlayTime)
+                ->EnumAttribute(FUNCTION_PLAYTIMELEFT,          s_functionHasLessThan)
+                ->EnumAttribute(FUNCTION_ISMOTIONASSIGNED,      s_functionIsMotionAssigned)
+                ->EnumAttribute(FUNCTION_ISMOTIONNOTASSIGNED,   s_functionIsMotionNotAssigned)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphMotionCondition::m_numLoops, "Num Loops", "The int value to test against the number of loops the motion already played.")
+                ->Attribute(AZ::Edit::Attributes::Min, 1)
+                ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<AZ::s32>::max())
+                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphMotionCondition::GetNumLoopsVisibility)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphMotionCondition::m_playTime, "Time Value", "The float value in seconds to test against.")
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphMotionCondition::GetPlayTimeVisibility)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphMotionCondition::m_eventType, "Event Type", "The event type to catch.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphMotionCondition::GetEventPropertiesVisibility)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphMotionCondition::m_eventParameter, "Event Parameter", "The event parameter to catch.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphMotionCondition::GetEventPropertiesVisibility)
+            ;
     }
 } // namespace EMotionFX

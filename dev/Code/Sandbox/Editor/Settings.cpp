@@ -165,6 +165,7 @@ SEditorSettings::SEditorSettings()
     cameraRotateSpeed = 1;
     cameraFastMoveSpeed = 2;
     stylusMode = false;
+    restoreViewportCamera = true;
     wheelZoomSpeed = 1;
     invertYRotation = false;
     invertPan = false;
@@ -187,6 +188,7 @@ SEditorSettings::SEditorSettings()
     bLayerDoubleClicking = false;
 
     enableSceneInspector = false;
+    enableLegacyUI = false;
 
     strStandardTempDirectory = "Temp";
     strEditorEnv = "Editor/Editor.env";
@@ -510,6 +512,7 @@ void SEditorSettings::Save()
     SaveValue("Settings", "CameraMoveSpeed", cameraMoveSpeed);
     SaveValue("Settings", "CameraRotateSpeed", cameraRotateSpeed);
     SaveValue("Settings", "StylusMode", stylusMode);
+    SaveValue("Settings", "RestoreViewportCamera", restoreViewportCamera);
     SaveValue("Settings", "WheelZoomSpeed", wheelZoomSpeed);
     SaveValue("Settings", "InvertYRotation", invertYRotation);
     SaveValue("Settings", "InvertPan", invertPan);
@@ -540,6 +543,7 @@ void SEditorSettings::Save()
     SaveValue("Settings", "LayerDoubleClicking", bLayerDoubleClicking);
 
     SaveValue("Settings", "EnableSceneInspector", enableSceneInspector);
+    SaveValue("Settings", "EnableLegacyUI", enableLegacyUI);
     
     //////////////////////////////////////////////////////////////////////////
     // Viewport settings.
@@ -789,6 +793,7 @@ void SEditorSettings::Load()
     LoadValue("Settings", "CameraMoveSpeed", cameraMoveSpeed);
     LoadValue("Settings", "CameraRotateSpeed", cameraRotateSpeed);
     LoadValue("Settings", "StylusMode", stylusMode);
+    LoadValue("Settings", "RestoreViewportCamera", restoreViewportCamera);
     LoadValue("Settings", "WheelZoomSpeed", wheelZoomSpeed);
     LoadValue("Settings", "InvertYRotation", invertYRotation);
     LoadValue("Settings", "InvertPan", invertPan);
@@ -825,6 +830,7 @@ void SEditorSettings::Load()
     LoadValue("Settings", "LayerDoubleClicking", bLayerDoubleClicking);
 
     LoadValue("Settings", "EnableSceneInspector", enableSceneInspector);
+    LoadValue("Settings", "EnableLegacyUI", enableLegacyUI);
     
     //////////////////////////////////////////////////////////////////////////
     // Viewport Settings.
@@ -1144,7 +1150,7 @@ bool SEditorSettings::BrowseTerrainTexture(bool bIsSave)
     else
     {
         fileName = "terraintex.bmp";
-        strcpy(path, Path::GamePathToFullPath("").toUtf8().data());
+        azstrcpy(path, MAX_PATH, Path::GamePathToFullPath("").toUtf8().data());
     }
 
     if (bIsSave)

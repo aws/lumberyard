@@ -65,11 +65,22 @@ public:
         , m_disconnectID(InvalidConnectionID)
         , m_incommingConnectionID(InvalidConnectionID)
         , m_errorCode(-1)
+        , m_active(false)
     {
+    }
+
+    ~CarrierStreamCallbacksHandler()
+    {
+        if (m_active)
+        {
+            CarrierEventBus::Handler::BusDisconnect();
+            StreamSocketDriverEventsBus::Handler::BusDisconnect();
+        }
     }
 
     void Activate(Carrier* carrier, Driver* driver)
     {
+        m_active = true;
         m_carrier = carrier;
         m_driver = driver;
         CarrierEventBus::Handler::BusConnect(carrier->GetGridMate());
@@ -160,6 +171,7 @@ public:
     ConnectionID    m_disconnectID;
     ConnectionID    m_incommingConnectionID;
     int             m_errorCode;
+    bool            m_active;
 };
 
 namespace UnitTest

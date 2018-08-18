@@ -21,7 +21,7 @@
 #include <QFileDialog>
 #include <QCloseEvent>
 #include <QMessageBox>
-#include <QDesktopServices.h>
+#include <QDesktopServices>
 #include <QUrl>
 #include <QDockWidget>
 #include <QLabel>

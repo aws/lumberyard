@@ -1,0 +1,114 @@
+﻿<button class="btn l-primary create-button" (click)="createLaunchConfigurationModal()">
+    New Fleet
+</button>
+<button class="btn btn-outline-primary create-button" (click)="createOrUpdateFleet(currentFleet)">
+    Save Changes
+</button>
+<div [ngSwitch]="isLoadingFleet">
+    <div *ngSwitchCase="true">
+        <div class="loading-spinner-container">
+            <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+        </div>
+    </div>
+    <div *ngSwitchCase="false">
+        <div *ngIf="currentFleet.autoScalingGroupName">
+            <h2>Current fleet</h2>
+            <form>
+                <div class="form-group row">
+                    <label class="col-3 col-form-label affix">Group Name</label>
+                    <label class="col-6 col-form-label">{{currentFleet.autoScalingGroupName}}</label>
+                </div>
+                <div class="form-group row">
+                    <label class="col-3 col-form-label affix">Number of Instances</label>
+                    <div class="col-6">
+                        <input type="number" class="form-control" name="instance-number" [(ngModel)]="currentFleet.instanceNum">
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-3 col-form-label affix">Auto-Terminate</label>
+                    <div class="col-6">
+                        <input type="checkbox" class="form-control" id="automatically-take-down" name="automatically-take-down" [(ngModel)]="currentFleet.automaticallyTakeDown">
+                        <label class="l-checkbox" [attr.for]="'automatically-take-down'"></label>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- CreateLaunchConfiguration modal -->
+<modal *ngIf="mode == Modes.CreateLaunchConfig || mode == Modes.CreateFleet"
+        [title]="mode == Modes.CreateLaunchConfig ? 'Create launch configuration' : 'Create fleet'"
+        [autoOpen]="true"
+        [hasSubmit]="true"
+        [onDismiss]="dismissModal"
+        [onClose]="dismissModal"
+        [submitButtonText]="mode == Modes.CreateLaunchConfig ? 'Continue' : 'Create'"
+        (modalSubmitted)="mode == Modes.CreateLaunchConfig ? overwriteCurrentFleet() : createOrUpdateFleet(newFleet)"
+        [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <div *ngIf="mode == Modes.CreateLaunchConfig">
+            <label *ngIf="currentFleet.launchConfigurationName" class="warning-label">Warning: Your current fleet will be deleted if you create a new one</label>
+            <div [ngSwitch]="isLoadingAmis">
+                <div *ngSwitchCase="true">
+                    <div class="loading-spinner-container">
+                        <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <form class="content-container" *ngSwitchCase="false">
+                    <div class="form-group row">
+                        <label class="col-3 col-form-label affix">Configuration name</label>
+                        <div class="col-6">
+                            <input type="text" class="form-control" name="launch-configuration-name" [(ngModel)]="launchConfigurationName">
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-3 col-form-label affix">Amazon Machine Images (AMI)</label>
+                        <div class="col-6">
+                            <select class="form-control" name="ami-selection" [(ngModel)]="imageId">
+                                <option *ngFor="let amiItem of amiList" [ngValue]="amiItem['ImageId']">{{amiItem['Name']}}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-3 col-form-label affix">Key Pair</label>
+                        <div class="col-6">
+                            <select class="form-control" name="key-pair-selection" [(ngModel)]="keyPair">
+                                <option *ngFor="let keyPair of keyPairList" [ngValue]="keyPair">{{keyPair}}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-3 col-form-label affix">Instance Type</label>
+                        <div class="col-6">
+                            <select class="form-control" name="instance-type-selection" [(ngModel)]="instanceType">
+                                <option *ngFor="let instanceTypeItem of instanceTypeList" [ngValue]="instanceTypeItem">{{instanceTypeItem}}</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div *ngIf="mode == Modes.CreateFleet">
+            <div class="form-group row">
+                <label class="col-3 col-form-label affix">group name</label>
+                <div class="col-6">
+                    <input type="text" class="form-control" name="group-name" [(ngModel)]="newFleet.autoScalingGroupName">
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="col-3 col-form-label affix">instance number</label>
+                <div class="col-6">
+                    <input type="number" class="form-control" name="instance-number" [(ngModel)]="newFleet.instanceNum">
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="col-3 col-form-label affix">Auto-Terminate</label>
+                <div class="col-6">
+                    <input type="checkbox" class="form-control" id="new-fleet-automatically-take-down" name="new-fleet-automatically-take-down" [(ngModel)]="newFleet.automaticallyTakeDown">
+                    <label class="l-checkbox" [attr.for]="'new-fleet-automatically-take-down'"></label>
+                </div>
+            </div>
+        </div>
+    </div>
+</modal>

@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include <AzFramework/Math/MathUtils.h>
 #include <ScriptCanvas/Core/NodeFunctionGeneric.h>
 #include <ScriptCanvas/Libraries/Math/MathNodeUtilities.h>
 

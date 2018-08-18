@@ -80,6 +80,7 @@ public:
 
     void SetMatrix(const Matrix34& mat);
     const Matrix34& GetMatrix() const {return m_Matrix; }
+    float GetScale() const { return m_fMatrixScale; }
     virtual void SetDrawLast(bool enable) { m_bDrawLast = enable; }
     bool GetDrawLast() const { return m_bDrawLast; }
 

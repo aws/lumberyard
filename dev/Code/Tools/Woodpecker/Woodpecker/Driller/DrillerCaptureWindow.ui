@@ -584,7 +584,7 @@
   <customwidget>
    <class>Driller::CombinedEventsControl</class>
    <extends>QWidget</extends>
-   <header>combinedeventscontrol.hxx</header>
+   <header>CombinedEventsControl.hxx</header>
    <container>1</container>
   </customwidget>
   <customwidget>

@@ -34,8 +34,8 @@ namespace EMotionFX
                 ~MotionRangeRuleBehavior() override = default;
 
                 // From BehaviorComponent
-                void Activate();
-                void Deactivate();
+                void Activate() override;
+                void Deactivate() override;
                 static void Reflect(AZ::ReflectContext* context);
 
                 // ManifestMetaInfo

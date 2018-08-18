@@ -225,7 +225,7 @@ typedef uint32 vtx_idx;
 #endif
 
 // Reflect texture slot information - only used in the editor
-#if defined(WIN32) || defined(WIN64)
+#if defined(WIN32) || defined(WIN64) || defined(AZ_PLATFORM_APPLE_OSX)
 #define SHADER_REFLECT_TEXTURE_SLOTS 1
 #else
 #define SHADER_REFLECT_TEXTURE_SLOTS 0
@@ -332,9 +332,6 @@ typedef uint32 vtx_idx;
 // Modules   : Renderer, Engine
 // Platform  : DX11
 #if !defined(RENDERNODES_LEAN_AND_MEAN)
-    #if defined(WIN32)
-        #define FEATURE_SVO_GI_ALLOW_HQ
-    #endif
     #if PROJECTDEFINES_H_TRAIT_USE_SVO_GI
         #define FEATURE_SVO_GI
     #endif

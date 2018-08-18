@@ -78,15 +78,24 @@ namespace TimeOfDayDetails
 
     AZ_INLINE static bool SkipUserInterface(int value)
     {
-        if (!HasOceanFeatureToggle())
-        {
-            return false;
-        }
+        // Check for obsolete parameters that we still want to keep around to migrate legacy data to new data 
+        // but don't want to display in the UI
         const ITimeOfDay::ETimeOfDayParamID enumValue = static_cast<ITimeOfDay::ETimeOfDayParamID>(value);
-        return (enumValue == ITimeOfDay::PARAM_OCEANFOG_COLOR) || 
+        
+        // Split the check into two parts to try to keep the logic clear. 
+        // The First set of parameters are always checked...
+        bool skipParameter = (enumValue == ITimeOfDay::PARAM_HDR_DYNAMIC_POWER_FACTOR) ||
+            (enumValue == ITimeOfDay::PARAM_TERRAIN_OCCL_MULTIPLIER) ||
+            (enumValue == ITimeOfDay::PARAM_SUN_COLOR_MULTIPLIER);
+
+        // Only check the ocean parameters if the ocean feature (aka the Infinite Ocean Component) 
+        // has been enabled
+        skipParameter |= HasOceanFeatureToggle() &&
+               ((enumValue == ITimeOfDay::PARAM_OCEANFOG_COLOR) || 
                (enumValue == ITimeOfDay::PARAM_OCEANFOG_COLOR_MULTIPLIER) ||
-               (enumValue == ITimeOfDay::PARAM_OCEANFOG_DENSITY)
-            ;
+               (enumValue == ITimeOfDay::PARAM_OCEANFOG_DENSITY));
+
+        return skipParameter;
     }
 }
 
@@ -551,57 +560,57 @@ void CTimeOfDayDialog::Init()
     connect(m_ui->expandAllClickable, &QLabel::linkActivated, this, &CTimeOfDayDialog::OnExpandAll);
     connect(m_ui->collapseAllClickable, &QLabel::linkActivated, this, &CTimeOfDayDialog::OnCollapseAll);
 
-    connect(m_ui->currentTimeEdit, &QTimeEdit::timeChanged, [=](const QTime& time) { SetTime(TimeOfDayDetails::floatFromQTime(time)); });
+    connect(m_ui->currentTimeEdit, &QTimeEdit::timeChanged, this, [=](const QTime& time) { SetTime(TimeOfDayDetails::floatFromQTime(time)); });
     connect(m_ui->startTimeEdit, &QTimeEdit::timeChanged, this, &CTimeOfDayDialog::StartTimeChanged);
     connect(m_ui->endTimeEdit, &QTimeEdit::timeChanged, this, &CTimeOfDayDialog::EndTimeChanged);
     auto doubleValueChanged = static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged);
     connect(m_ui->playSpeedDoubleSpinBox, doubleValueChanged, this, &CTimeOfDayDialog::OnChangeTimeAnimSpeed);
 
-    connect(m_ui->playClickable, &QLabel::linkActivated, [=]() { m_ui->actionPlayPause->setChecked(true); });
-    connect(m_ui->stopClickable, &QLabel::linkActivated, [=]() { m_ui->actionPlayPause->setChecked(false); });
+    connect(m_ui->playClickable, &QLabel::linkActivated, this, [=]() { m_ui->actionPlayPause->setChecked(true); });
+    connect(m_ui->stopClickable, &QLabel::linkActivated, this, [=]() { m_ui->actionPlayPause->setChecked(false); });
 
-    connect(m_ui->forceSkyUpdateCheckBox, &QCheckBox::stateChanged, [=](int state) { gSettings.bForceSkyUpdate = state == Qt::Checked; });
+    connect(m_ui->forceSkyUpdateCheckBox, &QCheckBox::stateChanged, this, [=](int state) { gSettings.bForceSkyUpdate = state == Qt::Checked; });
 
     connect(m_ui->actionUndo, &QAction::triggered, this, &CTimeOfDayDialog::OnUndo);
     connect(m_ui->actionRedo, &QAction::triggered, this, &CTimeOfDayDialog::OnRedo);
     connect(m_ui->actionImportFile, &QAction::triggered, this, &CTimeOfDayDialog::OnImport);
     connect(m_ui->actionExportFile, &QAction::triggered, this, &CTimeOfDayDialog::OnExport);
 
-    connect(m_ui->actionSetTimeTo0000, &QAction::triggered, [=]() { SetTime(0); });
-    connect(m_ui->actionSetTimeTo0600, &QAction::triggered, [=]() { SetTime(6); });
-    connect(m_ui->actionSetTimeTo1200, &QAction::triggered, [=]() { SetTime(12); });
-    connect(m_ui->actionSetTimeTo1800, &QAction::triggered, [=]() { SetTime(18); });
-    connect(m_ui->actionSetTimeTo2400, &QAction::triggered, [=]() { SetTime(m_maxTime); });
+    connect(m_ui->actionSetTimeTo0000, &QAction::triggered, this, [=]() { SetTime(0); });
+    connect(m_ui->actionSetTimeTo0600, &QAction::triggered, this, [=]() { SetTime(6); });
+    connect(m_ui->actionSetTimeTo1200, &QAction::triggered, this, [=]() { SetTime(12); });
+    connect(m_ui->actionSetTimeTo1800, &QAction::triggered, this, [=]() { SetTime(18); });
+    connect(m_ui->actionSetTimeTo2400, &QAction::triggered, this, [=]() { SetTime(m_maxTime); });
 
     connect(m_ui->actionHold, &QAction::triggered, this, &CTimeOfDayDialog::OnHold);
     connect(m_ui->actionFetch, &QAction::triggered, this, &CTimeOfDayDialog::OnFetch);
 
-    connect(m_ui->tangentsToAutoButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_AUTO); });
-    connect(m_ui->inTangentToZeroButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_IN_ZERO); });
-    connect(m_ui->inTangentToStepButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_IN_STEP); });
-    connect(m_ui->inTangentToLinearButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_IN_LINEAR); });
-    connect(m_ui->outTangentToZerobutton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_OUT_ZERO); });
-    connect(m_ui->outTangentToStepButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_OUT_STEP); });
-    connect(m_ui->outTangentToLinearButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_OUT_LINEAR); });
-    connect(m_ui->fitSplinesHorizontalButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_FIT_X); });
-    connect(m_ui->fitSplinesVerticalButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_FIT_Y); });
-    connect(m_ui->splineSnapGridX, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_SNAP_GRID_X); });
-    connect(m_ui->splineSnapGridY, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_SNAP_GRID_Y); });
-    connect(m_ui->previousKeyButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_PREVIOUS_KEY); });
-    connect(m_ui->nextKeyButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_NEXT_KEY); });
-    connect(m_ui->removeAllExceptSelectedButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_FLATTEN_ALL); });
+    connect(m_ui->tangentsToAutoButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_AUTO); });
+    connect(m_ui->inTangentToZeroButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_IN_ZERO); });
+    connect(m_ui->inTangentToStepButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_IN_STEP); });
+    connect(m_ui->inTangentToLinearButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_IN_LINEAR); });
+    connect(m_ui->outTangentToZerobutton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_OUT_ZERO); });
+    connect(m_ui->outTangentToStepButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_OUT_STEP); });
+    connect(m_ui->outTangentToLinearButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_OUT_LINEAR); });
+    connect(m_ui->fitSplinesHorizontalButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_FIT_X); });
+    connect(m_ui->fitSplinesVerticalButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_FIT_Y); });
+    connect(m_ui->splineSnapGridX, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_SNAP_GRID_X); });
+    connect(m_ui->splineSnapGridY, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_SNAP_GRID_Y); });
+    connect(m_ui->previousKeyButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_PREVIOUS_KEY); });
+    connect(m_ui->nextKeyButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_NEXT_KEY); });
+    connect(m_ui->removeAllExceptSelectedButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_FLATTEN_ALL); });
 
-    connect(m_ui->timelineSlider, &QSlider::valueChanged, [=](int value) { SetTime(value / 60.0f); });
+    connect(m_ui->timelineSlider, &QSlider::valueChanged, this, [=](int value) { SetTime(value / 60.0f); });
 
     connect(m_ui->spline, &SplineWidget::beforeChange, this, &CTimeOfDayDialog::OnBeforeSplineChange);
-    connect(m_ui->spline, &SplineWidget::change, [=]() { OnSplineChange(m_ui->spline); });
+    connect(m_ui->spline, &SplineWidget::change, this, [=]() { OnSplineChange(m_ui->spline); });
     connect(m_ui->spline, &SplineWidget::scrollZoomRequested, this, &CTimeOfDayDialog::OnSplineCtrlScrollZoom);
     connect(m_ui->spline, &SplineWidget::timeChange, this, &CTimeOfDayDialog::OnTimelineCtrlChange);
-    connect(m_ui->spline, &SplineWidget::keySelectionChange, [=]() { SetTimeFromActiveKey(); });
+    connect(m_ui->spline, &SplineWidget::keySelectionChange, this, [=]() { SetTimeFromActiveKey(); });
 
     connect(m_ui->colorGradient, &CColorGradientCtrl::beforeChange, this, &CTimeOfDayDialog::OnBeforeSplineChange);
-    connect(m_ui->colorGradient, &CColorGradientCtrl::change, [=]() { OnSplineChange(m_ui->colorGradient); });
-    connect(m_ui->colorGradient, &CColorGradientCtrl::activeKeyChange, [=]() { SetTimeFromActiveKey(true); });
+    connect(m_ui->colorGradient, &CColorGradientCtrl::change, this, [=]() { OnSplineChange(m_ui->colorGradient); });
+    connect(m_ui->colorGradient, &CColorGradientCtrl::activeKeyChange, this, [=]() { SetTimeFromActiveKey(true); });
     //connect(m_timelineCtrl.data(), &TimelineWidget::startChange, this, &CTimeOfDayDialog::OnBeforeSplineChange);
     connect(m_timelineCtrl, &TimelineWidget::change, this, &CTimeOfDayDialog::OnTimelineCtrlChange);
 

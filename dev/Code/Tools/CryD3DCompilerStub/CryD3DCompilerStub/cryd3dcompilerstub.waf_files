@@ -2,10 +2,10 @@
     "none":
     {
         "Root": [
-            "stdafx.cpp"
+            "StdAfx.cpp"
         ],
         "Header Files": [
-            "stdafx.h",
+            "StdAfx.h",
             "targetver.h"
         ],
         "Resource Files": [

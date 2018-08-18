@@ -561,7 +561,7 @@ CLayersListBox::CLayersListBox(QWidget* parent)
 {
     qRegisterMetaType<CLayersListBox::SCacheLayerAttributes*>("SCacheLayerAttributes*");
 
-    QObject::connect(&m_timer, &QTimer::timeout, std::bind(&CLayersListBox::OnTimerCompleted, this));
+    QObject::connect(&m_timer, &QTimer::timeout, this, &CLayersListBox::OnTimerCompleted);
     m_timer.setInterval(1000);
     m_timer.start();
 

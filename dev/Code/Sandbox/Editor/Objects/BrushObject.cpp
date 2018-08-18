@@ -30,7 +30,7 @@
 #include "Material/MaterialManager.h"
 #include "ISubObjectSelectionReferenceFrameCalculator.h"
 
-#include <I3Dengine.h>
+#include <I3DEngine.h>
 #include <IEntitySystem.h>
 #include <IEntityRenderState.h>
 #include <IPhysics.h>

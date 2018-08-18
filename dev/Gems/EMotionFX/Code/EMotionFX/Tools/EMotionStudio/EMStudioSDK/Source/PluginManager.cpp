@@ -25,6 +25,7 @@
 #include <QApplication>
 
 // include MCore related
+#include <MCore/Source/StringConversions.h>
 #include <MCore/Source/LogManager.h>
 
 // include mac reladed

@@ -18,7 +18,7 @@
 #include "CCryDXMETALRasterizerState.hpp"
 #include "CCryDXMETALDevice.hpp"
 #include "../Implementation/GLState.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 
 
 CCryDXGLRasterizerState::CCryDXGLRasterizerState(const D3D11_RASTERIZER_DESC& kDesc, CCryDXGLDevice* pDevice)

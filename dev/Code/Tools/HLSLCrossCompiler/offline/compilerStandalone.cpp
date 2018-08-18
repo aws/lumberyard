@@ -204,7 +204,7 @@ int TryCompileShader(GLenum eShaderType, const char* inFilename, const char* sha
             filename += "_compileErrors.txt";
 
             //Dump to file
-            errorFile = fopen(filename.c_str(), "w");
+            fopen_s(&errorFile, filename.c_str(), "w");
 
             fclose(errorFile);
         }
@@ -297,7 +297,7 @@ GLLang LanguageFromString(const char* str)
 }
 
 #define MAX_PATH_CHARS 256
-#define MAX_FXC_CMD_CHARS 512
+#define MAX_FXC_CMD_CHARS 1024
 
 typedef struct
 {
@@ -752,8 +752,14 @@ int main(int argc, char** argv)
         std::string fxcExe(options.fxcCmdLine.begin(), fxcPos);
         std::string fxcArguments(fxcPos, options.fxcCmdLine.end());
 
+#if defined(APPLE)
+        fprintf(stderr, "fxc.exe cannot be executed on Mac");
+        return 1;
+#else
         // Need an extra set of quotes around the full command line because the way "system" executes it using cmd.
         sprintf_s(fullFxcCmdLine, sizeof(fullFxcCmdLine), "\"\"%s\" %s \"%s\" \"%s\"\"", fxcExe.c_str(), fxcArguments.c_str(), dxbcFileName, options.shaderFile);
+#endif
+
         retValue = system(fullFxcCmdLine);
 
         if (retValue == 0)

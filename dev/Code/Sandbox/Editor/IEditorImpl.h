@@ -25,6 +25,7 @@
 #include <QApplication>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Thumbnails/ThumbnailerBus.h>
+#include <AzCore/std/string/string.h>
 
 class QMenu;
 
@@ -407,7 +408,7 @@ protected:
     // EditorEntityContextNotificationBus implementation
     void OnStartPlayInEditor() override;
     //////////////////////////////////////////////////////////////////////////
-
+    AZStd::string LoadProjectIdFromProjectData();
     void InitMetrics();
 
     void DetectVersion();

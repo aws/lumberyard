@@ -101,8 +101,32 @@ namespace EMStudio
         layout->addLayout(extractNodeLayout, rowNr, 1);
 
         // motion extraction node
-        connect(mResetMotionExtractionNodeButton,                                                                  SIGNAL(clicked()),                                      this, SLOT(ResetMotionExtractionNode()));
-        connect(mMotionExtractionNode,                                                                             SIGNAL(clicked()),                                      this, SLOT(OnSelectMotionExtractionNode()));
+        connect(mResetMotionExtractionNodeButton, SIGNAL(clicked()), this, SLOT(ResetMotionExtractionNode()));
+        connect(mMotionExtractionNode, SIGNAL(clicked()), this, SLOT(OnSelectMotionExtractionNode()));
+
+
+        // add the retarget root selection
+        rowNr++;
+        QHBoxLayout* retargetRootNodeLayout = new QHBoxLayout();
+        retargetRootNodeLayout->setDirection(QBoxLayout::LeftToRight);
+        retargetRootNodeLayout->setMargin(0);
+        mRetargetRootNode = new MysticQt::LinkWidget();
+        mRetargetRootNode->setMinimumHeight(20);
+        mRetargetRootNode->setMaximumHeight(20);
+        layout->addWidget(new QLabel("Retarget Root Node:"), rowNr, 0);
+        mResetRetargetRootNodeButton = new QPushButton();
+        EMStudioManager::MakeTransparentButton(mResetRetargetRootNodeButton, "/Images/Icons/Remove.png",   "Reset selection");
+        retargetRootNodeLayout->addWidget(mRetargetRootNode);
+        retargetRootNodeLayout->addWidget(mResetRetargetRootNodeButton);
+
+        dummyWidget = new QWidget();
+        dummyWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Maximum);
+        retargetRootNodeLayout->addWidget(dummyWidget);
+
+        layout->addLayout(retargetRootNodeLayout, rowNr, 1);
+        connect(mResetRetargetRootNodeButton, SIGNAL(clicked()), this, SLOT(ResetRetargetRootNode()));
+        connect(mRetargetRootNode, SIGNAL(clicked()), this, SLOT(OnSelectRetargetRootNode()));
+
 
         // bounding box nodes
         rowNr++;
@@ -193,6 +217,11 @@ namespace EMStudio
             mResetMotionExtractionNodeButton->setVisible(false);
             mFindBestMatchButton->setVisible(false);
 
+            mRetargetRootNode->setText(GetDefaultNodeSelectionLabelText());
+            mRetargetRootNode->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            mRetargetRootNode->setEnabled(false);
+            mResetRetargetRootNodeButton->setVisible(false);
+
             // nodes excluded from bounding volume calculations
             mExcludedNodesLink->setText(GetDefaultExcludeBoundNodesLabelText());
             mExcludedNodesLink->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -240,6 +269,26 @@ namespace EMStudio
 
         mMotionExtractionNode->setToolTip("The node used to drive the character's movement and rotation");
         mMotionExtractionNode->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+
+        // get the retarget root node
+        EMotionFX::Node* retargetRootNode = mActor->GetRetargetRootNode();
+        if (!retargetRootNode)
+        {
+            mRetargetRootNode->setEnabled(true);
+            mRetargetRootNode->setText(GetDefaultNodeSelectionLabelText());
+            mResetRetargetRootNodeButton->setVisible(false);
+        }
+        else
+        {
+            mRetargetRootNode->setEnabled(true);
+            mRetargetRootNode->setText(retargetRootNode->GetName());
+            mResetRetargetRootNodeButton->setVisible(true);
+        }
+
+        mRetargetRootNode->setToolTip("The root node that will use special handling when retargeting. Z must point up.");
+        mRetargetRootNode->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
 
         // nodes excluded from bounding volume calculations
         const uint32 calcNumExcludedNodes = CalcNumExcludedNodesFromBounds(mActor);
@@ -291,6 +340,13 @@ namespace EMStudio
         ResetNode("motionExtractionNodeName");
     }
 
+
+    void ActorPropertiesWindow::ResetRetargetRootNode()
+    {
+        ResetNode("retargetRootNodeName");
+    }
+
+
     void ActorPropertiesWindow::OnSelectMotionExtractionNode()
     {
         if (mActorInstance == nullptr)
@@ -327,6 +383,38 @@ namespace EMStudio
         disconnect(motionExtractionNodeSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnMotionExtractionNodeSelected(MCore::Array<SelectionItem>)));
     }
 
+
+    void ActorPropertiesWindow::OnSelectRetargetRootNode()
+    {
+        if (!mActorInstance)
+        {
+            AZ_Warning("EMotionFX", false, "Cannot open node selection window. Please select an actor instance first.");
+            return;
+        }
+
+        mActor = mActorInstance->GetActor();
+        EMotionFX::Node* node = nullptr;
+        node = mActor->GetMotionExtractionNode();
+
+        // show the node selection window
+        if (!mSelectionList)
+        {
+            mSelectionList = new CommandSystem::SelectionList();
+        }
+
+        mSelectionList->Clear();
+        if (node)
+        {
+            mSelectionList->AddNode(node);
+        }
+
+        NodeSelectionWindow nodeSelectionWindow(this, true);
+        connect(nodeSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnRetargetRootNodeSelected(MCore::Array<SelectionItem>)));
+        nodeSelectionWindow.Update(mActorInstance->GetID(), mSelectionList);
+        nodeSelectionWindow.exec();
+
+        disconnect(nodeSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnRetargetRootNodeSelected(MCore::Array<SelectionItem>)));
+    }
 
     void ActorPropertiesWindow::GetNodeName(const MCore::Array<SelectionItem>& selection, AZStd::string* outNodeName, uint32* outActorID)
     {
@@ -374,6 +462,25 @@ namespace EMStudio
     }
 
 
+    void ActorPropertiesWindow::OnRetargetRootNodeSelected(MCore::Array<SelectionItem> selection)
+    {
+        // get the selected node name
+        uint32 actorID;
+        AZStd::string nodeName;
+        GetNodeName(selection, &nodeName, &actorID);
+
+        MCore::CommandGroup commandGroup("Adjust retarget root node");
+        AZStd::string command = AZStd::string::format("AdjustActor -actorID %i -retargetRootNodeName \"%s\"", actorID, nodeName.c_str());
+        commandGroup.AddCommandString(command);
+
+        AZStd::string result;
+        if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
+        {
+            AZ_Error("EMotionFX", false, result.c_str());
+        }
+    }
+
+
     // automatically find the best matching motion extraction node and set it
     void ActorPropertiesWindow::OnFindBestMatchingNode()
     {
@@ -408,8 +515,8 @@ namespace EMStudio
 
     EMotionFX::Node* ActorPropertiesWindow::GetNode(NodeHierarchyWidget* hierarchyWidget)
     {
-        MCore::Array<SelectionItem>& selectedItems = hierarchyWidget->GetSelectedItems();
-        if (selectedItems.GetLength() != 1)
+        AZStd::vector<SelectionItem>& selectedItems = hierarchyWidget->GetSelectedItems();
+        if (selectedItems.size() != 1)
         {
             return nullptr;
         }
@@ -600,8 +707,7 @@ namespace EMStudio
         // get some infos from the selection window
         NodeHierarchyWidget* hierarchyWidget = mExcludedNodesSelectionWindow->GetNodeHierarchyWidget();
         hierarchyWidget->UpdateSelection();
-        MCore::Array<SelectionItem>& selectedItems = hierarchyWidget->GetSelectedItems();
-        const uint32 numSelectedItems = selectedItems.GetLength();
+        AZStd::vector<SelectionItem>& selectedItems = hierarchyWidget->GetSelectedItems();
 
         // get the number of nodes in the actor and the current lod level
         const uint32 numNodes = mActor->GetNumNodes();
@@ -613,9 +719,9 @@ namespace EMStudio
         }
 
         // iterate through the selected items and enable these nodes
-        for (uint32 i = 0; i < numSelectedItems; ++i)
+        for (const SelectionItem& selectedItem : selectedItems)
         {
-            EMotionFX::Node* node = mActor->GetSkeleton()->FindNodeByName(selectedItems[i].GetNodeName());
+            EMotionFX::Node* node = mActor->GetSkeleton()->FindNodeByName(selectedItem.GetNodeName());
             if (node)
             {
                 node->SetIncludeInBoundsCalc(false);

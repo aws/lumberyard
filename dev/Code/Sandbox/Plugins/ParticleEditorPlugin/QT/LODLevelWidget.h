@@ -1,8 +1,8 @@
 #pragma once
 
 #include <QWidget>
-#include <QDockwidget>
-#include <QTreewidget>
+#include <QDockWidget>
+#include <QTreeWidget>
 
 class QCheckBox;
 class QPushButton;

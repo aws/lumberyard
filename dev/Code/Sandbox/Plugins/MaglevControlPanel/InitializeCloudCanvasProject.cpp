@@ -168,7 +168,7 @@ void InitializeCloudCanvasProject::AddDeploymentRegionBox(QVBoxLayout* verticalL
     GetIEditor()->GetAWSResourceManager()->GetRegionList();
 
     disconnect(m_conn);
-    m_conn = connect(GetIEditor()->GetAWSResourceManager(), &AWSResourceManager::SupportedRegionsObtained, this, [this, deploymentRegionBox](QStringList regionList) {
+    m_conn = connect(GetIEditor()->GetAWSResourceManager(), &AWSResourceManager::SupportedRegionsObtained, this, [deploymentRegionBox](QStringList regionList) {
         deploymentRegionBox->clear();
         deploymentRegionBox->addItems(regionList);
         deploymentRegionBox->setCurrentIndex(regionList.indexOf("us-east-1"));

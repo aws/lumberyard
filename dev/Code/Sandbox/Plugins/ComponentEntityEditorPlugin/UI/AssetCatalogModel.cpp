@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "CryEdit.h"
 #include "AssetCatalogModel.h"
 #include "Objects/ComponentEntityObject.h"

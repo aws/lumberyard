@@ -1,0 +1,29 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/RoadsAndRivers/RoadsAndRiversBus.h"
+        ],
+        "Source": [
+            "Source/RoadRiverCommon.cpp",
+            "Source/RoadRiverCommon.h",
+            "Source/RoadsAndRiversModule.cpp",
+            "Source/RoadsAndRiversModule.h",
+            "Source/RoadComponent.h",
+            "Source/RoadComponent.cpp",
+            "Source/RiverComponent.h",
+            "Source/RiverComponent.cpp",
+            "Source/SplineGeometry.h",
+            "Source/SplineGeometry.cpp",
+            "Source/River.h",
+            "Source/River.cpp",
+            "Source/Road.h",
+            "Source/Road.cpp"
+        ]
+    }
+}

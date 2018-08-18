@@ -28,7 +28,17 @@
         <string>Settings</string>
        </property>
        <layout class="QGridLayout" name="gridLayout">
-        <item row="7" column="0">
+        <item row="6" column="2">
+         <widget class="QLabel" name="m_labelFrequencyStep">
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="0">
          <widget class="QLabel" name="label">
           <property name="text">
            <string>Sharpness (Freq. Step)</string>
@@ -48,32 +58,6 @@
           </property>
          </widget>
         </item>
-        <item row="5" column="1">
-         <widget class="QSlider" name="m_sldCover">
-          <property name="minimum">
-           <number>0</number>
-          </property>
-          <property name="maximum">
-           <number>255</number>
-          </property>
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="tickPosition">
-           <enum>QSlider::NoTicks</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="2">
-         <widget class="QLabel" name="m_labelCover">
-          <property name="text">
-           <string>0</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
-         </widget>
-        </item>
         <item row="4" column="0">
          <widget class="QLabel" name="label_2">
           <property name="text">
@@ -84,7 +68,7 @@
           </property>
          </widget>
         </item>
-        <item row="7" column="1">
+        <item row="6" column="1">
          <widget class="QSlider" name="m_sldFrequencyStep">
           <property name="minimum">
            <number>10</number>
@@ -100,7 +84,7 @@
           </property>
          </widget>
         </item>
-        <item row="6" column="0">
+        <item row="5" column="0">
          <widget class="QLabel" name="label_3">
           <property name="text">
            <string>Sharpness (Exp. Base)</string>
@@ -120,7 +104,7 @@
           </property>
          </widget>
         </item>
-        <item row="6" column="1">
+        <item row="5" column="1">
          <widget class="QSlider" name="m_sldSharpness">
           <property name="minimum">
            <number>990</number>
@@ -162,18 +146,8 @@
           </property>
          </widget>
         </item>
-        <item row="6" column="2">
+        <item row="5" column="2">
          <widget class="QLabel" name="m_labelSharpness">
-          <property name="text">
-           <string>0</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item row="7" column="2">
-         <widget class="QLabel" name="m_labelFrequencyStep">
           <property name="text">
            <string>0</string>
           </property>
@@ -293,16 +267,6 @@
           </property>
           <property name="tickPosition">
            <enum>QSlider::NoTicks</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="0">
-         <widget class="QLabel" name="label_8">
-          <property name="text">
-           <string>Cover (Exp. Substract)</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
           </property>
          </widget>
         </item>

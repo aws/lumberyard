@@ -71,6 +71,7 @@ namespace LmbrCentral
      */
     class PolygonPrismShapeDebugDisplayComponent
         : public EntityDebugDisplayComponent
+        , public ShapeComponentNotificationsBus::Handler
     {
     public:
         AZ_COMPONENT(PolygonPrismShapeDebugDisplayComponent, "{FBDABBAB-F754-4637-BF26-9AB89F3AF626}")
@@ -80,17 +81,18 @@ namespace LmbrCentral
             : m_polygonPrism(polygonPrism) {}
 
         // AZ::Component
-        void Activate();
+        void Activate() override;
+        void Deactivate() override;
 
         static void Reflect(AZ::ReflectContext* context);
 
         void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
 
+        // ShapeComponentNotificationsBus
+        void OnShapeChanged(ShapeChangeReasons changeReason) override;
+
     private:
         AZ_DISABLE_COPY_MOVE(PolygonPrismShapeDebugDisplayComponent)
-
-        // AZ::TransformNotificationBus::Handler
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
         void GenerateVertices();
 

@@ -16,7 +16,7 @@
 #pragma once
 
 #include "BaseLibraryItem.h"
-#include <I3dEngine.h>
+#include <I3DEngine.h>
 
 class CPrefabObject;
 

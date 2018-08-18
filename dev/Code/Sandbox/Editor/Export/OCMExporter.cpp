@@ -190,7 +190,8 @@ bool COCMExporter::ExportToFile(const char* filename, const Export::IData* pExpo
 {
     CLogFile::FormatLine("Exporting OCM file to '%s'", filename);
 
-    FILE* pFile = fopen(filename, "wb");
+    FILE* pFile = nullptr;
+    azfopen(&pFile, filename, "wb");
     if (!pFile)
     {
         CLogFile::FormatLine("Error while opening file '%s'!", filename);

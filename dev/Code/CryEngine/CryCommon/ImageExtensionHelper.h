@@ -819,320 +819,320 @@ namespace CImageExtensionHelper
     // Warning: duplicate code.
     inline ETEX_Format TextureFormatForName(const char* sETF)
     {
-        if (!stricmp(sETF, "Unknown"))
+        if (!azstricmp(sETF, "Unknown"))
         {
             return eTF_Unknown;
         }
 
-        if (!stricmp(sETF, "R8G8B8A8S"))
+        if (!azstricmp(sETF, "R8G8B8A8S"))
         {
             return eTF_R8G8B8A8S;
         }
-        if (!stricmp(sETF, "R8G8B8A8"))
+        if (!azstricmp(sETF, "R8G8B8A8"))
         {
             return eTF_R8G8B8A8;
         }
 
-        if (!stricmp(sETF, "A8"))
+        if (!azstricmp(sETF, "A8"))
         {
             return eTF_A8;
         }
-        if (!stricmp(sETF, "R8"))
+        if (!azstricmp(sETF, "R8"))
         {
             return eTF_R8;
         }
-        if (!stricmp(sETF, "R8S"))
+        if (!azstricmp(sETF, "R8S"))
         {
             return eTF_R8S;
         }
-        if (!stricmp(sETF, "R16"))
+        if (!azstricmp(sETF, "R16"))
         {
             return eTF_R16;
         }
-        if (!stricmp(sETF, "R16F"))
+        if (!azstricmp(sETF, "R16F"))
         {
             return eTF_R16F;
         }
-        if (!stricmp(sETF, "R32F"))
+        if (!azstricmp(sETF, "R32F"))
         {
             return eTF_R32F;
         }
-        if (!stricmp(sETF, "R8G8"))
+        if (!azstricmp(sETF, "R8G8"))
         {
             return eTF_R8G8;
         }
-        if (!stricmp(sETF, "R8G8S"))
+        if (!azstricmp(sETF, "R8G8S"))
         {
             return eTF_R8G8S;
         }
-        if (!stricmp(sETF, "R16G16"))
+        if (!azstricmp(sETF, "R16G16"))
         {
             return eTF_R16G16;
         }
-        if (!stricmp(sETF, "R16G16S"))
+        if (!azstricmp(sETF, "R16G16S"))
         {
             return eTF_R16G16S;
         }
-        if (!stricmp(sETF, "R16G16F"))
+        if (!azstricmp(sETF, "R16G16F"))
         {
             return eTF_R16G16F;
         }
-        if (!stricmp(sETF, "R11G11B10F"))
+        if (!azstricmp(sETF, "R11G11B10F"))
         {
             return eTF_R11G11B10F;
         }
-        if (!stricmp(sETF, "R10G10B10A2"))
+        if (!azstricmp(sETF, "R10G10B10A2"))
         {
             return eTF_R10G10B10A2;
         }
-        if (!stricmp(sETF, "R16G16B16A16"))
+        if (!azstricmp(sETF, "R16G16B16A16"))
         {
             return eTF_R16G16B16A16;
         }
-        if (!stricmp(sETF, "R16G16B16A16S"))
+        if (!azstricmp(sETF, "R16G16B16A16S"))
         {
             return eTF_R16G16B16A16S;
         }
-        if (!stricmp(sETF, "R16G16B16A16F"))
+        if (!azstricmp(sETF, "R16G16B16A16F"))
         {
             return eTF_R16G16B16A16F;
         }
-        if (!stricmp(sETF, "R32G32B32A32F"))
+        if (!azstricmp(sETF, "R32G32B32A32F"))
         {
             return eTF_R32G32B32A32F;
         }
 
-        if (!stricmp(sETF, "CTX1"))
+        if (!azstricmp(sETF, "CTX1"))
         {
             return eTF_CTX1;
         }
-        if (!stricmp(sETF, "BC1"))
+        if (!azstricmp(sETF, "BC1"))
         {
             return eTF_BC1;
         }
-        if (!stricmp(sETF, "BC2"))
+        if (!azstricmp(sETF, "BC2"))
         {
             return eTF_BC2;
         }
-        if (!stricmp(sETF, "BC3"))
+        if (!azstricmp(sETF, "BC3"))
         {
             return eTF_BC3;
         }
-        if (!stricmp(sETF, "BC4"))
+        if (!azstricmp(sETF, "BC4"))
         {
             return eTF_BC4U;
         }
-        if (!stricmp(sETF, "BC4S"))
+        if (!azstricmp(sETF, "BC4S"))
         {
             return eTF_BC4S;
         }
-        if (!stricmp(sETF, "BC5"))
+        if (!azstricmp(sETF, "BC5"))
         {
             return eTF_BC5U;
         }
-        if (!stricmp(sETF, "BC5S"))
+        if (!azstricmp(sETF, "BC5S"))
         {
             return eTF_BC5S;
         }
-        if (!stricmp(sETF, "BC6UH"))
+        if (!azstricmp(sETF, "BC6UH"))
         {
             return eTF_BC6UH;
         }
-        if (!stricmp(sETF, "BC6SH"))
+        if (!azstricmp(sETF, "BC6SH"))
         {
             return eTF_BC6SH;
         }
-        if (!stricmp(sETF, "BC7"))
+        if (!azstricmp(sETF, "BC7"))
         {
             return eTF_BC7;
         }
-        if (!stricmp(sETF, "R9G9B9E5"))
+        if (!azstricmp(sETF, "R9G9B9E5"))
         {
             return eTF_R9G9B9E5;
         }
 
-        if (!stricmp(sETF, "D16"))
+        if (!azstricmp(sETF, "D16"))
         {
             return eTF_D16;
         }
-        if (!stricmp(sETF, "D24S8"))
+        if (!azstricmp(sETF, "D24S8"))
         {
             return eTF_D24S8;
         }
-        if (!stricmp(sETF, "D32F"))
+        if (!azstricmp(sETF, "D32F"))
         {
             return eTF_D32F;
         }
-        if (!stricmp(sETF, "D32FS8"))
+        if (!azstricmp(sETF, "D32FS8"))
         {
             return eTF_D32FS8;
         }
 
-        if (!stricmp(sETF, "R5G5B5"))
+        if (!azstricmp(sETF, "R5G5B5"))
         {
             return eTF_B5G6R5;
         }
-        if (!stricmp(sETF, "R5G6B5"))
+        if (!azstricmp(sETF, "R5G6B5"))
         {
             return eTF_B5G5R5;
         }
-        if (!stricmp(sETF, "B4G4R4A4"))
+        if (!azstricmp(sETF, "B4G4R4A4"))
         {
             return eTF_B4G4R4A4;
         }
 
-        if (!stricmp(sETF, "EAC_R11"))
+        if (!azstricmp(sETF, "EAC_R11"))
         {
             return eTF_EAC_R11;
         }
-        if (!stricmp(sETF, "EAC_RG11"))
+        if (!azstricmp(sETF, "EAC_RG11"))
         {
             return eTF_EAC_RG11;
         }
-        if (!stricmp(sETF, "ETC2"))
+        if (!azstricmp(sETF, "ETC2"))
         {
             return eTF_ETC2;
         }
-        if (!stricmp(sETF, "ETC2A"))
+        if (!azstricmp(sETF, "ETC2A"))
         {
             return eTF_ETC2A;
         }
 
-        if (!stricmp(sETF, "PVRTC2"))
+        if (!azstricmp(sETF, "PVRTC2"))
         {
             return eTF_PVRTC2;
         }
-        if (!stricmp(sETF, "PVRTC4"))
+        if (!azstricmp(sETF, "PVRTC4"))
         {
             return eTF_PVRTC4;
         }
 
         //  Confetti BEGIN: Igor Lobanchikov
-        if (!stricmp(sETF, "ASTC_4x4"))
+        if (!azstricmp(sETF, "ASTC_4x4"))
         {
             return eTF_ASTC_4x4;
         }
-        if (!stricmp(sETF, "ASTC_5x4"))
+        if (!azstricmp(sETF, "ASTC_5x4"))
         {
             return eTF_ASTC_5x4;
         }
-        if (!stricmp(sETF, "ASTC_5x5"))
+        if (!azstricmp(sETF, "ASTC_5x5"))
         {
             return eTF_ASTC_5x5;
         }
-        if (!stricmp(sETF, "ASTC_6x5"))
+        if (!azstricmp(sETF, "ASTC_6x5"))
         {
             return eTF_ASTC_6x5;
         }
-        if (!stricmp(sETF, "ASTC_6x6"))
+        if (!azstricmp(sETF, "ASTC_6x6"))
         {
             return eTF_ASTC_6x6;
         }
-        if (!stricmp(sETF, "ASTC_8x5"))
+        if (!azstricmp(sETF, "ASTC_8x5"))
         {
             return eTF_ASTC_8x5;
         }
-        if (!stricmp(sETF, "ASTC_8x6"))
+        if (!azstricmp(sETF, "ASTC_8x6"))
         {
             return eTF_ASTC_8x6;
         }
-        if (!stricmp(sETF, "ASTC_8x8"))
+        if (!azstricmp(sETF, "ASTC_8x8"))
         {
             return eTF_ASTC_8x8;
         }
-        if (!stricmp(sETF, "ASTC_10x5"))
+        if (!azstricmp(sETF, "ASTC_10x5"))
         {
             return eTF_ASTC_10x5;
         }
-        if (!stricmp(sETF, "ASTC_10x6"))
+        if (!azstricmp(sETF, "ASTC_10x6"))
         {
             return eTF_ASTC_10x6;
         }
-        if (!stricmp(sETF, "ASTC_10x8"))
+        if (!azstricmp(sETF, "ASTC_10x8"))
         {
             return eTF_ASTC_10x8;
         }
-        if (!stricmp(sETF, "ASTC_10x10"))
+        if (!azstricmp(sETF, "ASTC_10x10"))
         {
             return eTF_ASTC_10x10;
         }
-        if (!stricmp(sETF, "ASTC_12x10"))
+        if (!azstricmp(sETF, "ASTC_12x10"))
         {
             return eTF_ASTC_12x10;
         }
-        if (!stricmp(sETF, "ASTC_12x12"))
+        if (!azstricmp(sETF, "ASTC_12x12"))
         {
             return eTF_ASTC_12x12;
         }
         //  Confetti End: Igor Lobanchikov
 
-        if (!stricmp(sETF, "A8L8"))
+        if (!azstricmp(sETF, "A8L8"))
         {
             return eTF_A8L8;
         }
-        if (!stricmp(sETF, "L8"))
+        if (!azstricmp(sETF, "L8"))
         {
             return eTF_L8;
         }
-        if (!stricmp(sETF, "L8V8U8"))
+        if (!azstricmp(sETF, "L8V8U8"))
         {
             return eTF_L8V8U8;
         }
-        if (!stricmp(sETF, "B8G8R8"))
+        if (!azstricmp(sETF, "B8G8R8"))
         {
             return eTF_B8G8R8;
         }
-        if (!stricmp(sETF, "L8V8U8X8"))
+        if (!azstricmp(sETF, "L8V8U8X8"))
         {
             return eTF_L8V8U8X8;
         }
-        if (!stricmp(sETF, "B8G8R8X8"))
+        if (!azstricmp(sETF, "B8G8R8X8"))
         {
             return eTF_B8G8R8X8;
         }
-        if (!stricmp(sETF, "B8G8R8A8"))
+        if (!azstricmp(sETF, "B8G8R8A8"))
         {
             return eTF_B8G8R8A8;
         }
 
-        if (!stricmp(sETF, "V8U8"))
+        if (!azstricmp(sETF, "V8U8"))
         {
             return eTF_R8G8S;
         }
-        if (!stricmp(sETF, "V16U16"))
+        if (!azstricmp(sETF, "V16U16"))
         {
             return eTF_R16G16S;
         }
 
-        if (!stricmp(sETF, "DXT1"))
+        if (!azstricmp(sETF, "DXT1"))
         {
             return eTF_BC1;
         }
-        if (!stricmp(sETF, "DXT3"))
+        if (!azstricmp(sETF, "DXT3"))
         {
             return eTF_BC2;
         }
-        if (!stricmp(sETF, "DXT5"))
+        if (!azstricmp(sETF, "DXT5"))
         {
             return eTF_BC3;
         }
-        if (!stricmp(sETF, "ATI1"))
+        if (!azstricmp(sETF, "ATI1"))
         {
             return eTF_BC4U;
         }
-        if (!stricmp(sETF, "ATI2"))
+        if (!azstricmp(sETF, "ATI2"))
         {
             return eTF_BC5U;
         }
-        if (!stricmp(sETF, "3DCp"))
+        if (!azstricmp(sETF, "3DCp"))
         {
             return eTF_BC4U;
         }
-        if (!stricmp(sETF, "3DC"))
+        if (!azstricmp(sETF, "3DC"))
         {
             return eTF_BC5U;
         }
-        if (!stricmp(sETF, "RGBE"))
+        if (!azstricmp(sETF, "RGBE"))
         {
             return eTF_R9G9B9E5;
         }
@@ -1185,31 +1185,31 @@ namespace CImageExtensionHelper
 
     inline ETEX_Type TextureTypeForName(const char* sETT)
     {
-        if (!_stricmp(sETT, "1D"))
+        if (!azstricmp(sETT, "1D"))
         {
             return eTT_1D;
         }
-        if (!_stricmp(sETT, "2D"))
+        if (!azstricmp(sETT, "2D"))
         {
             return eTT_2D;
         }
-        if (!_stricmp(sETT, "3D"))
+        if (!azstricmp(sETT, "3D"))
         {
             return eTT_3D;
         }
-        if (!_stricmp(sETT, "Cube"))
+        if (!azstricmp(sETT, "Cube"))
         {
             return eTT_Cube;
         }
-        if (!stricmp(sETT, "Auto2D"))
+        if (!azstricmp(sETT, "Auto2D"))
         {
             return eTT_Auto2D;
         }
-        if (!stricmp(sETT, "Dyn2D"))
+        if (!azstricmp(sETT, "Dyn2D"))
         {
             return eTT_Dyn2D;
         }
-        if (!stricmp(sETT, "User"))
+        if (!azstricmp(sETT, "User"))
         {
             return eTT_User;
         }
@@ -1219,27 +1219,27 @@ namespace CImageExtensionHelper
 
     inline bool HasAlphaForName(const char* sETF)
     {
-        if (!stricmp(sETF, "R8G8B8A8S"))
+        if (!azstricmp(sETF, "R8G8B8A8S"))
         {
             return true;
         }
-        if (!stricmp(sETF, "R8G8B8A8"))
+        if (!azstricmp(sETF, "R8G8B8A8"))
         {
             return true;
         }
-        if (!_stricmp(sETF, "A8"))
+        if (!azstricmp(sETF, "A8"))
         {
-            if (!_stricmp(sETF, "A8L8"))
+            if (!azstricmp(sETF, "A8L8"))
             {
-                if (!_stricmp(sETF, "BC1") || !_stricmp(sETF, "DXT1"))
+                if (!azstricmp(sETF, "BC1") || !azstricmp(sETF, "DXT1"))
                 {
-                    if (!_stricmp(sETF, "BC2") || !_stricmp(sETF, "DXT3"))
+                    if (!azstricmp(sETF, "BC2") || !azstricmp(sETF, "DXT3"))
                     {
-                        if (!_stricmp(sETF, "BC3") || !_stricmp(sETF, "DXT5"))
+                        if (!azstricmp(sETF, "BC3") || !azstricmp(sETF, "DXT5"))
                         {
-                            if (!_stricmp(sETF, "BC7"))
+                            if (!azstricmp(sETF, "BC7"))
                             {
-                                if (!stricmp(sETF, "A8"))
+                                if (!azstricmp(sETF, "A8"))
                                 {
                                     return true;
                                 }
@@ -1249,64 +1249,64 @@ namespace CImageExtensionHelper
                 }
             }
         }
-        if (!stricmp(sETF, "R10G10B10A2"))
+        if (!azstricmp(sETF, "R10G10B10A2"))
         {
             return true;
         }
-        if (!stricmp(sETF, "R16G16B16A16"))
+        if (!azstricmp(sETF, "R16G16B16A16"))
         {
             return true;
         }
-        if (!stricmp(sETF, "R16G16B16A16S"))
+        if (!azstricmp(sETF, "R16G16B16A16S"))
         {
             return true;
         }
-        if (!stricmp(sETF, "R16G16B16A16F"))
+        if (!azstricmp(sETF, "R16G16B16A16F"))
         {
             return true;
         }
-        if (!stricmp(sETF, "R32G32B32A32F"))
-        {
-            return true;
-        }
-
-        if (!stricmp(sETF, "BC2"))
-        {
-            return true;
-        }
-        if (!stricmp(sETF, "BC3"))
-        {
-            return true;
-        }
-        if (!stricmp(sETF, "BC7"))
+        if (!azstricmp(sETF, "R32G32B32A32F"))
         {
             return true;
         }
 
-        if (!stricmp(sETF, "B4G4R4A4"))
+        if (!azstricmp(sETF, "BC2"))
+        {
+            return true;
+        }
+        if (!azstricmp(sETF, "BC3"))
+        {
+            return true;
+        }
+        if (!azstricmp(sETF, "BC7"))
         {
             return true;
         }
 
-        if (!stricmp(sETF, "ETC2A"))
+        if (!azstricmp(sETF, "B4G4R4A4"))
         {
             return true;
         }
 
-        if (!stricmp(sETF, "A8L8"))
-        {
-            return true;
-        }
-        if (!stricmp(sETF, "B8G8R8A8"))
+        if (!azstricmp(sETF, "ETC2A"))
         {
             return true;
         }
 
-        if (!stricmp(sETF, "DXT3"))
+        if (!azstricmp(sETF, "A8L8"))
         {
             return true;
         }
-        if (!stricmp(sETF, "DXT5"))
+        if (!azstricmp(sETF, "B8G8R8A8"))
+        {
+            return true;
+        }
+
+        if (!azstricmp(sETF, "DXT3"))
+        {
+            return true;
+        }
+        if (!azstricmp(sETF, "DXT5"))
         {
             return true;
         }

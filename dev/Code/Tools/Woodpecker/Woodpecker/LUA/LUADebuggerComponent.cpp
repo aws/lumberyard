@@ -23,10 +23,10 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <AzCore/Script/scriptcontext.h>
+#include <AzCore/Script/ScriptContext.h>
 
-#include <GridMate/serialize/buffer.h>
-#include <GridMate/serialize/datamarshal.h>
+#include <GridMate/Serialize/Buffer.h>
+#include <GridMate/Serialize/DataMarshal.h>
 
 #include <AzFramework/TargetManagement/TargetManagementAPI.h>
 #include <AzFramework/Script/ScriptDebugMsgReflection.h>
@@ -331,49 +331,49 @@ namespace LUADebugger
         }
         else if (azrtti_istypeof<AzFramework::ScriptDebugAckBreakpoint*>(msg.get()))
         {
-            AzFramework::ScriptDebugAckBreakpoint* ack = azdynamic_cast<AzFramework::ScriptDebugAckBreakpoint*>(msg.get());
-            if (ack->m_id == AZ_CRC("BreakpointHit", 0xf1a38e0b))
+            AzFramework::ScriptDebugAckBreakpoint* ackBreakpoint = azdynamic_cast<AzFramework::ScriptDebugAckBreakpoint*>(msg.get());
+            if (ackBreakpoint->m_id == AZ_CRC("BreakpointHit", 0xf1a38e0b))
             {
-                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointHit, ack->m_moduleName, ack->m_line - 1);
+                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointHit, ackBreakpoint->m_moduleName, ackBreakpoint->m_line - 1);
             }
-            else if (ack->m_id == AZ_CRC("AddBreakpoint", 0xba71daa4))
+            else if (ackBreakpoint->m_id == AZ_CRC("AddBreakpoint", 0xba71daa4))
             {
-                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointAdded, ack->m_moduleName, ack->m_line - 1);
+                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointAdded, ackBreakpoint->m_moduleName, ackBreakpoint->m_line - 1);
             }
-            else if (ack->m_id == AZ_CRC("RemoveBreakpoint", 0x90ade500))
+            else if (ackBreakpoint->m_id == AZ_CRC("RemoveBreakpoint", 0x90ade500))
             {
-                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointRemoved, ack->m_moduleName, ack->m_line - 1);
+                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointRemoved, ackBreakpoint->m_moduleName, ackBreakpoint->m_line - 1);
             }
         }
-        else if (AzFramework::ScriptDebugAckExecute* ack = azdynamic_cast<AzFramework::ScriptDebugAckExecute*>(msg.get()))
+        else if (AzFramework::ScriptDebugAckExecute* ackExecute = azdynamic_cast<AzFramework::ScriptDebugAckExecute*>(msg.get()))
         {
-            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnExecuteScriptResult, ack->m_result);
+            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnExecuteScriptResult, ackExecute->m_result);
         }
         else if (azrtti_istypeof<AzFramework::ScriptDebugEnumLocalsResult*>(msg.get()))
         {
-            AzFramework::ScriptDebugEnumLocalsResult* ack = azdynamic_cast<AzFramework::ScriptDebugEnumLocalsResult*>(msg.get());
-            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedLocalVariables, ack->m_names);
+            AzFramework::ScriptDebugEnumLocalsResult* enumLocals = azdynamic_cast<AzFramework::ScriptDebugEnumLocalsResult*>(msg.get());
+            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedLocalVariables, enumLocals->m_names);
         }
         else if (azrtti_istypeof<AzFramework::ScriptDebugEnumContextsResult*>(msg.get()))
         {
-            AzFramework::ScriptDebugEnumContextsResult* ack = azdynamic_cast<AzFramework::ScriptDebugEnumContextsResult*>(msg.get());
-            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedAvailableContexts, ack->m_names);
+            AzFramework::ScriptDebugEnumContextsResult* enumContexts = azdynamic_cast<AzFramework::ScriptDebugEnumContextsResult*>(msg.get());
+            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedAvailableContexts, enumContexts->m_names);
         }
         else if (azrtti_istypeof<AzFramework::ScriptDebugGetValueResult*>(msg.get()))
         {
-            AzFramework::ScriptDebugGetValueResult* ack = azdynamic_cast<AzFramework::ScriptDebugGetValueResult*>(msg.get());
-            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedValueState, ack->m_value);
+            AzFramework::ScriptDebugGetValueResult* getValues = azdynamic_cast<AzFramework::ScriptDebugGetValueResult*>(msg.get());
+            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedValueState, getValues->m_value);
         }
         else if (azrtti_istypeof<AzFramework::ScriptDebugSetValueResult*>(msg.get()))
         {
-            AzFramework::ScriptDebugSetValueResult* ack = azdynamic_cast<AzFramework::ScriptDebugSetValueResult*>(msg.get());
-            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnSetValueResult, ack->m_name, ack->m_result);
+            AzFramework::ScriptDebugSetValueResult* setValue = azdynamic_cast<AzFramework::ScriptDebugSetValueResult*>(msg.get());
+            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnSetValueResult, setValue->m_name, setValue->m_result);
         }
         else if (azrtti_istypeof<AzFramework::ScriptDebugCallStackResult*>(msg.get()))
         {
-            AzFramework::ScriptDebugCallStackResult* ack = azdynamic_cast<AzFramework::ScriptDebugCallStackResult*>(msg.get());
+            AzFramework::ScriptDebugCallStackResult* callStackResult = azdynamic_cast<AzFramework::ScriptDebugCallStackResult*>(msg.get());
             AZStd::vector<AZStd::string> callstack;
-            const char* c1 = ack->m_callstack.c_str();
+            const char* c1 = callStackResult->m_callstack.c_str();
             for (const char* c2 = c1; *c2; ++c2)
             {
                 if (*c2 == '\n')
@@ -389,18 +389,18 @@ namespace LUADebugger
         }
         else if (azrtti_istypeof<AzFramework::ScriptDebugRegisteredGlobalsResult*>(msg.get()))
         {
-            AzFramework::ScriptDebugRegisteredGlobalsResult* ack = azdynamic_cast<AzFramework::ScriptDebugRegisteredGlobalsResult*>(msg.get());
-            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedRegisteredGlobals, ack->m_methods, ack->m_properties);
+            AzFramework::ScriptDebugRegisteredGlobalsResult* registeredGlobals = azdynamic_cast<AzFramework::ScriptDebugRegisteredGlobalsResult*>(msg.get());
+            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedRegisteredGlobals, registeredGlobals->m_methods, registeredGlobals->m_properties);
         }
         else if (azrtti_istypeof<AzFramework::ScriptDebugRegisteredClassesResult*>(msg.get()))
         {
-            AzFramework::ScriptDebugRegisteredClassesResult* ack = azdynamic_cast<AzFramework::ScriptDebugRegisteredClassesResult*>(msg.get());
-            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedRegisteredClasses, ack->m_classes);
+            AzFramework::ScriptDebugRegisteredClassesResult* registeredClasses = azdynamic_cast<AzFramework::ScriptDebugRegisteredClassesResult*>(msg.get());
+            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedRegisteredClasses, registeredClasses->m_classes);
         }
         else if (azrtti_istypeof<AzFramework::ScriptDebugRegisteredEBusesResult*>(msg.get()))
         {
-            AzFramework::ScriptDebugRegisteredEBusesResult* ack = azdynamic_cast<AzFramework::ScriptDebugRegisteredEBusesResult*>(msg.get());
-            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedRegisteredEBuses, ack->m_ebusList);
+            AzFramework::ScriptDebugRegisteredEBusesResult* registeredEBuses = azdynamic_cast<AzFramework::ScriptDebugRegisteredEBusesResult*>(msg.get());
+            EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnReceivedRegisteredEBuses, registeredEBuses->m_ebusList);
         }
         else
         {
@@ -419,9 +419,9 @@ namespace LUADebugger
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
         if (serializeContext)
         {
-            serializeContext->Class<Component>()
+            serializeContext->Class<Component, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
         }
     }
 }

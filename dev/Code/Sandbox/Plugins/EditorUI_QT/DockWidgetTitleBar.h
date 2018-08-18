@@ -15,7 +15,7 @@
 
 #include "api.h"
 #include <QWidget>
-#include <functional>
+#include <AzCore/std/functional.h>
 
 namespace Ui {
     class DockWidgetTitleBar;
@@ -41,7 +41,7 @@ public:
     FluidTabBar* GetFluidTabBar();
     QLabel* GetLabel();
 
-    void SetShowMenuContextMenuCallback(std::function<QMenu*(void)> callback);
+    void SetShowMenuContextMenuCallback(AZStd::function<QMenu*(void)> callback);
     void ShowMenuButtonContextMenu();
 
 signals:
@@ -64,7 +64,7 @@ private:
     bool m_isDraggingDockWidget;
     QWidget* m_mainControl; //Tabbar or label
 
-    std::function<QMenu*(void)> m_showMenuButtonContextMenuCallback;
+    AZStd::function<QMenu*(void)> m_showMenuButtonContextMenuCallback;
 };
 
 #endif // DOCKWIDGETTITLEBARR_H

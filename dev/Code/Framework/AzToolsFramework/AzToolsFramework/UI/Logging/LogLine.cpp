@@ -12,7 +12,7 @@
 
 #include <AzToolsFramework/UI/Logging/LogLine.h>
 
-#include <AzCore/xml/rapidxml.h>
+#include <AzCore/XML/rapidxml.h>
 #include <AzCore/std/containers/list.h>
 #include <AzFramework/Logging/LogFile.h>
 #include <AzToolsFramework/UI/Logging/LogPanel_Panel.h>

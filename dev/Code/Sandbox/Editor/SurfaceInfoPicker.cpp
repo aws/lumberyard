@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "SurfaceInfoPicker.h"
 #include "Material/MaterialManager.h"
 #include "Terrain/TerrainManager.h"
@@ -25,7 +25,7 @@
 #include <LmbrCentral/Rendering/GeomCacheComponentBus.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 
-#include <CryAnimation/AttachmentSkin.h>
+#include <IAttachment.h>
 
 static const float kEnoughFarDistance(5000.0f);
 
@@ -1052,12 +1052,12 @@ bool CSurfaceInfoPicker::RayIntersection_ICharacterInstance(
         // Test for ray intersection...
         if (attachment->GetType() == CA_SKIN)
         {
-            CAttachmentSKIN* skinAttachment = reinterpret_cast<CAttachmentSKIN*>(attachment);
-            if (skinAttachment->GetIAttachmentSkin() &&
-                skinAttachment->GetIAttachmentSkin()->GetISkin() &&
-                skinAttachment->GetIAttachmentSkin()->GetISkin()->GetIRenderMesh(0))
+            IAttachmentSkin* skinAttachment = attachment->GetIAttachmentSkin();
+            if (skinAttachment &&
+                skinAttachment->GetISkin() &&
+                skinAttachment->GetISkin()->GetIRenderMesh(0))
             {
-                IRenderMesh* attachmentRenderMesh = skinAttachment->GetIAttachmentSkin()->GetISkin()->GetIRenderMesh(0);
+                IRenderMesh* attachmentRenderMesh = skinAttachment->GetISkin()->GetIRenderMesh(0);
                             
                 AABB bbox;
                 attachmentRenderMesh->GetBBox(bbox.min, bbox.max);

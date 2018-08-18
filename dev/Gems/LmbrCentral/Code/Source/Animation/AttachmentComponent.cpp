@@ -153,7 +153,7 @@ namespace LmbrCentral
         if (m_targetCanAnimate)
         {
             // Only register for per-frame updates when target can animate
-            gEnv->pGame->GetIGameFramework()->RegisterListener(this, "Attachment", FRAMEWORKLISTENERPRIORITY_GAME);
+            AZ::TickBus::Handler::BusConnect();
         }
 
         // update owner's transform
@@ -174,7 +174,7 @@ namespace LmbrCentral
 
             MeshComponentNotificationBus::Handler::BusDisconnect();
             AZ::TransformNotificationBus::Handler::BusDisconnect(m_targetId);
-            gEnv->pGame->GetIGameFramework()->UnregisterListener(this);
+            AZ::TickBus::Handler::BusDisconnect();
 
             m_targetId.SetInvalid();
         }
@@ -279,10 +279,15 @@ namespace LmbrCentral
         UpdateOwnerTransformIfNecessary();
     }
 
-    void BoneFollower::OnPreRender()
+    void BoneFollower::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*time*/)
     {
         m_targetBoneTransform = QueryBoneTransform();
         UpdateOwnerTransformIfNecessary();
+    }
+
+    int BoneFollower::GetTickOrder()
+    {
+        return AZ::TICK_ATTACHMENT;
     }
 
     //=========================================================================

@@ -21,7 +21,7 @@ class UiTextInputInterface
 {
 public: // types
 
-    typedef std::function<void(AZ::EntityId, const AZStd::string&)> TextInputCallback;
+    typedef AZStd::function<void(AZ::EntityId, const AZStd::string&)> TextInputCallback;
 
 public: // member functions
 

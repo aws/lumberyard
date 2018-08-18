@@ -15,7 +15,6 @@
 #define CRYINCLUDE_CRY3DENGINE_3DENGINE_H
 #pragma once
 
-#include <CryEngineAPI.h>
 #include <CryThreadSafeRendererContainer.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/Casting/numeric_cast.h>
@@ -640,6 +639,7 @@ public:
     virtual void UnloadLevel();
     virtual void PostLoadLevel();
     virtual bool InitLevelForEditor(const char* szFolderName, const char* szMissionName);
+    virtual bool LevelLoadingInProgress();
     virtual void DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStepY, const bool bEnhanced);
     virtual void SetupDistanceFog();
     virtual IStatObj* LoadStatObjUnsafeManualRef(const char* szFileName, const char* szGeomName = NULL, /*[Out]*/ IStatObj::SSubObject** ppSubObject = NULL, bool bUseStreaming = true, unsigned long nLoadingFlags = 0);
@@ -823,11 +823,6 @@ public:
     virtual void LockCGFResources();
     virtual void UnlockCGFResources();
 
-    //! paint voxel shape
-    virtual IMemoryBlock* Voxel_GetObjects(Vec3 vPos, float fRadius, int nSurfaceTypeId, EVoxelEditOperation eOperation, EVoxelBrushShape eShape, EVoxelEditTarget eTarget);
-    virtual void Voxel_Paint(Vec3 vPos, float fRadius, int nSurfaceTypeId, Vec3 vBaseColor, EVoxelEditOperation eOperation, EVoxelBrushShape eShape, EVoxelEditTarget eTarget, PodArray<IRenderNode*>* pBrushes, float fMinVoxelSize);
-    virtual void Voxel_SetFlags(bool bPhysics, bool bSimplify, bool bShadows, bool bMaterials);
-
     virtual void SerializeState(TSerialize ser);
     virtual void PostSerialize(bool bReading);
 
@@ -904,6 +899,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
 
     virtual int GetTerrainTextureNodeSizeMeters();
+    virtual bool GetShowTerrainSurface();
 
     const char* GetLevelFolder() { return m_szLevelFolder; }
 
@@ -1172,10 +1168,8 @@ public:
     // functions SRenderingPass
     virtual CCamera* GetRenderingPassCamera(const CCamera& rCamera);
 
-#if defined(FEATURE_SVO_GI)
-    virtual bool GetSvoStaticTextures(I3DEngine::SSvoStaticTexInfo& svoInfo, PodArray<I3DEngine::SLightTI>* pLightsTI_S, PodArray<I3DEngine::SLightTI>* pLightsTI_D);
-    virtual void GetSvoBricksForUpdate(PodArray<SSvoNodeInfo>& arrNodeInfo, float fNodeSize, PodArray<SVF_P3F_C4B_T2F>* pVertsOut);
-#endif
+    virtual void GetSvoStaticTextures(I3DEngine::SSvoStaticTexInfo& svoInfo, PodArray<I3DEngine::SLightTI>* pLightsTI_S, PodArray<I3DEngine::SLightTI>* pLightsTI_D);
+    virtual void GetSvoBricksForUpdate(PodArray<SSvoNodeInfo>& arrNodeInfo, bool getDynamic);
 
     bool IsTerrainTextureStreamingInProgress() const;
 

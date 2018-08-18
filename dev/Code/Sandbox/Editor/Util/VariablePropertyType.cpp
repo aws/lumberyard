@@ -267,7 +267,7 @@ namespace Prop
 
         for (int i = 0; i < NumPropertyTypes; i++)
         {
-            if (stricmp(type, s_propertyTypeNames[i].name) == 0)
+            if (azstricmp(type, s_propertyTypeNames[i].name) == 0)
             {
                 return s_propertyTypeNames[i].type;
             }
@@ -322,7 +322,7 @@ namespace Prop
 
         for (int i = 0; i < NumPropertyTypes; i++)
         {
-            if (stricmp(type, s_propertyTypeNames[i].name) == 0)
+            if (azstricmp(type, s_propertyTypeNames[i].name) == 0)
             {
                 return s_propertyTypeNames[i].image;
             }

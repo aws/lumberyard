@@ -215,7 +215,7 @@ namespace CommandSystem
         MCore::LogInfo(" - AnimGraphs (%i)", numSelectedAnimGraphs);
         for (i = 0; i < numSelectedAnimGraphs; ++i)
         {
-            MCore::LogInfo("    + AnimGraph #%.3d: name='%s'", i, GetAnimGraph(i)->GetName());
+            MCore::LogInfo("    + AnimGraph #%.3d: %s", i, GetAnimGraph(i)->GetFileName());
         }
 
         // iterate through all morph targets and select them

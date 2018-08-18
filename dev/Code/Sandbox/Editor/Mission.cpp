@@ -20,7 +20,7 @@
 #include "TerrainLighting.h"
 #include "GameEngine.h"
 #include "MissionScript.h"
-#include "imoviesystem.h"
+#include "IMovieSystem.h"
 #include "VegetationMap.h"
 
 #include "Objects/EntityObject.h"

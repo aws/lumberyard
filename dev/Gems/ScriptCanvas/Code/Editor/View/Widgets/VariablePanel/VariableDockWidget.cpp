@@ -125,10 +125,6 @@ namespace ScriptCanvasEditor
 
                 AZStd::string_view variableTypeName = TranslationHelper::GetSafeTypeName(m_variableDatum->GetData().GetType());
                 m_variableDatum->GetData().SetLabel(variableTypeName);
-
-                // Stopgap fix for "expose to component" control showing up on nodes
-                m_variableDatum->SetInputControlVisibility(AZ::Edit::PropertyVisibility::Show);
-
                 m_componentTitle = AZStd::string::format("%s Variable", variableTypeName.data());
 
                 ScriptCanvas::VariableNotificationBus::Handler::BusConnect(m_variableId);

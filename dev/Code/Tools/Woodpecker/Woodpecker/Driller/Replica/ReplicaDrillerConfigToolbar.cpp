@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "ReplicaDrillerConfigToolbar.hxx"
 #include <Woodpecker/Driller/Replica/ReplicaDrillerConfigToolbar.moc>

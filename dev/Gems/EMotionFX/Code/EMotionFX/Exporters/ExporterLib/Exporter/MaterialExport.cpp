@@ -15,9 +15,7 @@
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/Importer/ActorFileFormat.h>
 
-#include <MCore/Source/AttributeSettings.h>
 #include <MCore/Source/AttributeFloat.h>
-#include <MCore/Source/AttributeSet.h>
 
 
 namespace ExporterLib
@@ -28,7 +26,7 @@ namespace ExporterLib
         // write the chunk header
         EMotionFX::FileFormat::FileChunk chunkHeader;
         chunkHeader.mChunkID        = EMotionFX::FileFormat::ACTOR_CHUNK_MATERIALATTRIBUTESET;
-        chunkHeader.mSizeInBytes    = material->GetAttributeSet()->GetStreamSize() + sizeof(EMotionFX::FileFormat::Actor_MaterialAttributeSet);
+        chunkHeader.mSizeInBytes    = sizeof(EMotionFX::FileFormat::Actor_MaterialAttributeSet);
         chunkHeader.mVersion        = 1;
         ConvertFileChunk(&chunkHeader, targetEndianType);
         file->Write(&chunkHeader, sizeof(EMotionFX::FileFormat::FileChunk));
@@ -41,12 +39,13 @@ namespace ExporterLib
         ConvertUnsignedInt(&setInfo.mLODLevel, targetEndianType);
         file->Write(&setInfo, sizeof(EMotionFX::FileFormat::Actor_MaterialAttributeSet));
 
-        // write the attribute set data
-        MCore::LogInfo("- Writing material attribute set with %d attributes for material (lod=%d index=%d name=%s)", material->GetAttributeSet()->GetNumAttributes(), lodLevel, materialNumber, material->GetName());
-        if (material->GetAttributeSet()->Write(file, targetEndianType) == false)
-        {
-            MCore::LogError("Failed to save material attribute set for material %s at lod %d.", material->GetName(), lodLevel);
-        }
+        // Write a former empty attribute set.
+        uint8 version = 1;
+        file->Write(&version, sizeof(uint8));
+
+        uint32 numAttributes = 0;
+        ConvertUnsignedInt(&numAttributes, targetEndianType);
+        file->Write(&numAttributes, sizeof(uint32));
     }
 
 

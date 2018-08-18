@@ -342,18 +342,6 @@
             "RopeRenderNode.cpp",
             "RopeRenderNode.h"
         ],
-        "SVO":
-        [
-            "SVO/BlockPacker.cpp",
-            "SVO/SceneTree.cpp",
-            "SVO/SceneTreeManager.cpp",
-            "SVO/VoxelSegment.cpp",
-            "SVO/BlockPacker.h",
-            "SVO/SceneTree.h",
-            "SVO/SceneTreeManager.h",
-            "SVO/VoxelSegment.h",
-            "SVO/SceneTreeCVars.inl"
-        ],
         "GeomCache":
         [
             "GeomCache.cpp",

@@ -36,12 +36,13 @@
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/Quaternion.h>
-#include <MCore/Source/AttributeSet.h>
 #include <MCore/Source/OBB.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(Actor, ActorAllocator, 0)
+
     Actor::NodeInfo::NodeInfo()
     {
         mOBB.Init();
@@ -88,6 +89,7 @@ namespace EMotionFX
         mLODs[0].mNodeInfos.SetMemoryCategory(EMFX_MEMCATEGORY_ACTORS);
 
         mMotionExtractionNode       = MCORE_INVALIDINDEX32;
+        mRetargetRootNode           = MCORE_INVALIDINDEX32;
         mThreadIndex                = 0;
         mCustomData                 = nullptr;
         mID                         = MCore::GetIDGenerator().GenerateID();
@@ -96,7 +98,6 @@ namespace EMotionFX
 
         mUsedForVisualization       = false;
         mDirtyFlag                  = false;
-        mAttributeSet               = MCore::AttributeSet::Create();
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime           = false;
@@ -132,11 +133,6 @@ namespace EMotionFX
         // remove all node groups
         RemoveAllNodeGroups();
 
-        if (mAttributeSet)
-        {
-            mAttributeSet->Destroy();
-        }
-
         //  mBindPose.Clear();
         mInvBindPoseGlobalMatrices.Clear();
 
@@ -151,7 +147,7 @@ namespace EMotionFX
     // create method
     Actor* Actor::Create(const char* name)
     {
-        return new Actor(name);
+        return aznew Actor(name);
     }
 
 
@@ -168,14 +164,14 @@ namespace EMotionFX
         result->mUnitType               = mUnitType;
         result->mFileUnitType           = mFileUnitType;
         result->mStaticAABB             = mStaticAABB;
-        result->mAttributeSet->CopyFrom(*mAttributeSet);
+        result->mRetargetRootNode       = mRetargetRootNode;
 
         result->RecursiveAddDependencies(this);
 
         // clone all nodes groups
         for (uint32 i = 0; i < mNodeGroups.GetLength(); ++i)
         {
-            result->AddNodeGroup(mNodeGroups[i]->Clone());
+            result->AddNodeGroup(aznew NodeGroup(*mNodeGroups[i]));
         }
 
         // clone the materials
@@ -2628,4 +2624,17 @@ namespace EMotionFX
             return AXIS_Z;
         }
     }
+
+
+    void Actor::SetRetargetRootNodeIndex(uint32 nodeIndex)
+    {
+        mRetargetRootNode = nodeIndex;
+    }
+
+
+    void Actor::SetRetargetRootNode(Node* node)
+    {
+        mRetargetRootNode = node ? node->GetNodeIndex() : MCORE_INVALIDINDEX32;
+    }
+
 } // namespace EMotionFX

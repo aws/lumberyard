@@ -83,7 +83,7 @@ WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
         auto switchProjAction = currentProjectButtonMenu->addAction("Switch project...");
         auto openSAAction = currentProjectButtonMenu->addAction("Setup Assistant...");
 
-        QObject::connect(switchProjAction, &QAction::triggered, [this] {
+        QObject::connect(switchProjAction, &QAction::triggered, this, [this] {
             // close this dialog first before attempting to close the editor
             CCryEditApp* cryEdit = CCryEditApp::instance();
             if (cryEdit->OpenProjectConfiguratorSwitchProject())
@@ -95,7 +95,7 @@ WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
             }
         });
 
-        QObject::connect(openSAAction, &QAction::triggered, [this] {
+        QObject::connect(openSAAction, &QAction::triggered, this, [this] {
             // close this dialog first before attempting to close the editor
             CCryEditApp* cryEdit = CCryEditApp::instance();
 
@@ -105,7 +105,7 @@ WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
             {
                 // close the dialog box before closing the editor
                 accept();
-                if (cryEdit->ToExternalToolSave() && cryEdit->OpenSetupAssistant())
+                if (cryEdit->OpenSetupAssistant())
                 {
                     // close the window at the end of the qt event loop
                     QTimer::singleShot(0, []() {MainWindow::instance()->close(); });
@@ -174,14 +174,10 @@ void WelcomeScreenDialog::done(int result)
 {
     if (m_waitingOnAsync)
     {
-        m_closing = true;
-        m_doneResult = result;
         m_manifest->Abort();
     }
-    else
-    {
-        QDialog::done(result);
-    }
+
+    QDialog::done(result);
 }
 
 const QString& WelcomeScreenDialog::GetLevelPath()
@@ -410,28 +406,14 @@ void WelcomeScreenDialog::OnDocumentationBtnClicked(bool checked)
 
 void WelcomeScreenDialog::SyncFail(News::ErrorCode error)
 {
-    if (m_closing || !ui->articleViewContainerRoot)
-    {
-        QDialog::done(m_doneResult);
-    }
-    else
-    {
-        m_articleViewContainer->AddErrorMessage();
-        m_waitingOnAsync = false;
-    }
+    m_articleViewContainer->AddErrorMessage();
+    m_waitingOnAsync = false;
 }
 
 void WelcomeScreenDialog::SyncSuccess()
 {
-    if (m_closing || !ui->articleViewContainerRoot)
-    {
-        QDialog::done(m_doneResult);
-    }
-    else
-    {
-        m_articleViewContainer->PopulateArticles();
-        m_waitingOnAsync = false;
-    }
+    m_articleViewContainer->PopulateArticles();
+    m_waitingOnAsync = false;
 }
 
 void WelcomeScreenDialog::previewAreaScrolled()

@@ -1,0 +1,66 @@
+BUILD THE AMI
+
+1. From the ami_build directory, run ami_build.py
+    * Use -h for a list of parameters you can supply. 
+    * You must at the very least supply an --ami name, as well as the --role and --s3-bucket that were installed in your gem's deployment.
+    * Supplying a --key-pair-name is recommended for debugging over RDP.
+    * --subnet-id and --security-group-id can come from your gem's deployment, to prevent auto-creation every time you run this script.
+    
+CREATE A SHUFFLED DICTIONARY
+
+1. From the Harness directory, run shuffle_words.py to create shuffled_words.zip from words.zip.
+
+USE THE CGP TO UPLOAD YOUR DATA AND CONFIGURE YOUR WORKFLOW
+
+1. Log into the CGP for your project and deployment, and view the Cloud Gem Compute Farm.
+2. Go to the Build Configuration tab.
+3. In the s3_file field, enter the name of the zip file you want to process without the ".zip", i.e. "shuffled_words".
+4. [OPTIONAL] In the s3_dir field, enter a directory name to use, e.g. "foo".
+5. In the max_level field, enter the maximum depth of recursive division you want to divide the problem into. (2 or 3 is good for testing purposes.)
+6. Click the "Upload Data" button.
+7. Browse to and select "shuffled_words.zip".
+    * If you entered a directory in the s3_dir field, you need to prepend that directory to your destination path/key, e.g. "foo/shuffled_words.zip".
+8. Click "Upload" to upload the dictionary to S3.
+
+TEST YOUR HARNESS LOCALLY
+
+On the Overview tab you can hit Run Workflow. Then you can run a Decider and Worker locally on the command line to test them out.
+
+1. When running from the command line, you need to supply all of the parameters from your resource group deployment.
+    * --domain is the SWF domain that was generated in your resource group, i.e. {Workflow Physical Id}-domain
+    * --task-list is the TaskList.name supplied for the Workflow in the resource template
+    * --div-task, --merge-task, --build-task are all taken from the "ActivityTypes" of your Workflow in the resource template
+    * --role is the ARN for the InstanceRole generated in the resource group
+    * --log-db is the table name for the LogDB generated in the resource group
+    * --config-bucket is the name of the computefarm S3 bucket in the resource group
+2. You must one run instance of a decider (-rd or --run-decider), and then one or more instances of a worker (default behavior).
+
+TEST YOUR HARNESS WITH A FLEET OF EC2 INSTANCES
+
+1. Go to the Fleet Management tab of the CGP.
+2. Click on "New Fleet".
+3. Give your fleet a unique configuration name.
+4. Choose the AMI you created earlier.
+5. [OPTIONAL] If you specified a --key-pair-name when building your AMI, choose it here so you can log in to your instances via RDP.
+6. Choose an instance type to use for this fleet.
+7. Click "Continue" and proceed to the next dialog.
+8. Give your fleet a unique group name (a variant of your configuration name is recommended).
+9. Specify a number of instances to launch immediately (you may enter 0).
+10. Choose whether you want your fleet to automatically terminate (i.e. go to 0 instances) when a workflow is completed.
+11. Click "Create" to create your fleet.
+12. If you did not specify any instances to immediately launch, enter a positive number now and choose "Save Changes".
+13. Return to the Overview tab and choose "Run Workflow".
+14. As your instances gradually come online (it may take 5-10 minutes) you will see progress occurring.
+
+DOWNLOAD THE RESULTS
+
+1. Once the workflow is completed, go back to the Build Configuration tab.
+2. Click on "Download Build Result".
+3. Locate the file "shuffled_words_sorted.zip" and download it; observe the dictionary has been sorted.
+4. You may also download any of the intermediately-generated files.
+
+CUSTOMIZE THE HARNESS TO YOUR APPLICATION
+
+1. You may revise or replace any of divide.py, build.py and merge.py to solve other distributed problems.
+2. You may alter AWS/cgp-resource-code/src/workflow-config.ts to add different parameters for configuration in the CGP used by your script.
+3. Use the manifest.json to customize what software is installed on your AMI and run any PowerShell commands that are required to configure it.

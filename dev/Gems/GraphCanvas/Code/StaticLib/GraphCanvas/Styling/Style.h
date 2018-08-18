@@ -68,7 +68,7 @@ namespace GraphCanvas
             AZStd::string m_selectorsAsString;
             ValueMap m_values;
 
-            friend class StyleManager;
+            friend GraphCanvas::StyleManager;
         };
 
         using StyleVector = AZStd::vector<Style*>;

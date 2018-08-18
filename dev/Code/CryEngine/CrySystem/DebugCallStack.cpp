@@ -110,7 +110,8 @@ void DebugCallStack::RemoveOldFiles()
 
 void DebugCallStack::RemoveFile(const char* szFileName)
 {
-    FILE* pFile = fopen(szFileName, "r");
+    FILE* pFile = nullptr;
+    azfopen(&pFile, szFileName, "r");
     const bool bFileExists = (pFile != NULL);
 
     if (bFileExists)
@@ -427,7 +428,8 @@ void DebugCallStack::LogExceptionInfo(EXCEPTION_POINTERS* pex)
     }
 #endif // defined(DEDICATED_SERVER)
 
-    FILE* f = fopen(fileName.c_str(), "wt");
+    FILE* f = nullptr;
+    azfopen(&f, fileName.c_str(), "wt");
 
     CDebugAllowFileAccess ignoreInvalidFileAccess;
 
@@ -436,7 +438,7 @@ void DebugCallStack::LogExceptionInfo(EXCEPTION_POINTERS* pex)
 
     // Time and Version.
     char versionbuf[1024];
-    strcpy(versionbuf, "");
+    azstrcpy(versionbuf, AZ_ARRAY_SIZE(versionbuf), "");
     PutVersion(versionbuf);
     cry_strcat(errorString, versionbuf);
     cry_strcat(errorString, "\n");
@@ -477,11 +479,11 @@ void DebugCallStack::LogExceptionInfo(EXCEPTION_POINTERS* pex)
                 DWORD64 accessAddr = pex->ExceptionRecord->ExceptionInformation[1];
                 if (iswrite)
                 {
-                    sprintf_s(desc, "Attempt to write data to address 0x%08p\r\nThe memory could not be \"written\"", accessAddr);
+                    sprintf_s(desc, "Attempt to write data to address 0x%08llu\r\nThe memory could not be \"written\"", accessAddr);
                 }
                 else
                 {
-                    sprintf_s(desc, "Attempt to read from address 0x%08p\r\nThe memory could not be \"read\"", accessAddr);
+                    sprintf_s(desc, "Attempt to read from address 0x%08llu\r\nThe memory could not be \"read\"", accessAddr);
                 }
             }
         }
@@ -551,7 +553,7 @@ void DebugCallStack::LogExceptionInfo(EXCEPTION_POINTERS* pex)
         for (unsigned int i = 0; i < funcs.size(); i++)
         {
             char temp[s_iCallStackSize];
-            sprintf_s(temp, "%2d) %s", funcs.size() - i, (const char*)funcs[i].c_str());
+            sprintf_s(temp, "%2zd) %s", funcs.size() - i, (const char*)funcs[i].c_str());
             cry_strcat(str, temp);
             cry_strcat(str, "\r\n");
             cry_strcat(errs, temp);
@@ -635,9 +637,10 @@ void DebugCallStack::LogExceptionInfo(EXCEPTION_POINTERS* pex)
                 // Backup dump (use timestamp from error.log if available)
                 if (timeStamp.empty())
                 {
-                    tm* creationTime = localtime(&fileInfo.st_mtime);
+                    tm creationTime;
+                    localtime_s(&creationTime, &fileInfo.st_mtime);
                     char tempBuffer[32];
-                    strftime(tempBuffer, sizeof(tempBuffer), "%d %b %Y (%H %M %S)", creationTime);
+                    strftime(tempBuffer, sizeof(tempBuffer), "%d %b %Y (%H %M %S)", &creationTime);
                     timeStamp = tempBuffer;
                 }
 

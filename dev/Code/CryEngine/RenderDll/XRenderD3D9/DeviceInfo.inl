@@ -31,7 +31,7 @@ static void InitSwapChain(DXGI_SWAP_CHAIN_DESC& desc, UINT width, UINT height, H
     desc.BufferDesc.RefreshRate.Numerator = 0;
     desc.BufferDesc.RefreshRate.Denominator = 0;
 #ifdef ANDROID
-    desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.BufferDesc.Format = DXGI_FORMAT_B8G8R8X8_UNORM;
 #else
     static ICVar* DolbyCvar = gEnv->pConsole->GetCVar("r_HDRDolby");
     if (DolbyCvar->GetIVal() == 1)
@@ -580,7 +580,7 @@ bool DeviceInfo::CreateViews()
 
 #if !defined(RELEASE) && defined(WIN64)
             char str[32] = "";
-            sprintf(str, "Swap-Chain back buffer %d", b);
+            azsprintf(str, "Swap-Chain back buffer %d", b);
             pBackBuffer->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(str), str);
 #endif
         }

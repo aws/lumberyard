@@ -12,7 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "pch.h"
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "FeatureTest.h"
 #include "Serialization.h"
 #include "CharacterDocument.h"
@@ -96,14 +96,14 @@ namespace CharacterTool {
 
             QuatT AttachmentLocation        = defSpine2 * (absSpine2.GetInverted() * absWeaponBone);
 
-            if (event.m_EventName && stricmp(event.m_EventName, "WeaponDrawRight") == 0)
+            if (event.m_EventName && azstricmp(event.m_EventName, "WeaponDrawRight") == 0)
             {
                 pSAtt1->HideAttachment(1); //hide
                 pSAtt2->HideAttachment(0); //show
                 pWAtt->HideAttachment(0); //show
                 return true;
             }
-            else if (event.m_EventName && stricmp(event.m_EventName, "WeaponDrawLeft") == 0)
+            else if (event.m_EventName && azstricmp(event.m_EventName, "WeaponDrawLeft") == 0)
             {
                 pSAtt1->HideAttachment(0);
                 pSAtt2->HideAttachment(1);

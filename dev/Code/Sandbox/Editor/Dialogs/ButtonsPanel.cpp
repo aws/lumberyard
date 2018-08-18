@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ButtonsPanel.h"
 #include "ObjectCreateTool.h"
 
@@ -101,7 +101,7 @@ void CButtonsPanel::OnInitDialog()
         }
 
         layout->addWidget(button.pButton, index / 2, index % 2);
-        connect(button.pButton, &QEditorToolButton::clicked, [&]() { OnButtonPressed(button.info); });
+        connect(button.pButton, &QEditorToolButton::clicked, this, [&]() { OnButtonPressed(button.info); });
         ++index;
     }
 }

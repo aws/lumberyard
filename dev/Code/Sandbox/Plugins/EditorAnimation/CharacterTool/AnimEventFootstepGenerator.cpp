@@ -17,7 +17,7 @@
 
 
 #include "pch.h"
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "AnimEventFootstepGenerator.h"
 #include "Serialization.h"
 #include "AnimationContent.h"

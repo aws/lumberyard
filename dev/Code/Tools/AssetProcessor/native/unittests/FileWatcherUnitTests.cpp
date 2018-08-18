@@ -44,7 +44,7 @@ void FileWatcherUnitTestRunner::StartTest()
 
     { // test a single file create/write
         bool foundFile = false;
-        auto connection = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileAdded, [&](QString filename)
+        auto connection = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileAdded, this, [&](QString filename)
                 {
                     AZ_TracePrintf(AssetProcessor::DebugChannel, "Single file test Found asset: %s.\n", filename.toUtf8().data());
                     foundFile = true;
@@ -79,7 +79,7 @@ void FileWatcherUnitTestRunner::StartTest()
         const unsigned long maxFiles = 10000;
         QSet<QString> outstandingFiles;
 
-        auto connection = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileAdded, [&](QString filename)
+        auto connection = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileAdded, this, [&](QString filename)
                 {
                     outstandingFiles.remove(filename);
                 });
@@ -133,7 +133,7 @@ void FileWatcherUnitTestRunner::StartTest()
 
     { // test deletion
         bool foundFile = false;
-        auto connection = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileRemoved, [&](QString filename)
+        auto connection = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileRemoved, this, [&](QString filename)
                 {
                     AZ_TracePrintf(AssetProcessor::DebugChannel, "Deleted asset: %s...\n", filename.toUtf8().data());
                     foundFile = true;
@@ -166,7 +166,7 @@ void FileWatcherUnitTestRunner::StartTest()
     {
         bool fileAddCalled = false;
         QString fileAddName;
-        auto connectionAdd = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileAdded, [&](QString filename)
+        auto connectionAdd = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileAdded, this, [&](QString filename)
                 {
                     fileAddCalled = true;
                     fileAddName = filename;
@@ -174,7 +174,7 @@ void FileWatcherUnitTestRunner::StartTest()
 
         bool fileRemoveCalled = false;
         QString fileRemoveName;
-        auto connectionRemove = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileRemoved, [&](QString filename)
+        auto connectionRemove = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileRemoved, this, [&](QString filename)
                 {
                     fileRemoveCalled = true;
                     fileRemoveName = filename;
@@ -182,7 +182,7 @@ void FileWatcherUnitTestRunner::StartTest()
 
         QStringList fileModifiedNames;
         bool fileModifiedCalled = false;
-        auto connectionModified = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileModified, [&](QString filename)
+        auto connectionModified = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileModified, this, [&](QString filename)
                 {
                     fileModifiedCalled = true;
                     fileModifiedNames.append(filename);

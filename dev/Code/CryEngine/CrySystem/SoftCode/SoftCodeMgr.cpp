@@ -786,6 +786,4 @@ size_t SoftCodeMgr::FindSoftCodeFiles(const string& searchName, std::vector<stri
     return foundPaths.size();
 }
 
-// Re-enable optimizations in case built with uberfiles
-#pragma optimize("", on)
 #endif      // SOFTCODE_ENABLED

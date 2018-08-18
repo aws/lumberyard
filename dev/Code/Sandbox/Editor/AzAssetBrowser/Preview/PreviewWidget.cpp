@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include <Editor/AzAssetBrowser/Preview/PreviewWidget.h>
 #include <Editor/Controls/PreviewModelCtrl.h>
@@ -41,7 +41,7 @@ PreviewWidget::PreviewWidget(QWidget* parent)
     m_ui->setupUi(this);
     m_ui->m_comboBoxRGB->addItems(QStringList() << "RGB" << "RGBA" << "Alpha");
     m_ui->m_previewCtrl->SetAspectRatio(4.0f / 3.0f);
-    connect(m_ui->m_comboBoxRGB, static_cast<void(QComboBox::*)(int)>(&QComboBox::activated),
+    connect(m_ui->m_comboBoxRGB, static_cast<void(QComboBox::*)(int)>(&QComboBox::activated), this,
         [=](int index)
         {
             m_textureType = static_cast<TextureType>(index);

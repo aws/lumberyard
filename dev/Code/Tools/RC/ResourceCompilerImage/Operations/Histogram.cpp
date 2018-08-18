@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <assert.h>                         // assert()
 
 #include "../ImageCompiler.h"               // CImageCompiler
@@ -20,7 +20,7 @@
 #include "IRCLog.h"                         // IRCLog
 #include "Histogram.h"
 #include "MathHelpers.h"                    // FastRoundFloatTowardZero()
-#include "../Converters/Colorspaces/RGBL.h" // Luminance
+#include "../Converters/ColorSpaces/RGBL.h" // Luminance
 
 ///////////////////////////////////////////////////////////////////////////////////
 

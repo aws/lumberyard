@@ -338,16 +338,10 @@ namespace AZStd
         //  return replace(end(), end(), first, last);
         //}
 
-        // 1.14 only - disable warning for buffer overflow here
-        // It's only cropping up in very specific build configurations (non-uber file, release, and LTCG)
-        // and the related CL that exposed this only removed code - so just disable the warning for now.
-#pragma warning(push)
-#pragma warning(disable : 4789)
         inline this_type& assign(const this_type& rhs)
         {
             return assign(rhs, 0, npos);
         }
-#pragma warning(pop)
 
 #if defined(AZ_HAS_RVALUE_REFS)
         inline this_type& assign(this_type&& rhs)
@@ -870,6 +864,34 @@ namespace AZStd
             AZSTD_CONTAINER_ASSERT(m_size > offset, "Invalid offset");
             const_pointer data = SSO_BUF_SIZE <= m_capacity ? m_data : m_buffer;
             return data[offset];
+        }
+
+        inline reference front()
+        {
+            AZSTD_CONTAINER_ASSERT(m_size != 0, "AZStd::string::front - string is empty!");
+            pointer data = SSO_BUF_SIZE <= m_capacity ? m_data : m_buffer;
+            return data[0];
+        }
+
+        inline const_reference front() const
+        {
+            AZSTD_CONTAINER_ASSERT(m_size != 0, "AZStd::string::front - string is empty!");
+            const_pointer data = SSO_BUF_SIZE <= m_capacity ? m_data : m_buffer;
+            return data[0];
+        }
+
+        inline reference back()
+        {
+            AZSTD_CONTAINER_ASSERT(m_size != 0, "AZStd::string::back - string is empty!");
+            pointer data = SSO_BUF_SIZE <= m_capacity ? m_data : m_buffer;
+            return data[m_size - 1];
+        }
+
+        inline const_reference back() const
+        {
+            AZSTD_CONTAINER_ASSERT(m_size != 0, "AZStd::string::back - string is empty!");
+            const_pointer data = SSO_BUF_SIZE <= m_capacity ? m_data : m_buffer;
+            return data[m_size - 1];
         }
 
         inline void push_back(Element ch)

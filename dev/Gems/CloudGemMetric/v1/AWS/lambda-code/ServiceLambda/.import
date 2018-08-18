@@ -1,0 +1,7 @@
+CloudGemFramework.ResourceManagerCommon
+CloudGemFramework.LambdaService
+CloudGemFramework.LambdaSettings
+CloudGemFramework.ServiceClient_Python
+CloudGemMetric.AWSCommon
+CloudGemMetric.Constant
+CloudGemMetric.MetricUtils

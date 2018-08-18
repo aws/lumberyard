@@ -66,7 +66,11 @@ void CTerrain::LoadSurfaceTypesFromXML(XmlNodeRef pDoc)
     {
         XmlNodeRef pDetLayer = pDoc->getChild(nId);
         const char* pMatName = pDetLayer->getAttr("DetailMaterial");
-        _smart_ptr<IMaterial> pMat = pMatName[0] ? pMatMan->LoadMaterial(pMatName, true, false, MTL_FLAG_IS_TERRAIN) : nullptr;
+        _smart_ptr<IMaterial> pMat = pMatMan->FindMaterial(pMatName);
+        if (!pMat)
+        {
+            pMat = pMatMan->LoadMaterial(pMatName, true, false, MTL_FLAG_IS_TERRAIN);
+        }
 
         float fScaleX = 1.f;
         pDetLayer->getAttr("DetailScaleX", fScaleX);

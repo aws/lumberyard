@@ -14,7 +14,6 @@
 #include "StdAfx.h"
 #include "Shadow_Renderer.h"
 #include "RenderView.h"
-#include <CryEngineAPI.h>
 
 int SRendItem::m_RecurseLevel[RT_COMMAND_BUF_COUNT];
 int SRendItem::m_StartFrust[RT_COMMAND_BUF_COUNT][MAX_REND_LIGHTS + MAX_DEFERRED_LIGHTS];

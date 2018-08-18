@@ -171,13 +171,12 @@ void SSyncLock::Close()
 {
     if (ev)
     {
-        CryLogAlways("Closed event %p", ev);
+        sem_close(ev);
+        ev = nullptr;
         if (!o_name.empty())
         {
             sem_unlink(o_name);
         }
-        sem_close(ev);
-        ev = 0;
     }
 }
 

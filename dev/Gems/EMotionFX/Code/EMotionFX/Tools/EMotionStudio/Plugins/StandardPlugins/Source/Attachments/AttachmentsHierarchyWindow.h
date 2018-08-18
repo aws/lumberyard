@@ -16,8 +16,6 @@
 // include MCore
 #include <MCore/Source/MemoryCategoriesCore.h>
 #include "../StandardPluginsConfig.h"
-#include <MysticQt/Source/DoubleSpinbox.h>
-#include <MysticQt/Source/IntSpinbox.h>
 #include <EMotionFX/CommandSystem/Source/ActorCommands.h>
 #include <QWidget>
 #include <QTreeWidget>

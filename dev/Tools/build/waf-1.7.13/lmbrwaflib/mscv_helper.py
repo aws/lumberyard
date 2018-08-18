@@ -274,7 +274,7 @@ def set_pdb_flags(self):
 
     if last_debug_option in ['/Zi', '/ZI']:
         # Compute PDB file path
-        pdb_folder = self.path.get_bld().make_node(str(self.idx))
+        pdb_folder = self.path.get_bld().make_node(str(self.target_uid))
         pdb_cxxflag = '/Fd{}'.format(pdb_folder.abspath())
 
 
@@ -324,8 +324,8 @@ def add_pch_msvc(self):
 
     # Generate PCH per target project idx
     # Avoids the case where two project have the same PCH output path but compile the PCH with different compiler options i.e. defines, includes, ...
-    self.pch_file = pch_source.change_ext('.%d.pch' % self.idx)
-    self.pch_object = pch_source.change_ext('.%d.obj' % self.idx)
+    self.pch_file = pch_source.change_ext('.%d.pch' % self.target_uid)
+    self.pch_object = pch_source.change_ext('.%d.obj' % self.target_uid)
     # Create PCH Task
     self.pch_task = pch_task = self.create_task('pch_msvc', pch_source, [self.pch_object, self.pch_file])
     pch_task.env.append_value('PCH_NAME', self.pch_header_name)

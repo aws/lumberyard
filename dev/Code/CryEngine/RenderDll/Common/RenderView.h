@@ -33,7 +33,7 @@ public:
     CThreadSafeWorkerContainer<SRendItem>& GetRenderItems(int nAfterWater, int nRenderList);
     uint32 GetBatchFlags(int recusrion, int nAfterWater, int nRenderList) const;
 
-    void AddRenderItem(CRendElementBase* pElem, CRenderObject* RESTRICT_POINTER pObj, const SShaderItem& pSH,
+    void AddRenderItem(IRenderElement* pElem, CRenderObject* RESTRICT_POINTER pObj, const SShaderItem& pSH,
         uint32 nList, int nAafterWater, uint32 nBatchFlags, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter);
 
     void PrepareForRendering();

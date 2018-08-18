@@ -1,0 +1,112 @@
+{
+    "Resources": {
+        "EC2ResourceTypes" : {
+            "Type": "Custom::ResourceTypes",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "LambdaConfiguration": {
+                    "Fn::GetAtt": [
+                        "SWFResourceTypeLambdaConfig",
+                        "ComposedLambdaConfiguration"
+                    ]
+                },
+                "LambdaTimeout": 300,
+                "Definitions": {
+                    "AWS::EC2::VPC": {
+                        "ArnFormat": "*"
+                    },
+                    "AWS::EC2::Subnet": {
+                        "ArnFormat": "*"
+                    },
+                    "AWS::EC2::SecurityGroup": {
+                        "ArnFormat": "*"
+                    },
+                    "AWS::EC2::InternetGateway": {
+                        "ArnFormat": "*"
+                    },
+                    "AWS::EC2::VPCGatewayAttachment": {
+                        "ArnFormat": "*"
+                    },
+                    "AWS::EC2::RouteTable": {
+                        "ArnFormat": "*"
+                    },
+                    "AWS::EC2::Route": {
+                        "ArnFormat": "*"
+                    },
+                    "AWS::EC2::SubnetRouteTableAssociation": {
+                        "ArnFormat": "*"
+                    },
+                    "AWS::IAM::InstanceProfile": {
+                        "ArnFormat": "*"
+                    },
+                    "AWS::EC2::Instance": {
+                        "ArnFormat": "*"
+                    },
+                    "AWS::Logs::LogGroup": {
+                        "ArnFormat": "arn:aws:logs:{region}:{account_id}:log-group:{resource_name}",
+                        "PermissionMetadata": {
+                            "DefaultRoleMappings" : [
+                                {
+                                    "AbstractRole": [ "ServiceLambda" ],
+                                    "Action": "logs:*",
+                                    "ResourceSuffix": ":log-stream:*"
+                                }
+                            ]
+                        }
+                    },
+                    "Custom::SWF": {
+                        "ArnFormat": "arn:aws:swf:{region}:{account_id}:/domain/{resource_name}-domain",
+                        "HandlerFunction": {
+                            "Function": "Custom_SWF.handler",
+                            "PolicyStatement": [
+                                {
+                                    "Sid": "ManageSWF",
+                                    "Action": "swf:*",
+                                    "Effect": "Allow",
+                                    "Resource": { "Fn::Join": [ "", [ "arn:aws:swf:", {"Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":/domain/*" ]] }
+                                }
+                            ]
+                        }
+                    },
+                    "Custom::AmiPermissions": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "Custom_Permission.handler"
+                        }
+                    },
+                    "Custom::AutoscalingPermissions": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "Custom_Permission.handler"
+                        }
+                    }
+                }
+            }
+        },
+        "SWFResourceTypeLambdaConfig": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "Configuration"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "ComputeFarmResourceType",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "Custom::LambdaConfiguration",
+            "DependsOn": ["CoreResourceTypes"]
+        }
+    }
+}

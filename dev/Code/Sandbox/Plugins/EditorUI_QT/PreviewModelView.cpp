@@ -10,7 +10,7 @@
 *
 */
 
-#include "Stdafx.h"
+#include "stdafx.h"
 #include <EditorDefs.h>
 
 //AZCore

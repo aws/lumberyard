@@ -34,7 +34,7 @@ namespace GraphCanvas
     //////////////////////
     // GeometryComponent
     //////////////////////
-    const float GeometryComponent::IS_CLOSE_TOLERANCE = 0.001;
+    const float GeometryComponent::IS_CLOSE_TOLERANCE = 0.001f;
 
     bool GeometryComponentVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
     {

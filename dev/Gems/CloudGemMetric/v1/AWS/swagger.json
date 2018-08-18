@@ -1,0 +1,1343 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+    },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/loadtest": {
+            "x-cloud-gem-framework-interface-implementation": {
+                "description": "Enables X-Gem Communication between Cloud Gem Metric & Cloud Gem Load Test",
+                "interface": "CloudGemMetric_LoadTest_1_0_0"
+            }
+        },
+        "/service/status": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "service_status"
+            },
+            "get": {
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "operationId": "get_service_status",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/context": {
+            "get": {
+                "description": "Returns the context for the metrics pipeline.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "List of available data, with optional filtering applied.",
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "get"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "GetContextData"
+                }
+            }
+        },
+        "/clientcontext": {
+            "get": {
+                "description": "Returns the client context for the metrics pipeline.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "The client context to operate within.",
+                        "schema": {
+                            "$ref": "#/definitions/ClientContext"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "get_client_context"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "GetClientContextData"
+                }
+            }
+        },
+        "/setting": {
+            "get": {
+                "description": "Returns the settings for the metrics pipeline.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "List of available data for settings",
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "get_settings"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "GetContextData"
+                }
+            },
+            "post": {
+                "description": "Saves Cloud Gem Metric settings data.",
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The key of the saved data.",
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "update_settings"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "UpdateContextData"
+                }
+            }
+        },
+        "/partition": {
+            "get": {
+                "description": "Returns the partition settings for the metrics pipeline.  This determines how the metric data is partitioned in S3. Partition align with indexes in Athena.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "List of available data, with optional filtering applied.",
+                        "schema": {
+                            "$ref": "#/definitions/Partition"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "get_partition"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "GetPartitionData"
+                }
+            },
+            "post": {
+                "description": "Saves Cloud Gem Metric partition data.",
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Partition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The key of the saved data.",
+                        "schema": {
+                            "$ref": "#/definitions/Partition"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "update_custom_partition"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "UpdatePartitionData"
+                }
+            }
+        },
+        "/partition/predefined": {
+            "get": {
+                "description": "Returns the predefined partition settings for the metrics pipeline.  This determines how the metric data is partitioned in S3. Partitions align with indexes in Athena.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "List of available data, with optional filtering applied.",
+                        "schema": {
+                            "$ref": "#/definitions/Partition"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "get_predefined_partition"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "GetPartitionData"
+                }
+            }
+        },
+        "/partition/custom": {
+            "get": {
+                "description": "Returns the custom partition settings for the metrics pipeline.  This determines how the metric data is partitioned in S3. Partitions align with indexes in Athena.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "List of available data, with optional filtering applied.",
+                        "schema": {
+                            "$ref": "#/definitions/Partition"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "get_custom_partition"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "GetCustomPartitionData"
+                }
+            }
+        },
+        "/filter": {
+            "get": {
+                "description": "Returns the filter settings for the metrics pipeline.  This determines how the metric data is filtered on the game client.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "List of available data, with optional filtering applied.",
+                        "schema": {
+                            "$ref": "#/definitions/FilterData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "get_filter"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "GetFilterData"
+                }
+            },
+            "post": {
+                "description": "Saves Cloud Gem Metric filter data.",
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/FilterData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The key of the saved data.",
+                        "schema": {
+                            "$ref": "#/definitions/FilterData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "update_filter"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "UpdateFilterData"
+                }
+            }
+        },
+        "/consumer/consume/message": {
+            "post": {
+                "description": "Invokes the SQS FIFO consumer.",
+                "responses": {
+                    "200": {
+                        "description": "The consumer has started"
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "consumer",
+                    "function": "consume"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "StartSQSConsumer"
+                }
+            }
+        },
+        "/glue/crawler/crawl": {
+            "post": {
+                "description": "Invokes the AWS Glue Crawler Process.",
+                "responses": {
+                    "200": {
+                        "description": "The GLUE Crawler has started"
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "query_athena",
+                    "function": "run_crawler"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "StartGlueCrawler"
+                }
+            }
+        },
+        "/glue/crawler/crawl/status": {
+            "get": {
+                "description": "Gets the status of the GLUE Crawler.",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The GLUE Crawler status"
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "query_athena",
+                    "function": "get_crawler_status"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "GlueCrawlerStatus"
+                }
+            }
+        },
+        "/amoeba/consume/file": {
+            "post": {
+                "description": "Invokes the amoeba S3 file aggregator.  This is done to optimize Athena queries.",
+                "responses": {
+                    "200": {
+                        "description": "The amoeba generator has started"
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "amoeba",
+                    "function": "consume"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "StartAmoebaConsumer"
+                }
+            }
+        },
+        "/producer/produce/message": {
+            "post": {
+                "description": "Generates a SQS FIFO message.",
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Payload"
+                        }
+                    },
+                    {
+                        "description": "The target datastore [ Insensitive | Sensitive ].  Sensistive data is encrypted using AES256.  Enabling will impact Athenas query performance.",
+                        "name": "sensitivity_type",
+                        "in": "query",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "description": "Compress the metric attributes prior to messages submission to SQS.  This is useful for metrics that contain attributes with a large amount of data such as a log file.  Enabling compression mode will dramatically reduce the producers support CCU limit.  The default is no compression.  Options [ NoCompression | Compress ]",
+                        "name": "compression_mode",
+                        "in": "query",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "description": "Is the payload formatted as CSV data or JSON data.  The default of payload_type is for CSV data.  Options [ CSV | JSON ]",
+                        "name": "payload_type",
+                        "in": "query",
+                        "required": false,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The producer response object.",
+                        "schema": {
+                            "$ref": "#/definitions/ProduceResponse"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "producer",
+                    "function": "message"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "SendMetricToSQS"
+                }
+            }
+        },
+        "/priority": {
+            "get": {
+                "description": "Returns the priority settings for the metrics pipeline.  This determines how the metric data is saved on the game client.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "List of available data, with optional filtering applied.",
+                        "schema": {
+                            "$ref": "#/definitions/PriorityData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "get_priority"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "GetPriorityData"
+                }
+            },
+            "post": {
+                "description": "Saves Cloud Gem Metric filter data.",
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PriorityData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The key of the saved data.",
+                        "schema": {
+                            "$ref": "#/definitions/PriorityData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "context",
+                    "function": "update_priority"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "UpdatePriorityData"
+                }
+            }
+        },
+        "/athena/query": {
+            "post": {
+                "description": "Returns the query id to use to check on the state of the query.",
+                "parameters": [
+                    {
+                        "name": "sql",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/QueryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Query id.",
+                        "schema": {
+                            "$ref": "#/definitions/QueryResult"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "query_athena",
+                    "function": "query"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "AthenaQueryId"
+                }
+            }
+        },
+        "/athena/query/{id}": {
+            "get": {
+                "description": "Returns the query result for SQL query.",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Queried data",
+                        "schema": {
+                            "$ref": "#/definitions/QueryResult"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "query_athena",
+                    "function": "query_results"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "AthenaQueryResult"
+                }
+            }
+        },
+        "/graph/consumer/save/duration": {
+            "get": {
+                "description": "Returns the graph data.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Available telemetry data.",
+                        "schema": {
+                            "$ref": "#/definitions/GraphData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "graph",
+                    "function": "consumer_save_duration"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "SaveDurationData"
+                }
+            }
+        },
+        "/graph/consumer/processed/messages": {
+            "get": {
+                "description": "Returns the graph data.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Available telemetry data.",
+                        "schema": {
+                            "$ref": "#/definitions/GraphData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "graph",
+                    "function": "consumer_messages_processed"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "ConsumerMessagesProcessed"
+                }
+            }
+        },
+        "/graph/consumer/processed/bytes": {
+            "get": {
+                "description": "Returns the graph data.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Available telemetry data.",
+                        "schema": {
+                            "$ref": "#/definitions/GraphData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "graph",
+                    "function": "consumer_bytes_processed"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "ConsumerBytesProcessed"
+                }
+            }
+        },
+        "/graph/consumer/rows/added": {
+            "get": {
+                "description": "Returns the graph data.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Available telemetry data.",
+                        "schema": {
+                            "$ref": "#/definitions/GraphData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "graph",
+                    "function": "consumer_rows_added"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "ConsumerRowsAdded"
+                }
+            }
+        },
+        "/graph/consumer/delete/duration": {
+            "get": {
+                "description": "Returns the graph data.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Available telemetry data.",
+                        "schema": {
+                            "$ref": "#/definitions/GraphData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "graph",
+                    "function": "consumer_sqs_delete_duration"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "ConsumerSQSDeleteDuration"
+                }
+            }
+        },
+        "/graph/cloudwatch": {
+            "get": {
+                "description": "Returns the graph CloudWatch data.",
+                "parameters": [
+                    {
+                        "description": "The CloudWatch namespace to use.  Example. 'Lambda'",
+                        "name": "namespace",
+                        "in": "query",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "description": "The CloudWatch metric name to use.  Example. 'Invocations' or 'Errors'",
+                        "name": "metric_name",
+                        "in": "query",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "description": "The CloudWatch metric dimension name to use.  Example. 'FunctionName'",
+                        "name": "dimension_name",
+                        "in": "query",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "description": "The CloudWatch metric dimension name value logical id to use.  Example. 'Amoeba1'",
+                        "name": "dimension_value",
+                        "in": "query",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "description": "The CloudWatch metric aggregation type to use.  Examples. 'SampleCount' or 'Sum' etc",
+                        "name": "aggregation_type",
+                        "in": "query",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "description": "The number of hours to substract from the current time.",
+                        "name": "time_delta_hours",
+                        "in": "query",
+                        "type": "number"
+                    },
+                    {
+                        "description": "The period in seconds in which to aggregate the data.  Example. 60",
+                        "name": "period_in_seconds",
+                        "in": "query",
+                        "type": "number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Available telemetry data.",
+                        "schema": {
+                            "$ref": "#/definitions/GraphData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "graph",
+                    "function": "cloudwatch_metric"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "CloudWatchQuery"
+                }
+            }
+        },
+        "/athena/query/duplication/rate": {
+            "get": {
+                "description": "Returns the graph data based on an Athena query for the UUID duplicaton rate per hour.  This is a measure for data errors.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Available telemetry data.",
+                        "schema": {
+                            "$ref": "#/definitions/GraphData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "query_athena",
+                    "function": "duplication_rate"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "AthenaQueryDuplicationRate"
+                }
+            }
+        },
+        "/athena/query/events": {
+            "get": {
+                "description": "Returns the result of an Athena query for the set of distinct events.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Available events.",
+                        "schema": {
+                            "$ref": "#/definitions/ListData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "query_athena",
+                    "function": "events"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "AthenaQueryEvents"
+                }
+            }
+        },
+        "/athena/query/platforms": {
+            "get": {
+                "description": "Returns the result of an Athena query for the set of distinct platforms.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Available platforms.",
+                        "schema": {
+                            "$ref": "#/definitions/ListData"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "query_athena",
+                    "function": "platforms"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "AthenaQueryEvents"
+                }
+            }
+        },
+        "/graph/consumer/current/duration/save": {
+            "get": {
+                "description": "Returns the graph data.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Available telemetry data.",
+                        "schema": {
+                            "$ref": "#/definitions/Duration"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "graph",
+                    "function": "avg_save_duration"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "SaveDurationData"
+                }
+            }
+        },
+        "/graph/consumer/current/duration/delete": {
+            "get": {
+                "description": "Returns the graph data.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Available telemetry data.",
+                        "schema": {
+                            "$ref": "#/definitions/Duration"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "graph",
+                    "function": "avg_delete_duration"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "function": "DeleteDurationData"
+                }
+            }
+        },
+        "/dashboard/{facetid}": {
+            "post": {
+                "description": "Update the meta data for a specific telemetry chart",
+                "parameters": [
+                    {
+                        "description": "The facet id (GUID) to update",
+                        "name": "facetid",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "name": "meta",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "dashboard",
+                    "function": "post"
+                }
+            },
+            "get": {
+                "description": "Get the meta data for a specific facet in the Cloud Gem Portal dashboard",
+                "parameters": [
+                    {
+                        "description": "The facet id (GUID) to update",
+                        "name": "facetid",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "dashboard",
+                    "function": "get"
+                }
+            }
+        },
+        "/heatmaps": {
+            "post": {
+                "description": "Create a new heatmap",
+                "parameters": [
+                    {
+                        "name": "meta",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "heatmap",
+                    "function": "post"
+                }
+            },
+            "get": {
+                "description": "Get the current heatmaps",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "heatmap",
+                    "function": "list"
+                }
+            }
+        },
+        "/heatmaps/{id}": {
+            "put": {
+                "description": "Replace an existing heatmap",
+                "parameters": [
+                    {
+                        "description": "The heatmap ID to replace",
+                        "name": "id",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "name": "meta",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "heatmap",
+                    "function": "put"
+                }
+            },
+            "get": {
+                "description": "Get a specific heatmap",
+                "parameters": [
+                    {
+                        "description": "The heatmap ID to get",
+                        "name": "id",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "heatmap",
+                    "function": "get"
+                }
+            },
+            "delete": {
+                "description": "Delete a specific heatmap",
+                "parameters": [
+                    {
+                        "description": "The heatmap ID to delete",
+                        "name": "id",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/Context"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "heatmap",
+                    "function": "delete"
+                }
+            }
+        }
+    },
+    "definitions": {
+        "QueryResult": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/QueryItem"
+            }
+        },
+        "GraphData": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/DataPoint"
+            }
+        },
+        "FilterData": {
+            "type": "array",
+            "description": "The filter definition is used to filter out the client metrics.  Example. Case 1: [{ 'event': 'shotFired', 'attributes': [], 'type': 'all' }]. In this case all 'shotFired' events would be filtered out.  Case 2: [{ 'event': 'shotFired', 'attributes': ['gun'], 'type': 'attribute' }].  In this case only attributes called 'gun' on event 'shotFired' will be filtered out.  Case 3: [{ 'event': 'shotFired', 'attributes': ['gun'], 'type': 'all' }]. In this case all events with a attribute 'gun' will be dropped.",
+            "properties": {
+                "filters": {
+                    "$ref": "#/definitions/Filter"
+                }
+            },
+            "required": [
+                "filters"
+            ]
+        },
+        "Filter": {
+            "description": "The filter definition is used to filter out the client metrics.  Example. Case 1: [{ 'event': 'shotFired', 'attributes': [], 'type': 'all' }]. In this case all 'shotFired' events would be filtered out.  Case 2: [{ 'event': 'shotFired', 'attributes': ['gun'], 'type': 'attribute' }].  In this case only attributes called 'gun' on event 'shotFired' will be filtered out.  Case 3: [{ 'event': 'shotFired', 'attributes': ['gun'], 'type': 'all' }]. In this case all events with a attribute 'gun' will be dropped.",
+            "type": "object",
+            "properties": {
+                "event": {
+                    "description": "The event name to be filtered on.",
+                    "type": "string"
+                },
+                "attributes": {
+                    "description": "The attributes to filter on.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/FilterAttributeItem"
+                    }
+                },
+                "type": {
+                    "description": "The type of filering to apply. ['all'|'attribute']",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "event",
+                "attributes",
+                "type"
+            ]
+        },
+        "PriorityData": {
+            "type": "array",
+            "description": "The priorities definition is used to prioritize which client metrics get stored when local disk space capacity exceeds the priority_only_threshold. Example: [{'event': 'purchase', 'precedence': 0}], In this example 'purchase' events will be given the highest priority.  The lower the precedence number the higher the priority it has.",
+            "properties": {
+                "priorities": {
+                    "$ref": "#/definitions/Priority"
+                }
+            },
+            "required": [
+                "priorities"
+            ]
+        },
+        "Priority": {
+            "description": "The priorities definition is used to prioritize which client metrics get stored when local disk space capacity exceeds the priority_only_threshold. Example: [{'event': 'purchase', 'precedence': 0}], In this example 'purchase' events will be given the highest priority.  The lower the precedence number the higher the priority it has.",
+            "type": "object",
+            "properties": {
+                "event": {
+                    "description": "The event name to be filtered on.",
+                    "type": "string"
+                },
+                "precedence": {
+                    "description": "The precedence number.  The lower the number the better",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "event",
+                "precedence"
+            ]
+        },
+        "DataPoint": {
+            "type": "object",
+            "properties": {
+                "SampleCount": {
+                    "description": "The data point value.",
+                    "type": "string"
+                },
+                "Timestamp": {
+                    "description": "The UTC timestamp of when the data point was recorded.",
+                    "type": "string"
+                },
+                "Unit": {
+                    "description": "The unit of measure for the data point.",
+                    "type": "number"
+                }
+            }
+        },
+        "ListData": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/ListItem"
+            }
+        },
+        "QueryItem": {
+            "type": "string"
+        },
+        "FilterAttributeItem": {
+            "type": "string"
+        },
+        "ListItem": {
+            "type": "number"
+        },
+        "Duration": {
+            "type": "number"
+        },
+        "ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ]
+        },
+        "ClientContext": {
+            "type": "object",
+            "properties": {
+                "buffer_flush_to_file_max_in_bytes": {
+                    "description": "The size in bytes of the memory buffer before sending the metrics in the mermory buffer to local file.",
+                    "type": "integer"
+                },
+                "buffer_flush_to_file_interval_sec": {
+                    "description": "The period of time in seconds before sending the metrics in the mermory buffer to local file.",
+                    "type": "integer"
+                },
+                "file_max_size_in_mb": {
+                    "description": "The maximum local file size in MB before all metrics are dropped. Lower bound 2 MB, upper bound 20 MB",
+                    "type": "number"
+                },
+                "file_send_metrics_interval_in_seconds": {
+                    "description": "The period of time in seconds before flushing the local file to AWS. Lower bound 150 seconds, upper bound 1800 seconds",
+                    "type": "integer"
+                },
+                "file_max_metrics_to_send_in_batch_in_mb": {
+                    "description": "The maximum size in MB in which we can send to AWS. Lower bound 2 MB, upper bound 9 MB",
+                    "type": "number"
+                },
+                "file_threshold_to_prioritize_in_perc": {
+                    "description": "The percentage threshold of the file_max_size_in_mb in which we will start to prioritize events.  Events of lower priority are dropped as local disk space runs out. Lower bound 20 %, upper bound 100 %",
+                    "type": "integer"
+                },
+                "filters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Filter"
+                    }
+                },
+                "priorities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Priority"
+                    }
+                }
+            }
+        },
+        "Context": {
+            "type": "object",
+            "properties": {
+                "growth_rate_trigger": {
+                    "description": "The SQS message growth rate threshold for when new consumer will be created.",
+                    "type": "number"
+                },
+                "csv_parquet_compression_ratio": {
+                    "description": "The estimated compression ratio going from CSV/JSON to PARQUET format.  This is used for estimation purposes.",
+                    "type": "number"
+                },
+                "backoff_max_seconds": {
+                    "description": "The maximum back off period in seconds for failed AWS requests.",
+                    "type": "number"
+                },
+                "backoff_base_seconds": {
+                    "description": "The initial back off period in seconds for failed AWS requests.",
+                    "type": "number"
+                },
+                "record_detailed_metric_data": {
+                    "description": "Enable detailed metric logging.  Enable this parameter only in development.",
+                    "type": "boolean"
+                },
+                "backoff_max_trys": {
+                    "description": "The maximum number of attempts for failed AWS requests.",
+                    "type": "integer"
+                },
+                "csv_seperator": {
+                    "description": "The seperator used both for encoding the client CSV and decoding the SQS message payload.",
+                    "type": "string"
+                },
+                "fifo_limit_before_new_q": {
+                    "description": "The threshold for when a new SQS queue is generated.  The threshold is based on in-flight messages (number of messages being processed) as SQS FIFO queues are limited to 20,000 in-flight messages.",
+                    "type": "integer"
+                },
+                "mem_trigger": {
+                    "description": "The memory threshold in percentage for when to start saving to S3 files.",
+                    "type": "integer"
+                },
+                "target_aggregation_file_size_in_GB": {
+                    "description": "The target S3 file size. Too small of a file size will bottleneck the database on S3 IO.  Too large of a file size will break the Lambda memory and time limits.",
+                    "type": "integer"
+                },
+                "max_lambda_execution_time": {
+                    "description": "The maximum lambda execution time.  This is used as a internal timer to determine the process windows for each step of the aggregation (parse SQS message, save to S3, delete message).",
+                    "type": "integer"
+                },
+                "partition_seperator": {
+                    "description": "The path seperator for partitions.",
+                    "type": "string"
+                },
+                "aggregation_period_in_sec": {
+                    "description": "The target aggregation window size.  This will be the default aggregation window size.  It can be overridden based on contextual information provided by telemetry data.",
+                    "type": "integer"
+                },
+                "threshold_before_spawning_new_lambda": {
+                    "description": "The SQS queue message size threshold before a new consumer will be spawned automatically to aid in the processing of the higher volume.",
+                    "type": "integer"
+                },
+                "max_inflight_messages": {
+                    "description": "The maximum allowable inflight messages for any given SQS queue.  If a queue reachs this threshold no more messages will be processed until the inflight number drops below the threshold.",
+                    "type": "integer"
+                },
+                "number_of_initial_consumer_invokes": {
+                    "description": "The number of initial SQS consumers to trigger during each schedule execution period.  The consumer lambdas are self replicating in two circumstances; 1 - The growth_rate_trigger threshold is exceeded.  2 - The threshold_before_spawning_new_lambda threshold is exceeded.",
+                    "type": "integer"
+                },
+                "max_message_retry": {
+                    "description": "The maximum number of retries before a message is logged as an error.  Messages that are processed multiple times should not happen.",
+                    "type": "integer"
+                },
+                "amoeba_target_aggregation_file_size_in_MB": {
+                    "description": "The target aggregation file size in MB.  The amoeba file generator will attempt to generate S3 parquet files of this size.  128 MB is ideal.",
+                    "type": "integer"
+                },
+                "buffer_flush_to_file_max_in_bytes": {
+                    "description": "The size in bytes of the memory buffer before sending the metrics in the mermory buffer to local file.",
+                    "type": "integer"
+                },
+                "buffer_flush_to_file_interval_sec": {
+                    "description": "The period of time in seconds before sending the metrics in the mermory buffer to local file.",
+                    "type": "integer"
+                },
+                "file_max_size_in_mb": {
+                    "description": "The maximum local file size in MB before all metrics are dropped. Lower bound 2 MB, upper bound 20 MB",
+                    "type": "number"
+                },
+                "file_send_metrics_interval_in_seconds": {
+                    "description": "The period of time in seconds before flushing the local file to AWS. Lower bound 150 seconds, upper bound 1800 seconds",
+                    "type": "integer"
+                },
+                "file_max_metrics_to_send_in_batch_in_mb": {
+                    "description": "The maximum size in MB in which we can send to AWS. Lower bound 2 MB, upper bound 9 MB",
+                    "type": "number"
+                },
+                "file_threshold_to_prioritize_in_perc": {
+                    "description": "The percentage threshold of the file_max_size_in_mb in which we will start to prioritize events.  Events of lower priority are dropped as local disk space runs out. Lower bound 20 %, upper bound 100 %",
+                    "type": "integer"
+                },
+                "frequency_to_check_to_spawn": {
+                    "description": "How often the SQS state should be check for spawning a new consumer.  If the threshold_before_spawning_new_lambda is exceed another consumer lambda is invoked.  This should be increased if your SQS queue is not being consumed fast enough.",
+                    "type": "integer"
+                },
+                "frequency_to_check_sqs_state": {
+                    "description": "The frequency in which the SQS state should be checked.  This requires querying SQS. frequency_to_check_to_spawn can only be checked on multiples of this period. ",
+                    "type": "integer"
+                },
+                "filters": {
+                    "$ref": "#/definitions/FilterData"
+                },
+                "priorities": {
+                    "$ref": "#/definitions/PriorityData"
+                }
+            }
+        },
+        "Partition": {
+            "type": "object",
+            "properties": {
+                "partitions": {
+                    "description": "The partition definition in how the data should be partitioned into subsets.  Example:  [{\"type\": \"str\", \"key\": \"akeyname\", \"parts\": []}] These partitions will appear as S3 keys (folders).  You can use Python 2.7 functions in the parts definition to extract values from the metric attributes.  Example.  You have a timestamp as such 2017-01-01T23:58:01 with a partition map as key: timestamp, type: datetime.datetime.utcfromtimestamp, parts: [ '.year' ].  The Lambda will cast the data as datetime.datetime.utcfromtimestamp and call function/property .year on the casted object.  The result would be an S3 key of 2017.",
+                    "type": "object"
+                }
+            },
+            "required": [
+                "partitions"
+            ]
+        },
+        "Payload": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "Supported payloads are CSV or JSON types.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "data"
+            ]
+        },
+        "QueryRequest": {
+            "type": "object",
+            "properties": {
+                "sql": {
+                    "description": "The SQL query to be executed by Athena.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "sql"
+            ]
+        },
+        "ProduceResponse": {
+            "type": "object",
+            "properties": {
+                "PhysicalResourceId": {
+                    "description": "The physical id of the storage location.",
+                    "type": "string"
+                },
+                "StatusCode": {
+                    "description": "The lambda invoke status code.",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "StatusCode",
+                "PhysicalResourceId"
+            ]
+        },
+        "Dashboard": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/DashboardPair"
+            }
+        },
+        "DashboardPair": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "description": "Returns the specificed key value.",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "The value of the requestd key",
+                    "type": "string"
+                }
+            }
+        }
+
+    }
+}

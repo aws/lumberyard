@@ -33,6 +33,7 @@ namespace Serialization {
 
     struct IGizmoSink
     {
+        virtual ~IGizmoSink() = default;
         virtual int CurrentGizmoIndex() const = 0;
         virtual int Write(const LocalPosition&, const GizmoFlags& flags, const void* handle) = 0;
         virtual int Write(const LocalOrientation&, const GizmoFlags& flags, const void* handle) = 0;

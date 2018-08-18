@@ -80,12 +80,9 @@ namespace AZ
                 RenamedNodesMap::SanitizeNodeName(nodeName, context.m_scene.GetGraph(), context.m_currentGraphPosition);
                 AZ_TraceContext("Animation node name", nodeName);
 
-                AZStd::shared_ptr<SceneData::GraphData::AnimationData> createdAnimationData = 
-                    AZStd::make_shared<SceneData::GraphData::AnimationData>();
-
                 auto animStackWrapper = context.m_sourceScene.GetAnimationStackAt(0);
-                const FbxSDKWrapper::FbxTimeSpanWrapper timeSpan = animStackWrapper->GetLocalTimeSpan();
-                const double frameRate = timeSpan.GetFrameRate();
+                const FbxSDKWrapper::FbxTimeWrapper startTime = animStackWrapper->GetLocalTimeSpan().GetStartTime();
+                const double frameRate = startTime.GetFrameRate();
 
                 if (frameRate == 0.0)
                 {
@@ -93,27 +90,30 @@ namespace AZ
                     return Events::ProcessingResult::Failure;
                 }
 
-                const double startTime = timeSpan.GetStartTime();
-                const double stopTime = timeSpan.GetStopTime();
-                const double sampleTimeStep = 1.0 / frameRate;
+                const int64_t startFrame = startTime.GetFrameCount();
+                const int64_t numFrames = animStackWrapper->GetLocalTimeSpan().GetNumFrames();
 
-                const size_t frameCount = static_cast<size_t>(ceil((stopTime - startTime) / sampleTimeStep));
+                AZStd::shared_ptr<SceneData::GraphData::AnimationData> createdAnimationData =
+                    AZStd::make_shared<SceneData::GraphData::AnimationData>();
+                createdAnimationData->ReserveKeyFrames(numFrames);
+                createdAnimationData->SetTimeStepBetweenFrames(1.0 / frameRate);
 
-                createdAnimationData->ReserveKeyFrames(frameCount);
-                createdAnimationData->SetTimeStepBetweenFrames(sampleTimeStep);
-
-                for (double time = startTime; time <= stopTime; time += sampleTimeStep)
                 {
-                    FbxSDKWrapper::FbxTimeWrapper frameTime;
-                    frameTime.SetTime(time);
+                    FbxSDKWrapper::FbxTimeWrapper currTime = startTime;
+                    for (int64_t currFrame = startFrame; currFrame < startFrame + numFrames; currFrame++)
+                    {
+                        currTime.SetFrame(currFrame);
 
-                    Transform animTransform = context.m_sourceNode.EvaluateLocalTransform(frameTime);
-                    context.m_sourceSceneSystem.SwapTransformForUpAxis(animTransform);
-                    context.m_sourceSceneSystem.ConvertBoneUnit(animTransform);
+                        Transform animTransform = context.m_sourceNode.EvaluateLocalTransform(currTime);
+                        context.m_sourceSceneSystem.SwapTransformForUpAxis(animTransform);
+                        context.m_sourceSceneSystem.ConvertBoneUnit(animTransform);
 
-                    createdAnimationData->AddKeyFrame(animTransform);
+                        createdAnimationData->AddKeyFrame(animTransform);
+                    }
+
+                    AZ_Assert(createdAnimationData->GetKeyFrameCount() == numFrames, "The imported animation data created does not have the same number of keyframes as the FBX data.");
                 }
-
+                
                 Containers::SceneGraph::NodeIndex addNode = context.m_scene.GetGraph().AddChild(
                     context.m_currentGraphPosition, nodeName.c_str(), AZStd::move(createdAnimationData));
                 context.m_scene.GetGraph().MakeEndPoint(addNode);
@@ -147,8 +147,8 @@ namespace AZ
                     int stackCount = context.m_sourceScene.GetAnimationStackCount();
                     auto animStackWrapper = context.m_sourceScene.GetAnimationStackAt(0);
 
-                    const FbxSDKWrapper::FbxTimeSpanWrapper timeSpan = animStackWrapper->GetLocalTimeSpan();
-                    const double frameRate = timeSpan.GetFrameRate();
+                    const FbxSDKWrapper::FbxTimeWrapper startTime = animStackWrapper->GetLocalTimeSpan().GetStartTime();
+                    const double frameRate = startTime.GetFrameRate();
 
                     if (frameRate == 0.0)
                     {
@@ -156,12 +156,8 @@ namespace AZ
                         return Events::ProcessingResult::Failure;
                     }
 
-                    const double startTime = timeSpan.GetStartTime();
-                    const double stopTime = timeSpan.GetStopTime();
-                    const double sampleTimeStep = 1.0 / frameRate;
-
-                    const size_t frameCount = static_cast<size_t>(ceil((stopTime - startTime) / sampleTimeStep));
-
+                    const int64_t startFrame = startTime.GetFrameCount();
+                    const int64_t numFrames = animStackWrapper->GetLocalTimeSpan().GetNumFrames();
 
                     const int layerCount = animStackWrapper->GetAnimationLayerCount();
 
@@ -186,17 +182,20 @@ namespace AZ
                             AZStd::shared_ptr<SceneData::GraphData::BlendShapeAnimationData> createdAnimationData =
                                 AZStd::make_shared<SceneData::GraphData::BlendShapeAnimationData>();
 
-                            createdAnimationData->ReserveKeyFrames(frameCount);
-                            createdAnimationData->SetTimeStepBetweenFrames(sampleTimeStep);
+                            createdAnimationData->ReserveKeyFrames(numFrames);
+                            createdAnimationData->SetTimeStepBetweenFrames(1.0 / frameRate);
 
-                            for (double time = startTime; time <= stopTime; time += sampleTimeStep)
                             {
-                                FbxSDKWrapper::FbxTimeWrapper frameTime;
-                                frameTime.SetTime(time);
+                                FbxSDKWrapper::FbxTimeWrapper currTime = startTime;
+                                for (int64_t currFrame = startFrame; currFrame < startFrame + numFrames; currFrame++)
+                                {
+                                    currTime.SetFrame(currFrame);
 
-                                //weight values from FBX are range 0 - 100
-                                float sampleValue = animCurveWrapper->Evaluate(frameTime)/ 100.0f;
-                                createdAnimationData->AddKeyFrame(sampleValue);
+                                    //weight values from FBX are range 0 - 100
+                                    float sampleValue = animCurveWrapper->Evaluate(currTime) / 100.0f;
+                                    createdAnimationData->AddKeyFrame(sampleValue);
+                                }
+                                AZ_Assert(createdAnimationData->GetKeyFrameCount() == numFrames, "Imported animation blend data does not contain the same number of keyframes as the source FBX data.")
                             }
 
                             nodeName = pChannel->GetName();

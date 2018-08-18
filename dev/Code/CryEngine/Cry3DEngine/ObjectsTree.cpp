@@ -157,7 +157,7 @@ void COctreeNode::Render_Object_Nodes(bool bNodeCompletelyInFrustum, int nRender
     if (HasAnyRenderableCandidates(passInfo))
     {
         // when using the occlusion culler, push the work to the jobs doing the occlusion checks, else just compute in main thread
-        if (GetCVars()->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass() && JobManager::InvokeAsJob("CheckOcclusion"))
+        if (GetCVars()->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass())
         {
             GetObjManager()->PushIntoCullQueue(SCheckOcclusionJobData::CreateOctreeJobData(this, nRenderMask, rendItemSorter, &passInfo.GetCamera()));
         }

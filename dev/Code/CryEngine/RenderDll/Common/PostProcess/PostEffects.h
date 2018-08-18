@@ -211,7 +211,7 @@ class CPostAA
 public:
     CPostAA()
     {
-        m_nRenderFlags = 0;
+        m_nRenderFlags = PSP_UPDATE_SCENE_SPECULAR;
         m_nID = ePFX_PostAA;
     }
 

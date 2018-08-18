@@ -19,10 +19,13 @@
 #include "Node.h"
 #include "Actor.h"
 #include "ActorInstance.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MorphMeshDeformer, DeformerAllocator, 0)
+
     // constructor
     MorphMeshDeformer::MorphMeshDeformer(Mesh* mesh)
         : MeshDeformer(mesh)
@@ -40,7 +43,7 @@ namespace EMotionFX
     // create
     MorphMeshDeformer* MorphMeshDeformer::Create(Mesh* mesh)
     {
-        return new MorphMeshDeformer(mesh);
+        return aznew MorphMeshDeformer(mesh);
     }
 
 
@@ -62,7 +65,7 @@ namespace EMotionFX
     MeshDeformer* MorphMeshDeformer::Clone(Mesh* mesh)
     {
         // create the new cloned deformer
-        MorphMeshDeformer* result = new MorphMeshDeformer(mesh);
+        MorphMeshDeformer* result = aznew MorphMeshDeformer(mesh);
 
         // copy the deform passes
         result->mDeformPasses.Resize(mDeformPasses.GetLength());

@@ -241,7 +241,7 @@ class ConfigurationContext(Context.Context):
 		# Add lmbr_waf.bat or lmbr_waf for dependency tracking
         ###############################################################################
 		waf_command = os.path.basename(sys.executable)
-		if waf_command.lower()=='python' or waf_command.lower()=='python.exe':
+		if waf_command.lower().startswith('python'):
 			waf_executable = self.engine_node.make_node('./Tools/build/waf-1.7.13/lmbr_waf')
 		else:
 			waf_executable = self.path.make_node(waf_command)

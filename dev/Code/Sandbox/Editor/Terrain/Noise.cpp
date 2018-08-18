@@ -20,7 +20,7 @@ IN THE SOFTWARE.
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "Noise.h"
 #include "Util/DynamicArray2D.h"
 

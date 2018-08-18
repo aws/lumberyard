@@ -117,6 +117,19 @@ namespace AzToolsFramework
 
         void SetDynamicEditDataProvider(DynamicEditDataProvider provider);
 
+        void SetSizeHintOffset(const QSize& offset);
+        QSize GetSizeHintOffset() const;
+
+        // Controls the indentation of the different levels in the tree. 
+        // Note: do not call this method after adding instances, this indentation value is passed to PropertyRowWidgets 
+        // during construction, therefore doesn't support updating dynamically after showing the widget.
+        void SetTreeIndentation(int indentation);
+        
+        // Controls the indentation of the leafs in the tree. 
+        // Note: do not call this method after adding instances, this indentation value is passed to PropertyRowWidgets 
+        // during construction, therefore doesn't support updating dynamically after showing the widget.
+        void SetLeafIndentation(int indentation);
+
     signals:
         void OnExpansionContractionDone();
     private:

@@ -25,10 +25,14 @@
 #include "MotionEventTable.h"
 #include "Node.h"
 #include "EventManager.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(WaveletSkeletalMotion, MotionAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(WaveletSkeletalMotion::Chunk, MotionAllocator, 0)
+
     //-------------------------------------------------------------------------------------------------
     // class WaveletSkeletalMotion::Chunk
     //-------------------------------------------------------------------------------------------------
@@ -75,7 +79,7 @@ namespace EMotionFX
     // create
     WaveletSkeletalMotion::Chunk* WaveletSkeletalMotion::Chunk::Create()
     {
-        return new Chunk();
+        return aznew Chunk();
     }
 
 
@@ -129,7 +133,7 @@ namespace EMotionFX
     // create
     WaveletSkeletalMotion* WaveletSkeletalMotion::Create(const char* name)
     {
-        return new WaveletSkeletalMotion(name);
+        return aznew WaveletSkeletalMotion(name);
     }
 
 
@@ -982,52 +986,8 @@ namespace EMotionFX
             // perform basic retargeting
             if (instance->GetRetargetingEnabled())
             {
-                const Transform& bindTransform = bindPose->GetLocalTransform(nodeNumber);
-                AZ::Vector3 posOffset(0.0f, 0.0f, 0.0f);
-                AZ::Vector3 nodeOrgPos = bindTransform.mPosition;
-                /*
-                            // if we deal with the root node
-                            if (instance->GetRetargetRootIndex() == nodeNumber)
-                            {
-                                const float bindPoseHeight = subMotion->GetBindPosePos().y;
-                                if (Math::Abs(bindPoseHeight) > 0.0001f)
-                                {
-                                    posOffset.x = 0.0f;
-                                    posOffset.y = instance->GetRetargetRootOffset() * MCore::Clamp<float>(outTransform->mPosition.y / bindPoseHeight, 0.0f, 1.0f);
-                                    posOffset.z = 0.0f;
-                                    //posOffset = Vector3(0.0f, instance->GetRetargetRootOffset() * (outTransform->mPosition.y / nodeOrgPos.y), 0.0f);
-                                }
-                                else
-                                    posOffset = Vector3(0.0f, instance->GetRetargetRootOffset(), 0.0f);
-                            }
-                            else
-                                posOffset = nodeOrgPos - subMotion->GetBindPosePos();
-                */
-
-                /*          // if we deal with the root node
-                            if (actor->GetRetargetRootIndex() == nodeNumber)
-                            {
-                                const int32 upIndex = MCore::GetCoordinateSystem().GetUpIndex();
-                                if (Math::Abs(nodeOrgPos[upIndex]) > 0.0001f)
-                                    posOffset[upIndex] = actor->GetRetargetOffset() * (outTransform->mPosition[upIndex] / nodeOrgPos[upIndex]);
-                                else
-                                    posOffset[upIndex] = actor->GetRetargetOffset();
-                            }
-                            else*/
-                posOffset = nodeOrgPos - subMotion->GetBindPosePos();
-
-                // calculate the displacement
-                //          Vector3 posOffset   = orgTransforms[nodeNumber].mPosition - subMotion->GetBindPosePos();
-
-                EMFX_SCALECODE
-                (
-                    AZ::Vector3 scaleOffset = bindTransform.mScale - subMotion->GetBindPoseScale();
-                    outTransform.mScale += scaleOffset;
-                )
-
-                // apply the displacements
-                outTransform.mPosition  += posOffset;
-            } // if retargeting enabled
+                BasicRetarget(instance, subMotion, nodeNumber, outTransform);
+            }
 
             outPose->SetLocalTransform(nodeNumber, outTransform);
         } // for all transforms
@@ -1100,34 +1060,7 @@ namespace EMotionFX
         // if we want to use retargeting
         if (enableRetargeting)
         {
-            const Transform& bindTransform = bindPose->GetLocalTransform(nodeIndex);
-
-            AZ::Vector3 posOffset(0, 0, 0);
-            AZ::Vector3 nodeOrgPos = bindTransform.mPosition;
-
-            /*      // if we deal with the root node
-                    if (actor->GetRetargetRootIndex() == nodeIndex)
-                    {
-                        const int32 upIndex = MCore::GetCoordinateSystem().GetUpIndex();
-                        if (Math::Abs(nodeOrgPos[upIndex]) > 0.0001f)
-                            posOffset[upIndex] = actor->GetRetargetOffset() * (outTransform->mPosition[upIndex] / nodeOrgPos[upIndex]);
-                        else
-                            posOffset[upIndex] = actor->GetRetargetOffset();
-                    }
-                    else*/
-            posOffset = nodeOrgPos - subMotion->GetBindPosePos();
-
-            // calculate the displacement
-            //Vector3 posOffset   = orgTransforms[nodeIndex].mPosition - subMotion->GetBindPosePos();
-
-            EMFX_SCALECODE
-            (
-                AZ::Vector3 scaleOffset = bindTransform.mScale - subMotion->GetBindPoseScale();
-                outTransform->mScale += scaleOffset;
-            )
-
-            // apply the displacements
-            outTransform->mPosition += posOffset;
+            BasicRetarget(instance, subMotion, nodeIndex, *outTransform);
         }
 
         // mirror

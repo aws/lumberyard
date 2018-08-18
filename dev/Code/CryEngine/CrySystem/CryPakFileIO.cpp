@@ -499,7 +499,7 @@ namespace AZ
             if (fileIt != m_trackedFiles.end())
             {
                 CRY_ASSERT(filenameSize >= fileIt->second.length());
-                strncpy(filename, fileIt->second.c_str(), fileIt->second.length());
+                azstrncpy(filename, filenameSize, fileIt->second.c_str(), fileIt->second.length());
                 return true;
             }
 

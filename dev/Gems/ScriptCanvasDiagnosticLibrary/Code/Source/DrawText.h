@@ -85,11 +85,6 @@ namespace ScriptCanvas
             protected:
 
                 void OnInputSignal(const SlotId& slotId) override;
-                void OnInputChanged(const Datum& input, const SlotId& slotID) override;
-
-            private:
-
-                AZStd::string m_text;
 
             };
         }

@@ -34,7 +34,7 @@ namespace AzFramework
         if (serializeContext)
         {
             serializeContext->Class<NetBindingComponent, AZ::Component>()
-                ->SerializerForEmptyClass();
+                ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 

@@ -22,13 +22,11 @@
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 
-#if defined(AZ_PLATFORM_WINDOWS)
 #include <IEditor.h>
 #include <ViewManager.h>
 #include <GameEngine.h>
 #include <Objects/BaseObject.h>
 #include <Include/IObjectManager.h>
-#endif
 
 #include <Cry_Geo.h>
 #include <MathConversion.h>
@@ -43,7 +41,6 @@ namespace Camera
         {
             serializeContext->Class<CameraEditorSystemComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
             ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -72,7 +69,6 @@ namespace Camera
 
     void CameraEditorSystemComponent::PopulateEditorGlobalContextMenu(QMenu* menu, const AZ::Vector2&, int flags)
     {
-#if defined(AZ_PLATFORM_WINDOWS)
         IEditor* editor;
         AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
 
@@ -87,15 +83,19 @@ namespace Camera
             QAction* action = menu->addAction(QObject::tr("Create camera entity from view"));
             QObject::connect(action, &QAction::triggered, [this]() { CreateCameraEntityFromViewport(); });
         }
-#endif
     }
 
     void CameraEditorSystemComponent::CreateCameraEntityFromViewport()
     {
-#if defined(AZ_PLATFORM_WINDOWS)
-        AzToolsFramework::ScopedUndoBatch undoBatch("Create Camera Entity");
         IEditor* editor;
         AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
+        CViewport* viewport = editor->GetViewManager()->GetSelectedViewport();
+        if (!viewport)
+        {
+            viewport = editor->GetViewManager()->GetGameViewport();
+        }
+
+        AzToolsFramework::ScopedUndoBatch undoBatch("Create Camera Entity");
 
         // Create new entity
         AZ::Entity* newEntity;
@@ -107,11 +107,12 @@ namespace Camera
         // Add CameraComponent
         AzToolsFramework::AddComponents<EditorCameraComponent>::ToEntities(newEntity);
 
-        // Set transform to that of the viewport
-        AZ::TransformBus::Event(newEntity->GetId(), &AZ::TransformInterface::SetWorldTM, LYTransformToAZTransform(editor->GetViewManager()->GetSelectedViewport()->GetViewTM()));
-        CameraRequestBus::Event(newEntity->GetId(), &CameraComponentRequests::SetFov, AZ::RadToDeg(editor->GetViewManager()->GetSelectedViewport()->GetFOV()));
+        // Set transform to that of the viewport, otherwise default to Identity matrix and 60 degree FOV
+        const Matrix34 matrix = viewport ? viewport->GetViewTM() : Matrix34::CreateIdentity();
+        const float fov = viewport ? viewport->GetFOV() : 60.0f;
+        AZ::TransformBus::Event(newEntity->GetId(), &AZ::TransformInterface::SetWorldTM, LYTransformToAZTransform(matrix));
+        CameraRequestBus::Event(newEntity->GetId(), &CameraComponentRequests::SetFov, AZ::RadToDeg(fov));
         undoBatch.MarkEntityDirty(newEntity->GetId());
-#endif
     }
 
     void CameraEditorSystemComponent::NotifyRegisterViews()

@@ -359,11 +359,26 @@ struct ICryPak
     typedef int64 SignedFileSize;
 
     // <interfuscator:shuffle>
-    virtual ~ICryPak(){}
+    virtual ~ICryPak() {}
 
-    // given the source relative path, constructs the full path to the file according to the flags
-    // returns the pointer to the constructed path (can be either szSourcePath, or szDestPath, or NULL in case of error
-    virtual const char* AdjustFileName(const char* src, char dst[g_nMaxPath], unsigned nFlags, bool skipMods = false) = 0;
+    /**
+    * given the source relative path, constructs the full path to the file according to the flags
+    * returns the pointer to the constructed path (can be either szSourcePath, or szDestPath, or NULL in case of error
+    */
+    const char* AdjustFileName(const char* src, char *dst, size_t dstSize, unsigned nFlags, bool skipMods = false)
+    {
+        return AdjustFileNameImpl(src, dst, dstSize, nFlags, skipMods);
+    }
+
+    /**
+    * @deprecated
+    * given the source relative path, constructs the full path to the file according to the flags
+    * returns the pointer to the constructed path (can be either szSourcePath, or szDestPath, or NULL in case of error
+    */
+    template <size_t SIZE> const char* AdjustFileName(const char* src, char(&dst)[SIZE], unsigned nFlags, bool skipMods = false)
+    { 
+        return AdjustFileNameImpl(src, dst, SIZE, nFlags, skipMods);
+    }
 
     virtual const char* GetDirectoryDelimiter() const = 0;
 
@@ -625,6 +640,13 @@ struct ICryPak
     }
 
     const static ICryPak::SignedFileSize FILE_NOT_PRESENT = -1;
+
+protected:
+    /**
+    * given the source relative path, constructs the full path to the file according to the flags
+    * returns the pointer to the constructed path (can be either szSourcePath, or szDestPath, or NULL in case of error
+    */
+    virtual const char* AdjustFileNameImpl(const char* src, char* dst, size_t dstSize, unsigned nFlags, bool skipMods) = 0;
 };
 
 class ScopedFileHandle
@@ -727,7 +749,7 @@ inline AZ::IO::HandleType fxopen(const char* file, const char* mode, bool bGameR
             nAdjustFlags |= ICryPak::FLAGS_FOR_WRITING;
         }
         char path[_MAX_PATH];
-        const char* szAdjustedPath = gEnv->pCryPak->AdjustFileName(file, path, nAdjustFlags);
+        const char* szAdjustedPath = gEnv->pCryPak->AdjustFileName(file, path, AZ_ARRAY_SIZE(path), nAdjustFlags);
 
 #if !defined(LINUX) && !defined(APPLE)
         if (bWriteAccess)

@@ -16,7 +16,7 @@
 
 #include "StdAfx.h"
 #include "CCryDXMETALGIOutput.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 
 
 CCryDXGLGIOutput::CCryDXGLGIOutput()

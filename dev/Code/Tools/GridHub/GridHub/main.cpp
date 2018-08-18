@@ -11,6 +11,7 @@
 */
 
 // windows include must be first so we get the full version (AZCore bring the trimmed one)
+#define NOMINMAX
 #include <Windows.h>
 #include <winnls.h>
 #include <shobjidl.h>
@@ -30,7 +31,7 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Memory/allocatormanager.h>
 #include <AzCore/Memory/MemoryComponent.h>
-#include <AzCore/Component/componentapplication.h>
+#include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/IO/SystemFile.h>
@@ -50,8 +51,8 @@ class GridHubApplication : public AZ::ComponentApplication, AZ::SystemTickBus::H
 public:
     GridHubApplication() : m_monitorForExeChanges(false), m_needToRelaunch(false), m_timeSinceLastCheckForChanges(0.0f) {}
     /// Create application, if systemEntityFileName is NULL, we will create with default settings.
-    virtual AZ::Entity* Create(const char* systemEntityFileName, AZ::IAllocatorAllocate* systemAllocator = NULL);
-    virtual void Destroy();
+    AZ::Entity* Create(const char* systemEntityFileName, const StartupParameters& startupParameters = StartupParameters()) override;
+    void Destroy() override;
 
     bool	IsNeedToRelaunch() const		{ return m_needToRelaunch; }
     bool	IsValidModuleName() const		{ return m_monitorForExeChanges; }
@@ -60,8 +61,8 @@ protected:
     /**
      * This is the function that will be called instantly after the memory
      * manager is created. This is where we should register all core component
-     * factories that will participate in the loading of the bootstrap file 
-     * or all factories in general. 
+     * factories that will participate in the loading of the bootstrap file
+     * or all factories in general.
      * When you create your own application this is where you should FIRST call
      * ComponentApplication::RegisterCoreComponents and then register the application
      * specific core components.
@@ -79,7 +80,7 @@ protected:
 
          AZStd::chrono::duration<float> delta = now - lastUpdate;
          float deltaTime = delta.count();
-         
+
          lastUpdate = now;
 
         /// This is called from a 'safe' main sync point and should originate all messages that need to be synced to the 'main' thread.
@@ -116,7 +117,7 @@ protected:
      bool						m_monitorForExeChanges;
      bool						m_needToRelaunch;
      float						m_timeSinceLastCheckForChanges;
-     
+
 };
 
 /**
@@ -128,7 +129,7 @@ public:
     QGridHubApplication(int &argc, char **argv) : QApplication(argc,argv)
     {
         CoInitialize(NULL);
-        m_systemEntity = NULL;		
+        m_systemEntity = NULL;
         m_gridHubComponent = NULL;
         m_systemEntityFileName = "GridHubConfig.xml";
         installNativeEventFilter(this);
@@ -140,7 +141,7 @@ public:
     }
 
     //virtual bool QGridHubApplication::winEventFilter( MSG *msg , long *result)
-    virtual bool nativeEventFilter(const QByteArray &eventType, void *message, long *result) 
+    virtual bool nativeEventFilter(const QByteArray &eventType, void *message, long *result)
     {
         if ((eventType == "windows_generic_MSG")||(eventType == "windows_dispatcher_MSG"))
         {
@@ -149,7 +150,7 @@ public:
                 case WM_QUERYENDSESSION:
                     Finalize();
                     break;
-            } 
+            }
         }
         return false;
     }
@@ -178,10 +179,10 @@ public:
         if (styleSheet().isEmpty())
         {
             QDir::addSearchPath("UI", ":/GridHub/Resources/StyleSheetImages");
-            QFile file(":/GridHub/Resources/style_dark.qss"); 
-            file.open(QFile::ReadOnly); 
-            QString styleSheet = QLatin1String(file.readAll()); 
-            setStyleSheet(styleSheet); 
+            QFile file(":/GridHub/Resources/style_dark.qss");
+            file.open(QFile::ReadOnly);
+            QString styleSheet = QLatin1String(file.readAll());
+            setStyleSheet(styleSheet);
         }
     }
 
@@ -228,9 +229,9 @@ public:
         TCHAR startupFolder[MAX_PATH] = {0};
         TCHAR fullLinkName[MAX_PATH] = {0};
 
-        LPITEMIDLIST pidlFolder = NULL; 
+        LPITEMIDLIST pidlFolder = NULL;
         hres = SHGetFolderLocation(0,/*CSIDL_COMMON_STARTUP all users required admin access*/CSIDL_STARTUP,NULL,0,&pidlFolder);
-        if (SUCCEEDED(hres)) 
+        if (SUCCEEDED(hres))
         {
             if( SHGetPathFromIDList(pidlFolder,startupFolder) )
             {
@@ -252,43 +253,43 @@ public:
             // add to start up folder
 
             // get my file full name
-            IShellLink* psl; 
+            IShellLink* psl;
 
             // Get a pointer to the IShellLink interface. It is assumed that CoInitialize
             // has already been called.
-            hres = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLink, (LPVOID*)&psl); 
-            if (SUCCEEDED(hres)) 
-            { 
-                IPersistFile* ppf; 
+            hres = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLink, (LPVOID*)&psl);
+            if (SUCCEEDED(hres))
+            {
+                IPersistFile* ppf;
 
-                // Set the path to the shortcut target and add the description. 
-                psl->SetPath(moduleFilename); 
-                psl->SetDescription("Amazon Grid Hub"); 
+                // Set the path to the shortcut target and add the description.
+                psl->SetPath(moduleFilename);
+                psl->SetDescription("Amazon Grid Hub");
 
-                // Query IShellLink for the IPersistFile interface, used for saving the 
-                // shortcut in persistent storage. 
-                hres = psl->QueryInterface(IID_IPersistFile, (LPVOID*)&ppf); 
+                // Query IShellLink for the IPersistFile interface, used for saving the
+                // shortcut in persistent storage.
+                hres = psl->QueryInterface(IID_IPersistFile, (LPVOID*)&ppf);
 
-                if (SUCCEEDED(hres)) 
-                { 
-                    WCHAR wsz[MAX_PATH]; 
+                if (SUCCEEDED(hres))
+                {
+                    WCHAR wsz[MAX_PATH];
 
-                    // Ensure that the string is Unicode. 
-                    MultiByteToWideChar(CP_ACP, 0, fullLinkName, -1, wsz, MAX_PATH); 
+                    // Ensure that the string is Unicode.
+                    MultiByteToWideChar(CP_ACP, 0, fullLinkName, -1, wsz, MAX_PATH);
 
-                    // Add code here to check return value from MultiByteWideChar 
+                    // Add code here to check return value from MultiByteWideChar
                     // for success.
 
-                    // Save the link by calling IPersistFile::Save. 
-                    hres = ppf->Save(wsz, TRUE); 
-                    ppf->Release(); 
-                } 
-                psl->Release(); 
-            } 
+                    // Save the link by calling IPersistFile::Save.
+                    hres = ppf->Save(wsz, TRUE);
+                    ppf->Release();
+                }
+                psl->Release();
+            }
         }
         else
         {
-            // remove from start up folder 
+            // remove from start up folder
             DeleteFile(fullLinkName);
         }
     }
@@ -305,7 +306,7 @@ public:
 // [6/18/2012]
 //=========================================================================
 AZ::Entity*
-GridHubApplication::Create(const char* systemEntityFileName, AZ::IAllocatorAllocate* systemAllocator /* = NULL */)
+GridHubApplication::Create(const char* systemEntityFileName, const StartupParameters& startupParameters /* = StartupParameters() */)
 {
     m_monitorForExeChanges = IsDebuggerPresent() ? false : true;
     if( m_monitorForExeChanges )
@@ -334,9 +335,7 @@ GridHubApplication::Create(const char* systemEntityFileName, AZ::IAllocatorAlloc
     // note: since we accessing directly 'systemEntityFileName' should be the full file name
     if( systemEntityFileName && AZ::IO::SystemFile::Exists(systemEntityFileName) )
     {
-        AZ::ComponentApplication::StartupParameters appParams;
-        appParams.m_allocator = systemAllocator;
-        AZ::Entity* sysEntity = ComponentApplication::Create(systemEntityFileName, appParams);
+        AZ::Entity* sysEntity = ComponentApplication::Create(systemEntityFileName, startupParameters);
         if (sysEntity)
             AZ::SystemTickBus::Handler::BusConnect();
         return sysEntity;
@@ -344,7 +343,7 @@ GridHubApplication::Create(const char* systemEntityFileName, AZ::IAllocatorAlloc
     else
     {
         ComponentApplication::Descriptor appDesc;
-        AZ::Entity* sysEntity = ComponentApplication::Create(appDesc);
+        AZ::Entity* sysEntity = ComponentApplication::Create(appDesc, startupParameters);
         if (sysEntity)
             AZ::SystemTickBus::Handler::BusConnect();
         return sysEntity;
@@ -401,14 +400,14 @@ void CopyAndRun(bool failSilently)
             si.dwFlags = STARTF_USESHOWWINDOW;
             si.wShowWindow = SW_SHOWNORMAL;
 
-            CreateProcess( 
-                NULL,                       // No module name (use command line). 
-                targetProcPath,             // Command line. 
-                NULL,                       // Process handle not inheritable. 
-                NULL,                       // Thread handle not inheritable. 
-                FALSE,                      // Set handle inheritance to FALSE. 
+            CreateProcess(
+                NULL,                       // No module name (use command line).
+                targetProcPath,             // Command line.
+                NULL,                       // Process handle not inheritable.
+                NULL,                       // Thread handle not inheritable.
+                FALSE,                      // Set handle inheritance to FALSE.
                 CREATE_NEW_PROCESS_GROUP,   // Don't use the same process group as the current process!
-                NULL,                       // Use parent's environment block. 
+                NULL,                       // Use parent's environment block.
                 NULL,                       // Startup in the same directory as the executable
                 &si,                        // Pointer to STARTUPINFO structure.
                 &pi);                       // Pointer to PROCESS_INFORMATION structure.
@@ -451,13 +450,13 @@ void RelaunchImage()
         si.wShowWindow = SW_SHOWNORMAL;
 
         CreateProcess(
-            NULL,                       // No module name (use command line). 
-            targetProcPath,             // Command line. 
-            NULL,                       // Process handle not inheritable. 
-            NULL,                       // Thread handle not inheritable. 
-            FALSE,                      // Set handle inheritance to FALSE. 
+            NULL,                       // No module name (use command line).
+            targetProcPath,             // Command line.
+            NULL,                       // Process handle not inheritable.
+            NULL,                       // Thread handle not inheritable.
+            FALSE,                      // Set handle inheritance to FALSE.
             CREATE_NEW_PROCESS_GROUP,   // Don't use the same process group as the current process!
-            NULL,                       // Use parent's environment block. 
+            NULL,                       // Use parent's environment block.
             NULL,                       // Startup in the same directory as the executable
             &si,                        // Pointer to STARTUPINFO structure.
             &pi);                       // Pointer to PROCESS_INFORMATION structure.
@@ -470,7 +469,7 @@ void RelaunchImage()
 //=========================================================================
 int main(int argc, char *argv[])
 {
-    bool failSilently = false;    
+    bool failSilently = false;
 
     // We are laucnhing this from Woodpecker all the time.
     // When launching from Woodpecker, we don't want to show
@@ -483,7 +482,7 @@ int main(int argc, char *argv[])
         {
             failSilently = true;
         }
-    }    
+    }
 
     bool isCopyAndRunOnExit = false;
 
@@ -521,9 +520,9 @@ int main(int argc, char *argv[])
             char directoryName[MAX_PATH] = {0};
             ::_splitpath_s( myFileName, driveName, MAX_PATH, directoryName, MAX_PATH, NULL, 0, NULL, 0);
 
-            strcat_s(searchPath, MAX_PATH, driveName);
-            strcat_s(searchPath, MAX_PATH, directoryName);
-            strcat_s(searchPath, MAX_PATH, "qtlibs\\plugins");
+            azstrcat(searchPath, MAX_PATH, driveName);
+            azstrcat(searchPath, MAX_PATH, directoryName);
+            azstrcat(searchPath, MAX_PATH, "qtlibs\\plugins");
             QApplication::addLibraryPath(searchPath);
         }
 
@@ -531,7 +530,7 @@ int main(int argc, char *argv[])
         qtApp.Initialize();
         qtApp.Execute();
         bool isNeedToRelaunch = qtApp.IsNeedToRelaunch();
-        qtApp.Finalize();		
+        qtApp.Finalize();
 
         ReleaseMutex(hInstanceMutex);
 

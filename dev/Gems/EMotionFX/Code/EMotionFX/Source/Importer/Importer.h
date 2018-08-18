@@ -52,7 +52,7 @@ namespace EMotionFX
      */
     class EMFX_API Importer : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(Importer, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_IMPORTER);
+        AZ_CLASS_ALLOCATOR_DECL
         friend class Initializer;
         friend class EMotionFXManager;
 

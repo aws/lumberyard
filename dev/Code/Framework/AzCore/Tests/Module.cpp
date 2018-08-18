@@ -49,8 +49,8 @@ namespace UnitTest
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
             {
-                serializeContext->Class<SystemComponentFromModule>()->
-                    SerializerForEmptyClass();
+                serializeContext->Class<SystemComponentFromModule, AZ::Component>()
+                    ;
             }
         }
 

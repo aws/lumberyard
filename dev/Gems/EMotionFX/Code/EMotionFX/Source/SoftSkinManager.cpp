@@ -13,10 +13,14 @@
 // include the required headers
 #include "SoftSkinManager.h"
 #include "SoftSkinDeformer.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(SoftSkinManager, SoftSkinManagerAllocator, 0)
+
+
     // constructor
     SoftSkinManager::SoftSkinManager()
         : BaseObject()
@@ -27,7 +31,7 @@ namespace EMotionFX
     // create
     SoftSkinManager* SoftSkinManager::Create()
     {
-        return new SoftSkinManager();
+        return aznew SoftSkinManager();
     }
 
 

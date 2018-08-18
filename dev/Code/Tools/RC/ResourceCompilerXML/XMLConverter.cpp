@@ -14,7 +14,7 @@
 #include "stdafx.h"
 #include "XMLConverter.h"
 #include "IRCLog.h"
-#include "IXmlSerializer.h"
+#include "IXMLSerializer.h"
 #include "XMLBinaryHeaders.h"
 #include "XMLBinaryReader.h"
 #include "XMLBinaryWriter.h"
@@ -83,7 +83,8 @@ void XMLConverter::Init(const ConvertorInitContext& context)
         return;
     }
 
-    FILE* const f = fopen(xmlFilterFile.c_str(), "rt");
+    FILE* f = nullptr;
+    azfopen(&f, xmlFilterFile.c_str(), "rt");
     if (!f)
     {
         RCLogError("XML: Failed to open XML filter file \"%s\"", xmlFilterFile.c_str());
@@ -154,7 +155,8 @@ class CXmlBinaryDataWriterFile
 public:
     CXmlBinaryDataWriterFile(const char* file)
     {
-        m_file = fopen(file, "wb");
+        m_file = nullptr; 
+        azfopen(&m_file, file, "wb");
     }
     ~CXmlBinaryDataWriterFile()
     {
@@ -619,7 +621,8 @@ bool XMLCompiler::Process()
         SetFileAttributes(sOutputFile.c_str(), FILE_ATTRIBUTE_ARCHIVE);
 #endif
 
-        FILE* const pDestinationFile = fopen(sOutputFile.c_str(), "wb");
+        FILE* pDestinationFile = nullptr; 
+        azfopen(&pDestinationFile, sOutputFile.c_str(), "wb");
         if (pDestinationFile == 0)
         {
             RCLogError("XML: Cannot write file \"%s\": %s", sInputFile.c_str(), strerror(errno));

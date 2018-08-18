@@ -19,11 +19,39 @@
     </Config>
     <Config file="android_veryhigh.cfg">
     </Config>
-    <Config file="android_samsung_note5.cfg">
+    <Config file="android_MaliT760.cfg">
         <Device model="SM-N920C"/> <!-- Samsung Note 5 (Europe, Asia)--> 
         <Device model="SM-N920T"/> <!-- Samsung Note 5 (T-Mobile)-->
         <Device model="SM-N920A"/> <!-- Samsung Note 5 (AT&T)-->
         <Device model="SM-N920I"/> <!-- Samsung Note 5 (Australia)-->
         <Device model="SM-N920G"/> <!-- Samsung Note 5 (LATAM)-->
+        
+        <Device model="SM-G920F"/> <!-- Samsung S6 (Europe)-->
+        <Device model="SM-G920FD"/> <!-- Samsung S6 (Philippines, Pakistan, Russia, Ukraine)-->
+        <Device model="SM-G920FQ"/> <!-- Samsung S6 (Turkey)-->
+        <Device model="SM-G920I"/> <!-- Samsung S6 (LATAM, Singapore, India, Australia, New Zealand)-->
+        <Device model="SM-G920A"/> <!-- Samsung S6 (AT&T)-->
+        <Device model="SM-G920T"/> <!-- Samsung S6 (T-Mobile)-->
+        <Device model="SM-G920S"/> <!-- Samsung S6 (Korea)-->
+        <Device model="SM-G920K"/> <!-- Samsung S6 (Korea)-->
+        <Device model="SM-G9200"/> <!-- Samsung S6 (Hong Kong)-->
+        <Device model="SM-G9208"/> <!-- Samsung S6 (China)-->
+        <Device model="SM-G9209"/> <!-- Samsung S6 (China)-->
+        
+        <Device model="SM-G925F"/> <!-- Samsung S6 edge (Global)-->
+        <Device model="SM-G925FQ"/> <!-- Samsung S6 edge (Turkey)-->
+        <Device model="SM-G925I"/> <!-- Samsung S6 edge (LATAM, India, Australia)-->
+        <Device model="SM-G925A"/> <!-- Samsung S6 edge (AT&T)-->
+        <Device model="SM-G925T"/> <!-- Samsung S6 edge (T-Mobile)-->
+        <Device model="SM-G925S"/> <!-- Samsung S6 edge (Korea)-->
+        <Device model="SM-G925K"/> <!-- Samsung S6 edge (Korea)-->
+        <Device model="SM-G925L"/> <!-- Samsung S6 edge (Korea)-->
+        <Device model="SM-G9250"/> <!-- Samsung S6 edge (China, HK)-->
+        
+        <Device model="SM-G928F"/> <!-- Samsung S6 edge+ (Europe)-->
+        <Device model="SM-G928G"/> <!-- Samsung S6 edge+ (India)-->
+        <Device model="SM-G928T"/> <!-- Samsung S6 edge+ (T-Mobile)-->
+        <Device model="SM-G928A"/> <!-- Samsung S6 edge+ (AT&T)-->
+        <Device model="SM-G928I"/> <!-- Samsung S6 edge+ (Australia, New Zealand, Singapore)-->
     </Config>
 </DeviceList>

@@ -21,13 +21,16 @@
 #include "Node.h"
 #include "TransformData.h"
 #include "MotionEventTable.h"
-
+#include <EMotionFX/Source/Allocators.h>
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/Compare.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MotionInstance, MotionAllocator, 0)
+
+
     // constructor
     MotionInstance::MotionInstance(Motion* motion, ActorInstance* actorInstance, uint32 startNodeIndex)
         : BaseObject()
@@ -121,7 +124,7 @@ namespace EMotionFX
     // create
     MotionInstance* MotionInstance::Create(Motion* motion, ActorInstance* actorInstance, uint32 startNodeIndex)
     {
-        return new MotionInstance(motion, actorInstance, startNodeIndex);
+        return aznew MotionInstance(motion, actorInstance, startNodeIndex);
     }
 
 
@@ -325,7 +328,7 @@ namespace EMotionFX
             // check and handle the bounds of the current playtime, to make it loop etc
             if (mMaxLoops == EMFX_LOOPFOREVER) // if it's looping forever
             {
-                if (currentTime > maxTime)
+                if (currentTime >= maxTime)
                 {
                     *outNumLoops = *outNumLoops + 1;
                     hasLooped = true;
@@ -351,7 +354,7 @@ namespace EMotionFX
             else
             {
                 // if we passed the end of the motion, keep it there
-                if (currentTime > maxTime)
+                if (currentTime >= maxTime)
                 {
                     *outNumLoops = *outNumLoops + 1;
                     hasLooped = true;
@@ -458,7 +461,7 @@ namespace EMotionFX
             else
             {
                 // if we passed the end of the motion
-                if (currentTime < mClipStartTime)
+                if (currentTime <= mClipStartTime)
                 {
                     *outNumLoops = *outNumLoops + 1;
                     hasLooped = true;
@@ -556,7 +559,7 @@ namespace EMotionFX
             // check and handle the bounds of the current playtime, to make it loop etc
             if (mMaxLoops == EMFX_LOOPFOREVER) // if it's looping forever
             {
-                if (currentTime > maxTime)
+                if (currentTime >= maxTime)
                 {
                     mCurLoops++;
                     hasLooped = true;
@@ -582,7 +585,7 @@ namespace EMotionFX
             else
             {
                 // if we passed the end of the motion, keep it there
-                if (currentTime > maxTime)
+                if (currentTime >= maxTime)
                 {
                     mCurLoops++;
                     hasLooped = true;
@@ -674,7 +677,7 @@ namespace EMotionFX
             // check and handle the bounds of the current playtime, to make it loop etc
             if (mMaxLoops == EMFX_LOOPFOREVER) // if it's looping forever
             {
-                if (currentTime < mClipStartTime)
+                if (currentTime <= mClipStartTime)
                 {
                     hasLooped = true;
                     mCurLoops++;
@@ -692,7 +695,7 @@ namespace EMotionFX
             else
             {
                 // if we passed the end of the motion
-                if (currentTime < mClipStartTime)
+                if (currentTime <= mClipStartTime)
                 {
                     mCurLoops++;
                     hasLooped = true;

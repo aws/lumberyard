@@ -56,7 +56,7 @@ namespace EMotionFX
     class EMFX_API EMotionFXManager
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(EMotionFXManager, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_EMOTIONFXMANAGER);
+        AZ_CLASS_ALLOCATOR_DECL
         friend class Initializer;
 
     public:

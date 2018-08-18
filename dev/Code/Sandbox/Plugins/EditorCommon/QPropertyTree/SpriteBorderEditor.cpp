@@ -14,7 +14,7 @@
 
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "SpriteBorderEditorCommon.h"
 #include <Util/PathUtil.h> // for Getting the game folder
 
@@ -103,7 +103,7 @@ SpriteBorderEditor::SpriteBorderEditor(const char* path, QWidget* parent)
         // Save button.
         QPushButton* saveButton = new QPushButton( "Save", this );
         QObject::connect( saveButton,
-                            &QPushButton::clicked,
+                            &QPushButton::clicked, this,
                             [ this, sprite ]( bool checked )
                             {
                                 // Sanitize values.
@@ -149,7 +149,7 @@ SpriteBorderEditor::SpriteBorderEditor(const char* path, QWidget* parent)
         ISprite::Borders originalBorders = sprite->GetBorders();
         QPushButton* cancelButton = new QPushButton( "Cancel", this );
         QObject::connect( cancelButton,
-                            &QPushButton::clicked,
+                            &QPushButton::clicked, this,
                             [ this, sprite, originalBorders ]( bool checked )
                             {
                                 // Restore original borders.

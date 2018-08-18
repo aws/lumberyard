@@ -66,7 +66,7 @@ namespace EMotionFX
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Animation")
                         ->Attribute(AZ::Edit::Attributes::Icon, ":/EMotionFX/ActorComponent.png")
-                        ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<ActorAsset>::Uuid())
+                        ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, azrtti_typeid<ActorAsset>())
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, ":/EMotionFX/ActorComponent.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
@@ -352,7 +352,7 @@ namespace EMotionFX
                     [this, nodeSelectWindow, &refreshLevel, &actorInstance]()
                     {
                         auto& selectedItems = nodeSelectWindow->GetNodeHierarchyWidget()->GetSelectedItems();
-                        if (!selectedItems.GetIsEmpty())
+                        if (!selectedItems.empty())
                         {
                             const char* jointName = selectedItems[0].GetNodeName();
                             EMotionFX::Node* node = actorInstance->GetActor()->GetSkeleton()->FindNodeByName(jointName);

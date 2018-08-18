@@ -129,7 +129,7 @@ namespace EMStudio
 
         if (node)
         {
-            if (node->GetType() == EMotionFX::BlendSpace2DNode::TYPE_ID)
+            if (azrtti_typeid(node) == azrtti_typeid<EMotionFX::BlendSpace2DNode>())
             {
                 m_currentNode = static_cast<EMotionFX::BlendSpace2DNode*>(node);
                 m_currentNode->SetInteractiveMode(true);
@@ -861,7 +861,7 @@ namespace EMStudio
         }
 
         // Check that we are looking at the correct animgrah instance
-        const EMotionFX::AnimGraphNode* thisNode = animGraphInstance->GetAnimGraph()->RecursiveFindNodeByID(blendSpaceNode->GetID());
+        const EMotionFX::AnimGraphNode* thisNode = animGraphInstance->GetAnimGraph()->RecursiveFindNodeById(blendSpaceNode->GetId());
         if (thisNode != blendSpaceNode)
         {
             return nullptr;

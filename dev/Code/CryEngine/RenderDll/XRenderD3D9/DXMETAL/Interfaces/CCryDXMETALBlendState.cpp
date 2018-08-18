@@ -18,7 +18,7 @@
 #include "CCryDXMETALBlendState.hpp"
 #include "CCryDXMETALDevice.hpp"
 #include "../Implementation/GLState.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 
 CCryDXGLBlendState::CCryDXGLBlendState(const D3D11_BLEND_DESC& kDesc, CCryDXGLDevice* pDevice)
     : CCryDXGLDeviceChild(pDevice)

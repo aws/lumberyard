@@ -186,21 +186,21 @@ namespace EMStudio
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_AABB))
         {
             MCommon::RenderUtil::AABBRenderSettings settings;
-            settings.mNodeBasedColor          = renderOptions->mNodeAABBColor;
-            settings.mStaticBasedColor        = renderOptions->mStaticAABBColor;
-            settings.mMeshBasedColor          = renderOptions->mMeshAABBColor;
-            settings.mCollisionMeshBasedColor = renderOptions->mCollisionMeshAABBColor;
+            settings.mNodeBasedColor          = renderOptions->GetNodeAABBColor();
+            settings.mStaticBasedColor        = renderOptions->GetStaticAABBColor();
+            settings.mMeshBasedColor          = renderOptions->GetMeshAABBColor();
+            settings.mCollisionMeshBasedColor = renderOptions->GetCollisionMeshAABBColor();
 
             renderUtil->RenderAABBs(actorInstance, settings);
         }
 
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_OBB))
         {
-            renderUtil->RenderOBBs(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->mOBBsColor, renderOptions->mSelectedObjectColor);
+            renderUtil->RenderOBBs(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->GetOBBsColor(), renderOptions->GetSelectedObjectColor());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_LINESKELETON))
         {
-            renderUtil->RenderSimpleSkeleton(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->mLineSkeletonColor, renderOptions->mSelectedObjectColor);
+            renderUtil->RenderSimpleSkeleton(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->GetLineSkeletonColor(), renderOptions->GetSelectedObjectColor());
         }
 
         bool cullingEnabled = renderUtil->GetCullingEnabled();
@@ -209,11 +209,11 @@ namespace EMStudio
         renderUtil->EnableLighting(false); // disable lighting
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_SKELETON))
         {
-            renderUtil->RenderSkeleton(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, renderOptions->mSkeletonColor, renderOptions->mSelectedObjectColor);
+            renderUtil->RenderSkeleton(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, renderOptions->GetSkeletonColor(), renderOptions->GetSelectedObjectColor());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_NODEORIENTATION))
         {
-            renderUtil->RenderNodeOrientations(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, renderOptions->mNodeOrientationScale, renderOptions->mScaleBonesOnLength);
+            renderUtil->RenderNodeOrientations(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, renderOptions->GetNodeOrientationScale(), renderOptions->GetScaleBonesOnLength());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_ACTORBINDPOSE))
         {
@@ -225,7 +225,7 @@ namespace EMStudio
         {
             // render an arrow for the trajectory node
             //renderUtil->RenderTrajectoryNode(actorInstance, renderOptions->mTrajectoryArrowInnerColor, renderOptions->mTrajectoryArrowBorderColor, emstudioActor->mCharacterHeight*0.05f);
-            renderUtil->RenderTrajectoryPath(mPlugin->FindTracePath(actorInstance), renderOptions->mTrajectoryArrowInnerColor, emstudioActor->mCharacterHeight * 0.05f);
+            renderUtil->RenderTrajectoryPath(mPlugin->FindTracePath(actorInstance), renderOptions->GetTrajectoryArrowInnerColor(), emstudioActor->mCharacterHeight * 0.05f);
         }
         renderUtil->EnableCulling(cullingEnabled); // reset to the old state
         renderUtil->EnableLighting(lightingEnabled);
@@ -258,30 +258,30 @@ namespace EMStudio
 
                 if (mesh->GetIsCollisionMesh() == false)
                 {
-                    renderUtil->RenderNormals(mesh, globalTM, renderVertexNormals, renderFaceNormals, renderOptions->mVertexNormalsScale * emstudioActor->mNormalsScaleMultiplier, renderOptions->mFaceNormalsScale * emstudioActor->mNormalsScaleMultiplier, renderOptions->mVertexNormalsColor, renderOptions->mFaceNormalsColor);
+                    renderUtil->RenderNormals(mesh, globalTM, renderVertexNormals, renderFaceNormals, renderOptions->GetVertexNormalsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetFaceNormalsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetVertexNormalsColor(), renderOptions->GetFaceNormalsColor());
                     if (renderTangents)
                     {
-                        renderUtil->RenderTangents(mesh, globalTM, renderOptions->mTangentsScale * emstudioActor->mNormalsScaleMultiplier, renderOptions->mTangentsColor, renderOptions->mMirroredBinormalsColor, renderOptions->mBinormalsColor);
+                        renderUtil->RenderTangents(mesh, globalTM, renderOptions->GetTangentsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetTangentsColor(), renderOptions->GetMirroredBinormalsColor(), renderOptions->GetBinormalsColor());
                     }
                     if (renderWireframe)
                     {
-                        renderUtil->RenderWireframe(mesh, globalTM, renderOptions->mWireframeColor);
+                        renderUtil->RenderWireframe(mesh, globalTM, renderOptions->GetWireframeColor());
                     }
                 }
                 else
                 if (renderCollisionMeshes)
                 {
-                    renderUtil->RenderWireframe(mesh, globalTM, renderOptions->mCollisionMeshColor);
+                    renderUtil->RenderWireframe(mesh, globalTM, renderOptions->GetCollisionMeshColor());
                 }
             }
         }
 
         // render the selection
-        if (renderOptions->mRenderSelectionBox && EMotionFX::GetActorManager().GetNumActorInstances() != 1 && mPlugin->GetCurrentSelection()->CheckIfHasActorInstance(actorInstance))
+        if (renderOptions->GetRenderSelectionBox() && EMotionFX::GetActorManager().GetNumActorInstances() != 1 && mPlugin->GetCurrentSelection()->CheckIfHasActorInstance(actorInstance))
         {
             MCore::AABB aabb = actorInstance->GetAABB();
             aabb.Widen(aabb.CalcRadius() * 0.005f);
-            renderUtil->RenderSelection(aabb, renderOptions->mSelectionColor);
+            renderUtil->RenderSelection(aabb, renderOptions->GetSelectionColor());
         }
 
         // render node names
@@ -291,7 +291,7 @@ namespace EMStudio
             const uint32        screenWidth     = widget->GetRenderWidget()->GetScreenWidth();
             const uint32        screenHeight    = widget->GetRenderWidget()->GetScreenHeight();
 
-            renderUtil->RenderNodeNames(actorInstance, camera, screenWidth, screenHeight, renderOptions->mNodeNameColor, renderOptions->mSelectedObjectColor, GetManager()->GetVisibleNodeIndices(), GetManager()->GetSelectedNodeIndices());
+            renderUtil->RenderNodeNames(actorInstance, camera, screenWidth, screenHeight, renderOptions->GetNodeNameColor(), renderOptions->GetSelectedObjectColor(), GetManager()->GetVisibleNodeIndices(), GetManager()->GetSelectedNodeIndices());
         }
     }
 } // namespace EMStudio

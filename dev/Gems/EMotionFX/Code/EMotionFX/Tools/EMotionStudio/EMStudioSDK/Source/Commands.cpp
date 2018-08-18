@@ -11,24 +11,18 @@
 */
 
 #include "Commands.h"
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzFramework/API/ApplicationAPI.h>
-#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
-#include <AzToolsFramework/API/ToolsApplicationAPI.h>
-#include <MCore/Source/AttributeSet.h>
-#include <MCore/Source/Endian.h>
-#include <MCore/Source/FileSystem.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/Motion.h>
-#include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include <EMotionFX/CommandSystem/Source/MetaData.h>
-#include <EMotionFX/Exporters/ExporterLib/Exporter/ExporterFileProcessor.h>
-#include <EMotionFX/Exporters/ExporterLib/Exporter/Exporter.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MainWindow.h>
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/FileManager.h>
 
 #include <SceneAPIExt/Rules/MetaDataRule.h>
 #include <SceneAPIExt/Groups/MotionGroup.h>
@@ -203,19 +197,6 @@ namespace EMStudio
     }
 
 
-    void CommandSaveMotionSet::RecursiveAddMotionSets(EMotionFX::MotionSet* motionSet, AZStd::vector<EMotionFX::MotionSet*>& motionSets)
-    {
-        motionSets.push_back(motionSet);
-
-        const uint32 numChildSets = motionSet->GetNumChildSets();
-        for (uint32 i = 0; i < numChildSets; ++i)
-        {
-            EMotionFX::MotionSet* childSet = motionSet->GetChildSet(i);
-            RecursiveAddMotionSets(childSet, motionSets);
-        }
-    }
-
-
     void CommandSaveMotionSet::RecursiveSetDirtyFlag(EMotionFX::MotionSet* motionSet, bool dirtyFlag)
     {
         motionSet->SetDirtyFlag(dirtyFlag);
@@ -234,7 +215,7 @@ namespace EMStudio
         const int32 motionSetID = parameters.GetValueAsInt("motionSetID", this);
 
         EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID(motionSetID);
-        if (motionSet == nullptr)
+        if (!motionSet)
         {
             outResult = AZStd::string::format("Motion set cannot be saved. Motion set with id '%i' does not exist.", motionSetID);
             return false;
@@ -247,10 +228,11 @@ namespace EMStudio
         const bool sourceControl = parameters.GetValueAsBool("sourceControl", this);
         if (sourceControl && !GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
         {
-            outResult = AZStd::string::format("Motion set cannot be saved. Unable to find source asset path for (%s)", filename);
+            outResult = AZStd::string::format("Motion set cannot be saved. Unable to find source asset path for (%s)", filename.c_str());
             return false;
         }
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
+
 
         const bool fileExisted = AZ::IO::FileIOBase::GetInstance()->Exists(filename.c_str());
 
@@ -273,23 +255,15 @@ namespace EMStudio
             }
         }
 
-        // Recursively collect motion sets and store them in a flat array.
-        AZStd::vector<EMotionFX::MotionSet*> motionSets;
-        RecursiveAddMotionSets(motionSet, motionSets);
-
-        // Disable logging and save the motion set.
-        MCore::LogCallback::ELogLevel oldLogLevels = MCore::GetLogManager().GetLogLevels();
-        MCore::GetLogManager().SetLogLevels((MCore::LogCallback::ELogLevel)(MCore::LogCallback::LOGLEVEL_ERROR | MCore::LogCallback::LOGLEVEL_WARNING));
-        ExporterLib::Exporter* exporter = ExporterLib::Exporter::Create();
-        bool saveResult = MCore::FileSystem::SaveToFileSecured(filename.c_str(), [exporter, filename, motionSets] { return exporter->SaveMotionSet(filename.c_str(), motionSets, MCore::Endian::ENDIAN_LITTLE); }, EMStudio::GetCommandManager());
-        if (saveResult == false)
+        AZ::SerializeContext* context = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!context)
         {
-            exporter->Destroy();
-            MCore::GetLogManager().SetLogLevels(oldLogLevels);
+            AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
             return false;
         }
-        exporter->Destroy();
-        MCore::GetLogManager().SetLogLevels(oldLogLevels);
+
+        const bool saveResult = motionSet->SaveToFile(filename, context);
 
 
         // Source Control: Add file in case it did not exist before (when saving it the first time).
@@ -380,9 +354,9 @@ namespace EMStudio
 
         // Avoid saving to asset cache folder.
         const bool sourceControl = parameters.GetValueAsBool("sourceControl", this);
-        if (sourceControl && !GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
+        if (!GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
         {
-            outResult = AZStd::string::format("Animation graph cannot be saved. Unable to find source asset path for (%s)", filename);
+            outResult = AZStd::string::format("Animation graph cannot be saved. Unable to find source asset path for (%s)", filename.c_str());
             return false;
         }
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
@@ -414,44 +388,40 @@ namespace EMStudio
             }
         }
 
-        const MCore::LogCallback::ELogLevel oldLogLevels = MCore::GetLogManager().GetLogLevels();
-        MCore::GetLogManager().SetLogLevels((MCore::LogCallback::ELogLevel)(MCore::LogCallback::LOGLEVEL_ERROR | MCore::LogCallback::LOGLEVEL_WARNING));
+        AZ::SerializeContext* context = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!context)
+        {
+            AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+            return false;
+        }
 
-        ExporterLib::Exporter* exporter = ExporterLib::Exporter::Create();
-
-        bool saveResult = MCore::FileSystem::SaveToFileSecured(filename.c_str(), [exporter, filename, animGraph, companyName] { return exporter->SaveAnimGraph(filename.c_str(), animGraph, MCore::Endian::ENDIAN_LITTLE, companyName.c_str());
-        }, EMStudio::GetCommandManager());
+        const bool saveResult = animGraph->SaveToFile(filename, context);
         if (saveResult)
         {
             if (parameters.GetValueAsBool("updateFilename", this))
             {
                 animGraph->SetFileName(filename.c_str());
             }
-            if (parameters.GetValueAsBool("updateDirtyFlag", this))
-            {
-                animGraph->SetDirtyFlag(false);
-            }
-        }
-        MCore::GetLogManager().SetLogLevels(oldLogLevels);
-        exporter->Destroy();
 
-        // Source Control: Add file in case it did not exist before (when saving it the first time).
-        if (saveResult && !fileExisted && sourceControl)
-        {
-            using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
-            bool checkoutResult = false;
-            ApplicationBus::BroadcastResult(checkoutResult, 
-                &ApplicationBus::Events::RequestEditForFileBlocking, 
-                filename.c_str(), 
-                "Adding anim graph to source control.", 
-                ApplicationBus::Events::RequestEditProgressCallback());
+            // Source Control: Add file in case it did not exist before (when saving it the first time).
+            if (!fileExisted && sourceControl)
+        	{
+            	using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
+            	bool checkoutResult = false;
+            	ApplicationBus::BroadcastResult(checkoutResult, 
+            	    &ApplicationBus::Events::RequestEditForFileBlocking, 
+             	   filename.c_str(), 
+             	   "Adding anim graph to source control.", 
+             	   ApplicationBus::Events::RequestEditProgressCallback());
 
-            if (!checkoutResult)
-            {
-                outResult = AZStd::string::format("Cannot add file '%s' to source control.", filename.c_str());
-                AZ_Error("EMotionFX", false, outResult.c_str());
-                return false;
-            }
+            	if (!checkoutResult)
+            	{
+                	outResult = AZStd::string::format("Cannot add file '%s' to source control.", filename.c_str());
+                	AZ_Error("EMotionFX", false, outResult.c_str());
+                	return false;
+            	}
+        	}
         }
 
         return saveResult;
@@ -508,7 +478,7 @@ namespace EMStudio
         // Avoid saving to asset cache folder.
         if (!GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
         {
-            outResult = AZStd::string::format("Workspace cannot be saved. Unable to find source asset path for (%s)", filename);
+            outResult = AZStd::string::format("Workspace cannot be saved. Unable to find source asset path for (%s)", filename.c_str());
             return false;
         }
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);

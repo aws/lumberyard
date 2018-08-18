@@ -28,7 +28,7 @@ namespace EMotionFX
     class EMFX_API MorphSetup
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MorphSetup, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_GEOMETRY_PMORPHTARGETS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         static MorphSetup* Create();

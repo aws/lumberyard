@@ -1,0 +1,8 @@
+{
+    "none" : {
+        "VariableWidgets" : [
+            "VariableWidgets/QColorEyeDropper_win.cpp"
+        ]
+    }
+}
+

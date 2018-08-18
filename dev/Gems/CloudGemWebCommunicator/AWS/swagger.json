@@ -1,0 +1,387 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/service/status": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "service_status"
+            },
+            "get": {
+                "operationId": "get_service_status",
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/cloud/send": {
+            "x-cloud-gem-framework-interface-implementation": {
+                "interface": "CloudGemWebCommunicator_sendmessage_1_0_0"
+            }
+        },      
+        "/client/registration/{registration_type}": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "client_request",
+                "function": "request_registration"
+            },
+            "get": {
+                "operationId": "get_client_registration",
+                "description": "Request registration of a new client",
+                "parameters": [
+                    {
+                        "name": "registration_type",
+                        "description": "Type of connection the client will be using: OPENSSL or WEBSOCKET",
+                        "in": "path",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Registration result info.",
+                        "schema": {
+                            "$ref": "#/definitions/RegistrationResult"
+                        }
+                    }
+                }
+            }
+        },
+        "/portal/registration/{registration_type}": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "portal_request",
+                "function": "request_cgp_registration"
+            },
+            "get": {
+                "operationId": "get_cgp_registration",
+                "description": "Request registration of a new CGP client",
+                "parameters": [
+                    {
+                        "name": "registration_type",
+                        "description": "Type of connection the client will be using: OPENSSL or WEBSOCKET",
+                        "in": "path",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Registration result info.",
+                        "schema": {
+                            "$ref": "#/definitions/RegistrationResult"
+                        }
+                    }
+                }
+            }
+        },
+        "/client/channels": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "client_request",
+                "function": "request_channel_list"
+            },
+            "get": {
+                "operationId": "get_client_channels",
+                "description": "Request a list of channels available to the client",
+                "responses": {
+                    "200": {
+                        "description": "List of channels available.",
+                        "schema": {
+                            "$ref": "#/definitions/ChannelRequestResult"
+                        }
+                    }
+                }
+            }
+        },
+        "/portal/channel": {
+            "post": {
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "portal_request",
+                    "function": "channel_broadcast"
+                },
+                "operationId": "channel_broadcast",
+                "description": "Request from the portal to broadcast to a channel",
+                "parameters": [
+                    {
+                        "name": "message_info",
+                        "description": "JSON containing ChannelName and Message to broadcast.",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/BroadcastRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated file statuses.",
+                        "schema": {
+                            "$ref": "#/definitions/PortalBroadcastResult"
+                        }
+                    }
+                }
+            },
+            "get": {
+               "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "portal_request",
+                    "function": "list_all_channels"
+                },
+                "operationId": "list_all_channels",
+                "description": "Request a list of channels available to the portal, including sub channels",
+                "responses": {
+                    "200": {
+                        "description": "List of channels available.",
+                        "schema": {
+                            "$ref": "#/definitions/ChannelRequestResult"
+                        }
+                    }
+                }
+            }            
+        },
+        "/client/channel": {
+            "post": {
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "portal_request",
+                    "function": "channel_broadcast"
+                },
+                "operationId": "client_channel_broadcast",
+                "description": "Request from the portal to broadcast to a channel",
+                "parameters": [
+                    {
+                        "name": "message_info",
+                        "description": "JSON containing ChannelName and Message to broadcast.",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/BroadcastRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated file statuses.",
+                        "schema": {
+                            "$ref": "#/definitions/PortalBroadcastResult"
+                        }
+                    }
+                }
+            }
+        },
+        "/portal/users": {
+            "get": {
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "portal_request",
+                    "function": "list_all_users"
+                },
+                "description": "Returns the list of users which should be displayed in the web portal.",
+                "responses": {
+                    "200": {
+                        "description": "List of users with their status and related info.",
+                        "schema": {
+                            "$ref": "#/definitions/PortalUserListResults"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "portal_request",
+                    "function": "set_user_status"
+                },
+                "description": "Request from the portal to adjust user registration status",
+                "parameters": [
+                    {
+                        "name": "request_content",
+                        "description": "JSON containing ClientID (e.g. CognitoID) and RegistrationStatus (BANNED, REGISTERED) to set the client to",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/PortalSetUserStatus"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated user status.",
+                        "schema": {
+                            "$ref": "#/definitions/PortalSetUserStatus"
+                        }
+                    },
+                    "404": {
+                        "description": "User did not exist.",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ]
+        },
+        "RegistrationResult": {
+            "type": "object",
+            "properties": {
+                "Result": {
+                    "type": "string"
+                },
+                "ConnectionType": {
+                    "type": "string"
+                },
+                "PrivateKey": {
+                    "type": "string"
+                },
+                "DeviceCert": {
+                    "type": "string"
+                },
+                "Endpoint": {
+                    "type": "string"
+                },
+                "EndpointPort": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "Result"
+            ]
+        },
+        "ChannelRequestResultArray": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/ChannelInfo"
+            }
+        },
+        "ChannelInfo": {
+            "type": "object",
+            "properties": {
+                "ChannelName": {
+                    "type": "string"
+                },
+                "CommunicationType": {
+                    "type": "string"
+                },
+                "CommunicationChannel": {
+                    "type": "string"
+                },
+                "Subscription": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "ChannelName",
+                "CommunicationType"
+            ]
+        },
+        "ChannelRequestResult": {
+            "type": "object",
+            "properties": {
+                "Channels": {
+                    "$ref": "#/definitions/ChannelRequestResultArray"
+                }
+            },
+            "required": [
+                "Channels"
+            ]
+        },
+        "BroadcastRequest": {
+            "type": "object",
+            "properties": {
+                "ChannelName": {
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "ChannelName",
+                "Message"
+            ]
+        },
+        "PortalBroadcastResult": {
+            "type": "object",
+            "properties": {
+                "Result": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Result"
+            ]
+        },
+        "PortalSetUserStatus": {
+            "type": "object",
+            "properties": {
+                "ClientID": {
+                    "type": "string"
+                },
+                "RegistrationStatus": {
+                    "type": "string"
+                },
+                "CGPUser": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "ClientID",
+                "RegistrationStatus"
+            ]
+        },
+        "PortalUserListResults": {
+            "type": "object",
+            "properties": {
+                "UserInfoList": {
+                    "$ref": "#/definitions/PortalUserListResultArray"
+                }
+            },
+            "required": [
+                "UserInfoList"
+            ]
+        },
+        "PortalUserListResultArray": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/PortalSetUserStatus"
+            }
+        }
+    }
+}

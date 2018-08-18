@@ -53,7 +53,7 @@ Metastream::HttpResponse Metastream::BaseHttpServer::GetDataValues(const std::st
 {
     int code = 404;
     std::string body(m_cache->GetTableKeyValuesJSON(tableName, keys));
-    
+
     if (!body.empty())
     {
         code = 200;
@@ -104,8 +104,8 @@ std::vector<std::string> Metastream::BaseHttpServer::SplitValueList(const std::s
     std::vector<std::string> ret;
     size_t start = 0;
     size_t split;
-    
-    do 
+
+    do
     {
         split = value.find(separator, start);
         ret.push_back(std::string(value, start, split-start));
@@ -131,7 +131,7 @@ std::string BaseHttpServer::SerializeHeaders(const std::map<std::string, std::st
 
 std::string BaseHttpServer::HttpStatus(int code)
 {
-    char* description;
+    const char* description;
 
     switch (code)
     {

@@ -36,6 +36,8 @@ struct IViewPaneClass
         DOCK_FLOAT,
     };
 
+    virtual ~IViewPaneClass() = default;
+
     // Return text for view pane title.
     virtual QString GetPaneTitle() = 0;
 

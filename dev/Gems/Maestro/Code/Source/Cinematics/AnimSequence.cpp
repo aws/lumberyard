@@ -66,6 +66,7 @@ CAnimSequence::CAnimSequence(IMovieSystem* pMovieSystem, uint32 id, SequenceType
     SetId(id);
 
     m_pEventStrings = aznew CAnimStringTable;
+    m_expanded = true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1098,7 +1099,7 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
 void CAnimSequence::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<CAnimSequence>()
-        ->Version(2)
+        ->Version(3)
         ->Field("Name", &CAnimSequence::m_name)
         ->Field("SequenceEntityId", &CAnimSequence::m_sequenceEntityId)
         ->Field("Flags", &CAnimSequence::m_flags)
@@ -1106,7 +1107,8 @@ void CAnimSequence::Reflect(AZ::SerializeContext* serializeContext)
         ->Field("ID", &CAnimSequence::m_id)
         ->Field("Nodes", &CAnimSequence::m_nodes)
         ->Field("SequenceType", &CAnimSequence::m_sequenceType)
-        ->Field("Events", &CAnimSequence::m_events);
+        ->Field("Events", &CAnimSequence::m_events)
+        ->Field("Expanded", &CAnimSequence::m_expanded);    
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -39,7 +39,7 @@ typedef uint64_t LyMetricIdType;
 
 #define LY_METRICS_INVALID_EVENT_ID ((LyMetricIdType) - 1)
 
-enum LY_METRICS_PRODUCER_API EEditorSessionStatus
+enum EEditorSessionStatus
 {
     EESS_EditorOpened = 0,
     EESS_EditorShutdown,

@@ -418,7 +418,10 @@ namespace GraphCanvas
             result += "\tStyles:\n";
             for (const Style* style : m_styles)
             {
-                result += "\t\t" + style->GetSelectorsAsString() + "\n";
+                if (style)
+                {
+                    result += "\t\t" + style->GetSelectorsAsString() + "\n";
+                }
             }
 
             result += "\n";
@@ -429,7 +432,7 @@ namespace GraphCanvas
         {
             Attribute typedAttribute = static_cast<Attribute>(attribute);
             return std::any_of(m_styles.cbegin(), m_styles.cend(), [=](const Style* s) {
-                return s->HasAttribute(typedAttribute);
+                return s && s->HasAttribute(typedAttribute);
             });
         }
 
@@ -438,7 +441,7 @@ namespace GraphCanvas
             Attribute typedAttribute = static_cast<Attribute>(attribute);
             for (const Style* style : m_styles)
             {
-                if (style->HasAttribute(typedAttribute))
+                if (style && style->HasAttribute(typedAttribute))
                 {
                     return style->GetAttribute(typedAttribute);
                 }

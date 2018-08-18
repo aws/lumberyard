@@ -32,26 +32,64 @@ namespace EditorUIPlugin
 
     ScopedLibraryModifyUndo::ScopedLibraryModifyUndo(const AZStd::string& libId)
     {
-        m_modifyCmd = aznew LibraryModifyCommand(libId);
-        static_cast<LibraryModifyCommand*>(m_modifyCmd)->CaptureStart();
+        m_libId = libId;
+
+        m_modifyCmd = aznew LibraryModifyCommand(m_libId);
+        m_modifyCmd->CaptureStart();
+
+        m_deleteCmd = aznew LibraryDeleteCommand();
+        m_deleteCmd->Capture(m_libId);
     }
 
     ScopedLibraryModifyUndo::~ScopedLibraryModifyUndo()
     {
-        static_cast<LibraryModifyCommand*>(m_modifyCmd)->CaptureEnd();
-        EBUS_EVENT(EditorLibraryUndoRequestsBus, AddUndo, m_modifyCmd);
+        IDataBaseLibrary* lib = nullptr;
+        EBUS_EVENT_RESULT(lib, EditorLibraryUndoRequestsBus, GetLibrary, m_libId);
+
+        // If the library still exists go ahead with the Modify Undo Command.
+        if (lib)
+        {
+            delete m_deleteCmd;
+            m_modifyCmd->CaptureEnd();
+            EBUS_EVENT(EditorLibraryUndoRequestsBus, AddUndo, m_modifyCmd);
+        }
+        // Else add the Delete Undo command, the user will be able to recover the library to the original state.
+        else
+        {
+            delete m_modifyCmd;
+            EBUS_EVENT(EditorLibraryUndoRequestsBus, AddUndo, m_deleteCmd);
+        }
     }
 
     ScopedLibraryMoveUndo::ScopedLibraryMoveUndo(const AZStd::string& libId)
     {
-        m_moveCmd = aznew LibraryMoveCommand(libId);
-        static_cast<LibraryMoveCommand*>(m_moveCmd)->CaptureStart();
+        m_libId = libId;
+
+        m_moveCmd = aznew LibraryMoveCommand(m_libId);
+        m_moveCmd->CaptureStart();
+
+        m_deleteCmd = aznew LibraryDeleteCommand();
+        m_deleteCmd->Capture(m_libId);
     }
 
     ScopedLibraryMoveUndo::~ScopedLibraryMoveUndo()
     {
-        static_cast<LibraryMoveCommand*>(m_moveCmd)->CaptureEnd();
-        EBUS_EVENT(EditorLibraryUndoRequestsBus, AddUndo, m_moveCmd);
+        IDataBaseLibrary* lib = nullptr;
+        EBUS_EVENT_RESULT(lib, EditorLibraryUndoRequestsBus, GetLibrary, m_libId);
+
+        // If the library still exists go ahead with the Move Undo Command.
+        if (lib)
+        {
+            delete m_deleteCmd;
+            m_moveCmd->CaptureEnd();
+            EBUS_EVENT(EditorLibraryUndoRequestsBus, AddUndo, m_moveCmd);
+        }
+        // Else add the Delete Undo command, the user will be able to recover the library to the original state.
+        else
+        {
+            delete m_moveCmd;
+            EBUS_EVENT(EditorLibraryUndoRequestsBus, AddUndo, m_deleteCmd);
+        }
     }
 
     ScopedSuspendUndo::ScopedSuspendUndo()

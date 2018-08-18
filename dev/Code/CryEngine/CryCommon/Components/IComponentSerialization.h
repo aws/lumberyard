@@ -61,12 +61,12 @@ public:
     void Register(uint32 serializationOrder, T& objectRef, void(T::* serialize)(TSerialize), void(T::* serializeXML)(XmlNodeRef&, bool), bool(T::* needsSerialize)(), bool(T::* getSignature)(TSerialize))
     {
         static_assert(std::is_base_of<IComponent, T>::value, "Only classes that derive from IComponent can be registered with this component.");
-        using namespace std::placeholders;
+        using namespace AZStd::placeholders;
         RegisterInternal(serializationOrder, T::Type(),
-            serialize ? std::bind(serialize, &objectRef, _1) : SerializeFunction(),
-            serializeXML ? std::bind(serializeXML, &objectRef, _1, _2) : SerializeXMLFunction(),
-            needsSerialize ? std::bind(needsSerialize, &objectRef) : NeedSerializeFunction(),
-            getSignature ? std::bind(getSignature, &objectRef, _1) : GetSignatureFunction());
+            serialize ? AZStd::bind(serialize, &objectRef, _1) : SerializeFunction(),
+            serializeXML ? AZStd::bind(serializeXML, &objectRef, _1, _2) : SerializeXMLFunction(),
+            needsSerialize ? AZStd::bind(needsSerialize, &objectRef) : NeedSerializeFunction(),
+            getSignature ? AZStd::bind(getSignature, &objectRef, _1) : GetSignatureFunction());
     }
 
     //! Remove a component's registration.
@@ -98,10 +98,10 @@ public:
 protected:
 
     //! Serialization function signatures.
-    using SerializeXMLFunction = std::function < void(XmlNodeRef&, bool) >;
-    using SerializeFunction = std::function < void(TSerialize) >;
-    using NeedSerializeFunction = std::function < bool() >;
-    using GetSignatureFunction = std::function < bool (TSerialize signature) >;
+    using SerializeXMLFunction = AZStd::function < void(XmlNodeRef&, bool) >;
+    using SerializeFunction = AZStd::function < void(TSerialize) >;
+    using NeedSerializeFunction = AZStd::function < bool() >;
+    using GetSignatureFunction = AZStd::function < bool (TSerialize signature) >;
 
     //! Concrete implementation must implement the registration.
     virtual void RegisterInternal(uint32, const ComponentType&, SerializeFunction, SerializeXMLFunction, NeedSerializeFunction, GetSignatureFunction) = 0;

@@ -26,7 +26,16 @@
    <property name="sizeConstraint">
     <enum>QLayout::SetDefaultConstraint</enum>
    </property>
-   <property name="margin">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
     <number>0</number>
    </property>
    <item>
@@ -34,7 +43,16 @@
      <property name="spacing">
       <number>4</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>4</number>
+     </property>
+     <property name="topMargin">
+      <number>4</number>
+     </property>
+     <property name="rightMargin">
+      <number>4</number>
+     </property>
+     <property name="bottomMargin">
       <number>4</number>
      </property>
      <item>
@@ -42,206 +60,208 @@
        <property name="text">
         <string>Entity Details Here</string>
        </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
        <property name="margin">
         <number>4</number>
        </property>
       </widget>
      </item>
-      <item>
+     <item>
       <layout class="QGridLayout" name="gridLayout">
-        <item row="0" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
-            <item>
-              <widget class="QLabel" name="m_entityNameLabel">
-                <property name="palette">
-                  <palette>
-                    <active>
-                      <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                            <red>255</red>
-                            <green>153</green>
-                            <blue>0</blue>
-                          </color>
-                        </brush>
-                      </colorrole>
-                    </active>
-                    <inactive>
-                      <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                            <red>255</red>
-                            <green>153</green>
-                            <blue>0</blue>
-                          </color>
-                        </brush>
-                      </colorrole>
-                    </inactive>
-                    <disabled>
-                      <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                            <red>120</red>
-                            <green>120</green>
-                            <blue>120</blue>
-                          </color>
-                        </brush>
-                      </colorrole>
-                    </disabled>
-                  </palette>
-                </property>
-                <property name="text">
-                  <string>Name</string>
-                </property>
-              </widget>
-            </item>
-            <item>
-              <widget class="QLineEdit" name="m_entityNameEditor">
-                <property name="readOnly">
-                  <bool>false</bool>
-                </property>
-              </widget>
-            </item>
-            <item>
-              <widget class="AzToolsFramework::IconButton" name="m_pinButton">
-                <property name="minimumSize">
-                  <size>
-                    <width>16</width>
-                    <height>16</height>
-                  </size>
-                </property>
-                <property name="maximumSize">
-                  <size>
-                    <width>16</width>
-                    <height>16</height>
-                  </size>
-                </property>
-                <property name="toolTip">
-                  <string>Open pinned inspector</string>
-                </property>
-                <property name="styleSheet">
-                  <string notr="true"/>
-                </property>
-                <property name="text">
-                  <string/>
-                </property>
-                <property name="icon">
-                  <iconset>
-                    <normaloff>:/PropertyEditor/Resources/pin_button.png</normaloff>:/PropertyEditor/Resources/pin_button.png
-                  </iconset>
-                </property>
-                <property name="iconSize">
-                  <size>
-                    <width>16</width>
-                    <height>16</height>
-                  </size>
-                </property>
-              </widget>
-            </item>
-          </layout>
-        </item>
-        <item row="0" column="0">
-          <widget class="AzToolsFramework::IconButton" name="m_entityIcon">
-            <property name="minimumSize">
-              <size>
-                <width>30</width>
-                <height>30</height>
-              </size>
-            </property>
-            <property name="maximumSize">
-              <size>
-                <width>30</width>
-                <height>30</height>
-              </size>
-            </property>
-            <property name="toolTip">
-              <string>Change entity icon</string>
-            </property>
-            <property name="styleSheet">
-              <string notr="true"/>
-            </property>
-            <property name="text">
-              <string/>
-            </property>
-            <property name="iconSize">
-              <size>
-                <width>30</width>
-                <height>30</height>
-              </size>
-            </property>
+       <item row="0" column="1">
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QLabel" name="m_entityNameLabel">
+           <property name="palette">
+            <palette>
+             <active>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>153</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </active>
+             <inactive>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>153</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </inactive>
+             <disabled>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>120</red>
+                 <green>120</green>
+                 <blue>120</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </disabled>
+            </palette>
+           </property>
+           <property name="text">
+            <string>Name</string>
+           </property>
           </widget>
-        </item>
-        <item row="1" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout_3">
-            <item>
-              <widget class="QLabel" name="m_startActiveLabel">
-                <property name="palette">
-                  <palette>
-                    <active>
-                      <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                            <red>255</red>
-                            <green>153</green>
-                            <blue>0</blue>
-                          </color>
-                        </brush>
-                      </colorrole>
-                    </active>
-                    <inactive>
-                      <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                            <red>255</red>
-                            <green>153</green>
-                            <blue>0</blue>
-                          </color>
-                        </brush>
-                      </colorrole>
-                    </inactive>
-                    <disabled>
-                      <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                            <red>120</red>
-                            <green>120</green>
-                            <blue>120</blue>
-                          </color>
-                        </brush>
-                      </colorrole>
-                    </disabled>
-                  </palette>
-                </property>
-                <property name="text">
-                  <string>Start Active</string>
-                </property>
-              </widget>
-            </item>
-            <item>
-              <widget class="QCheckBox" name="m_initiallyActiveCheckbox">
-                <property name="readOnly" stdset="0">
-                  <bool>false</bool>
-                </property>
-              </widget>
-            </item>
-            <item>
-              <spacer name="horizontalSpacer_2">
-                <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                  <size>
-                    <width>40</width>
-                    <height>20</height>
-                  </size>
-                </property>
-              </spacer>
-            </item>
-          </layout>
-        </item>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="m_entityNameEditor">
+           <property name="readOnly">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="AzToolsFramework::IconButton" name="m_pinButton">
+           <property name="minimumSize">
+            <size>
+             <width>16</width>
+             <height>16</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16</width>
+             <height>16</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>Open pinned inspector</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true"/>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="icon">
+            <iconset>
+             <normaloff>:/PropertyEditor/Resources/pin_button.png</normaloff>:/PropertyEditor/Resources/pin_button.png</iconset>
+           </property>
+           <property name="iconSize">
+            <size>
+             <width>16</width>
+             <height>16</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="0" column="0">
+        <widget class="AzToolsFramework::IconButton" name="m_entityIcon">
+         <property name="minimumSize">
+          <size>
+           <width>30</width>
+           <height>30</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>30</width>
+           <height>30</height>
+          </size>
+         </property>
+         <property name="toolTip">
+          <string>Change entity icon</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>30</width>
+           <height>30</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QLabel" name="m_startActiveLabel">
+           <property name="palette">
+            <palette>
+             <active>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>153</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </active>
+             <inactive>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>153</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </inactive>
+             <disabled>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>120</red>
+                 <green>120</green>
+                 <blue>120</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </disabled>
+            </palette>
+           </property>
+           <property name="text">
+            <string>Start Active</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="m_initiallyActiveCheckbox">
+           <property name="readOnly" stdset="0">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
       </layout>
-      </item>
-      <item>
+     </item>
+     <item>
       <layout class="QHBoxLayout" name="horizontalLayout">
        <property name="leftMargin">
         <number>0</number>
@@ -368,7 +388,7 @@
         <x>0</x>
         <y>0</y>
         <width>382</width>
-        <height>530</height>
+        <height>537</height>
        </rect>
       </property>
       <property name="sizePolicy">
@@ -381,7 +401,16 @@
        <property name="spacing">
         <number>12</number>
        </property>
-       <property name="margin">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
         <number>0</number>
        </property>
       </layout>

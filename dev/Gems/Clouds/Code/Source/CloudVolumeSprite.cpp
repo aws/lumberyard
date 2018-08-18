@@ -59,7 +59,7 @@ namespace CloudsGem
         if (renderObject)
         {
             SRenderObjData* renderObjectData = pRenderer->EF_GetObjData(renderObject, true, passInfo.ThreadID());
-            renderObjectData->m_pRE = m_pREImposter;
+            renderObjectData->SetRenderElement(m_pREImposter->GetRE());
             renderObjectData->m_fTempVars[0] = m_worldMatrix.GetColumn(0).GetLength();
             renderObject->m_II.m_Matrix = m_worldMatrix;
             renderObject->m_fSort = 0;
@@ -68,7 +68,7 @@ namespace CloudsGem
             renderObject->m_fAlpha = params.fAlpha * alpha;
 
             SShaderItem& shaderItem = params.pMaterial ? params.pMaterial->GetShaderItem(0) : m_material->GetShaderItem(0);
-            pRenderer->EF_AddEf(m_renderElement, shaderItem, renderObject, passInfo, EFSLIST_TRANSP, isAfterWater, SRendItemSorter(params.rendItemSorter));
+            pRenderer->EF_AddEf(m_renderElement->GetRE(), shaderItem, renderObject, passInfo, EFSLIST_TRANSP, isAfterWater, SRendItemSorter(params.rendItemSorter));
         }
     }
 }

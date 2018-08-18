@@ -16,7 +16,6 @@
 #include <AzCore/std/containers/vector.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include "../StandardPluginsConfig.h"
-#include <MysticQt/Source/SearchButton.h>
 #include <MysticQt/Source/ButtonGroup.h>
 #include <QDialog>
 
@@ -28,6 +27,10 @@ QT_FORWARD_DECLARE_CLASS(QTreeWidget)
 QT_FORWARD_DECLARE_CLASS(QTreeWidgetItem)
 QT_FORWARD_DECLARE_CLASS(QLineEdit)
 
+namespace AzQtComponents
+{
+    class FilteredSearchWidget;
+}
 
 namespace EMStudio
 {
@@ -45,7 +48,7 @@ namespace EMStudio
         void Update(EMotionFX::AnimGraph* animGraph, const AZStd::vector<AZStd::string>& selectedParameters);
         void FireSelectionDoneSignal();
         MCORE_INLINE QTreeWidget* GetTreeWidget()                                                               { return mTreeWidget; }
-        MCORE_INLINE MysticQt::SearchButton* GetSearchButton()                                                  { return mFindWidget; }
+        MCORE_INLINE AzQtComponents::FilteredSearchWidget* GetSearchWidget()                                    { return m_searchWidget; }
 
         // this calls UpdateSelection() and then returns the member array containing the selected items
         AZStd::vector<AZStd::string>& GetSelectedParameters()                                                   { UpdateSelection(); return mSelectedParameters; }
@@ -59,15 +62,15 @@ namespace EMStudio
         void Update();
         void UpdateSelection();
         void ItemDoubleClicked(QTreeWidgetItem* item, int column);
-        void TextChanged(const QString& text);
+        void OnTextFilterChanged(const QString& text);
 
     private:
-        void AddParameterToInterface(EMotionFX::AnimGraph* animGraph, uint32 parameterIndex, QTreeWidgetItem* parameterGroupItem);
+        void AddParameterToInterface(EMotionFX::AnimGraph* animGraph, const EMotionFX::Parameter* parameter, QTreeWidgetItem* groupParameterItem);
 
         EMotionFX::AnimGraph*           mAnimGraph;
         QTreeWidget*                    mTreeWidget;
-        MysticQt::SearchButton*         mFindWidget;
-        AZStd::string                   mFilterString;
+        AzQtComponents::FilteredSearchWidget* m_searchWidget;
+        AZStd::string                   m_searchWidgetText;
         AZStd::vector<AZStd::string>    mSelectedParameters;
         AZStd::vector<AZStd::string>    mOldSelectedParameters;
         bool                            mUseSingleSelection;

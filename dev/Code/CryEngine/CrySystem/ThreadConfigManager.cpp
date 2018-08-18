@@ -44,7 +44,7 @@ const SThreadConfig* CThreadConfigManager::GetThreadConfig(const char* szThreadN
 
     // Format thread name
     char strThreadName[THREAD_NAME_LENGTH_MAX];
-    const int cNumCharsNeeded = vsnprintf(strThreadName, CRY_ARRAY_COUNT(strThreadName), szThreadName, args);
+    const int cNumCharsNeeded = azvsnprintf(strThreadName, CRY_ARRAY_COUNT(strThreadName), szThreadName, args);
     if (cNumCharsNeeded > THREAD_NAME_LENGTH_MAX - 1)
     {
         CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "<ThreadInfo>: ThreadName \"%s\" has been truncated. Max characters allowed: %i. ", strThreadName, THREAD_NAME_LENGTH_MAX - 1);
@@ -105,7 +105,7 @@ bool CThreadConfigManager::LoadConfig(const char* pcPath)
 {
     // Adjust filename for OnDisk or in .pak file loading
     char szFullPathBuf[ICryPak::g_nMaxPath];
-    gEnv->pCryPak->AdjustFileName(pcPath, szFullPathBuf, 0);
+    gEnv->pCryPak->AdjustFileName(pcPath, szFullPathBuf, AZ_ARRAY_SIZE(szFullPathBuf), 0);
 
     // Open file
     XmlNodeRef xmlRoot = GetISystem()->LoadXmlFromFile(szFullPathBuf);

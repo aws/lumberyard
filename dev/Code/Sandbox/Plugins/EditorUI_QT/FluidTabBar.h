@@ -13,7 +13,7 @@
 #define FLUIDTABBAR_H
 
 #include "api.h"
-#include <QTabBar.h>
+#include <QTabBar>
 
 class EDITOR_QT_UI_API FluidTabBar
     : public QTabBar

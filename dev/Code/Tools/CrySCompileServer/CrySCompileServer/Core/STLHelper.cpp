@@ -16,13 +16,13 @@
 #include "STLHelper.hpp"
 
 #include <AzCore/PlatformDef.h>
+#include <AzCore/PlatformIncl.h>
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Casting/lossy_cast.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #include <io.h>
-#include <windows.h>
 #endif
 
 #include "MD5.hpp"
@@ -107,15 +107,18 @@ void CSTLHelper::Splitizer(tdTokenList& rTokenList, const tdEntryVec& rFilter, c
     }
 }
 
-void CSTLHelper::Trim(std::string& rStr, char C)
+void CSTLHelper::Trim(std::string& rStr, const std::string& charsToTrim)
 {
-    std::string::size_type Pt1 = rStr.find_first_not_of(C);
+    std::string::size_type Pt1 = rStr.find_first_not_of(charsToTrim);
     if (Pt1 == std::string::npos)
     {
+        // At this point the string could be empty or it could only contain 'charsToTrim' characters.
+        // In case it's the later then trim should be applied by leaving the string empty.
+        rStr = "";
         return;
     }
 
-    std::string::size_type Pt2 = rStr.find_last_not_of(C) + 1;
+    std::string::size_type Pt2 = rStr.find_last_not_of(charsToTrim) + 1;
 
     Pt2     =   Pt2 - Pt1;
     rStr    =   rStr.substr(Pt1, Pt2);

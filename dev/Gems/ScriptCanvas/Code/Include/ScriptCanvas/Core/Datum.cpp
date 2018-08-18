@@ -18,8 +18,8 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/Serialization/IdUtils.h>
-#include <AzFramework/Math/MathUtils.h>
 #include <ScriptCanvas/Data/DataRegistry.h>
+#include <AzCore/Math/Transform.h>
 
 #include "DatumBus.h"
 
@@ -2613,7 +2613,7 @@ namespace ScriptCanvas
 
     AZStd::string Datum::ToStringQuaternion(const Data::QuaternionType& source) const
     {
-        AZ::Vector3 eulerRotation = AzFramework::ConvertTransformToEulerDegrees(AZ::Transform::CreateFromQuaternion(source));
+        AZ::Vector3 eulerRotation = AZ::ConvertTransformToEulerDegrees(AZ::Transform::CreateFromQuaternion(source));
         return AZStd::string::format
             ( "(Pitch: %5.2f, Roll: %5.2f, Yaw: %5.2f)"
             , static_cast<float>(eulerRotation.GetX())
@@ -2626,7 +2626,7 @@ namespace ScriptCanvas
         Data::TransformType copy(source);
         AZ::Vector3 pos = copy.GetPosition();
         AZ::Vector3 scale = copy.ExtractScale();
-        AZ::Vector3 rotation = AzFramework::ConvertTransformToEulerDegrees(copy);
+        AZ::Vector3 rotation = AZ::ConvertTransformToEulerDegrees(copy);
         return AZStd::string::format
              ( "(Position: X: %f, Y: %f, Z: %f,"
                " Rotation: X: %f, Y: %f, Z: %f,"

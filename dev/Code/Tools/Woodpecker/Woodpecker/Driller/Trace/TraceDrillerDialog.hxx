@@ -17,7 +17,7 @@
 
 #include <QtWidgets/QDialog>
 #include <QtGui/QIcon>
-#include <QtCore/qabstractitemmodel>
+#include <QtCore/QAbstractItemModel>
 
 #include <AzToolsFramework/UI/Logging/LogControl.h>
 

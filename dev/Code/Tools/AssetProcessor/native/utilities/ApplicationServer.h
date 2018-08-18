@@ -13,7 +13,7 @@
 #define APPLICATIONSERVER_H
 
 #include <QTcpServer>
-#include <native/utilities/assetUtilEBusHelper.h>
+#include <native/utilities/AssetUtilEBusHelper.h>
 
 /** This Class is responsible for listening and getting new connections
  */

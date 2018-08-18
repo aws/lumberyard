@@ -335,7 +335,7 @@ namespace
             pos = s.indexOf('=', pos + 1);
             if (pos >= 0)
             {
-                sscanf(s.toUtf8().data() + pos + 1, "%f", &fValue);
+                azsscanf(s.toUtf8().data() + pos + 1, "%f", &fValue);
             }
         }
         return fValue;

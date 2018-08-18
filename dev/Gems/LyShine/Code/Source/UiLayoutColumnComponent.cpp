@@ -384,7 +384,6 @@ void UiLayoutColumnComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiLayoutColumnBus>("UiLayoutColumnBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetPadding", &UiLayoutColumnBus::Events::GetPadding)
             ->Event("SetPadding", &UiLayoutColumnBus::Events::SetPadding)
             ->Event("GetSpacing", &UiLayoutColumnBus::Events::GetSpacing)

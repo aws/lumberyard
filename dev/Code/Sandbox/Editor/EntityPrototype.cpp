@@ -71,7 +71,7 @@ void CEntityPrototype::SetEntityClassName(const QString& className)
         }
 
         // Create a game entity archetype.
-        m_pArchetype = gEnv->pEntitySystem->LoadEntityArchetype(GetFullName().toUtf8().data());
+        m_pArchetype = gEnv->pEntitySystem ? gEnv->pEntitySystem->LoadEntityArchetype(GetFullName().toUtf8().data()) : nullptr;
         if (!m_pArchetype)
         {
             m_pArchetype = gEnv->pEntitySystem->CreateEntityArchetype(m_script->GetClass(), GetFullName().toUtf8().data());

@@ -190,12 +190,29 @@ export class LeaderboardIndexComponent extends AbstractCloudGemIndexComponent {
         if (model.validation.max.valid && model.validation.min.valid) {
             let max = Number(model.max);
             let min = Number(model.min);
+            if (!(min >= 0) && model.min !== "" && model.min !== undefined && model.min !== null) {
+                model.validation.min.valid = false;
+                model.validation.min.message = "The minimum reportable value must be numeric."                
+            }
+            if (!(max >= 0) && model.max !== "" && model.max !== undefined && model.max !== null) {
+                model.validation.max.valid = false;
+                model.validation.max.message = "The maximum reportable value must be numeric."
+            }
             if (min > max) {
                 model.validation.max.valid = false;
                 model.validation.min.valid = false;
                 model.validation.min.message = "The minimum reportable value must be a greater than the maximum reportable value."                
             }
         }
+
+        if (model.validation.sample_size.valid) {
+            let sample_size = Number(model.sample_size);            
+            if (!(sample_size >= 0) && model.sample_size !== "" && model.sample_size !== undefined && model.sample_size !== null) {
+                model.validation.sample_size.valid = false;
+                model.validation.sample_size.message = "The reservoir size value must be numeric."
+            }
+        }
+
         isValid = model.validation.max.valid && model.validation.min.valid && model.validation.sample_size.valid && model.validation.id.valid;       
         let addMode: number = LeaderboardMode.Add;
         if (Number(model.state) == addMode) {

@@ -282,6 +282,10 @@ void QMaterialImageListModel::GenerateImage(Item* pItem)
     {
         return;
     }
+    if (pItem->image.size() == pItem->size)
+    {
+        return;
+    }
 
     Item* pMtlItem = pItem;
 
@@ -534,6 +538,8 @@ void CMaterialImageListCtrl::updateGeometries()
             pos.ry() += itemSize + 2;
         }
     }
+
+    m_updatingGeometries = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -559,7 +565,6 @@ void CMaterialImageListCtrl::ModelDataChanged(const QModelIndex& index)
     // to trigger a new image computation that we already have
     if (m_updatingGeometries)
     {
-        m_updatingGeometries = false;
         return;
     }
 

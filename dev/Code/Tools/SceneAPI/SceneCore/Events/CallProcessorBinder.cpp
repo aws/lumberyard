@@ -18,6 +18,11 @@ namespace AZ
     {
         namespace Events
         {
+            CallProcessorBinder::~CallProcessorBinder()
+            {
+                BusDisconnect();
+            }
+
             ProcessingResult CallProcessorBinder::Process(ICallContext* context)
             {
                 ProcessingResultCombiner result;

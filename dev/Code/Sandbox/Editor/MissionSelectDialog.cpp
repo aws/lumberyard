@@ -14,11 +14,11 @@
 // Description : implementation file
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "MissionSelectDialog.h"
 #include "ui_MissionSelectDialog.h"
 #include "Mission.h"
-#include "cryeditdoc.h"
+#include "CryEditDoc.h"
 #include "QtUtil.h"
 
 /////////////////////////////////////////////////////////////////////////////

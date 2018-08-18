@@ -10,7 +10,8 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "BlendTreeMotionFrameNode.h"
 #include "AnimGraphMotionNode.h"
@@ -20,48 +21,20 @@
 #include "ActorInstance.h"
 #include "AnimGraphAttributeTypes.h"
 #include "MotionInstance.h"
-#include <MCore/Source/AttributeSettings.h>
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeMotionFrameNode::BlendTreeMotionFrameNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMotionFrameNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMotionFrameNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
-
-    // destructor
-    BlendTreeMotionFrameNode::~BlendTreeMotionFrameNode()
-    {
-    }
-
-
-    // create
-    BlendTreeMotionFrameNode* BlendTreeMotionFrameNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeMotionFrameNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeMotionFrameNode::CreateObjectData()
-    {
-        return new UniqueData(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeMotionFrameNode::RegisterPorts()
+    BlendTreeMotionFrameNode::BlendTreeMotionFrameNode()
+        : AnimGraphNode()
+        , m_normalizedTimeValue(0.0f)
     {
         // setup input ports
         InitInputPorts(2);
         SetupInputPort("Motion", INPUTPORT_MOTION, AttributeMotionInstance::TYPE_ID, PORTID_INPUT_MOTION);
-        SetupInputPortAsNumber("Time",  INPUTPORT_TIME, PORTID_INPUT_TIME);
+        SetupInputPortAsNumber("Time", INPUTPORT_TIME, PORTID_INPUT_TIME);
 
         // link the output port value to the local pose object (it stores a pointer to the local pose)
         InitOutputPorts(1);
@@ -69,14 +42,22 @@ namespace EMotionFX
     }
 
 
-    // register the parameters
-    void BlendTreeMotionFrameNode::RegisterAttributes()
+    BlendTreeMotionFrameNode::~BlendTreeMotionFrameNode()
     {
-        // create the static value float spinner
-        MCore::AttributeSettings* valueParam = RegisterAttribute("Normalized Time", "timeValue", "The normalized time value, which must be between 0 and 1. This is used when there is no connection plugged into the Time port.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        valueParam->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        valueParam->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        valueParam->SetMaxValue(MCore::AttributeFloat::Create(1.0f));
+    }
+
+
+    bool BlendTreeMotionFrameNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -91,28 +72,6 @@ namespace EMotionFX
     AnimGraphObject::ECategory BlendTreeMotionFrameNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_SOURCES;
-    }
-
-
-    // create a clone of this node
-    AnimGraphObject* BlendTreeMotionFrameNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeMotionFrameNode* clone = new BlendTreeMotionFrameNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
-
-    // precreate unique datas
-    void BlendTreeMotionFrameNode::Init(AnimGraphInstance* animGraphInstance)
-    {
-        MCORE_UNUSED(animGraphInstance);
     }
 
 
@@ -173,9 +132,9 @@ namespace EMotionFX
         // get the time value
         float timeValue = 0.0f;
         BlendTreeConnection* timeConnection = mInputPorts[INPUTPORT_TIME].mConnection;
-        if (timeConnection == nullptr) // get it from the parameter value if there is no connection
+        if (!timeConnection) // get it from the parameter value if there is no connection
         {
-            timeValue = GetAttributeFloat(ATTRIB_TIME)->GetValue();
+            timeValue = m_normalizedTimeValue;
         }
         else
         {
@@ -209,13 +168,6 @@ namespace EMotionFX
             actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
     #endif
-    }
-
-
-    // get the blend node type string
-    const char* BlendTreeMotionFrameNode::GetTypeString() const
-    {
-        return "BlendTreeMotionFrameNode";
     }
 
 
@@ -253,10 +205,10 @@ namespace EMotionFX
             data->ZeroTrajectoryDelta();
 
             AnimGraphNode* sourceNode = motionConnection->GetSourceNode();
-            MCORE_ASSERT(sourceNode->GetType() == AnimGraphMotionNode::TYPE_ID);
+            MCORE_ASSERT(azrtti_typeid(sourceNode) == azrtti_typeid<AnimGraphMotionNode>());
             AnimGraphMotionNode* motionNode = static_cast<AnimGraphMotionNode*>(sourceNode);
 
-            const bool triggerEvents = motionNode->GetAttributeFloatAsBool(AnimGraphMotionNode::ATTRIB_EVENTS);
+            const bool triggerEvents = motionNode->GetEmitEvents();
             MotionInstance* motionInstance = motionNode->FindMotionInstance(animGraphInstance);
             if (triggerEvents && motionInstance)
             {
@@ -294,9 +246,9 @@ namespace EMotionFX
 
         // get the time value
         float timeValue = 0.0f;
-        if (timeConnection == nullptr) // get it from the parameter value if there is no connection
+        if (!timeConnection) // get it from the parameter value if there is no connection
         {
-            timeValue = GetAttributeFloat(ATTRIB_TIME)->GetValue();
+            timeValue = m_normalizedTimeValue;
         }
         else
         {
@@ -329,10 +281,47 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (uniqueData == nullptr)
         {
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
             uniqueData->mOldTime = 0.0f;
             uniqueData->mNewTime = 0.0f;
         }
     }
-}   // namespace EMotionFX
+
+
+    void BlendTreeMotionFrameNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeMotionFrameNode, AnimGraphNode>()
+            ->Version(1)
+            -> Field("normalizedTimeValue", &BlendTreeMotionFrameNode::m_normalizedTimeValue)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeMotionFrameNode>("Motion Frame", "Motion frame attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeMotionFrameNode::m_normalizedTimeValue, "Normalized Time", "The normalized time value, which must be between 0 and 1. This is used when there is no connection plugged into the Time port.")
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+            ;
+    }
+
+
+    void BlendTreeMotionFrameNode::SetNormalizedTimeValue(float value)
+    {
+        m_normalizedTimeValue = value;
+    }
+} // namespace EMotionFX

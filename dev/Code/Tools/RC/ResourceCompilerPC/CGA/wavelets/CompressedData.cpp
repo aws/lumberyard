@@ -49,9 +49,9 @@ int CWaveRDC::DumpZ(const char* fname, int app)
         mode = "ab";
     }
 
-    FILE* fp;
-
-    if ((fp = fopen(fname, mode)) == NULL)
+    FILE* fp = nullptr;
+    azfopen(&fp, fname, mode);
+    if (!fp)
     {
         return -1;
     }

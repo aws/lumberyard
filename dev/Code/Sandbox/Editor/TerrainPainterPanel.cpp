@@ -11,13 +11,13 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "TerrainPainterPanel.h"
 #include "TerrainTexturePainter.h"
 
 #include "CryEditDoc.h"
 #include "./Terrain/Layer.h"
-#include "./terrainpainterpanel.h"
+#include "./TerrainPainterPanel.h"
 
 #include "Terrain/TerrainManager.h"
 

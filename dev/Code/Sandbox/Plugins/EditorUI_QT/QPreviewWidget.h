@@ -12,7 +12,7 @@
 #pragma once
 
 #include <QWidget>
-#include "qmenu.h"
+#include "QMenu"
 #include "VariableWidgets/QCustomColorDialog.h"
 #include "ContextMenu.h"
 

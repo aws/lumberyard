@@ -14,10 +14,10 @@
 #define DRILLER_CONTEXT_H
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/IO/streamer.h>
+#include <AzCore/IO/Streamer.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/std/parallel/atomic.h>
-#include <AzCore/Asset/assetcommon.h>
+#include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/UserSettings/UserSettings.h>
 #include <AzToolsFramework/UI/LegacyFramework/Core/EditorFrameworkAPI.h>
 #include "DrillerContextInterface.h"

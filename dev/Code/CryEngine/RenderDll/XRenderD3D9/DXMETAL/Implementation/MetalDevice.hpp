@@ -106,4 +106,7 @@ namespace NCryMetal
 ////////////////////////////////////////////////////////////////////////////////
 @interface MetalViewController : NativeViewControllerType {}
 - (BOOL)prefersStatusBarHidden;
+#if defined(AZ_PLATFORM_APPLE_IOS)
+- (void)viewWillTransitionToSize: (CGSize)size withTransitionCoordinator: (id<UIViewControllerTransitionCoordinator>) coordinator;
+#endif
 @end    // MetalViewController Interface

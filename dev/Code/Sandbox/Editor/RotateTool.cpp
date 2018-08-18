@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "RotateTool.h"
 #include "Objects/DisplayContext.h"
 #include "IDisplayViewport.h"
@@ -381,7 +381,7 @@ bool CRotateTool::OnLButtonDown(CViewport* view, int nFlags, const QPoint& p)
             Vec3 cameraViewDir = m_hc.camera->GetViewdir().GetNormalized();
             float cameraAngle = atan2f(cameraViewDir.y, -cameraViewDir.x);
             m_initialViewAxisAngleRadians = m_angleToCursor - cameraAngle - (g_PI / 2);
-            m_initialViewAxisAngleRadians -= g_PI;
+            m_initialViewAxisAngleRadians -= static_cast<float>(g_PI);
         }
 
         m_mouseDownPosition = point;

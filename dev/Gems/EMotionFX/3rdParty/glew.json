@@ -28,7 +28,7 @@
                 "lib/mac"
             ],
             "lib": [
-                "libGlew.a"
+                "libGLEW.a"
             ]
         }
     }

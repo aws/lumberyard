@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "ListFile.h"
 #include "StringHelpers.h"
 #include "TempFilePakExtraction.h"
@@ -281,7 +281,8 @@ bool CListFile::ReadLines(
     const string& listFile,
     std::vector<string>& lines)
 {
-    FILE* const f = fopen(listFile, "rt");
+    FILE* f = nullptr; 
+    azfopen(&f, listFile, "rt");
     if (!f)
     {
         return false;

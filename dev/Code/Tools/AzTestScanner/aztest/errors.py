@@ -35,6 +35,8 @@ class RunnerReturnCodes:
     FAILED_TO_LOAD_LIBRARY = 102
     SYMBOL_NOT_FOUND = 103
 
+    MODULE_TIMEOUT = 106
+
     UNEXPECTED_EXCEPTION = 900
     NTSTATUS_BREAKPOINT = -2147483645L
     ACCESS_VIOLATION = -1073741819L
@@ -46,6 +48,8 @@ class RunnerReturnCodes:
         INCORRECT_USAGE: "Incorrect usage of test runner",
         FAILED_TO_LOAD_LIBRARY: "Failed to load library",
         SYMBOL_NOT_FOUND: "Symbol not found",
+
+        MODULE_TIMEOUT: "Module timed out.",
 
         UNEXPECTED_EXCEPTION: "Unexpected Exception while scanning module",
         NTSTATUS_BREAKPOINT: "NTSTATUS: STATUS_BREAKPOINT",

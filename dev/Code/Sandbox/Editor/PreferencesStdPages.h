@@ -28,6 +28,7 @@ class CStdPreferencesClassDesc
     AZStd::vector< AZStd::function< IPreferencesPage*() > > m_pageCreators;
 public:
     CStdPreferencesClassDesc();
+    virtual ~CStdPreferencesClassDesc() = default;
 
     //////////////////////////////////////////////////////////////////////////
     // IUnkown implementation.

@@ -90,7 +90,7 @@ bool CVolumeTexture::Create(unsigned int width, unsigned int height, unsigned in
     {
         char name[128];
         name[sizeof(name) - 1] = '\0';
-        _snprintf(name, sizeof(name) - 1, "$VolObj_%d", gRenDev->m_TexGenID++);
+        azsnprintf(name, sizeof(name) - 1, "$VolObj_%d", gRenDev->m_TexGenID++);
 
         const uint32_t totalByteCount = width * height * depth;
         m_StagingData.resize(totalByteCount * StagingBufferFrameCount);

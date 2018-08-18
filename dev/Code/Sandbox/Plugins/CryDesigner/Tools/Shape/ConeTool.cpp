@@ -74,9 +74,9 @@ void ConeTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point)
     else if (m_ConePhase == eConePhase_RaiseHeight)
     {
         m_ConeParameter.m_Height = s_HeightManipulator.UpdateHeight(GetWorldTM(), view, point);
-        if (m_ConeParameter.m_Height < (BrushFloat)0.01)
+        if (m_ConeParameter.m_Height < (BrushFloat)0.01f)
         {
-            m_ConeParameter.m_Height = (BrushFloat)0.01;
+            m_ConeParameter.m_Height = (BrushFloat)0.01f;
         }
         UpdateCone(m_ConeParameter.m_Height);
         GetPanel()->Update();

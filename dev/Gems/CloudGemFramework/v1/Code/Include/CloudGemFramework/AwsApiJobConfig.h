@@ -72,6 +72,7 @@ namespace CloudGemFramework
     {
 
     public:
+        virtual ~IAwsApiJobConfig() = default;
 
         virtual AZ::JobContext* GetJobContext() = 0;
         virtual void OnAfterIdentityUpdate() = 0;

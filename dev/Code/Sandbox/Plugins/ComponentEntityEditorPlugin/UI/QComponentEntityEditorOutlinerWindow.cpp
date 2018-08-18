@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "CryEdit.h"
 #include "UI/QComponentEntityEditorOutlinerWindow.h"
 #include "UI/Outliner/OutlinerWidget.hxx"

@@ -18,7 +18,7 @@
 #include "TubeShapeComponent.h"
 
 namespace LmbrCentral
-{   
+{
     /**
      * Editor representation of a tube shape
      */
@@ -31,7 +31,7 @@ namespace LmbrCentral
     public:
         AZ_EDITOR_COMPONENT(EditorTubeShapeComponent, EditorTubeShapeComponentTypeId, EditorBaseShapeComponent);
         static void Reflect(AZ::ReflectContext* context);
-        
+
         EditorTubeShapeComponent() = default;
 
         // AZ::Component
@@ -61,9 +61,6 @@ namespace LmbrCentral
 
         // AzFramework::EntityDebugDisplayEventBus
         void DisplayEntity(bool& handled) override;
-
-        // TransformNotificationBus
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
         // SplineComponentNotificationBus
         void OnSplineChanged() override;

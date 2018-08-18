@@ -232,6 +232,7 @@ QtViewport::QtViewport(QWidget* parent)
     m_renderOverlay.setVisible(false);
     m_renderOverlay.setUpdatesEnabled(false);
     m_renderOverlay.setMouseTracking(true);
+    m_renderOverlay.setObjectName("renderOverlay");
 
     setAcceptDrops(true);
 }
@@ -602,12 +603,40 @@ void QtViewport::wheelEvent(QWheelEvent* event)
 
 void QtViewport::keyPressEvent(QKeyEvent* event)
 {
-    OnKeyDown(event->nativeVirtualKey(), 1, event->nativeModifiers());
+    int nativeKey = event->nativeVirtualKey();
+#ifdef AZ_PLATFORM_APPLE
+    // nativeVirtualKey is always zero on macOS, therefore we
+    // need to turn the Command and Option key into VK_XYZ manualy
+    switch (event->key())
+    {
+        case Qt::Key_Control:
+            nativeKey = VK_CONTROL;
+            break;
+        case Qt::Key_Alt:
+            nativeKey = VK_MENU;
+            break;
+    }
+#endif
+    OnKeyDown(nativeKey, 1, event->nativeModifiers());
 }
 
 void QtViewport::keyReleaseEvent(QKeyEvent* event)
 {
-    OnKeyUp(event->nativeVirtualKey(), 1, event->nativeModifiers());
+    int nativeKey = event->nativeVirtualKey();
+#ifdef AZ_PLATFORM_APPLE
+    // nativeVirtualKey is always zero on macOS, therefore we
+    // need to turn the Command and Option key into VK_XYZ manualy
+    switch (event->key())
+    {
+        case Qt::Key_Control:
+            nativeKey = VK_CONTROL;
+            break;
+        case Qt::Key_Alt:
+            nativeKey = VK_MENU;
+            break;
+    }
+#endif
+    OnKeyUp(nativeKey, 1, event->nativeModifiers());
 }
 
 //////////////////////////////////////////////////////////////////////////

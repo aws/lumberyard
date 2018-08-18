@@ -80,7 +80,7 @@ CAIDebugger::CAIDebugger(QWidget* parent /* = nullptr */)
 
     GetIEditor()->RegisterNotifyListener(this);
 
-    connect(m_ui->debuggerView, &CAIDebuggerView::scrollRequest, [=](const QPoint& point) { m_ui->scrollArea->ensureVisible(point.x(), point.y()); });
+    connect(m_ui->debuggerView, &CAIDebuggerView::scrollRequest, m_ui->scrollArea, [=](const QPoint& point) { m_ui->scrollArea->ensureVisible(point.x(), point.y()); });
 
     QSettings settings;
     settings.beginGroup("AIDebugger");

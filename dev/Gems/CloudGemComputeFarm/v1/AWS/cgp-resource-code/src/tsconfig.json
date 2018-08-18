@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "app/*": [
+                "../../../../../CloudGemFramework/v1/Website/CloudGemPortal/app/*"
+            ],
+            "*": [
+                "../../../../../CloudGemFramework/v1/Website/CloudGemPortal/node_modules/*"
+            ]            
+        },
+        "target": "es5",
+        "module": "system",
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "declaration": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "lib": [ "es2015", "dom" ]
+    },
+    "exclude": [
+        "node_modules"
+    ]
+}

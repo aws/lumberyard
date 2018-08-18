@@ -37,6 +37,8 @@ public: // member functions
     void SetStencilRef(uint32) override;
     void IncrementStencilRef() override;
     void DecrementStencilRef() override;
+    bool IsRenderingToMask() override;
+    void SetIsRenderingToMask(bool isRenderingToMask) override;
 
     void PushAlphaFade(float alphaFadeValue) final;
     void PopAlphaFade() final;
@@ -48,11 +50,10 @@ private:
 
     AZ_DISABLE_COPY_MOVE(UiRenderer);
 
-public: // static member functions
-
 protected: // attributes
 
     int                 m_baseState;
     uint32              m_stencilRef;
+    bool                m_isRenderingToMask;
     AZStd::stack<float> m_alphaFadeStack;
 };

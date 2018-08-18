@@ -14,6 +14,7 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Matrix3x3.h>
+#include <AzCore/Math/Vector2.h>
 
 using namespace AZ;
 
@@ -216,6 +217,173 @@ const Transform Transform::GetOrthogonalized() const
 const VectorFloat Transform::GetDeterminant3x3() const
 {
     return Matrix3x3::CreateFromTransform(*this).GetDeterminant();
+}
+
+// Technique from published work available here
+// https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2012/07/euler-angles1.pdf (Extracting Euler Angles from a Rotation Matrix - Mike Day, Insomniac Games mday@insomniacgames.com)
+AZ::Vector3 Transform::GetEulerDegrees() const
+{
+    AZ::Vector3 radians = GetEulerRadians();
+    return Vector3RadToDeg(radians);
+}
+
+AZ::Vector3 Transform::GetEulerRadians() const
+{
+    auto rotx = -atan2(GetElement(1, 2), GetElement(2, 2));
+    AZ::Vector2 temp{
+        GetElement(0, 0), GetElement(0, 1)
+    };
+    auto c2 = temp.GetLength();
+    auto roty = -atan2(-GetElement(0, 2), c2);
+    float s1 = sin(-rotx);
+    float c1 = cos(rotx);
+    auto rotz = -atan2(-c1 * GetElement(1, 0) + s1 * GetElement(2, 0), c1 * GetElement(1, 1) - s1 * GetElement(2, 1));
+    rotx = AZ::Wrap(rotx, 0.f, AZ::Constants::TwoPi);
+    roty = AZ::Wrap(roty, 0.f, AZ::Constants::TwoPi);
+    rotz = AZ::Wrap(rotz, 0.f, AZ::Constants::TwoPi);
+    return AZ::Vector3(rotx, roty, rotz);
+}
+
+void Transform::SetFromEulerDegrees(const AZ::Vector3& eulerDegrees)
+{
+    AZ::Vector3 eulerRadians = Vector3DegToRad(eulerDegrees);
+
+    *this = AZ::Transform::CreateRotationX(eulerRadians.GetX()) * AZ::Transform::CreateRotationY(eulerRadians.GetY()) * AZ::Transform::CreateRotationZ(eulerRadians.GetZ());
+}
+
+void Transform::SetFromEulerRadiansPrecise(const AZ::Vector3& eulerRadians)
+{
+    AZ::Transform finalRotation;
+
+    // X basis
+    const AZ::VectorFloat xSin = sinf(eulerRadians.GetX());
+    const AZ::VectorFloat xCos = cosf(eulerRadians.GetX());
+    finalRotation.SetRow(0, 1.0f, 0.0f, 0.0f, 0.0f);
+    finalRotation.SetRow(1, 0.0f, xCos, -xSin, 0.0f);
+    finalRotation.SetRow(2, 0.0f, xSin, xCos, 0.0f);
+
+    // Y basis
+    AZ::Transform yRotation;
+    const AZ::VectorFloat ySin = sinf(eulerRadians.GetY());
+    const AZ::VectorFloat yCos = cosf(eulerRadians.GetY());
+    yRotation.SetRow(0, yCos, 0.0f, ySin, 0.0f);
+    yRotation.SetRow(1, 0.0f, 1.0f, 0.0f, 0.0f);
+    yRotation.SetRow(2, -ySin, 0.0f, yCos, 0.0f);
+    finalRotation *= yRotation;
+
+    // Z basis
+    AZ::Transform zRotation;
+    const AZ::VectorFloat zSin = sinf(eulerRadians.GetZ());
+    const AZ::VectorFloat zCos = cosf(eulerRadians.GetZ());
+    zRotation.SetRow(0, zCos, -zSin, 0.0f, 0.0f);
+    zRotation.SetRow(1, zSin, zCos, 0.0f, 0.0f);
+    zRotation.SetRow(2, 0.0f, 0.0f, 1.0f, 0.0f);
+    finalRotation *= zRotation;
+
+    *this = finalRotation;
+}
+
+void Transform::SetFromEulerDegreesPrecise(const AZ::Vector3& eulerDegrees)
+{
+    AZ::Vector3 eulerRadians = Vector3DegToRad(eulerDegrees);
+    SetFromEulerRadiansPrecise(eulerRadians);
+}
+
+
+AZ::Transform Transform::CreateLookAt(const AZ::Vector3& from, const AZ::Vector3& to, AZ::Transform::Axis forwardAxis)
+{
+    AZ::Transform transform = AZ::Transform::CreateIdentity();
+
+    // Get desired forward
+    AZ::Vector3 targetForward = (to - from);
+    // If 'look-at' vector is zero, error and return Identity transform.
+    if (targetForward.IsZero())
+    {
+        AZ_Assert(!targetForward.IsZero(), "Can't create look-at transform when 'to' and 'from' positions are equal!");
+        return transform;
+    }
+
+    targetForward.Normalize();
+
+    // Ly is Z-up and is right-handed.  We assume that convention here,
+    // which affects the ordering of the cross products and choosing an appropriate
+    // 'up' basis vector.
+    AZ::Vector3 up = AZ::Vector3::CreateAxisZ();
+
+    // We have a degenerate case if target forward is parallel to the up axis,
+    // in which case we'll have to pick a new up vector
+    float absDot = targetForward.Dot(up).GetAbs();
+    if (absDot > 1.0f - 0.001f)
+    {
+        up = targetForward.CrossYAxis();
+    }
+
+    AZ::Vector3 right = targetForward.Cross(up);
+    right.Normalize();
+    up = right.Cross(targetForward);
+    up.Normalize();
+
+    // Passing in forwardAxis allows you to force a particular local-space axis to look
+    // at the target point.  In Ly, the default is forward is along Y+.
+    switch (forwardAxis)
+    {
+    case Transform::Axis::XPositive:
+        transform.SetBasisAndPosition(targetForward, -right, up, from);
+        break;
+    case Axis::XNegative:
+        transform.SetBasisAndPosition(-targetForward, right, up, from);
+        break;
+    case Transform::Axis::YPositive:
+        transform.SetBasisAndPosition(right, targetForward, up, from);
+        break;
+    case Transform::Axis::YNegative:
+        transform.SetBasisAndPosition(-right, -targetForward, up, from);
+        break;
+    case Transform::Axis::ZPositive:
+        transform.SetBasisAndPosition(right, -up, targetForward, from);
+        break;
+    case Transform::Axis::ZNegative:
+        transform.SetBasisAndPosition(right, up, -targetForward, from);
+        break;
+    default:
+        transform.SetBasisAndPosition(right, targetForward, up, from);
+        break;
+    }
+
+    return transform;
+}
+
+
+// Non-member functionality belonging to the AZ namespace
+AZ::Vector3 AZ::ConvertTransformToEulerDegrees(const AZ::Transform& transform)
+{
+    return transform.GetEulerDegrees();
+}
+
+AZ::Vector3 AZ::ConvertTransformToEulerRadians(const AZ::Transform& transform)
+{
+    return transform.GetEulerRadians();
+}
+
+AZ::Transform AZ::ConvertEulerDegreesToTransform(const AZ::Vector3& eulerDegrees)
+{
+    Transform finalRotation;
+    finalRotation.SetFromEulerDegrees(eulerDegrees);
+    return finalRotation;
+}
+
+AZ::Transform AZ::ConvertEulerRadiansToTransformPrecise(const AZ::Vector3& eulerRadians)
+{
+    AZ::Transform finalRotation;
+    finalRotation.SetFromEulerRadiansPrecise(eulerRadians);
+    return finalRotation;
+}
+
+AZ::Transform AZ::ConvertEulerDegreesToTransformPrecise(const AZ::Vector3& eulerDegrees)
+{
+    AZ::Transform finalRotation;
+    finalRotation.SetFromEulerDegreesPrecise(eulerDegrees);
+    return finalRotation;
 }
 
 #endif // #ifndef AZ_UNITY_BUILD

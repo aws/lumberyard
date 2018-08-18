@@ -57,6 +57,7 @@ enum
     GameModeIdleFrequency = 0,
     EditorModeIdleFrequency = 1,
     InactiveModeFrequency = 10,
+    UninitializedFrequency = 9999,
 };
 
 // QML imports that go in the editor folder (relative to the project root)
@@ -207,6 +208,8 @@ namespace Editor
         , m_idleTimer(new QTimer(this))
         , m_qtEntity(nullptr)
     {
+        m_idleTimer->setInterval(UninitializedFrequency);
+
         setWindowIcon(QIcon(":/Application/res/editor_icon.ico"));
 
         // set the default key store for our preferences:
@@ -216,9 +219,7 @@ namespace Editor
 
         connect(m_idleTimer, &QTimer::timeout, this, &EditorQtApplication::maybeProcessIdle);
 
-        connect(this, &QGuiApplication::applicationStateChanged, [this]() {
-            ResetIdleTimer(GetIEditor() ? GetIEditor()->IsInGameMode() : true);
-        });
+        connect(this, &QGuiApplication::applicationStateChanged, this, [this] { ResetIdleTimerInterval(PollState); });
         installEventFilter(this);
 
         // Disable our debugging input helpers by default
@@ -336,26 +337,42 @@ namespace Editor
         UninstallEditorTranslators();
     }
 
-#ifdef _DEBUG
+#ifdef AZ_DEBUG_BUILD
+    static QString objectParentsToString(QObject* obj)
+    {
+        QString result;
+        if (obj)
+        {
+            QDebug stream(&result);
+            QObject* p = obj->parent();
+            while (p)
+            {
+                stream << p << ":";
+                p = p->parent();
+            }
+        }
+        return result;
+    }
+
     bool EditorQtApplication::notify(QObject* receiver, QEvent* ev)
     {
         QEvent::Type evType = ev->type();
         if (evType == QEvent::MouseButtonPress ||
-            evType == QEvent::KeyPress ||
-            evType == QEvent::Shortcut ||
-            evType == QEvent::ShortcutOverride ||
-            evType == QEvent::KeyPress ||
-            evType == QEvent::KeyRelease)
+                evType == QEvent::KeyPress ||
+                evType == QEvent::Shortcut ||
+                evType == QEvent::ShortcutOverride ||
+                evType == QEvent::KeyPress ||
+                evType == QEvent::KeyRelease)
         {
-            qCDebug(InputDebugging) << "Attempting to deliver" << evType << "to" << receiver << "; pre-accepted=" << ev->isAccepted();
+            qCDebug(InputDebugging) << "Attempting to deliver" << evType << "to" << receiver << "; receiver's parents=(" << objectParentsToString(receiver) << "); pre-accepted=" << ev->isAccepted();
             bool processed = QApplication::notify(receiver, ev);
-            qCDebug(InputDebugging) << "processed=" << processed << "; accepted=" << ev->isAccepted()
-                << "focusWidget=" << focusWidget();
+            qCDebug(InputDebugging) << "    processed=" << processed << "; accepted=" << ev->isAccepted()
+                                    << "focusWidget=" << focusWidget();
 
             if (QWidget::mouseGrabber() || QWidget::keyboardGrabber())
             {
                 qCDebug(InputDebugging) << "Mouse Grabber=" << QWidget::mouseGrabber()
-                    << "; Key Grabber=" << QWidget::keyboardGrabber();
+                                        << "; Key Grabber=" << QWidget::keyboardGrabber();
             }
 
             if (QWidget* popup = QApplication::activePopupWidget())
@@ -373,7 +390,7 @@ namespace Editor
 
         return QApplication::notify(receiver, ev);
     }
-#endif
+#endif // #ifdef AZ_DEBUG_BUILD
 
     static QWindow* windowForWidget(const QWidget* widget)
     {
@@ -414,8 +431,8 @@ namespace Editor
             const UINT rawInputHeaderSize = sizeof(RAWINPUTHEADER);
             GetRawInputData((HRAWINPUT)msg->lParam, RID_INPUT, NULL, &rawInputSize, rawInputHeaderSize);
 
-            LPBYTE rawInputBytes = new BYTE[rawInputSize];
-            CRY_ASSERT(rawInputBytes);
+            AZStd::array<BYTE, sizeof(RAWINPUT)> rawInputBytesArray;
+            LPBYTE rawInputBytes = rawInputBytesArray.data();
 
             const UINT bytesCopied = GetRawInputData((HRAWINPUT)msg->lParam, RID_INPUT, rawInputBytes, &rawInputSize, rawInputHeaderSize);
             CRY_ASSERT(bytesCopied == rawInputSize);
@@ -424,6 +441,7 @@ namespace Editor
             CRY_ASSERT(rawInput);
 
             AzFramework::RawInputNotificationBusWin::Broadcast(&AzFramework::RawInputNotificationsWin::OnRawInputEvent, *rawInput);
+
             return false;
         }
         else if (msg->message == WM_DEVICECHANGE)
@@ -452,12 +470,12 @@ namespace Editor
                 GetIEditor()->UnregisterNotifyListener(this);
             break;
 
-            case eNotify_OnEndGameMode:
-                ResetIdleTimer(false);
-            break;
-
             case eNotify_OnBeginGameMode:
-                ResetIdleTimer(true);
+                // GetIEditor()->IsInGameMode() Isn't reliable when called from within the notification handler
+                ResetIdleTimerInterval(GameMode);
+            break;
+            case eNotify_OnEndGameMode:
+                ResetIdleTimerInterval(EditorMode);
             break;
         }
     }
@@ -608,6 +626,11 @@ namespace Editor
     {
         if (enable)
         {
+            if (m_idleTimer->interval() == UninitializedFrequency)
+            {
+                ResetIdleTimerInterval();
+            }
+
             m_idleTimer->start();
         }
         else
@@ -616,24 +639,30 @@ namespace Editor
         }
     }
 
-    void EditorQtApplication::ResetIdleTimer(bool isInGameMode)
+    void EditorQtApplication::ResetIdleTimerInterval(TimerResetFlag flag)
     {
-        bool isActive = true;
-
-        int timerFrequency = InactiveModeFrequency;
-
-        if (isActive)
+        bool isInGameMode = flag == GameMode;
+        if (flag == PollState)
         {
-            if (isInGameMode)
+            isInGameMode = GetIEditor() ? GetIEditor()->IsInGameMode() : false;
+        }
+
+        // Game mode takes precedence over anything else
+        if (isInGameMode)
+        {
+            m_idleTimer->setInterval(GameModeIdleFrequency);
+        }
+        else
+        {
+            if (applicationState() & Qt::ApplicationActive)
             {
-                timerFrequency = GameModeIdleFrequency;
+                m_idleTimer->setInterval(EditorModeIdleFrequency);
             }
             else
             {
-                timerFrequency = EditorModeIdleFrequency;
+                m_idleTimer->setInterval(InactiveModeFrequency);
             }
         }
-        EnableOnIdle(isActive);
     }
 
     bool EditorQtApplication::eventFilter(QObject* object, QEvent* event)

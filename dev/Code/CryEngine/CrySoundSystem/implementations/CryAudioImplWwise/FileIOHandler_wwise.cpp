@@ -50,7 +50,7 @@ namespace Audio
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
-        return reinterpret_cast<AkFileHandle>(realFileHandle);
+        return reinterpret_cast<AkFileHandle>(static_cast<uintptr_t>(realFileHandle));
 #endif
     }
 
@@ -67,7 +67,7 @@ namespace Audio
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_APPLE)
+#else
         // On 64 bit systems, strict compilers throw an error trying to reinterpret_cast
         // from AkFileHandle (a 64 bit pointer) to AZ::IO::HandleType (a uint32_t) because:
         //
@@ -76,8 +76,6 @@ namespace Audio
         // However, this is safe because AkFileHandle is a "blind" type that serves as a token.
         // We create the token and hand it off, and it is handed back whenever file IO is done.
         return static_cast<AZ::IO::HandleType>(reinterpret_cast<uintptr_t>(akFileHandle));
-#else
-        return reinterpret_cast<AZ::IO::HandleType>(akFileHandle);
 #endif
     }
 

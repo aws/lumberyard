@@ -1,0 +1,9 @@
+{
+    "auto": {
+        "Utilities": [
+            "Utilities/MouseHider_win.cpp",
+            "Utilities/QtWindowUtilities_win.cpp",
+            "Utilities/ScreenGrabber_win.cpp"
+        ]
+    }
+}

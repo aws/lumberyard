@@ -12,10 +12,14 @@
 
 // include required headers
 #include "MorphSubMotion.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MorphSubMotion, DeformerAllocator, 0)
+
+
     // constructor
     MorphSubMotion::MorphSubMotion(uint32 id)
     {
@@ -34,7 +38,7 @@ namespace EMotionFX
     // create method
     MorphSubMotion* MorphSubMotion::Create(uint32 id)
     {
-        return new MorphSubMotion(id);
+        return aznew MorphSubMotion(id);
     }
 
 

@@ -38,7 +38,7 @@
         {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.14.0.0", 
+            "default_value": "1.15.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -169,6 +169,24 @@
             "description": "Command line override for token used for uploading symbols"
         }, 
         {
+            "long_form": "--upload-symbol-list", 
+            "attribute": "upload_symbol_list", 
+            "default_value": "", 
+            "description": "Command line override for list of symbol patterns to upload for crash reporting"
+        }, 
+        {
+            "long_form": "--crash-handler-token", 
+            "attribute": "crash_handler_token", 
+            "default_value": "", 
+            "description": "Token used for submitting crash reports."
+        }, 
+        {
+            "long_form": "--crash-handler-url", 
+            "attribute": "crash_handler_url", 
+            "default_value": "", 
+            "description": "Endpoint to submit crash reports to"
+        }, 
+        {
             "long_form": "--always-build-engine-and-tools", 
             "attribute": "always_build_engine_and_tools", 
             "default_value": "False", 
@@ -176,6 +194,12 @@
         }
     ], 
     "Output Folder": [
+        {
+            "long_form": "--output-folder-win64-clang", 
+            "attribute": "out_folder_win64_clang", 
+            "default_value": "Bin64clang", 
+            "description": "Absolute or relative Win64 for clang build output path"
+        }, 
         {
             "long_form": "--output-folder-win64-vs2017", 
             "attribute": "out_folder_win64_vs2017", 
@@ -347,7 +371,7 @@
         {
             "long_form": "--specs-to-include-in-project-generation", 
             "attribute": "specs_to_include_in_project_generation", 
-            "default_value": "all, game, game_and_engine, resource_compiler", 
+            "default_value": "all, game, game_and_engine", 
             "description": "List of specs to include in solution generation"
         }, 
         {
@@ -361,7 +385,7 @@
         {
             "long_form": "--win-vs2017-vswhere-args", 
             "attribute": "win_vs2017_vswhere_args", 
-            "default_value": "-version 15.6.6", 
+            "default_value": "-version 15.7.4", 
             "description": "The arguments to pass to vswhere when locating vs2017 executables"
         }, 
         {
@@ -381,6 +405,14 @@
             "attribute": "win_vs2015_winkit", 
             "default_value": "", 
             "description": "The windows kit that vs2015 builds windows targets against"
+        }
+    ], 
+    "Android Options": [
+        {
+            "long_form": "--android-maven-force-http-requests", 
+            "attribute": "android_maven_force_http", 
+            "default_value": "False", 
+            "description": "Force Android Maven library requests to use HTTP instead of HTTPS"
         }
     ], 
     "Android Project Generator": [

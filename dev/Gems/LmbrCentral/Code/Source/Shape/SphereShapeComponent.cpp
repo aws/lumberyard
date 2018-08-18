@@ -32,6 +32,18 @@ namespace LmbrCentral
         }
     }
 
+    void SphereShapeDebugDisplayComponent::Activate()
+    {
+        EntityDebugDisplayComponent::Activate();
+        ShapeComponentNotificationsBus::Handler::BusConnect(GetEntityId());
+    }
+
+    void SphereShapeDebugDisplayComponent::Deactivate()
+    {
+        ShapeComponentNotificationsBus::Handler::BusDisconnect();
+        EntityDebugDisplayComponent::Deactivate();
+    }
+
     void SphereShapeDebugDisplayComponent::Draw(AzFramework::EntityDebugDisplayRequests* displayContext)
     {
         DrawSphereShape(g_defaultShapeDrawParams, m_sphereShapeConfig, *displayContext);
@@ -45,6 +57,14 @@ namespace LmbrCentral
             return true;
         }
         return false;
+    }
+
+    void SphereShapeDebugDisplayComponent::OnShapeChanged(ShapeChangeReasons changeReason)
+    {
+        if (changeReason == ShapeChangeReasons::ShapeChanged)
+        {
+            SphereShapeComponentRequestsBus::EventResult(m_sphereShapeConfig, GetEntityId(), &SphereShapeComponentRequests::GetSphereConfiguration);
+        }
     }
 
     bool SphereShapeDebugDisplayComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const

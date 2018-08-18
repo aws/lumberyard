@@ -249,7 +249,10 @@ CPanelTreeBrowser::~CPanelTreeBrowser()
         GetIEditor()->RemoveRollUpPage(ROLLUP_OBJECTS, m_panelPreviewId);
     }
     GetIEditor()->GetObjectManager()->RemoveObjectEventListener(functor(*this, &CPanelTreeBrowser::OnObjectEvent));
-    gEnv->pEntitySystem->GetClassRegistry()->UnregisterListener(this);
+    if (gEnv->pEntitySystem)
+    {
+        gEnv->pEntitySystem->GetClassRegistry()->UnregisterListener(this);
+    }
 }
 
 void CPanelTreeBrowser::OnEntityClassRegistryEvent(EEntityClassRegistryEvent event, const IEntityClass* pEntityClass)
@@ -298,7 +301,10 @@ void CPanelTreeBrowser::OnInitDialog()
 
     GetIEditor()->RegisterNotifyListener(this);
     GetIEditor()->GetObjectManager()->AddObjectEventListener(functor(*this, &CPanelTreeBrowser::OnObjectEvent));
-    gEnv->pEntitySystem->GetClassRegistry()->RegisterListener(this);
+    if (gEnv->pEntitySystem)
+    {
+        gEnv->pEntitySystem->GetClassRegistry()->RegisterListener(this);
+    }
 
     auto entityTreeView = static_cast<CPanelTreeBrowserTreeView*>(m_ui->entityTreeView);
     connect(entityTreeView, &CPanelTreeBrowserTreeView::dropFinished, this, &CPanelTreeBrowser::DropFinished);

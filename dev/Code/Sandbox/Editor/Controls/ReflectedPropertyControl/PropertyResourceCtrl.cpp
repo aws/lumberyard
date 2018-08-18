@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "PropertyResourceCtrl.h"
 #include <QtWidgets/QHBoxLayout>
@@ -188,7 +188,7 @@ FileResourceSelectorWidget::FileResourceSelectorWidget(QWidget* pParent /*= null
 
     installEventFilter(this);
 #endif
-    connect(m_pathEdit, &QLineEdit::editingFinished, [this]() { OnPathChanged(m_pathEdit->text()); });
+    connect(m_pathEdit, &QLineEdit::editingFinished, this, [this]() { OnPathChanged(m_pathEdit->text()); });
 }
 
 bool FileResourceSelectorWidget::eventFilter(QObject* obj, QEvent* event)
@@ -358,7 +358,7 @@ bool FileResourceSelectorWidget::event(QEvent* event)
 QWidget* FileResourceSelectorWidgetHandler::CreateGUI(QWidget* pParent)
 {
     FileResourceSelectorWidget* newCtrl = aznew FileResourceSelectorWidget(pParent);
-    connect(newCtrl, &FileResourceSelectorWidget::PathChanged, [newCtrl]()
+    connect(newCtrl, &FileResourceSelectorWidget::PathChanged, newCtrl, [newCtrl]()
         {
             EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
         });

@@ -11,390 +11,212 @@
 */
 
 // include required headers
-#include "ParameterCreateEditDialog.h"
-#include "AnimGraphPlugin.h"
-
-#include <QGridLayout>
-#include <QVBoxLayout>
-#include <QLabel>
-#include <QLineEdit>
-#include <QTextEdit>
-#include <QPushButton>
-#include <QMessageBox>
-
-#include "../../../../EMStudioSDK/Source/EMStudioManager.h"
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <EMotionFX/Source/Parameter/FloatParameter.h>
+#include <EMotionFX/Source/Parameter/ParameterFactory.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterCreateEditDialog.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterEditor/ParameterEditorFactory.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterEditor/ValueParameterEditor.h>
 #include <MCore/Source/LogManager.h>
-#include <MysticQt/Source/MysticQtManager.h>
-#include <MysticQt/Source/AttributeWidgetFactory.h>
-
-
-#define ATTRIBUTEWIDGET_LABEL_WIDTH 100
+#include <MCore/Source/ReflectionSerializer.h>
+#include <MysticQt/Source/ComboBox.h>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QVBoxLayout>
 
 namespace EMStudio
 {
-    // constructor
-    ParameterCreateEditDialog::ParameterCreateEditDialog(AnimGraphPlugin* plugin, QWidget* parent, bool editMode)
+    ParameterCreateEditDialog::ParameterCreateEditDialog(AnimGraphPlugin* plugin, QWidget* parent, const EMotionFX::Parameter* editParameter)
         : QDialog(parent)
+        , m_plugin(plugin)
+        , m_valueParameterEditor(nullptr)
     {
-        // the value type we have chosen
-        mPlugin                     = plugin;
-        mEditMode                   = editMode;
-        mParamContainer             = nullptr;
-        mMaxStaticItemDescWidth     = 0;
-        mMaxStaticItemValueWidth    = 0;
-        mOrgAttributeSettings       = nullptr;
+        if (!editParameter)
+        {
+            setWindowTitle("Create Parameter");
+            m_createButton = new QPushButton("Create");
+        }
+        else
+        {
+            m_parameter.reset(MCore::ReflectionSerializer::Clone(editParameter));
+            setWindowTitle("Edit Parameter");
+            m_createButton = new QPushButton("Apply");
+            m_originalName = editParameter->GetName();
+        }
+        QVBoxLayout* mainLayout = new QVBoxLayout();
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
 
-        setWindowTitle(mEditMode ? "Edit Parameter" : "Create Parameter");
+        // Value Type
+        QHBoxLayout* valueTypeLayout = new QHBoxLayout();
+        QLabel* valueTypeLabel = new QLabel("Value type");
+        valueTypeLabel->setFixedWidth(100);
+        valueTypeLayout->addWidget(valueTypeLabel);
+        m_valueTypeCombo = new MysticQt::ComboBox();
+        m_valueTypeCombo->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
+        m_valueTypeCombo->setMinimumWidth(200);
+        valueTypeLayout->addWidget(m_valueTypeCombo);
+        valueTypeLayout->addItem(new QSpacerItem(2, 0, QSizePolicy::Fixed, QSizePolicy::Fixed));
+        connect(m_valueTypeCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(OnValueTypeChange(int)));
+        mainLayout->addItem(valueTypeLayout);
 
-        mAttributeSettings          = MCore::AttributeSettings::Create();
+        // Add the RPE for the parameter
+        m_parameterEditorWidget = aznew AzToolsFramework::ReflectedPropertyEditor(this);
+        m_parameterEditorWidget->SetAutoResizeLabels(false);
+        m_parameterEditorWidget->setSizePolicy(QSizePolicy::Policy::MinimumExpanding, QSizePolicy::Policy::MinimumExpanding);
+        m_parameterEditorWidget->SetSizeHintOffset(QSize(0, 0));
+        m_parameterEditorWidget->SetLeafIndentation(0);
+        mainLayout->addWidget(m_parameterEditorWidget);
 
-        mMainLayout = new QVBoxLayout();
-        setLayout(mMainLayout);
-        mMainLayout->setAlignment(Qt::AlignTop);
-
-        mStaticLayout = new QGridLayout();
-        mMainLayout->addLayout(mStaticLayout);
+        // Add the preview information
+        QHBoxLayout* previewLayout = new QHBoxLayout();
+        m_previewFrame = new QFrame(this);
+        m_previewFrame->setFrameShape(QFrame::Box);
+        m_previewFrame->setObjectName("previewFrame");
+        m_previewFrame->setStyleSheet("QFrame#previewFrame { border: 2px dashed #979797; background-color: #85858580; }");
+        m_previewFrame->setLayout(new QHBoxLayout());
+        QLabel* previewLabel = new QLabel("Preview", m_previewFrame);
+        previewLabel->setAutoFillBackground(false);
+        previewLabel->setStyleSheet("background: transparent");
+        m_previewFrame->layout()->addWidget(previewLabel);
+        m_previewWidget = new AzToolsFramework::ReflectedPropertyEditor(m_previewFrame);
+        m_previewWidget->SetAutoResizeLabels(false);
+        m_previewWidget->SetLeafIndentation(0);
+        m_previewWidget->setStyleSheet("QFrame, .QWidget, QSlider, QCheckBox { background-color: transparent }");
+        m_previewFrame->layout()->addWidget(m_previewWidget);
+        previewLayout->addSpacerItem(new QSpacerItem(100, 0, QSizePolicy::Fixed, QSizePolicy::Fixed));
+        previewLayout->addWidget(m_previewFrame);
+        mainLayout->addItem(previewLayout);
+        mainLayout->addItem(new QSpacerItem(0, 20, QSizePolicy::Fixed, QSizePolicy::Fixed));
 
         // create the create or apply button and the cancel button
         QHBoxLayout* buttonLayout = new QHBoxLayout();
-        mCreateButton = new QPushButton(mEditMode ? "Apply" : "Create");
         QPushButton* cancelButton = new QPushButton("Cancel");
-        buttonLayout->addWidget(mCreateButton);
+        buttonLayout->addWidget(m_createButton);
         buttonLayout->addWidget(cancelButton);
-        mMainLayout->addLayout(buttonLayout);
-        connect(mCreateButton, SIGNAL(clicked()), this, SLOT(OnValidate()));
+        mainLayout->addItem(buttonLayout);
+        connect(m_createButton, SIGNAL(clicked()), this, SLOT(OnValidate()));
         connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+
+        setLayout(mainLayout);
     }
 
-
-    // destructor
     ParameterCreateEditDialog::~ParameterCreateEditDialog()
     {
-        ClearAttributesArray();
-        mAttributeSettings->Destroy();
+        m_previewWidget->ClearInstances();
+        if (m_valueParameterEditor)
+        {
+            delete m_valueParameterEditor;
+        }
     }
-
 
     // init the window
     void ParameterCreateEditDialog::Init()
     {
-        uint32 i;
-
-        if (mEditMode)
+        // Register all children of EMotionFX::ValueParameter
+        m_valueTypeCombo->blockSignals(true);
+        const AZStd::vector<AZ::TypeId> parameterTypes = EMotionFX::ParameterFactory::GetParameterTypes();
+        for (const AZ::TypeId& parameterType : parameterTypes)
         {
-            // get the anim graph
-            EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-            if (!animGraph)
-            {
-                return;
-            }
+            AZStd::unique_ptr<EMotionFX::Parameter> param(EMotionFX::ParameterFactory::Create(parameterType));
+            m_valueTypeCombo->addItem(QString(param->GetTypeDisplayName().c_str()), QString(parameterType.ToString<AZStd::string>().c_str()));
+        }
 
-            mOrgAttributeSettings = animGraph->FindParameter(mName.c_str());
-            mAttributeSettings->InitFrom(mOrgAttributeSettings);
+        if (!m_parameter)
+        {
+            OnValueTypeChange(0);
         }
         else
         {
-            mOrgAttributeSettings = nullptr;
-            if (mAttributeSettings)
-            {
-                mAttributeSettings->Destroy();
-            }
-            mAttributeSettings = MCore::AttributeSettings::Create();
-            mAttributeSettings->SetName("");
-            mAttributeSettings->SetInternalName("");
-            mAttributeSettings->SetInterfaceType(MCore::ATTRIBUTE_INTERFACETYPE_FLOATSLIDER);
+            m_valueTypeCombo->setCurrentText(m_parameter->GetTypeDisplayName().c_str());
+            InitDynamicInterface(azrtti_typeid(m_parameter.get()));
+
         }
-
-        // add the items
-        QLabel* label = new QLabel("Parameter Name:");
-        label->setMinimumWidth(ATTRIBUTEWIDGET_LABEL_WIDTH);
-        //label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
-        mStaticLayout->addWidget(label, 0, 0);
-        mNameEdit = new QLineEdit();
-        //mNameEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-        mStaticLayout->addWidget(mNameEdit, 0, 1);
-        mNameEdit->setText(mName.c_str());
-        connect(mNameEdit, SIGNAL(textEdited(const QString&)), this, SLOT(OnNameEdited(const QString&)));
-        mMaxStaticItemDescWidth = MCore::Max<uint32>(mMaxStaticItemDescWidth, label->sizeHint().width());
-        mMaxStaticItemValueWidth = MCore::Max<uint32>(mMaxStaticItemValueWidth, mNameEdit->sizeHint().width());
-
-        label = new QLabel("Description:");
-        label->setMinimumWidth(ATTRIBUTEWIDGET_LABEL_WIDTH);
-        //label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
-        mStaticLayout->addWidget(label, 1, 0);
-        mDescriptionEdit = new QTextEdit();
-        //mDescriptionEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-        mDescriptionEdit->setText(mDescription.c_str());
-        mStaticLayout->addWidget(mDescriptionEdit, 1, 1);
-        //connect(mDescriptionEdit, SIGNAL(editingFinished()), this, SLOT(OnDescriptionChange()));
-        mMaxStaticItemDescWidth = MCore::Max<uint32>(mMaxStaticItemDescWidth, label->sizeHint().width());
-        mMaxStaticItemValueWidth = MCore::Max<uint32>(mMaxStaticItemValueWidth, mDescriptionEdit->sizeHint().width());
-
-        label = new QLabel("Value Type:");
-        label->setMinimumWidth(ATTRIBUTEWIDGET_LABEL_WIDTH);
-        //label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
-        mStaticLayout->addWidget(label, 2, 0);
-        mValueTypeCombo = new MysticQt::ComboBox();
-        //mValueTypeCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-
-        const uint32 numCreators = MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->GetNumRegisteredCreators();
-        
-        for (i = 0; i < numCreators; ++i)
-        {
-            MysticQt::AttributeWidgetCreator* creator = MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->GetRegisteredCreator(i);
-
-            if (creator->CanBeParameter())
-            {
-                mValueTypeCombo->addItem(creator->GetTypeString(), QVariant(creator->GetType()));
-            }
-        }
-
-        mStaticLayout->addWidget(mValueTypeCombo, 2, 1);
-        connect(mValueTypeCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(OnValueTypeChange(int)));
-
-        mMaxStaticItemDescWidth = MCore::Max<uint32>(mMaxStaticItemDescWidth, label->sizeHint().width());
-        mMaxStaticItemValueWidth = MCore::Max<uint32>(mMaxStaticItemValueWidth, mValueTypeCombo->sizeHint().width());
-
-        // init the dynamic part, which changes based on the value data type combobox
-        InitDynamicInterfaceOnType(mAttributeSettings->GetInterfaceType());
-
-        // give the name edit field focus, the text is also selected
-        mNameEdit->setFocus(Qt::TabFocusReason);
+        m_valueTypeCombo->blockSignals(false);
     }
-
-
-    void ParameterCreateEditDialog::InitDynamicInterfaceOnType(uint32 interfaceTypeID)
-    {
-        // init the dynamic part, which changes based on the value data type combobox
-        mValueTypeCombo->setCurrentIndex(-1);
-
-        int comboIndex = -1;
-        const int numComboItems = mValueTypeCombo->count();
-        for (int32 i = 0; i < numComboItems; ++i)
-        {
-            QVariant variantData = mValueTypeCombo->itemData(i);
-            MCORE_ASSERT(variantData != QVariant::Invalid);
-            if (static_cast<uint32>(variantData.toInt()) == interfaceTypeID)
-            {
-                comboIndex = i;
-                break;
-            }
-        }
-
-        mValueTypeCombo->setCurrentIndex(comboIndex);
-    }
-
-
-    void ParameterCreateEditDialog::OnNameEdited(const QString& text)
-    {
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (!animGraph)
-        {
-            return;
-        }
-
-        mName = text.toUtf8().data();
-
-        // Is the name empty? The parameter name has to be a non-empty.
-        if (mName.empty())
-        {
-            GetManager()->SetWidgetAsInvalidInput(mNameEdit);
-            mCreateButton->setEnabled(false);
-            return;
-        }
-
-        // find the parameter
-        MCore::AttributeSettings* parameterFoundByName = animGraph->FindParameter(mName.c_str());
-
-        // create mode
-        if (!mEditMode)
-        {
-            // check if a parameter with the same name is not found
-            if (!parameterFoundByName)
-            {
-                mNameEdit->setStyleSheet("");
-                mCreateButton->setEnabled(true);
-            }
-            else
-            {
-                GetManager()->SetWidgetAsInvalidInput(mNameEdit);
-                mCreateButton->setEnabled(false);
-            }
-        }
-        else // edit mode
-        {
-            // check if the name is not a duplicate
-            // also check if the new param is the same as orginal to enable if the name is the same
-            if (!parameterFoundByName || parameterFoundByName == mOrgAttributeSettings)
-            {
-                mNameEdit->setStyleSheet("");
-                mCreateButton->setEnabled(true);
-            }
-            else
-            {
-                GetManager()->SetWidgetAsInvalidInput(mNameEdit);
-                mCreateButton->setEnabled(false);
-            }
-        }
-    }
-
-
-    QLayout* ParameterCreateEditDialog::CreateNameLabel(QWidget* widget, MCore::AttributeSettings* attributeSettings)
-    {
-        AZStd::string   labelString = attributeSettings->GetName();
-        labelString += ":";
-
-        QLabel*         label       = new QLabel(labelString.c_str());
-        QHBoxLayout*    layout      = new QHBoxLayout();
-
-        layout->addWidget(label);
-        layout->addWidget(widget);
-
-        label->setMinimumWidth(ATTRIBUTEWIDGET_LABEL_WIDTH);
-        //label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
-        //widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-        //layout->setAlignment(label, Qt::AlignTop);
-
-        layout->setMargin(0);
-        label->setToolTip(attributeSettings->GetDescription());
-        widget->setToolTip(attributeSettings->GetDescription());
-
-        return layout;
-    }
-
-
-    // delete items in the attributes array
-    void ParameterCreateEditDialog::ClearAttributesArray()
-    {
-        for (MCore::Attribute* attribute : mAttributes)
-        {
-            MCore::GetAttributePool().Free(attribute);
-        }
-
-        mAttributes.clear();
-    }
-
 
     // init the dynamic part of the interface
-    void ParameterCreateEditDialog::InitDynamicInterface(uint32 valueType)
+    void ParameterCreateEditDialog::InitDynamicInterface(const AZ::TypeId& valueType)
     {
-        if (mEditMode == false)
-        {
-            ClearAttributesArray();
-        }
-
-        if (valueType == MCORE_INVALIDINDEX32)
+        if (valueType.IsNull())
         {
             return;
         }
 
-        const uint32 creatorIndex = MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->FindCreatorIndexByType(valueType);
-        if (creatorIndex == MCORE_INVALIDINDEX32)
+        if (!m_parameter)
         {
+            const AZStd::string uniqueParameterName = MCore::GenerateUniqueString("Parameter",
+                    [&](const AZStd::string& value)
+                    {
+                        return (m_plugin->GetActiveAnimGraph()->FindParameterByName(value) == nullptr);
+                    });
+            m_parameter.reset(EMotionFX::ParameterFactory::Create(valueType));
+            m_parameter->SetName(uniqueParameterName);
+        }
+        else
+        {
+            if (azrtti_typeid(m_parameter.get()) != valueType) // value type changed
+            {
+                const AZStd::string oldParameterName = m_parameter->GetName();
+                const AZStd::string oldParameterDescription = m_parameter->GetDescription();
+                m_parameter.reset(EMotionFX::ParameterFactory::Create(valueType));
+                m_parameter->SetName(oldParameterName);
+                m_parameter->SetDescription(oldParameterDescription);
+            }
+        }
+
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!serializeContext)
+        {
+            AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
             return;
         }
 
-        delete mParamContainer;
-        mParamContainer = new QWidget();
-        mParamContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-        mDynamicLayout = new QVBoxLayout();
-        mDynamicLayout->setMargin(0);
-        mParamContainer->setLayout(mDynamicLayout);
-        mMainLayout->insertWidget(1, mParamContainer);
-        mDynamicLayout->setAlignment(Qt::AlignLeft);
+        m_parameterEditorWidget->ClearInstances();
+        m_parameterEditorWidget->AddInstance(m_parameter.get(), azrtti_typeid(m_parameter.get()));
+        m_parameterEditorWidget->Setup(serializeContext, this, false, 100);
+        m_parameterEditorWidget->show();
+        m_parameterEditorWidget->ExpandAll();
+        m_parameterEditorWidget->InvalidateAll();
 
-        MysticQt::AttributeWidgetCreator* creator = MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->GetRegisteredCreator(creatorIndex);
-        mAttributeSettings->SetInterfaceType(creator->GetType());
-
-        //AZ_Printf("EMotionFX", "InterfaceType: %i, InterfaceTypeString:%s, DataType: %i", creator->GetType(), creator->GetTypeString(), creator->GetDataType());
-
-        bool readOnly = false;
-        const AZStd::string oldAttributeName = mAttributeSettings->GetName();
-
-        MCore::Array<MCore::Attribute*> defaultAttribute;
-        MCore::Array<MCore::Attribute*> minAttribute;
-        MCore::Array<MCore::Attribute*> maxAttribute;
-        mAttributeSettings->SetName("Default");
-        if (mEditMode == false)
+        m_previewWidget->ClearInstances();
+        if (m_valueParameterEditor)
         {
-            defaultAttribute.Add(nullptr);
+            delete m_valueParameterEditor;
+            m_valueParameterEditor = nullptr;
+        }
+
+        if (azrtti_typeid(m_parameter.get()) == azrtti_typeid<EMotionFX::GroupParameter>())
+        {
+            m_previewFrame->setVisible(false);
         }
         else
         {
-            defaultAttribute.Add(mAttributes[VALUE_DEFAULT]);
-        }
-        QWidget* widget = MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->CreateAttributeWidget(defaultAttribute, mAttributeSettings, nullptr, readOnly, true, true,  MysticQt::AttributeWidgetFactory::ATTRIBUTE_DEFAULT, true);
-        widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-        mDynamicLayout->addLayout(CreateNameLabel(widget, mAttributeSettings));
-
-        if (creator->GetHasMinMaxValues())
-        {
-            if (mEditMode == false)
-            {
-                minAttribute.Add(nullptr);
-                maxAttribute.Add(nullptr);
-            }
-            else
-            {
-                minAttribute.Add(mAttributes[VALUE_MINIMUM]);
-                maxAttribute.Add(mAttributes[VALUE_MAXIMUM]);
-            }
-
-            mAttributeSettings->SetName("Minimum");
-            widget = MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->CreateAttributeWidget(minAttribute, mAttributeSettings, nullptr, readOnly, false, !mEditMode,  MysticQt::AttributeWidgetFactory::ATTRIBUTE_MIN, true);
-            widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-            mDynamicLayout->addLayout(CreateNameLabel(widget, mAttributeSettings));
-
-            mAttributeSettings->SetName("Maximum");
-            widget = MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->CreateAttributeWidget(maxAttribute, mAttributeSettings, nullptr, readOnly, false, !mEditMode,  MysticQt::AttributeWidgetFactory::ATTRIBUTE_MAX, true);
-            widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-            mDynamicLayout->addLayout(CreateNameLabel(widget, mAttributeSettings));
-        }
-        else
-        {
-            if (mEditMode == false)
-            {
-                minAttribute.Add(nullptr);
-                maxAttribute.Add(nullptr);
-            }
-            else
-            {
-                minAttribute.Add(mAttributes[VALUE_MINIMUM]);
-                maxAttribute.Add(mAttributes[VALUE_MAXIMUM]);
-            }
-
-            MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->InitAttributes(minAttribute, mAttributeSettings, false,  MysticQt::AttributeWidgetFactory::ATTRIBUTE_MIN);
-            MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->InitAttributes(maxAttribute, mAttributeSettings, false,  MysticQt::AttributeWidgetFactory::ATTRIBUTE_MAX);
+            m_valueParameterEditor = ParameterEditorFactory::Create(nullptr, static_cast<const EMotionFX::ValueParameter*>(m_parameter.get()), AZStd::vector<MCore::Attribute*>());
+            m_previewWidget->AddInstance(m_valueParameterEditor, azrtti_typeid(m_valueParameterEditor));
+            m_previewWidget->Setup(serializeContext, nullptr, false, 0);
+            m_previewWidget->show();
+            m_previewWidget->ExpandAll();
+            m_previewWidget->InvalidateAll();
+            m_previewFrame->setVisible(true);
         }
 
-        // clear the existing attributes
-        if (mEditMode == false)
-        {
-            ClearAttributesArray();
-        }
-
-        // set the new attributes
-        mAttributes.resize(3);
-        mAttributes[VALUE_DEFAULT] = defaultAttribute[0];
-        mAttributes[VALUE_MINIMUM] = (minAttribute.GetLength() > 0) ? minAttribute[0] : nullptr;
-        mAttributes[VALUE_MAXIMUM] = (maxAttribute.GetLength() > 0) ? maxAttribute[0] : nullptr;
-
-        mAttributeSettings->SetName(oldAttributeName.c_str());
+        adjustSize();
     }
 
 
     // when the value type changes
     void ParameterCreateEditDialog::OnValueTypeChange(int valueType)
     {
-        assert(sender()->inherits("QComboBox"));
-        MysticQt::ComboBox* comboBox = qobject_cast<MysticQt::ComboBox*>(sender());
-
         if (valueType != -1)
         {
-            QVariant variantData = comboBox->itemData(valueType);
-            assert(variantData != QVariant::Invalid);
-            InitDynamicInterface(variantData.toInt());
+            QVariant variantData = m_valueTypeCombo->itemData(valueType);
+            AZ_Assert(variantData != QVariant::Invalid, "Expected valid variant data");
+            const AZStd::string typeId = FromQtString(variantData.toString());
+            InitDynamicInterface(AZ::TypeId::CreateString(typeId.c_str(), typeId.size()));
         }
     }
 
@@ -402,32 +224,36 @@ namespace EMStudio
     // check if we can create this parameter
     void ParameterCreateEditDialog::OnValidate()
     {
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
+        EMotionFX::AnimGraph* animGraph = m_plugin->GetActiveAnimGraph();
         if (!animGraph)
         {
             MCore::LogWarning("ParameterCreateEditDialog::OnValidate() - No AnimGraph active!");
             return;
         }
 
-        if (mName.empty())
+        if (m_parameter->GetName().empty())
         {
             QMessageBox::warning(this, "Please Provide A Parameter Name", "The parameter name cannot be empty!");
             return;
         }
 
         // check if the name already exists
-        MCore::AttributeSettings* paramInfo = animGraph->FindParameter(mName.c_str());
-        if (paramInfo && mOrgAttributeSettings != paramInfo)
+        if ((m_createButton->text() == "Create" && animGraph->FindParameterByName(m_parameter->GetName()))
+            || (m_parameter->GetName() != m_originalName && animGraph->FindParameterByName(m_parameter->GetName())))
         {
-            const AZStd::string errorString = AZStd::string::format("Parameter with name '<b>%s</b>' already exists in anim graph '<b>%s</b>'.<br><br><i>Please use a unique parameter name.</i>", paramInfo->GetName(), animGraph->GetName());
-            QMessageBox::warning(this, "Parameter Name Not Unique", errorString.c_str());
+            const AZStd::string errorString = AZStd::string::format("Parameter with name '<b>%s</b>' already exists in anim graph '<b>%s</b>'.<br><br><i>Please use a unique parameter name.</i>",
+                    m_parameter->GetName(), animGraph->GetFileName());
+            QMessageBox::warning(this, "Parameter name is not unique", errorString.c_str());
             return;
         }
 
-        // Store the description.
-        mDescription = mDescriptionEdit->toPlainText().toUtf8().data();
-
         emit accept();
+    }
+
+    void ParameterCreateEditDialog::AfterPropertyModified(AzToolsFramework::InstanceDataNode*)
+    {
+        m_previewWidget->InvalidateAttributesAndValues();
+        adjustSize();
     }
 } // namespace EMStudio
 

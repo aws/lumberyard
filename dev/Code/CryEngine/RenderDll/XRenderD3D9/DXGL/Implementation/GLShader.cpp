@@ -445,6 +445,9 @@ namespace NCryOpenGL
             for (uElement = uPrevNumElements; uElement < kParameters.size(); ++uElement)
             {
                 SShaderReflectionParameter& kParameter(kParameters.at(uElement));
+                
+                memset(&kParameter.m_kDesc, 0, sizeof(kParameter.m_kDesc));
+                
                 // Only for extended parameters fxc adds two extra pieces of information, the stream index and the minimum precision.
                 if (extended && !DXBCReadUint32(*pContext, kParameter.m_kDesc.Stream))
                 {
@@ -457,7 +460,7 @@ namespace NCryOpenGL
                 {
                     return false;
                 }
-                memset(&kParameter, 0, sizeof(kParameter.m_kDesc));
+                
                 kParameter.m_kDesc.SemanticName = kParameter.m_acSemanticName;
                 if (!DXBCReadUint32(*pContext, kParameter.m_kDesc.SemanticIndex) ||
                     !DXBCReadUint32(*pContext, kParameter.m_kDesc.SystemValueType) ||

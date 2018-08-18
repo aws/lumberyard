@@ -26,7 +26,7 @@
 #include <ITerrain.h>
 
 #include "QtUtilWin.h"
-#include "QtUi/ClickableLabel.h"
+#include "QtUI/ClickableLabel.h"
 
 #include <QAbstractTableModel>
 #include <QDesktopServices>
@@ -735,7 +735,7 @@ void CTerrainTextureDialog::OnInitDialog()
 
     connect(m_ui->changeLayerTextureClickable, &QLabel::linkActivated, this, &CTerrainTextureDialog::OnLoadTexture);
 
-    connect(m_ui->showPreviewCheckBox, &QCheckBox::stateChanged, [&](int state)
+    connect(m_ui->showPreviewCheckBox, &QCheckBox::stateChanged, this, [&](int state)
         {
             m_model->enablePreviews(state == Qt::Checked);
             m_ui->layerTableView->resizeColumnToContents(ColumnLayerName);
@@ -1407,10 +1407,17 @@ void CTerrainTextureDialog::OnAssignMaterial()
 void CTerrainTextureDialog::OnAssignSplatMap()
 {
     Layers layers = GetSelectedLayers();
+
+    // No layers selected, so nothing to assign.
+    if (layers.size() != 1)
+    {
+        QMessageBox::warning(this, "Can't Assign Splat Map", "Select a target layer before assigning a splat map.");
+        return;
+    }
+
     CUndo undo("Assign Layer Mask");
     GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
-    assert(layers.size() == 1);
     CLayer* layer = layers[0];
     QString filePath = layer->GetSplatMapPath();
     if (!filePath.isEmpty())

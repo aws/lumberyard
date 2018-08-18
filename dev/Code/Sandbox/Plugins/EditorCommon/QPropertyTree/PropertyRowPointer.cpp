@@ -318,7 +318,7 @@ int PropertyRowPointer::widgetSizeMin(const QPropertyTree* tree) const
 static Color parseColorString(const char* str)
 {
     unsigned int color = 0;
-    if (sscanf(str, "%x", &color) != 1)
+    if (azsscanf(str, "%x", &color) != 1)
     {
         return Color(0, 0, 0, 0);
     }

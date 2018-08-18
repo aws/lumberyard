@@ -13,7 +13,6 @@
 #include "EMotionFXConfig.h"
 #include <MCore/Source/Random.h>
 #include <MCore/Source/IDGenerator.h>
-#include <MCore/Source/AttributeSet.h>
 
 #include "Actor.h"
 #include "ActorInstance.h"
@@ -39,6 +38,8 @@
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(ActorInstance, ActorInstanceAllocator, 0)
+
     // the constructor
     ActorInstance::ActorInstance(Actor* actor, AZ::EntityId entityId, uint32 threadIndex)
         : BaseObject()
@@ -63,7 +64,6 @@ namespace EMotionFX
         mCustomData             = nullptr;
         mID                     = MCore::GetIDGenerator().GenerateID();
         mEyeBlinker             = nullptr;
-        mAttributeSet           = nullptr;
         mVisualizeScale         = 1.0f;
         mMotionSamplingRate     = 0.0f;
         mMotionSamplingTimer    = 0.0f;
@@ -120,9 +120,6 @@ namespace EMotionFX
         mLocalTransform.Identity();
         mGlobalTransform.Identity();
 
-        // create attribute set
-        mAttributeSet = MCore::AttributeSet::Create();
-
         // init the morph setup instance
         mMorphSetup = MorphSetupInstance::Create();
         mMorphSetup->Init(actor->GetMorphSetup(0));
@@ -140,7 +137,7 @@ namespace EMotionFX
         // update the actor dependencies
         UpdateDependencies();
 
-          // update the static based AABB dimensions
+        // update the static based AABB dimensions
         mStaticAABB = mActor->GetStaticAABB();
         if (mStaticAABB.CheckIfIsValid() == false)
         {
@@ -186,11 +183,6 @@ namespace EMotionFX
             mEyeBlinker->Destroy();
         }
 
-        if (mAttributeSet)
-        {
-            mAttributeSet->Destroy();
-        }
-
         // delete all attachments
         // actor instances that are attached will be detached, and not deleted from memory
         const uint32 numAttachments = mAttachments.GetLength();
@@ -232,7 +224,7 @@ namespace EMotionFX
     // create an actor instance
     ActorInstance* ActorInstance::Create(Actor* actor, AZ::EntityId entityId, uint32 threadIndex)
     {
-        return new ActorInstance(actor, entityId, threadIndex);
+        return aznew ActorInstance(actor, entityId, threadIndex);
     }
 
 
@@ -2282,12 +2274,6 @@ namespace EMotionFX
     EyeBlinker* ActorInstance::GetEyeBlinker() const
     {
         return mEyeBlinker;
-    }
-
-
-    MCore::AttributeSet* ActorInstance::GetAttributeSet() const
-    {
-        return mAttributeSet;
     }
 
 

@@ -25,26 +25,11 @@ namespace EMotionFX
     class EMFX_API BlendTreeTwoLinkIKNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeTwoLinkIKNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeTwoLinkIKNode, "{0C3E8B7F-F810-47A6-B1A9-27BD4E4B5500}", AnimGraphNode);
+        using NodeAlignmentData = AZStd::pair<AZStd::string, int>;
 
-        enum
-        {
-            TYPE_ID = 0x00001286
-        };
-
-        enum
-        {
-            ATTRIB_ENDNODE          = 0,    // the end node, for example the foot or hand
-            ATTRIB_ENDEFFECTORNODE  = 1,    // the end effector node, for example the foot or hand, or a helper child of it
-            ATTRIB_ALIGNNODE        = 2,    // the node to align the end effector to (optional)
-            ATTRIB_BENDDIRNODE      = 3,    // the bend direction node
-            ATTRIB_ENABLEROTATION   = 4,    // enable the goal rotation?
-            ATTRIB_RELBENDDIR       = 5,    // use relative bend direction?
-            ATTRIB_EXTRACTBENDDIR   = 6     // extract bend dir from the input pose?
-        };
+        AZ_RTTI(BlendTreeTwoLinkIKNode, "{0C3E8B7F-F810-47A6-B1A9-27BD4E4B5500}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         enum
         {
@@ -71,6 +56,8 @@ namespace EMotionFX
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
                 : AnimGraphNodeData(node, animGraphInstance)
             {
@@ -85,9 +72,6 @@ namespace EMotionFX
             }
             ~UniqueData() {}
 
-            uint32 GetClassSize() const override                                                                                    { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override        { return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance); }
-
         public:
             uint32  mNodeIndexA;
             uint32  mNodeIndexB;
@@ -99,13 +83,13 @@ namespace EMotionFX
             bool    mIsValid;
         };
 
-        static BlendTreeTwoLinkIKNode* Create(AnimGraph* animGraph);
+        BlendTreeTwoLinkIKNode();
+        ~BlendTreeTwoLinkIKNode();
 
-        void Init(AnimGraphInstance* animGraphInstance) override;
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
+
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
-        void OnUpdateAttributes() override;
         bool GetSupportsVisualization() const override          { return true; }
         bool GetHasOutputPose() const override                  { return true; }
         bool GetSupportsDisable() const override                { return true; }
@@ -115,18 +99,31 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        void SetEndNodeName(const AZStd::string& endNodeName);
+        void SetEndEffectorNodeName(const AZStd::string& endEffectorNodeName);
+        void SetAlignToNode(const NodeAlignmentData& alignToNode);
+        void SetBendDirNodeName(const AZStd::string& bendDirNodeName);
+        void SetRotationEnabled(bool rotationEnabled);
+        void SetRelativeBendDir(bool relativeBendDir);
+        void SetExtractBendDir(bool extractBendDir);
+
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        BlendTreeTwoLinkIKNode(AnimGraph* animGraph);
-        ~BlendTreeTwoLinkIKNode();
-
         void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Output(AnimGraphInstance* animGraphInstance) override;
 
         static void CalculateMatrix(const AZ::Vector3& goal, const AZ::Vector3& bendDir, MCore::Matrix* outForward);
         static bool Solve2LinkIK(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& goal, const AZ::Vector3& bendDir, AZ::Vector3* outMidPos);
-};
+
+        AZ::Crc32 GetRelativeBendDirVisibility() const;
+
+        NodeAlignmentData m_alignToNode; /**< Node name and the parent depth (0=current, 1=parent, 2=parent of parent, 3=parent of parent of parent, etc.). */
+        AZStd::string                   m_endNodeName;
+        AZStd::string                   m_endEffectorNodeName;
+        AZStd::string                   m_bendDirNodeName;
+        bool                            m_rotationEnabled;
+        bool                            m_relativeBendDir;
+        bool                            m_extractBendDir;
+    };
 } // namespace EMotionFX

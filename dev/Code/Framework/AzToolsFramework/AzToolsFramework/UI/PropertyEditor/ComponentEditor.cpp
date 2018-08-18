@@ -30,6 +30,7 @@
 #include <QMenu>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QContextMenuEvent>
 
 namespace AzToolsFramework
 {

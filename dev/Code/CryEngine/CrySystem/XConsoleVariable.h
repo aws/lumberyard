@@ -139,7 +139,7 @@ public:
     {
         CRY_ASSERT(m_pDataProbeString == NULL);
         m_pDataProbeString = new char[ strlen(pDataProbeString) + 1 ];
-        strcpy(m_pDataProbeString, pDataProbeString);
+        azstrcpy(m_pDataProbeString, strlen(pDataProbeString) + 1, pDataProbeString);
     }
 #endif
     virtual const char* GetDataProbeString() const

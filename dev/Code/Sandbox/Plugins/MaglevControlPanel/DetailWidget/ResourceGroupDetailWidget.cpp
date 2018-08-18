@@ -132,6 +132,11 @@ QMenu* ResourceGroupDetailWidget::GetTreeContextMenu()
     del->setDisabled(m_resourceGroupStatusModel->StackIsBusy() || m_resourceGroupStatusModel->IsPendingDelete());
     connectUntilDeleted(del, &QAction::triggered, this, &ResourceGroupDetailWidget::OnDelete);
 
+    auto enable = menu->addAction(m_resourceGroupStatusModel->GetEnableButtonText());
+    enable->setToolTip(m_resourceGroupStatusModel->GetEnableButtonToolTip());
+    enable->setDisabled(m_resourceGroupStatusModel->StackIsBusy());
+    connectUntilDeleted(enable, &QAction::triggered, this, &ResourceGroupDetailWidget::OnEnable);
+
     return menu;
 }
 
@@ -148,5 +153,10 @@ void ResourceGroupDetailWidget::OnUploadCode()
 void ResourceGroupDetailWidget::OnDelete()
 {
     m_view->DeleteStack(m_resourceGroupStatusModel);
+}
+
+void ResourceGroupDetailWidget::OnEnable()
+{
+    m_resourceGroupStatusModel->EnableResourceGroup();
 }
 

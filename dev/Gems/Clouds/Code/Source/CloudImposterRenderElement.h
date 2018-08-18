@@ -14,21 +14,16 @@
 #pragma once
 
 #include <IRenderer.h>
-#include <CryEngineApi.h>
 #include "Cry_Camera.h"
 
 //================================================================================
 
-struct SDynTexture2;
-struct SDynTexture;
-class CTerrainNode;
 class IDynTexture;
 
 namespace CloudsGem
 {
-    class CTerrainNode;
     class CloudImposterRenderElement
-        : public CRendElementBase
+        : public IRenderElementDelegate
     {
         bool IsImposterValid(const CameraViewParameters& viewParameters, float fRadiusX, float fRadiusY, float fCamRadiusX, float fCamRadiusY,
             const int iRequiredLogResX, const int iRequiredLogResY, const uint32 dwBestEdge);
@@ -49,10 +44,11 @@ namespace CloudsGem
         void ReleaseResources();
         bool PrepareForUpdate();
 
-        virtual void GetMemoryUsage(ICrySizer* pSizer) const { pSizer->AddObject(this, sizeof(*this)); }
-        virtual void mfPrepare(bool bCheckOverflow);
-        virtual bool mfDraw(CShader* ef, SShaderPass* sl);
-        const SMinMaxBox& mfGetWorldSpaceBounds() { return m_WorldSpaceBV; }
+        // IRenderElementDelegate
+        void mfPrepare(bool bCheckOverflow) override {};
+        bool mfDraw(CShader* ef, SShaderPass* sl) override { return false; };
+
+        const SMinMaxBox GetWorldSpaceBounds() { return m_WorldSpaceBV; }
         virtual bool IsSplit() { return m_bSplit; }
         virtual bool IsScreenImposter() { return m_bScreenImposter; }
         float GetTransparency() { return m_fCurTransparency; }
@@ -76,16 +72,16 @@ namespace CloudsGem
         float GetRadiusX() { return m_fRadiusX; }
         float GetRadiusY() { return m_fRadiusY; }
         Vec3* GetQuadCorners() { return &m_vQuadCorners[0]; }
-
+        IRenderElement* GetRE() { return m_gemRE; }
     private:
-
+            
         int m_nFrameReset;
         int m_FrameUpdate;
         int m_nLogResolutionX{ 0 };                             //! Log of the x resolution
         int m_nLogResolutionY{ 0 };                             //! Log of the y resolution
         int m_AlphaRef{ -1 };                                   //! Reference for alpha blending
 
-        float m_fErrorToleranceCosAngle{ 0.99999048072 };       // cos(0.004363323)  cosine of m_fErrorToleranceAngle used to check if IsImposterValid
+        float m_fErrorToleranceCosAngle{ 0.99999048072f };      // cos(0.004363323)  cosine of m_fErrorToleranceAngle used to check if IsImposterValid
         float m_fTimeUpdate;
         float m_fNear{0.f};                                     //! Near
         float m_fFar{0.f};                                      //! Far
@@ -109,5 +105,6 @@ namespace CloudsGem
         Vec3 m_vPos{0, 0, 0};
         Vec3 m_vLastSunDir{0, 0, 0};
         uint8 m_nLastBestEdge{0};                               // 0..11 this edge is favored to not jitter between different edges
+        IRenderElement* m_gemRE;
     };
 }

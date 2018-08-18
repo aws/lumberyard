@@ -16,7 +16,6 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <MysticQt/Source/ButtonGroup.h>
-#include <MysticQt/Source/SearchButton.h>
 #include "CollisionMeshesNodeHierarchyWidget.h"
 #include <QDialog>
 

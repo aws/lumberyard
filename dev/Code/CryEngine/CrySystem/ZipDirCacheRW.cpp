@@ -304,8 +304,10 @@ ZipDir::ErrorEnum ZipDir::CacheRW::UpdateFile (const char* szRelativePathSrc, vo
     {
         if (!AZ::IO::FileIOBase::GetDirectInstance()->Write(m_fileHandle, ptr, sizeToWrite))
         {
+            char error[1024];
+            azstrerror_s(error, 1024, errno);
             CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR,
-                "Cannot write to zip file!! error = (%d): %s", errno, strerror(errno));
+                "Cannot write to zip file!! error = (%d): %s", errno, error);
             return ZD_ERROR_IO_FAILED;
         }
         ptr += sizeToWrite;
@@ -468,8 +470,10 @@ ZipDir::ErrorEnum ZipDir::CacheRW::UpdateFileContinuousSegment (const char* szRe
     const bool encrypt = false; // we do not support encription for continous file update
     if (!WriteCompressedData((char*)pUncompressed, nSegmentSize, encrypt))
     {
+        char error[1024];
+        azstrerror_s(error, 1024, errno);
         CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR,
-            "Cannot write to zip file!! error = (%d): %s", errno, strerror(errno));
+            "Cannot write to zip file!! error = (%d): %s", errno, error);
         return ZD_ERROR_IO_FAILED;
     }
 

@@ -79,8 +79,14 @@ void CRenderThread::Run()
     gEnv->pCryPak->SetRenderThreadId(renderThreadId);
     //SetThreadAffinityMask(GetCurrentThread(), 2);
     m_started.Set();
+
     gRenDev->m_pRT->Process();
-    gEnv->pSystem->GetIThreadTaskManager()->MarkThisThreadForDebugging(RENDER_THREAD_NAME, false);
+
+    // Check pointers, it's not guaranteed that system is still valid.
+    if (gEnv && gEnv->pSystem && gEnv->pSystem->GetIThreadTaskManager())
+    {
+        gEnv->pSystem->GetIThreadTaskManager()->MarkThisThreadForDebugging(RENDER_THREAD_NAME, false);
+    }
 }
 
 void CRenderThreadLoading::Run()
@@ -100,8 +106,14 @@ void CRenderThreadLoading::Run()
     // would overwrite the real render thread id
     //gEnv->pCryPak->SetRenderThreadId( renderThreadId );
     m_started.Set();
+
     gRenDev->m_pRT->ProcessLoading();
-    gEnv->pSystem->GetIThreadTaskManager()->MarkThisThreadForDebugging(RENDER_LOADING_THREAD_NAME, false);
+
+    // Check pointers, it's not guaranteed that system is still valid.
+    if (gEnv && gEnv->pSystem && gEnv->pSystem->GetIThreadTaskManager())
+    {
+        gEnv->pSystem->GetIThreadTaskManager()->MarkThisThreadForDebugging(RENDER_LOADING_THREAD_NAME, false);
+    }
 }
 
 void SRenderThread::SwitchMode(bool bEnableVideo)
@@ -3566,7 +3578,21 @@ void SRenderThread::WaitFlushFinishedCond()
             m_nFlush = 0;
         }
 #else
-        m_FlushFinishedCondition.Wait(m_LockFlushNotify);
+        const int OneHunderdMilliseconds = 100;
+        bool timedOut = !(m_FlushFinishedCondition.TimedWait(m_LockFlushNotify, OneHunderdMilliseconds));
+#if defined(AZ_PLATFORM_APPLE_IOS) && !defined(_RELEASE)
+        // When we trigger asserts or warnings from a thread other than the main thread, the dialog box has to be
+        // presented from the main thread. So, we need to pump the system event loop while the main thread is waiting.
+        // We're using locks for waiting on iOS. This means that once the main thread goes into the wait, it's not
+        // going to be able to pump system events. To handle this, we use a timed wait with 100ms. In most cases,
+        // the render thread will complete within 100ms. But, when we need to display a dialog from the render thread,
+        // it times out and pumps the system event loop so we can display the dialog. After that, since m_nFlush is still
+        // true, we will go back into the wait and let the render thread complete.
+        if (timedOut)
+        {
+            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
+        }
+#endif
 #endif
     }
     m_LockFlushNotify.Unlock();

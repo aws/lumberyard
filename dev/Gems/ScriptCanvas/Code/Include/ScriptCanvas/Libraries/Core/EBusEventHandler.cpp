@@ -527,10 +527,13 @@ namespace ScriptCanvas
                     const auto& value = *(parameters + parameterIndex);
                     const Datum input(value);
 
+                    #pragma warning(push)
+                    #pragma warning(disable: 4573)	// the usage of 'X' requires the compiler to capture 'this' but the current default capture mode does not allow it
                     auto callable = [&input](Node& node, const SlotId& slotID)
                     {
                         Node::SetInput(node, slotID, input);
                     };
+                    #pragma warning(pop)
 
                     ForEachConnectedNode(*slot, AZStd::move(callable));
                 }

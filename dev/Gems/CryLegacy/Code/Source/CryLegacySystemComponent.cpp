@@ -22,15 +22,12 @@
 #include <IPlatformOS.h>
 
 #include "Input/AzToLyInput.h"
+#include "CryAction/CryAction.h"
+#include "CryAISystem/CAISystem.h"
+#include "CryAnimation/AnimationBase.h"
+#include "CryScriptSystem/ScriptSystem.h"
 
-#define DLL_INITFUNC_CREATEGAME "CreateGameFramework"
-
-#if defined(AZ_MONOLITHIC_BUILD)
-extern "C"
-{
-    IGameFramework* CreateGameFramework();
-}
-#endif
+CAISystem* g_pAISystem;
 
 namespace CryLegacy
 {
@@ -40,7 +37,7 @@ namespace CryLegacy
         {
             serialize->Class<CryLegacySystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
@@ -80,37 +77,53 @@ namespace CryLegacy
     void CryLegacySystemComponent::Activate()
     {
 #if !defined(AZ_MONOLITHIC_BUILD)
-        if (!m_FrameworkDll)
+        // Legacy games containing code to explicitly load CryAction and call the CreateGameFramework function
+        // were failing because the EBus call to CryGameFrameworkRequests::CreateFramework was returning nullptr
+        // due to the global environment not yet having been attached to the CryAction module (when running a non
+        // monolithic build). Explicitly loading the module here ensures that the global environment gets attached.
+        m_cryActionHandle = AZ::DynamicModuleHandle::Create("CryAction");
+        if (m_cryActionHandle)
         {
-            m_FrameworkDll = CryLoadLibrary(GAME_FRAMEWORK_FILENAME);
-            if (!m_FrameworkDll)
-            {
-                return;
-            }
+            m_cryActionHandle->Load(true);
         }
 #endif // !defined(AZ_MONOLITHIC_BUILD)
-        CryLegacyInputRequestBus::Handler::BusConnect();
+
         CryLegacy::CryLegacyRequestBus::Handler::BusConnect();
         CryGameFrameworkBus::Handler::BusConnect();
+        CryLegacyInputRequestBus::Handler::BusConnect();
+        CryLegacyAISystemRequestBus::Handler::BusConnect();
+        CryLegacyAnimationRequestBus::Handler::BusConnect();
+        CryLegacyEntitySystemRequestBus::Handler::BusConnect();
+        CryLegacyScriptSystemRequestBus::Handler::BusConnect();
     }
 
     void CryLegacySystemComponent::Deactivate()
     {
+        CryLegacyEntitySystemRequestBus::Handler::BusDisconnect();
+        CryLegacyScriptSystemRequestBus::Handler::BusDisconnect();
+        CryLegacyAnimationRequestBus::Handler::BusDisconnect();
+        CryLegacyAISystemRequestBus::Handler::BusDisconnect();
+        CryLegacyInputRequestBus::Handler::BusDisconnect();
         CryGameFrameworkBus::Handler::BusDisconnect();
         CryLegacy::CryLegacyRequestBus::Handler::BusDisconnect();
-        CryLegacyInputRequestBus::Handler::BusDisconnect();
+
+#if !defined(AZ_MONOLITHIC_BUILD)
+        if (m_cryActionHandle)
+        {
+            m_cryActionHandle->Unload();
+            m_cryActionHandle.reset(nullptr);
+        }
+#endif // !defined(AZ_MONOLITHIC_BUILD)
+    }
+
+    IGameFramework* CryLegacySystemComponent::CreateFramework()
+    {
+        return new CCryAction();
     }
 
     IGameFramework* CryLegacySystemComponent::InitFramework(SSystemInitParams& startupParams)
     {
-#if !defined(AZ_MONOLITHIC_BUILD)
-        IGameFramework::TEntryFunction CreateGameFramework = reinterpret_cast<IGameFramework::TEntryFunction>(CryGetProcAddress(m_FrameworkDll, DLL_INITFUNC_CREATEGAME));
-        if (!CreateGameFramework)
-        {
-            return nullptr;
-        }
-#endif // !AZ_MONOLITHIC_BUILD
-        m_Framework = CreateGameFramework();
+        m_Framework = CreateFramework();
         if (!m_Framework)
         {
             return nullptr;
@@ -161,6 +174,73 @@ namespace CryLegacy
         {
             input->ShutDown();
             delete input;
+        }
+    }
+
+    IAISystem* CryLegacySystemComponent::InitAISystem()
+    {
+        AIInitLog(gEnv->pSystem);
+        g_pAISystem = new CAISystem(gEnv->pSystem);
+
+        // Unlike the other legacy CrySystems, we call Init later in SystemInit.cpp
+        return g_pAISystem;
+    }
+
+    void CryLegacySystemComponent::ShutdownAISystem(IAISystem* aiSystem)
+    {
+        if (aiSystem && aiSystem == g_pAISystem)
+        {
+            aiSystem->Release();
+            g_pAISystem = nullptr;
+        }
+    }
+
+    bool CryLegacySystemComponent::InitCharacterManager(const SSystemInitParams& initParams)
+    {
+        return LegacyCryAnimation::InitCharacterManager(initParams);
+    }
+
+    void CryLegacySystemComponent::ShutdownCharacterManager(ICharacterManager* characterManager)
+    {
+        if (characterManager)
+        {
+            SAFE_RELEASE(characterManager);
+        }
+    }
+
+    IEntitySystem* CryLegacySystemComponent::InitEntitySystem()
+    {
+        return LegacyCryEntitySystem::InitEntitySystem();
+    }
+
+    void CryLegacySystemComponent::ShutdownEntitySystem(IEntitySystem* entitySystem)
+    {
+        if (entitySystem)
+        {
+            SAFE_RELEASE(entitySystem);
+        }
+    }
+
+    IScriptSystem* CryLegacySystemComponent::InitScriptSystem()
+    {
+        CScriptSystem* pScriptSystem = new CScriptSystem;
+
+        bool bStdLibs = true;
+        if (!pScriptSystem->Init(gEnv->pSystem, bStdLibs, 1024))
+        {
+            pScriptSystem->Release();
+            return nullptr;
+        }
+
+        gEnv->pScriptSystem = pScriptSystem;
+        return pScriptSystem;
+    }
+
+    void CryLegacySystemComponent::ShutdownScriptSystem(IScriptSystem* scriptSystem)
+    {
+        if (scriptSystem)
+        {
+            SAFE_RELEASE(scriptSystem);
         }
     }
 }

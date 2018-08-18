@@ -10,6 +10,7 @@
 *
 */
 
+#include <EMotionFX/Source/Allocators.h>
 #include "BlendSpaceParamEvaluator.h"
 #include "MotionInstance.h"
 #include "ActorInstance.h"
@@ -18,6 +19,17 @@
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceParamEvaluator, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceParamEvaluatorNone, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceMoveSpeedParamEvaluator, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceTurnSpeedParamEvaluator, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceTravelDirectionParamEvaluator, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceTravelSlopeParamEvaluator, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceTurnAngleParamEvaluator, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceTravelDistanceParamEvaluator, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceLeftRightVelocityParamEvaluator, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceFrontBackVelocityParamEvaluator, AnimGraphAllocator, 0)
+
     MCORE_INLINE bool GetMotionActorAndNode(const MotionInstance& motionInstance,
         Motion*& motion, Actor*& actor, Node*& node)
     {

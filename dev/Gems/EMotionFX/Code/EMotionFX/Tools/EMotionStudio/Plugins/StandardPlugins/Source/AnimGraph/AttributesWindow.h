@@ -10,15 +10,18 @@
 *
 */
 
-#ifndef __EMSTUDIO_ATTRIBUTESWINDOW_H
-#define __EMSTUDIO_ATTRIBUTESWINDOW_H
+#pragma once
 
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
 #include "../StandardPluginsConfig.h"
 #include <EMotionFX/Source/AnimGraphObject.h>
-#include <MysticQt/Source/AttributeWidgetFactory.h>
-#include <MysticQt/Source/PropertyWidget.h>
+#include <Source/Editor/ObjectEditor.h>
+
+#include <AzQtComponents/Components/Widgets/Card.h>
+#include <AzQtComponents/Components/Widgets/CardHeader.h>
+
+#include <QDialog>
 #include <QWidget>
 #include <QCheckBox>
 #include <QVBoxLayout>
@@ -66,19 +69,15 @@ namespace EMStudio
         // copy & paste conditions
         struct CopyPasteConditionObject
         {
-            AZStd::string   mAttributes;
+            AZStd::string   mContents;
             AZStd::string   mSummary;
-            uint32          mConditionType;
+            AZ::TypeId      mConditionType;
         };
 
         void InitForAnimGraphObject(EMotionFX::AnimGraphObject* object);
         void Reinit();
         EMotionFX::AnimGraphObject* GetObject() const      { return mObject; }
         const MCore::Array<CopyPasteConditionObject>& GetCopyPasteConditionClipboard() const { return mCopyPasteClipboard; }
-
-        void UpdateAttributeWidgetStates();
-
-        void OnAttributeChanged(MCore::Attribute* attribute, MCore::AttributeSettings* settings);
 
     public slots:
         void OnAddCondition();
@@ -88,41 +87,29 @@ namespace EMStudio
         void OnPasteConditions();
         void OnPasteConditionsSelective();
 
+        void OnConditionContextMenu(const QPoint& position);
+
     private:
         void contextMenuEvent(QContextMenuEvent* event);
 
-        struct AttributeLink
-        {
-            MysticQt::AttributeWidget*      mWidget;
-            EMotionFX::AnimGraphObject*    mObject;
-            uint32                          mAttributeIndex;
-        };
+        AzQtComponents::Card* CreateAnimGraphCard(AZ::SerializeContext* serializeContext, EMotionFX::AnimGraph* animGraph);
 
-        AnimGraphPlugin*                       mPlugin;
-        MysticQt::PropertyWidget*               mAttributes;
+        AnimGraphPlugin*                        mPlugin;
         QWidget*                                mMainWidget;
         QGridLayout*                            mGridLayout;
         QVBoxLayout*                            mMainLayout;
         QScrollArea*                            mScrollArea;
-        EMotionFX::AnimGraphObject*            mObject;
-        PasteConditionsWindow*                  mPasteConditionsWindow;
-        MCore::Array<AttributeLink>             mAttributeLinks;
+        EMotionFX::AnimGraphObject*             mObject;
 
+        AzQtComponents::Card*                   m_objectCard;
+        EMotionFX::ObjectEditor*                m_objectEditor;
+
+        PasteConditionsWindow*                  mPasteConditionsWindow;
+        
         // copy & paste conditions
         MCore::Array<CopyPasteConditionObject> mCopyPasteClipboard;
 
-        struct ButtonLookup
-        {
-            MCORE_MEMORYOBJECTCATEGORY(AttributesWindow::ButtonLookup, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
-            QObject*    mButton;
-            uint32      mIndex;
-        };
-        MCore::Array<ButtonLookup>              mRemoveButtonTable;
-
-        void AddConditions(EMotionFX::AnimGraphObject* object, QVBoxLayout* mainLayout, bool readOnly);
-        uint32 FindRemoveButtonIndex(QObject* button) const;
+        void CreateConditionsGUI(EMotionFX::AnimGraphObject* object, AZ::SerializeContext* serializeContext, QVBoxLayout* mainLayout);
+        QIcon GetIconForObject(EMotionFX::AnimGraphObject* object);
     };
 } // namespace EMStudio
-
-
-#endif

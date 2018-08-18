@@ -405,7 +405,7 @@ bool CThreadManager::SpawnThread(IThread* pThreadTask, const char* sThreadName, 
 
     // Format thread name
     char strThreadName[THREAD_NAME_LENGTH_MAX];
-    const int cNumCharsNeeded = vsnprintf(strThreadName, CRY_ARRAY_COUNT(strThreadName), sThreadName, args);
+    const int cNumCharsNeeded = azvsnprintf(strThreadName, CRY_ARRAY_COUNT(strThreadName), sThreadName, args);
     if (cNumCharsNeeded > THREAD_NAME_LENGTH_MAX - 1 || cNumCharsNeeded < 0)
     {
         strThreadName[THREAD_NAME_LENGTH_MAX - 1] = '\0'; // The WinApi only null terminates if strLen < bufSize
@@ -490,7 +490,7 @@ bool CThreadManager::RegisterThirdPartyThread(void* pThreadHandle, const char* s
 
     // Format thread name
     char strThreadName[THREAD_NAME_LENGTH_MAX];
-    const int cNumCharsNeeded = vsnprintf(strThreadName, CRY_ARRAY_COUNT(strThreadName), sThreadName, args);
+    const int cNumCharsNeeded = azvsnprintf(strThreadName, CRY_ARRAY_COUNT(strThreadName), sThreadName, args);
     if (cNumCharsNeeded > THREAD_NAME_LENGTH_MAX - 1)
     {
         CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "<ThreadInfo>: ThreadName \"%s\" has been truncated. Max characters allowed: %i. ", strThreadName, THREAD_NAME_LENGTH_MAX - 1);
@@ -564,7 +564,7 @@ bool CThreadManager::UnRegisterThirdPartyThread(const char* sThreadName, ...)
 
     // Format thread name
     char strThreadName[THREAD_NAME_LENGTH_MAX];
-    const int cNumCharsNeeded = vsnprintf(strThreadName, CRY_ARRAY_COUNT(strThreadName), sThreadName, args);
+    const int cNumCharsNeeded = azvsnprintf(strThreadName, CRY_ARRAY_COUNT(strThreadName), sThreadName, args);
     if (cNumCharsNeeded > THREAD_NAME_LENGTH_MAX - 1)
     {
         CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "<ThreadInfo>: ThreadName \"%s\" has been truncated. Max characters allowed: %i. ", strThreadName, THREAD_NAME_LENGTH_MAX - 1);
@@ -606,7 +606,7 @@ threadID CThreadManager::GetThreadId(const char* sThreadName, ...)
 
     // Format thread name
     char strThreadName[THREAD_NAME_LENGTH_MAX];
-    const int cNumCharsNeeded = vsnprintf(strThreadName, CRY_ARRAY_COUNT(strThreadName), sThreadName, args);
+    const int cNumCharsNeeded = azvsnprintf(strThreadName, CRY_ARRAY_COUNT(strThreadName), sThreadName, args);
     if (cNumCharsNeeded > THREAD_NAME_LENGTH_MAX - 1)
     {
         CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "<ThreadInfo>: ThreadName \"%s\" has been truncated. Max characters allowed: %i. ", strThreadName, THREAD_NAME_LENGTH_MAX - 1);

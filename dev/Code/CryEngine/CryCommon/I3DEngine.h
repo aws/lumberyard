@@ -758,8 +758,13 @@ struct IVisAreaManager
     // Summary:
     //   Removes all vis areas in a region of the level.
     virtual void ClearRegion(const AABB& region) = 0;
-    // </interfuscator:shuffle>
+
+    virtual void GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox) = 0;
+    virtual void GetObjectsByFlags(uint dwFlags, PodArray<IRenderNode*>& lstObjects) = 0;
+
+    virtual void GetObjects(PodArray<IRenderNode*>& lstObjects, const AABB* pBBox) = 0;
 };
+
 
 // Summary:
 //   Manages simple pre-merged mesh instances into pre-baked sectors
@@ -1186,7 +1191,7 @@ struct I3DEngine
         eStreamingSubsystem_Audio,
     };
 
-    using LoadStaticObjectAsyncResult = std::function<void(_smart_ptr<IStatObj>)>;
+    using LoadStaticObjectAsyncResult = AZStd::function<void(_smart_ptr<IStatObj>)>;
 
     struct StaticObjectAsyncLoadRequest
     {
@@ -1242,7 +1247,7 @@ struct I3DEngine
     //     Load a level.
     virtual bool LoadLevel(const char* szFolderName, const char* szMissionName) = 0;
     virtual bool InitLevelForEditor(const char* szFolderName, const char* szMissionName) = 0;
-
+    virtual bool LevelLoadingInProgress() = 0;
     // Summary:
     //     Handles any work needed at start of new frame.
     // Notes:
@@ -1374,7 +1379,7 @@ struct I3DEngine
     // Return Value:
     //     A pointer to an object derived from IStatObj.
     virtual IStatObj* FindStatObjectByFilename(const char* filename) = 0;
-    
+
     //Summary:
     //      Creates a deformable render node
     //See Also:
@@ -1555,7 +1560,7 @@ struct I3DEngine
     //     A Vec4 value which constains:
     //     x = unused, y = distance attenuation, z = caustics multiplier, w = caustics darkening multiplier
     virtual CausticsParams GetCausticsParams() const = 0;
-    
+
     // Summary:
     //     Gets ocean animation parameters.
     virtual OceanAnimationData GetOceanAnimationParams() const = 0;
@@ -1783,6 +1788,9 @@ struct I3DEngine
     //      Returns size of smallest terrain texture node (last leaf) in meters
     virtual int GetTerrainTextureNodeSizeMeters() = 0;
 
+    //Summary:
+    //      Returns boolean indicating if the terrain surface is being shown.
+    virtual bool GetShowTerrainSurface() = 0; 
     // Summary:
     //      Sets group parameters
     virtual bool SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, int nSID = 0) = 0;
@@ -2165,18 +2173,6 @@ struct I3DEngine
     virtual IIndexedMesh* CreateIndexedMesh() = 0;
 
     // Summary:
-    //   Paints voxel shape.
-    virtual void Voxel_Paint(Vec3 vPos, float fRadius, int nSurfaceTypeId, Vec3 vBaseColor, EVoxelEditOperation eOperation, EVoxelBrushShape eShape, EVoxelEditTarget eTarget, PodArray<IRenderNode*>* pBrushes, float fMinVoxelSize) = 0;
-
-    // Description:
-    //   Gets list of voxel objects that will be affected by paint operation, IMemoryBlock will contain array of IVoxelObject pointers.
-    virtual IMemoryBlock* Voxel_GetObjects(Vec3 vPos, float fRadius, int nSurfaceTypeId, EVoxelEditOperation eOperation, EVoxelBrushShape eShape, EVoxelEditTarget eTarget) = 0;
-
-    // Summary:
-    //  Setups voxel flags.
-    virtual void Voxel_SetFlags(bool bPhysics, bool bSimplify, bool bShadows, bool bMaterials) = 0;
-
-    // Summary:
     //   Updates rendering mesh in the stat obj associated with pPhysGeom.
     // Notes:
     //  Creates or clones the object if necessary.
@@ -2277,7 +2273,7 @@ struct I3DEngine
     //    Updates the sky material paths.  LoadSkyMaterial will handle loading these materials.
     virtual void SetSkyMaterialPath(const string& skyMaterialPath) = 0;
     virtual void SetSkyLowSpecMaterialPath(const string& skyMaterialPath) = 0;
-    
+
     // Description:
     //    Loads the sky material for the level.  e_SkyType will determine if we load the low spec sky material or the regular sky material.
     virtual void LoadSkyMaterial() = 0;
@@ -2399,9 +2395,6 @@ struct I3DEngine
     // following functions are used by SRenderingPassInfo
     virtual CCamera* GetRenderingPassCamera(const CCamera& rCamera) = 0;
 
-
-#if defined(FEATURE_SVO_GI)
-
     struct SSvoStaticTexInfo
     {
         SSvoStaticTexInfo()
@@ -2412,24 +2405,15 @@ struct I3DEngine
         // SVO data pools
         ITexture* pTexTree;
         ITexture* pTexOpac;
-#ifdef FEATURE_SVO_GI_ALLOW_HQ
-        ITexture* pTexTris;
         ITexture* pTexRgb0;
         ITexture* pTexRgb1;
         ITexture* pTexDynl;
         ITexture* pTexRgb2;
         ITexture* pTexRgb3;
-        ITexture* pTexRgb4;
         ITexture* pTexNorm;
         ITexture* pTexAldi;
 
-        // mesh tracing data atlases
-        ITexture* pTexTriA;
-        ITexture* pTexTexA;
-        ITexture* pTexIndA;
-
         ITexture* pGlobalSpecCM;
-#endif
 
         float fGlobalSpecCM_Mult;
         int nTexDimXY;
@@ -2437,14 +2421,6 @@ struct I3DEngine
         int nBrickSize;
         bool bSvoReady;
         bool bSvoFreeze;
-        Sphere helperInfo;
-
-#define SVO_MAX_PORTALS 16
-        Vec4 arrPortalsPos[SVO_MAX_PORTALS];
-        Vec4 arrPortalsDir[SVO_MAX_PORTALS];
-
-        Vec3 vSkyColorTop;
-        Vec3 vSkyColorBottom;
     };
 
     struct SLightTI
@@ -2456,7 +2432,7 @@ struct I3DEngine
         class ITexture* pCM;
     };
 
-    virtual bool GetSvoStaticTextures(I3DEngine::SSvoStaticTexInfo& svoInfo, PodArray<I3DEngine::SLightTI>* pLightsTI_S, PodArray<I3DEngine::SLightTI>* pLightsTI_D) = 0;
+    virtual void GetSvoStaticTextures(I3DEngine::SSvoStaticTexInfo& svoInfo, PodArray<I3DEngine::SLightTI>* pLightsTI_S, PodArray<I3DEngine::SLightTI>* pLightsTI_D) = 0;
 
     struct SSvoNodeInfo
     {
@@ -2465,10 +2441,7 @@ struct I3DEngine
         int nAtlasOffset;
     };
 
-    virtual void GetSvoBricksForUpdate(PodArray<SSvoNodeInfo>& arrNodeInfo, float fNodeSize, PodArray<SVF_P3F_C4B_T2F>* pVertsOut) = 0;
-
-#endif
-
+    virtual void GetSvoBricksForUpdate(PodArray<SSvoNodeInfo>& arrNodeInfo, bool getDynamic) = 0;
 
 #if defined(USE_GEOM_CACHES)
     // Summary:
@@ -3181,6 +3154,53 @@ inline SRendItemSorter SRendItemSorter::CreateDefaultRendItemSorter()
     rendItemSorter.nValue = 0;
     return rendItemSorter;
 }
+
+
+//Legacy Bus for communicating with SVOGI from the legacy engine code.
+class SVOGILegacyRequests
+    : public AZ::EBusTraits
+{
+public:
+    //////////////////////////////////////////////////////////////////////////
+    // EBusTraits overrides
+    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+    static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+    using MutexType = AZStd::recursive_mutex;
+//    static const bool LocklessDispatch = true;
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Triggers an update of voxel data. 
+    virtual void UpdateVoxelData() = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Triggers an update of voxel data to GPU.
+    virtual void UpdateRenderData() = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Called at framestart
+    virtual void OnFrameStart(const SRenderingPassInfo& passInfo) = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Gets the textures bound for GI plus lighting data.
+    virtual void GetSvoStaticTextures(I3DEngine::SSvoStaticTexInfo& svoInfo, PodArray<I3DEngine::SLightTI>* pLightsTI_S, PodArray<I3DEngine::SLightTI>* pLightsTI_D) = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Generates a list of bricks that need to be updated in compute shaders.
+    virtual void GetSvoBricksForUpdate(PodArray<I3DEngine::SSvoNodeInfo>& arrNodeInfo, bool getDynamic) = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Causes the GI system to free all voxel data. 
+    virtual void ReleaseData() = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Register and unregister a mutex to protect assets during rendering.
+    virtual void RegisterMutex(AZStd::mutex* mutex) = 0;
+    virtual void UnregisterMutex() = 0;
+    
+};
+using SVOGILegacyRequestBus = AZ::EBus<SVOGILegacyRequests>;
+
 
 #endif // CRYINCLUDE_CRYCOMMON_I3DENGINE_H
 

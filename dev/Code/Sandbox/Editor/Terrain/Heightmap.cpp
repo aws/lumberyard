@@ -831,7 +831,8 @@ void CHeightmap::SaveImage16Bit(const QString& fileName)
 //! Save heightmap in RAW format.
 void CHeightmap::SaveRAW(const QString& rawFile)
 {
-    FILE* file = fopen(rawFile.toUtf8().data(), "wb");
+    FILE* file = nullptr;
+    azfopen(&file, rawFile.toUtf8().data(), "wb");
     if (!file)
     {
         QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Warning"), QObject::tr("Error saving file %1").arg(rawFile));
@@ -867,7 +868,8 @@ void CHeightmap::SaveRAW(const QString& rawFile)
 //! Load heightmap from RAW format.
 void    CHeightmap::LoadRAW(const QString& rawFile)
 {
-    FILE* file = fopen(rawFile.toUtf8().data(), "rb");
+    FILE* file = nullptr;
+    azfopen(&file, rawFile.toUtf8().data(), "rb");
     if (!file)
     {
         QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Warning"), QObject::tr("Error loading file %1").arg(rawFile));
@@ -2118,7 +2120,8 @@ void CHeightmap::Hold()
     qApp->setOverrideCursor(Qt::WaitCursor);
 
     // Open the hold / fetch file
-    hFile = fopen(HEIGHTMAP_HOLD_FETCH_FILE, "wb");
+    hFile = nullptr;
+    azfopen(&hFile, HEIGHTMAP_HOLD_FETCH_FILE, "wb");
     assert(hFile);
     if (hFile)
     {
@@ -2180,7 +2183,8 @@ bool CHeightmap::Read(QString strFileName)
     }
 
     // Open the hold / fetch file
-    hFile = fopen(strFileName.toUtf8().data(), "rb");
+    hFile = nullptr;
+    azfopen(&hFile, strFileName.toUtf8().data(), "rb");
 
     if (!hFile)
     {
@@ -2415,7 +2419,7 @@ void CHeightmap::Serialize(CXmlArchive& xmlAr)
         // Loading
         XmlNodeRef heightmap = xmlAr.root;
 
-        if (_stricmp(heightmap->getTag(), "Heightmap"))
+        if (azstricmp(heightmap->getTag(), "Heightmap"))
         {
             heightmap = xmlAr.root->findChild("Heightmap"); // load old version
             if (!heightmap)

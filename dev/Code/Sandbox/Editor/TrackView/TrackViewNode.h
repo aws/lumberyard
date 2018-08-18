@@ -191,9 +191,9 @@ public:
     // Clear selection of this node and all sub nodes
     void ClearSelection();
 
-    // Expanded state
-    virtual void SetExpanded(bool bExpanded);
-    virtual bool IsExpanded() const { return m_bExpanded; }
+    // Expanded state interface
+    virtual void SetExpanded(bool expanded) = 0;
+    virtual bool GetExpanded() const = 0;
 
     // Disabled state
     virtual void SetDisabled(bool bDisabled) {}
@@ -244,7 +244,6 @@ protected:
     std::vector<std::unique_ptr<CTrackViewNode> > m_childNodes;
 
     bool m_bSelected;
-    bool m_bExpanded;
     bool m_bHidden;
 };
 #endif // CRYINCLUDE_EDITOR_TRACKVIEW_TRACKVIEWNODE_H

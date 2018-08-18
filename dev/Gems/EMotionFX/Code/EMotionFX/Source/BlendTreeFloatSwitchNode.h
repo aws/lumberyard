@@ -12,7 +12,6 @@
 
 #pragma once
 
-// include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
 
@@ -25,15 +24,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeFloatSwitchNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeFloatSwitchNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeFloatSwitchNode, "{8DDB9197-74A4-4C75-A58F-5B68C924FCF1}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000012
-        };
+        AZ_RTTI(BlendTreeFloatSwitchNode, "{8DDB9197-74A4-4C75-A58F-5B68C924FCF1}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -58,35 +51,32 @@ namespace EMotionFX
             PORTID_OUTPUT_RESULT    = 0
         };
 
-        enum
-        {
-            ATTRIB_STATICVALUE_0    = 0,
-            ATTRIB_STATICVALUE_1    = 1,
-            ATTRIB_STATICVALUE_2    = 2,
-            ATTRIB_STATICVALUE_3    = 3,
-            ATTRIB_STATICVALUE_4    = 4
-        };
+        BlendTreeFloatSwitchNode();
+        ~BlendTreeFloatSwitchNode();
 
-        static BlendTreeFloatSwitchNode* Create(AnimGraph* animGraph);
-
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
-
-        void OnUpdateAttributes() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         uint32 GetVisualColor() const override;
+        float GetValue(uint32 index) const;
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        void SetValue0(float value0);
+        void SetValue1(float value1);
+        void SetValue2(float value2);
+        void SetValue3(float value3);
+        void SetValue4(float value3);
+
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        BlendTreeFloatSwitchNode(AnimGraph* animGraph);
-        ~BlendTreeFloatSwitchNode();
-
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+
+        float   m_value0;
+        float   m_value1;
+        float   m_value2;
+        float   m_value3;
+        float   m_value4;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

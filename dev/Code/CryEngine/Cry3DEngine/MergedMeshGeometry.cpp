@@ -427,7 +427,9 @@ static inline size_t CullInstanceList(
     const int cullFrustum = context.flags & MMRM_CULL_FRUSTUM;
     const int cullDistance = context.flags & MMRM_CULL_DISTANCE;
     const int cullLod = context.flags & MMRM_CULL_LOD;
-    const int forceLod = (context.flags >> MMRM_LOD_SHIFT) & 3;
+    const int forceLod = (context.flags >> MMRM_LOD_SHIFT) & MMRM_LOD_MASK;
+    // The sample reduction uses the top bit from the LOD, so LOD indexes 4 and 5
+    // will automatically have sample reduction applied
     const int sampleReduction = context.flags >> MMRM_SAMPLE_REDUCTION_SHIFT;
     const float sampleOffset = 1.0f + (float) sampleReduction;
     const float fExtents = c_MergedMeshesExtent;

@@ -1,0 +1,5 @@
+AWS IoT Python SDK for Internet of Things Service
+Copyright 2010-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+This product includes software developed by
+Amazon Inc (http://www.amazon.com/).

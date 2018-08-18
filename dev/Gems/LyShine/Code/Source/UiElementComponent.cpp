@@ -51,7 +51,7 @@ UiElementComponent::~UiElementComponent()
     // and leave its parent with a dangling child pointer.
     // So we report an error in that case and do some recovery code.
 
-    // If we were being deleted via DestroyElement m_parentId would be invalid 
+    // If we were being deleted via DestroyElement m_parentId would be invalid
     if (m_parentId.IsValid())
     {
         // Note we do not rely on the m_parent pointer because if the canvas is being unloaded for example the
@@ -850,7 +850,7 @@ AZ::Entity* UiElementComponent::FindDescendantById(LyShine::ElementId id)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiElementComponent::FindDescendantElements(std::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result)
+void UiElementComponent::FindDescendantElements(AZStd::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result)
 {
     if (AreChildPointersValid())
     {
@@ -885,7 +885,7 @@ void UiElementComponent::FindDescendantElements(std::function<bool(const AZ::Ent
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiElementComponent::CallOnDescendantElements(std::function<void(const AZ::EntityId)> callFunction)
+void UiElementComponent::CallOnDescendantElements(AZStd::function<void(const AZ::EntityId)> callFunction)
 {
     if (AreChildPointersValid())
     {
@@ -1233,7 +1233,6 @@ void UiElementComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiElementBus>("UiElementBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetName", &UiElementBus::Events::GetName)
             ->Event("GetCanvas", &UiElementBus::Events::GetCanvasEntityId)
             ->Event("GetParent", &UiElementBus::Events::GetParentEntityId)

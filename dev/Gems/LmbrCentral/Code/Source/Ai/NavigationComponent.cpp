@@ -15,7 +15,6 @@
 
 #include <IPathfinder.h>
 #include <MathConversion.h>
-#include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
@@ -166,7 +165,7 @@ namespace LmbrCentral
         params.minSpeed = params.normalSpeed * 0.8f;
         params.maxSpeed = params.normalSpeed * 1.2f;
         params.stopAtEnd = true;
-        m_pathFollower = gEnv->pAISystem->CreateAndReturnNewDefaultPathFollower(params, m_pathObstacles);
+        m_pathFollower = gEnv->pAISystem ? gEnv->pAISystem->CreateAndReturnNewDefaultPathFollower(params, m_pathObstacles) : nullptr;
 
         // Disconnect from any notifications from earlier requests
         AZ::TransformNotificationBus::Handler::BusDisconnect();
@@ -299,8 +298,11 @@ namespace LmbrCentral
                 if (GetRequestId() != PathfindResponse::kInvalidRequestId)
                 {
                     // Cancel that request with the pathfinder
-                    IMNMPathfinder* pathFinder = gEnv->pAISystem->GetMNMPathfinder();
-                    pathFinder->CancelPathRequest(GetPathfinderRequestId());
+                    if (gEnv->pAISystem)
+                    {
+                        IMNMPathfinder* pathFinder = gEnv->pAISystem->GetMNMPathfinder();
+                        pathFinder->CancelPathRequest(GetPathfinderRequestId());
+                    }
                 }
             }
 
@@ -346,7 +348,10 @@ namespace LmbrCentral
     void NavigationComponent::Init()
     {
         m_lastResponseCache.SetOwningComponent(this);
-        m_agentTypeId = gEnv->pAISystem->GetNavigationSystem()->GetAgentTypeID(m_agentType.c_str());
+        if (gEnv->pAISystem)
+        {
+            m_agentTypeId = gEnv->pAISystem->GetNavigationSystem()->GetAgentTypeID(m_agentType.c_str());
+        }
     }
 
     void NavigationComponent::Activate()
@@ -479,8 +484,8 @@ namespace LmbrCentral
         pathfinderRequest.resultCallback = functor(*this, &NavigationComponent::OnPathResult);
 
         // 5. Request the path.
-        IMNMPathfinder* pathFinder = gEnv->pAISystem->GetMNMPathfinder();
-        return pathFinder->RequestPathTo(this, pathfinderRequest);
+        IMNMPathfinder* pathFinder = gEnv->pAISystem ? gEnv->pAISystem->GetMNMPathfinder() : nullptr;
+        return pathFinder ? pathFinder->RequestPathTo(this, pathfinderRequest) : 0;
     }
 
     void NavigationComponent::OnPathResult(const MNM::QueuedPathID& pathfinderRequestId, MNMPathRequestResult& result)

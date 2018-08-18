@@ -25,7 +25,7 @@
 #include "CCryDXMETALShader.hpp"
 #include "CCryDXMETALShaderResourceView.hpp"
 #include "CCryDXMETALUnorderedAccessView.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 #include "../Implementation/GLFormat.hpp"
 
 #define DXGL_CHECK_HAZARDS 0
@@ -103,7 +103,7 @@ void CCryDXGLDeviceContext::Shutdown()
     m_pDevice = NULL;
 }
 
-NCryMetal::CContext* CCryDXGLDeviceContext::GetGLContext()
+NCryMetal::CContext* CCryDXGLDeviceContext::GetMetalContext()
 {
     return m_pContext;
 }

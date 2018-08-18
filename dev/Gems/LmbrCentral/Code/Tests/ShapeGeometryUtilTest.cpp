@@ -16,6 +16,7 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <Shape/ShapeGeometryUtil.h>
 #include <Tests/TestTypes.h>
+#include <AzCore/Math/Vector3.h>
 
 using namespace AZ;
 using namespace LmbrCentral;
@@ -45,7 +46,7 @@ namespace UnitTest
     TEST_F(ShapeGeometryUtilTest, GenerateTrianglesCCW)
     {
         AZStd::vector<Vector3> triangles = 
-            GenerateTriangles<Vector3>(
+            GenerateTriangles(
             {
                 Vector2(0.0f, 0.0f), Vector2(1.0f, 0.0f),
                 Vector2(1.0f, 1.0f), Vector2(0.0f, 1.0f) 
@@ -59,7 +60,7 @@ namespace UnitTest
     TEST_F(ShapeGeometryUtilTest, GenerateTrianglesCW)
     {
         AZStd::vector<Vector3> triangles =
-            GenerateTriangles<Vector3>(
+            GenerateTriangles(
             {
                 Vector2(0.0f, 0.0f), Vector2(0.0f, 1.0f),
                 Vector2(1.0f, 1.0f), Vector2(1.0f, 0.0f)
@@ -73,7 +74,7 @@ namespace UnitTest
     TEST_F(ShapeGeometryUtilTest, GenerateTrianglesFailureNonSimple)
     {
         AZStd::vector<Vector3> triangles =
-            GenerateTriangles<Vector3>(
+            GenerateTriangles(
             {
                 Vector2(0.0f, -2.0f), Vector2(2.0f, -2.0f),
                 Vector2(2.0f, 1.0f), Vector2(4.0f, 1.0f)
@@ -87,7 +88,7 @@ namespace UnitTest
     TEST_F(ShapeGeometryUtilTest, GenerateTrianglesSimpleConcave)
     {
         AZStd::vector<Vector3> triangles =
-            GenerateTriangles<Vector3>(
+            GenerateTriangles(
             {
                 Vector2(1.0f, -1.0f), Vector2(0.0f, -2.0f),
                 Vector2(1.0f, -2.0f), Vector2(2.0f, -2.0f),

@@ -15,10 +15,12 @@
 #include "AnimGraphNodeData.h"
 #include "AnimGraphInstance.h"
 #include "AnimGraphNode.h"
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphNodeData, AnimGraphObjectDataAllocator, 0)
+
     // constructor
     AnimGraphNodeData::AnimGraphNodeData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
         : AnimGraphObjectData(reinterpret_cast<AnimGraphObject*>(node), animGraphInstance)
@@ -46,16 +48,9 @@ namespace EMotionFX
     // static create
     AnimGraphNodeData* AnimGraphNodeData::Create(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
     {
-        return new AnimGraphNodeData(node, animGraphInstance);
+        return aznew AnimGraphNodeData(node, animGraphInstance);
     }
-
-
-    // create an instance in a piece of memory
-    AnimGraphObjectData* AnimGraphNodeData::Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance)
-    {
-        return new(destMem) AnimGraphNodeData(static_cast<AnimGraphNode*>(object), animGraphInstance);
-    }
-
+    
 
     // reset the sync related data
     void AnimGraphNodeData::Clear()

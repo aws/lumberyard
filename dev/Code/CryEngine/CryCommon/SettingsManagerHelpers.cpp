@@ -65,7 +65,7 @@ void SettingsManagerHelpers::ConvertUtf16ToUtf8(const wchar_t* src, CCharBuffer 
         }
         else
         {
-            std::strcpy(dst.getPtr(), utf8String.c_str());
+            azstrcpy(dst.getPtr(), dstsize, utf8String.c_str());
             dst[byteCount] = 0;
         }
     }
@@ -95,7 +95,7 @@ void SettingsManagerHelpers::ConvertUtf8ToUtf16(const char* src, CWCharBuffer ds
         }
         else
         {
-            std::wcscpy(dst.getPtr(), utf16String.c_str());
+            azwcscpy(dst.getPtr(), dstsize, utf16String.c_str());
             dst[charCount] = 0;
         }
     }

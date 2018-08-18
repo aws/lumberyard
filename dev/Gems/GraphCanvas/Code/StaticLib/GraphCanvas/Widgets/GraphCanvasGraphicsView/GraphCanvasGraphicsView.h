@@ -17,7 +17,7 @@
 #include <QGraphicsView>
 #include <QGraphicsItem>
 #include <QPoint>
-#include <QScrollbar>
+#include <QScrollBar>
 #include <QScopedValueRollback>
 #include <QTimer>
 #include <QWheelEvent>

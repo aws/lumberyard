@@ -27,7 +27,7 @@ namespace EMotionFX
             public:
                 AZ_RTTI(IMotionScaleRule, "{EFBCC10B-5406-4BD6-B259-BCCD2A24893D}", AZ::SceneAPI::DataTypes::IRule);
 
-                virtual ~IMotionScaleRule() override = default;
+                ~IMotionScaleRule() override = default;
 
                 virtual float GetScaleFactor() const = 0;
             };

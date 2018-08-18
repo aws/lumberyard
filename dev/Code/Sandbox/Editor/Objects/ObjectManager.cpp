@@ -1080,6 +1080,8 @@ bool CObjectManager::AddObject(CBaseObject* obj)
 //////////////////////////////////////////////////////////////////////////
 void CObjectManager::RemoveObject(CBaseObject* obj)
 {
+    AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
     assert(obj != 0);
 
     InvalidateVisibleList();
@@ -1437,6 +1439,8 @@ bool CObjectManager::SelectObject(CBaseObject* obj, bool bUseMask)
     }
     */
 
+    AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
     m_currSelection->AddObject(obj);
     SetObjectSelected(obj, true);
 
@@ -1447,6 +1451,8 @@ bool CObjectManager::SelectObject(CBaseObject* obj, bool bUseMask)
 
 void CObjectManager::SelectEntities(std::set<CEntityObject*>& s)
 {
+    AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
     for (std::set<CEntityObject*>::iterator it = s.begin(), end = s.end(); it != end; ++it)
     {
         SelectObject(*it);
@@ -1455,6 +1461,8 @@ void CObjectManager::SelectEntities(std::set<CEntityObject*>& s)
 
 void CObjectManager::UnselectObject(CBaseObject* obj)
 {
+    AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
     /*
     if (GetIEditor()->IsUndoRecording() && obj->IsSelected())
     {
@@ -1602,6 +1610,9 @@ void CObjectManager::SerializeNameSelection(XmlNodeRef& rootNode, bool bLoading)
 int CObjectManager::ClearSelection()
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
+    AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
     int numSel = m_currSelection->GetCount();
     UnselectCurrent();
     m_defaultSelection.RemoveAll();
@@ -1620,6 +1631,9 @@ int CObjectManager::ClearSelection()
 int CObjectManager::InvertSelection()
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
+    AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
     int selCount = 0;
     // iterate all objects.
     for (Objects::const_iterator it = m_objects.begin(); it != m_objects.end(); ++it)
@@ -1646,6 +1660,8 @@ void CObjectManager::SetSelection(const QString& name)
     CSelectionGroup* selection = stl::find_in_map(m_selections, name, (CSelectionGroup*)0);
     if (selection)
     {
+        AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
         UnselectCurrent();
         assert(selection != 0);
         m_currSelection = selection;
@@ -1656,6 +1672,9 @@ void CObjectManager::SetSelection(const QString& name)
 void CObjectManager::RemoveSelection(const QString& name)
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
+    AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
     QString selName = name;
     CSelectionGroup* selection = stl::find_in_map(m_selections, name, (CSelectionGroup*)0);
     if (selection)
@@ -1676,6 +1695,8 @@ void CObjectManager::CheckAndFixSelection()
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     bool bObjectMode = qobject_cast<CObjectMode*>(GetIEditor()->GetEditTool()) != nullptr;
+
+    AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
 
     if (m_currSelection->GetCount() == 0)
     {
@@ -1735,6 +1756,8 @@ void CObjectManager::CheckAndFixSelection()
 
 void CObjectManager::SelectCurrent()
 {
+    AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
+
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     for (int i = 0; i < m_currSelection->GetCount(); i++)
     {
@@ -2137,6 +2160,8 @@ bool CObjectManager::IsObjectDeletionAllowed(CBaseObject* pObject)
 void CObjectManager::DeleteSelection()
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
+    AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
 
     // Make sure to unlock selection.
     GetIEditor()->LockSelection(false);
@@ -3171,7 +3196,7 @@ CBaseObject* CObjectManager::FindPhysicalObjectOwner(IPhysicalEntity* pPhysicalE
     break;
     case PHYS_FOREIGN_ID_ENTITY:
     {
-        IEntity* pIEntity = gEnv->pEntitySystem->GetEntityFromPhysics(pPhysicalEntity);
+        IEntity* pIEntity = gEnv->pEntitySystem ? gEnv->pEntitySystem->GetEntityFromPhysics(pPhysicalEntity) : nullptr;
         if (pIEntity)
         {
             return CEntityObject::FindFromEntityId(pIEntity->GetId());

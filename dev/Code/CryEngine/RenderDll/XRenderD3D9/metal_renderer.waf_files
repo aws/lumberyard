@@ -52,7 +52,7 @@
             "DXMETAL/Implementation/GLShader.hpp",
             "DXMETAL/Implementation/GLState.hpp",
             "DXMETAL/Implementation/METALContext.hpp",
-            "DXMETAL/Implementation/METALDevice.hpp"
+            "DXMETAL/Implementation/MetalDevice.hpp"
         ],
         "DXMETAL/Interfaces":
         [

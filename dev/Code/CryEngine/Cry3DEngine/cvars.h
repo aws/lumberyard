@@ -28,10 +28,6 @@ struct CVars
 
     void Init();
 
-#if defined(FEATURE_SVO_GI)
-    void RegisterTICVars();
-#endif
-
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
         pSizer->AddObject(this, sizeof(*this));
@@ -296,6 +292,7 @@ struct CVars
     DeclareConstFloatCVar(e_StreamCgfFastUpdateMaxDistance);
     DeclareConstIntCVar(e_DecalsClip, 1);
     ICVar* e_ScreenShotFileFormat;
+    ICVar* e_ScreenShotFileName;
     int e_CharLodMin;
     float e_PhysOceanCell;
     DeclareConstIntCVar(e_WindAreas, 1);
@@ -491,7 +488,7 @@ struct CVars
     float e_ShadowsBlendCascadesVal;
     float e_ParticlesMaxScreenFill;
     DeclareConstIntCVar(e_DebugDrawShowOnlyLod, -1);
-    DeclareConstIntCVar(e_ScreenShot, 0);
+    int e_ScreenShot;
     DeclareConstIntCVar(e_PrecacheLevel, 0);
     float e_ScreenShotMapCenterX;
     DeclareConstIntCVar(e_TerrainOcclusionCullingVersion, 1);
@@ -567,8 +564,4 @@ struct CVars
     int e_PermanentRenderObjects;
     int e_StaticInstancing;
     int e_StaticInstancingMinInstNum;
-
-#if defined(FEATURE_SVO_GI)
-    #include "SVO/SceneTreeCVars.inl" // include SVO related variables
-#endif
 };

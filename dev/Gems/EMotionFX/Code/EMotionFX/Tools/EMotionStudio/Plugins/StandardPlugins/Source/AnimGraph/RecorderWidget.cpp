@@ -190,7 +190,7 @@ namespace EMStudio
 
             if (mFilterButtonGroup->GetButton(0, 0)->isChecked())
             {
-                settings.mNodeHistoryTypeIDs.Add(EMotionFX::AnimGraphMotionNode::TYPE_ID);
+                settings.mNodeHistoryTypes.insert(azrtti_typeid<EMotionFX::AnimGraphMotionNode>());
             }
 
             EMotionFX::GetRecorder().StartRecording(settings);

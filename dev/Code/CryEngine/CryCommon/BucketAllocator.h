@@ -50,6 +50,7 @@ namespace BucketAllocatorDetail
             ~CleanupAllocator();
 
             bool IsValid() const;
+            size_t GetCapacityUsed() const;
 
             void* Calloc(size_t num, size_t sz);
             void Free(void* ptr);
@@ -57,7 +58,7 @@ namespace BucketAllocatorDetail
         private:
             enum
             {
-                ReserveCapacity = 4 * 1024 * 1024
+                ReserveCapacity = 16 * 1024 * 1024
             };
 
         private:
@@ -67,6 +68,7 @@ namespace BucketAllocatorDetail
         private:
             void* m_base;
             void* m_end;
+            UINT_PTR m_pageSizeAlignment;
         };
 
         static UINT_PTR ReserveAddressSpace(size_t numPages, size_t pageLen);

@@ -30,6 +30,9 @@ namespace CloudCanvasCommon
 
         // Some platforms (Android) need to point the http client at the certificate bundle to avoid SSL errors
         virtual CloudCanvas::RequestRootCAFileResult RequestRootCAFile(AZStd::string& resultPath) = 0;
+        virtual int GetEndpointHttpResponseCode(const AZStd::string& endPoint) { return 0; }
+        // Called by RequestRootCAFile - Skips platform checks
+        virtual CloudCanvas::RequestRootCAFileResult GetUserRootCAFile(AZStd::string& resultPath) = 0;
     };
     using CloudCanvasCommonRequestBus = AZ::EBus<CloudCanvasCommonRequests>;
 

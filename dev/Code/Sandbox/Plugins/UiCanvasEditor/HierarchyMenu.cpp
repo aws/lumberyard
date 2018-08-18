@@ -60,7 +60,7 @@ HierarchyMenu::HierarchyMenu(HierarchyWidget* hierarchy,
     {
         SavePrefab(hierarchy, selectedItems);
     }
-        
+
     addSeparator();
 
     if (showMask & Show::kCutCopyPaste)
@@ -242,7 +242,7 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
         if (showMask & Show::kPushToSlice)
         {
             QAction* action = addAction(QObject::tr("&Push to Slice..."));
-            QObject::connect(action, &QAction::triggered, hierarchy, [this, hierarchy, selectedEntities]
+            QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedEntities]
                 {
                     hierarchy->GetEditorWindow()->GetSliceManager()->PushEntitiesModal(selectedEntities, nullptr);
                 }
@@ -252,14 +252,14 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
         if (showMask & Show::kNewSlice)
         {
             QAction* action = addAction("Make Cascaded Slice from Selected Slices && Entities...");
-            QObject::connect(action, &QAction::triggered, hierarchy, [this, hierarchy, selectedEntities]
+            QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedEntities]
                 {
                     hierarchy->GetEditorWindow()->GetSliceManager()->MakeSliceFromSelectedItems(hierarchy, true);
                 }
             );
 
             action = addAction(QObject::tr("Make Detached Slice from Selected Entities..."));
-            QObject::connect(action, &QAction::triggered, hierarchy, [this, hierarchy, selectedEntities]
+            QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedEntities]
                 {
                     hierarchy->GetEditorWindow()->GetSliceManager()->MakeSliceFromSelectedItems(hierarchy, false);
                 }
@@ -287,7 +287,7 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
                     detachEntitiesActionText = QObject::tr("Detach slice entities...");
                 }
                 QAction* action = addAction(detachEntitiesActionText);
-                QObject::connect(action, &QAction::triggered, hierarchy, [this, hierarchy, selectedDetachEntities]
+                QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedDetachEntities]
                 {
                     hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceEntities(selectedDetachEntities);
                 }
@@ -306,7 +306,7 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
                     detachSlicesActionText = QObject::tr("Detach slice instances...");
                 }
                 QAction* action = addAction(detachSlicesActionText);
-                QObject::connect(action, &QAction::triggered, hierarchy, [this, hierarchy, selectedEntities]
+                QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedEntities]
 
                 {
                     hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceInstances(selectedEntities);
@@ -321,7 +321,7 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
         if (showMask & Show::kNewSlice)
         {
             QAction* action = addAction(QObject::tr("Make New &Slice from Selection..."));
-            QObject::connect(action, &QAction::triggered, hierarchy, [this, hierarchy]
+            QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy]
                 {
                     hierarchy->GetEditorWindow()->GetSliceManager()->MakeSliceFromSelectedItems(hierarchy, false);
                 }
@@ -384,7 +384,7 @@ void HierarchyMenu::New_ElementFromSlice(HierarchyWidget* hierarchy,
     QObject::connect(
         action,
         &QAction::triggered,
-        hierarchy, [this, hierarchy, optionalPos]
+        hierarchy, [hierarchy, optionalPos]
         {
             AZ::Vector2 viewportPosition(-1.0f,-1.0f); // indicates no viewport position specified
             if (optionalPos)

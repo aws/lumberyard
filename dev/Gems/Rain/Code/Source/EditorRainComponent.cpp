@@ -46,7 +46,7 @@ namespace Rain
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorRainComponent::m_enabled, "Enabled", "Sets if the rain is enabled")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorRainComponent::m_rainOptions, "Options", "Options for rain simulation")
                     ;
-                
+
                 editContext->Class<RainOptions>("Rain Options", "Options for rain simulation")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
@@ -176,7 +176,7 @@ namespace Rain
         //Retrieve the underlying legacy CRain object
         using namespace LYGame;
         IEntity* legacyEntity = entityObject->GetIEntity();
-        std::shared_ptr<CRain> rain = legacyEntity->GetComponent<CRain>();
+        AZStd::shared_ptr<CRain> rain = legacyEntity->GetComponent<CRain>();
         if (!rain)
         {
             //Entity did not have a CRain component

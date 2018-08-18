@@ -10,7 +10,7 @@
 *
 */
 #include "native/utilities/GUIApplicationManager.h"
-#include "native/utilities/AssetUtils.h"
+#include "native/utilities/assetUtils.h"
 #include "native/AssetManager/assetProcessorManager.h"
 #include "native/connection/connectionManager.h"
 #include "native/utilities/IniConfiguration.h"
@@ -36,7 +36,7 @@
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
 #include <AzQtComponents/Components/StylesheetPreprocessor.h>
 #include <AzCore/base.h>
-#include <AzCore/debug/trace.h>
+#include <AzCore/Debug/Trace.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -48,6 +48,8 @@
 #if defined(AZ_PLATFORM_APPLE_OSX)
 #include <AppKit/NSRunningApplication.h>
 #include <CoreServices/CoreServices.h>
+
+#include "MacDockIconHandler.h"
 #endif
 #include <AzCore/std/chrono/clocks.h>
 
@@ -226,6 +228,7 @@ bool GUIApplicationManager::Run()
     }
     else
     {
+#ifdef AZ_PLATFORM_WINDOWS
         // Qt / Windows has issues if the main window isn't shown once
         // so we show it then hide it
         m_mainWindow->show();
@@ -233,7 +236,12 @@ bool GUIApplicationManager::Run()
         // Have a delay on the hide, to make sure that the show is entirely processed
         // first
         QTimer::singleShot(0, m_mainWindow, &QWidget::hide);
+#endif
     }
+
+#ifdef AZ_PLATFORM_APPLE_OSX
+    connect(new MacDockIconHandler(this), &MacDockIconHandler::dockIconClicked, m_mainWindow, &MainWindow::ShowWindow);
+#endif
 
     QAction* quitAction = new QAction(QObject::tr("Quit"), m_mainWindow);
     quitAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q));
@@ -244,7 +252,7 @@ bool GUIApplicationManager::Run()
     QAction* refreshAction = new QAction(QObject::tr("Refresh Stylesheet"), m_mainWindow);
     refreshAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
     m_mainWindow->addAction(refreshAction);
-    m_mainWindow->connect(refreshAction, &QAction::triggered, refreshStyleSheets);
+    m_mainWindow->connect(refreshAction, &QAction::triggered, this, refreshStyleSheets);
 
     QObject::connect(this, &GUIApplicationManager::ShowWindow, m_mainWindow, &MainWindow::ShowWindow);
 
@@ -502,6 +510,9 @@ bool GUIApplicationManager::PostActivate()
 
 void GUIApplicationManager::CreateQtApplication()
 {
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+
     // Qt actually modifies the argc and argv, you must pass the real ones in as ref so it can.
     m_qApp = new QApplication(*m_frameworkApp.GetArgC(), *m_frameworkApp.GetArgV());
 }
@@ -552,7 +563,15 @@ void GUIApplicationManager::FileChanged(QString path)
             m_connectionManager->UpdateWhiteListFromBootStrap();
         }
 
-        QMetaObject::invokeMethod(this, "QuitRequested", Qt::QueuedConnection);
+        // we only have to quit if the actual project name has changed, not if just the bootstrap has changed.
+        QString previousGameName = AssetUtilities::ComputeGameName(); // get the cached version
+        QString newGameName = AssetUtilities::ComputeGameName(QString(), true); // force=true!
+        
+        if (newGameName != previousGameName)
+        {
+            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Bootstrap.cfg Game Name changed from %s to %s.  Quitting\n", previousGameName.toUtf8().constData(), newGameName.toUtf8().constData());
+            QMetaObject::invokeMethod(this, "QuitRequested", Qt::QueuedConnection);
+        }
     }
     else if (QString::compare(AssetUtilities::NormalizeFilePath(path), assetDbPath, Qt::CaseInsensitive) == 0)
     {

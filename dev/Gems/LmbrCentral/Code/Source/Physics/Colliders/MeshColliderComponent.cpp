@@ -24,7 +24,7 @@ namespace LmbrCentral
 {
     using AzFramework::ColliderComponentRequestBus;
     using AzFramework::ColliderComponentEventBus;
-    
+
     void MeshColliderComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -32,8 +32,7 @@ namespace LmbrCentral
         {
             serializeContext->Class<MeshColliderComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
-            ;
+                ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)

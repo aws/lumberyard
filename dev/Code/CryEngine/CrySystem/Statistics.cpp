@@ -39,7 +39,7 @@
 // Access to some game info.
 #include "IGame.h"                          // IGame
 #include "IGameFramework.h"     // IGameFramework
-#include "../CryAction/ILevelSystem.h"      // IGameFramework
+#include "ILevelSystem.h"      // IGameFramework
 
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
@@ -62,14 +62,9 @@ AZStd::vector<AZStd::string> GetModuleNames()
 
         moduleNames.push_back("Cry3DEngine" MODULE_EXTENSION);
         moduleNames.push_back("CryAction" MODULE_EXTENSION);
-        moduleNames.push_back("CryAISystem" MODULE_EXTENSION);
-        moduleNames.push_back("CryAnimation" MODULE_EXTENSION);
-        moduleNames.push_back("CryEntitySystem" MODULE_EXTENSION);
         moduleNames.push_back("CryFont" MODULE_EXTENSION);
-        moduleNames.push_back("CryInput" MODULE_EXTENSION);
         moduleNames.push_back("CryNetwork" MODULE_EXTENSION);
         moduleNames.push_back("CryPhysics" MODULE_EXTENSION);
-        moduleNames.push_back("CryScriptSystem" MODULE_EXTENSION);
         moduleNames.push_back("CrySoundSystem" MODULE_EXTENSION);
         moduleNames.push_back("CrySystem" MODULE_EXTENSION);
         // K01
@@ -110,7 +105,7 @@ typedef BOOL (WINAPI * GetProcessMemoryInfoProc)(HANDLE, PPROCESS_MEMORY_COUNTER
 
 #if defined(WIN32)
 #pragma pack(push,1)
-const struct PEHeader_DLL
+struct PEHeader_DLL
 {
     DWORD signature;
     IMAGE_FILE_HEADER _head;
@@ -752,7 +747,7 @@ struct SCryEngineStats
         pRenderer->EF_Query(EFQ_Mesh_Count, nSummaryMeshCount);
         pRenderer->EF_Query(EFQ_Alloc_APIMesh, nAPI_MeshSize);
 
-        nSummaryScriptSize = pSystem->GetIScriptSystem()->GetScriptAllocSize();
+        nSummaryScriptSize = pSystem->GetIScriptSystem() ? pSystem->GetIScriptSystem()->GetScriptAllocSize() : 0;
 
         IMemoryManager::SProcessMemInfo procMeminfo;
         GetISystem()->GetIMemoryManager()->GetProcessMemInfo(procMeminfo);
@@ -1330,6 +1325,10 @@ void CEngineStats::CollectEntityDependencies()
     ISystem* pSystem = GetISystem();
 
     IEntitySystem* pEntitySystem = pSystem->GetIEntitySystem();
+    if (!pEntitySystem)
+    {
+        return;
+    }
 
     IEntityItPtr it = pEntitySystem->GetEntityIterator();
     while (!it->IsEnd())
@@ -1370,6 +1369,10 @@ void CEngineStats::CollectEntities()
 {
     ISystem* pSystem = GetISystem();
     IEntitySystem* pEntitySystem = pSystem->GetIEntitySystem();
+    if (!pEntitySystem)
+    {
+        return;
+    }
     IEntityItPtr it = pEntitySystem->GetEntityIterator();
 
     m_stats.entities.clear();

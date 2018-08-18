@@ -42,6 +42,9 @@
 #define RETURN_IF_TEST_BODIES_ARE_DISABLED(isException) if (isException) { return; }
 #endif
 
+#define SC_EXPECT_DOUBLE_EQ(candidate, reference) EXPECT_NEAR(candidate, reference, 0.001)
+#define SC_EXPECT_FLOAT_EQ(candidate, reference) EXPECT_NEAR(candidate, reference, 0.001f)
+
 namespace ScriptCanvasTests
 {
     class ScriptCanvasTestFixture

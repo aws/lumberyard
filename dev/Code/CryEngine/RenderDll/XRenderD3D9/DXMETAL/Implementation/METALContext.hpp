@@ -292,14 +292,10 @@ namespace NCryMetal
 
         void BeginOcclusionQuery(SOcclusionQuery* pQuery);
         void EndOcclusionQuery(SOcclusionQuery* pQuery);
-        //  Confetti End: Igor Lobanchikov
 
-
-        //  Confetti BEGIN: Igor Lobanchikov
         bool SetBlendState(const SBlendState& kState);
         bool SetDepthStencilState(id<MTLDepthStencilState> depthStencilState, uint32 iStencilRef);
         bool SetRasterizerState(const SRasterizerState& kState);
-        //  Confetti End: Igor Lobanchikov
 
         bool GetImplicitStateCache(SImplicitStateCache& kCache);
 
@@ -312,9 +308,7 @@ namespace NCryMetal
         void SetSampleMask(uint32 uSampleMask);
         void SetShader(SShader* pShader, uint32 uStage);
         void SetTexture(SShaderResourceView* pView, uint32 uStage, uint32 uSlot);
-        //  Confetti BEGIN: Igor Lobanchikov
         void SetSampler(id<MTLSamplerState> pState, uint32 uStage, uint32 uSlot);
-        //  Confetti End: Igor Lobanchikov
         void SetConstantBuffer(SBuffer* pConstantBuffer, uint32 uStage, uint32 uSlot);
         void SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY eTopology);
         void SetInputLayout(SInputLayout* pInputLayout);
@@ -325,35 +319,28 @@ namespace NCryMetal
         void DrawIndexedInstanced(uint32 uIndexCountPerInstance, uint32 uInstanceCount, uint32 uStartIndexLocation, uint32 uBaseVertexLocation, uint32 uStartInstanceLocation);
         void DrawInstanced(uint32 uVertexCountPerInstance, uint32 uInstanceCount, uint32 uStartVertexLocation, uint32 uStartInstanceLocation);
 
-        //  Confetti BEGIN: Igor Lobanchikov
-        void Flush(bool bOnPresent = false);
-        //  Confetti End: Igor Lobanchikov
+        void Flush(id<CAMetalDrawable> drawable = nil, float syncInterval = 0.0f);
+        void FlushBlitEncoderAndWait();
 
         _smart_ptr<SPipeline> AllocatePipeline(const SPipelineConfiguration& kConfiguration);
         void RemovePipeline(SPipeline* pPipeline, SShader* pInvalidShader);
 
         bool InitializePipeline(SPipeline* pPipeline);
 
+        void InitMetalFrameResources();
+
     private:
-        //  Confetti BEGIN: Igor Lobanchikov
         void FlushQueries();
-        //  Confetti End: Igor Lobanchikov
         void SetNumPatchControlPoints(uint32 uNumControlPoints);
         void SetVertexOffset(uint32 uVertexOffset);
 
         void FlushInputAssemblerState();
         void FlushTextureUnits();
-        //  Confetti BEGIN: Igor Lobanchikov
         void FlushStateObjects();
-    public:
-        void InitMetalFrameResources();
-    private:
         void NextCommandBuffer();
-        //  Confetti End: Igor Lobanchikov
         void FlushPipelineState();
         void FlushDrawState();
 
-    private:
         CDevice* m_pDevice;
 
         SStateCache m_kStateCache;
@@ -363,10 +350,8 @@ namespace NCryMetal
         SPipelinePtr m_spPipeline;
 
         // State that is only synchronized during draw calls
-        //  Confetti BEGIN: Igor Lobanchikov
         MTLPrimitiveType                m_MetalPrimitiveType;
         _smart_ptr<NCryMetal::SBuffer>  m_spIndexBufferResource;
-        //  Confetti End: Igor Lobanchikov
 
         SPipelineConfiguration m_kPipelineConfiguration;
         SInputLayout* m_pInputLayout;
@@ -383,12 +368,8 @@ namespace NCryMetal
         // a compatible configuration is requested.
         struct SPipelineCache* m_pPipelineCache;
 
-        //  Confetti BEGIN: Igor Lobanchikov
-
-    private:
         static const int        m_MaxFrameQueueDepth = 3;
         static const int        m_MaxFrameQueueSlots = m_MaxFrameQueueDepth;
-        //  Igor:
         //static const int        m_MaxFrameEventSlots = m_MaxFrameQueueDepth+1;
         //  Need to keep this value at least max engine event queu + 2. At the moment the longest event queue in the engine is 4.
         //  This must be m_MaxFrameQueueDepth+1 at least.
@@ -397,7 +378,7 @@ namespace NCryMetal
         dispatch_semaphore_t    m_FrameQueueSemaphore;
         int                     m_iCurrentFrameSlot;
         int                     m_iCurrentFrameEventSlot;
-        //  Igor: there is extra slot to guarantee event data lives extra frame
+        //  there is extra slot to guarantee event data lives extra frame
         std::vector<SContextEventHelper*>   m_eEvents[m_MaxFrameEventSlots];
         int                     m_iCurrentEvent;
 
@@ -414,14 +395,13 @@ namespace NCryMetal
         std::vector<SOcclusionQuery*> m_OcclusionQueryList;
 
         DXMETAL_TODO("Remove this if Metal rutime bug is fixed anytime soon.")
-        //  Igor: Motivations: this default state is used to replace NULL sampler state
+        //  Motivations: this default state is used to replace NULL sampler state
         //  since for some reason Metal runtime crashes when NULL sampler state is bound.
         //  Metal runtime works just fine if any other NULL state object is bound.
         id<MTLSamplerState> m_defaultSamplerState;
 
         bool                    m_bPossibleClearPending;
 
-    private:
         struct CRingBuffer
         {
             CRingBuffer(id<MTLDevice> device, unsigned int bufferSize, unsigned int alignment, MemRingBufferStorage memAllocMode);
@@ -469,6 +449,7 @@ namespace NCryMetal
             id<MTLRenderPipelineState> m_PipelineStateRGBA16Float;
             id<MTLRenderPipelineState> m_PipelineStateRGBA32Float;
             id<MTLRenderPipelineState> m_PipelineStateR16Float;
+            id<MTLRenderPipelineState> m_PipelineStateRG16Float;
             id<MTLRenderPipelineState> m_PipelineStateR16Unorm;
             id<MTLRenderPipelineState> m_PipelineStateBGRA8UnormLanczos;
             id<MTLRenderPipelineState> m_PipelineStateRGBA8UnormLanczos;
@@ -488,7 +469,6 @@ namespace NCryMetal
         };
 
         CCopyTextureHelper  m_CopyTextureHelper;
-        //  Confetti End: Igor Lobanchikov
     };
 }
 

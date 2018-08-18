@@ -25,6 +25,8 @@ namespace AzToolsFramework
 {
     namespace UndoSystem
     {
+        class UndoStack;
+
         typedef AZ::u64 URCommandID;
 
         // plug one of these into your undo stack if you'd like notification.
@@ -107,7 +109,7 @@ namespace AzToolsFramework
             bool operator==(const URCommandID id) const { return m_id == 0 ? false : m_id == id; }
             bool operator==(const URSequencePoint* com) const { return *this == com->m_id; }
 
-            friend class UndoStack;
+            friend UndoStack;
 
         protected:
             void AddChild(URSequencePoint*);

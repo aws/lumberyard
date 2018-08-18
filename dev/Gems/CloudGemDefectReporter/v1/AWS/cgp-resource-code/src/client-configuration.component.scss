@@ -1,0 +1,46 @@
+﻿@import "../../../styles/variables";
+
+.field-type-dropdown {
+    padding: 0px;
+}
+
+.delete-option-icon {
+    color: red;
+    cursor: pointer;
+}
+
+.questino-title {
+    font-weight: bold;
+}
+
+.field-preview {
+    border: 1px solid $border-gray;
+    width: 800px;
+    padding: 10px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.field-preview .fields {
+    padding-top: 10px;
+}
+
+.field-preview .field-textarea-preview {
+    width: 560px;
+    height: 200px;
+    max-height: 200px;
+}
+
+.field-preview .field-textarea-chars-label {
+    width: 70%;    
+    text-align: right;
+}
+
+.content {
+    margin-bottom: 30px;
+}
+
+.loading-spinner-container {
+    clear: both;
+    text-align: center;
+}

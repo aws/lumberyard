@@ -626,7 +626,7 @@ namespace ScriptCanvas
         {
             VariableId oldVariableId = slotIdVarInfoIt->second.m_currentVariableId;
             slotIdVarInfoIt->second.m_currentVariableId = variableId;
-            NodeNotificationsBus::Event((GetEntity() != nullptr) ? GetEntityId() : AZ::EntityId(), &NodeNotifications::OnSlotActiveVariableChanged, slotId, oldVariableId, variableId);
+            NodeNotificationsBus::Event(GetEntityId(), &NodeNotifications::OnSlotActiveVariableChanged, slotId, oldVariableId, variableId);
         }
     }
 
@@ -863,7 +863,7 @@ namespace ScriptCanvas
         SlotIterator addSlotIter = m_slots.end();
         if (InsertSlotInternal(index, slotConfig, addSlotIter))
         {
-            NodeNotificationsBus::Event((GetEntity() != nullptr) ? GetEntityId() : AZ::EntityId(), &NodeNotifications::OnSlotAdded, addSlotIter->GetId());
+            NodeNotificationsBus::Event(GetEntityId(), &NodeNotifications::OnSlotAdded, addSlotIter->GetId());
         }
         return addSlotIter != m_slots.end() ? addSlotIter->GetId() : SlotId{};
     }
@@ -879,7 +879,7 @@ namespace ScriptCanvas
         VariableIterator varIter = m_varDatums.end();
         if (InsertInputDatumSlotInternal(insertIndex, slotConfig, AZStd::move(initialDatum), slotIter, varIter))
         {
-            NodeNotificationsBus::Event((GetEntity() != nullptr) ? GetEntityId() : AZ::EntityId(), &NodeNotifications::OnSlotAdded, slotIter->GetId());
+            NodeNotificationsBus::Event(GetEntityId(), &NodeNotifications::OnSlotAdded, slotIter->GetId());
         }
 
         return slotIter != m_slots.end() ? slotIter->GetId() : SlotId{};
@@ -942,7 +942,7 @@ namespace ScriptCanvas
         SlotIterator slotIterOut = m_slots.end();
         if (InsertDataTypeSlotInternal(-1, { name, toolTip, SlotType::DataIn, contracts, addUniqueSlotByNameAndType }, type, slotIterOut))
         {
-            NodeNotificationsBus::Event((GetEntity() != nullptr) ? GetEntityId() : AZ::EntityId(), &NodeNotifications::OnSlotAdded, slotIterOut->GetId());
+            NodeNotificationsBus::Event(GetEntityId(), &NodeNotifications::OnSlotAdded, slotIterOut->GetId());
         }
 
         return slotIterOut != m_slots.end() ? slotIterOut->GetId() : SlotId{};
@@ -958,7 +958,7 @@ namespace ScriptCanvas
         SlotIterator slotIterOut = m_slots.end();
         if (InsertDataTypeSlotInternal(-1, { name, toolTip, SlotType::DataOut, AZStd::vector<ContractDescriptor>{}, addUniqueSlotByNameAndType }, type, slotIterOut))
         {
-            NodeNotificationsBus::Event((GetEntity() != nullptr) ? GetEntityId() : AZ::EntityId(), &NodeNotifications::OnSlotAdded, slotIterOut->GetId());
+            NodeNotificationsBus::Event(GetEntityId(), &NodeNotifications::OnSlotAdded, slotIterOut->GetId());
             return slotIterOut->GetId();
         }
 
@@ -1065,7 +1065,7 @@ namespace ScriptCanvas
             }
             m_slots.erase(slotIt);
 
-            NodeNotificationsBus::Event((GetEntity() != nullptr) ? GetEntityId() : AZ::EntityId(), &NodeNotifications::OnSlotRemoved, slotId);
+            NodeNotificationsBus::Event(GetEntityId(), &NodeNotifications::OnSlotRemoved, slotId);
             return true;
         }
 
@@ -1161,7 +1161,7 @@ namespace ScriptCanvas
             SlotId slotId = GetSlotId(varDatumIt->GetId());
             if (slotId.IsValid())
             {
-                NodeNotificationsBus::Event((GetEntity() != nullptr) ? GetEntityId() : AZ::EntityId(), &NodeNotifications::OnInputChanged, slotId);
+                NodeNotificationsBus::Event(GetEntityId(), &NodeNotifications::OnInputChanged, slotId);
             }
         }
     }

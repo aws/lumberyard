@@ -37,71 +37,71 @@ namespace DX12
 
         if (!state)
         {
-            strcat(ret, " Common/Present");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " Common/Present");
             return ret;
         }
 
         if ((state & D3D12_RESOURCE_STATE_GENERIC_READ) == D3D12_RESOURCE_STATE_GENERIC_READ)
         {
-            strcat(ret, " Generic Read");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " Generic Read");
             return ret;
         }
 
         if (state & D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
         {
-            strcat(ret, " V/C Buffer");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " V/C Buffer");
         }
         if (state & D3D12_RESOURCE_STATE_INDEX_BUFFER)
         {
-            strcat(ret, " I Buffer");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " I Buffer");
         }
         if (state & D3D12_RESOURCE_STATE_RENDER_TARGET)
         {
-            strcat(ret, " RT");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " RT");
         }
         if (state & D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
         {
-            strcat(ret, " UA");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " UA");
         }
         if (state & D3D12_RESOURCE_STATE_DEPTH_WRITE)
         {
-            strcat(ret, " DepthW");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " DepthW");
         }
         if (state & D3D12_RESOURCE_STATE_DEPTH_READ)
         {
-            strcat(ret, " DepthR");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " DepthR");
         }
         if (state & D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
         {
-            strcat(ret, " NoPixelR");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " NoPixelR");
         }
         if (state & D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
         {
-            strcat(ret, " PixelR");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " PixelR");
         }
         if (state & D3D12_RESOURCE_STATE_STREAM_OUT)
         {
-            strcat(ret, " Stream Out");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " Stream Out");
         }
         if (state & D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT)
         {
-            strcat(ret, " Indirect Arg");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " Indirect Arg");
         }
         if (state & D3D12_RESOURCE_STATE_COPY_DEST)
         {
-            strcat(ret, " CopyD");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " CopyD");
         }
         if (state & D3D12_RESOURCE_STATE_COPY_SOURCE)
         {
-            strcat(ret, " CopyS");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " CopyS");
         }
         if (state & D3D12_RESOURCE_STATE_RESOLVE_DEST)
         {
-            strcat(ret, " ResolveD");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " ResolveD");
         }
         if (state & D3D12_RESOURCE_STATE_RESOLVE_SOURCE)
         {
-            strcat(ret, " ResolveS");
+            azstrcat(ret, AZ_ARRAY_SIZE(ret), " ResolveS");
         }
 
         return ret;

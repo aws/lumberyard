@@ -21,7 +21,7 @@ struct MaterialTextureSemantic
         : slot(texSlot), priority(pri), def(defTex), neutral(neutralTex) 
     {
         suffix = new char[strlen(suff)+1];  // added one to protect from empty strings.
-        strcpy(suffix, suff);
+        azstrcpy(suffix, strlen(suff) + 1, suff);
     };
 
     MaterialTextureSemantic& operator=(MaterialTextureSemantic& srcSemantic)
@@ -33,7 +33,7 @@ struct MaterialTextureSemantic
         def = srcSemantic.def;
         neutral = srcSemantic.neutral;
         suffix = new char[strlen(srcSemantic.suffix) + 1];  // added one to protect from empty strings.
-        strcpy(suffix, srcSemantic.suffix);
+        azstrcpy(suffix, strlen(srcSemantic.suffix) + 1, srcSemantic.suffix);
 
         return *this;
     }

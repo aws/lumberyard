@@ -28,8 +28,6 @@ namespace EMotionFX
     class EMFX_API NodeAttribute
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(NodeAttribute, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_NODEATTRIBUTES);
-
     public:
         /**
          * Get the attribute type.

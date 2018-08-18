@@ -518,7 +518,7 @@ namespace
         sData[0].f[3] = 0.0f;
     }
 
-    NO_INLINE CRendElementBase* sGetContainerRE0(CRendElementBase* pRE)
+    NO_INLINE IRenderElement* sGetContainerRE0(IRenderElement* pRE)
     {
         assert(pRE);    // someone assigned wrong shader - function should not be called then
 
@@ -539,19 +539,19 @@ namespace
             return;
         }
         // use render element from vertex container render mesh if available
-        CRendElementBase* pRE = sGetContainerRE0(r->m_RP.m_pRE);
+        IRenderElement* pRE = sGetContainerRE0(r->m_RP.m_pRE);
 
-        if (pRE && pRE->m_CustomData)
+        if (pRE && pRE->GetCustomData())
         {
             float* pData;
 
             if (SRendItem::m_RecurseLevel[r->m_RP.m_nProcessThreadID] <= 0)
             {
-                pData = (float*)pRE->m_CustomData;
+                pData = (float*)pRE->GetCustomData();
             }
             else
             {
-                pData = (float*)pRE->m_CustomData + 4;
+                pData = (float*)pRE->GetCustomData() + 4;
             }
 
             sData[0].f[0] = pData[2];
@@ -566,10 +566,10 @@ namespace
 
     NO_INLINE void sGetTerrainLayerGen(UFloat4* sData, CD3D9Renderer* r)
     {
-        CRendElementBase* pRE = r->m_RP.m_pRE;
-        if (pRE && pRE->m_CustomData)
+        IRenderElement* pRE = r->m_RP.m_pRE;
+        if (pRE && pRE->GetCustomData())
         {
-            float* pData = (float*)pRE->m_CustomData;
+            float* pData = (float*)pRE->GetCustomData();
             memcpy(sData, pData, sizeof(float) * 16);
         }
         else
@@ -1258,7 +1258,7 @@ namespace
             int texHeight = 512;
             int mipLevel = 0;
 
-            CRendElementBase *pRE = gRenDev->m_RP.m_pRE;
+            IRenderElement *pRE = gRenDev->m_RP.m_pRE;
 
             if (pRE)
             {
@@ -1325,7 +1325,7 @@ namespace
                 int texHeight = 512;
                 int mipLevel = 0;
 
-                CRendElementBase *pRE = gRenDev->m_RP.m_pRE;
+                IRenderElement *pRE = gRenDev->m_RP.m_pRE;
 
                 if (pRE)
                 {
@@ -1809,14 +1809,14 @@ namespace
 
                 case ECGP_PB_FromRE:
                 {
-                    CRendElementBase* pRE = rRP.m_pRE;
-                    if (!pRE || !pRE->m_CustomData)
+                    IRenderElement* pRE = rRP.m_pRE;
+                    if (!pRE || !pRE->GetCustomData())
                     {
                         result[0].f[componentIndex] = 0;
                     }
                     else
                     {
-                        result[0].f[componentIndex] = reinterpret_cast<float*>(pRE->m_CustomData)[(parameter->m_nID >> (componentIndex * 8)) & 0xff];
+                        result[0].f[componentIndex] = reinterpret_cast<float*>(pRE->GetCustomData())[(parameter->m_nID >> (componentIndex * 8)) & 0xff];
                     }
                     break;
                 }
@@ -3024,22 +3024,26 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
             int nCustomID = tx->GetCustomID();
             if (nCustomID <= 0)
             {
-                if (tx->UseDecalBorderCol())
+                if (nTState >= 0 && nTState < CTexture::s_TexStates.size())
                 {
-                    STexState TS = CTexture::s_TexStates[nTState];
-                    //TS.SetFilterMode(...); // already set up
-                    TS.SetClampMode(TADDR_CLAMP, TADDR_CLAMP, TADDR_CLAMP);
-                    nTState = CTexture::GetTexState(TS);
-                }
-
-                if (CRenderer::CV_r_texNoAnisoAlphaTest && (rd->m_RP.m_FlagsShader_RT & g_HWSR_MaskBit[HWSR_ALPHATEST]))
-                {
-                    STexState TS = CTexture::s_TexStates[nTState];
-                    if (TS.m_nAnisotropy > 1)
+                    if (tx->UseDecalBorderCol())
                     {
-                        TS.m_nAnisotropy = 1;
-                        TS.SetFilterMode(FILTER_TRILINEAR);
+                        STexState TS = CTexture::s_TexStates[nTState];
+                        //TS.SetFilterMode(...); // already set up
+                        TS.SetClampMode(TADDR_CLAMP, TADDR_CLAMP, TADDR_CLAMP);
                         nTState = CTexture::GetTexState(TS);
+                    }
+
+                    if (CRenderer::CV_r_texNoAnisoAlphaTest && (rd->m_RP.m_FlagsShader_RT & g_HWSR_MaskBit[HWSR_ALPHATEST]))
+                    {
+                    
+                        STexState TS = CTexture::s_TexStates[nTState];
+                        if (TS.m_nAnisotropy > 1)
+                        {
+                            TS.m_nAnisotropy = 1;
+                            TS.SetFilterMode(FILTER_TRILINEAR);
+                            nTState = CTexture::GetTexState(TS);
+                        }
                     }
                 }
 
@@ -3048,7 +3052,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
             else 
             {
                 // Allow render elements to set their own samplers
-                CRendElementBase* pRE = rd->m_RP.m_pRE;
+                IRenderElement* pRE = rd->m_RP.m_pRE;
                 if (pRE && pRE->mfSetSampler(nCustomID, nTUnit, nTState, nTexMaterialSlot, nSUnit))
                 {
                     continue;
@@ -3061,7 +3065,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 {
                     if (rd->m_RP.m_pRE)
                     {
-                        nCustomID = rd->m_RP.m_pRE->m_CustomTexBind[nCustomID - TO_FROMRE0];
+                        nCustomID = rd->m_RP.m_pRE->GetCustomTexBind(nCustomID - TO_FROMRE0);
                     }
                     else
                     {
@@ -3081,10 +3085,10 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_FROMRE1_FROM_CONTAINER:
                 {
                     // take render element from vertex container render mesh if available
-                    CRendElementBase* _pRE = sGetContainerRE0(rd->m_RP.m_pRE);
+                    IRenderElement* _pRE = sGetContainerRE0(rd->m_RP.m_pRE);
                     if (_pRE)
                     {
-                        nCustomID = _pRE->m_CustomTexBind[nCustomID - TO_FROMRE0_FROM_CONTAINER];
+                        nCustomID = _pRE->GetCustomTexBind(nCustomID - TO_FROMRE0_FROM_CONTAINER);
                     }
                     else
                     {
@@ -3144,25 +3148,30 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                         break;
                     }
 
-                    //force  MinFilter = Linear; MagFilter = Linear; for HW_PCF_FILTERING
-                    STexState TS = CTexture::s_TexStates[nTState];
-                    TS.m_pDeviceState = NULL;
-                    TS.SetClampMode(TADDR_CLAMP, TADDR_CLAMP, TADDR_CLAMP);
+                    if (nTState >= 0 && nTState < CTexture::s_TexStates.size())
+                    {
+                        //force  MinFilter = Linear; MagFilter = Linear; for HW_PCF_FILTERING
+                        STexState TS = CTexture::s_TexStates[nTState];
+                        TS.m_pDeviceState = NULL;
+                        TS.SetClampMode(TADDR_CLAMP, TADDR_CLAMP, TADDR_CLAMP);
 
-                    const bool bComparisonSampling = rd->m_RP.m_ShadowCustomComparisonSampling[nShadowMapNum];
-                    if (bComparisonSampling)
-                    {
-                        TS.SetFilterMode(FILTER_LINEAR);
-                        TS.SetComparisonFilter(true);
-                    }
-                    else
-                    {
-                        TS.SetFilterMode(FILTER_POINT);
-                        TS.SetComparisonFilter(false);
+                        const bool bComparisonSampling = rd->m_RP.m_ShadowCustomComparisonSampling[nShadowMapNum];
+                        if (bComparisonSampling)
+                        {
+                            TS.SetFilterMode(FILTER_LINEAR);
+                            TS.SetComparisonFilter(true);
+                        }
+                        else
+                        {
+                            TS.SetFilterMode(FILTER_POINT);
+                            TS.SetComparisonFilter(false);
+                        }
+
+                        nTState = CTexture::GetTexState(TS);
                     }
 
                     CTexture* tex = CTexture::GetByID(nCustomID);
-                    tex->Apply(nTUnit, CTexture::GetTexState(TS), nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
+                    tex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
                 break;
 
@@ -3442,7 +3451,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_VOLOBJ_SHADOW:
                 {
                     bool texBound(false);
-                    CRendElementBase* _pRE(rd->m_RP.m_pRE);
+                    IRenderElement* _pRE(rd->m_RP.m_pRE);
                     if (_pRE && _pRE->mfGetType() == eDATA_VolumeObject)
                     {
                         CREVolumeObject* pVolObj((CREVolumeObject*)_pRE);
@@ -3503,7 +3512,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_SKYDOME_MIE:
                 case TO_SKYDOME_RAYLEIGH:
                 {
-                    CRendElementBase* _pRE = rd->m_RP.m_pRE;
+                    IRenderElement* _pRE = rd->m_RP.m_pRE;
                     if (_pRE && _pRE->mfGetType() == eDATA_HDRSky)
                     {
                         CTexture* pTex = nCustomID == TO_SKYDOME_MIE ? ((CREHDRSky*)_pRE)->m_pSkyDomeTextureMie : ((CREHDRSky*)_pRE)->m_pSkyDomeTextureRayleigh;
@@ -3519,7 +3528,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
                 case TO_SKYDOME_MOON:
                 {
-                    CRendElementBase* _pRE = rd->m_RP.m_pRE;
+                    IRenderElement* _pRE = rd->m_RP.m_pRE;
                     if (_pRE && _pRE->mfGetType() == eDATA_HDRSky)
                     {
                         CREHDRSky* pHDRSky = (CREHDRSky*)_pRE;
@@ -4159,36 +4168,8 @@ CHWShader* CHWShader::mfForName(const char* name, const char* nameSource, uint32
         strName += AddStr.Format("(%I64x)", nMaskGen);
 #endif
     }
-    if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
-    {
-        strName += AddStr.Format("(O)");
-    }
-    else
-    if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
-    {
-        strName += AddStr.Format("(D)");
-    }
-    else
-    if (CParserBin::m_nPlatform == SF_D3D11)
-    {
-        strName += AddStr.Format("(X1)", nMaskGen);
-    }
-    else
-    if (CParserBin::m_nPlatform == SF_GL4)
-    {
-        strName + AddStr.Format("(G4)", nMaskGen);
-    }
-    else
-    if (CParserBin::m_nPlatform == SF_GLES3)
-    {
-        strName + AddStr.Format("(E3)", nMaskGen);
-    }
-    // Confetti Nicholas Baldwin: adding metal shader language support
-    else
-    if (CParserBin::m_nPlatform == SF_METAL)
-    {
-        strName + AddStr.Format("(MET)", nMaskGen);
-    }
+
+    strName += AddStr.Format( GetShaderLanguageResourceName() );
 
     CCryNameTSCRC Name = strName.c_str();
     CBaseResource* pBR = CBaseResource::GetResource(className, Name, false);
@@ -4393,8 +4374,10 @@ void CHWShader_D3D::mfConstructFX_Mask_RT(FXShaderToken* Table, TArray<uint32>* 
     }
     SShaderGen* pGen = gRenDev->m_cEF.m_pGlobalExt;
     
-    // Construct mask of all mask bits that are usable for this shader from precache entries. This mask is then ANDed with the property defines used in the shader
-    // See Runtime.ext file
+    // Construct mask of all mask bits that are usable for this shader from precache entries. This mask is then ANDed 
+    // with the property defines used in the shader, in other words, permutation flags prep for shader fetch will 
+    // be AND with these masks so that only acceptable / used permutations are being fetched.
+    // See Runtime.ext file for the flags bits themselves.
     uint64 allowedBits = 0;
     if (m_dwShaderType)
     {
@@ -4428,7 +4411,7 @@ void CHWShader_D3D::mfConstructFX_Mask_RT(FXShaderToken* Table, TArray<uint32>* 
     }
     else
     {
-        allowedBits = 0x7FFFFFFFFFFFFFFF;
+        allowedBits = 0xFFFFFFFFFFFFFFFF;
     }
     
     AZ_Assert(!pSHData->empty(), "Shader data is empty");
@@ -5437,3 +5420,4 @@ AZ::u32 CHWShader_D3D::SHWSInstance::GenerateVertexDeclarationCacheCRC(const AZ:
 
     return fetchShaderCRC;
 }
+

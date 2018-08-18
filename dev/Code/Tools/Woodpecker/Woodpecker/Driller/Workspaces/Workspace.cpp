@@ -10,13 +10,13 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/UserSettings/UserSettings.h>
 #include <AzCore/IO/SystemFile.h>
-#include <AzCore/IO/genericstreams.h>
+#include <AzCore/IO/GenericStreams.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <AzCore/Serialization/objectstream.h>
+#include <AzCore/Serialization/ObjectStream.h>
 #include "Workspace.h"
 
 namespace Driller

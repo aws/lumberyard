@@ -167,7 +167,12 @@ void TranslateToMETAL(HLSLCrossCompilerContext* psContext, ShaderLang* planguage
 
 		bcatcstr(metal, "fragment ");
 		if (psContext->needsFragmentTestHint)
-			bcatcstr(metal, "[[ early_fragment_tests ]] ");
+		{        
+ 			bcatcstr(metal, "\n#ifndef MTLLanguage1_1\n");
+ 			bcatcstr(metal, "[[ early_fragment_tests ]]\n");
+ 			bcatcstr(metal, "#endif\n");            
+ 		}
+
 		bformata(metal, "%s metalMain(\n%s", hasOutput ? "metalFrag_out" : "void",
 			hasStageInput ? "\tmetalFrag_stageIn stageIn [[ stage_in ]]" : "");
 		if (userInputDeclLength > 2)

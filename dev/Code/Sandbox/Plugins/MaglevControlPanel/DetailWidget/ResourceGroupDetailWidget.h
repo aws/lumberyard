@@ -52,6 +52,7 @@ private:
     void UpdateUI();
     void OnUpdate();
     void OnDelete();
+    void OnEnable();
     void OnUploadCode();
 };
 

@@ -3,7 +3,6 @@
 #define CRYINCLUDE_CRYCOMMON_ICOMPONENTFACTORY_H
 #pragma once
 
-#include <memory>
 #include <list>
 
 class IComponent;
@@ -27,7 +26,7 @@ template<class ComponentTypeT>
 class IComponentFactory : public IComponentFactoryBase
 {
 public:
-	virtual std::shared_ptr<ComponentTypeT> CreateComponent() = 0;
+	virtual AZStd::shared_ptr<ComponentTypeT> CreateComponent() = 0;
 
 	const ComponentType& GetComponentType() const override { return ComponentTypeT::Type(); }
 };
@@ -41,11 +40,11 @@ template<class ConcreteComponentT, class ComponentTypeT>
 class DefaultComponentFactory : public IComponentFactory<ComponentTypeT>
 {
 public:
-	std::shared_ptr<ComponentTypeT> CreateComponent() override
+	AZStd::shared_ptr<ComponentTypeT> CreateComponent() override
 	{
-		return std::shared_ptr<ConcreteComponentT>(
+		return AZStd::shared_ptr<ConcreteComponentT>(
 			new ConcreteComponentT(),
-			std::bind(&DefaultComponentFactory::Deleter, *this, std::placeholders::_1));
+            AZStd::bind(&DefaultComponentFactory::Deleter, *this, AZStd::placeholders::_1));
 	}
 protected:
 
@@ -67,7 +66,7 @@ class ComponentFactoryCreationNode : public NoCopy
 {
 public:
 	//! A function which creates an IComponentFactory
-	using CreateFactoryFunction = std::function<std::unique_ptr<IComponentFactoryBase>()>;
+	using CreateFactoryFunction = AZStd::function<AZStd::unique_ptr<IComponentFactoryBase>()>;
 
 	//! \param componentType  The factory creates components of this type.
 	//! \param createFunction  A function to create the factory.
@@ -97,7 +96,7 @@ class DefaultComponentFactoryCreationNode : public ComponentFactoryCreationNode
 {
 public:
 	DefaultComponentFactoryCreationNode()
-		: ComponentFactoryCreationNode([](){ return std::make_unique<DefaultComponentFactory<ConcreteComponentT, ComponentTypeT>>(); })
+		: ComponentFactoryCreationNode([](){ return AZStd::make_unique<DefaultComponentFactory<ConcreteComponentT, ComponentTypeT>>(); })
 	{}
 };
 

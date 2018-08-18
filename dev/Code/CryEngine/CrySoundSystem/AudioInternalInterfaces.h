@@ -347,18 +347,6 @@ namespace Audio
         ~SAudioManagerRequestDataInternal<eAMRT_CHANGE_LANGUAGE>()override {}
     };
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    template <>
-    struct SAudioManagerRequestDataInternal<eAMRT_RETRIGGER_AUDIO_CONTROLS>
-        : public SAudioManagerRequestDataInternalBase
-    {
-        SAudioManagerRequestDataInternal(const SAudioManagerRequestData<eAMRT_RETRIGGER_AUDIO_CONTROLS>* const pAMRData)
-            : SAudioManagerRequestDataInternalBase(pAMRData->eType)
-        {}
-
-        ~SAudioManagerRequestDataInternal<eAMRT_RETRIGGER_AUDIO_CONTROLS>()override {}
-    };
-
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // Audio Callback Manager Requests (Internal)
@@ -812,7 +800,6 @@ namespace Audio
                 { eAMRT_UNLOAD_AFCM_DATA_BY_SCOPE, "UNLOAD SCOPE" },
                 { eAMRT_DRAW_DEBUG_INFO, "DRAW DEBUG" },
                 { eAMRT_CHANGE_LANGUAGE, "CHANGE LANGUAGE" },
-                { eAMRT_RETRIGGER_AUDIO_CONTROLS, "RETRIGGER CONTROLS" },
             };
             static const AZStd::unordered_map<const EAudioCallbackManagerRequestType, const AZStd::string> callbackRequests
             {
@@ -904,7 +891,7 @@ namespace Audio
         }
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
-        uint32 nFlags;
+        TATLEnumFlagsType nFlags;
         TAudioObjectID nAudioObjectID;
         void* pOwner;
         void* pUserData;

@@ -19,7 +19,7 @@
 #include <QListWidget>
 #include <QTextEdit>
 #include <QApplication>
-
+#include <QHBoxLayout>
 
 namespace EMStudio
 {
@@ -61,17 +61,7 @@ namespace EMStudio
                     mTempString += " ";
                     mTempString += commandLine.GetParameterValue(i);
                 }
-
-                if (mTempString.size() < 4096)
-                {
-                    MCore::LogDebug(mTempString.c_str());
-                }
-                else
-                {
-                    AZStd::string s = mTempString;
-                    s.resize(4095);
-                    MCore::LogDebug(s.c_str());
-                }
+                MCore::LogDebugMsg(mTempString.c_str());
             }
         }
     }
@@ -95,16 +85,7 @@ namespace EMStudio
         if (command && MCore::GetLogManager().GetLogLevels() & MCore::LogCallback::LOGLEVEL_DEBUG)
         {
             mTempString = AZStd::string::format("%sExecution of command '%s' %s", wasSuccess ?  "    " : "*** ", command->GetName(), wasSuccess ? "completed successfully" : " FAILED");
-            if (mTempString.size() < 4096)
-            {
-                MCore::LogDebug(mTempString.c_str());
-            }
-            else
-            {
-                AZStd::string s = mTempString;
-                s.resize(4095);
-                MCore::LogDebug(s.c_str());
-            }
+            MCore::LogDebugMsg(mTempString.c_str()); 
         }
     }
 
@@ -130,16 +111,7 @@ namespace EMStudio
         if (group && MCore::GetLogManager().GetLogLevels() & MCore::LogCallback::LOGLEVEL_DEBUG)
         {
             mTempString = AZStd::string::format("Starting %s of command group '%s'", undo ? "undo" : "execution", group->GetGroupName());
-            if (mTempString.size() < 4096)
-            {
-                MCore::LogDebug(mTempString.c_str());
-            }
-            else
-            {
-                AZStd::string s = mTempString;
-                s.resize(4095);
-                MCore::LogDebug(s.c_str());
-            }
+            MCore::LogDebugMsg(mTempString.c_str());
         }
     }
 
@@ -162,16 +134,7 @@ namespace EMStudio
         if (group && MCore::GetLogManager().GetLogLevels() & MCore::LogCallback::LOGLEVEL_DEBUG)
         {
             mTempString = AZStd::string::format("%sExecution of command group '%s' %s", wasSuccess ?  "    " : "*** ", group->GetGroupName(), wasSuccess ? "completed successfully" : " FAILED");
-            if (mTempString.size() < 4096)
-            {
-                MCore::LogDebug(mTempString.c_str());
-            }
-            else
-            {
-                AZStd::string s = mTempString;
-                s.resize(4095);
-                MCore::LogDebug(s.c_str());
-            }
+            MCore::LogDebugMsg(mTempString.c_str());
         }
     }
 

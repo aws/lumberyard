@@ -1,0 +1,14 @@
+{
+    "auto": {
+        "Source": [
+            "Source/EditorRoadComponent.cpp",
+            "Source/EditorRoadComponent.h",
+            "Source/EditorRiverComponent.cpp",
+            "Source/EditorRiverComponent.h",
+            "Source/EditorUtils.h",
+	    "Source/EditorUtils.cpp",
+            "Source/LegacyConversion/RoadsAndRiversLegacyConverter.h",
+            "Source/LegacyConversion/RoadsAndRiversLegacyConverter.cpp"
+        ]
+    }
+}

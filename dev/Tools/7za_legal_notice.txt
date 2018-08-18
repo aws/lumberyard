@@ -1,5 +1,5 @@
 Amazon note:  Source for 7-zip is hosted at 
-https://s3-us-west-2.amazonaws.com/ly-legal/LicenseConformance/7-zip/15.14/7z1514-src.7z
+https://s3-us-west-2.amazonaws.com/ly-legal/LicenseConformance/7-zip/18.05/7z1805-src.7z
 
 
 

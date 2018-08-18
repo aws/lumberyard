@@ -41,8 +41,8 @@
             this.state = {
                 pollRate: pollRate, // How often to poll for data in milliseconds
 
-                chickenPosition: [0,0,0],
-                chickenForward: [0,0,0],
+                position: [0,0,0],
+                forward: [0,0,0],
             };
 
             this._bind(
@@ -60,8 +60,8 @@
         pollData() {
             var url = "/data";
             var query = "?table=sample&key=";
-            query += "chicken_position,";
-            query += "chicken_forward";
+            query += "position,";
+            query += "forward";
 
             $.get(url + query, function(json) {
                 var data;
@@ -73,14 +73,14 @@
                     return;
                 }
 
-                var chickenPosition = data["chicken_position"];
-                if(chickenPosition) {
-                    this.state.chickenPosition = chickenPosition;
+                var position = data["position"];
+                if(position) {
+                    this.state.position = position;
                 }
 
-                var chickenForward = data["chicken_forward"];
-                if(chickenForward) {
-                    this.state.chickenForward = chickenForward;
+                var forward = data["forward"];
+                if(forward) {
+                    this.state.forward = forward;
                 }
 
                 this.update();
@@ -90,9 +90,9 @@
         }
 
         update() {
-            var xpos = (this.state.chickenPosition[0] / 128.0) * 100.0;
-            var ypos = (this.state.chickenPosition[1] / 128.0) * 100.0;
-            var angle = Math.atan2(this.state.chickenForward[0], this.state.chickenForward[1]) + Math.PI/4;
+            var xpos = (this.state.position[0] / 128.0) * 100.0;
+            var ypos = (this.state.position[1] / 128.0) * 100.0;
+            var angle = Math.atan2(this.state.forward[0], this.state.forward[1]) + Math.PI/4;
 
             var positionStyle = {
                 bottom: "calc(" + ypos + "% - 16px)",
@@ -100,8 +100,8 @@
                 transform: "rotate(" + angle + "rad)",
             };
 
-            $("#position-text").html("Jack Position: " + JSON.stringify(this.state.chickenPosition));
-            $("#direction-text").html("Jack Direction: " + JSON.stringify(this.state.chickenForward));
+            $("#position-text").html("Jack Position: " + JSON.stringify(this.state.position));
+            $("#direction-text").html("Jack Direction: " + JSON.stringify(this.state.forward));
             $(".position").css(positionStyle);
         }
     }

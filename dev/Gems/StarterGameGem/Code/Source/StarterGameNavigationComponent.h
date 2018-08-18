@@ -17,7 +17,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/EBus/EBus.h>
-#include <AZCore/Component/TransformBus.h>
+#include <AzCore/Component/TransformBus.h>
 
 #include <LmbrCentral/Ai/NavigationComponentBus.h>
 

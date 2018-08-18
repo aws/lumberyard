@@ -26,8 +26,8 @@ namespace StarterGameGem
 	PersistentDataSystemComponent* g_instance = NULL;
 
 	PersistentDataSystemComponent* PersistentDataSystemComponent::GetInstance()
-	{ 
-		return g_instance; 
+	{
+		return g_instance;
 	}
 
 	void PersistentDataSystemComponent::Reflect(AZ::ReflectContext* context)
@@ -36,7 +36,6 @@ namespace StarterGameGem
 		{
 			serializeContext->Class<PersistentDataSystemComponent, AZ::Component>()
 				->Version(1)
-				->SerializerForEmptyClass()
 			;
 
 			if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -241,7 +240,7 @@ namespace StarterGameGem
 			{
 				float newValue;
 				AZStd::any_numeric_cast<float>(&value, newValue);
-				
+
 				if (hasData)
 				{
 					float myValue;
@@ -268,7 +267,7 @@ namespace StarterGameGem
 					if (GetBasicType(currentData->GetValue()) == eBasicDataTypes::String)
 					{
 						AZStd::string oldValue = (currentData->GetValue().is<AZStd::string>() ? AZStd::any_cast<AZStd::string>(currentData->GetValue()) : AZStd::string(AZStd::any_cast<char*>(currentData->GetValue())));
-						
+
 						currentData->SetValue( AZStd::any( oldValue.append(newValue) ) );
 						return true;
 					}
@@ -518,10 +517,10 @@ namespace StarterGameGem
 			m_Datas.push_back(cDataSet(name, value));
 		}
 
-	}	
-	
+	}
+
 	////////////////////////////////////////////////////////////////////////
-	
+
 	void PersistentDataSystemComponent::cDataSet::SetValue(const AZStd::any& value)
 	{
 		// i cannot check to see if the data is differnet / the same ?!

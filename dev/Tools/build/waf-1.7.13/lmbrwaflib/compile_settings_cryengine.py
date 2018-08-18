@@ -13,6 +13,7 @@
     
 from waflib.Configure import conf
 from cry_utils import append_kw_entry, prepend_kw_entry, append_to_unique_list
+from waf_branch_spec import LUMBERYARD_COPYRIGHT_YEAR
 
 import os
 
@@ -109,6 +110,7 @@ def set_editor_flags(self, kw):
     append_kw_entry(kw,'defines',['CRY_ENABLE_RC_HELPER',
                                   '_CRT_SECURE_NO_DEPRECATE=1',
                                   '_CRT_NONSTDC_NO_DEPRECATE=1',
+                                  'LUMBERYARD_COPYRIGHT_YEAR="{}"'.format(LUMBERYARD_COPYRIGHT_YEAR),
         ])
 
     append_kw_entry(kw,'win_defines',['WIN32'])

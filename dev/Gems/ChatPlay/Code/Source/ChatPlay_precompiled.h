@@ -14,3 +14,7 @@
 #include <IConsole.h>
 #include <ILog.h>
 #include <ISerialize.h>
+
+#ifdef GetObject
+#undef GetObject
+#endif

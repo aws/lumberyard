@@ -26,7 +26,8 @@ bool CLevelShaderCache::Reload()
 //////////////////////////////////////////////////////////////////////////
 bool CLevelShaderCache::Load(const char* filename)
 {
-    FILE* f = fopen(filename, "rt");
+    FILE* f = nullptr;
+    azfopen(&f, filename, "rt");
     if (!f)
     {
         return false;
@@ -102,7 +103,8 @@ bool CLevelShaderCache::Save()
 
     Update();
 
-    FILE* f = fopen(m_filename.toUtf8().data(), "wt");
+    FILE* f = nullptr;
+    azfopen(&f, m_filename.toUtf8().data(), "wt");
     if (f)
     {
         for (Entries::iterator it = m_entries.begin(); it != m_entries.end(); ++it)

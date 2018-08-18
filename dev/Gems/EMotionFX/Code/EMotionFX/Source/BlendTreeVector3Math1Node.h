@@ -12,7 +12,6 @@
 
 #pragma once
 
-// include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
 
@@ -25,15 +24,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeVector3Math1Node
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeVector3Math1Node, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeVector3Math1Node, "{79488BAA-7151-4B49-B4EB-0FCA268EF44F}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000020
-        };
+        AZ_RTTI(BlendTreeVector3Math1Node, "{79488BAA-7151-4B49-B4EB-0FCA268EF44F}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -50,8 +43,7 @@ namespace EMotionFX
             PORTID_OUTPUT_FLOAT         = 1
         };
 
-        // available math functions
-        enum EMathFunction
+        enum EMathFunction : AZ::u8
         {
             MATHFUNCTION_LENGTH         = 0,
             MATHFUNCTION_SQUARELENGTH   = 1,
@@ -67,11 +59,12 @@ namespace EMotionFX
             MATHFUNCTION_NUMFUNCTIONS
         };
 
-        static BlendTreeVector3Math1Node* Create(AnimGraph* animGraph);
+        BlendTreeVector3Math1Node();
+        ~BlendTreeVector3Math1Node();
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
-
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
+        
         void SetMathFunction(EMathFunction func);
 
         uint32 GetVisualColor() const override  { return MCore::RGBA(128, 255, 255); }
@@ -79,21 +72,15 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
         typedef void (MCORE_CDECL * BlendTreeVec3Math1Function)(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
 
-        EMathFunction               mMathFunction;
-        BlendTreeVec3Math1Function  mCalculateFunc;
-
-        BlendTreeVector3Math1Node(AnimGraph* animGraph);
-        ~BlendTreeVector3Math1Node();
+        EMathFunction               m_mathFunction;
+        BlendTreeVec3Math1Function  m_calculateFunc;
 
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
-        void OnUpdateAttributes() override;
 
         static void MCORE_CDECL CalculateLength(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
         static void MCORE_CDECL CalculateSquareLength(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);

@@ -29,7 +29,7 @@
 #include "CryThread.h"
 #include <IGame.h>
 #include <IGameFramework.h>
-#include "../CryAction/ILevelSystem.h"
+#include <ILevelSystem.h>
 
 #if 0 // currently no stroboscope support
 #include "Stroboscope/Stroboscope.h"
@@ -655,9 +655,15 @@ void SRemoteClient::FillAutoCompleteList(std::vector<string>& list)
     {
         list.push_back(cmds[i]);
     }
-    for (int i = 0, end = gEnv->pGame->GetIGameFramework()->GetILevelSystem()->GetLevelCount(); i < end; ++i)
+
+    if (!gEnv->pSystem || !gEnv->pSystem->GetILevelSystem())
     {
-        ILevelInfo* pLevel = gEnv->pGame->GetIGameFramework()->GetILevelSystem()->GetLevelInfo(i);
+        return;
+    }
+
+    for (int i = 0, end = gEnv->pSystem->GetILevelSystem()->GetLevelCount(); i < end; ++i)
+    {
+        ILevelInfo* pLevel = gEnv->pSystem->GetILevelSystem()->GetLevelInfo(i);
         string item = "map ";
         const char* levelName = pLevel->GetName();
         int start = 0;

@@ -465,6 +465,10 @@ public:
 
     virtual QSharedPointer<ICloudFormationTemplateModel> GetTemplateModel() = 0;
 
+    virtual QString GetEnableButtonText() const = 0;
+    virtual QString GetEnableButtonToolTip() const = 0;
+    virtual bool EnableResourceGroup() = 0;
+
 signals:
 
     void ActiveDeploymentChanged(const QString& activeDeploymentName);
@@ -601,7 +605,8 @@ public:
     virtual QModelIndex ProjectStackIndex() const = 0;
 
     virtual void AddResourceGroup(const QString& resourceGroupName, bool includeExampleResources, AsyncOperationCallback callback) = 0;
-    virtual void RemoveResourceGroup(const QString& resourceGroupName, AsyncOperationCallback callback) = 0;
+    virtual void DisableResourceGroup(const QString& resourceGroupName, AsyncOperationCallback callback) = 0;
+    virtual void EnableResourceGroup(const QString& resourceGroupName, AsyncOperationCallback callback) = 0;
 
     virtual void AddServiceApi(const QString& resourceGroupName, AsyncOperationCallback callback) = 0;
 
@@ -683,6 +688,8 @@ public:
     virtual void RequestEditProjectSettings() = 0;
     virtual void RequestEditDeploymentTemplate() = 0;
     virtual void RequestEditGemsFile() = 0;
+    virtual void RequestAddFile(const QString& path) = 0;
+    virtual void RequestDeleteFile(const QString& path) = 0;
 
     virtual bool ProjectSettingsNeedsCheckout() const = 0;
     virtual bool DeploymentTemplateNeedsCheckout() const = 0;

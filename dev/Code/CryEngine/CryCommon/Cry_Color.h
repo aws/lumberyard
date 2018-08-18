@@ -508,6 +508,15 @@ ILINE Color_tpl<uint8>::Color_tpl(const Vec3& c, float fAlpha)
     a = (uint8)(fAlpha * 255);
 }
 
+template<>
+ILINE Color_tpl<uint8>::Color_tpl(const Vec4& c)
+{
+    r = (uint8)(c.x * 255);
+    g = (uint8)(c.y * 255);
+    b = (uint8)(c.z * 255);
+    a = (uint8)(c.w * 255);
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // functions implementation

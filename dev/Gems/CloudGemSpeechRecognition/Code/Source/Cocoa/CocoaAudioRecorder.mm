@@ -10,7 +10,7 @@
  *
  */
 
-#include "StdAfx.h"
+#include "CloudGemSpeechRecognition_precompiled.h"
 
 #import "CocoaAudioRecorder.h"
 #import <Foundation/Foundation.h>

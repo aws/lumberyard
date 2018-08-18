@@ -1238,7 +1238,7 @@ namespace ChatPlay
                 RegisterOptions();
             }
         }
-        return static_cast<bool>(channel);
+        return !m_channel.expired();    ///< Fix for bad logic when determining the return value of SetChannel.
     }
 
     void ChatPlayVoteImpl::Visit(const AZStd::function<void(VoteOption& option)>& visitor)

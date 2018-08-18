@@ -10,75 +10,47 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Math/Color.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphNodeGroup.h"
-#include <MCore/Source/StringIdPool.h>
 
 
 namespace EMotionFX
 {
-    // default constructor
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphNodeGroup, AnimGraphAllocator, 0)
+
     AnimGraphNodeGroup::AnimGraphNodeGroup()
+        : mColor(AZ::Color::CreateU32(255, 255, 255, 255))
+        , mIsVisible(true)
     {
-        mNodes.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_NODEGROUP);
-        mColor      = MCore::RGBAColor(1.0f, 1.0f, 1.0f, 1.0f);
-        mIsVisible  = true;
-        SetName("");
     }
 
 
-    // extended constructor
     AnimGraphNodeGroup::AnimGraphNodeGroup(const char* groupName)
     {
-        mNodes.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_NODEGROUP);
         SetName(groupName);
         mIsVisible = true;
     }
 
 
-    // another extended constructor
     AnimGraphNodeGroup::AnimGraphNodeGroup(const char* groupName, uint32 numNodes)
     {
-        mNodes.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_NODEGROUP);
         SetName(groupName);
         SetNumNodes(numNodes);
         mIsVisible = true;
     }
 
 
-    // destructor
     AnimGraphNodeGroup::~AnimGraphNodeGroup()
     {
         RemoveAllNodes();
     }
 
 
-    // default create
-    AnimGraphNodeGroup* AnimGraphNodeGroup::Create()
-    {
-        return new AnimGraphNodeGroup();
-    }
-
-
-    // extended create
-    AnimGraphNodeGroup* AnimGraphNodeGroup::Create(const char* groupName)
-    {
-        return new AnimGraphNodeGroup(groupName);
-    }
-
-
-    // extended create
-    AnimGraphNodeGroup* AnimGraphNodeGroup::Create(const char* groupName, uint32 numNodes)
-    {
-        return new AnimGraphNodeGroup(groupName, numNodes);
-    }
-
-
-    // clear node group
     void AnimGraphNodeGroup::RemoveAllNodes()
     {
-        mNodes.Clear();
+        mNodeIds.clear();
     }
 
 
@@ -87,11 +59,11 @@ namespace EMotionFX
     {
         if (groupName)
         {
-            mNameID = MCore::GetStringIdPool().GenerateIdForString(groupName);
+            mName = groupName;
         }
         else
         {
-            mNameID = MCORE_INVALIDINDEX32;
+            mName.clear();
         }
     }
 
@@ -99,26 +71,26 @@ namespace EMotionFX
     // get the name of the group as character buffer
     const char* AnimGraphNodeGroup::GetName() const
     {
-        return MCore::GetStringIdPool().GetName(mNameID).c_str();
+        return mName.c_str();
     }
 
 
     // get the name of the string as mcore string object
     const AZStd::string& AnimGraphNodeGroup::GetNameString() const
     {
-        return MCore::GetStringIdPool().GetName(mNameID);
+        return mName;
     }
 
 
     // set the color of the group
-    void AnimGraphNodeGroup::SetColor(const MCore::RGBAColor& color)
+    void AnimGraphNodeGroup::SetColor(const AZ::u32& color)
     {
         mColor = color;
     }
 
 
     // get the color of the group
-    const MCore::RGBAColor& AnimGraphNodeGroup::GetColor() const
+    AZ::u32 AnimGraphNodeGroup::GetColor() const
     {
         return mColor;
     }
@@ -134,76 +106,71 @@ namespace EMotionFX
     // set the number of nodes
     void AnimGraphNodeGroup::SetNumNodes(uint32 numNodes)
     {
-        mNodes.Resize(numNodes);
+        mNodeIds.resize(numNodes);
     }
 
 
     // get the number of nodes
     uint32 AnimGraphNodeGroup::GetNumNodes() const
     {
-        return mNodes.GetLength();
+        return static_cast<uint32>(mNodeIds.size());
     }
 
 
     // set a given node to a given node number
-    void AnimGraphNodeGroup::SetNode(uint32 index, uint32 nodeID)
+    void AnimGraphNodeGroup::SetNode(uint32 index, AnimGraphNodeId nodeId)
     {
-        mNodes[index] = nodeID;
+        mNodeIds[index] = nodeId;
     }
 
 
     // get the node number of a given index
-    uint32 AnimGraphNodeGroup::GetNode(uint32 index) const
+    AnimGraphNodeId AnimGraphNodeGroup::GetNode(uint32 index) const
     {
-        return mNodes[index];
+        return mNodeIds[index];
     }
 
 
     // add a given node to the group (performs a realloc internally)
-    void AnimGraphNodeGroup::AddNode(uint32 nodeID)
+    void AnimGraphNodeGroup::AddNode(AnimGraphNodeId nodeId)
     {
         // add the node in case it is not in yet
-        if (Contains(nodeID) == false)
+        if (Contains(nodeId) == false)
         {
-            mNodes.Add(nodeID);
+            mNodeIds.push_back(nodeId);
         }
     }
 
 
     // remove a given node by its node id
-    void AnimGraphNodeGroup::RemoveNodeByID(uint32 nodeID)
+    void AnimGraphNodeGroup::RemoveNodeById(AnimGraphNodeId nodeId)
     {
-        mNodes.RemoveByValue(nodeID);
+        const AZ::u64 convertedId = nodeId;
+        mNodeIds.erase(AZStd::remove(mNodeIds.begin(), mNodeIds.end(), convertedId), mNodeIds.end());
     }
 
 
     // remove a given array element from the list of nodes
     void AnimGraphNodeGroup::RemoveNodeByGroupIndex(uint32 index)
     {
-        mNodes.Remove(index);
-    }
-
-
-    // get the node array directly
-    MCore::Array<uint32>& AnimGraphNodeGroup::GetNodeArray()
-    {
-        return mNodes;
+        mNodeIds.erase(mNodeIds.begin() + index);
     }
 
 
     // check if the given node id
-    bool AnimGraphNodeGroup::Contains(uint32 nodeID) const
+    bool AnimGraphNodeGroup::Contains(AnimGraphNodeId nodeId) const
     {
-        return (mNodes.Find(nodeID) != MCORE_INVALIDINDEX32);
+        const AZ::u64 convertedId = nodeId;
+        return AZStd::find(mNodeIds.begin(), mNodeIds.end(), convertedId) != mNodeIds.end();
     }
 
 
     // init from another group
     void AnimGraphNodeGroup::InitFrom(const AnimGraphNodeGroup& other)
     {
-        mNodes          = other.mNodes;
+        mNodeIds        = other.mNodeIds;
         mColor          = other.mColor;
-        mNameID         = other.mNameID;
+        mName           = other.mName;
         mIsVisible      = other.mIsVisible;
     }
 
@@ -214,9 +181,19 @@ namespace EMotionFX
     }
 
 
-    uint32 AnimGraphNodeGroup::GetNameID() const
+    void AnimGraphNodeGroup::Reflect(AZ::ReflectContext* context)
     {
-        return mNameID;
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphNodeGroup>()
+            ->Version(1)
+            ->Field("nodes", &AnimGraphNodeGroup::mNodeIds)
+            ->Field("name", &AnimGraphNodeGroup::mName)
+            ->Field("color", &AnimGraphNodeGroup::mColor)
+            ->Field("isVisible", &AnimGraphNodeGroup::mIsVisible);
     }
 } // namespace EMotionFX
-

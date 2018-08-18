@@ -68,6 +68,10 @@ namespace AzToolsFramework
         bool Connection::Open(const AZStd::string& filename, bool readOnly)
         {
             AZ_Assert(m_db == NULL, "You have to close the database prior to opening a new one.");
+            if (m_db)
+            {
+                return false;
+            }
 
             int res = 0;
             if (readOnly)
@@ -79,13 +83,12 @@ namespace AzToolsFramework
                 res = sqlite3_open(filename.c_str(), &m_db);
             }
 
-            if (res != SQLITE_OK)
+            if ((res != SQLITE_OK)||(!m_db))
             {
+                AZ_Error("SQLiteConnection", false, "Unable to open sql database at %s", filename.c_str());
                 return false;
             }
 
-            //AZ_Assert(m_db, "Unable to open sql database at %s", filename.c_str());
-            //AZ_Assert(res == SQLITE_OK, "Database returned an errror when trying to open %s", filename.c_str());
             sqlite3_exec(m_db, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
             //WAL journal mode enabled for better concurrency with external asset browser.
             //Reads do not block writes
@@ -120,7 +123,11 @@ namespace AzToolsFramework
 
         void Connection::AddStatement(const AZStd::string& shortName, const AZStd::string& sqlText)
         {
-            AZ_Assert(m_statementPrototypes.find(shortName) == m_statementPrototypes.end(), "You may not register the same prototype twice");
+            if (m_statementPrototypes.find(shortName) != m_statementPrototypes.end())
+            {
+                AZ_Assert(false, "You may not register the same prototype twice.  Attempted to register %s twice!", shortName.c_str());
+                return;
+            }
 
             m_statementPrototypes[shortName] = aznew StatementPrototype(sqlText);//, AZStd::move(StatementPrototype(sqlText))));
         }
@@ -129,9 +136,9 @@ namespace AzToolsFramework
         {
             auto it = m_statementPrototypes.find(name);
 
-            AZ_Assert(it != m_statementPrototypes.end(), "Asked to remove a statement: %s : which does not currently exist\n", name);
             if (it == m_statementPrototypes.end())
             {
+                AZ_Assert(false, "Asked to remove a statement: %s : which does not currently exist\n", name);
                 return;
             }
 
@@ -149,7 +156,7 @@ namespace AzToolsFramework
             auto item = m_statementPrototypes.find(stmtName);
             if (item == m_statementPrototypes.end())
             {
-                AZ_Assert(0, "Invalid statement requested from the sql connection '%s'", stmtName.c_str());
+                AZ_Assert(false, "Invalid statement requested from the sql connection '%s'", stmtName.c_str());
                 return nullptr;
             }
 
@@ -191,39 +198,67 @@ namespace AzToolsFramework
             }
 
             finishedWithStatement->Reset();
+
+            if (finishedWithStatement->Prepared())
             {
+                // we only want to cache valid statements (that didn't fail to initialize) for later.
                 AZStd::lock_guard<AZStd::recursive_mutex> myLock(m_mutex);
                 m_cachedPreparedStatements.push_back(finishedWithStatement);
+            }
+            else
+            {
+                // delete invalid statement!
+                delete finishedWithStatement;
             }
         }
 
         void Connection::BeginTransaction()
         {
             AZ_Assert(m_db, "BeginTransaction:  Database is not open!");
+            if (!m_db)
+            {
+                return;
+            }
             sqlite3_exec(m_db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
         }
 
         void Connection::CommitTransaction()
         {
             AZ_Assert(m_db, "CommitTransaction:  Database is not open!");
+            if (!m_db)
+            {
+                return;
+            }
             sqlite3_exec(m_db, "COMMIT TRANSACTION;", NULL, NULL, NULL);
         }
 
         void Connection::RollbackTransaction()
         {
             AZ_Assert(m_db, "RollbackTransaction:  Database is not open!");
+            if (!m_db)
+            {
+                return;
+            }
             sqlite3_exec(m_db, "ROLLBACK;", NULL, NULL, NULL);
         }
 
         void Connection::Vacuum()
         {
             AZ_Assert(m_db, "Vacuum:  Database is not open!");
+            if (!m_db)
+            {
+                return;
+            }
             sqlite3_exec(m_db, "VACUUM;", NULL, NULL, NULL);
         }
 
         AZ::s64 Connection::GetLastRowID()
         {
             AZ_Assert(m_db, "GetLastRowID:  Database is not open!");
+            if (!m_db)
+            {
+                return 0;
+            }
             return sqlite3_last_insert_rowid(m_db);
         }
 
@@ -261,19 +296,26 @@ namespace AzToolsFramework
 
         bool Connection::DoesTableExist(const char* name)
         {
-            AZ_Assert(IsOpen(), "Invalid operation - Database is not open.");
-            AZ_Assert(name, "Invalid input - name is not valid");
-            if (!IsOpen())
+            AZ_Assert(IsOpen(), "Connection::DoesTableExist - Invalid state - Database is not open.");
+            AZ_Assert(name, "Connection::DoesTableExist - Invalid input - name is nullptr");
+            if ((!IsOpen())||(!name))
             {
                 return false;
             }
-            if (!name)
+
+            if (name[0] == 0)
             {
+                AZ_Assert(false, "Connection::DoesTableExist - Invalid input - name is empty string.");
                 return false;
             }
 
             StatementPrototype stmt("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=:1;");
             Statement* execute = stmt.Prepare(m_db); // execute now belongs to stmt and will die when stmt leaves scope.
+            if (!execute->Prepared())
+            {
+                execute->Finalize();
+                return false;
+            }
 
             execute->BindValueText(1, name);
             int res = execute->Step();
@@ -330,10 +372,16 @@ namespace AzToolsFramework
 
         bool Statement::PrepareFirstTime(sqlite3* db)
         {
-            AZ_Assert(db, "Vacuum:  Database is null!");
-            int res = sqlite3_prepare_v2(db, m_parentPrototype->GetSqlText().c_str(), (int)m_parentPrototype->GetSqlText().length(), &m_statement, NULL);
-            AZ_Assert(res == SQLITE_OK, "Statement::Prepare: failed! %s ( prototype is '%s')", sqlite3_errmsg(db), m_parentPrototype->GetSqlText().c_str());
-            return (res == SQLITE_OK);
+            AZ_Assert(db, "PrepareFirstTime:  Database is null!");
+            // NOTE:  length() + 1 because of this statement in the SQLITE documentation on sqlite3_prepare_v2:
+            //     "If the caller knows that the supplied string is null-terminated, then there is a small performance advantage
+            //     to passing an nByte parameter that is the number of bytes in the input string including the null-terminator."
+            //    https://www.sqlite.org/c3ref/prepare.html                                      ^^^^^^^^^
+
+            int res = sqlite3_prepare_v2(db, m_parentPrototype->GetSqlText().c_str(), (int)m_parentPrototype->GetSqlText().length() + 1, &m_statement, NULL);
+            
+            AZ_Error("SQLiteConnection", res == SQLITE_OK, "Statement::PrepareFirstTime: failed! %s ( prototype is '%s')", sqlite3_errmsg(db), m_parentPrototype->GetSqlText().c_str());
+            return ((res == SQLITE_OK)&&(m_statement));
         }
 
         bool Statement::Prepared() const
@@ -345,13 +393,17 @@ namespace AzToolsFramework
         Statement::SqlStatus Statement::Step()
         {
             AZ_Assert(m_statement, "Statement::Step: Statement not ready!");
+            if (!m_statement)
+            {
+                return SqlError;
+            }
             int res = SQLITE_BUSY;
             while (res == SQLITE_BUSY)
             {
                 res = sqlite3_step(m_statement);
             }
 
-            AZ_Assert(res != SQLITE_ERROR, "Statement::Step: SQLITE_ERROR!");
+            AZ_Error("SQLiteConnection", res != SQLITE_ERROR, "Statement::Step() resulted in SQLITE_ERROR.  This could indicate a problem with the asset database in the cache.");
 
             if (res == SQLITE_ROW)
             {
@@ -367,6 +419,11 @@ namespace AzToolsFramework
         int Statement::FindColumn(const char* name)
         {
             AZ_Assert(m_statement, "Statement::FindColumn: Statement not ready!");
+            if (!m_statement)
+            {
+                return -1;
+            }
+
             if (!m_cachedColumnNames.empty())
             {
                 auto it = m_cachedColumnNames.find(name);
@@ -397,23 +454,37 @@ namespace AzToolsFramework
         AZStd::string   Statement::GetColumnText(int col)
         {
             AZ_Assert(m_statement, "Statement::GetColumnText: Statement not ready!");
+            if (!m_statement)
+            {
+                return AZStd::string();
+            }
+
             const unsigned char* str = sqlite3_column_text(m_statement, col);
             if (str)
             {
                 return reinterpret_cast<const char*>(str);
             }
-            return "";
+
+            return AZStd::string();
         }
 
         int Statement::GetColumnInt(int col)
         {
             AZ_Assert(m_statement, "Statement::GetColumnInt: Statement not ready!");
+            if (!m_statement)
+            {
+                return 0;
+            }
             return sqlite3_column_int(m_statement, col);
         }
 
         AZ::s64     Statement::GetColumnInt64(int col)
         {
             AZ_Assert(m_statement, "Statement::GetColumnInt64: Statement not ready!");
+            if (!m_statement)
+            {
+                return 0;
+            }
             return sqlite3_column_int64(m_statement, col);
         }
 
@@ -421,18 +492,30 @@ namespace AzToolsFramework
         double  Statement::GetColumnDouble(int col)
         {
             AZ_Assert(m_statement, "Statement::GetColumnDouble: Statement not ready!");
+            if (!m_statement)
+            {
+                return 0.0;
+            }
             return sqlite3_column_double(m_statement, col);
         }
 
         int Statement::GetColumnBlobBytes(int col)
         {
             AZ_Assert(m_statement, "Statement::GetColumnBlobBytes: Statement not ready!");
+            if (!m_statement)
+            {
+                return 0;
+            }
             return sqlite3_column_bytes(m_statement, col);
         }
 
         const void* Statement::GetColumnBlob(int col)
         {
             AZ_Assert(m_statement, "Statement::GetColumnBlob: Statement not ready!");
+            if (!m_statement)
+            {
+                return nullptr;
+            }
             return sqlite3_column_blob(m_statement, col);
         }
 
@@ -441,7 +524,11 @@ namespace AzToolsFramework
             const void* blobAddr = GetColumnBlob(col);
             int blobBytes = GetColumnBlobBytes(col);
             AZ::Uuid newUuid;
-            AZ_Assert(blobBytes == sizeof(newUuid.data), "Database does not contain a UUID");
+            AZ_Error("SQLiteConnection", blobAddr && (blobBytes == sizeof(newUuid.data)), "GetColumnUuid: Database column %i does not contain a UUID - could be a sign of a corrupt database.", col);
+            if ((!blobAddr)||(blobBytes != sizeof(newUuid.data)))
+            {
+                return AZ::Uuid::CreateNull();
+            }
 
             memcpy(newUuid.data, blobAddr, blobBytes);
             return newUuid;
@@ -450,6 +537,10 @@ namespace AzToolsFramework
         bool Statement::BindValueBlob(int idx, void* data, int size)
         {
             AZ_Assert(m_statement, "Statement::GetColumnBlob: Statement not ready!");
+            if (!m_statement)
+            {
+                return false;
+            }
             int res = sqlite3_bind_blob(m_statement, idx, data, size, nullptr);
             AZ_Assert(res == SQLITE_OK, "Statement::BindValueBlob: failed to bind!");
             return (res == SQLITE_OK);
@@ -459,6 +550,10 @@ namespace AzToolsFramework
         bool Statement::BindValueUuid(int idx, const AZ::Uuid& data)
         {
             AZ_Assert(m_statement, "Statement::BindValueUuid: Statement not ready!");
+            if (!m_statement)
+            {
+                return false;
+            }
             int res = sqlite3_bind_blob(m_statement, idx, data.data, sizeof(data.data), nullptr);
             AZ_Assert(res == SQLITE_OK, "Statement::BindValueUuid: failed to bind!");
             return (res == SQLITE_OK);
@@ -467,6 +562,11 @@ namespace AzToolsFramework
 
         bool Statement::BindValueDouble(int idx, double data)
         {
+            AZ_Assert(m_statement, "Statement::BindValueDouble: Statement not ready!");
+            if (!m_statement)
+            {
+                return false;
+            }
             int res = sqlite3_bind_double(m_statement, idx, data);
             AZ_Assert(res == SQLITE_OK, "Statement::BindValueDouble: failed to bind!");
             return (res == SQLITE_OK);
@@ -474,6 +574,11 @@ namespace AzToolsFramework
 
         bool Statement::BindValueInt(int idx, int data)
         {
+            AZ_Assert(m_statement, "Statement::BindValueInt: Statement not ready!");
+            if (!m_statement)
+            {
+                return false;
+            }
             int res = sqlite3_bind_int(m_statement, idx, data);
             AZ_Assert(res == SQLITE_OK, "Statement::BindValueInt: failed to bind!");
             return     (res == SQLITE_OK);
@@ -481,6 +586,11 @@ namespace AzToolsFramework
 
         bool Statement::BindValueInt64(int idx, AZ::s64 data)
         {
+            AZ_Assert(m_statement, "Statement::BindValueInt64: Statement not ready!");
+            if (!m_statement)
+            {
+                return false;
+            }
             int res = sqlite3_bind_int64(m_statement, idx, data);
             AZ_Assert(res == SQLITE_OK, "Statement::BindValueInt64: failed to bind!");
             return     (res == SQLITE_OK);
@@ -488,6 +598,11 @@ namespace AzToolsFramework
 
         bool Statement::BindValueText(int idx, const char* data)
         {
+            AZ_Assert(m_statement, "Statement::BindValueText: Statement not ready!");
+            if (!m_statement)
+            {
+                return false;
+            }
             int res = sqlite3_bind_text(m_statement, idx, data, static_cast<int>(strlen(data)), NULL);
             AZ_Assert(res == SQLITE_OK, "Statement::BindValueText: failed to bind!");
             return     (res == SQLITE_OK);
@@ -495,19 +610,28 @@ namespace AzToolsFramework
 
         bool Statement::Reset()
         {
-            AZ_Assert(m_statement, "Statement::Reset: Statement not ready!");
+            if (!m_statement)
+            {
+                return false; // no sqlite3 resources to clean up.  this is NOT AN ASSERT situation
+            }
+
             sqlite3_reset(m_statement);
             int res = sqlite3_clear_bindings(m_statement);
             AZ_Assert(res == SQLITE_OK, "Statement::sqlite3_clear_bindings: failed!");
-            return    (res == SQLITE_OK);
+            return (res == SQLITE_OK);
+            
         }
 
         int Statement::GetNamedParamIdx(const char* name)
         {
             AZ_Assert(m_statement, "Statement::GetNamedParamIdx: Statement not ready!");
-            int returnVal = sqlite3_bind_parameter_index(m_statement, name);
-            AZ_Assert(returnVal, "Parameter %s not found in statement %s!", name, m_parentPrototype->GetSqlText().c_str());
-            return returnVal;
+            if (m_statement)
+            {
+                int returnVal = sqlite3_bind_parameter_index(m_statement, name);
+                AZ_Assert(returnVal, "Parameter %s not found in statement %s!", name, m_parentPrototype->GetSqlText().c_str());
+                return returnVal;
+            }
+            return 0; // named params actually start at 1 - so zero is an ok error value.
         }
 
         bool Statement::BindNamedUuid(const char* name, AZ::Uuid& value)

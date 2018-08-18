@@ -19,6 +19,8 @@
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/containers/vector.h>
 
 // make the internal calls public for the purposes of the unit test!
 class UnitTestPlatformConfiguration : public AssetProcessor::PlatformConfiguration
@@ -44,7 +46,7 @@ void PlatformConfigurationUnitTests::SetUp()
     m_qApp = new QCoreApplication(m_argc, m_argv);
     AssetProcessorTest::SetUp();
     AssetUtilities::ResetAssetRoot();
-    
+
 }
 
 void PlatformConfigurationUnitTests::TearDown()
@@ -115,7 +117,7 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Regular_Platforms)
     ASSERT_EQ(m_absorber.m_numErrorsAbsorbed, 0);
 
     // verify the data.
-    ASSERT_NE(config.GetPlatformByIdentifier(AssetProcessor::CURRENT_PLATFORM), nullptr);
+    ASSERT_NE(config.GetPlatformByIdentifier(AzToolsFramework::AssetSystem::GetHostAssetPlatform()), nullptr);
     ASSERT_NE(config.GetPlatformByIdentifier("es3"), nullptr);
     ASSERT_NE(config.GetPlatformByIdentifier("server"), nullptr);
     ASSERT_EQ(config.GetPlatformByIdentifier("xbone"), nullptr); // ACCEPTED_USE
@@ -126,7 +128,210 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Regular_Platforms)
     ASSERT_TRUE(config.GetPlatformByIdentifier("server")->HasTag("server"));
     ASSERT_FALSE(config.GetPlatformByIdentifier("es3")->HasTag("server"));
     ASSERT_FALSE(config.GetPlatformByIdentifier("server")->HasTag("renderer"));
+}
 
+// a reusable fixture that sets up one host as a pc with a temp path and such.
+class PlatformConfigurationUnitTests_OnePCHostFixture : public PlatformConfigurationUnitTests
+{
+public:
+    void SetUp() override
+    {
+        PlatformConfigurationUnitTests::SetUp();
+
+        m_tempEngineRoot.reset(new QTemporaryDir());
+        m_tempPath = QDir(m_tempEngineRoot->path());
+
+        m_config.reset(new UnitTestPlatformConfiguration());
+        m_config->EnablePlatform({ "pc",{ "desktop", "host" } }, true);
+        m_config->PopulatePlatformsForScanFolder(m_platforms);
+    }
+
+    void TearDown() override
+    {
+        m_platforms.set_capacity(0);
+        m_tempEngineRoot.reset();
+        m_config.reset();
+        PlatformConfigurationUnitTests::TearDown();
+    }
+    
+    AZStd::vector<AssetBuilderSDK::PlatformInfo> m_platforms;
+    AZStd::unique_ptr<UnitTestPlatformConfiguration> m_config;
+    AZStd::unique_ptr<QTemporaryDir> m_tempEngineRoot = nullptr; // this actually creates the folder in its constructor, so hold off until setup..
+    QDir m_tempPath;
+};
+
+// ensures that when a file in the root (non recursive) folder is searched for, the root is found.
+TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, GetScanFolderForFile_RootFolderFile_IsFound)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    using namespace AssetProcessor;
+
+    m_config->AddScanFolder(ScanFolderInfo(m_tempPath.filePath("scanfolder1"), "ScanFolder1", "sf1", "", true, false, m_platforms), true); // a root folder that has watched subfolders, not recursive
+    m_config->AddScanFolder(ScanFolderInfo(m_tempPath.filePath("scanfolder1/Editor"), "Editor", "sf2", "", false, true, m_platforms), true); // a child folder that exists within that scan folder.
+
+    const ScanFolderInfo* info = m_config->GetScanFolderForFile(m_tempPath.filePath("scanfolder1/something.txt"));
+
+    ASSERT_TRUE(info);
+    EXPECT_STREQ(info->ScanPath().toUtf8().constData(), m_tempPath.filePath("scanfolder1").toUtf8().constData());
+    EXPECT_STREQ(info->GetDisplayName().toUtf8().constData(), "ScanFolder1");
+}
+
+// ensures that when a file in a subfolder (recursive) is searched for, the subfolder is found despite it being inside the root, technically.
+TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, GetScanFolderForFile_SubFolderFile_IsFound)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    using namespace AssetProcessor;
+
+    m_config->AddScanFolder(ScanFolderInfo(m_tempPath.filePath("scanfolder1"), "ScanFolder1", "sf1", "", true, false, m_platforms), true); // a root folder that has watched subfolders, not recursive
+    m_config->AddScanFolder(ScanFolderInfo(m_tempPath.filePath("scanfolder1/Editor"), "Editor ScanFolder", "sf2", "", false, true, m_platforms), true); // a child folder that exists within that scan folder.
+
+    const ScanFolderInfo* info = m_config->GetScanFolderForFile(m_tempPath.filePath("scanfolder1/Editor/something.txt"));
+
+    ASSERT_TRUE(info);
+    EXPECT_STREQ(info->ScanPath().toUtf8().constData(), m_tempPath.filePath("scanfolder1/Editor").toUtf8().constData());
+    EXPECT_STREQ(info->GetDisplayName().toUtf8().constData(), "Editor ScanFolder");
+}
+
+TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, GetOverridingFile_Exists_ReturnsCorrectCase)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    using namespace AssetProcessor;
+
+    // create two scan folders, since its order dependent, the ScanFolder1 is the "winner" in tie breakers (when they both contain same file relpath)
+    QString scanfolder1Path = m_tempPath.filePath("scanfolder1");
+    QString scanfolder2Path = m_tempPath.filePath("scanfolder2");
+    QString caseSensitiveDummyFileName = m_tempPath.absoluteFilePath("scanfolder1/TestCase.tXt");
+    QString differentCaseDummyFileName = m_tempPath.absoluteFilePath("scanfolder2/testcase.txt");
+    UnitTestUtils::CreateDummyFile(caseSensitiveDummyFileName, QString("testcase1\n"));
+    UnitTestUtils::CreateDummyFile(differentCaseDummyFileName, QString("testcase2\n"));
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder1Path, "ScanFolder1", "sf1", "", false, true, m_platforms), true);
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder2Path, "ScanFolder2", "sf2", "", false, true, m_platforms), true);
+
+    // Perform the test by asking it whether anyone overrides "testcase" (lowercase) in scanfolder 2.
+    QString overrider = m_config->GetOverridingFile("testcase.txt", scanfolder2Path);
+
+    ASSERT_FALSE(overrider.isEmpty());
+    // the result should be the real actual case of the file in scanfolder 1:
+    EXPECT_STREQ(overrider.toUtf8().constData(), caseSensitiveDummyFileName.toUtf8().constData());
+}
+
+
+TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, GetOverridingFile_ExistsButNotOverridden_ReturnsEmpty)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    using namespace AssetProcessor;
+
+    // create two scan folders, since its order dependent, the ScanFolder1 is the "winner" in tie breakers.
+    QString scanfolder1Path = m_tempPath.filePath("scanfolder1");
+    QString scanfolder2Path = m_tempPath.filePath("scanfolder2");
+    QString caseSensitiveDummyFileName = m_tempPath.absoluteFilePath("scanfolder1/TestCase.tXt");
+    QString differentCaseDummyFileName = m_tempPath.absoluteFilePath("scanfolder2/testcase.txt");
+    UnitTestUtils::CreateDummyFile(caseSensitiveDummyFileName, QString("testcase1\n"));
+    UnitTestUtils::CreateDummyFile(differentCaseDummyFileName, QString("testcase2\n"));
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder1Path, "ScanFolder1", "sf1", "", false, true, m_platforms), true);
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder2Path, "ScanFolder2", "sf2", "", false, true, m_platforms), true);
+    
+    // Perform the test by asking it whether the existing real winning file is being overridden by anyone.
+    QString overrider = m_config->GetOverridingFile("TestCase.tXt", scanfolder1Path);
+
+    // note that this should return the emptystring, becuase there is nothing that OVERRIDES it (ie, its already the winner).
+    EXPECT_TRUE(overrider.isEmpty());
+}
+
+TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, GetOverridingFile_DoesNotExist_ReturnsEmptyString)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    using namespace AssetProcessor;
+    // create two scan folders, since its order dependent, the ScanFolder1 is the "winner" in tie breakers.
+
+    QString scanfolder1Path = m_tempPath.filePath("scanfolder1");
+    QString scanfolder2Path = m_tempPath.filePath("scanfolder2");
+
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder1Path, "ScanFolder1", "sf1", "", false, true, m_platforms), true);
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder2Path, "ScanFolder2", "sf2", "", false, true, m_platforms), true);
+
+    // Perform the test by asking it whether anyone overrides "testcase" (lowercase) in scanfolder 2.
+    QString overrider = m_config->GetOverridingFile("doesntExist.txt", scanfolder2Path);
+
+    EXPECT_TRUE(overrider.isEmpty());
+}
+
+TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, FindFirstMatchingFile_DoesNotExist_ReturnsEmptyString)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    using namespace AssetProcessor;
+
+    // create two scan folders, since its order dependent, the ScanFolder1 is the "winner" in tie breakers.
+    QString scanfolder1Path = m_tempPath.filePath("scanfolder1");
+    QString scanfolder2Path = m_tempPath.filePath("scanfolder2");
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder1Path, "ScanFolder1", "sf1", "", false, true, m_platforms), true);
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder2Path, "ScanFolder2", "sf2", "", false, true, m_platforms), true);
+
+    // Perform the test by asking it whether anyone overrides "testcase" (lowercase) in scanfolder 2.
+    QString foundFile = m_config->FindFirstMatchingFile("doesntExist.txt");
+
+    EXPECT_TRUE(foundFile.isEmpty());
+}
+
+TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, FindFirstMatchingFile_ExistsWithoutOverride_ReturnsCorrectCase)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    using namespace AssetProcessor;
+
+    // create two scan folders, since its order dependent, the ScanFolder1 is the "winner" in tie breakers
+    QString scanfolder1Path = m_tempPath.filePath("scanfolder1");
+    QString scanfolder2Path = m_tempPath.filePath("scanfolder2");
+    QString caseSensitiveDummyFileName = m_tempPath.absoluteFilePath("scanfolder1/TestCase.tXt");
+
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder1Path, "ScanFolder1", "sf1", "", false, true, m_platforms), true);
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder2Path, "ScanFolder2", "sf2", "", false, true, m_platforms), true);
+    UnitTestUtils::CreateDummyFile(caseSensitiveDummyFileName, QString("testcase\n"));
+
+    // Perform the test by asking it whether anyone overrides "testcase" (lowercase)
+    QString foundFile = m_config->FindFirstMatchingFile("testcase.txt");
+
+    EXPECT_FALSE(foundFile.isEmpty());
+    EXPECT_STREQ(foundFile.toUtf8().constData(), caseSensitiveDummyFileName.toUtf8().constData());
+}
+
+
+TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, FindFirstMatchingFile_ExistsWithOverride_ReturnsCorrectCase)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    using namespace AssetProcessor;
+
+    // create two scan folders, since its order dependent, the ScanFolder1 is the "winner" in tie breakers.
+    QString scanfolder1Path = m_tempPath.filePath("scanfolder1");
+    QString scanfolder2Path = m_tempPath.filePath("scanfolder2");
+    QString caseSensitiveDummyFileName = m_tempPath.absoluteFilePath("scanfolder1/TestCase.tXt");
+    QString caseSensitiveDummyFileName2 = m_tempPath.absoluteFilePath("scanfolder2/testcase.txt");
+
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder1Path, "ScanFolder1", "sf1", "", false, true, m_platforms), true);
+    m_config->AddScanFolder(ScanFolderInfo(scanfolder2Path, "ScanFolder2", "sf2", "", false, true, m_platforms), true);
+    UnitTestUtils::CreateDummyFile(caseSensitiveDummyFileName, QString("testcase\n"));
+
+    // Perform the test by asking it the first file that matches here (improper case entered)
+    QString foundFile = m_config->FindFirstMatchingFile("tEstcAse.txt");
+
+    EXPECT_FALSE(foundFile.isEmpty());
+    EXPECT_STREQ(foundFile.toUtf8().constData(), caseSensitiveDummyFileName.toUtf8().constData());
+}
+
+
+// ensures that exact matches take priority over subfolder matches
+TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, GetScanFolderForFile_SubFolder_ExactMatch_IsFound)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    using namespace AssetProcessor;
+
+    m_config->AddScanFolder(ScanFolderInfo(m_tempPath.filePath("scanfolder1"), "ScanFolder1", "sf1", "", true, false, m_platforms), true); // a root folder that has watched subfolders, not recursive
+    m_config->AddScanFolder(ScanFolderInfo(m_tempPath.filePath("scanfolder1/Editor"), "Editor ScanFolder", "sf2", "", false, true, m_platforms), true); // a child folder that exists within that scan folder.
+
+    const ScanFolderInfo* info = m_config->GetScanFolderForFile(m_tempPath.filePath("scanfolder1/Editor"));
+    ASSERT_TRUE(info);
+
+    EXPECT_STREQ(info->ScanPath().toUtf8().constData(), m_tempPath.filePath("scanfolder1/Editor").toUtf8().constData());
+    EXPECT_STREQ(info->GetDisplayName().toUtf8().constData(), "Editor ScanFolder");
 }
 
 
@@ -147,8 +352,8 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_RegularScanfolder)
     ASSERT_EQ(config.GetScanFolderAt(0).RecurseSubFolders(), true);
     ASSERT_EQ(config.GetScanFolderAt(0).GetOrder(), 0);
     // its important that this does NOT change and this makes sure the old way of doing it (case-sensitive name) persists
-    ASSERT_EQ(config.GetScanFolderAt(0).GetPortableKey(), QString("from-ini-file-Game")); 
-    
+    ASSERT_EQ(config.GetScanFolderAt(0).GetPortableKey(), QString("from-ini-file-Game"));
+
     ASSERT_EQ(config.GetScanFolderAt(1).GetDisplayName(), QString("FeatureTests"));
     ASSERT_EQ(config.GetScanFolderAt(1).GetOutputPrefix(), QString("featuretestsoutputfolder")); // to prove its not related to display name
     ASSERT_EQ(config.GetScanFolderAt(1).RecurseSubFolders(), false);
@@ -177,9 +382,9 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_RegularScanfolderP
 
     ASSERT_EQ(config.GetScanFolderCount(), 5);
     ASSERT_EQ(config.GetScanFolderAt(0).GetDisplayName(), QString("gameoutput"));
-    AZStd::vector<AssetBuilderSDK::PlatformInfo>& platforms = config.GetScanFolderAt(0).GetPlatforms();
+    AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms = config.GetScanFolderAt(0).GetPlatforms();
     ASSERT_EQ(platforms.size(), 4);
-    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo(AssetProcessor::CURRENT_PLATFORM, AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo(AzToolsFramework::AssetSystem::GetHostAssetPlatform(), AZStd::unordered_set<AZStd::string>{})) != platforms.end());
     ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("es3", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
     ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("ios", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
     ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("server", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
@@ -187,7 +392,7 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_RegularScanfolderP
     ASSERT_EQ(config.GetScanFolderAt(1).GetDisplayName(), QString("editoroutput"));
     platforms = config.GetScanFolderAt(1).GetPlatforms();
     ASSERT_EQ(platforms.size(), 2);
-    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo(AssetProcessor::CURRENT_PLATFORM, AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo(AzToolsFramework::AssetSystem::GetHostAssetPlatform(), AZStd::unordered_set<AZStd::string>{})) != platforms.end());
     ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("es3", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
 
     ASSERT_EQ(config.GetScanFolderAt(2).GetDisplayName(), QString("folder1output"));
@@ -198,10 +403,10 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_RegularScanfolderP
     ASSERT_EQ(config.GetScanFolderAt(3).GetDisplayName(), QString("folder2output"));
     platforms = config.GetScanFolderAt(3).GetPlatforms();
     ASSERT_EQ(platforms.size(), 3);
-    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo(AssetProcessor::CURRENT_PLATFORM, AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo(AzToolsFramework::AssetSystem::GetHostAssetPlatform(), AZStd::unordered_set<AZStd::string>{})) != platforms.end());
     ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("ios", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
     ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("server", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
-    
+
     ASSERT_EQ(config.GetScanFolderAt(4).GetDisplayName(), QString("folder3output"));
     platforms = config.GetScanFolderAt(4).GetPlatforms();
     ASSERT_EQ(platforms.size(), 0);
@@ -230,6 +435,11 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Recognizers)
 {
     using namespace AzToolsFramework::AssetSystem;
     using namespace AssetProcessor;
+#if defined(AZ_PLATFORM_WINDOWS)
+    const char* platformWhichIsNotCurrentPlatform = "osx_gl";
+#else
+    const char* platformWhichIsNotCurrentPlatform = "pc";
+#endif
 
     const char* configFileName = ":/testdata/config_regular.ini";
     UnitTestPlatformConfiguration config;
@@ -246,53 +456,53 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Recognizers)
     ASSERT_EQ(recogs["i_caf"].m_patternMatcher.GetBuilderPattern().m_type, AssetBuilderSDK::AssetBuilderPattern::Wildcard);
     ASSERT_EQ(recogs["i_caf"].m_platformSpecs.size(), 2);
     ASSERT_TRUE(recogs["i_caf"].m_platformSpecs.contains("es3"));
-    ASSERT_TRUE(recogs["i_caf"].m_platformSpecs.contains(AssetProcessor::CURRENT_PLATFORM));
+    ASSERT_TRUE(recogs["i_caf"].m_platformSpecs.contains(AzToolsFramework::AssetSystem::GetHostAssetPlatform()));
     ASSERT_FALSE(recogs["i_caf"].m_platformSpecs.contains("server")); // server has been set to skip.
     ASSERT_EQ(recogs["i_caf"].m_platformSpecs["es3"].m_extraRCParams, "mobile");
-    ASSERT_EQ(recogs["i_caf"].m_platformSpecs[AssetProcessor::CURRENT_PLATFORM].m_extraRCParams, "defaultparams");
+    ASSERT_EQ(recogs["i_caf"].m_platformSpecs[AzToolsFramework::AssetSystem::GetHostAssetPlatform()].m_extraRCParams, "defaultparams");
 
     ASSERT_TRUE(recogs.contains("caf"));
     ASSERT_TRUE(recogs["caf"].m_platformSpecs.contains("es3"));
     ASSERT_TRUE(recogs["caf"].m_platformSpecs.contains("server"));
-    ASSERT_TRUE(recogs["caf"].m_platformSpecs.contains(CURRENT_PLATFORM));
+    ASSERT_TRUE(recogs["caf"].m_platformSpecs.contains(AzToolsFramework::AssetSystem::GetHostAssetPlatform()));
     ASSERT_EQ(recogs["caf"].m_platformSpecs.size(), 3);
     ASSERT_EQ(recogs["caf"].m_platformSpecs["es3"].m_extraRCParams, "rendererparams");
-    ASSERT_EQ(recogs["caf"].m_platformSpecs[CURRENT_PLATFORM].m_extraRCParams, "rendererparams");
+    ASSERT_EQ(recogs["caf"].m_platformSpecs[AzToolsFramework::AssetSystem::GetHostAssetPlatform()].m_extraRCParams, "rendererparams");
     ASSERT_EQ(recogs["caf"].m_platformSpecs["server"].m_extraRCParams, "copy");
 
     ASSERT_TRUE(recogs.contains("mov"));
     ASSERT_TRUE(recogs["mov"].m_platformSpecs.contains("es3"));
     ASSERT_TRUE(recogs["mov"].m_platformSpecs.contains("server"));
-    ASSERT_TRUE(recogs["mov"].m_platformSpecs.contains(CURRENT_PLATFORM));
+    ASSERT_TRUE(recogs["mov"].m_platformSpecs.contains(AzToolsFramework::AssetSystem::GetHostAssetPlatform()));
     ASSERT_EQ(recogs["mov"].m_platformSpecs.size(), 3);
     ASSERT_EQ(recogs["mov"].m_platformSpecs["es3"].m_extraRCParams, "platformspecificoverride");
-    ASSERT_EQ(recogs["mov"].m_platformSpecs[CURRENT_PLATFORM].m_extraRCParams, "rendererparams");
+    ASSERT_EQ(recogs["mov"].m_platformSpecs[AzToolsFramework::AssetSystem::GetHostAssetPlatform()].m_extraRCParams, "rendererparams");
     ASSERT_EQ(recogs["mov"].m_platformSpecs["server"].m_extraRCParams, "copy");
 
     // the "rend" test makes sure that even if you dont specify 'params' its still there by default for all enabled platforms.
     // (but platforms can override it)
     ASSERT_TRUE(recogs.contains("rend"));
-    ASSERT_TRUE(recogs["rend"].m_platformSpecs.contains(CURRENT_PLATFORM));
+    ASSERT_TRUE(recogs["rend"].m_platformSpecs.contains(AzToolsFramework::AssetSystem::GetHostAssetPlatform()));
     ASSERT_TRUE(recogs["rend"].m_platformSpecs.contains("es3"));
     ASSERT_TRUE(recogs["rend"].m_platformSpecs.contains("server"));
-    ASSERT_FALSE(recogs["rend"].m_platformSpecs.contains("osx_gl")); // this is not an enabled platform and should not be there.
+    ASSERT_FALSE(recogs["rend"].m_platformSpecs.contains(platformWhichIsNotCurrentPlatform)); // this is not an enabled platform and should not be there.
     ASSERT_EQ(recogs["rend"].m_platformSpecs.size(), 3);
-    ASSERT_EQ(recogs["rend"].m_platformSpecs[CURRENT_PLATFORM].m_extraRCParams, "rendererparams");
+    ASSERT_EQ(recogs["rend"].m_platformSpecs[AzToolsFramework::AssetSystem::GetHostAssetPlatform()].m_extraRCParams, "rendererparams");
     ASSERT_EQ(recogs["rend"].m_platformSpecs["es3"].m_extraRCParams, "rendererparams");
     ASSERT_EQ(recogs["rend"].m_platformSpecs["server"].m_extraRCParams, ""); // default if not specified is empty string
-   
+
     ASSERT_TRUE(recogs.contains("alldefault"));
-    ASSERT_TRUE(recogs["alldefault"].m_platformSpecs.contains(CURRENT_PLATFORM));
+    ASSERT_TRUE(recogs["alldefault"].m_platformSpecs.contains(AzToolsFramework::AssetSystem::GetHostAssetPlatform()));
     ASSERT_TRUE(recogs["alldefault"].m_platformSpecs.contains("es3"));
     ASSERT_TRUE(recogs["alldefault"].m_platformSpecs.contains("server"));
-    ASSERT_FALSE(recogs["alldefault"].m_platformSpecs.contains("osx_gl")); // this is not an enabled platform and should not be there.
+    ASSERT_FALSE(recogs["alldefault"].m_platformSpecs.contains(platformWhichIsNotCurrentPlatform)); // this is not an enabled platform and should not be there.
     ASSERT_EQ(recogs["alldefault"].m_platformSpecs.size(), 3);
-    ASSERT_EQ(recogs["alldefault"].m_platformSpecs[CURRENT_PLATFORM].m_extraRCParams, "");
+    ASSERT_EQ(recogs["alldefault"].m_platformSpecs[AzToolsFramework::AssetSystem::GetHostAssetPlatform()].m_extraRCParams, "");
     ASSERT_EQ(recogs["alldefault"].m_platformSpecs["es3"].m_extraRCParams, "");
     ASSERT_EQ(recogs["alldefault"].m_platformSpecs["server"].m_extraRCParams, "");
 
     ASSERT_TRUE(recogs.contains("skipallbutone"));
-    ASSERT_FALSE(recogs["skipallbutone"].m_platformSpecs.contains(CURRENT_PLATFORM));
+    ASSERT_FALSE(recogs["skipallbutone"].m_platformSpecs.contains(AzToolsFramework::AssetSystem::GetHostAssetPlatform()));
     ASSERT_FALSE(recogs["skipallbutone"].m_platformSpecs.contains("es3"));
     ASSERT_TRUE(recogs["skipallbutone"].m_platformSpecs.contains("server")); // server is only one enabled (set to copy)
     ASSERT_EQ(recogs["skipallbutone"].m_platformSpecs.size(), 1);
@@ -317,7 +527,7 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Overrides)
     // note that the override config DISABLES the server platform - and this in turn disables the "server only" compile rule called skipallbutone
 
     // verify the data.
-    ASSERT_NE(config.GetPlatformByIdentifier(AssetProcessor::CURRENT_PLATFORM), nullptr);
+    ASSERT_NE(config.GetPlatformByIdentifier(AzToolsFramework::AssetSystem::GetHostAssetPlatform()), nullptr);
     ASSERT_NE(config.GetPlatformByIdentifier("es3"), nullptr);
     ASSERT_NE(config.GetPlatformByIdentifier("ps4"), nullptr); // ACCEPTED_USE
     // this override swaps server with ps4 in that it turns ON ps4, turns off server // ACCEPTED_USE
@@ -334,10 +544,10 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Overrides)
     ASSERT_EQ(recogs["i_caf"].m_platformSpecs.size(), 3);
     ASSERT_TRUE(recogs["i_caf"].m_platformSpecs.contains("es3"));
     ASSERT_TRUE(recogs["i_caf"].m_platformSpecs.contains("ps4")); // ACCEPTED_USE
-    ASSERT_TRUE(recogs["i_caf"].m_platformSpecs.contains(AssetProcessor::CURRENT_PLATFORM));
+    ASSERT_TRUE(recogs["i_caf"].m_platformSpecs.contains(AzToolsFramework::AssetSystem::GetHostAssetPlatform()));
     ASSERT_FALSE(recogs["i_caf"].m_platformSpecs.contains("server")); // server has been set to skip.
     ASSERT_EQ(recogs["i_caf"].m_platformSpecs["es3"].m_extraRCParams, "mobile");
-    ASSERT_EQ(recogs["i_caf"].m_platformSpecs[AssetProcessor::CURRENT_PLATFORM].m_extraRCParams, "defaultparams");
+    ASSERT_EQ(recogs["i_caf"].m_platformSpecs[AzToolsFramework::AssetSystem::GetHostAssetPlatform()].m_extraRCParams, "defaultparams");
     ASSERT_EQ(recogs["i_caf"].m_platformSpecs["ps4"].m_extraRCParams, "copy"); // ACCEPTED_USE
 
 
@@ -369,7 +579,7 @@ TEST_F(PlatformConfigurationUnitTests, Test_GemHandling)
     config.AddGemScanFolders(fakeGems);
     QStringList allConfigFilesList;
     bool foundGameGem = false;
-    // it is intentional that you always get sent back the list of all available config files to read from 
+    // it is intentional that you always get sent back the list of all available config files to read from
     config.AddGemConfigFiles(fakeGems, allConfigFilesList, foundGameGem);
 
     ASSERT_TRUE(allConfigFilesList.size() == 2);

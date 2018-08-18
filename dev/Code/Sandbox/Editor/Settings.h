@@ -426,6 +426,7 @@ struct SANDBOX_API SEditorSettings
     bool invertYRotation;
     bool invertPan;
     bool stylusMode; // if stylus mode is enabled, no setCursorPos will be performed (WACOM tablets, etc)
+    bool restoreViewportCamera; // When true, restore the original editor viewport camera when exiting game mode
 
     //! Hide mask for objects.
     int objectHideMask;
@@ -565,6 +566,9 @@ struct SANDBOX_API SEditorSettings
 
     // Enable the option do get detailed information about the loaded scene data in the Scene Settings window.
     bool enableSceneInspector;
+
+    // Enable the legacy UI (deprecated)
+    bool enableLegacyUI;
 
     // Deep Selection Mode Settings
     SDeepSelectionSettings deepSelectionSettings;

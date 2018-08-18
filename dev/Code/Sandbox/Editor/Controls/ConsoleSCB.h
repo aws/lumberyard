@@ -55,7 +55,6 @@ protected:
 
 signals:
     void variableEditorRequested();
-    void setWindowTitle(const QString&);
 
 private:
     void DisplayHistory(bool bForward);

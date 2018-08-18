@@ -13,7 +13,7 @@
 
 #include "StdAfx.h"
 #include "MannequinChangeMonitor.h"
-#include "helper/MannequinFileChangeWriter.h"
+#include "Helper/MannequinFileChangeWriter.h"
 
 CMannequinChangeMonitor::CMannequinChangeMonitor()
     : m_pFileChangeWriter(new CMannequinFileChangeWriter(true))

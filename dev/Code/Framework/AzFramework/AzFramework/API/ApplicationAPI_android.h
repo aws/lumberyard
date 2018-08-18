@@ -45,7 +45,9 @@ namespace AzFramework
         virtual void OnLowMemory() {}   // Low memory
 
         virtual void OnWindowInit() {}     // Application window was created
-        virtual void OnWindowDestroy() {}   // Application window is going to be destoryed
+        virtual void OnWindowDestroy() {}   // Application window is going to be destroyed
+
+        virtual void OnWindowRedrawNeeded() {} // Application window needs to be redrawn. This is called after a window resize occurs as well. So, we can(reliably) use this for handling orientation changes.
     };
 
 

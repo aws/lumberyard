@@ -282,7 +282,7 @@ namespace AZ
                         classNames.push_back(className);
                     }
 
-                    connect(menu, &QMenu::aboutToShow, 
+                    connect(menu, &QMenu::aboutToShow, this,
                         [this, menu]() 
                         {
                             menu->setFixedWidth(ui->m_addButton->width());

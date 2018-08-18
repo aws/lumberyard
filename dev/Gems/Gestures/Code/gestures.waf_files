@@ -28,7 +28,24 @@
             "Source/GestureRecognizerPinchFlowNode.cpp",
             "Source/GestureRecognizerRotateFlowNode.cpp",
             "Source/GestureRecognizerSwipeFlowNode.cpp",
-            "Source/GesturesGem.cpp"
+            "Source/GesturesModule.cpp",
+            "Source/GesturesSystemComponent.cpp",
+            "Source/GesturesSystemComponent.h",
+            "Source/InputChannelGesture.h",
+            "Source/InputChannelGestureClickOrTap.cpp",
+            "Source/InputChannelGestureClickOrTap.h",
+            "Source/InputChannelGestureDrag.cpp",
+            "Source/InputChannelGestureDrag.h",
+            "Source/InputChannelGestureHold.cpp",
+            "Source/InputChannelGestureHold.h",
+            "Source/InputChannelGesturePinch.cpp",
+            "Source/InputChannelGesturePinch.h",
+            "Source/InputChannelGestureRotate.cpp",
+            "Source/InputChannelGestureRotate.h",
+            "Source/InputChannelGestureSwipe.cpp",
+            "Source/InputChannelGestureSwipe.h",
+            "Source/InputDeviceGestures.cpp",
+            "Source/InputDeviceGestures.h"
         ]
     }
 }

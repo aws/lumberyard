@@ -37,13 +37,26 @@ namespace AzQtComponents
     {
     }
 
+    void FancyDockingGhostWidget::setPixmapVisible(bool visible)
+    {
+        if (m_visible != visible)
+        {
+            m_visible = visible;
+            if (visible)
+            {
+                update();
+            }
+        }
+    }
+
     void FancyDockingGhostWidget::setPixmap(const QPixmap& pixmap, const QRect& targetRect, QScreen* screen)
     {
+        const bool needsRepaint = m_pixmap.cacheKey() != pixmap.cacheKey() || m_clipToWidgets;
         m_pixmap = pixmap;
 
         if (pixmap.isNull() || targetRect.isNull() || !screen)
         {
-            m_visible = false;
+            setPixmapVisible(false);
             return;
         }
 
@@ -68,22 +81,31 @@ namespace AzQtComponents
         }
 
         setGeometry(targetRect);
-
-        m_visible = true;
+        setPixmapVisible(true);
+        if (needsRepaint)
+        {
+            update();
+        }
     }
 
     // The equivalent of lowering the pixmap under the parent's dock widgets
     void FancyDockingGhostWidget::EnableClippingToDockWidgets()
     {
-        m_clipToWidgets = true;
-        update();
+        if (!m_clipToWidgets)
+        {
+            m_clipToWidgets = true;
+            update();
+        }
     }
 
     // The equivalent of raising above all of the parent's dock widgets
     void FancyDockingGhostWidget::DisableClippingToDockWidgets()
     {
-        m_clipToWidgets = false;
-        update();
+        if (m_clipToWidgets)
+        {
+            m_clipToWidgets = false;
+            update();
+        }
     }
 
     void FancyDockingGhostWidget::closeEvent(QCloseEvent* ev)
@@ -95,12 +117,11 @@ namespace AzQtComponents
     {
         QPainter painter(this);
 
-        painter.save();
-
         if (m_visible && !m_pixmap.isNull())
         {
             if (m_clipToWidgets)
             {
+                painter.save();
                 AzQtComponents::SetClipRegionForDockingWidgets(this, painter, m_mainWindow);
             }
 
@@ -119,14 +140,16 @@ namespace AzQtComponents
             }
 
             painter.drawPixmap(QRect(0, yOffset, widgetSize.width(), aspectRatioHeight), m_pixmap);
+            if (m_clipToWidgets)
+            {
+                painter.restore();
+            }
         }
         else
         {
             // fill to blank, in case anything is cached
             painter.fillRect(rect(), QColor(0, 0, 0, 0));
         }
-
-        painter.restore();
     }
 }
 

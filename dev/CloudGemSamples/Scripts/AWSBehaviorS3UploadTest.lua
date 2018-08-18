@@ -22,7 +22,7 @@ function AWSBehaviorS3UploadTest:OnEventBegin(message)
     AWSBehaviorS3Upload = AWSBehaviorS3Upload()
     AWSBehaviorS3Upload.bucketName = "CloudGemAWSScriptBehaviors.s3nodeexamples" --Specify a bucket name
     AWSBehaviorS3Upload.keyName = "s3example.txt" --Specify a key name
-    AWSBehaviorS3Upload.localFileName = "CloudGemSamples/Levels/AWSBehaviorExamples/testdata/s3example.txt" --Specify a local file name
+    AWSBehaviorS3Upload.localFileName = "Levels/AWSBehaviorExamples/testdata/s3example.txt" --Specify a local file name
     AWSBehaviorS3Upload.contentType = "text/html" --Specify a content type
     AWSBehaviorS3Upload:Upload()
 end

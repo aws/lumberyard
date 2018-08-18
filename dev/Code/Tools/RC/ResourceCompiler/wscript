@@ -59,10 +59,12 @@ def build(bld):
                                 'BinMac64/rc/libPVRTexLib.dylib'
                                 ],
 
-        darwin_rpath    = [ "@executable_path", "@executable_path/..", "@executable_path/../qtlibs/lib" ],
+        darwin_rpath    = [ "@executable_path", "@executable_path/..", "@executable_path/../qtlibs/lib", "@executable_path/../../Frameworks" ],
 
         darwin_cflags   = ['-Wno-shift-count-overflow'],
         darwin_cxxflags = ['-Wno-shift-count-overflow'],
+
+        win_x64_clang_cxxflags = ['-fexceptions'],
 
         # Testing
         test_all_file_list = ['resourcecompiler_test.waf_files'],

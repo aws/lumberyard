@@ -28,6 +28,7 @@ void JobManagerBase::Process(Job* job)
     Job* dependent = job->GetDependent();
     bool isDelete = job->IsAutoDelete();
 
+    AZ_PROFILE_INTERVAL_END(AZ::Debug::ProfileCategory::AzCore, job);
     if (!job->IsCancelled())
     {
         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, "AZ::JobManagerBase::Process Job");

@@ -16,15 +16,13 @@
 #include <AzCore/Math/IntersectPoint.h>
 #include <AzCore/Math/IntersectSegment.h>
 #include <AzCore/Math/VectorConversions.h>
-#include <Cry_Math.h>
-#include <MathConversion.h>
-#include <ISystem.h>
-#include <IRenderAuxGeom.h>
+#include <AzCore/Math/Quaternion.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <Shape/ShapeDisplay.h>
 
 namespace LmbrCentral
 {
-    vtx_idx* WriteTriangle(AZ::u32 a, AZ::u32 b, AZ::u32 c, vtx_idx* indices)
+    AZ::u32* WriteTriangle(AZ::u32 a, AZ::u32 b, AZ::u32 c, AZ::u32* indices)
     {
         indices[0] = a;
         indices[1] = b;
@@ -32,32 +30,28 @@ namespace LmbrCentral
         return indices + 3;
     }
 
-    Vec3* WriteVertex(const AZ::Vector3& vertex, Vec3* vertices)
+    AZ::Vector3* WriteVertex(const AZ::Vector3& vertex, AZ::Vector3* vertices)
     {
-        *vertices = AZVec3ToLYVec3(vertex);
+        *vertices = vertex;
         return vertices + 1;
     }
 
     void DrawShape(
+        AzFramework::EntityDebugDisplayRequests* displayContext,
         const ShapeDrawParams& shapeDrawParams, const ShapeMesh& shapeMesh)
     {
-        auto geomRenderer = gEnv->pRenderer->GetIRenderAuxGeom();
-
         if (shapeDrawParams.m_filled)
         {
-            geomRenderer->DrawTriangles(
-                shapeMesh.m_vertexBuffer.data(),
-                shapeMesh.m_vertexBuffer.size(),
-                shapeMesh.m_indexBuffer.data(),
-                shapeMesh.m_indexBuffer.size(),
-                AZColorToLYColorF(shapeDrawParams.m_shapeColor)
+            displayContext->DrawTrianglesIndexed(
+                shapeMesh.m_vertexBuffer,
+                shapeMesh.m_indexBuffer,
+                shapeDrawParams.m_shapeColor
             );
         }
 
-        geomRenderer->DrawLines(
-            shapeMesh.m_lineBuffer.data(),
-            shapeMesh.m_lineBuffer.size(),
-            AZColorToLYColorF(shapeDrawParams.m_wireColor));
+        displayContext->DrawLines(
+            shapeMesh.m_lineBuffer,
+            shapeDrawParams.m_wireColor);
     }
 
     /**
@@ -132,10 +126,9 @@ namespace LmbrCentral
         return v1.GetX() * v2.GetY() - v1.GetY() * v2.GetX();
     }
 
-    template<typename V3>
-    AZStd::vector<V3> GenerateTriangles(AZStd::vector<AZ::Vector2> vertices)
+    AZStd::vector<AZ::Vector3> GenerateTriangles(AZStd::vector<AZ::Vector2> vertices)
     {
-        AZStd::vector<V3> triangles;
+        AZStd::vector<AZ::Vector3> triangles;
 
         // we only support simple polygons (ones with no self intersections)
         if (!SimplePolygon(vertices))
@@ -203,9 +196,9 @@ namespace LmbrCentral
                 }
 
                 // form new triangle from 'ear'
-                triangles.push_back(V3(prev.GetX(), prev.GetY(), 0.0f));
-                triangles.push_back(V3(curr.GetX(), curr.GetY(), 0.0f));
-                triangles.push_back(V3(next.GetX(), next.GetY(), 0.0f));
+                triangles.push_back(AZ::Vector2ToVector3(prev));
+                triangles.push_back(AZ::Vector2ToVector3(curr));
+                triangles.push_back(AZ::Vector2ToVector3(next));
 
                 // if work is still do be done, remove vertex from list and iterate again
                 if (vertices.size() > 3)
@@ -225,25 +218,20 @@ namespace LmbrCentral
         }
     }
 
-    // concrete instantiations of GenerateTriangles
-    template AZStd::vector<Vec3> GenerateTriangles(AZStd::vector<AZ::Vector2> vertices);
-    template AZStd::vector<AZ::Vector3> GenerateTriangles(AZStd::vector<AZ::Vector2> vertices);
-
     namespace CapsuleTubeUtil
     {
         AZ::Vector3 CalculatePositionOnSphere(
-            const AZ::Transform& worldFromLocal, const AZ::Vector3& localPosition,
-            float radius, const AZ::Vector3& forwardAxis, const AZ::Vector3& sideAxis,
-            float angle)
+            const AZ::Vector3& localPosition, const AZ::Vector3& forwardAxis, const AZ::Vector3& sideAxis,
+            const float radius, const float angle)
         {
-            return worldFromLocal * (localPosition +
-                forwardAxis * sinf(angle) * radius + sideAxis * cosf(angle) * radius);
+            return localPosition +
+                (forwardAxis * sinf(angle) * radius) +
+                (sideAxis * cosf(angle) * radius);
         }
 
-        Vec3* GenerateWireCap(
-            const AZ::Transform& worldFromLocal, const AZ::Vector3& localPosition,
-            float radius, const AZ::Vector3& direction, const AZ::Vector3& side,
-            AZ::u32 capSegments, Vec3* vertices)
+        AZ::Vector3* GenerateWireCap(
+            const AZ::Vector3& localPosition, const AZ::Vector3& direction, const AZ::Vector3& side,
+            const float radius, const AZ::u32 capSegments, AZ::Vector3* vertices)
         {
             const AZ::Vector3 up = side.Cross(direction);
             // number of cap segments is tesselation of end - total is double, as we need lines for first
@@ -252,24 +240,24 @@ namespace LmbrCentral
             const float deltaAngle = AZ::Constants::Pi / static_cast<float>(totalCapSegments);
 
             float angle = 0.0f;
-            for (int i = 0; i < totalCapSegments; ++i)
+            for (size_t i = 0; i < totalCapSegments; ++i)
             {
                 const float nextAngle = angle + deltaAngle;
 
                 // horizontal semi-circle arc
                 vertices = WriteVertex(
-                    CalculatePositionOnSphere(worldFromLocal, localPosition, radius, direction, side, angle),
+                    CalculatePositionOnSphere(localPosition, direction, side, radius, angle),
                     vertices);
                 vertices = WriteVertex(
-                    CalculatePositionOnSphere(worldFromLocal, localPosition, radius, direction, side, nextAngle),
+                    CalculatePositionOnSphere(localPosition, direction, side, radius, nextAngle),
                     vertices);
 
                 // vertical semi-circle arc
                 vertices = WriteVertex(
-                    CalculatePositionOnSphere(worldFromLocal, localPosition, radius, direction, up, angle),
+                    CalculatePositionOnSphere(localPosition, direction, up, radius, angle),
                     vertices);
                 vertices = WriteVertex(
-                    CalculatePositionOnSphere(worldFromLocal, localPosition, radius, direction, up, nextAngle),
+                    CalculatePositionOnSphere(localPosition, direction, up, radius, nextAngle),
                     vertices);
 
                 angle += deltaAngle;
@@ -278,10 +266,10 @@ namespace LmbrCentral
             return vertices;
         }
 
-        
-        Vec3* GenerateWireLoop(
-            const AZ::Transform& worldFromLocal, const AZ::Vector3& position, const AZ::Vector3& direction,
-            const AZ::Vector3& side, AZ::u32 sides, float radius, Vec3* vertices)
+
+        AZ::Vector3* GenerateWireLoop(
+            const AZ::Vector3& position, const AZ::Vector3& direction, const AZ::Vector3& side,
+            const AZ::u32 sides, const float radius, AZ::Vector3* vertices)
         {
             const auto deltaRot = AZ::Quaternion::CreateFromAxisAngle(
                 direction, AZ::Constants::TwoPi / static_cast<float>(sides));
@@ -292,9 +280,9 @@ namespace LmbrCentral
                 const auto nextNormal = deltaRot * currentNormal;
                 const auto localPosition = position + currentNormal * radius;
                 const auto nextlocalPosition = position + nextNormal * radius;
-                
-                vertices = WriteVertex(worldFromLocal * localPosition, vertices);
-                vertices = WriteVertex(worldFromLocal * nextlocalPosition, vertices);
+
+                vertices = WriteVertex(localPosition, vertices);
+                vertices = WriteVertex(nextlocalPosition, vertices);
 
                 currentNormal = deltaRot * currentNormal;
             }
@@ -307,18 +295,18 @@ namespace LmbrCentral
          * added in concrete Start/End cap because of ordering - StartCap must at top vertex first,
          * EndCap must add bottom vertex last.
          */
-        static Vec3* GenerateSolidCap(
-            const AZ::Transform& worldFromLocal, const AZ::Vector3& localPosition, float radius,
-            const AZ::Vector3& direction, const AZ::Vector3& side, AZ::u32 sides, AZ::u32 capSegments,
-            Vec3* vertices, float angleOffset, float sign)
+        static AZ::Vector3* GenerateSolidCap(
+            const AZ::Vector3& localPosition, const AZ::Vector3& direction,
+            const AZ::Vector3& side, const float radius, const AZ::u32 sides, const AZ::u32 capSegments,
+            const float angleOffset, const float sign, AZ::Vector3* vertices)
         {
             const float angleDelta = AZ::Constants::HalfPi / static_cast<float>(capSegments);
             float angle = 0.0f;
-            for (int i = 1; i <= capSegments; ++i)
+            for (size_t i = 1; i <= capSegments; ++i)
             {
                 const AZ::Vector3 capSegmentPosition = localPosition + direction * sign * cosf(angle - angleOffset) * radius;
                 vertices = GenerateSegmentVertices(
-                    capSegmentPosition, direction, side, sinf(angle + angleOffset) * radius, sides, worldFromLocal, vertices);
+                    capSegmentPosition, direction, side, sinf(angle + angleOffset) * radius, sides, vertices);
 
                 angle += angleDelta;
             }
@@ -326,42 +314,41 @@ namespace LmbrCentral
             return vertices;
         }
 
-        Vec3* GenerateSolidStartCap(
-            const AZ::Transform& worldFromLocal, const AZ::Vector3& localPosition, float radius,
-            const AZ::Vector3& direction, const AZ::Vector3& side, AZ::u32 sides, AZ::u32 capSegments,
-            Vec3* vertices)
+        AZ::Vector3* GenerateSolidStartCap(
+            const AZ::Vector3& localPosition, const AZ::Vector3& direction,
+            const AZ::Vector3& side, const float radius, const AZ::u32 sides,
+            const AZ::u32 capSegments, AZ::Vector3* vertices)
         {
             vertices = WriteVertex( // cap end vertex
-                worldFromLocal * (localPosition - direction * radius), vertices);
+                localPosition - direction * radius, vertices);
             return GenerateSolidCap(  // circular segments of cap vertices
-                worldFromLocal, localPosition, radius, direction,
-                side, sides, capSegments, vertices, 0.0f, -1.0f);
+                localPosition, direction,
+                side, radius, sides, capSegments, 0.0f, -1.0f, vertices);
         }
 
-        Vec3* GenerateSolidEndCap(
-            const AZ::Transform& worldFromLocal, const AZ::Vector3& localPosition, float radius,
-            const AZ::Vector3& direction, const AZ::Vector3& side, AZ::u32 sides, AZ::u32 capSegments,
-            Vec3* vertices)
+        AZ::Vector3* GenerateSolidEndCap(
+            const AZ::Vector3& localPosition, const AZ::Vector3& direction,
+            const AZ::Vector3& side, const float radius, const AZ::u32 sides,
+            const AZ::u32 capSegments, AZ::Vector3* vertices)
         {
             vertices = GenerateSolidCap(  // circular segments of cap vertices
-                worldFromLocal, localPosition, radius, direction,
-                side, sides, capSegments, vertices, AZ::Constants::HalfPi, 1.0f);
+                localPosition, direction,
+                side, radius, sides, capSegments, AZ::Constants::HalfPi, 1.0f, vertices);
             return WriteVertex( // cap end vertex
-                worldFromLocal * (localPosition + direction * radius), vertices);
+                localPosition + direction * radius, vertices);
         }
 
         /**
          * Generates a single segment of vertices - Extrudes the point using the normal * radius,
          * then rotates it around the axis 'sides' times.
          */
-        Vec3* GenerateSegmentVertices(
+        AZ::Vector3* GenerateSegmentVertices(
             const AZ::Vector3& point,
             const AZ::Vector3& axis,
             const AZ::Vector3& normal,
-            float radius,
-            AZ::u32 sides,
-            const AZ::Transform& transform,
-            Vec3* vertices)
+            const float radius,
+            const AZ::u32 sides,
+            AZ::Vector3* vertices)
         {
             const auto deltaRot = AZ::Quaternion::CreateFromAxisAngle(
                 axis, AZ::Constants::TwoPi / static_cast<float>(sides));
@@ -370,14 +357,16 @@ namespace LmbrCentral
             for (size_t i = 0; i < sides; ++i)
             {
                 const auto localPosition = point + currentNormal * radius;
-                vertices = WriteVertex(transform * localPosition, vertices);
+                vertices = WriteVertex(localPosition, vertices);
                 currentNormal = deltaRot * currentNormal;
             }
 
             return vertices;
         }
 
-        void GenerateSolidMeshIndices(AZ::u32 sides, AZ::u32 segments, AZ::u32 capSegments, vtx_idx* indices)
+        void GenerateSolidMeshIndices(
+            const AZ::u32 sides, const AZ::u32 segments, const AZ::u32 capSegments,
+            AZ::u32* indices)
         {
             const auto capSegmentTipVerts = capSegments > 0 ? 1 : 0;
             const auto totalSegments = segments + capSegments * 2;

@@ -16,7 +16,10 @@ def build(bld):
         # Settings
         includes        = [bld.Path('Code/CryEngine/CryCommon'),
                            bld.Path('Code/CryEngine/CryAction')],
-						   
+
+        # Compiler Specific
+        win_x64_clang_cxxflags = ['-fexceptions', '-frtti', '-Wno-inconsistent-dllimport'],
+
         # Platform Specific
         win_uselib      = ['OSVR_STATIC'],
         win_file_list   = ['osvr_win.waf_files']

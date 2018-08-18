@@ -31,7 +31,7 @@ def build(bld):
         'EMFX_EMSTUDIOLYEMBEDDED',      # EMotionFX tool needs to know it's embedded in another Qt app.
         'EMOTIONFXANIMATION_EDITOR'     # Editor build of Gem code needs to register additional components.
     ]
-    
+
     shipping_defines = [
         'EMFX_DEVELOPMENT_BUILD'        # To be removed
     ]
@@ -50,9 +50,9 @@ def build(bld):
                                       ],
         use                         = ['AzFramework', 'LmbrCentral'],
         win_features                = ['crcfix'],
-        #win_cxxflags               = msvc_cxx_flags,
-        includes                    = ['./Include', 
-                                       './Source', 
+        #msvc_cxxflags               = msvc_cxx_flags,
+        includes                    = ['./Include',
+                                       './Source',
                                        './',
                                        bld.Path('Gems/LmbrCentral/Code/include')        # Not the right way, use_required_gems should be used, but can't because of an issue (LY-51626).
                                       ],
@@ -76,9 +76,9 @@ def build(bld):
         file_list                   = ['emotionfx.waf_files'],
         use                         = ['EMotionFXStaticLib'],
         win_features                = ['crcfix'],
-        #win_cxxflags               = msvc_cxx_flags,
-        includes                    = ['./Include', 
-                                       './Source', 
+        #msvc_cxxflags               = msvc_cxx_flags,
+        includes                    = ['./Include',
+                                       './Source',
                                        './'
                                       ],
         export_includes             = ['./Include'],
@@ -92,6 +92,8 @@ def build(bld):
         release_defines             = list(shipping_defines),
         release_dedicated_defines   = list(shipping_defines),
         test_all_defines            = list(development_defines),
+
+        win_x64_clang_debug_test_enable_rtti = True,
 
         # Editor module - Includes pulls in EmotionFX tools code, and has a dependencies on AzToolsFramework and the EMotionFXStaticLib gem shared library.
         editor = dict(
@@ -107,7 +109,12 @@ def build(bld):
                                'EMotionFX/Pipeline/SceneAPIExt/sceneapi_ext.waf_files',
                                'EMotionFX/Pipeline/RCExt/rc_ext.waf_files'
                               ],
-            use             = ['AzToolsFramework', 'EMotionFXStaticLib', 'SceneCore', 'SceneData'] + bld.make_aws_library_task_list(['LyMetricsShared', 'LyIdentity', 'LyMetricsProducer']), #Do not change the order of 'LyMetricsShared', 'LyIdentity', 'LyMetricsProducer'
+            use             = ['AzToolsFramework',
+                               'AzQtComponents',
+                               'EMotionFXStaticLib', 
+                               'SceneCore', 
+                               'SceneData'
+                              ] + bld.make_aws_library_task_list(['LyMetricsShared', 'LyIdentity', 'LyMetricsProducer']), #Do not change the order of 'LyMetricsShared', 'LyIdentity', 'LyMetricsProducer'
             features        = ['ExternalLyMetrics', 'ExternalLyIdentity'],
             uselib          = ['QT5OPENGL',
                                'AWS_CPP_SDK_CORE',
@@ -132,7 +139,8 @@ def build(bld):
             debug_defines   = list(editor_defines) + list(debug_defines),
             profile_defines = list(editor_defines),
 
-            win_lib         = ['opengl32', 'dxguid', 'dinput8']
+            win_lib         = ['opengl32', 'dxguid', 'dinput8'],
+            #msvc_cxxflags   = msvc_cxx_flags,
 
         )
     )

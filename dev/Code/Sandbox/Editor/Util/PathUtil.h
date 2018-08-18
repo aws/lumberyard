@@ -84,10 +84,17 @@ namespace Path
         char dir[_MAX_DIR];
         char fname[_MAX_FNAME];
         char ext[_MAX_EXT];
+#ifdef AZ_COMPILER_MSVC
+        _splitpath_s(filepath.toUtf8().data(), drive, AZ_ARRAY_SIZE(drive), dir, AZ_ARRAY_SIZE(dir), fname, AZ_ARRAY_SIZE(fname), ext, AZ_ARRAY_SIZE(ext));
+        _makepath_s(path_buffer, AZ_ARRAY_SIZE(path_buffer), drive, dir, 0, 0);
+        path = path_buffer;
+        _makepath_s(path_buffer, AZ_ARRAY_SIZE(path_buffer), 0, 0, fname, ext);
+#else
         _splitpath(filepath.toUtf8().data(), drive, dir, fname, ext);
         _makepath(path_buffer, drive, dir, 0, 0);
         path = path_buffer;
         _makepath(path_buffer, 0, 0, fname, ext);
+#endif
         file = path_buffer;
     }
     inline void Split(const string& filepath, string& path, string& file)
@@ -97,10 +104,17 @@ namespace Path
         char dir[_MAX_DIR];
         char fname[_MAX_FNAME];
         char ext[_MAX_EXT];
+#ifdef AZ_COMPILER_MSVC
+        _splitpath_s(filepath, drive, AZ_ARRAY_SIZE(drive), dir, AZ_ARRAY_SIZE(dir), 0, 0, 0, 0);
+        _makepath_s(path_buffer, AZ_ARRAY_SIZE(path_buffer), drive, dir, 0, 0);
+        path = path_buffer;
+        _makepath_s(path_buffer, AZ_ARRAY_SIZE(path_buffer), 0, 0, fname, ext);
+#else
         _splitpath(filepath, drive, dir, fname, ext);
         _makepath(path_buffer, drive, dir, 0, 0);
         path = path_buffer;
         _makepath(path_buffer, 0, 0, fname, ext);
+#endif
         file = path_buffer;
     }
 
@@ -116,8 +130,13 @@ namespace Path
         char dir[_MAX_DIR];
         char fname[_MAX_FNAME];
         char ext[_MAX_EXT];
+#ifdef AZ_COMPILER_MSVC
+        _splitpath_s(filepath.toUtf8().data(), drive, AZ_ARRAY_SIZE(drive), dir, AZ_ARRAY_SIZE(dir), fname, AZ_ARRAY_SIZE(fname), ext, AZ_ARRAY_SIZE(ext));
+        _makepath_s(path_buffer, AZ_ARRAY_SIZE(path_buffer), drive, dir, 0, 0);
+#else
         _splitpath(filepath.toUtf8().data(), drive, dir, fname, ext);
         _makepath(path_buffer, drive, dir, 0, 0);
+#endif
         path = path_buffer;
         filename = fname;
         fext = ext;
@@ -129,8 +148,13 @@ namespace Path
         char dir[_MAX_DIR];
         char fname[_MAX_FNAME];
         char ext[_MAX_EXT];
+#ifdef AZ_COMPILER_MSVC
+        _splitpath_s(filepath, drive, AZ_ARRAY_SIZE(drive), dir, AZ_ARRAY_SIZE(dir), fname, AZ_ARRAY_SIZE(fname), ext, AZ_ARRAY_SIZE(ext));
+        _makepath_s(path_buffer, AZ_ARRAY_SIZE(path_buffer), drive, dir, 0, 0);
+#else
         _splitpath(filepath, drive, dir, fname, ext);
         _makepath(path_buffer, drive, dir, 0, 0);
+#endif
         path = path_buffer;
         filename = fname;
         fext = ext;
@@ -147,7 +171,11 @@ namespace Path
     inline QString GetExt(const QString& filepath)
     {
         char ext[_MAX_EXT];
+#ifdef AZ_COMPILER_MSVC
+        _splitpath_s(filepath.toUtf8().data(), 0, 0, 0, 0, 0, 0, ext, AZ_ARRAY_SIZE(ext));
+#else
         _splitpath(filepath.toUtf8().data(), 0, 0, 0, ext);
+#endif
         if (ext[0] == '.')
         {
             return ext + 1;
@@ -162,8 +190,13 @@ namespace Path
         char path_buffer[_MAX_PATH];
         char drive[_MAX_DRIVE];
         char dir[_MAX_DIR];
+#ifdef AZ_COMPILER_MSVC
+        _splitpath_s(filepath.toUtf8().data(), drive, AZ_ARRAY_SIZE(drive), dir, AZ_ARRAY_SIZE(dir), 0, 0, 0, 0);
+        _makepath_s(path_buffer, AZ_ARRAY_SIZE(path_buffer), drive, dir, 0, 0);
+#else
         _splitpath(filepath.toUtf8().data(), drive, dir, 0, 0);
         _makepath(path_buffer, drive, dir, 0, 0);
+#endif
         return CaselessPaths(path_buffer);
     }
 
@@ -173,8 +206,13 @@ namespace Path
         char path_buffer[_MAX_PATH];
         char fname[_MAX_FNAME];
         char ext[_MAX_EXT];
+#ifdef AZ_COMPILER_MSVC
+        _splitpath_s(filepath.toUtf8().data(), 0, 0, 0, 0, fname, AZ_ARRAY_SIZE(fname), ext, AZ_ARRAY_SIZE(ext));
+        _makepath_s(path_buffer, AZ_ARRAY_SIZE(path_buffer), 0, 0, fname, ext);
+#else
         _splitpath(filepath.toUtf8().data(), 0, 0, fname, ext);
         _makepath(path_buffer, 0, 0, fname, ext);
+#endif
         return CaselessPaths(path_buffer);
     }
 
@@ -182,7 +220,11 @@ namespace Path
     inline QString GetFileName(const QString& filepath)
     {
         char fname[_MAX_FNAME];
+#ifdef AZ_COMPILER_MSVC
+        _splitpath_s(filepath.toUtf8().data(), 0, 0, 0, 0, fname, AZ_ARRAY_SIZE(fname), 0, 0);
+#else
         _splitpath(filepath.toUtf8().data(), 0, 0, fname, 0);
+#endif
         return fname;
     }
 
@@ -251,8 +293,13 @@ namespace Path
         char drive[_MAX_DRIVE];
         char dir[_MAX_DIR];
         char fname[_MAX_FNAME];
+#ifdef AZ_COMPILER_MSVC
+        _splitpath_s(filepath.toUtf8().data(), drive, AZ_ARRAY_SIZE(drive), dir, AZ_ARRAY_SIZE(dir), fname, AZ_ARRAY_SIZE(fname), 0, 0);
+        _makepath_s(path_buffer, AZ_ARRAY_SIZE(path_buffer), drive, dir, fname, 0);
+#else
         _splitpath(filepath.toUtf8().data(), drive, dir, fname, 0);
         _makepath(path_buffer, drive, dir, fname, 0);
+#endif
         return path_buffer;
     }
 
@@ -260,7 +307,11 @@ namespace Path
     inline QString Make(const QString& dir, const QString& filename, const QString& ext)
     {
         char path_buffer[_MAX_PATH];
+#ifdef AZ_COMPILER_MSVC
+        _makepath_s(path_buffer, AZ_ARRAY_SIZE(path_buffer), NULL, dir.toUtf8().data(), filename.toUtf8().data(), ext.toUtf8().data());
+#else
         _makepath(path_buffer, NULL, dir.toUtf8().data(), filename.toUtf8().data(), ext.toUtf8().data());
+#endif
         return CaselessPaths(path_buffer);
     }
 

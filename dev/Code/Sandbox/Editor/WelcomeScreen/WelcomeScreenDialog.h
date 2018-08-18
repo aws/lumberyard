@@ -58,8 +58,6 @@ private:
     News::ResourceManifest* m_manifest = nullptr;
     News::ArticleViewContainer* m_articleViewContainer = nullptr;
     bool m_waitingOnAsync = true;
-    bool m_closing = false;
-    int m_doneResult = 0;
     bool m_messageScrollReported = false;
 
     void RemoveLevelEntry(int index);

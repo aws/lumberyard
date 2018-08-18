@@ -12,10 +12,13 @@
 
 // include the required headers
 #include "ThreadData.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(ThreadData, ThreadDataAllocator, 0)
+
     // default constructor
     ThreadData::ThreadData()
         : BaseObject()
@@ -40,14 +43,14 @@ namespace EMotionFX
     // create
     ThreadData* ThreadData::Create()
     {
-        return new ThreadData();
+        return aznew ThreadData();
     }
 
 
     // create
     ThreadData* ThreadData::Create(uint32 threadIndex)
     {
-        return new ThreadData(threadIndex);
+        return aznew ThreadData(threadIndex);
     }
 
 

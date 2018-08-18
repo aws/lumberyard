@@ -19,7 +19,7 @@ namespace CloudGemLex
         {
             serialize->Class<CloudGemLexSystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {

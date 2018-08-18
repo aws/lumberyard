@@ -56,7 +56,6 @@ namespace AZ
                     AZ::InputRequestBus::BroadcastResult(currentInputContext, &AZ::InputRequestBus::Events::GetCurrentContext);
                     if (AZ::Crc32(currentInputContext.c_str()) == id)
                     {
-                        typename Bus::template CallstackEntryIterator<typename Bus::InterfaceType**> callstack(nullptr, &id); // Workaround for GetCurrentBusId in callee
                         handler->OnInputContextActivated();
                     }
                 }

@@ -16,7 +16,7 @@
 #include <AzCore/std/sort.h>
 
 #include "ReplicaDetailView.h"
-#include <Woodpecker/Driller/Replica/ui_BaseDetailView.h>
+#include <Woodpecker/Driller/Replica/ui_basedetailview.h>
 
 #include "ReplicaDataAggregator.hxx"
 #include "ReplicaUsageDataContainers.h"

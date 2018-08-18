@@ -26,19 +26,19 @@ namespace ResourceCompilerTests
         pUnitTestHelper->TEST_BOOL(IResourceCompilerHelper::GetNumEngineImageFormats() == IResourceCompilerHelper::NUM_ENGINE_IMAGE_TYPE);  //should return the enum
 
         //normal cases
-        pUnitTestHelper->TEST_BOOL(!stricmp(IResourceCompilerHelper::GetSourceImageFormat(IResourceCompilerHelper::SOURCE_IMAGE_TYPE_TIF, true), ".tif"));  //dot tif
-        pUnitTestHelper->TEST_BOOL(!stricmp(IResourceCompilerHelper::GetSourceImageFormat(IResourceCompilerHelper::SOURCE_IMAGE_TYPE_TIF, false), "tif"));  //without dot tif
+        pUnitTestHelper->TEST_BOOL(!azstricmp(IResourceCompilerHelper::GetSourceImageFormat(IResourceCompilerHelper::SOURCE_IMAGE_TYPE_TIF, true), ".tif"));  //dot tif
+        pUnitTestHelper->TEST_BOOL(!azstricmp(IResourceCompilerHelper::GetSourceImageFormat(IResourceCompilerHelper::SOURCE_IMAGE_TYPE_TIF, false), "tif"));  //without dot tif
 
-        pUnitTestHelper->TEST_BOOL(!stricmp(IResourceCompilerHelper::GetSourceImageFormat(IResourceCompilerHelper::SOURCE_IMAGE_TYPE_PNG, true), ".png"));  //dot png
-        pUnitTestHelper->TEST_BOOL(!stricmp(IResourceCompilerHelper::GetSourceImageFormat(IResourceCompilerHelper::SOURCE_IMAGE_TYPE_PNG, false), "png"));  //without dot png
+        pUnitTestHelper->TEST_BOOL(!azstricmp(IResourceCompilerHelper::GetSourceImageFormat(IResourceCompilerHelper::SOURCE_IMAGE_TYPE_PNG, true), ".png"));  //dot png
+        pUnitTestHelper->TEST_BOOL(!azstricmp(IResourceCompilerHelper::GetSourceImageFormat(IResourceCompilerHelper::SOURCE_IMAGE_TYPE_PNG, false), "png"));  //without dot png
 
         //edge cases
         pUnitTestHelper->TEST_BOOL(IResourceCompilerHelper::GetSourceImageFormat(IResourceCompilerHelper::NUM_SOURCE_IMAGE_TYPE, true) == nullptr);         //invalid range with dot
         pUnitTestHelper->TEST_BOOL(IResourceCompilerHelper::GetSourceImageFormat(IResourceCompilerHelper::NUM_SOURCE_IMAGE_TYPE, false) == nullptr);        //invalid range without dot
 
         //normal cases
-        pUnitTestHelper->TEST_BOOL(!stricmp(IResourceCompilerHelper::GetEngineImageFormat(IResourceCompilerHelper::ENGINE_IMAGE_TYPE_DDS, true), ".dds"));  //dot dds
-        pUnitTestHelper->TEST_BOOL(!stricmp(IResourceCompilerHelper::GetEngineImageFormat(IResourceCompilerHelper::ENGINE_IMAGE_TYPE_DDS, false), "dds"));  //without dot dds
+        pUnitTestHelper->TEST_BOOL(!azstricmp(IResourceCompilerHelper::GetEngineImageFormat(IResourceCompilerHelper::ENGINE_IMAGE_TYPE_DDS, true), ".dds"));  //dot dds
+        pUnitTestHelper->TEST_BOOL(!azstricmp(IResourceCompilerHelper::GetEngineImageFormat(IResourceCompilerHelper::ENGINE_IMAGE_TYPE_DDS, false), "dds"));  //without dot dds
 
         //edge cases
         pUnitTestHelper->TEST_BOOL(IResourceCompilerHelper::GetEngineImageFormat(IResourceCompilerHelper::NUM_ENGINE_IMAGE_TYPE, true) == nullptr);         //invalid range with dot

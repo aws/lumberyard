@@ -10,7 +10,6 @@
 *
 */
 
-// include required headers
 #include "StateFilterSelectionWindow.h"
 #include "BlendGraphWidget.h"
 #include "AnimGraphPlugin.h"
@@ -25,17 +24,16 @@
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphNodeGroup.h>
 
+#include <AzQtComponents/Utilities/Conversions.h>
+
 
 namespace EMStudio
 {
-    // constructor
-    StateFilterSelectionWindow::StateFilterSelectionWindow(AnimGraphPlugin* plugin, QWidget* parent)
+    StateFilterSelectionWindow::StateFilterSelectionWindow(QWidget* parent)
         : QDialog(parent)
+        , m_stateMachine(nullptr)
     {
         setWindowTitle("Select States");
-
-        mPlugin = plugin;
-        mAnimGraph = nullptr;
 
         QVBoxLayout* mainLayout = new QVBoxLayout();
         setLayout(mainLayout);
@@ -63,24 +61,25 @@ namespace EMStudio
         QPushButton* cancelButton = new QPushButton("Cancel");
         buttonLayout->addWidget(cancelButton);
         connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+
+        setMinimumSize(400, 800);
     }
 
 
-    // destructor
     StateFilterSelectionWindow::~StateFilterSelectionWindow()
     {
     }
 
 
     // called to init for a new anim graph
-    void StateFilterSelectionWindow::ReInit(EMotionFX::AnimGraph* animGraph, const MCore::Array<AZStd::string>& oldNodeSelection, const MCore::Array<AZStd::string>& oldGroupSelection)
+    void StateFilterSelectionWindow::ReInit(EMotionFX::AnimGraphStateMachine* stateMachine, const AZStd::vector<EMotionFX::AnimGraphNodeId>& oldNodeSelection, const AZStd::vector<AZStd::string>& oldGroupSelection)
     {
-        mAnimGraph             = animGraph;
+        m_stateMachine          = stateMachine;
         mSelectedGroupNames     = oldGroupSelection;
-        mSelectedNodeNames      = oldNodeSelection;
+        m_selectedNodeIds       = oldNodeSelection;
 
         // clear the table widget
-        mWidgetTable.Clear();
+        mWidgetTable.clear();
         mTableWidget->clear();
         mTableWidget->setColumnCount(2);
 
@@ -97,16 +96,16 @@ namespace EMStudio
         QHeaderView* horizontalHeader = mTableWidget->horizontalHeader();
         horizontalHeader->setStretchLastSection(true);
 
-        // get the active graph and find the corresponding emfx node
-        EMotionFX::AnimGraphNode* activeNode = mPlugin->GetGraphWidget()->GetCurrentNode();
-        if (activeNode == nullptr)
+        if (!m_stateMachine)
         {
             return;
         }
 
+        const EMotionFX::AnimGraph* animGraph = m_stateMachine->GetAnimGraph();
+
         // get the number of nodes inside the active node, the number node groups and set table size and add header items
-        const uint32 numNodeGroups  = mAnimGraph->GetNumNodeGroups();
-        const uint32 numNodes       = activeNode->GetNumChildNodes();
+        const uint32 numNodeGroups  = animGraph->GetNumNodeGroups();
+        const uint32 numNodes       = m_stateMachine->GetNumChildNodes();
         const uint32 numRows        = numNodeGroups + numNodes;
         mTableWidget->setRowCount(numRows);
 
@@ -114,11 +113,11 @@ namespace EMStudio
         uint32 currentRowIndex = 0;
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            EMotionFX::AnimGraphNode* childNode = activeNode->GetChildNode(i);
+            EMotionFX::AnimGraphNode* childNode = m_stateMachine->GetChildNode(i);
 
             // check if we need to select the node
             bool isSelected = false;
-            if (oldNodeSelection.Find(childNode->GetName()) != MCORE_INVALIDINDEX32)
+            if (AZStd::find(m_selectedNodeIds.begin(), m_selectedNodeIds.end(), childNode->GetId()) != m_selectedNodeIds.end())
             {
                 isSelected = true;
             }
@@ -131,14 +130,14 @@ namespace EMStudio
         for (uint32 i = 0; i < numNodeGroups; ++i)
         {
             // get a pointer to the node group
-            EMotionFX::AnimGraphNodeGroup* nodeGroup = mAnimGraph->GetNodeGroup(i);
+            EMotionFX::AnimGraphNodeGroup* nodeGroup = animGraph->GetNodeGroup(i);
 
             // check if any of the nodes from the node group actually is visible in the current state machine
             bool addGroup = false;
             for (uint32 n = 0; n < numNodes; ++n)
             {
-                EMotionFX::AnimGraphNode* childNode = activeNode->GetChildNode(n);
-                if (nodeGroup->Contains(childNode->GetID()))
+                EMotionFX::AnimGraphNode* childNode = m_stateMachine->GetChildNode(n);
+                if (nodeGroup->Contains(childNode->GetId()))
                 {
                     addGroup = true;
                     break;
@@ -149,12 +148,14 @@ namespace EMStudio
             {
                 // check if we need to select the node group
                 bool isSelected = false;
-                if (oldGroupSelection.Find(nodeGroup->GetName()) != MCORE_INVALIDINDEX32)
+                if (AZStd::find(oldGroupSelection.begin(), oldGroupSelection.end(), nodeGroup->GetName()) != oldGroupSelection.end())
                 {
                     isSelected = true;
                 }
 
-                AddRow(currentRowIndex, nodeGroup->GetName(), true, isSelected, nodeGroup->GetColor());
+                AZ::Color color;
+                color.FromU32(nodeGroup->GetColor());
+                AddRow(currentRowIndex, nodeGroup->GetName(), true, isSelected, AzQtComponents::ToQColor(color));
                 currentRowIndex++;
             }
         }
@@ -167,7 +168,7 @@ namespace EMStudio
     }
 
 
-    void StateFilterSelectionWindow::AddRow(uint32 rowIndex, const char* name, bool isGroup, bool isSelected, const MCore::RGBAColor& color)
+    void StateFilterSelectionWindow::AddRow(uint32 rowIndex, const char* name, bool isGroup, bool isSelected, const QColor& color)
     {
         // create the name item
         QTableWidgetItem* nameItem = nullptr;
@@ -187,7 +188,7 @@ namespace EMStudio
         mTableWidget->setItem(rowIndex, 0, nameItem);
 
         // add a lookup
-        mWidgetTable.Add(WidgetLookup(nameItem, name, isGroup));
+        mWidgetTable.emplace_back(WidgetLookup(nameItem, name, isGroup));
 
         // create the type item
         QTableWidgetItem* typeItem = nullptr;
@@ -207,12 +208,13 @@ namespace EMStudio
         mTableWidget->setItem(rowIndex, 1, typeItem);
 
         // add a lookup
-        mWidgetTable.Add(WidgetLookup(typeItem, name, isGroup));
+        mWidgetTable.emplace_back(WidgetLookup(typeItem, name, isGroup));
 
         // set backgroundcolor of the row
         if (isGroup)
         {
-            QColor backgroundColor(color.r * 255, color.g * 255, color.b * 255, 50);
+            QColor backgroundColor = color;
+            backgroundColor.setAlpha(50);
             nameItem->setBackgroundColor(backgroundColor);
             typeItem->setBackgroundColor(backgroundColor);
         }
@@ -232,19 +234,20 @@ namespace EMStudio
     // find the index for the given widget
     EMotionFX::AnimGraphNodeGroup* StateFilterSelectionWindow::FindGroupByWidget(QTableWidgetItem* widget) const
     {
-        // return directly if the anim graph is not valid
-        if (mAnimGraph == nullptr)
+        if (!m_stateMachine)
         {
             return nullptr;
         }
 
+        const EMotionFX::AnimGraph* animGraph = m_stateMachine->GetAnimGraph();
+
         // for all table entries
-        const uint32 numWidgets = mWidgetTable.GetLength();
-        for (uint32 i = 0; i < numWidgets; ++i)
+        const size_t numWidgets = mWidgetTable.size();
+        for (size_t i = 0; i < numWidgets; ++i)
         {
             if (mWidgetTable[i].mIsGroup && mWidgetTable[i].mWidget == widget)
             {
-                return mAnimGraph->FindNodeGroupByName(mWidgetTable[i].mName.c_str());
+                return animGraph->FindNodeGroupByName(mWidgetTable[i].mName.c_str());
             }
         }
 
@@ -256,19 +259,20 @@ namespace EMStudio
     // find the node for the given widget
     EMotionFX::AnimGraphNode* StateFilterSelectionWindow::FindNodeByWidget(QTableWidgetItem* widget) const
     {
-        // return directly if the anim graph is not valid
-        if (mAnimGraph == nullptr)
+        if (!m_stateMachine)
         {
             return nullptr;
         }
 
+        const EMotionFX::AnimGraph* animGraph = m_stateMachine->GetAnimGraph();
+
         // for all table entries
-        const uint32 numWidgets = mWidgetTable.GetLength();
-        for (uint32 i = 0; i < numWidgets; ++i)
+        const size_t numWidgets = mWidgetTable.size();
+        for (size_t i = 0; i < numWidgets; ++i)
         {
             if (mWidgetTable[i].mIsGroup == false && mWidgetTable[i].mWidget == widget)
             {
-                return mAnimGraph->RecursiveFindNode(mWidgetTable[i].mName.c_str());
+                return animGraph->RecursiveFindNodeByName(mWidgetTable[i].mName.c_str());
             }
         }
 
@@ -281,8 +285,8 @@ namespace EMStudio
     void StateFilterSelectionWindow::OnSelectionChanged()
     {
         // reset the selection arrays
-        mSelectedGroupNames.Clear();
-        mSelectedNodeNames.Clear();
+        mSelectedGroupNames.clear();
+        m_selectedNodeIds.clear();
 
         // get the selected items and the number of them
         QList<QTableWidgetItem*> selectedItems = mTableWidget->selectedItems();
@@ -296,9 +300,9 @@ namespace EMStudio
             if (node)
             {
                 // add the node name in case it is not in yet
-                if (mSelectedNodeNames.Find(node->GetName()) == MCORE_INVALIDINDEX32)
+                if (AZStd::find(m_selectedNodeIds.begin(), m_selectedNodeIds.end(), node->GetId()) == m_selectedNodeIds.end())
                 {
-                    mSelectedNodeNames.Add(node->GetName());
+                    m_selectedNodeIds.emplace_back(node->GetId());
                 }
             }
 
@@ -307,9 +311,9 @@ namespace EMStudio
             if (nodeGroup)
             {
                 // add the node group name in case it is not in yet
-                if (mSelectedGroupNames.Find(nodeGroup->GetName()) == MCORE_INVALIDINDEX32)
+                if (AZStd::find(mSelectedGroupNames.begin(), mSelectedGroupNames.end(), nodeGroup->GetName()) == mSelectedGroupNames.end())
                 {
-                    mSelectedGroupNames.Add(nodeGroup->GetName());
+                    mSelectedGroupNames.emplace_back(nodeGroup->GetName());
                 }
             }
         }

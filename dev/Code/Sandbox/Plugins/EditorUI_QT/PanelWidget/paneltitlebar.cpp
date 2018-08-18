@@ -20,7 +20,7 @@
 
 #include <QDockWidget>
 #include <QMouseEvent>
-#include <qlineedit.h>
+#include <QLineEdit>
 #include "AttributeItem.h"
 #include "AttributeView.h"
 #include <Undo/Undo.h>
@@ -54,10 +54,7 @@ PanelTitleBar::PanelTitleBar(QWidget* parent)
 
     // This makes sure that when this panel is docked as a tab the collapsed state
     //  is set to all other panels in the tab bar.
-    connect(dw, &QDockWidget::visibilityChanged, [this](bool visible)
-        {
-            MatchCollapsedStateToOtherTabs();
-        });
+    connect(dw, &QDockWidget::visibilityChanged, this, &PanelTitleBar::MatchCollapsedStateToOtherTabs);
 
     // start collapsed
     toggleCollapsed();
@@ -76,7 +73,7 @@ PanelTitleBar::~PanelTitleBar()
 
 bool PanelTitleBar::eventFilter(QObject* obj, QEvent* ev)
 {
-    if (onEventFilter(obj, ev) == true)
+    if (onEventFilter(obj, ev))
     {
         return QObject::eventFilter(obj, ev);
     }
@@ -441,48 +438,20 @@ void ItemPanelTitleBar::BuildCustomMenu(QMenu *menu)
     // just rebuild menu by clearing
     menu->clear();
 
-    QAction* action = new QAction("Rename", menu);
-    menu->addAction(action);
-    if (action)
-    {
-        connect(action, &QAction::triggered, [this]()
-            {
-                StartRename();
-            });
-    }
-    action = new QAction("Remove all", menu);
-    menu->addAction(action);
-    if (action)
-    {
-        connect(action, &QAction::triggered, [this]()
-            {
-                emit SignalRemoveAllParams((QDockWidget*)parentWidget());
-            });
-    }
+    menu->addAction("Rename", this, &ItemPanelTitleBar::StartRename);
+    menu->addAction("Remove all", this, [this]
+        {
+            emit SignalRemoveAllParams((QDockWidget*)parentWidget());
+        });
 
-    action = new QAction("Export", menu);
-    action->setShortcut(GetIEditor()->GetParticleUtils()->HotKey_GetShortcut("Attributes.Export Panel"));
-    menu->addAction(action);
-    if (action)
-    {
-        connect(action, &QAction::triggered, [this]()
+    menu->addAction("Export", this, [this]
+        {
+            QString fileName = QFileDialog::getSaveFileName(this, tr("Export Panel"), QString(), tr("Panel file (*.custom_attribute)"));
+            if (!fileName.isEmpty())
             {
-                QString fileName = QFileDialog::getSaveFileName(this, tr("Export Panel"), QString(), tr("Panel file (*.custom_attribute)"));
-                if (fileName.size() > 0)
-                {
-                    emit SignalPanelExportPanel((QDockWidget*)parentWidget(), fileName);
-                    ;
-                }
-            });
-    }
+                emit SignalPanelExportPanel((QDockWidget*)parentWidget(), fileName);
+            }
+        }, GetIEditor()->GetParticleUtils()->HotKey_GetShortcut("Attributes.Export Panel"));
 
-    action = new QAction("Close", menu);
-    menu->addAction(action);
-    if (action)
-    {
-        connect(action, &QAction::triggered, [this]()
-            {
-                closePanel();
-            });
-    }
+    menu->addAction("Close", this, &ItemPanelTitleBar::closePanel);
 }

@@ -116,7 +116,7 @@ bool CStatObj::LoadLowLODS_Prep(bool bUseStreaming, unsigned long nLoadingFlags)
                 *sPointSeparator = '\0'; // Terminate at the dot
             }
             cry_strcat(sLodFileName, "_lod");
-            ltoa(nLodLevel, sLodNum, 10);
+            azltoa(nLodLevel, sLodNum, AZ_ARRAY_SIZE(sLodNum), 10);
             cry_strcat(sLodFileName, sLodNum);
             cry_strcat(sLodFileName, ".");
             cry_strcat(sLodFileName, sFileExt);
@@ -163,7 +163,7 @@ IStatObj* CStatObj::LoadLowLODS_Load(int nLodLevel, bool bUseStreaming, unsigned
         *sPointSeparator = '\0'; // Terminate at the dot
     }
     cry_strcat(sLodFileName, "_lod");
-    ltoa(nLodLevel, sLodNum, 10);
+    azltoa(nLodLevel, sLodNum, AZ_ARRAY_SIZE(sLodNum), 10);
     cry_strcat(sLodFileName, sLodNum);
     cry_strcat(sLodFileName, ".");
     cry_strcat(sLodFileName, sFileExt);
@@ -1175,7 +1175,7 @@ bool CStatObj::LoadCGF_Int(const char* filename, bool bLod, unsigned long nLoadi
                 {
                     if (m_subObjects[i].nType == STATIC_SUB_OBJECT_MESH)
                     {
-                        if (_stricmp(m_subObjects[i].name, MESH_NAME_FOR_MAIN) == 0)
+                        if (azstricmp(m_subObjects[i].name, MESH_NAME_FOR_MAIN) == 0)
                         {
                             m_subObjects[i].bHidden = false;
                         }
@@ -1555,7 +1555,7 @@ static bool CreateNodeCGF(CContentCGF* pCGF, CStatObj* pStatObj, const char* nam
         }
 
         pNode->type = CNodeCGF::NODE_MESH;
-        _snprintf(pNode->name, sizeof(pNode->name), "%s", name);
+        azsnprintf(pNode->name, sizeof(pNode->name), "%s", name);
         pNode->localTM.SetIdentity();
         pNode->worldTM.SetIdentity();
         pNode->bIdentityMatrix = true;

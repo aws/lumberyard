@@ -15,7 +15,7 @@
 // Notice      : Refer to ViewportTitleDlg cpp for a use case
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "CustomResolutionDlg.h"
 #include <QTextStream>
 

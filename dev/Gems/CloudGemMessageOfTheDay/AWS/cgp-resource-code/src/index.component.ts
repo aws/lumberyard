@@ -67,8 +67,7 @@ export class MessageOfTheDayIndexComponent extends AbstractCloudGemIndexComponen
         this.editModal = this.editModal.bind(this);
         this.deleteModal = this.deleteModal.bind(this);
         this.dismissModal = this.dismissModal.bind(this);
-        this.validate = this.validate.bind(this);
-        this.validateDate = this.validateDate.bind(this);
+        this.validate = this.validate.bind(this);        
         this.delete = this.delete.bind(this);
         this.onSubmit = this.onSubmit.bind(this);
         // end of bind scopes
@@ -94,81 +93,49 @@ export class MessageOfTheDayIndexComponent extends AbstractCloudGemIndexComponen
             model.message.valid = true;
         }
 
-        isValid = isValid && model.message.valid;
-
-        isValid = isValid && this.validateDate(model);
-
+        isValid = isValid && model.message.valid && model.datetime.valid;
+        
         return isValid;
     }
-
-    private validateDate(model): boolean {
-        let isValid: boolean = true;
-
-        let start = DateTimeUtil.toObjDate(model.start);
-        let end = DateTimeUtil.toObjDate(model.end);
-
-        if (this.currentMessage.hasEnd) {
-            model.end.valid = end ? true : false
-            if (!model.end.valid)
-                model.date = { message: "The end date is not a valid date.  A date must have a date, hour and minute." }
-
-            isValid = isValid && model.end.valid;
-        }
-        if (this.currentMessage.hasStart) {
-            model.start.valid = start ? true : false
-            if (!model.start.valid)
-                model.date = { message: "The start date is not a valid date.  A date must have a date, hour and minute." }
-            isValid = isValid && model.start.valid;
-        }
-
-        if (this.currentMessage.hasEnd && this.currentMessage.hasStart) {
-            let isValidDateRange = (start < end);
-            isValid = isValid && isValidDateRange
-            if (!isValidDateRange) {
-                model.date = { message: "The start date must be less than the end date." }
-                model.start.valid = false;
-            }
-        }
-        return isValid;
-    }
-
+    
     protected onSubmit(model): void {
-        if (this.validate(model)) {
-            let body = {
-                message: model.message.value,
-                priority: model.priority.value
-            }
-            let start = null, end = null;
-            if (model.hasStart && model.start.date && model.start.date.year) {
-                start = DateTimeUtil.toDate(model.start);
-                body['startTime'] = start;
-            }
-            if (model.hasEnd && model.end.valid) {
-                end = DateTimeUtil.toDate(model.end);
-                body['endTime'] = end;
-            }
+        if (!this.validate(model))
+            return
 
-            this.modalRef.close();
-            if (model.UniqueMsgID) {
-                this._apiHandler.put(model.UniqueMsgID, body).subscribe(() => {
-                    this.toastr.success("The message '" + body.message + "' has been updated.");
-                    this.updateMessages();
-
-                }, (err) => {
-                    this.toastr.error("The message did not update correctly. " + err.message)
-                });
-            } else {
-                this._apiHandler.post(body).subscribe(() => {
-                    this.toastr.success("The message '" + body.message + "' has been created.");
-                    this.updateMessages();
-
-                }, (err) => {
-                    this.toastr.error("The message did not update correctly. " + err.message)
-                });
-            }
-
-            this.mode = MotdMode.List;
+        let body = {
+            message: model.message.value,
+            priority: model.priority.value
         }
+        let start = null, end = null;
+        if (model.hasStart && model.start.date && model.start.date.year) {
+            start = DateTimeUtil.toDate(model.start);
+            body['startTime'] = start;
+        }
+        if (model.hasEnd && model.end.valid) {
+            end = DateTimeUtil.toDate(model.end);
+            body['endTime'] = end;
+        }
+
+        this.modalRef.close();
+        if (model.UniqueMsgID) {
+            this._apiHandler.put(model.UniqueMsgID, body).subscribe(() => {
+                this.toastr.success("The message '" + body.message + "' has been updated.");
+                this.updateMessages();
+
+            }, (err) => {
+                this.toastr.error("The message did not update correctly. " + err.message)
+            });
+        } else {
+            this._apiHandler.post(body).subscribe(() => {
+                this.toastr.success("The message '" + body.message + "' has been created.");
+                this.updateMessages();
+
+            }, (err) => {
+                this.toastr.error("The message did not update correctly. " + err.message)
+            });
+        }
+
+        this.mode = MotdMode.List;        
     }
 
     // TODO: These section are pretty similar and should be extracted into a seperate component
@@ -340,9 +307,13 @@ export class MessageOfTheDayIndexComponent extends AbstractCloudGemIndexComponen
         this.currentMessage.hasEnd = model.hasEnd;
 
         this.currentMessage.start = model.start;
-        this.currentMessage.start.valid = true;
+        this.currentMessage.start.valid = model.start.valid;
         this.currentMessage.end = model.end;
-        this.currentMessage.end.valid = true;
+        this.currentMessage.end.valid = model.end.valid;
+        this.currentMessage.datetime = {
+            valid: model.valid,
+            message: model.date.message
+        }
     }
 
     private default(): MotdForm {
@@ -357,7 +328,7 @@ export class MessageOfTheDayIndexComponent extends AbstractCloudGemIndexComponen
             },
             message: {
                 valid: true
-            },
+            },           
             hasStart: false,
             hasEnd: false
         });

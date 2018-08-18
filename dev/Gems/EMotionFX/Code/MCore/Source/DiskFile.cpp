@@ -100,15 +100,8 @@ namespace MCore
         mFileName = fileName;
 
         // try to open the file
-    #if (MCORE_COMPILER == MCORE_COMPILER_MSVC || MCORE_COMPILER == MCORE_COMPILER_INTELC)
-        errno_t err = fopen_s(&mFile, fileName, fileMode);
-        if (err != 0)
-        {
-            return false;
-        }
-    #else
-        mFile = fopen(fileName, fileMode);
-    #endif
+        mFile = nullptr;
+        azfopen(&mFile, fileName, fileMode);
 
         // check on success
         return (mFile != nullptr);

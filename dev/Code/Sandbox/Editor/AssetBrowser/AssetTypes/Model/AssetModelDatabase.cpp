@@ -14,7 +14,7 @@
 // Description : Implements AssetModelDatabase.h
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AssetModelDatabase.h"
 #include "AssetModelItem.h"
 #include "Include/IAssetViewer.h"

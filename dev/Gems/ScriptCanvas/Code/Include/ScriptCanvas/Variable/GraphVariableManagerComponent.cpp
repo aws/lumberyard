@@ -178,7 +178,7 @@ namespace ScriptCanvas
 
         const VariableId& newId = variableOutcome.GetValue();
         VariableRequestBus::MultiHandler::BusConnect(newId);
-        GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableAdded, newId, copyConfiguration.m_varName);
+        GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableAddedToGraph, newId, copyConfiguration.m_varName);
 
         RegisterCopiedVariableRemapping(variableConfiguration.m_varDatum.GetId(), newId);
 
@@ -200,7 +200,7 @@ namespace ScriptCanvas
 
         const VariableId& newId = addVariableOutcome.GetValue();
         VariableRequestBus::MultiHandler::BusConnect(newId);
-        GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableAdded, newId, name);
+        GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableAddedToGraph, newId, name);
 
         return AZ::Success(newId);
     }
@@ -218,7 +218,7 @@ namespace ScriptCanvas
         {
             VariableRequestBus::MultiHandler::BusDisconnect(variableId);
             VariableNotificationBus::Event(variableId, &VariableNotifications::OnVariableRemoved);
-            GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableRemoved, variableId, varNamePair->m_varName);
+            GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableRemovedFromGraph, variableId, varNamePair->m_varName);
 
             // Bookkeeping for the copied Variable remapping
             UnregisterUncopiedVariableRemapping(variableId);
@@ -245,7 +245,7 @@ namespace ScriptCanvas
                 VariableRequestBus::MultiHandler::BusDisconnect(variableId);
 
                 VariableNotificationBus::Event(variableId, &VariableNotifications::OnVariableRemoved);
-                GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableRemoved, variableId, varName);
+                GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableRemovedFromGraph, variableId, varName);
                 varIt = m_variableData.GetVariables().erase(varIt);
             }
             else
@@ -313,7 +313,7 @@ namespace ScriptCanvas
                 variableId.ToString().data(), newVarName.data()));
         }
 
-        GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableNameChanged, variableId, newVarName);
+        GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableNameChangedInGraph, variableId, newVarName);
         VariableNotificationBus::Event(variableId, &VariableNotifications::OnVariableRenamed, newVarName);
 
         return AZ::Success();
@@ -329,7 +329,7 @@ namespace ScriptCanvas
             VariableRequestBus::MultiHandler::BusConnect(varPair.first);
             if (GetEntity())
             {
-                GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableAdded, varPair.first, varPair.second.m_varName);
+                GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableAddedToGraph, varPair.first, varPair.second.m_varName);
             }
         }
 

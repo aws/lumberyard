@@ -35,7 +35,7 @@
 #include "Woodpecker/Driller/Replica/ReplicaTreeViewModel.hxx"
 #include "Woodpecker/Driller/Replica/BaseDetailViewSavedState.h"
 
-#include <Woodpecker/Driller/Replica/ui_BaseDetailView.h>
+#include <Woodpecker/Driller/Replica/ui_basedetailview.h>
 
 namespace Driller
 {

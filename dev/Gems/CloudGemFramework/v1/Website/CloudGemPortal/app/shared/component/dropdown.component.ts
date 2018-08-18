@@ -9,7 +9,7 @@ import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
     selector: 'dropdown',
     template: `
         <div *ngIf="options" class="d-inline-block" ngbDropdown>
-            <button type="button" class="btn search-dropdown l-dropdown" ngbDropdownToggle>
+            <button [ngStyle]="{'width.px': width }" type="button" class="btn l-dropdown" ngbDropdownToggle>
                 <span> {{ dropdownText }} </span>
                 <i class="fa fa-caret-down" aria-hidden="true"></i>
             </button>
@@ -26,23 +26,30 @@ export class DropdownComponent implements OnInit {
     // Dropdown option hash.  Contains the text and the callback function to be used when the text input is used.
     // Optionally args can be passed in to the callback function.  Otherwise the text of the dropdown will be returned
     @Input() options: [{ text: string, functionCb?: Function, args?: any }]
+    // The current dropdown option if it exists
+    @Input() currentOption?: { text: string, functionCb?: Function, args?: any };
     // Placeholder text for the search dropdown.  If not specified the searchDropdownOption[0] dropdown name will be used instead.
     @Input() placeholderText: string;
+
+    // Width of dropdown in px;
+    @Input() width?: number;
 
     // Optional event to listen to that returns the current dropdown option whenever it's changed.
     @Output() dropdownChanged = new EventEmitter<string>();
 
-    private currentOption: { text: string, functionCb?: Function, args?: any };
     private dropdownText;
     constructor() { }
 
     ngOnInit() {
         // If the first option doesn't exist at all then this isn't a functional dropdown so just return.
-        if (this.options === undefined || this.options.length == 0 || this.options[0] === null || this.options[0] === undefined) {
+        if (!this.options || !this.options[0]) {
             return;
         }
 
-        if (this.placeholderText) {
+        if (this.currentOption && this.currentOption.text) {
+            this.dropdownText = this.currentOption.text;
+        }
+        else if (this.placeholderText) {
             this.dropdownText = this.placeholderText;
             this.currentOption = null;
         } else {

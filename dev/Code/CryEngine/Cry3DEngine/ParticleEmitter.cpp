@@ -573,11 +573,6 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
                             pContainer->SetEndLod(_endLod);
                             pContainer->SetStartLod(_startLod);
 
-                            pContainer->SetFadeEffectContainer(nullptr);
-                            if (pParentContainer && pContainer->GetEffect()->GetParams().bIsCameraNonFacingFadeParticle)
-                            {
-                                pParentContainer->SetFadeEffectContainer(pContainer);
-                            }
                             break;
                         }
                         if (!pNext)
@@ -593,10 +588,6 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
                 if (void* pMem = pNext ? m_Containers.insert_new(pNext) : m_Containers.push_back_new())
                 {
                     pContainer = new(pMem) CParticleContainer(pParentContainer, this, pEffect, _startLod, _endLod);
-                    if (pParentContainer && pEffect->GetParams().bIsCameraNonFacingFadeParticle )
-                    {
-                        pParentContainer->SetFadeEffectContainer(pContainer);
-                    }
                 }
                 else
                 {
@@ -645,14 +636,8 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
             }
 
             AddEffect(pParentContainer, static_cast<const CParticleEffect*>(pEffect->GetLodParticle(pEffect->GetLevelOfDetail(i))), bUpdate, bInEditor, _startLod, _endLod);
-        }
-    }
-
-    //Add Trail Particle "Fade" particles
-    if (pEffect->HasFadeEffect())
-    {
-        AddEffect(pContainer, pEffect->GetFadeEffect(), bUpdate, bInEditor, startLod, endLod);
-    }
+		}
+	}
 }
 
 void CParticleEmitter::RefreshEffect(bool recreateContainer)
@@ -1327,12 +1312,6 @@ void CParticleEmitter::Render(SRendParams const& RenParams, const SRenderingPass
                     {
                         RenderContainer(c, RenParams, PartParams, passInfo);
                         nThreadJobs += c->NeedJobUpdate();
-
-                        if (c->GetFadeEffectContainer() != nullptr)
-                        {
-                            RenderContainer(c->GetFadeEffectContainer(), RenParams, PartParams, passInfo);
-                            nThreadJobs += c->GetFadeEffectContainer()->NeedJobUpdate();
-                        }
                     }
                 }
             }
@@ -1340,7 +1319,7 @@ void CParticleEmitter::Render(SRendParams const& RenParams, const SRenderingPass
     }
     else
     {
-        if (m_pTopEffect->IsEnabled())
+        if (m_pTopEffect && m_pTopEffect->IsEnabled() && !m_Containers.empty())
         {
             CParticleContainer* selectedContainer = m_Containers.begin();
             
@@ -1353,13 +1332,6 @@ void CParticleEmitter::Render(SRendParams const& RenParams, const SRenderingPass
                     {
                         RenderContainer(selectedContainer, RenParams, PartParams, passInfo);
                         nThreadJobs += selectedContainer->NeedJobUpdate();
-
-                        //If the container has a fade particle, we want to draw that to
-                        if (selectedContainer->GetFadeEffectContainer() != nullptr)
-                        {
-                            RenderContainer(selectedContainer->GetFadeEffectContainer(), RenParams, PartParams, passInfo);
-                            nThreadJobs += selectedContainer->GetFadeEffectContainer()->NeedJobUpdate();
-                        }
                     }
                 }
             }

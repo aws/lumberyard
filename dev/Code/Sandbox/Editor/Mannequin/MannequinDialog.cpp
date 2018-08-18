@@ -44,7 +44,7 @@
 #include "Controls/TransitionEditorPage.h"
 #include "Controls/PreviewerPage.h"
 #include "Objects/ObjectLayerManager.h"
-#include "../objects/EntityObject.h"
+#include "../Objects/EntityObject.h"
 #include "QtViewPaneManager.h"
 
 #include <QCloseEvent>
@@ -1092,7 +1092,7 @@ void CMannequinDialog::OnInitDialog()
     m_central->addTab(m_wndTransitionEditorPage, m_wndTransitionEditorPage->windowTitle());
     m_central->addTab(m_wndPreviewerPage, m_wndPreviewerPage->windowTitle());
     m_central->addTab(m_wndErrorReport, m_wndErrorReport->windowTitle());
-    connect(m_central, &QTabWidget::currentChanged, [=]()
+    connect(m_central, &QTabWidget::currentChanged, m_central, [=]()
         {
 		QWidget* current = m_central->currentWidget();
 		for (int i = 0; i < m_central->count(); ++i)

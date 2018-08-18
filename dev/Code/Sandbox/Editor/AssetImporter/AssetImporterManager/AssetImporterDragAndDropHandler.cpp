@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AssetImporterDragAndDropHandler.h"
 #include <AssetImporter/AssetImporterManager/AssetImporterManager.h>
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>

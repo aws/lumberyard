@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "ProfilerDataAggregator.hxx"
 #include <Woodpecker/Driller/Profiler/ProfilerDataAggregator.moc>
@@ -465,7 +465,7 @@ namespace Driller
 
             serialize->Class<ProfilerDataAggregator>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ->SerializeWithNoData();
         }
     }
 } // namespace Driller

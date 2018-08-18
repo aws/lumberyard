@@ -167,11 +167,11 @@ void DebugCallStack::PrintException(EXCEPTION_POINTERS* pex)
             accessAddr = pex->ExceptionRecord->ExceptionInformation[1];
             if (iswrite)
             {
-                sprintf(desc, "Attempt to write data to address 0x%08p - The memory could not be \"written\"", accessAddr);
+                sprintf(desc, "Attempt to write data to address 0x%llx - The memory could not be \"written\"", accessAddr);
             }
             else
             {
-                sprintf(desc, "Attempt to read from address 0x%08p - The memory could not be \"read\"", accessAddr);
+                sprintf(desc, "Attempt to read from address 0x%llx - The memory could not be \"read\"", accessAddr);
             }
         }
     }
@@ -428,7 +428,7 @@ void DebugCallStack::FillStackTrace(int maxStackEntries)
             {
                 DWORD64 p = (DWORD64)stack_frame.AddrPC.Offset;
                 char str[80];
-                sprintf(str, "function=0x%p", p);
+                sprintf(str, "function=0x%llx", p);
                 m_functions.push_back(str);
             }
         }
@@ -436,7 +436,7 @@ void DebugCallStack::FillStackTrace(int maxStackEntries)
         {
             DWORD64 p = (DWORD64)stack_frame.AddrPC.Offset;
             char str[80];
-            sprintf(str, "function=0x%p", p);
+            sprintf(str, "function=0x%llx", p);
             m_functions.push_back(str);
         }
     }

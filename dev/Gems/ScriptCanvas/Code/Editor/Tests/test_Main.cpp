@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 #include <gtest/gtest.h>
 
 // minimal export required for AzTestScanner

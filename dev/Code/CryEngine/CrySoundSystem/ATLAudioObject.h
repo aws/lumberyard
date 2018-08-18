@@ -424,8 +424,6 @@ namespace Audio
         void UpdateVelocity(const float fUpdateIntervalMS);
 
     private:
-        void SetTriggerFlag(const TAudioControlID nTriggerID, const EATLTriggerStatus eStatusFlag, bool bOn = true);
-
         TATLEnumFlagsType m_nFlags;
         float m_fPreviousVelocity;
         SATLWorldPosition m_oPosition;

@@ -86,7 +86,7 @@ namespace EMStudio
         const uint32 numNodes = mNodes.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            if (mNodes[i]->GetID() == node->GetID())
+            if (mNodes[i]->GetId() == node->GetId())
             {
                 // this should never happen!
                 MCORE_ASSERT(false);
@@ -2304,13 +2304,12 @@ namespace EMStudio
     }
 
 
-    // find a graph node by its id
-    GraphNode* NodeGraph::FindNodeByID(uint32 id)
+    GraphNode* NodeGraph::FindNodeById(EMotionFX::AnimGraphNodeId id)
     {
         const uint32 numNodes = mNodes.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            if (mNodes[i]->GetID() == id)
+            if (mNodes[i]->GetId() == id)
             {
                 return mNodes[i];
             }

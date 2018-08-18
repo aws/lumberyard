@@ -2319,10 +2319,6 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
 
     const int nClipVolumeReservedStencilBit = BIT_STENCIL_INSIDE_CLIPVOLUME;
 
-#if defined(OPENGL_ES)
-    uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
-#endif
-
     // Render Clip areas to stencil
     if (!pClipVolumes.empty())
     {
@@ -2387,9 +2383,8 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
 
     if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
-        // If r_VisAreaClipLightsPerPixel=1, we need an extra pass to generate final VisArea values
-        if (CRenderer::CV_r_VisAreaClipLightsPerPixel > 0 &&
-            !m_pClipVolumes[m_nThreadID][m_nRecurseLevel].empty())
+        //PLS does not support reading and writing to gmem render targets from non 0 slots
+        if(!RenderCapabilities::SupportsPLSExtension())
         {
             PROFILE_LABEL_SCOPE("RESOLVE STENCIL");
 
@@ -4589,13 +4584,19 @@ void CDeferredShading::CreateDeferredMaps()
             TO_SCENE_DIFFUSE_ACC, nMSAAUsageFlag);
 
         CTexture::s_ptexCurrentSceneDiffuseAccMap = CTexture::s_ptexSceneDiffuseAccMap;
+        
+        // When the device orientation changes on mobile, we need to regenerate HDR maps before calling CreateRenderTarget.
+        // Otherwise, the width and height of the texture get updated before HDRPostProcess::Begin call and we never regenerate the HDR maps which results in visual artifacts.
+        if (CTexture::s_ptexHDRTarget && (CTexture::s_ptexHDRTarget->IsMSAAChanged() || CTexture::s_ptexHDRTarget->GetWidth() != gcpRendD3D->GetWidth() || CTexture::s_ptexHDRTarget->GetHeight() != gcpRendD3D->GetHeight()))
+        {
+            CTexture::GenerateHDRMaps();
+        }
 
         SD3DPostEffectsUtils::CreateRenderTarget("$SceneSpecularAcc", CTexture::s_ptexSceneSpecularAccMap, nWidth, nHeight, Clr_Transparent, true, false, nTexFormat, TO_SCENE_SPECULAR_ACC, nMSAAUsageFlag);
 
         if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
         {
             // Point s_ptexHDRTarget to s_ptexSceneSpecularAccMap for GMEM paths
-            CRY_ASSERT(!CTexture::s_ptexHDRTarget);
             CTexture::s_ptexHDRTarget = CTexture::s_ptexSceneSpecularAccMap;
 
             // Point m_pResolvedStencilRT to s_ptexGmemStenLinDepth for GMEM paths

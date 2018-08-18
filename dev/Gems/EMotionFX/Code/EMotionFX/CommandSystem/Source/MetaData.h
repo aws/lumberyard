@@ -71,6 +71,7 @@ namespace CommandSystem
         static void GeneratePhonemeMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
         static void GenerateAttachmentMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
         static void GenerateMotionExtractionMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
+        static void GenerateRetargetRootMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
         static void GenerateMirrorSetupMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
     };
 

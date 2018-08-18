@@ -35,6 +35,8 @@ def build(bld):
         output_sub_folder_copy  = ['rc'],
 		features				= ['link_running_program'],
 
+        win_x64_clang_cxxflags          = ['-Wno-null-dereference'],
+
         #platform specific
         darwin_file_list        = 'fbxscenebuilder_darwin.waf_files',
 

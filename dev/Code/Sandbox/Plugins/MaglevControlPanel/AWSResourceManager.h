@@ -117,6 +117,8 @@ public:
     void RequestEditProjectSettings() override;
     void RequestEditDeploymentTemplate() override;
     void RequestEditGemsFile() override;
+    void RequestAddFile(const QString& path) override;
+    void RequestDeleteFile(const QString& path) override;
 
     static void RequestUpdateSourceModel(QSharedPointer<IFileSourceControlModel> sourceModel, QSharedPointer<IFileContentModel> contentModel);
     static void RequestEditSourceModel(QSharedPointer<IFileSourceControlModel> sourceModel, QSharedPointer<IFileContentModel> contentModel);

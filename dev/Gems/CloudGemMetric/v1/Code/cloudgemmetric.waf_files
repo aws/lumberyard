@@ -1,0 +1,41 @@
+{
+    "auto": {
+        "Include": [
+            "Include/CloudGemMetric/CloudGemMetricBus.h",
+            "AWS/ServiceApi/CloudGemMetricClientComponent.h",
+            "Include/CloudGemMetric/MetricsConfigurations.h",
+            "Include/CloudGemMetric/MetricsSettings.h",
+            "Include/CloudGemMetric/MetricsFilter.h",
+            "Include/CloudGemMetric/MetricsFilterGroup.h",
+            "Include/CloudGemMetric/MetricsPriority.h",
+            "Include/CloudGemMetric/MetricsAttribute.h",
+            "Include/CloudGemMetric/MetricsEventParameter.h",
+            "Include/CloudGemMetric/MetricsAggregator.h",
+            "Include/CloudGemMetric/MetricsQueue.h",
+            "Include/CloudGemMetric/MetricManager.h",
+            "Include/CloudGemMetric/DefaultAttributesGenerator.h",
+            "Include/CloudGemMetric/Locale.h"
+        ],
+        "Source": [
+            "Source/CloudGemMetricModule.cpp", 
+            "Source/CloudGemMetricSystemComponent.cpp",
+            "Source/CloudGemMetricSystemComponent.h",
+            "AWS/ServiceApi/CloudGemMetricClientComponent.cpp",
+            "Source/MetricsConfigurations.cpp",
+            "Source/MetricsSettings.cpp",
+            "Source/MetricsFilter.cpp",
+            "Source/MetricsFilterGroup.cpp",
+            "Source/MetricsPriority.cpp",
+            "Source/MetricsAggregator.cpp",
+            "Source/MetricsQueue.cpp",
+            "Source/MetricManager.cpp",
+            "Source/DefaultAttributesGenerator.cpp"
+        ]
+    }, 
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp", 
+            "Source/StdAfx.h"
+        ]
+    }
+}

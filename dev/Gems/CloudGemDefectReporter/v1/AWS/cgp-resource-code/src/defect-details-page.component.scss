@@ -1,0 +1,24 @@
+﻿@import "../../../styles/variables";
+
+.detail-information {
+    width: 45%;
+    display:inline-block;
+    vertical-align: top;
+    margin-top: 20px;
+}
+
+.header {
+    padding-left: 15px;
+}
+
+.report-operation {
+    margin-left: 10px;
+}
+
+.download-link {
+    color: $primary-color;
+}
+
+.download-link:hover {
+    cursor: pointer;
+}

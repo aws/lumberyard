@@ -25,7 +25,7 @@ bool CMaterialSender::SendMessage(int msg, const XmlNodeRef& node)
 
     m_h.msg = msg;
 
-    int nDataSize = sizeof(SMaterialMapFileHeader) + strlen(node->getXML().c_str());
+    int nDataSize = sizeof(SMaterialMapFileHeader) + strlen(node->getXML().c_str()) + 1;
 
     //hMapFile = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, nDataSize, "EditMatMappingObject");
 
@@ -36,7 +36,7 @@ bool CMaterialSender::SendMessage(int msg, const XmlNodeRef& node)
         if (pMes)
         {
             memcpy(pMes, &m_h, sizeof(SMaterialMapFileHeader));
-            strcpy(((char*)pMes) + sizeof(SMaterialMapFileHeader), node->getXML().c_str());
+            azstrcpy(((char*)pMes) + sizeof(SMaterialMapFileHeader), nDataSize - sizeof(SMaterialMapFileHeader), node->getXML().c_str());
             UnmapViewOfFile(pMes);
             if (m_bIsMatEditor)
             {

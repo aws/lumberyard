@@ -183,29 +183,6 @@ namespace AzToolsFramework
         }
     }
 
-    void PropertyAssetCtrl::SetValues(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType, const AZStd::string& hint, void* editNotifyTarget)
-    {
-        m_editNotifyTarget = editNotifyTarget;
-
-        SetValues(newID, newType, hint);
-    }
-
-    void PropertyAssetCtrl::SetValues(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType, const AZStd::string& hint)
-    {
-        m_currentAssetHint = hint;
-
-        // only trigger an update if we actually need to
-        if (m_currentAssetType == newType && m_currentAssetID == newID)
-        {
-            return;
-        }
-
-        m_currentAssetType = newType;
-
-        // ForceSetCurrentAssetID will call UpdateAssetDisplay() for us, regardless of whether or not the asset id itself changed
-        ForceSetCurrentAssetID(newID);
-    }
-
     bool PropertyAssetCtrl::IsCorrectMimeData(const QMimeData* pData, AZ::Data::AssetId* pAssetId, AZ::Data::AssetType* pAssetType) const
     {
         if (pAssetId)
@@ -450,10 +427,15 @@ namespace AzToolsFramework
             // We call the above function to set the initial state to be the reset state, otherwise it would start blank.
             tabsResetFunction();
 
+            #pragma warning(push)
+            #pragma warning(disable: 4573)	// the usage of 'X' requires the compiler to capture 'this' but the current default capture mode 
+
             // Connect the above function to when the user clicks the reset tabs button
             QObject::connect(logPanel, &AzToolsFramework::LogPanel::BaseLogPanel::TabsReset, logPanel, tabsResetFunction);
             // Connect to finished slot to delete the allocated dialog
-            QObject::connect(logDialog, &QDialog::finished, [logDialog](int) { logDialog->deleteLater(); });
+            QObject::connect(logDialog, &QDialog::finished, logDialog, &QObject::deleteLater);
+
+            #pragma warning(pop)
 
             // Show the dialog
             logDialog->adjustSize();
@@ -616,18 +598,13 @@ namespace AzToolsFramework
         EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
     }
 
+
     void PropertyAssetCtrl::SetCurrentAssetID(const AZ::Data::AssetId& newID)
     {
         if (m_currentAssetID == newID)
         {
             return;
         }
-
-        ForceSetCurrentAssetID(newID);
-    }
-
-    void PropertyAssetCtrl::ForceSetCurrentAssetID(const AZ::Data::AssetId& newID)
-    {
         m_currentAssetID = newID;
 
         // If the id is valid, connect to the asset system bus
@@ -651,9 +628,32 @@ namespace AzToolsFramework
         {
             return;
         }
-
         m_currentAssetType = newType;
         UpdateAssetDisplay();
+    }
+
+    void PropertyAssetCtrl::SetCurrentAssetID(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType)
+    {
+        if (m_currentAssetID == newID && m_currentAssetType == newType)
+        {
+            return;
+        }
+        m_currentAssetType = newType;
+        m_currentAssetID = newID;
+
+        // If the id is valid, connect to the asset system bus
+        if (newID.IsValid())
+        {
+            AssetSystemBus::Handler::BusConnect();
+        }
+        // Otherwise, don't listen for events.
+        else
+        {
+            AssetSystemBus::Handler::BusDisconnect();
+        }
+
+        UpdateAssetDisplay();
+        emit OnAssetIDChanged(newID);
     }
 
     void PropertyAssetCtrl::SetCurrentAssetHint(const AZStd::string& hint)
@@ -864,12 +864,11 @@ namespace AzToolsFramework
         AZ_Assert(node->GetElementMetadata()->m_genericClassInfo, "Property does not have element data.");
         AZ_Assert(node->GetElementMetadata()->m_genericClassInfo->GetNumTemplatedArguments() == 1, "Asset<> should have only 1 template parameter.");
 
-        const AZ::Uuid& assetTypeID = node->GetElementMetadata()->m_genericClassInfo->GetTemplatedTypeId(0);
-        const AZStd::string& hint = instance.GetHint();
-        const AZ::Data::AssetId& assetID = instance.GetId();
-        void* editNotifyTarget = node->GetParent()->GetInstance(0);
+        const AZ::Uuid& assetTypeId = node->GetElementMetadata()->m_genericClassInfo->GetTemplatedTypeId(0);
 
-        GUI->SetValues(assetID, assetTypeID, hint, editNotifyTarget);
+        GUI->SetCurrentAssetHint(instance.GetHint());
+        GUI->SetCurrentAssetID(instance.GetId(), assetTypeId);
+        GUI->SetEditNotifyTarget(node->GetParent()->GetInstance(0));
 
         GUI->blockSignals(false);
         return false;
@@ -913,15 +912,15 @@ namespace AzToolsFramework
 
         GUI->blockSignals(true);
 
-        AZ::Data::AssetId assetID;
+        AZ::Data::AssetId assetId;
         if (!instance.GetAssetPath().empty())
         {
-            EBUS_EVENT_RESULT(assetID, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, instance.GetAssetPath().c_str(), instance.GetAssetType(), true);
+            EBUS_EVENT_RESULT(assetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, instance.GetAssetPath().c_str(), instance.GetAssetType(), true);
         }
 
         // Set the hint in case the asset is not able to be found by assetId
-        const AZStd::string& hint = instance.GetAssetPath();
-        GUI->SetValues(assetID, instance.GetAssetType(), hint);
+        GUI->SetCurrentAssetHint(instance.GetAssetPath());
+        GUI->SetCurrentAssetID(assetId, instance.GetAssetType());
 
         GUI->blockSignals(false);
         return false;

@@ -13,7 +13,7 @@
 #define CONNECTION_H
 #include <QThread>
 #include <QElapsedTimer>
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 #include <QHostAddress>
 
 #include <QTimer>

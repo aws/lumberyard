@@ -990,7 +990,7 @@ void CAsyncIOFileRequest::ComputeSortKey(uint64 nCurrentKeyInProgress)
 
     const int g_nMaxPath = 0x800;
     char szFullPathBuf[g_nMaxPath];
-    const char* szFullPath = gEnv->pCryPak->AdjustFileName(m_strFileName.c_str(), szFullPathBuf, ICryPak::FOPEN_HINT_QUIET);
+    const char* szFullPath = gEnv->pCryPak->AdjustFileName(m_strFileName.c_str(), szFullPathBuf, AZ_ARRAY_SIZE(szFullPathBuf), ICryPak::FOPEN_HINT_QUIET);
 
     CCryPak* pCryPak = static_cast<CCryPak*>(gEnv->pCryPak);
 

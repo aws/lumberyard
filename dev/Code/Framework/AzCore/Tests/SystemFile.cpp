@@ -52,6 +52,7 @@ namespace // anonymous
 
 namespace UnitTest
 {
+    static int s_numTrialsToPerform = 20000; // as much we can do in about a second.  Increase for a deeper longer fuzz test
     /**
      * systemFile test
      */
@@ -156,5 +157,47 @@ namespace UnitTest
     TEST_F(SystemFileTest, Test)
     {
         run();
+    }
+
+    TEST_F(SystemFileTest, Open_NullFileNames_DoesNotCrash)
+    {
+        SystemFile oFile;
+        EXPECT_FALSE(oFile.Open(nullptr, SystemFile::SF_OPEN_READ_ONLY));
+    }
+
+    TEST_F(SystemFileTest, Open_EmptyFileNames_DoesNotCrash)
+    {
+        SystemFile oFile;
+        EXPECT_FALSE(oFile.Open("", SystemFile::SF_OPEN_READ_ONLY));
+    }
+
+    TEST_F(SystemFileTest, Open_BadFileNames_DoesNotCrash)
+    {
+        
+        AZStd::string randomJunkName;
+
+        randomJunkName.resize(128, '\0');
+
+        for (int trialNumber = 0; trialNumber < s_numTrialsToPerform; ++trialNumber)
+        {
+            for (int randomChar = 0; randomChar < randomJunkName.size(); ++randomChar)
+            {
+                // note that this is intentionally allowing null characters to generate.
+                // note that this also puts characters AFTER the null, if a null appears in the mddle.
+                // so that if there are off by one errors they could include cruft afterwards.
+
+                if (randomChar > trialNumber % randomJunkName.size())
+                {
+                    // choose this point for the nulls to begin.  It makes sure we test every size of string.
+                    randomJunkName[randomChar] = 0;
+                }
+                else
+                {
+                    randomJunkName[randomChar] = (char)(rand() % 256); // this will trigger invalid UTF8 decoding too
+                }
+            }
+            SystemFile oFile;
+            oFile.Open(randomJunkName.c_str(), SystemFile::SF_OPEN_READ_ONLY);
+        }
     }
 }   // namespace UnitTest

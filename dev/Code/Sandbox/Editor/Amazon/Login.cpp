@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include <Amazon/Login.h>
 
 #include <iostream>
@@ -24,7 +24,7 @@
 
 #include <Amazon/Login.moc>
 #include <qaction.h>
-#include <qdesktopservices.h>
+#include <QDesktopServices>
 #include <qnetworkrequest.h>
 #include <qwebframe.h>
 #include <qnetworkreply.h>
@@ -41,7 +41,7 @@ namespace Amazon {
     const char* AUTHPORTAL_URL = "https://www.amazon.com/ap/signin?openid.ns=http://specs.openid.net/auth/2.0&openid.claimed_id=http://specs.openid.net/auth/2.0/identifier_select&openid.identity=http://specs.openid.net/auth/2.0/identifier_select&openid.mode=checkid_setup&openid.oa2.scope=device_auth_access&openid.ns.oa2=http://www.amazon.com/ap/ext/oauth/2&openid.oa2.response_type=token&language=en-US&marketPlaceId=ATVPDKIKX0DER&openid.return_to=https://www.amazon.com/ap/maplanding&openid.pape.max_auth_age=0&forceMobileLayout=true&openid.assoc_handle=amzn_lumberyard_desktop_us&pageId=amzn_lumberyard_desktop";
     const char* FORGOT_PASSWORD_URL = "https://www.amazon.com/ap/forgotpassword";
     const char* WELCOME_TITLE_TEXT = "Welcome to Lumberyard.";
-    const char* WELCOME_TEXT = "You must log into the editor with your Amazon or AWS credentials.  <br/> If you prefer, you may create a new account for use with Lumberyard.";
+    const char* WELCOME_TEXT = "You must log into the editor with your Amazon.com account.  <br/> If you prefer, you may create a new account for use with Lumberyard.";
     const char* FORGOT_PASSWORD_TEXT = " <br/> <br/><span style=\"color:red;\" > Please check your email for instructions on how to update your password<br /> and then return here to login.</span>";
 
     static const char* EDITOR_LOGIN_EVENT_NAME = "EditorLogin";

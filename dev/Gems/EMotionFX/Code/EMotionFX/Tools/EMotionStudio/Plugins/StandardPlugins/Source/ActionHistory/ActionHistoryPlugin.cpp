@@ -14,6 +14,7 @@
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <QDockWidget>
 #include <QListWidget>
+#include <EMotionFX/CommandSystem/Source/MiscCommands.h>
 
 
 namespace EMStudio
@@ -124,6 +125,12 @@ namespace EMStudio
     // Called when the selection changed.
     void ActionHistoryPlugin::OnSelectedItemChanged()
     {
+        AZStd::string commandResult;
+        if(!GetCommandManager()->ExecuteCommand(CommandSystem::CommandRecorderClear::s_RecorderClearCmdName, commandResult, false))
+        {
+            AZ_Warning("Editor", false, "Clear recorder command failed: %s", commandResult.c_str());
+        }
+
         // Get the list of selected items and make sure exactly one is selected.
         QList<QListWidgetItem*> selected = mList->selectedItems();
         if (selected.count() != 1)

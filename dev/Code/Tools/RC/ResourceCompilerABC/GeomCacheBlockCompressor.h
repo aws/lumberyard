@@ -19,6 +19,7 @@
 class IGeomCacheBlockCompressor
 {
 public:
+    virtual ~IGeomCacheBlockCompressor() = default;
     virtual bool Compress(std::vector<char>& input, std::vector<char>& output) = 0;
 };
 
@@ -26,6 +27,7 @@ public:
 class GeomCacheStoreBlockCompressor
     : public IGeomCacheBlockCompressor
 {
+    ~GeomCacheStoreBlockCompressor() override = default;
     virtual bool Compress(std::vector<char>& input, std::vector<char>& output) override
     {
         input.swap(output);
@@ -37,6 +39,7 @@ class GeomCacheStoreBlockCompressor
 class GeomCacheDeflateBlockCompressor
     : public IGeomCacheBlockCompressor
 {
+    ~GeomCacheDeflateBlockCompressor() override = default;
     virtual bool Compress(std::vector<char>& input, std::vector<char>& output) override;
 };
 
@@ -44,6 +47,7 @@ class GeomCacheDeflateBlockCompressor
 class GeomCacheLZ4HCBlockCompressor
     : public IGeomCacheBlockCompressor
 {
+    ~GeomCacheLZ4HCBlockCompressor() override = default;
     virtual bool Compress(std::vector<char>& input, std::vector<char>& output) override;
 };
 #endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERABC_GEOMCACHEBLOCKCOMPRESSOR_H

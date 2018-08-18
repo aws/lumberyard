@@ -10,44 +10,206 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphStateTransition.h"
 #include "AnimGraphStateMachine.h"
 #include "AnimGraphEntryNode.h"
 #include "AnimGraphExitNode.h"
+#include <EMotionFX/Source/AnimGraphNodeGroup.h>
+#include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include "AnimGraphTransitionCondition.h"
 #include "AnimGraphManager.h"
 #include "AnimGraphRefCountedData.h"
 #include "AnimGraph.h"
 #include "EMotionFXManager.h"
 #include <MCore/Source/IDGenerator.h>
-#include <MCore/Source/AttributeSettings.h>
+#include <MCore/Source/ReflectionSerializer.h>
+#include <EMotionFX/Source/AnimGraphBus.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    AnimGraphStateTransition::AnimGraphStateTransition(AnimGraph* animGraph)
-        : AnimGraphObject(animGraph, TYPE_ID)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphStateTransition, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphStateTransition::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphStateTransition::StateFilterLocal, AnimGraphAllocator, 0)
+
+    bool AnimGraphStateTransition::StateFilterLocal::IsEmpty() const
     {
-        if (animGraph)
-        {
-            animGraph->AddObject(this);
-        }
-
-        mConditions.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_TRANSITIONS);
-        mIsWildcardTransition   = false;
-        mID                     = MCore::GetIDGenerator().GenerateID();
-        mSourceNode             = nullptr;
-        mTargetNode             = nullptr;
-
-        CreateAttributeValues();
-        InitInternalAttributesForAllInstances();
+        return m_stateIds.empty() && m_nodeGroupNames.empty();
     }
 
 
-    // destructor
+    void AnimGraphStateTransition::StateFilterLocal::Clear()
+    {
+        m_stateIds.clear();
+        m_nodeGroupNames.clear();
+    }
+
+
+    size_t AnimGraphStateTransition::StateFilterLocal::GetNumStates() const
+    {
+        return m_stateIds.size();
+    }
+
+
+    AnimGraphNodeId AnimGraphStateTransition::StateFilterLocal::GetStateId(size_t index) const
+    {
+        return AnimGraphNodeId(m_stateIds[index]);
+    }
+
+
+    AZStd::vector<AnimGraphNodeId> AnimGraphStateTransition::StateFilterLocal::CollectStateIds() const
+    {
+        AZStd::vector<AnimGraphNodeId> result;
+
+        result.reserve(m_stateIds.size());
+        for (const AZ::u64 stateId : m_stateIds)
+        {
+            result.emplace_back(stateId);
+        }
+
+        return result;
+    }
+
+
+    void AnimGraphStateTransition::StateFilterLocal::SetStateIds(const AZStd::vector<AnimGraphNodeId>& stateIds)
+    {
+        const size_t numStates = stateIds.size();
+        m_stateIds.resize(numStates);
+        for (size_t i = 0; i < numStates; ++i)
+        {
+            m_stateIds[i] = stateIds[i];
+        }
+    }
+
+
+    size_t AnimGraphStateTransition::StateFilterLocal::GetNumGroups() const
+    {
+        return m_nodeGroupNames.size();
+    }
+
+
+    const AZStd::string& AnimGraphStateTransition::StateFilterLocal::GetGroupName(size_t index) const
+    {
+        return m_nodeGroupNames[index];
+    }
+
+
+    void AnimGraphStateTransition::StateFilterLocal::SetGroups(const AZStd::vector<AZStd::string>& groups)
+    {
+        m_nodeGroupNames = groups;
+    }
+
+
+    const AZStd::vector<AZStd::string>& AnimGraphStateTransition::StateFilterLocal::GetGroups() const
+    {
+        return m_nodeGroupNames;
+    }
+
+
+    AZStd::vector<AnimGraphNodeId> AnimGraphStateTransition::StateFilterLocal::CollectStates(AnimGraphStateMachine* stateMachine) const
+    {
+        AZStd::vector<AnimGraphNodeId> result;
+
+        // Add individual states.
+        result.reserve(m_stateIds.size());
+        for (const AZ::u64 stateId : m_stateIds)
+        {
+            result.emplace_back(stateId);
+        }
+
+        // Add nodes from the groups.
+        const AnimGraph* animGraph = stateMachine->GetAnimGraph();
+        for (const AZStd::string& groupName : m_nodeGroupNames)
+        {
+            AnimGraphNodeGroup* nodeGroup = animGraph->FindNodeGroupByName(groupName.c_str());
+            if (!nodeGroup)
+            {
+                continue;
+            }
+
+            const AZ::u32 numNodes = nodeGroup->GetNumNodes();
+            for (AZ::u32 i = 0; i < numNodes; ++i)
+            {
+                AnimGraphNodeId nodeId = nodeGroup->GetNode(i);
+                AnimGraphNode* node = stateMachine->FindChildNodeById(nodeId);
+                if (!node)
+                {
+                    // Skip the node in case it is not part of the given state machine.
+                    continue;
+                }
+
+                if (AZStd::find(result.begin(), result.end(), nodeId) == result.end())
+                {
+                    // Add the node in case it is not yet in the array.
+                    result.emplace_back(nodeId);
+                }
+            }
+        }
+
+        return result;
+    }
+
+
+    bool AnimGraphStateTransition::StateFilterLocal::Contains(AnimGraph* animGraph, AnimGraphNodeId stateId) const
+    {
+        for (AZ::u64 currentStateId : m_stateIds)
+        {
+            if (stateId == AnimGraphNodeId(currentStateId))
+            {
+                return true;
+            }
+        }
+
+        for (const AZStd::string& nodeGroupName : m_nodeGroupNames)
+        {
+            AnimGraphNodeGroup* nodeGroup = animGraph->FindNodeGroupByName(nodeGroupName.c_str());
+            if (!nodeGroup)
+            {
+                continue;
+            }
+
+            if (nodeGroup->Contains(stateId))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------
+
+    AnimGraphStateTransition::AnimGraphStateTransition()
+        : AnimGraphObject(nullptr)
+        , mSourceNode(nullptr)
+        , mTargetNode(nullptr)
+        , m_sourceNodeId(AnimGraphNodeId::InvalidId)
+        , m_targetNodeId(AnimGraphNodeId::InvalidId)
+        , m_transitionTime(0.3f)
+        , m_easeInSmoothness(0.0f)
+        , m_easeOutSmoothness(1.0f)
+        , mStartOffsetX(0)
+        , mStartOffsetY(0)
+        , mEndOffsetX(0)
+        , mEndOffsetY(0)
+        , m_priority(0)
+        , m_syncMode(AnimGraphObject::SYNCMODE_DISABLED)
+        , m_eventMode(AnimGraphObject::EVENTMODE_BOTHNODES)
+        , m_extractionMode(AnimGraphObject::EXTRACTIONMODE_BLEND)
+        , m_interpolationType(INTERPOLATIONFUNCTION_LINEAR)
+        , mIsWildcardTransition(false)
+        , m_isDisabled(false)
+        , m_canBeInterruptedByOthers(false)
+        , m_canInterruptOtherTransitions(false)
+        , m_allowSelfInterruption(false)
+    {
+        mID = MCore::GetIDGenerator().GenerateID();
+    }
+
+
     AnimGraphStateTransition::~AnimGraphStateTransition()
     {
         RemoveAllConditions(true);
@@ -58,82 +220,53 @@ namespace EMotionFX
     }
 
 
-    // create
-    AnimGraphStateTransition* AnimGraphStateTransition::Create(AnimGraph* animGraph)
+    void AnimGraphStateTransition::Reinit()
     {
-        return new AnimGraphStateTransition(animGraph);
+        if (!mAnimGraph)
+        {
+            mSourceNode = nullptr;
+            mTargetNode = nullptr;
+            return;
+        }
+
+        // Re-link the source node.
+        if (GetSourceNodeId().IsValid())
+        {
+            mSourceNode = mAnimGraph->RecursiveFindNodeById(GetSourceNodeId());
+        }
+
+        // Re-link the target node.
+        if (GetTargetNodeId().IsValid())
+        {
+            mTargetNode = mAnimGraph->RecursiveFindNodeById(GetTargetNodeId());
+        }
+
+        for (AnimGraphTransitionCondition* condition : mConditions)
+        {
+            condition->Reinit();
+        }
     }
 
 
-    // create unique data
-    AnimGraphObjectData* AnimGraphStateTransition::CreateObjectData()
+    bool AnimGraphStateTransition::InitAfterLoading(AnimGraph* animGraph)
     {
-        return new UniqueData(this, nullptr, nullptr);
-    }
+        SetAnimGraph(animGraph);
 
+        if (animGraph)
+        {
+            animGraph->AddObject(this);
+        }
 
-    // register parameters
-    void AnimGraphStateTransition::RegisterAttributes()
-    {
-        // is the state disabled?
-        MCore::AttributeSettings* param = RegisterAttribute("Disabled", "isDisabled", "Is disabled? If yes the transition will not be used by the state machine.", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        param->SetFlag(MCore::AttributeSettings::FLAGINDEX_REINITGUI_ONVALUECHANGE, true);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(0));
+        InitInternalAttributesForAllInstances();
 
-        // the transition priority value
-        param = RegisterAttribute("Priority", "priority", "The priority level of the transition.", MCore::ATTRIBUTE_INTERFACETYPE_INTSPINNER);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        param->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        param->SetMaxValue(MCore::AttributeFloat::Create(1000000.0f));
+        for (AnimGraphTransitionCondition* condition : mConditions)
+        {
+            condition->InitAfterLoading(animGraph);
+        }
 
-        // can the transition be interrupted while already transitioning?
-        param = RegisterAttribute("Can Be Interrupted By Others", "canBeInterrupted", "Can be interrupted? If enabled the transition can be interrupted by other transitions, while it is already transitioning.", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(0));
+        Reinit();
 
-        // can this transition interrupt other, already transitioning transitions?
-        param = RegisterAttribute("Can Interrupt Other Transitions", "canInterruptOthers", "Can interrupt other transitions? If enabled the transition can be activated while another one is already transitioning.", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // can this transition interrupt itself?
-        param = RegisterAttribute("Allow Self Interruption", "allowSelfInterruption", "Can interrupt itself? If enabled the transition can interrupt and restart itself.", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // used for wildcard transitions only and specifies to which node groups the transition will actually trigger
-        param = RegisterAttribute("Allow Transitions From", "allowTransitionsFrom", "States and groups of states from which the wildcard transition can get activated.", ATTRIBUTE_INTERFACETYPE_STATEFILTERLOCAL);
-        param->SetDefaultValue(EMotionFX::AttributeStateFilterLocal::Create());
-
-        // the transition blend time
-        param = RegisterAttribute("Transition Time", "blendTime", "The transition time, in seconds.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(0.3f));
-        param->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        param->SetMaxValue(MCore::AttributeFloat::Create(1000000.0f));
-
-        // sync setting
-        param = RegisterSyncAttribute();
-        static_cast<MCore::AttributeFloat*>(param->GetDefaultValue())->SetValue(SYNCMODE_DISABLED);
-
-        // the event filtering mode
-        param = RegisterEventFilterAttribute();
-        static_cast<MCore::AttributeFloat*>(param->GetDefaultValue())->SetValue(EVENTMODE_BOTHNODES);
-
-        // the interpolation type
-        MCore::AttributeSettings* interpolationParam = RegisterAttribute("Interpolation", "interpolation", "The interpolation type to use.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        interpolationParam->ResizeComboValues(2);
-        interpolationParam->SetComboValue(INTERPOLATIONFUNCTION_LINEAR,     "Linear");
-        interpolationParam->SetComboValue(INTERPOLATIONFUNCTION_EASECURVE,  "Ease Curve");
-        interpolationParam->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // the sectioned ease curve ease-in point
-        param = RegisterAttribute("Ease-In Smoothness", "easeInSmooth", "The smoothness of the ease-in, where 0 means linear and 1 means fully smooth.\nInterpolation type has to be Ease Curve.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        param->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        param->SetMaxValue(MCore::AttributeFloat::Create(1.0f));
-
-        // the sectioned ease curve ease-out point
-        param = RegisterAttribute("Ease-Out Smoothness", "easeOutSmooth", "The smoothness of the ease-out, where 0 means linear and 1 means fully smooth.\nInterpolation type has to be Ease Curve.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(1.0f));
-        param->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        param->SetMaxValue(MCore::AttributeFloat::Create(1.0f));
+        return true;
     }
 
 
@@ -147,7 +280,7 @@ namespace EMotionFX
 
         // blend the two poses
         *outputPose = from;
-        outputPose->Blend(&to, weight);
+        outputPose->GetPose().Blend(&to.GetPose(), weight);
     }
 
 
@@ -186,28 +319,18 @@ namespace EMotionFX
     }
 
 
-    // motion extraction
     void AnimGraphStateTransition::ExtractMotion(AnimGraphInstance* animGraphInstance, Transform* outTransform, Transform* outTransformMirrored) const
     {
-        // get the unique data
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
 
-        // get the source node, for wildcard transitions use the overwritten source node from the unique data
+        // Get the source node, for wildcard transitions use the overwritten source node from the unique data.
         AnimGraphNode* sourceNode = GetSourceNode(animGraphInstance);
 
-        // calculate the blend weight, based on the type of smoothing
+        // Get the reference counted data to get access to the motion extraction deltas.
         const float weight = uniqueData->mBlendWeight;
-
-        // blend between them
         AnimGraphRefCountedData* sourceData = sourceNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
         AnimGraphRefCountedData* targetData = mTargetNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
-        Transform trajectoryDeltaA = sourceData->GetTrajectoryDelta();
-        trajectoryDeltaA.Blend(targetData->GetTrajectoryDelta(), weight);
-        *outTransform = trajectoryDeltaA;
-
-        Transform trajectoryDeltaAMirrored = sourceData->GetTrajectoryDeltaMirrored();
-        trajectoryDeltaAMirrored.Blend(targetData->GetTrajectoryDeltaMirrored(), weight);
-        *outTransformMirrored = trajectoryDeltaAMirrored;
+        CalculateMotionExtractionDelta(m_extractionMode, sourceData, targetData, weight, true, *outTransform, *outTransformMirrored);
     }
 
 
@@ -255,86 +378,36 @@ namespace EMotionFX
     }
 
 
-    // convert attributes for backward compatibility
-    // this handles attributes that got renamed or who's types have changed during the development progress
-    bool AnimGraphStateTransition::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName)
-    {
-        // convert things by the base class
-        const bool result = AnimGraphObject::ConvertAttribute(attributeIndex, attributeToConvert, attributeName);
-
-        // if we try to convert the old syncMotions setting
-        // we renamed the 'syncMotions' into 'sync' and also changed the type from a bool to integer
-        if (attributeName == "sync" && attributeIndex != MCORE_INVALIDINDEX32)
-        {
-            // if its a boolean
-            if (attributeToConvert->GetType() == MCore::AttributeBool::TYPE_ID)
-            {
-                const ESyncMode syncMode = (static_cast<const MCore::AttributeBool*>(attributeToConvert)->GetValue()) ? SYNCMODE_TRACKBASED : SYNCMODE_DISABLED;
-                GetAttributeFloat(attributeIndex)->SetValue(static_cast<float>(syncMode));
-                return true;
-            }
-        }
-
-        return result;
-    }
-
-
-    // clone the node
-    AnimGraphObject* AnimGraphStateTransition::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        AnimGraphStateTransition* clone = new AnimGraphStateTransition(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // add a new condition
     void AnimGraphStateTransition::AddCondition(AnimGraphTransitionCondition* condition)
     {
-        mConditions.Add(condition);
-    }
-
-
-    // pre-create unique data object
-    void AnimGraphStateTransition::Init(AnimGraphInstance* animGraphInstance)
-    {
-        // pre-alloc all conditions
-        const uint32 numConditions = mConditions.GetLength();
-        for (uint32 i = 0; i < numConditions; ++i)
-        {
-            mConditions[i]->Init(animGraphInstance);
-        }
+        mConditions.push_back(condition);
     }
 
 
     // insert a new condition at the given index
-    void AnimGraphStateTransition::InsertCondition(AnimGraphTransitionCondition* condition, uint32 index)
+    void AnimGraphStateTransition::InsertCondition(AnimGraphTransitionCondition* condition, size_t index)
     {
-        mConditions.Insert(index, condition);
+        mConditions.insert(mConditions.begin() + index, condition);
     }
 
 
     // reserve space for a given amount of conditions
-    void AnimGraphStateTransition::ReserveConditions(uint32 numConditions)
+    void AnimGraphStateTransition::ReserveConditions(size_t numConditions)
     {
-        mConditions.Reserve(numConditions);
+        mConditions.reserve(numConditions);
     }
 
 
     // remove a given condition
-    void AnimGraphStateTransition::RemoveCondition(uint32 index, bool delFromMem)
+    void AnimGraphStateTransition::RemoveCondition(size_t index, bool delFromMem)
     {
         if (delFromMem)
         {
-            mConditions[index]->Destroy();
+            delete mConditions[index];
         }
 
-        mConditions.Remove(index);
+        mConditions.erase(mConditions.begin() + index);
     }
 
 
@@ -344,24 +417,20 @@ namespace EMotionFX
         // delete them all from memory
         if (delFromMem)
         {
-            const uint32 numConditions = mConditions.GetLength();
-            for (uint32 i = 0; i < numConditions; ++i)
+            for (AnimGraphTransitionCondition* condition : mConditions)
             {
-                mConditions[i]->Destroy();
+                delete condition;
             }
         }
 
-        // clear the conditions array
-        mConditions.Clear();
+        mConditions.clear();
     }
 
 
     // check if all conditions are tested positive
     bool AnimGraphStateTransition::CheckIfIsReady(AnimGraphInstance* animGraphInstance) const
     {
-        // get the number of conditions and return false in case there aren't any
-        const uint32 numConditions = mConditions.GetLength();
-        if (numConditions == 0)
+        if (mConditions.empty())
         {
             return false;
         }
@@ -370,15 +439,12 @@ namespace EMotionFX
     #ifdef EMFX_EMSTUDIOBUILD
         bool isReady = true;
     #endif
-        for (uint32 i = 0; i < numConditions; ++i)
+        for (AnimGraphTransitionCondition* condition : mConditions)
         {
-            // get the condition, test if this condition is fulfilled and update the previous test result
-            AnimGraphTransitionCondition* condition = mConditions[i];
             const bool testResult = condition->TestCondition(animGraphInstance);
-            condition->UpdatePreviousTestResult(animGraphInstance, testResult);
 
             // return directly in case one condition is not ready yet
-            if (testResult == false)
+            if (!testResult)
         #ifndef EMFX_EMSTUDIOBUILD
             {
                 return false;
@@ -427,192 +493,128 @@ namespace EMotionFX
         return uniqueData->mSourceNode;
     }
 
+    void AnimGraphStateTransition::SetBlendTime(float blendTime)
+    {
+        m_transitionTime = blendTime;
+    }
 
-    // get the blend time
     float AnimGraphStateTransition::GetBlendTime(AnimGraphInstance* animGraphInstance) const
     {
         MCORE_UNUSED(animGraphInstance);
 
-        // just return the blend time from the attribute
-        return GetAttributeFloat(ATTRIB_BLENDTIME)->GetValue();
-    }
-
-
-    // callback for when we renamed a node
-    void AnimGraphStateTransition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
-    {
-        // get the number of conditions, iterate through them and call the callback
-        const uint32 numConditions = mConditions.GetLength();
-        for (uint32 i = 0; i < numConditions; ++i)
+        // Use a blend time of zero in case this transition is connected to aan entry or exit state.
+        if ((mSourceNode && (azrtti_typeid(mSourceNode) == azrtti_typeid<AnimGraphExitNode>() || azrtti_typeid(mSourceNode) == azrtti_typeid<AnimGraphEntryNode>())) ||
+            (mTargetNode && (azrtti_typeid(mTargetNode) == azrtti_typeid<AnimGraphExitNode>() || azrtti_typeid(mTargetNode) == azrtti_typeid<AnimGraphEntryNode>())))
         {
-            mConditions[i]->OnRenamedNode(animGraph, node, oldName);
+            return 0.0f;
         }
-    }
 
-
-    // callback that gets called after a new node got created
-    void AnimGraphStateTransition::OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node)
-    {
-        // get the number of conditions, iterate through them and call the callback
-        const uint32 numConditions = mConditions.GetLength();
-        for (uint32 i = 0; i < numConditions; ++i)
-        {
-            mConditions[i]->OnCreatedNode(animGraph, node);
-        }
+        return m_transitionTime;
     }
 
 
     // callback that gets called before a node gets removed
     void AnimGraphStateTransition::OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove)
     {
-        // get the number of conditions, iterate through them and call the callback
-        const uint32 numConditions = mConditions.GetLength();
-        for (uint32 i = 0; i < numConditions; ++i)
+        for (AnimGraphTransitionCondition* condition : mConditions)
         {
-            mConditions[i]->OnRemoveNode(animGraph, nodeToRemove);
+            condition->OnRemoveNode(animGraph, nodeToRemove);
         }
-    }
-
-
-    // update data
-    void AnimGraphStateTransition::OnUpdateAttributes()
-    {
-        // get the number of conditions
-        const uint32 numConditions = mConditions.GetLength();
-        for (uint32 i = 0; i < numConditions; ++i)
-        {
-            mConditions[i]->OnUpdateAttributes();
-        }
-
-        // disable GUI items that have no influence
-    #ifdef EMFX_EMSTUDIOBUILD
-        // enable all attributes
-        EnableAllAttributes(true);
-
-        // if the interpolation type is linear, disable the ease-in and ease-out values
-        if (GetAttributeFloat(ATTRIB_INTERPOLATIONTYPE)->GetValue() == INTERPOLATIONFUNCTION_LINEAR)
-        {
-            SetAttributeDisabled(ATTRIB_EASEIN_SMOOTH);
-            SetAttributeDisabled(ATTRIB_EASEOUT_SMOOTH);
-        }
-
-        // enable the allow transitions from link only for wildcard transitions
-        if (GetIsWildcardTransition() == false)
-        {
-            SetAttributeDisabled(ATTRIB_ALLOWEDSTATES);
-        }
-
-        // in case the source or the target node is an exit node
-        if ((mSourceNode && mSourceNode->GetType() == AnimGraphExitNode::TYPE_ID) ||
-            (mTargetNode && mTargetNode->GetType() == AnimGraphExitNode::TYPE_ID))
-        {
-            SetAttributeDisabled(ATTRIB_CANBEINTERRUPTED);
-            SetAttributeDisabled(ATTRIB_CANINTERRUPTOTHERTRANSITIONS);
-            SetAttributeDisabled(ATTRIB_ALLOWSELFINTERRUPTION);
-            SetAttributeDisabled(ATTRIB_BLENDTIME);
-            SetAttributeDisabled(ATTRIB_INTERPOLATIONTYPE);
-            SetAttributeDisabled(ATTRIB_EASEIN_SMOOTH);
-            SetAttributeDisabled(ATTRIB_EASEOUT_SMOOTH);
-            SetAttributeDisabled(ATTRIB_SYNC);
-            SetAttributeDisabled(ATTRIB_EVENTMODE);
-
-            // automatically set the blend time to zero in case this transition is connected to an exit state
-            float oldBlendTime = GetAttributeFloat(ATTRIB_BLENDTIME)->GetValue();
-            GetAttributeFloat(ATTRIB_BLENDTIME)->SetValue(0.0f);
-            if (oldBlendTime != 0.0f)
-            {
-                mAnimGraph->SetDirtyFlag(true);
-            }
-        }
-
-        // in case the source or the target node is a pass-through node
-        if ((mSourceNode && mSourceNode->GetType() == AnimGraphEntryNode::TYPE_ID) ||
-            (mTargetNode && mTargetNode->GetType() == AnimGraphEntryNode::TYPE_ID))
-        {
-            SetAttributeDisabled(ATTRIB_CANBEINTERRUPTED);
-            SetAttributeDisabled(ATTRIB_CANINTERRUPTOTHERTRANSITIONS);
-            SetAttributeDisabled(ATTRIB_ALLOWSELFINTERRUPTION);
-            SetAttributeDisabled(ATTRIB_BLENDTIME);
-            SetAttributeDisabled(ATTRIB_INTERPOLATIONTYPE);
-            SetAttributeDisabled(ATTRIB_EASEIN_SMOOTH);
-            SetAttributeDisabled(ATTRIB_EASEOUT_SMOOTH);
-            SetAttributeDisabled(ATTRIB_SYNC);
-            SetAttributeDisabled(ATTRIB_EVENTMODE);
-
-            // automatically set the blend time to zero in case this transition is connected to an exit state
-            float oldBlendTime = GetAttributeFloat(ATTRIB_BLENDTIME)->GetValue();
-            GetAttributeFloat(ATTRIB_BLENDTIME)->SetValue(0.0f);
-            if (oldBlendTime != 0.0f)
-            {
-                mAnimGraph->SetDirtyFlag(true);
-            }
-        }
-    #endif
     }
 
 
     // reset all transition conditions
     void AnimGraphStateTransition::ResetConditions(AnimGraphInstance* animGraphInstance)
     {
-        // iterate through all conditions and reset them
-        const uint32 numConditions = mConditions.GetLength();
-        for (uint32 i = 0; i < numConditions; ++i)
+        for (AnimGraphTransitionCondition* condition : mConditions)
         {
-            mConditions[i]->Reset(animGraphInstance);
+            condition->Reset(animGraphInstance);
         }
     }
 
-
-    // get the priority value of the transition
-    int32 AnimGraphStateTransition::GetPriority() const
+    void AnimGraphStateTransition::SetPriority(AZ::u32 priority)
     {
-        return GetAttributeFloatAsInt32(ATTRIB_PRIORITY);
+        m_priority = priority;
+    }
+
+    AZ::u32 AnimGraphStateTransition::GetPriority() const
+    {
+        return m_priority;
     }
 
 
-    // true in case the transition is disabled, false if not
     bool AnimGraphStateTransition::GetIsDisabled() const
     {
-        return GetAttributeFloatAsBool(ATTRIB_DISABLED);
+        return m_isDisabled;
     }
 
 
-    // set if the transition shall be disabled
     void AnimGraphStateTransition::SetIsDisabled(bool isDisabled)
     {
-        GetAttributeFloat(ATTRIB_DISABLED)->SetValue(isDisabled);
+        m_isDisabled = isDisabled;
     }
 
+    void AnimGraphStateTransition::SetCanBeInterrupted(bool canBeInterrupted)
+    {
+        m_canBeInterruptedByOthers = canBeInterrupted;
+    }
 
-    // can be interrupted?
     bool AnimGraphStateTransition::GetCanBeInterrupted() const
     {
-        return GetAttributeFloatAsBool(ATTRIB_CANBEINTERRUPTED);
+        return m_canBeInterruptedByOthers;
     }
 
+    void AnimGraphStateTransition::SetCanInterruptOtherTransitions(bool canInterruptOtherTransitions)
+    {
+        m_canInterruptOtherTransitions = canInterruptOtherTransitions;
+    }
 
-    // can interrupt other transitions?
     bool AnimGraphStateTransition::GetCanInterruptOtherTransitions() const
     {
-        return GetAttributeFloatAsBool(ATTRIB_CANINTERRUPTOTHERTRANSITIONS);
+        return m_canInterruptOtherTransitions;
     }
 
+    void AnimGraphStateTransition::SetCanInterruptItself(bool canInterruptItself)
+    {
+        m_allowSelfInterruption = canInterruptItself;
+    }
 
-    // can this transition interrupt itself?
     bool AnimGraphStateTransition::GetCanInterruptItself() const
     {
-        return GetAttributeFloatAsBool(ATTRIB_ALLOWSELFINTERRUPTION);
+        return m_allowSelfInterruption;
     }
 
+    void AnimGraphStateTransition::SetGroups(const AZStd::vector<AZStd::string>& groups)
+    {
+        m_allowTransitionsFrom.SetGroups(groups);
+    }
+
+    void AnimGraphStateTransition::SetStateIds(const AZStd::vector<AnimGraphNodeId>& stateIds)
+    {
+        m_allowTransitionsFrom.SetStateIds(stateIds);
+    }
+
+    void AnimGraphStateTransition::SetInterpolationType(AnimGraphStateTransition::EInterpolationType interpolationType)
+    {
+        m_interpolationType = interpolationType;
+    }
+
+    void AnimGraphStateTransition::SetEaseInSmoothness(float easeInSmoothness)
+    {
+        m_easeInSmoothness = easeInSmoothness;
+    }
+
+    void AnimGraphStateTransition::SetEaseOutSmoothness(float easeOutSmoothness)
+    {
+        m_easeOutSmoothness = easeOutSmoothness;
+    }
 
     // add all sub objects
     void AnimGraphStateTransition::RecursiveCollectObjects(MCore::Array<AnimGraphObject*>& outObjects) const
     {
-        // iterate through all conditions
-        const uint32 numConditions = mConditions.GetLength();
-        for (uint32 i = 0; i < numConditions; ++i)
+        for (const AnimGraphTransitionCondition* condition : mConditions)
         {
-            mConditions[i]->RecursiveCollectObjects(outObjects);
+            condition->RecursiveCollectObjects(outObjects);
         }
 
         outObjects.Add(const_cast<AnimGraphStateTransition*>(this));
@@ -622,21 +624,22 @@ namespace EMotionFX
     // calculate the blend weight, based on the type of smoothing
     float AnimGraphStateTransition::CalculateWeight(float linearWeight) const
     {
-        // pick the right interpolation type
-        const uint32 comboIndex = GetAttributeFloatAsUint32(ATTRIB_INTERPOLATIONTYPE);
-        switch (comboIndex)
+        switch (m_interpolationType)
         {
         case INTERPOLATIONFUNCTION_LINEAR:
+        {
             return linearWeight;
+        }
+
         case INTERPOLATIONFUNCTION_EASECURVE:
         {
-            const float easeInSmooth    = GetAttributeFloat(ATTRIB_EASEIN_SMOOTH)->GetValue();
-            const float easeOutSmooth   = GetAttributeFloat(ATTRIB_EASEOUT_SMOOTH)->GetValue();
-            return MCore::SampleEaseInOutCurveWithSmoothness(linearWeight, easeInSmooth, easeOutSmooth);
+            return MCore::SampleEaseInOutCurveWithSmoothness(linearWeight, m_easeInSmoothness, m_easeOutSmoothness);
         }
 
         default:
-            MCORE_ASSERT(false);    // should be allowed
+        {
+            AZ_Assert(false, "Interpolation type undefined.");
+        }
         }
 
         return linearWeight;
@@ -662,83 +665,20 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (uniqueData == nullptr)
         {
-            //uniqueData = new UniqueData(this, animGraphInstance, nullptr);
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance, nullptr);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
 
-        // pre-alloc all conditions
-        const uint32 numConditions = mConditions.GetLength();
-        for (uint32 i = 0; i < numConditions; ++i)
+        for (AnimGraphTransitionCondition* condition : mConditions)
         {
-            mConditions[i]->OnUpdateUniqueData(animGraphInstance);
+            condition->OnUpdateUniqueData(animGraphInstance);
         }
     }
 
-
-    // recursive clone
-    AnimGraphObject* AnimGraphStateTransition::RecursiveClone(AnimGraph* animGraph, AnimGraphObject* parentObject)
-    {
-        MCORE_UNUSED(parentObject);
-
-        AnimGraphObject* transitionClone = Clone(animGraph);
-        MCORE_ASSERT(transitionClone->GetBaseType() == AnimGraphStateTransition::BASETYPE_ID);
-        AnimGraphStateTransition* result = static_cast<AnimGraphStateTransition*>(transitionClone);
-        //  animGraph->AddObject( result );
-
-        // copy easy settings
-        result->mStartOffsetX           = mStartOffsetX;
-        result->mStartOffsetY           = mStartOffsetY;
-        result->mEndOffsetX             = mEndOffsetX;
-        result->mEndOffsetY             = mEndOffsetY;
-        result->mIsWildcardTransition   = mIsWildcardTransition;
-
-        // copy the nodes, remap them into the new animgraph
-        if (mSourceNode)
-        {
-            result->mSourceNode = animGraph->RecursiveFindNodeByID(mSourceNode->GetID());
-            MCORE_ASSERT(result->mSourceNode);
-        }
-
-        if (mTargetNode)
-        {
-            result->mTargetNode = animGraph->RecursiveFindNodeByID(mTargetNode->GetID());
-            MCORE_ASSERT(result->mTargetNode);
-        }
-
-        // copy attribute values
-        const uint32 numAttributes = mAttributeValues.GetLength();
-        for (uint32 i = 0; i < numAttributes; ++i)
-        {
-            result->GetAttribute(i)->InitFrom(mAttributeValues[i]);
-        }
-
-        // clone the conditions
-        const uint32 numConditions = mConditions.GetLength();
-        result->ReserveConditions(numConditions);
-        for (uint32 i = 0; i < numConditions; ++i)
-        {
-            // clone it
-            AnimGraphObject* conditionClone = mConditions[i]->RecursiveClone(animGraph, result);
-            MCORE_ASSERT(conditionClone->GetBaseType() == AnimGraphTransitionCondition::BASETYPE_ID);
-            AnimGraphTransitionCondition* resultCondition = static_cast<AnimGraphTransitionCondition*>(conditionClone);
-
-            // add it to the transition
-            result->AddCondition(resultCondition);
-        }
-
-        return result;
-    }
 
     void AnimGraphStateTransition::SetID(uint32 id)
     {
         mID = id;
-    }
-
-
-    uint32 AnimGraphStateTransition::GetBaseType() const
-    {
-        return BASETYPE_ID;
     }
 
 
@@ -754,12 +694,6 @@ namespace EMotionFX
     }
 
 
-    const char* AnimGraphStateTransition::GetTypeString() const
-    {
-        return "AnimGraphDefaultTransition";
-    }
-
-
     const char* AnimGraphStateTransition::GetPaletteName() const
     {
         return "Transition";
@@ -771,28 +705,68 @@ namespace EMotionFX
         return AnimGraphObject::CATEGORY_TRANSITIONS;
     }
 
+    void AnimGraphStateTransition::SetSyncMode(AnimGraphStateTransition::ESyncMode syncMode)
+    {
+        m_syncMode = syncMode;
+    }
 
     AnimGraphStateTransition::ESyncMode AnimGraphStateTransition::GetSyncMode() const
     {
-        return (ESyncMode)((uint32)GetAttributeFloat(ATTRIB_SYNC)->GetValue());
+        return m_syncMode;
     }
 
-
-    AnimGraphStateTransition::EEventMode AnimGraphStateTransition::GetEventFilterMode() const
+    void AnimGraphStateTransition::SetEventFilterMode(AnimGraphObject::EEventMode eventMode)
     {
-        return (EEventMode)((uint32)GetAttributeFloat(ATTRIB_EVENTMODE)->GetValue());
+        m_eventMode = eventMode;
+    }
+
+    AnimGraphObject::EEventMode AnimGraphStateTransition::GetEventFilterMode() const
+    {
+        return m_eventMode;
     }
 
 
     void AnimGraphStateTransition::SetSourceNode(AnimGraphNode* node)
     {
         mSourceNode = node;
+
+        if (mSourceNode)
+        {
+            m_sourceNodeId = mSourceNode->GetId();
+        }
+        else
+        {
+            m_sourceNodeId = AnimGraphNodeId::InvalidId;
+        }
+    }
+
+
+    AnimGraphNode* AnimGraphStateTransition::GetSourceNode() const
+    {
+        AZ_Assert(!mSourceNode || (mSourceNode && mSourceNode->GetId() == GetSourceNodeId()), "Source node not in sync with node id.");
+        return mSourceNode;
     }
 
 
     void AnimGraphStateTransition::SetTargetNode(AnimGraphNode* node)
     {
         mTargetNode = node;
+
+        if (mTargetNode)
+        {
+            m_targetNodeId = mTargetNode->GetId();
+        }
+        else
+        {
+            m_targetNodeId = AnimGraphNodeId::InvalidId;
+        }
+    }
+
+
+    AnimGraphNode* AnimGraphStateTransition::GetTargetNode() const
+    {
+        AZ_Assert(mTargetNode && mTargetNode->GetId() == GetTargetNodeId(), "Target node not in sync with node id.");
+        return mTargetNode;
     }
 
 
@@ -829,8 +803,234 @@ namespace EMotionFX
     }
 
 
-    uint32 AnimGraphStateTransition::FindConditionIndex(AnimGraphTransitionCondition* condition) const
+    bool AnimGraphStateTransition::CanWildcardTransitionFrom(AnimGraphNode* sourceNode) const
     {
-        return mConditions.Find(condition);
+        if (m_allowTransitionsFrom.IsEmpty())
+        {
+            // An empty state filter means we can transition from any other state.
+            return true;
+        }
+
+        if (sourceNode)
+        {
+            if (m_allowTransitionsFrom.Contains(mAnimGraph, sourceNode->GetId()))
+            {
+                // In case the given source node is part of the filter (either as individual state or part of a node group), return success.
+                return true;
+            }
+        }
+
+        return false;
     }
-}   // namespace EMotionFX
+
+
+    size_t AnimGraphStateTransition::FindConditionIndex(AnimGraphTransitionCondition* condition) const
+    {
+        const auto iterator = AZStd::find(mConditions.begin(), mConditions.end(), condition);
+        if (iterator == mConditions.end())
+        {
+            return MCORE_INVALIDINDEX32;
+        }
+
+        return iterator - mConditions.begin();
+    }
+
+
+    AnimGraphStateMachine* AnimGraphStateTransition::GetStateMachine() const
+    {
+        if (!mTargetNode)
+        {
+            return nullptr;
+        }
+
+        return azdynamic_cast<AnimGraphStateMachine*>(mTargetNode->GetParentNode());
+    }
+
+
+    AZ::Crc32 AnimGraphStateTransition::GetEaseInOutSmoothnessVisibility() const
+    {
+        if (GetVisibilityHideWhenExitOrEntry() == AZ::Edit::PropertyVisibility::Hide)
+        {
+            return AZ::Edit::PropertyVisibility::Hide;
+        }
+
+        return m_interpolationType == INTERPOLATIONFUNCTION_EASECURVE ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
+    }
+
+
+    AZ::Crc32 AnimGraphStateTransition::GetVisibilityHideWhenExitOrEntry() const
+    {
+        // Hide when the transition is connected to an entry or an exit state.
+        if ((mSourceNode && (azrtti_typeid(mSourceNode) == azrtti_typeid<AnimGraphExitNode>() || azrtti_typeid(mSourceNode) == azrtti_typeid<AnimGraphEntryNode>())) ||
+            (mTargetNode && (azrtti_typeid(mTargetNode) == azrtti_typeid<AnimGraphExitNode>() || azrtti_typeid(mTargetNode) == azrtti_typeid<AnimGraphEntryNode>())))
+        {
+            return AZ::Edit::PropertyVisibility::Hide;
+        }
+
+        return AZ::Edit::PropertyVisibility::Show;
+    }
+
+
+    AZ::Crc32 AnimGraphStateTransition::GetVisibilityAllowedStates() const
+    {
+        // Show the allow transitions from states for wildcard transitions only.
+        if (GetIsWildcardTransition())
+        {
+            return AZ::Edit::PropertyVisibility::Show;
+        }
+
+        return AZ::Edit::PropertyVisibility::Hide;
+    }
+
+
+    AnimGraphObject::EExtractionMode AnimGraphStateTransition::GetExtractionMode() const
+    {
+        return m_extractionMode;
+    }
+
+
+    void AnimGraphStateTransition::SetExtractionMode(AnimGraphObject::EExtractionMode mode)
+    {
+        m_extractionMode = mode;
+    }
+
+
+    void AnimGraphStateTransition::StateFilterLocal::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphStateTransition::StateFilterLocal>()
+            ->Version(1)
+            ->Field("stateIds", &AnimGraphStateTransition::StateFilterLocal::m_stateIds)
+            ->Field("nodeGroupNames", &AnimGraphStateTransition::StateFilterLocal::m_nodeGroupNames)
+        ;
+    }
+
+
+    void AnimGraphStateTransition::GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const
+    {
+        auto itConvertedIds = convertedIds.find(m_sourceNodeId);
+        if (itConvertedIds != convertedIds.end())
+        {
+            // need to convert
+            attributesString = AZStd::string::format("-sourceNodeId %llu", itConvertedIds->second);
+        }
+        itConvertedIds = convertedIds.find(m_targetNodeId);
+        if (itConvertedIds != convertedIds.end())
+        {
+            // need to convert
+            attributesString += AZStd::string::format(" -targetNodeId %llu", itConvertedIds->second);
+        }
+
+        bool someThingPatched = false;
+        AZStd::vector<AnimGraphNodeId> patchedTransitionsFrom = m_allowTransitionsFrom.CollectStateIds();
+        for (AnimGraphNodeId& nodeId : patchedTransitionsFrom)
+        {
+            itConvertedIds = convertedIds.find(nodeId);
+            if (itConvertedIds != convertedIds.end())
+            {
+                nodeId = itConvertedIds->second;
+                someThingPatched = true;
+            }
+        }
+        if (someThingPatched)
+        {
+            StateFilterLocal sf = m_allowTransitionsFrom;
+            sf.SetStateIds(patchedTransitionsFrom);
+
+            attributesString += AZStd::string::format(" -allowTransitionsFrom {%s}", MCore::ReflectionSerializer::Serialize(&sf).GetValue().c_str());
+        }
+    }
+
+
+    void AnimGraphStateTransition::Reflect(AZ::ReflectContext* context)
+    {
+        AnimGraphStateTransition::StateFilterLocal::Reflect(context);
+
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphStateTransition, AnimGraphObject>()
+            ->Version(2)
+            ->Field("sourceNodeId", &AnimGraphStateTransition::m_sourceNodeId)
+            ->Field("targetNodeId", &AnimGraphStateTransition::m_targetNodeId)
+            ->Field("isWildcard", &AnimGraphStateTransition::mIsWildcardTransition)
+            ->Field("isDisabled", &AnimGraphStateTransition::m_isDisabled)
+            ->Field("priority", &AnimGraphStateTransition::m_priority)
+            ->Field("canBeInterruptedByOthers", &AnimGraphStateTransition::m_canBeInterruptedByOthers)
+            ->Field("canInterruptOtherTransitions", &AnimGraphStateTransition::m_canInterruptOtherTransitions)
+            ->Field("allowSelfInterruption", &AnimGraphStateTransition::m_allowSelfInterruption)
+            ->Field("allowTransitionsFrom", &AnimGraphStateTransition::m_allowTransitionsFrom)
+            ->Field("transitionTime", &AnimGraphStateTransition::m_transitionTime)
+            ->Field("syncMode", &AnimGraphStateTransition::m_syncMode)
+            ->Field("eventMode", &AnimGraphStateTransition::m_eventMode)
+            ->Field("interpolationType", &AnimGraphStateTransition::m_interpolationType)
+            ->Field("easeInSmoothness", &AnimGraphStateTransition::m_easeInSmoothness)
+            ->Field("easeOutSmoothness", &AnimGraphStateTransition::m_easeOutSmoothness)
+            ->Field("startOffsetX", &AnimGraphStateTransition::mStartOffsetX)
+            ->Field("startOffsetY", &AnimGraphStateTransition::mStartOffsetY)
+            ->Field("endOffsetX", &AnimGraphStateTransition::mEndOffsetX)
+            ->Field("endOffsetY", &AnimGraphStateTransition::mEndOffsetY)
+            ->Field("conditions", &AnimGraphStateTransition::mConditions)
+            ->Field("extractionMode", &AnimGraphStateTransition::m_extractionMode)
+        ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<AnimGraphStateTransition>("State Transition", "State transition attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphStateTransition::m_isDisabled, "Disabled", "Is disabled? If yes the transition will not be used by the state machine.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphStateTransition::SyncVisualObject)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphStateTransition::m_priority, "Priority", "The priority level of the transition.")
+            ->Attribute(AZ::Edit::Attributes::Min, 0)
+            ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<AZ::s32>::max())
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphStateTransition::m_canBeInterruptedByOthers, "Can Be Interrupted By Others", "Can be interrupted? If enabled the transition can be interrupted by other transitions, while it is already transitioning.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateTransition::GetVisibilityHideWhenExitOrEntry)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphStateTransition::m_canInterruptOtherTransitions, "Can Interrupt Other Transitions", "Can interrupt other transitions? If enabled the transition can be activated while another one is already transitioning.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateTransition::GetVisibilityHideWhenExitOrEntry)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphStateTransition::m_allowSelfInterruption, "Allow Self Interruption", "Can interrupt itself? If enabled the transition can interrupt and restart itself.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateTransition::GetVisibilityHideWhenExitOrEntry)
+            ->DataElement(AZ_CRC("TransitionStateFilterLocal", 0x7c4000ff), &AnimGraphStateTransition::m_allowTransitionsFrom, "Allow Transitions From", "States and groups of states from which the wildcard transition can get activated.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateTransition::GetVisibilityAllowedStates)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->Attribute(AZ_CRC("StateMachine", 0xe5f2e7a8), &AnimGraphStateTransition::GetStateMachine)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphStateTransition::m_transitionTime, "Transition Time", "The transition time, in seconds.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateTransition::GetVisibilityHideWhenExitOrEntry)
+            ->Attribute(AZ::Edit::Attributes::Suffix, " seconds")
+            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimGraphStateTransition::m_syncMode)
+            ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateTransition::GetVisibilityHideWhenExitOrEntry)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimGraphStateTransition::m_eventMode)
+            ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateTransition::GetVisibilityHideWhenExitOrEntry)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimGraphStateTransition::m_extractionMode)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimGraphStateTransition::m_interpolationType, "Interpolation", "The interpolation type to use.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateTransition::GetVisibilityHideWhenExitOrEntry)
+            ->EnumAttribute(INTERPOLATIONFUNCTION_LINEAR, "Linear")
+            ->EnumAttribute(INTERPOLATIONFUNCTION_EASECURVE, "Ease Curve")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphStateTransition::m_easeInSmoothness, "Ease-In Smoothness", "The smoothness of the ease-in, where 0 means linear and 1 means fully smooth.\nInterpolation type has to be Ease Curve.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateTransition::GetEaseInOutSmoothnessVisibility)
+            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphStateTransition::m_easeOutSmoothness, "Ease-Out Smoothness", "The smoothness of the ease-out, where 0 means linear and 1 means fully smooth.\nInterpolation type has to be Ease Curve.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphStateTransition::GetEaseInOutSmoothnessVisibility)
+            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+        ;
+    }
+} // namespace EMotionFX

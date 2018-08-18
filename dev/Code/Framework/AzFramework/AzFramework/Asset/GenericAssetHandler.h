@@ -119,6 +119,11 @@ namespace AzFramework
             AZ::AssetTypeInfoBus::Handler::BusConnect(AZ::AzTypeInfo<AssetType>::Uuid());
         }
 
+        ~GenericAssetHandler()
+        {
+            AZ::AssetTypeInfoBus::Handler::BusDisconnect();
+        }
+
         AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId& /*id*/, const AZ::Data::AssetType& /*type*/) override
         {
             return aznew AssetType();

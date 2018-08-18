@@ -58,17 +58,19 @@ namespace EMStudio
     // initialize the Qt OpenGL widget (overloaded from the widget base class)
     void GLWidget::initializeGL()
     {
+        // initializeOpenGLFunctions() and mParentRenderPlugin->InitializeGraphicsManager must be called first to ensure
+        // all OpenGL functions have been resolved before doing anything that could make GL calls (e.g. resizing)
         initializeOpenGLFunctions();
-
-        // set minimum render view dimensions
-        setMinimumHeight(100);
-        setMinimumWidth(100);
 
         mParentRenderPlugin->InitializeGraphicsManager();
         if (mParentRenderPlugin->GetGraphicsManager())
         {
             mParentRenderPlugin->GetGraphicsManager()->SetGBuffer(&mGBuffer);
         }
+
+        // set minimum render view dimensions
+        setMinimumHeight(100);
+        setMinimumWidth(100);
 
         mPerfTimer.StampAndGetDeltaTimeInSeconds();
     }
@@ -145,9 +147,9 @@ namespace EMStudio
         mParentRenderPlugin->SetActiveViewWidget(mViewWidget);
 
         // set the background colors
-        graphicsManager->SetClearColor(renderOptions->mBackgroundColor);
-        graphicsManager->SetGradientSourceColor(renderOptions->mGradientSourceColor);
-        graphicsManager->SetGradientTargetColor(renderOptions->mGradientTargetColor);
+        graphicsManager->SetClearColor(renderOptions->GetBackgroundColor());
+        graphicsManager->SetGradientSourceColor(renderOptions->GetGradientSourceColor());
+        graphicsManager->SetGradientTargetColor(renderOptions->GetGradientTargetColor());
         graphicsManager->SetUseGradientBackground(mViewWidget->GetRenderFlag(RenderViewWidget::RENDER_USE_GRADIENTBACKGROUND));
 
         // needed to make multiple viewports working
@@ -156,6 +158,7 @@ namespace EMStudio
 
         // tell the system about the current viewport
         glViewport(0, 0, mWidth * devicePixelRatioF(), mHeight * devicePixelRatioF());
+        renderUtil->SetDevicePixelRatio(devicePixelRatioF());
 
         // update advanced render settings
         /*  graphicsManager->SetAdvancedRendering( renderOptions->mEnableAdvancedRendering );
@@ -169,14 +172,14 @@ namespace EMStudio
             graphicsManager->SetDOFFar          ( renderOptions->mDOFFar );
             graphicsManager->SetDOFBlurRadius   ( renderOptions->mDOFBlurRadius );
         */
-        graphicsManager->SetRimAngle        (renderOptions->mRimAngle);
-        graphicsManager->SetRimIntensity    (renderOptions->mRimIntensity);
-        graphicsManager->SetRimWidth        (renderOptions->mRimWidth);
-        graphicsManager->SetRimColor        (renderOptions->mRimColor);
-        graphicsManager->SetMainLightAngleA (renderOptions->mMainLightAngleA);
-        graphicsManager->SetMainLightAngleB (renderOptions->mMainLightAngleB);
-        graphicsManager->SetMainLightIntensity(renderOptions->mMainLightIntensity);
-        graphicsManager->SetSpecularIntensity(renderOptions->mSpecularIntensity);
+        graphicsManager->SetRimAngle        (renderOptions->GetRimAngle());
+        graphicsManager->SetRimIntensity    (renderOptions->GetRimIntensity());
+        graphicsManager->SetRimWidth        (renderOptions->GetRimWidth());
+        graphicsManager->SetRimColor        (renderOptions->GetRimColor());
+        graphicsManager->SetMainLightAngleA (renderOptions->GetMainLightAngleA());
+        graphicsManager->SetMainLightAngleB (renderOptions->GetMainLightAngleB());
+        graphicsManager->SetMainLightIntensity(renderOptions->GetMainLightIntensity());
+        graphicsManager->SetSpecularIntensity(renderOptions->GetSpecularIntensity());
 
         // update the camera
         UpdateCamera();
@@ -266,7 +269,7 @@ namespace EMStudio
 
         painter.endNativePainting();
 
-        if (renderOptions->mShowFPS)
+        if (renderOptions->GetShowFPS())
         {
             const float renderTime = mRenderTimer.GetDeltaTimeInSeconds() * 1000.0f;
 

@@ -1,0 +1,32 @@
+@import 'variables';
+
+.graph {
+    width: 450px;
+    display: inline-block;
+    margin: 15px 25px 10px 0;    
+    border: 1px solid $lighter-gray;
+    padding-bottom: 15px;
+    vertical-align: top;
+    min-height: 388px;
+    > * {
+        text-align: center;
+    }
+    .title {
+        margin-bottom: 20px;
+        border-bottom: 1px solid $lighter-gray;
+        text-align: left;
+        padding-left: 15px;
+        font-family: "AmazonEmber-Regular";
+        background-color: #f8f8f8;
+        padding: 10px 10px 10px 15px;
+    }
+}
+
+.chartarea{
+    padding: 10px 25px 0px 20px;
+
+}
+
+.chart-legend .legend-labels {
+    min-width: 160px;
+}

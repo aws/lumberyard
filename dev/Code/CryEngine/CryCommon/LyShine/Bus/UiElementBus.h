@@ -127,11 +127,11 @@ public: // member functions
 
     //! recursively find descendant elements matching a predicate
     //! \param result, any matching elements will be added to this array
-    virtual void FindDescendantElements(std::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result) = 0;
+    virtual void FindDescendantElements(AZStd::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result) = 0;
 
     //! recursively visit descendant elements and call the given function on them
     //! The function is called first on the element and then on its children
-    virtual void CallOnDescendantElements(std::function<void(const AZ::EntityId)> callFunction) = 0;
+    virtual void CallOnDescendantElements(AZStd::function<void(const AZ::EntityId)> callFunction) = 0;
 
     //! Return whether a given element is an ancestor of this element
     virtual bool IsAncestor(AZ::EntityId id) = 0;

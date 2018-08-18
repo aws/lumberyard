@@ -103,6 +103,20 @@ namespace std
     };
 }
 
+namespace AZStd
+{
+    template<>
+    struct hash<CryGUID>
+    {
+    public:
+        size_t operator()(const CryGUID& guid) const
+        {
+            std::hash<CryGUID> hasher;
+            return hasher(guid);
+        }
+    };
+}
+
 #define MAKE_CRYGUID(high, low) CryGUID::Construct((uint64) high##LL, (uint64) low##LL)
 
 

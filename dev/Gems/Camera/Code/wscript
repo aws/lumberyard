@@ -25,7 +25,13 @@ def build(bld):
                            bld.Path('Code/Sandbox/Editor'),
                            bld.Path('Code/Sandbox/Editor/Include'),
                            ],
-            use         = ['EditorUI_QT','EditorCommon','EditorCore']
+            use         = ['EditorUI_QT','EditorCommon','EditorCore','EditorLib'],
+
+            # AWS dependency is coming from EditorLib, which depends on LyMetrics, which uses AWS. Need to include the AWS libraries otherwise we get linker errors (undefined symbol)
+            darwin_uselib = ['AWS_CPP_SDK_CORE',
+                             'AWS_CPP_SDK_COGNITO_IDENTITY',
+                             'AWS_CPP_SDK_MOBILEANALYTICS',
+                             'AWS_CPP_SDK_IDENTITY_MANAGEMENT']
         ),
 
         win_features        = ['crcfix'],

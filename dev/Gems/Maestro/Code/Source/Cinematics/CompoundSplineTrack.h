@@ -27,7 +27,7 @@ public:
     AZ_CLASS_ALLOCATOR(CCompoundSplineTrack, AZ::SystemAllocator, 0);
     AZ_RTTI(CCompoundSplineTrack, "{E6B88EF4-6DB7-48E7-9758-DF6C9E40D4D2}", IAnimTrack);
 
-    CCompoundSplineTrack(int nDims, AnimValueType inValueType, CAnimParamType subTrackParamTypes[MAX_SUBTRACKS]);
+    CCompoundSplineTrack(int nDims, AnimValueType inValueType, CAnimParamType subTrackParamTypes[MAX_SUBTRACKS], bool expanded);
     CCompoundSplineTrack();
 
     //////////////////////////////////////////////////////////////////////////
@@ -151,6 +151,9 @@ public:
         }
     }
 
+    void SetExpanded(bool expanded) override;
+    bool GetExpanded() const override;
+
     static void Reflect(AZ::SerializeContext* serializeContext);
 
 protected:
@@ -170,6 +173,7 @@ protected:
     float PreferShortestRotPath(float degree, float degree0) const;
     int GetSubTrackIndex(int& key) const;
     IAnimNode* m_node;
+    bool m_expanded;
 };
 
 //////////////////////////////////////////////////////////////////////////

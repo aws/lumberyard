@@ -20,10 +20,8 @@
 #include <time.h>
 #include <stdlib.h>
 #include <ISystem.h>
-#include <IJobManager.h>
 #include "CryPak.h"
 #include "ICrypto.h"
-#include <IJobManager_JobDelegator.h>
 
 #ifdef SUPPORT_UNBUFFERED_IO
 #include <shlwapi.h>
@@ -763,7 +761,19 @@ void ZipDir::FileEntry::OnNewFileData(void* pUncompressed, unsigned nSize, unsig
 {
     time_t nTime;
     time(&nTime);
-    tm* t = localtime(&nTime);
+#ifdef AZ_COMPILER_MSVC
+    tm t;
+    localtime_s(&t, &nTime);
+
+    // While local time converts the month to a 0 to 11 interval...
+    // ...the pack file expects months from 1 to 12...
+    // Therefore, for correct date, we have to do t->tm_mon+=1;
+    t.tm_mon += 1;
+
+    this->nLastModTime = DOSTime(&t);
+    this->nLastModDate = DOSDate(&t);
+#else
+    auto t = localtime(&nTime);
 
     // While local time converts the month to a 0 to 11 interval...
     // ...the pack file expects months from 1 to 12...
@@ -772,6 +782,7 @@ void ZipDir::FileEntry::OnNewFileData(void* pUncompressed, unsigned nSize, unsig
 
     this->nLastModTime = DOSTime(t);
     this->nLastModDate = DOSDate(t);
+#endif
 
 #ifdef WIN32
     FILETIME ft;

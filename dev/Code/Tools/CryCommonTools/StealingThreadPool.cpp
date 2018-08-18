@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "StealingThreadPool.h"
 #include "ThreadUtils.h"
 #include <platform.h>
@@ -425,7 +425,8 @@ namespace ThreadUtils {
         const float width = screenWidth;
         const float height = (m_threadTraces.size() + 0.5f) * rowHeight;
 
-        FILE* f = fopen(filename, "wt");
+        FILE* f = nullptr; 
+        azfopen(&f, filename, "wt");
         if (!f)
         {
             return false;

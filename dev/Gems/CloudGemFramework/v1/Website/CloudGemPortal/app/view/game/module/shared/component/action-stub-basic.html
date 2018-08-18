@@ -1,4 +1,4 @@
 <div class="action-stub border" (click)="onClick(model)">
+    <action-stub-items class="float-right" [edit]="edit" [add]="add" [delete]="delete" [custom]="custom" [model]="model" [hideEdit]="hideEdit" [hideAdd]="hideAdd" [hideDelete]="hideDelete"></action-stub-items>
     <ng-content></ng-content>
-    <action-stub-items [edit]="edit" [add]="add" [delete]="delete" [custom]="custom" [model]="model" [hideEdit]="hideEdit" [hideAdd]="hideAdd" [hideDelete]="hideDelete"></action-stub-items>
 </div>

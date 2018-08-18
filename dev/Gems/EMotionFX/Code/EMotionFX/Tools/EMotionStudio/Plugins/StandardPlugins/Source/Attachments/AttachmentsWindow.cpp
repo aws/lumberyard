@@ -12,26 +12,28 @@
 
 // include required headers
 #include "AttachmentsWindow.h"
-#include "../../../../EMStudioSDK/Source/EMStudioManager.h"
-#include <MysticQt/Source/LinkWidget.h>
+#include <AzFramework/API/ApplicationAPI.h>
+#include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/AttachmentNode.h>
 #include <EMotionFX/Source/AttachmentSkin.h>
-#include <EMotionFX/Source/ActorManager.h>
-#include "../../../../EMStudioSDK/Source/MainWindow.h"
+#include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/FileManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/MainWindow.h>
+#include <EMotionStudio/EMStudioSDK/Source/SaveChangedFilesManager.h>
+#include <MCore/Source/StringConversions.h>
+#include <MysticQt/Source/LinkWidget.h>
+#include <QAction>
+#include <QCheckBox>
+#include <QFileDialog>
+#include <QHeaderView>
+#include <QKeySequence>
+#include <QLabel>
+#include <QMenu>
+#include <QPushButton>
+#include <QShortcut>
+#include <QTableWidget>
 #include <QTableWidget>
 #include <QVBoxLayout>
-#include <QHeaderView>
-#include <QCheckBox>
-#include <QTableWidget>
-#include <QPushButton>
-#include <QFileDialog>
-#include <QLabel>
-#include <QAction>
-#include <QMenu>
-#include <QShortcut>
-#include <QKeySequence>
-#include <AzFramework/API/ApplicationAPI.h>
-
 
 namespace EMStudio
 {
@@ -604,8 +606,8 @@ namespace EMStudio
     void AttachmentsWindow::OnNodeChanged()
     {
         NodeHierarchyWidget* hierarchyWidget = mNodeSelectionWindow->GetNodeHierarchyWidget();
-        MCore::Array<SelectionItem>& selectedItems = hierarchyWidget->GetSelectedItems();
-        if (selectedItems.GetLength() != 1)
+        AZStd::vector<SelectionItem>& selectedItems = hierarchyWidget->GetSelectedItems();
+        if (selectedItems.size() != 1)
         {
             return;
         }

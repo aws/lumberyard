@@ -167,6 +167,7 @@ namespace MCore
     void MCORE_API LogInfo(const char* what, ...);
     void MCORE_API LogDetailedInfo(const char* what, ...);
     void MCORE_API LogDebug(const char* what, ...);
+    void MCORE_API LogDebugMsg(const char* what);
 
     /**
      * Log a message to the console, visual studio output, or similar.

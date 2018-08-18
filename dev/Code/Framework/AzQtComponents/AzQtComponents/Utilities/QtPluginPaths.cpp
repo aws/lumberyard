@@ -47,17 +47,17 @@ namespace AzQtComponents
 #if defined(USE_DEFAULT_QT_LIBRARY_PATHS)
         // Nothing to do
 #elif defined(WIN32) || defined(WIN64)
-        char modulePath[_MAX_PATH] = { 0 };
-        GetModuleFileName(NULL, modulePath, _MAX_PATH);
-        char drive[_MAX_DRIVE] = { 0 };
-        char dir[_MAX_DIR] = { 0 };
-        _splitpath_s(modulePath, drive, _MAX_DRIVE, dir, _MAX_DIR, NULL, 0, NULL, 0);
-        strcat_s(dir, "qtlibs\\plugins");
-        char pluginPath[_MAX_PATH] = { 0 };
-        _makepath_s(pluginPath, drive, dir, NULL, NULL);
-        char pluginFullPath[_MAX_PATH] = { 0 };
-        _fullpath(pluginFullPath, pluginPath, _MAX_PATH);
-        QApplication::addLibraryPath(pluginFullPath); // relative to the executable
+        wchar_t modulePath[_MAX_PATH] = { 0 };
+        GetModuleFileNameW(NULL, modulePath, _MAX_PATH);
+        wchar_t drive[_MAX_DRIVE] = { 0 };
+        wchar_t dir[_MAX_DIR] = { 0 };
+        _wsplitpath_s(modulePath, drive, _MAX_DRIVE, dir, _MAX_DIR, NULL, 0, NULL, 0);
+        wcscat_s(dir, L"qtlibs\\plugins");
+        wchar_t pluginPath[_MAX_PATH] = { 0 };
+        _wmakepath_s(pluginPath, drive, dir, NULL, NULL);
+        wchar_t pluginFullPath[_MAX_PATH] = { 0 };
+        _wfullpath(pluginFullPath, pluginPath, _MAX_PATH);
+        QApplication::addLibraryPath(QString::fromWCharArray(pluginFullPath)); // relative to the executable
 #elif defined(__APPLE__)
         char appPath[AZ_MAX_PATH_LEN] = { 0 };
         unsigned int bufSize = AZ_MAX_PATH_LEN;

@@ -11,7 +11,7 @@
 #ifndef ERRORMSG_H
 #define ERRORMSG_H 
 
-//#include "LocalDXUT\\dxstdafx.h"
+//#include "LocalDXUT\\dxStdAfx.h"
 #include <platform.h>
 #if defined(AZ_PLATFORM_WINDOWS)
 #include <windows.h>
@@ -22,7 +22,7 @@
 
 #include <stdarg.h>
 
-//do not allow "dxstdafx.h" to depricate any core string functions
+//do not allow "dxStdAfx.h" to depricate any core string functions
 #pragma warning( disable : 4995 )
 
 #define EM_EXIT_NO_ERROR                  0

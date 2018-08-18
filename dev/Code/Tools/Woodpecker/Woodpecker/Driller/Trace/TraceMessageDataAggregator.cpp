@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "TraceMessageDataAggregator.hxx"
 #include <Woodpecker/Driller/Trace/TraceMessageDataAggregator.moc>
@@ -220,7 +220,7 @@ namespace Driller
 
             serialize->Class<TraceMessageDataAggregator>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ->SerializeWithNoData();
         }
     }
 } // namespace Driller

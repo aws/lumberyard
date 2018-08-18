@@ -19,7 +19,6 @@
 #define CRYINCLUDE_CRY3DENGINE_CRY3DENGINEBASE_H
 #pragma once
 
-#include "CryEngineAPI.h"
 #include "3DEngineMemory.h"
 #include "IEntityRenderState.h"
 

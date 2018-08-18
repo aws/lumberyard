@@ -1,0 +1,218 @@
+﻿<facet-generator [context]="context"
+                 [tabs]="['Users', 'Channel List']"
+                 (tabClicked)="getSubNavItem($event)" [metricIdentifier]="context.identifier"></facet-generator>
+<div *ngIf="subNavActiveIndex == 0">
+    <div *ngIf="!isListeningToUser">
+        <button class="btn l-primary" (click)="createOPENSSLUser()">
+            Create OPENSSL User
+        </button>
+        <i class="fa fa-question-circle-o" aria-hidden="true" placement="right" ngbTooltip="Put the generated files into your Application/Platform's user storage under @user@/certs/aws.  For example, in the Lumberyard PC Editor this is dev\Cache\<Game Project>\pc\user\certs\aws"></i>
+        <input class="form-control col-3 float-right" type="text" [(ngModel)]="filterCondition" (ngModelChange)="filterClientList()"/>
+        <label class="search-label float-right">Client ID</label>
+    </div>
+    <div *ngIf="!isListeningToUser">
+        <div [ngSwitch]="isLoadingUsers || isRegisteringClient">
+            <div *ngSwitchCase="true">
+                <div class="loading-spinner-container">
+                    <loading-spinner></loading-spinner>
+                </div>
+            </div>
+            <div class="content-container" *ngSwitchCase="false">
+                <div *ngIf="!users || users.length == 0">
+                    No user
+                </div>
+                <div *ngIf="users.length > 0">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th class="client-id-column" (click)="sortUsersByColumn('ClientID', !ascOrder)">
+                                    CLIENT ID
+                                    <i *ngIf="ascOrder" class="fa fa-sort-amount-asc" aria-hidden="true"></i>
+                                    <i *ngIf="!ascOrder" class="fa fa-sort-amount-desc" aria-hidden="true"></i>
+                                </th>
+                                <th class="connection-type-column">CONNECTION TYPE</th>
+                                <th class="user-status-column">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let user of usersOnCurrentPage">
+                                <td class="client-id-column" (click)="initializeListeningToUserPage(user)">{{user.ClientID}}</td>
+                                <td *ngIf="user.CertificateARN" class="connection-type-column" (click)="initializeListeningToUserPage(user)">OPENSSL</td>
+                                <td *ngIf="!user.CertificateARN" class="connection-type-column" (click)="initializeListeningToUserPage(user)">WEBSOCKET</td>
+                                <td class="user-status-column" (click)="initializeListeningToUserPage(user)">{{user.RegistrationStatus}}</td>
+                                <td>
+                                    <action-stub-items class="float-right" [model]="user" [custom]="user.RegistrationStatus == 'BANNED' ? bannedUserActions : registeredUserActions"></action-stub-items>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <pagination #pagination [pages]="userPages"
+                            (pageChanged)="updatePaginationInfo($event)">
+                </pagination>
+            </div>
+        </div>
+    </div>
+    <div *ngIf="isListeningToUser">
+        <div class="row asb-container">
+            <action-stub-basic class="col-6 client-asb" [model]="currentUser" [custom]="currentUser.RegistrationStatus == 'BANNED' ? bannedUserActions : registeredUserProfileActions">
+                <div>
+                    {{currentUser.ClientID}}
+                </div>
+                <div>
+                    {{currentUser.RegistrationStatus}}
+                </div>
+            </action-stub-basic>
+        </div>
+        <h2 class="activity-header">
+            Current Activity for 
+            <select [(ngModel)]="channelType" class="channel-type" (ngModelChange)="listenToUser(currentUser.ClientID, channelType)">
+                <option [value]="'allChannels'">All channels</option>
+                <option *ngFor="let channel of simplifiedChannels" [value]="channel.ChannelName">{{channel.ChannelName}}</option>
+            </select>
+        </h2>
+        <div class="activity">
+            <div class="activity-message" *ngFor="let message of messageList">{{message}}</div>
+        </div>
+    </div>
+</div>
+<div *ngIf="subNavActiveIndex == 1">
+    <div *ngIf="!isListeningToChannel">
+        <div [ngSwitch]="isLoadingChannels || isRegisteringClient">
+            <div *ngSwitchCase="true">
+                <div class="loading-spinner-container">
+                    <loading-spinner></loading-spinner>
+                </div>
+            </div>
+            <div class="content-container" *ngSwitchCase="false">
+                <div *ngIf="!simplifiedChannels || simplifiedChannels.length == 0">
+                    No channels
+                </div>
+                <div *ngIf="simplifiedChannels.length > 0">
+                    <table class="table table-hover float-left">
+                        <thead>
+                            <tr>
+                                <th class="channel-id-column" (click)="sort(simplifiedChannels, 'ChannelName', !ascOrder)">
+                                    CHANNEL ID
+                                    <i *ngIf="ascOrder" class="fa fa-sort-amount-asc" aria-hidden="true"></i>
+                                    <i *ngIf="!ascOrder" class="fa fa-sort-amount-desc" aria-hidden="true"></i>
+                                </th>
+                                <th class="communication-type-column">COMMUNICATION TYPE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let channel of simplifiedChannels">
+                                <td class="channel-id-column" (click)="initializeListeningToChannelPage(channel)">{{channel.ChannelName}}</td>
+                                <td class="communication-type-column" (click)="initializeListeningToChannelPage(channel)">{{channel.CommunicationType}}</td>
+                                <td>
+                                    <div class="float-right">
+                                        <action-stub-items class="float-right" [model]="channel" [custom]="channelActions"></action-stub-items>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div *ngIf="isListeningToChannel">
+        <button (click)="sendMessageViaChannelModal(currentChannel)" class="btn l-primary">
+            Send Message
+        </button>
+        <h2 class="activity-header">
+            Activity
+        </h2>
+        <div class="activity">
+            <div class="activity-message" *ngFor="let message of messageList">{{message}}</div>
+        </div>
+    </div>
+</div>
+
+<!-- SendMessageViaChannel modal -->
+<modal *ngIf="mode == webCommunicatorModes.SendMessageViaChannel"
+       title="Send message"
+       [autoOpen]="true"
+       [metricIdentifier]="context.identifier"
+       [hasSubmit]="true"
+       [onClose]="dismissModal"
+       [onDismiss]="dismissModal"
+       (modalSubmitted)="sendMessageViaChannel()"
+       submitButtonText="Send Message">
+    <div class="modal-body">
+        <div class="form-group row">
+            <label class="col-3 col-form-label affix">Client ID</label>
+            <div class="col-9">
+                <select *ngIf="getChannelCommunicationType(selectedChannel) != 'BROADCAST'" class="form-control" [(ngModel)]="selectedUser" name="message-receiver">
+                    <option *ngIf="getChannelCommunicationType(selectedChannel) != 'PRIVATE'" [value]="'allClients'">All Clients</option>
+                    <option *ngFor="let user of users" [value]="user.ClientID">{{user.ClientID}}</option>
+                </select>
+                <span *ngIf="getChannelCommunicationType(selectedChannel) == 'BROADCAST'">All Clients</span>
+            </div>
+        </div>
+        <div class="form-group row">
+            <label class="col-3 col-form-label affix ">Channel</label>
+            <div class="col-9">
+                <span>{{selectedChannel}}</span>
+            </div>
+        </div>
+        <div class="form-group row">
+            <label class="col-3 col-form-label affix">Message</label>
+            <div class="col-9">
+                <textarea class="form-control" [(ngModel)]="newMessage" name="broadcast-message" cols="100" rows="5"></textarea>
+            </div>
+        </div>
+    </div>
+</modal>
+
+<!-- SendMessageToUser modal -->
+<modal *ngIf="mode == webCommunicatorModes.SendMessageToUser"
+       title="Send message"
+       [autoOpen]="true"
+       [metricIdentifier]="context.identifier"
+       [hasSubmit]="true"
+       [onClose]="dismissModal"
+       [onDismiss]="dismissModal"
+       (modalSubmitted)="sendMessageToUser()"
+       submitButtonText="Send Message">
+    <div class="modal-body">
+        <div class="form-group row">
+            <label class="col-3 col-form-label affix">Client ID</label>
+            <div class="col-9">
+                <span>{{currentUser.ClientID}}</span>
+            </div>
+        </div>
+        <div class="form-group row">
+            <label class="col-3 col-form-label affix ">Channel</label>
+            <div class="col-9">
+                <select class="form-control" [(ngModel)]="selectedChannel" name="send-message" placeholder="Enter your message here">
+                    <ng-container *ngFor="let channel of simplifiedChannels">
+                        <option *ngIf="channel.CommunicationType != 'BROADCAST'" [value]="channel.ChannelName">{{channel.ChannelName}}</option>
+                    </ng-container>
+                </select>
+            </div>
+        </div>
+        <div class="form-group row">
+            <label class="col-3 col-form-label affix">Message</label>
+            <div class="col-9">
+                <textarea class="form-control" [(ngModel)]="newMessage" name="broadcast-message" cols="100" rows="5"></textarea>
+            </div>
+        </div>
+    </div>
+</modal>
+
+<!-- BanUser modal -->
+<modal *ngIf="mode == webCommunicatorModes.BanUser"
+       title="Ban User"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Ban'"
+       (modalSubmitted)="banUser(currentUser)"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <p> Are you sure you want to ban this user?</p>
+        <pre>{{currentUser | json | devonly}}</pre>
+    </div>
+</modal>

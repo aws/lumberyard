@@ -47,6 +47,7 @@ namespace AzQtComponents
 
     Q_SIGNALS:
         void undock();
+        void aboutToClose();
 
     protected:
         void closeEvent(QCloseEvent* event) override;

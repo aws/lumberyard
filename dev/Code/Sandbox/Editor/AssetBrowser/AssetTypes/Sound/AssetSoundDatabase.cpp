@@ -14,7 +14,7 @@
 // Description : Implements AssetSoundDatabase.h
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AssetSoundDatabase.h"
 #include "AssetSoundItem.h"
 #include "IRenderer.h"
@@ -236,7 +236,7 @@ void CAssetSoundDatabase::Refresh()
         XmlNodeRef root = XmlHelpers::LoadXmlFromFile(strIntermediateFilename.toUtf8().data());
 
         char path[_MAX_PATH];
-        strcpy(path, strIntermediateFilename.toUtf8().data());
+        azstrcpy(path, AZ_ARRAY_SIZE(path), strIntermediateFilename.toUtf8().data());
         char* ch;
 
         while (ch = strchr(path, '\\'))

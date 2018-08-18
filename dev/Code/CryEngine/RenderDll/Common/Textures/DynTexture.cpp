@@ -15,7 +15,6 @@
 
 
 #include "StdAfx.h"
-#include <CryEngineAPI.h>
 
 //======================================================================
 // Dynamic textures
@@ -1140,7 +1139,7 @@ SDynTexture2::SDynTexture2(const char* szSource, ETexPool eTexPool)
 #ifndef _DEBUG
     m_sSource = (char*)szSource;
 #else
-    strcpy(m_sSource, szSource);
+    azstrcpy(m_sSource, strlen(szSource) + 1, szSource);
 #endif
     m_bLocked = false;
 
@@ -1205,7 +1204,7 @@ SDynTexture2::SDynTexture2(uint32 nWidth, uint32 nHeight, uint32 nTexFlags, cons
 #ifndef _DEBUG
     m_sSource = (char*)szSource;
 #else
-    strcpy(m_sSource, szSource);
+    azstrcpy(m_sSource, strlen(szSource) + 1, szSource);
 #endif
 
     m_pTexture = NULL;
@@ -1638,7 +1637,7 @@ void SDynTexture2::Apply(int nTUnit, int nTS)
     }
     if (m_pTexture)
     {
-        m_pTexture->Apply(nTUnit, nTS);
+        m_pTexture->ApplyTexture(nTUnit, nTS);
     }
     gRenDev->m_cEF.m_RTRect.x = (float)m_nX / (float)m_pTexture->GetWidth();
     gRenDev->m_cEF.m_RTRect.y = (float)m_nY / (float)m_pTexture->GetHeight();

@@ -12,7 +12,7 @@
 def build(bld):
 
     bld.CryConsoleApplication(
-    
+
         #==============================
         # Common Settings
         #==============================
@@ -29,7 +29,7 @@ def build(bld):
                     bld.Path('Code/Tools/HLSLCrossCompilerMetal/offline/cjson')],
 
         output_folder = 'Tools/CrySCompileServer/Compiler/PCGMETAL/HLSLcc',
-	output_file_name = 'HLSLcc',
+        output_file_name = 'HLSLcc',
 
         win_x64_vs2017_debug_output_file_name             = 'HLSLcc_vc141x64D',
         win_x64_vs2017_profile_output_file_name           = 'HLSLcc_vc141x64',
@@ -38,5 +38,7 @@ def build(bld):
 
         win_defines = ['_CRT_SECURE_NO_WARNINGS', '_CONSOLE', 'WIN32'],
         win_lib = ['gdi32'],
+
+        win_x64_clang_cxxflags = ['-Wno-deprecated-register'],
     )
 

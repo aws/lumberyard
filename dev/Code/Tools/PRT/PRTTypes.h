@@ -16,10 +16,10 @@
 #pragma once
 
 
-#pragma warning (disable : 4290) 
-#pragma warning (disable : 4239) 
-#pragma warning (disable : 4505)  
-#pragma warning (disable : 4512) 
+#pragma warning (disable : 4290)
+#pragma warning (disable : 4239)
+#pragma warning (disable : 4505)
+#pragma warning (disable : 4512)
 
 #undef min
 #undef max
@@ -148,22 +148,14 @@ namespace NSH
 			const bool operator !=(const SListElem<TE>& crE) const;
 		};
 
-		SListElem<T> *m_pFirst;	
+		SListElem<T> *m_pFirst;
 		SListElem<T> *m_pLastElem;
 		SListElem<T> m_LastDummy;
 
 	public:
 
-		typedef
-#if defined(_MSC_VER)
-		  typename
-#endif
-		  SListElem<T> iterator;
-		typedef
-#if defined(_MSC_VER)
-		  typename
-#endif
-		  const SListElem<T> const_iterator;
+		typedef SListElem<T> iterator;
+		typedef const SListElem<T> const_iterator;
 
 		prtlist();
 //		const_iterator begin() const;
@@ -240,13 +232,13 @@ namespace NSH
 	const SRGBCoeff_tpl<TFloatType> operator *(const SRGBCoeff_tpl<TFloatType>& r0, const TFloatType cScalar);
 
 /************************************************************************************************************************************************/
-	
+
 	//!< polar coordinate set
 	//!< theta is in the range [0...g_cPi] (altitude)
 	//!< phi is in the range [0...2 g_cPi] (azimuth)
 	template<class TFloatType>
 	struct SPolarCoord_tpl
-	{	
+	{
 		TFloatType theta;		//!< theta angle
 		TFloatType phi;			//!< phi angle
 		SPolarCoord_tpl();
@@ -262,7 +254,7 @@ namespace NSH
 	//!< cartesian coordinate set
 	template<class TFloatType>
 	struct SCartesianCoord_tpl : public Vec3_tpl<TFloatType>
-	{	
+	{
 		SCartesianCoord_tpl();
 		SCartesianCoord_tpl(const TFloatType cX, const TFloatType cY, const TFloatType cZ);
 		template<class F>
@@ -308,7 +300,7 @@ namespace NSH
 	//!< calculates the rotation matrix around (0,0,0) to rotate from (0,0,1) to rTo
 	template<class TFloatType>
 	void CalcRotMatrixFromSphereOrigin(Matrix33_tpl<TFloatType>& rRotMatrix, const TCartesianCoord& rTo);
-	
+
 	template<class TFloatType>
 	void CalcRotMatrixFromSphereOrigin(Matrix33_tpl<TFloatType>& rRotMatrix, const TPolarCoord& rTo);
 
@@ -385,9 +377,9 @@ namespace NSH
 	protected:
 #if defined(_DEBUG)
 		bool m_Constructed;
-#endif	
-		TCartesianCoord	m_CartCoord;		//!< cartesian coordinate	
-		TPolarCoord			m_PolarCoord;		//!< corresponding polar coordinate	
+#endif
+		TCartesianCoord	m_CartCoord;		//!< cartesian coordinate
+		TPolarCoord			m_PolarCoord;		//!< corresponding polar coordinate
 		CoeffTypeList		m_Coeffs;				//!< coefficients for this sample, depending on descriptor
 		TSampleHandle		m_Handle;				//!< for indexing and identifying the samples
 	};
@@ -410,7 +402,7 @@ namespace NSH
 	typedef std::pair<uint32, uint32> TUint32Pair;
 	typedef std::pair<float, float> TFloatPair;
 	typedef std::vector<CSimpleIndexedMesh*, CSHAllocator<CSimpleIndexedMesh*> > TGeomVec;
-	typedef std::vector<CSample_tpl<SCoeffList_tpl<TScalarCoeff> >, CSHAllocator<CSample_tpl<SCoeffList_tpl<TScalarCoeff> > > > TSampleVec;		//!< sample vector for primitive SH samples					
+	typedef std::vector<CSample_tpl<SCoeffList_tpl<TScalarCoeff> >, CSHAllocator<CSample_tpl<SCoeffList_tpl<TScalarCoeff> > > > TSampleVec;		//!< sample vector for primitive SH samples
 	typedef struct SRGBCoeff_tpl<TScalarCoeff::TComponentType> TRGBCoeffType;//typedef it to the same as the scalar coefficients are
 	typedef std::set<uint32, std::less<uint32>, CSHAllocator<uint32> > TVertexIndexSet; //used for recording vertex indices
 	typedef std::vector<uint32, CSHAllocator<uint32> > TUint32Vec;

@@ -12,7 +12,6 @@
 
 #pragma once
 
-// include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
 
@@ -25,22 +24,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeSmoothingNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeSmoothingNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeSmoothingNode, "{80D8C793-3CD4-4216-B804-CC00EAD20FAA}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000456
-        };
-
-        enum
-        {
-            ATTRIB_INTERPOLATIONSPEED   = 0,
-            ATTRIB_USESTARTVALUE        = 1,
-            ATTRIB_STARTVALUE           = 2
-        };
+        AZ_RTTI(BlendTreeSmoothingNode, "{80D8C793-3CD4-4216-B804-CC00EAD20FAA}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         enum
         {
@@ -59,38 +45,42 @@ namespace EMotionFX
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
                 : AnimGraphNodeData(node, animGraphInstance)     { mCurrentValue = 0.0f; mFrameDeltaTime = 0.0f; }
-
-            uint32 GetClassSize() const override                                                                                        { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override            { return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance); }
 
         public:
             float   mFrameDeltaTime;
             float   mCurrentValue;
         };
 
-        static BlendTreeSmoothingNode* Create(AnimGraph* animGraph);
+        BlendTreeSmoothingNode();
+        ~BlendTreeSmoothingNode();
+
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void Rewind(AnimGraphInstance* animGraphInstance) override;
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
         uint32 GetVisualColor() const override;
         bool GetSupportsDisable() const override;
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        void OnUpdateAttributes() override;
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
-        AnimGraphObjectData* CreateObjectData() override;
+
+        void SetInterpolationSpeed(float interpolationSpeed);
+        void SetStartVAlue(float startValue);
+        void SetUseStartVAlue(bool useStartValue);
+
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        BlendTreeSmoothingNode(AnimGraph* animGraph);
-        ~BlendTreeSmoothingNode();
-
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+        AZ::Crc32 GetStartValueVisibility() const;
+
+        float       m_interpolationSpeed;
+        float       m_startValue;
+        bool        m_useStartValue;
     };
 } // namespace EMotionFX

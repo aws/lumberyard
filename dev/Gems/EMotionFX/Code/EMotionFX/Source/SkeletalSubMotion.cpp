@@ -12,10 +12,13 @@
 
 // include the required headers
 #include "SkeletalSubMotion.h"
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(SkeletalSubMotion, MotionAllocator, 0)
+
+
     // constructor
     SkeletalSubMotion::SkeletalSubMotion()
         : BaseObject()
@@ -79,14 +82,14 @@ namespace EMotionFX
     // create
     SkeletalSubMotion* SkeletalSubMotion::Create()
     {
-        return new SkeletalSubMotion();
+        return aznew SkeletalSubMotion();
     }
 
 
     // create
     SkeletalSubMotion* SkeletalSubMotion::Create(const char* name)
     {
-        return new SkeletalSubMotion(name);
+        return aznew SkeletalSubMotion(name);
     }
 
 

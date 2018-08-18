@@ -1,0 +1,6 @@
+<download name="InGameSurveySample" type="Map">
+ <index src="filelist.xml" dest="filelist.xml"/>
+ <files>
+  <file src="level.pak" dest="level.pak" size="10249" md5="81b72133b11139937afd2678b0f79e5f"/>
+ </files>
+</download>

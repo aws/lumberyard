@@ -33,6 +33,9 @@
 #include "QViewportSettings.h"
 #include "Serialization.h"
 
+#include <AzCore/Jobs/JobContext.h>
+#include <AzCore/Jobs/JobManager.h>
+
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
 
 struct QViewport::SPreviousContext
@@ -904,7 +907,8 @@ void QViewport::RenderInternal()
 
         // I'm not sure if this criteria is right. It might not be restrictive enough, but it's at least strict enough to prevent
         // the crash we encountered.
-        const bool isValidThread = JobManager::IsWorkerThread() || mainThread == currentThreadId || renderThread == currentThreadId;
+        const uint32 workerThreadId = AZ::JobContext::GetGlobalContext()->GetJobManager().GetWorkerThreadId();
+        const bool isValidThread = (workerThreadId != AZ::JobManager::InvalidWorkerThreadId) || mainThread == currentThreadId || renderThread == currentThreadId;
 
         if (!isValidThread)
         {

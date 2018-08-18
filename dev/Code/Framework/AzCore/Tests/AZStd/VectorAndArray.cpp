@@ -674,18 +674,18 @@ namespace UnitTest
     TEST_F(Arrays, VectorSwap)
     {
         vector<void*> vec1(42, nullptr);
-        vector<void*> vec2(3, (void*)0xdeadbeef);
-        vector<void*> vec3(3, (void*)0xcdcdcdcd);
+        vector<void*> vec2(3, reinterpret_cast<void*>((intptr_t)0xdeadbeef));
+        vector<void*> vec3(3, reinterpret_cast<void*>((intptr_t)0xcdcdcdcd));
 
         vec1.swap(vec2);
         EXPECT_EQ(3, vec1.size());
-        EXPECT_EQ((void*)0xdeadbeef, vec1[0]);
+        EXPECT_EQ(reinterpret_cast<void*>((intptr_t)0xdeadbeef), vec1[0]);
         EXPECT_EQ(42, vec2.size());
         EXPECT_EQ(nullptr, vec2[0]);
 
         vec2.swap(vec3);
         EXPECT_EQ(3, vec2.size());
-        EXPECT_EQ((void*)0xcdcdcdcd, vec2.back());
+        EXPECT_EQ(reinterpret_cast<void*>((intptr_t)0xcdcdcdcd), vec2.back());
         EXPECT_EQ(42, vec3.size());
         EXPECT_EQ(nullptr, vec3.back());
 

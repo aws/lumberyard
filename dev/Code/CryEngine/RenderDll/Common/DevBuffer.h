@@ -15,7 +15,6 @@
 
 #include <XRenderD3D9/DeviceManager/Base.h>
 #include <XRenderD3D9/DeviceManager/Enums.h>
-#include <CryEngineAPI.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Usage hints
@@ -182,18 +181,37 @@ struct SDeviceBufferPoolStats
 class CVertexBuffer;
 class CIndexBuffer;
 
-class ENGINE_API CDeviceBufferManager
+class IDeviceBufferManager
 {
     friend class CGuardedDeviceBufferManager;
     friend class CDeviceManager;
+public:
 
-    buffer_handle_t Create_Locked(BUFFER_BIND_TYPE, BUFFER_USAGE, size_t);
-    void Destroy_Locked(buffer_handle_t);
-    void* BeginRead_Locked(buffer_handle_t handle);
-    void* BeginWrite_Locked(buffer_handle_t handle);
-    void  EndReadWrite_Locked(buffer_handle_t handle);
-    bool  UpdateBuffer_Locked(buffer_handle_t handle, const void*, size_t);
-    size_t Size_Locked(buffer_handle_t);
+# ifndef NULL_RENDERER
+    virtual D3DBuffer* GetD3D(buffer_handle_t handle, size_t* outOffset) = 0;
+#endif
+    virtual void LockDevMan() = 0;
+    virtual void UnlockDevMan() = 0;
+
+private:
+    virtual buffer_handle_t Create_Locked(BUFFER_BIND_TYPE, BUFFER_USAGE, size_t) = 0;
+    virtual void Destroy_Locked(buffer_handle_t) = 0;
+    virtual void* BeginRead_Locked(buffer_handle_t handle) = 0;
+    virtual void* BeginWrite_Locked(buffer_handle_t handle) = 0;
+    virtual void  EndReadWrite_Locked(buffer_handle_t handle) = 0;
+    virtual bool  UpdateBuffer_Locked(buffer_handle_t handle, const void*, size_t) = 0;
+    virtual size_t Size_Locked(buffer_handle_t) = 0;
+};
+
+class CDeviceBufferManager : public IDeviceBufferManager
+{
+    buffer_handle_t Create_Locked(BUFFER_BIND_TYPE, BUFFER_USAGE, size_t) override;
+    void Destroy_Locked(buffer_handle_t) override;
+    void* BeginRead_Locked(buffer_handle_t handle) override;
+    void* BeginWrite_Locked(buffer_handle_t handle) override;
+    void  EndReadWrite_Locked(buffer_handle_t handle) override;
+    bool  UpdateBuffer_Locked(buffer_handle_t handle, const void*, size_t) override;
+    size_t Size_Locked(buffer_handle_t) override;
 
 public:
     CDeviceBufferManager();
@@ -220,8 +238,8 @@ public:
 
     ////////////////////////////////////////////////////////////////////////////////////////
     // Locks the global devicebuffer lock
-    void LockDevMan();
-    void UnlockDevMan();
+    void LockDevMan() override;
+    void UnlockDevMan() override;
 
     // Returns the size in bytes of the allocation
     size_t Size(buffer_handle_t);
@@ -272,10 +290,10 @@ class CGuardedDeviceBufferManager
     : public NoCopy
 {
 private:
-    CDeviceBufferManager* m_pDevMan;
+    IDeviceBufferManager* m_pDevMan;
 
 public:
-    explicit CGuardedDeviceBufferManager(CDeviceBufferManager* pDevMan)
+    explicit CGuardedDeviceBufferManager(IDeviceBufferManager* pDevMan)
         : m_pDevMan(pDevMan)
     {
         m_pDevMan->LockDevMan();

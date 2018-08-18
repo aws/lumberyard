@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "ComponentEntityObject.h"
 #include "IIconManager.h"
@@ -1059,17 +1059,17 @@ void CComponentEntityObject::DrawAccent(DisplayContext& dc)
         }
         case AzToolsFramework::EntityAccentType::ParentSelected:
         {
-            dc.SetColor(1, 0.549, 0); // Orange
+            dc.SetColor(1, 0.549f, 0); // Orange
             break;
         }
         case AzToolsFramework::EntityAccentType::SliceSelected:
         {
-            dc.SetColor(0.117, 0.565, 1); // Blue
+            dc.SetColor(0.117f, 0.565f, 1); // Blue
             break;
         }
         default:
         {
-            dc.SetColor(1, 0.0784, 0.576); // Pink
+            dc.SetColor(1, 0.0784f, 0.576f); // Pink
             break;
         }
     }

@@ -51,7 +51,7 @@ namespace InAppPurchases
         {
             serialize->Class<SystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
@@ -261,7 +261,7 @@ namespace InAppPurchases
             InAppPurchasesInterface::GetInstance()->QueryPurchasedProducts();
         }
     }
-    
+
     void SystemComponent::RestorePurchasedProducts() const
     {
         if (InAppPurchasesInterface::GetInstance() != nullptr)
@@ -269,7 +269,7 @@ namespace InAppPurchases
             InAppPurchasesInterface::GetInstance()->RestorePurchasedProducts();
         }
     }
-    
+
     void SystemComponent::ConsumePurchase(const AZStd::string& purchaseToken) const
     {
         if (InAppPurchasesInterface::GetInstance() != nullptr)
@@ -277,7 +277,7 @@ namespace InAppPurchases
             InAppPurchasesInterface::GetInstance()->ConsumePurchase(purchaseToken);
         }
     }
-    
+
     void SystemComponent::FinishTransaction(const AZStd::string& transactionId, bool downloadHostedContent) const
     {
         if (InAppPurchasesInterface::GetInstance() != nullptr)
@@ -516,6 +516,8 @@ namespace InAppPurchases
         const AZStd::vector<AZStd::unique_ptr<PurchasedProductDetails const> >* purchasedProductDetails = nullptr;
         EBUS_EVENT_RESULT(purchasedProductDetails, InAppPurchases::InAppPurchasesRequestBus, GetCachedPurchasedProductInfo);
 
+        AZStd::string date;
+
         if (purchasedProductDetails != nullptr && m_purchasedProductInfoIndex >= 0 && m_purchasedProductInfoIndex < purchasedProductDetails->size())
         {
             AZ::u64 time = purchasedProductDetails->at(m_purchasedProductInfoIndex)->GetPurchaseTime();
@@ -524,10 +526,14 @@ namespace InAppPurchases
             time /= 1000;
 #endif
             time_t t = static_cast<time_t>(time);
-            return asctime(localtime(&t));
+            tm local;
+            azlocaltime(&t, &local);
+
+            date.resize(24); // 3 (day) + 3 (month) + 2 (date) + 8 (time) + 4 (year) + 4 (spaces)
+            strftime(date.data(), date.size(), "%a %b %d %H:%M:%S %Y", &local);
         }
 
-        return "";
+        return date;
     }
 
     AZStd::string SystemComponent::GetPurchaseSignature()

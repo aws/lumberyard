@@ -186,7 +186,7 @@ namespace LmbrCentral
 
         if (m_spawnOnActivate)
         {
-            SpawnSliceInternal(m_sliceAsset, AZ::Transform::Identity());
+            SpawnSliceInternalRelative(m_sliceAsset, AZ::Transform::Identity());
         }
     }
 
@@ -252,57 +252,44 @@ namespace LmbrCentral
     //=========================================================================
     AzFramework::SliceInstantiationTicket SpawnerComponent::Spawn()
     {
-        return SpawnSliceInternal(m_sliceAsset, AZ::Transform::Identity());
+        return SpawnSliceInternalRelative(m_sliceAsset, AZ::Transform::Identity());
     }
 
     //=========================================================================
     AzFramework::SliceInstantiationTicket SpawnerComponent::SpawnRelative(const AZ::Transform& relative)
     {
-        return SpawnSliceInternal(m_sliceAsset, relative);
+        return SpawnSliceInternalRelative(m_sliceAsset, relative);
     }
     
     //=========================================================================
     AzFramework::SliceInstantiationTicket SpawnerComponent::SpawnAbsolute(const AZ::Transform& world)
     {
-        AZ::Transform entityWorldTransform = AZ::Transform::CreateIdentity();
-        EBUS_EVENT_ID_RESULT(entityWorldTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
-
-        const AZ::Transform relative = entityWorldTransform.GetInverseFast() * world;
-        return SpawnSliceInternal(m_sliceAsset, relative);
+        return SpawnSliceInternalAbsolute(m_sliceAsset, world);
     }
 
     //=========================================================================
     AzFramework::SliceInstantiationTicket SpawnerComponent::SpawnSlice(const AZ::Data::Asset<AZ::Data::AssetData>& slice)
     {
-        return SpawnSliceInternal(slice, AZ::Transform::Identity());
+        return SpawnSliceInternalRelative(slice, AZ::Transform::Identity());
     }
 
     //=========================================================================
     AzFramework::SliceInstantiationTicket SpawnerComponent::SpawnSliceRelative(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& relative)
     {
-        return SpawnSliceInternal(slice, relative);
+        return SpawnSliceInternalRelative(slice, relative);
     }
     
     //=========================================================================
     AzFramework::SliceInstantiationTicket SpawnerComponent::SpawnSliceAbsolute(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& world)
     {
-        AZ::Transform entityWorldTransform = AZ::Transform::CreateIdentity();
-        EBUS_EVENT_ID_RESULT(entityWorldTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
-
-        const AZ::Transform relative = entityWorldTransform.GetInverseFast() * world;
-        return SpawnSliceInternal(slice, relative);
+        return SpawnSliceInternalAbsolute(slice, world);
     }
 
     //=========================================================================
-    AzFramework::SliceInstantiationTicket SpawnerComponent::SpawnSliceInternal(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& relative)
+    AzFramework::SliceInstantiationTicket SpawnerComponent::SpawnSliceInternalAbsolute(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& world)
     {
-        AZ::Transform transform = AZ::Transform::Identity();
-        EBUS_EVENT_ID_RESULT(transform, GetEntityId(), AZ::TransformBus, GetWorldTM);
-
-        transform *= relative;
-
         AzFramework::SliceInstantiationTicket ticket;
-        EBUS_EVENT_RESULT(ticket, AzFramework::GameEntityContextRequestBus, InstantiateDynamicSlice, slice, transform, nullptr);
+        EBUS_EVENT_RESULT(ticket, AzFramework::GameEntityContextRequestBus, InstantiateDynamicSlice, slice, world, nullptr);
 
         if (ticket)
         {
@@ -311,8 +298,18 @@ namespace LmbrCentral
 
             AzFramework::SliceInstantiationResultBus::MultiHandler::BusConnect(ticket);
         }
-
         return ticket;
+    }
+
+    //=========================================================================
+    AzFramework::SliceInstantiationTicket SpawnerComponent::SpawnSliceInternalRelative(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& relative)
+    {
+        AZ::Transform transform = AZ::Transform::Identity();
+        EBUS_EVENT_ID_RESULT(transform, GetEntityId(), AZ::TransformBus, GetWorldTM);
+
+        transform *= relative;
+
+        return SpawnSliceInternalAbsolute(slice, transform);
     }
 
     //=========================================================================
@@ -422,7 +419,7 @@ namespace LmbrCentral
     //=========================================================================
     void SpawnerComponent::OnSlicePreInstantiate(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
     {
-        const AzFramework::SliceInstantiationTicket& ticket = (*AzFramework::SliceInstantiationResultBus::GetCurrentBusId());
+        const AzFramework::SliceInstantiationTicket ticket = (*AzFramework::SliceInstantiationResultBus::GetCurrentBusId());
 
         EBUS_EVENT_ID(GetEntityId(), SpawnerComponentNotificationBus, OnSpawnBegin, ticket);
     }
@@ -430,7 +427,7 @@ namespace LmbrCentral
     //=========================================================================
     void SpawnerComponent::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
     {
-        const AzFramework::SliceInstantiationTicket& ticket = (*AzFramework::SliceInstantiationResultBus::GetCurrentBusId());
+        const AzFramework::SliceInstantiationTicket ticket = (*AzFramework::SliceInstantiationResultBus::GetCurrentBusId());
 
         // Stop listening for this ticket (since it's done). We can have have multiple tickets in flight.
         AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
@@ -470,7 +467,7 @@ namespace LmbrCentral
     //=========================================================================
     void SpawnerComponent::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)
     {
-        const AzFramework::SliceInstantiationTicket& ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
+        const AzFramework::SliceInstantiationTicket ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
 
         AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
 

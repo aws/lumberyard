@@ -2,7 +2,7 @@
  *  yasli - Serialization Library.
  *  Copyright (C) 2007-2011 Evgeny Andreeshchev <eugene.andreeshchev@gmail.com>
  *                          Alexander Kotliar <alexander.kotliar@gmail.com>
- * 
+ *
  *  This code is distributed under the MIT License:
  *                          http://www.opensource.org/licenses/MIT
  */
@@ -16,20 +16,20 @@
 template<class _Key, class _Product, class _KeyPred = std::less<_Key>>
 class Factory {
 public:
-	typedef std::map<_Key, std::function<_Product *()>, _KeyPred> Creators;
+	typedef std::map<_Key, AZStd::function<_Product *()>, _KeyPred> Creators;
 
 	Factory() {}
 
 	struct Creator{
-		Creator(Factory& factory, const _Key& key, std::function<_Product *()> construction_function_) {
+		Creator(Factory& factory, const _Key& key, AZStd::function<_Product *()> construction_function_) {
 			factory.add(key, construction_function_);
 		}
-		Creator(const _Key& key, std::function<_Product *()> construction_function_) {
+		Creator(const _Key& key, AZStd::function<_Product *()> construction_function_) {
 			Factory::the().add(key, construction_function_);
 		}
 	};
 
-	void add(const _Key& key, std::function<_Product *()> creator) {
+	void add(const _Key& key, AZStd::function<_Product *()> creator) {
 		YASLI_ASSERT(creators_.find(key) == creators_.end());
 		YASLI_ASSERT(creator);
 		creators_[key] = creator;
@@ -76,7 +76,7 @@ protected:
 	static factory::Creator factory##product##Creator(key, construction_function);
 
 #define REGISTER_IN_FACTORY_INSTANCE(factory, factoryType, key, product)              \
-	static factoryType::Creator<product> factoryType##product##Creator(factory, key); 
+	static factoryType::Creator<product> factoryType##product##Creator(factory, key);
 
 #define DECLARE_SEGMENT(fileName) int dataSegment##fileName;
 

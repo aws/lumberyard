@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "PropertyAnimationCtrl.h"
 #include <QtWidgets/QHBoxLayout>
@@ -61,7 +61,7 @@ void AnimationPropertyCtrl::OnBrowseClicked()
     if (IsLegacyEntityId(m_animation.m_entityID))
     {
         EntityId entityId = GetLegacyEntityId(m_animation.m_entityID);
-        IEntity *pEntity = gEnv->pEntitySystem->GetEntity(entityId);
+        IEntity *pEntity = gEnv->pEntitySystem ? gEnv->pEntitySystem->GetEntity(entityId) : nullptr;
         if (pEntity)
             pCharacterInstance = pEntity->GetCharacter(0);
     }
@@ -146,7 +146,7 @@ void AnimationPropertyCtrl::UpdateTabOrder()
 QWidget* AnimationPropertyWidgetHandler::CreateGUI(QWidget *pParent)
 {
     AnimationPropertyCtrl* newCtrl = aznew AnimationPropertyCtrl(pParent);
-    connect(newCtrl, &AnimationPropertyCtrl::ValueChanged, [newCtrl]()
+    connect(newCtrl, &AnimationPropertyCtrl::ValueChanged, newCtrl, [newCtrl]()
     {
         EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
     });

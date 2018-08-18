@@ -1,0 +1,13 @@
+{
+    "auto": {
+        "Include": [
+        ],
+        "Source" : [
+            "Source/Traceroute_windows.cpp",
+            "Source/NSLookup_windows.cpp",
+            "Source/DxDiag_windows.cpp",
+            "Source/RunExternalCmd_windows.cpp",
+            "Source/RunExternalCmd_windows.h"
+        ]
+    }
+}

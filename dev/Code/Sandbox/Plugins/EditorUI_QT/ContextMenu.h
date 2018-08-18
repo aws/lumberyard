@@ -14,7 +14,7 @@
 #define CONTEXTMENU_H
 
 #include "api.h"
-#include <QMenu.h>
+#include <QMenu>
 
 class EDITOR_QT_UI_API ContextMenu
     : public QMenu

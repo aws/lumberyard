@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include <AzCore/debug/TraceMessageBus.h>
+#include <AzCore/Debug/TraceMessageBus.h>
 
 #include "LogPanel_Panel.h" // for the BaseLogPanel
 #include "LogControl.h" // for BaseLogView

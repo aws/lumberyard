@@ -36,6 +36,7 @@ namespace ScriptCanvasEditor
         AZ_RTTI(ScriptCanvasAssetHandler, "{098B86B2-2527-4155-84C9-A698A0D20068}", AZ::Data::AssetHandler);
 
         ScriptCanvasAssetHandler(AZ::SerializeContext* context = nullptr);
+        ~ScriptCanvasAssetHandler();
 
         // Called by the asset database to create a new asset.
         AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override;

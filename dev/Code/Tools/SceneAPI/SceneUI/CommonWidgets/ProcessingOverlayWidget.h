@@ -24,6 +24,7 @@
 #include <SceneAPI/SceneUI/SceneUIConfiguration.h>
 #include <QScopedPointer>
 #include <QWidget>
+#include <SceneAPI/SceneUI/CommonWidgets/OverlayWidget.h>
 
 class QCloseEvent;
 class QLabel;
@@ -47,11 +48,6 @@ namespace AZ
 {
     namespace SceneAPI
     {
-        namespace UI
-        {
-            class OverlayWidget;
-        }
-
         namespace SceneUI
         {
             // The qt-generated ui code (from the .ui)

@@ -57,7 +57,7 @@ AWSDeploymentModel::AWSDeploymentModel(AWSResourceManager* resourceManager)
 
 AWSResourceManager::ExecuteAsyncCallback AWSDeploymentModel::CreateCallback(const char* sucessMessage = nullptr)
 {
-    return [this, sucessMessage](const QString& key, const QVariant& value)
+    return [sucessMessage](const QString& key, const QVariant& value)
     {
         if (key == "error")
         {
@@ -165,7 +165,7 @@ void AWSDeploymentModel::ProcessOutputDeploymentList(const QVariant& value)
             }
             break;
         }
-    }    
+    }
     // UpdateItems does the begin/end stuff that is necessary, but the view currently depends on the modelReset signal to refresh itself.
     beginResetModel();
     UpdateItems(list);

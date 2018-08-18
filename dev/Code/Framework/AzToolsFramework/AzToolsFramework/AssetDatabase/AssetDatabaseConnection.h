@@ -405,6 +405,7 @@ namespace AzToolsFramework
 
             bool QueryProductBySourceName(const char* exactSourceName, productHandler handler, AZ::Uuid builderGuid = AZ::Uuid::CreateNull(), const char* jobKey = nullptr, const char* platform = nullptr, AssetSystem::JobStatus status = AssetSystem::JobStatus::Any);
             bool QueryProductLikeSourceName(const char* likeSourceName, LikeType likeType, productHandler handler, AZ::Uuid builderGuid = AZ::Uuid::CreateNull(), const char* jobKey = nullptr, const char* platform = nullptr, AssetSystem::JobStatus status = AssetSystem::JobStatus::Any);
+            bool QueryProductByJobIDSubID(AZ::s64 jobID, AZ::u32 subId, productHandler handler);
 
             // legacy SubIDs
             bool QueryLegacySubIdsByProductID(AZ::s64 productId, legacySubIDsHandler handler);

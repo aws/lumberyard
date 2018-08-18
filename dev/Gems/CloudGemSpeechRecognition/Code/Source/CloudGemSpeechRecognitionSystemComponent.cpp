@@ -20,7 +20,7 @@ namespace CloudGemSpeechRecognition
         {
             serialize->Class<CloudGemSpeechRecognitionSystemComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {

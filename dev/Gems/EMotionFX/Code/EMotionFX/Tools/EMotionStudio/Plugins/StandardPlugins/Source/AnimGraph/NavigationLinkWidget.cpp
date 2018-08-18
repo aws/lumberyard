@@ -11,6 +11,7 @@
 */
 
 // include the required headers
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include "NavigationLinkWidget.h"
 #include "NavigateWidget.h"
 #include <QLabel>
@@ -43,7 +44,7 @@ namespace EMStudio
 
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         //setMaximumWidth(300);
-        setMaximumHeight(18);
+        setMaximumHeight(28);
         setFocusPolicy(Qt::ClickFocus);
 
         // needed in order to trigger the basic update at the end of the constructor
@@ -58,9 +59,9 @@ namespace EMStudio
     }
 
 
-    MysticQt::LinkWidget* NavigationLinkWidget::AddNodeToHierarchyNavigationLink(EMotionFX::AnimGraphNode* node, QHBoxLayout* hLayout)
+    QWidget* NavigationLinkWidget::AddNodeToHierarchyNavigationLink(EMotionFX::AnimGraphNode* node, QHBoxLayout* hLayout)
     {
-        MysticQt::LinkWidget* link = nullptr;
+        QWidget* link = nullptr;
 
         // get the parent node
         EMotionFX::AnimGraphNode* parentNode = nullptr;
@@ -77,27 +78,40 @@ namespace EMStudio
         if (node)
         {
             // add the node itself to the navigation link
-            link = new MysticQt::LinkWidget(node->GetName());
+            QString str;
+            link = new QLabel(str.sprintf("<a href='#'>%s</a>", node->GetName()), this);
+            link->setProperty("node", node->GetName());
             link->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
-            connect(link, SIGNAL(clicked()), this, SLOT(OnHierarchyNavigationLinkClicked()));
+            connect(link, SIGNAL(linkActivated(const QString&)), this, SLOT(OnHierarchyNavigationLinkClicked(const QString&)));
             hLayout->addWidget(link);
 
             // add the button with which we can access children
-            QPushButton* accessChildrenButton = new QPushButton("", this);
-            accessChildrenButton->setWhatsThis(node->GetName());
-            accessChildrenButton->setObjectName("AnimGraphChildrenContextMenuButton");
-            hLayout->addWidget(accessChildrenButton);
-            connect(accessChildrenButton, SIGNAL(pressed()), this, SLOT(DropDownChildren()));
+            QSize imgSize(16, 16);
+            QSize spacerSize(24, 24);
+            QLabel* spacer = new QLabel("", this);
+            spacer->setMaximumSize(spacerSize);
+            spacer->setMinimumSize(spacerSize);
+            spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+            QPixmap img = MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/NavPath.png").pixmap(imgSize);
+            spacer->setPixmap(img);
+            hLayout->addWidget(spacer);
         }
 
         return link;
     }
 
 
-    void NavigationLinkWidget::OnHierarchyNavigationLinkClicked()
+    void NavigationLinkWidget::OnHierarchyNavigationLinkClicked(const QString& text)
     {
-        MysticQt::LinkWidget* link = qobject_cast<MysticQt::LinkWidget*>(sender());
-        mPlugin->GetNavigateWidget()->ShowGraphByNodeName(link->text().toUtf8().data(), true);
+        QLabel* link = qobject_cast<QLabel*>(sender());
+        QVariant linkVariant = link->property("node");
+        if (linkVariant.isNull())
+        {
+            return;
+        }
+
+        QString linkNodeText = linkVariant.toString();
+        mPlugin->GetNavigateWidget()->ShowGraphByNodeName(linkNodeText.toUtf8().data(), true);
     }
 
 
@@ -145,7 +159,7 @@ namespace EMStudio
             layout->setDirection(QBoxLayout::LeftToRight);
             mNavigationLink->setLayout(layout);
 
-            MysticQt::LinkWidget* lastLink = AddNodeToHierarchyNavigationLink(node, layout);
+            QWidget* lastLink = AddNodeToHierarchyNavigationLink(node, layout);
             if (lastLink)
             {
                 lastLink->setEnabled(false);
@@ -208,16 +222,12 @@ namespace EMStudio
             //connect( dummyWidget, SIGNAL(clicked()), this, SLOT(StartSearchMode()) );
             hLayout->addWidget(dummyWidget);
 
-            QPushButton* contextMenuButton = new QPushButton("", this);
-            contextMenuButton->setObjectName("AnimGraphContextMenuButton");
-            hLayout->addWidget(contextMenuButton);
-            connect(contextMenuButton, SIGNAL(clicked()), this, SLOT(DropDownHistory()));
         }
         else
         {
-            mSearchButton = new MysticQt::SearchButton(nullptr, MysticQt::GetMysticQt()->FindIcon("Images/Icons/SearchClearButton.png"));
-            mSearchButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-            hLayout->addWidget(mSearchButton);
+            m_searchWidget = new AzQtComponents::FilteredSearchWidget(mInnerWidget);
+            m_searchWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            hLayout->addWidget(m_searchWidget);
         }
 
         mInnerWidget->setLayout(hLayout);
@@ -246,7 +256,7 @@ namespace EMStudio
         QPushButton* button = qobject_cast<QPushButton*>(sender());
         QPoint globalBottomLeft = button->mapToGlobal(QPoint(0, button->geometry().bottom()));
 
-        EMotionFX::AnimGraphNode* node = mAnimGraph->RecursiveFindNode(FromQtString(button->whatsThis()).c_str());
+        EMotionFX::AnimGraphNode* node = mAnimGraph->RecursiveFindNodeByName(FromQtString(button->whatsThis()).c_str());
 
         QMenu menu(button);
 

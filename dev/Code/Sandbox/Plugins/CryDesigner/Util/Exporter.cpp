@@ -22,7 +22,7 @@
 #include "Objects/Group.h"
 #include "Material/Material.h"
 #include "CryArray.h"
-#include "Util/Pakfile.h"
+#include "Util/PakFile.h"
 #include "IChunkFile.h"
 #include "Core/ModelCompiler.h"
 #include "Core/Model.h"

@@ -12,7 +12,6 @@
 
 #pragma once
 
-// include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
 
@@ -25,21 +24,9 @@ namespace EMotionFX
     class EMFX_API BlendTreeBlendNNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreeBlendNNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreeBlendNNode, "{CBFFDE41-008D-45A1-AC2A-E9A25C8CE62A}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000013
-        };
-
-        enum
-        {
-            ATTRIB_SYNC         = 0,
-            ATTRIB_EVENTMODE    = 1
-        };
+        AZ_RTTI(BlendTreeBlendNNode, "{CBFFDE41-008D-45A1-AC2A-E9A25C8CE62A}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         enum
         {
@@ -79,47 +66,46 @@ namespace EMotionFX
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance, uint32 indexA, uint32 indexB)
                 : AnimGraphNodeData(node, animGraphInstance)       { mIndexA = indexA; mIndexB = indexB; }
-
-            uint32 GetClassSize() const override                                                                                    { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override        { return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance, MCORE_INVALIDINDEX32, MCORE_INVALIDINDEX32); }
 
         public:
             uint32  mIndexA;
             uint32  mIndexB;
         };
 
-        static BlendTreeBlendNNode* Create(AnimGraph* animGraph);
+        BlendTreeBlendNNode();
+        ~BlendTreeBlendNNode();
 
-        void Init(AnimGraphInstance* animGraphInstance) override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
+
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         bool GetHasOutputPose() const override                  { return true; }
         bool GetSupportsDisable() const override                { return true; }
         bool GetSupportsVisualization() const override          { return true; }
         uint32 GetVisualColor() const override                  { return MCore::RGBA(159, 81, 255); }
-        AnimGraphObjectData* CreateObjectData() override;
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
-        bool ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName) override;
-
-        const char* GetTypeString() const override;
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
 
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 
         void FindBlendNodes(AnimGraphInstance* animGraphInstance, AnimGraphNode** outNodeA, AnimGraphNode** outNodeB, uint32* outIndexA, uint32* outIndexB, float* outWeight) const;
 
+        static void Reflect(AZ::ReflectContext* context);
+        void SetSyncMode(ESyncMode syncMode);
+        void SetEventMode(EEventMode eventMode);
+
     private:
-        BlendTreeBlendNNode(AnimGraph* animGraph);
-        ~BlendTreeBlendNNode();
         void SyncMotions(AnimGraphInstance* animGraphInstance, AnimGraphNode* nodeA, AnimGraphNode* nodeB, uint32 poseIndexA, uint32 poseIndexB, float blendWeight, ESyncMode syncMode);
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+
+        ESyncMode       m_syncMode;
+        EEventMode      m_eventMode;
     };
 }   // namespace EMotionFX

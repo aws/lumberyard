@@ -1,0 +1,7 @@
+{
+    "none": {
+        "Tests": [
+            "Editor/Tests/StaticDataTest.cpp"
+        ]
+    }
+}

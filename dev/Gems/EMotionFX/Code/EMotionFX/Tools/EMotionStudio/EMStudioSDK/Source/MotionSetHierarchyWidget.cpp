@@ -11,9 +11,11 @@
 */
 
 // include the required headers
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include "MotionSetHierarchyWidget.h"
 #include "EMStudioManager.h"
 #include <MCore/Source/LogManager.h>
+#include <MCore/Source/StringConversions.h>
 #include <EMotionFX/Source/Mesh.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include <EMotionFX/Source/MotionSet.h>
@@ -44,11 +46,8 @@ namespace EMStudio
         layout->setMargin(0);
 
         // create the display button group
-        QHBoxLayout* displayLayout = new QHBoxLayout();
-        displayLayout->addWidget(new QLabel("Find:"), 0, Qt::AlignRight);
-        mFindWidget = new MysticQt::SearchButton(this, MysticQt::GetMysticQt()->FindIcon("Images/Icons/SearchClearButton.png"));
-        displayLayout->addWidget(mFindWidget);
-        connect(mFindWidget->GetSearchEdit(), SIGNAL(textChanged(const QString&)), this, SLOT(TextChanged(const QString&)));
+        m_searchWidget = new AzQtComponents::FilteredSearchWidget(this);
+        connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &MotionSetHierarchyWidget::OnTextFilterChanged);
 
         // create the tree widget
         mHierarchy = new QTreeWidget();
@@ -73,7 +72,7 @@ namespace EMStudio
         // disable the move of section to have column order fixed
         mHierarchy->header()->setSectionsMovable(false);
 
-        layout->addLayout(displayLayout);
+        layout->addWidget(m_searchWidget);
         layout->addWidget(mHierarchy);
         setLayout(layout);
 
@@ -163,24 +162,24 @@ namespace EMStudio
         motionSetItem->setWhatsThis(0, QString("%1").arg(MCORE_INVALIDINDEX32));
         motionSetItem->setExpanded(true);
 
-        const EMotionFX::MotionSet::EntryMap& motionEntries = motionSet->GetMotionEntries();
+        const EMotionFX::MotionSet::MotionEntries& motionEntries = motionSet->GetMotionEntries();
         for (const auto& item : motionEntries)
         {
             const EMotionFX::MotionSet::MotionEntry* motionEntry = item.second;
 
             // Check if the id is valid and don't put it to the list in case it is not.
-            if (motionEntry->GetID().empty())
+            if (motionEntry->GetId().empty())
             {
                 continue;
             }
 
-            if (mFindString.empty() ||
-                AzFramework::StringFunc::Find(motionEntry->GetID().c_str(), mFindString.c_str()) != AZStd::string::npos ||
-                AzFramework::StringFunc::Find(motionEntry->GetFilename(), mFindString.c_str()) != AZStd::string::npos)
+            if (m_searchWidgetText.empty() ||
+                AzFramework::StringFunc::Find(motionEntry->GetId().c_str(), m_searchWidgetText.c_str()) != AZStd::string::npos ||
+                AzFramework::StringFunc::Find(motionEntry->GetFilename(), m_searchWidgetText.c_str()) != AZStd::string::npos)
             {
                 QTreeWidgetItem* newItem = new QTreeWidgetItem(motionSetItem);
 
-                newItem->setText(0, motionEntry->GetID().c_str());
+                newItem->setText(0, motionEntry->GetId().c_str());
                 newItem->setText(1, motionEntry->GetFilename());
 
                 newItem->setWhatsThis(0, QString("%1").arg(motionSet->GetID()));
@@ -208,24 +207,24 @@ namespace EMStudio
         motionSetItem->setText(1, motionSet->GetFilename());
         motionSetItem->setWhatsThis(0, QString("%1").arg(MCORE_INVALIDINDEX32));
 
-        const EMotionFX::MotionSet::EntryMap& motionEntries = motionSet->GetMotionEntries();
+        const EMotionFX::MotionSet::MotionEntries& motionEntries = motionSet->GetMotionEntries();
         for (const auto& item : motionEntries)
         {
             const EMotionFX::MotionSet::MotionEntry* motionEntry = item.second;
 
             // Check if the id is valid and don't put it to the list in case it is not.
-            if (motionEntry->GetID().empty())
+            if (motionEntry->GetId().empty())
             {
                 continue;
             }
 
-            if (mFindString.empty() ||
-                AzFramework::StringFunc::Find(motionEntry->GetID().c_str(), mFindString.c_str()) != AZStd::string::npos ||
-                AzFramework::StringFunc::Find(motionEntry->GetFilename(), mFindString.c_str()) != AZStd::string::npos)
+            if (m_searchWidgetText.empty() ||
+                AzFramework::StringFunc::Find(motionEntry->GetId().c_str(), m_searchWidgetText.c_str()) != AZStd::string::npos ||
+                AzFramework::StringFunc::Find(motionEntry->GetFilename(), m_searchWidgetText.c_str()) != AZStd::string::npos)
             {
                 QTreeWidgetItem* newItem = new QTreeWidgetItem(motionSetItem);
 
-                newItem->setText(0, motionEntry->GetID().c_str());
+                newItem->setText(0, motionEntry->GetId().c_str());
                 newItem->setText(1, motionEntry->GetFilename());
 
                 newItem->setWhatsThis(0, QString("%1").arg(motionSet->GetID()));
@@ -244,24 +243,24 @@ namespace EMStudio
             parentMotionSetItem->setText(1, parentMotionSet->GetFilename());
             parentMotionSetItem->setWhatsThis(0, QString("%1").arg(MCORE_INVALIDINDEX32));
 
-            const EMotionFX::MotionSet::EntryMap& motionEnries = parentMotionSet->GetMotionEntries();
+            const EMotionFX::MotionSet::MotionEntries& motionEnries = parentMotionSet->GetMotionEntries();
             for (const auto& item : motionEntries)
             {
                 const EMotionFX::MotionSet::MotionEntry* motionEntry = item.second;
 
                 // Check if the id is valid and don't put it to the list in case it is not.
-                if (motionEntry->GetID().empty())
+                if (motionEntry->GetId().empty())
                 {
                     continue;
                 }
 
-                if (mFindString.empty() ||
-                    AzFramework::StringFunc::Find(motionEntry->GetID().c_str(), mFindString.c_str()) != AZStd::string::npos ||
-                    AzFramework::StringFunc::Find(motionEntry->GetFilename(), mFindString.c_str()) != AZStd::string::npos)
+                if (m_searchWidgetText.empty() ||
+                    AzFramework::StringFunc::Find(motionEntry->GetId().c_str(), m_searchWidgetText.c_str()) != AZStd::string::npos ||
+                    AzFramework::StringFunc::Find(motionEntry->GetFilename(), m_searchWidgetText.c_str()) != AZStd::string::npos)
                 {
                     QTreeWidgetItem* newItem = new QTreeWidgetItem(parentMotionSetItem);
 
-                    newItem->setText(0, motionEntry->GetID().c_str());
+                    newItem->setText(0, motionEntry->GetId().c_str());
                     newItem->setText(1, motionEntry->GetFilename());
 
                     newItem->setWhatsThis(0, QString("%1").arg(parentMotionSet->GetID()));
@@ -281,6 +280,29 @@ namespace EMStudio
     }
 
 
+    void MotionSetHierarchyWidget::Select(const AZStd::vector<MotionSetSelectionItem>& selectedItems)
+    {
+        mSelected = selectedItems;
+
+        for (const MotionSetSelectionItem& selectionItem : selectedItems)
+        {
+            const AZStd::string& motionId = selectionItem.mMotionId;
+
+            QTreeWidgetItemIterator itemIterator(mHierarchy);
+            while (*itemIterator)
+            {
+                QTreeWidgetItem* item = *itemIterator;
+                if (item->text(0) == motionId.c_str())
+                {
+                    item->setSelected(true);
+                    break;
+                }
+                ++itemIterator;
+            }
+        }
+    }
+
+
     void MotionSetHierarchyWidget::UpdateSelection()
     {
         // Get the selected items in the tree widget.
@@ -291,11 +313,11 @@ namespace EMStudio
         mSelected.clear();
         mSelected.reserve(numSelectedItems);
 
-        AZStd::string itemName;
+        AZStd::string motionId;
         for (uint32 i = 0; i < numSelectedItems; ++i)
         {
             QTreeWidgetItem* item = selectedItems[i];
-            itemName = item->text(0).toUtf8().data();
+            motionId = item->text(0).toUtf8().data();
 
             // Extract the motion set id.
             QString motionSetIdAsString = item->whatsThis(0);
@@ -308,9 +330,7 @@ namespace EMStudio
                 continue;
             }
 
-            MotionSetSelectionItem selectionItem;
-            selectionItem.mMotionSet = motionSet;
-            selectionItem.mMotionId  = itemName;
+            MotionSetSelectionItem selectionItem(motionId, motionSet);
             mSelected.push_back(selectionItem);
         }
     }
@@ -341,9 +361,9 @@ namespace EMStudio
     }
 
 
-    void MotionSetHierarchyWidget::TextChanged(const QString& text)
+    void MotionSetHierarchyWidget::OnTextFilterChanged(const QString& text)
     {
-        mFindString = text.toUtf8().data();
+        m_searchWidgetText = text.toUtf8().data();
         Update();
     }
 
@@ -358,6 +378,25 @@ namespace EMStudio
     {
         UpdateSelection();
         return mSelected;
+    }
+
+
+    AZStd::vector<AZStd::string> MotionSetHierarchyWidget::GetSelectedMotionIds(EMotionFX::MotionSet* motionSet)
+    {
+        const AZStd::vector<MotionSetSelectionItem>& selectedItems = GetSelectedItems();
+
+        AZStd::vector<AZStd::string> result;
+        result.reserve(selectedItems.size());
+
+        for (const MotionSetSelectionItem& selectedItem : selectedItems)
+        {
+            if (selectedItem.mMotionSet == motionSet)
+            {
+                result.push_back(selectedItem.mMotionId);
+            }
+        }
+
+        return result;    
     }
 } // namespace EMStudio
 

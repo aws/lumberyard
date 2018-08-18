@@ -20,6 +20,7 @@
 #include <AzCore/std/smart_ptr/scoped_array.h>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/smart_ptr/intrusive_base.h>
 
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/functional.h>
@@ -4618,60 +4619,8 @@ namespace WeakPtr
 
 namespace IntrusivePointer
 {
-    namespace N
-    {
-        class base
-        {
-        private:
-            AZStd::atomic<long> use_count_;
-            base(base const&);
-            base& operator=(base const&);
-        protected:
-
-            base()
-                : use_count_(0)
-            {
-            }
-            virtual ~base()
-            {
-            }
-
-        public:
-            long use_count() const
-            {
-                return use_count_.load();
-            }
-
-            inline friend void intrusive_ptr_add_ref(base* p)
-            {
-                ++p->use_count_;
-            }
-
-            inline friend void intrusive_ptr_release(base* p)
-            {
-                if (--p->use_count_ == 0)
-                {
-                    delete p;
-                }
-            }
-
-            void add_ref()
-            {
-                ++use_count_;
-            }
-
-            void release()
-            {
-                if (--use_count_ == 0)
-                {
-                    delete this;
-                }
-            }
-        };
-    } // namespace N
-
     struct X
-        : public virtual N::base
+        : public virtual AZStd::intrusive_base
     {
     };
 
@@ -4729,7 +4678,7 @@ namespace IntrusivePointer
                 X* p = new X;
                 EXPECT_TRUE(p->use_count() == 0);
 
-                intrusive_ptr_add_ref(p);
+                IntrusivePtrCountPolicy<X>::add_ref(p);
                 EXPECT_TRUE(p->use_count() == 1);
 
                 AZStd::intrusive_ptr<X> px(p, false);

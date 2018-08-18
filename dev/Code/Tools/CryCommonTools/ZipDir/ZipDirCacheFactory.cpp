@@ -15,7 +15,7 @@
 #include <zlib.h>
 #include "smartptr.h"
 #include "ZipFileFormat.h"
-#include "ZipDirStructures.h"
+#include "zipdirstructures.h"
 #include "ZipDirTree.h"
 #include "ZipDirCache.h"
 #include "ZipDirCacheRW.h"
@@ -52,7 +52,8 @@ ZipDir::CachePtr ZipDir::CacheFactory::New (const char* szFile, const uint32 key
     }
 
     Clear();
-    m_f = fopen (szFile, "rb");
+    m_f = nullptr;
+    azfopen(&m_f, szFile, "rb");
     if (m_f)
     {
         return MakeCache (szFile);
@@ -101,7 +102,8 @@ ZipDir::CacheRWPtr ZipDir::CacheFactory::NewRW(const char* szFileName, size_t fi
     // first, try to open the file for reading or reading/writing
     if (m_nFlags & FLAGS_READ_ONLY)
     {
-        m_f = fopen (szFileName, "rb");
+        m_f = nullptr;
+        azfopen(&m_f, szFileName, "rb");
         pCache->m_nFlags |= CacheRW::FLAGS_CDR_DIRTY | CacheRW::FLAGS_READ_ONLY;
 
         if (!m_f)
@@ -115,7 +117,8 @@ ZipDir::CacheRWPtr ZipDir::CacheFactory::NewRW(const char* szFileName, size_t fi
         m_f = NULL;
         if (!(m_nFlags & FLAGS_CREATE_NEW))
         {
-            m_f = fopen (szFileName, "r+b");
+            m_f = nullptr; 
+            azfopen(&m_f, szFileName, "r+b");
         }
 
         bool bOpenForWriting = true;
@@ -152,7 +155,9 @@ ZipDir::CacheRWPtr ZipDir::CacheFactory::NewRW(const char* szFileName, size_t fi
 
         if (bOpenForWriting)
         {
-            if ((m_f = fopen (szFileName, "w+b")) != NULL)
+            m_f = nullptr;
+            azfopen(&m_f, szFileName, "w+b");
+            if (m_f)
             {
                 // there's no such file, but we'll create one. We'll need to write out the CDR here
                 pCache->m_lCDROffset = 0;

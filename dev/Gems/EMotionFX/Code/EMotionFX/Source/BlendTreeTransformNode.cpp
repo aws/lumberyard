@@ -10,107 +10,84 @@
 *
 */
 
-// include the required headers
-#include "EMotionFXConfig.h"
-#include "BlendTreeTransformNode.h"
-#include "AnimGraphInstance.h"
-#include "Actor.h"
-#include "ActorInstance.h"
-#include "AnimGraphAttributeTypes.h"
-#include "AnimGraphManager.h"
-#include "Node.h"
-#include "EMotionFXManager.h"
-#include <MCore/Source/AttributeSettings.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <AzFramework/Math/MathUtils.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/Actor.h>
+#include <EMotionFX/Source/ActorInstance.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/BlendTreeTransformNode.h>
+#include <EMotionFX/Source/Node.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeTransformNode::BlendTreeTransformNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeTransformNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeTransformNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
 
-    // destructor
-    BlendTreeTransformNode::~BlendTreeTransformNode()
-    {
-    }
-
-
-    // create
-    BlendTreeTransformNode* BlendTreeTransformNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeTransformNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeTransformNode::CreateObjectData()
-    {
-        return new UniqueData(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeTransformNode::RegisterPorts()
+    BlendTreeTransformNode::BlendTreeTransformNode()
+        : AnimGraphNode()
+        , m_minTranslation(AZ::Vector3::CreateZero())
+        , m_maxTranslation(AZ::Vector3::CreateZero())
+        , m_minRotation(AZ::Vector3::CreateAxisZ(-180.0f))
+        , m_maxRotation(AZ::Vector3::CreateAxisZ(180.0f))
+        , m_minScale(AZ::Vector3::CreateZero())
+        , m_maxScale(AZ::Vector3::CreateZero())
     {
         // setup the input ports
         InitInputPorts(4);
-        SetupInputPort("Input Pose",   INPUTPORT_POSE,             AttributePose::TYPE_ID,             PORTID_INPUT_POSE);
-        SetupInputPortAsNumber("Translation",  INPUTPORT_TRANSLATE_AMOUNT, PORTID_INPUT_TRANSLATE_AMOUNT);
-        SetupInputPortAsNumber("Rotation",     INPUTPORT_ROTATE_AMOUNT,    PORTID_INPUT_ROTATE_AMOUNT);
-        SetupInputPortAsNumber("Scale",        INPUTPORT_SCALE_AMOUNT,     PORTID_INPUT_SCALE_AMOUNT);
+        SetupInputPort("Input Pose", INPUTPORT_POSE, AttributePose::TYPE_ID, PORTID_INPUT_POSE);
+        SetupInputPortAsNumber("Translation", INPUTPORT_TRANSLATE_AMOUNT, PORTID_INPUT_TRANSLATE_AMOUNT);
+        SetupInputPortAsNumber("Rotation", INPUTPORT_ROTATE_AMOUNT, PORTID_INPUT_ROTATE_AMOUNT);
+        SetupInputPortAsNumber("Scale", INPUTPORT_SCALE_AMOUNT, PORTID_INPUT_SCALE_AMOUNT);
 
         // setup the output ports
         InitOutputPorts(1);
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_RESULT, PORTID_OUTPUT_POSE);
     }
+    
 
-
-    // register the parameters
-    void BlendTreeTransformNode::RegisterAttributes()
+    BlendTreeTransformNode::~BlendTreeTransformNode()
     {
-        // the node
-        MCore::AttributeSettings* attrib = RegisterAttribute("Node", "node", "The node to apply the transform to.", ATTRIBUTE_INTERFACETYPE_NODESELECTION);
-        attrib->SetReinitObjectOnValueChange(true);
-        attrib->SetDefaultValue(MCore::AttributeString::Create());
+    }
 
-        // min translation
-        attrib = RegisterAttribute("Min Translation", "minTranslation", "The minimum translation value, used when the input translation amount equals zero.", MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3GIZMO);
-        attrib->SetDefaultValue(MCore::AttributeVector3::Create(0.0f, 0.0f, 0.0f));
-        attrib->SetMinValue(MCore::AttributeVector3::Create(-FLT_MAX, -FLT_MAX, -FLT_MAX));
-        attrib->SetMaxValue(MCore::AttributeVector3::Create(FLT_MAX,  FLT_MAX,  FLT_MAX));
 
-        // max translation
-        attrib = RegisterAttribute("Max Translation", "maxTranslation", "The maximum translation value, used when the input translation amount equals one.", MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3GIZMO);
-        attrib->SetDefaultValue(MCore::AttributeVector3::Create(0.0f, 0.0f, 0.0f));
-        attrib->SetMinValue(MCore::AttributeVector3::Create(-FLT_MAX, -FLT_MAX, -FLT_MAX));
-        attrib->SetMaxValue(MCore::AttributeVector3::Create(FLT_MAX,  FLT_MAX,  FLT_MAX));
+    void BlendTreeTransformNode::Reinit()
+    {
+        AnimGraphNode::Reinit();
 
-        // min rotation
-        attrib = RegisterAttribute("Min Rotation", "minRotation", "The minimum rotation value, in degrees, used when the input rotation amount equals zero.", ATTRIBUTE_INTERFACETYPE_ROTATION);
-        attrib->SetDefaultValue(AttributeRotation::Create(0.0f, -180.0f, 0.0f));
+        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numAnimGraphInstances; ++i)
+        {
+            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
 
-        // max rotation
-        attrib = RegisterAttribute("Max Rotation", "maxRotation", "The maximum rotation value, in degrees, used when the input rotation amount equals one.", ATTRIBUTE_INTERFACETYPE_ROTATION);
-        attrib->SetDefaultValue(AttributeRotation::Create(0.0f, 180.0f, 0.0f));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            if (uniqueData)
+            {
+                uniqueData->mMustUpdate = true;
+                OnUpdateUniqueData(animGraphInstance);
+            }
+        }
+    }
 
-        // min scale
-        attrib = RegisterAttribute("Min Scale", "minScale", "The minimum scale value, used when the input scale amount equals zero.", MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3);
-        attrib->SetDefaultValue(MCore::AttributeVector3::Create(0.0f, 0.0f, 0.0f));
-        attrib->SetMinValue(MCore::AttributeVector3::Create(-FLT_MAX, -FLT_MAX, -FLT_MAX));
-        attrib->SetMaxValue(MCore::AttributeVector3::Create(FLT_MAX,  FLT_MAX,  FLT_MAX));
 
-        // max scale
-        attrib = RegisterAttribute("Max Scale", "maxScale", "The maximum scale value, used when the input scale amount equals one.", MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3);
-        attrib->SetDefaultValue(MCore::AttributeVector3::Create(0.0f, 0.0f, 0.0f));
-        attrib->SetMinValue(MCore::AttributeVector3::Create(-FLT_MAX, -FLT_MAX, -FLT_MAX));
-        attrib->SetMaxValue(MCore::AttributeVector3::Create(FLT_MAX,  FLT_MAX,  FLT_MAX));
+    bool BlendTreeTransformNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -125,20 +102,6 @@ namespace EMotionFX
     AnimGraphObject::ECategory BlendTreeTransformNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_CONTROLLERS;
-    }
-
-
-    // create a clone of this node
-    AnimGraphObject* BlendTreeTransformNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeTransformNode* clone = new BlendTreeTransformNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
     }
 
 
@@ -193,9 +156,7 @@ namespace EMotionFX
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_ROTATE_AMOUNT));
             const float rotateFactor = MCore::Clamp<float>(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_ROTATE_AMOUNT), 0.0f, 1.0f);
-            const AZ::Vector3& minAngles = static_cast<AttributeRotation*>(GetAttribute(ATTRIB_MINROTATE))->GetRotationAngles();
-            const AZ::Vector3& maxAngles = static_cast<AttributeRotation*>(GetAttribute(ATTRIB_MAXROTATE))->GetRotationAngles();
-            const AZ::Vector3 newAngles  = MCore::LinearInterpolate<AZ::Vector3>(minAngles, maxAngles, rotateFactor);
+            const AZ::Vector3 newAngles = MCore::LinearInterpolate<AZ::Vector3>(m_minRotation, m_maxRotation, rotateFactor);
             outputTransform.mRotation = inputTransform.mRotation * MCore::Quaternion(MCore::Math::DegreesToRadians(newAngles.GetX()), MCore::Math::DegreesToRadians(newAngles.GetY()), MCore::Math::DegreesToRadians(newAngles.GetZ()));
         }
 
@@ -204,9 +165,7 @@ namespace EMotionFX
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_TRANSLATE_AMOUNT));
             const float factor = MCore::Clamp<float>(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_TRANSLATE_AMOUNT), 0.0f, 1.0f);
-            const AZ::Vector3 minValue = AZ::Vector3(GetAttributeVector3(ATTRIB_MINTRANSLATE)->GetValue());
-            const AZ::Vector3 maxValue = AZ::Vector3(GetAttributeVector3(ATTRIB_MAXTRANSLATE)->GetValue());
-            const AZ::Vector3 newValue  = MCore::LinearInterpolate<AZ::Vector3>(minValue, maxValue, factor);
+            const AZ::Vector3 newValue = MCore::LinearInterpolate<AZ::Vector3>(m_minTranslation, m_maxTranslation, factor);
             outputTransform.mPosition = inputTransform.mPosition + newValue;
         }
 
@@ -217,9 +176,7 @@ namespace EMotionFX
             {
                 OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_SCALE_AMOUNT));
                 const float factor = MCore::Clamp<float>(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_SCALE_AMOUNT), 0.0f, 1.0f);
-                const AZ::Vector3 minValue = AZ::Vector3(GetAttributeVector3(ATTRIB_MINSCALE)->GetValue());
-                const AZ::Vector3 maxValue = AZ::Vector3(GetAttributeVector3(ATTRIB_MAXSCALE)->GetValue());
-                const AZ::Vector3 newValue  = MCore::LinearInterpolate<AZ::Vector3>(minValue, maxValue, factor);
+                const AZ::Vector3 newValue = MCore::LinearInterpolate<AZ::Vector3>(m_minScale, m_maxScale, factor);
                 outputTransform.mScale = inputTransform.mScale + newValue;
             }
         )
@@ -236,14 +193,7 @@ namespace EMotionFX
     #endif
     }
 
-
-    // get the blend node type string
-    const char* BlendTreeTransformNode::GetTypeString() const
-    {
-        return "BlendTreeTransformNode";
-    }
-
-
+    
     // update the unique data
     void BlendTreeTransformNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
     {
@@ -257,15 +207,13 @@ namespace EMotionFX
             uniqueData->mNodeIndex  = MCORE_INVALIDINDEX32;
             uniqueData->mIsValid    = false;
 
-            // try get the node
-            const char* nodeName = GetAttributeString(ATTRIB_NODE)->AsChar();
-            if (nodeName == nullptr)
+            if (m_targetNodeName.empty())
             {
                 return;
             }
 
-            const Node* node = actor->GetSkeleton()->FindNodeByName(nodeName);
-            if (node == nullptr)
+            const Node* node = actor->GetSkeleton()->FindNodeByName(m_targetNodeName.c_str());
+            if (!node)
             {
                 return;
             }
@@ -276,23 +224,13 @@ namespace EMotionFX
     }
 
 
-    // init
-    void BlendTreeTransformNode::Init(AnimGraphInstance* animGraphInstance)
-    {
-        MCORE_UNUSED(animGraphInstance);
-        //mOutputPose.Init( animGraphInstance->GetActorInstance() );
-    }
-
-
-    // when an attribute value changes
     void BlendTreeTransformNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
         // find our unique data
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (uniqueData == nullptr)
         {
-            //uniqueData = new UniqueData(this, animGraphInstance);
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
 
@@ -300,5 +238,96 @@ namespace EMotionFX
 
         UpdateUniqueData(animGraphInstance, uniqueData);
     }
-}   // namespace EMotionFX
 
+
+
+    void BlendTreeTransformNode::SetTargetNodeName(const AZStd::string& targetNodeName)
+    {
+        m_targetNodeName = targetNodeName;
+    }
+
+    void BlendTreeTransformNode::SetMinTranslation(const AZ::Vector3& minTranslation)
+    {
+        m_minTranslation = minTranslation;
+    }
+
+    void BlendTreeTransformNode::SetMaxTranslation(const AZ::Vector3& maxTranslation)
+    {
+        m_maxTranslation = maxTranslation;
+    }
+
+    void BlendTreeTransformNode::SetMinRotation(const AZ::Vector3& minRotation)
+    {
+        m_minRotation = minRotation;
+    }
+
+    void BlendTreeTransformNode::SetMaxRotation(const AZ::Vector3& maxRotation)
+    {
+        m_maxRotation = maxRotation;
+    }
+
+    void BlendTreeTransformNode::SetMinScale(const AZ::Vector3& minScale)
+    {
+        m_minScale = minScale;
+    }
+
+    void BlendTreeTransformNode::SetMaxScale(const AZ::Vector3& maxScale)
+    {
+        m_maxScale = maxScale;
+    }
+
+    void BlendTreeTransformNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeTransformNode, AnimGraphNode>()
+            ->Version(1)
+            ->Field("targetNodeName", &BlendTreeTransformNode::m_targetNodeName)
+            ->Field("minTranslation", &BlendTreeTransformNode::m_minTranslation)
+            ->Field("maxTranslation", &BlendTreeTransformNode::m_maxTranslation)
+            ->Field("minRotation", &BlendTreeTransformNode::m_minRotation)
+            ->Field("maxRotation", &BlendTreeTransformNode::m_maxRotation)
+            ->Field("minScale", &BlendTreeTransformNode::m_minScale)
+            ->Field("maxScale", &BlendTreeTransformNode::m_maxScale)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        const AZ::VectorFloat maxVecFloat = AZ::VectorFloat(std::numeric_limits<float>::max());
+        editContext->Class<BlendTreeTransformNode>("Transform Node", "Transform node attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeTransformNode::m_targetNodeName, "Node", "The node to apply the transform to.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeTransformNode::Reinit)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_minTranslation, "Min Translation", "The minimum translation value, used when the input translation amount equals zero.")
+                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
+                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( maxVecFloat,  maxVecFloat,  maxVecFloat))
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_maxTranslation, "Max Translation", "The maximum translation value, used when the input translation amount equals one.")
+                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
+                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( maxVecFloat,  maxVecFloat,  maxVecFloat))
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_minRotation, "Min Rotation", "The minimum rotation value, in degrees, used when the input rotation amount equals zero.")
+                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-360.0f, -360.0f, -360.0f))
+                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( 360.0f,  360.0f,  360.0f))
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_maxRotation, "Max Rotation", "The maximum rotation value, in degrees, used when the input rotation amount equals one.")
+                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-360.0f, -360.0f, -360.0f))
+                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( 360.0f,  360.0f,  360.0f))
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_minScale, "Min Scale", "The minimum scale value, used when the input scale amount equals zero.")
+                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
+                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( maxVecFloat,  maxVecFloat,  maxVecFloat))
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_maxScale, "Max Scale", "The maximum scale value, used when the input scale amount equals one.")
+                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
+                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( maxVecFloat,  maxVecFloat,  maxVecFloat))
+            ;
+    }
+} // namespace EMotionFX

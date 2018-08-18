@@ -10,5 +10,5 @@
 *
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
-
+// If you make changes in ICryPak.h, make changes here, to dirty the PCH.
 #include "StdAfx.h"

@@ -43,6 +43,7 @@ class UiCanvasComponent
     , public AZ::EntityBus::Handler
     , public UiAnimationBus::Handler
     , public UiInteractableActiveNotificationBus::Handler
+    , public ISystem::CrySystemNotificationBus::Handler
     , public IGameFrameworkListener
     , public IUiAnimationListener
 {
@@ -89,7 +90,7 @@ public: // member functions
     void FindElementsByName(const LyShine::NameType& name, LyShine::EntityArray& result) override;
     AZ::EntityId FindElementEntityIdByName(const LyShine::NameType& name) override;
     AZ::Entity* FindElementByHierarchicalName(const LyShine::NameType& name) override;
-    void FindElements(std::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result) override;
+    void FindElements(AZStd::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result) override;
 
     AZ::Entity* PickElement(AZ::Vector2 point) override;
     LyShine::EntityArray PickElements(const AZ::Vector2& bound0, const AZ::Vector2& bound1) override;
@@ -184,9 +185,9 @@ public: // member functions
     void ActiveChanged(AZ::EntityId m_newActiveInteractable, bool shouldStayActive) override;
     // ~UiInteractableActiveNotifications
 
-    // IGameFrameworkListener
+    // IGameFrameworkListener / ISystem::CrySystemNotifications
     void OnPreRender() override;
-    // ~IGameFrameworkListener
+    // ~IGameFrameworkListener / ISystem::CrySystemNotifications
 
     // IUiAnimationListener
     void OnUiAnimationEvent(EUiAnimationEvent uiAnimationEvent, IUiAnimSequence* pAnimSequence) override;

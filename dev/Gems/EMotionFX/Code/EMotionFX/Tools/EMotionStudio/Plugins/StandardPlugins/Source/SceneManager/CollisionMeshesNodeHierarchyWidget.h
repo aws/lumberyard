@@ -16,7 +16,6 @@
 #include "../StandardPluginsConfig.h"
 #include <MCore/Source/StandardHeaders.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
-#include <MysticQt/Source/SearchButton.h>
 #include <MysticQt/Source/IntSpinbox.h>
 #include <QDialog>
 #include <QLineEdit>
@@ -29,6 +28,10 @@ QT_FORWARD_DECLARE_CLASS(QIcon)
 QT_FORWARD_DECLARE_CLASS(QTreeWidget)
 QT_FORWARD_DECLARE_CLASS(QTreeWidgetItem)
 
+namespace AzQtComponents
+{
+    class FilteredSearchWidget;
+}
 
 namespace EMStudio
 {
@@ -46,17 +49,17 @@ namespace EMStudio
         void Update();
 
         MCORE_INLINE QTreeWidget* GetTreeWidget()                                                               { return mHierarchy; }
-        MCORE_INLINE MysticQt::SearchButton* GetSearchButton()                                                  { return mFindWidget; }
-        MCORE_INLINE AZStd::string GetFilterString()                                                            { return FromQtString(mFindWidget->GetSearchEdit()->text()); }
+        MCORE_INLINE AzQtComponents::FilteredSearchWidget* GetSearchWidget()                                    { return m_searchWidget; }
+        MCORE_INLINE const AZStd::string& GetSearchWidgetText() const                                           { return m_searchWidgetText; }
         MCORE_INLINE uint32 GetActorInstanceID()                                                                { return mActorInstanceID; }
-        MCORE_INLINE MCore::Array<MCore::Array<AZStd::string> >& GetLODNodeList()                                { return mLODNodeList; }
+        MCORE_INLINE MCore::Array<MCore::Array<AZStd::string> >& GetLODNodeList()                               { return mLODNodeList; }
 
         bool CheckIfNodeVisible(const AZStd::string& nodeName, bool isMeshNode);
 
     public slots:
         void UpdateSelection();
         void TreeContextMenu(const QPoint& pos);
-        void TextChanged(const QString& text);
+        void OnTextFilterChanged(const QString& text);
         void LODSpinBoxValueChanged(int value);
 
     private:
@@ -67,10 +70,10 @@ namespace EMStudio
     private:
         QTreeWidget*                                mHierarchy;
         MysticQt::IntSpinBox*                       mLODSpinBox;
-        MysticQt::SearchButton*                     mFindWidget;
+        AzQtComponents::FilteredSearchWidget*       m_searchWidget;
+        AZStd::string                               m_searchWidgetText;
         QIcon*                                      mMeshIcon;
         QIcon*                                      mCharacterIcon;
-        AZStd::string                               mFindString;
         uint32                                      mActorInstanceID;
         AZStd::string                               mTempString;
         MCore::Array<MCore::Array<AZStd::string> >   mLODNodeList;

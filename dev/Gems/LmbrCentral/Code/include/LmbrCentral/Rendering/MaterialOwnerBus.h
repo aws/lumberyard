@@ -126,7 +126,6 @@ namespace LmbrCentral
 
                 if (readyResult)
                 {
-                    typename Bus::template CallstackEntryIterator<typename Bus::InterfaceType**> callstack(nullptr, &id); // Workaround for GetCurrentBusId in callee
                     handler->OnMaterialOwnerReady();
                 }
             }

@@ -124,7 +124,7 @@ namespace LYGame
     //------------------------------------------------------------------------
     void CRain::Update(SEntityUpdateContext& ctx, int updateSlot)
     {
-        const IActor* pClient = gEnv->pGame->GetIGameFramework()->GetClientActor();
+        const IActor* pClient = gEnv->pGame && gEnv->pGame->GetIGameFramework() ? gEnv->pGame->GetIGameFramework()->GetClientActor() : nullptr;
         if (pClient && Reset())
         {
             const Vec3 vCamPos = gEnv->pRenderer->GetCamera().GetPosition();

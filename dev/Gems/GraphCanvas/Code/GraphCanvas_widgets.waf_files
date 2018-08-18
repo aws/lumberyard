@@ -42,7 +42,6 @@
         ],
         "StaticLib/GraphCanvas/Styling":
         [
-            "StaticLib/GraphCanvas/Styling/default_style.json",
             "StaticLib/GraphCanvas/Styling/definitions.cpp",
             "StaticLib/GraphCanvas/Styling/definitions.h",
             "StaticLib/GraphCanvas/Styling/PseudoElement.cpp",

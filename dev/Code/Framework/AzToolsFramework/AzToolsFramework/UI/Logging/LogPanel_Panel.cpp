@@ -19,7 +19,7 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Casting/lossy_cast.h>
 #include <AzCore/UserSettings/UserSettings.h>
-#include <AzCore/xml/rapidxml.h>
+#include <AzCore/XML/rapidxml.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 

@@ -74,7 +74,7 @@ void CSnow::FullSerialize(TSerialize ser)
 //------------------------------------------------------------------------
 void CSnow::Update(SEntityUpdateContext& ctx, int updateSlot)
 {
-    const IActor* pClient = GetISystem()->GetIGame()->GetIGameFramework()->GetClientActor();
+    const IActor* pClient = GetISystem()->GetIGame() && GetISystem()->GetIGame()->GetIGameFramework() ? GetISystem()->GetIGame()->GetIGameFramework()->GetClientActor() : nullptr;
     if (pClient && Reset())
     {
         if (!m_bEnabled || gEnv->IsEditor() && !gEnv->IsEditorSimulationMode() && !gEnv->IsEditorGameMode())

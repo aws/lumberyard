@@ -32,7 +32,7 @@ SlicerEdit::SlicerEdit( SpriteBorder border,
     setValidator( new QDoubleValidator( 0.0f, totalUnscaledSizeInPixels, 1 ) );
 
     QObject::connect( this,
-                        &SlicerEdit::editingFinished,
+                        &SlicerEdit::editingFinished, this,
                         [ this, border, sprite, totalUnscaledSizeInPixels ]()
                         {
                             float p = text().toFloat();

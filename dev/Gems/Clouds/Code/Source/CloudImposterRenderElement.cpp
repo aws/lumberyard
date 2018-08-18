@@ -16,7 +16,6 @@
 #include "RendElement.h"
 #include "CloudImposterRenderElement.h"
 #include "I3DEngine.h"
-#include "DynamicTexture.h"
 
 namespace CloudsGem
 {
@@ -51,8 +50,9 @@ namespace CloudsGem
 
     CloudImposterRenderElement::CloudImposterRenderElement()
     {
-        mfSetType(eDATA_Gem);
-        mfUpdateFlags(FCEF_TRANSFORM);
+        m_gemRE = gEnv->pRenderer->EF_CreateRE(eDATA_Gem);
+        m_gemRE->mfSetFlags(FCEF_TRANSFORM);
+        m_gemRE->mfSetDelegate(this);
     }
 
     CloudImposterRenderElement::~CloudImposterRenderElement()
@@ -72,10 +72,14 @@ namespace CloudsGem
         }
 
         // Update transparency
-        float fTransparency = gRenDev->m_RP.m_pCurObject->m_II.m_AmbColor.a;
-        if (gRenDev->m_RP.m_pShaderResources)
+        IRenderer* renderer = gEnv->pRenderer;
+        SRenderPipeline* renderPipeline = renderer->GetRenderPipeline();
+        float fTransparency = renderPipeline->m_pCurObject->m_II.m_AmbColor.a;
+        IRenderShaderResources* shaderResources = renderPipeline->m_pShaderResources;
+
+        if (shaderResources)
         {
-            fTransparency *= gRenDev->m_RP.m_pShaderResources->GetStrengthValue(EFTT_OPACITY);
+            fTransparency *= shaderResources->GetStrengthValue(EFTT_OPACITY);
         }
         if (m_fCurTransparency != fTransparency)
         {
@@ -135,7 +139,7 @@ namespace CloudsGem
             return false;
         }
 
-        if (gRenDev->m_nFrameReset != m_nFrameReset)
+        if (renderer->GetFrameReset() != m_nFrameReset)
         {
             return false;
         }
@@ -487,7 +491,7 @@ namespace CloudsGem
             pDT = !m_bScreenImposter ? &m_pTexture : &s_pScreenTexture;
             if (!*pDT)
             {
-                *pDT = new DynamicTexture(iResX, iResY, FT_STATE_CLAMP, "Imposter");
+                *pDT = renderer->CreateDynTexture2(iResX, iResY, FT_STATE_CLAMP, "Imposter", eTP_Clouds);
             }
 
             if (*pDT)
@@ -546,15 +550,6 @@ namespace CloudsGem
     }
 
     bool CloudImposterRenderElement::Display(bool /* bDisplayFrontOfSplit */)
-    {
-        return true;
-    }
-
-    void CloudImposterRenderElement::mfPrepare(bool /* bCheckOverflow */)
-    {
-    }
-
-    bool CloudImposterRenderElement::mfDraw(CShader* /* ef */, SShaderPass* /* pPass */)
     {
         return true;
     }

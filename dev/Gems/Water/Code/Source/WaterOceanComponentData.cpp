@@ -106,7 +106,7 @@ namespace Water
 
     void WaterOceanComponentData_UpdateOceanMaterial(const AZStd::string& materialName)
     {
-        if (gEnv->p3DEngine)
+        if (gEnv && gEnv->p3DEngine)
         {
             auto pMaterial = WaterOceanComponentData_LoadMaterial(materialName);
             if (pMaterial)
@@ -118,10 +118,10 @@ namespace Water
 
     void WaterOceanComponentData_UpdateOceanBuoyancy(float height)
     {
-        if (gEnv->p3DEngine && gEnv->p3DEngine->GetITerrain())
+        if (gEnv && gEnv->p3DEngine && gEnv->p3DEngine->GetITerrain())
         {
             // updates the buoyancy area associated with the ocean.
-            gEnv->p3DEngine->GetITerrain()->SetOceanWaterLevel(height); 
+            gEnv->p3DEngine->GetITerrain()->SetOceanWaterLevel(height);
         }
     }
 

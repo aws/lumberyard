@@ -1659,6 +1659,12 @@ void CServiceNetwork::Run()
             updatingConnectionsToClose = m_connectionsToClose;
         }
 
+        if ((!gEnv) || (!gEnv->pTimer))
+        {
+            Sleep(5);
+            continue;
+        }
+
         // Update network time
         m_networkTime = gEnv->pTimer->GetAsyncTime().GetMilliSecondsAsInt64();
 

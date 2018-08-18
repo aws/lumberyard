@@ -101,7 +101,7 @@ namespace EMotionFX
 
             //////////////////////////////////////////////////////////////////////////
             // AnimGraphComponentRequestBus::Handler
-            EMotionFX::AnimGraphInstance* GetAnimGraphInstance() override { return m_animGraphInstance.get(); }
+            EMotionFX::AnimGraphInstance* GetAnimGraphInstance() override { return m_animGraphInstance ? m_animGraphInstance.get() : nullptr; }
             AZ::u32 FindParameterIndex(const char* parameterName) override;
             void SetParameterFloat(AZ::u32 parameterIndex, float value) override;
             void SetParameterBool(AZ::u32 parameterIndex, bool value) override;

@@ -22,7 +22,7 @@ def build(bld):
                        bld.Path('Code/CryEngine/CryCommon')],  
         pch         = 'Source/ScriptCanvasPhysics_precompiled.cpp', 
         file_list   = ['ScriptCanvasPhysics.waf_files'],
-        test_all_file_list = ['ScriptCanvasPhysics_tests.waf_files'],
+        test_all_file_list = ['scriptcanvasphysics_tests.waf_files'],
 
         win_features    = ['crcfix'],
     )

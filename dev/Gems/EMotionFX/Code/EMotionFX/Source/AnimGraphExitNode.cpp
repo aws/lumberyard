@@ -10,7 +10,8 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphExitNode.h"
 #include "AnimGraphInstance.h"
@@ -18,42 +19,16 @@
 #include "AnimGraphStateMachine.h"
 #include "AnimGraphManager.h"
 #include "EMotionFXManager.h"
+#include <EMotionFX/Source/AnimGraph.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    AnimGraphExitNode::AnimGraphExitNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphExitNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphExitNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
-
-    // destructor
-    AnimGraphExitNode::~AnimGraphExitNode()
-    {
-    }
-
-
-    // create
-    AnimGraphExitNode* AnimGraphExitNode::Create(AnimGraph* animGraph)
-    {
-        return new AnimGraphExitNode(animGraph);
-    }
-
-
-    AnimGraphObjectData* AnimGraphExitNode::CreateObjectData()
-    {
-        return new UniqueData(this, nullptr);
-    }
-
-
-    // register the ports
-    void AnimGraphExitNode::RegisterPorts()
+    AnimGraphExitNode::AnimGraphExitNode()
+        : AnimGraphNode()
     {
         // setup the output ports
         InitOutputPorts(1);
@@ -61,9 +36,22 @@ namespace EMotionFX
     }
 
 
-    // register the parameters
-    void AnimGraphExitNode::RegisterAttributes()
+    AnimGraphExitNode::~AnimGraphExitNode()
     {
+    }
+
+
+    bool AnimGraphExitNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -81,28 +69,13 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* AnimGraphExitNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        AnimGraphExitNode* clone = new AnimGraphExitNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // pre-create unique data object
     void AnimGraphExitNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (uniqueData == nullptr)
         {
-            //uniqueData = new UniqueData(this, animGraphInstance);
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew AnimGraphExitNode::UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
         else
@@ -250,13 +223,6 @@ namespace EMotionFX
     }
 
 
-    // get the blend node type string
-    const char* AnimGraphExitNode::GetTypeString() const
-    {
-        return "AnimGraphExitNode";
-    }
-
-
     // reset flags
     void AnimGraphExitNode::RecursiveResetFlags(AnimGraphInstance* animGraphInstance, uint32 flagsToDisable)
     {
@@ -269,5 +235,30 @@ namespace EMotionFX
             uniqueData->mPreviousNode->RecursiveResetFlags(animGraphInstance, flagsToDisable);
         }
     }
-}   // namespace EMotionFX
 
+
+    void AnimGraphExitNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<AnimGraphExitNode, AnimGraphNode>()
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<AnimGraphExitNode>("Exit Node", "Exit node attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ;
+    }
+} // namespace EMotionFX

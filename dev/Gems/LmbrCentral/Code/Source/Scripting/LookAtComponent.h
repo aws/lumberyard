@@ -18,8 +18,6 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/TransformBus.h>
 
-#include <AzFramework/Math/MathUtils.h>
-
 namespace LmbrCentral
 {
     //=========================================================================
@@ -81,7 +79,7 @@ namespace LmbrCentral
 
         // Serialized data
         AZ::EntityId m_targetId;
-        AzFramework::Axis m_forwardAxis;
+        AZ::Transform::Axis m_forwardAxis;
     };
 
 }//namespace LmbrCentral

@@ -13,6 +13,8 @@
 import os
 from resource_manager_common import constant
 
+import mappings
+
 from errors import HandledError
 from util import Args
 
@@ -159,6 +161,7 @@ def __rename(credentials, old_name, new_name):
     credentials.remove_section(old_name)
 
 def default(context, args):
+    old_default = context.config.user_default_profile
 
     if args.set is not None:
         credentials = context.aws.load_credentials()
@@ -167,5 +170,9 @@ def default(context, args):
         context.config.set_user_default_profile(args.set)
     elif args.clear:
         context.config.clear_user_default_profile()
+
+    # update mappings if default profile changed
+    if old_default != context.config.user_default_profile:
+        mappings.update(context, args)
 
     context.view.default_profile(context.config.user_default_profile)

@@ -335,6 +335,12 @@ void DockableAttributePanel::SetEnabledParameter(CParticleItem* item, bool enabl
     {
         previousState = effect->IsEnabled();
         effect->SetEnabled(enable);
+        // This enable function is not updated through Cry reflection
+        // Need to update particle params cached in UI if the particle being toggled is currently being selected.
+        if (m_pParticleUI && m_pParticleUI->m_localParticleEffect == effect)
+        {
+            m_pParticleUI->m_localParams.bEnabled = enable;
+        }
     }
     if (previousState == enable)
     {

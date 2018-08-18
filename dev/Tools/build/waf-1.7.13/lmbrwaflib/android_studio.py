@@ -256,6 +256,22 @@ def indent_text(text, indent, stream):
 
 
 ################################################################
+class GradleBool:
+    """
+    Special bool to bypass null checks and force write the value
+    whereas a normal bool will be skipped if false
+    """
+    def __init__(self, val):
+        self._val = val
+
+    def __nonzero__(self):
+        return True
+
+    def __str__(self):
+        return str(self._val).lower()
+
+
+################################################################
 class GradleList(list):
     """
     Wrapped list to determine when to use special formating
@@ -708,12 +724,10 @@ class Builds(GradleNode):
 
     ################################
     def add_build_type(self, build_name, **build_props):
+        debuggable = build_name in ('debug', 'profile')
+
         if build_name not in ['debug', 'release']:
             build_name = 'create("%s")' % build_name
-
-        debuggable = False
-        if 'debug' in build_name:
-            debuggable = True
 
         build_type = self.types[build_name]
         build_type.set_debuggable(build_props.get('debuggable', debuggable))
@@ -769,6 +783,31 @@ class Products(GradleNode):
 
 
 ################################################################
+class JavaCompileOptions(GradleNode):
+    gradle_name = 'compileOptions.with'
+
+    class Version:
+        def __init__(self, version):
+            self._version = version.replace('.', '_')
+        def __nonzero__(self):
+            return True
+        def __str__(self):
+            return 'JavaVersion.VERSION_{}'.format(self._version)
+
+    def __init__(self, java_version):
+        self.source_compatibility = JavaCompileOptions.Version(java_version)
+        self.target_compatibility = JavaCompileOptions.Version(java_version)
+
+
+################################################################
+class LintOptions(GradleNode):
+    gradle_name = 'lintOptions.with'
+
+    def __init__(self):
+        self.check_release_builds = GradleBool(False)
+
+
+################################################################
 class Android(GradleNode):
     gradle_name = 'android'
 
@@ -820,6 +859,11 @@ class Android(GradleNode):
     def validate_and_set_main_dependencies(self, dependencies):
         self.sources.validate_and_set_main_dependencies(dependencies)
 
+    def add_java_compile_options(self, java_version):
+        self.java_options = JavaCompileOptions(java_version)
+        self.lint_options = LintOptions()
+
+
 ################################################################
 class ModelType:
     Native_lib, Application, Android_lib = range(3)
@@ -835,13 +879,14 @@ class Model(GradleNode):
         self.__parent = parent
 
     ################################
-    def apply_platform_configs(self, ctx, platform_abis, platform_defines, configs):
+    def apply_platform_configs(self, ctx, platform_abis, platform_defines, configs, java_version):
         if self.__parent.type == ModelType.Android_lib:
             return
 
         android = self.android
 
         if self.__parent.type == ModelType.Application:
+            self.android.add_java_compile_options(java_version)
             signing_props = {
                 'key_alias' : ctx.get_android_dev_keystore_alias(),
                 'store_file' : ctx.get_android_dev_keystore_path(),
@@ -1200,6 +1245,7 @@ class AndroidStudioProject:
         self.configs = []
         self.target_abis = {}
         self.target_defines = {}
+        self.java_version = ''
         self.project_spec = ''
         self.ctx = ctx
 
@@ -1211,6 +1257,7 @@ class AndroidStudioProject:
     def set_platforms_and_configs(self, ctx, target_abis, configs):
         self.configs = configs
         self.target_abis = target_abis
+        java_versions = []
 
         # collect all the configuration defines and filter out the
         # common ones based on the target platform
@@ -1221,8 +1268,14 @@ class AndroidStudioProject:
                 env = ctx.all_envs[env_name]
 
                 config_lists.append(env['DEFINES'])
+                java_versions.append(env['JAVA_VERSION'])
 
             self.target_defines[target] = set(config_lists[0]).intersection(*config_lists[1:])
+
+        java_versions = list(set(java_versions))
+        if len(java_versions) > 1:
+            ctx.fatal('[ERROR] Multiple Java compatibility versions detected across Android build targets.  Only one version can be specified in JAVA_VERSION')
+        self.java_version = java_versions[0]
 
     ################################
     def add_target_to_project(self, project_name, type, project_task_gen):
@@ -1231,7 +1284,7 @@ class AndroidStudioProject:
         android_module = Module(type)
         android_model = Model(android_module)
 
-        android_model.apply_platform_configs(self.ctx, self.target_abis, self.target_defines, self.configs)
+        android_model.apply_platform_configs(self.ctx, self.target_abis, self.target_defines, self.configs, self.java_version)
         android_model.process_target(self, project_name, project_task_gen)
 
         android_module.addNode(android_model, android_model.gradle_name)

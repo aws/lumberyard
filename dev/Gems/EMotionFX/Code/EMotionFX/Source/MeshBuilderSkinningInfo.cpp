@@ -15,10 +15,14 @@
 #include "MeshBuilderSubMesh.h"
 #include "MeshBuilder.h"
 #include "MeshBuilderVertexAttributeLayers.h"
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MeshBuilderSkinningInfo, MeshAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(MeshBuilderSkinningInfo::Influence, MeshAllocator, 0)
+
+
     // constructor
     MeshBuilderSkinningInfo::MeshBuilderSkinningInfo(uint32 numOrgVertices)
         : BaseObject()
@@ -38,7 +42,7 @@ namespace EMotionFX
     // creation
     MeshBuilderSkinningInfo* MeshBuilderSkinningInfo::Create(uint32 numOrgVertices)
     {
-        return new MeshBuilderSkinningInfo(numOrgVertices);
+        return aznew MeshBuilderSkinningInfo(numOrgVertices);
     }
 
 

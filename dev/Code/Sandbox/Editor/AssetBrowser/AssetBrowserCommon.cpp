@@ -14,7 +14,7 @@
 // Description : Implementation of AssetBrowserCommon.h
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AssetBrowserCommon.h"
 #include "Include/IAssetViewer.h"
 #include "StringUtils.h"

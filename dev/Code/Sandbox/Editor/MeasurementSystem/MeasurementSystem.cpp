@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "MeasurementSystem.h"
 #include <MeasurementSystem/ui_MeasurementSystem.h>
 #include "QtViewPaneManager.h"

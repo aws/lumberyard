@@ -10,22 +10,22 @@
 *
 */
 
-#include "BlendTreeFloatConstantNode.h"
-#include <MCore/Source/AttributeSettings.h>
-
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <EMotionFX/Source/BlendTreeFloatConstantNode.h>
 
 
 namespace EMotionFX
 {
-    BlendTreeFloatConstantNode::BlendTreeFloatConstantNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeFloatConstantNode, AnimGraphAllocator, 0)
 
-        SetNodeInfo("0.0");
+    BlendTreeFloatConstantNode::BlendTreeFloatConstantNode()
+        : AnimGraphNode()
+        , m_value(0.0f)
+    {
+        InitOutputPorts(1);
+        SetupOutputPort("Output", OUTPUTPORT_RESULT, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_RESULT);
     }
 
 
@@ -34,32 +34,40 @@ namespace EMotionFX
     }
 
 
-    BlendTreeFloatConstantNode* BlendTreeFloatConstantNode::Create(AnimGraph* animGraph)
+    void BlendTreeFloatConstantNode::Reinit()
     {
-        return new BlendTreeFloatConstantNode(animGraph);
+        AZStd::string valueString = AZStd::string::format("%.6f", m_value);
+
+        // Remove the zero's at the end.
+        const size_t dotZeroOffset = valueString.find(".0");
+        if (AzFramework::StringFunc::Strip(valueString, "0", false, false, true))   // If something got stripped.
+        {
+            // If it was say "5.0" and we removed all zeros at the end, we are left with "5.".
+            // Turn that into 5.0 again by adding the 0.
+            // We detect this by checking if we can still find a ".0" after the stripping of zeros.
+            // If there was a ".0" in the string before, and now there isn't, we have to add the 0 back to it.
+            const size_t dotZeroOffsetAfterTrim = valueString.find(".0");
+            if (dotZeroOffset != AZStd::string::npos && dotZeroOffsetAfterTrim == AZStd::string::npos)
+                valueString += "0";
+        }
+
+        SetNodeInfo(valueString.c_str());
+
+        AnimGraphNode::Reinit();
     }
 
 
-    AnimGraphObjectData* BlendTreeFloatConstantNode::CreateObjectData()
+    bool BlendTreeFloatConstantNode::InitAfterLoading(AnimGraph* animGraph)
     {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
 
+        InitInternalAttributesForAllInstances();
 
-    void BlendTreeFloatConstantNode::RegisterPorts()
-    {
-        InitOutputPorts(1);
-        SetupOutputPort("Output", OUTPUTPORT_RESULT, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_RESULT);
-    }
-
-
-    void BlendTreeFloatConstantNode::RegisterAttributes()
-    {
-        MCore::AttributeSettings* param = RegisterAttribute("Constant Value", "constantValue", "The value that the node will output.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        param->SetDefaultValue(MCore::AttributeFloat::Create(0.0f));
-        param->SetMinValue(MCore::AttributeFloat::Create(-FLT_MAX));
-        param->SetMaxValue(MCore::AttributeFloat::Create(+FLT_MAX));
-        param->SetReinitGuiOnValueChange(true);
+        Reinit();
+        return true;
     }
 
 
@@ -75,46 +83,9 @@ namespace EMotionFX
     }
 
 
-    AnimGraphObject* BlendTreeFloatConstantNode::Clone(AnimGraph* animGraph)
-    {
-        BlendTreeFloatConstantNode* clone = new BlendTreeFloatConstantNode(animGraph);
-        CopyBaseObjectTo(clone);
-        return clone;
-    }
-
-
     void BlendTreeFloatConstantNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        const float result = GetAttributeFloatAsFloat(ATTRIB_VALUE);
-        GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT)->SetValue(result);
-    }
-
-
-    const char* BlendTreeFloatConstantNode::GetTypeString() const
-    {
-        return "BlendTreeFloatConstantNode";
-    }
-
-
-    void BlendTreeFloatConstantNode::OnUpdateAttributes()
-    {
-        const float value = GetAttributeFloatAsFloat(ATTRIB_VALUE);
-        AZStd::string valueString = AZStd::string::format("%.6f", value);
-        
-        // Remove the zero's at the end.
-        const size_t dotZeroOffset = valueString.find(".0");
-        if (AzFramework::StringFunc::Strip(valueString, "0", false, false, true))   // If something got stripped.
-        {
-            // If it was say "5.0" and we removed all zeros at the end, we are left with "5.".
-            // Turn that into 5.0 again by adding the 0.
-            // We detect this by checking if we can still find a ".0" after the stripping of zeros.
-            // If there was a ".0" in the string before, and now there isn't, we have to add the 0 back to it.
-            const size_t dotZeroOffsetAfterTrim = valueString.find(".0");
-            if (dotZeroOffset != AZStd::string::npos && dotZeroOffsetAfterTrim == AZStd::string::npos)
-                valueString += "0";
-        }
-
-        SetNodeInfo(valueString.c_str());
+        GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT)->SetValue(m_value);
     }
 
 
@@ -129,5 +100,39 @@ namespace EMotionFX
         return false;
     }
 
-}   // namespace EMotionFX
+    void BlendTreeFloatConstantNode::SetValue(float value)
+    {
+        m_value = value;
+    }
 
+    void BlendTreeFloatConstantNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeFloatConstantNode, AnimGraphNode>()
+            ->Version(1)
+            -> Field("value", &BlendTreeFloatConstantNode::m_value)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeFloatConstantNode>("Float Constant", "Float constant attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeFloatConstantNode::m_value, "Constant Value", "The value that the node will output.")
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeFloatConstantNode::Reinit)
+            ;
+    }
+} // namespace EMotionFX

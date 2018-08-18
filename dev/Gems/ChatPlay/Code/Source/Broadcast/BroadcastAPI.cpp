@@ -40,16 +40,16 @@ namespace ChatPlay
 
     private:
         typedef std::tuple<std::string, std::string> UrlKeyPair;
-        typedef std::function<void()> BroadcastEvent;
+        typedef AZStd::function<void()> BroadcastEvent;
 
         template <typename T>
         void GetValue(const ChannelId& channelID, ApiKey type,
-            const std::function<void(ApiCallResult, Aws::Http::HttpResponseCode, T)>& userCallback
+            const AZStd::function<void(ApiCallResult, Aws::Http::HttpResponseCode, T)>& userCallback
             );
 
         template <typename T>
         void JSONParse(Aws::Http::HttpResponseCode httpResponse, const Aws::Utils::Json::JsonValue& jsonValue, const std::string& pathToKey,
-            const std::function<void(ApiCallResult, Aws::Http::HttpResponseCode, T)>& userCallback
+            const AZStd::function<void(ApiCallResult, Aws::Http::HttpResponseCode, T)>& userCallback
             );
 
         std::string MakeTwitchURL(const ChannelId& channelID, ApiKey type);
@@ -67,7 +67,7 @@ namespace ChatPlay
 
         std::map<ApiKey, UrlKeyPair> m_urlMap;
 
-        std::vector<BroadcastEvent> m_events;
+        AZStd::vector<BroadcastEvent> m_events;
         CryCriticalSectionNonRecursive m_eventLock;
     };
 
@@ -138,11 +138,11 @@ namespace ChatPlay
     {
         /* DISPATCH EVENT THREAD */
 
-        std::vector<BroadcastEvent> events;
+        AZStd::vector<BroadcastEvent> events;
 
         {
             CryAutoLock<CryCriticalSectionNonRecursive> lock(m_eventLock);
-            std::swap(m_events, events);
+            AZStd::swap(m_events, events);
         }
 
         for (auto event : events)
@@ -154,7 +154,7 @@ namespace ChatPlay
     }
 
     template <typename T>
-    void TwitchAPI::GetValue(const ChannelId& channelID, ApiKey type, const std::function<void(ApiCallResult, Aws::Http::HttpResponseCode, T)>& userCallback)
+    void TwitchAPI::GetValue(const ChannelId& channelID, ApiKey type, const AZStd::function<void(ApiCallResult, Aws::Http::HttpResponseCode, T)>& userCallback)
     {
         std::string requestUrl = MakeTwitchURL(channelID, type);
         std::string pathToKey = std::get<1>(m_urlMap[type]);
@@ -169,7 +169,7 @@ namespace ChatPlay
     }
 
     template <typename T>
-    void TwitchAPI::JSONParse(Aws::Http::HttpResponseCode httpResponse, const Aws::Utils::Json::JsonValue& jsonValue, const std::string& pathToKey, const std::function<void(ApiCallResult, Aws::Http::HttpResponseCode, T)>& userCallback)
+    void TwitchAPI::JSONParse(Aws::Http::HttpResponseCode httpResponse, const Aws::Utils::Json::JsonValue& jsonValue, const std::string& pathToKey, const AZStd::function<void(ApiCallResult, Aws::Http::HttpResponseCode, T)>& userCallback)
     {
         /* HTTP MANAGER THREAD */
 
@@ -182,24 +182,24 @@ namespace ChatPlay
             {
                 if (JSONTypeCheck<T>(leafJsonValue))
                 {
-                    RegisterEvent(std::bind(userCallback, ApiCallResult::SUCCESS, httpResponse, JSONGetValue<T>(leafJsonValue)));
+                    RegisterEvent(AZStd::bind(userCallback, ApiCallResult::SUCCESS, httpResponse, JSONGetValue<T>(leafJsonValue)));
                     return;
                 }
                 else
                 {
-                    RegisterEvent(std::bind(userCallback, ApiCallResult::ERROR_UNEXPECTED_TYPE, httpResponse, T()));
+                    RegisterEvent(AZStd::bind(userCallback, ApiCallResult::ERROR_UNEXPECTED_TYPE, httpResponse, T()));
                     return;
                 }
             }
             else
             {
-                RegisterEvent(std::bind(userCallback, ApiCallResult::ERROR_NULL_OBJECT, httpResponse, T()));
+                RegisterEvent(AZStd::bind(userCallback, ApiCallResult::ERROR_NULL_OBJECT, httpResponse, T()));
                 return;
             }
         }
 
         // GET request failed, queue up the callback with the error code
-        RegisterEvent(std::bind(userCallback, ApiCallResult::ERROR_HTTP_REQUEST_FAILED, httpResponse, T()));
+        RegisterEvent(AZStd::bind(userCallback, ApiCallResult::ERROR_HTTP_REQUEST_FAILED, httpResponse, T()));
     }
 
     // Helper function to check if a key in the form "node.node.leaf" exists:

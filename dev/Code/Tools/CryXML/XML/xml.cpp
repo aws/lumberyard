@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include <StdAfx.h>
+#include <stdafx.h>
 
 //#define _CRT_SECURE_NO_DEPRECATE 1
 //#define _CRT_NONSTDC_NO_DEPRECATE
@@ -527,7 +527,7 @@ bool CXmlNode::getAttr(const char* key, int64& value) const
     const char* svalue = GetValue(key);
     if (svalue)
     {
-        sscanf(svalue, "%" PRId64, &value);
+        azsscanf(svalue, "%" PRId64, &value);
         return true;
     }
     return false;
@@ -541,11 +541,11 @@ bool CXmlNode::getAttr(const char* key, uint64& value, bool useHexFormat) const
     {
         if (useHexFormat)
         {
-            sscanf(svalue, "%" PRIX64, &value);
+            azsscanf(svalue, "%" PRIX64, &value);
         }
         else
         {
-            sscanf(svalue, "%" PRIu64, &value);
+            azsscanf(svalue, "%" PRIu64, &value);
         }
         return true;
     }
@@ -591,7 +591,7 @@ bool CXmlNode::getAttr(const char* key, Ang3& value) const
     if (svalue)
     {
         float x, y, z;
-        if (sscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
+        if (azsscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
         {
             value(x, y, z);
             return true;
@@ -606,7 +606,7 @@ bool CXmlNode::getAttr(const char* key, Vec2& value) const
     if (svalue)
     {
         float x, y;
-        if (sscanf(svalue, "%f,%f", &x, &y) == 2)
+        if (azsscanf(svalue, "%f,%f", &x, &y) == 2)
         {
             value = Vec2(x, y);
             return true;
@@ -621,7 +621,7 @@ bool CXmlNode::getAttr(const char* key, Vec2d& value) const
     if (svalue)
     {
         double x, y;
-        if (sscanf(svalue, "%lf,%lf", &x, &y) == 2)
+        if (azsscanf(svalue, "%lf,%lf", &x, &y) == 2)
         {
             value = Vec2d(x, y);
             return true;
@@ -636,7 +636,7 @@ bool CXmlNode::getAttr(const char* key, Vec3& value) const
     if (svalue)
     {
         float x, y, z;
-        if (sscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
+        if (azsscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
         {
             value(x, y, z);
             return true;
@@ -651,7 +651,7 @@ bool CXmlNode::getAttr(const char* key, Vec4& value) const
     if (svalue)
     {
         float x, y, z, w;
-        if (sscanf(svalue, "%f,%f,%f,%f", &x, &y, &z, &w) == 3)
+        if (azsscanf(svalue, "%f,%f,%f,%f", &x, &y, &z, &w) == 3)
         {
             value(x, y, z, w);
             return true;
@@ -666,7 +666,7 @@ bool CXmlNode::getAttr(const char* key, Vec3d& value) const
     if (svalue)
     {
         double x, y, z;
-        if (sscanf(svalue, "%lf,%lf,%lf", &x, &y, &z) == 3)
+        if (azsscanf(svalue, "%lf,%lf,%lf", &x, &y, &z) == 3)
         {
             value = Vec3d(x, y, z);
             return true;
@@ -681,7 +681,7 @@ bool CXmlNode::getAttr(const char* key, Quat& value) const
     if (svalue)
     {
         float w, x, y, z;
-        if (sscanf(svalue, "%f,%f,%f,%f", &w, &x, &y, &z) == 4)
+        if (azsscanf(svalue, "%f,%f,%f,%f", &w, &x, &y, &z) == 4)
         {
             if (fabs(w) > VEC_EPSILON || fabs(x) > VEC_EPSILON || fabs(y) > VEC_EPSILON || fabs(z) > VEC_EPSILON)
             {
@@ -702,7 +702,7 @@ bool CXmlNode::getAttr(const char* key, ColorB& value) const
     if (svalue)
     {
         unsigned int r, g, b, a = 255;
-        int numFound = sscanf(svalue, "%u,%u,%u,%u", &r, &g, &b, &a);
+        int numFound = azsscanf(svalue, "%u,%u,%u,%u", &r, &g, &b, &a);
         if (numFound == 3 || numFound == 4)
         {
             // If we only found 3 values, a should be unchanged, and still be 255
@@ -1062,7 +1062,8 @@ bool CXmlNode::saveToFile(const char* fileName)
     CrySetFileAttributes(fileName, 0x00000080);  // FILE_ATTRIBUTE_NORMAL
 #endif //defined(WIN32) && !defined(CRYTOOLS)
     XmlString xml = getXML();
-    FILE* file = fopen(fileName, "wt");
+    FILE* file = nullptr;
+    azfopen(&file, fileName, "wt");
     if (file)
     {
         const char* sxml = (const char*)xml;
@@ -1364,7 +1365,8 @@ XmlNodeRef XmlParser::parse(const char* fileName)
     }
 #else
     std::vector<char> buf;
-    FILE* file = fopen(fileName, "rb");
+    FILE* file = nullptr;
+    azfopen(&file, fileName, "rb");
     if (file)
     {
         fseek(file, 0, SEEK_END);

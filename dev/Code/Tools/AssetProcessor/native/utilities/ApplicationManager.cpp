@@ -41,8 +41,8 @@
 #include <QFileInfo>
 #include <QTranslator>
 #include <QByteArray>
-#include <QCommandlineparser>
-#include <QCommandlineoption>
+#include <QCommandLineParser>
+#include <QCommandLineOption>
 
 #include <QMessageBox>
 #include <QSettings>

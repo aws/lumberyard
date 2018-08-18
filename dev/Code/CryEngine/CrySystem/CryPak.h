@@ -311,6 +311,9 @@ protected:
     typedef std::set<CCryPakFindData_AutoPtr> CryPakFindDataSet;
     CryPakFindDataSet m_setFindData;
 
+    // given the source relative path, constructs the full path to the file according to the flags
+    const char* AdjustFileNameImpl(const char* src, char* dst, size_t dstSize, unsigned nFlags, bool skipMods) override;
+
 private:
     IMiniLog* m_pLog;
 
@@ -359,11 +362,9 @@ private:
 
     bool InitPack(const char* szBasePath, unsigned nFlags = FLAGS_PATH_REAL);
 
-    const char* AdjustFileNameInternal(const char* src, char dst[g_nMaxPath], unsigned nFlags);
+    const char* AdjustFileNameInternal(const char* src, char* dst, size_t dstSize, unsigned nFlags);
 
 public:
-    // given the source relative path, constructs the full path to the file according to the flags
-    const char* AdjustFileName(const char* src, char dst[g_nMaxPath], unsigned nFlags, bool skipMods = false);
 
     // this is the start of indexation of pseudofiles:
     // to the actual index , this offset is added to get the valid handle
@@ -680,6 +681,7 @@ private:
     protected:
         minigui::IMiniTable* m_pTable;
         CCryPak* m_pPak;
+
     };
 
     CPakFileWidget* m_pWidget;

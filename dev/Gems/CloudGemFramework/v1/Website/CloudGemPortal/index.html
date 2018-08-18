@@ -11,29 +11,29 @@
     <link rel="icon" type="image/png" href="https://m.media-amazon.com/images/G/01/cloudcanvas/favicon/favicon-16x16._V510683448_.png" sizes="16x16" />
     <link rel="stylesheet" href="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/fontawesome/css/font-awesome.min._V522234553_.css">
     <link href="https://m.media-amazon.com/images/G/01/cloudcanvas/ng2-toastr/ng2-toastr.min._V504635404_.css" rel="stylesheet" />
-    
+
     <!-- 2. Configure SystemJS -->
     <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/systemjs/system._V518062568_.js"></script>
 
     <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/aws-cognito-sdk.min._V511621773_.js"></script>
-    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/amazon-cognito-identity.min._V511621774_.js"></script>    
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/amazon-cognito-identity.min._V511621774_.js"></script>
 
-    <!-- CognitoIdentity, APIGateway, CloudFormation, CognitoIdentityServiceProvider, S3, CloudWatch, MobileAnalytics -->        
+    <!-- CognitoIdentity, APIGateway, CloudFormation, CognitoIdentityServiceProvider, S3, CloudWatch, MobileAnalytics -->
     <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/aws-sdk-2.77.0.min._V518065551_.js"></script>
     <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/aws-sdk-mobile-analytics.min._V518065352_.js"></script>
 
-    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/momentjs/moment.min._V511042353_.js"></script>    
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/momentjs/moment_2.21.0.min._CB1520296932_.js"></script>
 
-    <script>        
+    <script>
         var parts = location.href.split("#")
         var fragment, app, dependencies = ""
 
         if(parts.length >= 2){
             fragment = parts[1]
-            var f_parts = fragment.split("&")            
+            var f_parts = fragment.split("&")
             if(f_parts.length >= 2){
                 app = atob(f_parts[0])
-                dependencies = atob(f_parts[1])                
+                dependencies = atob(f_parts[1])
             }
         }
     </script>
@@ -41,7 +41,7 @@
     <script id='bootstrap'>
         var bootstrap = { }
     </script>    
-    
+
     <script src="config.js"></script>
 
     <script id="systemjs_load">
@@ -79,7 +79,7 @@
                     Welcome to the Lumberyard Cloud Gem Portal
                 </div>
             </div>
-            <div class="row"> 
+            <div class="row">
                 <div class="col-12 text-center">
                     <img src="https://m.media-amazon.com/images/G/01/cloudcanvas/images/beaver_flat_animation_optimized_32._V518427760_.gif" />
                 </div>
@@ -93,5 +93,11 @@
     </div>
     </cc-app>
 </body>
+<!-- Leaflet -->
+<script src="https://m.media-amazon.com/images/G/01/cloudcanvas/leaflet/leaflet._CB1513030039_.js"></script>
+<script src="https://m.media-amazon.com/images/G/01/cloudcanvas/leaflet/leaflet-heat._CB1513103332_.js"></script>
+<script src="https://m.media-amazon.com/images/G/01/cloudcanvas/leaflet/easyPrint._CB1518114229_.js"></script>
+<!-- Misc Images -->
+
 
 </html>

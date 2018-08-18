@@ -1,0 +1,65 @@
+
+Follow these instructions to configure Lumberyard for a 2016 version of Wwise
+
+*** These instructions assumes Wwise version 2016.2.6.6153 ***
+
+
+Steps to configure backwards compatibility to Wwise 2016:
+
+1) Install Wwise locally via Wwise Launcher.  Make note of the installation directory.
+
+2) Create a folder named '2016.2.6.6153' under \3rdParty\Wwise\
+
+3) Copy the 'SDK' folder from the Wwise install location in step 1 to the 3rdPaty path in step 2.
+
+4) Open \dev\SetupAssistantConfig.json for edit, search for 'wwiseName'.  Replace that section with the following:
+
+        {
+            "identifier" : "wwise",
+            "name" : "wwiseName",
+            "version" : "2016.2.6.6153",
+            "source" : "Wwise/2016.2.6.6153",
+            "optional" : 1,
+            "description" : "wwiseDescriptionSummary",
+            "detailedInstructions" : "wwiseDetailedInstructions",
+            "roles" : ["compilegame", "compileengine", "compilesandbox", "compileandroid", "compileios"],
+            "hostOS" : ["windows", "macOS"],
+            "symlinks" :
+            [
+                {
+                    "source" : "Wwise/2016.2.6.6153/SDK",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
+                    "exampleFile" : "include/AK/AkWwiseSDKVersion.h"
+                },
+                {
+                    "compilers" : ["vc120"],
+                    "source" : "Wwise/2016.2.6.6153/SDK",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
+                    "exampleFile" : "x64_vc120/Release/lib/AkSoundEngine.lib"
+                },
+                {
+                    "compilers" : ["vc140", "vc141"],
+                    "source" : "Wwise/2016.2.6.6153/SDK",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
+                    "exampleFile" : "x64_vc140/Release/lib/AkSoundEngine.lib"
+                }
+            ]
+        },
+        
+   Save the file.
+
+5) Navigate to \dev\Code\CryEngine\CrySoundSystem\implementations\CryAudioImplWwise\ (same directory as this README file)
+   and perform the following actions:
+
+	1) Rename 'wscript' to 'wscript_wwise2017'
+	2) Rename 'wscript_wwise2016' to 'wscript'
+
+6) In the same directory as step 5, there is a file named wwise2016.json.  Copy or move this file to \dev\_WAF_\3rdParty\
+
+
+Now run Setup Assistant and make sure Wwise is found successfully in the Optional SDKs page.
+Run 'lmbr_waf configure' again, make sure there are no errors.
+Once that's done, build the engine again, this time it will link with your 2016 version of Wwise.
+
+For teams using source control, the Wwise 2016 SDK files should be added to the depot.
+Also all files added or modified in steps 4, 5, and 6 should be submitted.

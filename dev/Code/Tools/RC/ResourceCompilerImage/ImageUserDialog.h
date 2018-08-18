@@ -214,7 +214,7 @@ class MainThreadExecutor : public QObject
 {
     Q_OBJECT
 public:
-    static void execute(std::function<void()> f);
+    static void execute(AZStd::function<void()> f);
 
 private:
     MainThreadExecutor();

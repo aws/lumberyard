@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include "MotionListWindow.h"
 #include "MotionWindowPlugin.h"
 #include <QMenu>
@@ -245,15 +246,9 @@ namespace EMStudio
         spacerWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
         buttonLayout->addWidget(spacerWidget);
 
-        mFindWidget = new MysticQt::SearchButton(this, MysticQt::GetMysticQt()->FindIcon("Images/Icons/SearchClearButton.png"));
-        connect(mFindWidget->GetSearchEdit(), SIGNAL(textChanged(const QString&)), this, SLOT(SearchStringChanged(const QString&)));
-
-        QHBoxLayout* searchLayout = new QHBoxLayout();
-        searchLayout->addWidget(new QLabel("Find:"), 0, Qt::AlignRight);
-        searchLayout->addWidget(mFindWidget);
-        searchLayout->setSpacing(6);
-
-        buttonLayout->addLayout(searchLayout);
+        m_searchWidget = new AzQtComponents::FilteredSearchWidget(this);
+        connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &MotionListWindow::OnTextFilterChanged);
+        buttonLayout->addWidget(m_searchWidget);
 
         connect(mClearMotionsButton, SIGNAL(clicked()), this, SLOT(OnClearMotionsButtonPressed()));
         connect(mRemoveMotionsButton, SIGNAL(clicked()), this, SLOT(OnRemoveMotionsButtonPressed()));
@@ -271,9 +266,9 @@ namespace EMStudio
 
 
     // called when the filter string changed
-    void MotionListWindow::SearchStringChanged(const QString& text)
+    void MotionListWindow::OnTextFilterChanged(const QString& text)
     {
-        mFindString = text.toLower().toUtf8().data();
+        m_searchWidgetText = text.toLower().toUtf8().data();
         ReInit();
     }
 
@@ -424,7 +419,7 @@ namespace EMStudio
 
         AZStd::string motionNameLowered = entry->mMotion->GetNameString();
         AZStd::to_lower(motionNameLowered.begin(), motionNameLowered.end());
-        if (mFindString.empty() || motionNameLowered.find(mFindString) != AZStd::string::npos)
+        if (m_searchWidgetText.empty() || motionNameLowered.find(m_searchWidgetText) != AZStd::string::npos)
         {
             return true;
         }

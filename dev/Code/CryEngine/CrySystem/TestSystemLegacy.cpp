@@ -21,10 +21,9 @@
 #include "IGame.h"                                                  // IGame
 #include "IGameFramework.h"                                 // IGameFramework
 #include "TestSystemLegacy.h"
-#include "../CryAction/IGameRulesSystem.h"  // IGameRulesSystem
 #include "DebugCallStack.h"                                 // DebugCallStack
 
-#include "../CryAction/ILevelSystem.h"          // ILevelSystemListener
+#include "ILevelSystem.h"          // ILevelSystemListener
 
 extern int CryMemoryGetAllocatedSize();
 
@@ -127,18 +126,16 @@ void CTestSystemLegacy::ApplicationTest(const char* szParam)
         return;
     }
 
-    IGame* pGame = gEnv->pGame;
-
     if (_stricmp(m_sParameter.c_str(), "LevelStats") == 0)
     {
-        if (pGame)
+        if (gEnv->pSystem && gEnv->pSystem->GetILevelSystem())
         {
             static CLevelListener listener(*this);
 
             if (m_bFirstUpdate)
             {
                 DeactivateCrashDialog();
-                pGame->GetIGameFramework()->GetILevelSystem()->AddListener(&listener);
+                gEnv->pSystem->GetILevelSystem()->AddListener(&listener);
             }
         }
     }
@@ -158,7 +155,10 @@ void CTestSystemLegacy::LogLevelStats()
     char sVersion[128];
     ver.ToString(sVersion, sizeof(sVersion));
 
-    GetILog()->Log("   LevelStats Level='%s'   Ver=%s", gEnv->pGame->GetIGameFramework()->GetLevelName(), sVersion);
+    if (gEnv->pGame && gEnv->pGame->GetIGameFramework())
+    {
+        GetILog()->Log("   LevelStats Level='%s'   Ver=%s", gEnv->pGame->GetIGameFramework()->GetLevelName(), sVersion);
+    }
 
     {
         // copied from CBudgetingSystem::MonitorSystemMemory
@@ -215,8 +215,6 @@ void CTestSystemLegacy::Update()
         return;
     }
 
-    IGame* pGame = gEnv->pGame;
-
     if (m_bFirstUpdate)
     {
         if (_stricmp(m_sParameter.c_str(), "TimeDemo") == 0)
@@ -248,7 +246,6 @@ void CTestSystemLegacy::BeforeRender()
         return;
     }
 
-    IGame* pGame = gEnv->pGame;
     I3DEngine* p3DEngine = gEnv->p3DEngine;
     IRenderer* pRenderer = gEnv->pRenderer;
 

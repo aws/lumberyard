@@ -40,17 +40,6 @@ public:
         bool bNoUserDialog = false,
         const wchar_t* szWorkingDirectory = 0,
         const wchar_t* szRootPath = 0) override;
-
-    virtual RCProcessHandle AsyncCallResourceCompiler(
-        const char* szFileName = 0,
-        const char* szAdditionalSettings = 0,
-        bool bMayShowWindow = true,
-        ERcExePath rcExePath = eRcExePath_registry,
-        bool bSilent = false,
-        bool bNoUserDialog = false,
-        const wchar_t* szWorkingDirectory = 0,
-        const wchar_t* szRootPath = 0,
-        IResourceCompilerListener* listener = 0)  override;
 };
 
 #endif // CRY_ENABLE_RC_HELPER

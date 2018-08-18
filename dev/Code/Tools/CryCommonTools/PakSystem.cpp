@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PakSystem.h"
 #include "PathHelpers.h"
 #include "StringHelpers.h"
@@ -72,7 +72,8 @@ PakSystemFile* PakSystem::Open(const char* a_path, const char* a_mode)
     if (!bZip)
     {
         // Try to open the file.
-        FILE* const f = fopen(normalPath.c_str(), a_mode);
+        FILE* f = nullptr;
+        azfopen(&f, normalPath.c_str(), a_mode);
         if (f)
         {
             std::unique_ptr<PakSystemFile> file(new PakSystemFile());
@@ -92,7 +93,8 @@ PakSystemFile* PakSystem::Open(const char* a_path, const char* a_mode)
     if (bZip)
     {
         // a caller asked to open a .zip file. check if the .zip file on disk exist
-        FILE* const f = fopen(zipPath.c_str(), "rb");
+        FILE* f = nullptr;
+        azfopen(&f, zipPath.c_str(), "rb");
         if (f)
         {
             fclose(f);
@@ -198,7 +200,8 @@ bool PakSystem::ExtractNoOverwrite(const char* fileToExtract, const char* extrac
     }
 
     // Try to open a writable file
-    FILE* fFileOnDisk = fopen(extractToFile, "wb");
+    FILE* fFileOnDisk = nullptr;
+    azfopen(&fFileOnDisk, extractToFile, "wb");
     if (!fFileOnDisk)
     {
         Close(fileZip);

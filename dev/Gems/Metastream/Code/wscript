@@ -7,10 +7,10 @@ def build(bld):
             bld.ThirdPartyPath('civetweb', 'include'),
         ],
         disable_pch = True,
-        
+
         win_file_list = ['metastream_win.waf_files'],
-        
         win_defines = ['USE_WEBSOCKET'],
 
-        additional_settings = bld.Settings(files = bld.ThirdPartyPath('civetweb', 'src/CivetServer.cpp'), disable_pch = True),
+        win_x64_clang_cflags   = ['-Wno-deprecated-declarations'],
+        win_x64_clang_cxxflags = ['-fexceptions'],
     )

@@ -110,9 +110,13 @@ namespace AZ
         // If module is from DLL, return DLL name.
         if (m_dynamicHandle)
         {
-            const char* filepath = m_dynamicHandle->GetFilename().c_str();
-            const char* lastSlash = strrchr(filepath, '/');
-            return lastSlash ? lastSlash + 1 : filepath;
+            AZStd::string_view handleFilename(m_dynamicHandle->GetFilename().c_str());
+            AZStd::string_view::size_type lastSlash = handleFilename.find_last_of("\\/");
+            if (lastSlash != AZStd::string_view::npos)
+            {
+                handleFilename.lshorten(lastSlash + 1);
+            }
+            return handleFilename.data();
         }
         // If Module has its own RTTI info, return that name
         else if (m_module && !azrtti_istypeof<Module>(m_module))

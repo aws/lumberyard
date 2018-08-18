@@ -16,9 +16,9 @@
 //               initialize Metal contexts and detect hardware capabilities.
 
 #include <StdAfx.h>
-#include "METALDevice.hpp"
+#include "MetalDevice.hpp"
 #include "GLResource.hpp"
-
+#include <DriverD3D.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 @implementation MetalView
@@ -90,6 +90,34 @@
 {
     return TRUE;
 }
+
+#if defined(AZ_PLATFORM_APPLE_IOS)
+- (void)viewWillTransitionToSize: (CGSize)size withTransitionCoordinator: (id<UIViewControllerTransitionCoordinator>) coordinator
+{
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+    
+    NativeScreenType* nativeScreen = [NativeScreenType mainScreen];
+    CGFloat screenScale = [nativeScreen scale];
+    int width = static_cast<int>(size.width * screenScale);
+    int height = static_cast<int>(size.height * screenScale);
+    
+    ICVar* widthCVar = gEnv->pConsole->GetCVar("r_width");
+    ICVar* heightCVar = gEnv->pConsole->GetCVar("r_height");
+    
+    // We need to wait for the render thread to finish before we set the new dimensions.
+    if (!gRenDev->m_pRT->IsRenderThread(true))
+    {
+        gEnv->pRenderer->GetRenderThread()->WaitFlushFinishedCond();
+    }
+    
+    gcpRendD3D->GetClampedWindowSize(width, height);
+    
+    widthCVar->Set(width);
+    heightCVar->Set(height);
+    gcpRendD3D->SetWidth(widthCVar->GetIVal());
+    gcpRendD3D->SetHeight(heightCVar->GetIVal());
+}
+#endif
 
 #if defined(AZ_PLATFORM_APPLE_OSX)
 ////////////////////////////////////////////////////////////////////////////////

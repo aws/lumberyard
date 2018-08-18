@@ -131,8 +131,8 @@ namespace Audio
         IATLAudioObjectData* NewAudioObjectData(const TAudioObjectID nObjectID) override;
         void DeleteAudioObjectData(IATLAudioObjectData* const pOldObjectData) override;
 
-        IATLListenerData* NewDefaultAudioListenerObjectData() override;
-        IATLListenerData* NewAudioListenerObjectData(const uint nIndex) override;
+        IATLListenerData* NewDefaultAudioListenerObjectData(const TATLIDType nListenerID) override;
+        IATLListenerData* NewAudioListenerObjectData(const TATLIDType nListenerID) override;
         void DeleteAudioListenerObjectData(IATLListenerData* const pOldListenerData) override;
 
         IATLEventData* NewAudioEventData(const TAudioEventID nEventID) override;

@@ -1,0 +1,14 @@
+
+{
+    "none": {
+        "Source": [
+            "Source/CloudGemComputeFarm_precompiled.cpp",
+            "Source/CloudGemComputeFarm_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Implementation": [
+            "Source/ComponentStub.cpp"
+        ]
+    }
+}

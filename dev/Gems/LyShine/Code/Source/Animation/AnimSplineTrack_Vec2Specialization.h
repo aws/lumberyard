@@ -343,11 +343,52 @@ namespace UiSpline
 
         serializeContext->Class<BezierSplineVec2, TSplineBezierBasisVec2>()
             ->Version(1)
-            ->SerializerForEmptyClass();
+            ;
     }
 }
 
 //////////////////////////////////////////////////////////////////////////
+
+// When TUiAnimSplineTrack<Vec2> is deserialized, a spline instance
+// is first created in the TUiAnimSplineTrack<Vec2> constructor (via AllocSpline()),
+// then the pointer is overwritten when "Spline" field is deserialized.
+// To prevent a memory leak, m_spline is now an intrusive pointer, so that if/when
+// the "Spline" field is deserialized, the old object will be deleted.
+template<>
+inline bool TUiAnimSplineTrack<Vec2>::VersionConverter(AZ::SerializeContext& context,
+    AZ::SerializeContext::DataElementNode& classElement)
+{
+    bool converted = false;
+    if (classElement.GetVersion() == 1)
+    {
+        int splineElementIdx = classElement.FindElement(AZ_CRC("Spline", 0x35f655e9));
+        if (splineElementIdx != -1)
+        {
+            // Find & copy the raw pointer node
+            AZ::SerializeContext::DataElementNode& splinePtrNodeRef = classElement.GetSubElement(splineElementIdx);
+            AZ::SerializeContext::DataElementNode splinePtrNodeCopy = splinePtrNodeRef;
+
+            // Reset the node, then convert it to an intrusive pointer
+            splinePtrNodeRef = AZ::SerializeContext::DataElementNode();
+            const bool result = splinePtrNodeRef.Convert<AZStd::intrusive_ptr<UiSpline::TrackSplineInterpolator<Vec2>>>(context, "Spline");
+            if (result)
+            {
+                // Use the standard name used with the smart pointers serialization
+                // (smart pointers are serialized as containers with one element);
+                // Set the intrusive pointer to the raw pointer value
+                splinePtrNodeCopy.SetName(AZ::SerializeContext::IDataContainer::GetDefaultElementName());
+                splinePtrNodeRef.AddElement(splinePtrNodeCopy);
+
+                converted = true;
+            }
+        }
+    }
+
+    // Did not convert. Discard unknown versions if failed to convert, and hope for the best
+    AZ_Assert(converted, "Failed to convert TUiAnimSplineTrack<Vec2> version %d to the current version", classElement.GetVersion());
+    return converted;
+}
+
 template<>
 inline void TUiAnimSplineTrack<Vec2>::Reflect(AZ::SerializeContext* serializeContext)
 {
@@ -357,8 +398,9 @@ inline void TUiAnimSplineTrack<Vec2>::Reflect(AZ::SerializeContext* serializeCon
     UiSpline::TrackSplineInterpolator<Vec2>::Reflect(serializeContext);
     BezierSplineVec2::Reflect(serializeContext);
 
+
     serializeContext->Class<TUiAnimSplineTrack<Vec2> >()
-        ->Version(1)
+        ->Version(2, &TUiAnimSplineTrack<Vec2>::VersionConverter)
         ->Field("Flags", &TUiAnimSplineTrack<Vec2>::m_flags)
         ->Field("DefaultValue", &TUiAnimSplineTrack<Vec2>::m_defaultValue)
         ->Field("ParamType", &TUiAnimSplineTrack<Vec2>::m_nParamType)

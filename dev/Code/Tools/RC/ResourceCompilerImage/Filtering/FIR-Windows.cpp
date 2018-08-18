@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "Stdafx.h"
+#include "stdafx.h"
 
 #include "ImageProperties.h"
 #include "FIR-Windows.h"
@@ -64,7 +64,7 @@ const char* GetFilterFunctionName(int index)
 
 const int GetFilterFunctionIndex(const char* name, int defaultIndex, const char* disabledValue)
 {
-    if (!stricmp(name, disabledValue))
+    if (!azstricmp(name, disabledValue))
     {
         return 0;
     }
@@ -75,7 +75,7 @@ const int GetFilterFunctionIndex(const char* name, int defaultIndex, const char*
     {
         for (int a = 0; a < (sizeof(s_filterFunctionNames[0]) / sizeof(s_filterFunctionNames[0][0])); ++a)
         {
-            if (s_filterFunctionNames[i][a][0] && !stricmp(name, s_filterFunctionNames[i][a]))
+            if (s_filterFunctionNames[i][a][0] && !azstricmp(name, s_filterFunctionNames[i][a]))
             {
                 return i;
             }
@@ -116,7 +116,7 @@ const int GetFilterEvaluationIndex(const char* name, int defaultIndex)
     {
         for (int a = 0; a < (sizeof(s_filterEvaluationNames[0]) / sizeof(s_filterEvaluationNames[0][0])); ++a)
         {
-            if (s_filterEvaluationNames[i][a][0] && !stricmp(name, s_filterEvaluationNames[i][a]))
+            if (s_filterEvaluationNames[i][a][0] && !azstricmp(name, s_filterEvaluationNames[i][a]))
             {
                 return i;
             }

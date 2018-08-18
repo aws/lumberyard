@@ -1,0 +1,1509 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #1 $"
+        }
+    },
+    "Outputs": {
+        "ServiceUrl": {
+            "Description": "The service url.",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceApi",
+                    "Url"
+                ]
+            }
+        },
+        "MetricBucketName": {
+            "Description": "Name of the metrics S3 bucket.",
+            "Value": {
+                "Ref": "MetricStorage"
+            }
+        }
+    },
+    "Parameters": {
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup",
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
+            "Type": "String"
+        },
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.",
+            "Type": "String"
+        },
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.",
+            "Type": "String"
+        },
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.",
+            "Type": "String"
+        },
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.",
+            "Type": "String"
+        },
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.",
+            "Type": "String"
+        },
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterEnabled": {
+            "Default": "false",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterSize": {
+            "Default": "0.5",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        },
+        "ReadCapacityUnits": {
+            "Type": "Number",
+            "Default": "5",
+            "Description": "Number of game state reads per second."
+        },
+        "WriteCapacityUnits": {
+            "Type": "Number",
+            "Default": "5",
+            "Description": "Number of game state writes per second."
+        }
+    },
+    "Resources": {
+        "AccessControl": {
+            "DependsOn": [
+                "ServiceApi",
+                "ServiceLambda",
+                "MetricContext",
+                "MetricStorage",
+                "FIFOConsumer",
+                "LambdaConsumerLauncher",
+                "SQS",
+                "Glue",
+                "Amoeba1",
+                "Amoeba2",
+                "Amoeba3",
+                "Amoeba4",
+                "Amoeba5",
+                "AmoebaLauncher",
+                "AmoebaConfiguration",
+                "FIFOProducer",
+                "GlueCrawlerLauncher"
+            ],
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::AccessControl"
+        },
+        "MetricContext": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "key",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "key",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": { "Ref": "ReadCapacityUnits" },
+                    "WriteCapacityUnits": { "Ref": "WriteCapacityUnits" }
+                }
+            },
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:UpdateItem",
+                                "dynamodb:Scan",
+                                "dynamodb:Query"
+                            ]
+                        },
+                        {
+                            "AbstractRole": [ "FIFOConsumer", "FIFOProducer", "LambdaConsumerLauncher", "AmoebaLauncher", "AmoebaConfiguration", "Amoeba", "Amoeba1", "Amoeba2", "Amoeba3", "Amoeba4", "Amoeba5" ],
+                            "Action": [
+                                "dynamodb:Scan"
+                            ]
+                        },
+                        {
+                            "AbstractRole": ["GlueCrawlerLauncher"],
+                            "Action": [
+                                "dynamodb:UpdateItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:Scan"
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        "MetricStorage": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": ["FIFOConsumer"],
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "AmoebaLauncher",
+                            "Action": [
+                                "s3:HeadBucket",
+                                "s3:ListObjects",
+                                "s3:ListBucket"
+                            ],
+                            "ResourceSuffix": [ "/*", "" ]
+                        },
+                        {
+                            "AbstractRole": [ "AmoebaConfiguration", "Amoeba", "Amoeba1", "Amoeba2", "Amoeba3", "Amoeba4", "Amoeba5" ],
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject",
+                                "s3:DeleteObjectVersion",
+                                "s3:HeadBucket",
+                                "s3:ListObjects",
+                                "s3:ListBucket",
+                                "s3:HeadObject"
+                            ],
+                            "ResourceSuffix": [ "/*", "" ]
+                        },
+                        {
+                            "AbstractRole": [ "ServiceLambda", "GlueCrawlerLauncher" ],
+                            "Action": [
+                                "s3:DeleteObject",
+                                "s3:PutObject",
+                                "s3:ListBucketMultipartUploads",
+                                "s3:ListMultipartUploadParts",
+                                "s3:AbortMultipartUpload"
+                            ],
+                            "ResourceSuffix": [ "/results/*" ]
+                        },
+                        {
+                            "AbstractRole": [ "ServiceLambda", "GlueCrawlerLauncher" ],
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:GetBucketLocation",
+                                "s3:ListBucket"
+                            ],
+                            "ResourceSuffix": [ "/*", "*" ]
+                        },
+                        {
+                            "AbstractRole": [ "CloudGemPortalAdministratorRole", "CloudGemPortalUserRole" ],
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "ResourceSuffix": [ "/heatmaps/*" ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "CorsConfiguration": {
+                    "CorsRules": [
+                        {
+                            "AllowedMethods": [
+                                "PUT"
+                            ],
+                            "AllowedOrigins": [
+                                "*"
+                            ],
+                            "AllowedHeaders": [
+                                "*"
+                            ]
+                        }
+                    ]
+                },
+                "LifecycleConfiguration": {
+                    "Rules": [
+                        {
+                            "Id": "Move2YrOldDataToGlacier",
+                            "Transitions": [
+                                {
+                                    "TransitionInDays": 720,
+                                    "StorageClass": "GLACIER"
+                                }
+                            ],
+                            "Status": "Enabled"
+                        }
+                    ]
+                }
+            }
+        },
+         "MetricContextReadScalingTarget": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+                "MinCapacity": 5,
+                "MaxCapacity": 40000,
+                "ResourceId": { "Fn::Join" : ["/", [
+                    "table",
+                    { "Ref": "MetricContext" }
+                ]]},
+                "RoleARN": {
+                    "Fn::GetAtt": [
+                        "DynamoDbAutoScalingRole",
+                        "Arn"
+                    ]
+                },
+                "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+                "ServiceNamespace": "dynamodb"
+            }
+        },
+        "MetricContextScalingReadPolicy": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+                "PolicyName": "ReadScaling",
+                "PolicyType": "TargetTrackingScaling",
+                "ScalingTargetId": {
+                    "Ref": "MetricContextReadScalingTarget"
+                },
+                "TargetTrackingScalingPolicyConfiguration": {
+                    "PredefinedMetricSpecification": {
+                        "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+                    },
+                    "ScaleInCooldown": 0,
+                    "ScaleOutCooldown": 0,
+                    "TargetValue": 50
+                }
+            }
+        },
+        "MetricContextWriteScalingTarget": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+                "MinCapacity": 2,
+                "MaxCapacity": 40000,
+                "ResourceId": { "Fn::Join" : ["/", [
+                    "table",
+                    { "Ref": "MetricContext" }
+                ]]},
+                "RoleARN": {
+                    "Fn::GetAtt": [
+                        "DynamoDbAutoScalingRole",
+                        "Arn"
+                    ]
+                },
+                "ScalableDimension": "dynamodb:table:WriteCapacityUnits",
+                "ServiceNamespace": "dynamodb"
+            }
+        },
+        "MetricContextScalingWritePolicy": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+                "PolicyName": "ContextScaling",
+                "PolicyType": "TargetTrackingScaling",
+                "ScalingTargetId": {
+                    "Ref": "MetricContextWriteScalingTarget"
+                },
+                "TargetTrackingScalingPolicyConfiguration": {
+                    "PredefinedMetricSpecification": {
+                        "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+                    },
+                    "ScaleInCooldown": 0,
+                    "ScaleOutCooldown": 0,
+                    "TargetValue": 50
+                }
+            }
+        },
+        "DynamoDbAutoScalingRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": [
+                                "application-autoscaling.amazonaws.com"
+                            ]
+                        },
+                        "Action": [
+                            "sts:AssumeRole"
+                        ]
+                    }
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "dbscalingrolepolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "dynamodb:DescribeTable",
+                                    "dynamodb:UpdateTable",
+                                    "cloudwatch:PutMetricAlarm",
+                                    "cloudwatch:DescribeAlarms",
+                                    "cloudwatch:GetMetricStatistics",
+                                    "cloudwatch:SetAlarmState",
+                                    "cloudwatch:DeleteAlarms"
+                                ],
+                                "Resource": "*"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "ServiceApi": {
+            "Properties": {
+                "CacheClusterEnabled": {
+                    "Ref": "ServiceApiCacheClusterEnabled"
+                },
+                "CacheClusterSize": {
+                    "Ref": "ServiceApiCacheClusterSize"
+                },
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "MethodSettings": {},
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "SwaggerSettings": {
+                    "ServiceLambdaArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda",
+                            "Arn"
+                        ]
+                    }
+                }
+            },
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "Player",
+                        "Action": "execute-api:Invoke",
+                        "ResourceSuffix": [
+                            "/api/GET/service/status",
+                            "/api/GET/clientcontext",
+                            "/api/POST/producer/produce/message"
+                        ]
+                    }
+                }
+            },
+            "Type": "Custom::ServiceApi"
+        },
+        "ServiceLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceApi",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "Service Lambda for the service API.",
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "cgf_lambda_service.dispatch",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300,
+                "Environment": {
+                    "Variables": {
+                        "MetricStorage": {
+                            "Ref": "MetricStorage"
+                        },
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "FIFOConsumer": {
+                            "Ref": "FIFOConsumer"
+                        },
+                        "LambdaConsumerLauncher": {
+                            "Ref": "LambdaConsumerLauncher"
+                        },
+                        "FIFOProducer": {
+                            "Ref": "FIFOProducer"
+                        },
+                        "GlueCrawlerLauncher": {
+                            "Ref": "GlueCrawlerLauncher"
+                        },
+                        "AmoebaLauncher": {
+                            "Ref": "AmoebaLauncher"
+                        },
+                        "Amoeba1": {
+                            "Ref": "Amoeba1"
+                        },
+                        "Amoeba2": {
+                            "Ref": "Amoeba2"
+                        },
+                        "Amoeba3": {
+                            "Ref": "Amoeba3"
+                        },
+                        "Amoeba4": {
+                            "Ref": "Amoeba4"
+                        },
+                        "Amoeba5": {
+                            "Ref": "Amoeba5"
+                        },
+                        "Verbose": "False",
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "ServiceLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "ServiceLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "MetricContext": { "Ref": "MetricContext" },
+                    "MetricStorage": { "Ref": "MetricStorage" },
+                    "FIFOConsumer": { "Ref": "FIFOConsumer" }
+                },
+                "IgnoreAppendingSettingsToZip": false
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "FIFOProducer": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "The Lambda used generating metrics for the Cloud Gem Metric SQS FIFO queue.",
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "FIFOProducerConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "FIFOProducerConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "lambda_fifo_message_producer.main",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "FIFOProducerConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "FIFOProducerConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300,
+                "MemorySize": 3008,
+                "Environment": {
+                    "Variables": {
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "Verbose": "False",
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "FIFOProducerConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "FIFOProducer",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "IgnoreAppendingSettingsToZip": true
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "FIFOConsumer": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "LambdaConsumerLauncher",
+                            "Action": "lambda:InvokeFunction"
+                        },
+                        {
+                            "AbstractRole": "FIFOConsumer",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "The Lambda used for processing the Cloud Gem Metric SQS FIFO queue.",
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "FIFOConsumerConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "FIFOConsumerConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "lambda_fifo_message_consumer.main",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "FIFOConsumerConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "FIFOConsumerConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300,
+                "MemorySize": 3008,
+                "Environment": {
+                    "Variables": {
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "MetricStorage": {
+                            "Ref": "MetricStorage"
+                        },
+                        "GlueCrawlerRole": {
+                            "Ref": "GlueCrawlerRole"
+                        },
+                        "Verbose": "False",
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "FIFOConsumerConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "FIFOConsumer",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "IgnoreAppendingSettingsToZip": true
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "Amoeba1": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "AmoebaLauncher",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "The Lambda used for aggregating s3 files into one large s3 file per partition.",
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "AmoebaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "AmoebaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "amoeba_generator.ingest",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "AmoebaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "AmoebaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300,
+                "MemorySize": 3008,
+                "Environment": {
+                    "Variables": {
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "MetricStorage": {
+                            "Ref": "MetricStorage"
+                        },
+                        "Verbose": "False",
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "Amoeba2": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "AmoebaLauncher",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "The Lambda used for aggregating s3 files into one large s3 file per partition.",
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "AmoebaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "AmoebaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "amoeba_generator.ingest",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "AmoebaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "AmoebaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300,
+                "MemorySize": 3008,
+                "Environment": {
+                    "Variables": {
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "MetricStorage": {
+                            "Ref": "MetricStorage"
+                        },
+                        "Verbose": "False",
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "Amoeba3": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "AmoebaLauncher",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "The Lambda used for aggregating s3 files into one large s3 file per partition.",
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "AmoebaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "AmoebaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "amoeba_generator.ingest",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "AmoebaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "AmoebaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300,
+                "MemorySize": 3008,
+                "Environment": {
+                    "Variables": {
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "MetricStorage": {
+                            "Ref": "MetricStorage"
+                        },
+                        "Verbose": "False",
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "Amoeba4": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "AmoebaLauncher",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "The Lambda used for aggregating s3 files into one large s3 file per partition.",
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "AmoebaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "AmoebaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "amoeba_generator.ingest",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "AmoebaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "AmoebaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300,
+                "MemorySize": 3008,
+                "Environment": {
+                    "Variables": {
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "MetricStorage": {
+                            "Ref": "MetricStorage"
+                        },
+                        "Verbose": "False",
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "Amoeba5": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "AmoebaLauncher",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "The Lambda used for aggregating s3 files into one large s3 file per partition.",
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "AmoebaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "AmoebaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "amoeba_generator.ingest",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "AmoebaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "AmoebaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300,
+                "MemorySize": 3008,
+                "Environment": {
+                    "Variables": {
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "MetricStorage": {
+                            "Ref": "MetricStorage"
+                        },
+                        "Verbose": "False",
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "AmoebaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "Amoeba",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "IgnoreAppendingSettingsToZip": true
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "AmoebaLauncher": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "The Lambda used for starting a amoeba generator lamdas.  One amoeba generator per source/buildid/year/month/day/hour",
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "AmoebaLauncherConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "AmoebaLauncherConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "amoeba_launcher.launch",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "AmoebaLauncherConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "AmoebaLauncherConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300,
+                "MemorySize": 1024,
+                "Environment": {
+                    "Variables": {
+                        "Amoeba1": {
+                            "Ref": "Amoeba1"
+                        },
+                        "Amoeba2": {
+                            "Ref": "Amoeba2"
+                        },
+                        "Amoeba3": {
+                            "Ref": "Amoeba3"
+                        },
+                        "Amoeba4": {
+                            "Ref": "Amoeba4"
+                        },
+                        "Amoeba5": {
+                            "Ref": "Amoeba5"
+                        },
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "MetricStorage": {
+                            "Ref": "MetricStorage"
+                        },
+                        "Verbose": "False",
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "DependsOn": [ "Amoeba1", "Amoeba2", "Amoeba3", "Amoeba4", "Amoeba5" ],
+            "Type": "AWS::Lambda::Function"
+        },
+        "AmoebaLauncherConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "AmoebaLauncher",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "IgnoreAppendingSettingsToZip": true
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+         "AmoebaLauncherInvokePermission": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "AmoebaLauncher",
+                        "Arn"
+                    ]
+                },
+                "Principal": "events.amazonaws.com",
+                "SourceArn": {
+                    "Fn::GetAtt": [
+                        "AmoebaLauncherSchedulerRule",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "AmoebaLauncherSchedulerRule": {
+            "Properties": {
+                "ScheduleExpression": "rate(20 minutes)",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "AmoebaLauncher",
+                                "Arn"
+                            ]
+                        },
+                        "Id": "AmoebaLauncher"
+                    }
+                ]
+            },
+            "Type": "AWS::Events::Rule"
+        },
+        "LambdaConsumerLauncher": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "The Lambda used for starting a FIFO Consumer lamda.  One FIFO consumer is generated per SQS queue.",
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "LambdaConsumerLauncherConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "LambdaConsumerLauncherConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "lambda_launcher.main",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaConsumerLauncherConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "LambdaConsumerLauncherConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300,
+                "MemorySize": 128,
+                "Environment": {
+                    "Variables": {
+                        "FIFOConsumer": {
+                            "Ref": "FIFOConsumer"
+                        },
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "Verbose": "False",
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "LambdaConsumerLauncherConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "LambdaConsumerLauncher",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "IgnoreAppendingSettingsToZip": true
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+         "LambdaConsumerLauncherInvokePermission": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "LambdaConsumerLauncher",
+                        "Arn"
+                    ]
+                },
+                "Principal": "events.amazonaws.com",
+                "SourceArn": {
+                    "Fn::GetAtt": [
+                        "LambdaConsumerLauncherSchedulerRule",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "LambdaConsumerLauncherSchedulerRule": {
+            "Properties": {
+                "ScheduleExpression": "rate(5 minutes)",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "LambdaConsumerLauncher",
+                                "Arn"
+                            ]
+                        },
+                        "Id": "LambdaConsumerLauncher"
+                    }
+                ]
+            },
+            "Type": "AWS::Events::Rule"
+        },
+         "GlueCrawlerLauncher": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "The Lambda used for starting the Glue crawlers. This gives us better control over recovering broken tables and ensuring a reliable table to query from Athena.",
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "GlueCrawlerConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "GlueCrawlerConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "glue_crawler.main",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "GlueCrawlerConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "GlueCrawlerConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300,
+                "MemorySize": 512,
+                "Environment": {
+                    "Variables": {
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "MetricStorage": {
+                            "Ref": "MetricStorage"
+                        },
+                        "Verbose": "False",
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "GlueCrawlerConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "GlueCrawlerLauncher",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "IgnoreAppendingSettingsToZip": true
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "GlueCrawlerInvokePermission": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "GlueCrawlerLauncher",
+                        "Arn"
+                    ]
+                },
+                "Principal": "events.amazonaws.com",
+                "SourceArn": {
+                    "Fn::GetAtt": [
+                        "GlueCrawlerSchedulerRule",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "GlueCrawlerSchedulerRule": {
+            "Properties": {
+                "ScheduleExpression": "rate(60 minutes)",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "GlueCrawlerLauncher",
+                                "Arn"
+                            ]
+                        },
+                        "Id": "GlueCrawlerLauncher"
+                    }
+                ]
+            },
+            "Type": "AWS::Events::Rule"
+        },
+        "SQS": {
+            "Type": "Custom::SQSScaler",
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Environment": {
+                    "Variables": {
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "DependsOn": [ "LambdaConsumerLauncher", "FIFOConsumer", "FIFOProducer" ]
+        },
+        "Glue": {
+            "Type": "Custom::Glue",
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "DependsOn": [ "MetricStorage", "FIFOConsumer", "FIFOProducer" ]
+        },
+        "SpecialPermissions": {
+            "Type": "Custom::SpecialPermissions",
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "DependsOn": [ "ServiceLambda", "AmoebaConfiguration", "GlueCrawlerLauncher" ]
+        },
+        "GlueCrawlerRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": [
+                                "glue.amazonaws.com"
+                            ]
+                        },
+                        "Action": [
+                            "sts:AssumeRole"
+                        ]
+                    }
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "gluepolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "glue:UpdateDatabase",
+                                        "glue:GetDatabase",
+                                        "glue:CreateTable",
+                                        "glue:UpdateTable",
+                                        "glue:GetTable",
+                                        "glue:GetTableVersions",
+                                        "glue:CreatePartition",
+                                        "glue:BatchCreatePartition",
+                                        "glue:UpdatePartition",
+                                        "glue:DeletePartition",
+                                        "glue:BatchDeletePartition",
+                                        "glue:GetPartition",
+                                        "glue:GetPartitions",
+                                        "glue:BatchGetPartition",
+                                        "glue:CreateDatabase",
+                                        "glue:UpdateDatabase",
+                                        "glue:ImportCatalogToGlue",
+                                        "glue:GetCatalogImportStatus",
+                                        "s3:GetBucketLocation",
+                                        "s3:ListBucket",
+                                        "s3:ListAllMyBuckets"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:CreateBucket"
+                                    ],
+                                    "Resource": [
+                                        "arn:aws:s3:::aws-glue-*"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:PutObject",
+                                        "s3:DeleteObject"
+                                    ],
+                                    "Resource": [
+                                        "arn:aws:s3:::aws-glue-*/*",
+                                        "arn:aws:s3:::*/*aws-glue-*/*"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:HeadBucket",
+                                        "s3:ListObjects",
+                                        "s3:GetBucketLocation",
+                                        "s3:GetObject",
+                                        "s3:GetObjectTagging",
+                                        "s3:GetObjectAcl",
+                                        "s3:GetObjectVersion",
+                                        "s3:GetObjectVersionAcl",
+                                        "s3:GetObjectVersionTagging",
+                                        "s3:GetObjectVersionTorrent"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    { "Ref": "MetricStorage" },
+                                                    "/*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": [
+                                        "arn:aws:s3:::aws-glue-*"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": [
+                                        "arn:aws:logs:*:*:/aws-glue/*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}

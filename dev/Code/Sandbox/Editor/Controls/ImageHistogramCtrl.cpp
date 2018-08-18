@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ImageHistogramCtrl.h"
 
 #include <QMenu>
@@ -68,7 +68,7 @@ CImageHistogramCtrl::CImageHistogramCtrl(QWidget* parent)
     m_drawMode->addItem(tr("Alpha Channel"),
                         QVariant::fromValue(EHistogramDrawMode::AlphaChannel));
 
-    connect(m_drawMode, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+    connect(m_drawMode, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
             [=](int index){
                 auto mode = drawMode();
                 m_display->m_drawMode = mode;

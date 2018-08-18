@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "VRAMDataAggregator.hxx"
 #include <Woodpecker/Driller/Rendering/VRAM/VRAMDataAggregator.moc>

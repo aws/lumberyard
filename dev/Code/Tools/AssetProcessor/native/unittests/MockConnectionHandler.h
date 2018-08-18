@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 #include "native/utilities/ByteArrayStream.h"
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzCore/Serialization/Utils.h>
@@ -25,6 +25,11 @@ namespace AssetProcessor
         : public AssetProcessor::ConnectionBus::Handler
     {
     public:
+        ~MockConnectionHandler()
+        {
+            BusDisconnect();
+        }
+
         size_t Send(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message) override
         {
             QByteArray buffer;

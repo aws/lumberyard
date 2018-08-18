@@ -18,7 +18,6 @@
 #include "DocMultiArchive.h"
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 
-class CFrameWnd;
 class CMission;
 class CLevelShaderCache;
 class CClouds;
@@ -106,7 +105,7 @@ public: // Create from serialization only
     void SetWaterColor(const QColor& col) { m_waterColor = col; };
     QColor GetWaterColor() { return m_waterColor; };
     void ForceSkyUpdate();
-    BOOL CanCloseFrame(CFrameWnd* pFrame);
+    BOOL CanCloseFrame();
     void GetMemoryUsage(ICrySizer* pSizer);
     XmlNodeRef& GetFogTemplate() { return m_fogTemplate; };
     XmlNodeRef& GetEnvironmentTemplate() { return m_environmentTemplate; };

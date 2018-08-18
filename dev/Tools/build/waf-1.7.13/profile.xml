@@ -11,6 +11,7 @@
 		<Tool Filename="uic" AllowIntercept="false" AllowRemote="true" AllowPredictedBatch="true" DeriveCaptionFrom="lastparam"/>
 		<Tool Filename="rcc" AllowIntercept="false" AllowRemote="true" AllowPredictedBatch="true" DeriveCaptionFrom="lastparam"/>
 		<Tool Filename="link" AllowRemote="false" AllowIntercept="false" DeriveCaptionFrom="firstparam" IdentifyTaskOutput="true" AllowRestartOnLocal="false" VCCompiler="false"/>
+		<Tool Filename="lld-link" AllowRemote="false" AllowIntercept="false" DeriveCaptionFrom="firstparam" IdentifyTaskOutput="true" AllowRestartOnLocal="false" VCCompiler="false"/>
 
 		<Tool Filename="orbis-clang" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/> <!-- ACCEPTED_USE -->
 		<Tool Filename="orbis-clang++" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/> <!-- ACCEPTED_USE -->
@@ -21,7 +22,7 @@
 		<Tool Filename="arm-linux-androideabi-gcc" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
 		<Tool Filename="arm-linux-androideabi-g++" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
 
-		<!-- 
+		<!--
 		The Android deploy command uses 'adb shell' to check files on the device and will return non 0 exit codes if the files don't exit.  XGConsole will flag those processes as
 		failures and since we are gracefully handing those cases, WAF will continue to execute till it exits naturally (we don't use /stoponerror).  In most cases, this is causing
 		false build failures even though the deploy command completes sucessfully.  Whitelist the known return codes we handle internally.

@@ -52,7 +52,7 @@ public:
     bool Initialize(CCryDXGLDevice* pDevice);
     void Shutdown();
 
-    NCryMetal::CContext* GetGLContext();
+    NCryMetal::CContext* GetMetalContext();
 
     // ID3D11DeviceContext implementation
     void STDMETHODCALLTYPE VSSetConstantBuffers(UINT StartSlot, UINT NumBuffers, ID3D11Buffer* const* ppConstantBuffers);

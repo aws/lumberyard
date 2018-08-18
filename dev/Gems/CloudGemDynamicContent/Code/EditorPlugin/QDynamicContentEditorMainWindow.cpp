@@ -1227,6 +1227,11 @@ namespace DynamicContent
             if (reply == QMessageBox::Yes)
             {
                 auto pakItem = m_packagesModel->itemFromIndex(pakIndex);
+                if (!pakItem)
+                {
+                    AZ_Warning("Dynamic Content Editor", false, "Item already deleted");
+                    return;
+                }
                 auto fileEntry = pakItem->text();
                 auto platformIndex = m_packagesModel->index(pakIndex.row(), PackagesModel::ColumnName::Platform, pakIndex.parent());
                 auto platformItem = m_packagesModel->itemFromIndex(platformIndex);

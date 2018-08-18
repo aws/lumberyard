@@ -58,11 +58,15 @@ def build(bld):
                                    bld.Path('Code/CryEngine/CryAction'),
                                    bld.Path('Code/Tools')],
 
-        darwin_includes         = additional_qt_includes,
-        darwin_cxxflags         = ['-Wno-array-bounds'], # Squish includes have this code like this that triggers this warning: sets >= 2? array[sets - 2] : NULL
-        darwin_enable_rtti      = True,
+        # Compiler Specific
+        msvc_cxxflags           = ['/wd4355'],
+        clang_cxxflags          = ['-Wno-array-bounds', # Squish includes have this code like this that triggers this warning: sets >= 2? array[sets - 2] : NULL
+                                   '-Wno-format',
+                                   '-Wno-macro-redefined',],
 
-        win_cxxflags            = ['/wd4355'],
+        # Platform Specific
+        darwin_includes         = additional_qt_includes,
+        darwin_enable_rtti      = True,
 
         win_features            = ['crcfix'],
 
@@ -89,7 +93,7 @@ def build(bld):
                                                bld.Path('Code/CryEngine'),
                                                bld.Path('Code/CryEngine/CryAction'),
                                                bld.Path('Code/CryEngine/CrySystem'),
-                                               bld.Path('Gems/LmbrCentral/Code/Include'),
+                                               bld.Path('Gems/LmbrCentral/Code/include'),
                                                bld.Path('Code/Tools/'),
                                                bld.Path('Code/Tools/News'),
                                                bld.Path('Code/Tools/GemRegistry/include'),
@@ -127,7 +131,7 @@ def build(bld):
                                                'AWS_CPP_SDK_COGNITO_IDENTITY',
                                                'AWS_CPP_SDK_MOBILEANALYTICS',
                                                'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
-                                               'AWS_CPP_SDK_IDENTITY_LAMBDA',
+                                            'AWS_CPP_SDK_IDENTITY_LAMBDA',
                                                'AWS_CPP_SDK_IDENTITY_METRICS',
                                                'BOOSTPYTHON',
                                                'ZLIB'],
@@ -141,27 +145,35 @@ def build(bld):
         win_linkflags                       = ['/SUBSYSTEM:WINDOWS'],
         win_debug_all_linkflags             = '/NODEFAULTLIB:LIBCMTD.lib',
         win_ndebug_linkflags                = '/NODEFAULTLIB:LIBCMT.lib',
-        win_cxxflags                        = [ '/Zm200', '/wd4355', '/wd4018', '/wd4267' ],
+        msvc_cxxflags                       = [ '/Zm200', '/wd4355', '/wd4018', '/wd4267' ],
 
         # Platform Specific
         win_features                        = [ 'crcfix' ],
         winres_defines                      = ['NDEBUG' ],
         win_lib                             = ['version'],
 
-
-        darwin_cxxflags                     = ['-Wno-sometimes-uninitialized', # required for squish library to compile
+        clang_cxxflags                      = ['-Wno-sometimes-uninitialized', # required for squish library to compile
                                                '-Wno-shift-negative-value', # required for squish library to compile
                                                '-Wno-null-dereference', # required for squish library to compile
                                                '-Wno-deprecated-declarations', # using Gesalt macOS calls that are deprecated.
-                                               '-Wno-unused-local-typedef', # required for Boost Python 
+                                               '-Wno-unused-local-typedef', #BOOSTPYTHON
+                                               '-Wno-inconsistent-dllimport', #BOOSTPYTHON
+                                               '-Wno-deprecated-register', #BOOSTPYTHON
+                                               '-Wno-writable-strings',
+                                               '-Wno-return-type',
+                                               '-Wno-enum-compare-switch',
+                                               '-Wno-microsoft-include', #SQUISH
+                                               '-fexceptions', #BOOSTPYTHON
                                               ],
         darwin_x64_lib                      = ['python2.7'],
-        darwin_lib                          = ['curl'],
+        darwin_lib                          = ['curl', 'bsm'],
         darwin_includes                     = [bld.Path('Code/Sandbox/Editor/HyperGraph'),
                                                bld.Path('Code/Sandbox/Editor/Mannequin/Controls'),
                                                bld.Path('Code/Sandbox/Editor/AssetBrowser'),
                                                bld.Path('Code/Sandbox/Editor/Controls'),
                                                bld.Path('Code/Sandbox/Editor/AI')] + additional_qt_includes,
+        darwin_x64_framework                = ['Security'],
+
 
         # Testing
         test_all_file_list  = ['editor_lib_test.waf_files'],
@@ -181,7 +193,7 @@ def build(bld):
                                                bld.Path('Code/CryEngine'),
                                                bld.Path('Code/CryEngine/CryAction'),
                                                bld.Path('Code/CryEngine/CrySystem'),
-                                               bld.Path('Gems/LmbrCentral/Code/Include'),
+                                               bld.Path('Gems/LmbrCentral/Code/include'),
                                                bld.Path('Code/Tools/'),
                                                bld.ThirdPartyPath('squish'),
                                                bld.Path('Code/Tools/News'),
@@ -223,7 +235,7 @@ def build(bld):
                                                'TIFF',
                                                'ZLIB'
                                                ],
-        
+
         use_required_gems                   = True,
 
         features                            = ['qt5',
@@ -248,7 +260,7 @@ def build(bld):
         win_linkflags                       = ['/SUBSYSTEM:WINDOWS'],
         win_debug_all_linkflags             = '/NODEFAULTLIB:LIBCMTD.lib',
         win_ndebug_linkflags                = '/NODEFAULTLIB:LIBCMT.lib',
-        win_cxxflags                        = [ '/Zm200', '/wd4355', '/wd4018', '/wd4267' ],
+        msvc_cxxflags                        = [ '/Zm200', '/wd4355', '/wd4018', '/wd4267' ],
 
         # Platform Specific
         win_features                        = [ 'crcfix' ],
@@ -259,20 +271,21 @@ def build(bld):
 
         darwin_file_list                    = ['editor_darwin.waf_files'],
         darwin_enable_rtti                  = True,
-        darwin_cxxflags                     = ['-Wno-error', '-Wno-unused-local-typedef'],
+        clang_cxxflags                      = ['-Wno-error', '-Wno-unused-local-typedef'],
         darwin_x64_lib                      = ['python2.7'],
-        darwin_lib                          = 'curl',
-        darwin_rpath                        = ['@executable_path/', '@executable_path/qtlibs/lib', '@executable_path/rc', '@executable_path/EditorPlugins'],
+        darwin_lib                          = ['curl', 'bsm'],
+        darwin_rpath                        = ['@executable_path/', '@executable_path/qtlibs/lib', '@executable_path/rc', '@executable_path/EditorPlugins', '@executable_path/../Frameworks'],
         darwin_use                          = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
         darwin_includes                     = [bld.Path('Code/Sandbox/Editor/HyperGraph'),
                                                bld.Path('Code/Sandbox/Editor/Mannequin/Controls'),
                                                bld.Path('Code/Sandbox/Editor/AssetBrowser'),
                                                bld.Path('Code/Sandbox/Editor/Controls'),
                                                bld.Path('Code/Sandbox/Editor/AI')] + additional_qt_includes,
+        darwin_x64_framework                = ['Security'],
+
         darwin_xcassets                     = 'Code/Sandbox/Editor/res/Images.xcassets',
     )
 
     if tsk_gen != None:
         # Copy Resource.h for Ribbon UI
         tsk_gen.create_task('copy_outputs', tsk_gen.path.make_node('Resource.h'), bld.srcnode.make_node('Editor/UI/Resource.h') )
-

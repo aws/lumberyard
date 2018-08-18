@@ -1,7 +1,7 @@
 <RCC>
     <qresource prefix="/">
-        <file alias="group_closed.png">Icons/group_closed.png</file>
-        <file alias="group_open.png">Icons/group_open.png</file>
+        <file alias="group_closed.png">icons/group_closed.png</file>
+        <file alias="group_open.png">icons/group_open.png</file>
         <file alias="spinner_2x_V1.gif">icons/spinner_2x._V1_.gif</file>
     </qresource>
 </RCC>

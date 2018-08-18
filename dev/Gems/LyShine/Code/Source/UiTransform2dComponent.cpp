@@ -1174,7 +1174,6 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiTransformBus>("UiTransformBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetZRotation", &UiTransformBus::Events::GetZRotation)
             ->Event("SetZRotation", &UiTransformBus::Events::SetZRotation)
             ->Event("GetScale", &UiTransformBus::Events::GetScale)
@@ -1213,7 +1212,6 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
             ->VirtualProperty("Rotation", "GetZRotation", "SetZRotation");
 
         behaviorContext->EBus<UiTransform2dBus>("UiTransform2dBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetAnchors", &UiTransform2dBus::Events::GetAnchors)
             ->Event("SetAnchors", &UiTransform2dBus::Events::SetAnchors)
             ->Event("GetOffsets", &UiTransform2dBus::Events::GetOffsets)

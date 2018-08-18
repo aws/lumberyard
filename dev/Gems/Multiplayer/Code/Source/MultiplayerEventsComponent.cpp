@@ -113,12 +113,10 @@ namespace Multiplayer
         }
         bool Connect(AZ::BehaviorValueParameter* id) override
         {
-            if (id == nullptr || id->m_value == nullptr)
-            {
-                AZ::BehaviorValueParameter thisGriMate(gEnv->pNetwork->GetGridMate());
-                return AZ::Internal::EBusConnector<InternalMultiplayerEvents>::Connect(this, &thisGriMate);
-            }
-            return AZ::Internal::EBusConnector<InternalMultiplayerEvents>::Connect(this, id);
+            AZ_UNUSED(id);
+
+            AZ::BehaviorValueParameter thisGridMate(gEnv->pNetwork->GetGridMate());
+            return AZ::Internal::EBusConnector<InternalMultiplayerEvents>::Connect(this, &thisGridMate);
         }
     };
 

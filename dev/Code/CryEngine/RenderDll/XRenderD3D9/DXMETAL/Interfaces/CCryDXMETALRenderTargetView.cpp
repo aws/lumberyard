@@ -18,7 +18,7 @@
 #include "CCryDXMETALDevice.hpp"
 #include "CCryDXMETALRenderTargetView.hpp"
 #include "CCryDXMETALResource.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 #include "../Implementation/GLResource.hpp"
 
 

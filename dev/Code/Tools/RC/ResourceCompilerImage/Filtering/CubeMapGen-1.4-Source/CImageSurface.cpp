@@ -702,7 +702,7 @@ void CImageSurface::WriteHDRFile(WCHAR *a_FileName )
 
    if( res != 0 )
    {    
-        azswnprintf(outMsg, 4096, L"CImageSurface::WriteHDRFile: Can't open file %s for writing out RGBE image!", a_FileName);
+       azsnwprintf(outMsg, 4096, L"CImageSurface::WriteHDRFile: Can't open file %s for writing out RGBE image!", a_FileName);
         FatalError(outMsg);
         return;
     }

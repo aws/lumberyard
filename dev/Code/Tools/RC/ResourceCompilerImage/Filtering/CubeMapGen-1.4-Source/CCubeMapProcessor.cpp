@@ -2295,7 +2295,7 @@ WCHAR *CCubeMapProcessor::GetFilterProgressString(void)
           
          EstimateFilterThreadProgress(&(m_ThreadProgress[i]) );
 
-         azswnprintf(threadProgressString[i],
+         azsnwprintf(threadProgressString[i],
             CP_MAX_PROGRESS_STRING,
             L"%5.2f%% Complete (Level %3d, Face %3d, Row %3d)", 
             100.0f * m_ThreadProgress[i].m_FractionCompleted,
@@ -2312,7 +2312,7 @@ WCHAR *CCubeMapProcessor::GetFilterProgressString(void)
 #else
           //TODO: Needs cross platform support.
 #endif
-         azswnprintf(threadProgressString[i],
+          azsnwprintf(threadProgressString[i],
             CP_MAX_PROGRESS_STRING,
             L"Ready");   
       }
@@ -2320,7 +2320,7 @@ WCHAR *CCubeMapProcessor::GetFilterProgressString(void)
 
    if(m_NumFilterThreads == 2)
    {  //display information about both threads
-      azswnprintf(m_ProgressString,
+       azsnwprintf(m_ProgressString,
          CP_MAX_PROGRESS_STRING,
          L"Thread0: %s \nThread1: %s", 
          threadProgressString[0],
@@ -2328,7 +2328,7 @@ WCHAR *CCubeMapProcessor::GetFilterProgressString(void)
    }
    else
    {  //only display information about one thread
-      azswnprintf(m_ProgressString, 
+       azsnwprintf(m_ProgressString,
          CP_MAX_PROGRESS_STRING,
          L"Thread 0: %s ", 
          threadProgressString[0]);

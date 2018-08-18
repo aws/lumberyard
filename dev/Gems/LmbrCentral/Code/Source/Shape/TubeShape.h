@@ -80,10 +80,9 @@ namespace LmbrCentral
      * Generates a Tube mesh with filled surface and outlines.
      */
     void GenerateTubeMesh(
-        const AZ::SplinePtr& spline, const SplineAttribute<float>& variableRadius, float radius,
-        const AZ::Transform& worldFromLocal, AZ::u32 capSegments, AZ::u32 sides,
-        AZStd::vector<Vec3>& vertexBufferOut, AZStd::vector<vtx_idx>& indexBufferOut,
-        AZStd::vector<Vec3>& lineBufferOut);
+        const AZ::SplinePtr& spline, const SplineAttribute<float>& variableRadius,
+        float radius, AZ::u32 capSegments, AZ::u32 sides, AZStd::vector<AZ::Vector3>& vertexBufferOut,
+        AZStd::vector<AZ::u32>& indexBufferOut, AZStd::vector<AZ::Vector3>& lineBufferOut);
 
     /**
      * Configuration for how TubeShape debug drawing should appear (tesselation parameters etc).

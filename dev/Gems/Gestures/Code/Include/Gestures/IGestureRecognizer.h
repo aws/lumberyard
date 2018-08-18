@@ -15,7 +15,7 @@
 #include <IRenderer.h>
 #include <Cry_Vector2.h>
 
-#include <AzFramework/Input/Buses/Notifications/InputChannelNotificationBus.h>
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Devices/Touch/InputDeviceTouch.h>
 
@@ -23,11 +23,33 @@
 namespace Gestures
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    class IRecognizer : public AzFramework::InputChannelNotificationBus::Handler
+    //! Base class for all gesture recognizers
+    class IRecognizer : public AzFramework::InputChannelNotificationBus::Handler,
+                        public AzFramework::InputChannel::PositionData2D
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputChannelEventNotifications::OnInputChannelEvent
+        // Allocator
+        AZ_CLASS_ALLOCATOR(IRecognizer, AZ::SystemAllocator, 0);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(IRecognizer, "{C3E00298-1953-465F-A360-EBC10B62BFE8}", CustomData);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Enable this gesture recognizer
+        void Enable() { AzFramework::InputChannelNotificationBus::Handler::BusConnect(); }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Disable this gesture recognizer
+        void Disable() { AzFramework::InputChannelNotificationBus::Handler::BusDisconnect(); }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputChannelNotifications::GetPriority
+        AZ::s32 GetPriority() const override { return AzFramework::InputChannelEventListener::GetPriorityUI() + 1; }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputChannelNotifications::OnInputChannelEvent
         void OnInputChannelEvent(const AzFramework::InputChannel& inputChannel,
                                  bool& o_hasBeenConsumed) override;
 
@@ -38,7 +60,7 @@ namespace Gestures
         //! \param[in] pointerIndex The pointer index of the input event.
         //! \return True to consume the underlying input event (preventing it from being sent on
         //! to other lower-priority gesture recognizers or input listeners), or false otherwise.
-        virtual bool OnPressedEvent(const Vec2& screenPositionPixels, uint32_t pointerIndex) = 0;
+        virtual bool OnPressedEvent(const AZ::Vector2& screenPositionPixels, uint32_t pointerIndex) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Override to be notified each frame a mouse button or finger on a touch screen remains
@@ -47,7 +69,7 @@ namespace Gestures
         //! \param[in] pointerIndex The pointer index of the input event.
         //! \return True to consume the underlying input event (preventing it from being sent on
         //! to other lower-priority gesture recognizers or input listeners), or false otherwise.
-        virtual bool OnDownEvent(const Vec2& screenPositionPixels, uint32_t pointerIndex) = 0;
+        virtual bool OnDownEvent(const AZ::Vector2& screenPositionPixels, uint32_t pointerIndex) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Override to be notified when a pressed mouse button or finger on a touch screen becomes
@@ -56,7 +78,7 @@ namespace Gestures
         //! \param[in] pointerIndex The pointer index of the input event.
         //! \return True to consume the underlying input event (preventing it from being sent on
         //! to other lower-priority gesture recognizers or input listeners), or false otherwise.
-        virtual bool OnReleasedEvent(const Vec2& screenPositionPixels, uint32_t pointerIndex) = 0;
+        virtual bool OnReleasedEvent(const AZ::Vector2& screenPositionPixels, uint32_t pointerIndex) = 0;
 
     protected:
 
@@ -67,6 +89,12 @@ namespace Gestures
         uint32_t GetGesturePointerIndex(const AzFramework::InputChannel& inputChannel);
         const uint32_t INVALID_GESTURE_POINTER_INDEX = static_cast<uint32_t>(-1);
 
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Convenience function that converts back to a normalized position before calling through
+        //! to the base AzFramework::InputChannel::PositionData2D::UpdateNormalizedPositionAndDelta
+        //! \param[in] screenPositionPixels The screen position (in pixels) of the input event.
+        void UpdateNormalizedPositionAndDeltaFromScreenPosition(const AZ::Vector2& screenPositionPixels);
+
         // Using Vec2 directly as a member of derived recognizer classes results in
         // linker warnings because Vec2 doesn't have dll import/export specifiers.
         struct ScreenPosition
@@ -74,17 +102,63 @@ namespace Gestures
             ScreenPosition()
                 : x(0.0f)
                 , y(0.0f) {}
-            ScreenPosition(const Vec2& vec2)
-                : x(vec2.x)
-                , y(vec2.y) {}
-            operator Vec2() const
+            ScreenPosition(const AZ::Vector2& vec2)
+                : x(vec2.GetX())
+                , y(vec2.GetY()) {}
+            operator AZ::Vector2() const
             {
-                return Vec2(x, y);
+                return AZ::Vector2(x, y);
             }
 
             float x;
             float y;
         };
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Base class for all discrete gesture recognizers
+    class RecognizerDiscrete : public IRecognizer
+    {
+    public:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Allocator
+        AZ_CLASS_ALLOCATOR(RecognizerDiscrete, AZ::SystemAllocator, 0);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(RecognizerDiscrete, "{51258910-62B3-4830-AF7B-9DA3AD3585CC}", IRecognizer);
+
+    protected:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Override to be notified when the discrete gesture is recognized.
+        virtual void OnDiscreteGestureRecognized() = 0;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Base class for all continuous gesture recognizers
+    class RecognizerContinuous : public IRecognizer
+    {
+    public:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Allocator
+        AZ_CLASS_ALLOCATOR(RecognizerContinuous, AZ::SystemAllocator, 0);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(RecognizerContinuous, "{A8B16552-E1F3-4469-BEB8-5D209554924E}", IRecognizer);
+
+    protected:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Override to be notified when the continuous gesture is initiated.
+        virtual void OnContinuousGestureInitiated() = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Override to be notified when the continuous gesture is updated.
+        virtual void OnContinuousGestureUpdated() = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Override to be notified when the continuous gesture is ended.
+        virtual void OnContinuousGestureEnded() = 0;
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,9 +184,8 @@ namespace Gestures
             return;
         }
 
-        const float posX = positionData2D->m_normalizedPosition.GetX() * static_cast<float>(gEnv->pRenderer->GetWidth());
-        const float posY = positionData2D->m_normalizedPosition.GetY() * static_cast<float>(gEnv->pRenderer->GetHeight());
-        const Vec2 eventScreenPositionPixels(posX, posY);
+        const AZ::Vector2 eventScreenPositionPixels = positionData2D->ConvertToScreenSpaceCoordinates(static_cast<float>(gEnv->pRenderer->GetWidth()),
+                                                                                                      static_cast<float>(gEnv->pRenderer->GetHeight()));
         if (inputChannel.IsStateBegan())
         {
             o_hasBeenConsumed = OnPressedEvent(eventScreenPositionPixels, pointerIndex);
@@ -147,5 +220,13 @@ namespace Gestures
         }
 
         return INVALID_GESTURE_POINTER_INDEX;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    inline void IRecognizer::UpdateNormalizedPositionAndDeltaFromScreenPosition(const AZ::Vector2& screenPositionPixels)
+    {
+        const AZ::Vector2 normalizedPosition(screenPositionPixels.GetX() / static_cast<float>(gEnv->pRenderer->GetWidth()),
+                                             screenPositionPixels.GetY() / static_cast<float>(gEnv->pRenderer->GetHeight()));
+        AzFramework::InputChannel::PositionData2D::UpdateNormalizedPositionAndDelta(normalizedPosition);
     }
 }

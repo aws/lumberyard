@@ -180,10 +180,10 @@ PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 PROJECT_USER_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	${for b in project.build_properties}
-        <!--
-        -->
-        <!--
-        -->
+		<!--
+		-->
+		<!--
+		-->
 	${endfor}
 </Project>
 '''
@@ -362,7 +362,7 @@ SUPPORTED_MSVS_VALUE_TABLE = {
         "defaultPlatformToolSet": "v140",
         "platforms": [
             "win_x64_vs2015",
-    	],
+        ],
         "product_name": "2015"
     },
     "15": {
@@ -559,10 +559,9 @@ def compile_template(line):
     #print(fun)
     return Task.funex(fun)
 
-
-re_blank = re.compile('(\n|\r|\\s)*\n', re.M)
 def rm_blank_lines(txt):
-    txt = re_blank.sub('\r\n', txt)
+    txt = "\r\n".join([line for line in txt.splitlines() if line.strip() != ''])
+    txt += '\r\n'
     return txt
 
 BOM = '\xef\xbb\xbf'
@@ -1136,7 +1135,7 @@ class vsnode_target(vsnode_project):
         result = []
         platforms = [target_platform]
         # Append common win platform for windows hosts
-        if target_platform in ('win_x86', 'win_x64', 'win_x64_vs2017', 'win_x64_vs2015', 'win_x64_vs2013', 'win_x64_vs2013_test', 'win_x64_vs2015_test', 'win_x64_vs20177_test'):
+        if target_platform in ('win_x86', 'win_x64', 'win_x64_vs2017', 'win_x64_vs2015', 'win_x64_vs2013', 'win_x64_vs2013_test', 'win_x64_vs2015_test', 'win_x64_vs2017_test'):
             platforms.append('win')
         if target_platform in ('linux_x64'):
             platforms.append('linux')
@@ -1446,7 +1445,7 @@ class vsnode_target(vsnode_project):
                 qt_intermediate_include_path = os.path.join(self.tg.bld.bldnode.abspath(),
                                                             x.target_config,
                                                             'qt5',
-                                                            self.name)
+                                                            '{}.{}'.format(self.name, self.tg.target_uid))
                 include_list.append(qt_intermediate_include_path)
 
             x.includes_search_path = ';'.join(include_list)

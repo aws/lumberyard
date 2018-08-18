@@ -20,6 +20,7 @@
 UiRenderer::UiRenderer()
     : m_baseState(GS_DEPTHFUNC_LEQUAL)
     , m_stencilRef(0)
+    , m_isRenderingToMask(false)
 {
 }
 
@@ -80,6 +81,18 @@ void UiRenderer::IncrementStencilRef()
 void UiRenderer::DecrementStencilRef()
 {
     --m_stencilRef;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiRenderer::IsRenderingToMask()
+{
+    return m_isRenderingToMask;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRenderer::SetIsRenderingToMask(bool isRenderingToMask)
+{
+    m_isRenderingToMask = isRenderingToMask;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

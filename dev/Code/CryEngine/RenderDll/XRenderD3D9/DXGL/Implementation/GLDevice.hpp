@@ -91,15 +91,15 @@ namespace NCryOpenGL
 
     struct SVersion
     {
-        uint32 m_uMajorVersion;
-        uint32 m_uMinorVersion;
+        int32 m_uMajorVersion;
+        int32 m_uMinorVersion;
 
         SVersion()
             : m_uMajorVersion(0)
             , m_uMinorVersion(0)
         {}
 
-        SVersion(uint32 version)
+        SVersion(int32 version)
         {
             m_uMajorVersion = version / 100;
             m_uMinorVersion = (version / 10) % 10;
@@ -302,6 +302,7 @@ namespace NCryOpenGL
         static bool MakeCurrent(const TWindowContext&kWindowContext, TRenderingContext kRenderingContext);
 
         void OnApplicationWindowCreated() override;
+        void OnApplicationWindowRedrawNeeded() override;
 
         static uint32 ms_uNumContextsPerDevice;
         static CDevice* ms_pCurrentDevice;

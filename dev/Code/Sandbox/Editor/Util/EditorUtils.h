@@ -300,22 +300,22 @@ inline QColor String2Color(const QString& val)
 {
     unsigned int r = 0, g = 0, b = 0;
     int res = 0;
-    res = sscanf(val.toUtf8().data(), "R:%d,G:%d,B:%d", &r, &g, &b);
+    res = azsscanf(val.toUtf8().data(), "R:%d,G:%d,B:%d", &r, &g, &b);
     if (res != 3)
     {
-        res = sscanf(val.toUtf8().data(), "R:%d G:%d B:%d", &r, &g, &b);
+        res = azsscanf(val.toUtf8().data(), "R:%d G:%d B:%d", &r, &g, &b);
     }
     if (res != 3)
     {
-        res = sscanf(val.toUtf8().data(), "%d,%d,%d", &r, &g, &b);
+        res = azsscanf(val.toUtf8().data(), "%d,%d,%d", &r, &g, &b);
     }
     if (res != 3)
     {
-        res = sscanf(val.toUtf8().data(), "%d %d %d", &r, &g, &b);
+        res = azsscanf(val.toUtf8().data(), "%d %d %d", &r, &g, &b);
     }
     if (res != 3)
     {
-        sscanf(val.toUtf8().data(), "%x", &r);
+        azsscanf(val.toUtf8().data(), "%x", &r);
         return r;
     }
 

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "EditorCommon.h"
 #include <AzCore/Component/Entity.h>

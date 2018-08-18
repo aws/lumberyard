@@ -22,7 +22,6 @@
 #include <AzCore/Serialization/SerializeContext.h>
 
 #include <AzFramework/Components/TransformComponent.h>
-#include <AzFramework/Math/MathUtils.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
@@ -43,7 +42,7 @@ namespace AzToolsFramework
                 AZ::Transform tx = transform;
                 scale = tx.ExtractScaleExact();
                 translation = tx.GetTranslation();
-                rotation = AzFramework::ConvertTransformToEulerDegrees(tx);
+                rotation = tx.GetEulerDegrees();
             }
 
             bool TransformComponentDataConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
@@ -274,7 +273,7 @@ namespace AzToolsFramework
 
         AZ::Transform TransformComponent::GetLocalRotationTM() const
         {
-            return AzFramework::ConvertEulerDegreesToTransformPrecise(m_editorTransform.m_rotate);
+            return AZ::ConvertEulerDegreesToTransformPrecise(m_editorTransform.m_rotate);
         }
 
         AZ::Transform TransformComponent::GetLocalScaleTM() const
@@ -432,7 +431,7 @@ namespace AzToolsFramework
             AZ_Warning("AzToolsFramework::TransformComponent", false, "SetRotation is deprecated, please use SetLocalRotation");
 
             AZ::Transform newWorldTransform = GetWorldTM();
-            newWorldTransform.SetRotationPartFromQuaternion(AzFramework::ConvertEulerRadiansToQuaternion(eulerAnglesRadians));
+            newWorldTransform.SetRotationPartFromQuaternion(AZ::ConvertEulerRadiansToQuaternion(eulerAnglesRadians));
             SetWorldTM(newWorldTransform);
         }
 
@@ -497,7 +496,7 @@ namespace AzToolsFramework
         {
             AZ_Warning("AzToolsFramework::TransformComponent", false, "GetRotationEulerRadians is deprecated, please use GetWorldRotation");
 
-            return AzFramework::ConvertTransformToEulerRadians(GetWorldTM());
+            return GetWorldTM().GetEulerRadians();
         }
 
         AZ::Quaternion TransformComponent::GetRotationQuaternion()
@@ -526,7 +525,7 @@ namespace AzToolsFramework
         {
             AZ::Transform rotate = GetWorldTM();
             rotate.ExtractScaleExact();
-            AZ::Vector3 angles = AzFramework::ConvertTransformToEulerRadians(rotate);
+            AZ::Vector3 angles = rotate.GetEulerRadians();
             return angles;
         }
 
@@ -540,64 +539,63 @@ namespace AzToolsFramework
 
         void TransformComponent::SetLocalRotation(const AZ::Vector3& eulerAnglesRadian)
         {
-            m_editorTransform.m_rotate = AzFramework::RadToDeg(eulerAnglesRadian);
+            m_editorTransform.m_rotate = AZ::Vector3RadToDeg(eulerAnglesRadian);
             TransformChanged();
         }
 
         void TransformComponent::SetLocalRotationQuaternion(const AZ::Quaternion& quaternion)
         {
-            m_editorTransform.m_rotate = AzFramework::ConvertQuaternionToEulerDegrees(quaternion);
+            m_editorTransform.m_rotate = quaternion.GetEulerDegrees();
             TransformChanged();
         }
 
         void TransformComponent::RotateAroundLocalX(float eulerAngleRadian)
         {
-            AZ::Transform localRotate = AzFramework::ConvertEulerDegreesToTransformPrecise(m_editorTransform.m_rotate);
+            AZ::Transform localRotate = AZ::ConvertEulerDegreesToTransformPrecise(m_editorTransform.m_rotate);
             AZ::Vector3 xAxis = localRotate.GetBasisX();
             AZ::Quaternion xRotate = AZ::Quaternion::CreateFromAxisAngle(xAxis, eulerAngleRadian);
-            AZ::Quaternion currentRotate = AzFramework::ConvertEulerDegreesToQuaternion(m_editorTransform.m_rotate);
+            AZ::Quaternion currentRotate = AZ::ConvertEulerDegreesToQuaternion(m_editorTransform.m_rotate);
             AZ::Quaternion newRotate = xRotate * currentRotate;
             newRotate.NormalizeExact();
-            m_editorTransform.m_rotate = AzFramework::ConvertQuaternionToEulerDegrees(newRotate);
-
+            m_editorTransform.m_rotate = newRotate.GetEulerDegrees();
             TransformChanged();
         }
 
         void TransformComponent::RotateAroundLocalY(float eulerAngleRadian)
         {
-            AZ::Transform localRotate = AzFramework::ConvertEulerDegreesToTransformPrecise(m_editorTransform.m_rotate);
+            AZ::Transform localRotate = AZ::ConvertEulerDegreesToTransformPrecise(m_editorTransform.m_rotate);
             AZ::Vector3 yAxis = localRotate.GetBasisY();
             AZ::Quaternion yRotate = AZ::Quaternion::CreateFromAxisAngle(yAxis, eulerAngleRadian);
-            AZ::Quaternion currentRotate = AzFramework::ConvertEulerDegreesToQuaternion(m_editorTransform.m_rotate);
+            AZ::Quaternion currentRotate = AZ::ConvertEulerDegreesToQuaternion(m_editorTransform.m_rotate);
             AZ::Quaternion newRotate = yRotate * currentRotate;
             newRotate.NormalizeExact();
-            m_editorTransform.m_rotate = AzFramework::ConvertQuaternionToEulerDegrees(newRotate);
+            m_editorTransform.m_rotate = newRotate.GetEulerDegrees();
 
             TransformChanged();
         }
 
         void TransformComponent::RotateAroundLocalZ(float eulerAngleRadian)
         {
-            AZ::Transform localRotate = AzFramework::ConvertEulerDegreesToTransformPrecise(m_editorTransform.m_rotate);
+            AZ::Transform localRotate = AZ::ConvertEulerDegreesToTransformPrecise(m_editorTransform.m_rotate);
             AZ::Vector3 zAxis = localRotate.GetBasisZ();
             AZ::Quaternion zRotate = AZ::Quaternion::CreateFromAxisAngle(zAxis, eulerAngleRadian);
-            AZ::Quaternion currentRotate = AzFramework::ConvertEulerDegreesToQuaternion(m_editorTransform.m_rotate);
+            AZ::Quaternion currentRotate = AZ::ConvertEulerDegreesToQuaternion(m_editorTransform.m_rotate);
             AZ::Quaternion newRotate = zRotate * currentRotate;
             newRotate.NormalizeExact();
-            m_editorTransform.m_rotate = AzFramework::ConvertQuaternionToEulerDegrees(newRotate);
+            m_editorTransform.m_rotate = newRotate.GetEulerDegrees();
 
             TransformChanged();
         }
 
         AZ::Vector3 TransformComponent::GetLocalRotation()
         {
-            AZ::Vector3 result = AzFramework::DegToRad(m_editorTransform.m_rotate);
+            AZ::Vector3 result = AZ::Vector3DegToRad(m_editorTransform.m_rotate);
             return result;
         }
 
         AZ::Quaternion TransformComponent::GetLocalRotationQuaternion()
         {
-            AZ::Quaternion result = AzFramework::ConvertEulerDegreesToQuaternion(m_editorTransform.m_rotate);
+            AZ::Quaternion result = AZ::ConvertEulerDegreesToQuaternion(m_editorTransform.m_rotate);
             return result;
         }
 

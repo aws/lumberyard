@@ -75,7 +75,6 @@ namespace LmbrCentral
                 EBUS_EVENT_ID_RESULT(results, id, TagGlobalRequestBus, RequestTaggedEntities);
                 for (const AZ::EntityId& entity : results.values)
                 {
-                    typename Bus::template CallstackEntryIterator<typename Bus::InterfaceType**> callstack(nullptr, &id); // Workaround for GetCurrentBusId in callee
                     handler->OnEntityTagAdded(entity);
                 }
             }

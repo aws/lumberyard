@@ -10,48 +10,22 @@
 *
 */
 
-#include "EMotionFXConfig.h"
-#include "BlendTreeMorphTargetNode.h"
-#include "AnimGraphInstance.h"
-#include "AnimGraphAttributeTypes.h"
-#include "AnimGraphManager.h"
-#include "AnimGraphRefCountedData.h"
-#include "EMotionFXManager.h"
-#include "MorphSetup.h"
-#include <MCore/Source/AttributeSettings.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/BlendTreeMorphTargetNode.h>
+#include <EMotionFX/Source/MorphSetup.h>
 
 
 namespace EMotionFX
 {
-    BlendTreeMorphTargetNode::BlendTreeMorphTargetNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-        SetNodeInfo("<none>");
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMorphTargetNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMorphTargetNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
-
-    BlendTreeMorphTargetNode* BlendTreeMorphTargetNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeMorphTargetNode(animGraph);
-    }
-
-
-    AnimGraphObjectData* BlendTreeMorphTargetNode::CreateObjectData()
-    {
-        return new UniqueData(this, nullptr);
-    }
-
-
-    const char* BlendTreeMorphTargetNode::GetTypeString() const
-    {
-        return "BlendTreeMorphTargetNode";
-    }
-
-
-    void BlendTreeMorphTargetNode::RegisterPorts()
+    BlendTreeMorphTargetNode::BlendTreeMorphTargetNode()
+        : AnimGraphNode()
     {
         // Setup input ports.
         InitInputPorts(2);
@@ -64,12 +38,36 @@ namespace EMotionFX
     }
 
 
-    void BlendTreeMorphTargetNode::RegisterAttributes()
+    void BlendTreeMorphTargetNode::Reinit()
     {
-        MCore::AttributeSettings* attrib = RegisterAttribute("Morph Target", "morphTarget", "The morph target to apply the weight changes to.", ATTRIBUTE_INTERFACETYPE_MORPHTARGETPICKER);
-        attrib->SetDefaultValue(MCore::AttributeArray::Create(MCore::AttributeString::TYPE_ID));
-        attrib->SetReinitObjectOnValueChange(true);
-        attrib->SetReinitGuiOnValueChange(true);
+        AnimGraphNode::Reinit();
+
+        // Update the node info string.
+        if (!m_morphTargetNames.empty())
+        {
+            SetNodeInfo(m_morphTargetNames[0].c_str());
+        }
+        else
+        {
+            SetNodeInfoNone();
+        }
+
+        UpdateUniqueDatas();
+    }
+
+
+    bool BlendTreeMorphTargetNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        SetNodeInfoNone();
+        Reinit();
+        return true;
     }
 
 
@@ -85,20 +83,6 @@ namespace EMotionFX
     }
 
 
-    AnimGraphObject* BlendTreeMorphTargetNode::Clone(AnimGraph* animGraph)
-    {
-        BlendTreeMorphTargetNode* clone = new BlendTreeMorphTargetNode(animGraph);
-        CopyBaseObjectTo(clone);
-        return clone;
-    }
-
-
-    void BlendTreeMorphTargetNode::Init(AnimGraphInstance* animGraphInstance)
-    {
-        MCORE_UNUSED(animGraphInstance);
-    }
-
-
     // Update the morph indices, which will convert the morph target name into an index into the current LOD.
     void BlendTreeMorphTargetNode::UpdateMorphIndices(ActorInstance* actorInstance, UniqueData* uniqueData, bool forceUpdate)
     {
@@ -108,12 +92,14 @@ namespace EMotionFX
             return;
 
         // Convert the morph target name into an index for fast lookup.
-        MCore::AttributeArray* morphArray = GetAttributeArray(ATTRIB_MORPHTARGET);
-        if (morphArray->GetNumAttributes() > 0)
+        if (!m_morphTargetNames.empty())
         {
             const EMotionFX::MorphSetup* morphSetup = actorInstance->GetActor()->GetMorphSetup(lodLevel);
-            const char* morphTargetName = static_cast<MCore::AttributeString*>(morphArray->GetAttribute(0))->AsChar();
-            uniqueData->m_morphTargetIndex = morphSetup->FindMorphTargetIndexByName(morphTargetName);
+            if (morphSetup)
+            {
+                const AZStd::string& morphTargetName = m_morphTargetNames[0];
+                uniqueData->m_morphTargetIndex = morphSetup->FindMorphTargetIndexByName(morphTargetName.c_str());
+            }
         }
         else
         {
@@ -130,9 +116,9 @@ namespace EMotionFX
         // Mark this node as having an error when the morph target cannot be found.
         // If there is none setup, we see that as a non-error state, otherwise you would see the node marked as error directly after creation.
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        MCore::AttributeArray* morphArray = GetAttributeArray(ATTRIB_MORPHTARGET);
-#ifdef EMFX_EMSTUDIOBUILD
-        if (morphArray->GetNumAttributes() == 0)
+
+    #ifdef EMFX_EMSTUDIOBUILD
+        if (m_morphTargetNames.empty())
         {
             SetHasError(animGraphInstance, false);
         }
@@ -140,7 +126,7 @@ namespace EMotionFX
         {
             SetHasError(animGraphInstance, uniqueData->m_morphTargetIndex == MCORE_INVALIDINDEX32);
         }
-#endif
+    #endif
 
         // Refresh the morph target indices when needed.
         // This has to happen when we changed LOD levels, as the new LOD might have another number of morph targets.
@@ -194,26 +180,53 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         if (!uniqueData)
         {
-            uniqueData = static_cast<UniqueData*>(GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance));
+            uniqueData = aznew UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
 
         // Force update the morph target indices.
         UpdateMorphIndices(animGraphInstance->GetActorInstance(), uniqueData, true);
-
-        // Update the node info string.
-        MCore::AttributeArray* morphArray = GetAttributeArray(ATTRIB_MORPHTARGET);
-        if (morphArray->GetNumAttributes() > 0)
-        {
-            const EMotionFX::MorphSetup* morphSetup = animGraphInstance->GetActorInstance()->GetActor()->GetMorphSetup(0);
-            const char* morphTargetName = static_cast<MCore::AttributeString*>(morphArray->GetAttribute(0))->AsChar();
-            SetNodeInfo(morphTargetName);
-        }
-        else
-        {
-            SetNodeInfo("<none>");
-        }
     }
 
-}   // namespace EMotionFX
 
+    void BlendTreeMorphTargetNode::SetNodeInfoNone()
+    {
+        SetNodeInfo("<none>");
+    }
+
+    void BlendTreeMorphTargetNode::SetMorphTargetNames(const AZStd::vector<AZStd::string>& morphTargetNames)
+    {
+        m_morphTargetNames = morphTargetNames;
+    }
+
+    void BlendTreeMorphTargetNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeMorphTargetNode, AnimGraphNode>()
+            ->Version(1)
+            -> Field("morphTargetNames", &BlendTreeMorphTargetNode::m_morphTargetNames)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeMorphTargetNode>("Morph Target", "Morph target attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ_CRC("ActorMorphTargetName", 0xed53e3a5), &BlendTreeMorphTargetNode::m_morphTargetNames, "Morph Target", "The morph target to apply the weight changes to.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMorphTargetNode::Reinit)
+                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+            ;
+    }
+} // namespace EMotionFX

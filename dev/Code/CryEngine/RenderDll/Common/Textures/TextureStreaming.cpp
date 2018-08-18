@@ -19,7 +19,6 @@
 #include "Image/DDSImage.h"
 #include "StringUtils.h"                                // stristr()
 #include "ILocalMemoryUsage.h"
-#include <IJobManager_JobDelegator.h>
 
 #include "TextureManager.h"
 #include "TextureStreamPool.h"
@@ -302,25 +301,26 @@ void STexStreamInState::StreamAsyncOnComplete(IReadStream* pStream, unsigned nEr
 #endif
 
 #if defined(TEXSTRM_DEFERRED_UPLOAD)
-
-            ID3D11CommandList* pCmdList = tp->StreamCreateDeferred(m_nHigherUploadedMip, m_nLowerUploadedMip, m_pNewPoolItem, tp->m_pFileTexMips->m_pPoolItem);
-
-            if (pCmdList)
+            if (tp->m_pFileTexMips->m_pPoolItem)    ///< Don't upload if the source is nullptr it'll just cause an exception
             {
-                m_pCmdList = pCmdList;
-                m_bValidLowMips = true;
+                ID3D11CommandList* pCmdList = tp->StreamCreateDeferred(m_nHigherUploadedMip, m_nLowerUploadedMip, m_pNewPoolItem, tp->m_pFileTexMips->m_pPoolItem);
 
-                for (int i = 0, c = m_nLowerUploadedMip - m_nHigherUploadedMip + 1; i != c; ++i)
+                if (pCmdList)
                 {
-                    m_mips[i].m_bExpanded = false;
-                }
+                    m_pCmdList = pCmdList;
+                    m_bValidLowMips = true;
 
-                if (CTexture::s_bStreamDontKeepSystem)
-                {
-                    tp->StreamReleaseMipsData(m_nHigherUploadedMip, m_nLowerUploadedMip);
+                    for (int i = 0, c = m_nLowerUploadedMip - m_nHigherUploadedMip + 1; i != c; ++i)
+                    {
+                        m_mips[i].m_bExpanded = false;
+                    }
+
+                    if (CTexture::s_bStreamDontKeepSystem)
+                    {
+                        tp->StreamReleaseMipsData(m_nHigherUploadedMip, m_nLowerUploadedMip);
+                    }
                 }
             }
-
 #endif
 
 #if defined(TEXSTRM_ASYNC_TEXCOPY)
@@ -1600,7 +1600,7 @@ bool CTexture::StartStreaming(CTexture* pTex, STexPoolItem* pNewPoolItem, const 
                 nSizeToSubmit += pTex->m_pFileTexMips->m_pMipHeader[nChunkMip].m_SideSize * nSides;
             }
 
-            std::function<void()> updateTextureByteCounterAtomic = [&nSizeToSubmit]()
+            AZStd::function<void()> updateTextureByteCounterAtomic = [&nSizeToSubmit]()
                 {
                     CryInterlockedAdd(s_nBytesSubmittedToStreaming.Addr(), nSizeToSubmit);
                 };
@@ -1698,13 +1698,13 @@ void CTexture::InitStreaming()
     if (CRenderer::CV_r_texturesstreaming)
     {
         int nMinTexStreamPool = 192;
-        int nMaxTexStreamPool = 1536;
-
-#if defined(WIN32) && !defined(WIN64)
-        if (!pEnv->pi.win64Bit)  // 32 bit executable
-        {
-            nMaxTexStreamPool = 512;
-        }
+#ifdef NULL_RENDERER
+        // Dedicated server uses CNULLRenderer, which doesn't report any available 
+        // memory via gRenDev->m_MaxTextureMemory, so use a magic number. It's OK 
+        // to use it here, as a dedicated server will not load textures anyway.
+        int nMaxTexStreamPool = 8192; 
+#else
+        int nMaxTexStreamPool = (gRenDev->m_MaxTextureMemory / 1024 / 1024);
 #endif
 
         ICVar* pICVarTexRes = iConsole->GetCVar("sys_spec_TextureResolution");
@@ -1737,6 +1737,8 @@ void CTexture::InitStreaming()
                 pICVarTexRes->Set(valTexRes);
             }
         }
+
+        AZ_WarningOnce("TextureStreaming", CRenderer::CV_r_TexturesStreamPoolSize <= (nMaxTexStreamPool * 0.75f), "Warning!  You are assigning more than 75 percent of total available GPU memory to texture streaming!");
 
         CRenderer::CV_r_TexturesStreamPoolSize = clamp_tpl(CRenderer::CV_r_TexturesStreamPoolSize, nMinTexStreamPool, nMaxTexStreamPool);
 

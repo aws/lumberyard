@@ -15,7 +15,7 @@
 
 #include "Woodpecker/Driller/DrillerEvent.h"
 
-#include <AzCore/debug/TraceMessagesDrillerBus.h>
+#include <AzCore/Debug/TraceMessagesDrillerBus.h>
 
 namespace Driller
 {

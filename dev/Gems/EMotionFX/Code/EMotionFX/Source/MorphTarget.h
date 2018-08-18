@@ -36,7 +36,7 @@ namespace EMotionFX
     class EMFX_API MorphTarget
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MorphTarget, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_GEOMETRY_PMORPHTARGETS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**

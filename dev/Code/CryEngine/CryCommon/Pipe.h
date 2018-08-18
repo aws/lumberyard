@@ -598,7 +598,7 @@ namespace CryMT
             static const int PUSH_COUNT = 100000;
 
             Pipe<int> pipe;
-            f = fopen("c:\\pipetestsinglethread.txt", "w");
+            fopen_s(&f, "c:\\pipetestsinglethread.txt", "w");
             int currentValue = 0;
             for (int iteration = 0; iteration < ITERATION_COUNT; ++iteration)
             {
@@ -755,7 +755,7 @@ namespace CryMT
             Pipe<int> pipe;
             threadData.pipe = &pipe;
 
-            f = fopen("c:\\pipetestmultithread.txt", "w");
+            fopen_s(&f, "c:\\pipetestmultithread.txt", "w");
 
             HANDLE hWriterThread = CreateThread(0, 0, TestPipeWriterThread, &threadData, 0, 0);
             HANDLE hReaderThread = CreateThread(0, 0, TestPipeReaderThread, &threadData, 0, 0);

@@ -584,14 +584,14 @@ void CTrackViewDialog::InitToolbar()
     qaction = m_playToolBar->addAction(QIcon(":/Trackview/play/tvplay-09.png"), "Undo");
     qaction->setData(ID_UNDO);
     m_actions[ID_UNDO] = qaction;
-    connect(qaction, &QAction::triggered, []()
+    connect(qaction, &QAction::triggered, this, []()
         {
 		GetIEditor()->Undo();
 	});
     qaction = m_playToolBar->addAction(QIcon(":/Trackview/play/tvplay-10.png"), "Redo");
     qaction->setData(ID_REDO);
     m_actions[ID_REDO] = qaction;
-    connect(qaction, &QAction::triggered, []()
+    connect(qaction, &QAction::triggered, this, []()
         {
 		GetIEditor()->Redo();
 	});
@@ -1103,17 +1103,19 @@ void CTrackViewDialog::OnAddSequence()
             CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
             CTrackViewSequence* newSequence = nullptr;
 
+            QString newSequenceCmd = QStringLiteral("trackview.new_sequence '%1' %2").arg(sequenceName, QStringLiteral("%1").arg(static_cast<int>(sequenceType)));
+
             if (sequenceType == SequenceType::Legacy)
             {
                 CUndo undo("Add Sequence");
-                GetIEditor()->ExecuteCommand(QStringLiteral("trackview.new_sequence '%1' %2").arg(sequenceName).arg(static_cast<int>(sequenceType)));
+                GetIEditor()->ExecuteCommand(newSequenceCmd);
                 newSequence = sequenceManager->GetSequenceByName(sequenceName);
                 AZ_Assert(newSequence, "Creating new sequence failed.");
             }
             else
             {
                 AzToolsFramework::ScopedUndoBatch undoBatch("Create TrackView Director Node");
-                GetIEditor()->ExecuteCommand(QStringLiteral("trackview.new_sequence '%1' %2").arg(sequenceName).arg(static_cast<int>(sequenceType)));
+                GetIEditor()->ExecuteCommand(newSequenceCmd);
                 newSequence = sequenceManager->GetSequenceByName(sequenceName);
                 AZ_Assert(newSequence, "Creating new sequence failed.");
                 undoBatch.MarkEntityDirty(newSequence->GetSequenceComponentEntityId());
@@ -1619,22 +1621,32 @@ void CTrackViewDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDialog::OnAddSelectedNode()
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
-    if (pSequence)
+    if (sequence)
     {
         // Try to paste to a selected group node, otherwise to sequence
-        CTrackViewAnimNodeBundle selectedNodes = pSequence->GetSelectedAnimNodes();
-        CTrackViewAnimNode* pAnimNode = (selectedNodes.GetCount() == 1) ? selectedNodes.GetNode(0) : pSequence;
-        pAnimNode = (pAnimNode->IsGroupNode() && pAnimNode->GetType() != AnimNodeType::AzEntity) ? pAnimNode : pSequence;
+        CTrackViewAnimNodeBundle selectedNodes = sequence->GetSelectedAnimNodes();
+        CTrackViewAnimNode* animNode = (selectedNodes.GetCount() == 1) ? selectedNodes.GetNode(0) : sequence;
+        animNode = (animNode->IsGroupNode() && animNode->GetType() != AnimNodeType::AzEntity) ? animNode : sequence;
 
-        CUndo undo("Add Entities to TrackView");
-        CTrackViewAnimNodeBundle addedNodes = pAnimNode->AddSelectedEntities(m_defaultTracksForEntityNode);
+        CTrackViewAnimNodeBundle addedNodes;
+        if (sequence->GetSequenceType() != SequenceType::Legacy)
+        {
+            AzToolsFramework::ScopedUndoBatch undoBatch("Add Entities to TrackView");
+            addedNodes = animNode->AddSelectedEntities(m_defaultTracksForEntityNode);
+            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+        }
+        else
+        {
+            CUndo undo("Add Entities to TrackView");
+            addedNodes = animNode->AddSelectedEntities(m_defaultTracksForEntityNode);
+        }
 
         if (addedNodes.GetCount() > 0)
         {
             // mark layer containing sequence as dirty
-            pSequence->MarkAsModified();
+            sequence->MarkAsModified();
         }
 
         // check to make sure all nodes were added and notify user if they weren't
@@ -2161,8 +2173,20 @@ void CTrackViewDialog::OnTracksToolBar()
     {
         if (m_pNodeForTracksToolBar && m_toolBarParamTypes[paramTypeToolBarID].GetType() != AnimParamType::Invalid)
         {
-            CUndo undo("Create TrackView Track");
-            m_pNodeForTracksToolBar->CreateTrack(m_toolBarParamTypes[paramTypeToolBarID]);
+            CTrackViewSequence* sequence = m_pNodeForTracksToolBar->GetSequence();
+            AZ_Assert(sequence, "Expected valid sequence");
+
+            if (sequence && sequence->GetSequenceType() != SequenceType::Legacy)
+            {
+                AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Track Via Toolbar");
+                m_pNodeForTracksToolBar->CreateTrack(m_toolBarParamTypes[paramTypeToolBarID]);
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
+            else
+            {
+                CUndo undo("Create TrackView Track");
+                m_pNodeForTracksToolBar->CreateTrack(m_toolBarParamTypes[paramTypeToolBarID]);
+            }
             UpdateTracksToolBar();
         }
     }

@@ -1,4 +1,4 @@
-/*
+ /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -11,18 +11,16 @@
 */
 
 // include the required headers
-#include "RenderPlugin.h"
-#include "RenderLayouts.h"
-#include <MysticQt/Source/PropertyWidget.h>
-#include "../EMStudioManager.h"
-#include <EMotionFX/Source/TransformData.h>
+#include <AzCore/RTTI/ReflectContext.h>
 #include <EMotionFX/Source/ActorInstance.h>
-#include "ManipulatorCallbacks.h"
 #include <EMotionFX/Source/AnimGraphManager.h>
-#include "../MainWindow.h"
+#include <EMotionFX/Source/TransformData.h>
+#include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/MainWindow.h>
+#include <EMotionStudio/EMStudioSDK/Source/RenderPlugin/ManipulatorCallbacks.h>
+#include <EMotionStudio/EMStudioSDK/Source/RenderPlugin/RenderLayouts.h>
+#include <EMotionStudio/EMStudioSDK/Source/RenderPlugin/RenderPlugin.h>
 #include <MysticQt/Source/KeyboardShortcutManager.h>
-
-
 
 namespace EMStudio
 {
@@ -692,6 +690,11 @@ namespace EMStudio
         return button;
     }
 
+    void RenderPlugin::Reflect(AZ::ReflectContext* context)
+    {
+        RenderOptions::Reflect(context);
+    }
+
     bool RenderPlugin::Init()
     {
         //mDock->setAllowedAreas(Qt::NoDockWidgetArea);
@@ -786,7 +789,7 @@ namespace EMStudio
         mRotateManipulator      = (MCommon::RotateManipulator*)GetManager()->AddTransformationManipulator(new MCommon::RotateManipulator(70.0f, false));
 
         // set the default rendering layout
-        LayoutButtonPressed(mRenderOptions.mLastUsedLayout.c_str());
+        LayoutButtonPressed(mRenderOptions.GetLastUsedLayout().c_str());
         return true;
     }
 
@@ -824,7 +827,7 @@ namespace EMStudio
         AZStd::string renderOptionsFilename(GetManager()->GetAppDataFolder());
         renderOptionsFilename += "EMStudioRenderOptions.cfg";
         QSettings settings(renderOptionsFilename.c_str(), QSettings::IniFormat, this);
-        mRenderOptions.Load(&settings);
+        mRenderOptions = RenderOptions::Load(&settings);
 
         AZStd::string groupName;
         if (mCurrentLayout)
@@ -905,318 +908,10 @@ namespace EMStudio
     }
 
 
-    void RenderPlugin::AddSettings(PreferencesWindow* preferencesWindow)
-    {
-        MysticQt::PropertyWidget* generalPropertyWidget = preferencesWindow->FindPropertyWidgetByName("General");
-        if (generalPropertyWidget == nullptr)
-        {
-            generalPropertyWidget = preferencesWindow->AddCategory("General", "Images/Preferences/General.png", false);
-        }
-
-        connect(generalPropertyWidget, SIGNAL(ValueChanged(MysticQt::PropertyWidget::Property*)), this, SLOT(OnValueChanged(MysticQt::PropertyWidget::Property*)));
-
-        const char* renderGroupName = "Render Plugin Properties";
-
-        mGridUnitSizeProperty           = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Grid Unit Size", mRenderOptions.mGridUnitSize, 1.0f, 0.01f, 10000.0f);
-        mVertexNormalScaleProperty      = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Vertex Normals Scale", mRenderOptions.mVertexNormalsScale, 0.1f, 0.001f, 1000.0f);
-        mFaceNormalProperty             = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Face Normals Scale", mRenderOptions.mFaceNormalsScale, 0.1f, 0.001f, 1000.0f);
-        mTangentScaleProperty           = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Tangents & Binormals Scale", mRenderOptions.mTangentsScale, 0.1f, 0.001f, 1000.0f);
-
-        mNodeOrientScaleProperty        = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Node Orientation Scale", mRenderOptions.mNodeOrientationScale, 0.1f, 0.001f, 1000.0f);
-        mScaleBonesOnLengthProperty     = generalPropertyWidget->AddBoolProperty(renderGroupName, "Scale Bones On Length", mRenderOptions.mScaleBonesOnLength);
-
-        mRenderBonesOnlyProperty        = generalPropertyWidget->AddBoolProperty(renderGroupName, "Render Bones Only", mRenderOptions.mRenderBonesOnly);
-
-        mNearClipPlaneDistProperty      = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Near Clip Plane Distance", mRenderOptions.mNearClipPlaneDistance, 0.1f, 0.001f, 100.0f);
-        mFarClipPlaneDistProperty       = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Far Clip Plane Distance", mRenderOptions.mFarClipPlaneDistance, 200.0f, 1.0f, 100000.0f);
-        mFOVProperty                    = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Field Of View", mRenderOptions.mFOV, 1.0f, 1.0f, 170.0f);
-
-        // main light
-        mMainLightIntensityProperty     = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Main Light Intensity",  mRenderOptions.mMainLightIntensity, 1.0f, 0.0f, 10.0f);
-        mMainLightAngleAProperty        = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Main Light Angle A",    mRenderOptions.mMainLightAngleA,    1.0f, -360.0f, 360.0f);
-        mMainLightAngleBProperty        = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Main Light Angle B",    mRenderOptions.mMainLightAngleB,    1.0f, -360.0f, 360.0f);
-        mSpecularIntensityProperty      = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Specular Intensity",    mRenderOptions.mSpecularIntensity,  1.0f, 0.0f, 3.0f);
-
-        // rim lighting category
-        mRimIntensityProperty           = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Rim Intensity", mRenderOptions.mRimIntensity,   1.0f, 0.0f, 3.0f);
-        mRimWidthProperty               = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Rim Width",     mRenderOptions.mRimWidth,       1.0f, 0.1f, 1.0f);
-        mRimAngleProperty               = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Rim Angle",     mRenderOptions.mRimAngle,       60.0f, -360.0f, 360.0f);
-
-        // show fps
-        mShowFPSProperty                = generalPropertyWidget->AddBoolProperty(renderGroupName, "Show FPS", mRenderOptions.mShowFPS);
-
-        generalPropertyWidget->SetIsExpanded(renderGroupName, true);
-
-        const uint32 numGeneralPropertyWidgetColumns = generalPropertyWidget->columnCount();
-        for (uint32 i = 0; i < numGeneralPropertyWidgetColumns; ++i)
-        {
-            generalPropertyWidget->resizeColumnToContents(i);
-        }
-
-        // colors
-        MysticQt::PropertyWidget* colorPropertyWidget = preferencesWindow->FindPropertyWidgetByName("Colors");
-        if (colorPropertyWidget == nullptr)
-        {
-            colorPropertyWidget = preferencesWindow->AddCategory("Colors", "Images/Preferences/Colors.png", false);
-        }
-
-        connect(colorPropertyWidget, SIGNAL(ValueChanged(MysticQt::PropertyWidget::Property*)), this, SLOT(OnValueChanged(MysticQt::PropertyWidget::Property*)));
-
-        mGroundLightColorProperty       = colorPropertyWidget->AddColorProperty("", "Ground Light Color", mRenderOptions.mLightGroundColor);
-        mSkyLightColorProperty          = colorPropertyWidget->AddColorProperty("", "Sky Light Color", mRenderOptions.mLightSkyColor);
-        mRimLightColorProperty          = colorPropertyWidget->AddColorProperty("", "Rim Light Color", mRenderOptions.mRimColor);
-        mBGColorProperty                = colorPropertyWidget->AddColorProperty("", "Background Color", mRenderOptions.mBackgroundColor);
-        mGradientBGTopColorProperty     = colorPropertyWidget->AddColorProperty("", "Gradient Background Top Color", mRenderOptions.mGradientSourceColor);
-        mGradientBGBottomColorProperty  = colorPropertyWidget->AddColorProperty("", "Gradient Background Bottom Color", mRenderOptions.mGradientTargetColor);
-        mWireframeColorProperty         = colorPropertyWidget->AddColorProperty("", "Wireframe Color", mRenderOptions.mWireframeColor);
-        mColMeshColorProperty           = colorPropertyWidget->AddColorProperty("", "Collision Mesh Color", mRenderOptions.mCollisionMeshColor);
-        mVertexNormalColorProperty      = colorPropertyWidget->AddColorProperty("", "Vertex Normals Color", mRenderOptions.mVertexNormalsColor);
-        mFaceNormalColorProperty        = colorPropertyWidget->AddColorProperty("", "Face Normals Color", mRenderOptions.mFaceNormalsColor);
-        mTangentColorProperty           = colorPropertyWidget->AddColorProperty("", "Tangents Color", mRenderOptions.mTangentsColor);
-        mMirrorBinormalColorProperty    = colorPropertyWidget->AddColorProperty("", "Mirrored Binormals Color", mRenderOptions.mMirroredBinormalsColor);
-        mBinormalColorProperty          = colorPropertyWidget->AddColorProperty("", "Binormals Color", mRenderOptions.mBinormalsColor);
-        mNodeAABBColorProperty          = colorPropertyWidget->AddColorProperty("", "Node Based AABB Color", mRenderOptions.mNodeAABBColor);
-        mStaticAABBColorProperty        = colorPropertyWidget->AddColorProperty("", "Static Based AABB Color", mRenderOptions.mStaticAABBColor);
-        mMeshAABBColorProperty          = colorPropertyWidget->AddColorProperty("", "Mesh Based AABB Color", mRenderOptions.mMeshAABBColor);
-        mColMeshAABBColorProperty       = colorPropertyWidget->AddColorProperty("", "CollisionMesh Based AABB Color", mRenderOptions.mCollisionMeshAABBColor);
-        mNodeOOBColorProperty           = colorPropertyWidget->AddColorProperty("", "Node OOB Color", mRenderOptions.mOBBsColor);
-        mLineSkeletonColorProperty      = colorPropertyWidget->AddColorProperty("", "Line Based Skeleton Color", mRenderOptions.mLineSkeletonColor);
-        mSkeletonColorProperty          = colorPropertyWidget->AddColorProperty("", "Solid Skeleton Color", mRenderOptions.mSkeletonColor);
-        mGizmoColorProperty             = colorPropertyWidget->AddColorProperty("", "Selection Gizmo Color", mRenderOptions.mSelectionColor);
-        mNodeNameColorProperty          = colorPropertyWidget->AddColorProperty("", "Node Name Color", mRenderOptions.mNodeNameColor);
-        mGridColorProperty              = colorPropertyWidget->AddColorProperty("", "Grid Color", mRenderOptions.mGridColor);
-        mGridMainAxisColorProperty      = colorPropertyWidget->AddColorProperty("", "Grid Main Axis Color", mRenderOptions.mMainAxisColor);
-        mGridSubstepColorProperty       = colorPropertyWidget->AddColorProperty("", "Grid Substep Color", mRenderOptions.mSubStepColor);
-        //mTrajectoryArrowColorProperty = colorPropertyWidget->AddColorProperty( "", "Trajectory Arrow Border Color", mRenderOptions.mTrajectoryArrowBorderColor );
-        mTrajectoryPathColorProperty    = colorPropertyWidget->AddColorProperty("", "Trajectory Path Color", mRenderOptions.mTrajectoryArrowInnerColor);
-
-        const uint32 numColorPropertyWidgetColumns = colorPropertyWidget->columnCount();
-        for (uint32 i = 0; i < numColorPropertyWidgetColumns; ++i)
-        {
-            colorPropertyWidget->resizeColumnToContents(i);
-        }
-
-        /*
-            // Advanced Rendering properties
-            MysticQt::PropertyWidget* advRenderPropertyWidget = preferencesWindow->FindPropertyWidgetByName("Advanced\nRendering");
-            if (advRenderPropertyWidget == nullptr)
-                advRenderPropertyWidget = preferencesWindow->AddCategory("Advanced\nRendering", "Images/Preferences/AdvancedRendering.png", false);
-
-            connect( advRenderPropertyWidget, SIGNAL(ValueChanged(MysticQt::PropertyWidget::Property*)), this, SLOT(OnValueChanged(MysticQt::PropertyWidget::Property*)) );
-
-            // global setting
-            mEnableAdvRenderingProperty = advRenderPropertyWidget->AddBoolProperty( "", "Enable Advanced Rendering", mRenderOptions.mEnableAdvancedRendering );
-
-            // blooming category
-            mBloomingEnabledProperty    = advRenderPropertyWidget->AddBoolProperty( "Blooming", "Blooming Enabled", mRenderOptions.mBloomEnabled );
-            mBloomThresholdProperty     = advRenderPropertyWidget->AddFloatSpinnerProperty( "Blooming", "Bloom Threshold", mRenderOptions.mBloomThreshold, 0.01f, 0.0f, 2.0f );
-            mBloomIntensity             = advRenderPropertyWidget->AddFloatSpinnerProperty( "Blooming", "Bloom Intensity", mRenderOptions.mBloomIntensity, 0.01f, 0.0f, 1.0f );
-            mBloomRadius                = advRenderPropertyWidget->AddFloatSpinnerProperty( "Blooming", "Bloom Radius",    mRenderOptions.mBloomRadius, 0.2f, 1.0f, 50.0f );
-
-            advRenderPropertyWidget->SetIsExpanded( "Blooming", true );
-
-            const uint32 numAdvRenderPropertyWidgetColumns = advRenderPropertyWidget->columnCount();
-            for (uint32 i=0; i<numAdvRenderPropertyWidgetColumns; ++i)
-                advRenderPropertyWidget->resizeColumnToContents(i);
-        */
-    }
-
-
-
-    void RenderPlugin::OnValueChanged(MysticQt::PropertyWidget::Property* property)
-    {
-        if (property == mGridUnitSizeProperty)
-        {
-            mRenderOptions.mGridUnitSize = property->AsFloat();
-        }
-        if (property == mVertexNormalScaleProperty)
-        {
-            mRenderOptions.mVertexNormalsScale = property->AsFloat();
-        }
-        if (property == mFaceNormalProperty)
-        {
-            mRenderOptions.mFaceNormalsScale = property->AsFloat();
-        }
-        if (property == mTangentScaleProperty)
-        {
-            mRenderOptions.mTangentsScale = property->AsFloat();
-        }
-        if (property == mNodeOrientScaleProperty)
-        {
-            mRenderOptions.mNodeOrientationScale = property->AsFloat();
-        }
-        if (property == mScaleBonesOnLengthProperty)
-        {
-            mRenderOptions.mScaleBonesOnLength = property->AsBool();
-        }
-        if (property == mRenderBonesOnlyProperty)
-        {
-            mRenderOptions.mRenderBonesOnly = property->AsBool();
-        }
-        if (property == mNearClipPlaneDistProperty)
-        {
-            mRenderOptions.mNearClipPlaneDistance = property->AsFloat();
-        }
-        if (property == mFarClipPlaneDistProperty)
-        {
-            mRenderOptions.mFarClipPlaneDistance = property->AsFloat();
-        }
-        if (property == mFOVProperty)
-        {
-            mRenderOptions.mFOV = property->AsFloat();
-        }
-        if (property == mMainLightIntensityProperty)
-        {
-            mRenderOptions.mMainLightIntensity = property->AsFloat();
-        }
-        if (property == mMainLightAngleAProperty)
-        {
-            mRenderOptions.mMainLightAngleA = property->AsFloat();
-        }
-        if (property == mMainLightAngleBProperty)
-        {
-            mRenderOptions.mMainLightAngleB = property->AsFloat();
-        }
-        if (property == mSpecularIntensityProperty)
-        {
-            mRenderOptions.mSpecularIntensity = property->AsFloat();
-        }
-        if (property == mRimIntensityProperty)
-        {
-            mRenderOptions.mRimIntensity = property->AsFloat();
-        }
-        if (property == mRimWidthProperty)
-        {
-            mRenderOptions.mRimWidth = property->AsFloat();
-        }
-        if (property == mRimAngleProperty)
-        {
-            mRenderOptions.mRimAngle = property->AsFloat();
-        }
-        if (property == mShowFPSProperty)
-        {
-            mRenderOptions.mShowFPS = property->AsBool();
-        }
-
-        if (property == mGroundLightColorProperty)
-        {
-            mRenderOptions.mLightGroundColor = property->AsColor();
-        }
-        if (property == mSkyLightColorProperty)
-        {
-            mRenderOptions.mLightSkyColor = property->AsColor();
-        }
-        if (property == mRimLightColorProperty)
-        {
-            mRenderOptions.mRimColor = property->AsColor();
-        }
-        if (property == mBGColorProperty)
-        {
-            mRenderOptions.mBackgroundColor = property->AsColor();
-        }
-        if (property == mGradientBGTopColorProperty)
-        {
-            mRenderOptions.mGradientSourceColor = property->AsColor();
-        }
-        if (property == mGradientBGBottomColorProperty)
-        {
-            mRenderOptions.mGradientTargetColor = property->AsColor();
-        }
-        if (property == mWireframeColorProperty)
-        {
-            mRenderOptions.mWireframeColor = property->AsColor();
-        }
-        if (property == mColMeshColorProperty)
-        {
-            mRenderOptions.mCollisionMeshColor = property->AsColor();
-        }
-        if (property == mVertexNormalColorProperty)
-        {
-            mRenderOptions.mVertexNormalsColor = property->AsColor();
-        }
-        if (property == mFaceNormalColorProperty)
-        {
-            mRenderOptions.mFaceNormalsColor = property->AsColor();
-        }
-        if (property == mTangentColorProperty)
-        {
-            mRenderOptions.mTangentsColor = property->AsColor();
-        }
-        if (property == mMirrorBinormalColorProperty)
-        {
-            mRenderOptions.mMirroredBinormalsColor = property->AsColor();
-        }
-        if (property == mBinormalColorProperty)
-        {
-            mRenderOptions.mBinormalsColor = property->AsColor();
-        }
-        if (property == mNodeAABBColorProperty)
-        {
-            mRenderOptions.mNodeAABBColor = property->AsColor();
-        }
-        if (property == mStaticAABBColorProperty)
-        {
-            mRenderOptions.mStaticAABBColor = property->AsColor();
-        }
-        if (property == mMeshAABBColorProperty)
-        {
-            mRenderOptions.mMeshAABBColor = property->AsColor();
-        }
-        if (property == mColMeshAABBColorProperty)
-        {
-            mRenderOptions.mCollisionMeshAABBColor = property->AsColor();
-        }
-        if (property == mNodeOOBColorProperty)
-        {
-            mRenderOptions.mOBBsColor = property->AsColor();
-        }
-        if (property == mLineSkeletonColorProperty)
-        {
-            mRenderOptions.mLineSkeletonColor = property->AsColor();
-        }
-        if (property == mSkeletonColorProperty)
-        {
-            mRenderOptions.mSkeletonColor = property->AsColor();
-        }
-        if (property == mGizmoColorProperty)
-        {
-            mRenderOptions.mSelectionColor = property->AsColor();
-        }
-        if (property == mNodeNameColorProperty)
-        {
-            mRenderOptions.mNodeNameColor = property->AsColor();
-        }
-        if (property == mGridColorProperty)
-        {
-            mRenderOptions.mGridColor = property->AsColor();
-        }
-        if (property == mGridMainAxisColorProperty)
-        {
-            mRenderOptions.mMainAxisColor = property->AsColor();
-        }
-        if (property == mGridSubstepColorProperty)
-        {
-            mRenderOptions.mSubStepColor = property->AsColor();
-        }
-        if (property == mTrajectoryPathColorProperty)
-        {
-            mRenderOptions.mTrajectoryArrowInnerColor = property->AsColor();
-        }
-        /*
-            if (property == mEnableAdvRenderingProperty)    mRenderOptions.mEnableAdvancedRendering = property->AsBool();
-            if (property == mBloomingEnabledProperty)       mRenderOptions.mBloomEnabled = property->AsBool();
-            if (property == mBloomThresholdProperty)        mRenderOptions.mBloomThreshold = property->AsFloat();
-            if (property == mBloomIntensity)                mRenderOptions.mBloomIntensity = property->AsFloat();
-            if (property == mBloomRadius)                   mRenderOptions.mBloomRadius = property->AsFloat();
-        */
-    }
-
-
     void RenderPlugin::VisibilityChanged(bool visible)
     {
         mIsVisible = visible;
     }
-
 
 
     void RenderPlugin::UpdateActorInstances(float timePassedInSeconds)
@@ -1387,7 +1082,7 @@ namespace EMStudio
         }
 
         // save the current settings and disable rendering
-        mRenderOptions.mLastUsedLayout = layout->GetName();
+        mRenderOptions.SetLastUsedLayout(layout->GetName());
         ClearViewWidgets();
         VisibilityChanged(false);
 
@@ -1579,21 +1274,21 @@ namespace EMStudio
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_AABB))
         {
             MCommon::RenderUtil::AABBRenderSettings settings;
-            settings.mNodeBasedColor          = renderOptions->mNodeAABBColor;
-            settings.mStaticBasedColor        = renderOptions->mStaticAABBColor;
-            settings.mMeshBasedColor          = renderOptions->mMeshAABBColor;
-            settings.mCollisionMeshBasedColor = renderOptions->mCollisionMeshAABBColor;
+            settings.mNodeBasedColor          = renderOptions->GetNodeAABBColor();
+            settings.mStaticBasedColor        = renderOptions->GetStaticAABBColor();
+            settings.mMeshBasedColor          = renderOptions->GetMeshAABBColor();
+            settings.mCollisionMeshBasedColor = renderOptions->GetCollisionMeshAABBColor();
 
             renderUtil->RenderAABBs(actorInstance, settings);
         }
 
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_OBB))
         {
-            renderUtil->RenderOBBs(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->mOBBsColor, renderOptions->mSelectedObjectColor);
+            renderUtil->RenderOBBs(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->GetOBBsColor(), renderOptions->GetSelectedObjectColor());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_LINESKELETON))
         {
-            renderUtil->RenderSimpleSkeleton(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->mLineSkeletonColor, renderOptions->mSelectedObjectColor);
+            renderUtil->RenderSimpleSkeleton(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->GetLineSkeletonColor(), renderOptions->GetSelectedObjectColor());
         }
 
         bool cullingEnabled = renderUtil->GetCullingEnabled();
@@ -1602,11 +1297,11 @@ namespace EMStudio
         renderUtil->EnableLighting(false); // disable lighting
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_SKELETON))
         {
-            renderUtil->RenderSkeleton(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, renderOptions->mSkeletonColor, renderOptions->mSelectedObjectColor);
+            renderUtil->RenderSkeleton(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, renderOptions->GetSkeletonColor(), renderOptions->GetSelectedObjectColor());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_NODEORIENTATION))
         {
-            renderUtil->RenderNodeOrientations(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, emstudioActor->mNormalsScaleMultiplier * renderOptions->mNodeOrientationScale, renderOptions->mScaleBonesOnLength);
+            renderUtil->RenderNodeOrientations(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, emstudioActor->mNormalsScaleMultiplier * renderOptions->GetNodeOrientationScale(), renderOptions->GetScaleBonesOnLength());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_ACTORBINDPOSE))
         {
@@ -1618,7 +1313,7 @@ namespace EMStudio
         {
             // render an arrow for the trajectory
             //renderUtil->RenderTrajectoryNode(actorInstance, renderOptions->mTrajectoryArrowInnerColor, renderOptions->mTrajectoryArrowBorderColor, emstudioActor->mCharacterHeight*0.05f);
-            renderUtil->RenderTrajectoryPath(FindTracePath(actorInstance), renderOptions->mTrajectoryArrowInnerColor, emstudioActor->mCharacterHeight * 0.05f);
+            renderUtil->RenderTrajectoryPath(FindTracePath(actorInstance), renderOptions->GetTrajectoryArrowInnerColor(), emstudioActor->mCharacterHeight * 0.05f);
         }
         renderUtil->EnableCulling(cullingEnabled); // reset to the old state
         renderUtil->EnableLighting(lightingEnabled);
@@ -1650,30 +1345,30 @@ namespace EMStudio
 
                 if (mesh->GetIsCollisionMesh() == false)
                 {
-                    renderUtil->RenderNormals(mesh, globalTM, renderVertexNormals, renderFaceNormals, renderOptions->mVertexNormalsScale * emstudioActor->mNormalsScaleMultiplier, renderOptions->mFaceNormalsScale * emstudioActor->mNormalsScaleMultiplier, renderOptions->mVertexNormalsColor, renderOptions->mFaceNormalsColor);
+                    renderUtil->RenderNormals(mesh, globalTM, renderVertexNormals, renderFaceNormals, renderOptions->GetVertexNormalsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetFaceNormalsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetVertexNormalsColor(), renderOptions->GetFaceNormalsColor());
                     if (renderTangents)
                     {
-                        renderUtil->RenderTangents(mesh, globalTM, renderOptions->mTangentsScale * emstudioActor->mNormalsScaleMultiplier, renderOptions->mTangentsColor, renderOptions->mMirroredBinormalsColor, renderOptions->mBinormalsColor);
+                        renderUtil->RenderTangents(mesh, globalTM, renderOptions->GetTangentsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetTangentsColor(), renderOptions->GetMirroredBinormalsColor(), renderOptions->GetBinormalsColor());
                     }
                     if (renderWireframe)
                     {
-                        renderUtil->RenderWireframe(mesh, globalTM, renderOptions->mWireframeColor, false, emstudioActor->mNormalsScaleMultiplier);
+                        renderUtil->RenderWireframe(mesh, globalTM, renderOptions->GetWireframeColor(), false, emstudioActor->mNormalsScaleMultiplier);
                     }
                 }
                 else
                 if (renderCollisionMeshes)
                 {
-                    renderUtil->RenderWireframe(mesh, globalTM, renderOptions->mCollisionMeshColor, false, emstudioActor->mNormalsScaleMultiplier);
+                    renderUtil->RenderWireframe(mesh, globalTM, renderOptions->GetCollisionMeshColor(), false, emstudioActor->mNormalsScaleMultiplier);
                 }
             }
         }
 
         // render the selection
-        if (renderOptions->mRenderSelectionBox && EMotionFX::GetActorManager().GetNumActorInstances() != 1 && GetCurrentSelection()->CheckIfHasActorInstance(actorInstance))
+        if (renderOptions->GetRenderSelectionBox() && EMotionFX::GetActorManager().GetNumActorInstances() != 1 && GetCurrentSelection()->CheckIfHasActorInstance(actorInstance))
         {
             MCore::AABB aabb = actorInstance->GetAABB();
             aabb.Widen(aabb.CalcRadius() * 0.005f);
-            renderUtil->RenderSelection(aabb, renderOptions->mSelectionColor);
+            renderUtil->RenderSelection(aabb, renderOptions->GetSelectionColor());
         }
 
         // render node names
@@ -1683,7 +1378,7 @@ namespace EMStudio
             const uint32        screenWidth     = widget->GetRenderWidget()->GetScreenWidth();
             const uint32        screenHeight    = widget->GetRenderWidget()->GetScreenHeight();
 
-            renderUtil->RenderNodeNames(actorInstance, camera, screenWidth, screenHeight, renderOptions->mNodeNameColor, renderOptions->mSelectedObjectColor, GetManager()->GetVisibleNodeIndices(), GetManager()->GetSelectedNodeIndices());
+            renderUtil->RenderNodeNames(actorInstance, camera, screenWidth, screenHeight, renderOptions->GetNodeNameColor(), renderOptions->GetSelectedObjectColor(), GetManager()->GetVisibleNodeIndices(), GetManager()->GetSelectedNodeIndices());
         }
     }
 

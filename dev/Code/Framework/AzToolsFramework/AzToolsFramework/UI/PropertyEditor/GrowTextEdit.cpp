@@ -27,7 +27,7 @@ namespace AzToolsFramework
         setSizePolicy(QSizePolicy::Policy::Ignored, QSizePolicy::Policy::Maximum);
         setMinimumHeight(PropertyQTConstant_DefaultHeight * 3);
 
-        connect(this, &GrowTextEdit::textChanged,[this]()
+        connect(this, &GrowTextEdit::textChanged, this, [this]()
         {
             if (isVisible())
             {

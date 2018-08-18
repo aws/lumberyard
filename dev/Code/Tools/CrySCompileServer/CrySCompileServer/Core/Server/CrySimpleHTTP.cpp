@@ -42,9 +42,10 @@ public:
 
     CCrySimpleSock* Socket(){return m_pSock; }
 };
+
 #define HTML_HEADER "HTTP/1.1 200 OK\n\
 Server: Shader compile server %s\n\
-Content-Length: %d\n\
+Content-Length: %zu\n\
 Content-Language: de (nach RFC 3282 sowie RFC 1766)\n\
 Content-Type: text/html\n\
 Connection: close\n\
@@ -92,9 +93,9 @@ public:
         , m_request(request) { }
 
 protected:
-    void Process()
+    void Process() override
     {
-#if defined(AZ_PLATFORMS_WINDOWS)
+#if defined(AZ_PLATFORM_WINDOWS)
         FILETIME IdleTime0, IdleTime1;
         FILETIME KernelTime0, KernelTime1;
         FILETIME UserTime0, UserTime1;
@@ -133,12 +134,11 @@ protected:
 
         Ret += CreateInfoText("<b>Setup</b>:", "");
         Ret += CreateInfoText("Root", SEnviropment::Instance().m_Root);
-        Ret += CreateInfoText("Compiler", SEnviropment::Instance().m_Compiler);
-        Ret += CreateInfoText("Cache", SEnviropment::Instance().m_Cache);
-        Ret += CreateInfoText("Temp", SEnviropment::Instance().m_Temp);
-        Ret += CreateInfoText("Error", SEnviropment::Instance().m_Error);
-        Ret += CreateInfoText("Shader", SEnviropment::Instance().m_Shader);
-        Ret += CreateInfoText("Platform", SEnviropment::Instance().m_Platform);
+        Ret += CreateInfoText("CompilerPath", SEnviropment::Instance().m_CompilerPath);
+        Ret += CreateInfoText("CachePath", SEnviropment::Instance().m_CachePath);
+        Ret += CreateInfoText("TempPath", SEnviropment::Instance().m_TempPath);
+        Ret += CreateInfoText("ErrorPath", SEnviropment::Instance().m_ErrorPath);
+        Ret += CreateInfoText("ShaderPath", SEnviropment::Instance().m_ShaderPath);
         Ret += CreateInfoText("FailEMail", SEnviropment::Instance().m_FailEMail);
         Ret += CreateInfoText("MailServer", SEnviropment::Instance().m_MailServer);
         Ret += CreateInfoText("port", SEnviropment::Instance().m_port);
@@ -210,7 +210,16 @@ void CCrySimpleHTTP::Run()
 {
     while (1)
     {
-        CHTTPRequest* pData = new CHTTPRequest(m_pServerSocket->Accept());
+        // New client message, receive new client socket connection.
+        CCrySimpleSock* newClientSocket = m_pServerSocket->Accept();
+        if(!newClientSocket)
+        {
+            continue;
+        }
+
+        // HTTP Request Data for new job
+        CHTTPRequest* pData = new CHTTPRequest(newClientSocket);
+
         HttpProcessRequestJob* requestJob = new HttpProcessRequestJob(pData);
         requestJob->Start();
     }

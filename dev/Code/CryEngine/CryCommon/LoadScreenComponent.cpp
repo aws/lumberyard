@@ -31,7 +31,7 @@
 
 #if AZ_LOADSCREENCOMPONENT_ENABLED
 
-namespace 
+namespace
 {
     // Due to issues with DLLs sometimes there can be different values of gEnv in different DLLs.
     // So we use this preferred method of getting the global environment
@@ -62,7 +62,7 @@ void LoadScreenComponent::Reflect(AZ::ReflectContext* context)
     {
         serializeContext->Class<LoadScreenComponent, AZ::Component>()
             ->Version(1)
-            ->SerializerForEmptyClass();
+            ;
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
         if (editContext)
@@ -382,6 +382,11 @@ void LoadScreenComponent::Resume()
 void LoadScreenComponent::Stop()
 {
     Reset();
+}
+
+bool LoadScreenComponent::IsPlaying()
+{
+    return m_isPlaying;
 }
 
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED

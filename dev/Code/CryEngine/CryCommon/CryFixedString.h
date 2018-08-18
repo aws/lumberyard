@@ -197,12 +197,12 @@ public:
 
     ILINE int _stricmp (const_str a, const_str b) const
     {
-        return wcsicmp(a, b);
+        return azwcsicmp(a, b);
     }
 
     ILINE int _strnicmp (const_str a, const_str b, size_type n) const
     {
-        return wcsnicmp(a, b, n);
+        return azwcsnicmp(a, b, n);
     }
 
     ILINE size_type _strspn(const_str str, const_str strCharSet) const

@@ -111,71 +111,6 @@ public:
     CryCriticalSection m_profilersLock;
     static CryCriticalSection m_staticProfilersLock;
 
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-
-    ILINE void ValThreadFrameStatsCapacity(int8 numWorkers)
-    {
-        if (m_ThreadFrameStats->numWorkers == numWorkers)
-        {
-            return;
-        }
-
-        SAFE_DELETE(m_ThreadFrameStats);
-        m_ThreadFrameStats = new JobManager::CWorkerFrameStats(numWorkers);
-    }
-
-    ILINE void ValBlockingFrameStatsCapacity(int8 numWorkers)
-    {
-        if (m_BlockingFrameStats->numWorkers == numWorkers)
-        {
-            return;
-        }
-
-        SAFE_DELETE(m_BlockingFrameStats);
-        m_BlockingFrameStats = new JobManager::CWorkerFrameStats(numWorkers);
-    }
-
-    //Job frame stats
-    JobManager::CWorkerFrameStats* m_ThreadFrameStats;
-    JobManager::CWorkerFrameStats* m_BlockingFrameStats;
-
-    JobManager::IWorkerBackEndProfiler::TJobFrameStatsContainer m_ThreadJobFrameStats;
-    JobManager::IWorkerBackEndProfiler::TJobFrameStatsContainer m_BlockingJobFrameStats;
-
-    JobManager::IWorkerBackEndProfiler::TJobFrameStatsContainer* GetActiveFrameStats(JobManager::EBackEndType backeEndType)
-    {
-        switch (backeEndType)
-        {
-        case JobManager::eBET_Thread:
-            return &m_ThreadJobFrameStats;
-        case JobManager::eBET_Blocking:
-            return &m_BlockingJobFrameStats;
-        default:
-            CRY_ASSERT_MESSAGE(0, "Unsupported BackEndType encountered.");
-        }
-        ;
-
-        return 0;
-    }
-
-    const uint32 GetActiveFrameStatCount(JobManager::EBackEndType backeEndType)
-    {
-        switch (backeEndType)
-        {
-        case JobManager::eBET_Thread:
-            return m_ThreadJobFrameStats.size();
-        case JobManager::eBET_Blocking:
-            return m_BlockingJobFrameStats.size();
-        default:
-            CRY_ASSERT_MESSAGE(0, "Unsupported BackEndType encountered.");
-        }
-        ;
-
-        return 0;
-    }
-
-#endif
-
     //! Maintain separate profiler stacks for each thread.
     //! Disallow any post-init allocation, to avoid profiler/allocator conflicts
     typedef threadID TThreadId;
@@ -379,12 +314,7 @@ public:
     bool m_bDrawGraph;
     std::vector<unsigned char> m_timeGraphPageFault;
     std::vector<unsigned char> m_timeGraphFrameTime;
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
 
-    std::vector< std::vector<unsigned char> > m_timeGraphWorkers;
-    int m_nWorkerGraphCurPos;
-
-#endif
     int m_timeGraphCurrentPos;
     CFrameProfiler* m_pGraphProfiler;
 

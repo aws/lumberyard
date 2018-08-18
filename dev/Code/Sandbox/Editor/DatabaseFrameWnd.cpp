@@ -435,8 +435,12 @@ void CDatabaseFrameWnd::OnExportLibrary()
 
 void CDatabaseFrameWnd::OnSave()
 {
-    m_pItemManager->SaveAllLibs();
-    m_pLibrary->SetModified(false);
+    if (m_bLibsLoaded)
+    {
+        m_pLibrary->SetModified(true);
+        m_pItemManager->SaveAllLibs();
+        m_pLibrary->SetModified(false);
+    }
 }
 
 void CDatabaseFrameWnd::OnReloadLib()
@@ -722,9 +726,12 @@ void CDatabaseFrameWnd::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnCloseScene:
     {
         m_bLibsLoaded = false;
-        CUndo undo(tr("Close Database Library").toUtf8());
-        SelectLibrary("");
-        SelectItem(0);
+        CUndo undo(tr("Close Database Library").toUtf8());       
+        GetTreeCtrl()->selectionModel()->clear();
+        GetTreeCtrl()->clearSelection();
+        m_pLibraryItemTreeModel->Clear();
+        m_pCurrentItem = nullptr;
+        m_cpoSelectedLibraryItems.clear();
     }
     break;
 
@@ -1147,6 +1154,15 @@ static bool LibraryItemLess(const CBaseLibraryItem* left, const CBaseLibraryItem
     QString leftName = left->GetName();
     QString rightName = right->GetName();
     return leftName.compare(rightName) < 0;
+}
+
+void LibraryItemTreeModel::Clear()
+{
+    beginResetModel();
+
+    m_groups.clear();
+
+    endResetModel();
 }
 
 void LibraryItemTreeModel::Reload(CBaseLibrary* pLibrary)

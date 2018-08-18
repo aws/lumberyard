@@ -21,6 +21,22 @@ class QWidget;
 #undef CreateDirectory
 #endif
 
+#ifdef RemoveDirectory
+#undef RemoveDirectory
+#endif
+
+#ifdef CopyFile
+#undef CopyFile
+#endif
+
+#ifdef MoveFile
+#undef MoveFile
+#endif
+
+#ifdef DeleteFile
+#undef DeleteFile
+#endif
+
 namespace AzToolsFramework
 {
     struct SourceControlFileInfo;

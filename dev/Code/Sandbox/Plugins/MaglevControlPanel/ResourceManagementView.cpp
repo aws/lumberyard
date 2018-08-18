@@ -74,6 +74,8 @@ const int ResourceManagementView::TREE_STRETCH_FACTOR = 0;
 const int ResourceManagementView::CREATE_DEPLOYMENT_DIALOG_MINIMUM_HEIGHT = 380;
 const int ResourceManagementView::CREATE_DEPLOYMENT_DIALOG_MINIMUM_WIDTH = 350;
 
+static const QString CREATE_RESOURCE_DIALOG_NAME = "CreateResourceDialog";
+
 ResourceManagementView::ResourceManagementView(QWidget* parent)
     : QMainWindow(parent)
     , m_importerModel{GetIEditor()->GetAWSResourceManager()->GetImporterModel()}
@@ -119,10 +121,10 @@ void ResourceManagementView::LoadResourceValidationData()
         AZ_Error("ResourceManager", false, "Cloud Canvas resource validation data file is empty %s", filename);
         return;
     }
-    
+
     std::unique_ptr<char[]> fileContents(new char[fileLen + 1]);
     fileContents[fileLen] = '\0';
-    
+
     if (dataFile.ReadRaw(fileContents.get(), fileLen) != fileLen)
     {
         AZ_Error("ResourceManager", false, "Unable to read Cloud Canvas validation data file %s", filename);
@@ -281,7 +283,7 @@ QMenuBar* ResourceManagementView::CreateMenuBar()
     QWidget::connect(cloudCanvasHelp, &QAction::triggered, this, &ResourceManagementView::OnMenuCloudCanvasHelp);
 
     QAction* cloudCanvasForum = helpMenu->addAction("Cloud Canvas forum");
-    QWidget::connect(cloudCanvasForum, &QAction::triggered, this, [this](bool checked) { QDesktopServices::openUrl(QUrl(QString("https://gamedev.amazon.com/forums/spaces/133/cloud-canvas.html"))); });
+    QWidget::connect(cloudCanvasForum, &QAction::triggered, this, [](bool checked) { QDesktopServices::openUrl(QUrl(QString("https://gamedev.amazon.com/forums/spaces/133/cloud-canvas.html"))); });
 
     return menuBar;
 }
@@ -397,7 +399,7 @@ void ResourceManagementView::AddToolBar(QHBoxLayout* horizontalLayout)
     m_sourceControlButton = new ToolbarButton;
     m_sourceControlButton->setObjectName("SourceControlButton");
     horizontalLayout->addWidget(m_sourceControlButton);
-    SetSourceControlState(SourceControlState::DISABLED_CHECK_OUT);
+    SetSourceControlState(SourceControlState::NOT_APPLICABLE);
 
     m_validateTemplateButton = new ToolbarButton;
     m_validateTemplateButton->setText("Validate template");
@@ -407,6 +409,8 @@ void ResourceManagementView::AddToolBar(QHBoxLayout* horizontalLayout)
 
 void ResourceManagementView::SetSourceControlState(SourceControlState newState, const QString& tooltipOverride)
 {
+    m_sourceControlButton->setHidden(false);
+
     switch (newState)
     {
     case SourceControlState::QUERYING:
@@ -416,11 +420,11 @@ void ResourceManagementView::SetSourceControlState(SourceControlState newState, 
         m_sourceControlButton->setToolTip(tooltipOverride.length() ? tooltipOverride : "Querying source control.");
     }
     break;
-    case SourceControlState::DISABLED_CHECK_OUT:
+    case SourceControlState::UNAVAILABLE_CHECK_OUT:
     {
         m_sourceControlButton->setEnabled(false);
         m_sourceControlButton->setIcon(QIcon("Editor/Icons/CloudCanvas/source_control_disabled.png"));
-        m_sourceControlButton->setToolTip(tooltipOverride.length() ? tooltipOverride : "Source control is disabled.");
+        m_sourceControlButton->setToolTip(tooltipOverride.length() ? tooltipOverride : "Source control is unavailable.");
     }
     break;
     case SourceControlState::ENABLED_CHECK_OUT:
@@ -451,6 +455,11 @@ void ResourceManagementView::SetSourceControlState(SourceControlState newState, 
         m_sourceControlButton->setToolTip(tooltipOverride.length() ? tooltipOverride : "Add file to source control.");
     }
     break;
+    case SourceControlState::NOT_APPLICABLE:
+    {
+        m_sourceControlButton->setHidden(true);
+    }
+    break;
     }
 }
 
@@ -465,6 +474,11 @@ void ResourceManagementView::DisableSaveButton(const QString& toolTip)
 {
     m_saveButton->setToolTip(toolTip);
     m_saveButton->setDisabled(true);
+}
+
+QPushButton* ResourceManagementView::GetDeleteButton() const
+{
+    return m_deleteButton;
 }
 
 QPushButton* ResourceManagementView::EnableDeleteButton(const QString& toolTip)
@@ -790,6 +804,9 @@ void ResourceManagementView::ShowDetailWidget(DetailWidget* widget)
         m_verticalSplitter->setSizes(sizes);
     }
 
+    // Default source control state for items in the tree is NOT_APPLICABLE. TextDetailWidgets will change this value when they show themselves.
+    this->SetSourceControlState(SourceControlState::NOT_APPLICABLE);
+
     // Show new widget. This causes the wiget to paint, but this happens before the
     // QSplitter has finalized its size. That is why we disable updates (at the top
     // of this function, just to be safe) and then re-enable them after making the
@@ -1018,7 +1035,7 @@ void ResourceManagementView::OnMenuNewDeployment(bool required)
     };
     learnMoreLabel.setObjectName("LearnMore");
     learnMoreLabel.setProperty("class", "Message");
-    connect(&learnMoreLabel, &QLabel::linkActivated, [this]() { QDesktopServices::openUrl(QUrl(QString(MaglevControlPanelPlugin::GetDeploymentHelpLink()))); });
+    connect(&learnMoreLabel, &QLabel::linkActivated, this, []() { QDesktopServices::openUrl(QUrl(QString(MaglevControlPanelPlugin::GetDeploymentHelpLink()))); });
     dialog.AddSpanningWidgetRow(&learnMoreLabel);
     learnMoreLabel.setVisible(required);
 
@@ -1035,7 +1052,7 @@ void ResourceManagementView::OnMenuNewDeployment(bool required)
     learnMoreLabel2.setMinimumHeight(55);
     learnMoreLabel2.setAlignment(Qt::AlignTop);
     learnMoreLabel2.setTextInteractionFlags(Qt::LinksAccessibleByMouse);
-    connect(&learnMoreLabel2, &QLabel::linkActivated, [this]() { QDesktopServices::openUrl(QUrl(QString(MaglevControlPanelPlugin::GetDeploymentHelpLink()))); });
+    connect(&learnMoreLabel2, &QLabel::linkActivated, this, []() { QDesktopServices::openUrl(QUrl(QString(MaglevControlPanelPlugin::GetDeploymentHelpLink()))); });
     dialog.AddSpanningWidgetRow(&learnMoreLabel2);
     learnMoreLabel2.setVisible(!required);
 
@@ -1386,7 +1403,7 @@ bool ResourceManagementView::UpdateStack(const QSharedPointer<IStackStatusModel>
     dialog.GetCancelButton()->setText(tr("No"));
 
     // The underlying model will be refreshed automatically and when that is finished
-    // the proxy model will be reset and the handler below will be called. 
+    // the proxy model will be reset and the handler below will be called.
 
     connect(
         pendingChangesModel.data(),
@@ -1403,12 +1420,12 @@ bool ResourceManagementView::UpdateStack(const QSharedPointer<IStackStatusModel>
             confirmSecurityCheckBox.setEnabled(stackResourcesModel->ContainsSecurityChanges());
 
             dialog.GetPrimaryButton()->setEnabled(
-                !confirmSecurityCheckBox.isEnabled() && 
+                !confirmSecurityCheckBox.isEnabled() &&
                 !confirmDeletionCheckBox.isEnabled()
             );
 
             dialog.GetPrimaryButton()->setToolTip(
-                dialog.GetPrimaryButton()->isEnabled() 
+                dialog.GetPrimaryButton()->isEnabled()
                 ? tr("")
                 : tr("Select enabled confirmation checkboxes to enable.")
             );
@@ -1749,7 +1766,7 @@ void ResourceManagementView::OnImportResourceInfoGiven(QPushButton* primaryButto
         primaryButton->setToolTip("Please provide the resource Name and ARN");
         return;
     }
-        
+
     primaryButton->setEnabled(true);
     primaryButton->setToolTip("Import the resource");
 }
@@ -1767,50 +1784,34 @@ void ResourceManagementView::OnMenuImportFromList()
     dialog.exec();
 }
 
+template<typename DialogT>
+static void AddResourceMenuItem(QMenu* menu, QWidget* parent, ResourceManagementView* view, const QSharedPointer<ICloudFormationTemplateModel>& templateModel, const char* title, const char* toolTip)
+{
+    auto addItem = menu->addAction(title);
+    addItem->setToolTip(toolTip);
+    view->connect(addItem, &QAction::triggered, view, [templateModel, parent, view](bool checked)
+    {
+        if (auto existing = parent->findChild<CreateResourceDialog*>(CREATE_RESOURCE_DIALOG_NAME, Qt::FindChildrenRecursively))
+        {
+            delete existing;
+        }
+
+        CreateResourceDialog* pResource = new DialogT{ parent, templateModel, view };
+        pResource->setObjectName(CREATE_RESOURCE_DIALOG_NAME);
+        pResource->show();
+    });
+}
+
 QMenu* ResourceManagementView::CreateAddResourceMenu(QSharedPointer<ICloudFormationTemplateModel> templateModel, QWidget* parent)
 {
     auto menu = new QMenu {};
     menu->setToolTip("Select an AWS resource to add to your resource group.");
 
-    auto addDynamo = menu->addAction("DynamoDB table");
-    addDynamo->setToolTip("Add a DynamoDB table resource.");
-    connect(addDynamo, &QAction::triggered, this, [templateModel, parent, this](bool checked)
-        {
-            CreateResourceDialog* pResource = new AddDynamoDBTable { parent, templateModel, this };
-            pResource->show();
-        });
-
-    auto addLambda = menu->addAction("Lambda function");
-    addLambda->setToolTip("Add a Lambda function resource.");
-    connect(addLambda, &QAction::triggered, this, [templateModel, parent, this](bool checked)
-        {
-            CreateResourceDialog* pResource = new AddLambdaFunction { parent, templateModel, this };
-            pResource->show();
-        });
-
-    auto addS3 = menu->addAction("S3 bucket");
-    addS3->setToolTip("Add an S3 bucket resource.");
-    connect(addS3, &QAction::triggered, this, [templateModel, parent, this](bool checked)
-        {
-            CreateResourceDialog* pResource = new AddS3Bucket { parent, templateModel, this };
-            pResource->show();
-        });
-
-    auto addSns = menu->addAction("SNS topic");
-    addSns->setToolTip("Add an SNS topic resource.");
-    connect(addSns, &QAction::triggered, this, [templateModel, parent, this](bool checked)
-        {
-            CreateResourceDialog* pResource = new AddSNSTopic { parent, templateModel, this };
-            pResource->show();
-        });
-
-    auto addSqs = menu->addAction("SQS queue");
-    addSqs->setToolTip("Add an SQS queue resource.");
-    connect(addSqs, &QAction::triggered, this, [templateModel, parent, this](bool checked)
-        {
-            CreateResourceDialog* pResource = new AddSQSQueue { parent, templateModel, this };
-            pResource->show();
-        });
+    AddResourceMenuItem<AddDynamoDBTable>(menu, parent, this, templateModel, "DynamoDB table", "Add a DynamoDB table resource.");
+    AddResourceMenuItem<AddLambdaFunction>(menu, parent, this, templateModel, "Lambda function", "Add a Lambda function resource.");
+    AddResourceMenuItem<AddS3Bucket>(menu, parent, this, templateModel, "S3 bucket", "Add an S3 bucket resource.");
+    AddResourceMenuItem<AddSNSTopic>(menu, parent, this, templateModel, "SNS topic", "Add an SNS topic resource.");
+    AddResourceMenuItem<AddSQSQueue>(menu, parent, this, templateModel, "SQS queue", "Add an SQS queue resource.");
 
     auto addServiceApi = menu->addAction("Service API");
     addServiceApi->setToolTip("Add a service API resource.");

@@ -14,8 +14,17 @@
 
 #include <AzCore/JSON/rapidjson.h>
 
+#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-warning-option"
+#endif
+
 // Make you have available rapidjson/include folder. Currently 3rdParty\rapidjson\rapidjson-1.0.2\include
 #include <rapidjson/document.h>
+
+#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG)
+#pragma clang diagnostic pop
+#endif
 
 // Check if a Value is a valid object, has the specified key with correct type.
 inline bool IsValidMember(const rapidjson::Value& val, const char* key, bool (rapidjson::Value::*func)() const)

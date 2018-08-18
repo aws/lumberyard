@@ -297,7 +297,7 @@ namespace CharacterTool
 
     struct JointTreeSerializer
     {
-        typedef std::function<void(IArchive&, const char*)> JointSerializer;
+        typedef AZStd::function<void(IArchive&, const char*)> JointSerializer;
 
         struct Node
         {
@@ -549,7 +549,7 @@ namespace CharacterTool
             for (int i = 0, count = limbIKNode->getChildCount(); i < count; ++i)
             {
                 XmlNodeRef ikNode = limbIKNode->getChild(i);
-                if (stricmp(ikNode->getTag(), g_ikTag))
+                if (azstricmp(ikNode->getTag(), g_ikTag))
                 {
                     continue;
                 }
@@ -557,15 +557,15 @@ namespace CharacterTool
                 IKDefinition::LimbIKEntry entry;
 
                 const char* solver = ikNode->getAttr(g_solverAttr);
-                if (stricmp(solver, "2BIK") == 0)
+                if (azstricmp(solver, "2BIK") == 0)
                 {
                     entry.solver = IKDefinition::LimbIKEntry::Solver::TwoBone;
                 }
-                else if (stricmp(solver, "3BIK") == 0)
+                else if (azstricmp(solver, "3BIK") == 0)
                 {
                     entry.solver = IKDefinition::LimbIKEntry::Solver::ThreeBone;
                 }
-                else if (stricmp(solver, "CCDX") == 0)
+                else if (azstricmp(solver, "CCDX") == 0)
                 {
                     entry.solver = IKDefinition::LimbIKEntry::Solver::CCDX;
                 }
@@ -662,7 +662,7 @@ namespace CharacterTool
         for (int i = 0; i < count; i++)
         {
             XmlNodeRef rotationNode = node->getChild(i);
-            if (stricmp(rotationNode->getTag(), g_rotationTag) != 0)
+            if (azstricmp(rotationNode->getTag(), g_rotationTag) != 0)
             {
                 continue;
             }
@@ -788,7 +788,7 @@ namespace CharacterTool
         for (int i = 0; i < count; i++)
         {
             XmlNodeRef positionNode = node->getChild(i);
-            if (stricmp(positionNode->getTag(), g_positionTag) != 0)
+            if (azstricmp(positionNode->getTag(), g_positionTag) != 0)
             {
                 continue;
             }
@@ -923,7 +923,7 @@ namespace CharacterTool
         for (int i = 0; i < count; i++)
         {
             XmlNodeRef jointNode = node->getChild(i);
-            if (stricmp(jointNode->getTag(), g_jointTag) != 0)
+            if (azstricmp(jointNode->getTag(), g_jointTag) != 0)
             {
                 continue;
             }
@@ -1204,7 +1204,7 @@ namespace CharacterTool
                 for (int i = 0, count = impactJointsNode->getChildCount(); i < count; ++i)
                 {
                     XmlNodeRef impactJointNode = impactJointsNode->getChild(i);
-                    if (stricmp(impactJointNode->getTag(), g_impactJointTag) != 0)
+                    if (azstricmp(impactJointNode->getTag(), g_impactJointTag) != 0)
                     {
                         continue;
                     }
@@ -1446,7 +1446,7 @@ namespace CharacterTool
             for (int i = 0, count = targetsNode->getChildCount(); i < count; ++i)
             {
                 XmlNodeRef targetNode = targetsNode->getChild(i);
-                if (stricmp(targetNode->getTag(), g_ADIKTargetTag))
+                if (azstricmp(targetNode->getTag(), g_ADIKTargetTag))
                 {
                     continue;
                 }
@@ -1650,7 +1650,7 @@ namespace CharacterTool
         for (int i = 0, count = node->getChildCount(); i < count; ++i)
         {
             XmlNodeRef jointListNode = node->getChild(i);
-            if (stricmp(jointListNode->getTag(), g_jointListTag) != 0)
+            if (azstricmp(jointListNode->getTag(), g_jointListTag) != 0)
             {
                 continue;
             }
@@ -1665,7 +1665,7 @@ namespace CharacterTool
                 for (int j = 0, count = jointListNode->getChildCount(); j < count; ++j)
                 {
                     XmlNodeRef jointNode = jointListNode->getChild(j);
-                    if (stricmp(jointNode->getTag(), g_jointTag) != 0)
+                    if (azstricmp(jointNode->getTag(), g_jointTag) != 0)
                     {
                         continue;
                     }
@@ -1846,7 +1846,7 @@ namespace CharacterTool
             {
                 XmlNodeRef assignmentNode = calNode->getChild(i);
 
-                if (stricmp(assignmentNode->getTag(), g_animationTag) != 0)
+                if (azstricmp(assignmentNode->getTag(), g_animationTag) != 0)
                 {
                     continue;
                 }
@@ -1866,14 +1866,14 @@ namespace CharacterTool
 
                 // now only needed for aim poses
                 char buffer[BITE] = "";
-                strcpy(buffer, line.c_str());
+                azstrcpy(buffer, AZ_ARRAY_SIZE(buffer), line.c_str());
 
                 if (value.empty() || value.at(0) == '?')
                 {
                     continue;
                 }
 
-                if (0 == stricmp(key, "#filepath"))
+                if (0 == azstricmp(key, "#filepath"))
                 {
                     animationSetFilter.folders.push_back(AnimationFilterFolder());
                     filterFolder = &animationSetFilter.folders.back();
@@ -1883,7 +1883,7 @@ namespace CharacterTool
                     continue;
                 }
 
-                if (0 == stricmp(key, "#ParseSubFolders"))
+                if (0 == azstricmp(key, "#ParseSubFolders"))
                 {
                     bool parseSubFolders = stricmp (value, "true") == 0 ? true : false; // if it's false, stricmp return 0
                     if (parseSubFolders != true)
@@ -1903,14 +1903,14 @@ namespace CharacterTool
                 // process the possible directives
                 if (key.c_str()[0] == '$')
                 {
-                    if (!stricmp(key, "$AnimationDir") || !stricmp(key, "$AnimDir") || !stricmp(key, "$AnimationDirectory") || !stricmp(key, "$AnimDirectory"))
+                    if (!azstricmp(key, "$AnimationDir") || !azstricmp(key, "$AnimDir") || !azstricmp(key, "$AnimationDirectory") || !azstricmp(key, "$AnimDirectory"))
                     {
                         if (dataLost)
                         {
                             *dataLost = true;
                         }
                     }
-                    else if (!stricmp(key, "$AnimEventDatabase"))
+                    else if (!azstricmp(key, "$AnimEventDatabase"))
                     {
                         if (animationEventDatabase.empty())
                         {
@@ -1921,7 +1921,7 @@ namespace CharacterTool
                             *dataLost = true;
                         }
                     }
-                    else if (!stricmp(key, "$TracksDatabase"))
+                    else if (!azstricmp(key, "$TracksDatabase"))
                     {
                         int wildcardPos = value.find('*');
                         if (wildcardPos != string::npos)
@@ -1950,13 +1950,13 @@ namespace CharacterTool
                             individualDBAs.push_back(dba);
                         }
                     }
-                    else if (!stricmp(key, "$Include"))
+                    else if (!azstricmp(key, "$Include"))
                     {
                         SkeletonParametersInclude include;
                         include.filename = value.c_str();
                         includes.push_back(include);
                     }
-                    else if (!stricmp(key, "$FaceLib"))
+                    else if (!azstricmp(key, "$FaceLib"))
                     {
                         faceLibFile = value.c_str();
                     }
@@ -1994,7 +1994,7 @@ namespace CharacterTool
             {
                 XmlNodeRef jointNode = bboxIncludeListNode->getChild(i);
 
-                if (stricmp(jointNode->getTag(), g_jointTag) != 0)
+                if (azstricmp(jointNode->getTag(), g_jointTag) != 0)
                 {
                     continue;
                 }

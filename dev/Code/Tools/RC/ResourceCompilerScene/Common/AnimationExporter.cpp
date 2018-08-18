@@ -113,7 +113,7 @@ namespace AZ
                 controller->m_nControllerId = CCrc32::ComputeLowercase(it->first.GetName());
 
                 // If we spot the root bone, store its controller Id to be passed to the compression step.
-                if (0 == stricmp(it->first.GetPath(), context.m_rootBoneName.c_str()))
+                if (0 == azstricmp(it->first.GetPath(), context.m_rootBoneName.c_str()))
                 {
                     context.m_controllerSkinningInfo.m_rootBoneId = controller->m_nControllerId;
                 }

@@ -709,7 +709,6 @@ void UiImageComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiImageInterface::FillEdgeOrigin::Bottom>("eUiFillEdgeOrigin_Bottom");
 
         behaviorContext->EBus<UiImageBus>("UiImageBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetColor", &UiImageBus::Events::GetColor)
             ->Event("SetColor", &UiImageBus::Events::SetColor)
             ->Event("GetSpritePathname", &UiImageBus::Events::GetSpritePathname)

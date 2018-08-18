@@ -45,6 +45,7 @@ namespace Gems
             EditorModule,
             StaticLib,
             Builder,
+            Standalone,
         };
 
         /// The type of module this represents

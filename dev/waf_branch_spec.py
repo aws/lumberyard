@@ -22,6 +22,31 @@ SOLUTION_FOLDER = 'Solutions'
 SOLUTION_NAME = 'Lumberyard'
 
 
+# Version stamp (GUID) of lmbrwaf that is used to signal that a clean of bintemp is necessary
+# Only update this number if there are changes in WAF handling where it is not possible
+# to track stale intermediate files caused by the waf changes.  To ignore the bintemp
+# cleaning check, set this value to None.
+#
+# Note:  Only update this value as a last resort.  If there were WAF changes that do not affect the generation or
+#        tracking of intermediate of generated files, then there is no need to wipe out BinTemp
+LMBR_WAF_VERSION_TAG = "AE99E23F-9EE1-410C-846F-0E79A82DFC39"   # Change for replacing IDX values with deterministic numbers
+
+
+BUILD_ENV_NAME = 'UNDEFINED'
+
+
+import json
+import os
+
+if(os.path.exists('BuildEnv.json')):
+    with open('BuildEnv.json') as jsonFile:
+        data = json.load(jsonFile)
+        BUILD_ENV_NAME = data["env"]["name"]
+else:
+    print('A custom BuildEnv.json file was not found. This build will be untagged.')
+
+
+
 # Optional additional table of copyrights.
 # To add a company specific copyright, add a name value pair below to define the desired copyright statement for generated binaries
 # and add the 'copyright_org' in your wscript definition
@@ -51,7 +76,8 @@ with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) 
     ENGINE_JSON_DATA = json.load(ENGINE_FILE)
 
 LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0').encode("ascii", "ignore")
-LUMBERYARD_BUILD = 608525
+LUMBERYARD_COPYRIGHT_YEAR = ENGINE_JSON_DATA.get('LumberyardCopyrightYear', 2017)
+LUMBERYARD_BUILD = 664281
 LUMBERYARD_ENGINE_PATH = os.path.normpath(ENGINE_JSON_DATA.get('ExternalEnginePath', '.').encode("ascii", "ignore"))
 
 # validate the Lumberyard version string above
@@ -77,6 +103,7 @@ PLATFORMS = {
         'appletv'
     ],
     'win32' : [
+        'win_x64_clang',
         'win_x64_vs2017',
         'win_x64_vs2015',
         'win_x64_vs2013',
@@ -107,7 +134,7 @@ CONFIGURATION_SHORTCUT_ALIASES = {
     'performance_all': ['performance', 'performance_dedicated'],
     'release_all': ['release', 'release_dedicated'],
     'dedicated_all': ['debug_dedicated', 'profile_dedicated', 'performance_dedicated', 'release_dedicated'],
-    'non_dedicated': ['debug', 'profile', 'performance', 'release'],
+    'non_dedicated': ['debug', 'debug_test', 'profile', 'profile_test', 'performance', 'release'],
     'test_all': ['debug_test', 'debug_test_dedicated', 'profile_test', 'profile_test_dedicated'],
     'non_test': ['debug', 'debug_dedicated', 'profile', 'profile_dedicated', 'performance', 'performance_dedicated',
                  'release', 'release_dedicated']
@@ -125,14 +152,35 @@ for configuration_alias_key in CONFIGURATION_SHORTCUT_ALIASES:
 # build/clean commands are generated using PLATFORM_CONFIGURATION for all platform/configuration
 # not all platform/configuration commands are valid.
 # if an entry exists in this dictionary, only the configurations listed will be built
-PLATFORM_CONFIGURATION_FILTER = {
-    # Remove these as testing comes online for each platform
-    platform : CONFIGURATION_SHORTCUT_ALIASES['non_test'] for platform in ( 'android_armv7_gcc',
-                                                                            'android_armv7_clang',
-                                                                            'android_armv8_clang',
-                                                                            'ios',
-                                                                            'appletv')
-}
+non_test_platforms = (
+    'android_armv7_gcc',
+    'android_armv7_clang',
+    'android_armv8_clang',
+    'appletv',
+    'ios',
+)
+
+non_dedicated_platforms = (
+    'android_armv7_gcc',
+    'android_armv7_clang',
+    'android_armv8_clang',
+    'appletv',
+    'darwin_x64',
+    'ios',
+)
+
+platforms_to_filter = set(non_test_platforms + non_dedicated_platforms)
+
+PLATFORM_CONFIGURATION_FILTER = { }
+for platform in platforms_to_filter:
+
+    config_key_1 = 'non_test' if platform in non_test_platforms else 'all'
+    config_key_2 = 'non_dedicated' if platform in non_dedicated_platforms else 'all'
+
+    config_set_1 = CONFIGURATION_SHORTCUT_ALIASES[config_key_1]
+    config_set_2 = CONFIGURATION_SHORTCUT_ALIASES[config_key_2]
+
+    PLATFORM_CONFIGURATION_FILTER[platform] = list(set(config_set_1).intersection(config_set_2))
 
 ## what conditions do you want a monolithic build ?  Uses the same matching rules as other settings
 ## so it can be platform_configuration, or configuration, or just platform for the keys, and the Value is assumed
@@ -140,6 +188,7 @@ PLATFORM_CONFIGURATION_FILTER = {
 ## monolithic builds produce just a statically linked executable with no dlls.
 
 MONOLITHIC_BUILDS = [
+    'win_x64_clang_release',
     'win_x64_vs2017_release',
     'win_x64_vs2015_release',
     'win_x64_vs2013_release',

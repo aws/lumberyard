@@ -76,10 +76,7 @@ QFileSelectResourceWidget::QFileSelectResourceWidget(CAttributeItem* parent, CAt
 
         // Open texture file in editor
         btn = addButton("Open Input Bindings Editor", tr("Open File"), 1, 0, 1, 6);
-        connect(btn, &QPushButton::clicked, [this]()
-            {
-                OpenSourceFile();
-            });
+        connect(btn, &QPushButton::clicked, this, &QFileSelectResourceWidget::OpenSourceFile);
         m_btns.push_back(btn);
         m_btns.back()->installEventFilter(this);
 
@@ -99,10 +96,7 @@ QFileSelectResourceWidget::QFileSelectResourceWidget(CAttributeItem* parent, CAt
 
          // Open material editor
         btn = addButton("Open Input Bindings Editor", tr("Open File"), 1, 0, 1, 6);
-        connect(btn, &QPushButton::clicked, [this]()
-            {
-                OpenSourceFile();
-            });
+        connect(btn, &QPushButton::clicked, this, &QFileSelectResourceWidget::OpenSourceFile);
         m_btns.push_back(btn);
         m_btns.back()->installEventFilter(this);
 
@@ -212,21 +206,7 @@ void QFileSelectResourceWidget::onOpenSelectDialog()
         AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::BrowseForAssets, selection);
         if (selection.IsValid())
         {
-            newPath = selection.GetResult()->GetFullPath().c_str();
-
-            // If an .fbx file has been selected, check for a .cgf and return that instead.
-            if (newPath.endsWith(QStringLiteral(".fbx")) && selection.GetResults().size() > 1)
-            {
-                for (auto itr : selection.GetResults())
-                {
-                    const QString tempPath(itr->GetRelativePath().c_str());
-                    if (tempPath.endsWith(QStringLiteral(".cgf")))
-                    {
-                        newPath = tempPath;
-                        break;
-                    }
-                }
-            }
+            newPath = selection.GetResult()->GetRelativePath().c_str();
         }
         break;
     }

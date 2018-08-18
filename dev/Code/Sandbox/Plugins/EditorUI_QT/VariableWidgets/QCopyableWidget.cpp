@@ -55,7 +55,7 @@ void QCopyableWidget::BuildMenu(QMenu *menu)
     if (m_flags & ENABLE_COPY)
     {
         action = menu->addAction("Copy");
-        connect(action, &QAction::triggered, [this, action]()
+        connect(action, &QAction::triggered, this, [this]()
             {
                 if ((bool)onCopyCallback)
                 {
@@ -75,7 +75,7 @@ void QCopyableWidget::BuildMenu(QMenu *menu)
             action->setDisabled(true); //not sure what is expected here...
         }
 
-        connect(action, &QAction::triggered, [this, action]()
+        connect(action, &QAction::triggered, this, [this]()
             {
                 if ((bool)onPasteCallback)
                 {
@@ -86,7 +86,7 @@ void QCopyableWidget::BuildMenu(QMenu *menu)
     if (m_flags & ENABLE_DUPLICATE)
     {
         action = menu->addAction("Duplicate");
-        connect(action, &QAction::triggered, [this, action](bool state)
+        connect(action, &QAction::triggered, this, [this](bool state)
             {
                 if ((bool)onDuplicateCallback)
                 {
@@ -97,7 +97,7 @@ void QCopyableWidget::BuildMenu(QMenu *menu)
     if (m_flags & ENABLE_RESET)
     {
         action = menu->addAction("Reset to default");
-        connect(action, &QAction::triggered, [this, action]()
+        connect(action, &QAction::triggered, this, [this]()
             {
                 if ((bool)onResetCallback)
                 {

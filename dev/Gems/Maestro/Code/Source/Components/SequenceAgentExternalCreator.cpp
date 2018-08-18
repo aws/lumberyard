@@ -20,7 +20,7 @@ namespace Maestro
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceAgentExternalCreator::Init()
     {
-        
+
     }
 
     void SequenceAgentExternalCreator::Activate()
@@ -71,7 +71,6 @@ namespace Maestro
         {
             serializeContext->Class<SequenceAgentExternalCreator, Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
                 ;
         }
     }

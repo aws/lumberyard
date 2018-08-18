@@ -22,7 +22,6 @@
 #if defined(LINUX) || defined(APPLE)
   #include <platform.h>
 #endif
-#include <CryEngineAPI.h>
 
 #include "smartptr.h"
 #include <IFlares.h> // <> required for Interfuscator
@@ -61,7 +60,7 @@ struct IAnimNode;
 struct SSkinningData;
 struct SSTexSamplerFX;
 struct SShaderTextureSlot;
-
+struct IRenderElement;
 
 namespace AZ
 {
@@ -632,33 +631,22 @@ struct SDeformInfo
 {
     EDeformType m_eType;
     SWaveForm2 m_WaveX;
-    SWaveForm2 m_WaveY;
-    SWaveForm2 m_WaveZ;
-    SWaveForm2 m_WaveW;
     float m_fDividerX;
-    float m_fDividerY;
-    float m_fDividerZ;
-    float m_fDividerW;
     Vec3 m_vNoiseScale;
 
     SDeformInfo()
     {
         m_eType = eDT_Unknown;
         m_fDividerX = 0.01f;
-        m_fDividerY = 0.01f;
-        m_fDividerZ = 0.01f;
-        m_fDividerW = 0.01f;
         m_vNoiseScale = Vec3(1, 1, 1);
     }
 
     inline bool operator == (const SDeformInfo& m)
     {
         if (m_eType == m.m_eType &&
-            m_WaveX == m.m_WaveX && m_WaveY == m.m_WaveY &&
-            m_WaveZ == m.m_WaveZ && m_WaveW == m.m_WaveW &&
+            m_WaveX == m.m_WaveX &&
             m_vNoiseScale == m.m_vNoiseScale &&
-            m_fDividerX != m.m_fDividerX && m_fDividerY != m.m_fDividerY &&
-            m_fDividerZ != m.m_fDividerZ && m_fDividerW != m.m_fDividerW)
+            m_fDividerX == m.m_fDividerX)
         {
             return true;
         }
@@ -783,7 +771,7 @@ struct SRenderObjData
 {
     uintptr_t m_uniqueObjectId;
 
-    CRendElementBase* m_pRE;
+    IRenderElement* m_pRE;
     SSkinningData* m_pSkinningData;
     TArray<Vec4>    m_Constants;
 
@@ -861,6 +849,11 @@ struct SRenderObjData
     void SetShaderParams(const DynArray<SShaderParam>* pShaderParams)
     {
         m_pShaderParams = pShaderParams;
+    }
+
+    void SetRenderElement(IRenderElement* renderElement)
+    {
+        m_pRE = renderElement;
     }
 
     void GetMemoryUsage(ICrySizer* pSizer) const
@@ -951,7 +944,7 @@ public:
 
     IRenderNode*                m_pRenderNode;            //!< Will define instance id.
     _smart_ptr<IMaterial>       m_pCurrMaterial;          //!< Parent material used for render object.
-    CRendElementBase*           m_pRE;                    //!< RenderElement used by this CRenderObject
+    IRenderElement*             m_pRE;                    //!< RenderElement used by this CRenderObject
 
     PerInstanceConstantBufferKey m_PerInstanceConstantBufferKey;
 
@@ -1026,7 +1019,8 @@ public:
         return &m_data;
     }
 
-    ILINE CRendElementBase* GetRE() const { return m_pRE; }
+    IRenderElement* GetRE() { return m_pRE; }
+    void SetRE(IRenderElement* re) { m_pRE = re; }
 
 protected:
     // Next child sub object used for permanent objects
@@ -1409,8 +1403,8 @@ struct STexState
         m_bPAD = 0;
     }
 
-    ENGINE_API void Destroy();
-    ENGINE_API void Init(const STexState& src);
+    void Destroy();
+    void Init(const STexState& src);
 
     ~STexState() { Destroy(); }
     STexState(const STexState& src) { Init(src); }
@@ -1431,11 +1425,11 @@ struct STexState
         delete this;
     }
 
-    ENGINE_API bool SetFilterMode(int nFilter);
-    ENGINE_API bool SetClampMode(int nAddressU, int nAddressV, int nAddressW);
-    ENGINE_API void SetBorderColor(DWORD dwColor);
-    ENGINE_API void SetComparisonFilter(bool bEnable);
-    ENGINE_API void PostCreate();
+    bool SetFilterMode(int nFilter);
+    bool SetClampMode(int nAddressU, int nAddressV, int nAddressW);
+    void SetBorderColor(DWORD dwColor);
+    void SetComparisonFilter(bool bEnable);
+    void PostCreate();
 };
 
 
@@ -2646,6 +2640,12 @@ public:
     virtual bool FXSetCSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) = 0;
     virtual bool FXSetVSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) = 0;
     virtual bool FXSetGSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) = 0;
+
+    virtual bool FXSetPSFloat(const char* NameParam, const Vec4 fParams[], int nParams) = 0;
+    virtual bool FXSetCSFloat(const char* NameParam, const Vec4 fParams[], int nParams) = 0;
+    virtual bool FXSetVSFloat(const char* NameParam, const Vec4 fParams[], int nParams) = 0;
+    virtual bool FXSetGSFloat(const char* NameParam, const Vec4 fParams[], int nParams) = 0;
+
     virtual bool FXBegin(uint32* uiPassCount, uint32 nFlags) = 0;
     virtual bool FXBeginPass(uint32 uiPass) = 0;
     virtual bool FXCommit(const uint32 nFlags) = 0;

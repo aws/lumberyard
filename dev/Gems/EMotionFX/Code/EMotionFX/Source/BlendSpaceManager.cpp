@@ -10,80 +10,82 @@
 *
 */
 
+#include <EMotionFX/Source/Allocators.h>
 #include <EMotionFX/Source/BlendSpaceManager.h>
 
 
 namespace EMotionFX
 {
-    BlendSpaceManager* BlendSpaceManager::Create()
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceManager, BlendSpaceManagerAllocator, 0)
+
+    BlendSpaceManager::BlendSpaceManager()
+        : BaseObject()
     {
-        return new BlendSpaceManager();
+        m_evaluators.reserve(9);
+
+        // Register standard parameter evaluators.
+        RegisterEvaluator(aznew BlendSpaceParamEvaluatorNone());
+        RegisterEvaluator(aznew BlendSpaceFrontBackVelocityParamEvaluator());
+        RegisterEvaluator(aznew BlendSpaceLeftRightVelocityParamEvaluator());
+        RegisterEvaluator(aznew BlendSpaceMoveSpeedParamEvaluator());
+        RegisterEvaluator(aznew BlendSpaceTravelDirectionParamEvaluator());
+        RegisterEvaluator(aznew BlendSpaceTravelDistanceParamEvaluator());
+        RegisterEvaluator(aznew BlendSpaceTravelSlopeParamEvaluator());
+        RegisterEvaluator(aznew BlendSpaceTurnAngleParamEvaluator());
+        RegisterEvaluator(aznew BlendSpaceTurnSpeedParamEvaluator());
     }
 
 
-    void BlendSpaceManager::RegisterParameterEvaluator(BlendSpaceParamEvaluator* evaluator)
+    BlendSpaceManager::~BlendSpaceManager()
     {
-        m_parameterEvaluators.push_back(evaluator);
+        ClearEvaluators();
     }
 
 
-    void BlendSpaceManager::ClearParameterEvaluators()
+    void BlendSpaceManager::RegisterEvaluator(BlendSpaceParamEvaluator* evaluator)
     {
-        for (BlendSpaceParamEvaluator* evaluator : m_parameterEvaluators)
+        m_evaluators.emplace_back(evaluator);
+    }
+
+
+    void BlendSpaceManager::ClearEvaluators()
+    {
+        for (BlendSpaceParamEvaluator* evaluator : m_evaluators)
         {
             evaluator->Destroy();
         }
 
-        m_parameterEvaluators.clear();
+        m_evaluators.clear();
     }
 
 
-    size_t BlendSpaceManager::GetParameterEvaluatorCount() const
+    size_t BlendSpaceManager::GetEvaluatorCount() const
     {
-        return m_parameterEvaluators.size();
+        return m_evaluators.size();
     }
 
 
-    BlendSpaceParamEvaluator* BlendSpaceManager::GetParameterEvaluator(size_t index) const
+    BlendSpaceParamEvaluator* BlendSpaceManager::GetEvaluator(size_t index) const
     {
-        return m_parameterEvaluators[index];
-    }
-
-
-    BlendSpaceParamEvaluator* BlendSpaceManager::FindParameterEvaluatorByName(const AZStd::string& evaluatorName) const
-    {
-        for (BlendSpaceParamEvaluator* evaluator : m_parameterEvaluators)
+        if (index >= m_evaluators.size())
         {
-            if (evaluatorName == evaluator->GetName())
+            return nullptr;
+        }
+
+        return m_evaluators[index];
+    }
+
+
+    BlendSpaceParamEvaluator* BlendSpaceManager::FindEvaluatorByType(const AZ::TypeId& type) const
+    {
+        for (BlendSpaceParamEvaluator* evaluator : m_evaluators)
+        {
+            if (azrtti_typeid<>(evaluator) == type)
             {
                 return evaluator;
             }
         }
 
         return nullptr;
-    }
-
-
-    BlendSpaceManager::BlendSpaceManager()
-        : BaseObject()
-    {
-        m_parameterEvaluators.reserve(9);
-
-        // Register standard parameter evaluators.
-        RegisterParameterEvaluator(new BlendSpaceParamEvaluatorNone());
-        RegisterParameterEvaluator(new BlendSpaceFrontBackVelocityParamEvaluator());
-        RegisterParameterEvaluator(new BlendSpaceLeftRightVelocityParamEvaluator());
-        RegisterParameterEvaluator(new BlendSpaceMoveSpeedParamEvaluator());
-        RegisterParameterEvaluator(new BlendSpaceTravelDirectionParamEvaluator());
-        RegisterParameterEvaluator(new BlendSpaceTravelDistanceParamEvaluator());
-        RegisterParameterEvaluator(new BlendSpaceTravelSlopeParamEvaluator());
-        RegisterParameterEvaluator(new BlendSpaceTurnAngleParamEvaluator());
-        RegisterParameterEvaluator(new BlendSpaceTurnSpeedParamEvaluator());
-    }
-
-
-    BlendSpaceManager::~BlendSpaceManager()
-    {
-        ClearParameterEvaluators();
     }
 } // namespace EMotionFX

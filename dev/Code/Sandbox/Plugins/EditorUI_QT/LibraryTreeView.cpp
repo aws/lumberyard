@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include <QPainter>
 
@@ -549,7 +549,9 @@ void CLibraryTreeView::startDrag(Qt::DropActions supportedActions)
     emit SignalItemAboutToBeDragged(GetFirstSelectedItem());
 
     QDrag* drag = new QDrag(this);
-    drag->setMimeData(new QMimeData);
+    QMimeData* mimeData = new QMimeData;
+    mimeData->setData(MIMEType, "");
+    drag->setMimeData(mimeData);
     emit SignalStartDrag(drag, supportedActions);
 
     //inform any dependent systems that the drag has ended
@@ -1230,10 +1232,6 @@ QStringList CLibraryTreeView::mimeTypes() const
 void CLibraryTreeView::DropMetaData(QDropEvent* event, bool dropToLocation /*= true*/)
 {
     QModelIndex droppedIndex = indexAt(event->pos());
-    if (!droppedIndex.isValid())
-    {
-        return;
-    }
     QString previousParent = QTUI_INVALIAD_ITEMNAME;
     CBaseLibraryManager* mngr = static_cast<CBaseLibraryManager*>(m_baseLibrary->GetManager());
     if (!mngr)
@@ -1665,10 +1663,13 @@ void CLibraryTreeView::GetFinalItemName(QString& finalItemName, CBaseLibraryItem
 
 void CLibraryTreeView::dragEnterEvent(QDragEnterEvent* e)
 {
-    // if item does not contain a valid item, return.. (group, or something else)
-    CLibraryTreeViewItem* libraryItem = GetFirstSelectedItem();
-    SignalItemAboutToBeDragged(libraryItem);
-    return QTreeWidget::dragEnterEvent(e);
+    if (e->mimeData()->hasFormat(MIMEType))
+    {
+        // if item does not contain a valid item, return.. (group, or something else)
+        CLibraryTreeViewItem* libraryItem = GetFirstSelectedItem();
+        SignalItemAboutToBeDragged(libraryItem);
+        QTreeWidget::dragEnterEvent(e);
+    }
 }
 
 #include <LibraryTreeView.moc>

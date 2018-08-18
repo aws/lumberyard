@@ -19,6 +19,7 @@
 #include "LensFlareItem.h"
 #include "LensFlareEditor.h"
 #include "LensFlareView.h"
+#include "LensFlareLibrary.h"
 
 CLensFlareElement::CLensFlareElement()
     : m_vars(NULL)
@@ -220,17 +221,24 @@ void CLensFlareElement::UpdateLights()
 
 void CLensFlareElement::UpdateProperty(IOpticsElementBasePtr pOptics)
 {
+    std::vector<IVariable::OnSetCallback> funcs;
+
     if (GetLensFlareTree())
     {
-        std::vector<IVariable::OnSetCallback> funcs;
         funcs.push_back(functor(*GetLensFlareTree(), &CLensFlareElementTree::OnInternalVariableChange));
-        funcs.push_back(functor(*GetLensFlareView(), &CLensFlareView::OnInternalVariableChange));
-        LensFlareUtil::SetVariablesTemplateFromOptics(pOptics, m_vars, funcs);
     }
-    else
+
+    if (GetLensFlareView())
     {
-        LensFlareUtil::SetVariablesTemplateFromOptics(pOptics, m_vars);
+        funcs.push_back(functor(*GetLensFlareView(), &CLensFlareView::OnInternalVariableChange));
     }
+
+    if (GetLensFlareLibrary())
+    {
+        funcs.push_back(functor(*GetLensFlareLibrary(), &CLensFlareLibrary::OnInternalVariableChange));
+    }
+
+    LensFlareUtil::SetVariablesTemplateFromOptics(pOptics, m_vars, funcs);
 }
 
 CLensFlareElementTree* CLensFlareElement::GetLensFlareTree() const
@@ -251,6 +259,16 @@ CLensFlareView* CLensFlareElement::GetLensFlareView() const
         return NULL;
     }
     return pEditor->GetLensFlareView();
+}
+
+CLensFlareLibrary* CLensFlareElement::GetLensFlareLibrary() const
+{
+    CLensFlareEditor* pEditor = CLensFlareEditor::GetLensFlareEditor();
+    if (pEditor == NULL)
+    {
+        return NULL;
+    }
+    return pEditor->GetCurrentLibrary();
 }
 
 CLensFlareElement* CLensFlareElement::GetParent() const

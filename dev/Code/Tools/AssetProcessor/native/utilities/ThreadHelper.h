@@ -19,15 +19,16 @@
 #include <functional>
 #include <QThread>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/std/functional.h>
 
-// the Thread Helper exists to make it very easy to create a Qt object 
+// the Thread Helper exists to make it very easy to create a Qt object
 // inside a thread, in such a way that the entire construction of the object
 // occurs inside the thread.
 // we do this by allowing you to specify a factory function that creates your object
 // and we arrange to call it on the newly created thread, so that from the very moment
 // your object exists, its already on its thread.  This is important because Qt objects
 // set their thread ownership on create, and if your objects have sub-objects or child objects
-// that are members, its important that they too are on the same thread.  
+// that are members, its important that they too are on the same thread.
 // to use this system, use a thread Controller object and call initialize.
 // initialize on the Thread Controller automatically blocks until your object is created on the
 // target thread and returns your new object, allowing you to then connect signals and slots.
@@ -92,7 +93,7 @@ Q_SIGNALS:
     {
     public:
         AZ_CLASS_ALLOCATOR(ThreadController<T>, AZ::SystemAllocator, 0)
-        typedef std::function<T* ()> FactoryFunctionType;
+        typedef AZStd::function<T* ()> FactoryFunctionType;
 
         ThreadController()
             : ThreadWorker()

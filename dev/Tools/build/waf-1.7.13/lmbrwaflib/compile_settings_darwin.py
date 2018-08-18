@@ -14,7 +14,7 @@
 from waflib import Logs
 from waflib.Configure import conf
 from waflib.TaskGen import feature, before_method, after_method
-from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
+from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME, SUCCESS
 from waflib.Errors import WafError
 import subprocess, re, os
 
@@ -54,7 +54,7 @@ def load_darwin_common_settings(conf):
     v['RPATH_ST'] = '-Wl,-rpath,%s'
     
     # Default frameworks to always link
-    v['FRAMEWORK'] = [ 'Foundation', 'Cocoa', 'Carbon', 'CoreServices', 'ApplicationServices', 'AudioUnit', 'CoreAudio', 'AppKit', 'ForceFeedBack', 'IOKit', 'OpenGL', 'GameController' ]
+    v['FRAMEWORK'] = [ 'Foundation', 'Cocoa', 'Carbon', 'CoreServices', 'ApplicationServices', 'AudioUnit', 'CoreAudio', 'AppKit', 'ForceFeedback', 'IOKit', 'OpenGL', 'GameController' ]
     
     # Default libraries to always link
     v['LIB'] = ['c', 'm', 'pthread', 'ncurses']
@@ -128,8 +128,24 @@ class update_to_use_rpath(Task):
 
     def runnable_status(self):
         self_status = Task.runnable_status(self)
+
+        # Check only for ASK_LATER and not != RUN_ME. The runnable_status
+        # method will return SKIP_ME for pre-built libraries that are only
+        # being copied but we still need to run the rpath update on the library
         if self_status == ASK_LATER: 
-            return ASK_LATER
+            return self_status
+
+        if self.use_link_task:
+            # Need to use hasrun to determine if the task was runned or skipped
+            # as runnable_status is always returning RUN_ME after the task has
+            # been run. 
+
+            # If the link_task status is not success then the link task was
+            # either skipped or we had an error so no reason to run. We don't
+            # have to worry about NOT_RUN state since we set this task to only
+            # run after the link_task has been run when we create it below.  
+            if self.generator.link_task.hasrun != SUCCESS:
+                return SKIP_ME
 
         source_lib = self.inputs[0]
         if source_lib.abspath() in self.processed_libs or source_lib in self.queued_libs:
@@ -236,7 +252,8 @@ def update_3rd_party_libs_to_use_rpath(self):
 
                 try:
                     target_full_path.chmod(FILE_PERMISSIONS)
-                    self.create_task('update_to_use_rpath', target_full_path)
+                    task = self.create_task('update_to_use_rpath', target_full_path)
+                    task.use_link_task = False
                 except:
                     pass
          
@@ -247,11 +264,9 @@ def add_rpath_update_tasks(self):
     '''
     Update the libraries and executables that we build to use rpath and reference
     any dependencies that don't have an aboslute path or rpath already to use
-    rpath as well. The update task should not run often as most libraries
-    should already use rpath and be linked to libraries that are using rpath as
-    well.  There are a few libraries though that may be missed so this will
-    ensure in the end all libraries and executables will load on macOS
+    rpath as well. 
     '''
+
     if 'darwin' not in self.env['PLATFORM']:
         return
 
@@ -259,7 +274,9 @@ def add_rpath_update_tasks(self):
         return
 
     for src in self.link_task.outputs:
-        self.create_task('update_to_use_rpath', src)
+        task = self.create_task('update_to_use_rpath', src)
+        task.set_run_after(self.link_task)
+        task.use_link_task = True
 
 
 @conf

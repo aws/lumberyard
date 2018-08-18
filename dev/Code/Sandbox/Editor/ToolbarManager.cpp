@@ -487,7 +487,7 @@ bool ToolbarManager::IsGemEnabled(const QString& uuid, const QString& version) c
 
 AmazonToolbar ToolbarManager::GetEditModeToolbar() const
 {
-    AmazonToolbar t = AmazonToolbar("EditMode", QObject::tr("EditMode Toolbar"));
+    AmazonToolbar t = AmazonToolbar("EditMode", QObject::tr("Edit Mode Toolbar"));
     t.AddAction(ID_TOOLBAR_WIDGET_UNDO, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TOOLBAR_WIDGET_REDO, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
@@ -521,9 +521,10 @@ AmazonToolbar ToolbarManager::GetEditModeToolbar() const
         t.AddAction(ID_SELECTION_DELETE, ORIGINAL_TOOLBAR_VERSION);
         t.AddAction(ID_SELECTION_SAVE, ORIGINAL_TOOLBAR_VERSION);
         t.AddAction(ID_SELECTION_LOAD, ORIGINAL_TOOLBAR_VERSION);
+
+        t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_TOOLBAR_WIDGET_LAYER_SELECT, ORIGINAL_TOOLBAR_VERSION);
     }
-    t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_TOOLBAR_WIDGET_LAYER_SELECT, ORIGINAL_TOOLBAR_VERSION);
 
     return t;
 }
@@ -550,7 +551,12 @@ AmazonToolbar ToolbarManager::GetObjectToolbar() const
 AmazonToolbar ToolbarManager::GetEditorsToolbar() const
 {
     AmazonToolbar t = AmazonToolbar("Editors", QObject::tr("Editors Toolbar"));
-    t.AddAction(ID_OPEN_LAYER_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+
+    if (GetIEditor()->IsLegacyUIEnabled())
+    {
+        t.AddAction(ID_OPEN_LAYER_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+    }
+
     t.AddAction(ID_OPEN_MATERIAL_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_CHARACTER_TOOL, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_MANNEQUIN_EDITOR, ORIGINAL_TOOLBAR_VERSION);
@@ -1274,7 +1280,14 @@ void AmazonToolbar::InstantiateToolbar(QMainWindow* mainWindow, ToolbarManager* 
     // So hide if we're hidden by default XOR we've toggled the default visibility
     if ((!m_showByDefault) ^ m_showToggled)
     {
+#ifdef AZ_PLATFORM_APPLE_OSX
+        // on macOS, initially hidden tool bars result in a white rectangle when
+        // attaching a previously detached toolbar LY-66320
+        m_toolbar->show();
+        QMetaObject::invokeMethod(m_toolbar, "hide", Qt::QueuedConnection);
+#else
         m_toolbar->hide();
+#endif
     }
 
     ActionManager* actionManager = manager->GetActionManager();

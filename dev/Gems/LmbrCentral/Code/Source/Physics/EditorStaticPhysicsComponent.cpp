@@ -84,7 +84,7 @@ namespace LmbrCentral
     {
         if (auto outConfig = azrtti_cast<AzFramework::StaticPhysicsConfig*>(outBaseConfig))
         {
-            *outConfig = m_configuration;
+            *outConfig = static_cast<const AzFramework::StaticPhysicsConfig&>(m_configuration);
             return true;
         }
         return false;

@@ -114,7 +114,6 @@ namespace LmbrCentral
         void SetPhysicsParameters(const pe_params& parameters) override;
         void GetPhysicsStatus(pe_status& outStatus) override;
         void ApplyPhysicsAction(const pe_action& action, bool threadSafe) override;
-        bool IsPhysicsFullyEnabled() override;
         ////////////////////////////////////////////////////////////////////////
 
     protected:

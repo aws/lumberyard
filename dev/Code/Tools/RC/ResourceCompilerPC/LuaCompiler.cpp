@@ -13,7 +13,7 @@
 
 #include "stdafx.h"
 #include "ConvertContext.h"
-#include "iconfig.h"
+#include "IConfig.h"
 #include "FileUtil.h"
 #include "UpToDateFileHelpers.h"
 
@@ -77,7 +77,8 @@ static int pmain(lua_State* L)
     {
         const char* outputFilename = pCompiler->GetOutFilename();
 
-        FILE* D = fopen(outputFilename, "wb");
+        FILE* D = nullptr; 
+        azfopen(&D, outputFilename, "wb");
         if (D == NULL)
         {
             RCLogError("Cannot open %s", outputFilename);

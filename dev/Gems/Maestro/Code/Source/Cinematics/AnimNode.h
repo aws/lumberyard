@@ -170,6 +170,9 @@ public:
 
     void TimeChanged(float newTime) override;
 
+    void SetExpanded(bool expanded) override;
+    bool GetExpanded() const override;
+
     static void Reflect(AZ::SerializeContext* serializeContext);
 
 protected:
@@ -215,6 +218,7 @@ protected:
 
     typedef AZStd::vector<AZStd::intrusive_ptr<IAnimTrack> > AnimTracks;
     AnimTracks m_tracks;
+    bool m_expanded;
 
 private:
     void SortTracks();

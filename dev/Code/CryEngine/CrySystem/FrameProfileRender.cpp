@@ -48,21 +48,6 @@ LINK_SYSTEM_LIBRARY(psapi.lib)
 extern int CryMemoryGetAllocatedSize();
 extern int CryMemoryGetPoolSize();
 
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-
-enum EProfMode
-{
-    ePM_CPU_MODE = 0,
-    ePM_THREAD_MODE     = 1,
-    ePM_BLOCKING_MODE = 2,
-};
-
-#define COL_DIFF_JOBS 80
-#define ROW_DIFF_THREAD 0
-#define ROW_DIFF_BLOCKING 40
-
-#endif // JOBMANAGER_SUPPORT_FRAMEPROFILER
-
 #define COL_DIFF_HISTOGRAMS 50
 
 namespace FrameProfileRenderConstants
@@ -549,64 +534,6 @@ void CFrameProfileSystem::RenderProfilers(float col, float row, bool bExtended)
         }
     }
 
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-    if (m_displayQuantity != STALL_TIME)
-    {
-        const float cConvFactor = 1.f / 1000.f;
-        char szText[128];
-        float colTextOfs = 3.0f + 4 * gEnv->IsDedicated();
-
-        float colCountOfs = -4.5f - 3 * gEnv->IsDedicated();
-        float glow = 0;
-        float rowOrig = row;
-        float ValueColor[4] = { 0, 1, 0, 1 };
-
-        // DISPLAY JOBS
-
-        JobManager::IWorkerBackEndProfiler::TJobFrameStatsContainer* pActiveFrameStats[] =
-        {
-            GetActiveFrameStats(JobManager::eBET_Thread),           // Display none-blocking jobs
-            GetActiveFrameStats(JobManager::eBET_Blocking),     // Display blocking jobs
-        };
-
-        float rowStartPos [] =
-        {
-            (float)ROW_DIFF_THREAD,
-            (float)ROW_DIFF_BLOCKING,
-        };
-
-        for (uint32 i = 0; i < sizeof(pActiveFrameStats) / sizeof(pActiveFrameStats[0]); i++)
-        {
-            if (!pActiveFrameStats[i])
-            {
-                continue;
-            }
-
-            row = rowStartPos[i];
-            JobManager::IWorkerBackEndProfiler::TJobFrameStatsContainer& rActiveFrameStats = *pActiveFrameStats[i];
-
-            for (uint32 j = 0, nSize = rActiveFrameStats.size(); j < nSize; ++j)
-            {
-                const JobManager::SJobFrameStats& crProfData = rActiveFrameStats[j];
-                float value = (float)crProfData.usec * cConvFactor;
-
-                sprintf_s(szText, "%4.2f", value);
-                DrawLabel(col + COL_DIFF_JOBS, row, ValueColor, 0, szText);
-
-                if (crProfData.count > 1)
-                {
-                    sprintf_s(szText, "%6d/", crProfData.count);
-                    DrawLabel(col + colCountOfs + COL_DIFF_JOBS, row, CounterColor, 0, szText);
-                }
-
-                DrawLabel(col + colTextOfs + COL_DIFF_JOBS + 0.5f, row, ValueColor, glow, crProfData.cpName);
-                row += 0.5f;
-            }
-            row = rowOrig;
-        }
-    }
-#endif  // JOBMANAGER_SUPPORT_FRAMEPROFILER
-
     // Go through all profilers.
     for (int i = 0; i < (int)m_displayedProfilers.size(); i++)
     {
@@ -663,7 +590,6 @@ void CFrameProfileSystem::RenderProfilers(float col, float row, bool bExtended)
 void CFrameProfileSystem::RenderProfilerHeader(float col, float row, bool bExtended)
 {
     char szText[256];
-    char szTitle[32];
     float MainHeaderColor[4] = { 0, 1, 1, 1 };
     float HeaderColor[4] = { 1, 1, 0, 1 };
     float CounterColor[4] = { 0, 0.8f, 1, 1 };
@@ -671,50 +597,13 @@ void CFrameProfileSystem::RenderProfilerHeader(float col, float row, bool bExten
 
     bool bShowFrameTimeSummary = false;
 
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-    float rowOrig = row;
-    float colOrig = col;
-
-    for (int mode = 0; mode < ((m_displayQuantity == STALL_TIME) ? 1 : 3); ++mode)
-    {
-        switch (mode)
-        {
-        case ePM_CPU_MODE:
-            cry_strcpy(szTitle, "CPU");
-            bShowFrameTimeSummary = true;
-            break;
-        case ePM_THREAD_MODE:
-            cry_strcpy(szTitle, "JOBS (NONE-BLOCKING)");
-            bShowFrameTimeSummary = false;
-            col = colOrig + COL_DIFF_JOBS;
-            row = rowOrig + ROW_DIFF_THREAD;
-            break;
-        case ePM_BLOCKING_MODE:
-            cry_strcpy(szTitle, "JOBS (BLOCKING)");
-            bShowFrameTimeSummary = false;
-            col = colOrig + COL_DIFF_JOBS;
-            row = rowOrig + ROW_DIFF_BLOCKING;
-            break;
-        }
-        ;
-
-#endif
     const char* sValueName = "Time";
     if (m_bMemoryProfiling)
     {
         sValueName = "KB(s)";
     }
 
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-    if (mode != ePM_CPU_MODE)
-    {
-        cry_strcpy(szText, "Profile Mode: Self Time");
-    }
-    else
-    {
-#endif
-
-    strcpy(szText, "");
+    azstrcpy(szText, AZ_ARRAY_SIZE(szText), "");
     // Draw general statistics.
     switch ((int)m_displayQuantity)
     {
@@ -753,9 +642,6 @@ void CFrameProfileSystem::RenderProfilerHeader(float col, float row, bool bExten
         break;
     }
 
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-}
-#endif
     if (m_bCollectionPaused)
     {
         cry_strcat(szText, " (Paused)");
@@ -769,22 +655,7 @@ void CFrameProfileSystem::RenderProfilerHeader(float col, float row, bool bExten
     }
 
     row--;
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-    if (m_displayQuantity == STALL_TIME)
-    {
-        float cStallHeaderCol[4] = { 1, 0.1f, 0.1f, 1 };
-        DrawLabel(col, row - 1, cStallHeaderCol, 0, "CPU stalls (waiting for GPU)");
-    }
-    else
-    {
-        DrawLabel(col, row - 1, MainHeaderColor, 0, szTitle);
-    }
-#endif
     DrawLabel(col, row++, MainHeaderColor, 0, szText);
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-    if (bShowFrameTimeSummary)
-    {
-#endif
     if (m_displayQuantity != STALL_TIME && m_displayQuantity != PEAKS_ONLY)
     {
         sprintf_s(szText, "FrameTime: %4.2fms, OverheadTime: %4.2fms, LostTime: %4.2fms", m_frameSecAvg * 1000.f, m_frameOverheadSecAvg * 1000.f, m_frameLostSecAvg * 1000.f);
@@ -795,13 +666,7 @@ void CFrameProfileSystem::RenderProfilerHeader(float col, float row, bool bExten
         }
         DrawLabel(col, row++, MainHeaderColor, 0, szText);
     }
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-}
-else
-{
-    row++;
-}
-#endif
+
     // Header.
     if (bExtended)
     {
@@ -844,9 +709,6 @@ else
             DrawLabel(col + 5, row, HeaderColor, 0, " Function (Action)");
         }
     }
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-}  //mode
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -904,11 +766,11 @@ void CFrameProfileSystem::RenderProfiler(CFrameProfiler* pProfiler, int level, f
         {
             if (pProfiler->m_bExpended)
             {
-                strcpy(szText, "-");
+                azstrcpy(szText, AZ_ARRAY_SIZE(szText), "-");
             }
             else
             {
-                strcpy(szText, "+");
+                azstrcpy(szText, AZ_ARRAY_SIZE(szText), "+");
             }
         }
         else
@@ -1321,16 +1183,6 @@ void CFrameProfileSystem::DrawGraph()
 
     const float VALUE_EPSILON = 0.000001f;
 
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-
-    if (!m_ThreadFrameStats)
-    {
-        return;
-    }
-
-    JobManager::CWorkerFrameStats& rWorkerStatsInput = *m_ThreadFrameStats;
-#endif
-
     // UI item layout information
     const float cWorkerGraphScale = 180.f;       // Worker Graph displays the last X frames
     const float cTextAreaWidth = 220.f;              // Absolute Text Area width
@@ -1343,7 +1195,7 @@ void CFrameProfileSystem::DrawGraph()
     float labelColDarkGreen[4] = { 0, 0.6f, 0.2f, 1.f };
     float labelColRed[4] = { 1.f, 0, 0, 1.f };
     float labelColorSuspended[4] = { 0.25f, 0.25f, 0.25f, 1.f };
-    ColorF graphColor(0, 0.85, 0, 1);
+    ColorF graphColor(0, 0.85f, 0, 1.f);
 
     // RT Area
     const float nRtWidth  = (float)m_pRenderer->GetWidth();
@@ -1374,116 +1226,6 @@ void CFrameProfileSystem::DrawGraph()
     // Absolute coordinates tracker
     float x = 0;
     float y = 0;
-
-    //*******************************
-    // WORKER UTILIZATION INFORMATION
-    //*******************************
-
-#if defined (JOBMANAGER_SUPPORT_FRAMEPROFILER)
-    const uint32 cNumWorkers = rWorkerStatsInput.numWorkers;     // Should be input variable
-    const float cSamplePeriode = (float)rWorkerStatsInput.nSamplePeriod;
-
-    // Absolute coordinates tracker
-    x = 0;
-    y = nRtHeight * cTopSafeArea;     // Start after top safe area in Y
-
-    // Ensure worker graph size
-    if (cNumWorkers != m_timeGraphWorkers.size())
-    {
-        m_timeGraphWorkers.resize(cNumWorkers);
-    }
-
-    // Draw common worker information
-    DrawTextLabel(m_pRenderer, x, y, labelColDarkGreen, FrameProfileRenderConstants::c_fontScale, "Worker Utilization:");
-    x += 5;     // Indent
-    DrawTextLabel(m_pRenderer, x, y, labelColor, FrameProfileRenderConstants::c_fontScale, "Sample Time: %4.2fms:", cSamplePeriode * 0.001f);
-    x -= 5;
-
-    y += FrameProfileRenderConstants::c_yStepSizeText;     // Gap
-
-    // Draw information about each active worker
-    for (uint32 i = 0; i < cNumWorkers; ++i)
-    {
-        std::vector<unsigned char>& rTimeGraphWorker = m_timeGraphWorkers[i];
-
-        // Ensure space in time graph tracker
-        if (nGraphWidth + 1 != rTimeGraphWorker.size())
-        {
-            rTimeGraphWorker.resize(nGraphWidth + 1);
-        }
-
-        // Worker information
-        const float nExecutionPeriodMs = (float)rWorkerStatsInput.workerStats[i].nExecutionPeriod * 0.001f;
-        const float nIdleTime = (rWorkerStatsInput.nSamplePeriod > rWorkerStatsInput.workerStats[i].nExecutionPeriod) ? (float)(rWorkerStatsInput.nSamplePeriod - rWorkerStatsInput.workerStats[i].nExecutionPeriod) * 0.001f : 0.0f;
-        const float nWorkloadPerJob = rWorkerStatsInput.workerStats[i].nNumJobsExecuted != 0 ? rWorkerStatsInput.workerStats[i].nUtilPerc / (float)rWorkerStatsInput.workerStats[i].nNumJobsExecuted : 0;
-
-        // Initial data
-        float yStart = y;
-        float* pInfoLabelCol = labelColor;
-
-        //Draw worker summary control
-        DrawTextLabel(m_pRenderer, x, y, labelColor, FrameProfileRenderConstants::c_fontScale, "Worker %d:", i);
-
-
-        x += 5;    // Indent
-        DrawTextLabel(m_pRenderer, x, y, pInfoLabelCol, FrameProfileRenderConstants::c_fontScale, "Work Time: %05.2fms, Idle Time: %05.2fms", nExecutionPeriodMs, nIdleTime);
-        DrawTextLabel(m_pRenderer, x, y, pInfoLabelCol, FrameProfileRenderConstants::c_fontScale, "Workload: %05.2f%%, Per Job: %05.2f%%, Jobs: %04i", rWorkerStatsInput.workerStats[i].nUtilPerc, nWorkloadPerJob, rWorkerStatsInput.workerStats[i].nNumJobsExecuted);
-        x += fOverscanAdjX;
-        y += fOverscanAdjY + 5.f;     // Push the meter down a further 5 for correct look
-        DrawMeter(m_pRenderer, x, y, nExecutionPeriodMs * (1.f / 60.f), nRtWidth, nRtHeight, nTextAreaWidthOvrScnAdj - x);
-        x -= fOverscanAdjX;
-        y -= fOverscanAdjY;
-
-        // Draw meter resolution
-        const float quarterStepX = (nTextAreaWidth - 20.f * FrameProfileRenderConstants::c_yScale) * 0.25f;
-
-        float charPosX = x + quarterStepX + 2.f;     // Hand tweaked char positions relative to meter
-        float charPosY = y - 1;
-        DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale * 0.75f, "15");
-
-        charPosX += quarterStepX + 2.f;
-        charPosY = y;
-        DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale * 0.8f, "30ms");
-
-        charPosX += quarterStepX + 4.f;
-        charPosY = y    - 1;
-        DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale * 0.75f, "45");
-
-        charPosX += quarterStepX + 4.f;
-        charPosY = y;
-        DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale * 0.8f, "60ms");
-        x -= 5;     // Undo Indent
-
-        // Draw worker graph
-        const float graphHeight = y - yStart;
-        rTimeGraphWorker[m_nWorkerGraphCurPos] = (unsigned char)clamp_tpl((255.f - (nExecutionPeriodMs * (1.f / 60.f) * 255.f)), 0.f, 255.f);   // Convert from [0.f,1.f] to [0,255] range
-        m_pRenderer->Graph(&rTimeGraphWorker[0], (int)(x + nGraphStartXOvrScnAdj), (int)(yStart + fOverscanAdjY), nGraphWidth, (int)graphHeight, m_nWorkerGraphCurPos, 2, 0, graphColor, 0);
-
-        // Draw time graph indicator
-        charPosX = x + nGraphStartX + (float)m_nWorkerGraphCurPos - 1.f;
-        charPosY = y - 5.f;
-        DrawTextLabel(m_pRenderer, charPosX, charPosY, pInfoLabelCol, FrameProfileRenderConstants::c_fontScale, "|");
-
-        // Draw graph resolution information
-        const float quarterStepY = graphHeight * 0.25f;
-        yStart = y - graphHeight - 7.f;     // Hand tweaked for correct char position relative to graph curve
-
-        charPosX = x + (x + nGraphStartX + nGraphWidth + 5.f * FrameProfileRenderConstants::c_yScale);
-        charPosY = yStart;
-        DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale * 0.85f, "60ms");
-
-        charPosY = yStart + quarterStepY;
-        DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale * 0.7f, "45");
-
-        charPosY = yStart + quarterStepY  * 2.f;
-        DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale * 0.85f, "30ms");
-
-        charPosY = yStart + quarterStepY * 3.f;
-        DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale * 0.7f, "15");
-
-        y += FrameProfileRenderConstants::c_yNextControlGap;
-    }
-#endif
 
     //************************
     // Page Fault Information
@@ -1523,14 +1265,14 @@ void CFrameProfileSystem::DrawGraph()
         float charPosY = y;
         DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale, "10000");
 
-        m_timeGraphPageFault[m_nWorkerGraphCurPos] = (unsigned char)(255.f - clamp_tpl(logValue *  (255.f / cLogGraphScale), 0.f, 255.f));
+        m_timeGraphPageFault[0] = (unsigned char)(255.f - clamp_tpl(logValue *  (255.f / cLogGraphScale), 0.f, 255.f));
 
         y += FrameProfileRenderConstants::c_yStepSizeText  * 2.f; // Add some extra height to the graph
         const float graphHeight = y - yStart;
-        m_pRenderer->Graph(&m_timeGraphPageFault[0], (int)(x + nGraphStartXOvrScnAdj), (int)(yStart + fOverscanAdjY), nGraphWidth, (int)graphHeight, m_nWorkerGraphCurPos, 2, 0, graphColor, 0);
+        m_pRenderer->Graph(&m_timeGraphPageFault[0], (int)(x + nGraphStartXOvrScnAdj), (int)(yStart + fOverscanAdjY), nGraphWidth, (int)graphHeight, 0, 2, 0, graphColor, 0);
 
         // Draw time graph indicator
-        charPosX = x + nGraphStartX + (float)m_nWorkerGraphCurPos - 1.f;
+        charPosX = x + nGraphStartX + - 1.f;
         charPosY = y - 5.f;
         DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale, "|");
 
@@ -1596,17 +1338,6 @@ void CFrameProfileSystem::DrawGraph()
             DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale * 0.88f, "100fps");
             x -= 5;
 
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-            m_timeGraphFrameTime[m_nWorkerGraphCurPos] = (unsigned char)clamp_tpl((255.0f - (framePercentage * 100.f * 2.555f)), 0.f, 255.f);   // Convert into [0.f,100.f] and then to [0,255] range
-
-            m_pRenderer->Graph(&m_timeGraphFrameTime[0], (int)(x + nGraphStartXOvrScnAdj), (int)(yStart + fOverscanAdjY), nGraphWidth, int(y - yStart), m_nWorkerGraphCurPos, 2, 0, graphColor, 0);
-
-            // Draw time graph indicator
-            charPosX =  x + nGraphStartX + (float)m_nWorkerGraphCurPos - 1.f;
-            charPosY = y - 5.f;
-            DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale, "|");
-#endif
-
             // Draw graph resolution information
             charPosX = x + nGraphStartX + nGraphWidth + 5.f * FrameProfileRenderConstants::c_yScale;
             charPosY = yStart;
@@ -1620,19 +1351,6 @@ void CFrameProfileSystem::DrawGraph()
     float charPosX = x + nGraphStartX + nGraphWidth - 35.f * FrameProfileRenderConstants::c_yScale;  // Use FrameProfileRenderConstants::c_yScale to adjust for larger font size
     float charPosY = y - FrameProfileRenderConstants::c_yStepSizeText;
     DrawTextLabel(m_pRenderer, charPosX, charPosY, labelColor, FrameProfileRenderConstants::c_fontScale, "%d frames", nGraphWidth);
-
-    // Advance
-    if (!m_bCollectionPaused)
-    {
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-        ++m_nWorkerGraphCurPos;
-
-        if (m_nWorkerGraphCurPos > nGraphWidth)
-        {
-            m_nWorkerGraphCurPos = 0;
-        }
-#endif
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1745,7 +1463,7 @@ void CFrameProfileSystem::RenderSubSystems(float col, float row)
 
 #if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_PACKED_PEHEADER
 #pragma pack(push,1)
-const struct PEHeader
+struct PEHeader
 {
     DWORD signature;
     IMAGE_FILE_HEADER _head;
@@ -1789,7 +1507,7 @@ void CFrameProfileSystem::RenderMemoryInfo()
     //////////////////////////////////////////////////////////////////////////
     int memUsage = 0;//CryMemoryGetAllocatedSize();
     int64 totalAll = 0;
-    int luaMemUsage = gEnv->pScriptSystem->GetScriptAllocSize();
+    int luaMemUsage = gEnv->pScriptSystem ? gEnv->pScriptSystem->GetScriptAllocSize() : 0;
 
     row++; // reserve for static.
     row++;
@@ -2038,9 +1756,4 @@ void CFrameProfileSystem::RenderMemoryInfo()
 
 #endif // USE_FRAME_PROFILER
 
-#if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
-#   undef COL_DIFF_JOBS
-#   undef ROW_DIFF_BLOCKING
-#   undef ROW_DIFF_THREAD
-#endif
 #undef COL_DIFF_HISTOGRAMS

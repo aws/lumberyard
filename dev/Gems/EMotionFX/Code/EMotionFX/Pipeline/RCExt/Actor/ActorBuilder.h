@@ -14,7 +14,7 @@
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 
-#include <RCext/CoordinateSystemConverter.h>
+#include <RCExt/CoordinateSystemConverter.h>
 
 
 namespace AZ

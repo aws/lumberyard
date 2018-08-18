@@ -1,0 +1,149 @@
+<div class="create-heatmap-container">
+    <div class="row">
+        <div class="col-12" id="map"> </div>
+    </div>
+    <div class="heatmap-options-container" *ngIf="!isSaving; else loadingHeatmap">
+        <form>
+            <h2> Heatmap </h2>
+            <div class="row no-gutters" [ngClass]="{'has-danger': !heatmap.validationModel.id.isValid}">
+                <label class="col-2"> Name </label>
+                <div class="col-6">
+                    <input *ngIf="isUpdatingExistingHeatmap == false" class="form-control" type="text" [(ngModel)]="heatmap.id" name="id" />
+                    <p *ngIf="isUpdatingExistingHeatmap" > {{heatmap.id}} </p>
+                </div>
+                <div *ngIf="!heatmap.validationModel.id.isValid" class="form-control-danger">
+                    <div *ngIf="!heatmap.validationModel.id.isValid">
+                        Name is required and must not have any spaces.
+                    </div>
+                </div>
+            </div>
+            <h2> Visualization </h2>
+            <div class="row no-gutters">
+                <label class="col-2"> Level Screenshot </label>
+                <div class="col-6">
+                    <input class="form-control" type="text" [(ngModel)]="heatmap.fileName" name="fileName" />
+                </div>
+                <div class="col-2">
+                    <button type="button" (click)="selectMapImage()" class="btn btn-outline-primary form-control"> Upload Image </button>
+                    <input #import type="file" accept=".png, .jpg, .jpeg" (change)="importMapImage($event)" class="btn btn-outline-primary upload-image" />
+                </div>
+            </div>
+            <div class="row valign-center no-gutters">
+                <label class="col-2"> Max Zoom Scale </label>
+                <div class="col-2 zoom-level">
+                    <div>
+                        <label> Min Zoom Level </label>
+                    </div>
+                    <div class="row">
+                        <input class="form-control min-max-input" type="number" [(ngModel)]="heatmap.minZoomLevel" name="minZoomLevel" />
+                        <!-- Commenting out the 'Levels' until we decide on proper messaging for zoom levels.
+                        I don't think 'Out' and 'In' zoom levels from the UX mock makes sense -->
+                        <!-- <span> Levels </span> -->
+                    </div>
+                </div>
+                <div class="col-2 zoom-level">
+                    <div>
+                        <label> Max Zoom Level </label>
+                    </div>
+                    <div class="row">
+                        <input class="form-control min-max-input" type="number" [(ngModel)]="heatmap.maxZoomLevel" name="maxZoomLevel" />
+                        <!-- <span> Levels </span> -->
+                    </div>
+                </div>
+            </div>
+            <div class="row no-gutters">
+                <label class="col-2"> Game World Coordinates </label>
+                <div class="col-4">
+                    <label> Lower Left </label><tooltip placement="right" tooltip="Orientate the camera in Lumberyard so that it is orthogonal to the top of the level.   Place the mouse cursor at the lower left of the Lumberyard view port.  Copy the x,y mouse coordinates seen in the Lumberyard status bar to here."> </tooltip>
+                    <div class="row  zoom-level">
+                        <div class="col-6">
+                            <label>X:</label><input class="form-control min-max-input" type="number" [(ngModel)]="heatmap.worldCoordinateLowerLeftX" name="worldCoordinateLowerLeftX" />
+                        </div>
+                        <div class="col-6">
+                            <label>Y:</label><input class="form-control min-max-input" type="number" [(ngModel)]="heatmap.worldCoordinateLowerLeftY" name="worldCoordinateLowerLeftY" />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <label> Lower Right </label><tooltip placement="right" tooltip="Orientate the camera in Lumberyard so that it is orthogonal to the top of the level.   Place the mouse cursor at the lower right of the Lumberyard view port.  Copy the x,y mouse coordinates seen in the Lumberyard status bar to here."> </tooltip>
+                    <div class="row  zoom-level">
+                        <div class="col-6">
+                            <label>X:</label><input class="form-control min-max-input" type="number" [(ngModel)]="heatmap.worldCoordinateLowerRightX" name="worldCoordinateLowerRightX" />
+                        </div>
+                        <div class="col-6">
+                            <label>Y:</label><input class="form-control min-max-input" type="number" [(ngModel)]="heatmap.worldCoordinateLowerRightY" name="worldCoordinateLowerRightY" />
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <ng-container *ngIf="!isLoadingEvents; else loadingInline">
+                <h2> Data </h2>
+                <div class="row no-gutters">
+                    <div class="col-3">
+                        <label> Event </label>
+                        <div>
+                            <dropdown placeholderText="{{heatmap.event}}" [currentOption]="heatmap.event" (dropdownChanged)="updateEvent($event)"
+                                      [options]="tableDropdownOptions"></dropdown>
+                        </div>
+                    </div>
+                    <ng-container *ngIf="heatmap.event && heatmap.event != 'Select'">
+                        <ng-container *ngIf="!isLoadingEventAttributes; else loadingInline">
+                            <div class="col-3">
+                                <label> X Axis </label>
+                                <div>
+                                    <dropdown placeholderText="{{heatmap.xCoordinateMetric}}" [currentOption]="heatmap.xCoordinateMetric" (dropdownChanged)="updateXCoordinateDropdown($event)"
+                                              [options]="coordinateDropdownOptions"></dropdown>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <label> Y Axis </label>
+                                <div>
+                                    <dropdown placeholderText="{{heatmap.yCoordinateMetric}}" [currentOption]="heatmap.yCoordinateMetric" (dropdownChanged)="updateYCoordinateDropdown($event)"
+                                              [options]="coordinateDropdownOptions"></dropdown>
+                                </div>
+                            </div>
+                        </ng-container>
+                    </ng-container>
+                </div>
+                <ng-container *ngIf="(heatmap.xCoordinateMetric && heatmap.xCoordinateMetric != 'Select') && (heatmap.yCoordinateMetric && heatmap.yCoordinateMetric != 'Select')">
+                    <div class="row no-gutters">
+                        <div class="col-6">
+                            <label> Date/Time range (UTC) </label>
+                            <datetime-range-picker (dateTimeRange)="eventDateTimeUpdated($event)"
+                                                   [startDateModel]="heatmap.eventStartDateTime.date"
+                                                   [endDateModel]="heatmap.eventEndDateTime.date"
+                                                   [startTime]="heatmap.eventStartDateTime.time"
+                                                   [endTime]="heatmap.eventEndDateTime.time"
+                                                   [hasStart]="heatmap.eventHasStartDateTime"
+                                                   [hasEnd]="heatmap.eventHasEndDateTime"></datetime-range-picker>
+
+                        </div>
+                    </div>
+                    <div class="row">
+                        <!-- Query input -->
+                        <div class="col-lg-11">
+                            <label> Custom Filters </label>                            
+                            <input type="text" class="form-control" [(ngModel)]="heatmap.customFilter" [ngModelOptions]="{standalone: true}" placeholder="Examples: platform_identifier in ('Android', 'PC', 'iOS') or p_client_build_identifier = '1.0.1234'" />
+                        </div>
+                        <div class="col-lg-1">
+                            <label> Limit </label>                            
+                            <dropdown class="search-dropdown" (dropdownChanged)="setLimit($event)" [currentOption]="{text: limit}" [options]="[{text: '100'}, {text: '500'}, {text: '1000'}, {text: 'All'}]" placeholderText="Return row limit."> </dropdown>
+                        </div>
+                   </div>        
+                </ng-container>
+                <div class="row margin-top-10 ">
+                    <button class="btn btn-primary l-primary heatmap-button" (click)="saveHeatmap()" type="button"> Save </button>
+                </div>
+            </ng-container>
+        </form>
+    </div>
+</div>
+
+<ng-template #loadingInline>
+    <div><i class="fa fa-cog fa-spin fa-2x fa-fw"></i></div>
+</ng-template>
+
+<ng-template #loadingHeatmap>
+    <loading-spinner text="Refreshing Heatmap"></loading-spinner>
+</ng-template>

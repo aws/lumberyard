@@ -632,7 +632,7 @@ namespace EMotionFX
                 {
                     nodeNr = actorInstance->GetEnabledNode(i);
                     const Transform& base = bindPose->GetLocalTransform(nodeNr);
-                    BlendTransformAdditive(base, GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), weight, &result);
+                    BlendTransformAdditiveUsingBindPose(base, GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), weight, &result);
                     outPose->SetLocalTransform(nodeNr, result, false);
                 }
                 outPose->InvalidateAllGlobalTransforms();
@@ -719,7 +719,7 @@ namespace EMotionFX
                     const float finalWeight = nodeBlendWeight * weight;
 
                     // blend the source into dest with the given weight and output it inside the output pose
-                    BlendTransformAdditive(bindPose->GetLocalTransform(nodeNr), GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), finalWeight, &result);
+                    BlendTransformAdditiveUsingBindPose(bindPose->GetLocalTransform(nodeNr), GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), finalWeight, &result);
                     outPose->SetLocalTransform(nodeNr, result, false);
                 }
                 outPose->InvalidateAllGlobalTransforms();
@@ -816,7 +816,7 @@ namespace EMotionFX
                 const float finalWeight = instance->GetNodeWeight(nodeNr) * weight;
 
                 // blend the source into dest with the given weight and output it inside the output pose
-                BlendTransformAdditive(bindPose->GetLocalTransform(nodeNr), GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), finalWeight, &result);
+                BlendTransformAdditiveUsingBindPose(bindPose->GetLocalTransform(nodeNr), GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), finalWeight, &result);
                 outPose->SetLocalTransform(nodeNr, result, false);
             }
             outPose->InvalidateAllGlobalTransforms();
@@ -1050,13 +1050,192 @@ namespace EMotionFX
     }
 
 
+    Pose& Pose::MakeRelativeTo(const Pose& other)
+    {
+        AZ_Assert(mLocalTransforms.GetLength() == other.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        if (mActorInstance)
+        {
+            const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                uint16 nodeNr = mActorInstance->GetEnabledNode(i);
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
+                transform = transform.CalcRelativeTo(other.GetLocalTransform(nodeNr));
+            }
+        }
+        else
+        {
+            const uint32 numNodes = mLocalTransforms.GetLength();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
+                transform = transform.CalcRelativeTo(other.GetLocalTransform(i));
+            }
+        }
+
+        const uint32 numMorphs = mMorphWeights.GetLength();
+        AZ_Assert(numMorphs == other.GetNumMorphWeights(), "Number of morphs in the pose doesn't match the number of morphs inside the provided input pose.");
+        for (uint32 i = 0; i < numMorphs; ++i)
+        {
+            mMorphWeights[i] -= other.mMorphWeights[i];
+        }
+
+        InvalidateAllGlobalTransforms();
+        return *this;
+    }
+
+
+    Pose& Pose::ApplyAdditive(const Pose& additivePose, float weight)
+    {
+        AZ_Assert(mLocalTransforms.GetLength() == additivePose.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        if (mActorInstance)
+        {
+            const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                uint16 nodeNr = mActorInstance->GetEnabledNode(i);
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
+                const Transform& additiveTransform = additivePose.GetLocalTransform(nodeNr);
+                transform.mPosition += additiveTransform.mPosition * weight;
+                transform.mRotation = transform.mRotation.NLerp(transform.mRotation * additiveTransform.mRotation, weight);
+                EMFX_SCALECODE
+                (
+                    transform.mScale += additiveTransform.mScale * weight;
+                )
+                transform.mRotation.Normalize();
+            }
+        }
+        else
+        {
+            const uint32 numNodes = mLocalTransforms.GetLength();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
+                const Transform& additiveTransform = additivePose.GetLocalTransform(i);
+                transform.mPosition += additiveTransform.mPosition * weight;
+                transform.mRotation = transform.mRotation.NLerp(transform.mRotation * additiveTransform.mRotation, weight);
+                EMFX_SCALECODE
+                (
+                    transform.mScale += additiveTransform.mScale * weight;
+                )
+                transform.mRotation.Normalize();
+            }
+        }
+
+        const uint32 numMorphs = mMorphWeights.GetLength();
+        AZ_Assert(numMorphs == additivePose.GetNumMorphWeights(), "Number of morphs in the pose doesn't match the number of morphs inside the provided input pose.");
+        for (uint32 i = 0; i < numMorphs; ++i)
+        {
+            mMorphWeights[i] += additivePose.mMorphWeights[i] * weight;
+        }
+
+        InvalidateAllGlobalTransforms();
+        return *this;
+    }
+
+
+    Pose& Pose::ApplyAdditive(const Pose& additivePose)
+    {
+        AZ_Assert(mLocalTransforms.GetLength() == additivePose.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        if (mActorInstance)
+        {
+            const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                uint16 nodeNr = mActorInstance->GetEnabledNode(i);
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
+                const Transform& additiveTransform = additivePose.GetLocalTransform(nodeNr);
+                transform.mPosition += additiveTransform.mPosition;
+                transform.mRotation = transform.mRotation * additiveTransform.mRotation;
+                EMFX_SCALECODE
+                (
+                    transform.mScale += additiveTransform.mScale;
+                )
+                transform.mRotation.Normalize();
+            }
+        }
+        else
+        {
+            const uint32 numNodes = mLocalTransforms.GetLength();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
+                const Transform& additiveTransform = additivePose.GetLocalTransform(i);
+                transform.mPosition += additiveTransform.mPosition;
+                transform.mRotation = transform.mRotation * additiveTransform.mRotation;
+                EMFX_SCALECODE
+                (
+                    transform.mScale += additiveTransform.mScale;
+                )
+                transform.mRotation.Normalize();
+            }
+        }
+
+        const uint32 numMorphs = mMorphWeights.GetLength();
+        AZ_Assert(numMorphs == additivePose.GetNumMorphWeights(), "Number of morphs in the pose doesn't match the number of morphs inside the provided input pose.");
+        for (uint32 i = 0; i < numMorphs; ++i)
+        {
+            mMorphWeights[i] += additivePose.mMorphWeights[i];
+        }
+
+        InvalidateAllGlobalTransforms();
+        return *this;
+    }
+
+
+    Pose& Pose::MakeAdditive(const Pose& refPose)
+    {
+        AZ_Assert(mLocalTransforms.GetLength() == refPose.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        if (mActorInstance)
+        {
+            const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                uint16 nodeNr = mActorInstance->GetEnabledNode(i);
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
+                const Transform& refTransform = refPose.GetLocalTransform(nodeNr);
+                transform.mPosition = transform.mPosition - refTransform.mPosition;
+                transform.mRotation = refTransform.mRotation.Conjugated() * transform.mRotation;
+                EMFX_SCALECODE
+                (
+                    transform.mScale = transform.mScale - refTransform.mScale;
+                )
+            }
+        }
+        else
+        {
+            const uint32 numNodes = mLocalTransforms.GetLength();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
+                const Transform& refTransform = refPose.GetLocalTransform(i);
+                transform.mPosition = transform.mPosition - refTransform.mPosition;
+                transform.mRotation = refTransform.mRotation.Conjugated() * transform.mRotation;
+                EMFX_SCALECODE
+                (
+                    transform.mScale = transform.mScale - refTransform.mScale;
+                )
+            }
+        }
+
+        const uint32 numMorphs = mMorphWeights.GetLength();
+        AZ_Assert(numMorphs == refPose.GetNumMorphWeights(), "Number of morphs in the pose doesn't match the number of morphs inside the provided input pose.");
+        for (uint32 i = 0; i < numMorphs; ++i)
+        {
+            mMorphWeights[i] -= refPose.mMorphWeights[i];
+        }
+
+        InvalidateAllGlobalTransforms();
+        return *this;
+    }
+
+
     // additive blend
-    void Pose::BlendAdditive(const Pose* destPose, float weight)
+    void Pose::BlendAdditiveUsingBindPose(const Pose* destPose, float weight)
     {
         if (mActorInstance)
         {
             const TransformData* transformData = mActorInstance->GetTransformData();
-            //      Actor* actor = mActorInstance->GetActor();
             Pose* bindPose = transformData->GetBindPose();
             Transform result;
 
@@ -1065,7 +1244,7 @@ namespace EMotionFX
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 nodeNr = mActorInstance->GetEnabledNode(i);
-                BlendTransformAdditive(bindPose->GetLocalTransform(nodeNr), GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), weight, &result);
+                BlendTransformAdditiveUsingBindPose(bindPose->GetLocalTransform(nodeNr), GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), weight, &result);
                 SetLocalTransform(nodeNr, result, false);
             }
 
@@ -1087,7 +1266,7 @@ namespace EMotionFX
             const uint32 numNodes = mActor->GetSkeleton()->GetNumNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                BlendTransformAdditive(bindPose->GetLocalTransform(i), GetLocalTransform(i), destPose->GetLocalTransform(i), weight, &result);
+                BlendTransformAdditiveUsingBindPose(bindPose->GetLocalTransform(i), GetLocalTransform(i), destPose->GetLocalTransform(i), weight, &result);
                 SetLocalTransform(i, result, false);
             }
 
@@ -1128,7 +1307,7 @@ namespace EMotionFX
 
 
     // blend two transformations additively
-    void Pose::BlendTransformAdditive(const Transform& baseLocalTransform, const Transform& source, const Transform& dest, float weight, Transform* outTransform)
+    void Pose::BlendTransformAdditiveUsingBindPose(const Transform& baseLocalTransform, const Transform& source, const Transform& dest, float weight, Transform* outTransform)
     {
         // get the node index
         *outTransform = source;
@@ -1200,5 +1379,97 @@ namespace EMotionFX
     {
         mMorphWeights.Resize(numMorphTargets);
     }
+
+
+    Pose& Pose::PreMultiply(const Pose& other)
+    {
+        AZ_Assert(mLocalTransforms.GetLength() == other.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        if (mActorInstance)
+        {
+            const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                uint16 nodeNr = mActorInstance->GetEnabledNode(i);
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
+                Transform otherTransform = other.GetLocalTransform(nodeNr);
+                transform = otherTransform * transform;
+            }
+        }
+        else
+        {
+            const uint32 numNodes = mLocalTransforms.GetLength();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
+                Transform otherTransform = other.GetLocalTransform(i);
+                transform = otherTransform * transform;
+            }
+        }
+
+        InvalidateAllGlobalTransforms();
+        return *this;
+    }
+    
+
+    Pose& Pose::Multiply(const Pose& other)
+    {
+        AZ_Assert(mLocalTransforms.GetLength() == other.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        if (mActorInstance)
+        {
+            const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                uint16 nodeNr = mActorInstance->GetEnabledNode(i);
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
+                transform.Multiply(other.GetLocalTransform(nodeNr));
+            }
+        }
+        else
+        {
+            const uint32 numNodes = mLocalTransforms.GetLength();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
+                transform.Multiply(other.GetLocalTransform(i));
+            }
+        }
+
+        InvalidateAllGlobalTransforms();
+        return *this;
+    }
+
+
+    Pose& Pose::MultiplyInverse(const Pose& other)
+    {
+        AZ_Assert(mLocalTransforms.GetLength() == other.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        if (mActorInstance)
+        {
+            const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                uint16 nodeNr = mActorInstance->GetEnabledNode(i);
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
+                Transform otherTransform = other.GetLocalTransform(nodeNr);
+                otherTransform.Inverse();
+                transform.PreMultiply(otherTransform);
+            }
+        }
+        else
+        {
+            const uint32 numNodes = mLocalTransforms.GetLength();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
+                Transform otherTransform = other.GetLocalTransform(i);
+                otherTransform.Inverse();
+                transform.PreMultiply(otherTransform);
+            }
+        }
+
+        InvalidateAllGlobalTransforms();
+        return *this;
+    }
+
+
 
 }   // namespace EMotionFX

@@ -34,15 +34,17 @@ namespace MCommon
 
 
     // static variables
-    uint32 RenderUtil::mNumMaxLineVertices      = 8192 * 16;// 8096 * 16 * sizeof(LineVertex) = 3,5 MB
-    uint32 RenderUtil::mNumMaxMeshVertices      = 1024;
-    uint32 RenderUtil::mNumMaxMeshIndices       = 1024 * 3;
-    uint32 RenderUtil::mNumMax2DLines           = 8192;
-    uint32 RenderUtil::mNumMaxTriangleVertices  = 8192 * 16;// 8096 * 16 * sizeof(LineVertex) = 3,5 MB
+    uint32 RenderUtil::mNumMaxLineVertices          = 8192 * 16;// 8096 * 16 * sizeof(LineVertex) = 3,5 MB
+    uint32 RenderUtil::mNumMaxMeshVertices          = 1024;
+    uint32 RenderUtil::mNumMaxMeshIndices           = 1024 * 3;
+    uint32 RenderUtil::mNumMax2DLines               = 8192;
+    uint32 RenderUtil::mNumMaxTriangleVertices      = 8192 * 16;// 8096 * 16 * sizeof(LineVertex) = 3,5 MB
+    float RenderUtil::m_wireframeSphereSegmentCount = 16.0f;
 
 
     // constructor
     RenderUtil::RenderUtil()
+        : m_devicePixelRatio(1.0f)
     {
         mVertexBuffer   = new LineVertex[mNumMaxLineVertices];
         m2DLines        = new Line2D[mNumMax2DLines];
@@ -2030,7 +2032,7 @@ namespace MCommon
         }
 
         // render the text
-        RenderText(projectedPoint.GetX(), projectedPoint.GetY(), text, color, static_cast<float>(textSize), true);
+        RenderText(projectedPoint.GetX() * m_devicePixelRatio, projectedPoint.GetY() * m_devicePixelRatio, text, color, static_cast<float>(textSize), true);
     }
 
 
@@ -2066,6 +2068,161 @@ namespace MCommon
         }
     }
 
+
+    void RenderUtil::RenderWireframeBox(const AZ::Vector3& dimensions, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender)
+    {
+        AZ::Vector3 min = AZ::Vector3(-dimensions.GetX()*0.5f, -dimensions.GetY()*0.5f, -dimensions.GetZ()*0.5f);
+        AZ::Vector3 max = AZ::Vector3( dimensions.GetX()*0.5f,  dimensions.GetY()*0.5f,  dimensions.GetZ()*0.5f);
+
+        AZ::Vector3 p[8];
+        p[0].Set(min.GetX(), min.GetY(), min.GetZ());
+        p[1].Set(max.GetX(), min.GetY(), min.GetZ());
+        p[2].Set(max.GetX(), min.GetY(), max.GetZ());
+        p[3].Set(min.GetX(), min.GetY(), max.GetZ());
+        p[4].Set(min.GetX(), max.GetY(), min.GetZ());
+        p[5].Set(max.GetX(), max.GetY(), min.GetZ());
+        p[6].Set(max.GetX(), max.GetY(), max.GetZ());
+        p[7].Set(min.GetX(), max.GetY(), max.GetZ());
+
+        for (int i = 0; i < 8; ++i)
+        {
+            p[i] = p[i] * globalTM;
+        }
+
+        RenderLine(p[0], p[1], color);
+        RenderLine(p[1], p[2], color);
+        RenderLine(p[2], p[3], color);
+        RenderLine(p[3], p[0], color);
+
+        RenderLine(p[4], p[5], color);
+        RenderLine(p[5], p[6], color);
+        RenderLine(p[6], p[7], color);
+        RenderLine(p[7], p[4], color);
+
+        RenderLine(p[0], p[4], color);
+        RenderLine(p[1], p[5], color);
+        RenderLine(p[2], p[6], color);
+        RenderLine(p[3], p[7], color);
+
+        if (directlyRender)
+        {
+            RenderLines();
+        }
+    }
+
+
+    void RenderUtil::RenderWireframeSphere(float radius, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender)
+    {
+        const float stepSize = AZ::Constants::TwoPi / m_wireframeSphereSegmentCount;
+
+        AZ::Vector3 pos1, pos2;
+        float x1, y1, x2, y2;
+        const float endAngle = AZ::Constants::TwoPi + std::numeric_limits<float>::epsilon();
+        for (float i = 0.0f; i < endAngle; i += stepSize)
+        {
+            x1 = radius * cosf(i);
+            y1 = radius * sinf(i);
+            x2 = radius * cosf(i + stepSize);
+            y2 = radius * sinf(i + stepSize);
+
+            pos1 = AZ::Vector3(x1, y1, 0.0f) * globalTM;
+            pos2 = AZ::Vector3(x2, y2, 0.0f) * globalTM;
+            RenderLine(pos1, pos2, color);
+
+            pos1 = AZ::Vector3(x1, 0.0f, y1) * globalTM;
+            pos2 = AZ::Vector3(x2, 0.0f, y2) * globalTM;
+            RenderLine(pos1, pos2, color);
+
+            pos1 = AZ::Vector3(0.0f, x1, y1) * globalTM;
+            pos2 = AZ::Vector3(0.0f, x2, y2) * globalTM;
+            RenderLine(pos1, pos2, color);
+        }
+
+        if (directlyRender)
+        {
+            RenderLines();
+        }
+    }
+
+
+    // The capsule caps (for one aligned vertically) are rendered as one horizontal full circle (around y) and two vertically aligned half circles around the x and z axes.
+    // The end points of these half circles connect the bottom cap to the top cap (the cylinder part in the middle).
+    void RenderUtil::RenderWireframeCapsule(float radius, float height, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender)
+    {
+        float stepSize = AZ::Constants::TwoPi / m_wireframeSphereSegmentCount;
+        const float cylinderHeight = height - 2.0f * radius;
+        const float halfCylinderHeight = cylinderHeight * 0.5f;
+
+        AZ::Vector3 pos1, pos2;
+        float x1, y1, x2, y2;
+
+        // Draw the full circles for both caps
+        float startAngle = 0.0f;
+        float endAngle = AZ::Constants::TwoPi + std::numeric_limits<float>::epsilon();
+        for (float i = startAngle; i < endAngle; i += stepSize)
+        {
+            x1 = radius * cosf(i);
+            y1 = radius * sinf(i);
+            x2 = radius * cosf(i + stepSize);
+            y2 = radius * sinf(i + stepSize);
+
+            pos1 = AZ::Vector3(x1, y1,  halfCylinderHeight) * globalTM;
+            pos2 = AZ::Vector3(x2, y2,  halfCylinderHeight) * globalTM;
+            RenderLine(pos1, pos2, color);
+
+            pos1 = AZ::Vector3(x1, y1, -halfCylinderHeight) * globalTM;
+            pos2 = AZ::Vector3(x2, y2, -halfCylinderHeight) * globalTM;
+            RenderLine(pos1, pos2, color);
+        }
+
+        // Draw half circles for caps
+        startAngle = 0.0f;
+        endAngle = AZ::Constants::Pi - std::numeric_limits<float>::epsilon();
+        for (float i = startAngle; i < endAngle; i += stepSize)
+        {
+            x1 = radius * cosf(i);
+            y1 = radius * sinf(i);
+            x2 = radius * cosf(i + stepSize);
+            y2 = radius * sinf(i + stepSize);
+
+            // Upper cap
+            pos1 = AZ::Vector3(x1, 0.0f, y1 + halfCylinderHeight) * globalTM;
+            pos2 = AZ::Vector3(x2, 0.0f, y2 + halfCylinderHeight) * globalTM;
+            RenderLine(pos1, pos2, color);
+
+            pos1 = AZ::Vector3(0.0f, x1, y1 + halfCylinderHeight) * globalTM;
+            pos2 = AZ::Vector3(0.0f, x2, y2 + halfCylinderHeight) * globalTM;
+            RenderLine(pos1, pos2, color);
+
+            // Lower cap
+            pos1 = AZ::Vector3(x1, 0.0f, -y1 - halfCylinderHeight) * globalTM;
+            pos2 = AZ::Vector3(x2, 0.0f, -y2 - halfCylinderHeight) * globalTM;
+            RenderLine(pos1, pos2, color);
+
+            pos1 = AZ::Vector3(0.0f, x1, -y1 - halfCylinderHeight) * globalTM;
+            pos2 = AZ::Vector3(0.0f, x2, -y2 - halfCylinderHeight) * globalTM;
+            RenderLine(pos1, pos2, color);
+        }
+
+        // Draw cap connectors (cylinder height)
+        startAngle = 0.0f;
+        endAngle = AZ::Constants::TwoPi + std::numeric_limits<float>::epsilon();
+        stepSize = AZ::Constants::Pi * 0.5f;
+        for (float i = startAngle; i < endAngle; i += stepSize)
+        {
+            x1 = radius * cosf(i);
+            y1 = radius * sinf(i);
+
+            pos1 = AZ::Vector3(x1, y1,  halfCylinderHeight) * globalTM;
+            pos2 = AZ::Vector3(x1, y1, -halfCylinderHeight) * globalTM;
+            RenderLine(pos1, pos2, color);
+        }
+
+        if (directlyRender)
+        {
+            RenderLines();
+        }
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Vector Font

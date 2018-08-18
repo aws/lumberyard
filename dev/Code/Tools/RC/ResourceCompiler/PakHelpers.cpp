@@ -29,7 +29,11 @@ bool PakHelpers::PakEntry::MakeSortableStreamingSuffix(const string& suffix, str
     char verify[32] = "";
 
     // Scan, recreate and compare to verify if the given string is a valid streaming suffix
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
+    int nTokens = sscanf_s(suffix.data(), "%d%c", &nMipmap, &cAttached, 1);
+#else
     int nTokens = sscanf(suffix.data(), "%d%c", &nMipmap, &cAttached);
+#endif
     switch (nTokens)
     {
     case 2:
@@ -42,7 +46,11 @@ bool PakHelpers::PakEntry::MakeSortableStreamingSuffix(const string& suffix, str
         break;
     default:
         // .dds.a
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
+        if (sscanf_s(suffix.data(), "%c", &cAttached, 1) == 1)
+#else
         if (sscanf(suffix.data(), "%c", &cAttached) == 1)
+#endif
         {
             azsnprintf(verify, sizeof(verify), "%c", cAttached);
             nTokens = 2;

@@ -101,26 +101,6 @@ namespace EMStudio
                     continue;
                 }
 
-                // Special case handling for motions that are part of a motion set.
-                // Note: The command system is unable to remove motions that are part of a motion set before all motion entries are removed that refer to the given motion
-                // Until this problem is solved, we'll need to keep this special case. We will not reload the motion in case it is part of a motion set.
-                bool usedByMotionSet = false;
-                const uint32 numMotionSets = EMotionFX::GetMotionManager().GetNumMotionSets();
-                for (uint32 i = 0; i < numMotionSets; ++i)
-                {
-                    EMotionFX::MotionSet*               motionSet   = EMotionFX::GetMotionManager().GetMotionSet(i);
-                    EMotionFX::MotionSet::MotionEntry*  motionEntry = motionSet->FindMotionEntry(motion);
-                    if (motionEntry)
-                    {
-                        usedByMotionSet = true;
-                        break;
-                    }
-                }
-                if (usedByMotionSet)
-                {
-                    continue;
-                }
-
                 if (AzFramework::StringFunc::Equal(filename, motion->GetFileName()))
                 {
                     return true;
@@ -247,7 +227,7 @@ namespace EMStudio
     }
 
 
-    void FileManager::SourceFileChanged(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUuid)
+    void FileManager::SourceFileChanged(AZStd::string relativePath, AZStd::string scanFolder, AZ::TypeId sourceTypeId)
     {
         AZStd::string filename;
         AZStd::string assetSourcePath = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devassets@");
@@ -412,7 +392,7 @@ namespace EMStudio
     AZStd::string FileManager::LoadActorFileDialog(QWidget* parent)
     {
         GetManager()->SetAvoidRendering(true);
-        AZStd::vector<AZStd::string> filenames = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::ActorAsset>::Uuid(), false);
+        AZStd::vector<AZStd::string> filenames = SelectProductsOfType(azrtti_typeid<EMotionFX::Integration::ActorAsset>(), false);
         GetManager()->SetAvoidRendering(false);
         if (filenames.empty())
         {
@@ -426,7 +406,7 @@ namespace EMStudio
     AZStd::vector<AZStd::string> FileManager::LoadActorsFileDialog(QWidget* parent)
     {
         GetManager()->SetAvoidRendering(true);
-        auto result = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::ActorAsset>::Uuid(), true);
+        auto result = SelectProductsOfType(azrtti_typeid<EMotionFX::Integration::ActorAsset>(), true);
         GetManager()->SetAvoidRendering(false);
         return result;
     }
@@ -539,7 +519,7 @@ namespace EMStudio
     AZStd::string FileManager::LoadMotionFileDialog(QWidget* parent)
     {
         GetManager()->SetAvoidRendering(true);
-        AZStd::vector<AZStd::string> filenames = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::MotionAsset>::Uuid(), false);
+        AZStd::vector<AZStd::string> filenames = SelectProductsOfType(azrtti_typeid<EMotionFX::Integration::MotionAsset>(), false);
         GetManager()->SetAvoidRendering(false);
         if (filenames.empty())
         {
@@ -553,7 +533,7 @@ namespace EMStudio
     AZStd::vector<AZStd::string> FileManager::LoadMotionsFileDialog(QWidget* parent)
     {
         GetManager()->SetAvoidRendering(true);
-        auto result = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::MotionAsset>::Uuid(), true);
+        auto result = SelectProductsOfType(azrtti_typeid<EMotionFX::Integration::MotionAsset>(), true);
         GetManager()->SetAvoidRendering(false);
         return result;
     }
@@ -563,7 +543,7 @@ namespace EMStudio
     AZStd::string FileManager::LoadMotionSetFileDialog(QWidget* parent)
     {
         GetManager()->SetAvoidRendering(true);
-        AZStd::vector<AZStd::string> filenames = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::MotionSetAsset>::Uuid(), false);
+        AZStd::vector<AZStd::string> filenames = SelectProductsOfType(azrtti_typeid<EMotionFX::Integration::MotionSetAsset>(), false);
         GetManager()->SetAvoidRendering(false);
         if (filenames.empty())
         {
@@ -642,7 +622,7 @@ namespace EMStudio
     AZStd::string FileManager::LoadAnimGraphFileDialog(QWidget* parent)
     {
         GetManager()->SetAvoidRendering(true);
-        AZStd::vector<AZStd::string> filenames = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::AnimGraphAsset>::Uuid(), false);
+        AZStd::vector<AZStd::string> filenames = SelectProductsOfType(azrtti_typeid<EMotionFX::Integration::AnimGraphAsset>(), false);
         GetManager()->SetAvoidRendering(false);
         if (filenames.empty())
         {

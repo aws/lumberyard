@@ -15,6 +15,7 @@
 #include "TimeViewPlugin.h"
 #include "TimeInfoWidget.h"
 #include "TrackHeaderWidget.h"
+#include <QCheckBox>
 #include <QPainter>
 #include <QToolTip>
 #include <QPaintEvent>
@@ -530,7 +531,7 @@ namespace EMStudio
 
             if (mIsScrolling == false && mPlugin->mIsAnimating == false)
             {
-                if (mPlugin->mNodeHistoryItem && mPlugin->mNodeHistoryItem->mNodeUniqueID == curItem->mEmitterUniqueID)
+                if (mPlugin->mNodeHistoryItem && mPlugin->mNodeHistoryItem->mNodeId == curItem->mEmitterNodeId)
                 {
                     if (curItem->mStartTime >= mPlugin->mNodeHistoryItem->mStartTime && curItem->mStartTime <= mPlugin->mNodeHistoryItem->mEndTime)
                     {
@@ -649,7 +650,7 @@ namespace EMStudio
                     color = QColor(255, 128, 0);
                 }
 
-                if (mPlugin->mEventEmitterNode && mPlugin->mEventEmitterNode->GetUniqueID() == curItem->mNodeUniqueID && mPlugin->mEventHistoryItem)
+                if (mPlugin->mEventEmitterNode && mPlugin->mEventEmitterNode->GetId() == curItem->mNodeId && mPlugin->mEventHistoryItem)
                 {
                     if (mPlugin->mEventHistoryItem->mStartTime >= curItem->mStartTime && mPlugin->mEventHistoryItem->mStartTime <= curItem->mEndTime)
                     {
@@ -2437,7 +2438,7 @@ namespace EMStudio
         if (animGraphInstance)
         {
             EMotionFX::AnimGraph* animGraph = animGraphInstance->GetAnimGraph();
-            EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNodeByUniqueID(item->mNodeUniqueID);
+            EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNodeById(item->mNodeId);
             if (node)
             {
                 MCore::Array<EMotionFX::AnimGraphNode*> nodePath;
@@ -2463,10 +2464,10 @@ namespace EMStudio
                 outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", nodePathString.c_str());
 
                 outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Node Type:&nbsp;</b></p></td>");
-                outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", node->GetTypeString());
+                outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", node->RTTI_GetTypeName());
 
                 outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Parent Type:&nbsp;</b></p></td>");
-                outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", node->GetParentNode()->GetTypeString());
+                outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", node->GetParentNode()->RTTI_GetTypeName());
 
                 if (node->GetNumChildNodes() > 0)
                 {
@@ -2595,7 +2596,7 @@ namespace EMStudio
         if (animGraphInstance)
         {
             EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(item->mAnimGraphID);//animGraphInstance->GetAnimGraph();
-            EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNodeByUniqueID(item->mEmitterUniqueID);
+            EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNodeById(item->mEmitterNodeId);
             if (node)
             {
                 outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Emitted By:&nbsp;</b></p></td>");
@@ -2624,10 +2625,10 @@ namespace EMStudio
                 outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", nodePathString.c_str());
 
                 outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Node Type:&nbsp;</b></p></td>");
-                outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", node->GetTypeString());
+                outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", node->RTTI_GetTypeName());
 
                 outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Parent Type:&nbsp;</b></p></td>");
-                outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", node->GetParentNode()->GetTypeString());
+                outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", node->GetParentNode()->RTTI_GetTypeName());
 
                 if (node->GetNumChildNodes() > 0)
                 {
@@ -2639,7 +2640,7 @@ namespace EMStudio
                 }
 
                 // show the motion info
-                if (node->GetType() == EMotionFX::AnimGraphMotionNode::TYPE_ID)
+                if (azrtti_typeid(node) == azrtti_typeid<EMotionFX::AnimGraphMotionNode>())
                 {
                     EMotionFX::AnimGraphMotionNode* motionNode = static_cast<EMotionFX::AnimGraphMotionNode*>(node);
                     EMotionFX::MotionInstance* motionInstance = motionNode->FindMotionInstance(animGraphInstance);

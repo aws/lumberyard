@@ -712,30 +712,30 @@ namespace AZ
                     {
                         AZStd::lock_guard<AZStd::recursive_mutex> handlerLock(m_handlerMutex);
 
-                        // find the asset type handler
-                        AssetHandlerMap::iterator handlerIt = m_handlers.find(assetInfo.m_assetType);
-                        AZ_Error("AssetDatabase", handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
-                            assetInfo.m_assetType.ToString<AZ::OSString>().c_str(), assetInfo.m_assetId.ToString<AZ::OSString>().c_str());
-                        if (handlerIt != m_handlers.end())
+                    // find the asset type handler
+                    AssetHandlerMap::iterator handlerIt = m_handlers.find(assetInfo.m_assetType);
+                    AZ_Error("AssetDatabase", handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
+                        assetInfo.m_assetType.ToString<AZ::OSString>().c_str(), assetInfo.m_assetId.ToString<AZ::OSString>().c_str());
+                    if (handlerIt != m_handlers.end())
+                    {
+                        // Create the asset ptr and insert it into our asset map.
+                        handler = handlerIt->second;
+                        if (isNewEntry)
                         {
-                            // Create the asset ptr and insert it into our asset map.
-                            handler = handlerIt->second;
-                            if (isNewEntry)
+                            assetData = handler->CreateAsset(assetInfo.m_assetId, assetInfo.m_assetType);
+                            if (assetData)
                             {
-                                assetData = handler->CreateAsset(assetInfo.m_assetId, assetInfo.m_assetType);
-                                if (assetData)
-                                {
-                                    assetData->m_assetId = assetInfo.m_assetId;
-                                    ++handler->m_nActiveAssets;
-                                    asset = assetData;
-                                }
-                                else
-                                {
-                                    AZ_Error("AssetDatabase", false, "Failed to create asset with (id=%s, type=%s)",
-                                        assetInfo.m_assetId.ToString<AZ::OSString>().c_str(), assetInfo.m_assetType.ToString<AZ::OSString>().c_str());
-                                }
+                                assetData->m_assetId = assetInfo.m_assetId;
+                                ++handler->m_nActiveAssets;
+                                asset = assetData;
+                            }
+                            else
+                            {
+                                AZ_Error("AssetDatabase", false, "Failed to create asset with (id=%s, type=%s)",
+                                    assetInfo.m_assetId.ToString<AZ::OSString>().c_str(), assetInfo.m_assetType.ToString<AZ::OSString>().c_str());
                             }
                         }
+                    }
                     }
 
                     if (assetData)
@@ -762,8 +762,8 @@ namespace AZ
                             {
                                 // this thread is already loading this asset.  Its very likely that 
                                 // the asset we are loading refers to its own asset.
-                                // cyclic dependencies are generally data ERRORS because they mean something will certainly not work.
-                                AZ_Error("AssetManager", false, 
+                                // cyclic dependencies are generally data ERRORS because they mean something will certianly not work.
+                                AZ_Error("AssetManager", false,
                                     "Trying to load %s blocking but is already loading by the same thread also blocking.\n"
                                     "This means an asset has a cyclic dependency in it!",
                                     asset.ToString<AZStd::string>().c_str());
@@ -774,15 +774,15 @@ namespace AZ
                                 if (m_blockingAssetTypeManager->HasBlockingHandlersForCurrentThread())
                                 {
                                     blockingWait = aznew WaitForAssetOnThreadWithBlockingJobs(assetData, m_blockingAssetTypeManager);
-                                }
+                        }
                                 else
                                 {
                                     blockingWait = aznew WaitForAssetOnThreadWithNoBlockingJobs(assetData);
                                 }
                             }
-                        }
                     }
                 }
+            }
             }
 
             if (!assetInfo.m_relativePath.empty())

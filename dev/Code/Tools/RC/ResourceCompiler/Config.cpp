@@ -11,8 +11,8 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "config.h"
+#include "stdafx.h"
+#include "Config.h"
 #include "PropertyVars.h"
 #include "StringHelpers.h"
 #include "IRCLog.h"

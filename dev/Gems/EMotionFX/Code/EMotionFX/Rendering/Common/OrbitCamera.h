@@ -43,15 +43,15 @@ namespace MCommon
          */
         ~OrbitCamera();
 
-        uint32 GetType() const                                  { return TYPE_ID; }
-        const char* GetTypeString() const                       { return "Perspective"; }
+        uint32 GetType() const override                         { return TYPE_ID; }
+        const char* GetTypeString() const override              { return "Perspective"; }
 
         /**
          * Update the camera transformation.
          * Recalculate the view frustum, the projection and the view matrix.
          * @param timeDelta The time (in seconds) passed since the last call.
          */
-        void Update(float timeDelta = 0.0f);
+        void Update(float timeDelta = 0.0f) override;
 
         /**
          * Process input and update the camera transformation based on that.
@@ -64,20 +64,20 @@ namespace MCommon
          * @param right ButtonPressed True if the right mouse button currently is being pressed, false if not.
          * @param keyboardKeyFlags Integer used as bit array for 32 different camera specific keyboard button states.
          */
-        void ProcessMouseInput(int32 mouseMovementX, int32 mouseMovementY, bool leftButtonPressed, bool middleButtonPressed, bool rightButtonPressed, uint32 keyboardKeyFlags = 0);
+        void ProcessMouseInput(int32 mouseMovementX, int32 mouseMovementY, bool leftButtonPressed, bool middleButtonPressed, bool rightButtonPressed, uint32 keyboardKeyFlags = 0) override;
 
         /**
          * Reset all camera attributes to their default settings.
          * @param flightTime The time of the interpolated flight between the actual camera position and the reset target.
          */
-        void Reset(float flightTime = 0.0f);
+        void Reset(float flightTime = 0.0f) override;
 
         /**
          * Translate, rotate and zoom the camera so that we are seeing a closeup of our given bounding box.
          * @param boundingBox The bounding box around the object we want to look at.
          * @param flightTime The time of the interpolated flight between the actual camera position and the target.
          */
-        void ViewCloseup(const MCore::AABB& boundingBox, float flightTime);
+        void ViewCloseup(const MCore::AABB& boundingBox, float flightTime) override;
 
         void StartFlight(float distance, const AZ::Vector3& position, float alpha, float beta, float flightTime);
         bool GetIsFlightActive() const                                  { return mFlightActive; }

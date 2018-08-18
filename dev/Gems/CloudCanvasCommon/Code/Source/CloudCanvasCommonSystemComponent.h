@@ -67,8 +67,12 @@ namespace CloudCanvasCommon
 
         // Some platforms (Android) need to point the http client at the certificate bundle to avoid SSL errors
         virtual CloudCanvas::RequestRootCAFileResult RequestRootCAFile(AZStd::string& resultPath) override;
+        // Skips over platform checks - called by RequestRootCAFile
+        virtual CloudCanvas::RequestRootCAFileResult GetUserRootCAFile(AZStd::string& resultPath) override;
 
         virtual CloudCanvas::RequestRootCAFileResult LmbrRequestRootCAFile(AZStd::string& resultPath) override;
+
+        virtual int GetEndpointHttpResponseCode(const AZStd::string& endPoint) override;
 
         ////////////////////////////////////////////////////////////////////////
         // CrySystemEvents
@@ -76,9 +80,6 @@ namespace CloudCanvasCommon
         void OnCrySystemShutdown(ISystem&) override;
     private:
         CloudCanvasCommonSystemComponent(const CloudCanvasCommonSystemComponent&) = delete;
-        // Return the resolved path of the RootCA file accessible to the ClientConfig, if it exists, otherwise empty string
-        // Entry point for handling our EBUS requests
-        CloudCanvas::RequestRootCAFileResult GetRootCAFile(AZStd::string& resultPat);
 
         // Early out for platforms which don't need RootCA File in the ClientConfig
         static bool DoesPlatformUseRootCAFile();

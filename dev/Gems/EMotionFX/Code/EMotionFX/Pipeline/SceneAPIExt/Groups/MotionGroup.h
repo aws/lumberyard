@@ -44,8 +44,8 @@ namespace EMotionFX
                 const AZ::Uuid& GetId() const override;
                 void OverrideId(const AZ::Uuid& id);
 
-                AZ::SceneAPI::Containers::RuleContainer& GetRuleContainer();
-                const AZ::SceneAPI::Containers::RuleContainer& GetRuleContainerConst() const;
+                AZ::SceneAPI::Containers::RuleContainer& GetRuleContainer() override;
+                const AZ::SceneAPI::Containers::RuleContainer& GetRuleContainerConst() const override;
 
                 // IMotionGroup overrides
                 const AZStd::string& GetSelectedRootBone() const override;

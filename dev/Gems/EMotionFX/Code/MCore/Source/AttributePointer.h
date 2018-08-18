@@ -80,14 +80,5 @@ namespace MCore
             MCore::LogWarning("MCore::AttributePointer::ReadData() - Pointer attributes cannot be read from disk.");
             return false;
         }
-
-        // write to a stream
-        bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override
-        {
-            MCORE_UNUSED(stream);
-            MCORE_UNUSED(targetEndianType);
-            MCore::LogWarning("MCore::AttributePointer::WriteData() - Pointer attributes cannot be written to a stream.");
-            return false;
-        }
     };
 }   // namespace MCore

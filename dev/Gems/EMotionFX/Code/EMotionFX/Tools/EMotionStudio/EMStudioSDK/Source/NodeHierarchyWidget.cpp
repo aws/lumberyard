@@ -10,11 +10,12 @@
 *
 */
 
-// include the required headers
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include "NodeHierarchyWidget.h"
 #include "EMStudioManager.h"
 #include <EMotionFX/Source/Mesh.h>
 #include <EMotionFX/Source/ActorManager.h>
+#include <MCore/Source/StringConversions.h>
 #include <QLabel>
 #include <QSizePolicy>
 #include <QTreeWidget>
@@ -27,21 +28,23 @@
 #include <QHeaderView>
 
 
+EMotionFX::Node* SelectionItem::GetNode() const
+{
+    EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().FindActorInstanceByID(mActorInstanceID);
+    if (!actorInstance)
+    {
+        return nullptr;
+    }
+
+    EMotionFX::Actor* actor = actorInstance->GetActor();
+    return actor->GetSkeleton()->FindNodeByName(GetNodeName());
+}
+
 namespace EMStudio
 {
-    // constructor
     NodeHierarchyWidget::NodeHierarchyWidget(QWidget* parent, bool useSingleSelection)
         : QWidget(parent)
     {
-        /*  // create and register the command callbacks only
-            mSelectCallback             = new CommandSelectCallback(false);
-            mUnselectCallback           = new CommandUnselectCallback(false);
-            mClearSelectionCallback     = new CommandClearSelectionCallback(false);
-
-            GetCommandManager()->RegisterCommandCallback( "Select", mSelectCallback );
-            GetCommandManager()->RegisterCommandCallback( "Unselect", mUnselectCallback );
-            GetCommandManager()->RegisterCommandCallback( "ClearSelection", mClearSelectionCallback );*/
-
         mBoneIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Bone.png").c_str());
         mNodeIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Node.png").c_str());
         mMeshIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Mesh.png").c_str());
@@ -81,13 +84,14 @@ namespace EMStudio
         displayLayout->addWidget(mDisplayButtonGroup);
 
         QWidget* spacerWidget = new QWidget();
-        spacerWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+        spacerWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        spacerWidget->setFixedWidth(20);
         displayLayout->addWidget(spacerWidget);
 
-        displayLayout->addWidget(new QLabel("Find:"), 0, Qt::AlignRight);
-        mFindWidget = new MysticQt::SearchButton(this, MysticQt::GetMysticQt()->FindIcon("Images/Icons/SearchClearButton.png"));
-        connect(mFindWidget->GetSearchEdit(), SIGNAL(textChanged(const QString&)), this, SLOT(TextChanged(const QString&)));
-        displayLayout->addWidget(mFindWidget);
+        m_searchWidget = new AzQtComponents::FilteredSearchWidget(this);
+        connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &NodeHierarchyWidget::OnTextFilterChanged);
+        m_searchWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+        displayLayout->addWidget(m_searchWidget);
 
         // create the tree widget
         mHierarchy = new QTreeWidget();
@@ -130,6 +134,7 @@ namespace EMStudio
 
         connect(mHierarchy, SIGNAL(itemSelectionChanged()), this, SLOT(UpdateSelection()));
         connect(mHierarchy, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(ItemDoubleClicked(QTreeWidgetItem*, int)));
+        connect(mHierarchy, &QTreeWidget::itemSelectionChanged, this, &NodeHierarchyWidget::OnSelectionChanged);
 
         // connect the window activation signal to refresh if reactivated
         //connect( this, SIGNAL(visibilityChanged(bool)), this, SLOT(OnVisibilityChanged(bool)) );
@@ -146,13 +151,6 @@ namespace EMStudio
         delete mMeshIcon;
         delete mNodeIcon;
         delete mCharacterIcon;
-        /*  // unregister the command callbacks and get rid of the memory
-            GetCommandManager()->RemoveCommandCallback( mSelectCallback, false );
-            GetCommandManager()->RemoveCommandCallback( mUnselectCallback, false );
-            GetCommandManager()->RemoveCommandCallback( mClearSelectionCallback, false );
-            delete mSelectCallback;
-            delete mUnselectCallback;
-            delete mClearSelectionCallback;*/
     }
 
 
@@ -293,7 +291,7 @@ namespace EMStudio
         if (((mDisplayMeshesButton->isChecked() && isMeshNode) ||
              (mDisplayBonesButton->isChecked() && isBone) ||
              (mDisplayNodesButton->isChecked() && isNode)) &&
-            (mFindString.empty() || nodeName.find(mFindString) != AZStd::string::npos))
+            (m_searchWidgetText.empty() || nodeName.find(m_searchWidgetText) != AZStd::string::npos))
         {
             return true;
         }
@@ -324,11 +322,9 @@ namespace EMStudio
             }
 
             item->setText(0, node->GetName());
-            mTempString = AZStd::string::format("%d", numChildren);
-            item->setText(2, mTempString.c_str());
+            item->setText(2, QString::number(numChildren));
             item->setExpanded(true);
-            mTempString = AZStd::string::format("%d", actorInstance->GetID());
-            item->setWhatsThis(0, mTempString.c_str());
+            item->setWhatsThis(0, QString::number(actorInstance->GetID()));
 
             // set the correct icon and the type
             if (isBone)
@@ -336,13 +332,11 @@ namespace EMStudio
                 item->setIcon(0, *mBoneIcon);
                 item->setText(1, "Bone");
             }
-            else
-            if (isMeshNode)
+            else if (isMeshNode)
             {
                 item->setIcon(0, *mMeshIcon);
                 item->setText(1, "Mesh");
-                mTempString = AZStd::string::format("%d", mesh->GetNumIndices() / 3);
-                item->setText(3, mTempString.c_str());
+                item->setText(3, QString::number(mesh->GetNumIndices() / 3));
             }
             else if (isNode)
             {
@@ -402,12 +396,12 @@ namespace EMStudio
         const uint32 nodeNameID = MCore::GetStringIdPool().GenerateIdForString(nodeName);
 
         // iterate through the selected nodes and remove the given ones
-        for (uint32 i = 0; i < mSelectedNodes.GetLength(); )
+        for (size_t i = 0; i < m_selectedNodes.size(); )
         {
             // check if this is our node, if yes remove it
-            if (nodeNameID == mSelectedNodes[i].mNodeNameID && actorInstanceID == mSelectedNodes[i].mActorInstanceID)
+            if (nodeNameID == m_selectedNodes[i].mNodeNameID && actorInstanceID == m_selectedNodes[i].mActorInstanceID)
             {
-                mSelectedNodes.Remove(i);
+                m_selectedNodes.erase(m_selectedNodes.begin() + i);
                 //LOG("Removing: %s", nodeName);
             }
             else
@@ -423,12 +417,12 @@ namespace EMStudio
         const uint32 emptyStringID = MCore::GetStringIdPool().GenerateIdForString("");
 
         // iterate through the selected nodes and remove the given ones
-        for (uint32 i = 0; i < mSelectedNodes.GetLength(); )
+        for (size_t i = 0; i < m_selectedNodes.size(); )
         {
             // check if this is our node, if yes remove it
-            if (emptyStringID == mSelectedNodes[i].mNodeNameID && actorInstanceID == mSelectedNodes[i].mActorInstanceID)
+            if (emptyStringID == m_selectedNodes[i].mNodeNameID && actorInstanceID == m_selectedNodes[i].mActorInstanceID)
             {
-                mSelectedNodes.Remove(i);
+                m_selectedNodes.erase(m_selectedNodes.begin() + i);
                 //LOG("Removing: %s", nodeName);
             }
             else
@@ -442,28 +436,27 @@ namespace EMStudio
     // add the given node from the given actor instance to the selected nodes
     void NodeHierarchyWidget::AddNodeToSelectedNodes(const char* nodeName, uint32 actorInstanceID)
     {
-        // generate the string id for the given node name
-        const uint32 nodeNameID = MCore::GetStringIdPool().GenerateIdForString(nodeName);
+        AddNodeToSelectedNodes(SelectionItem(actorInstanceID, nodeName));
+    }
 
-        // get the number of nodes and iterate through them
-        const uint32 numSelectedNodes = mSelectedNodes.GetLength();
-        for (uint32 i = 0; i < numSelectedNodes; ++i)
+    void NodeHierarchyWidget::AddNodeToSelectedNodes(const SelectionItem& item)
+    {
+
+        // Make sure this node is not already in our selection list
+        for (const SelectionItem& selectedItem : m_selectedNodes)
         {
-            const uint32 currentNodeNameID  = mSelectedNodes[i].mNodeNameID;
-            const uint32 currentActorID     = mSelectedNodes[i].mActorInstanceID;
-
-            // check if this is our node, if yes remove it
-            if (nodeNameID == currentNodeNameID && actorInstanceID == currentActorID)
+            if (item.mNodeNameID == selectedItem.mNodeNameID && item.mActorInstanceID == selectedItem.mActorInstanceID)
             {
-                return; // this means the item is already in and we don't need to add it anymore
+                return;
             }
         }
 
-        SelectionItem selectionItem;
-        selectionItem.mActorInstanceID = actorInstanceID;
-        selectionItem.SetNodeName(nodeName);
-        mSelectedNodes.Add(selectionItem);
-        //LOG("   Adding: %s", mItemName.AsChar());
+        if (mUseSingleSelection)
+        {
+            m_selectedNodes.clear();
+        }
+
+        m_selectedNodes.emplace_back(item);
     }
 
 
@@ -580,16 +573,24 @@ namespace EMStudio
         MCORE_UNUSED(column);
 
         UpdateSelection();
-        emit OnDoubleClicked(mSelectedNodes);
+
+        emit OnDoubleClicked(m_selectedNodes);
+        emit OnDoubleClicked(GetSelectedItemsAsMCoreArray());
+    }
+
+
+    void NodeHierarchyWidget::OnSelectionChanged()
+    {
+        emit SelectionChanged();
     }
 
 
     void NodeHierarchyWidget::TreeContextMenu(const QPoint& pos)
     {
         // show the menu if at least one selected
-        const uint32 numSelectedNodes = mSelectedNodes.GetLength();
+        const size_t numSelectedNodes = m_selectedNodes.size();
         if (numSelectedNodes == 0 ||
-            (numSelectedNodes == 1 && mSelectedNodes[0].GetNodeNameString().empty()))
+            (numSelectedNodes == 1 && m_selectedNodes[0].GetNodeNameString().empty()))
         {
             return;
         }
@@ -598,57 +599,87 @@ namespace EMStudio
         QMenu menu(this);
         menu.addAction("Add all towards root to selection");
 
+        AZStd::vector<SelectionItem> itemsToAdd;
         if (menu.exec(mHierarchy->mapToGlobal(pos)))
         {
-            for (uint32 i = 0; i < numSelectedNodes; ++i)
+            // Collect the list of items to select. Actual adding to the
+            // selection has to happen in a separate loop so that the iterators
+            // stay valid.
+            for (const SelectionItem& selectedItem : m_selectedNodes)
             {
-                SelectionItem selectedItem = mSelectedNodes[i];
-                EMotionFX::Node* node = EMotionFX::GetActorManager().FindActorInstanceByID(selectedItem.mActorInstanceID)->GetActor()->GetSkeleton()->FindNodeByName(selectedItem.GetNodeName());
-                if (node)
+                // Ensure the actor instance is still valid before looking at
+                // its skeleton
+                const EMotionFX::ActorInstance* actorInstance =
+                    EMotionFX::GetActorManager().FindActorInstanceByID(selectedItem.mActorInstanceID);
+                if (!actorInstance)
                 {
-                    EMotionFX::Node* parentNode = node->GetParentNode();
-                    while (parentNode)
-                    {
-                        AddNodeToSelectedNodes(parentNode->GetName(), selectedItem.mActorInstanceID);
-                        parentNode = parentNode->GetParentNode();
-                    }
+                    continue;
                 }
+
+                // Walk up the parent hierarchy
+                const EMotionFX::Node* parentNode =
+                    actorInstance->GetActor()->GetSkeleton()->FindNodeByName(selectedItem.GetNodeName());
+                for(; parentNode; parentNode = parentNode->GetParentNode())
+                {
+                    itemsToAdd.emplace_back(selectedItem.mActorInstanceID, parentNode->GetName());
+                }
+            }
+
+            for (const SelectionItem& item : itemsToAdd)
+            {
+                AddNodeToSelectedNodes(item);
             }
             Update();
         }
     }
 
 
-    void NodeHierarchyWidget::TextChanged(const QString& text)
+    void NodeHierarchyWidget::OnTextFilterChanged(const QString& text)
     {
         //mFindString = String(text.toAscii().data()).Lowered();
-        FromQtString(text, &mFindString);
-        AZStd::to_lower(mFindString.begin(), mFindString.end());
+        FromQtString(text, &m_searchWidgetText);
+        AZStd::to_lower(m_searchWidgetText.begin(), m_searchWidgetText.end());
         Update();
     }
 
 
     void NodeHierarchyWidget::FireSelectionDoneSignal()
     {
-        emit OnSelectionDone(mSelectedNodes);
+        emit OnSelectionDone(m_selectedNodes);
+        emit OnSelectionDone(GetSelectedItemsAsMCoreArray());
     }
 
 
-    MCore::Array<SelectionItem>& NodeHierarchyWidget::GetSelectedItems()
+    AZStd::vector<SelectionItem>& NodeHierarchyWidget::GetSelectedItems()
     {
         UpdateSelection();
-        return mSelectedNodes;
+        return m_selectedNodes;
+    }
+
+
+    MCore::Array<SelectionItem> NodeHierarchyWidget::GetSelectedItemsAsMCoreArray()
+    {
+        AZStd::vector<SelectionItem>& selectedItems = GetSelectedItems();
+        MCore::Array<SelectionItem> result;
+        
+        const AZ::u32 numSelectedItems = static_cast<AZ::u32>(selectedItems.size());
+        result.Resize(numSelectedItems);
+
+        for (AZ::u32 i = 0; i < numSelectedItems; ++i)
+        {
+            result[i] = selectedItems[i];
+        }
+
+        return result;
     }
 
 
     // check if the node with the given name is selected in the window
     bool NodeHierarchyWidget::CheckIfNodeSelected(const char* nodeName, uint32 actorInstanceID)
     {
-        // get the number of nodes and iterate through them
-        const uint32 numSelectedNodes = mSelectedNodes.GetLength();
-        for (uint32 i = 0; i < numSelectedNodes; ++i)
+        for (const SelectionItem& selectedItem : m_selectedNodes)
         {
-            if (mSelectedNodes[i].mActorInstanceID == actorInstanceID && mSelectedNodes[i].GetNodeNameString() == nodeName)
+            if (selectedItem.mActorInstanceID == actorInstanceID && selectedItem.GetNodeNameString() == nodeName)
             {
                 return true;
             }
@@ -662,11 +693,9 @@ namespace EMStudio
     // check if the actor instance with the given id is selected in the window
     bool NodeHierarchyWidget::CheckIfActorInstanceSelected(uint32 actorInstanceID)
     {
-        // get the number of nodes and iterate through them
-        const uint32 numSelectedNodes = mSelectedNodes.GetLength();
-        for (uint32 i = 0; i < numSelectedNodes; ++i)
+        for (const SelectionItem& selectedItem : m_selectedNodes)
         {
-            if (mSelectedNodes[i].mActorInstanceID == actorInstanceID && mSelectedNodes[i].GetNodeNameString().empty())
+            if (selectedItem.mActorInstanceID == actorInstanceID && selectedItem.GetNodeNameString().empty())
             {
                 return true;
             }
@@ -686,7 +715,7 @@ namespace EMStudio
             selectionList = &(GetCommandManager()->GetCurrentSelection());
         }
 
-        mSelectedNodes.Clear();
+        m_selectedNodes.clear();
 
         // get the number actor instances and iterate over them
         const uint32 numActorInstances = mActorInstanceIDs.GetLength();
@@ -694,7 +723,6 @@ namespace EMStudio
         {
             // add the actor to the node hierarchy widget
             const uint32 actorInstanceID = mActorInstanceIDs[i];
-            //      ActorInstance* actorInstance = EMotionFX::GetActorManager().FindActorInstanceByID(actorInstanceID);
 
             // get the number of selected nodes and iterate through them
             const uint32 numSelectedNodes = selectionList->GetNumSelectedNodes();
@@ -704,7 +732,7 @@ namespace EMStudio
                 SelectionItem selectionItem;
                 selectionItem.mActorInstanceID = actorInstanceID;
                 selectionItem.SetNodeName(selectionList->GetNode(n)->GetName());
-                mSelectedNodes.Add(selectionItem);
+                m_selectedNodes.emplace_back(selectionItem);
             }
         }
     }
@@ -714,26 +742,7 @@ namespace EMStudio
     {
         if (isVisible)
             Update();
-    }
-
-
-    bool UpdateNodeHierarchyWidget()
-    {
-        NodeHierarchyWidget* window = NodeHierarchyWidget::GetNodeHierarchyWidget();
-
-        // is the window visible? only update it if it is visible
-        if (window->visibleRegion().isEmpty() == false)
-            window->Update();
-
-        return true;
-    }
-
-    bool NodeHierarchyWidget::CommandSelectCallback::Execute(Command* command, const CommandLine& commandLine)                  { return UpdateNodeHierarchyWidget(); }
-    bool NodeHierarchyWidget::CommandSelectCallback::Undo(Command* command, const CommandLine& commandLine)                     { return UpdateNodeHierarchyWidget(); }
-    bool NodeHierarchyWidget::CommandUnselectCallback::Execute(Command* command, const CommandLine& commandLine)                    { return UpdateNodeHierarchyWidget(); }
-    bool NodeHierarchyWidget::CommandUnselectCallback::Undo(Command* command, const CommandLine& commandLine)                       { return UpdateNodeHierarchyWidget(); }
-    bool NodeHierarchyWidget::CommandClearSelectionCallback::Execute(Command* command, const CommandLine& commandLine)          { return UpdateNodeHierarchyWidget(); }
-    bool NodeHierarchyWidget::CommandClearSelectionCallback::Undo(Command* command, const CommandLine& commandLine)         { return UpdateNodeHierarchyWidget(); }*/
+    }*/
 } // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/NodeHierarchyWidget.moc>

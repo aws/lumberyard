@@ -401,7 +401,7 @@ namespace MCore
                 if (rightPercentagePos == AZStd::string::npos)
                 {
                     // if the right pound is not found, stop replacing, the command is ill-formed
-                    MCore::LogError("Execution of command '%s' failed, right '%' delimiter was not found", commandString);
+                    MCore::LogError("Execution of command '%s' failed, right '%' delimiter was not found", commandString.c_str());
                     hadError = true;
                     break;
                 }
@@ -418,20 +418,20 @@ namespace MCore
                     // check if it can be safely converted to number
                     if (!AzFramework::StringFunc::LooksLikeInt(tmpStr.c_str(), &relativeIndex))
                     {
-                        MCore::LogError("Execution of command '%s' failed, characters between '%LASTRESULT' and '%' cannot be converted to integer", commandString);
+                        MCore::LogError("Execution of command '%s' failed, characters between '%LASTRESULT' and '%' cannot be converted to integer", commandString.c_str());
                         hadError = true;
                         break;
                     }
                     if (relativeIndex == 0)
                     {
-                        MCore::LogError("Execution of command '%s' failed, command trying to access its own result", commandString);
+                        MCore::LogError("Execution of command '%s' failed, command trying to access its own result", commandString.c_str());
                         hadError = true;
                         break;
                     }
                 }
                 if (static_cast<int32>(i) < relativeIndex)
                 {
-                    MCore::LogError("Execution of command '%s' failed, command trying to access results from %d commands back, but there are only %d", commandString, relativeIndex, i-1);
+                    MCore::LogError("Execution of command '%s' failed, command trying to access results from %d commands back, but there are only %d", commandString.c_str(), relativeIndex, i-1);
                     hadError = true;
                     break;
                 }
@@ -1013,6 +1013,12 @@ namespace MCore
     {
         maxItems = AZStd::max(1u, maxItems);
         mMaxHistoryEntries = maxItems;
+
+        while (mCommandHistory.GetLength() > mMaxHistoryEntries)
+        {
+            PopCommandHistory();
+            mHistoryIndex = mCommandHistory.GetLength() - 1;
+        }
     }
 
 

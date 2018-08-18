@@ -29,15 +29,12 @@
 namespace LmbrCentral
 {
     /**
-     * Templated to provide generation of vertices (Vec3) for rendering, or
-     * vertices (AZ::Vector3) for intersection testing.
+     * Generates solid polygon prism mesh.
      */
-    template<typename V3, typename Transform>
     static void GenerateSolidPolygonPrismMesh(
-        const Transform& worldFromLocal,
-        const AZStd::vector<AZ::Vector2> vertices,
+        const AZStd::vector<AZ::Vector2>& vertices,
         const float height,
-        AZStd::vector<V3>& meshTriangles)
+        AZStd::vector<AZ::Vector3>& meshTriangles)
     {
         // must have at least one triangle
         if (vertices.size() < 3)
@@ -46,7 +43,7 @@ namespace LmbrCentral
         }
 
         // generate triangles for one face of polygon prism
-        const AZStd::vector<V3> faceTriangles = GenerateTriangles<V3>(vertices);
+        const AZStd::vector<AZ::Vector3> faceTriangles = GenerateTriangles(vertices);
 
         const size_t halfTriangleCount = faceTriangles.size();
         const size_t fullTriangleCount = faceTriangles.size() * 2;
@@ -56,33 +53,26 @@ namespace LmbrCentral
         meshTriangles.resize_no_construct(fullTriangleCount + wallTriangleCount);
 
         // copy vertices into triangle list
-        const typename AZStd::vector<V3>::iterator midFace = meshTriangles.begin() + halfTriangleCount;
+        const typename AZStd::vector<AZ::Vector3>::iterator midFace = meshTriangles.begin() + halfTriangleCount;
         AZStd::copy(faceTriangles.begin(), faceTriangles.end(), meshTriangles.begin());
         // due to winding order, reverse copy triangles for other face/polygon
-        std::reverse_copy(faceTriangles.begin(), faceTriangles.end(), midFace);
-        
-        const V3 heightOffset = V3(0.0f, 0.0f, height);
+        AZStd::reverse_copy(faceTriangles.begin(), faceTriangles.end(), midFace);
+
+        const AZ::Vector3 heightOffset = AZ::Vector3(0.0f, 0.0f, height);
 
         // top face/polygon
         for (size_t i = 0; i < halfTriangleCount; ++i)
         {
-            const V3 triangle = meshTriangles[i];
-            meshTriangles[i] = worldFromLocal * (triangle + heightOffset);
-        }
-        // bottom face/polygon
-        for (size_t i = halfTriangleCount; i < fullTriangleCount; ++i)
-        {
-            const V3 triangle = meshTriangles[i];
-            meshTriangles[i] = worldFromLocal * triangle;
+            meshTriangles[i] += heightOffset;
         }
 
         // end of face/polygon vertices is start of side/wall vertices
-        const typename AZStd::vector<V3>::iterator endFaceIt = meshTriangles.begin() + fullTriangleCount;
-        typename AZStd::vector<V3>::iterator sideIt = endFaceIt;
+        const typename AZStd::vector<AZ::Vector3>::iterator endFaceIt = meshTriangles.begin() + fullTriangleCount;
+        typename AZStd::vector<AZ::Vector3>::iterator sideIt = endFaceIt;
 
         // build quad triangles from vertices util
         const auto quadTriangles =
-            [](const V3& a, const V3& b, const V3& c, const V3& d, typename AZStd::vector<V3>::iterator& tri)
+            [](const AZ::Vector3& a, const AZ::Vector3& b, const AZ::Vector3& c, const AZ::Vector3& d, typename AZStd::vector<AZ::Vector3>::iterator& tri)
         {
             *tri = a; ++tri;
             *tri = b; ++tri;
@@ -98,32 +88,27 @@ namespace LmbrCentral
         for (size_t i = 0; i < vertexCount; ++i)
         {
             // local vertex positions
-            const V3 p1l = V3(AZ::Vector2ToVector3(vertices[i]));
-            const V3 p2l = V3(AZ::Vector2ToVector3(vertices[(i + 1) % vertexCount]));
-
-            // transform to world space
-            const V3 p1w = worldFromLocal * p1l;
-            const V3 p2w = worldFromLocal * p2l;
-            const V3 p3w = worldFromLocal * (p1l + heightOffset);
-            const V3 p4w = worldFromLocal * (p2l + heightOffset);
+            const AZ::Vector3 p1 = AZ::Vector2ToVector3(vertices[i]);
+            const AZ::Vector3 p2 = AZ::Vector2ToVector3(vertices[(i + 1) % vertexCount]);
+            const AZ::Vector3 p3 = (p1 + heightOffset);
+            const AZ::Vector3 p4 = (p2 + heightOffset);
 
             // generate triangles for wall quad
             if (clockwise)
             {
-                quadTriangles(p1w, p3w, p2w, p4w, sideIt);
+                quadTriangles(p1, p3, p2, p4, sideIt);
             }
             else
             {
-                quadTriangles(p1w, p2w, p3w, p4w, sideIt);
+                quadTriangles(p1, p2, p3, p4, sideIt);
             }
         }
     }
 
     static void GenerateWirePolygonPrismMesh(
-        const AZ::Transform& worldFromLocal,
-        const AZStd::vector<AZ::Vector2> vertices,
+        const AZStd::vector<AZ::Vector2>& vertices,
         const float height,
-        AZStd::vector<Vec3>& lines)
+        AZStd::vector<AZ::Vector3>& lines)
     {
         const size_t vertexCount = vertices.size();
         const size_t verticalLineCount = vertexCount;
@@ -133,51 +118,39 @@ namespace LmbrCentral
             ? 1
             : 0;
 
-        const Matrix34 worldFromLocalCry = AZTransformToLYTransform(worldFromLocal);
         lines.resize((verticalLineCount + (horizontalLineCount * 2)) * 2);
 
         size_t lineVertIndex = 0;
         for (size_t i = 0; i < verticalLineCount; ++i)
         {
             // vertical line
-            lines[lineVertIndex++] =
-                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[i]));
-            lines[lineVertIndex++] =
-                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[i], height));
+            lines[lineVertIndex++] = Vector2ToVector3(vertices[i]);
+            lines[lineVertIndex++] = Vector2ToVector3(vertices[i], height);
         }
 
         for (size_t i = 0; i < horizontalLineCount; ++i)
         {
             // bottom line
-            lines[lineVertIndex++] =
-                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[i]));
-            lines[lineVertIndex++] =
-                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[(i + 1) % vertexCount]));
+            lines[lineVertIndex++] = Vector2ToVector3(vertices[i]);
+            lines[lineVertIndex++] = Vector2ToVector3(vertices[(i + 1) % vertexCount]);
         }
 
         for (size_t i = 0; i < horizontalLineCount; ++i)
         {
             // top line
-            lines[lineVertIndex++] =
-                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[i], height));
-            lines[lineVertIndex++] =
-                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[(i + 1) % vertexCount], height));
+            lines[lineVertIndex++] = Vector2ToVector3(vertices[i], height);
+            lines[lineVertIndex++] = Vector2ToVector3(vertices[(i + 1) % vertexCount], height);
         }
     }
 
     void GeneratePolygonPrismMesh(
-        const AZ::Transform& worldFromLocal,
-        const AZStd::vector<AZ::Vector2> vertices,
-        const float height, PolygonPrismMesh& polygonPrismMeshOut)
+        const AZStd::vector<AZ::Vector2>& vertices, const float height,
+        PolygonPrismMesh& polygonPrismMeshOut)
     {
-        AZ::Transform worldFromLocalUniformScale = worldFromLocal;
-        const AZ::VectorFloat maxScale = worldFromLocalUniformScale.ExtractScale().GetMaxElement();
-        worldFromLocalUniformScale *= AZ::Transform::CreateScale(AZ::Vector3(maxScale));
-
-        GenerateSolidPolygonPrismMesh<Vec3>(
-            AZTransformToLYTransform(worldFromLocalUniformScale), vertices, height, polygonPrismMeshOut.m_triangles);
+        GenerateSolidPolygonPrismMesh(
+            vertices, height, polygonPrismMeshOut.m_triangles);
         GenerateWirePolygonPrismMesh(
-            worldFromLocalUniformScale, vertices, height, polygonPrismMeshOut.m_lines);
+            vertices, height, polygonPrismMeshOut.m_lines);
     }
 
     PolygonPrismShape::PolygonPrismShape()
@@ -256,7 +229,7 @@ namespace LmbrCentral
         ShapeComponentNotificationsBus::Event(
             m_entityId, &ShapeComponentNotificationsBus::Events::OnShapeChanged,
             ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
-        
+
         m_intersectionDataCache.InvalidateCache(
             InvalidateShapeCacheReason::ShapeChange);
     }
@@ -266,7 +239,7 @@ namespace LmbrCentral
         return m_polygonPrism;
     }
 
-    bool PolygonPrismShape::GetVertex(size_t index, AZ::Vector2& vertex) const
+    bool PolygonPrismShape::GetVertex(const size_t index, AZ::Vector2& vertex) const
     {
         return m_polygonPrism->m_vertexContainer.GetVertex(index, vertex);
     }
@@ -276,17 +249,17 @@ namespace LmbrCentral
         m_polygonPrism->m_vertexContainer.AddVertex(vertex);
     }
 
-    bool PolygonPrismShape::UpdateVertex(size_t index, const AZ::Vector2& vertex)
+    bool PolygonPrismShape::UpdateVertex(const size_t index, const AZ::Vector2& vertex)
     {
         return m_polygonPrism->m_vertexContainer.UpdateVertex(index, vertex);
     }
 
-    bool PolygonPrismShape::InsertVertex(size_t index, const AZ::Vector2& vertex)
+    bool PolygonPrismShape::InsertVertex(const size_t index, const AZ::Vector2& vertex)
     {
         return m_polygonPrism->m_vertexContainer.InsertVertex(index, vertex);
     }
 
-    bool PolygonPrismShape::RemoveVertex(size_t index)
+    bool PolygonPrismShape::RemoveVertex(const size_t index)
     {
         return m_polygonPrism->m_vertexContainer.RemoveVertex(index);
     }
@@ -311,7 +284,7 @@ namespace LmbrCentral
         return m_polygonPrism->m_vertexContainer.Empty();
     }
 
-    void PolygonPrismShape::SetHeight(float height)
+    void PolygonPrismShape::SetHeight(const float height)
     {
         m_polygonPrism->SetHeight(height);
         m_intersectionDataCache.InvalidateCache(InvalidateShapeCacheReason::ShapeChange);
@@ -361,14 +334,14 @@ namespace LmbrCentral
         const AZ::Transform& currentTransform, const AZ::PolygonPrism& polygonPrism)
     {
         m_aabb = PolygonPrismUtil::CalculateAabb(polygonPrism, currentTransform);
-        GenerateSolidPolygonPrismMesh<AZ::Vector3>(
-            AZ::Transform::CreateIdentity(), polygonPrism.m_vertexContainer.GetVertices(),
+        GenerateSolidPolygonPrismMesh(
+            polygonPrism.m_vertexContainer.GetVertices(),
             polygonPrism.GetHeight(), m_triangles);
     }
-    
+
     void DrawPolygonPrismShape(
         const ShapeDrawParams& shapeDrawParams, const PolygonPrismMesh& polygonPrismMesh,
-        AzFramework::EntityDebugDisplayRequests& /*displayContext*/)
+        AzFramework::EntityDebugDisplayRequests& displayContext)
     {
         auto geomRenderer = gEnv->pRenderer->GetIRenderAuxGeom();
 
@@ -385,26 +358,20 @@ namespace LmbrCentral
 
         if (shapeDrawParams.m_filled)
         {
-            if (polygonPrismMesh.m_triangles.size() != 0)
+            if (!polygonPrismMesh.m_triangles.empty())
             {
-                geomRenderer->DrawTriangles(
-                    polygonPrismMesh.m_triangles.data(),
-                    polygonPrismMesh.m_triangles.size(),
-                    AZColorToLYColorF(shapeDrawParams.m_shapeColor));
+                displayContext.DrawTriangles(polygonPrismMesh.m_triangles, shapeDrawParams.m_shapeColor);
             }
         }
 
         geomRenderer->SetRenderFlags(oldFlags);
 
-        if (polygonPrismMesh.m_lines.size() != 0)
+        if (!polygonPrismMesh.m_lines.empty())
         {
-            geomRenderer->DrawLines(
-                polygonPrismMesh.m_lines.data(),
-                polygonPrismMesh.m_lines.size(),
-                AZColorToLYColorF(shapeDrawParams.m_wireColor));
+            displayContext.DrawLines(polygonPrismMesh.m_lines, shapeDrawParams.m_wireColor);
         }
     }
-    
+
     namespace PolygonPrismUtil
     {
         AZ::Aabb CalculateAabb(const AZ::PolygonPrism& polygonPrism, const AZ::Transform& worldFromLocal)
@@ -576,7 +543,7 @@ namespace LmbrCentral
                 distance = AZ::VectorFloat(std::numeric_limits<float>::max());
                 return false;
             }
-            
+
             // transform ray into local space
             AZ::Transform worldFromLocalNomalized = worldFromLocal;
             const AZ::VectorFloat entityScale = worldFromLocalNomalized.ExtractScale().GetMaxElement();

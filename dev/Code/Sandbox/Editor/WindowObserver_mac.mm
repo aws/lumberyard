@@ -86,7 +86,7 @@
 {
     static const unsigned long leftMouseButton = 1;  // a value of 1 << 0 corresponds to the left mouse button
 
-    if (([NSEvent pressedMouseButtons] & leftMouseButton) != 0)
+    if (([NSEvent pressedMouseButtons] & leftMouseButton) == 0)
     {
         m_observer->setWindowIsMoving(false);
         [[NSNotificationCenter defaultCenter] removeObserver:self

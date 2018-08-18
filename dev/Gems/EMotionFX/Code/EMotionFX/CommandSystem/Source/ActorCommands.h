@@ -24,6 +24,7 @@ namespace CommandSystem
     // Adjust the given actor.
     MCORE_DEFINECOMMAND_START(CommandAdjustActor, "Adjust actor", true)
     uint32                                          mOldMotionExtractionNodeIndex;
+    uint32                                          mOldRetargetRootNodeIndex;
     uint32                                          mOldTrajectoryNodeIndex;
     AZStd::string                                   mOldAttachmentNodes;
     AZStd::string                                   mOldExcludedFromBoundsNodes;

@@ -26,7 +26,8 @@
             "AudioSystemImpl_wwise.h",
             "AudioSystemImplCVars.h",
             "Common_wwise.h",
-            "FileIOHandler_wwise.h"
+            "FileIOHandler_wwise.h",
+            "PluginRegistration_wwise.h"
         ],
         "Source Files":
         [

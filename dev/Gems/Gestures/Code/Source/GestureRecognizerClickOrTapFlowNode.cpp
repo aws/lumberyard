@@ -21,14 +21,13 @@ namespace Gestures
     ////////////////////////////////////////////////////////////////////////////////////////////////
     class RecognizerClickOrTapFlowNode
         : public CFlowBaseNode<eNCT_Instanced>
-        , public IClickOrTapListener
+        , public RecognizerClickOrTap
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         RecognizerClickOrTapFlowNode(SActivationInfo* activationInfo)
             : CFlowBaseNode()
             , m_activationInfo(*activationInfo)
-            , m_recognizer(*this)
             , m_enabled(false)
         {
         }
@@ -75,12 +74,12 @@ namespace Gestures
             {
                 InputPortConfig_Void("Enable", _HELP("Enable gesture recognizer")),
                 InputPortConfig_Void("Disable", _HELP("Disable gesture recognizer")),
-                InputPortConfig<int>("PointerIndex", m_recognizer.GetConfig().pointerIndex, _HELP("The pointer (button or finger) index to track")),
-                InputPortConfig<int>("MinClicksOrTaps", m_recognizer.GetConfig().minClicksOrTaps, _HELP("The min number of clicks or taps required for the gesture to be recognized")),
-                InputPortConfig<float>("MaxSecondsHeld", m_recognizer.GetConfig().maxSecondsHeld, _HELP("The max time in seconds allowed while held before the gesture stops being recognized")),
-                InputPortConfig<float>("MaxPixelsMoved", m_recognizer.GetConfig().maxPixelsMoved, _HELP("The max distance in pixels allowed to move while held before the gesture stops being recognized")),
-                InputPortConfig<float>("MaxSecondsBetweenClicksOrTaps", m_recognizer.GetConfig().maxSecondsBetweenClicksOrTaps, _HELP("The max time in seconds allowed between clicks or taps (only used when MinClicksOrTaps > 1)")),
-                InputPortConfig<float>("MaxPixelsBetweenClicksOrTaps", m_recognizer.GetConfig().maxPixelsBetweenClicksOrTaps, _HELP("The max distance in pixels allowed between clicks or taps (only used when MinClicksOrTaps > 1)")),
+                InputPortConfig<int>("PointerIndex", GetConfig().pointerIndex, _HELP("The pointer (button or finger) index to track")),
+                InputPortConfig<int>("MinClicksOrTaps", GetConfig().minClicksOrTaps, _HELP("The min number of clicks or taps required for the gesture to be recognized")),
+                InputPortConfig<float>("MaxSecondsHeld", GetConfig().maxSecondsHeld, _HELP("The max time in seconds allowed while held before the gesture stops being recognized")),
+                InputPortConfig<float>("MaxPixelsMoved", GetConfig().maxPixelsMoved, _HELP("The max distance in pixels allowed to move while held before the gesture stops being recognized")),
+                InputPortConfig<float>("MaxSecondsBetweenClicksOrTaps", GetConfig().maxSecondsBetweenClicksOrTaps, _HELP("The max time in seconds allowed between clicks or taps (only used when MinClicksOrTaps > 1)")),
+                InputPortConfig<float>("MaxPixelsBetweenClicksOrTaps", GetConfig().maxPixelsBetweenClicksOrTaps, _HELP("The max distance in pixels allowed between clicks or taps (only used when MinClicksOrTaps > 1)")),
                 { 0 }
             };
 
@@ -111,27 +110,27 @@ namespace Gestures
             {
                 if (IsPortActive(activationInfo, Input_PointerIndex))
                 {
-                    m_recognizer.GetConfig().pointerIndex = GetPortInt(activationInfo, Input_PointerIndex);
+                    GetConfig().pointerIndex = GetPortInt(activationInfo, Input_PointerIndex);
                 }
                 if (IsPortActive(activationInfo, Input_MinClicksOrTaps))
                 {
-                    m_recognizer.GetConfig().minClicksOrTaps = GetPortInt(activationInfo, Input_MinClicksOrTaps);
+                    GetConfig().minClicksOrTaps = GetPortInt(activationInfo, Input_MinClicksOrTaps);
                 }
                 if (IsPortActive(activationInfo, Input_MaxSecondsHeld))
                 {
-                    m_recognizer.GetConfig().maxSecondsHeld = GetPortFloat(activationInfo, Input_MaxSecondsHeld);
+                    GetConfig().maxSecondsHeld = GetPortFloat(activationInfo, Input_MaxSecondsHeld);
                 }
                 if (IsPortActive(activationInfo, Input_MaxPixelsMoved))
                 {
-                    m_recognizer.GetConfig().maxPixelsMoved = GetPortFloat(activationInfo, Input_MaxPixelsMoved);
+                    GetConfig().maxPixelsMoved = GetPortFloat(activationInfo, Input_MaxPixelsMoved);
                 }
                 if (IsPortActive(activationInfo, Input_MaxSecondsBetweenClicksOrTaps))
                 {
-                    m_recognizer.GetConfig().maxSecondsBetweenClicksOrTaps = GetPortFloat(activationInfo, Input_MaxSecondsBetweenClicksOrTaps);
+                    GetConfig().maxSecondsBetweenClicksOrTaps = GetPortFloat(activationInfo, Input_MaxSecondsBetweenClicksOrTaps);
                 }
                 if (IsPortActive(activationInfo, Input_MaxPixelsBetweenClicksOrTaps))
                 {
-                    m_recognizer.GetConfig().maxPixelsBetweenClicksOrTaps = GetPortFloat(activationInfo, Input_MaxPixelsBetweenClicksOrTaps);
+                    GetConfig().maxPixelsBetweenClicksOrTaps = GetPortFloat(activationInfo, Input_MaxPixelsBetweenClicksOrTaps);
                 }
 
                 if (IsPortActive(activationInfo, Input_Disable))
@@ -155,12 +154,12 @@ namespace Gestures
         ////////////////////////////////////////////////////////////////////////////////////////////
         void Serialize(SActivationInfo* activationInfo, TSerialize ser) override
         {
-            ser.Value("pointerIndex", m_recognizer.GetConfig().pointerIndex);
-            ser.Value("minClicksOrTaps", m_recognizer.GetConfig().minClicksOrTaps);
-            ser.Value("maxSecondsHeld", m_recognizer.GetConfig().maxSecondsHeld);
-            ser.Value("maxPixelsMoved", m_recognizer.GetConfig().maxPixelsMoved);
-            ser.Value("maxSecondsBetweenClicksOrTaps", m_recognizer.GetConfig().maxSecondsBetweenClicksOrTaps);
-            ser.Value("maxPixelsBetweenClicksOrTaps", m_recognizer.GetConfig().maxPixelsBetweenClicksOrTaps);
+            ser.Value("pointerIndex", GetConfig().pointerIndex);
+            ser.Value("minClicksOrTaps", GetConfig().minClicksOrTaps);
+            ser.Value("maxSecondsHeld", GetConfig().maxSecondsHeld);
+            ser.Value("maxPixelsMoved", GetConfig().maxPixelsMoved);
+            ser.Value("maxSecondsBetweenClicksOrTaps", GetConfig().maxSecondsBetweenClicksOrTaps);
+            ser.Value("maxPixelsBetweenClicksOrTaps", GetConfig().maxPixelsBetweenClicksOrTaps);
 
             bool enabled = m_enabled;
             ser.Value("enabled", enabled);
@@ -182,7 +181,7 @@ namespace Gestures
             if (!m_enabled)
             {
                 m_enabled = true;
-                m_recognizer.BusConnect();
+                BusConnect();
             }
         }
 
@@ -192,27 +191,26 @@ namespace Gestures
             if (m_enabled)
             {
                 m_enabled = false;
-                m_recognizer.BusDisconnect();
+                BusDisconnect();
             }
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnClickOrTapRecognized(const RecognizerClickOrTap& recognizer) override
+        void OnDiscreteGestureRecognized() override
         {
             ActivateOutput(&m_activationInfo, Output_Recognized, true);
 
-            const Vec2 startPosition = recognizer.GetStartPosition();
-            ActivateOutput(&m_activationInfo, Output_StartX, startPosition.x);
-            ActivateOutput(&m_activationInfo, Output_StartY, startPosition.y);
+            const AZ::Vector2 startPosition = GetStartPosition();
+            ActivateOutput(&m_activationInfo, Output_StartX, startPosition.GetX());
+            ActivateOutput(&m_activationInfo, Output_StartY, startPosition.GetY());
 
-            const Vec2 endPosition = recognizer.GetEndPosition();
-            ActivateOutput(&m_activationInfo, Output_EndX, endPosition.x);
-            ActivateOutput(&m_activationInfo, Output_EndY, endPosition.y);
+            const AZ::Vector2 endPosition = GetEndPosition();
+            ActivateOutput(&m_activationInfo, Output_EndX, endPosition.GetX());
+            ActivateOutput(&m_activationInfo, Output_EndY, endPosition.GetY());
         }
 
     private:
         SActivationInfo m_activationInfo;
-        RecognizerClickOrTap m_recognizer;
         bool m_enabled;
     };
 

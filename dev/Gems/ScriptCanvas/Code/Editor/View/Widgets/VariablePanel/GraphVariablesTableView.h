@@ -11,11 +11,11 @@
 */
 #pragma once
 
-#include <qabstractitemmodel.h>
-#include <qregexp.h>
-#include <qstring.h>
-#include <QSortFilterProxyModel.h>
-#include <QTableView.h>
+#include <QAbstractItemModel>
+#include <QRegExp>
+#include <QString>
+#include <QSortFilterProxyModel>
+#include <QTableView>
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -62,7 +62,7 @@ namespace ScriptCanvasEditor
         bool setData(const QModelIndex& index, const QVariant& value, int role) override;
 
         Qt::ItemFlags flags(const QModelIndex &index) const override;
-        
+
         QStringList mimeTypes() const override;
         QMimeData* mimeData(const QModelIndexList &indexes) const override;
         ////
@@ -71,9 +71,9 @@ namespace ScriptCanvasEditor
         AZ::EntityId GetScriptCanvasGraphId() const;
 
         // ScriptCanvas::GraphVariableManagerNotificationBus
-        virtual void OnVariableAdded(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
-        virtual void OnVariableRemoved(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
-        virtual void OnVariableNameChanged(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
+        void OnVariableAddedToGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
+        void OnVariableRemovedFromGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
+        void OnVariableNameChangedInGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
         ////
 
         // ScriptCanvas::VariableNotificationBus
@@ -89,7 +89,7 @@ namespace ScriptCanvasEditor
     private:
 
         bool IsEditabletype(ScriptCanvas::Data::Type scriptCanvasDataType) const;
-    
+
         void PopulateSceneVariables();
 
         AZStd::vector<ScriptCanvas::VariableId> m_variableIds;
@@ -112,7 +112,7 @@ namespace ScriptCanvasEditor
         QString m_filter;
         QRegExp m_filterRegex;
     };
-    
+
     class GraphVariablesTableView
         : public QTableView
         , public GraphCanvas::SceneNotificationBus::Handler
@@ -121,7 +121,7 @@ namespace ScriptCanvasEditor
     public:
         AZ_CLASS_ALLOCATOR(GraphVariablesTableView, AZ::SystemAllocator, 0);
         GraphVariablesTableView(QWidget* parent);
-        
+
         void SetActiveScene(const AZ::EntityId& scriptCanvasGraphId);
         void SetFilter(const QString& filterString);
 
@@ -144,7 +144,7 @@ namespace ScriptCanvasEditor
     signals:
         void SelectionChanged(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds);
         void DeleteVariables(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds);
-            
+
     private:
 
         AZ::EntityId                             m_graphCanvasGraphId;

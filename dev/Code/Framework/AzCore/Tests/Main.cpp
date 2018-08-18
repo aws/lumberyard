@@ -66,7 +66,7 @@ using namespace AZ;
 // Handle asserts
 class TraceDrillerHook
     : public AZ::Test::ITestEnvironment
-    , public AZ::Debug::TraceMessageBus::Handler
+    , public UnitTest::TraceBusRedirector
 {
 public:
     void SetupEnvironment() override
@@ -91,57 +91,6 @@ public:
 #endif
 
         AllocatorInstance<OSAllocator>::Destroy(); // used by the bus
-    }
-
-    bool OnPreAssert(const char* file, int line, const char* /* func */, const char* message) override 
-    { 
-        if (UnitTest::TestRunner::Instance().m_isAssertTest)
-        {
-            UnitTest::TestRunner::Instance().ProcessAssert(message, file, line, false);
-        }
-        else
-        {
-            GTEST_TEST_BOOLEAN_(false, message, false, true, GTEST_NONFATAL_FAILURE_);
-        }
-        return true;
-    }
-    bool OnAssert(const char* /*message*/) override
-    {
-        return true; // stop processing
-    }
-    bool OnPreError(const char* /*window*/, const char* file, int line, const char* /*func*/, const char* message) override
-    {
-        if (UnitTest::TestRunner::Instance().m_isAssertTest)
-        {
-            UnitTest::TestRunner::Instance().ProcessAssert(message, file, line, false);
-            return true;
-        }
-        return false;
-    }
-    bool OnError(const char* /*window*/, const char* message) override
-    {
-        if (UnitTest::TestRunner::Instance().m_isAssertTest)
-        {
-            UnitTest::TestRunner::Instance().ProcessAssert(message, __FILE__, __LINE__, UnitTest::AssertionExpr(false));
-        }
-        else
-        {
-            GTEST_TEST_BOOLEAN_(false, message, false, true, GTEST_NONFATAL_FAILURE_);
-        }
-        return true; // stop processing
-    }
-    bool OnPreWarning(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) 
-    { 
-        return false; 
-    }
-    bool OnWarning(const char* /*window*/, const char* /*message*/) override
-    { 
-        return false; 
-    }
-
-    bool OnOutput(const char* /*window*/, const char* /*message*/) override
-    {
-        return true;
     }
 };
 

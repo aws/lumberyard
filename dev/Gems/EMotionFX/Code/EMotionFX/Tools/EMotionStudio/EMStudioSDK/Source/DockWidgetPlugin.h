@@ -46,14 +46,14 @@ namespace EMStudio
         virtual bool GetIsMovable() const                                   { return true;  }
 
         virtual void SetInterfaceTitle(const char* name);
-        virtual void CreateBaseInterface(const char* objectName) override;
+        void CreateBaseInterface(const char* objectName) override;
 
-        virtual QString GetObjectName() const override                      { AZ_Assert(mDock, "mDock is null"); return mDock->objectName(); }
-        virtual void SetObjectName(const QString& name) override            { GetDockWidget()->setObjectName(name); }
+        QString GetObjectName() const override                      { AZ_Assert(mDock, "mDock is null"); return mDock->objectName(); }
+        void SetObjectName(const QString& name) override            { GetDockWidget()->setObjectName(name); }
 
         virtual QSize GetInitialWindowSize() const                          { return QSize(500, 650); }
 
-        virtual bool GetHasWindowWithObjectName(const AZStd::string& objectName) override;
+        bool GetHasWindowWithObjectName(const AZStd::string& objectName) override;
 
         MysticQt::DockWidget* GetDockWidget();
 

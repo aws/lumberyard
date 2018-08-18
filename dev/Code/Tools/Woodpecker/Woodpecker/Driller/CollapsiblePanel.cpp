@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "CollapsiblePanel.hxx"
 #include <Woodpecker/Driller/ui_CollapsiblePanel.h>

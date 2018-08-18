@@ -12,6 +12,8 @@
 #ifndef PROPERTYEDITORAPI_INTERNALS_IMPL_H
 #define PROPERTYEDITORAPI_INTERNALS_IMPL_H
 
+#include <qobject.h>
+
 // this header contains some of the internal template implementation for the
 // internal templates. This is required for compilers that evaluate the
 // templates before/during translation unit parsing and not at the end (like

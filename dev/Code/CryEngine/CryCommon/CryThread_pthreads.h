@@ -60,7 +60,7 @@
 #endif
 
 // Define LARGE_THREAD_STACK to use larger than normal per-thread stack
-#if defined(_DEBUG) && (defined(MAC) || defined(LINUX))
+#if defined(_DEBUG) && (defined(MAC) || defined(LINUX) || defined(AZ_PLATFORM_APPLE_IOS))
 #define LARGE_THREAD_STACK
 #endif
 
@@ -386,7 +386,7 @@ public:
 
 private:
 #if defined(APPLE)
-    // Apple only supports named semaphores so have to use sem_open/unlink instead
+    // Apple only supports named semaphores so have to use sem_open/unlink/sem_close instead
     // of sem_open/sem_destroy, passing in this array for the name.
     char m_semaphoreName[L_tmpnam];
 #endif
@@ -424,6 +424,7 @@ inline CrySemaphore::~CrySemaphore()
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
     #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(APPLE)
+    sem_close(m_Semaphore);
     sem_unlink(m_semaphoreName);
 #else
     sem_destroy(m_Semaphore);

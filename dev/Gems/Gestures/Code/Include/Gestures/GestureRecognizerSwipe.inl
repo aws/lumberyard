@@ -9,14 +9,45 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "Gestures_precompiled.h"
+
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-Gestures::RecognizerSwipe::RecognizerSwipe(Gestures::ISwipeListener& listener, const Config& config)
-    : m_listener(listener)
-    , m_config(config)
-    , m_startPosition(ZERO)
-    , m_endPosition(ZERO)
+inline void Gestures::RecognizerSwipe::Config::Reflect(AZ::ReflectContext* context)
+{
+    if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
+    {
+        serialize->Class<Config>()
+            ->Version(0)
+            ->Field("maxSecondsHeld", &Config::maxSecondsHeld)
+            ->Field("maxPixelsMoved", &Config::minPixelsMoved)
+            ->Field("pointerIndex", &Config::pointerIndex)
+            ->Field("priority", &Config::priority)
+        ;
+
+        if (AZ::EditContext* ec = serialize->GetEditContext())
+        {
+            ec->Class<Config>("Swipe Config", "Configuration values used to setup a gesture recognizer for swipes.")
+                ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->DataElement(AZ::Edit::UIHandlers::SpinBox, &Config::pointerIndex, "Pointer Index", "The pointer (button or finger) index to track.")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0)
+                    ->Attribute(AZ::Edit::Attributes::Max, 10)
+                ->DataElement(AZ::Edit::UIHandlers::Default, &Config::maxSecondsHeld, "Max Seconds Held", "The max time in seconds after the initial press for a swipe to be recognized.")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->DataElement(AZ::Edit::UIHandlers::Default, &Config::minPixelsMoved, "Min Pixels Moved", "The min distance in pixels that must be moved before a swipe will be recognized.")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ;
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+inline Gestures::RecognizerSwipe::RecognizerSwipe(const Config& config)
+    : m_config(config)
+    , m_startPosition()
+    , m_endPosition()
     , m_startTime(0)
     , m_endTime(0)
     , m_currentState(State::Idle)
@@ -24,12 +55,12 @@ Gestures::RecognizerSwipe::RecognizerSwipe(Gestures::ISwipeListener& listener, c
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-Gestures::RecognizerSwipe::~RecognizerSwipe()
+inline Gestures::RecognizerSwipe::~RecognizerSwipe()
 {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Gestures::RecognizerSwipe::OnPressedEvent(const Vec2& screenPosition, uint32_t pointerIndex)
+inline bool Gestures::RecognizerSwipe::OnPressedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex)
 {
     if (pointerIndex != m_config.pointerIndex)
     {
@@ -50,7 +81,7 @@ bool Gestures::RecognizerSwipe::OnPressedEvent(const Vec2& screenPosition, uint3
     default:
     {
         // Should not be possible, but not fatal if we happen to get here somehow.
-        CryLogAlways("RecognizerDrag::OnPressedEvent state logic failure");
+        AZ_Warning("RecognizerDrag", false, "RecognizerDrag::OnPressedEvent state logic failure");
     }
     break;
     }
@@ -59,7 +90,7 @@ bool Gestures::RecognizerSwipe::OnPressedEvent(const Vec2& screenPosition, uint3
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Gestures::RecognizerSwipe::OnDownEvent(const Vec2& screenPosition, uint32_t pointerIndex)
+inline bool Gestures::RecognizerSwipe::OnDownEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex)
 {
     if (pointerIndex != m_config.pointerIndex)
     {
@@ -86,7 +117,7 @@ bool Gestures::RecognizerSwipe::OnDownEvent(const Vec2& screenPosition, uint32_t
     default:
     {
         // Should not be possible, but not fatal if we happen to get here somehow.
-        CryLogAlways("RecognizerSwipe::OnDownEvent state logic failure");
+        AZ_Warning("RecognizerSwipe", false, "RecognizerSwipe::OnDownEvent state logic failure");
     }
     break;
     }
@@ -95,7 +126,7 @@ bool Gestures::RecognizerSwipe::OnDownEvent(const Vec2& screenPosition, uint32_t
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool Gestures::RecognizerSwipe::OnReleasedEvent(const Vec2& screenPosition, uint32_t pointerIndex)
+inline bool Gestures::RecognizerSwipe::OnReleasedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex)
 {
     if (pointerIndex != m_config.pointerIndex)
     {
@@ -113,7 +144,7 @@ bool Gestures::RecognizerSwipe::OnReleasedEvent(const Vec2& screenPosition, uint
             // Swipe recognition succeeded.
             m_endTime = currentTime.GetValue();
             m_endPosition = screenPosition;
-            m_listener.OnSwipeRecognized(*this);
+            OnDiscreteGestureRecognized();
             m_currentState = State::Idle;
         }
         else
@@ -131,7 +162,7 @@ bool Gestures::RecognizerSwipe::OnReleasedEvent(const Vec2& screenPosition, uint
     default:
     {
         // Should not be possible, but not fatal if we happen to get here somehow.
-        CryLogAlways("RecognizerSwipe::OnReleasedEvent state logic failure");
+        AZ_Warning("RecognizerSwipe", false, "RecognizerSwipe::OnReleasedEvent state logic failure");
     }
     break;
     }

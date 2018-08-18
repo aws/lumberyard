@@ -27,6 +27,13 @@
 
 #include <AzCore/IO/SystemFile.h>
 
+#include <aws/core/client/ClientConfiguration.h>
+#include <aws/core/http/HttpClient.h>
+#include <aws/core/http/HttpRequest.h>
+#include <aws/core/http/HttpResponse.h>
+#include <aws/core/http/HttpClientFactory.h>
+#include <aws/core/utils/Outcome.h>
+
 namespace CloudCanvasCommon
 {
 
@@ -43,7 +50,7 @@ namespace CloudCanvasCommon
         {
             serialize->Class<CloudCanvasCommonSystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
@@ -107,7 +114,7 @@ namespace CloudCanvasCommon
         CloudCanvas::AwsApiInitRequestBus::Handler::BusDisconnect();
         CloudCanvasCommonRequestBus::Handler::BusDisconnect();
 
-        // We require that anything that owns memory allocated by the AWS 
+        // We require that anything that owns memory allocated by the AWS
         // API be destructed before this component is deactivated.
         ShutdownAwsApi();
 
@@ -116,7 +123,7 @@ namespace CloudCanvasCommon
 
     void CloudCanvasCommonSystemComponent::OnCrySystemInitialized(ISystem& system, const SSystemInitParams&)
     {
-        CloudCanvas::RequestRootCAFileResult requestResult = GetRootCAFile(m_resolvedCertPath);
+        CloudCanvas::RequestRootCAFileResult requestResult = RequestRootCAFile(m_resolvedCertPath);
 
         if (requestResult == CloudCanvas::ROOTCA_FOUND_FILE_SUCCESS)
         {
@@ -146,12 +153,7 @@ namespace CloudCanvasCommon
 
     CloudCanvas::RequestRootCAFileResult CloudCanvasCommonSystemComponent::LmbrRequestRootCAFile(AZStd::string& resultPath)
     {
-        return GetRootCAFile(resultPath);
-    }
-
-    CloudCanvas::RequestRootCAFileResult CloudCanvasCommonSystemComponent::RequestRootCAFile(AZStd::string& resultPath)
-    {
-        return GetRootCAFile(resultPath);
+        return RequestRootCAFile(resultPath);
     }
 
     AZStd::string CloudCanvasCommonSystemComponent::GetRootCAUserPath() const
@@ -170,13 +172,17 @@ namespace CloudCanvasCommon
 #endif
     }
 
-    CloudCanvas::RequestRootCAFileResult CloudCanvasCommonSystemComponent::GetRootCAFile(AZStd::string& resultPath)
+    CloudCanvas::RequestRootCAFileResult CloudCanvasCommonSystemComponent::RequestRootCAFile(AZStd::string& resultPath)
     {
-        if (!DoesPlatformUseRootCAFile() )
+        if (!DoesPlatformUseRootCAFile())
         {
             return CloudCanvas::ROOTCA_PLATFORM_NOT_SUPPORTED;
         }
+        return GetUserRootCAFile(resultPath);
+    }
 
+    CloudCanvas::RequestRootCAFileResult CloudCanvasCommonSystemComponent::GetUserRootCAFile(AZStd::string& resultPath)
+    {
         if (m_resolvedCert)
         {
             AZStd::lock_guard<AZStd::mutex> pathLock(m_certPathMutex);
@@ -242,7 +248,7 @@ namespace CloudCanvasCommon
             AZ_TracePrintf("CloudCanvas","Could not get resolved path");
             return;
         }
- 
+
         AZ_TracePrintf("CloudCanvas","Ensuring RootCA in path %s", userPath.c_str());
 
         AZStd::string inputPath{ pakCertPath };
@@ -274,5 +280,30 @@ namespace CloudCanvasCommon
         }
         AZ::IO::FileIOBase::GetInstance()->Close(inputFile);
         outputFile.Close();
+    }
+
+    int CloudCanvasCommonSystemComponent::GetEndpointHttpResponseCode(const AZStd::string& endPoint)
+    {        
+        auto config = Aws::Client::ClientConfiguration();
+        AZStd::string caFile;
+        CloudCanvas::RequestRootCAFileResult requestResult;
+        EBUS_EVENT_RESULT(requestResult, CloudCanvasCommon::CloudCanvasCommonRequestBus, RequestRootCAFile, caFile);
+        if (caFile.length())
+        {
+            AZ_TracePrintf("CloudCanvas", "CloudCanvasCommonSystemComponent using caFile %s with request result %d", caFile.c_str(), requestResult);
+            config.caFile = caFile.c_str();
+        }
+        std::shared_ptr<Aws::Http::HttpClient> httpClient = Aws::Http::CreateHttpClient(config);
+        auto httpRequest(Aws::Http::CreateHttpRequest(Aws::String(endPoint.c_str()), Aws::Http::HttpMethod::HTTP_GET, Aws::Utils::Stream::DefaultResponseStreamFactoryMethod));
+
+        auto httpResponse = httpClient->MakeRequest(*httpRequest, nullptr, nullptr);
+
+        if (!httpResponse)
+        {
+            AZ_Warning("CloudCanvas", false, "Failed to retrieve a response from test Endpoint %s.", endPoint.c_str());
+            return -1;
+        }
+
+        return static_cast<int>(httpResponse->GetResponseCode());
     }
 }

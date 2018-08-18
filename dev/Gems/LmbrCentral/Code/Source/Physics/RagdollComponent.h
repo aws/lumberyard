@@ -136,7 +136,7 @@ namespace LmbrCentral
         // Damping
         float m_timeUntilAtRest = 0.025f;
         float m_damping = 0.3f;
-        float m_dampingDuringFreefall = 0.1;
+        float m_dampingDuringFreefall = 0.1f;
         int   m_groundedRequiredPointsOfContact = 4;
         float m_groundedTimeUntilAtRest = 0.065f;
         float m_groundedDamping = 1.5f;

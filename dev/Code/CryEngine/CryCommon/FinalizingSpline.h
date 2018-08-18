@@ -570,7 +570,7 @@ namespace spline
             static size_t alloc_size(int keys)
             {
                 assert(keys > 0);
-                return sizeof(Spline) + max(keys - 2, 0) * sizeof(Elem) + sizeof(Point);
+                return sizeof(Spline) + max(keys - 1, 0) * sizeof(Elem);
             }
             size_t alloc_size() const
             {
@@ -799,7 +799,12 @@ namespace spline
                     + 1
                     #endif
                 ;
-                m_pSpline = new(malloc(nAlloc))Spline(nKeys);
+
+                //set the memory to 0 since the comparison between two splines are comparing memory directly. 
+                //And set functions won't set the memory because of alignment.
+                void* mem = malloc(nAlloc);
+                memset(mem, 0, nAlloc);
+                m_pSpline = new(mem)Spline(nKeys);
             }
             else
             {

@@ -567,7 +567,7 @@ namespace
         return nullptr;
     }
 
-    void ForEachTrack(STimelineTrack& track, std::function<void (STimelineTrack& track)> fun)
+    void ForEachTrack(STimelineTrack& track, AZStd::function<void (STimelineTrack& track)> fun)
     {
         fun(track);
 
@@ -578,7 +578,7 @@ namespace
         }
     }
 
-    void ForEachElement(STimelineTrack& track, std::function<void (STimelineTrack& track, STimelineElement& element)> fun)
+    void ForEachElement(STimelineTrack& track, AZStd::function<void (STimelineTrack& track, STimelineElement& element)> fun)
     {
         ForEachTrack(track, [&](STimelineTrack& subTrack)
             {
@@ -589,7 +589,7 @@ namespace
             });
     }
 
-    void ForEachElementWithIndex(STimelineTrack& track, std::function<void (STimelineTrack& track, STimelineElement& element, size_t elementIndex)> fun)
+    void ForEachElementWithIndex(STimelineTrack& track, AZStd::function<void (STimelineTrack& track, STimelineElement& element, size_t elementIndex)> fun)
     {
         ForEachTrack(track, [&](STimelineTrack& subTrack)
             {
@@ -1115,6 +1115,7 @@ namespace
 
 struct CTimeline::SMouseHandler
 {
+    virtual ~SMouseHandler() = default;
     virtual void mousePressEvent(QMouseEvent* ev) {}
     virtual void mouseDoubleClickEvent(QMouseEvent* ev) {}
     virtual void mouseMoveEvent(QMouseEvent* ev) {}

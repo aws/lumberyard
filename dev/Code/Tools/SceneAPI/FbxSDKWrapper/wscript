@@ -24,4 +24,6 @@ def build(bld):
         includes                    = [bld.Path('Code/Tools')],
         disable_pch                 = True,
         use                         = ['AzCore', 'AzFramework', 'AzToolsFramework', 'SceneCore', 'FBXSDK'],
+
+        win_x64_clang_cxxflags      = ['-Wno-null-dereference'],
     )

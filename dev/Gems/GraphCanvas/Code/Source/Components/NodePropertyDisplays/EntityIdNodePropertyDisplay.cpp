@@ -11,8 +11,8 @@
 */
 #include "precompiled.h"
 
-#include <qgraphicsscenedragdropevent>
-#include <qgraphicsproxywidget.h>
+#include <QGraphicsSceneDragDropEvent>
+#include <QGraphicsProxyWidget>
 #include <QGraphicsView>
 #include <QMenu>
 #include <QMimeData>
@@ -63,6 +63,8 @@ namespace GraphCanvas
     ////////////////////////////////
     EntityIdNodePropertyDisplay::EntityIdNodePropertyDisplay(EntityIdDataInterface* dataInterface)
         : m_dataInterface(dataInterface)
+        , m_propertyEntityIdCtrl(nullptr)
+        , m_proxyWidget(nullptr)
         , m_dragState(DragState::Idle)
     {
         // This label is never displayed. Used to just get the name.
@@ -72,37 +74,23 @@ namespace GraphCanvas
         
         m_disabledLabel = aznew GraphCanvasLabel();
         m_displayLabel = aznew GraphCanvasLabel();
-        
-        m_proxyWidget = new QGraphicsProxyWidget();
-        
-        m_proxyWidget->setFlag(QGraphicsItem::ItemIsFocusable, true);
-        m_proxyWidget->setFocusPolicy(Qt::StrongFocus);
-
-        m_propertyEntityIdCtrl = aznew AzToolsFramework::PropertyEntityIdCtrl();
-        m_propertyEntityIdCtrl->setProperty("HasNoWindowDecorations", true);
-        m_propertyEntityIdCtrl->setProperty("DisableFocusWindowFix", true);
-        m_propertyEntityIdCtrl->SetChildWidgetsProperty("DisableFocusWindowFix", true);
-
-        m_propertyEntityIdCtrl->setContextMenuPolicy(Qt::CustomContextMenu);
-        QObject::connect(m_propertyEntityIdCtrl, &AzToolsFramework::PropertyEntityIdCtrl::customContextMenuRequested, [this](const QPoint& pos) { this->ShowContextMenu(pos); });
-
-        QObject::connect(m_propertyEntityIdCtrl, &AzToolsFramework::PropertyEntityIdCtrl::OnPickStart, [this]() { this->EditStart(); });
-        QObject::connect(m_propertyEntityIdCtrl, &AzToolsFramework::PropertyEntityIdCtrl::OnPickComplete, [this]() { this->EditFinished(); });
-        QObject::connect(m_propertyEntityIdCtrl, &AzToolsFramework::PropertyEntityIdCtrl::OnEntityIdChanged, [this]() { this->SubmitValue(); });
-        
-        m_proxyWidget->setWidget(m_propertyEntityIdCtrl);
-
-        RegisterShortcutDispatcher(m_propertyEntityIdCtrl);
     }
 
     void EntityIdNodePropertyDisplay::ShowContextMenu(const QPoint& pos)
     {
-        m_dataInterface->OnShowContextMenu(m_propertyEntityIdCtrl, pos);
+        if (m_propertyEntityIdCtrl)
+        {
+            m_dataInterface->OnShowContextMenu(m_propertyEntityIdCtrl, pos);
+        }
+        else
+        {
+            AZ_Error("GraphCanvas", false, "m_propertyEntityIdCtrl doesn't exist!");
+        }
     }
     
     EntityIdNodePropertyDisplay::~EntityIdNodePropertyDisplay()
     {
-        delete m_proxyWidget;
+        CleanupProxyWidget();
         delete m_disabledLabel;        
         delete m_displayLabel;
 
@@ -119,8 +107,11 @@ namespace GraphCanvas
         QSizeF minimumSize = m_displayLabel->minimumSize();
         QSizeF maximumSize = m_displayLabel->maximumSize();
 
-        m_propertyEntityIdCtrl->setMinimumSize(minimumSize.width(), minimumSize.height());
-        m_propertyEntityIdCtrl->setMaximumSize(maximumSize.width(), maximumSize.height());
+        if (m_propertyEntityIdCtrl)
+        {
+            m_propertyEntityIdCtrl->setMinimumSize(minimumSize.width(), minimumSize.height());
+            m_propertyEntityIdCtrl->setMaximumSize(maximumSize.width(), maximumSize.height());
+        }
     }
     
     void EntityIdNodePropertyDisplay::UpdateDisplay()
@@ -139,7 +130,10 @@ namespace GraphCanvas
 
         const AZStd::string& name = m_dataInterface->GetNameOverride();
 
-        m_propertyEntityIdCtrl->SetCurrentEntityId(valueEntityId, false, name);
+        if (m_propertyEntityIdCtrl)
+        {
+            m_propertyEntityIdCtrl->SetCurrentEntityId(valueEntityId, false, name);
+        }
         m_entityIdLabel.SetEntityId(valueEntityId, name);
 
         QString displayLabel = m_entityIdLabel.text();
@@ -149,21 +143,28 @@ namespace GraphCanvas
         }
             
         m_displayLabel->SetLabel(displayLabel.toUtf8().data());
-        m_proxyWidget->update();
+
+        if (m_proxyWidget)
+        {
+            m_proxyWidget->update();
+        }
     }
     
-    QGraphicsLayoutItem* EntityIdNodePropertyDisplay::GetDisabledGraphicsLayoutItem() const
+    QGraphicsLayoutItem* EntityIdNodePropertyDisplay::GetDisabledGraphicsLayoutItem()
     {
+        CleanupProxyWidget();
         return m_disabledLabel;
     }
     
-    QGraphicsLayoutItem* EntityIdNodePropertyDisplay::GetDisplayGraphicsLayoutItem() const
+    QGraphicsLayoutItem* EntityIdNodePropertyDisplay::GetDisplayGraphicsLayoutItem()
     {
+        CleanupProxyWidget();
         return m_displayLabel;
     }
     
-    QGraphicsLayoutItem* EntityIdNodePropertyDisplay::GetEditableGraphicsLayoutItem() const
+    QGraphicsLayoutItem* EntityIdNodePropertyDisplay::GetEditableGraphicsLayoutItem()
     {
+        SetupProxyWidget();
         return m_proxyWidget;
     }
 
@@ -242,7 +243,8 @@ namespace GraphCanvas
                     if (entityIdListContainer.m_entityIds.size() == 1)
                     {
                         dropEvent->accept();
-                        m_propertyEntityIdCtrl->SetCurrentEntityId(entityIdListContainer.m_entityIds.front(), true, "");
+                        m_dataInterface->SetEntityId(entityIdListContainer.m_entityIds.front());
+                        UpdateDisplay();
                     }
                 }
             }
@@ -299,7 +301,14 @@ namespace GraphCanvas
     
     void EntityIdNodePropertyDisplay::SubmitValue()
     {
-        m_dataInterface->SetEntityId(m_propertyEntityIdCtrl->GetEntityId());
+        if (m_propertyEntityIdCtrl)
+        {
+            m_dataInterface->SetEntityId(m_propertyEntityIdCtrl->GetEntityId());
+        }
+        else
+        {
+            AZ_Error("GraphCanvas", false, "m_propertyEntityIdCtrl doesn't exist!");
+        }
         UpdateDisplay();
     }
 
@@ -307,6 +316,46 @@ namespace GraphCanvas
     {
         SubmitValue();
         NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
+    }
+
+    void EntityIdNodePropertyDisplay::SetupProxyWidget()
+    {
+        if (!m_propertyEntityIdCtrl)
+        {
+            m_proxyWidget = new QGraphicsProxyWidget();
+
+            m_proxyWidget->setFlag(QGraphicsItem::ItemIsFocusable, true);
+            m_proxyWidget->setFocusPolicy(Qt::StrongFocus);
+
+            m_propertyEntityIdCtrl = aznew AzToolsFramework::PropertyEntityIdCtrl();
+            m_propertyEntityIdCtrl->setProperty("HasNoWindowDecorations", true);
+            m_propertyEntityIdCtrl->setProperty("DisableFocusWindowFix", true);
+            m_propertyEntityIdCtrl->SetChildWidgetsProperty("DisableFocusWindowFix", true);
+
+            m_propertyEntityIdCtrl->setContextMenuPolicy(Qt::CustomContextMenu);
+            QObject::connect(m_propertyEntityIdCtrl, &AzToolsFramework::PropertyEntityIdCtrl::customContextMenuRequested, [this](const QPoint& pos) { this->ShowContextMenu(pos); });
+
+            QObject::connect(m_propertyEntityIdCtrl, &AzToolsFramework::PropertyEntityIdCtrl::OnPickStart, [this]() { this->EditStart(); });
+            QObject::connect(m_propertyEntityIdCtrl, &AzToolsFramework::PropertyEntityIdCtrl::OnPickComplete, [this]() { this->EditFinished(); });
+            QObject::connect(m_propertyEntityIdCtrl, &AzToolsFramework::PropertyEntityIdCtrl::OnEntityIdChanged, [this]() { this->SubmitValue(); });
+
+            m_proxyWidget->setWidget(m_propertyEntityIdCtrl);
+
+            RegisterShortcutDispatcher(m_propertyEntityIdCtrl);
+            UpdateDisplay();
+            RefreshStyle();
+        }
+    }
+
+    void EntityIdNodePropertyDisplay::CleanupProxyWidget()
+    {
+        if (m_propertyEntityIdCtrl)
+        {
+            UnregisterShortcutDispatcher(m_propertyEntityIdCtrl);
+            delete m_propertyEntityIdCtrl; // NB: this implicitly deletes m_proxy widget
+            m_propertyEntityIdCtrl = nullptr;
+            m_proxyWidget = nullptr;
+        }
     }
 
 #include <Source/Components/NodePropertyDisplays/EntityIdNodePropertyDisplay.moc>

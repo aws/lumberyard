@@ -359,7 +359,7 @@ void CEditorFileMonitor::OnFileMonitorChange(const SFileChangeInfo& rChange)
             stack_string strPath = qPrintable(filenameRelGame);
             CryStringUtils::UnifyFilePath(strPath);
 
-            if (isLMG)
+            if (isLMG && pICharacterManager)
             {
                 CryLog("Reload blendspace file: %s", (LPCTSTR)strPath);
                 pICharacterManager->ReloadLMG(strPath.c_str());

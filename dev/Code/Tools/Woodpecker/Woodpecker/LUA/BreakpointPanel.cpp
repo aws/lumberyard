@@ -14,7 +14,7 @@
 
 #include "BreakpointPanel.hxx"
 #include <Woodpecker/LUA/BreakpointPanel.moc>
-#include <AzCore/debug/trace.h>
+#include <AzCore/Debug/Trace.h>
 
 DHBreakpointsWidget::DHBreakpointsWidget(QWidget* parent)
     : QTableWidget(parent)

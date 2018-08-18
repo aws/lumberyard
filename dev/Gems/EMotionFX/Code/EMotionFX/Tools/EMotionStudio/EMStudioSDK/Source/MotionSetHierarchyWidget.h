@@ -16,7 +16,6 @@
 #include <AzCore/std/containers/vector.h>
 #include <EMotionFX/Source/MotionSet.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
-#include <MysticQt/Source/SearchButton.h>
 #include <MysticQt/Source/ButtonGroup.h>
 #include "EMStudioConfig.h"
 #include <QDialog>
@@ -28,6 +27,10 @@ QT_FORWARD_DECLARE_CLASS(QTreeWidget)
 QT_FORWARD_DECLARE_CLASS(QTreeWidgetItem)
 QT_FORWARD_DECLARE_CLASS(QLineEdit)
 
+namespace AzQtComponents
+{
+    class FilteredSearchWidget;
+}
 
 namespace EMStudio
 {
@@ -35,6 +38,12 @@ namespace EMStudio
     {
         AZStd::string           mMotionId;
         EMotionFX::MotionSet*   mMotionSet;
+
+        MotionSetSelectionItem(const AZStd::string& motionId, EMotionFX::MotionSet* motionSet)
+            : mMotionId(motionId)
+            , mMotionSet(motionSet)
+        {
+        }
     };
 
 
@@ -53,10 +62,14 @@ namespace EMStudio
         void FireSelectionDoneSignal();
 
         MCORE_INLINE QTreeWidget* GetTreeWidget()                               { return mHierarchy; }
-        MCORE_INLINE MysticQt::SearchButton* GetSearchButton()                  { return mFindWidget; }
+        MCORE_INLINE AzQtComponents::FilteredSearchWidget* GetSearchWidget()    { return m_searchWidget; }
+
+        void Select(const AZStd::vector<MotionSetSelectionItem>& selectedItems);
 
         // this calls UpdateSelection() and then returns the member array containing the selected items
         AZStd::vector<MotionSetSelectionItem>& GetSelectedItems();
+
+        AZStd::vector<AZStd::string> GetSelectedMotionIds(EMotionFX::MotionSet* motionSet);
 
     signals:
         void SelectionChanged(AZStd::vector<MotionSetSelectionItem> selectedNodes);
@@ -66,7 +79,7 @@ namespace EMStudio
         void Update();
         void UpdateSelection();
         void ItemDoubleClicked(QTreeWidgetItem* item, int column);
-        void TextChanged(const QString& text);
+        void OnTextFilterChanged(const QString& text);
 
     private:
         void RecursiveAddMotionSet(QTreeWidgetItem* parent, EMotionFX::MotionSet* motionSet, CommandSystem::SelectionList* selectionList);
@@ -74,8 +87,8 @@ namespace EMStudio
 
         EMotionFX::MotionSet*                   mMotionSet;
         QTreeWidget*                            mHierarchy;
-        MysticQt::SearchButton*                 mFindWidget;
-        AZStd::string                           mFindString;
+        AzQtComponents::FilteredSearchWidget*   m_searchWidget;
+        AZStd::string                           m_searchWidgetText;
         AZStd::vector<MotionSetSelectionItem>   mSelected;
         CommandSystem::SelectionList*           mCurrentSelectionList;
         bool                                    mUseSingleSelection;

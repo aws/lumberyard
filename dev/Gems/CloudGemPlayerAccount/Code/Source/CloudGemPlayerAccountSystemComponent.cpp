@@ -238,14 +238,13 @@ namespace CloudGemPlayerAccount
 
     void CloudGemPlayerAccountSystemComponent::Init()
     {
+        m_anonymousCredentialsProvider = std::make_shared<Aws::Auth::AnonymousAWSCredentialsProvider>();
     }
 
     void CloudGemPlayerAccountSystemComponent::Activate()
     {
         CloudGemPlayerAccountRequestBus::Handler::BusConnect();
         CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler::BusConnect();
-        m_anonymousCredentialsProvider = std::make_shared<Aws::Auth::AnonymousAWSCredentialsProvider>();
-        m_clientConfig = AZStd::make_shared <CloudGemFramework::AwsApiClientJobConfig<Aws::CognitoIdentityProvider::CognitoIdentityProviderClient>>();
     }
 
     void CloudGemPlayerAccountSystemComponent::Deactivate()
@@ -976,8 +975,8 @@ namespace CloudGemPlayerAccount
         refreshRequest.SetAuthFlow(Model::AuthFlowType::REFRESH_TOKEN_AUTH);
         refreshRequest.AddAuthParameters("REFRESH_TOKEN", tokens.longTermToken);
 
-        auto identityClient = m_clientConfig->GetClient();
-        Model::InitiateAuthOutcome refreshOutcome = identityClient->InitiateAuth(refreshRequest);
+        Aws::CognitoIdentityProvider::CognitoIdentityProviderClient identityClient( m_anonymousCredentialsProvider->GetAWSCredentials(), CloudGemFramework::AwsApiJob::GetDefaultConfig()->GetClientConfiguration() );
+        Model::InitiateAuthOutcome refreshOutcome = identityClient.InitiateAuth(refreshRequest);
 
         Aws::Auth::LoginAccessTokens tokenGroup;
         if (!refreshOutcome.IsSuccess())
@@ -1022,7 +1021,7 @@ namespace CloudGemPlayerAccount
         Model::GetUserRequest getUserRequest;
         getUserRequest.SetAccessToken(authenticationResult.GetAccessToken());
 
-        Model::GetUserOutcome getUserOutcome = identityClient->GetUser(getUserRequest);
+        Model::GetUserOutcome getUserOutcome = identityClient.GetUser(getUserRequest);
 
         if (!getUserOutcome.IsSuccess())
         {

@@ -37,6 +37,8 @@ namespace EMotionFX
     class EMFX_API SoftSkinDeformer
         : public MeshDeformer
     {
+        AZ_CLASS_ALLOCATOR_DECL
+
     public:
         // the type id of the deformer, returned by GetType()
         enum
@@ -63,7 +65,7 @@ namespace EMotionFX
          * @param node The node to use for the update, so the node where the mesh belongs to during this update.
          * @param timeDelta The time (in seconds) passed since the last call.
          */
-        virtual void Update(ActorInstance* actorInstance, Node* node, float timeDelta) override;
+        void Update(ActorInstance* actorInstance, Node* node, float timeDelta) override;
 
         /**
          * Reinitialize the mesh deformer.
@@ -72,20 +74,20 @@ namespace EMotionFX
          * @param node The node where the mesh belongs to during this initialization.
          * @param lodLevel The LOD level of the mesh the mesh deformer works on.
          */
-        virtual void Reinitialize(Actor* actor, Node* node, uint32 lodLevel) override;
+        void Reinitialize(Actor* actor, Node* node, uint32 lodLevel) override;
 
         /**
          * Creates an exact clone (copy) of this deformer, and returns a pointer to it.
          * @param mesh The mesh to apply the deformer on.
          * @result A pointer to the newly created clone of this deformer.
          */
-        virtual MeshDeformer* Clone(Mesh* mesh) override;
+        MeshDeformer* Clone(Mesh* mesh) override;
 
         /**
          * Returns the unique type ID of the deformer.
          * @result The type ID of the deformer.
          */
-        virtual uint32 GetType() const override;
+        uint32 GetType() const override;
 
         /**
          * Returns the unique subtype ID of this deformer.
@@ -94,7 +96,7 @@ namespace EMotionFX
          * version would have a sub type of 1 for example.
          * @result The sub type identification number.
          */
-        virtual uint32 GetSubType() const override;
+        uint32 GetSubType() const override;
 
         /**
          * Get the number of bones used by this deformer.

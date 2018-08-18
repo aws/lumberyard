@@ -23,7 +23,7 @@
 #include "Interfaces/CCryDXMETALDeviceContext.hpp"
 #include "Interfaces/CCryDXMETALGIFactory.hpp"
 #include "Implementation/GLShader.hpp"
-#include "Implementation/METALDevice.hpp"
+#include "Implementation/MetalDevice.hpp"
 
 //  Confetti BEGIN: Igor Lobanchikov
 #include "Interfaces/CCryDXMETALDeviceContext.hpp"
@@ -313,7 +313,7 @@ DXGL_DEBUG_STRING_BUFFER(": leave", g_kLeaveDebugBuffer);
 DXGL_API void DXGLProfileLabel(const char* szName)
 {
     //  Confetti BEGIN: Igor Lobanchikov
-    NCryMetal::CContext* pContext = CCryDXGLDeviceContext::FromInterface(((CD3D9Renderer*)gEnv->pRenderer)->DevInfo().Context())->GetGLContext();
+    NCryMetal::CContext* pContext = CCryDXGLDeviceContext::FromInterface(((CD3D9Renderer*)gEnv->pRenderer)->DevInfo().Context())->GetMetalContext();
     pContext->ProfileLabel(szName);
     //  Confetti End: Igor Lobanchikov
 }
@@ -321,7 +321,7 @@ DXGL_API void DXGLProfileLabel(const char* szName)
 DXGL_API void DXGLProfileLabelPush(const char* szName)
 {
     //  Confetti BEGIN: Igor Lobanchikov
-    NCryMetal::CContext* pContext = CCryDXGLDeviceContext::FromInterface(((CD3D9Renderer*)gEnv->pRenderer)->DevInfo().Context())->GetGLContext();
+    NCryMetal::CContext* pContext = CCryDXGLDeviceContext::FromInterface(((CD3D9Renderer*)gEnv->pRenderer)->DevInfo().Context())->GetMetalContext();
     pContext->ProfileLabelPush(szName);
     //  Confetti End: Igor Lobanchikov
 }
@@ -329,7 +329,7 @@ DXGL_API void DXGLProfileLabelPush(const char* szName)
 DXGL_API void DXGLProfileLabelPop(const char* szName)
 {
     //  Confetti BEGIN: Igor Lobanchikov
-    NCryMetal::CContext* pContext = CCryDXGLDeviceContext::FromInterface(((CD3D9Renderer*)gEnv->pRenderer)->DevInfo().Context())->GetGLContext();
+    NCryMetal::CContext* pContext = CCryDXGLDeviceContext::FromInterface(((CD3D9Renderer*)gEnv->pRenderer)->DevInfo().Context())->GetMetalContext();
     pContext->ProfileLabelPop(szName);
     //  Confetti End: Igor Lobanchikov
 }
@@ -391,8 +391,8 @@ void DXMETALSetColorDontCareActions(ID3D11RenderTargetView* const rtv,
 
     if (loadDontCare)
     {
-        CRY_ASSERT(!tex->m_spViewToClear);
-        if (tex->m_spViewToClear)
+        CRY_ASSERT(!tex->m_spTextureViewToClear);
+        if (tex->m_spTextureViewToClear)
         {
             DXGL_ERROR("Can't set MTLLoadActionDontCare if the resource is already set to be cleared.");
         }
@@ -419,8 +419,8 @@ void DXMETALSetDepthDontCareActions(ID3D11DepthStencilView* const dsv,
 
     if (loadDontCare)
     {
-        CRY_ASSERT(!tex->m_spViewToClear);
-        if (tex->m_spViewToClear)
+        CRY_ASSERT(!tex->m_spTextureViewToClear);
+        if (tex->m_spTextureViewToClear)
         {
             DXGL_ERROR("Can't set MTLLoadActionDontCare if the resource is already set to be cleared.");
         }
@@ -447,8 +447,8 @@ void DXMETALSetStencilDontCareActions(ID3D11DepthStencilView* const dsv,
 
     if (loadDontCare)
     {
-        CRY_ASSERT(!tex->m_spViewToClear);
-        if (tex->m_spViewToClear)
+        CRY_ASSERT(!tex->m_spStencilTextureViewToClear);
+        if (tex->m_spStencilTextureViewToClear)
         {
             DXGL_ERROR("Can't set MTLLoadActionDontCare if the resource is already set to be cleared.");
         }
@@ -465,7 +465,7 @@ void DXMETALSetStencilDontCareActions(ID3D11DepthStencilView* const dsv,
 #if !CRY_DXGL_FULL_EMULATION
 HRESULT DXGLMapBufferRange(ID3D11DeviceContext* pDeviceContext, ID3D11Buffer* pBuffer, size_t uOffset, size_t uSize, D3D11_MAP MapType, UINT MapFlags, D3D11_MAPPED_SUBRESOURCE* pMappedResource)
 {
-    NCryMetal::CContext* pGLContext(static_cast<CCryDXGLDeviceContext*>(pDeviceContext)->GetGLContext());
+    NCryMetal::CContext* pGLContext(static_cast<CCryDXGLDeviceContext*>(pDeviceContext)->GetMetalContext());
     NCryMetal::SBuffer* pGLBuffer(pBuffer->GetGLBuffer());
     return (*pGLBuffer->m_pfMapBufferRange)(pGLBuffer, uOffset, uSize, MapType, MapFlags, pMappedResource, pGLContext) ? S_OK : E_FAIL;
 }

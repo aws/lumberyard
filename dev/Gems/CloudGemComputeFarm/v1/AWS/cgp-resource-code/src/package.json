@@ -1,0 +1,7 @@
+{
+    "name": "@cloud-gems/cloudgemcomputefarm",
+    "version": "1.0.0",
+    "description": "CloudGemComputeFarm",
+    "private": true,
+    "dependencies": {}
+}

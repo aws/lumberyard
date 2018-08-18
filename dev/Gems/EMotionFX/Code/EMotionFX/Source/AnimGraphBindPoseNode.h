@@ -27,15 +27,9 @@ namespace EMotionFX
     class EMFX_API AnimGraphBindPoseNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphBindPoseNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(AnimGraphBindPoseNode, "{72595B5C-045C-4DB1-88A4-40BC4560D7AF}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000017
-        };
+        AZ_RTTI(AnimGraphBindPoseNode, "{72595B5C-045C-4DB1-88A4-40BC4560D7AF}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         //
         enum
@@ -48,30 +42,24 @@ namespace EMotionFX
             PORTID_OUTPUT_POSE = 0
         };
 
-        static AnimGraphBindPoseNode* Create(AnimGraph* animGraph);
+        AnimGraphBindPoseNode();
+        ~AnimGraphBindPoseNode();
 
-        void Init(AnimGraphInstance* animGraphInstance) override;
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         uint32 GetVisualColor() const override                  { return MCore::RGBA(50, 200, 50); }
         bool GetCanActAsState() const override                  { return true; }
         bool GetSupportsVisualization() const override          { return true; }
         bool GetHasOutputPose() const override                  { return true; }
-        AnimGraphObjectData* CreateObjectData() override;
 
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue(); }
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        const char* GetTypeString() const override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        AnimGraphBindPoseNode(AnimGraph* animGraph);
-        ~AnimGraphBindPoseNode();
-
         void Output(AnimGraphInstance* animGraphInstance) override;
     };
 }   // namespace EMotionFX

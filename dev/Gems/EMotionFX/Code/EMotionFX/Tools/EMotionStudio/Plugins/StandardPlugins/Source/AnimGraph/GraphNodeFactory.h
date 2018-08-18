@@ -40,7 +40,7 @@ namespace EMStudio
         virtual GraphNode* CreateGraphNode(const char* name);   // creates a new GraphNode on default
         virtual QWidget* CreateAttributeWidget();               // returns nullptr on default, indicating it should auto generate its interface widget
 
-        virtual uint32 GetAnimGraphNodeTypeID() = 0;           // return the EMotionFX::AnimGraphNode::TYPE_ID that it is linked to
+        virtual AZ::TypeId GetAnimGraphNodeType() = 0;            // return the TypeId for the EMotionFX::AnimGraphNode that it is linked to
     };
 
 
@@ -60,10 +60,10 @@ namespace EMStudio
         void Unregister(GraphNodeCreator* creator, bool delFromMem = true);
         void UnregisterAll(bool delFromMem = true);
 
-        GraphNode* CreateGraphNode(uint32 animGraphNodeTypeID, const char* name);
-        QWidget* CreateAttributeWidget(uint32 animGraphNodeTypeID);
+        GraphNode* CreateGraphNode(const AZ::TypeId& animGraphNodeType, const char* name);
+        QWidget* CreateAttributeWidget(const AZ::TypeId& animGraphNodeType);
 
-        GraphNodeCreator* FindCreator(uint32 animGraphNodeTypeID) const;
+        GraphNodeCreator* FindCreator(const AZ::TypeId& animGraphNodeType) const;
 
     private:
         MCore::Array<GraphNodeCreator*> mCreators;

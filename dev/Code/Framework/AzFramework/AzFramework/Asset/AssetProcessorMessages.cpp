@@ -30,7 +30,7 @@ namespace AzFramework
             if (serialize)
             {
                 serialize->Class<BaseAssetProcessorMessage>()
-                    ->SerializerForEmptyClass();
+                    ->SerializeWithNoData();
             }
         }
 
@@ -77,7 +77,7 @@ namespace AzFramework
 
         unsigned int RequestPing::MessageType()
         {
-            return AZ_CRC("AssetSystem::RequestPing", 0xa6124cfb); 
+            return AZ_CRC("AssetSystem::RequestPing", 0xa6124cfb);
         }
 
         unsigned int RequestPing::GetMessageType() const
@@ -447,8 +447,8 @@ namespace AzFramework
             auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<ShowAssetProcessorRequest, BaseAssetProcessorMessage>()
-                    ->SerializerForEmptyClass();
+                serialize->Class<ShowAssetProcessorRequest>()
+                    ->SerializeWithNoData();
             }
         }
 
@@ -1444,8 +1444,8 @@ namespace AzFramework
             auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<SaveAssetCatalogRequest, BaseAssetProcessorMessage>()
-                    ->SerializerForEmptyClass();
+                serialize->Class<SaveAssetCatalogRequest>()
+                    ->SerializeWithNoData();
             }
         }
 

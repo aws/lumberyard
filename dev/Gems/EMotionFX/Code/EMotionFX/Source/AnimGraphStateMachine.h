@@ -12,7 +12,8 @@
 
 #pragma once
 
-// include the required headers
+#include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/std/containers/vector.h>
 #include "EMotionFXConfig.h"
 #include <MCore/Source/Array.h>
 #include "AnimGraphNode.h"
@@ -26,20 +27,12 @@ namespace EMotionFX
     class ActorInstance;
     class AnimGraphStateTransition;
 
-
-    //
     class EMFX_API AnimGraphStateMachine
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphStateMachine, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_STATEMACHINES);
-
     public:
-        AZ_RTTI(AnimGraphStateMachine, "{272E90D2-8A18-46AF-AD82-6A8B7EC508ED}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000005
-        };
+        AZ_RTTI(AnimGraphStateMachine, "{272E90D2-8A18-46AF-AD82-6A8B7EC508ED}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         enum
         {
@@ -51,53 +44,40 @@ namespace EMotionFX
             PORTID_OUTPUT_POSE  = 0
         };
 
-        enum
-        {
-            ATTRIB_REWIND       = 0
-        };
-
         class EMFX_API UniqueData
             : public AnimGraphNodeData
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
 
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
             void Reset() override;
 
-            uint32 GetClassSize() const override                                                                                    { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override        { return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance); }
-
         public:
-            AnimGraphStateTransition*  mTransition;            /**< The transition we're in. */
-            AnimGraphNode*             mCurrentState;          /**< The current state. */
-            AnimGraphNode*             mTargetState;           /**< The next state we want to move into. */
-            AnimGraphNode*             mPreviousState;         /**< The previously used state, so the one used before the current one, the one from which we transitioned into the current one. */
-            bool                       mReachedExitState;      /**< True in case the state machine's current state is an exit state, false it not. */
+            AnimGraphStateTransition*   mTransition;            /**< The transition we're in. */
+            AnimGraphNode*              mCurrentState;          /**< The current state. */
+            AnimGraphNode*              mTargetState;           /**< The next state we want to move into. */
+            AnimGraphNode*              mPreviousState;         /**< The previously used state, so the one used before the current one, the one from which we transitioned into the current one. */
+            bool                        mReachedExitState;      /**< True in case the state machine's current state is an exit state, false it not. */
         };
 
-        static AnimGraphStateMachine* Create(AnimGraph* animGraph, const char* name = nullptr);
+        AnimGraphStateMachine();
+        ~AnimGraphStateMachine();
 
-        // overloaded
-        void RecursiveInit(AnimGraphInstance* animGraphInstance) override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
-        void OnUpdateAttributes() override;
-        void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName) override;
-        void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node) override;
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
         void RecursiveOnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet) override;
         void Rewind(AnimGraphInstance* animGraphInstance) override;
 
-        void RecursiveUpdateAttributes();
-        void RecursiveOnUpdateUniqueData(AnimGraphInstance* animGraphInstance);
-        void RecursiveClonePostProcess(AnimGraphNode* resultNode) override;
+        void RecursiveResetUniqueData(AnimGraphInstance* animGraphInstance) override;
+        void RecursiveOnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         void RecursiveResetFlags(AnimGraphInstance* animGraphInstance, uint32 flagsToDisable = 0xffffffff) override;
 
-        const char* GetTypeString() const override                      { return "AnimGraphStateMachine"; }
         const char* GetPaletteName() const override                     { return "State Machine"; }
         AnimGraphObject::ECategory GetPaletteCategory() const override { return AnimGraphObject::CATEGORY_SOURCES; }
         bool GetCanActAsState() const override                          { return true; }
@@ -107,7 +87,6 @@ namespace EMotionFX
         bool GetSupportsVisualization() const override                  { return true; }
         bool GetHasOutputPose() const override                          { return true; }
         uint32 GetHasChildIndicatorColor() const override               { return MCore::RGBA(64, 98, 247); }
-        AnimGraphObjectData* CreateObjectData() override;
 
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override             { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 
@@ -126,7 +105,7 @@ namespace EMotionFX
          * Get the number of transitions inside this state machine. This includes all kinds of transitions, so also wildcard transitions.
          * @result The number of transitions inside the state machine.
          */
-        MCORE_INLINE uint32 GetNumTransitions() const                               { return mTransitions.GetLength(); }
+        MCORE_INLINE uint32 GetNumTransitions() const                               { return static_cast<uint32>(mTransitions.size()); }
 
         /**
          * Get a pointer to the state machine transition of the given index.
@@ -147,7 +126,7 @@ namespace EMotionFX
          */
         void RemoveAllTransitions();
 
-        void ReserveTransitions(uint32 numTransitions);
+        void ReserveTransitions(size_t numTransitions);
 
         /**
          * Find the transition index for the given transition id.
@@ -215,6 +194,8 @@ namespace EMotionFX
          */
         AnimGraphNode* GetEntryState();
 
+        AZ_FORCE_INLINE AnimGraphNodeId GetEntryStateId() const                     { return m_entryStateId; }
+
         /**
          * Set the initial state of the state machine.
          * The start state is usually shown drawn with an arrow "pointing at it from any where".
@@ -245,31 +226,8 @@ namespace EMotionFX
         void SwitchToState(AnimGraphInstance* animGraphInstance, AnimGraphNode* targetState);
         void TransitionToState(AnimGraphInstance* animGraphInstance, AnimGraphNode* targetState);
 
-        /**
-         *
-         *
-         */
-        static uint32 GetHierarchyLevel(AnimGraphNode* animGraphNode);
-
-        /**
-         *
-         *
-         *
-         *
-         */
-        void RemoveAllStates();
-
         void RecursiveSetUniqueDataFlag(AnimGraphInstance* animGraphInstance, uint32 flag, bool enabled) override;
-        void RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, MCore::Array<AnimGraphNode*>* outNodes, uint32 nodeTypeID) const override;
-
-        //----------------------------------------------------------------------------------------------------------------------------
-
-        // node mask
-        void SetNodeMask(const MCore::Array<uint32>& nodeMask);
-        void GetNodeMask(MCore::Array<uint32>& outMask) const;
-        MCore::Array<uint32>& GetNodeMask();
-        const MCore::Array<uint32>& GetNodeMask() const;
-        uint32 GetNumNodesInNodeMask() const;
+        void RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, MCore::Array<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType) const override;
 
         //----------------------------------------------------------------------------------------------------------------------------
 
@@ -280,27 +238,23 @@ namespace EMotionFX
         uint32 GetCustomDataSize() const override;
 
         /**
-         * Write the custom data which will be saved with the object.
-         * @param[in] stream A pointer to a stream to which the custom data will be saved to.
-         * @param[in] targetEndianType The endian type in which the custom data should be saved in.
-         */
-        bool WriteCustomData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) override;
-
-        /**
          * Read the custom data which got saved with the object.
          * @param[in] stream A pointer to a stream from which the custom data will be read from.
          * @param[in] endianType The endian type in which the custom data should be saved in.
          */
         bool ReadCustomData(MCore::Stream* stream, uint32 version, MCore::Endian::EEndianType endianType) override;
 
-    private:
-        MCore::Array<uint32>                        mNodeMask;          // array of nodes that are being modified by this state machine
-        MCore::Array<AnimGraphStateTransition*>    mTransitions;
-        AnimGraphNode*                             mEntryState;        /**< A pointer to the initial state, so the state where the machine starts. */
-        uint32                                      mEntryStateNodeNr;  /**< The node number of the entry state after load time. This might be invalid after editing the anim graph. Do not use manually. */
+        void SetAlwaysStartInEntryState(bool alwaysStartInEntryState);
+        void SetEntryStateId(AnimGraphNodeId entryStateNodeId);
 
-        AnimGraphStateMachine(AnimGraph* animGraph, const char* name = nullptr);
-        ~AnimGraphStateMachine();
+        static void Reflect(AZ::ReflectContext* context);
+
+    private:
+        AZStd::vector<AnimGraphStateTransition*>    mTransitions;
+        AnimGraphNode*                              mEntryState;                /**< A pointer to the initial state, so the state where the machine starts. */
+        uint32                                      mEntryStateNodeNr;          /**< Used only in the legacy file format. Remove after the legacy file format will be removed. */
+        AZ::u64                                     m_entryStateId;             /**< The node id of the entry state. */
+        bool                                        m_alwaysStartInEntryState;
 
         /**
          * Reset all conditions from wild card and outgoing transitions of the given state.
@@ -309,6 +263,7 @@ namespace EMotionFX
          */
         void ResetOutgoingTransitionConditions(AnimGraphInstance* animGraphInstance, AnimGraphNode* state);
 
+        void UpdateExitStateReachedFlag(UniqueData* uniqueData);
         void StartTransition(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData, AnimGraphStateTransition* transition);
         void CheckConditions(AnimGraphNode* sourceNode, AnimGraphInstance* animGraphInstance, UniqueData* uniqueData, bool allowTransition = true);
         void UpdateConditions(AnimGraphInstance* animGraphInstance, AnimGraphNode* animGraphNode, UniqueData* uniqueData, float timePassedInSeconds);

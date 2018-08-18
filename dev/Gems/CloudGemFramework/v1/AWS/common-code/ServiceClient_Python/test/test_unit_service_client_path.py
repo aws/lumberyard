@@ -135,9 +135,11 @@ class UnitTest_CloudGemFramework_ServiceClient_Path(unittest.TestCase):
 
         with mock.patch.object(target, '_Path__service_request') as mock_service_request:
 
-            response = target.DELETE(A = 10, B = 20)
+            body =  {}
+            
+            response = target.DELETE(body, A = 10, B = 20)
 
-            mock_service_request.assert_called_once_with(requests.delete, params = { 'A': 10, 'B': 20 })
+            mock_service_request.assert_called_once_with(requests.delete, body, params = { 'A': 10, 'B': 20 })
             self.assertEquals(response, mock_service_request.return_value)
 
 

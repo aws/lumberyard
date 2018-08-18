@@ -43,7 +43,7 @@ namespace AzToolsFramework
         if (serialize)
         {
             serialize->Class<SliceDependencyBrowserComponent, AZ::Component>()
-                ->SerializerForEmptyClass();
+                ;
         }
     }
 

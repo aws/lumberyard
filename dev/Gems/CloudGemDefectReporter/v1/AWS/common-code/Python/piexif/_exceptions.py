@@ -1,0 +1,2 @@
+class InvalidImageDataError(ValueError):
+    pass

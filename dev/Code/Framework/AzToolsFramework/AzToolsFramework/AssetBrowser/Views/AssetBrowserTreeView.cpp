@@ -45,7 +45,7 @@ namespace AzToolsFramework
             setMouseTracking(true);
 
             connect(this, &QTreeView::customContextMenuRequested, this, &AssetBrowserTreeView::OnContextMenu);
-            connect(this, &QTreeView::expanded, [&](const QModelIndex& index)
+            connect(this, &QTreeView::expanded, this, [&](const QModelIndex& index)
                 {
                     if (!m_sendMetrics || !index.isValid())
                     {
@@ -63,7 +63,7 @@ namespace AzToolsFramework
                         }
                     }
                 });
-            connect(this, &QTreeView::collapsed, [&](const QModelIndex& index)
+            connect(this, &QTreeView::collapsed, this, [&](const QModelIndex& index)
                 {
                     if (!m_sendMetrics || !index.isValid())
                     {
@@ -130,10 +130,10 @@ namespace AzToolsFramework
         {
             QTreeView::drawBranches(painter, rect, index);
 
-            auto data = index.data(AssetBrowserModel::Roles::EntryRole);
-            if (data.canConvert<const AssetBrowserEntry*>())
+            auto role_data = index.data(AssetBrowserModel::Roles::EntryRole);
+            if (role_data.canConvert<const AssetBrowserEntry*>())
             {
-                auto entry = qvariant_cast<const AssetBrowserEntry*>(data);
+                auto entry = qvariant_cast<const AssetBrowserEntry*>(role_data);
                 if (azrtti_istypeof<const ProductAssetBrowserEntry*>(entry))
                 {
                     painter->save();
@@ -191,10 +191,10 @@ namespace AzToolsFramework
         {
             if (m_sendMetrics && currentIndex().isValid())
             {
-                auto data = currentIndex().data(AssetBrowserModel::Roles::EntryRole);
-                if (data.canConvert<const AssetBrowserEntry*>())
+                auto role_data = currentIndex().data(AssetBrowserModel::Roles::EntryRole);
+                if (role_data.canConvert<const AssetBrowserEntry*>())
                 {
-                    auto entry = qvariant_cast<const AssetBrowserEntry*>(data);
+                    auto entry = qvariant_cast<const AssetBrowserEntry*>(role_data);
                     auto source = azrtti_cast<const SourceAssetBrowserEntry*>(entry);
                     if (source)
                     {

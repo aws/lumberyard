@@ -10,6 +10,10 @@
 #include "internal_includes/hlslcc_malloc.h"
 #include "amazon_changes.h"
 
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wpointer-sign"
+#endif
+
 extern void AddIndentation(HLSLCrossCompilerContext* psContext);
 
 // These are .c files, so no C++ or C++11 for us :(
@@ -18,9 +22,9 @@ extern void AddIndentation(HLSLCrossCompilerContext* psContext);
 // This struct is used to keep track of each valid occurance of xxxBitsToxxx(variable) and store all relevant information for fixing that instance
 typedef struct ShaderCastLocation
 {
-    unsigned char   tempVariableName[MAX_VARIABLE_LENGTH];
-    unsigned char   replacementVariableName[MAX_VARIABLE_LENGTH];
-    unsigned int    castType;
+    char tempVariableName[MAX_VARIABLE_LENGTH];
+    char replacementVariableName[MAX_VARIABLE_LENGTH];
+    unsigned int castType;
 
     // Since we have no stl, here's our list
     struct ShaderCastLocation* next;
@@ -29,9 +33,9 @@ typedef struct ShaderCastLocation
 // Structure used to prebuild the list of all functions that need to be replaced.
 typedef struct ShaderCastType
 {
-    const unsigned char* functionName;
+    const char* functionName;
     unsigned int castType;
-    const unsigned char* variableTypeName; // String for the variable type used when declaring a temporary variable to replace the source temp vector
+    const char* variableTypeName; // String for the variable type used when declaring a temporary variable to replace the source temp vector
 } ShaderCastType;
 
 enum ShaderCasts
@@ -44,7 +48,7 @@ enum ShaderCasts
 };
 
 // NOTICE: Order is important here because intBitsToFloat is a substring of uintBitsToFloat, so do not change the ordering here!
-static const ShaderCastType s_castFunctions[CAST_NUMCASTS] = 
+static const ShaderCastType s_castFunctions[CAST_NUMCASTS] =
 {
     { "uintBitsToFloat",    CAST_UINTBITSTOFLOAT,   "uvec4" },
     { "intBitsToFloat",     CAST_INTBITSTOFLOAT,    "ivec4" },
@@ -52,7 +56,7 @@ static const ShaderCastType s_castFunctions[CAST_NUMCASTS] =
     { "floatBitsToInt",     CAST_FLOATBITSTOINT,    "vec4" }
 };
 
-int IsValidUseCase( unsigned char* variableStart, unsigned char* outVariableName, ShaderCastLocation* foundShaderCastsHead, int currentType )
+int IsValidUseCase( char* variableStart, char* outVariableName, ShaderCastLocation* foundShaderCastsHead, int currentType )
 {
     // Cases we have to replace (this is very strict in definition):
     // 1) floatBitsToInt(Temp2)
@@ -67,7 +71,7 @@ int IsValidUseCase( unsigned char* variableStart, unsigned char* outVariableName
         return 0;
 
     unsigned int lengthOfVariable = 4; // Start at 4 for temp
-    
+
     while ( 1 )
     {
         char val = *(variableStart + lengthOfVariable);
@@ -125,10 +129,10 @@ void ModifyLineForQualcommReinterpretCastBug( HLSLCrossCompilerContext* psContex
 
     // Find all occurances of the *BitsTo* functions
     // Note that this would be cleaner, but 'intBitsToFloat' is a substring of 'uintBitsToFloat' so parsing order is important here.
-    unsigned char* parsingString = bdataofs(*overloadString, 0);
+    char* parsingString = bdataofs(*overloadString, 0);
     while ( parsingString )
     {
-        unsigned char* result = NULL;
+        char* result = NULL;
 
         for ( int index=0; index<CAST_NUMCASTS; ++index )
         {
@@ -136,8 +140,8 @@ void ModifyLineForQualcommReinterpretCastBug( HLSLCrossCompilerContext* psContex
             if ( result != NULL )
             {
                 // Now determine if this is a case that requires a workaround
-                unsigned char* variableStart = result + strlen( s_castFunctions[index].functionName ) + 1; // Add the function name + first parenthesis
-                unsigned char tempVariableName[MAX_VARIABLE_LENGTH];
+                char* variableStart = result + strlen( s_castFunctions[index].functionName ) + 1; // Add the function name + first parenthesis
+                char tempVariableName[MAX_VARIABLE_LENGTH];
                 memset( tempVariableName, 0, MAX_VARIABLE_LENGTH );
 
                 // Now the next word must be Temp, or this is not a valid case
@@ -169,7 +173,7 @@ void ModifyLineForQualcommReinterpretCastBug( HLSLCrossCompilerContext* psContex
                 break;
             }
         }
-        
+
         parsingString = result;
     }
 
@@ -194,7 +198,7 @@ void ModifyLineForQualcommReinterpretCastBug( HLSLCrossCompilerContext* psContex
         // Write out the new variable name declaration and initialize it
         AddIndentation( psContext );
         bformata( *originalString, "%s %s=%s;\n", s_castFunctions[currentShaderCasts->castType].variableTypeName, currentShaderCasts->replacementVariableName, currentShaderCasts->tempVariableName );
-      
+
         // Now replace all instances of the variable in question with the new variable name.
         // Note: We can't do a breplace on the temp variable name because the variable can still be legally used without a reinterpret cast in that line.
         // Do a full replace on the xxBitsToxx(TempVar) here
@@ -209,7 +213,7 @@ void ModifyLineForQualcommReinterpretCastBug( HLSLCrossCompilerContext* psContex
         currentVariableIndex++;
         currentShaderCasts = currentShaderCasts->next;
     }
-    
+
     // Now append our modified string to the full shader file
     bconcat( *originalString, *overloadString );
 }

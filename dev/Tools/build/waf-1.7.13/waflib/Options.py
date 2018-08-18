@@ -114,7 +114,7 @@ class opt_parser(optparse.OptionParser):
 					continue
 
 				if type(v) is type(Context.create_context):
-					if v.__doc__ and not k.startswith('_'):
+					if v.__doc__ and not k.startswith('_') and k != 'conf' and k != 'wrap_execute':
 						cmds_str[k] = v.__doc__
 
 		just = 0

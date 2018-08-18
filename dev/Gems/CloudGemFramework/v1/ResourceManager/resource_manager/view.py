@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #1 $
+# $Revision: #2 $
 
 import util
 import dateutil
@@ -48,7 +48,7 @@ class ViewContext(object):
             ])
 
     def import_resource(self, name):
-        self._output_message('{name} imported sucessfully'.format(name=name))
+        self._output_message('{name} imported successfully'.format(name=name))
 
     def auto_added_resource(self, name):
         self._output_message('Added related resource with the name {name}'.format(name=name))
@@ -197,7 +197,7 @@ created using Cloud Canvas and CloudFormation in the same manner as if you creat
 You only pay for what you use, as you use it; there are no minimum fees and no required upfront
 commitments, and most services include a free tier.
 
-Learn more at https://docs.aws.amazon.com/lumberyard/userguide/cloud-canvas.''')
+Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canvas-intro.html.''')
 
     def confirm_resource_deletion(self, resources, stack_description = None):
         '''Prompts the user to confirm that it is ok to delete the specified resources.

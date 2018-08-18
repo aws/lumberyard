@@ -17,7 +17,6 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Math/Vector3.h>
 
-
 class CEditorPreferencesPage_General
     : public IPreferencesPage
 {
@@ -62,11 +61,16 @@ private:
         bool m_bShowTimeInConsole;
         int m_toolbarIconSize;
         bool m_stylusMode;
+        bool m_restoreViewportCamera;
         bool m_bLayerDoubleClicking;
         bool m_bShowNews;
         bool m_showFlowGraphNotification;
         bool m_enableSceneInspector;
         bool m_enableUI2;
+        bool m_enableLegacyUI;
+
+        // Only used to tell if the user has changed this value since it requires a restart
+        bool m_enableLegacyUIInitialValue;
     };
 
     struct Undo
@@ -104,4 +108,6 @@ private:
     VertexSnapping m_vertexSnapping;
     MetricsSettings m_metricsSettings;
 };
+
+static const char* EditorPreferencesGeneralRestoreViewportCameraSettingName = "Restore Viewport Camera on Game Mode Exit";
 

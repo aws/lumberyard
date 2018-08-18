@@ -117,6 +117,7 @@ void SpriteBorderEditor::CreateLayout()
         ISprite::Borders originalBorders = m_sprite->GetBorders();
         QObject::connect(this,
             &QDialog::rejected,
+            this,
             [this, originalBorders]()
         {
             // Restore original borders.
@@ -344,8 +345,8 @@ void SpriteBorderEditor::AddConfigureSection(QGridLayout* gridLayout, int& rowNu
         };
 
     // Hook up the callback to the text input fields
-    QObject::connect(numRowsLineEdit, &QLineEdit::editingFinished, rowColChangedCallback);
-    QObject::connect(numColsLineEdit, &QLineEdit::editingFinished, rowColChangedCallback);
+    QObject::connect(numRowsLineEdit, &QLineEdit::editingFinished, this, rowColChangedCallback);
+    QObject::connect(numColsLineEdit, &QLineEdit::editingFinished, this,rowColChangedCallback);
 
     // Create a new "inner layout" for this section of the window so we can 
     // properly align the content of this section with the other sections by
@@ -748,7 +749,7 @@ void SpriteBorderEditor::AddPropertiesSection(QGridLayout* gridLayout, int& rowN
             propertyFieldsLayout->addWidget(m_cellAliasLineEdit, row, columnCount++, Qt::AlignLeft);
 
             // Editing finished callback for setting alias value after being entered
-            QObject::connect(m_cellAliasLineEdit, &QLineEdit::editingFinished,
+            QObject::connect(m_cellAliasLineEdit, &QLineEdit::editingFinished, this,
                 [this]()
                 {
                     // Remove preceding or trailing whitespace and tab/newline chars
@@ -875,7 +876,7 @@ void SpriteBorderEditor::AddButtonsSection(QGridLayout* gridLayout, int& rowNum)
         QPushButton* configureButton = new QPushButton("Configure Spritesheet", this);
 
         QObject::connect(configureButton,
-            &QPushButton::clicked,
+            &QPushButton::clicked, this,
             [this](bool checked)
         {
             m_configureAsSpriteSheet = true;
@@ -894,7 +895,7 @@ void SpriteBorderEditor::AddButtonsSection(QGridLayout* gridLayout, int& rowNum)
         // Save button.
         QPushButton* saveButton = new QPushButton("Save", this);
         QObject::connect(saveButton,
-            &QPushButton::clicked,
+            &QPushButton::clicked, this,
             [this](bool checked)
             {
                 // Sanitize values.
@@ -946,7 +947,7 @@ void SpriteBorderEditor::AddButtonsSection(QGridLayout* gridLayout, int& rowNum)
         // Cancel button.
         QPushButton* cancelButton = new QPushButton("Cancel", this);
         QObject::connect(cancelButton,
-            &QPushButton::clicked,
+            &QPushButton::clicked, this,
             [this](bool checked)
         {
             // Since we're cancelling the dialog, restore the original sprite

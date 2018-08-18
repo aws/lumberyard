@@ -18,7 +18,7 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
-#include <AzCore/Math/uuid.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzCore/std/delegate/delegate.h>
 #include <AzCore/std/function/function_fwd.h>
 #include <AzCore/std/string/string.h>

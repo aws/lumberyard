@@ -15,6 +15,8 @@
 
 #include <QDesktopWidget>
 #include <QSignalBlocker>
+#include <QMouseEvent>
+#include <QWheelEvent>
 
 namespace AzToolsFramework
 {

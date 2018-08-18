@@ -122,9 +122,12 @@ void CAIManager::LoadNavigationEditorSettings()
     m_enableNavigationContinuousUpdate = gSettings.bNavigationContinuousUpdate;
     m_enableDebugDisplay = gSettings.bNavigationDebugDisplay;
 
-    if (NavigationAgentTypeID debugAgentTypeID = m_aiSystem->GetNavigationSystem()->GetAgentTypeID(gSettings.navigationDebugAgentType))
+    if (m_aiSystem)
     {
-        m_aiSystem->GetNavigationSystem()->SetDebugDisplayAgentType(debugAgentTypeID);
+        if (NavigationAgentTypeID debugAgentTypeID = m_aiSystem->GetNavigationSystem()->GetAgentTypeID(gSettings.navigationDebugAgentType))
+        {
+            m_aiSystem->GetNavigationSystem()->SetDebugDisplayAgentType(debugAgentTypeID);
+        }
     }
 
     if (gSettings.bVisualizeNavigationAccessibility)
@@ -475,7 +478,8 @@ bool CAIManager::NewAction(QString& filename, QWidget* container)
     filename = newFileName.toLower();
 
     // check if file exists.
-    FILE* file = fopen(filename.toUtf8().data(), "rb");
+    FILE* file = nullptr;
+    azfopen(&file, filename.toUtf8().data(), "rb");
     if (file)
     {
         fclose(file);
@@ -743,6 +747,11 @@ CSOParamBase* CAIManager::LoadTemplateParams(XmlNodeRef root) const
 
 void CAIManager::OnEnterGameMode(bool inGame)
 {
+    if (!m_aiSystem)
+    {
+        return;
+    }
+
     if (inGame)
     {
         SaveNavigationEditorSettings();
@@ -843,6 +852,11 @@ size_t CAIManager::GetNavigationAgentTypeCount() const
 
 const char* CAIManager::GetNavigationAgentTypeName(size_t i) const
 {
+    if (!m_aiSystem)
+    {
+        return nullptr;
+    }
+
     const NavigationAgentTypeID id = m_aiSystem->GetNavigationSystem()->GetAgentTypeID(i);
     if (id)
     {
@@ -854,8 +868,11 @@ const char* CAIManager::GetNavigationAgentTypeName(size_t i) const
 
 void CAIManager::SetNavigationDebugDisplayAgentType(size_t i) const
 {
-    const NavigationAgentTypeID id = m_aiSystem->GetNavigationSystem()->GetAgentTypeID(i);
-    m_aiSystem->GetNavigationSystem()->SetDebugDisplayAgentType(id);
+    if (m_aiSystem)
+    {
+        const NavigationAgentTypeID id = m_aiSystem->GetNavigationSystem()->GetAgentTypeID(i);
+        m_aiSystem->GetNavigationSystem()->SetDebugDisplayAgentType(id);
+    }
 }
 
 void CAIManager::EnableNavigationDebugDisplay(bool enable)

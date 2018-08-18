@@ -1,24 +1,24 @@
 {
     "dynamodb" : {
         "name" : {
-            "regex" : "[a-zA-Z0-9\\-._]{0,200}",
+            "regex" : "[a-zA-Z0-9]{0,200}",
             "min_length" : 3,
-            "help" : "DynamoDB table name can only contain alphanumeric, underscore, hyphen and dot. The name must be between 3 and 200 characters long.",
+            "help" : "DynamoDB table name can only contain alphanumeric. The name must be between 3 and 200 characters long. The logical ID must be alphanumeric and unique within the template.",
             "_comment" : "http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html#limits-naming-rules"
         },
         "hash_name" : {
-            "regex" : "[a-zA-Z0-9\\-._]{1,255}",
-            "help" : "DynamoDB hash name attribute can only contain alphanumeric, underscore, hyphen and dot. The name must be between 1 and 255 characters long."
+            "regex" : "[a-zA-Z0-9]{1,255}",
+            "help" : "DynamoDB hash name attribute can only contain alphanumeric. The name must be between 1 and 255 characters long."
         },
         "range_name" : {
-            "regex" : "[a-zA-Z0-9\\-._]{1,255}",
-            "help" : "DynamoDB range name attribute can only contain alphanumeric, underscore, hyphen and dot. The name must be between 1 and 255 characters long."
+            "regex" : "[a-zA-Z0-9]{1,255}",
+            "help" : "DynamoDB range name attribute can only contain alphanumeric. The name must be between 1 and 255 characters long."
         }
     },
     "lambda" : {
 		"name" : {
-            "regex" : "[a-zA-Z0-9_]{0,110}",
-            "help" : "Lambda function name can only contain alphanumeric and underscores, and must be 1-110 characters long",
+            "regex" : "[a-zA-Z0-9]{0,110}",
+            "help" : "Lambda function name can only contain alphanumeric, and must be 1-110 characters long. The logical ID must be alphanumeric and unique within the template.",
             "_comment" : "http://docs.aws.amazon.com/lambda/latest/dg/API_CreateFunction.html"
         },
         "handler" : {
@@ -28,22 +28,22 @@
 	},
     "s3" : {
         "name" : {
-            "regex" : "[a-z0-9\\.]{0,33}",
-            "help" : "S3 bucket name must contain only lowercase alphanumeric and dot. The first character must be alpha and the last must be alpha numeric. ",
+            "regex" : "^[a-z][a-z0-9]{0,33}",
+            "help" : "S3 bucket name must contain only lowercase alphanumeric. The first character must be alpha and the last must be alpha numeric. The logical ID must be alphanumeric and unique within the template.",
             "_comment" : "http://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html with some liberties to make regex simpler"
         }
     },
     "sns" : {
         "name" : {
-            "regex" : "[a-zA-Z0-9\\-_]{0,200}",
-            "help" : "SNS topic name must be between 1 and 200 characters and contain only the alphanumeric characters as well as hyphens and underscores",
+            "regex" : "[a-zA-Z0-9]{0,200}",
+            "help" : "SNS topic name must be between 1 and 200 characters and contain only the alphanumeric characters. The logical ID must be alphanumeric and unique within the template.",
             "_comment" : "https://aws.amazon.com/sns/faqs/#features-and-functionality subtract some for arn"
         }
     },
     "sqs" : {
         "name" : {
-            "regex" : "[a-zA-Z0-9\\-_]{0,50}",
-            "help" : "SQS queue name must be between 1 and 50 characters and contain only the alphanumeric characters as well as hyphens and underscores",
+            "regex" : "[a-zA-Z0-9]{0,50}",
+            "help": "SQS queue name must be between 1 and 50 characters and contain only the alphanumeric characters. The logical ID must be alphanumeric and unique within the template.",
             "_comment" : "https://aws.amazon.com/sqs/faqs/#Limits_and_Restrictions"
         }
     }

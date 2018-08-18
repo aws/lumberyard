@@ -53,6 +53,7 @@ private:
     float m_oldSunLatitude;
     float m_oldMoonLongitude;
     float m_oldMoonLatitude;
+    bool  m_celestialPositionsStored;
 };
 
 

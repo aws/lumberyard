@@ -283,7 +283,7 @@ void ViewportIcon::DrawDistanceLine(Draw2dHelper& draw2d, AZ::Vector2 start, AZ:
 
     const size_t bufSize = 32;
     char textBuf[bufSize];
-    _snprintf(textBuf, bufSize, "%.2f%s", displayDistance, suffix ? suffix : "");
+    azsnprintf(textBuf, bufSize, "%.2f%s", displayDistance, suffix ? suffix : "");
 
     draw2d.SetTextAlignment(IDraw2d::HAlign::Center, IDraw2d::VAlign::Bottom);
     draw2d.SetTextRotation(rotation);

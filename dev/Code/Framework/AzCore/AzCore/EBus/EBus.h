@@ -26,6 +26,7 @@
 #include <AzCore/EBus/Results.h>
 #include <AzCore/std/utils.h>
 #include <AzCore/std/typetraits/is_same.h>
+#include <AzCore/std/typetraits/is_abstract.h>
 #include <AzCore/std/containers/unordered_map.h>
 
 namespace AZStd
@@ -245,6 +246,73 @@ namespace AZ
 
         template<class EBus>
         class EBusNestedVersionRouter;
+
+        template <class C, bool UseTLS>
+        struct EBusCallstackStorage;
+
+        template <class C>
+        struct EBusCallstackStorage<C, true>
+        {
+            AZ_THREAD_LOCAL static C* s_entry;
+
+            EBusCallstackStorage() = default;
+            ~EBusCallstackStorage() = default;
+            EBusCallstackStorage(const EBusCallstackStorage&) = delete;
+            EBusCallstackStorage(EBusCallstackStorage&&) = delete;
+
+            C* operator->() const
+            {
+                return s_entry;
+            }
+
+            C& operator*() const
+            {
+                return *s_entry;
+            }
+
+            C* operator=(C* entry)
+            {
+                s_entry = entry;
+                return s_entry;
+            }
+
+            operator C*() const
+            {
+                return s_entry;
+            }
+        };
+
+        template <class C>
+        struct EBusCallstackStorage<C, false>
+        {
+            C* m_entry = nullptr;
+
+            EBusCallstackStorage() = default;
+            ~EBusCallstackStorage() = default;
+            EBusCallstackStorage(const EBusCallstackStorage&) = delete;
+            EBusCallstackStorage(EBusCallstackStorage&&) = delete;
+
+            C* operator->() const
+            {
+                return m_entry;
+            }
+
+            C& operator*() const
+            {
+                return *m_entry;
+            }
+
+            C* operator=(C* entry)
+            {
+                m_entry = entry;
+                return m_entry;
+            }
+
+            operator C*() const
+            {
+                return m_entry;
+            }
+        };
     }
 
     /**
@@ -668,6 +736,7 @@ namespace AZ
             CallstackEntryBasic(const BusIdType* busId);
 
             virtual ~CallstackEntryBasic();
+            void OnRemoveHandler(InterfaceType*) override {}
 
             AZStd::native_thread_id_type m_threadId;
         };
@@ -675,7 +744,7 @@ namespace AZ
         // One of these will be allocated per thread. It acts as the bottom of any callstack during dispatch within
         // that thread. It has to be stored in the context so that it is shared across DLLs. We accelerate this by
         // caching the root into a thread_local pointer (Context::s_callstack) on first access. Since global bus contexts
-        // never die, the TLS pointer does not need to be lifetime managed.
+        // usually never die, the TLS pointer does not need to be lifetime managed.
         struct CallstackEntryRoot
             : public CallstackEntry
         {
@@ -690,6 +759,8 @@ namespace AZ
         };
 
     public:
+        using CallstackEntryStorageType = Internal::EBusCallstackStorage<CallstackEntry, !AZStd::is_same<MutexType, AZ::NullMutex>::value>;
+
         class Context : public Internal::ContextBase
         {
             friend ThisType;
@@ -712,7 +783,7 @@ namespace AZ
 
         private:
             mutable AZStd::unordered_map<AZStd::native_thread_id_type, CallstackEntryRoot, AZStd::hash<AZStd::native_thread_id_type>, AZStd::equal_to<AZStd::native_thread_id_type>, Internal::EBusEnvironmentAllocator> m_callstackRoots;
-            AZ_THREAD_LOCAL static CallstackEntry* s_callstack;    ///< Linked list of other bus calls to this bus on the stack, per thread
+            CallstackEntryStorageType s_callstack;    ///< Linked list of other bus calls to this bus on the stack, per thread if MutexType is defined
             AZStd::atomic_uint m_dispatches;   ///< Number of active dispatches in progress
         };
         /// @endcond
@@ -737,7 +808,7 @@ namespace AZ
          * of the bus data.
          * @return A reference to the bus context.
          */
-        static Context* GetContext();
+        static Context* GetContext(bool trackCallstack=true);
 
         /**
          * Returns the global bus data. Creates it if it wasn't already created.
@@ -745,19 +816,20 @@ namespace AZ
          * of the bus data.
          * @return A reference to the bus context.
          */
-        static Context& GetOrCreateContext();
+        static Context& GetOrCreateContext(bool trackCallstack=true);
         
-        static bool IsInDispatch(Context* context = GetContext());
+        static bool IsInDispatch(Context* context = GetContext(false));
     public:
         /// @cond EXCLUDE_DOCS
         template <class Iterator>
         struct CallstackEntryIterator 
             : public CallstackEntryBasic
         {
-            CallstackEntryIterator(Iterator it, const BusIdType* busId);
+            CallstackEntryIterator(EBNode& container, Iterator it, const BusIdType* busId);
 
             void OnRemoveHandler(InterfaceType* handler) override;
 
+            EBNode& m_container;
             Iterator m_iterator;
         };
 
@@ -765,10 +837,11 @@ namespace AZ
         struct CallstackEntryIterator<AZStd::reverse_iterator<Iterator>> 
             : public CallstackEntryBasic
         {
-            CallstackEntryIterator(AZStd::reverse_iterator<Iterator> it, const BusIdType* busId);
+            CallstackEntryIterator(EBNode& container, AZStd::reverse_iterator<Iterator> it, const BusIdType* busId);
             
             void OnRemoveHandler(InterfaceType* handler) override;
             
+            EBNode& m_container;
             AZStd::reverse_iterator<Iterator> m_iterator;
         };
 
@@ -984,8 +1057,12 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     // EBus implementations
 
-    template <class Interface, class Traits>
-    AZ_THREAD_LOCAL typename EBus<Interface, Traits>::CallstackEntry* EBus<Interface, Traits>::Context::s_callstack = nullptr;
+    namespace Internal
+    {
+        template <class C>
+        AZ_THREAD_LOCAL C* EBusCallstackStorage<C, true>::s_entry = nullptr;
+    }
+    
     //=========================================================================
     // Context::Context
     //=========================================================================
@@ -1022,7 +1099,7 @@ namespace AZ
     template<class Interface, class Traits>
     inline void EBus<Interface, Traits>::Bind(BusPtr& ptr, const BusIdType& id)
     {
-        Context& context = GetOrCreateContext();
+        Context& context = GetOrCreateContext(false);
 
         // scoped lock guard in case of exception / other odd situation
         AZStd::lock_guard<MutexType> lock(context.m_mutex);
@@ -1050,6 +1127,7 @@ namespace AZ
         {
             context.m_buses.KeepIteratorsStable();
         }
+        CallstackEntryBasic callstack(&id);
         ConnectionPolicy::Connect(ptr, context, handler, id);
     }
 
@@ -1070,6 +1148,7 @@ namespace AZ
             {
                 DisconnectCallstackFix(handler, ptr->m_busId);
             }
+            CallstackEntryBasic callstack(nullptr);
             ConnectionPolicy::Disconnect(*context, handler, ptr);
             ptr = nullptr; // If the refcount goes to zero here, it will alter context.m_buses so it must be inside the protected section.
         }
@@ -1092,6 +1171,7 @@ namespace AZ
             {
                 DisconnectCallstackFix(handler, id);
             }
+            CallstackEntryBasic callstack(&id);
             ConnectionPolicy::DisconnectId(*context, handler, id);
         }
     }
@@ -1128,7 +1208,7 @@ namespace AZ
     size_t  EBus<Interface, Traits>::GetTotalNumOfEventHandlers()
     {
         size_t size = 0;
-        Context* context = GetContext();
+        Context* context = GetContext(false);
         if (context && context->m_buses.size())
         {
             context->m_mutex.lock();
@@ -1238,10 +1318,10 @@ namespace AZ
     // GetContext
     //=========================================================================
     template<class Interface, class Traits>
-    typename EBus<Interface, Traits>::Context* EBus<Interface, Traits>::GetContext()
+    typename EBus<Interface, Traits>::Context* EBus<Interface, Traits>::GetContext(bool trackCallstack)
     {
         Context* context = StoragePolicy::Get();
-        if (context && !context->s_callstack)
+        if (trackCallstack && context && !context->s_callstack)
         {
             // cache the callstack into this thread/dll
             AZStd::lock_guard<MutexType> lock(context->m_mutex);
@@ -1254,10 +1334,10 @@ namespace AZ
     // GetContext
     //=========================================================================
     template<class Interface, class Traits>
-    typename EBus<Interface, Traits>::Context& EBus<Interface, Traits>::GetOrCreateContext()
+    typename EBus<Interface, Traits>::Context& EBus<Interface, Traits>::GetOrCreateContext(bool trackCallstack)
     {
         Context& context = StoragePolicy::GetOrCreate();
-        if (!context.s_callstack)
+        if (trackCallstack && !context.s_callstack)
         {
             // cache the callstack into this thread/dll
             AZStd::lock_guard<MutexType> lock(context.m_mutex);
@@ -1345,8 +1425,9 @@ namespace AZ
     //=========================================================================
     template<class Interface, class Traits>
     template<class Iterator>
-    EBus<Interface, Traits>::CallstackEntryIterator<Iterator>::CallstackEntryIterator(Iterator it, const BusIdType* busId)
+    EBus<Interface, Traits>::CallstackEntryIterator<Iterator>::CallstackEntryIterator(EBNode& container, Iterator it, const BusIdType* busId)
         : CallstackEntryBasic(busId)
+        , m_container(container)
         , m_iterator(it)
     {
     }
@@ -1356,7 +1437,7 @@ namespace AZ
     template<class Iterator>
     void EBus<Interface, Traits>::CallstackEntryIterator<Iterator>::OnRemoveHandler(InterfaceType* handler)
     {
-        if (handler == *m_iterator) // If we are removing what the current iterator is pointing to, move to the next element.
+        if (m_iterator != m_container.end() && handler == *m_iterator) // If we are removing what the current iterator is pointing to, move to the next element.
         {
             ++m_iterator;
         }
@@ -1366,8 +1447,9 @@ namespace AZ
     //=========================================================================
     template<class Interface, class Traits>
     template<class Iterator>
-    EBus<Interface, Traits>::CallstackEntryIterator<AZStd::reverse_iterator<Iterator>>::CallstackEntryIterator(AZStd::reverse_iterator<Iterator> it, const BusIdType* busId)
+    EBus<Interface, Traits>::CallstackEntryIterator<AZStd::reverse_iterator<Iterator>>::CallstackEntryIterator(EBNode& container, AZStd::reverse_iterator<Iterator> it, const BusIdType* busId)
         : CallstackEntryBasic(busId)
+        , m_container(container)
         , m_iterator(it)
     {
     }
@@ -1377,7 +1459,8 @@ namespace AZ
     template<class Iterator>
     void EBus<Interface, Traits>::CallstackEntryIterator<AZStd::reverse_iterator<Iterator>>::OnRemoveHandler(InterfaceType* handler)
     {
-        if (handler == *m_iterator.base()) // If we are removing what the current iterator is pointing to, move to the next element.
+        // First check that m_iterator is valid before dereferencing it.
+        if (m_iterator.base() != m_container.end() && handler == *m_iterator.base()) // If we are removing what the current iterator is pointing to, move to the next element.
         {
             // Reverse iterator points to the element after the one we are pointing to.
             // For example, *m_iterator does ( *(--m_interator.base()) to the counter that we need to move 
@@ -2003,6 +2086,11 @@ namespace AZ
             EBusRouterForwarderHelper<EBus, TargetEBus>::ForwardEventResult(result, event, args...);
         }
 
+#ifdef AZ_COMPILER_MSVC
+#pragma warning(push)
+#pragma warning(disable: 4127) // conditional expression is constant
+#endif
+
         //////////////////////////////////////////////////////////////////////////
         template<class EBus, bool IsNotUsingId>
         EBusEventHandler<EBus, IsNotUsingId>::EBusEventHandler()
@@ -2032,6 +2120,7 @@ namespace AZ
         template<class EBus, bool IsNotUsingId>
         EBusEventHandler<EBus, IsNotUsingId>::~EBusEventHandler()
         {
+            AZ_Assert((!AZStd::is_abstract<typename EBus::InterfaceType>::value || AZStd::is_same<typename EBus::MutexType, AZ::NullMutex>::value || !BusIsConnected()), "EBus handlers must be disconnected prior to destruction on multi-threaded buses with abstract interfaces");
             BusDisconnect();
         }
 
@@ -2091,6 +2180,7 @@ namespace AZ
         template<class EBus>
         EBusEventHandler<EBus, false>::~EBusEventHandler()
         {
+            AZ_Assert((!AZStd::is_abstract<typename EBus::InterfaceType>::value || AZStd::is_same<typename EBus::MutexType, AZ::NullMutex>::value || !BusIsConnected()), "EBus handlers must be disconnected prior to destruction on multi-threaded buses with abstract interfaces");
             BusDisconnect();
         }
 
@@ -2183,6 +2273,7 @@ namespace AZ
         template <class EBus>
         EBusMultiEventHandler<EBus>::~EBusMultiEventHandler()
         {
+            AZ_Assert((!AZStd::is_abstract<typename EBus::InterfaceType>::value || AZStd::is_same<typename EBus::MutexType, AZ::NullMutex>::value || !BusIsConnected()), "EBus handlers must be disconnected prior to destruction on multi-threaded buses with abstract interfaces");
             BusDisconnect();
         }
 
@@ -2240,6 +2331,10 @@ namespace AZ
 
             return isFound;
         }
+
+#ifdef AZ_COMPILER_MSVC
+#pragma warning(pop)
+#endif
 
     } // namespace Internal
 }

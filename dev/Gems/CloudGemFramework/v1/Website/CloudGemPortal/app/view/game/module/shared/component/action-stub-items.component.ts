@@ -30,6 +30,8 @@ export class ActionStubItemsComponent {
     @Input() model: any;
 
     ngOnInit() {
+        if (!this.custom)
+            this.custom = []
     }
 
     public handle(action: ActionItem, model: any) {

@@ -14,16 +14,18 @@
 #include "EMotionFX_precompiled.h"
 
 #include <AzCore/Component/ComponentApplication.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
+#include <EMotionFX/Source/Allocators.h>
 #include <EMotionFX/Source/SingleThreadScheduler.h>
-
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/AnimGraphObjectFactory.h>
+#include <EMotionFX/Source/MotionSet.h>
+#include <EMotionFX/Source/ConstraintTransformRotationAngles.h>
+#include <EMotionFX/Source/Parameter/ParameterFactory.h>
 
 #include <Integration/EMotionFXBus.h>
 #include <Integration/Assets/ActorAsset.h>
@@ -120,7 +122,7 @@ namespace EMotionFX
                 }
             }
 
-            void OnStateEntering(EMotionFX::AnimGraphInstance* animGraphInstance, EMotionFX::AnimGraphNode* state)
+            void OnStateEntering(EMotionFX::AnimGraphInstance* animGraphInstance, EMotionFX::AnimGraphNode* state) override
             {
                 const ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
                 if (actorInstance && state)
@@ -140,7 +142,7 @@ namespace EMotionFX
                 }
             }
 
-            void OnStateEnd(EMotionFX::AnimGraphInstance* animGraphInstance, EMotionFX::AnimGraphNode* state)
+            void OnStateEnd(EMotionFX::AnimGraphInstance* animGraphInstance, EMotionFX::AnimGraphNode* state) override
             {
                 const ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
                 if (actorInstance && state)
@@ -148,7 +150,6 @@ namespace EMotionFX
                     const AZ::EntityId owningEntityId = actorInstance->GetEntityId();
                     ActorNotificationBus::QueueEvent(owningEntityId, &ActorNotificationBus::Events::OnStateExiting, state->GetName());
                 }
-
             }
 
             void OnStateExit(EMotionFX::AnimGraphInstance* animGraphInstance, EMotionFX::AnimGraphNode* state) override
@@ -184,7 +185,6 @@ namespace EMotionFX
                     ActorNotificationBus::QueueEvent(owningEntityId, &ActorNotificationBus::Events::OnStateTransitionEnd, sourceName, targetName);
                 }
             }
-
         };
 
         //////////////////////////////////////////////////////////////////////////
@@ -244,9 +244,32 @@ namespace EMotionFX
             }
         };
 
+        void SystemComponent::ReflectEMotionFX(AZ::ReflectContext* context)
+        {
+            EMotionFX::ConstraintTransformRotationAngles::Reflect(context);
+
+            // Motion set
+            EMotionFX::MotionSet::Reflect(context);
+            EMotionFX::MotionSet::MotionEntry::Reflect(context);
+
+            // Base AnimGraph objects
+            EMotionFX::AnimGraphObject::Reflect(context);
+            EMotionFX::AnimGraph::Reflect(context);
+            EMotionFX::AnimGraphNodeGroup::Reflect(context);
+            EMotionFX::AnimGraphGameControllerSettings::Reflect(context);
+
+            // Anim graph objects
+            EMotionFX::AnimGraphObjectFactory::ReflectTypes(context);
+
+            // Anim graph's parameters
+            EMotionFX::ParameterFactory::ReflectParameterTypes(context);
+        }
+
         //////////////////////////////////////////////////////////////////////////
         void SystemComponent::Reflect(AZ::ReflectContext* context)
         {
+            ReflectEMotionFX(context);
+
             // Reflect component for serialization.
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
@@ -254,11 +277,11 @@ namespace EMotionFX
                 serializeContext->Class<SystemComponent, AZ::Component>()
                     ->Version(1)
                     ->Field("NumThreads", &SystemComponent::m_numThreads)
-                    ;
+                ;
 
                 serializeContext->Class<MotionEvent>()
                     ->Version(1)
-                    ;
+                ;
 
                 if (AZ::EditContext* ec = serializeContext->GetEditContext())
                 {
@@ -267,7 +290,7 @@ namespace EMotionFX
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &SystemComponent::m_numThreads, "Number of threads", "Number of threads used internally by EMotion FX")
-                        ;
+                    ;
                 }
             }
 
@@ -276,10 +299,10 @@ namespace EMotionFX
             if (behaviorContext)
             {
                 behaviorContext->EBus<SystemRequestBus>("SystemRequestBus")
-                    ;
+                ;
 
                 behaviorContext->EBus<SystemNotificationBus>("SystemNotificationBus")
-                    ;
+                ;
 
                 // In order for a property to be displayed in ScriptCanvas. Both a setter and a getter are necessary(both must be non-null).
                 // This is being worked on in dragon branch, once this is complete the dummy lambda functions can be removed.
@@ -293,7 +316,7 @@ namespace EMotionFX
                     ->Property("globalWeight", BehaviorValueGetter(&MotionEvent::m_globalWeight), [](MotionEvent*, const float&) {})
                     ->Property("localWeight", BehaviorValueGetter(&MotionEvent::m_localWeight), [](MotionEvent*, const float&) {})
                     ->Property("isEventStart", BehaviorValueGetter(&MotionEvent::m_isEventStart), [](MotionEvent*, const bool&) {})
-                    ;
+                ;
 
                 behaviorContext->EBus<ActorNotificationBus>("ActorNotificationBus")
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
@@ -306,7 +329,7 @@ namespace EMotionFX
                     ->Event("OnStateExited", &ActorNotificationBus::Events::OnStateExited)
                     ->Event("OnStateTransitionStart", &ActorNotificationBus::Events::OnStateTransitionStart)
                     ->Event("OnStateTransitionEnd", &ActorNotificationBus::Events::OnStateTransitionEnd)
-                    ;
+                ;
             }
         }
 
@@ -419,6 +442,7 @@ namespace EMotionFX
                 using namespace AzToolsFramework;
                 EditorRequests::Bus::Broadcast(&EditorRequests::UnregisterViewPane, EMStudio::MainWindow::GetEMotionFXPaneName());
             }
+
             AzToolsFramework::EditorAnimationSystemRequestsBus::Handler::BusDisconnect();
             AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
 #endif // EMOTIONFXANIMATION_EDITOR
@@ -486,7 +510,7 @@ namespace EMotionFX
 
             // Process the plugins.
             const AZ::u32 numPlugins = pluginManager->GetNumActivePlugins();
-            for (AZ::u32 i=0; i<numPlugins; ++i)
+            for (AZ::u32 i = 0; i < numPlugins; ++i)
             {
                 EMStudio::EMStudioPlugin* plugin = pluginManager->GetActivePlugin(i);
                 plugin->ProcessFrame(delta);
@@ -499,7 +523,7 @@ namespace EMotionFX
         {
             (void)timePoint;
 
-#if defined (EMOTIONFXANIMATION_EDITOR)            
+#if defined (EMOTIONFXANIMATION_EDITOR)
             const float realDelta = m_updateTimer.StampAndGetDeltaTimeInSeconds();
 
             // Flush events prior to updating EMotion FX.
@@ -531,7 +555,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void SystemComponent::RegisterAnimGraphObjectType(EMotionFX::AnimGraphObject* objectTemplate)
         {
-            EMotionFX::GetAnimGraphManager().GetObjectFactory()->RegisterObjectType(objectTemplate);
+            EMotionFX::AnimGraphObjectFactory::GetUITypes().emplace(azrtti_typeid(objectTemplate));
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -547,10 +571,10 @@ namespace EMotionFX
             auto assetCatalog = AZ::Data::AssetCatalogRequestBus::FindFirstHandler();
             if (assetCatalog)
             {
-                assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<ActorAsset>::Uuid());
-                assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MotionAsset>::Uuid());
-                assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MotionSetAsset>::Uuid());
-                assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<AnimGraphAsset>::Uuid());
+                assetCatalog->EnableCatalogForAsset(azrtti_typeid<ActorAsset>());
+                assetCatalog->EnableCatalogForAsset(azrtti_typeid<MotionAsset>());
+                assetCatalog->EnableCatalogForAsset(azrtti_typeid<MotionSetAsset>());
+                assetCatalog->EnableCatalogForAsset(azrtti_typeid<AnimGraphAsset>());
 
                 assetCatalog->AddExtension("actor");        // Actor
                 assetCatalog->AddExtension("motion");       // Motion
@@ -625,23 +649,26 @@ namespace EMotionFX
             EMStudio::GetManager()->ExecuteApp();
 
             AZStd::function<QWidget*()> windowCreationFunc = []()
-            {
-                return EMStudio::GetMainWindow();
-            };
+                {
+                    return EMStudio::GetMainWindow();
+                };
 
             // Register EMotionFX window with the main editor.
             AzToolsFramework::ViewPaneOptions emotionFXWindowOptions;
             emotionFXWindowOptions.isPreview = true;
             emotionFXWindowOptions.isDeletable = true;
             emotionFXWindowOptions.isDockable = false;
+#ifdef AZ_PLATFORM_APPLE
+            emotionFXWindowOptions.detachedWindow = true;
+#endif
             emotionFXWindowOptions.optionalMenuText = "Animation Editor (PREVIEW)";
             EditorRequests::Bus::Broadcast(&EditorRequests::RegisterViewPane, EMStudio::MainWindow::GetEMotionFXPaneName(), LyViewPane::CategoryTools, emotionFXWindowOptions, windowCreationFunc);
         }
 
         //////////////////////////////////////////////////////////////////////////
         bool SystemComponent::IsSystemActive(EditorAnimationSystemRequests::AnimationSystem systemType)
-        { 
-            return (systemType == AnimationSystem::EMotionFX); 
+        {
+            return (systemType == AnimationSystem::EMotionFX);
         }
 
 #endif // EMOTIONFXANIMATION_EDITOR

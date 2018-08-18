@@ -31,7 +31,7 @@ namespace EMotionFX
     class EMFX_API Attachment
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(Attachment, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ATTACHMENTS);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         /**

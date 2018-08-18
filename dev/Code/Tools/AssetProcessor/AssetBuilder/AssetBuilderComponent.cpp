@@ -96,6 +96,7 @@ void AssetBuilderComponent::Activate()
 {
     BuilderBus::Handler::BusConnect();
     AssetBuilderSDK::AssetBuilderBus::Handler::BusConnect();
+    AzToolsFramework::AssetDatabase::AssetDatabaseRequestsBus::Handler::BusConnect();
 }
 
 void AssetBuilderComponent::Deactivate()
@@ -103,6 +104,7 @@ void AssetBuilderComponent::Deactivate()
     BuilderBus::Handler::BusDisconnect();
     AssetBuilderSDK::AssetBuilderBus::Handler::BusDisconnect();
     AzFramework::EngineConnectionEvents::Bus::Handler::BusDisconnect();
+    AzToolsFramework::AssetDatabase::AssetDatabaseRequestsBus::Handler::BusDisconnect();
 }
 
 void AssetBuilderComponent::Reflect(AZ::ReflectContext* context)
@@ -116,6 +118,7 @@ void AssetBuilderComponent::Reflect(AZ::ReflectContext* context)
 
 bool AssetBuilderComponent::Run()
 {
+    AZ_TracePrintf("AssetBuilderComponent", "Run:  Parsing command line.\n");
     const AzFramework::CommandLine* commandLine = nullptr;
     AzFramework::ApplicationRequests::Bus::BroadcastResult(commandLine, &AzFramework::ApplicationRequests::GetCommandLine);
     if (commandLine->HasSwitch(s_paramHelp))
@@ -154,8 +157,10 @@ bool AssetBuilderComponent::Run()
         }
     }
 
+    AZ_TracePrintf("AssetBuilderComponent", "Run:  Initializing the serialization context for the BuilderSDK.\n");
     AssetBuilderSDK::InitializeSerializationContext();
 
+    AZ_TracePrintf("AssetBuilderComponent", "Run: Connecting back to Asset Processor...\n");
     if (!ConnectToAssetProcessor())
     {
         //AP connection is required to access the asset catalog
@@ -238,6 +243,8 @@ bool AssetBuilderComponent::RunInResidentMode()
     using namespace AssetBuilderSDK;
     using namespace AZStd::placeholders;
 
+    AZ_TracePrintf("AssetBuilderComponent", "RunInResidentMode: Starting resident mode (waiting for commands to arrive)\n");
+
     AZStd::string port, id, builderFolder;
 
     if (!GetParameter(s_paramId, id)
@@ -258,6 +265,8 @@ bool AssetBuilderComponent::RunInResidentMode()
     BuilderHelloResponse response;
 
     request.m_uuid = AZ::Uuid::CreateString(id.c_str());
+
+    AZ_TracePrintf("AssetBuilderComponent", "RunInResidentMode: Pinging asset processor with the builder UUID %s\n", request.m_uuid.ToString<AZStd::string>().c_str());
 
     bool result = AzFramework::AssetSystem::SendRequest(request, response);
 
@@ -293,6 +302,10 @@ bool AssetBuilderComponent::RunInResidentMode()
 
 bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCreateJobs, bool runProcessJob)
 {
+    AZ_TracePrintf("AssetBuilderComponent", "RunDebugTask - running debug task on file : %s\n", debugFile.c_str());
+    AZ_TracePrintf("AssetBuilderComponent", "RunDebugTask - CreateJobs: %s\n", runCreateJobs ? "True" : "False");
+    AZ_TracePrintf("AssetBuilderComponent", "RunDebugTask - ProcessJob: %s\n", runProcessJob ? "True" : "False");
+
     if (debugFile.empty())
     {
         if (!GetParameter(s_paramInput, debugFile))
@@ -335,21 +348,21 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
         }
 
         AzFramework::StringFunc::Path::Join(executableFolder, "Builders", binDir);
-        
+
         if (!LoadBuilders(binDir))
         {
             AZ_Error("AssetBuilder", false, "Failed to load one or more builders from '%s'.", binDir);
             return false;
         }
     }
-    
+
     AZStd::string baseTempDirPath;
     if (!GetParameter(s_paramOutput, baseTempDirPath, false))
     {
         AZStd::string fileName;
         AzFramework::StringFunc::Path::GetFullFileName(debugFile.c_str(), fileName);
         AZStd::replace(fileName.begin(), fileName.end(), '.', '_');
-        
+
         AzFramework::StringFunc::Path::Join(binDir.c_str(), "Debug", baseTempDirPath);
         AzFramework::StringFunc::Path::Join(baseTempDirPath.c_str(), fileName.c_str(), baseTempDirPath);
     }
@@ -365,7 +378,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
             continue;
         }
         AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Debugging builder '%s'.\n", builder->m_name.c_str());
-        
+
         AZStd::string tempDirPath;
         AzFramework::StringFunc::Path::Join(baseTempDirPath.c_str(), builder->m_name.c_str(), tempDirPath);
 
@@ -388,7 +401,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
 
             AssetBuilderSDK::CreateJobsRequest createRequest(builder->m_busId, info.m_relativePath, watchFolder,
                 enabledDebugPlatformInfos, info.m_assetId.m_guid);
-            
+
             AZ_TraceContext("Source", debugFile);
             AZ_TraceContext("Platforms", AssetBuilderSDK::PlatformInfo::PlatformVectorAsString(createRequest.m_enabledPlatforms));
 
@@ -408,7 +421,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
                 jobDescriptions = AZStd::move(createResponse.m_createJobOutputs);
             }
         }
-        
+
         AZ::SystemTickBus::Broadcast(&AZ::SystemTickBus::Events::OnSystemTick); // flush assets in case any are present with 0 refcount.
 
         if (runProcessJob)
@@ -423,8 +436,8 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
             }
 
             AssetBuilderSDK::ProcessJobRequest processRequest;
-            processRequest.m_watchFolder = AZStd::move(watchFolder);
-            processRequest.m_sourceFile = AZStd::move(info.m_relativePath);
+            processRequest.m_watchFolder = watchFolder;
+            processRequest.m_sourceFile = info.m_relativePath;
             processRequest.m_sourceFileUUID = info.m_assetId.m_guid;
             AzFramework::StringFunc::Path::Join(processRequest.m_watchFolder.c_str(), processRequest.m_sourceFile.c_str(), processRequest.m_fullPath);
             processRequest.m_tempDirPath = processJobTempDirPath;
@@ -457,7 +470,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
                 UpdateResultCode(processRequest, processResponse);
 
                 AZStd::string responseFile;
-                AzFramework::StringFunc::Path::Join(processJobTempDirPath.c_str(), 
+                AzFramework::StringFunc::Path::Join(processJobTempDirPath.c_str(),
                     AZStd::string::format("%i_%s", i, AssetBuilderSDK::s_processJobResponseFileName).c_str(), responseFile);
                 if (!AZ::Utils::SaveObjectToFile(responseFile, AZ::DataStream::ST_XML, &processResponse))
                 {
@@ -473,6 +486,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
 
 bool AssetBuilderComponent::RunOneShotTask(const AZStd::string& task)
 {
+    AZ_TracePrintf("AssetBuilderComponent", "RunOneShotTask - running one-shot task [%s]\n", task.c_str());
     // Load the requested module.  This is not a required param for the task, since the builders can be in gems.
     AZStd::string modulePath;
     if (GetParameter(s_paramModule, modulePath) && !LoadBuilder(modulePath))
@@ -529,6 +543,17 @@ void AssetBuilderComponent::Disconnected(AzFramework::SocketConnection* connecti
     // This prevents builders from running indefinitely if the AP crashes
     AZ_Error("AssetBuilder", false, "Lost connection to Asset Processor, shutting down");
     m_mainEvent.release();
+}
+
+bool AssetBuilderComponent::GetAssetDatabaseLocation(AZStd::string& location)
+{
+    AZ_Error("AssetBuilder", false,
+        "Accessing the database directly from a builder is not supported. Many queries behave unexpectedly from builders as the Asset"
+        "Processor continuously updates tables as well as risking dead locks. Please use the AssetSystemRequestBus or similar buses "
+        "to safely query information from the database.");
+
+    location = "<Unsupported>";
+    return false;
 }
 
 template<typename TNetRequest, typename TNetResponse>
@@ -611,7 +636,7 @@ void AssetBuilderComponent::JobThread()
 
         AssetBuilderSDK::AssetBuilderTraceBus::Broadcast(&AssetBuilderSDK::AssetBuilderTraceBus::Events::ResetErrorCount);
         AssetBuilderSDK::AssetBuilderTraceBus::Broadcast(&AssetBuilderSDK::AssetBuilderTraceBus::Events::ResetWarningCount);
-        
+
         switch (job->m_jobType)
         {
         case JobType::Create:
@@ -760,6 +785,7 @@ const char* AssetBuilderComponent::GetLibraryExtension()
 
 bool AssetBuilderComponent::LoadBuilders(const AZStd::string& builderFolder)
 {
+    AZ_TracePrintf("AssetBuilderComponent", "LoadBuilders - loading builders in : [%s]\n", builderFolder.c_str());
     auto* fileIO = AZ::IO::FileIOBase::GetInstance();
     bool result = false;
 
@@ -783,7 +809,7 @@ bool AssetBuilderComponent::LoadBuilder(const AZStd::string& filePath)
         return false;
     }
 
-    AZ_TracePrintf("AssetBuilder", "Initializing and registering builder %s\n", assetBuilderInfo->GetName().toStdString().c_str());
+    AZ_TracePrintf("AssetBuilder", "LoadBuilder - Initializing and registering builder [%s]\n", assetBuilderInfo->GetName().toUtf8().constData());
 
     m_currentAssetBuilder = assetBuilderInfo.get();
     m_currentAssetBuilder->Initialize();
@@ -800,6 +826,7 @@ void AssetBuilderComponent::UnloadBuilders()
 
     for (auto& assetBuilderInfo : m_assetBuilderInfoList)
     {
+        AZ_TracePrintf("AssetBuilderComponent", "UnloadBuilders - unloading builder [%s]\n", assetBuilderInfo->GetName().toUtf8().constData());
         assetBuilderInfo->UnInitialize();
     }
 

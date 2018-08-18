@@ -66,7 +66,7 @@ inline GUID GuidUtil::FromString(const char* guidString)
     guid.Data1 = 0;
     guid.Data2 = 0;
     guid.Data3 = 0;
-    sscanf(guidString, "{%8X-%4hX-%4hX-%2X%2X-%2X%2X%2X%2X%2X%2X}",
+    azsscanf(guidString, "{%8" SCNx32 "-%4hX-%4hX-%2X%2X-%2X%2X%2X%2X%2X%2X}",
         &guid.Data1, &guid.Data2, &guid.Data3, &d[0], &d[1], &d[2], &d[3], &d[4], &d[5], &d[6], &d[7]);
     guid.Data4[0] = d[0];
     guid.Data4[1] = d[1];

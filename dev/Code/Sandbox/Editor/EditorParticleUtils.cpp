@@ -12,7 +12,7 @@
 
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "IEditorParticleUtils.h"
 #include "EditorParticleUtils.h"
 #include "Viewport.h"
@@ -328,7 +328,7 @@ public:
 
             loadedEmitter->Serialize(ctx);
 
-            strcpy(currentEmitter.node, node->getXML().c_str());
+            azstrcpy(currentEmitter.node, node->getXML().size(), node->getXML().c_str());
         }
     }
 
@@ -356,7 +356,7 @@ public:
 
             loadedEmitter->Serialize(ctx);
 
-            strcpy(currentEmitter.node, node->getXML().c_str());
+            azstrcpy(currentEmitter.node, node->getXML().size(), node->getXML().c_str());
         }
     }
 
@@ -372,7 +372,7 @@ public:
         {
             return;
         }
-        strcpy(currentEmitter.name, emitterName.toStdString().c_str());
+        azstrcpy(currentEmitter.name, emitterName.size() + 1, emitterName.toStdString().c_str());
         emitters.push_back(currentEmitter);
     }
 

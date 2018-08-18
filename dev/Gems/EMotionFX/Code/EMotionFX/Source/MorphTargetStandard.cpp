@@ -22,10 +22,15 @@
 #include "TransformData.h"
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/Vector.h>
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MorphTargetStandard, DeformerAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(MorphTargetStandard::DeformData, DeformerAllocator, 0)
+
+
     // basic constructor
     MorphTargetStandard::MorphTargetStandard(const char* name)
         : MorphTarget(name)
@@ -52,14 +57,14 @@ namespace EMotionFX
     // create
     MorphTargetStandard* MorphTargetStandard::Create(const char* name)
     {
-        return new MorphTargetStandard(name);
+        return aznew MorphTargetStandard(name);
     }
 
 
     // extended create
     MorphTargetStandard* MorphTargetStandard::Create(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, const char* name, bool delPoseFromMem)
     {
-        return new MorphTargetStandard(captureTransforms, captureMeshDeforms, neutralPose, targetPose, name, delPoseFromMem);
+        return aznew MorphTargetStandard(captureTransforms, captureMeshDeforms, neutralPose, targetPose, name, delPoseFromMem);
     }
 
 
@@ -841,7 +846,7 @@ namespace EMotionFX
     MorphTarget* MorphTargetStandard::Clone()
     {
         // create the clone and copy its base class values
-        MorphTargetStandard* clone = new MorphTargetStandard(""); // use an empty dummy name, as we will copy over the ID generated from it anyway
+        MorphTargetStandard* clone = aznew MorphTargetStandard(""); // use an empty dummy name, as we will copy over the ID generated from it anyway
         CopyBaseClassMemberValues(clone);
 
         // now copy over the standard morph target related values
@@ -886,14 +891,14 @@ namespace EMotionFX
     // create
     MorphTargetStandard::DeformData* MorphTargetStandard::DeformData::Create(uint32 nodeIndex, uint32 numVerts)
     {
-        return new MorphTargetStandard::DeformData(nodeIndex, numVerts);
+        return aznew MorphTargetStandard::DeformData(nodeIndex, numVerts);
     }
 
 
     // clone a morph target
     MorphTargetStandard::DeformData* MorphTargetStandard::DeformData::Clone()
     {
-        MorphTargetStandard::DeformData* clone = new MorphTargetStandard::DeformData(mNodeIndex, mNumVerts);
+        MorphTargetStandard::DeformData* clone = aznew MorphTargetStandard::DeformData(mNodeIndex, mNumVerts);
 
         // copy the data
         clone->mMinValue = mMinValue;

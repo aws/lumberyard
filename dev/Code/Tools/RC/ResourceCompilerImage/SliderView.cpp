@@ -79,5 +79,5 @@ void SliderView::SubclassWidget(QSlider* hWnd)
     // Set the maximum value.
     slider->setRange(0, 1000);
 
-    QObject::connect(slider, &QSlider::sliderMoved, [&]() {OnScroll(); });
+    QObject::connect(slider, &QSlider::sliderMoved, slider, [this]() { OnScroll(); });
 }

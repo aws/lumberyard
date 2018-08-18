@@ -10,59 +10,45 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphEntryNode.h"
 #include "AnimGraphInstance.h"
 #include "AnimGraphAttributeTypes.h"
 #include "AnimGraphStateMachine.h"
 #include "AnimGraphRefCountedData.h"
+#include <EMotionFX/Source/AnimGraph.h>
+
 
 namespace EMotionFX
 {
-    // constructor
-    AnimGraphEntryNode::AnimGraphEntryNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphEntryNode, AnimGraphAllocator, 0)
 
-
-    // destructor
-    AnimGraphEntryNode::~AnimGraphEntryNode()
-    {
-    }
-
-
-    // create
-    AnimGraphEntryNode* AnimGraphEntryNode::Create(AnimGraph* animGraph)
-    {
-        return new AnimGraphEntryNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* AnimGraphEntryNode::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void AnimGraphEntryNode::RegisterPorts()
+    AnimGraphEntryNode::AnimGraphEntryNode()
+        : AnimGraphNode()
     {
         // setup the output ports
         InitOutputPorts(1);
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_RESULT, PORTID_OUTPUT_POSE);
     }
 
-
-    // register the parameters
-    void AnimGraphEntryNode::RegisterAttributes()
+    AnimGraphEntryNode::~AnimGraphEntryNode()
     {
+    }
+
+
+    bool AnimGraphEntryNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
     }
 
 
@@ -80,30 +66,16 @@ namespace EMotionFX
     }
 
 
-    // create a clone of this node
-    AnimGraphObject* AnimGraphEntryNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        AnimGraphEntryNode* clone = new AnimGraphEntryNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
-    }
-
-
     // a helper function to get the source node
     AnimGraphNode* AnimGraphEntryNode::FindSourceNode(AnimGraphInstance* animGraphInstance)
     {
         // get the parent node and check if it is a state machine
         AnimGraphNode* parentNode = GetParentNode();
-        MCORE_ASSERT(parentNode->GetType() == AnimGraphStateMachine::TYPE_ID);
+        MCORE_ASSERT(azrtti_typeid(parentNode) == azrtti_typeid<AnimGraphStateMachine>());
 
         // get the parent of the state machine where this pass-through node is in
         AnimGraphNode* stateMachineParentNode = parentNode->GetParentNode();
-        if (stateMachineParentNode->GetType() == AnimGraphStateMachine::TYPE_ID)
+        if (azrtti_typeid(stateMachineParentNode) == azrtti_typeid<AnimGraphStateMachine>())
         {
             // cast the parent of the state machine where this pass-through node is in to a state machine
             AnimGraphStateMachine* stateMachineParent = static_cast<AnimGraphStateMachine*>(stateMachineParentNode);
@@ -240,10 +212,28 @@ namespace EMotionFX
     }
 
 
-    // get the blend node type string
-    const char* AnimGraphEntryNode::GetTypeString() const
+    void AnimGraphEntryNode::Reflect(AZ::ReflectContext* context)
     {
-        return "AnimGraphEntryNode";
-    }
-}   // namespace EMotionFX
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
 
+        serializeContext->Class<AnimGraphEntryNode, AnimGraphNode>()
+            ->Version(1);
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<AnimGraphEntryNode>("Entry Node", "Entry node attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ;
+    }
+} // namespace EMotionFX

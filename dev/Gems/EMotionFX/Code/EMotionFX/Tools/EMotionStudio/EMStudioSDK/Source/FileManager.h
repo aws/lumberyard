@@ -58,7 +58,7 @@ namespace EMStudio
         void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
 
         // Editor asset system API
-        void SourceFileChanged(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUuid) override;
+        void SourceFileChanged(AZStd::string relativePath, AZStd::string scanFolder, AZ::TypeId sourceTypeId) override;
 
         // helpers
         void RelocateToAssetCacheFolder(AZStd::string& filename);

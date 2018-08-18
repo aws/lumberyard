@@ -19,7 +19,7 @@
 #include "CCryDXMETALGIFactory.hpp"
 #include "CCryDXMETALSwapChain.hpp"
 #include "../Interfaces/CCryDXMETALDevice.hpp"
-#include "../Implementation/METALDevice.hpp"
+#include "../Implementation/MetalDevice.hpp"
 
 
 CCryDXGLGIFactory::CCryDXGLGIFactory()

@@ -26,7 +26,7 @@ def load_win_x64_win_x64_vs2017_common_settings(conf):
     global PLATFORM
 
     # Add defines to indicate a win64 build
-    v['DEFINES'] += ['_WIN32', '_WIN64', 'NOMINMAX']
+    v['DEFINES'] += ['_WIN32', '_WIN64', 'NOMINMAX', '_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING']
 
     restricted_tool_list_macro_header = 'AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS='
     restricted_tool_list_macro = restricted_tool_list_macro_header
@@ -57,8 +57,7 @@ def load_win_x64_win_x64_vs2017_common_settings(conf):
     v['ARFLAGS'] += ['/MACHINE:X64']
 
     VS2017_FLAGS = [
-        '/FS',  # Fix for issue writing to pdb files
-        '/Wv:18'  # Stick with 2013 warnings for the time being...
+        '/FS'  # Fix for issue writing to pdb files
     ]
 
     v['CFLAGS'] += VS2017_FLAGS

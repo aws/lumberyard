@@ -19,10 +19,13 @@
 #include "TransformData.h"
 #include "MotionInstance.h"
 #include "Node.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(RepositioningLayerPass, LayerPassAllocator, 0)
+
     // the constructor
     RepositioningLayerPass::RepositioningLayerPass(MotionLayerSystem* motionLayerSystem)
         : LayerPass(motionLayerSystem)
@@ -41,7 +44,7 @@ namespace EMotionFX
     // create
     RepositioningLayerPass* RepositioningLayerPass::Create(MotionLayerSystem* motionLayerSystem)
     {
-        return new RepositioningLayerPass(motionLayerSystem);
+        return aznew RepositioningLayerPass(motionLayerSystem);
     }
 
 

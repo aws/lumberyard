@@ -6,6 +6,8 @@
             "Tests/test_Main.cpp",
             "Tests/test_MaterialUtils.cpp",
             "Tests/Test_CryPrimitives.cpp",
+            "Tests/Test_Localization.cpp",
+            "Tests/Test_CLog.cpp",
             "Components/MathConversionTests.cpp",
             "UnitTests/SerializationUnitTests.cpp",
             "UnitTests/CryPakUnitTests.cpp",

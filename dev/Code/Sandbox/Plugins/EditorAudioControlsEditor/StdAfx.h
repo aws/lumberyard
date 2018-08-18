@@ -59,6 +59,6 @@
 
 #include <Cry_Math.h>
 
-#include <AzCore/Base.h>
+#include <AzCore/base.h>
 
 #include <ACEEnums.h>

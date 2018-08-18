@@ -157,6 +157,7 @@ namespace LmbrCentral
 
         //! Registers or unregisters our render node with the render.
         void RegisterWithRenderer(bool registerWithRenderer);
+
     protected:
 
         //! Calculates base LOD distance based on mesh characteristics.
@@ -250,6 +251,12 @@ namespace LmbrCentral
 
         //! Tracks if the object was moved so we can notify the renderer.
         bool m_objectMoved;
+
+        //! Editor-only flag to avoid duplicate asset loading during scene load.
+        //! Duplicate asset loading can occur if we call the following in order, within the same frame:
+        //! CreateMesh()... DestroyMesh()... CreateMesh()....
+        //! The flag ensures mesh destruction/loading only occurs once the mesh asset loading job completes.
+        bool m_isQueuedForDestroyMesh;
     };
 
     class SkinnedMeshComponent

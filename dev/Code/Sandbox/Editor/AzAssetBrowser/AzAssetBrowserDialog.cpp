@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include <Editor/AzAssetBrowser/AzAssetBrowserDialog.h>
 
@@ -61,7 +61,7 @@ AzAssetBrowserDialog::AzAssetBrowserDialog(AssetSelectionModel& selection, QWidg
 
     connect(m_ui->m_searchWidget->GetFilter().data(), &AssetBrowserEntryFilter::updatedSignal, m_filterModel.data(), &AssetBrowserFilterModel::filterUpdatedSlot);
     connect(m_ui->m_assetBrowserTreeViewWidget, &QAbstractItemView::doubleClicked, this, &AzAssetBrowserDialog::DoubleClickedSlot);
-    connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::selectionChangedSignal,
+    connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::selectionChangedSignal, this,
         [this](const QItemSelection&, const QItemSelection&){ AzAssetBrowserDialog::SelectionChangedSlot(); });
     connect(m_ui->m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(m_ui->m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);

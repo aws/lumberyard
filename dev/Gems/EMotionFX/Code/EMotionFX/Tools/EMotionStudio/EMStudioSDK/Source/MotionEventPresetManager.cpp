@@ -201,7 +201,7 @@ namespace EMStudio
             }
 
             settings.beginGroup(AZStd::string::format("%i", presetIndex).c_str());
-            settings.setValue("MotionEventPresetColor", RenderOptions::ColorToString(eventPreset->GetEventColor()));
+            settings.setValue("MotionEventPresetColor", RenderOptions::ColorToString(MCore::RGBAColor(eventPreset->GetEventColor())));
             settings.setValue("MotionEventPresetType", eventPreset->GetEventType().c_str());
             settings.setValue("MotionEventPresetMirrorType", eventPreset->GetMirrorType().c_str());
             settings.setValue("MotionEventPresetParameter", eventPreset->GetEventParameter().c_str());

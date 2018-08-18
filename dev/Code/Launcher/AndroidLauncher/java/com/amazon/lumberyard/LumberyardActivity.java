@@ -170,10 +170,13 @@ public class LumberyardActivity extends NativeActivity
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+
         if (GetBooleanResource("enable_keep_screen_on"))
         {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }
+
+        ProcessImmersiveModeSetting();
 
         APKHandler.SetAssetManager(getAssets());
 
@@ -242,6 +245,17 @@ public class LumberyardActivity extends NativeActivity
         // while running in Samsung DEX mode it's kept alive until it seemingly exits naturally.  Manually killing
         // the process in the onDestroy is probably the best compromise until the graceful exit is fixed with LY-70527
         android.os.Process.killProcess(android.os.Process.myPid());
+    }
+
+    ////////////////////////////////////////////////////////////////
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus)
+    {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus)
+        {
+            ProcessImmersiveModeSetting();
+        }
     }
 
     ////////////////////////////////////////////////////////////////
@@ -366,6 +380,19 @@ public class LumberyardActivity extends NativeActivity
         m_splashShowing = true;
     }
 
+    ////////////////////////////////////////////////////////////////
+    private void ProcessImmersiveModeSetting()
+    {
+        int systemUiFlags = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+        if (!GetBooleanResource("disable_immersive_mode"))
+        {
+            systemUiFlags |= (View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                    View.SYSTEM_UI_FLAG_FULLSCREEN |
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        }
+        getWindow().getDecorView().setSystemUiVisibility(systemUiFlags);
+    }
 
     // ----
 

@@ -1,0 +1,24 @@
+{
+    "DisplayName": "Cloud Gem Game Metrics",
+    "Uuid": "e1bf83aa0ddc49418c6b5689c111cb26",
+    "Tags": ["AWS", "Cloud Canvas", "DynamoDB", "Lambda", "S3", "GLUE", "Athena", "SQS"],
+    "Modules": [
+        {
+            "Type": "GameModule"
+        }
+    ],
+    "Summary": "Create events in your game, view daily dashboards in the Cloud Gem Portal and analyze the data in depth with Amazon QuickSight.",
+    "Version": "1.0.0",
+    "IconPath": "preview.png",
+    "GemFormatVersion": 4,
+    "Dependencies": [
+        {
+            "VersionConstraints": [
+                "~>1.1.2"
+            ],
+            "_comment": "CloudGemFramework",
+            "Uuid": "6fc787a982184217a5a553ca24676cfa"
+        }
+    ],
+    "Name": "CloudGemMetric"
+}

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "RacetrackChart.hxx"
 #include <Woodpecker/Driller/RacetrackChart.moc>

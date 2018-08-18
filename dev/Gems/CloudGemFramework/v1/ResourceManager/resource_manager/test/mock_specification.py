@@ -126,6 +126,9 @@ def ok_deployment_access_stack(permissions = {}):
             'Player': {
                 'ResourceType': 'AWS::IAM::Role'
             },
+            'AuthenticatedPlayer': {
+                'ResourceType': 'AWS::IAM::Role'
+            },
             'Server': {
                 'ResourceType': 'AWS::IAM::Role'
             },

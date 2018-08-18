@@ -18,10 +18,13 @@
 #include "Importer/NodeMapFileFormat.h"
 #include <MCore/Source/DiskFile.h>
 #include <AzFramework/API/ApplicationAPI.h>
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(NodeMap, NodeAllocator, 0)
+
+
     // constructor
     NodeMap::NodeMap()
         : BaseObject()
@@ -45,7 +48,7 @@ namespace EMotionFX
     // creation
     NodeMap* NodeMap::Create()
     {
-        return new NodeMap();
+        return aznew NodeMap();
     }
 
 

@@ -13,6 +13,7 @@
 #include "DHQSlider.hxx"
 #include "PropertyQTConstants.h"
 #include <QtWidgets/QAbstractSpinBox>
+#include <QWheelEvent>
 
 namespace AzToolsFramework
 {

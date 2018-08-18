@@ -17,7 +17,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/Utils.h>
-#include <AzCore/IO/genericstreams.h>
+#include <AzCore/IO/GenericStreams.h>
 #include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Asset/AssetManager.h>

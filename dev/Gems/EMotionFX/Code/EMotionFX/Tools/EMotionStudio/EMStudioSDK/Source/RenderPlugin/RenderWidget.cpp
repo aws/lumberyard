@@ -29,11 +29,14 @@
 
 namespace EMStudio
 {
+    AZ_CLASS_ALLOCATOR_IMPL(RenderWidget::EventHandler, EMotionFX::EventHandlerAllocator, 0)
+
+
     // constructor
     RenderWidget::RenderWidget(RenderPlugin* renderPlugin, RenderViewWidget* viewWidget)
     {
         // create our event handler
-        mEventHandler = new EventHandler(this);
+        mEventHandler = aznew EventHandler(this);
         EMotionFX::GetEventManager().AddEventHandler(mEventHandler);
 
         mLines.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
@@ -728,7 +731,7 @@ namespace EMStudio
 
         if (shortcutManger->Check(event, "Toggle Selection Box Rendering", "Render Window"))
         {
-            mPlugin->GetRenderOptions()->mRenderSelectionBox ^= true;
+            mPlugin->GetRenderOptions()->SetRenderSelectionBox(mPlugin->GetRenderOptions()->GetRenderSelectionBox() ^ true);
             event->accept();
             return;
         }
@@ -1187,9 +1190,9 @@ namespace EMStudio
         RenderOptions* renderOptions = mPlugin->GetRenderOptions();
 
         // update the camera
-        mCamera->SetNearClipDistance(renderOptions->mNearClipPlaneDistance);
-        mCamera->SetFarClipDistance(renderOptions->mFarClipPlaneDistance);
-        mCamera->SetFOV(renderOptions->mFOV);
+        mCamera->SetNearClipDistance(renderOptions->GetNearClipPlaneDistance());
+        mCamera->SetFarClipDistance(renderOptions->GetFarClipPlaneDistance());
+        mCamera->SetFOV(renderOptions->GetFOV());
         mCamera->SetAspectRatio(mWidth / (float)mHeight);
         mCamera->SetScreenDimensions(mWidth, mHeight);
         mCamera->AutoUpdateLimits();
@@ -1228,7 +1231,7 @@ namespace EMStudio
             return;
         }
 
-        const float unitSize = renderOptions->mGridUnitSize;
+        const float unitSize = renderOptions->GetGridUnitSize();
         AZ::Vector3  gridNormal   = AZ::Vector3(0.0f, 0.0f, 1.0f);
 
         if (mCamera->GetType() == MCommon::OrthographicCamera::TYPE_ID)
@@ -1255,7 +1258,7 @@ namespace EMStudio
         renderUtil->CalcVisibleGridArea(mCamera, mWidth, mHeight, unitSize, &gridStart, &gridEnd);
         if (mViewWidget->GetRenderFlag(RenderViewWidget::RENDER_GRID))
         {
-            renderUtil->RenderGrid(gridStart, gridEnd, gridNormal, unitSize, renderOptions->mMainAxisColor, renderOptions->mGridColor, renderOptions->mSubStepColor, true);
+            renderUtil->RenderGrid(gridStart, gridEnd, gridNormal, unitSize, renderOptions->GetMainAxisColor(), renderOptions->GetGridColor(), renderOptions->GetSubStepColor(), true);
         }
 
         renderUtil->SetDepthMaskWrite(true);

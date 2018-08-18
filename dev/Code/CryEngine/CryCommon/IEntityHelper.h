@@ -25,9 +25,9 @@
 #include "ISystem.h"
 
 template <class T>
-inline typename std::enable_if<std::is_base_of<IComponent, T>::value, std::shared_ptr<T> >::type IEntity::GetOrCreateComponent()
+inline typename std::enable_if<std::is_base_of<IComponent, T>::value, AZStd::shared_ptr<T> >::type IEntity::GetOrCreateComponent()
 {
-    std::shared_ptr<T> component = GetComponent<T>();
+    AZStd::shared_ptr<T> component = GetComponent<T>();
     if (!component)
     {
         component = gEnv->pEntitySystem->CreateComponentAndRegister<T>(IComponent::SComponentInitializer(this));

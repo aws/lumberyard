@@ -67,6 +67,14 @@ void ResourceGroupStatusWidget::CreateUI()
     stackWidget->AddUpdateButton();
     stackWidget->AddDeleteButton();
 
+    m_enableResourceGroupButton = new QPushButton{
+        m_resourceGroupStatusModel->GetEnableButtonText()
+    };
+    m_enableResourceGroupButton->setToolTip(m_resourceGroupStatusModel->GetEnableButtonToolTip());
+    m_enableResourceGroupButton->setDisabled(m_resourceGroupStatusModel->IsPendingDelete());
+    connect(m_enableResourceGroupButton, &QPushButton::clicked, this, &ResourceGroupStatusWidget::EnableResourceGroup);
+    stackWidget->AddButton(m_enableResourceGroupButton);
+
     UpdateUI();
 }
 
@@ -99,4 +107,9 @@ void ResourceGroupStatusWidget::OnImportResource()
 void ResourceGroupStatusWidget::OnUploadLambdaCode()
 {
     m_view->UploadLambdaCode(m_resourceGroupStatusModel, "");
+}
+
+void ResourceGroupStatusWidget::EnableResourceGroup()
+{
+    m_resourceGroupStatusModel->EnableResourceGroup();
 }

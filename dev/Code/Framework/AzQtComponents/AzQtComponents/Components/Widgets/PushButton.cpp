@@ -29,6 +29,7 @@ namespace AzQtComponents
 {
 
 static QString g_smallIconClass = QStringLiteral("SmallIcon");
+static QString g_attachedButtonClass = QStringLiteral("AttachedButton");
 
 void PushButton::applyPrimaryStyle(QPushButton* button)
 {
@@ -40,20 +41,38 @@ void PushButton::applySmallIconStyle(QToolButton* button)
     Style::addClass(button, g_smallIconClass);
 }
 
+void PushButton::applyAttachedStyle(QToolButton* button)
+{
+    Style::addClass(button, g_attachedButtonClass);
+}
+
+template <typename Button>
+bool buttonHasMenu(Button* button)
+{
+    if (button != nullptr)
+    {
+        return button->menu();
+    }
+
+    return false;
+}
+
 bool PushButton::polish(Style* style, QWidget* widget, const PushButton::Config& config)
 {
     QToolButton* toolButton = qobject_cast<QToolButton*>(widget);
-    if (style->hasClass(widget, g_smallIconClass) && (toolButton != nullptr))
+    QPushButton* pushButton = qobject_cast<QPushButton*>(widget);
+    if ((style->hasClass(widget, g_smallIconClass) && (toolButton != nullptr)) || (style->hasClass(widget, g_attachedButtonClass) && (pushButton != nullptr)))
     {
-        toolButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+        widget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
 
-        toolButton->setMaximumSize(config.smallIcon.width + (toolButton->menu() != nullptr ? config.smallIcon.arrowWidth : 0), config.smallIcon.frame.height);
+        bool hasMenu = buttonHasMenu(toolButton) || buttonHasMenu(pushButton);
+        widget->setMaximumSize(config.smallIcon.width + (hasMenu ? config.smallIcon.arrowWidth : 0), config.smallIcon.frame.height);
 
-        style->repolishOnSettingsChange(toolButton);
+        style->repolishOnSettingsChange(widget);
 
         return true;
     }
-    else if (qobject_cast<QPushButton*>(widget) != nullptr)
+    else if (pushButton != nullptr)
     {
         widget->setMaximumHeight(config.defaultFrame.height);
         return true;
@@ -70,6 +89,10 @@ int PushButton::buttonMargin(const Style* style, const QStyleOption* option, con
     {
         return config.smallIcon.frame.margin;
     }
+    else if (style->hasClass(widget, g_attachedButtonClass))
+    {
+        return 0; // TODO
+    }
     
     return config.defaultFrame.margin;
 }
@@ -78,7 +101,7 @@ QSize PushButton::sizeFromContents(const Style* style, QStyle::ContentsType type
 {
     QSize sz = style->QProxyStyle::sizeFromContents(type, option, size, widget);
 
-    if (style->hasClass(widget, g_smallIconClass))
+    if (style->hasClass(widget, g_smallIconClass) || style->hasClass(widget, g_attachedButtonClass))
     {
         sz.setHeight(config.smallIcon.frame.height);
     }
@@ -104,8 +127,9 @@ bool PushButton::drawPushButtonBevel(const Style* style, const QStyleOption* opt
 
     QColor gradientStartColor;
     QColor gradientEndColor;
-    const QPushButton* button = qobject_cast<const QPushButton*>(widget);
-    bool isDefault = (button != nullptr) ? button->isDefault() : false;
+    const auto* buttonOption = qstyleoption_cast<const QStyleOptionButton*>(option);
+
+    bool isDefault = buttonOption && (buttonOption->features & QStyleOptionButton::DefaultButton);
     const bool isPrimary = isDefault || (style->hasClass(widget, QLatin1String("Primary")));
     bool isDisabled = !(option->state & QStyle::State_Enabled);
 
@@ -126,13 +150,20 @@ bool PushButton::drawPushButtonBevel(const Style* style, const QStyleOption* opt
 
 bool PushButton::drawToolButton(const Style* style, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget, const PushButton::Config& config)
 {
+    if (style->hasClass(widget, g_attachedButtonClass))
+    {
+        return false;
+    }
+
     if (style->hasClass(widget, g_smallIconClass))
     {
         drawSmallIconButton(style, option, painter, widget, config);
         return true;
     }
 
-    return false;
+    const bool drawFrame = false;
+    drawSmallIconButton(style, option, painter, widget, config, drawFrame);
+    return true;
 }
 
 bool PushButton::drawIndicatorArrow(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config)
@@ -281,7 +312,7 @@ PushButton::Config PushButton::defaultConfig()
     return config;
 }
 
-void PushButton::drawSmallIconButton(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const PushButton::Config& config)
+void PushButton::drawSmallIconButton(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const PushButton::Config& config, bool drawFrame)
 {
     // Draws the icon and the arrow drop down together, as per the spec, which calls for no separating borders
     // between the icon and the arrow.
@@ -329,7 +360,10 @@ void PushButton::drawSmallIconButton(const Style* style, const QStyleOption* opt
             totalArea = buttonArea.united(menuArea);
         }
 
-        drawSmallIconFrame(style, option, totalArea, painter, config);
+        if (drawFrame)
+        {
+            drawSmallIconFrame(style, option, totalArea, painter, config);
+        }
 
         drawSmallIconLabel(style, buttonOption, bflags, buttonArea, painter, widget, config);
 

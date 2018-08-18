@@ -54,6 +54,8 @@ namespace EMotionFX
             mLocalFileIO->SetAlias("@devassets@", dir);
 
             Activate();
+            
+            EMotionFX::Integration::SystemComponent::Reflect(GetSerializeContext());
         }
 
         void TearDown() override
@@ -71,6 +73,11 @@ namespace EMotionFX
             mApp.Destroy();
         }
 
+        AZ::SerializeContext* GetSerializeContext() const
+        {
+            return m_serializeContext;
+        }
+
     protected:
         virtual void Activate()
         {
@@ -79,14 +86,23 @@ namespace EMotionFX
             std::initializer_list<int> {(mSystemEntity->CreateComponent<Components>(), 0)...};
             mSystemEntity->Init();
             mSystemEntity->Activate();
+
+            m_serializeContext = mApp.GetSerializeContext();
+            m_serializeContext->CreateEditContext();
         }
 
         virtual void Deactivate()
         {
+            m_serializeContext->DestroyEditContext();
             // Clear the queue of messages from unit tests on our buses
             EMotionFX::Integration::ActorNotificationBus::ClearQueuedEvents();
 
             mSystemEntity->Deactivate();
+            // Remove SceneAPI components before the DLL is uninitialized
+            std::initializer_list<int> {(([&]() {
+                auto component = mSystemEntity->FindComponent<Components>();
+                mSystemEntity->RemoveComponent(component);
+            })(), 0)...};
         }
 
     private:
@@ -102,7 +118,9 @@ namespace EMotionFX
         // sure that it still exists when this fixture is destroyed.
         AZStd::unique_ptr<AZ::IO::LocalFileIO> mLocalFileIO;
 
-        AZ::Entity* mSystemEntity;
+        AZ::Entity* mSystemEntity = nullptr;
+
+        AZ::SerializeContext* m_serializeContext = nullptr;
     };
 
     // Note that the SystemComponent depends on the AssetManagerComponent

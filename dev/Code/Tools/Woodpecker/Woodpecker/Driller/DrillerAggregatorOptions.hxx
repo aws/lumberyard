@@ -13,7 +13,7 @@
 #ifndef DRILLER_DRILLERAGGREGATOR_OPTIONS_H
 #define DRILLER_DRILLERAGGREGATOR_OPTIONS_H
 
-#include "qtgui/qcolor.h"
+#include "QtGui/qcolor.h"
 
 namespace Driller
 {

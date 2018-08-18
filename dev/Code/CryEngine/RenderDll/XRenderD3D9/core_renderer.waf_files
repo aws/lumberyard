@@ -38,6 +38,7 @@
             "D3DTiledShading.cpp",
             "DriverD3D.cpp",
             "GPUTimer.cpp",
+            "GPUTimerFactory.cpp",
             "PipelineProfiler.cpp",
             "StatoscopeRenderStats.cpp",
             "D3DREBreakableGlassBuffer.h",

@@ -455,10 +455,10 @@ namespace AzQtComponents
         }
 
         auto clipboard = qApp->clipboard();
-        auto data = new QMimeData();
+        auto qdata = new QMimeData();
         {
             const static auto textFormat = QStringLiteral("%1\n%2");
-            data->setText(textFormat.arg(cells.join(QChar::fromLatin1('\t')), details).trimmed());
+            qdata->setText(textFormat.arg(cells.join(QChar::fromLatin1('\t')), details).trimmed());
         }
         {
             const static auto htmlFormat = QStringLiteral("<table><tr>%1</tr><tr colspan=%2>%3</tr></table>");
@@ -472,11 +472,11 @@ namespace AzQtComponents
                 }
                 return row;
             };
-            data->setHtml(htmlFormat.arg(cellsToHtml(cells),
+            qdata->setHtml(htmlFormat.arg(cellsToHtml(cells),
                                          QString::number(model()->columnCount()),
                                          htmlCellFormat.arg(details)));
         }
-        clipboard->setMimeData(data);
+        clipboard->setMimeData(qdata);
     }
 
     void StyledDetailsTableView::updateItemSelection(const QItemSelection& selection)

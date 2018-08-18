@@ -8,23 +8,23 @@ import { Http } from '@angular/http';
 
 
 export abstract class Loader {
-    abstract load(activeDeployment: Deployment, resourceGroups: ResourceGroup, callback: Function): void;    
+    abstract load(activeDeployment: Deployment, resourceGroups: ResourceGroup, callback: Function): void;
 }
 
 declare var System: any
 
 export abstract class AbstractCloudGemLoader implements Loader {
     protected abstract generateMeta(activeDeployment: Deployment, resourceGroup: ResourceGroup): any;
-    private _cache: Map<string, Gemifiable>;    
+    private _cache: Map<string, Gemifiable>;
 
-    constructor(protected definition: DefinitionService, protected http : Http) {        
+    constructor(protected definition: DefinitionService, protected http : Http) {
         this._cache = new Map<string, Gemifiable>();
     }
 
     public load(deployment: Deployment, resourceGroup: ResourceGroup, callback: Function): void {
         let key = this.path(deployment.settings.name, resourceGroup.logicalResourceId)
 
-        if (this._cache[key]) {            
+        if (this._cache[key]) {
             callback(this._cache[key]);
             return;
         }
@@ -35,18 +35,18 @@ export abstract class AbstractCloudGemLoader implements Loader {
             console.warn("Cloud gem path was not a valid URL: " + resourceGroup.stackId);
             return;
         }
-                
+
         //override the SystemJS normalize for cloud gem imports as the normalization process changes the pre-signed url signature
         let normalizeFn = System.normalize
         if (this.definition.isProd)
-            System.normalize = function (name, parentName) {            
+            System.normalize = function (name, parentName) {
                 if ((name[0] != '.' || (!!name[1] && name[1] != '/' && name[1] != '.')) && name[0] != '/' && !name.match(System.absURLRegEx))
                     return normalizeFn(name, parentName)
                 return name
-            }               
+            }
 
         if (!this.definition.isProd) {
-            this.http.get(meta.url).subscribe(() => 
+            this.http.get(meta.url).subscribe(() =>
                 this.importGem(meta, callback),
                 (err) => {
                     console.log(err);
@@ -63,7 +63,7 @@ export abstract class AbstractCloudGemLoader implements Loader {
     }
 
     private importGem(meta, callback) {
-        System.import(meta.url).then((ref: any) => {                             
+        System.import(meta.url).then((ref: any) => {
             let annotations = Reflect.getMetadata('annotations', ref.definition())[0];
             let gem: Gemifiable = {
                 identifier: meta.name,
@@ -73,16 +73,19 @@ export abstract class AbstractCloudGemLoader implements Loader {
                 module: ref.definition(),
                 annotations: annotations,
                 thumbnail: annotations.bootstrap[0],
-                index: annotations.bootstrap[1],
-            }                
+                index: annotations.bootstrap[1]
+            }
+            if (ref.serviceApiType) {
+                this.definition.addService(gem.identifier, gem.context, ref.serviceApiType())
+            }
             this._cache[meta.name] = gem;
             callback(gem);
         },
         (err: any) => {
-            console.log(err);            
+            console.log(err);
             callback(undefined);
         })
-        .catch(console.error.bind(console));         
+        .catch(console.error.bind(console));
     }
 }
 
@@ -106,8 +109,9 @@ export class AwsCloudGemLoader extends AbstractCloudGemLoader {
     public generateMeta(deployment: Deployment, resourceGroup: ResourceGroup): any {
         let resourceGroupName = resourceGroup.logicalResourceId;
         let baseUrl = this.baseUrl(deployment.settings.ConfigurationBucket, deployment.settings.name, resourceGroupName);
-        let key = this.path(deployment.settings.name, resourceGroupName)        
-        let signedurl = this.aws.context.s3.getSignedUrl('getObject', { Bucket: deployment.settings.ConfigurationBucket, Key: key + "/dist/" + resourceGroupName.toLocaleLowerCase() + '.js', Expires: 600 })        
+        let key = this.path(deployment.settings.name, resourceGroupName)
+        let file_path = key + "/dist/" + resourceGroupName.toLocaleLowerCase() + '.js'
+        let signedurl = this.aws.context.s3.getSignedUrl('getObject', { Bucket: deployment.settings.ConfigurationBucket, Key: file_path, Expires: 600 })
         return Object.assign(<any>{
             identifier: resourceGroupName,
             name: resourceGroupName,
@@ -132,8 +136,8 @@ export class LocalCloudGemLoader extends AbstractCloudGemLoader {
     private _map: Map<string, string>;
 
     constructor(protected definition: DefinitionService, protected http: Http) {
-        super(definition, http);        
-    }    
+        super(definition, http);
+    }
 
     public generateMeta(deployment: Deployment, resourceGroup: ResourceGroup): any {
         let name = resourceGroup.logicalResourceId.toLocaleLowerCase()

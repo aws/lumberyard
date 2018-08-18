@@ -10,64 +10,42 @@
 *
 */
 
-// include the required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "EMotionFXConfig.h"
-#include "BlendTreeAccumTransformNode.h"
+#include <EMotionFX/Source/BlendTreeAccumTransformNode.h>
+#include <EMotionFX/Source/AnimGraph.h>
 #include "AnimGraphInstance.h"
 #include "Actor.h"
 #include "ActorInstance.h"
-#include "AnimGraphAttributeTypes.h"
 #include "AnimGraphManager.h"
 #include "Node.h"
 #include "EMotionFXManager.h"
-#include <MCore/Source/AttributeSettings.h>
+
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeAccumTransformNode::BlendTreeAccumTransformNode(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeAccumTransformNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeAccumTransformNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
-        mLastTranslateAxis  = 0;
-        mLastRotateAxis     = 0;
-        mLastScaleAxis      = 0;
-    }
-
-
-    // destructor
-    BlendTreeAccumTransformNode::~BlendTreeAccumTransformNode()
-    {
-    }
-
-
-    // create
-    BlendTreeAccumTransformNode* BlendTreeAccumTransformNode::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeAccumTransformNode(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeAccumTransformNode::CreateObjectData()
-    {
-        return new UniqueData(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeAccumTransformNode::RegisterPorts()
+    BlendTreeAccumTransformNode::BlendTreeAccumTransformNode()
+        : AnimGraphNode()
+        , m_translateSpeed(1.0f)
+        , m_rotateSpeed(1.0f)
+        , m_scaleSpeed(1.0f)
+        , m_translationAxis(AXIS_X)
+        , m_rotationAxis(AXIS_X)
+        , m_scaleAxis(SCALEAXIS_ALL)
+        , m_invertTranslation(false)
+        , m_invertRotation(false)
+        , m_invertScale(false)
     {
         // setup the input ports
         InitInputPorts(4);
         SetupInputPort("Input Pose", INPUTPORT_POSE, AttributePose::TYPE_ID, PORTID_INPUT_POSE);
-        SetupInputPortAsNumber("Translation",  INPUTPORT_TRANSLATE_AMOUNT, PORTID_INPUT_TRANSLATE_AMOUNT);
-        SetupInputPortAsNumber("Rotation",     INPUTPORT_ROTATE_AMOUNT,    PORTID_INPUT_ROTATE_AMOUNT);
-        SetupInputPortAsNumber("Scale",        INPUTPORT_SCALE_AMOUNT,     PORTID_INPUT_SCALE_AMOUNT);
+        SetupInputPortAsNumber("Translation", INPUTPORT_TRANSLATE_AMOUNT, PORTID_INPUT_TRANSLATE_AMOUNT);
+        SetupInputPortAsNumber("Rotation", INPUTPORT_ROTATE_AMOUNT, PORTID_INPUT_ROTATE_AMOUNT);
+        SetupInputPortAsNumber("Scale", INPUTPORT_SCALE_AMOUNT, PORTID_INPUT_SCALE_AMOUNT);
 
         // setup the output ports
         InitOutputPorts(1);
@@ -75,70 +53,50 @@ namespace EMotionFX
     }
 
 
-    // register the parameters
-    void BlendTreeAccumTransformNode::RegisterAttributes()
+    BlendTreeAccumTransformNode::~BlendTreeAccumTransformNode()
     {
-        // the node
-        MCore::AttributeSettings* attrib = RegisterAttribute("Node", "node", "The node to apply the transform to.", ATTRIBUTE_INTERFACETYPE_NODESELECTION);
-        attrib->SetDefaultValue(MCore::AttributeString::Create());
-        attrib->SetReinitObjectOnValueChange(true);
-
-        // the translation axis
-        attrib = RegisterAttribute("Translation Axis", "translateAxis", "The local axis to translate along.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        attrib->ResizeComboValues(3);
-        attrib->SetComboValue(0, "X Axis");
-        attrib->SetComboValue(1, "Y Axis");
-        attrib->SetComboValue(2, "Z Axis");
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // the rotation axis
-        attrib = RegisterAttribute("Rotation Axis", "rotateAxis", "The local axis to rotate around.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        attrib->ResizeComboValues(3);
-        attrib->SetComboValue(0, "X Axis");
-        attrib->SetComboValue(1, "Y Axis");
-        attrib->SetComboValue(2, "Z Axis");
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // the translation axis
-        attrib = RegisterAttribute("Scaling Axis", "scaleAxis", "The local axis to scale along.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        attrib->ResizeComboValues(4);
-        attrib->SetComboValue(0, "All Axes (uniform scaling)");
-        attrib->SetComboValue(1, "X Axis");
-        attrib->SetComboValue(2, "Y Axis");
-        attrib->SetComboValue(3, "Z Axis");
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // the translation speed factor
-        attrib = RegisterAttribute("Translate Speed", "translateSpeed", "The translation speed factor.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(1.0f));
-        attrib->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        attrib->SetMaxValue(MCore::AttributeFloat::Create(100.0f));
-
-        // the rotation speed factor
-        attrib = RegisterAttribute("Rotate Speed", "rotateSpeed", "The rotation speed factor.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(1.0f));
-        attrib->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        attrib->SetMaxValue(MCore::AttributeFloat::Create(100.0f));
-
-        // the scale speed factor
-        attrib = RegisterAttribute("Scale Speed", "scaleSpeed", "The scale speed factor.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(1.0f));
-        attrib->SetMinValue(MCore::AttributeFloat::Create(0.0f));
-        attrib->SetMaxValue(MCore::AttributeFloat::Create(100.0f));
-
-        // invert translation?
-        attrib = RegisterAttribute("Invert Translation", "invertTranslate", "Invert the translation direction?", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // invert rotation?
-        attrib = RegisterAttribute("Invert Rotation", "invertRotate", "Invert the rotation direction?", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // invert scale?
-        attrib = RegisterAttribute("Invert Scaling", "invertScale", "Invert the scale direction?", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        attrib->SetDefaultValue(MCore::AttributeFloat::Create(0));
     }
 
+
+    void BlendTreeAccumTransformNode::Reinit()
+    {
+        if (!mAnimGraph)
+        {
+            return;
+        }
+
+        AnimGraphNode::Reinit();
+
+        const size_t numInstances = mAnimGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numInstances; ++i)
+        {
+            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
+
+            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+            if (!uniqueData)
+            {
+                continue;
+            }
+
+            uniqueData->mMustUpdate = true;
+            animGraphInstance->UpdateUniqueData();
+        }
+    }
+
+
+    bool BlendTreeAccumTransformNode::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
+    }
+    
 
     // get the palette name
     const char* BlendTreeAccumTransformNode::GetPaletteName() const
@@ -151,20 +109,6 @@ namespace EMotionFX
     AnimGraphObject::ECategory BlendTreeAccumTransformNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_CONTROLLERS;
-    }
-
-
-    // create a clone of this node
-    AnimGraphObject* BlendTreeAccumTransformNode::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeAccumTransformNode* clone = new BlendTreeAccumTransformNode(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
     }
 
 
@@ -226,24 +170,23 @@ namespace EMotionFX
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_ROTATE_AMOUNT));
 
             const float inputAmount = MCore::Clamp<float>(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_ROTATE_AMOUNT), 0.0f, 1.0f);
-            const float factor = GetAttributeFloat(ATTRIB_ROTATE_SPEED)->GetValue();
+            const float factor = m_rotateSpeed;
             float invertFactor = 1.0f;
-            if (GetAttributeFloatAsBool(ATTRIB_ROTATE_INVERT))
+            if (m_invertRotation)
             {
                 invertFactor = -1.0f;
             }
 
             AZ::Vector3 axis(1.0f, 0.0f, 0.0f);
-            const int32 mode = GetAttributeFloatAsInt32(ATTRIB_ROTATE_AXIS);
-            switch (mode)
+            switch (m_rotationAxis)
             {
-            case 0:
+            case AXIS_X:
                 axis.Set(1.0f, 0.0f, 0.0f);
                 break;
-            case 1:
+            case AXIS_Y:
                 axis.Set(0.0f, 1.0f, 0.0f);
                 break;
-            case 2:
+            case AXIS_Z:
                 axis.Set(0.0f, 0.0f, 1.0f);
                 break;
             default:
@@ -263,24 +206,23 @@ namespace EMotionFX
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_TRANSLATE_AMOUNT));
 
             const float inputAmount = MCore::Clamp<float>(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_TRANSLATE_AMOUNT), 0.0f, 1.0f);
-            const float factor = GetAttributeFloat(ATTRIB_TRANSLATE_SPEED)->GetValue();
+            const float factor = m_translateSpeed;
             float invertFactor = 1.0f;
-            if (GetAttributeFloatAsBool(ATTRIB_TRANSLATE_INVERT))
+            if (m_invertTranslation)
             {
                 invertFactor = -1.0f;
             }
 
             AZ::Vector3 axis(1.0f, 0.0f, 0.0f);
-            const int32 mode = GetAttributeFloatAsInt32(ATTRIB_TRANSLATE_AXIS);
-            switch (mode)
+            switch (m_translationAxis)
             {
-            case 0:
+            case AXIS_X:
                 axis.Set(1.0f, 0.0f, 0.0f);
                 break;
-            case 1:
+            case AXIS_Y:
                 axis.Set(0.0f, 1.0f, 0.0f);
                 break;
-            case 2:
+            case AXIS_Z:
                 axis.Set(0.0f, 0.0f, 1.0f);
                 break;
             default:
@@ -301,28 +243,27 @@ namespace EMotionFX
                 OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_SCALE_AMOUNT));
 
                 const float inputAmount = MCore::Clamp<float>(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_SCALE_AMOUNT), 0.0f, 1.0f);
-                const float factor = GetAttributeFloat(ATTRIB_SCALE_SPEED)->GetValue();
+                const float factor = m_scaleSpeed;
                 float invertFactor = 1.0f;
-                if (GetAttributeFloatAsBool(ATTRIB_SCALE_INVERT))
+                if (m_invertScale)
                 {
                     invertFactor = -1.0f;
                 }
 
                 AZ::Vector3 axis(1.0f, 1.0f, 1.0f);
-                const int32 mode = GetAttributeFloatAsInt32(ATTRIB_SCALE_AXIS);
-                switch (mode)
+                switch (m_scaleAxis)
                 {
-                case 0:
-                    axis.Set(1.0f, 1.0f, 1.0f);
-                    break;
-                case 1:
+                case SCALEAXIS_X:
                     axis.Set(1.0f, 0.0f, 0.0f);
                     break;
-                case 2:
+                case SCALEAXIS_Y:
                     axis.Set(0.0f, 1.0f, 0.0f);
                     break;
-                case 3:
+                case SCALEAXIS_Z:
                     axis.Set(0.0f, 0.0f, 1.0f);
+                    break;
+                case SCALEAXIS_ALL:
+                    axis.Set(1.0f, 1.0f, 1.0f);
                     break;
                 default:
                     MCORE_ASSERT(false);
@@ -347,13 +288,6 @@ namespace EMotionFX
     }
 
 
-    // get the blend node type string
-    const char* BlendTreeAccumTransformNode::GetTypeString() const
-    {
-        return "BlendTreeAccumTransformNode";
-    }
-
-
     // update the unique data
     void BlendTreeAccumTransformNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
     {
@@ -369,14 +303,8 @@ namespace EMotionFX
             //      uniqueData->mAdditiveTransform.Identity();
 
             // try get the node
-            const char* nodeName = GetAttributeString(ATTRIB_NODE)->AsChar();
-            if (nodeName == nullptr)
-            {
-                return;
-            }
-
-            const Node* node = actor->GetSkeleton()->FindNodeByName(nodeName);
-            if (node == nullptr)
+            const Node* node = actor->GetSkeleton()->FindNodeByName(m_targetNodeName.c_str());
+            if (!node)
             {
                 return;
             }
@@ -387,7 +315,6 @@ namespace EMotionFX
     }
 
 
-    // when an attribute value changes
     void BlendTreeAccumTransformNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
         //mOutputPose.Init( animGraphInstance->GetActorInstance() );
@@ -396,26 +323,11 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         if (uniqueData == nullptr)
         {
-            //uniqueData = new UniqueData(this, animGraphInstance);
-            uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
+            uniqueData = aznew UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
 
         uniqueData->mMustUpdate = true;
-
-        // if the axis settings changed
-        if (mLastTranslateAxis != GetAttributeFloatAsInt32(ATTRIB_TRANSLATE_AXIS) ||
-            mLastRotateAxis != GetAttributeFloatAsInt32(ATTRIB_ROTATE_AXIS) ||
-            mLastScaleAxis != GetAttributeFloatAsInt32(ATTRIB_SCALE_AXIS))
-        {
-            mLastTranslateAxis  = GetAttributeFloatAsInt32(ATTRIB_TRANSLATE_AXIS);
-            mLastScaleAxis      = GetAttributeFloatAsInt32(ATTRIB_SCALE_AXIS);
-            mLastRotateAxis     = GetAttributeFloatAsInt32(ATTRIB_ROTATE_AXIS);
-            uniqueData->mAdditiveTransform.Identity();
-
-            EMFX_SCALECODE(uniqueData->mAdditiveTransform.mScale.CreateZero();
-                )
-        }
     }
 
 
@@ -429,5 +341,149 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         uniqueData->mDeltaTime = timePassedInSeconds;
     }
-}   // namespace EMotionFX
 
+
+    void BlendTreeAccumTransformNode::OnAxisChanged()
+    {
+        if (!mAnimGraph)
+        {
+            return;
+        }
+
+        const size_t numInstances = mAnimGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numInstances; ++i)
+        {
+            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
+
+            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+            if (!uniqueData)
+            {
+                continue;
+            }
+
+            uniqueData->mAdditiveTransform.Identity();
+
+            EMFX_SCALECODE(uniqueData->mAdditiveTransform.mScale.CreateZero();
+                )
+
+            animGraphInstance->UpdateUniqueData();
+        }
+    }
+
+    void BlendTreeAccumTransformNode::SetInvertTranslation(bool invertTranslation)
+    {
+        m_invertTranslation = invertTranslation;
+    }
+
+    void BlendTreeAccumTransformNode::SetInvertRotation(bool invertRotation)
+    {
+        m_invertRotation = invertRotation;
+    }
+
+    void BlendTreeAccumTransformNode::SetInvertScale(bool invertScale)
+    {
+        m_invertScale = invertScale;
+    }
+
+    void BlendTreeAccumTransformNode::SetScaleSpeed(float speed)
+    {
+        m_scaleSpeed = speed;
+    }
+
+    void BlendTreeAccumTransformNode::SetRotateSpeed(float speed)
+    {
+        m_rotateSpeed = speed;
+    }
+
+    void BlendTreeAccumTransformNode::SetTranslateSpeed(float speed)
+    {
+        m_translateSpeed = speed;
+    }
+
+    void BlendTreeAccumTransformNode::SetScaleAxis(ScaleAxis axis)
+    {
+        m_scaleAxis = axis;
+    }
+
+    void BlendTreeAccumTransformNode::SetTranslationAxis(Axis axis)
+    {
+        m_translationAxis = axis;
+    }
+
+    void BlendTreeAccumTransformNode::SetRotationAxis(Axis axis)
+    {
+        m_rotationAxis = axis;
+    }
+
+    void BlendTreeAccumTransformNode::SetTargetNodeName(const AZStd::string& targetNodeName)
+    {
+        m_targetNodeName = targetNodeName;
+    }
+
+    void BlendTreeAccumTransformNode::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeAccumTransformNode, AnimGraphNode>()
+            ->Version(1)
+            ->Field("targetNodeName", &BlendTreeAccumTransformNode::m_targetNodeName)
+            ->Field("translateAxis", &BlendTreeAccumTransformNode::m_translationAxis)
+            ->Field("rotationAxis", &BlendTreeAccumTransformNode::m_rotationAxis)
+            ->Field("scaleAxis", &BlendTreeAccumTransformNode::m_scaleAxis)
+            ->Field("translateSpeed", &BlendTreeAccumTransformNode::m_translateSpeed)
+            ->Field("rotateSpeed", &BlendTreeAccumTransformNode::m_rotateSpeed)
+            ->Field("scaleSpeed", &BlendTreeAccumTransformNode::m_scaleSpeed)
+            ->Field("invertTranslation", &BlendTreeAccumTransformNode::m_invertTranslation)
+            ->Field("invertRotation", &BlendTreeAccumTransformNode::m_invertRotation)
+            ->Field("invertScale", &BlendTreeAccumTransformNode::m_invertScale)
+        ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<BlendTreeAccumTransformNode>("Bool Logic", "Bool logic attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeAccumTransformNode::m_targetNodeName, "Node", "The node to apply the transform to.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeAccumTransformNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeAccumTransformNode::m_translationAxis, "Translation Axis", "The local axis to translate along.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeAccumTransformNode::OnAxisChanged)
+            ->EnumAttribute(AXIS_X, "X Axis")
+            ->EnumAttribute(AXIS_Y, "Y Axis")
+            ->EnumAttribute(AXIS_Z, "Z Axis")
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeAccumTransformNode::m_rotationAxis, "Rotation Axis", "The local axis to rotate around.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeAccumTransformNode::OnAxisChanged)
+            ->EnumAttribute(AXIS_X, "X Axis")
+            ->EnumAttribute(AXIS_Y, "Y Axis")
+            ->EnumAttribute(AXIS_Z, "Z Axis")
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeAccumTransformNode::m_scaleAxis, "Scaling Axis", "The local axis to scale along.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeAccumTransformNode::OnAxisChanged)
+            ->EnumAttribute(SCALEAXIS_X, "X Axis")
+            ->EnumAttribute(SCALEAXIS_Y, "Y Axis")
+            ->EnumAttribute(SCALEAXIS_Z, "Z Axis")
+            ->EnumAttribute(SCALEAXIS_ALL, "All Axes (uniform scaling)")
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeAccumTransformNode::m_translateSpeed, "Translate Speed", "The translation speed factor.")
+            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeAccumTransformNode::m_rotateSpeed, "Rotate Speed", "The rotation speed factor.")
+            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeAccumTransformNode::m_scaleSpeed, "Scale Speed", "The scale speed factor.")
+            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &BlendTreeAccumTransformNode::m_invertTranslation, "Invert Translation", "Invert the translation direction?")
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &BlendTreeAccumTransformNode::m_invertRotation, "Invert Rotation", "Invert the rotation direction?")
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &BlendTreeAccumTransformNode::m_invertScale, "Invert Scaling", "Invert the scale direction?")
+        ;
+    }
+} // namespace EMotionFX

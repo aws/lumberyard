@@ -11,9 +11,9 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <assert.h>             // assert()
-#include "weightfilterset.h"    // CWeightFilter
+#include "WeightFilterSet.h"    // CWeightFilter
 #include "IRCLog.h"             // RCLog()
 #include "StringHelpers.h"
 #include "StringUtils.h"        // cry_strcpy()

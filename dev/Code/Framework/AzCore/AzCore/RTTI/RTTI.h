@@ -249,7 +249,7 @@ namespace AZ
      *  \note A more complex use case is when you use templates, the you have to group the parameters for the TypeInfo call.
      * ex. AZ_RTTI( ( (ClassName<TemplateArg1, TemplateArg2, ...>), ClassUuid, TemplateArg1, TemplateArg2, ...), BaseClass1...)
      *
-     * Take care with the parentheses, excruciatingly explicitly delineated here: AR_RTTI (3 (2 (1 fully templated class name 1), Uuid, template args... 2), base classes... 3)
+     * Take care with the parentheses, excruciatingly explicitly delineated here: AZ_RTTI (3 (2 (1 fully templated class name 1), Uuid, template args... 2), base classes... 3)
      */
     #define AZ_RTTI(...)  AZ_RTTI_MACRO_SPECIALIZE(AZ_RTTI_HELPER_, AZ_VA_NUM_ARGS(AZ_INTERNAL_REMOVE_PARENTHESIS(AZ_INTERNAL_USE_FIRST_ELEMENT(__VA_ARGS__))), (__VA_ARGS__))
 

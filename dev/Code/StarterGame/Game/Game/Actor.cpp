@@ -11,7 +11,7 @@
 */
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "Actor.h"
 #include "IViewSystem.h"
 #include "StringUtils.h"

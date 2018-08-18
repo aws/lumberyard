@@ -14,11 +14,14 @@
 
 namespace AzFramework
 {
+#pragma warning( push )         // disable deprecated warning from our own internal calls until they are removed
+#pragma warning(disable: 4996)
+
     // Technique from published work available here
-    // https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2012/07/euler-angles1.pdf
+    // https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2012/07/euler-angles1.pdf (Extracting Euler Angles from a Rotation Matrix - Mike Day, Insomniac Games mday@insomniacgames.com)
     AZ::Vector3 ConvertTransformToEulerDegrees(const AZ::Transform& transform)
     {
-        AZ::Vector3 radians = ConvertTransformToEulerRadians(transform);
+        AZ::Vector3 radians = AzFramework::ConvertTransformToEulerRadians(transform);
         return RadToDeg(radians);
     }
 
@@ -41,7 +44,7 @@ namespace AzFramework
 
     AZ::Transform ConvertEulerDegreesToTransform(const AZ::Vector3& eulerDegrees)
     {
-        AZ::Vector3 eulerRadians = DegToRad(eulerDegrees);
+        AZ::Vector3 eulerRadians = AzFramework::DegToRad(eulerDegrees);
 
         return AZ::Transform::CreateRotationX(eulerRadians.GetX())
                * AZ::Transform::CreateRotationY(eulerRadians.GetY())
@@ -82,14 +85,14 @@ namespace AzFramework
 
     AZ::Transform ConvertEulerDegreesToTransformPrecise(const AZ::Vector3& eulerDegrees)
     {
-        AZ::Vector3 eulerRadians = DegToRad(eulerDegrees);
-        AZ::Transform result = ConvertEulerRadiansToTransformPrecise(eulerRadians);
+        AZ::Vector3 eulerRadians = AzFramework::DegToRad(eulerDegrees);
+        AZ::Transform result = AzFramework::ConvertEulerRadiansToTransformPrecise(eulerRadians);
         return result;
     }
 
     AZ::Vector3 ConvertQuaternionToEulerDegrees(const AZ::Quaternion& q)
     {
-        AZ::Vector3 eulers = ConvertQuaternionToEulerRadians(q);
+        AZ::Vector3 eulers = AzFramework::ConvertQuaternionToEulerRadians(q);
         eulers.Set(AZ::RadToDeg(eulers.GetX()), AZ::RadToDeg(eulers.GetY()), AZ::RadToDeg(eulers.GetZ()));
         return eulers;
     }
@@ -124,7 +127,7 @@ namespace AzFramework
 
     AZ::Quaternion ConvertEulerDegreesToQuaternion(const AZ::Vector3& eulerDegrees)
     {
-        return ConvertEulerRadiansToQuaternion(DegToRad(eulerDegrees));
+        return AzFramework::ConvertEulerRadiansToQuaternion(AzFramework::DegToRad(eulerDegrees));
     }
 
     void ConvertQuaternionToAxisAngle(const AZ::Quaternion& quat, AZ::Vector3& outAxis, float& outAngle)
@@ -207,4 +210,5 @@ namespace AzFramework
         return transform;
     }
 
+#pragma warning( pop )
 } // namespace AzFramework

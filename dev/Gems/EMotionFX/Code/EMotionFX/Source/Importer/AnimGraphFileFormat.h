@@ -13,7 +13,7 @@
 #pragma once
 
 #include "SharedFileFormatStructs.h"
-
+#include "AzCore/RTTI/TypeInfo.h"
 
 namespace EMotionFX
 {
@@ -27,7 +27,7 @@ namespace EMotionFX
             ANIMGRAPH_CHUNK_NODECONNECTIONS           = 402,
             ANIMGRAPH_CHUNK_PARAMETERS                = 403,
             ANIMGRAPH_CHUNK_NODEGROUPS                = 404,
-            ANIMGRAPH_CHUNK_PARAMETERGROUPS           = 405,
+            ANIMGRAPH_CHUNK_GROUPPARAMETERS           = 405,
             ANIMGRAPH_CHUNK_GAMECONTROLLERSETTINGS    = 406,
             ANIMGRAPH_CHUNK_ADDITIONALINFO            = 407,
             ANIMGRAPH_FORCE_32BIT                     = 0xFFFFFFFF
@@ -179,8 +179,8 @@ namespace EMotionFX
         };
 
 
-        // a parameter group
-        struct AnimGraph_ParameterGroup
+        // a group parameter
+        struct AnimGraph_GroupParameter
         {
             uint32      mNumParameters;
             uint8       mCollapsed;
@@ -225,5 +225,11 @@ namespace EMotionFX
             //      AnimGraph_GameControllerParameterInfo[mNumParameterInfos]
             //      AnimGraph_GameControllerButtonInfo[mNumButtonInfos]
         };
+
+        // Conversion functions to support attributes with the old serialization.
+        // Once we deprecate the old format we can remove these two functions.
+        AZ::TypeId GetParameterTypeIdForInterfaceType(uint32 interfaceType);
+        uint32 GetInterfaceTypeForParameterTypeId(const AZ::TypeId& parameterTypeId);
+
     } // namespace FileFormat
 } // namespace EMotionFX

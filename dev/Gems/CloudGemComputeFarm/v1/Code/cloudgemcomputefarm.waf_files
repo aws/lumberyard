@@ -1,0 +1,20 @@
+{
+    "auto": {
+        "Include": [
+            "Include/CloudGemComputeFarm/CloudGemComputeFarmBus.h", 
+            "AWS/ServiceApi/CloudGemComputeFarmClientComponent.h"
+        ], 
+        "Source": [
+            "Source/CloudGemComputeFarmModule.cpp", 
+            "Source/CloudGemComputeFarmSystemComponent.cpp", 
+            "Source/CloudGemComputeFarmSystemComponent.h", 
+            "AWS/ServiceApi/CloudGemComputeFarmClientComponent.cpp"
+        ]
+    }, 
+    "none": {
+        "Source": [
+            "Source/CloudGemComputeFarm_precompiled.cpp", 
+            "Source/CloudGemComputeFarm_precompiled.h"
+        ]
+    }
+}

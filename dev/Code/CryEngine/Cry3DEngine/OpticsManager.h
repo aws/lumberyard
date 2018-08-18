@@ -30,9 +30,9 @@ public:
     IOpticsElementBase* Create(EFlareType type) const;
     IOpticsElementBase* GetOptics(int nIndex);
 
-    bool Load(const char* fullFlareName, int& nOutIndex);
+    bool Load(const char* fullFlareName, int& nOutIndex, bool forceReload = false);
     bool Load(XmlNodeRef& rootNode, int& nOutIndex);
-    bool AddOptics(IOpticsElementBase* pOptics, const char* name, int& nOutNewIndex);
+    bool AddOptics(IOpticsElementBase* pOptics, const char* name, int& nOutNewIndex, bool allowReplace = false);
     bool Rename(const char* fullFlareName, const char* newFullFlareName);
 
     void GetMemoryUsage(ICrySizer* pSizer) const;

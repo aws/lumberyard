@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AndroidDeploymentUtil.h"
 #include "ConfigFileContainer.h"
 #include <AzCore/JSON/document.h>
@@ -49,6 +49,7 @@ AndroidDeploymentUtil::AndroidDeploymentUtil(IDeploymentTool& deploymentTool, De
     // connect to deploy callback
     m_deployCallbackConnection = QObject::connect(m_deployProcess,
         static_cast<void (QProcess::*)(int, QProcess::ExitStatus)>(&QProcess::finished), // use static_cast to specify which overload of QProcess::finished to use
+        m_deployProcess,
         [this](int exitCode, QProcess::ExitStatus exitStatus)
     {
         DeployCallback(exitCode, exitStatus);
@@ -56,7 +57,7 @@ AndroidDeploymentUtil::AndroidDeploymentUtil(IDeploymentTool& deploymentTool, De
 
     // connect to output log
     m_deployProcess->setProcessChannelMode(QProcess::MergedChannels);
-    m_deployLogConnection = QObject::connect(m_deployProcess, &QProcess::readyReadStandardOutput,
+    m_deployLogConnection = QObject::connect(m_deployProcess, &QProcess::readyReadStandardOutput, m_deployProcess,
         [this]()
     {
         LogStdOut(m_deployProcess);
@@ -141,7 +142,7 @@ StringOutcome AndroidDeploymentUtil::Launch()
 {
     QProcess* launchProcess = new QProcess();
     launchProcess->setProcessChannelMode(QProcess::MergedChannels);
-    QObject::connect(launchProcess, &QProcess::readyReadStandardOutput,
+    QObject::connect(launchProcess, &QProcess::readyReadStandardOutput, launchProcess,
         [launchProcess, this]()
     {
         LogStdOut(launchProcess);

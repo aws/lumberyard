@@ -89,6 +89,8 @@ namespace EMStudio
             : public EMotionFX::EventHandler
         {
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             ProgressHandler(CommandBarPlugin* commandbarPlugin)
                 : EventHandler() { mCommandbarPlugin = commandbarPlugin; }
 

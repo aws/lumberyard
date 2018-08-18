@@ -152,12 +152,12 @@
   <customwidget>
    <class>ConsoleLineEdit</class>
    <extends>QLineEdit</extends>
-   <header>ConsoleSCB.h</header>
+   <header>Controls/ConsoleSCB.h</header>
   </customwidget>
   <customwidget>
    <class>ConsoleTextEdit</class>
    <extends>QPlainTextEdit</extends>
-   <header>ConsoleSCB.h</header>
+   <header>Controls/ConsoleSCB.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>

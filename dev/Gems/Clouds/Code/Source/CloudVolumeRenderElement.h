@@ -18,18 +18,16 @@ namespace CloudsGem
 {
     class CloudVolumeTexture;
     class CloudVolumeRenderElement 
-        : public CRendElementBase
+        : public IRenderElementDelegate
 
     {
     public:
-
         CloudVolumeRenderElement();
         virtual ~CloudVolumeRenderElement() {};
 
         void mfPrepare(bool bCheckOverflow) override;
         bool mfDraw(CShader* ef, SShaderPass* sfm) override;
         bool mfSetSampler(int customId, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit) override;
-        void GetMemoryUsage(ICrySizer* pSizer) const override { pSizer->AddObject(this, sizeof(*this)); }
         
         // Members
         Matrix34 m_inverseWorldMatrix; 
@@ -45,5 +43,6 @@ namespace CloudsGem
         float m_alpha{ 1.0f };
         float m_scale{ 1.0f };
         AABB m_renderBoundsOS;
+        IRenderElement* m_gemRE;
     };
 }

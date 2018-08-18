@@ -65,6 +65,7 @@ namespace CloudGemFramework
 
         virtual void OnBeforeIdentityUpdate() {};
         virtual void OnAfterIdentityUpdate() {};
+        virtual void OnIdentityReceived() {};
     };
     using CloudCanvasPlayerIdentityNotificationBus = AZ::EBus<CloudCanvasPlayerIdentityNotifications>;
 

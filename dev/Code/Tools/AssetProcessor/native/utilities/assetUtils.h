@@ -14,13 +14,13 @@
 
 #include <cstdlib> // for size_t
 #include <QString>
-#include <AssetBuilderSDk/AssetBuilderSDK.h>
-#include <AssetBuilderSDk/AssetBuilderBusses.h>
+#include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AzCore/std/parallel/atomic.h>
 #include <AzFramework/Logging/LogFile.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 #include "native/assetprocessor.h"
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 #include "native/utilities/ApplicationManagerAPI.h"
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 
@@ -113,9 +113,6 @@ namespace AssetUtilities
     //! Determine the Job Description for a job, for now it is the name of the recognizer
     QString ComputeJobDescription(const AssetProcessor::AssetRecognizer* recognizer);
 
-    //!This  function generates a key based on file name
-    QString GenerateKeyForSourceFile(QString file, AssetProcessor::PlatformConfiguration* platformConfig);
-
     //! Compute the root of the cache for the current project.
     //! This is generally the "cache" folder, subfolder gamedir.
     bool ComputeProjectCacheRoot(QDir& projectCacheRoot);
@@ -123,10 +120,10 @@ namespace AssetUtilities
     //! Compute the folder that will be used for fence files.
     bool ComputeFenceDirectory(QDir& fenceDir);
 
-    //! Given a file path, normalize it into a format that will succeed in case-insensitive compares to other files.
-    //! Even if the data file is copied to other operating systems
-    //! for example, switch all slashes to forward slashes.
-    //! Note:  does not convert into absolute path or canonicalize the path to remove ".." and such.
+    //! Converts all slashes to forward slashes, removes double slashes, 
+    //! replaces all indirections such as '.' or '..' as appropriate.
+    //! On windows, the drive letter (if present) is converted to uppercase.
+    //! Besides that, all case is preserved.
     QString NormalizeFilePath(const QString& filePath);
     void NormalizeFilePaths(QStringList& filePaths);
 
@@ -198,7 +195,7 @@ namespace AssetUtilities
     // Generates a fingerprint for a file without querying the existence of metadata files.  Helper function for GenerateFingerprint.
     unsigned int GenerateBaseFingerprint(QString fullPathToFile, QString extraInfo = QString());
 
-    QString GuessProductNameInDatabase(QString path, AssetProcessor::AssetDatabaseConnection* databaseConnection);
+    QString GuessProductNameInDatabase(QString path, QString platform, AssetProcessor::AssetDatabaseConnection* databaseConnection);
 
     class BuilderFilePatternMatcher
         : public AssetBuilderSDK::FilePatternMatcher
@@ -220,6 +217,7 @@ namespace AssetUtilities
     public:
 
         QuitListener();
+        ~QuitListener();
         /// ApplicationManagerNotifications::Bus::Handler
         void ApplicationShutdownRequested() override;
 

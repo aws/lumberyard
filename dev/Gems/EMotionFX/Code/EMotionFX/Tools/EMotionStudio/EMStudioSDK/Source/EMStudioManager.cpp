@@ -11,10 +11,13 @@
 */
 
 #include "EMStudioManager.h"
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include "RecoverFilesWindow.h"
 #include "MotionEventPresetManager.h"
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/Commands.h>
+#include <EMotionStudio/EMStudioSDK/Source/Allocators.h>
 
 #ifdef MCORE_PLATFORM_WINDOWS
     #include <shlobj.h>
@@ -40,10 +43,10 @@
 #include <QMessageBox>
 #include <QLabel>
 #include <QStandardPaths>
+#include <QPushButton>
 
 // include AzCore required headers
 #include <AzFramework/API/ApplicationAPI.h>
-
 
 namespace EMStudio
 {
@@ -66,6 +69,24 @@ namespace EMStudio
         mAvoidRendering = false;
 
         mApp = app;
+
+        {
+            UIAllocator::Descriptor uiAllocatorDescriptor;
+            uiAllocatorDescriptor.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
+            AZ::AllocatorInstance<UIAllocator>::Create();
+        }
+
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!serializeContext)
+        {
+            AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+        }
+        else
+        {
+            MainWindow::Reflect(serializeContext);
+        }
+
 
         // create and setup a log file
         MCore::GetLogManager().CreateLogFile(AZStd::string(GetAppDataFolder() + "EMStudioLog.txt").c_str());
@@ -112,9 +133,11 @@ namespace EMStudio
         delete mOutlinerManager;
         delete mMainWindow;
         delete mCommandManager;
+
+        AZ::AllocatorInstance<UIAllocator>::Destroy();
     }
 
-    MainWindow* EMStudioManager::GetMainWindow() 
+    MainWindow* EMStudioManager::GetMainWindow()
     {
         if (mMainWindow.isNull())
         {
@@ -123,7 +146,7 @@ namespace EMStudio
             mEventPresetManager->Load();
             mMainWindow->Init();
         }
-        return mMainWindow; 
+        return mMainWindow;
     }
 
 
@@ -160,9 +183,26 @@ namespace EMStudio
         mPluginManager->LoadPluginsFromDirectory(pluginDir.c_str());
 #endif // EMFX_EMSTUDIOLYEMBEDDED
 
-        // Register dirty workspace files callback.
-        mMainWindow->RegisterDirtyWorkspaceCallback();
-
+        // Give a chance to every plugin to reflect data
+        const uint32 numPlugins = mPluginManager->GetNumPlugins();
+        if (numPlugins)
+        {
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+            if (!serializeContext)
+            {
+                AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+            }
+            else
+            {
+                for (uint32 i = 0; i < numPlugins; ++i)
+                {
+                    EMStudioPlugin* plugin = mPluginManager->GetPlugin(i);
+                    plugin->Reflect(serializeContext);
+                }
+            }
+        }
+        
         // Register the command event processing callback.
         mEventProcessingCallback = new EventProcessingCallback();
         EMStudio::GetCommandManager()->RegisterCallback(mEventProcessingCallback);

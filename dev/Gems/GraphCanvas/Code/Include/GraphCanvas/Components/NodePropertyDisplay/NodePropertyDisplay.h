@@ -96,17 +96,22 @@ namespace GraphCanvas
         virtual void UpdateDisplay() = 0;
 
         // Display Widgets handles display the 'disabled' widget.
-        virtual QGraphicsLayoutItem* GetDisabledGraphicsLayoutItem() const = 0;
+        virtual QGraphicsLayoutItem* GetDisabledGraphicsLayoutItem() = 0;
 
         // Display Widgets handles displaying the data in the non-editable base case.
-        virtual QGraphicsLayoutItem* GetDisplayGraphicsLayoutItem() const = 0;
+        virtual QGraphicsLayoutItem* GetDisplayGraphicsLayoutItem() = 0;
         
         // Display Widgets handles displaying the data in an editable way
-        virtual QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() const = 0;
+        virtual QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() = 0;
 
         void RegisterShortcutDispatcher(QWidget* widget)
         {
             AzQtComponents::ShortcutDispatchBus::Handler::BusConnect(widget);
+        }
+        
+        void UnregisterShortcutDispatcher(QWidget* widget)
+        {
+            AzQtComponents::ShortcutDispatchBus::Handler::BusDisconnect(widget);
         }
 
     protected:

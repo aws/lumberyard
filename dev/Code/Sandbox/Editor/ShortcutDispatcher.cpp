@@ -10,16 +10,18 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ActionManager.h"
 #include "ShortcutDispatcher.h"
 #include "QtViewPaneManager.h"
 
+#include <QScopedValueRollback>
 #include <QApplication>
 #include <QMainWindow>
 #include <QEvent>
 #include <QWidget>
 #include <QAction>
+#include <QKeyEvent>
 #include <QShortcutEvent>
 #include <QShortcut>
 #include <QList>
@@ -28,6 +30,7 @@
 #include <QMenuBar>
 #include <QSet>
 #include <QPointer>
+#include <QLabel>
 
 #include <assert.h>
 
@@ -45,26 +48,101 @@ const char* FOCUSED_VIEW_PANE_ATTRIBUTE_NAME = "FocusedViewPaneName"; //Name of 
 
 static QPointer<QWidget> s_lastFocus;
 
+#ifdef AZ_PLATFORM_APPLE
+class MacNativeShortcutFilter : public QObject
+{
+    /* mac's native toolbar doesn't generate shortcut events, it calls the action directly.
+     * It doesn't even honour shortcut contexts.
+     *
+     * To remedy this, we catch the QMetaCallEvent that triggers the menu item activation
+     * and suppress it if it was triggered via key combination, and send a QShortcutEvent.
+     *
+     * The tricky part is to find out if the menu item was triggered via mouse or shortcut.
+     * If the previous event was a ShortcutOverride then it means key press.
+     */
+
+public:
+    explicit MacNativeShortcutFilter(QObject* parent)
+        : QObject(parent)
+        , m_lastShortcutOverride(QEvent::KeyPress, 0, Qt::NoModifier) // dummy init
+    {
+        qApp->installEventFilter(this);
+    }
+
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+
+        switch (event->type())
+        {
+            case QEvent::ShortcutOverride:
+            {
+                auto ke = static_cast<QKeyEvent*>(event);
+                m_lastEventWasShortcutOverride = true;
+                m_lastShortcutOverride = QKeyEvent(*ke);
+                break;
+            }
+            case QEvent::MetaCall:
+            {
+                if (m_lastEventWasShortcutOverride)
+                {
+                    m_lastEventWasShortcutOverride = false;
+                    const QMetaObject* mo = watched->metaObject();
+                    const bool isMenuItem = mo && qstrcmp(mo->className(), "QPlatformMenuItem") == 0;
+                    if (isMenuItem)
+                    {
+                        QWidget* focusWidget = ShortcutDispatcher::focusWidget();
+                        if (focusWidget)
+                        {
+                            QShortcutEvent se(QKeySequence(m_lastShortcutOverride.key() + m_lastShortcutOverride.modifiers()), /*ambiguous=*/false);
+                            se.setAccepted(false);
+                            QApplication::sendEvent(focusWidget, &se);
+                            return se.isAccepted();
+                        }
+                    }
+                }
+
+                break;
+            }
+            case QEvent::MouseButtonDblClick:
+            case QEvent::MouseButtonPress:
+            case QEvent::MouseButtonRelease:
+            case QEvent::KeyPress:
+            case QEvent::KeyRelease:
+                m_lastEventWasShortcutOverride = false;
+                break;
+            default:
+                break;
+        }
+
+        return false;
+    }
+
+    bool m_lastEventWasShortcutOverride = false;
+    QKeyEvent m_lastShortcutOverride;
+};
+#endif
+
 // Returns either a top-level or a dock widget (regardless of floating)
 // This way when docking a main window Qt::WindowShortcut still works
-QWidget* ShortcutDispatcher::FindParentScopeRoot(QWidget* w)
+QWidget* ShortcutDispatcher::FindParentScopeRoot(QWidget* widget)
 {
+    QWidget* w = widget;
     // if the current scope root is a QDockWidget, we want to bubble out
     // so we move to the parent immediately
-    if (qobject_cast<QDockWidget*>(w) != nullptr)
+    if (qobject_cast<QDockWidget*>(w) != nullptr || qobject_cast<QMainWindow*>(w) != nullptr)
     {
         w = w->parentWidget();
     }
 
     QWidget* newScopeRoot = w;
-    while (newScopeRoot && newScopeRoot->parent() && !qobject_cast<QDockWidget*>(newScopeRoot))
+    while (newScopeRoot && newScopeRoot->parent() && !qobject_cast<QDockWidget*>(newScopeRoot) && !qobject_cast<QMainWindow*>(newScopeRoot))
     {
         newScopeRoot = newScopeRoot->parentWidget();
     }
 
     // This method should always return a parent scope root; if it can't find one
     // it returns null
-    if (newScopeRoot == w)
+    if (newScopeRoot == widget)
     {
         newScopeRoot = nullptr;
 
@@ -177,11 +255,24 @@ QList<QAction*> ShortcutDispatcher::FindCandidateActions(QWidget* scopeRoot, con
 
     for (QWidget* child : scopeRoot->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly))
     {
+        bool isMenu = (qobject_cast<QMenu*>(child) != nullptr);
+
+        if ((child->windowFlags() & Qt::Window) && !isMenu)
+        {
+            // When going down the hierarchy stop at window boundaries, to not accidentally trigger
+            // shortcuts from unfocused windows. Windows might be parented to this scope for purposes
+            // "centering within parent" or lifetime.
+            // Don't stop at menus though, as they are flagged as Qt::Window but are often the only thing that
+            // actions are attached to.
+            continue;
+        }
+
         bool isDockWidget = (qobject_cast<QDockWidget*>(child) != nullptr);
-        if (isDockWidget && !actions.isEmpty())
+        if ((isDockWidget && !actions.isEmpty()) || IsShortcutSearchBreak(child))
         {
             // If we already found a candidate, don't go into dock widgets, they have lower priority
-            // Since they are not focused.
+            // since they are not focused.
+            // Also never go into viewpanes; viewpanes are their own separate shortcut context and they never take shortcuts from the main window
             continue;
         }
 
@@ -239,6 +330,9 @@ ShortcutDispatcher::ShortcutDispatcher(QObject* parent)
     , m_currentlyHandlingShortcut(false)
 {
     qApp->installEventFilter(this);
+#ifdef AZ_PLATFORM_APPLE
+    new MacNativeShortcutFilter(this);
+#endif
 }
 
 ShortcutDispatcher::~ShortcutDispatcher()
@@ -292,7 +386,7 @@ bool ShortcutDispatcher::shortcutFilter(QObject* obj, QShortcutEvent* shortcutEv
         return false;
     }
 
-    AutoBool recursiveCheck(&m_currentlyHandlingShortcut);
+    QScopedValueRollback<bool> recursiveCheck(m_currentlyHandlingShortcut, true);
 
     QWidget* currentFocusWidget = focusWidget(); // check the widget we tracked last
     if (!currentFocusWidget)
@@ -325,16 +419,24 @@ bool ShortcutDispatcher::shortcutFilter(QObject* obj, QShortcutEvent* shortcutEv
     }
 
 
-    // Nothing else to do... shortcut is really ambiguous, something for the developer to fix.
+    // Nothing else to do... shortcut is really ambiguous, or there's no actions, something for the developer to fix.
     // Here's some debug info :
 
-    qWarning() << Q_FUNC_INFO << "Ambiguous shortcut" << shortcutEvent->key() << "; focusWidget="
-               << qApp->focusWidget() << "Candidate =: " << candidates << "; obj = " << obj
-               << "Focused top-level=" << currentFocusWidget;
-
-    for (auto ambiguousAction : candidates)
+    if (candidates.isEmpty())
     {
-        qWarning() << ambiguousAction << ambiguousAction->parentWidget() << ambiguousAction->associatedWidgets() << ambiguousAction->shortcut();
+        qWarning() << Q_FUNC_INFO << "No candidate QActions found";
+    }
+    else
+    {
+        qWarning() << Q_FUNC_INFO << "Ambiguous shortcut:" << shortcutEvent->key() << "; focusWidget="
+            << qApp->focusWidget() << "Candidates=" << candidates << "; obj = " << obj
+            << "Focused top-level=" << currentFocusWidget;
+        for (auto ambiguousAction : candidates)
+        {
+            qWarning() << "action=" << ambiguousAction << "; action->parentWidget=" << ambiguousAction->parentWidget()
+                << "; associatedWidgets=" << ambiguousAction->associatedWidgets()
+                << "; shortcut=" << ambiguousAction->shortcut();
+        }
     }
 
     return false;
@@ -391,6 +493,11 @@ void ShortcutDispatcher::SubmitMetricsEvent(const char* attributeName)
     // Add attribute to show what pane is focused
     LyMetrics_AddAttribute(eventId, FOCUSED_VIEW_PANE_ATTRIBUTE_NAME, attributeName);
     LyMetrics_SubmitEvent(eventId);
+}
+
+bool ShortcutDispatcher::IsShortcutSearchBreak(QWidget* widget)
+{
+    return widget->property(SHORTCUT_DISPATCHER_CONTEXT_BREAK_PROPERTY).toBool();
 }
 
 

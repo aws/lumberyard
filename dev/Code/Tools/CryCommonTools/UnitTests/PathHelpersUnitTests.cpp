@@ -11,7 +11,7 @@
  */
 
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PathHelpers.h"
 #include <AzTest/AzTest.h>
 

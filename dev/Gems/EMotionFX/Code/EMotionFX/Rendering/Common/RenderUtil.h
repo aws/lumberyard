@@ -676,6 +676,8 @@ namespace MCommon
          */
         void RenderText(const char* text, uint32 textSize, const AZ::Vector3& globalPos, MCommon::Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color);
 
+        void SetDevicePixelRatio(float devicePixelRatio)                                                { m_devicePixelRatio = devicePixelRatio; }
+
         virtual void EnableCulling(bool cullingEnabled) = 0;
         virtual bool GetCullingEnabled() = 0;
 
@@ -684,7 +686,9 @@ namespace MCommon
 
         virtual void SetDepthMaskWrite(bool writeEnabled) = 0;
 
-        //MCORE_INLINE void RenderText(uint32 x, uint32 y, const MCore::RGBAColor& color, float fontSize, bool centered, const char *fmt, ...)  { char buffer[8192]; buffer[8191]=0; _vsnprintf( buffer,8191, fmt, (char *)(&fmt+1) ); RenderText(x, y, screenHeight, buffer, color, fontSize, centered); }
+        void RenderWireframeBox(const AZ::Vector3& dimensions, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender = false);
+        void RenderWireframeSphere(float radius, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender = false);
+        void RenderWireframeCapsule(float radius, float height, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender = false);
 
     protected:
         /**
@@ -820,7 +824,9 @@ namespace MCommon
         Line2D*                         m2DLines;               /**< Array of 2D lines. */
         uint32                          mNum2DLines;            /**< The current number of 2D lines in the array. */
         static uint32                   mNumMax2DLines;         /**< The maximum capacity of the 2D line buffer. */
+        static float                    m_wireframeSphereSegmentCount;
 
+        float                           m_devicePixelRatio;
         VectorFont*                     mFont;                  /**< The vector font used to render text. */
 
         UtilMesh*                       mUnitSphereMesh;        /**< The preallocated and preconstructed sphere mesh used for rendering. */

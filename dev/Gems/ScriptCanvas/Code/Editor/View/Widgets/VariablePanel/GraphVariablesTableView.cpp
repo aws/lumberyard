@@ -535,7 +535,7 @@ namespace ScriptCanvasEditor
         layoutChanged();
     }
 
-    void GraphVariablesModel::OnVariableAdded(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
+    void GraphVariablesModel::OnVariableAddedToGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
     {
         int index = static_cast<int>(m_variableIds.size());
 
@@ -549,7 +549,7 @@ namespace ScriptCanvasEditor
         emit VariableAdded(modelIndex);
     }
 
-    void GraphVariablesModel::OnVariableRemoved(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
+    void GraphVariablesModel::OnVariableRemovedFromGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
     {
         int index = FindRowForVariableId(variableId);
 
@@ -563,7 +563,7 @@ namespace ScriptCanvasEditor
         }
     }
 
-    void GraphVariablesModel::OnVariableNameChanged(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
+    void GraphVariablesModel::OnVariableNameChangedInGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view /*variableName*/)
     {
         int index = FindRowForVariableId(variableId);
 

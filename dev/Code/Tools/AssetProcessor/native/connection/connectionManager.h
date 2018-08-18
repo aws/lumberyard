@@ -19,9 +19,9 @@
 #include <QString>
 #include <QHostAddress>
 #include <QStringListModel>
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 #include <QAbstractItemModel>
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 
 class Connection;
 typedef AZStd::function<void(unsigned int, unsigned int, unsigned int, QByteArray, QString)> regFunc;

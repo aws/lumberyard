@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include <AzCore/Math/MathUtils.h>
 
@@ -426,7 +426,7 @@ namespace Driller
             // Styling the budget markers.
             // Mildly ugly, but not a lot of pixels to work with
             // to make it look better.
-            QPen pen = QPen(Qt::black);
+            pen = QPen(Qt::black);
             pen.setWidth(1);
 
             painter.setPen(pen);

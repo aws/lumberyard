@@ -1,0 +1,392 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #7 $"
+        }
+    },
+    "Parameters": {
+        "ClientRegistryReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "ClientRegistryWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup",
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
+            "Type": "String"
+        },
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.",
+            "Type": "String"
+        },
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.",
+            "Type": "String"
+        },
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.",
+            "Type": "String"
+        },
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.",
+            "Type": "String"
+        },
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.",
+            "Type": "String"
+        },
+        "ReadCapacityUnits": {
+            "Description": "Provisioned read throughput",
+            "Type": "Number",
+            "Default": "5",
+            "MinValue": "1",
+            "MaxValue": "10000",
+            "ConstraintDescription": "must be between 1 and 10000"
+        },
+
+        "WriteCapacityUnits": {
+            "Description": "Provisioned write throughput",
+            "Type": "Number",
+            "Default": "2",
+            "MinValue": "1",
+            "MaxValue": "10000",
+            "ConstraintDescription": "must be between 1 and 10000"
+        },
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterEnabled": {
+            "Default": "false",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterSize": {
+            "Default": "0.5",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "AccessControl": {
+            "Type": "Custom::AccessControl", 
+            "Properties": {
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }, 
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }
+            },
+            "DependsOn": [ "ClientRegistry", "ServiceLambda", "ServiceApi", "IotServicePermissions", "IotPlayerPermissions", "IotPlayerPolicy", "IotCgpPolicy", "IotDevicePolicy"]
+        },
+        "ClientRegistry": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Scan", "dynamodb:DeleteItem"]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "ClientID",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "ClientID",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "ClientRegistryReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "ClientRegistryWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "Custom::DynamoDBTable"
+        },
+        "ServiceApi": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                    {
+                        "AbstractRole": "AuthenticatedPlayer",
+                        "Action": "execute-api:Invoke",
+                        "ResourceSuffix": [
+                            "/api/GET/client/registration/*",
+                            "/api/POST/client/channel"
+                        ]
+                    },
+                    {
+                        "AbstractRole": "Player",
+                        "Action": "execute-api:Invoke",
+                        "ResourceSuffix": [
+                            "/api/GET/client/channels"
+                        ]
+                    }
+                    ]
+                }
+            },
+            "Properties": {
+                "CacheClusterEnabled": {
+                    "Ref": "ServiceApiCacheClusterEnabled"
+                },
+                "CacheClusterSize": {
+                    "Ref": "ServiceApiCacheClusterSize"
+                },
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "MethodSettings": {
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "SwaggerSettings": {
+                    "ServiceLambdaArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda",
+                            "Arn"
+                        ]
+                    }
+                }
+            },
+            "Type": "Custom::ServiceApi"
+        },
+        "ServiceLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                    {
+                        "AbstractRole": "ServiceApi",
+                        "Action": "lambda:InvokeFunction"
+                    }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "service.dispatch",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 10
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "IotServicePermissions": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": ["iot:AttachPrincipalPolicy",
+                                "iot:DetachPrincipalPolicy",
+                                "iot:ListPrincipalPolicies",
+                                "iot:CreateKeysAndCertificate",
+                                "iot:CreateThing",
+                                "iot:DescribeEndpoint",
+                                "iot:AttachThingPrincipal",
+                                "iot:Publish",
+                                "iot:GetPolicy",
+                                "iot:Connect"]                             
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::IotServicePermissions"
+        },
+        "IotPlayerPolicy": {
+            "Metadata": {
+                "CloudCanvas": {
+
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::IotPlayerPolicy"
+        },
+        "IotCgpPolicy": {
+            "Metadata": {
+                "CloudCanvas": {
+
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::IotCgpPolicy"
+        },
+        "IotDevicePolicy": {
+            "Metadata": {
+                "CloudCanvas": {
+
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::IotDevicePolicy"
+        },
+        "ChannelDataTable": {
+            "Type": "Custom::DynamoDBTable",
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "Channel",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "Channel",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": { "Ref": "ReadCapacityUnits" },
+                    "WriteCapacityUnits": { "Ref": "WriteCapacityUnits" }
+                }
+            },
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": ["dynamodb:GetItem", "dynamodb:Scan", "dynamodb:UpdateItem", "dynamodb:DeleteItem"]
+                        }
+                    ]
+                }
+            }
+        },
+        "ServiceLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "ServiceLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "ClientRegistry": {
+                        "Ref": "ClientRegistry"
+                    },
+                    "IotPlayerPolicy": 
+                    { 
+                        "Ref": "IotPlayerPolicy" 
+                    },
+                    "IotCgpPolicy": 
+                    { 
+                        "Ref": "IotCgpPolicy" 
+                    },
+                    "IotDevicePolicy":
+                    {
+                        "Ref": "IotDevicePolicy"
+                    },
+                    "ChannelDataTable": {
+                        "Ref": "ChannelDataTable"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "IotPlayerPermissions": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "AuthenticatedPlayer",
+                            "Action": ["iot:Connect",
+                                "iot:Subscribe",
+                                "iot:Receive"]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::IotPlayerPermissions"
+        }
+    },
+    "Outputs": {
+        "ServiceUrl": {
+            "Description": "The service url.", 
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceApi", 
+                    "Url"
+                ]
+            }
+        }
+    }
+}

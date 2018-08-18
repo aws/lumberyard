@@ -85,8 +85,8 @@ public: // member functions
     AZ::EntityId FindDescendantEntityIdByName(const LyShine::NameType& name) override;
     AZ::Entity* FindChildByEntityId(AZ::EntityId id) override;
     AZ::Entity* FindDescendantById(LyShine::ElementId id) override;
-    void FindDescendantElements(std::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result) override;
-    void CallOnDescendantElements(std::function<void(const AZ::EntityId)> callFunction) override;
+    void FindDescendantElements(AZStd::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result) override;
+    void CallOnDescendantElements(AZStd::function<void(const AZ::EntityId)> callFunction) override;
 
     bool IsAncestor(AZ::EntityId id) override;
 

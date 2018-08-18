@@ -28,6 +28,13 @@ namespace CloudCanvas
 {
     namespace StaticData
     {
+        class StaticDataAsset
+        {
+        public:
+            // Generic Static Data asset
+            AZ_TYPE_INFO(StaticDataAsset, "{9555866C-A706-4B07-9A61-413163ADB93F}");
+        };
+
         using StaticDataInterfacePtr = AZStd::shared_ptr<const StaticDataInterface>;
         using StaticDataMapType = AZStd::unordered_map<StaticDataTagType, StaticDataInterfacePtr>;
         using StaticDataExtensionList = AZStd::vector<StaticDataExtension>;
@@ -78,12 +85,11 @@ namespace CloudCanvas
             StaticDataType GetTypeFromFile(const char* fileName) const;
             StaticDataTagType GetTagFromFile(const char* fileName) const;
 
-            AZStd::string ResolveAndSanitize(const char* dirName) const;
-
             void NewContentReady(const AZStd::string& filePath) override;
             void NewPakContentReady(const AZStd::string& pakFileName) override;
             void RequestsCompleted() override;
 
+            static AZStd::string ResolveAndSanitize(const char* dirName);
             static void MakeEndInSlash(AZStd::string& someString);
             static AZStd::string GetDirectoryFromFullPath(const AZStd::string& filePath);
 

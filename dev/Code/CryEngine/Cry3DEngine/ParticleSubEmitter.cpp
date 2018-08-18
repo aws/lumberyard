@@ -112,7 +112,6 @@ void CParticleSubEmitter::Deactivate()
 
     if (m_pForce)
     {
-        assert(!JobManager::IsWorkerThread());
         GetPhysicalWorld()->DestroyPhysicalEntity(m_pForce);
         m_pForce = 0;
     }
@@ -991,24 +990,6 @@ int CParticleSubEmitter::SpawnParticleToContainer(const ResourceParticleParams& 
         pPart->Transform(*plocPreTransform);
     }
 
-    //If a fade emitter is set, we emit the same particle into a the Fade container. (Container will copy it)
-    //This is done to make sure that the fade particles have the same random values as the trail particles.
-    if (params.bCameraNonFacingFade && m_pContainer->GetFadeEffectContainer() != nullptr)
-    {
-        char fadeBuffer[sizeof(CParticle)] _ALIGN(128);
-        CParticle* pPartFade = new(fadeBuffer)CParticle(*pPart);
-        pPartFade->InitFadeParticle(fAge);
-        auto environmentFlags = context.nEnvFlags;
-        context.nEnvFlags = m_pContainer->GetFadeEffectContainer()->GetEnvironmentFlags();
-        CParticle* pNewPartFade = this->m_pContainer->GetFadeEffectContainer()->AddParticle(context, *pPartFade);
-        context.nEnvFlags = environmentFlags;
-
-        if (!pNewPartFade)
-        {
-            pPartFade->~CParticle();
-            return 0;
-        }
-    }
     CParticle* pNewPart = GetContainer().AddParticle(context, *pPart);
     if (!pNewPart)
     {

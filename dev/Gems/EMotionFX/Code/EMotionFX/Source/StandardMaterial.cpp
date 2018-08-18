@@ -12,14 +12,13 @@
 
 // include the required headers
 #include "StandardMaterial.h"
-#include <MCore/Source/AttributeSet.h>
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
-    //-------------------------------------------------------------------------------------------------
-    // StandardMaterialLayer
-    //-------------------------------------------------------------------------------------------------
+    AZ_CLASS_ALLOCATOR_IMPL(StandardMaterialLayer, MaterialAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(StandardMaterial, MaterialAllocator, 0)
 
     // constructor
     StandardMaterialLayer::StandardMaterialLayer()
@@ -64,14 +63,14 @@ namespace EMotionFX
     // create
     StandardMaterialLayer* StandardMaterialLayer::Create()
     {
-        return new StandardMaterialLayer();
+        return aznew StandardMaterialLayer();
     }
 
 
     // extended create
     StandardMaterialLayer* StandardMaterialLayer::Create(uint32 layerType, const char* fileName, float amount)
     {
-        return new StandardMaterialLayer(layerType, fileName, amount);
+        return aznew StandardMaterialLayer(layerType, fileName, amount);
     }
 
 
@@ -377,7 +376,7 @@ namespace EMotionFX
     // create
     StandardMaterial* StandardMaterial::Create(const char* name)
     {
-        return new StandardMaterial(name);
+        return aznew StandardMaterial(name);
     }
 
 
@@ -385,7 +384,7 @@ namespace EMotionFX
     Material* StandardMaterial::Clone() const
     {
         // create the new material
-        Material* clone = new StandardMaterial(GetName());
+        Material* clone = aznew StandardMaterial(GetName());
 
         // type-cast the standard material since it is stored as material base in the smart pointer
         StandardMaterial* standardMaterial = static_cast<StandardMaterial*>(clone);
@@ -410,9 +409,6 @@ namespace EMotionFX
             standardMaterial->mLayers[i] = StandardMaterialLayer::Create();
             standardMaterial->mLayers[i]->InitFrom(mLayers[i]);
         }
-
-        // clonse the attribute set
-        standardMaterial->GetAttributeSet()->CopyFrom(*mAttributeSet);
 
         // return the result
         return clone;

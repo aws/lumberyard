@@ -25,6 +25,18 @@ class CATLAudioObjectBase;
 namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    class AudioObjectIDFactory
+    {
+    public:
+        static TAudioObjectID GetNextID();
+
+        static const TAudioObjectID s_invalidAudioObjectID;
+        static const TAudioObjectID s_globalAudioObjectID;
+        static const TAudioObjectID s_minValidAudioObjectID;
+        static const TAudioObjectID s_maxValidAudioObjectID;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     class CAudioEventManager
     {
     public:
@@ -80,7 +92,6 @@ namespace Audio
         void Update(const float fUpdateIntervalMS, const SATLWorldPosition& rListenerPosition);
 
         bool ReserveID(TAudioObjectID& rAudioObjectID);
-        bool ReserveThisID(const TAudioObjectID nAudioObjectID);
         bool ReleaseID(const TAudioObjectID nAudioObjectID);
         CATLAudioObject* LookupID(const TAudioObjectID nAudioObjectID) const;
 
@@ -121,8 +132,6 @@ namespace Audio
         TActiveObjectMap m_cAudioObjects;
         CInstanceManager<CATLAudioObject, TAudioObjectID> m_cObjectPool;
         float m_fTimeSinceLastVelocityUpdateMS;
-
-        static const TAudioObjectID s_nMinAudioObjectID;
 
         CAudioEventManager& m_refAudioEventManager;
     };
@@ -171,7 +180,10 @@ namespace Audio
         CATLListenerObject* m_pDefaultListenerObject;
         const TAudioObjectID m_nDefaultListenerID;
         TAudioObjectID m_listenerOverrideID;
-        size_t m_nMaxNumberListeners;
+
+        // No longer have a maximum, but we can create a number of additional listeners at startup.
+        // TODO: Control this by a cvar
+        const size_t m_numReservedListeners = 8;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

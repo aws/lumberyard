@@ -117,7 +117,9 @@ namespace LmbrAWS
             else
             {
                 Aws::StringStream ss;
-                ss << strerror(errno);
+                char buf[1024];
+                azstrerror_s(buf, sizeof(buf), errno);
+                ss << buf;
                 ErrorNotify(pActInfo->pGraph, pActInfo->myID, ss.str().c_str());
             }
         }

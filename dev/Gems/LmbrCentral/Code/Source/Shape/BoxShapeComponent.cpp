@@ -32,6 +32,19 @@ namespace LmbrCentral
         }
     }
 
+
+    void BoxShapeDebugDisplayComponent::Activate()
+    {
+        EntityDebugDisplayComponent::Activate();
+        ShapeComponentNotificationsBus::Handler::BusConnect(GetEntityId());
+    }
+
+    void BoxShapeDebugDisplayComponent::Deactivate()
+    {
+        ShapeComponentNotificationsBus::Handler::BusDisconnect();
+        EntityDebugDisplayComponent::Deactivate();
+    }
+
     void BoxShapeDebugDisplayComponent::Draw(AzFramework::EntityDebugDisplayRequests* displayContext)
     {
         DrawBoxShape(g_defaultShapeDrawParams, m_boxShapeConfig, *displayContext);
@@ -55,6 +68,14 @@ namespace LmbrCentral
             return true;
         }
         return false;
+    }
+
+    void BoxShapeDebugDisplayComponent::OnShapeChanged(ShapeChangeReasons changeReason)
+    {
+        if (changeReason == ShapeChangeReasons::ShapeChanged)
+        {
+            BoxShapeComponentRequestsBus::EventResult(m_boxShapeConfig, GetEntityId(), &BoxShapeComponentRequests::GetBoxConfiguration);
+        }
     }
 
     namespace ClassConverters

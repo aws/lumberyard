@@ -60,6 +60,7 @@ namespace LmbrCentral
      */
     class CylinderShapeDebugDisplayComponent
         : public EntityDebugDisplayComponent
+        , public ShapeComponentNotificationsBus::Handler
     {
     public:
         AZ_COMPONENT(CylinderShapeDebugDisplayComponent, "{13F00855-7BB6-447A-9E8D-61F37275BC95}", EntityDebugDisplayComponent)
@@ -69,11 +70,16 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
         // AZ::Component
+        void Activate() override;
+        void Deactivate() override;
         bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
 
         // EntityDebugDisplayComponent
         void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
+
+        // ShapeComponentNotificationsBus
+        void OnShapeChanged(ShapeChangeReasons changeReason) override;
 
     private:
         AZ_DISABLE_COPY_MOVE(CylinderShapeDebugDisplayComponent)

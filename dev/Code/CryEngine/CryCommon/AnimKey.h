@@ -46,6 +46,8 @@ struct IKey
     IKey()
         : time(0)
         , flags(0) {};
+
+    virtual ~IKey() = default;
 };
 
 /** I2DBezierKey used in float tracks.
@@ -133,7 +135,7 @@ struct IEventKey
     AZStd::string eventValue;
     AZStd::string animation;
     AZStd::string target;
-   
+
     union
     {
         float value;
@@ -170,7 +172,7 @@ struct ISelectKey
 struct ISequenceKey
     : public IKey
 {
-    AZStd::string szSelection;          //!@deprecated : use sequenceEntityId to identify sequences 
+    AZStd::string szSelection;          //!@deprecated : use sequenceEntityId to identify sequences
     AZ::EntityId sequenceEntityId;
     float fDuration;
     float fStartTime;

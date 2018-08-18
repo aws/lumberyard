@@ -32,5 +32,3 @@ TEST_F(CryLegacyTest, ExampleTest)
 {
     ASSERT_TRUE(true);
 }
-
-AZ_UNIT_TEST_HOOK();

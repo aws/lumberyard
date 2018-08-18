@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "UiAnimViewAnimNode.h"
 #include "UiAnimViewTrack.h"
 #include "UiAnimViewSequence.h"
@@ -603,7 +603,7 @@ bool CUiAnimViewNode::operator<(const CUiAnimViewNode& otherNode) const
         if (thisTypeOrder == otherTypeOrder)
         {
             // Same node type, sort by name
-            return stricmp(thisAnimNode.GetName(), otherAnimNode.GetName()) < 0;
+            return azstricmp(thisAnimNode.GetName(), otherAnimNode.GetName()) < 0;
         }
 
         return thisTypeOrder < otherTypeOrder;
@@ -615,7 +615,7 @@ bool CUiAnimViewNode::operator<(const CUiAnimViewNode& otherNode) const
         if (thisTrack.GetParameterType() == otherTrack.GetParameterType())
         {
             // Same parameter type, sort by name
-            return stricmp(thisTrack.GetName(), otherTrack.GetName()) < 0;
+            return azstricmp(thisTrack.GetName(), otherTrack.GetName()) < 0;
         }
 
         return thisTrack.GetParameterType() < otherTrack.GetParameterType();

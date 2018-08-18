@@ -11,12 +11,12 @@
 */
 #pragma once
 
-#include <qcompleter.h>
-#include <qabstractitemmodel.h>
-#include <qregexp.h>
-#include <qstring.h>
-#include <QSortFilterProxyModel.h>
-#include <QTableView.h>
+#include <QCompleter>
+#include <QAbstractItemModel>
+#include <QRegExp>
+#include <QString>
+#include <QSortFilterProxyModel>
+#include <QTableView>
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Memory/SystemAllocator.h>

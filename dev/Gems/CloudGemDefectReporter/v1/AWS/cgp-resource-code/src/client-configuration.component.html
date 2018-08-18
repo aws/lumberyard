@@ -1,0 +1,149 @@
+﻿<div [ngSwitch]="isLoadingClientConfiguration">
+    <div *ngSwitchCase="true">
+        <div class="loading-spinner-container">
+            <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+        </div>
+    </div>
+    <div class="content-container" *ngSwitchCase="false">
+        <div class="field-preview" *ngFor="let field of customFields; let fieldIndex = index">
+            <span class="float-right">
+                <i (click)="onShowModifyFieldModal(field, fieldIndex)" class="fa fa-cog" data-toggle="tooltip" data-placement="top" title="Edit"></i>
+                <i (click)="onShowDeleteFieldModal(field, fieldIndex)" class="fa fa-trash-o"></i>
+            </span>
+            <div class="questino-title">
+                {{field.title}}
+            </div>
+
+            <div class="fields" *ngIf="field['type'] == 'predefined'">
+                <ng-container *ngIf="field['multipleSelect'] == true">
+                    <div class="radio-btn-label" *ngFor="let predefine of field['predefines']; let i = index">
+                        <input id="field_{{fieldIndex}}_option_{{i}}" type="checkbox" />
+                        <label class="l-checkbox" for="field_{{fieldIndex}}_option_{{i}}">
+                            {{predefine}}
+                        </label>
+                    </div>
+                </ng-container>
+                <ng-container *ngIf="field['multipleSelect'] == false">
+                    <div [formGroup]="dummyRadioButtonForm">
+                        <div class="radio-btn-container">
+                            <div *ngFor="let predefine of field['predefines']; let i = index">
+                                <label class="radio-btn-label">
+                                    <input class="form-control" type="radio" [value]="i" formControlName="dummy" />
+                                    <span></span> {{predefine}}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </ng-container>
+            </div>
+
+            <div class="fields" *ngIf="field.type == 'text'">
+                <div>
+                    <textarea class="field-textarea-preview" [(ngModel)]="dummyTextAreaModels[fieldIndex]" [maxLength]="field.maxChars"></textarea>
+                    <div class="question-textarea-chars-label">
+                        {{dummyTextAreaModels[fieldIndex].length}}/{{field.maxChars}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<button class="btn l-primary add-button" (click)="onShowAddNewFieldModal()">
+    Add New Field
+</button>
+
+<modal *ngIf="editMode == EditMode.EditField || editMode == EditMode.CreateField"
+        [title]="editMode == EditMode.EditField ? 'Edit Field' : 'Add New Field'"
+        [autoOpen]="true"
+        [hasSubmit]="true"
+        [submitButtonText]="editMode == EditMode.EditField ? 'Save Changes' : 'Add Field'"
+        [onDismiss]="onDismissModal"
+        [onClose]="onDismissModal"
+        (modalSubmitted)="editMode == EditMode.EditField ? onModifyField() : onAddField()">
+    <div class="modal-body">
+        <div class="form-group row">
+            <label class="col-form-label col-3">
+                Field Type
+            </label>
+            <div class="d-inline-block dropdown-outer col-8 field-type-dropdown" ngbDropdown>
+                <button type="button" class="btn l-dropdown col-12" id="path-dropdown" ngbDropdownToggle>
+                    <span class="dropdown-inner"> {{getFieldTypeDisplayText()}} </span>
+                    <i class="fa fa-caret-down" aria-hidden="true"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-center" aria-labelledby="path-dropdown">
+                    <button *ngFor="let fieldType of fieldTypes" type="button" class="dropdown-item" (click)="onChangeFieldType(fieldType)"> {{fieldType.displayText}} </button>
+                </div>
+            </div>
+        </div>
+
+        <form [formGroup]="fieldTitleForm">
+            <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(fieldTitleForm, 'title')}">
+                <label class="col-form-label col-3" for="title">
+                    Title
+                </label>
+                <input class="form-control col-8" id="title" type="text" [formControl]="fieldTitleForm.controls['title']"
+                        [ngClass]="{'form-control-danger': isFormFieldNotValid(fieldTitleForm, 'title')}" />
+
+                <span class="col-3"></span>
+                <div *ngIf="isFormFieldRequiredEmpty(fieldTitleForm, 'title')" class="form-control-feedback col-8">Title cannot be empty</div>
+            </div>
+        </form>
+
+        <ng-container *ngIf="curEditingField.type == 'text'">
+            <form [formGroup]="textFieldForm">
+                <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(textFieldForm, 'maxChars')}">
+                    <label class="col-form-label col-3" for="maxChars">
+                        Character Limit
+                    </label>
+                    <input class="form-control col-8" id="maxChars" type="number" [formControl]="textFieldForm.controls['maxChars']"
+                            [ngClass]="{'form-control-danger': isFormFieldNotValid(textFieldForm, 'maxChars')}" />
+
+                    <span class="col-3"></span>
+                    <div *ngIf="isFormFieldRequiredEmpty(textFieldForm, 'maxChars')" class="form-control-feedback col-8">Character Limit is invalid</div>
+                </div>
+            </form>
+        </ng-container>
+
+        <ng-container *ngIf="curEditingField.type == 'predefined'">
+            <div *ngFor="let optionForm of predefinedFieldForm.controls['options'].controls; let i = index; trackBy:trackByFn">
+                <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(optionForm, 'value')}">
+                    <label class="col-form-label col-3" *ngIf="i==0">
+                        Multiple Choice Options
+                    </label>
+                    <span class="col-3" *ngIf="i>0"></span>
+
+                    <input class="form-control col-8" type="text" [formControl]="optionForm.controls['value']"
+                            [ngClass]="{'form-control-danger': isFormFieldNotValid(optionForm, 'value')}" />
+                    <i *ngIf="i > 0" class="fa fa-close col-form-label col-1 delete-option-icon" (click)="onDeleteOption(i)"></i>
+
+                    <span class="col-3"></span>
+                    <div *ngIf="isFormFieldRequiredEmpty(optionForm, 'value')" class="form-control-feedback col-8">Option cannot be emtpy</div>
+                </div>
+            </div>
+            <div class="form-group row">
+                <span class="col-3"></span>
+                <div class="col-8 add-option-button">
+                    <button class="btn btn-outline-primary" (click)="onAddOption()">
+                        + Add Option
+                    </button>
+                </div>
+            </div>
+        </ng-container>
+    </div>
+</modal>
+
+<modal *ngIf="editMode == EditMode.DeleteField"
+        title="Delete Field"
+        [autoOpen]="true"
+        [hasSubmit]="true"
+        [onDismiss]="onDismissModal"
+        [onClose]="onDismissModal"
+        submitButtonText="Delete Field"
+        (modalSubmitted)="onDeleteField(this.fieldIndex)"
+        [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <p>
+            Are you sure you want to delete {{curEditingField.title}}?
+        </p>
+    </div>
+</modal>

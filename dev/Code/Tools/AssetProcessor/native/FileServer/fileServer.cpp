@@ -24,7 +24,7 @@
 #include <sys/stat.h>
 #include <string>
 
-#include "native/utilities/AssetUtils.h"
+#include "native/utilities/assetUtils.h"
 
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzCore/Serialization/Utils.h>
@@ -106,7 +106,7 @@ void FileServer::ConnectionAdded(unsigned int connId, Connection* connection)
 
     // Connection has not completed negotiation yet, register to be notified
     // when we know what platform is connected and map the @assets@ alias then
-    connect(connection, &Connection::AssetPlatformChanged, [this, connection]()
+    connect(connection, &Connection::AssetPlatformChanged, this, [this, connection]()
         {
             auto fileIO = m_fileIOs[connection->ConnectionId()];
             if ((fileIO) && (!connection->AssetPlatform().isEmpty())) // when someone disconnects, the asset platform may be cleared before disconnect is set.

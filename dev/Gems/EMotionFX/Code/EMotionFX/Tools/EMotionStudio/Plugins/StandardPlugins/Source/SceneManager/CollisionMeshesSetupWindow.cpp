@@ -14,6 +14,7 @@
 #include "CollisionMeshesSetupWindow.h"
 #include "EMotionFX/Source/ActorManager.h"
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
+#include <MCore/Source/StringConversions.h>
 #include <MCore/Source/LogManager.h>
 #include <EMotionFX/Source/Mesh.h>
 #include <QLabel>

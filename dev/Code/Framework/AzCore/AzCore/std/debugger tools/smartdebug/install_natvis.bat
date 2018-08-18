@@ -20,6 +20,31 @@ set FOUND=0
 REM Set current folder
 cd /d %~dp0
 
+:INSTALL_VS15
+SET "FOLDER=%DOCUMENTS%\Visual Studio 2017"
+SET "VISUALIZERFOLDER=%FOLDER%\Visualizers"
+IF EXIST "%FOLDER%" (
+    echo     Visual Studio 2017
+    IF NOT EXIST "%VISUALIZERFOLDER%" (
+        mkdir "%VISUALIZERFOLDER%"
+    )
+	
+	REM we need to remove azcore.natvis as we had to split it into two versions
+	IF EXIST "%VISUALIZERFOLDER%\azcore.natvis" (
+		del "%VISUALIZERFOLDER%\azcore.natvis"
+	)
+
+    REM rename vs2015 natvis file to vs2017 on copy
+    copy azcore_vs2015.natvis "%VISUALIZERFOLDER%\azcore_vs2017.natvis"
+    copy azcore.natjmc "%VISUALIZERFOLDER%"
+    copy azcore.natstepfilter "%VISUALIZERFOLDER%"
+	IF NOT %ERRORLEVEL% == 0 (
+		echo "Failed to find Visual Studio 2017 user folder."
+	) ELSE (
+		SET FOUND=1
+	)
+)
+
 :INSTALL_VS14
 SET "FOLDER=%DOCUMENTS%\Visual Studio 2015"
 SET "VISUALIZERFOLDER=%FOLDER%\Visualizers"

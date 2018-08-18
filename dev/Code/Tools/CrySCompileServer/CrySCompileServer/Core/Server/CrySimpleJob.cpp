@@ -12,6 +12,8 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "CrySimpleJob.hpp"
+#include "CrySimpleFileGuard.hpp"
+#include "CrySimpleServer.hpp"
 
 #include <Core/StdTypes.hpp>
 #include <Core/Error.hpp>
@@ -19,6 +21,10 @@
 #include <Core/Common.h>
 #include <Core/WindowsAPIImplementation.h>
 #include <Core/tinyxml/tinyxml.h>
+
+#include <thread>
+#include <sstream>
+#include <fstream>
 
 volatile AtomicCountType CCrySimpleJob::m_GlobalRequestNumber = 0;
 
@@ -36,6 +42,9 @@ CCrySimpleJob::~CCrySimpleJob()
 
 bool CCrySimpleJob::ExecuteCommand(const std::string& rCmd, std::string& outError)
 {
+    const bool showStdOuput = false; // For Debug: Set to true if you want the compiler's standard ouput printed out as well.
+    const bool showStdErrorOuput = SEnviropment::Instance().m_PrintWarnings;
+
 #ifdef _MSC_VER
     bool    Ret = false;
     DWORD   ExitCode    =   0;
@@ -70,7 +79,7 @@ bool CCrySimpleJob::ExecuteCommand(const std::string& rCmd, std::string& outErro
         SetHandleInformation(hWriteErr, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
 
         StartupInfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-        StartupInfo.hStdOutput = NULL;//GetStdHandle(STD_OUTPUT_HANDLE);
+        StartupInfo.hStdOutput = (showStdOuput) ? GetStdHandle(STD_OUTPUT_HANDLE) : NULL;
         StartupInfo.hStdError = hWriteErr;
         StartupInfo.dwFlags |= STARTF_USESTDHANDLES;
 
@@ -103,6 +112,7 @@ bool CCrySimpleJob::ExecuteCommand(const std::string& rCmd, std::string& outErro
                     buff[bytesRead] = '\0';
                     error += buff;
                 }
+                CSTLHelper::Trim(error," \t\r\n");
 
                 //if (waitResult == WAIT_OBJECT_0 || waitResult == WAIT_TIMEOUT)
                 //break;
@@ -123,6 +133,10 @@ bool CCrySimpleJob::ExecuteCommand(const std::string& rCmd, std::string& outErro
                 }
                 else
                 {
+                    if (showStdErrorOuput && !error.empty())
+                    {
+                        AZ_Printf(0, "\n%s\n", error.c_str());
+                    }
                     Ret = true;
                 }
             }
@@ -150,7 +164,45 @@ bool CCrySimpleJob::ExecuteCommand(const std::string& rCmd, std::string& outErro
 #endif
 
 #if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
-    return system(rCmd.c_str()) == 0;
+    std::thread::id threadId = std::this_thread::get_id();
+    std::stringstream threadIdStream;
+    threadIdStream << threadId;
+    
+    // Multiple threads could execute a command, therefore the temporary file has to be unique per thread.
+    std::string stdErrorTempFilename = SEnviropment::Instance().m_TempPath + "stderr_" + threadIdStream.str() + ".log";
+    CCrySimpleFileGuard FGTmpOutput(stdErrorTempFilename); // Delete file at the end of this function
+    
+    std::string systemCmd = rCmd;
+    if(!showStdOuput)
+    {
+        // Standard output redirected to null to disable it
+        systemCmd += " > /dev/null";
+    }
+    // Standard error ouput redirected to the temporary file
+    systemCmd += " 2> \"" + stdErrorTempFilename + "\"";
+    
+    int ret = system(systemCmd.c_str());
+    
+    // Obtain standard error output
+    std::ifstream fileStream(stdErrorTempFilename.c_str());
+    std::stringstream stdErrorStream;
+    stdErrorStream << fileStream.rdbuf();
+    std::string stdErrorString = stdErrorStream.str();
+    CSTLHelper::Trim(stdErrorString," \t\r\n");
+    
+    if (ret != 0)
+    {
+        outError = stdErrorString;
+        return false;
+    }
+    else
+    {
+        if (showStdErrorOuput && !stdErrorString.empty())
+        {
+            AZ_Printf(0, "\n%s\n", stdErrorString.c_str());
+        }
+        return true;
+    }
 #endif
 }
 

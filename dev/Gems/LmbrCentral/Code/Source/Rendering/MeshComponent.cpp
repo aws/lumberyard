@@ -20,6 +20,7 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
+#include <LmbrCentral/Rendering/GiRegistrationBus.h>
 #include <MathConversion.h>
 
 #include <I3DEngine.h>
@@ -65,7 +66,7 @@ namespace LmbrCentral
                 ->Event("SetVisibility", &MeshComponentRequestBus::Events::SetVisibility)
                 ->Event("GetVisibility", &MeshComponentRequestBus::Events::GetVisibility)
                 ->VirtualProperty("Visibility", "GetVisibility", "SetVisibility");
-            
+
             const char* setMaterialParamTooltip = "Sets a Material param value for the given Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.";
             const char* getMaterialParamTooltip = "Returns a Material param value for the given Entity";
             AZ::BehaviorParameterOverrides setParamNameDetails = { "ParamName", "The name of the Material param to set" };
@@ -132,6 +133,7 @@ namespace LmbrCentral
                 ->Field("AffectNavmesh", &MeshComponentRenderNode::MeshRenderOptions::m_affectNavmesh)
                 ->Field("VisibilityOccluder", &MeshComponentRenderNode::MeshRenderOptions::m_visibilityOccluder)
                 ->Field("DynamicMesh", &MeshComponentRenderNode::MeshRenderOptions::m_dynamicMesh)
+                ->Field("AffectsGI", &MeshComponentRenderNode::MeshRenderOptions::m_affectGI)
                 ;
         }
     }
@@ -170,7 +172,12 @@ namespace LmbrCentral
 
     bool MeshComponentRenderNode::MeshRenderOptions::IsStatic() const
     {
-        return (m_hasStaticTransform && !m_dynamicMesh &&!m_receiveWind);
+        return (m_hasStaticTransform && !m_dynamicMesh && !m_receiveWind);
+    }
+
+    bool MeshComponentRenderNode::MeshRenderOptions::AffectsGi() const
+    {
+        return m_affectGI && IsStatic();
     }
 
     AZ::Crc32 MeshComponentRenderNode::MeshRenderOptions::StaticPropertyVisibility() const
@@ -222,6 +229,7 @@ namespace LmbrCentral
         , m_visibilityOccluder(false)
         , m_dynamicMesh(false)
         , m_hasStaticTransform(false)
+        , m_affectGI(true)
     {
         m_maxViewDist = GetDefaultMaxViewDist();
     }
@@ -233,6 +241,7 @@ namespace LmbrCentral
         , m_auxiliaryRenderFlags(0)
         , m_auxiliaryRenderFlagsHistory(0)
         , m_lodDistance(0.f)
+        , m_lodDistanceScaled(FLT_MAX / (SMeshLodInfo::s_nMaxLodCount + 1))  // defualt overflow prevention - it is scaled by (SMeshLodInfo::s_nMaxLodCount + 1)
         , m_isRegisteredWithRenderer(false)
         , m_objectMoved(false)
         , m_meshAsset(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_QUEUE_LOAD))
@@ -315,7 +324,7 @@ namespace LmbrCentral
         }
     }
 
-    void MeshComponentRenderNode::SetTransformStaticState( bool isStatic)
+    void MeshComponentRenderNode::SetTransformStaticState(bool isStatic)
     {
         m_renderOptions.m_hasStaticTransform = isStatic;
     }
@@ -399,24 +408,24 @@ namespace LmbrCentral
         return scales.GetX();
     }
 
-    float MeshComponentRenderNode::GetColumnScale(int column) 
+    float MeshComponentRenderNode::GetColumnScale(int column)
     {
         AZ::Vector3 scales = m_worldTransform.RetrieveScale();
-        switch (column) 
+        switch (column)
         {
-            case 0:
-                return scales.GetX();
-                break;
-            case 1:
-                return scales.GetY();
-                break;
-            case 2:
-                return scales.GetZ();
-                break;
-            default:
-                AZ_Assert(false, "Column out of range");
-                return 1.0f;
-                break;
+        case 0:
+            return scales.GetX();
+            break;
+        case 1:
+            return scales.GetY();
+            break;
+        case 2:
+            return scales.GetZ();
+            break;
+        default:
+            AZ_Assert(false, "Column out of range");
+            return 1.0f;
+            break;
         }
         return 1.0f;
     }
@@ -433,7 +442,7 @@ namespace LmbrCentral
         {
             m_meshAsset = asset;
             m_statObj = m_meshAsset.Get()->m_statObj;
-            
+
 
 
             if (HasMesh())
@@ -485,6 +494,8 @@ namespace LmbrCentral
             // and set the refCount of the new asset to 1, otherwise it will be unloaded.
             m_meshAsset = asset;
             m_statObj = m_meshAsset.Get()->m_statObj;
+
+            RefreshRenderState();
         }
     }
 
@@ -495,6 +506,15 @@ namespace LmbrCentral
         m_renderTransform = AZTransformToLYTransform(m_worldTransform);
 
         UpdateWorldBoundingBox();
+        if (m_isRegisteredWithRenderer && m_renderOptions.AffectsGi())
+        {
+            GiRegistrationBus::Broadcast(&GiRegistration::UpsertToGi,
+                m_renderOptions.m_attachedToEntityId,
+                m_worldTransform,
+                CalculateWorldAABB(),
+                m_meshAsset,
+                GetMaterial());
+        }
 
         if (m_deformNode)
         {
@@ -553,6 +573,16 @@ namespace LmbrCentral
 
                     gEnv->p3DEngine->RegisterEntity(this);
 
+                    if (m_renderOptions.AffectsGi())
+                    {
+                        GiRegistrationBus::Broadcast(&GiRegistration::UpsertToGi,
+                            m_renderOptions.m_attachedToEntityId,
+                            m_worldTransform,
+                            CalculateWorldAABB(),
+                            m_meshAsset,
+                            GetMaterial());
+                    }
+
                     m_isRegisteredWithRenderer = true;
                 }
             }
@@ -561,6 +591,10 @@ namespace LmbrCentral
                 if (m_isRegisteredWithRenderer)
                 {
                     gEnv->p3DEngine->FreeRenderNodeState(this);
+
+                    GiRegistrationBus::Broadcast(&GiRegistration::RemoveFromGi,
+                        m_renderOptions.m_attachedToEntityId);
+
                     m_isRegisteredWithRenderer = false;
                 }
             }
@@ -616,9 +650,45 @@ namespace LmbrCentral
         SetRndFlags(flags);
     }
 
-    CLodValue MeshComponentRenderNode::ComputeLOD(int wantedLod, const SRenderingPassInfo& passInfo)
+    CLodValue MeshComponentRenderNode::ComputeLOD( int wantedLod, const SRenderingPassInfo& passInfo)
     {
-        return CLodValue(wantedLod);
+        // Default values as per the CVar - default fade going between 2 and 8 meters with dissolve enabled
+        float   dissolveDistMin = 2.0f;
+        float   dissolveDistMax = 8.0f;
+        int     dissolveEnabled = 1;
+
+        if (gEnv && gEnv->pConsole)
+        {
+            static ICVar* dissolveDistMinCvar = gEnv->pConsole->GetCVar("e_DissolveDistMin");
+            static ICVar* dissolveDistMaxCvar = gEnv->pConsole->GetCVar("e_DissolveDistMax");
+            static ICVar* dissolveEnabledCvar = gEnv->pConsole->GetCVar("e_Dissolve");
+
+            dissolveDistMin = dissolveDistMinCvar->GetFVal();
+            dissolveDistMax = dissolveDistMaxCvar->GetFVal();
+            dissolveEnabled = dissolveEnabledCvar->GetIVal() ;
+        }
+
+        const Vec3  cameraPos = passInfo.GetCamera().GetPosition();
+        const float entityDistance = sqrt_tpl(Distance::Point_AABBSq(cameraPos, GetBBox())) * passInfo.GetZoomFactor();
+
+        wantedLod = CLAMP(wantedLod, m_statObj->GetMinUsableLod(), SMeshLodInfo::s_nMaxLodCount);
+        int         currentLod = m_statObj->FindNearesLoadedLOD(wantedLod, true);
+
+        if (dissolveEnabled && passInfo.IsGeneralPass())
+        {
+            float   invDissolveDist = 1.0f / CLAMP(0.1f * m_fWSMaxViewDist, dissolveDistMin, dissolveDistMax );
+            int     nextLod = m_statObj->FindNearesLoadedLOD(currentLod + 1, true);
+            float   lodDistance = m_lodDistanceScaled * (currentLod + 1);
+            uint8   dissolveRatio255 = (uint8)SATURATEB((1.0f + (entityDistance - lodDistance) * invDissolveDist) * 255.f);
+
+            if (dissolveRatio255 == 255)
+            {
+                return CLodValue(nextLod, 0, -1);
+            }
+            return CLodValue(currentLod, dissolveRatio255, nextLod);
+        }
+
+        return CLodValue(currentLod);
     }
 
     AZ::Aabb MeshComponentRenderNode::CalculateWorldAABB() const
@@ -706,7 +776,6 @@ namespace LmbrCentral
                 distances[lodIndex] = FLT_MAX;
             }
         }
-
         return true;
     }
 
@@ -720,6 +789,13 @@ namespace LmbrCentral
         }
 
         m_lodDistance = sqrt(lodInfo.fGeometricMean);
+
+        // The following computation need to stay in accordance with the 'GetLodDistances' formula.
+        const float lodRatio = GetLodRatioNormalized();
+        if (lodRatio > 0.0f)
+        {
+            m_lodDistanceScaled = m_lodDistance / (lodRatio * frameLodInfo.fTargetSize);
+        }
     }
 
     /*IRenderNode*/ EERType MeshComponentRenderNode::GetRenderNodeType()
@@ -851,7 +927,7 @@ namespace LmbrCentral
 
     MeshComponent::MeshComponent()
     {
-        m_materialBusHandler = aznew MaterialOwnerRequestBusHandlerImpl(); 
+        m_materialBusHandler = aznew MaterialOwnerRequestBusHandlerImpl();
     }
 
     MeshComponent::~MeshComponent()
@@ -901,7 +977,7 @@ namespace LmbrCentral
     {
         m_meshRenderNode.SetMeshAsset(id);
     }
-    
+
     bool MeshComponent::IsMaterialOwnerReady()
     {
         return m_materialBusHandler->IsMaterialOwnerReady();

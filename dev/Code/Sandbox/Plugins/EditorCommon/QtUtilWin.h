@@ -25,6 +25,7 @@
 #ifdef Q_OS_WIN
 # include <QtWinExtras/QtWin>
 # include <QtGui/qpa/qplatformnativeinterface.h>
+# include <objidl.h>
 # include <GdiPlus.h>
 #endif // Q_OS_WIN
 

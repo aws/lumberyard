@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #3 $
+# $Revision: #1 $
 
 import os
 import json
@@ -21,6 +21,7 @@ import copy
 import file_util
 import collections
 import time
+import sys
 
 from StringIO import StringIO
 from errors import HandledError
@@ -79,7 +80,8 @@ class ConfigContext(object):
         if args.user_directory:
             self.user_directory_path = args.user_directory
         else:
-            self.user_directory_path = os.path.join(self.root_directory_path, constant.PROJECT_CACHE_DIRECTORY_NAME, self.game_directory_name, 'pc', constant.PROJECT_USER_DIRECTORY_NAME, constant.PROJECT_AWS_DIRECTORY_NAME)
+            platform_mapping = {"win32": "pc", "darwin": "osx_gl"}
+            self.user_directory_path = os.path.join(self.root_directory_path, constant.PROJECT_CACHE_DIRECTORY_NAME, self.game_directory_name, platform_mapping[sys.platform], constant.PROJECT_USER_DIRECTORY_NAME, constant.PROJECT_AWS_DIRECTORY_NAME)
 
         if args.tools_directory:
             self.tools_directory_path = args.tools_directory
@@ -963,7 +965,7 @@ class TemplateAggregator(object):
     }
 
 
-    def __init__(self, context, base_file_name, extension_file_name, gem_file_name=None):
+    def __init__(self, context, base_file_name, extension_file_name, gem_file_name=None, base_file_path=None, extension_file_path=None):
         '''Initializes the object with the specified file names but does not load any content from those files.
 
         Arguments:
@@ -987,14 +989,18 @@ class TemplateAggregator(object):
         self.__base_template = None
         self.__extension_template = None
         self.__effective_template = None
+        self.__base_file_path = base_file_path or os.path.join(RESOURCE_MANAGER_PATH, 'templates')
+        self.__extension_file_path = extension_file_path or context.config.aws_directory_path
+
 
     @property
     def context(self):
         return self.__context
 
+
     @property
     def base_file_path(self):
-        return os.path.join(RESOURCE_MANAGER_PATH, 'templates', self.__base_file_name)
+        return os.path.join(self.__base_file_path, self.__base_file_name)
 
 
     @property
@@ -1009,7 +1015,7 @@ class TemplateAggregator(object):
 
     @property
     def extension_file_path(self):
-        return os.path.join(self.__context.config.aws_directory_path, self.__extension_file_name)
+        return os.path.join(self.__extension_file_path, self.__extension_file_name)
 
 
     @property
@@ -1404,7 +1410,7 @@ class DeploymentTemplateAggregator(TemplateAggregator):
             resources["CrossGemCommunicationInterfaceResolver"] = {
                 "Type": "Custom::InterfaceDependencyResolver",
                 "Properties": {
-                    "UpdateTime": int(round(time.time() * 1000)), # We need this to force an update
+                    "UpdateTime": int(round(time.time())), # We need this to force an update
                     "ServiceToken": { "Ref": "ProjectResourceHandler" },
                     "InterfaceDependencies": inter_gem_deps_map
                 },
@@ -1425,3 +1431,8 @@ class DeploymentAccessTemplateAggregator(TemplateAggregator):
     def __init__(self, context):
         super(DeploymentAccessTemplateAggregator, self).__init__(context, constant.DEPLOYMENT_ACCESS_TEMPLATE_FILENAME, constant.DEPLOYMENT_ACCESS_TEMPLATE_EXTENSIONS_FILENAME)
 
+
+class ResourceTemplateAggregator(TemplateAggregator):
+    def __init__(self, context, base_file_path, extension_file_path):
+        super(ResourceTemplateAggregator, self).__init__(context, constant.RESOURCE_GROUP_TEMPLATE_FILENAME,
+                                                                 constant.RESOURCE_GROUP_TEMPLATE_EXTENSIONS_FILENAME, None, base_file_path, extension_file_path)

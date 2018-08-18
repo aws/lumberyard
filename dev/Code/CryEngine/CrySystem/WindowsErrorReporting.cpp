@@ -43,7 +43,7 @@ WCHAR* GetFullPathToFaultrepDll(void)
         return NULL;
     }
 
-    wcscat(szPath, szFR);
+    wcscat_s(szPath, szFR);
     return szPath;
 }
 
@@ -122,7 +122,7 @@ LONG WINAPI CryEngineExceptionFilterWER(struct _EXCEPTION_POINTERS* pExceptionPo
     if (g_cvars.sys_WER > 1)
     {
         char szScratch [_MAX_PATH];
-        const char* szDumpPath = gEnv->pCryPak->AdjustFileName("@log@/CE2Dump.dmp", szScratch, 0);
+        const char* szDumpPath = gEnv->pCryPak->AdjustFileName("@log@/CE2Dump.dmp", szScratch, AZ_ARRAY_SIZE(szScratch), 0);
 
         MINIDUMP_TYPE mdumpValue = (MINIDUMP_TYPE)(MiniDumpNormal);
         if (g_cvars.sys_WER > 1)

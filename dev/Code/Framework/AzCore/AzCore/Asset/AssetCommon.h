@@ -1001,7 +1001,8 @@ namespace AZStd
         typedef size_t      result_type;
         AZ_FORCE_INLINE size_t operator()(const AZ::Data::AssetId& id) const
         {
-            return id.m_guid.GetHash();
+            // use the subId here becuase otherwise you suffer performance problems if one source has a lot of products (same guid, varying subid)
+            return id.m_guid.GetHash() ^ static_cast<size_t>(id.m_subId);
         }
     };
 }

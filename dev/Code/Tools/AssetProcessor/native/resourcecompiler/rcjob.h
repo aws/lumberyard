@@ -20,7 +20,7 @@
 #include "RCCommon.h"
 #include "native/utilities/PlatformConfiguration.h"
 #include <AzCore/Math/Uuid.h>
-#include <AssetBuilderSDk/AssetBuilderSDK.h>
+#include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include "native/assetprocessor.h"
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
 #include <QFileInfoList>
@@ -143,9 +143,7 @@ namespace AssetProcessor
         JobState GetState() const;
         void SetState(const JobState& state);
 
-        QString GetInputFileAbsolutePath() const;
         const AZ::Uuid& GetInputFileUuid() const;
-        QString GetInputFileRelativePath() const;
 
         QString GetDestination() const;
 
@@ -171,7 +169,6 @@ namespace AssetProcessor
 
         void SetJobEscalation(int jobEscalation);
 
-        void SetInputFileAbsolutePath(QString absolutePath);
         void SetCheckExclusiveLock(bool value);
 
     Q_SIGNALS:
@@ -188,7 +185,6 @@ namespace AssetProcessor
         static bool CopyCompiledAssets(BuilderParams& params, AssetBuilderSDK::ProcessJobResponse& response);
 
         QString GetJobKey() const;
-        QString GetWatchFolder() const;
         AZ::Uuid GetBuilderGuid() const;
         bool IsCritical() const;
         bool IsAutoFail() const;
@@ -197,11 +193,10 @@ namespace AssetProcessor
     protected:
         //! DoWork ensure that the job is ready for being processing and than makes the actual builder call   
         virtual void DoWork(AssetBuilderSDK::ProcessJobResponse& result, BuilderParams& builderParams, AssetUtilities::QuitListener& listener);
+        void PopulateProcessJobRequest(AssetBuilderSDK::ProcessJobRequest& processJobRequest);
 
     private:
-
         JobDetails m_jobDetails;
-        void PopulateProcessJobRequest(AssetBuilderSDK::ProcessJobRequest& processJobRequest);
         JobState m_jobState;
 
         QueueElementID m_queueElementID; // cached to prevent lots of construction of this all over the place

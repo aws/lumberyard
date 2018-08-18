@@ -23,15 +23,9 @@ namespace EMotionFX
     class EMFX_API BlendTreePoseSwitchNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendTreePoseSwitchNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(BlendTreePoseSwitchNode, "{1CB88289-B0B1-46D7-B218-DF3E5258B6B1}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000014
-        };
+        AZ_RTTI(BlendTreePoseSwitchNode, "{1CB88289-B0B1-46D7-B218-DF3E5258B6B1}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         enum
         {
@@ -69,40 +63,34 @@ namespace EMotionFX
             : public AnimGraphNodeData
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
+
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance, int32 decisionIndex)
                 : AnimGraphNodeData(node, animGraphInstance)        { mDecisionIndex = decisionIndex; }
-
-            uint32 GetClassSize() const override                                                                                    { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override        { return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance, MCORE_INVALIDINDEX32); }
 
         public:
             int32   mDecisionIndex;
         };
 
-        static BlendTreePoseSwitchNode* Create(AnimGraph* animGraph);
+        BlendTreePoseSwitchNode();
+        ~BlendTreePoseSwitchNode();
 
-        void Init(AnimGraphInstance* animGraphInstance) override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
+
         bool GetHasOutputPose() const override              { return true; }
         bool GetSupportsVisualization() const override      { return true; }
         uint32 GetVisualColor() const override              { return MCore::RGBA(159, 81, 255); }
-        const char* GetTypeString() const override;
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
-
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
 
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        BlendTreePoseSwitchNode(AnimGraph* animGraph);
-        ~BlendTreePoseSwitchNode();
-
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;

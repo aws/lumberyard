@@ -147,11 +147,11 @@ namespace EMStudio
         menu.addSeparator();
 
         // for opening projects
-        QAction* openProjectAction = menu.addAction("Open Project");
+        QAction* openProjectAction = menu.addAction("Open Workspace");
 
         // create recent projects sub menu
         MysticQt::RecentFiles recentProjects;
-        recentProjects.Init(&menu, maxRecentFiles, "Recent Projects", "recentProjectFiles");
+        recentProjects.Init(&menu, maxRecentFiles, "Recent Workspaces", "recentWorkspaces");
         connect(&recentProjects, SIGNAL(OnRecentFile(QAction*)), (QObject*)mainWindow, SLOT(OnRecentFile(QAction*)));
 
         // add a separator line

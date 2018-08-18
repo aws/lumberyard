@@ -166,7 +166,7 @@
   <customwidget>
    <class>CAssetBrowserSearchDlg</class>
    <extends>QWidget</extends>
-   <header>AssetBrowserSearchDlg.h</header>
+   <header>AssetBrowser/AssetBrowserSearchDlg.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

@@ -80,6 +80,7 @@ void ModeToolbar::AddModes(EditorWindow* parent)
         action->setCheckable(true);   // Give it the behavior of a toggle button.
         QObject::connect(action,
             &QAction::triggered,
+            this,
             [ this, parent, action ](bool checked)
             {
                 if (m_previousAction == action)

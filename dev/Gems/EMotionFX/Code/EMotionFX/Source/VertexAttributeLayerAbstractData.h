@@ -32,6 +32,8 @@ namespace EMotionFX
     class EMFX_API VertexAttributeLayerAbstractData
         : public VertexAttributeLayer
     {
+        AZ_CLASS_ALLOCATOR_DECL
+
     public:
         /**
          * The creation method.
@@ -100,7 +102,7 @@ namespace EMotionFX
          * Get a pointer to the data. You have to typecast the data yourself.
          * @result A pointer to the vertex data.
          */
-        MCORE_INLINE void* GetData()                                    { return mData; }
+        MCORE_INLINE void* GetData() override                           { return mData; }
 
         /**
          * Get the size of one attribute in bytes.
@@ -115,7 +117,7 @@ namespace EMotionFX
          * If there is no original data, it will just return a pointer to the regular data.
          * @result A pointer to the original vertex data, or the data as returned by GetData() if there isn't any original data.
          */
-        MCORE_INLINE void* GetOriginalData()
+        MCORE_INLINE void* GetOriginalData() override
         {
             if (mKeepOriginals)
             {

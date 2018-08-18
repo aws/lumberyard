@@ -24,7 +24,7 @@
 #include "ui_DeploymentToolWindow.h"
 
 #include <AzFramework/Asset/AssetSystemBus.h>
-#include <AzCore/Base.h>
+#include <AzCore/base.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/sort.h>
 #include <Util/PathUtil.h>

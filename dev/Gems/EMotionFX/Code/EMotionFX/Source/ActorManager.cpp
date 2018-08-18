@@ -16,10 +16,12 @@
 #include "ActorInstance.h"
 #include "MultiThreadScheduler.h"
 #include <MCore/Source/StringConversions.h>
-
+#include <EMotionFX/Source/Allocators.h>
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(ActorManager, ActorManagerAllocator, 0)
+
     // constructor
     ActorManager::ActorManager()
         : BaseObject()
@@ -71,7 +73,7 @@ namespace EMotionFX
     // create
     ActorManager* ActorManager::Create()
     {
-        return new ActorManager();
+        return aznew ActorManager();
     }
 
 

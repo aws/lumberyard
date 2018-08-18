@@ -144,6 +144,7 @@ namespace Manip
 
     struct IMouseDragHandler
     {
+        virtual ~IMouseDragHandler() = default;
         virtual bool Begin(const SMouseEvent& ev, Vec3 hitPoint) = 0;
         virtual void Update(const SMouseEvent& ev) = 0;
         virtual void Render(const SRenderContext& rc) {}
@@ -226,6 +227,7 @@ namespace Manip
 
     struct ISpaceProvider
     {
+        virtual ~ISpaceProvider() = default;
         virtual SSpaceAndIndex FindSpaceIndexByName(int spaceType, const char* name, int parentsUp) const = 0;
         virtual QuatT GetTransform(const SSpaceAndIndex& index) const = 0;
     };

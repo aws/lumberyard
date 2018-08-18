@@ -10,7 +10,7 @@
 *
 */
 
-#include <QEvent.h>
+#include <QEvent>
 #include <RowWidgets/ui_HeaderWidget.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>

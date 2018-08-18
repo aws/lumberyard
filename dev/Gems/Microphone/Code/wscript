@@ -30,7 +30,6 @@ def build(bld):
         includes            = [bld.Path('Code/CryEngine/CrySoundSystem/Common')],
 
         android_java_src_path = [ java_src_root.abspath() ],
-        android_use           = ['SDL2_Android'],
 
         win_features        = ['crcfix'],
         win_lib             = ['ole32', 'libsamplerate'],

@@ -623,12 +623,8 @@ int BakeScaleIntoGeometry(phys_geometry*& pgeom, IGeomManager* pGeoman, const Ve
             pGeoman->UnregisterGeometry(pgeom);
         }
         pGeomScaled->SetForeignData(pgeom, DATA_UNSCALED_GEOM);
-        int* pMatMapping = 0;
-        if (pgeom->nMats)
-        {
-            memcpy(pMatMapping = new int[pgeom->nMats], pgeom->pMatMapping, pgeom->nMats * sizeof(int));
-        }
-        pgeom = pGeoman->RegisterGeometry(pGeomScaled, pgeom->surface_idx, pMatMapping, pgeom->nMats);
+        ///< pass in pgeom->pMatMapping rather than a copy, mappings are copied internally anyway
+        pgeom = pGeoman->RegisterGeometry(pGeomScaled, pgeom->surface_idx, (pgeom->nMats ? pgeom->pMatMapping : nullptr), pgeom->nMats); 
         pgeom->nRefCount = 0;
         pGeomScaled->Release();
         return 1;

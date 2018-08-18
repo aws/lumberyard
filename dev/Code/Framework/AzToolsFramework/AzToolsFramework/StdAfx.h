@@ -25,8 +25,8 @@
 // QT
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QFrame>
-#include <QtGui/qevent.h>
-#include <QtWidgets/qcombobox.h>
+#include <QtCore/QEvent>
+#include <QtWidgets/QComboBox>
 #include <QtWidgets/qtoolbutton.h>
 #include <QtWidgets/qlabel.h>
 #include <QtWidgets/qcolordialog.h>

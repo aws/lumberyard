@@ -17,7 +17,7 @@
 #include "ReplicaDataAggregator.hxx"
 #include "ReplicaDataEvents.h"
 
-#include "GridMate/drillers/ReplicaDriller.h"
+#include "GridMate/Drillers/ReplicaDriller.h"
 
 namespace Driller
 {

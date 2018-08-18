@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "AnnotationsDataView_Events.hxx"
 #include "AnnotationsHeaderView_Events.hxx"

@@ -16,7 +16,7 @@
 #include <QMap>
 #include <QShortcutEvent>
 
-#include <functional>
+#include <AzCore/std/functional.h>
 
 class EDITOR_QT_UI_API FloatableDockPanel
     : public QDockWidget
@@ -24,12 +24,12 @@ class EDITOR_QT_UI_API FloatableDockPanel
     Q_OBJECT
 public:
     explicit FloatableDockPanel(const QString& title, QWidget* parent = 0, Qt::WindowFlags flags = 0);
-    void SetHotkeyHandler(QObject* obj, std::function<void(QKeyEvent* e)> hotkeyHandler);
-    void SetShortcutHandler(QObject* obj, std::function<bool(QShortcutEvent* e)> shortcutHandler);
+    void SetHotkeyHandler(QObject* obj, AZStd::function<void(QKeyEvent* e)> hotkeyHandler);
+    void SetShortcutHandler(QObject* obj, AZStd::function<bool(QShortcutEvent* e)> shortcutHandler);
 private Q_SLOTS:
     void onFloatingStatusChanged(bool floating);
 protected:
     virtual bool eventFilter(QObject* obj, QEvent* e) override;
-    QMap<QObject*, std::function<void(QKeyEvent* e)> > m_hotkeyHandlers;
-    QMap<QObject*, std::function<bool(QShortcutEvent* e)> > m_shortcutHandlers;
+    QMap<QObject*, AZStd::function<void(QKeyEvent* e)> > m_hotkeyHandlers;
+    QMap<QObject*, AZStd::function<bool(QShortcutEvent* e)> > m_shortcutHandlers;
 };

@@ -10,87 +10,83 @@
 *
 */
 
-// include required headers
-#include "MainWindow.h"
-#include "EMStudioManager.h"
-#include "PluginManager.h"
-#include "PreferencesWindow.h"
-#include "Workspace.h"
-#include "KeyboardShortcutsWindow.h"
-#include "DockWidgetPlugin.h"
-#include "LoadActorSettingsWindow.h"
+#include <EMotionStudio/EMStudioSDK/Source/DockWidgetPlugin.h>
+#include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/FileManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/KeyboardShortcutsWindow.h>
+#include <EMotionStudio/EMStudioSDK/Source/LoadActorSettingsWindow.h>
+#include <EMotionStudio/EMStudioSDK/Source/MainWindow.h>
+#include <EMotionStudio/EMStudioSDK/Source/PluginManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/PreferencesWindow.h>
+#include <EMotionStudio/EMStudioSDK/Source/RenderPlugin/RenderPlugin.h>
+#include <EMotionStudio/EMStudioSDK/Source/ResetSettingsDialog.h>
+#include <EMotionStudio/EMStudioSDK/Source/SaveChangedFilesManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/UnitScaleWindow.h>
+#include <EMotionStudio/EMStudioSDK/Source/Workspace.h>
 
-#include <LyViewPaneNames.h>
+#include <Editor/ActorEditorBus.h>
+#include <EMotionFX/CommandSystem/Source/MiscCommands.h>
+#include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 
 // include Qt related
-#include <QMenu>
-#include <QStatusBar>
-#include <QMenuBar>
-#include <QSignalMapper>
-#include <QTextEdit>
-#include <QDir>
-#include <QMessageBox>
-#include <QLineEdit>
-#include <QLabel>
-#include <QFileDialog>
-#include <QSettings>
-#include <QApplication>
-#include <QDesktopServices>
-#include <QCheckBox>
-#include <QMimeData>
-#include <QDirIterator>
-#include <QDesktopWidget>
-#include <QMessageBox>
 #include <QAbstractEventDispatcher>
+#include <QDesktopServices>
+#include <QDir>
+#include <QLabel>
+#include <QMenu>
+#include <QMenuBar>
+#include <QMessageBox>
+#include <QMimeData>
+#include <QSettings>
+#include <QStatusBar>
 
 // include MCore related
-#include <MCore/Source/LogManager.h>
-#include <MCore/Source/FileSystem.h>
+#include <AzCore/Asset/AssetManagerBus.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzFramework/API/ApplicationAPI.h>
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+#include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
+#include <EMotionFX/CommandSystem/Source/ActorCommands.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphCommands.h>
+#include <EMotionFX/CommandSystem/Source/MotionCommands.h>
+#include <EMotionFX/CommandSystem/Source/MotionSetCommands.h>
+#include <EMotionFX/CommandSystem/Source/SelectionList.h>
 #include <EMotionFX/Source/ActorManager.h>
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include <EMotionFX/Source/MotionSet.h>
-#include <EMotionFX/Source/AnimGraphManager.h>
-#include <EMotionFX/Source/AnimGraph.h>
-#include <EMotionFX/CommandSystem/Source/ActorCommands.h>
-#include <EMotionFX/CommandSystem/Source/SelectionList.h>
-#include <EMotionFX/CommandSystem/Source/MotionSetCommands.h>
-#include <EMotionFX/CommandSystem/Source/MotionCommands.h>
-#include <EMotionFX/CommandSystem/Source/AnimGraphCommands.h>
-
-#include <AzFramework/API/ApplicationAPI.h>
-#include <AzCore/Asset/AssetManagerBus.h>
-#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <ISystem.h>
+#include <LyViewPaneNames.h>
+#include <MysticQt/Source/ComboBox.h>
 
 // Include this on windows to detect device remove and insert messages, used for the game controller support.
 #ifdef MCORE_PLATFORM_WINDOWS
     #include <dbt.h>
 #endif
 
-namespace
-{
-    // Iterates through the objects in one of the Manager classes, and returns
-    // true if there is at least one object that is not owned by the runtime
-    template<class ManagerType, typename GetNumFunc, typename GetEntityFunc>
-    bool HasEntityInEditor(const ManagerType& manager, const GetNumFunc& getNumEntitiesFunc, const GetEntityFunc& getEntityFunc)
-    {
-        const uint32 numEntities = (manager.*getNumEntitiesFunc)();
-        for (uint32 i = 0; i < numEntities; ++i)
-        {
-            const auto& entity = (manager.*getEntityFunc)(i);
-            if (!entity->GetIsOwnedByRuntime())
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-}
 
 namespace EMStudio
 {
+    class NativeEventFilter
+        : public QAbstractNativeEventFilter
+    {
+    public:
+        NativeEventFilter(MainWindow* mainWindow)
+            : QAbstractNativeEventFilter(),
+            m_MainWindow(mainWindow)
+        {
+        }
+
+        virtual bool nativeEventFilter(const QByteArray& /*eventType*/, void* message, long* /*result*/) Q_DECL_OVERRIDE;
+
+    private:
+        MainWindow * m_MainWindow;
+    };
+
     class SaveDirtyWorkspaceCallback
         : public SaveDirtyFilesCallback
     {
@@ -169,10 +165,13 @@ namespace EMStudio
         const char* GetFileType() const override        { return "workspace"; }
     };
 
-    // constructor
+
     MainWindow::MainWindow(QWidget* parent, Qt::WindowFlags flags)
         : QMainWindow(parent, flags)
+        , m_prevSelectedActor(nullptr)
+        , m_prevSelectedActorInstance(nullptr)
     {
+        mLoadingOptions                 = false;
         mAutosaveTimer                  = nullptr;
         mPreferencesWindow              = nullptr;
         mApplicationMode                = nullptr;
@@ -193,6 +192,7 @@ namespace EMStudio
         mLoadAnimGraphCallback          = nullptr;
         mSelectCallback                 = nullptr;
         mUnselectCallback               = nullptr;
+        m_clearSelectionCallback        = nullptr;
         mSaveWorkspaceCallback          = nullptr;
     }
 
@@ -212,33 +212,12 @@ namespace EMStudio
             mAutosaveTimer->stop();
         }
 
+        PluginOptionsNotificationsBus::Router::BusRouterDisconnect();
         SavePreferences();
 
-        // Delete all actor instances back to front which belong to the Animation Editor and are not managed by the asset system yet.
-        for (int i = EMotionFX::GetActorManager().GetNumActorInstances() - 1; i >= 0; i--)
-        {
-            EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().GetActorInstance(i);
-
-            if (actorInstance->GetIsOwnedByRuntime())
-            {
-                continue;
-            }
-
-            actorInstance->Destroy();
-        }
-
-        // Same for actors.
-        for (int i = EMotionFX::GetActorManager().GetNumActors() - 1; i >= 0; i--)
-        {
-            EMotionFX::Actor* actor = EMotionFX::GetActorManager().GetActor(i);
-
-            if (actor->GetIsOwnedByRuntime())
-            {
-                continue;
-            }
-
-            actor->Destroy();
-        }
+        // Unload everything from the Editor, so that reopening the editor
+        // results in an empty scene
+        Reset();
 
         delete mShortcutManager;
         delete mFileManager;
@@ -258,7 +237,9 @@ namespace EMStudio
         GetCommandManager()->RemoveCommandCallback(mLoadAnimGraphCallback, false);
         GetCommandManager()->RemoveCommandCallback(mSelectCallback, false);
         GetCommandManager()->RemoveCommandCallback(mUnselectCallback, false);
+        GetCommandManager()->RemoveCommandCallback(m_clearSelectionCallback, false);
         GetCommandManager()->RemoveCommandCallback(mSaveWorkspaceCallback, false);
+        GetCommandManager()->RemoveCallback(&m_mainWindowCommandManagerCallback, false);
         delete mImportActorCallback;
         delete mRemoveActorCallback;
         delete mRemoveActorInstanceCallback;
@@ -272,57 +253,20 @@ namespace EMStudio
         delete mLoadAnimGraphCallback;
         delete mSelectCallback;
         delete mUnselectCallback;
+        delete m_clearSelectionCallback;
         delete mSaveWorkspaceCallback;
     }
 
+    void MainWindow::Reflect(AZ::ReflectContext* context)
+    {
+        GUIOptions::Reflect(context);
+    }
 
     // init the main window
     void MainWindow::Init()
     {
         // tell the mystic Qt library about the main window
         MysticQt::GetMysticQt()->SetMainWindow(this);
-
-        QSettings settings(this);
-
-        settings.beginGroup("EMotionFX");
-
-        // set the size
-        const int32 sizeX = settings.value("mainWindowSizeX", 1920).toInt();
-        const int32 sizeY = settings.value("mainWindowSizeY", 1080).toInt();
-        resize(sizeX, sizeY);
-
-        // set the position
-        const bool containsPosX = settings.contains("mainWindowPosX");
-        const bool containsPosY = settings.contains("mainWindowPosY");
-        if ((containsPosX) && (containsPosY))
-        {
-            const int32 posX = settings.value("mainWindowPosX", 0).toInt();
-            const int32 posY = settings.value("mainWindowPosY", 0).toInt();
-            move(posX, posY);
-        }
-        else
-        {
-            QDesktopWidget desktopWidget;
-            const QRect primaryScreenRect = desktopWidget.availableGeometry(desktopWidget.primaryScreen());
-            const int32 posX = (primaryScreenRect.width() / 2) - (sizeX / 2);
-            const int32 posY = (primaryScreenRect.height() / 2) - (sizeY / 2);
-            move(posX, posY);
-        }
-
-#if !defined(EMFX_EMSTUDIOLYEMBEDDED)
-
-        // maximized state
-        const bool isMaximized = settings.value("mainWindowMaximized", true).toBool();
-        if (isMaximized)
-        {
-            showMaximized();
-        }
-        else
-        {
-            showNormal();
-        }
-
-#endif // EMFX_EMSTUDIOLYEMBEDDED
 
         // enable drag&drop support
         setAcceptDrops(true);
@@ -346,9 +290,6 @@ namespace EMStudio
         menuLayout->addWidget(mApplicationMode);
 
         setMenuWidget(menuWidget);
-
-        // read the maximum number of recent files
-        const int32 maxRecentFiles = settings.value("maxRecentFiles", 16).toInt(); // default to 16 recent files in case we start EMStudio the first time
 
         // file actions
         QMenu* menu = menuBar->addMenu(tr("&File"));
@@ -382,7 +323,7 @@ namespace EMStudio
         DisableSaveSelectedActorsMenu();
 
         // recent actors submenu
-        mRecentActors.Init(menu, maxRecentFiles, "Recent Actors", "recentActorFiles");
+        mRecentActors.Init(menu, mOptions.GetMaxRecentFiles(), "Recent Actors", "recentActorFiles");
         connect(&mRecentActors, SIGNAL(OnRecentFile(QAction*)), this, SLOT(OnRecentFile(QAction*)));
 
         // workspace file actions
@@ -397,7 +338,7 @@ namespace EMStudio
         saveWorkspaceAsAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/FileSaveAs.png"));
 
         // recent workspace submenu
-        mRecentWorkspaces.Init(menu, maxRecentFiles, "Recent Workspaces", "recentWorkspaces");
+        mRecentWorkspaces.Init(menu, mOptions.GetMaxRecentFiles(), "Recent Workspaces", "recentWorkspaces");
         connect(&mRecentWorkspaces, SIGNAL(OnRecentFile(QAction*)), this, SLOT(OnRecentFile(QAction*)));
 
         // edit menu
@@ -421,8 +362,8 @@ namespace EMStudio
         connect(mApplicationMode, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(ApplicationModeChanged(const QString&)));
         mLayoutLoaded = false;
 
-        // window item
-        menu = menuBar->addMenu(tr("&Window"));
+        // view item
+        menu = menuBar->addMenu(tr("&View"));
         mCreateWindowMenu = menu;
 
         // help menu
@@ -433,7 +374,8 @@ namespace EMStudio
         folders->addAction("Open autosave folder", this, SLOT(OnOpenAutosaveFolder()));
         folders->addAction("Open settings folder", this, SLOT(OnOpenSettingsFolder()));
 
-        // set the window title without filename, as new workspace
+        // Reset old workspace and start clean.
+        GetManager()->GetWorkspace()->Reset();
         SetWindowTitleFromFileName("<not saved yet>");
 
         // create the autosave timer
@@ -441,10 +383,12 @@ namespace EMStudio
         connect(mAutosaveTimer, SIGNAL(timeout()), this, SLOT(OnAutosaveTimeOut()));
 
         // load preferences
+        PluginOptionsNotificationsBus::Router::BusRouterConnect();
         LoadPreferences();
 
-        // init dirty file manager
+        // Create the dirty file manager and register the workspace callback.
         mDirtyFileManager = new DirtyFileManager;
+        mDirtyFileManager->AddCallback(new SaveDirtyWorkspaceCallback);
 
         // init the file manager
         mFileManager = new EMStudio::FileManager(this);
@@ -480,6 +424,7 @@ namespace EMStudio
         mLoadAnimGraphCallback = new CommandLoadAnimGraphCallback(false);
         mSelectCallback = new CommandSelectCallback(false);
         mUnselectCallback = new CommandUnselectCallback(false);
+        m_clearSelectionCallback = new CommandClearSelectionCallback(false);
         mSaveWorkspaceCallback = new CommandSaveWorkspaceCallback(false);
         GetCommandManager()->RegisterCommandCallback("ImportActor", mImportActorCallback);
         GetCommandManager()->RegisterCommandCallback("RemoveActor", mRemoveActorCallback);
@@ -494,15 +439,33 @@ namespace EMStudio
         GetCommandManager()->RegisterCommandCallback("LoadAnimGraph", mLoadAnimGraphCallback);
         GetCommandManager()->RegisterCommandCallback("Select", mSelectCallback);
         GetCommandManager()->RegisterCommandCallback("Unselect", mUnselectCallback);
+        GetCommandManager()->RegisterCommandCallback("ClearSelection", m_clearSelectionCallback);
         GetCommandManager()->RegisterCommandCallback("SaveWorkspace", mSaveWorkspaceCallback);
+
+        GetCommandManager()->RegisterCallback(&m_mainWindowCommandManagerCallback);
 
         AZ_Assert(!mNativeEventFilter, "Double initialization?");
         mNativeEventFilter = new NativeEventFilter(this);
         QAbstractEventDispatcher::instance()->installNativeEventFilter(mNativeEventFilter);
-
-        settings.endGroup();
     }
 
+    void MainWindow::MainWindowCommandManagerCallback::OnPreExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine)
+    {
+        if (!AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandRecorderClear::s_RecorderClearCmdName, true) &&
+            !AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandStopAllMotionInstances::s_stopAllMotionInstancesCmdName, true) &&
+            !AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandSelect::s_SelectCmdName, true) &&
+            !AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandUnselect::s_unselectCmdName, true) &&
+            !AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandClearSelection::s_clearSelectionCmdName, true) &&
+            !AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandToggleLockSelection::s_toggleLockSelectionCmdName, true) 
+            )
+        {
+            AZStd::string commandResult;
+            if (!GetCommandManager()->ExecuteCommandInsideCommand(CommandSystem::CommandRecorderClear::s_RecorderClearCmdName, commandResult))
+            {
+                AZ_Warning("Editor", false, "Clear recorder command failed: %s", commandResult.c_str());
+            }
+        }
+    }
 
     bool NativeEventFilter::nativeEventFilter(const QByteArray& /*eventType*/, void* message, long* /*result*/)
     {
@@ -528,20 +491,11 @@ namespace EMStudio
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
 
-        // enable the merge menu only if one actor is in the scene
-        if (EMotionFX::GetActorManager().GetNumActors() > 0)
-        {
-            GetManager()->GetMainWindow()->EnableMergeActorMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableMergeActorMenu();
-        }
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
+        mainWindow->UpdateResetAndSaveAllMenus();
 
-        // update the reset and save all menus
-        GetManager()->GetMainWindow()->UpdateResetAndSaveAllMenus();
-
-        // succeeded
         return true;
     }
 
@@ -551,20 +505,11 @@ namespace EMStudio
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
 
-        // enable the merge menu only if one actor is in the scene
-        if (EMotionFX::GetActorManager().GetNumActors() > 0)
-        {
-            GetManager()->GetMainWindow()->EnableMergeActorMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableMergeActorMenu();
-        }
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
+        mainWindow->UpdateResetAndSaveAllMenus();
 
-        // update the reset and save all menus
-        GetManager()->GetMainWindow()->UpdateResetAndSaveAllMenus();
-
-        // succeeded
         return true;
     }
 
@@ -574,34 +519,11 @@ namespace EMStudio
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
 
-        // enable the merge menu only if one actor is in the scene
-        if (EMotionFX::GetActorManager().GetNumActors() > 0)
-        {
-            GetManager()->GetMainWindow()->EnableMergeActorMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableMergeActorMenu();
-        }
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
+        mainWindow->UpdateResetAndSaveAllMenus();
 
-        // enable the actor save selected menu only if one actor or actor instance is selected
-        // it's needed to check here because if one actor is removed it's not selected anymore
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelectedActors = selectionList.GetNumSelectedActors();
-        const uint32 numSelectedActorInstances = selectionList.GetNumSelectedActorInstances();
-        if ((numSelectedActors > 0) || (numSelectedActorInstances > 0))
-        {
-            GetManager()->GetMainWindow()->EnableSaveSelectedActorsMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableSaveSelectedActorsMenu();
-        }
-
-        // update the reset and save all menus
-        GetManager()->GetMainWindow()->UpdateResetAndSaveAllMenus();
-
-        // succeeded
         return true;
     }
 
@@ -611,34 +533,11 @@ namespace EMStudio
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
 
-        // enable the merge menu only if one actor is in the scene
-        if (EMotionFX::GetActorManager().GetNumActors() > 0)
-        {
-            GetManager()->GetMainWindow()->EnableMergeActorMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableMergeActorMenu();
-        }
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
+        mainWindow->UpdateResetAndSaveAllMenus();
 
-        // enable the actor save menu only if one actor or actor instance is selected
-        // it's needed to check here because if one actor is removed it's not selected anymore
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelectedActors = selectionList.GetNumSelectedActors();
-        const uint32 numSelectedActorInstances = selectionList.GetNumSelectedActorInstances();
-        if ((numSelectedActors > 0) || (numSelectedActorInstances > 0))
-        {
-            GetManager()->GetMainWindow()->EnableSaveSelectedActorsMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableSaveSelectedActorsMenu();
-        }
-
-        // update the reset and save all menus
-        GetManager()->GetMainWindow()->UpdateResetAndSaveAllMenus();
-
-        // succeeded
         return true;
     }
 
@@ -648,21 +547,10 @@ namespace EMStudio
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
 
-        // enable the actor save menu only if one actor or actor instance is selected
-        // it's needed to check here because if one actor is removed it's not selected anymore
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelectedActors = selectionList.GetNumSelectedActors();
-        const uint32 numSelectedActorInstances = selectionList.GetNumSelectedActorInstances();
-        if ((numSelectedActors > 0) || (numSelectedActorInstances > 0))
-        {
-            GetManager()->GetMainWindow()->EnableSaveSelectedActorsMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableSaveSelectedActorsMenu();
-        }
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
 
-        // succeeded
         return true;
     }
 
@@ -672,21 +560,10 @@ namespace EMStudio
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
 
-        // enable the actor save menu only if one actor or actor instance is selected
-        // it's needed to check here because if one actor is removed it's not selected anymore
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelectedActors = selectionList.GetNumSelectedActors();
-        const uint32 numSelectedActorInstances = selectionList.GetNumSelectedActorInstances();
-        if ((numSelectedActors > 0) || (numSelectedActorInstances > 0))
-        {
-            GetManager()->GetMainWindow()->EnableSaveSelectedActorsMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableSaveSelectedActorsMenu();
-        }
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
 
-        // succeeded
         return true;
     }
 
@@ -840,20 +717,10 @@ namespace EMStudio
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
 
-        // enable the actor save menu only if one actor or actor instance is selected
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelectedActors = selectionList.GetNumSelectedActors();
-        const uint32 numSelectedActorInstances = selectionList.GetNumSelectedActorInstances();
-        if ((numSelectedActors > 0) || (numSelectedActorInstances > 0))
-        {
-            GetManager()->GetMainWindow()->EnableSaveSelectedActorsMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableSaveSelectedActorsMenu();
-        }
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
 
-        // succeeded
         return true;
     }
 
@@ -863,20 +730,10 @@ namespace EMStudio
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
 
-        // enable the actor save menu only if one actor or actor instance is selected
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelectedActors = selectionList.GetNumSelectedActors();
-        const uint32 numSelectedActorInstances = selectionList.GetNumSelectedActorInstances();
-        if ((numSelectedActors > 0) || (numSelectedActorInstances > 0))
-        {
-            GetManager()->GetMainWindow()->EnableSaveSelectedActorsMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableSaveSelectedActorsMenu();
-        }
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
 
-        // succeeded
         return true;
     }
 
@@ -886,20 +743,10 @@ namespace EMStudio
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
 
-        // enable the actor save menu only if one actor or actor instance is selected
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelectedActors = selectionList.GetNumSelectedActors();
-        const uint32 numSelectedActorInstances = selectionList.GetNumSelectedActorInstances();
-        if ((numSelectedActors > 0) || (numSelectedActorInstances > 0))
-        {
-            GetManager()->GetMainWindow()->EnableSaveSelectedActorsMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableSaveSelectedActorsMenu();
-        }
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
 
-        // succeeded
         return true;
     }
 
@@ -909,20 +756,36 @@ namespace EMStudio
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
 
-        // enable the actor save menu only if one actor or actor instance is selected
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelectedActors = selectionList.GetNumSelectedActors();
-        const uint32 numSelectedActorInstances = selectionList.GetNumSelectedActorInstances();
-        if ((numSelectedActors > 0) || (numSelectedActorInstances > 0))
-        {
-            GetManager()->GetMainWindow()->EnableSaveSelectedActorsMenu();
-        }
-        else
-        {
-            GetManager()->GetMainWindow()->DisableSaveSelectedActorsMenu();
-        }
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
 
-        // succeeded
+        return true;
+    }
+
+
+    bool MainWindow::CommandClearSelectionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
+    {
+        MCORE_UNUSED(command);
+        MCORE_UNUSED(commandLine);
+
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
+
+        return true;
+    }
+
+
+    bool MainWindow::CommandClearSelectionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
+    {
+        MCORE_UNUSED(command);
+        MCORE_UNUSED(commandLine);
+
+        EMStudio::MainWindow* mainWindow = GetManager()->GetMainWindow();
+        mainWindow->UpdateSaveActorsMenu();
+        mainWindow->BroadcastSelectionNotifications();
+
         return true;
     }
 
@@ -948,13 +811,6 @@ namespace EMStudio
     {
         mRecentWorkspaces.AddRecentFile(filename);
         SetWindowTitleFromFileName(filename);
-    }
-
-
-    void MainWindow::RegisterDirtyWorkspaceCallback()
-    {
-        SaveDirtyWorkspaceCallback* dirtyWorkspaceCallback = new SaveDirtyWorkspaceCallback;
-        mDirtyFileManager->AddCallback(dirtyWorkspaceCallback);
     }
 
 
@@ -1010,6 +866,34 @@ namespace EMStudio
     }
 
 
+    void MainWindow::UpdateSaveActorsMenu()
+    {
+        // enable the merge menu only if one actor is in the scene
+        if (EMotionFX::GetActorManager().GetNumActors() > 0)
+        {
+            EnableMergeActorMenu();
+        }
+        else
+        {
+            DisableMergeActorMenu();
+        }
+
+        // enable the actor save selected menu only if one actor or actor instance is selected
+        // it's needed to check here because if one actor is removed it's not selected anymore
+        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
+        const uint32 numSelectedActors = selectionList.GetNumSelectedActors();
+        const uint32 numSelectedActorInstances = selectionList.GetNumSelectedActorInstances();
+        if ((numSelectedActors > 0) || (numSelectedActorInstances > 0))
+        {
+            EnableSaveSelectedActorsMenu();
+        }
+        else
+        {
+            DisableSaveSelectedActorsMenu();
+        }
+    }
+
+
     void MainWindow::EnableSaveSelectedActorsMenu()
     {
         mSaveSelectedActorsAction->setEnabled(true);
@@ -1037,21 +921,6 @@ namespace EMStudio
             windowTitle += AZStd::string::format(" - %s", fileName.c_str());
         }
         setWindowTitle(windowTitle.c_str());
-    }
-
-
-    void MainWindow::SetMaxRecentFiles(uint32 numRecentFiles, bool saveToConfigFile)
-    {
-        // update the max recent files
-        mMaxNumRecentFiles = numRecentFiles;
-        mRecentActors.SetMaxRecentFiles(numRecentFiles);
-        mRecentWorkspaces.SetMaxRecentFiles(numRecentFiles);
-
-        // save the preferences
-        if (saveToConfigFile)
-        {
-            SavePreferences();
-        }
     }
 
 
@@ -1112,8 +981,15 @@ namespace EMStudio
                 action->setCheckable(true);
 
                 // set the checked state of the action
-                const bool checked = pluginManager->FindActivePlugin(plugin->GetClassID());
-                action->setChecked(checked);
+                EMStudioPlugin* activePlugin = pluginManager->FindActivePlugin(plugin->GetClassID());
+                action->setChecked(activePlugin != nullptr);
+
+                // Create any children windows this plugin might want to create
+                if (activePlugin)
+                {
+                    // must use the active plugin, as it needs to be initialized to create window entries
+                    activePlugin->AddWindowMenuEntries(mCreateWindowMenu);
+                }
             }
         }
     }
@@ -1174,7 +1050,6 @@ namespace EMStudio
         QDesktopServices::openUrl(url);
     }
 
-
     // show the preferences dialog
     void MainWindow::OnPreferences()
     {
@@ -1183,106 +1058,43 @@ namespace EMStudio
             mPreferencesWindow = new PreferencesWindow(this);
             mPreferencesWindow->Init();
 
-            const char* categoryName = "General";
-            MysticQt::PropertyWidget* generalPropertyWidget = mPreferencesWindow->FindPropertyWidgetByName(categoryName);
-            if (generalPropertyWidget == nullptr)
+            AzToolsFramework::ReflectedPropertyEditor* generalPropertyWidget = mPreferencesWindow->AddCategory("General", "Images/Preferences/General.png", false);
+            generalPropertyWidget->ClearInstances();
+            generalPropertyWidget->InvalidateAll();
+
+            generalPropertyWidget->AddInstance(&mOptions, azrtti_typeid(mOptions));
+
+            PluginManager* pluginManager = GetPluginManager();
+            const uint32 numPlugins = pluginManager->GetNumActivePlugins();
+            for (uint32 i = 0; i < numPlugins; ++i)
             {
-                generalPropertyWidget = mPreferencesWindow->AddCategory(categoryName, "Images/Preferences/General.png", false);
+                EMStudioPlugin* currentPlugin = pluginManager->GetActivePlugin(i);
+                PluginOptions* pluginOptions = currentPlugin->GetOptions();
+                if (pluginOptions)
+                {
+                    generalPropertyWidget->AddInstance(pluginOptions, azrtti_typeid(pluginOptions));
+                }
             }
 
-            connect(generalPropertyWidget, SIGNAL(ValueChanged(MysticQt::PropertyWidget::Property*)), this, SLOT(OnValueChanged(MysticQt::PropertyWidget::Property*)));
-
-            mMaxRecentFilesProperty             = generalPropertyWidget->AddIntProperty("", "Maximum Recent Files", GetMaxRecentFiles(), 16, 1, 99);
-            mMaxHistoryItemsProperty            = generalPropertyWidget->AddIntProperty("", "Undo History Size", GetCommandManager()->GetMaxHistoryItems(), 256, 1, 9999);
-            mNotificationVisibleTimeProperty    = generalPropertyWidget->AddIntProperty("", "Notification Visible Time", mNotificationVisibleTime, 5, 1, 10);
-            mAutosaveIntervalProperty           = generalPropertyWidget->AddIntProperty("", "Autosave Interval (Minutes)", mAutosaveInterval, 10, 1, 60);
-            mAutosaveNumberOfFilesProperty      = generalPropertyWidget->AddIntProperty("", "Autosave Number Of Files", mAutosaveNumberOfFiles, 5, 1, 99);
-            mEnableAutosaveProperty             = generalPropertyWidget->AddBoolProperty("", "Enable Autosave", mEnableAutosave, true);
-            mImporterDetailedLogging            = generalPropertyWidget->AddBoolProperty("", "Importer Detailed Logging", EMotionFX::GetImporter().GetLogDetails(), false);
-            mAutoLoadLastWorkspaceProperty      = generalPropertyWidget->AddBoolProperty("", "Auto Load Last Workspace", GetManager()->GetAutoLoadLastWorkspace(), false);
-
-            const uint32 numGeneralPropertyWidgetColumns = generalPropertyWidget->columnCount();
-            for (uint32 i = 0; i < numGeneralPropertyWidgetColumns; ++i)
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+            if (!serializeContext)
             {
-                generalPropertyWidget->resizeColumnToContents(i);
+                AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+                return;
             }
+            generalPropertyWidget->SetAutoResizeLabels(true);
+            generalPropertyWidget->Setup(serializeContext, nullptr, true);
+            generalPropertyWidget->show();
+            generalPropertyWidget->ExpandAll();
+            generalPropertyWidget->InvalidateAll();
 
-            // keyboard shortcuts
-            categoryName = "Keyboard\nShortcuts";
+            // Keyboard shortcuts
             KeyboardShortcutsWindow* shortcutsWindow = new KeyboardShortcutsWindow(mPreferencesWindow);
-            mPreferencesWindow->AddCategory(shortcutsWindow, categoryName, "Images/Preferences/KeyboardShortcuts.png", false);
-
-            // add all categories from the plugins
-            mPreferencesWindow->AddCategoriesFromPlugin(nullptr);
+            mPreferencesWindow->AddCategory(shortcutsWindow, "Keyboard\nShortcuts", "Images/Preferences/KeyboardShortcuts.png", false);
         }
 
-        mPreferencesWindow->show();
-    }
-
-
-    void MainWindow::OnValueChanged(MysticQt::PropertyWidget::Property* property)
-    {
-        // set the maximum number of recent files
-        if (property == mMaxRecentFilesProperty)
-        {
-            SetMaxRecentFiles(property->AsInt(), false);
-        }
-
-        // set the maximum number of history items in the command manager
-        if (property == mMaxHistoryItemsProperty)
-        {
-            GetCommandManager()->SetMaxHistoryItems(property->AsInt());
-        }
-
-        // set the notification visible time
-        if (property == mNotificationVisibleTimeProperty)
-        {
-            mNotificationVisibleTime = property->AsInt();
-            GetNotificationWindowManager()->SetVisibleTime(mNotificationVisibleTime);
-        }
-
-        // enable or disable the autosave timer
-        if (property == mEnableAutosaveProperty)
-        {
-            mEnableAutosave = property->AsBool();
-            if (mEnableAutosave)
-            {
-                mAutosaveTimer->start();
-            }
-            else
-            {
-                mAutosaveTimer->stop();
-            }
-        }
-
-        // set the autosave interval
-        if (property == mAutosaveIntervalProperty)
-        {
-            mAutosaveTimer->stop();
-            mAutosaveInterval = property->AsInt();
-            mAutosaveTimer->setInterval(mAutosaveInterval * 60 * 1000);
-            mAutosaveTimer->start();
-        }
-
-        // set the autosave number of files
-        if (property == mAutosaveNumberOfFilesProperty)
-        {
-            mAutosaveNumberOfFiles = property->AsInt();
-        }
-
-        // set if the detail logging of the importer is enabled or not
-        if (property == mImporterDetailedLogging)
-        {
-            EMotionFX::GetImporter().SetLogDetails(property->AsBool());
-        }
-
-        // set if auto loading the last workspace is enabled or not
-        if (property == mAutoLoadLastWorkspaceProperty)
-        {
-            GetManager()->SetAutoLoadLastWorkspace(property->AsBool());
-        }
-
-        // save preferences
+        mPreferencesWindow->exec();
         SavePreferences();
     }
 
@@ -1292,105 +1104,22 @@ namespace EMStudio
     {
         // open the config file
         QSettings settings(this);
-        settings.beginGroup("EMotionFX");
-
-        // save the unit type
-        settings.setValue("unitType", MCore::Distance::UnitTypeToString(EMotionFX::GetEMotionFX().GetUnitType()));
-
-        // save the maximum number of items in the command history
-        settings.setValue("maxHistoryItems", GetCommandManager()->GetMaxHistoryItems());
-
-        // save the notification visible time
-        settings.setValue("notificationVisibleTime", mNotificationVisibleTime);
-
-        // save the autosave settings
-        settings.setValue("enableAutosave", mEnableAutosave);
-        settings.setValue("autosaveInterval", mAutosaveInterval);
-        settings.setValue("autosaveNumberOfFiles", mAutosaveNumberOfFiles);
-
-        // save the new maximum number of recent files
-        settings.setValue("maxRecentFiles", mMaxNumRecentFiles);
-
-        // save the log details flag for the importer
-        settings.setValue("importerLogDetailsEnabled", EMotionFX::GetImporter().GetLogDetails());
-
-        // save the last used application mode string
-        settings.setValue("applicationMode", mLastUsedMode);
-
-        // save the auto load last workspace flag
-        settings.setValue("autoLoadLastWorkspace", GetManager()->GetAutoLoadLastWorkspace());
-
-        // main window position
-        settings.setValue("mainWindowPosX", pos().x());
-        settings.setValue("mainWindowPosY", pos().y());
-
-        // main window size
-        settings.setValue("mainWindowSizeX", size().width());
-        settings.setValue("mainWindowSizeY", size().height());
-
-        // maximized state
-        const bool isMaximized = windowState() & Qt::WindowMaximized;
-        settings.setValue("mainWindowMaximized", isMaximized);
-
-        settings.endGroup();
+        mOptions.Save(settings, *this);
     }
 
 
     // load the preferences
     void MainWindow::LoadPreferences()
     {
+        // When a setting changes, OnOptionChanged will save. To avoid saving while settings are being
+        // loaded, we use this flag
+        mLoadingOptions = true;
+
         // open the config file
         QSettings settings(this);
-        settings.beginGroup("EMotionFX");
+        mOptions = GUIOptions::Load(settings, *this);
 
-        // read the unit type
-        QString unitTypeString = settings.value("unitType", "meters").toString();
-        MCore::Distance::EUnitType unitType;
-        MCore::Distance::StringToUnitType(unitTypeString.toUtf8().data(), &unitType);
-        EMotionFX::GetEMotionFX().SetUnitType(unitType);
-
-        // read the maximum number of items in the command history
-        const int32 maxHistoryItems = settings.value("maxHistoryItems", GetCommandManager()->GetMaxHistoryItems()).toInt();
-        GetCommandManager()->SetMaxHistoryItems(maxHistoryItems);
-
-        // read the notification visible time
-        mNotificationVisibleTime = settings.value("notificationVisibleTime", 5).toInt();
-        GetNotificationWindowManager()->SetVisibleTime(mNotificationVisibleTime);
-
-        // read the autosave settings
-        mEnableAutosave = settings.value("enableAutosave", true).toBool();
-        mAutosaveInterval = settings.value("autosaveInterval", 10).toInt();
-        mAutosaveNumberOfFiles = settings.value("autosaveNumberOfFiles", 5).toInt();
-
-        // set the autosave timer
-        mAutosaveTimer->setInterval(mAutosaveInterval * 60 * 1000);
-        if (mEnableAutosave)
-        {
-            mAutosaveTimer->start();
-        }
-        else
-        {
-            mAutosaveTimer->stop();
-        }
-
-        // read the maximum number of recent files
-        const int32 maxRecentFiles = settings.value("maxRecentFiles", 16).toInt();
-        SetMaxRecentFiles(maxRecentFiles, false);
-
-        // save the new maximum number of recent files
-        settings.setValue("maxRecentFiles", mMaxNumRecentFiles);
-
-        // read the log details flag for the importer
-        const bool importerLogDetails = settings.value("importerLogDetailsEnabled", EMotionFX::GetImporter().GetLogDetails()).toBool();
-        EMotionFX::GetImporter().SetLogDetails(importerLogDetails);
-
-        // read the last used application mode string
-        mLastUsedMode = settings.value("applicationMode", "AnimGraph").toString();
-
-        // load the auto load last workspace flag
-        const bool autoLoadLastWorkspace = settings.value("autoLoadLastWorkspace", GetManager()->GetAutoLoadLastWorkspace()).toBool();
-        GetManager()->SetAutoLoadLastWorkspace(autoLoadLastWorkspace);
-        settings.endGroup();
+        mLoadingOptions = false;
     }
 
 
@@ -1742,92 +1471,12 @@ namespace EMStudio
             }
         }
 
+        GetCommandManager()->ClearHistory();
+
         Workspace* workspace = GetManager()->GetWorkspace();
-        workspace->SetFilename("");
-        workspace->SetDirtyFlag(false);
-    }
+        workspace->SetDirtyFlag(true);
+    }   
 
-
-    // constructor
-    ResetSettingsWindow::ResetSettingsWindow(QWidget* parent)
-        : QDialog(parent)
-    {
-        // update title of the dialog
-        setWindowTitle("Reset Workspace");
-
-        QVBoxLayout* vLayout = new QVBoxLayout(this);
-        vLayout->setAlignment(Qt::AlignTop);
-
-        setObjectName("StyledWidgetDark");
-
-        QLabel* topLabel = new QLabel("<b>Select one or more items that you want to reset:</b>");
-        topLabel->setStyleSheet("background-color: rgb(40, 40, 40); padding: 6px;");
-        topLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        vLayout->addWidget(topLabel);
-        vLayout->setMargin(0);
-
-        QVBoxLayout* layout = new QVBoxLayout();
-        layout->setMargin(5);
-        layout->setSpacing(4);
-        vLayout->addLayout(layout);
-
-        m_actorCheckbox = new QCheckBox("Actors");
-        const bool hasActors = HasEntityInEditor(
-            EMotionFX::GetActorManager(), &EMotionFX::ActorManager::GetNumActors, &EMotionFX::ActorManager::GetActor);
-        m_actorCheckbox->setChecked(hasActors);
-        m_actorCheckbox->setDisabled(!hasActors);
-
-        m_motionCheckbox = new QCheckBox("Motions");
-        const bool hasMotions = HasEntityInEditor(
-            EMotionFX::GetMotionManager(), &EMotionFX::MotionManager::GetNumMotions, &EMotionFX::MotionManager::GetMotion);
-        m_motionCheckbox->setChecked(hasMotions);
-        m_motionCheckbox->setDisabled(!hasMotions);
-
-        m_motionSetCheckbox = new QCheckBox("Motion Sets");
-        const bool hasMotionSets = HasEntityInEditor(
-            EMotionFX::GetMotionManager(), &EMotionFX::MotionManager::GetNumMotionSets, &EMotionFX::MotionManager::GetMotionSet);
-        m_motionSetCheckbox->setChecked(hasMotionSets);
-        m_motionSetCheckbox->setDisabled(!hasMotionSets);
-
-        m_animGraphCheckbox = new QCheckBox("Anim Graphs");
-        const bool hasAnimGraphs = HasEntityInEditor(
-            EMotionFX::GetAnimGraphManager(), &EMotionFX::AnimGraphManager::GetNumAnimGraphs, &EMotionFX::AnimGraphManager::GetAnimGraph);
-        m_animGraphCheckbox->setChecked(hasAnimGraphs);
-        m_animGraphCheckbox->setDisabled(!hasAnimGraphs);
-
-        layout->addWidget(m_actorCheckbox);
-        layout->addWidget(m_motionCheckbox);
-        layout->addWidget(m_motionSetCheckbox);
-        layout->addWidget(m_animGraphCheckbox);
-
-        QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-        connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
-        connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
-        vLayout->addWidget(buttonBox);
-    }
-
-    bool ResetSettingsWindow::IsActorsChecked() const
-    {
-        return m_actorCheckbox->isChecked();
-    }
-
-    bool ResetSettingsWindow::IsMotionsChecked() const
-    {
-        return m_motionCheckbox->isChecked();
-    }
-
-    bool ResetSettingsWindow::IsMotionSetsChecked() const
-    {
-        return m_motionSetCheckbox->isChecked();
-    }
-
-    bool ResetSettingsWindow::IsAnimGraphsChecked() const
-    {
-        return m_animGraphCheckbox->isChecked();
-    }
-
-
-    // reset
     void MainWindow::OnReset()
     {
         if (mDirtyFileManager->SaveDirtyFiles() == DirtyFileManager::CANCELED)
@@ -1835,18 +1484,156 @@ namespace EMStudio
             return;
         }
 
-        ResetSettingsWindow resetWindow(this);
-        if (resetWindow.exec() == QDialog::Accepted)
+        ResetSettingsDialog resetDialog(this);
+        if (resetDialog.exec() == QDialog::Accepted)
         {
             Reset(
-                resetWindow.IsActorsChecked(),
-                resetWindow.IsMotionSetsChecked(),
-                resetWindow.IsMotionsChecked(),
-                resetWindow.IsAnimGraphsChecked()
+                resetDialog.IsActorsChecked(),
+                resetDialog.IsMotionSetsChecked(),
+                resetDialog.IsMotionsChecked(),
+                resetDialog.IsAnimGraphsChecked()
             );
         }
     }
 
+    void MainWindow::OnOptionChanged(const AZStd::string& optionChanged)
+    {
+        if (optionChanged == GUIOptions::s_unitTypeOptionName)
+        {
+            EMotionFX::GetEMotionFX().SetUnitType(mOptions.GetUnitType());
+            OnUnitTypeOptionChanged();
+        }
+        else if (optionChanged == GUIOptions::s_maxRecentFilesOptionName)
+        {
+            // Set the maximum number of recent files
+            mRecentActors.SetMaxRecentFiles(mOptions.GetMaxRecentFiles());
+            mRecentWorkspaces.SetMaxRecentFiles(mOptions.GetMaxRecentFiles());
+        }
+        else if (optionChanged == GUIOptions::s_maxHistoryItemsOptionName)
+        {
+            // Set the maximum number of history items in the command manager
+            GetCommandManager()->SetMaxHistoryItems(mOptions.GetMaxHistoryItems());
+        }
+        else if (optionChanged == GUIOptions::s_notificationVisibleTimeOptionName)
+        {
+            // Set the notification visible time
+            GetNotificationWindowManager()->SetVisibleTime(mOptions.GetNotificationInvisibleTime());
+        }
+        else if (optionChanged == GUIOptions::s_enableAutosaveOptionName)
+        {
+            // Enable or disable the autosave timer
+            if (mOptions.GetEnableAutoSave())
+            {
+                mAutosaveTimer->start();
+            }
+            else
+            {
+                mAutosaveTimer->stop();
+            }
+        }
+        else if (optionChanged == GUIOptions::s_autosaveIntervalOptionName)
+        {
+            // Set the autosave interval
+            mAutosaveTimer->stop();
+            mAutosaveTimer->setInterval(mOptions.GetAutoSaveInterval() * 60 * 1000);
+            mAutosaveTimer->start();
+        }
+        else if (optionChanged == GUIOptions::s_importerLogDetailsEnabledOptionName)
+        {
+            // Set if the detail logging of the importer is enabled or not
+            EMotionFX::GetImporter().SetLogDetails(mOptions.GetImporterLogDetailsEnabled());
+        }
+        else if (optionChanged == GUIOptions::s_autoLoadLastWorkspaceOptionName)
+        {
+            // Set if auto loading the last workspace is enabled or not
+            GetManager()->SetAutoLoadLastWorkspace(mOptions.GetAutoLoadLastWorkspace());
+        }
+
+        // Save preferences
+        if (!mLoadingOptions)
+        {
+            SavePreferences();
+        }
+    }
+
+    void MainWindow::OnUnitTypeOptionChanged()
+    {
+        // Scale actors
+        AZStd::string tempString;
+        MCore::CommandGroup commandGroup("Change scales");
+        const char* unitTypeString = MCore::Distance::UnitTypeToString(mOptions.GetUnitType());
+
+        const uint32 numActors = EMotionFX::GetActorManager().GetNumActors();
+        for (uint32 i = 0; i < numActors; ++i)
+        {
+            EMotionFX::Actor* actor = EMotionFX::GetActorManager().GetActor(i);
+
+            if (actor->GetIsOwnedByRuntime())
+            {
+                continue;
+            }
+
+            tempString = AZStd::string::format("ScaleActorData -id %d -unitType \"%s\"", actor->GetID(), unitTypeString);
+            commandGroup.AddCommandString(tempString);
+        }
+        
+        // Rescale motions
+        const uint32 numMotions = EMotionFX::GetMotionManager().GetNumMotions();
+        for (uint32 i = 0; i < numMotions; ++i)
+        {
+            EMotionFX::Motion* motion = EMotionFX::GetMotionManager().GetMotion(i);
+
+            if (motion->GetIsOwnedByRuntime())
+            {
+                continue;
+            }
+
+            tempString = AZStd::string::format("ScaleMotionData -id %d -unitType \"%s\"", motion->GetID(), unitTypeString);
+            commandGroup.AddCommandString(tempString);
+        }
+
+        // Rescale animGraphs
+        const uint32 numAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();
+        for (uint32 i = 0; i < numAnimGraphs; ++i)
+        {
+            EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().GetAnimGraph(i);
+
+            if (animGraph->GetIsOwnedByRuntime())
+            {
+                continue;
+            }
+
+            tempString = AZStd::string::format("ScaleAnimGraphData -id %d -unitType \"%s\"", animGraph->GetID(), unitTypeString);
+            commandGroup.AddCommandString(tempString);
+        }
+
+        AZStd::string result;
+        if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
+        {
+            AZ_Error("EMotionFX", false, result.c_str());
+        }
+
+        // Find the render plugins and reset camera min and max distances
+        const uint32 numPlugins = GetPluginManager()->GetNumActivePlugins();
+        for (uint32 i = 0; i < numPlugins; ++i)
+        {
+            EMStudioPlugin* plugin = GetPluginManager()->GetActivePlugin(i);
+            if (plugin->GetPluginType() == EMStudioPlugin::PLUGINTYPE_RENDERING)
+            {
+                RenderPlugin* renderPlugin = static_cast<RenderPlugin*>(plugin);
+                renderPlugin->ResetCameras();
+            }
+        }
+
+        if (mPreferencesWindow)
+        {
+            AzToolsFramework::ReflectedPropertyEditor* generalPropertyWidget = mPreferencesWindow->FindPropertyWidgetByName("General");
+            if (generalPropertyWidget)
+            {
+                generalPropertyWidget->InvalidateValues();
+            }
+        }
+    }
 
     // open an actor
     void MainWindow::OnFileOpenActor()
@@ -2022,22 +1809,11 @@ namespace EMStudio
         }
 
         // update the current selection of combo box
-        const int layoutIndex = mApplicationMode->findText(mLastUsedMode);
+        const int layoutIndex = mApplicationMode->findText(QString(mOptions.GetApplicationMode().c_str()));
         mApplicationMode->setCurrentIndex(layoutIndex);
 
         // enable signals
         mApplicationMode->blockSignals(false);
-    }
-
-
-    // set the last used application mode and save if asked
-    void MainWindow::SetLastUsedApplicationModeString(const QString& lastUsedApplicationMode, bool saveToConfigFile)
-    {
-        mLastUsedMode = lastUsedApplicationMode;
-        if (saveToConfigFile)
-        {
-            SavePreferences();
-        }
     }
 
 
@@ -2053,7 +1829,7 @@ namespace EMStudio
         }
 
         // update the last used layout and save it in the preferences file
-        mLastUsedMode = text;
+        mOptions.SetApplicationMode(text.toUtf8().data());
         SavePreferences();
 
         // generate the filename
@@ -2096,7 +1872,7 @@ namespace EMStudio
         }
 
         // check if the layout removed is the current used
-        if (mLastUsedMode == action->text())
+        if (QString(mOptions.GetApplicationMode().c_str()) == action->text())
         {
             // find the layout index on the application mode combo box
             const int layoutIndex = mApplicationMode->findText(action->text());
@@ -2120,7 +1896,7 @@ namespace EMStudio
         QAction* action = qobject_cast<QAction*>(sender());
 
         // update the last used layout and save it in the preferences file
-        mLastUsedMode = action->text();
+        mOptions.SetApplicationMode(action->text().toUtf8().data());
         SavePreferences();
 
         // generate the filename
@@ -2146,6 +1922,12 @@ namespace EMStudio
     // undo
     void MainWindow::OnUndo()
     {
+        AZStd::string commandResult;
+        if (!GetCommandManager()->ExecuteCommand(CommandSystem::CommandRecorderClear::s_RecorderClearCmdName, commandResult, false))
+        {
+            AZ_Warning("Editor", false, "Clear recorder command failed: %s", commandResult.c_str());
+        }
+
         // check if we can undo
         if (GetCommandManager()->GetNumHistoryItems() > 0 && GetCommandManager()->GetHistoryIndex() >= 0)
         {
@@ -2459,7 +2241,7 @@ namespace EMStudio
                 // Need to defer loading the character until the layout is ready. We also
                 // need a couple of initializeGL/paintGL to happen before the character
                 // is being loaded.
-                QTimer::singleShot(500, this, SLOT(LoadCharacterFiles()));
+                QTimer::singleShot(1000, this, SLOT(LoadCharacterFiles()));
             }
         }
     }
@@ -2497,7 +2279,7 @@ namespace EMStudio
             return;
         }
 
-        int layoutIndex = mApplicationMode->findText(mLastUsedMode);
+        int layoutIndex = mApplicationMode->findText(mOptions.GetApplicationMode().c_str());
 
         // If searching for the last used layout fails load the default or viewer layout if they exist
         if (layoutIndex == -1)
@@ -2515,6 +2297,29 @@ namespace EMStudio
 
         mApplicationMode->setCurrentIndex(layoutIndex);
     }
+
+
+    void MainWindow::BroadcastSelectionNotifications()
+    {
+        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
+
+        // Handle actor selection changes.
+        EMotionFX::Actor* selectedActor = selectionList.GetSingleActor();
+        if (m_prevSelectedActor != selectedActor)
+        {
+            EMotionFX::ActorEditorNotificationBus::Broadcast(&EMotionFX::ActorEditorNotifications::ActorSelectionChanged, selectedActor);
+        }
+        m_prevSelectedActor = selectedActor;
+
+        // Handle actor instance selection changes.
+        EMotionFX::ActorInstance* selectedActorInstance = selectionList.GetSingleActorInstance();
+        if (m_prevSelectedActorInstance != selectedActorInstance)
+        {
+            EMotionFX::ActorEditorNotificationBus::Broadcast(&EMotionFX::ActorEditorNotifications::ActorInstanceSelectionChanged, selectedActorInstance);
+        }
+        m_prevSelectedActorInstance = selectedActorInstance;
+    }
+
 
     void MainWindow::LoadCharacterFiles()
     {
@@ -2624,8 +2429,9 @@ namespace EMStudio
 
     void MainWindow::showEvent(QShowEvent* event)
     {
-        if (mEnableAutosave)
+        if (mOptions.GetEnableAutoSave())
         {
+            mAutosaveTimer->setInterval(mOptions.GetAutoSaveInterval() * 60 * 1000);
             mAutosaveTimer->start();
         }
 
@@ -2803,11 +2609,11 @@ namespace EMStudio
             }
 
             // check if the length is upper than the max num files
-            if (autosaveFileList.length() >= mAutosaveNumberOfFiles)
+            if (autosaveFileList.length() >= mOptions.GetAutoSaveNumberOfFiles())
             {
                 // number of files to delete
                 // one is added because one space needs to be free for the new file
-                const int numFilesToDelete = mAutosaveNumberOfFiles ? (autosaveFileList.size() - mAutosaveNumberOfFiles + 1) : autosaveFileList.size();
+                const int numFilesToDelete = mOptions.GetAutoSaveNumberOfFiles() ? (autosaveFileList.size() - mOptions.GetAutoSaveNumberOfFiles() + 1) : autosaveFileList.size();
 
                 // delete each file
                 for (int j = 0; j < numFilesToDelete; ++j)

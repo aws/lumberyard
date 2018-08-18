@@ -183,7 +183,7 @@ void StackEventsWidget::OnCustomContextMenuRequested(const QPoint& pos)
             this
         };
         auto action = eventContextMenu->addAction(tr("Copy to clipboard"));
-        connect(action, &QAction::triggered, [this] { QApplication::clipboard()->setText(m_logTable->currentIndex().data().toString());
+        connect(action, &QAction::triggered, this, [this] { QApplication::clipboard()->setText(m_logTable->currentIndex().data().toString());
             });
         eventContextMenu->popup(m_logTable->mapToGlobal(pos));
     }

@@ -24,7 +24,7 @@ class CREBaker
     : public CRendElementBase
 {
 private:
-    CRendElementBase* m_pSrc;
+    IRenderElement* m_pSrc;
     std::vector<IIndexedMesh*> m_pDst;
     CMesh* m_pSrcMesh;
     int m_nPhase;
@@ -33,7 +33,7 @@ private:
     int m_numParams;
 
 public:
-    CREBaker(CRendElementBase* pSrc, CMesh* pSrcMesh, std::vector<IIndexedMesh*> pDst, int nPhase, const SMeshBakingMaterialParams* params, int numParams, bool bSmoothNormals) { m_pSrc = pSrc; m_pDst = pDst; m_pSrcMesh = pSrcMesh; m_nPhase = nPhase; m_params = params; m_numParams = numParams; m_bSmoothNormals = bSmoothNormals; }
+    CREBaker(IRenderElement* pSrc, CMesh* pSrcMesh, std::vector<IIndexedMesh*> pDst, int nPhase, const SMeshBakingMaterialParams* params, int numParams, bool bSmoothNormals) { m_pSrc = pSrc; m_pDst = pDst; m_pSrcMesh = pSrcMesh; m_nPhase = nPhase; m_params = params; m_numParams = numParams; m_bSmoothNormals = bSmoothNormals; }
     virtual ~CREBaker() { }
     inline uint16 mfGetFlags(void) { return m_pSrc->mfGetFlags(); }
     inline void mfSetFlags(uint16 fl) { m_pSrc->mfSetFlags(fl); }

@@ -13,7 +13,6 @@
 #pragma once
 
 #include <AzCore/Component/TransformBus.h>
-#include <Cry_Math.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Shape/CapsuleShapeComponentBus.h>
 
@@ -87,13 +86,4 @@ namespace LmbrCentral
         AZ::Transform m_currentTransform; ///< Caches the current World transform.
         AZ::EntityId m_entityId; ///< Id of the entity the shape is attached to.
     };
-
-    /**
-     * Generates a Capsule mesh with filled surface and outlines.
-     */
-    void GenerateCapsuleMesh(
-        const AZ::Transform& worldFromLocal, float radius, float height,
-        AZ::u32 sides, AZ::u32 capSegments, AZStd::vector<Vec3>& vertexBufferOut,
-        AZStd::vector<vtx_idx>& indexBufferOut, AZStd::vector<Vec3>& lineBufferOut);
-
 } // namespace LmbrCentral

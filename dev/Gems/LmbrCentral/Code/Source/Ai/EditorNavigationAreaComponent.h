@@ -15,8 +15,10 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzToolsFramework/API/EntityCompositionNotificationBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Ai/NavigationAreaBus.h>
+#include <AzCore/Component/TickBus.h>
 
 // ISerialize.h required by INavigationSystem.h
 #include <ISerialize.h>
@@ -42,6 +44,8 @@ namespace LmbrCentral
         , private AZ::TransformNotificationBus::Handler
         , private NavigationAreaRequestBus::Handler
         , private AzToolsFramework::EditorEntityContextNotificationBus::Handler
+        , private AzToolsFramework::EntityCompositionNotificationBus::Handler
+        , private AZ::TickBus::Handler
     {
     public:
         AZ_COMPONENT(EditorNavigationAreaComponent, "{8391FF77-7F4E-4576-9617-37793F88C5DA}", AzToolsFramework::Components::EditorComponentBase);
@@ -80,6 +84,13 @@ namespace LmbrCentral
         // EditorEntityContextNotificationBus
         void OnStartPlayInEditorBegin() override;
 
+        // EntityCompositionNotificationBus 
+        void OnEntityCompositionChanging(const AzToolsFramework::EntityIdList& entityIds) override;
+        void OnEntityCompositionChanged(const AzToolsFramework::EntityIdList& entityIds) override;
+
+        // TickBus
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("NavigationAreaService", 0xd6ec6566));
@@ -111,5 +122,6 @@ namespace LmbrCentral
         AZStd::function<void()> m_navigationAreaChanged = nullptr; ///< Callback when the navigation area is modified.
 
         bool m_switchingToGameMode = false; ///< Set if GameView was started so we know not to destroy navigation areas in Deactivate.
+        bool m_compositionChanging = false; ///< Set if composition is changing so we know not to destroy navigation areas while scrubbing.
     };
 } // namespace LmbrCentral

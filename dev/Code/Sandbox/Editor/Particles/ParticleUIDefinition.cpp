@@ -18,29 +18,13 @@
 #include <Util/VariableTypeInfo.h>
 
 
-void CParticleUIDefinition::OnForceUpdateVariable(IVariable* pVar)
-{
-    if (m_CanForceUpdate)
-    {
-        m_ShouldForceUpdate = true;
-    }
-}
-
 void CParticleUIDefinition::AddForceUpdateVariable(IVariable* pVar)
 {
     m_pForceUpdateVars.push_back(pVar);
-    pVar->AddOnSetCallback(functor(*this, &CParticleUIDefinition::OnForceUpdateVariable));
-
-    for (int childVarIx = 0; childVarIx < pVar->GetNumVariables(); ++childVarIx)
-    {
-        AddForceUpdateVariable(pVar->GetVariable(childVarIx));
-    }
 }
 
 void CParticleUIDefinition::ResetUIState()
 {
-    m_AspectRatioInitialized = false;
-    m_CanForceUpdate = true;
 }
 
 CVarBlockPtr CParticleUIDefinition::CreateVars()
@@ -98,11 +82,13 @@ void CParticleUIDefinition::SetFromParticles(CParticleItem* pParticles, SLodInfo
 {
     if (!pParticles)
     {
+        m_localParticleEffect = nullptr;
         return;
     }
     IParticleEffect* pEffect = pParticles->GetEffect();
     if (!pEffect)
     {
+        m_localParticleEffect = nullptr;
         return;
     }
 
@@ -114,14 +100,12 @@ void CParticleUIDefinition::SetFromParticles(CParticleItem* pParticles, SLodInfo
             pEffect = lodEffect;
         }
     }
-
-
-    // Have to disallow forced updates here or else every variable will cause a forced update here
-    m_CanForceUpdate = false;
-
+    
     // Copy to local params, then run update on all vars.
     m_localParams = pEffect->GetParticleParams();
     m_defaultParams = pEffect->GetDefaultParams();
+
+    m_localParticleEffect = pEffect;
 
     //change to use default param based on emitter type if it's not inheritant from parent
     if (m_localParams.eInheritance != ParticleParams::EInheritance::Parent)
@@ -130,61 +114,70 @@ void CParticleUIDefinition::SetFromParticles(CParticleItem* pParticles, SLodInfo
     }
     m_vars->SetRecreateSplines();
     m_vars->OnSetValues();
+}
 
-    // Reenable forced updates
-    m_CanForceUpdate = true;
+void CParticleUIDefinition::CalculateAspectRatios(const ParticleParams& params)
+{
+    //calculate aspect ratios
+    m_aspectRatioYX = 1;
+    m_aspectRatioZX = 1;
+    if (abs(params.fSizeX.Base()) > FLOAT_EPSILON)
+    {
+        m_aspectRatioYX = params.fSizeY / params.fSizeX;
+        m_aspectRatioZX = params.fSizeZ / params.fSizeX;
+    }
 }
 
 void CParticleUIDefinition::SyncParticleSizeCurves(ParticleParams& newParams, const ParticleParams& originalParams)
 {
-    // Initialize aspect ratio if it's never been initialized before (or is marked as needing to be initialized due to zero handling)
-    if (!m_AspectRatioInitialized)
-    {
-        if (abs(originalParams.fSizeY.Base()) <= FLOAT_EPSILON)
-        {
-            // Use -1 when divide by zero would occur
-            m_AspectRatio = -1.0f;
-        }
-        else
-        {
-            // Old aspect ratio calculation.
-            m_AspectRatio = originalParams.fSizeX / originalParams.fSizeY;
-        }
-        m_AspectRatioInitialized = true;
+    if (newParams.bMaintainAspectRatio && !originalParams.bMaintainAspectRatio)
+    {       
+        CalculateAspectRatios(originalParams);
+        
+        //Sync Y and Z's random range and curves to be same as X's but keep the base of Y and Z
+        newParams.fSizeY.Set(newParams.fSizeY.Base(), newParams.fSizeX.GetRandomRange());
+        newParams.fSizeZ.Set(newParams.fSizeZ.Base(), newParams.fSizeX.GetRandomRange());
+        newParams.fSizeY.SetEmitterStrength(newParams.fSizeX.GetEmitterStrength());
+        newParams.fSizeZ.SetEmitterStrength(newParams.fSizeX.GetEmitterStrength());
+        newParams.fSizeY.SetParticleAge(newParams.fSizeX.GetParticleAge());
+        newParams.fSizeZ.SetParticleAge(newParams.fSizeX.GetParticleAge());
     }
-
-    if (newParams.bMaintainAspectRatio)
+    else if (newParams.bMaintainAspectRatio)
     {
-        // check if fSizeY has been changed - if so push changes to fSizeX (that way you can change either X or Y and have everything propogate to the other)
-        if (!(newParams.fSizeY.GetEmitterStrength() == originalParams.fSizeY.GetEmitterStrength()))
+        //when bMaintainAspectRatio is enabled, we only allow size X can be changed
+        //sync the size if the size X changed
+        bool modified = false;
+        if (newParams.fSizeX.Base() != originalParams.fSizeX.Base() || 
+            newParams.fSizeX.GetRandomRange() != originalParams.fSizeX.GetRandomRange())
         {
-            newParams.fSizeX.SetEmitterStrength(newParams.fSizeY.GetEmitterStrength());
-        }
-        else if (!(newParams.fSizeY.GetParticleAge() == originalParams.fSizeY.GetParticleAge()))
-        {
-            newParams.fSizeX.SetParticleAge(newParams.fSizeY.GetParticleAge());
+            newParams.fSizeY.Set(newParams.fSizeX.Base()* m_aspectRatioYX, newParams.fSizeX.GetRandomRange());
+            newParams.fSizeZ.Set(newParams.fSizeX.Base()* m_aspectRatioZX, newParams.fSizeX.GetRandomRange());
+            modified = true;
         }
 
-        // sync all Y values with X values and use new size Y calculated from maintaining aspect ratio
-        if (!(newParams.fSizeY.GetEmitterStrength() == newParams.fSizeX.GetEmitterStrength()))
+        if (!(newParams.fSizeX.GetEmitterStrength() == originalParams.fSizeX.GetEmitterStrength()))
         {
             newParams.fSizeY.SetEmitterStrength(newParams.fSizeX.GetEmitterStrength());
+            newParams.fSizeZ.SetEmitterStrength(newParams.fSizeX.GetEmitterStrength());
+            modified = true;
         }
-        if (!(newParams.fSizeY.GetParticleAge() == newParams.fSizeX.GetParticleAge()))
+
+        if (!(newParams.fSizeX.GetParticleAge() == originalParams.fSizeX.GetParticleAge()))
         {
             newParams.fSizeY.SetParticleAge(newParams.fSizeX.GetParticleAge());
+            newParams.fSizeZ.SetParticleAge(newParams.fSizeX.GetParticleAge());
+            modified = true;
         }
-    }
-    else if (newParams.fSizeX.Base() != originalParams.fSizeX.Base() || newParams.fSizeY.Base() != originalParams.fSizeY.Base())
-    {
-        // Basically the same as above when aspect ratio is initially calculated but only do this on size X or Y changes and use the new values to calculate the ratio.
-        if (abs(newParams.fSizeY.Base()) <= FLOAT_EPSILON)
+
+        //recreate spline and refresh widgets of the synced variables
+        if (modified)
         {
-            m_AspectRatio = -1.0f; // don't divide by zero, store negative one so we can check when we validate size changes when aspect ratio is maintained
-        }
-        else
-        {
-            m_AspectRatio = newParams.fSizeX / newParams.fSizeY;
+            for (int index = 0; index < m_pForceUpdateVars.size(); index++)
+            {
+                IVariable* var = m_pForceUpdateVars[index];
+                var->SetFlagRecursive(IVariable::UI_CREATE_SPLINE);
+                var->OnSetValue(true);
+            }
         }
     }
 }
@@ -197,6 +190,14 @@ bool CParticleUIDefinition::SetToParticles(CParticleItem* pParticles, SLodInfo* 
         return false;
     }
 
+    //avoid calling itself
+    if (m_ignoreSetToParticle)
+    {
+        return false;
+    }
+
+    m_ignoreSetToParticle = true;
+
     if (pLevelOfDetail)
     {
         IParticleEffect* lodEffect = pEffect->GetLodParticle(pLevelOfDetail);
@@ -204,6 +205,12 @@ bool CParticleUIDefinition::SetToParticles(CParticleItem* pParticles, SLodInfo* 
         {
             pEffect = lodEffect;
         }
+    }
+
+    if (pEffect != m_localParticleEffect)
+    {
+        AZ_Warning("Particle Editor", false, "Assigning values to an invalid particle emitter!");
+        return false;
     }
 
     // Detect whether inheritance changed, update defaults.
@@ -225,11 +232,10 @@ bool CParticleUIDefinition::SetToParticles(CParticleItem* pParticles, SLodInfo* 
 
     // Update particles.
     pParticles->Update();
+    
+    m_ignoreSetToParticle = false;
 
-    bool shouldUpdate = bInheritanceChanged || m_ShouldForceUpdate;
-    m_ShouldForceUpdate = false;
-
-    return shouldUpdate;
+    return false;
 }
 
 void CParticleUIDefinition::ResetParticles(CParticleItem* pParticles, SLodInfo* pLevelOfDetail)
@@ -237,6 +243,7 @@ void CParticleUIDefinition::ResetParticles(CParticleItem* pParticles, SLodInfo* 
     IParticleEffect* pEffect = pParticles->GetEffect();
     if (!pEffect)
     {
+        m_localParticleEffect = nullptr;
         return;
     }
 
@@ -255,7 +262,7 @@ void CParticleUIDefinition::ResetParticles(CParticleItem* pParticles, SLodInfo* 
     m_localParams.eInheritance = eSave;
 
     pEffect->SetParticleParams(m_localParams);
-
+    m_localParticleEffect = pEffect;
     // Update particles.
     pParticles->Update();
 }

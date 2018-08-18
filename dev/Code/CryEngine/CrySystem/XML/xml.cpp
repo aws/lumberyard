@@ -323,14 +323,14 @@ void CXmlNode::setAttr(const char* key, const char* value)
 void CXmlNode::setAttr(const char* key, int value)
 {
     char str[128];
-    itoa(value, str, 10);
+    azitoa(value, str, AZ_ARRAY_SIZE(str), 10);
     setAttr(key, str);
 }
 
 void CXmlNode::setAttr(const char* key, unsigned int value)
 {
     char str[128];
-    _ui64toa(value, str, 10);
+    azui64toa(value, str, AZ_ARRAY_SIZE(str), 10);
     setAttr(key, str);
 }
 
@@ -454,7 +454,7 @@ bool CXmlNode::getAttr(const char* key, int64& value) const
     const char* svalue = GetValue(key);
     if (svalue)
     {
-        sscanf(svalue, "%" PRId64, &value);
+        azsscanf(svalue, "%" PRId64, &value);
         return true;
     }
     return false;
@@ -468,11 +468,11 @@ bool CXmlNode::getAttr(const char* key, uint64& value, bool useHexFormat) const
     {
         if (useHexFormat)
         {
-            sscanf(svalue, "%" PRIX64, &value);
+            azsscanf(svalue, "%" PRIX64, &value);
         }
         else
         {
-            sscanf(svalue, "%" PRIu64, &value);
+            azsscanf(svalue, "%" PRIu64, &value);
         }
         return true;
     }
@@ -484,11 +484,11 @@ bool CXmlNode::getAttr(const char* key, bool& value) const
     const char* svalue = GetValue(key);
     if (svalue)
     {
-        if (stricmp(svalue, "true") == 0)
+        if (azstricmp(svalue, "true") == 0)
         {
             value = true;
         }
-        else if (stricmp(svalue, "false") == 0)
+        else if (azstricmp(svalue, "false") == 0)
         {
             value = false;
         }
@@ -530,7 +530,7 @@ bool CXmlNode::getAttr(const char* key, Ang3& value) const
     {
         LocaleResetter l;
         float x, y, z;
-        if (sscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
+        if (azsscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
         {
             value(x, y, z);
             return true;
@@ -547,7 +547,7 @@ bool CXmlNode::getAttr(const char* key, Vec3& value) const
     {
         LocaleResetter l;
         float x, y, z;
-        if (sscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
+        if (azsscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
         {
             value = Vec3(x, y, z);
             return true;
@@ -564,7 +564,7 @@ bool CXmlNode::getAttr(const char* key, Vec4& value) const
     {
         LocaleResetter l;
         float x, y, z, w;
-        if (sscanf(svalue, "%f,%f,%f,%f", &x, &y, &z, &w) == 4)
+        if (azsscanf(svalue, "%f,%f,%f,%f", &x, &y, &z, &w) == 4)
         {
             value = Vec4(x, y, z, w);
             return true;
@@ -581,7 +581,7 @@ bool CXmlNode::getAttr(const char* key, Vec3d& value) const
     {
         LocaleResetter l;
         double x, y, z;
-        if (sscanf(svalue, "%lf,%lf,%lf", &x, &y, &z) == 3)
+        if (azsscanf(svalue, "%lf,%lf,%lf", &x, &y, &z) == 3)
         {
             value = Vec3d(x, y, z);
             return true;
@@ -598,7 +598,7 @@ bool CXmlNode::getAttr(const char* key, Vec2& value) const
     {
         LocaleResetter l;
         float x, y;
-        if (sscanf(svalue, "%f,%f", &x, &y) == 2)
+        if (azsscanf(svalue, "%f,%f", &x, &y) == 2)
         {
             value = Vec2(x, y);
             return true;
@@ -614,7 +614,7 @@ bool CXmlNode::getAttr(const char* key, Vec2d& value) const
     {
         LocaleResetter l;
         double x, y;
-        if (sscanf(svalue, "%lf,%lf", &x, &y) == 2)
+        if (azsscanf(svalue, "%lf,%lf", &x, &y) == 2)
         {
             value = Vec2d(x, y);
             return true;
@@ -631,7 +631,7 @@ bool CXmlNode::getAttr(const char* key, Quat& value) const
     {
         LocaleResetter l;
         float w, x, y, z;
-        if (sscanf(svalue, "%f,%f,%f,%f", &w, &x, &y, &z) == 4)
+        if (azsscanf(svalue, "%f,%f,%f,%f", &w, &x, &y, &z) == 4)
         {
             if (fabs(w) > VEC_EPSILON || fabs(x) > VEC_EPSILON || fabs(y) > VEC_EPSILON || fabs(z) > VEC_EPSILON)
             {
@@ -652,7 +652,7 @@ bool CXmlNode::getAttr(const char* key, ColorB& value) const
     if (svalue)
     {
         unsigned int r, g, b, a = 255;
-        int numFound = sscanf(svalue, "%u,%u,%u,%u", &r, &g, &b, &a);
+        int numFound = azsscanf(svalue, "%u,%u,%u,%u", &r, &g, &b, &a);
         if (numFound == 3 || numFound == 4)
         {
             // If we only found 3 values, a should be unchanged, and still be 255

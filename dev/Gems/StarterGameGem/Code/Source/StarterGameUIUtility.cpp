@@ -16,7 +16,7 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 
 #include <MathConversion.h>
-#include <AZCore/Component/TransformBus.h>
+#include <AzCore/Component/TransformBus.h>
 //#include "UiElementComponent.h"
 #include <UiCanvasManager.h>
 #include <UiTransform2dComponent.h>

@@ -368,11 +368,21 @@ struct SRenderThread
     {
         if (m_pThread != NULL)
         {
+            int32 renderThreadPriority = RENDER_THREAD_PRIORITY;
+#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_OSX)
+            //Apple recommends to never use 0 as a render thread priority.
+            //In this case we are getting the max thread priority and going 2 levels below for ideal performance.
+            int thread_policy;
+            sched_param thread_sched_param;
+            pthread_getschedparam(pthread_self(), &thread_policy, &thread_sched_param);
+            renderThreadPriority = sched_get_priority_max(thread_policy) - 2;
+#endif
+            
 #if defined(_DEBUG) || !defined(__OPTIMIZE__) || !defined(__OPTIMIZE_SIZE__)
             // Note that we need bigger stack for debug routines
-            m_pThread->Start(BIT(1), RENDER_THREAD_NAME, RENDER_THREAD_PRIORITY, 128 * 1024);
+            m_pThread->Start(BIT(1), RENDER_THREAD_NAME, renderThreadPriority, 128 * 1024);
 #else
-            m_pThread->Start(BIT(1), RENDER_THREAD_NAME, RENDER_THREAD_PRIORITY, 72 * 1024);
+            m_pThread->Start(BIT(1), RENDER_THREAD_NAME, renderThreadPriority, 72 * 1024);
 #endif
             m_pThread->m_started.Wait();
         }

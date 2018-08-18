@@ -57,6 +57,12 @@ public: // member functions
     //! Decrement the current stencil reference value
     virtual void DecrementStencilRef() = 0;
 
+    //! Get flag that indicates we are rendering into a mask. Used to avoid masks on child mask elements.
+    virtual bool IsRenderingToMask() = 0;
+
+    //! Set flag that we are rendering into a mask. Used to avoid masks on child mask elements.
+    virtual void SetIsRenderingToMask(bool isRenderingToMask) = 0;
+
     //! Push an alpha fade, this is multiplied with any existing alpha fade from parents
     virtual void PushAlphaFade(float alphaFadeValue) = 0;
 

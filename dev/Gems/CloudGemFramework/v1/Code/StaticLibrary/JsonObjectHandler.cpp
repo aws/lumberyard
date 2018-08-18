@@ -502,9 +502,16 @@ namespace CloudGemFramework
 
         bool UnexpectedContent(const char* actual)
         {
+            bool result = false;
+
             if (m_expecting == Expecting::NOTHING)
             {
-                return true;
+                result = true;
+            }
+            else if (m_expecting == Expecting::STRING && !strcmp(actual, "null"))
+            {
+                // We are allowing null values to parse as empty strings as a workaround for optional fields not always being handled correctly.
+                result = true;
             }
             else
             {
@@ -512,8 +519,9 @@ namespace CloudGemFramework
                     actual,
                     ExpectingToString(m_expecting)
                 );
-                return false;
             }
+
+            return result;
         }
 
         static const char* ExpectingToString(Expecting expecting)

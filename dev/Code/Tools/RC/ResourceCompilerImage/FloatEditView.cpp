@@ -83,8 +83,8 @@ void FloatEditView::SubclassWidget(QLineEdit* hwnd)
     // Set the text.
     this->UpdateText();
 
-    QObject::connect(edit, &QLineEdit::editingFinished, [&]() {OnKillFocus();} );
-    QObject::connect(edit, &QLineEdit::returnPressed, [&]() {edit->nextInFocusChain()->setFocus(); });
+    QObject::connect(edit, &QLineEdit::editingFinished, edit, [&]() {OnKillFocus();} );
+    QObject::connect(edit, &QLineEdit::returnPressed, edit, [&]() {edit->nextInFocusChain()->setFocus(); });
 }
 
 void FloatEditView::UpdateText()

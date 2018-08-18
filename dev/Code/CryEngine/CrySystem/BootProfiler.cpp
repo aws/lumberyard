@@ -121,6 +121,7 @@ public:
                 m_args.replace(">", "&gt;");
                 m_args.replace("\"", "&quot;");
                 m_args.replace("'", "&apos;");
+                m_args.replace("%", "&#37;");
             }
 
             sprintf_s(buf, buf_size, "%s<block name=\"%s\" totalTimeMS=\"%f\" startTime=\"%" PRIu64 "\" stopTime=\"%" PRIu64 "\" args=\"%s\"> \n",
@@ -381,7 +382,7 @@ void CBootProfilerSession::CollectResults(const char* filename, const float time
     static const char* szTestResults = "@cache@\\TestResults";
     string filePath = string(szTestResults) + "\\" + "bp_" + filename + ".xml";
     char path[ICryPak::g_nMaxPath] = "";
-    gEnv->pCryPak->AdjustFileName(filePath.c_str(), path, ICryPak::FLAGS_PATH_REAL | ICryPak::FLAGS_FOR_WRITING);
+    gEnv->pCryPak->AdjustFileName(filePath.c_str(), path, AZ_ARRAY_SIZE(path), ICryPak::FLAGS_PATH_REAL | ICryPak::FLAGS_FOR_WRITING);
     gEnv->pCryPak->MakeDir(szTestResults);
 
     AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle;

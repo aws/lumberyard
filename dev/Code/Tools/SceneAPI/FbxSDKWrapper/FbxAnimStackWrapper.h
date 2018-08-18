@@ -18,7 +18,8 @@
 namespace AZ
 {
     namespace FbxSDKWrapper
-    {
+    { 
+        using FbxSDKLongLong = FbxLongLong;
         class FbxAnimLayerWrapper;
         class FbxTimeSpanWrapper;
 

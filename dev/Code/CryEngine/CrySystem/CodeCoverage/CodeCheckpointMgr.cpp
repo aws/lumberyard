@@ -112,7 +112,7 @@ size_t CCodeCheckpointMgr::GetCheckpointIndex(const char* name)
         // Create a dynamic string buffer for a NULL terminated copy of the name
         char* nameCopy = new char[nameLength + 1];
 
-        strcpy(nameCopy, name);
+        azstrcpy(nameCopy, nameLength + 1, name);
 
         newRec.m_name = nameCopy;
 

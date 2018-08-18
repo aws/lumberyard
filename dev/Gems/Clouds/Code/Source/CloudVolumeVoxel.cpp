@@ -861,7 +861,7 @@ namespace CloudsGem
         renderElement->m_scale = m_scale;
 
         SShaderItem& shaderItem = params.pMaterial ? params.pMaterial->GetShaderItem(0) : m_material->GetShaderItem(0);
-        renderer->EF_AddEf(renderElement, shaderItem, renderObject, passInfo, EFSLIST_TRANSP, isAfterWater, SRendItemSorter(params.rendItemSorter));
+        renderer->EF_AddEf(renderElement->m_gemRE, shaderItem, renderObject, passInfo, EFSLIST_TRANSP, isAfterWater, SRendItemSorter(params.rendItemSorter));
     }
 
     

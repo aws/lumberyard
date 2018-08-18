@@ -42,9 +42,6 @@ namespace PhysX
 
     void PhysXMeshShapeComponent::Activate()
     {
-        // Ensure the asset is loaded
-        UpdateMeshAsset();
-
         m_currentTransform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(m_currentTransform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
 
@@ -84,34 +81,4 @@ namespace PhysX
         AZ_Error("PhysX", false, "DistanceSquaredFromPoint: Shape interface not implemented in PhysXMeshShapeComponent.");
         return (m_currentTransform.GetPosition().GetDistanceSq(point));
     }
-
-    void PhysXMeshShapeComponent::UpdateMeshAsset()
-    {
-        if (m_meshColliderAsset.GetId().IsValid())
-        {
-            if (!AZ::Data::AssetBus::Handler::BusIsConnected())
-            {
-                AZ::Data::AssetBus::Handler::BusConnect(m_meshColliderAsset.GetId());
-            }
-
-            m_meshColliderAsset.QueueLoad();
-        }
-    }
-
-    void PhysXMeshShapeComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
-    {
-        if (asset == m_meshColliderAsset)
-        {
-            m_meshColliderAsset = asset;
-        }
-    }
-
-    void PhysXMeshShapeComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
-    {
-        if (asset == m_meshColliderAsset)
-        {
-            m_meshColliderAsset = asset;
-        }
-    }
-
 } // namespace PhysX

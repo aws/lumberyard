@@ -12,7 +12,7 @@
 #include "stdafx.h"
 #include "exampleqtobject.h"
 // manually include moc file:
-#include "I3dEngine.h"
+#include "I3DEngine.h"
 #include <exampleqtobject.moc>
 
 

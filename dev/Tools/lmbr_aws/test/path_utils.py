@@ -32,7 +32,7 @@ def python_path(*args, **kwargs):
     return dev_path('Tools', 'Python', 'python.cmd')
     
 def python_aws_sdk_path(*args, **kwargs):
-    return dev_path('Tools', 'AWSPythonSDK', '1.4.4')
+    return dev_path('Tools', 'AWSPythonSDK', '1.5.8')
 
 def gem_path(gem_name, *args, **kwargs):
     gem_version_directory = kwargs.get('gem_version_directory')

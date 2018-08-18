@@ -70,7 +70,7 @@ public:  // static member functions
 
     static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
-        required.push_back(AZ_CRC("UiVisualService", 0xa864fdf8));
+        // Note that the UiVisualService is not required because a child mask element can be used instead.
         required.push_back(AZ_CRC("UiElementService", 0x3dca7ad4));
         required.push_back(AZ_CRC("UiTransformService", 0x3a838e34));
     }
@@ -85,6 +85,12 @@ protected: // member functions
     // ~AZ::Component
 
     AZ_DISABLE_COPY_MOVE(UiMaskComponent);
+
+private: // member functions
+
+    //! Method used to populate the drop down for the m_childMaskElement property field
+    using EntityComboBoxVec = AZStd::vector< AZStd::pair< AZ::EntityId, AZStd::string > >;
+    EntityComboBoxVec PopulateChildEntityList();
 
 private: // data
 
@@ -103,6 +109,12 @@ private: // data
     //! Whether to mask interaction
     bool m_maskInteraction;
 
+    //! An optional child element that defines additional mask visuals
+    AZ::EntityId m_childMaskElement;
+
     //! Saved prior base state from before rendering (non-persistent variable, only used during rendering)
     int m_priorBaseState;
+
+    //! Saved enabled state of the child mask element
+    bool m_priorChildMaskElementIsEnabled = true;
 };

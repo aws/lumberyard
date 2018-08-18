@@ -10,10 +10,10 @@
 *
 */
 
-#include "connectionWorker.h"
+#include "connectionworker.h"
 #include "native/utilities/assetUtils.h"
 #include <native/utilities/ByteArrayStream.h>
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 #include <native/assetprocessor.h>
 
 #include <QReadLocker>

@@ -18,18 +18,27 @@ namespace Ui {
     class ComponentDemoWidget;
 }
 
+class QMenu;
+
 class ComponentDemoWidget : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit ComponentDemoWidget(QWidget* parent = nullptr);
+    explicit ComponentDemoWidget(bool legacyUISetting, QWidget* parent = nullptr);
     ~ComponentDemoWidget() override;
+
+Q_SIGNALS:
+    void styleChanged(bool enableLegacyUI);
+    void refreshStyle();
 
 private:
     void addPage(QWidget* widget, const QString& title);
+    void setupMenuBar(bool legacyUISetting);
+    void createEditMenuPlaceholders();
 
     QScopedPointer<Ui::ComponentDemoWidget> ui;
+    QMenu* m_editMenu = nullptr;
 };
 
 

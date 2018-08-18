@@ -17,10 +17,14 @@
 #include "EMotionFXManager.h"
 #include "MotionInstancePool.h"
 #include "AnimGraphPose.h"
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MotionGroup, MotionAllocator, 0)
+
+
     // default constructor
     MotionGroup::MotionGroup()
         : BaseObject()
@@ -47,14 +51,14 @@ namespace EMotionFX
     // creation
     MotionGroup* MotionGroup::Create()
     {
-        return new MotionGroup();
+        return aznew MotionGroup();
     }
 
 
     // creation
     MotionGroup* MotionGroup::Create(MotionInstance* parentMotionInstance)
     {
-        return new MotionGroup(parentMotionInstance);
+        return aznew MotionGroup(parentMotionInstance);
     }
 
 
@@ -71,7 +75,7 @@ namespace EMotionFX
         MCORE_ASSERT(mParentMotionInstance); // use LinkToMotionInstance before
 
         // create the new motion instance
-        //MotionInstance* newInstance = new MotionInstance(motion, mParentMotionInstance->GetActorInstance(), startNodeIndex);
+        //MotionInstance* newInstance = aznew MotionInstance(motion, mParentMotionInstance->GetActorInstance(), startNodeIndex);
         MotionInstance* newInstance = GetMotionInstancePool().RequestNew(motion, mParentMotionInstance->GetActorInstance(), startNodeIndex);
 
         // initialize the motion instance settings

@@ -260,7 +260,6 @@ bool CPluginManager::LoadPlugins(const char* pPathWithMask)
                 CLogFile::FormatLine("[Plugin Manager] Cannot create instance of plugin DLL '%s'! Error code %u.", pathUtf8.c_str(), sInitParam.outErrorCode);
             }
 
-            assert(pPlugin);
             hPlugin->unload();
             delete hPlugin;
 

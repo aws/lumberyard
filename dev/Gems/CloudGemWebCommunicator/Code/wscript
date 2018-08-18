@@ -1,0 +1,29 @@
+
+
+def build(bld):
+    file_list = []
+
+    implemented_platforms = ['win_x64_vs2015', 'win_x64_vs2017','win_x64_vs2013', 'darwin_x64', 'android_armv7_clang', 'android_armv8_clang', 'ios']
+
+    platform = bld.env['PLATFORM']
+
+    if bld.env['PLATFORM'] == 'project_generator':
+        file_list.append('cloudgemwebcommunicator.waf_files')
+        file_list.append('lmbraws_unsupported.waf_files')
+    else:
+        if platform in implemented_platforms:
+            file_list.append('cloudgemwebcommunicator.waf_files')
+        else:
+            file_list.append('lmbraws_unsupported.waf_files')  
+                  
+    bld.DefineGem(
+        uselib          = ['AWS_CPP_SDK_COGNITO_IDENTITY','AWS_CPP_SDK_IDENTITY_MANAGEMENT','AWS_IOT_DEVICE', 'AWS_CPP_SDK_CORE'],
+        win_lib         = ['gdi32'],
+        includes        = ['3rdParty/IoTDevice',
+                           '3rdParty/IoTDevice/network/WebSocket/wslay',
+                           '3rdParty/IoTDevice/network/OpenSSL'
+        ],
+        file_list = file_list,
+        use = ['CloudGemFramework.StaticLibrary'],
+        platforms = ['all']
+    )

@@ -13,10 +13,10 @@
 
 #include <GridMate/Replica/ReplicaFunctions.h>
 
-#include <AZCore/std/parallel/thread.h>
-#include <AZCore/UnitTest/UnitTest.h>
-#include <AZCore/Debug/TraceMessageBus.h>
-#include <AZCore/IO/SystemFile.h>
+#include <AzCore/std/parallel/thread.h>
+#include <AzCore/UnitTest/UnitTest.h>
+#include <AzCore/Debug/TraceMessageBus.h>
+#include <AzCore/IO/SystemFile.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 struct TestSettings

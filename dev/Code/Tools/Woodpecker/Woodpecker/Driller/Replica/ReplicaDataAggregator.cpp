@@ -26,7 +26,7 @@
 
 #include "Woodpecker/Driller/Workspaces/Workspace.h"
 #include "Woodpecker/Driller/Replica/ReplicaDataAggregatorConfigurationPanel.hxx"
-#include "Woodpecker/Driller/ChannelDAtaView.hxx"
+#include "Woodpecker/Driller/ChannelDataView.hxx"
 
 namespace Driller
 {
@@ -38,7 +38,7 @@ namespace Driller
     {
     public:
         AZ_RTTI(ReplicaDataAggregatorSavedState, "{599BCB69-C521-4EFD-9D79-C09790907F81}", AZ::UserSettings);
-        AZ_CLASS_ALLOCATOR(ReplicaDataAggregatorSavedState, AZ::SystemAllocator, 0);        
+        AZ_CLASS_ALLOCATOR(ReplicaDataAggregatorSavedState, AZ::SystemAllocator, 0);
 
         ReplicaDataAggregatorSavedState()
         {
@@ -76,7 +76,7 @@ namespace Driller
     public:
         AZ_RTTI(ReplicaDataAggregatorWorkspace, "{EF501646-46BB-4C20-83C9-4C6816294448}", AZ::UserSettings);
         AZ_CLASS_ALLOCATOR(ReplicaDataAggregatorWorkspace,AZ::SystemAllocator,0);
-        
+
         AZStd::vector<int> m_activeViewIndexes;
 
         ReplicaDataAggregatorWorkspace()
@@ -110,7 +110,7 @@ namespace Driller
 
         ReplicaExportSettingsSavedState()
             : m_exportColumnDescriptors(true)
-        {            
+        {
         }
 
         void Init()
@@ -147,8 +147,8 @@ namespace Driller
     const char* ReplicaExportSettings::REPLICA_CSV_EXPORT_SETTINGS = "REPLICA_CSV_EXPORT_SETTINGS";
 
     ReplicaExportSettings::ReplicaExportSettings()
-    {        
-        m_columnDescriptors = 
+    {
+        m_columnDescriptors =
         {
             { ExportField::Name, "Replica Name"},
             { ExportField::Id, "Replica Id"},
@@ -156,13 +156,13 @@ namespace Driller
             { ExportField::UsageType,"Usage Type"},
             { ExportField::UsageIdentifier,"Usage Identifier"},
             { ExportField::Bytes_Sent,"Data Sent(Bytes)"},
-            { ExportField::Bytes_Received,"Data Received(Bytes)"},            
-        };        
+            { ExportField::Bytes_Received,"Data Received(Bytes)"},
+        };
 
         for (const AZStd::pair< ExportField, AZStd::string >& item : m_columnDescriptors)
         {
             m_stringToExportEnum[item.second] = item.first;
-        }        
+        }
     }
 
     void ReplicaExportSettings::LoadSettings()
@@ -189,7 +189,7 @@ namespace Driller
         for (unsigned int i=0; i < m_persistentState->m_exportOrdering.size(); ++i)
         {
             ReplicaExportField currentField = static_cast<ReplicaExportField>(m_persistentState->m_exportOrdering[i]);
-        
+
             if (currentField != ReplicaExportField::UNKNOWN)
             {
                 items.push_back(QString(FindColumnDescriptor(currentField).c_str()));
@@ -203,7 +203,7 @@ namespace Driller
 
         for (const QString& activeItem : activeItems)
         {
-            ExportField field = FindExportFieldFromDescriptor(activeItem.toStdString().c_str());   
+            ExportField field = FindExportFieldFromDescriptor(activeItem.toStdString().c_str());
 
             AZ_Warning("Woodpecker",field != ExportField::UNKNOWN,"Unknown descriptor %s",activeItem.toStdString().c_str());
             if (field != ExportField::UNKNOWN)
@@ -219,16 +219,16 @@ namespace Driller
     {
         return m_persistentState->m_exportOrdering;
     }
-    
+
     const AZStd::string& ReplicaExportSettings::FindColumnDescriptor(ExportField exportField) const
     {
         static const AZStd::string emptyDescriptor;
-        
+
         AZStd::unordered_map<ExportField, AZStd::string>::const_iterator descriptorIter = m_columnDescriptors.find(exportField);
-        
+
         if (descriptorIter == m_columnDescriptors.end())
         {
-            AZ_Warning("Woodpecker",false,"Unknown column descriptor in Carrier CSV Export");            
+            AZ_Warning("Woodpecker",false,"Unknown column descriptor in Carrier CSV Export");
             return emptyDescriptor;
         }
         else
@@ -256,7 +256,7 @@ namespace Driller
     //////////////////////////
 
     const char* ReplicaDataAggregator::REPLICA_AGGREGATOR_SAVED_STATE = "REPLICA_DATA_AGGREGATOR_SAVED_STATE";
-    const char* ReplicaDataAggregator::REPLICA_AGGREGATOR_WORKSPACE = "REPLICA_DATA_AGGREGATOR_WORKSPACE";    
+    const char* ReplicaDataAggregator::REPLICA_AGGREGATOR_WORKSPACE = "REPLICA_DATA_AGGREGATOR_WORKSPACE";
 
     ReplicaDataAggregator::ReplicaDataAggregator(int identity)
         : Aggregator(identity)
@@ -283,7 +283,7 @@ namespace Driller
         {
             delete m_openDataViews.front();
         }
-    }	
+    }
 
     CustomizeCSVExportWidget* ReplicaDataAggregator::CreateCSVExportCustomizationWidget()
     {
@@ -328,7 +328,7 @@ namespace Driller
         QColor color = GetColor();
         color.setRed(AZStd::min(color.red() + 50, 255));
         color.setGreen(AZStd::min(color.green() + 50, 255));
-        color.setBlue(AZStd::min(color.blue() + 50, 255));		
+        color.setBlue(AZStd::min(color.blue() + 50, 255));
 
         m_budgetMarkerTicket = channelDataView->AddBudgetMarker(budgetMarker, color);
     }
@@ -363,7 +363,7 @@ namespace Driller
     }
 
     void ReplicaDataAggregator::OnDataViewDestroyed(QObject* object)
-    {        
+    {
         for (AZStd::vector<ReplicaDataView*>::iterator dataViewIter = m_openDataViews.begin();
                 dataViewIter != m_openDataViews.end();
                 ++dataViewIter)
@@ -388,7 +388,7 @@ namespace Driller
 
         ReplicaChunkEvent* replicaChunkEvent = static_cast<ReplicaChunkEvent*>(drillerEvent);
         m_currentFrameUsage += replicaChunkEvent->GetUsageBytes();
-        
+
         if (m_currentFrameUsage > m_maxFrameUsage)
         {
             m_maxFrameUsage = m_currentFrameUsage;
@@ -411,7 +411,7 @@ namespace Driller
             while (!m_openDataViews.empty())
             {
                 delete m_openDataViews.front();
-            }            
+            }
 
             for (int i=0; i < workspace->m_activeViewIndexes.size(); ++i)
             {
@@ -448,7 +448,7 @@ namespace Driller
     QColor ReplicaDataAggregator::GetColor() const
     {
         return QColor(0, 0, 255);
-    }    
+    }
 
     QString ReplicaDataAggregator::GetName() const
     {
@@ -486,9 +486,9 @@ namespace Driller
         {
             replicaDataViewIndex = m_openDataViews.back()->GetDataViewIndex() + 1;
         }
-        
+
         ReplicaDataView* retVal = aznew ReplicaDataView(replicaDataViewIndex, frame, this);
-        RegisterReplicaDataView(retVal);        
+        RegisterReplicaDataView(retVal);
 
         return retVal;
     }
@@ -502,23 +502,23 @@ namespace Driller
         ReplicaExportSettings* replicaExportSettings = static_cast<ReplicaExportSettings*>(exportSettings);
         const AZStd::vector< int >& exportOrdering = replicaExportSettings->GetExportOrder();
 
-        bool addComma = false;        
+        bool addComma = false;
 
         for (int fieldId : exportOrdering)
-        {        
+        {
             ReplicaExportField currentField = static_cast<ReplicaExportField>(fieldId);
 
             if (addComma)
             {
                 file.Write(",",1);
             }
-            
+
             const AZStd::string& columnDescriptor = replicaExportSettings->FindColumnDescriptor(currentField);
             file.Write(columnDescriptor.c_str(),columnDescriptor.size());
             addComma = true;
         }
 
-        file.Write("\n",1);        
+        file.Write("\n",1);
     }
 
     void ReplicaDataAggregator::ExportEventToCSV(AZ::IO::SystemFile& file, const DrillerEvent* drillerEvent, CSVExportSettings* exportSettings)
@@ -530,11 +530,11 @@ namespace Driller
 
         const AZStd::vector< int >& exportOrdering = replicaExportSettings->GetExportOrder();
         bool addComma = false;
-        
+
         AZStd::string field;
 
         for (int fieldId : exportOrdering)
-        {        
+        {
             ReplicaExportField currentField = static_cast<ReplicaExportField>(fieldId);
 
             if (addComma)
@@ -607,7 +607,7 @@ namespace Driller
                     {
                         AZ_Warning("Woodpecker",false,"Invalid ReplicaEvent Type Usage");
                     }
-                    
+
                     break;
                 }
                 case ReplicaExportField::Bytes_Sent:
@@ -627,7 +627,7 @@ namespace Driller
                             break;
                         }
                         default:
-                            AZ_Warning("Woodpecker",false,"Unknown EventType for ReplicaEvent");                            
+                            AZ_Warning("Woodpecker",false,"Unknown EventType for ReplicaEvent");
                             break;
                     }
                     break;
@@ -649,7 +649,7 @@ namespace Driller
                             break;
                         }
                         default:
-                            AZ_Warning("Woodpecker",false,"Unknown EventType for ReplicaEvent");                            
+                            AZ_Warning("Woodpecker",false,"Unknown EventType for ReplicaEvent");
                             break;
                     }
                     break;
@@ -672,7 +672,7 @@ namespace Driller
         {
             m_openDataViews.push_back(replicaDataView);
 
-            connect(replicaDataView,SIGNAL(destroyed(QObject*)),this,SLOT(OnDataViewDestroyed(QObject*)));            
+            connect(replicaDataView,SIGNAL(destroyed(QObject*)),this,SLOT(OnDataViewDestroyed(QObject*)));
         }
     }
 
@@ -690,7 +690,7 @@ namespace Driller
 
             serialize->Class<ReplicaDataAggregator>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ->SerializeWithNoData();
         }
     }
 }

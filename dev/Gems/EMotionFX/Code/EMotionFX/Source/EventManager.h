@@ -78,7 +78,8 @@ namespace EMotionFX
     class EMFX_API EventManager
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(EventManager, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_EVENTS);
+        AZ_CLASS_ALLOCATOR_DECL
+
         friend class Initializer;
         friend class EMotionFXManager;
 
@@ -408,8 +409,7 @@ namespace EMotionFX
         void OnEndTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition);
         void Sync(AnimGraphInstance* animGraphInstance, AnimGraphNode* animGraphNode);
         void OnSetVisualManipulatorOffset(AnimGraphInstance* animGraphInstance, uint32 paramIndex, const AZ::Vector3& offset);
-        void OnParameterNodeMaskChanged(BlendTreeParameterNode* parameterNode);
-        void OnConditionTriggered(AnimGraphInstance* animGraphInstance, AnimGraphTransitionCondition* condition);
+        void OnParameterNodeMaskChanged(BlendTreeParameterNode* parameterNode, const AZStd::vector<AZStd::string>& newParameterMask);
 
         void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName);
         void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node);

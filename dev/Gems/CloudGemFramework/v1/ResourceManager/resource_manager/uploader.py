@@ -125,8 +125,7 @@ class Uploader(object):
             searched_paths.append(code_path)
 
             code_path = os.path.join(source_directory_path, 'lambda-function-code'.format(function_name))
-            if os.path.isdir(code_path):
-                context.view.using_deprecated_lambda_code_path(function_name, code_path, prefered_path)
+            if os.path.isdir(code_path):                
                 return code_path
 
             searched_paths.append(code_path)

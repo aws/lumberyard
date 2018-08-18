@@ -64,7 +64,7 @@ namespace MCore
          * Get the unique type ID.
          * @result The type identification number.
          */
-        virtual uint32 GetType() const override;
+        uint32 GetType() const override;
 
         /**
          * Try to open the file, given a filename and open mode.

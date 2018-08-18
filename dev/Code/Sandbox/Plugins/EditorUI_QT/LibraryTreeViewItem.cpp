@@ -19,6 +19,8 @@
 #include <BaseLibraryManager.h>
 #include <Particles/ParticleItem.h>
 
+#include <QStyle>
+
 CLibraryTreeViewItem::CLibraryTreeViewItem(QTreeWidgetItem* parent, CBaseLibraryManager* mngr, const QString& lookup, int nameColumn, int checkBoxColumn)
     : QTreeWidgetItem(parent)
     , m_libManager(mngr)
@@ -28,6 +30,20 @@ CLibraryTreeViewItem::CLibraryTreeViewItem(QTreeWidgetItem* parent, CBaseLibrary
     , m_checkBoxColumn(checkBoxColumn)
     , m_lookup(lookup)
 {
+}
+
+QVariant CLibraryTreeViewItem::data(int column, int role) const
+{
+#ifdef Q_OS_MACOS
+    if (role == Qt::SizeHintRole && column == 0)
+    {
+        // make sure the item has a proper height on macOS
+        const auto height = qApp->style()->pixelMetric(QStyle::PM_IndicatorHeight);
+        const int border = 2; // adds a border of two pixels around the checkbox
+        return QTreeWidgetItem::data(column, role).toSize().expandedTo(QSize(0, height + 2 * border));
+    }
+#endif
+    return QTreeWidgetItem::data(column, role);
 }
 
 void CLibraryTreeViewItem::SetItem(CBaseLibraryItem* item)

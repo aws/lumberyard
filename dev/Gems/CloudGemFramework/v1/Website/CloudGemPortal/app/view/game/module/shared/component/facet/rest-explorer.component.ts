@@ -101,6 +101,7 @@ export class RestApiExplorerComponent implements Facetable {
     private hasQueryParams: boolean = false;
     private functions: Array<string> =  ["{rand}"]
     private FUNC_RAND_IDX = 0
+    private isRunningCommand = false;
 
     constructor(private aws: AwsService, private http: Http, private metric: LyMetricService) {
     }
@@ -266,6 +267,8 @@ export class RestApiExplorerComponent implements Facetable {
                     }
                 }
             }
+            if (param.message)
+                console.log(param.message)
         }
 
         return isValid;
@@ -365,29 +368,35 @@ export class RestApiExplorerComponent implements Facetable {
     execute(path: string, querystring: string, body: string): void {
         if (this.model.path.verb == 'get') {
             this.api.get(path + querystring).subscribe(response => {                                
-                this.model.response.push(this.runView(this.requestParameters(path, querystring, body), JSON.parse(response.body.text())))
+                this.addToResponse(this.runView(this.requestParameters(path, querystring, body), JSON.parse(response.body.text())))
             }, (err) => {
-                this.model.response.push(err.message)
+                this.addToResponse(err.message)   
             })
         } else if (this.model.path.verb == 'post') {
             this.api.post(path + "/" + querystring, body).subscribe(response => {
-                this.model.response.push(this.runView(this.requestParameters(path, querystring, body), JSON.parse(response.body.text())))
+                this.addToResponse(this.runView(this.requestParameters(path, querystring, body), JSON.parse(response.body.text())))
             }, (err) => {
-                this.model.response.push(err.message)
+                this.addToResponse(err.message)   
             })
         } else if (this.model.path.verb == 'put') {
             this.api.put(path + "/" + querystring, body).subscribe(response => {
-                this.model.response.push(this.runView(this.requestParameters(path, querystring, body), JSON.parse(response.body.text())))
+                this.addToResponse(this.runView(this.requestParameters(path, querystring, body), JSON.parse(response.body.text())))
             }, (err) => {
-                this.model.response.push(err.message)
+                this.addToResponse(err.message)   
             })
         } else if (this.model.path.verb == 'delete') {
-            this.api.delete(path + "/" + querystring).subscribe(response => {
-                this.model.response.push(this.runView(this.requestParameters(path, querystring, body), JSON.parse(response.body.text())))
+            this.api.delete(path + "/" + querystring).subscribe(response => {                
+                this.addToResponse(this.runView(this.requestParameters(path, querystring, body), JSON.parse(response.body.text())))
             }, (err) => {
-                this.model.response.push(err.message)
+                this.addToResponse(err.message)                
             })
         }
+        this.isRunningCommand = true
+    }
+
+    addToResponse(param: string): void {
+        this.model.response.push(param)
+        this.isRunningCommand = false
     }
 
     runView(request: any, response: any): any {

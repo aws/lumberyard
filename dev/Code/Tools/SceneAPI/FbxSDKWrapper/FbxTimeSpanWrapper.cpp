@@ -22,19 +22,24 @@ namespace AZ
         {
         }
 
-        double FbxTimeSpanWrapper::GetStartTime() const
+        FbxTimeWrapper FbxTimeSpanWrapper::GetStartTime() const
         {
-            return FbxTimeWrapper(m_fbxTimeSpan.GetStart()).GetTime();
+            return FbxTimeWrapper(m_fbxTimeSpan.GetStart());
         }
 
-        double FbxTimeSpanWrapper::GetStopTime() const
+        FbxTimeWrapper FbxTimeSpanWrapper::GetStopTime() const
         {
-            return FbxTimeWrapper(m_fbxTimeSpan.GetStop()).GetTime();
+            return FbxTimeWrapper(m_fbxTimeSpan.GetStop());
         }
 
         double FbxTimeSpanWrapper::GetFrameRate() const
         {
             return FbxTimeWrapper(m_fbxTimeSpan.GetStart()).GetFrameRate();
+        }
+
+        int64_t FbxTimeSpanWrapper::GetNumFrames() const
+        {
+            return GetStopTime().GetFrameCount() - GetStartTime().GetFrameCount() + 1;
         }
     } // namespace FbxSDKWrapper
 } // namespace AZ

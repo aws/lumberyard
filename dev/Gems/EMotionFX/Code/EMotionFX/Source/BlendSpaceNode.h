@@ -18,42 +18,96 @@
 
 namespace EMotionFX
 {
-    class BlendSpaceParamEvaluator;
-
     class EMFX_API BlendSpaceNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(BlendSpaceNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDSPACE);
-        AZ_RTTI(BlendSpaceNode, "{11EC99C4-6A25-4610-86FD-B01F2E53007E}", AnimGraphNode);
-
     public:
-        enum EBlendSpaceEventMode
+        AZ_RTTI(BlendSpaceNode, "{11EC99C4-6A25-4610-86FD-B01F2E53007E}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
+
+        enum EBlendSpaceEventMode : AZ::u8
         {
             BSEVENTMODE_ALL_ACTIVE_MOTIONS = 0,
             BSEVENTMODE_MOST_ACTIVE_MOTION = 1
         };
 
-        enum class ECalculationMethod
+        enum ECalculationMethod : AZ::u8
         {
-            AUTO,
-            MANUAL
+            AUTO = 0,
+            MANUAL = 1
+        };
+
+        class EMFX_API BlendSpaceMotion final
+        {
+        public:
+            AZ_RTTI(BlendSpaceMotion, "{4D624F75-2179-47E4-80EE-6E5E8B9B2CA0}")
+            AZ_CLASS_ALLOCATOR_DECL
+
+            enum class TypeFlags : AZ::u8
+            {
+                None = 0,
+                UserSetCoordinateX = 1 << 0,   // Flag set if the x coordinate is set by the user instead of being auto computed.
+                BlendSpace1D = 1 << 1,
+                BlendSpace2D = 1 << 2,
+                UserSetCoordinateY = 1 << 3,   // Flag set if the y coordinate is set by the user instead of being auto computed.
+                InvalidMotion = 1 << 4    // Flag set when the motion is invalid
+            };
+
+            BlendSpaceMotion();
+            BlendSpaceMotion(const AZStd::string& motionId);
+            BlendSpaceMotion(const AZStd::string& motionId, const AZ::Vector2& coordinates, TypeFlags typeFlags);
+            ~BlendSpaceMotion();
+
+            void Set(const AZStd::string& motionId, const AZ::Vector2& coordinates, TypeFlags typeFlags = TypeFlags::None);
+            const AZStd::string& GetMotionId() const;
+
+            const AZ::Vector2& GetCoordinates() const;
+
+            float GetXCoordinate() const;
+            float GetYCoordinate() const;
+
+            void SetXCoordinate(float x);
+            void SetYCoordinate(float y);
+
+            bool IsXCoordinateSetByUser() const;
+            bool IsYCoordinateSetByUser() const;
+
+            void MarkXCoordinateSetByUser(bool setByUser);
+            void MarkYCoordinateSetByUser(bool setByUser);
+
+            int GetDimension() const;
+            void SetDimension(int dimension);
+
+            void SetFlag(TypeFlags flag);
+            void UnsetFlag(TypeFlags flag);
+            bool TestFlag(TypeFlags flag) const;
+
+            static void Reflect(AZ::ReflectContext* context);
+
+        private:
+            AZStd::string   m_motionId;
+            AZ::Vector2     m_coordinates; // Coordinates of the motion in blend space
+            TypeFlags       m_typeFlags;
         };
 
     public:
-        BlendSpaceNode(AnimGraph* animGraph, const char* name, uint32 typeID);
+        BlendSpaceNode(AnimGraph* animGraph, const char* name);
 
         //! Compute the position of the motion in blend space.
-        virtual void ComputeMotionPosition(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance, AZ::Vector2& position) = 0;
+        virtual void ComputeMotionCoordinates(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance, AZ::Vector2& position) = 0;
 
         //! Restore the motion coordinates that are set to automatic mode back to the computed values.
-        virtual void RestoreMotionCoords(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance) = 0;
+        virtual void RestoreMotionCoordinates(BlendSpaceMotion& motion, AnimGraphInstance* animGraphInstance) = 0;
 
         //! Common interface to access the blend space motions regardless of the blend space dimension.
-        virtual MCore::AttributeArray* GetMotionAttributeArray() const = 0;
+        virtual void SetMotions(const AZStd::vector<BlendSpaceMotion>& motions) = 0;
+        virtual const AZStd::vector<BlendSpaceMotion>& GetMotions() const = 0;
 
         //! The node is in interactive mode when the user is interactively changing the current point.
         void SetInteractiveMode(bool enable) { mInteractiveMode = enable; }
         bool IsInInteractiveMode() const { return mInteractiveMode; }
+
+        static void Reflect(AZ::ReflectContext* context);
 
     protected:
         struct MotionInfo
@@ -83,15 +137,7 @@ namespace EMotionFX
         using BlendInfos = AZStd::vector<BlendInfo>;
 
     protected:
-        void RegisterCalculationMethodAttribute(const char* name, const char* internalName, const char* description);
-        void RegisterBlendSpaceEvaluatorAttribute(const char* name, const char* internalName, const char* description);
-        ECalculationMethod GetBlendSpaceCalculationMethod(uint32 attribIndex) const;
-        BlendSpaceParamEvaluator* GetBlendSpaceParamEvaluator(uint32 attribIndex) const;
-
-        void RegisterBlendSpaceEventFilterAttribute();
-        void RegisterMasterMotionAttribute();
-
-        uint32 FindBlendSpaceMotionAttributeIndexByMotionId(uint32 motionsAttributeIndex, const AZStd::string& motionId) const;
+        size_t FindMotionIndexByMotionId(const AZStd::vector<BlendSpaceMotion>& motions, const AZStd::string& motionId) const;
 
         void DoUpdate(float timePassedInSeconds, const BlendInfos& blendInfos, ESyncMode syncMode, AZ::u32 masterIdx, MotionInfos& motionInfos);
         void DoTopDownUpdate(AnimGraphInstance* animGraphInstance, ESyncMode syncMode,
@@ -101,7 +147,7 @@ namespace EMotionFX
 
         void RewindMotions(MotionInfos& motionInfos);
 
-        static AZ::u32 GetIndexOfMotionInBlendInfos(const BlendInfos& blendInfos, AZ::u32 motionIndex);
+        static size_t GetIndexOfMotionInBlendInfos(const BlendInfos& blendInfos, size_t motionIndex);
 
         static void ClearMotionInfos(MotionInfos& motionInfos);
         static void AddMotionInfo(MotionInfos& motionInfos, MotionInstance* motionInstance);
@@ -114,15 +160,22 @@ namespace EMotionFX
         static void SyncMotionToNode(AnimGraphInstance* animGraphInstance, ESyncMode syncMode, MotionInfo& motionInfo, AnimGraphNode* srcNode);
 
     private:
+        static const char* s_calculationModeAuto;
+        static const char* s_calculationModeManual;
+
+        static const char* s_eventModeAllActiveMotions;
+        static const char* s_eventModeMostActiveMotion;
+
         bool mInteractiveMode;// true when the user is changing the current point by dragging in GUI
+        bool m_retarget;
     };
 
     //================  Inline implementations ====================================
 
-    MCORE_INLINE AZ::u32 BlendSpaceNode::GetIndexOfMotionInBlendInfos(const BlendInfos& blendInfos, AZ::u32 motionIndex)
+    MCORE_INLINE size_t BlendSpaceNode::GetIndexOfMotionInBlendInfos(const BlendInfos& blendInfos, size_t motionIndex)
     {
-        const AZ::u32 numBlendInfos = (AZ::u32)blendInfos.size();
-        for (AZ::u32 i=0; i < numBlendInfos; ++i)
+        const size_t numBlendInfos = blendInfos.size();
+        for (size_t i = 0; i < numBlendInfos; ++i)
         {
             if (blendInfos[i].m_motionIndex == motionIndex)
             {
@@ -131,5 +184,11 @@ namespace EMotionFX
         }
         return MCORE_INVALIDINDEX32;
     }
-
 } // namespace EMotionFX
+
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(EMotionFX::BlendSpaceNode::ECalculationMethod, "{A038B95B-6D36-45DD-813A-9A75863DEA7A}");
+    AZ_TYPE_INFO_SPECIALIZE(EMotionFX::BlendSpaceNode::EBlendSpaceEventMode, "{F451554D-0CCB-4E22-96DB-213EC69E565F}");
+} // namespace AZ

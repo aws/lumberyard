@@ -287,10 +287,12 @@ namespace AzFramework
         //disconnect is public and can be pounded on by an app, so protect out threads
         bool AssetProcessorConnection::Disconnect()
         {
+            // the instant we enter this function the user's intention to stop retrying is clear, and we flip this atomic to false before
+            // we end up in any locks or waits.
+            m_retryAfterDisconnect = false;
             //kill any current connection and stop retrying
             {
                 AZStd::lock_guard<AZStd::mutex> lock(m_disconnectMutex);
-                m_retryAfterDisconnect = false;
                 if (m_disconnectThread.m_running)
                 {
                     return true;
@@ -317,10 +319,7 @@ namespace AzFramework
             m_connectionState = EConnectionState::Disconnecting;
             EBUS_EVENT(EngineConnectionEvents::Bus, Disconnecting, this);
 
-            while (m_connectThread.m_running)
-            {
-                FlushResponseHandlers();
-            }
+            FlushResponseHandlers();
 
             //call all response handlers and clear them out
             DebugMessage("AssetProcessorConnection::DisconnectThread - notifying all response handlers of disconnection.");

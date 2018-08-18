@@ -20,7 +20,7 @@ from StringIO import StringIO
 
 CLOUD_GEM_FRAMEWORK_UUID = '6fc787a982184217a5a553ca24676cfa'
 
-AWS_PYTHON_SDK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'AWSPythonSDK', '1.4.4'))
+AWS_PYTHON_SDK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'AWSPythonSDK', '1.5.8'))
 
 
 def load_resource_manager_module(framework_directory_path, module_name):

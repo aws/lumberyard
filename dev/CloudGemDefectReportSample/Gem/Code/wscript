@@ -1,0 +1,42 @@
+
+
+def build(bld):
+    bld.DefineGem(
+        # General
+        includes                = [ '.',
+                                    bld.Path('Code/CryEngine/CryCommon'),
+                                    bld.Path('Code/CryEngine/CryAction')],
+        use                     = ['AzGameFramework'],
+
+        # Platform Specific
+        android_use             = ['AndroidLauncher'],
+
+        # ==============================
+        # iOS
+        # 'ios_output_file_name' must match both
+        # 'executable_name' in 'project.json' and
+        # 'Executable file' in '../Resources/IOSLauncher/Info.plist'
+        # ==============================
+        ios_output_file_name    = 'CloudGemDefectReportSampleLauncher',
+        ios_file_list           = ['cloudgemdefectreportsample_ios.waf_files'],
+
+        # ==============================
+        # AppleTV
+        # 'appletv_output_file_name' must match both
+        # 'executable_name' in 'project.json' and
+        # 'Executable file' in '../Resources/AppleTVLauncher/Info.plist'
+        # ==============================
+        appletv_output_file_name = 'CloudGemDefectReportSampleLauncher',
+        appletv_file_list       = ['cloudgemdefectreportsample_appletv.waf_files'],
+
+        darwin_file_list        = ['cloudgemdefectreportsample_mac.waf_files'],
+
+       
+       
+
+        # Testing
+        test_all_file_list      = ['cloudgemdefectreportsample_tests.waf_files'],
+
+        # Add additional custom build options here
+
+    )

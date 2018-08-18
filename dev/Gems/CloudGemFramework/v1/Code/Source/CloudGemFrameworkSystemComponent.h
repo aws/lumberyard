@@ -65,7 +65,7 @@ namespace CloudGemFramework
         CloudGemFrameworkSystemComponent(const CloudGemFrameworkSystemComponent &) = delete;
 #endif
 
-        int m_threadCount{0};
+        int m_threadCount{2};
         int m_firstThreadCPU{-1};
         int m_threadPriority{0};
         int m_threadStackSize{-1};

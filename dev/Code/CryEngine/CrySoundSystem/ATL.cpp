@@ -651,79 +651,6 @@ namespace Audio
                     eResult = eARS_SUCCESS;
                     break;
                 }
-                case eAMRT_RETRIGGER_AUDIO_CONTROLS:
-                {
-                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                    CAudioObjectManager::TActiveObjectMap const& rActiveAudioObjects = m_oAudioObjectMgr.GetActiveAudioObjects();
-                    CAudioObjectManager::TActiveObjectMap::const_iterator IterAudioObjects(rActiveAudioObjects.begin());
-                    CAudioObjectManager::TActiveObjectMap::const_iterator const IterAudioObjectsEnd(rActiveAudioObjects.end());
-
-                    for (; IterAudioObjects != IterAudioObjectsEnd; ++IterAudioObjects)
-                    {
-                        CATLAudioObject* const pAudioObject = IterAudioObjects->second;
-
-                        // First set the audio object's position.
-                        if (pAudioObject->HasPosition())
-                        {
-                            AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::SetPosition, pAudioObject->GetImplDataPtr(), pAudioObject->GetPosition());
-                        }
-
-                        // Then re-trigger its active events.
-                        TObjectEventSet const& rActiveEvents = pAudioObject->GetActiveEvents();
-                        TObjectEventSet::const_iterator IterActiveEvents(rActiveEvents.begin());
-                        TObjectEventSet::const_iterator const IterActiveEventsEnd(rActiveEvents.end());
-
-                        for (; IterActiveEvents != IterActiveEventsEnd; ++IterActiveEvents)
-                        {
-                            const CATLEvent* const pEvent = m_oAudioEventMgr.LookupID(*IterActiveEvents);
-                            AZ_Assert(pEvent->IsPlaying(), "ATL ProcessAudioManagerRequest - Retriggering encountered an 'active' event that isn't playing!");
-
-                            const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, pEvent->m_nTriggerID, nullptr);
-
-                            if (pTrigger)
-                            {
-                                CATLTrigger::TImplPtrVec::const_iterator IterTriggerImpl(pTrigger->m_cImplPtrs.begin());
-                                CATLTrigger::TImplPtrVec::const_iterator const IterTriggerImplEnd(pTrigger->m_cImplPtrs.end());
-
-                                for (; IterTriggerImpl != IterTriggerImplEnd; ++IterTriggerImpl)
-                                {
-                                    const CATLTriggerImpl* const pTriggerImpl = *IterTriggerImpl;
-                                    const EATLSubsystem eReceiver = pTriggerImpl->GetReceiver();
-
-                                    switch (eReceiver)
-                                    {
-                                        case eAS_AUDIO_SYSTEM_IMPLEMENTATION:
-                                        {
-                                            AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::ActivateTrigger,
-                                                pAudioObject->GetImplDataPtr(),
-                                                pTriggerImpl->m_pImplData,
-                                                pEvent->m_pImplData,
-                                                INVALID_AUDIO_SOURCE_ID);
-                                            break;
-                                        }
-                                        case eAS_ATL_INTERNAL:
-                                        {
-                                            ActivateInternalTrigger(
-                                                pAudioObject,
-                                                pTriggerImpl->m_pImplData,
-                                                pEvent->m_pImplData);
-                                            break;
-                                        }
-                                        default:
-                                        {
-                                            g_audioLogger.Log(eALT_ERROR, "Unknown ATL Recipient");
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    eResult = eARS_SUCCESS;
-                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-                    break;
-                }
                 case eAMRT_DRAW_DEBUG_INFO:
                 {
                 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
@@ -2163,7 +2090,7 @@ namespace Audio
 
             const float* fColorNumbers = fColorBlue;
 
-            uint32 activeListenerID = 0;
+            TAudioObjectID activeListenerID = INVALID_AUDIO_OBJECT_ID;
             if (CATLListenerObject* overrideListener = m_oAudioListenerMgr.LookupID(m_oAudioListenerMgr.GetOverrideListenerID()))
             {
                 activeListenerID = overrideListener->GetID();
@@ -2175,7 +2102,7 @@ namespace Audio
 
             fPosY += fLineHeight;
             pAuxGeom->Draw2dLabel(fPosX, fPosY, 1.35f, fColorListener, false,
-                "Listener <%u> PosXYZ: %.2f %.2f %.2f FwdXYZ: %.2f %.2f %.2f",
+                "Listener <%llu> PosXYZ: %.2f %.2f %.2f FwdXYZ: %.2f %.2f %.2f",
                 activeListenerID,
                 vPos.x, vPos.y, vPos.z,
                 vFwd.x, vFwd.y, vFwd.z);

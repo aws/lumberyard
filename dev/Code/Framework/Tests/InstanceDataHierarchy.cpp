@@ -16,6 +16,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/containers/stack.h>
+#include <AzCore/std/containers/map.h>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 
 using namespace AZ;
@@ -93,6 +94,8 @@ namespace UnitTest
                     ->Field("NormalContainer", &TestComponent::m_normalContainer)
                     ->Field("PointerContainer", &TestComponent::m_pointerContainer)
                     ->Field("SubData", &TestComponent::m_subData)
+                    ->Field("MapNormalContainer", &TestComponent::m_mapNormalContainer)
+                    ->Field("NestedMapNormalContainer", &TestComponent::m_nestedMapNormalContainer)
                     ;
 
                 if (AZ::EditContext* edit = serializeContext->GetEditContext())
@@ -100,9 +103,11 @@ namespace UnitTest
                     edit->Class<TestComponent>("Test Component", "A test component")
                         ->DataElement(0, &TestComponent::m_float, "Float Field", "A float field")
                         ->DataElement(0, &TestComponent::m_string, "String Field", "A string field")
-                        ->DataElement(0, &TestComponent::m_normalContainer, "Normal Container", "A container")
-                        ->DataElement(0, &TestComponent::m_pointerContainer, "Pointer Container", "A container")
+                        ->DataElement(0, &TestComponent::m_normalContainer, "Normal Container", "A container of data")
+                        ->DataElement(0, &TestComponent::m_pointerContainer, "Pointer Container", "A container of pointers to data")
                         ->DataElement(0, &TestComponent::m_subData, "Struct Field", "A sub data type")
+                        ->DataElement(0, &TestComponent::m_mapNormalContainer, "Map Normal Container", "An associative container of integers to data")
+                        ->DataElement(0, &TestComponent::m_nestedMapNormalContainer, "Nested Map Normal Container", "A nested associative container of integers to associative containers of integers to data")
                         ;
 
                     edit->Class<SubData>("Test Component", "A test component")
@@ -127,6 +132,10 @@ namespace UnitTest
         AZStd::vector<SubData*> m_pointerContainer;
 
         SubData m_subData;
+
+        AZStd::map<int, SubData> m_mapNormalContainer;
+
+        AZStd::map<int, AZStd::map<int, SubData>> m_nestedMapNormalContainer;
 
         size_t m_serializeOnReadBegin = 0;
         size_t m_serializeOnReadEnd = 0;
@@ -157,6 +166,7 @@ namespace UnitTest
         void run()
         {
             using namespace AzToolsFramework;
+            using SubData = TestComponent::SubData;
 
             AZ::SerializeContext serializeContext;
             serializeContext.CreateEditContext();
@@ -166,38 +176,43 @@ namespace UnitTest
             // Test building of hierarchies, and copying of data from testEntity1 to testEntity2->
             {
                 AZStd::unique_ptr<AZ::Entity> testEntity1(new AZ::Entity());
-                testEntity1->CreateComponent<TestComponent>();
+                auto* testComponent1 = testEntity1->CreateComponent<TestComponent>();
                 AZStd::unique_ptr<AZ::Entity> testEntity2(serializeContext.CloneObject(testEntity1.get()));
+                auto* testComponent2 = testEntity2->FindComponent<TestComponent>();
 
-                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadBegin == 1);
-                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadEnd == 1);
-                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnWriteBegin == 1);
-                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnWriteEnd == 1);
+                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadBegin == 1);
+                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadEnd == 1);
+                AZ_TEST_ASSERT(testComponent2->m_serializeOnWriteBegin == 1);
+                AZ_TEST_ASSERT(testComponent2->m_serializeOnWriteEnd == 1);
 
-                testEntity1->FindComponent<TestComponent>()->m_float = 1.f;
-                testEntity1->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(1));
-                testEntity1->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(2));
-                testEntity1->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
-                testEntity1->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(2));
+                testComponent1->m_float = 1.f;
+                testComponent1->m_normalContainer.push_back(SubData(1));
+                testComponent1->m_normalContainer.push_back(SubData(2));
+                testComponent1->m_pointerContainer.push_back(aznew SubData(1));
+                testComponent1->m_pointerContainer.push_back(aznew SubData(2));
+                testComponent1->m_mapNormalContainer.insert(AZStd::make_pair(1, SubData(1)));
+                testComponent1->m_mapNormalContainer.insert(AZStd::make_pair(2, SubData(2)));
+                testComponent1->m_nestedMapNormalContainer.insert(AZStd::make_pair(1, testComponent1->m_mapNormalContainer));
+                testComponent1->m_nestedMapNormalContainer.insert(AZStd::make_pair(2, testComponent1->m_mapNormalContainer));
 
                 // First entity has more entries, so we'll be adding elements to testEntity2->
-                testEntity2->FindComponent<TestComponent>()->m_float = 2.f;
-                testEntity2->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(1));
-                testEntity2->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
+                testComponent2->m_float = 2.f;
+                testComponent2->m_normalContainer.push_back(SubData(1));
+                testComponent2->m_pointerContainer.push_back(aznew SubData(1));
 
                 InstanceDataHierarchy idh1;
                 idh1.AddRootInstance(testEntity1.get());
                 idh1.Build(&serializeContext, 0);
 
-                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadBegin == 2);
-                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadEnd == 2);
+                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadBegin == 2);
+                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadEnd == 2);
 
                 InstanceDataHierarchy idh2;
                 idh2.AddRootInstance(testEntity2.get());
                 idh2.Build(&serializeContext, 0);
 
-                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnReadBegin == 1);
-                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnReadEnd == 1);
+                AZ_TEST_ASSERT(testComponent2->m_serializeOnReadBegin == 1);
+                AZ_TEST_ASSERT(testComponent2->m_serializeOnReadEnd == 1);
 
                 // Verify IDH structure.
                 InstanceDataNode* root1 = idh1.GetRootNode();
@@ -244,33 +259,36 @@ namespace UnitTest
                 bool result = InstanceDataHierarchy::CopyInstanceData(componentNode1, foundIn2, &serializeContext);
                 AZ_TEST_ASSERT(result);
 
-                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadBegin == 2);
-                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadEnd == 2);
-                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnWriteBegin == 2);
-                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnWriteEnd == 2);
+                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadBegin == 2);
+                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadEnd == 2);
+                AZ_TEST_ASSERT(testComponent2->m_serializeOnWriteBegin == 2);
+                AZ_TEST_ASSERT(testComponent2->m_serializeOnWriteEnd == 2);
 
-                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_normalContainer.size() == 2);
-                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_pointerContainer.size() == 2);
-                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_float == 1.f);
+                AZ_TEST_ASSERT(testComponent2->m_normalContainer.size() == 2);
+                AZ_TEST_ASSERT(testComponent2->m_pointerContainer.size() == 2);
+                AZ_TEST_ASSERT(testComponent2->m_float == 1.f);
+                AZ_TEST_ASSERT(testComponent2->m_mapNormalContainer.size() == 2);
+                AZ_TEST_ASSERT(testComponent2->m_nestedMapNormalContainer.size() == 2);
             }
 
             // Test removal of container elements during instance data copying.
             {
                 AZStd::unique_ptr<AZ::Entity> testEntity1(new AZ::Entity());
-                testEntity1->CreateComponent<TestComponent>();
+                auto* testComponent1 = testEntity1->CreateComponent<TestComponent>();
                 AZStd::unique_ptr<AZ::Entity> testEntity2(serializeContext.CloneObject(testEntity1.get()));
+                auto* testComponent2 = testEntity2->FindComponent<TestComponent>();
 
                 // First entity has more in container 1, fewer in container 2 as compared to second entity.
-                testEntity1->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(1));
-                testEntity1->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(2));
-                testEntity1->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
+                testComponent1->m_normalContainer.push_back(TestComponent::SubData(1));
+                testComponent1->m_normalContainer.push_back(TestComponent::SubData(2));
+                testComponent1->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
 
-                testEntity2->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(1));
-                testEntity2->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
-                testEntity2->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(2));
+                testComponent2->m_normalContainer.push_back(TestComponent::SubData(1));
+                testComponent2->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
+                testComponent2->m_pointerContainer.push_back(aznew TestComponent::SubData(2));
 
                 // Change a field.
-                testEntity2->FindComponent<TestComponent>()->m_float = 2.f;
+                testComponent2->m_float = 2.f;
 
                 InstanceDataHierarchy idh1;
                 idh1.AddRootInstance(testEntity1.get());
@@ -355,8 +373,8 @@ namespace UnitTest
                 bool result = InstanceDataHierarchy::CopyInstanceData(componentNode1, foundIn2, &serializeContext);
                 AZ_TEST_ASSERT(result);
 
-                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_normalContainer.size() == 2);
-                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_pointerContainer.size() == 1);
+                AZ_TEST_ASSERT(testComponent2->m_normalContainer.size() == 2);
+                AZ_TEST_ASSERT(testComponent2->m_pointerContainer.size() == 1);
             }
 
             // Test FindNodeByPartialAddress functionality and Read/Write of InstanceDataNode

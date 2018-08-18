@@ -1495,7 +1495,7 @@ SHADER_VARIABLE_TYPE GetOperandDataType(HLSLCrossCompilerContext* psContext, con
     {
     case OPERAND_TYPE_TEMP:
     {
-        SHADER_VARIABLE_TYPE eCurrentType;
+        SHADER_VARIABLE_TYPE eCurrentType = SVT_VOID;
         int i = 0;
 
         if (psContext->flags & HLSLCC_FLAG_AVOID_TEMP_REGISTER_ALIASING && psContext->psShader->eShaderType != HULL_SHADER)

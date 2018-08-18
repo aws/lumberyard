@@ -86,6 +86,8 @@ namespace GridMate
         Aws::String GetFleetId() const;
         Aws::GameLift::GameLiftClient* GetClient() const;
         Aws::String GetPlayerId() const;
+        bool UseGameLiftLocal() const { return m_serviceDesc.m_useGameLiftLocalServer; }
+        string GetEndpoint() const { return m_serviceDesc.m_endpoint; }
 
         // SessionService
         void OnServiceRegistered(IGridMate* gridMate) override;

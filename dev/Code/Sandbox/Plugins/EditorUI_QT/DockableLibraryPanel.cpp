@@ -24,7 +24,7 @@
 #include <Include/IEditorParticleManager.h>
 
 //QT
-#include <qmenu.h>
+#include <QMenu>
 #include <QScrollArea>
 #include <QVBoxLayout>
 #include <QMessageBox>
@@ -1127,8 +1127,12 @@ void DockableLibraryPanel::AddLibraryListToMenu(QMenu* subMenu)
 
 void DockableLibraryPanel::ReloadLibrary(const QString& libName)
 {
+    if (libName.isEmpty())
+    {
+        return;
+    }
     IDataBaseLibrary *lib = m_libraryManager->FindLibrary(libName.toUtf8().data());
-    if (libName.isEmpty() || !lib)
+    if (!lib)
     {
         return;
     }
@@ -1172,7 +1176,19 @@ void DockableLibraryPanel::ReloadLibrary(const QString& libName)
             return;
         }
     }
-    dock->Reload();
+
+    if (!dock->Reload())
+    {
+        // Force to remove the library from the panel since
+        // it was destroyed during the reload. Thanks to the Scoped
+        // Modified Undo command the user will be able to recover it.
+
+        SelectSingleLibrary("");
+        SignalItemSelected(nullptr);
+
+        m_libraryManager->DeleteLibrary(libName.toUtf8().data());
+        RebuildFromEngineData();
+    }
 }
 
 void DockableLibraryPanel::ImportLibrary(const QString& file)

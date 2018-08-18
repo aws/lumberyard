@@ -12,6 +12,10 @@
 #pragma once
 
 
+#if !defined(AZ_TESTS_ENABLED)
+#error UnitTest.h should not be included except when the unit tests are enabled (via compiling a _TEST configuration).
+#endif
+
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
 #define UNITTEST_H_SECTION_1 1
@@ -20,18 +24,16 @@
 #define UNITTEST_H_SECTION_4 4
 #endif
 
-#if defined(AZ_TESTS_ENABLED)
 #include <AzTest/AzTest.h>
-#endif
 
 #include <stdio.h>
-
 
 #include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/base.h>
 #include <AzCore/std/typetraits/alignment_of.h>
 #include <AzCore/std/typetraits/has_member_function.h>
 #include <AzCore/Debug/Trace.h>
+#include <AzCore/Debug/TraceMessageBus.h>
 
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
 #   include <malloc.h>
@@ -142,9 +144,7 @@ namespace UnitTest
 
         void ProcessAssert(const char* /*expression*/, const char* /*file*/, int /*line*/, bool expressionTest)
         {
-#if defined (AZ_TESTS_ENABLED)
             ASSERT_TRUE(m_isAssertTest);
-#endif
 
             if (m_isAssertTest)
             {
@@ -241,9 +241,66 @@ namespace UnitTest
             return t != nullptr;
         }
     };
+
+    // a utility class that you can derive from or contain, which redirects asserts 
+    // and errors to the below macros (processAssert, etc) 
+    class TraceBusRedirector
+        :public AZ::Debug::TraceMessageBus::Handler
+    {
+        bool OnPreAssert(const char* file, int line, const char* /* func */, const char* message) override
+        {
+            if (UnitTest::TestRunner::Instance().m_isAssertTest)
+            {
+                UnitTest::TestRunner::Instance().ProcessAssert(message, file, line, false);
+            }
+            else
+            {
+                GTEST_TEST_BOOLEAN_(false, message, false, true, GTEST_NONFATAL_FAILURE_);
+            }
+            return true;
+        }
+        bool OnAssert(const char* /*message*/) override
+        {
+            return true; // stop processing
+        }
+        bool OnPreError(const char* /*window*/, const char* file, int line, const char* /*func*/, const char* message) override
+        {
+            if (UnitTest::TestRunner::Instance().m_isAssertTest)
+            {
+                UnitTest::TestRunner::Instance().ProcessAssert(message, file, line, false);
+                return true;
+            }
+            return false;
+        }
+        bool OnError(const char* /*window*/, const char* message) override
+        {
+            if (UnitTest::TestRunner::Instance().m_isAssertTest)
+            {
+                UnitTest::TestRunner::Instance().ProcessAssert(message, __FILE__, __LINE__, UnitTest::AssertionExpr(false));
+            }
+            else
+            {
+                GTEST_TEST_BOOLEAN_(false, message, false, true, GTEST_NONFATAL_FAILURE_);
+            }
+            return true; // stop processing
+        }
+        bool OnPreWarning(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) override
+        {
+            return false;
+        }
+        bool OnWarning(const char* /*window*/, const char* /*message*/) override
+        {
+            return false;
+        }
+
+        bool OnOutput(const char* /*window*/, const char* /*message*/) override
+        {
+            return true;
+        }
+
+    };
 }
 
-#if defined(AZ_TESTS_ENABLED)
 
 #define AZ_TEST_ASSERT(exp) { \
     if (UnitTest::TestRunner::Instance().m_isAssertTest) \
@@ -263,17 +320,7 @@ namespace UnitTest
 #   define AZ_TEST_STOP_ASSERTTEST(_NumTriggeredAsserts)
 #endif
 
-#else
-
-#define AZ_TEST_ASSERT(...)
-#define AZ_TEST_ASSERT_CLOSE(...)
-#define AZ_TEST_ASSERT_FLOAT_CLOSE(...)
-#define AZ_TEST_STATIC_ASSERT(...)
-#define AZ_TEST_START_ASSERTTEST
-#define AZ_TEST_STOP_ASSERTTEST(...)
-
-#endif // AZ_TESTS_ENABLED
-
 #define AZ_TEST(...)
 #define AZ_TEST_SUITE(...)
 #define AZ_TEST_SUITE_END
+

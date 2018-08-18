@@ -64,6 +64,7 @@ namespace ZipDir
 
     struct IEncryptPredicate
     {
+        virtual ~IEncryptPredicate() = default;
         virtual bool Match(const char* filename) = 0;
     };
 

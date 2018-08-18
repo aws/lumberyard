@@ -17,7 +17,7 @@
 
 #include "ReplicaChunkTypeDetailView.h"
 
-#include <Woodpecker/Driller/Replica/ui_BaseDetailView.h>
+#include <Woodpecker/Driller/Replica/ui_basedetailview.h>
 
 #include "ReplicaChunkUsageDataContainers.h"
 #include "ReplicaDataAggregator.hxx"

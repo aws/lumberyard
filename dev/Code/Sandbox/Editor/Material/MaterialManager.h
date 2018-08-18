@@ -209,7 +209,7 @@ protected:
     void GenerateUniqueSubmaterialName(const CMaterial* pSourceMaterial, const CMaterial* pTargetMaterial, QString& uniqueSubmaterialName) const;
 
     // Open save as dialog for saving materials.
-    bool SelectSaveMaterial(QString& itemName, const char* defaultStartPath);
+    bool SelectSaveMaterial(QString& itemName, QString& fullPath, const char* defaultStartPath);
 
     void OnEditorNotifyEvent(EEditorNotifyEvent event);
 

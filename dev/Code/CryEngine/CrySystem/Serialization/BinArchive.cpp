@@ -46,7 +46,8 @@ namespace Serialization {
 
     bool BinOArchive::save(const char* filename)
     {
-        FILE* f = fopen(filename, "wb");
+        FILE* f = nullptr;
+        azfopen(&f, filename, "wb");
         if (!f)
         {
             return false;
@@ -280,7 +281,7 @@ namespace Serialization {
                 do
                 {
                     char elementName[16];
-                    itoa(i++, elementName, 10);
+                    azitoa(i++, elementName, AZ_ARRAY_SIZE(elementName), 10);
                     ser(*this, elementName, "");
                 } while (ser.next());
             }
@@ -350,7 +351,9 @@ namespace Serialization {
     {
         close();
 
-        FILE* f = fopen(filename, "rb");
+        FILE* f = nullptr;
+        azfopen(&f, filename, "rb");
+
         if (!f)
         {
             return false;
@@ -714,7 +717,7 @@ namespace Serialization {
                 do
                 {
                     char elementName[16];
-                    itoa(i++, elementName, 10);
+                    azitoa(i++, elementName, AZ_ARRAY_SIZE(elementName), 10);
                     ser(*this, elementName, "");
                 }
                 while (ser.next());

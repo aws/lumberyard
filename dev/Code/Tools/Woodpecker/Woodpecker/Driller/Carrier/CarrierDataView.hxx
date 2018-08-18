@@ -16,7 +16,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <QtWidgets/QMainWindow>
-#include <QtWidgets/qdialog.h>
+#include <QtWidgets/QDialog>
 
 #include "Woodpecker/Driller/StripChart.hxx"
 #include "Woodpecker/Driller/DrillerOperationTelemetryEvent.h"

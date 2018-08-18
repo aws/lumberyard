@@ -729,7 +729,7 @@ namespace AzFramework
         {
             serializeContext->Class<ScriptDebugAgent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
@@ -771,7 +771,6 @@ namespace AzFramework
     //        {
     //            reflection.m_serialize->Class<ScriptDebugAgent>("ScriptDebugAgent", "{6CEA890A-CEC0-4725-8E9A-97ACCE5941A9}")
     //                ->Version(1)
-    //                ->SerializerForEmptyClass();
 
     //            AZ::EditContext *ec = reflection.m_serialize->GetEditContext();
     //            if (ec) {

@@ -468,6 +468,31 @@ namespace LmbrCentral
         }
     }
 
+    AZStd::shared_ptr<IPhysicalEntity> CreateIPhysicalEntitySharedPtr(IPhysicalEntity* rawPhysicalEntityPtr)
+    {
+        AZStd::shared_ptr<IPhysicalEntity> result;
+
+        if (rawPhysicalEntityPtr)
+        {
+            // Increment IPhysicalEntity's internal refcount once. We will decrement it once when the shared_ptr's refcount reaches zero.
+            rawPhysicalEntityPtr->AddRef();
+
+            result.reset(rawPhysicalEntityPtr,
+                [](IPhysicalEntity* physicalEntity)
+            {
+                // IPhysicalEntity is owned by IPhysicalWorld and will not be destroyed until both:
+                // - IPhysicalEntity's internal refcount has dropped to zero.
+                // - IPhysicalWorld::DestroyPhysicalEntity() has been called on it.
+                // We store IPhysicalEntity in a ptr whose custom destructor
+                // ensures that these steps are all followed.
+                physicalEntity->Release();
+                gEnv->pPhysicalWorld->DestroyPhysicalEntity(physicalEntity);
+            });
+        }
+
+        return result;
+    }
+
     void PhysicsComponent::EnablePhysics()
     {
         if (m_physicalEntity)
@@ -497,18 +522,7 @@ namespace LmbrCentral
             return;
         }
 
-        // IPhysicalEntity is owned by IPhysicalWorld and will not be destroyed until both:
-        // - IPhysicalEntity's internal refcount has dropped to zero.
-        // - IPhysicalWorld::DestroyPhysicalEntity() has been called on it.
-        // We store IPhysicalEntity in a ptr whose custom destructor
-        // ensures that these steps are all followed.
-        rawPhysicalEntityPtr->AddRef();
-        m_physicalEntity.reset(rawPhysicalEntityPtr,
-            [](IPhysicalEntity* physicalEntity)
-            {
-                physicalEntity->Release();
-                gEnv->pPhysicalWorld->DestroyPhysicalEntity(physicalEntity);
-            });
+        m_physicalEntity = CreateIPhysicalEntitySharedPtr(rawPhysicalEntityPtr);
 
         // Let subclass configure the physical entity.
         ConfigurePhysicalEntity();
@@ -604,11 +618,6 @@ namespace LmbrCentral
         {
             m_physicalEntity->Action(&action, threadSafe ? 1 : 0);
         }
-    }
-
-    bool PhysicsComponent::IsPhysicsFullyEnabled()
-    {
-        return m_isPhysicsFullyEnabled;
     }
 
     void PhysicsComponent::AddCollidersFromEntityAndDescendants(const AZ::EntityId& rootEntityId)

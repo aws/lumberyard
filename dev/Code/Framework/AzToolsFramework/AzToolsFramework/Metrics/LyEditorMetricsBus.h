@@ -123,6 +123,12 @@ namespace AzToolsFramework
 
         virtual void RegisterAction(QAction* /*action*/, const QString& /*metricsText*/) {}
         virtual void UnregisterAction(QAction* /*action*/) {}
+
+        // Work-around methods because ToolsApplicationEvents::BeforeEntitySelectionChanged and AfterEntitySelectionChanged are not called consistently
+        // Note that BeginSelectionChange can be called multiple times before EndSelectionChange is called, but the number of calls
+        // should always match.
+        virtual void BeginSelectionChange() {}
+        virtual void EndSelectionChange() {}
     };
 
     using EditorMetricsEventsBus = AZ::EBus<EditorMetricsEventsBusTraits>;
@@ -140,6 +146,20 @@ namespace AzToolsFramework
         ~EditorMetricsEventsBusAction()
         {
             EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, EndUserAction);
+        }
+    };
+
+    class EditorMetricsEventBusSelectionChangeHelper
+    {
+    public:
+        EditorMetricsEventBusSelectionChangeHelper()
+        {
+            EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBus::Events::BeginSelectionChange);
+        }
+
+        ~EditorMetricsEventBusSelectionChangeHelper()
+        {
+            EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBus::Events::EndSelectionChange);
         }
     };
 }

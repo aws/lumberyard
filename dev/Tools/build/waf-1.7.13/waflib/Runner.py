@@ -294,6 +294,10 @@ class Parallel(object):
 		If only one job is used, then execute the tasks one by one, without consumers.
 		"""
 
+		file_filter_list = []
+		if self.bld.options.file_filter != "":
+			file_filter_list = self.bld.options.file_filter.split(";")
+
 		self.total = self.bld.total()
 		if self.total == 0:
 			self.stop = True
@@ -320,45 +324,57 @@ class Parallel(object):
 			if self.stop: # stop immediately after a failure was detected
 				break
 
-			try:				
-				if self.bld.options.file_filter == "":
+			try:
+				if not file_filter_list:
 					st = tsk.runnable_status()	# No file filter, execute all tasks
-				else: # File filter, check if we should compile this task		
-					
-					st = Task.SKIP_ME
-					if not hasattr(self, 'required_tasks'):
-						self.required_tasks = []
-						
-					# Check if we need to execute this task
+				else:
+					# File filter, check if we should compile this task
 					bExecuteTask = False
-					file_filter_list = self.bld.options.file_filter.split(";")
-					
-					for input in tsk.inputs:			
+					st = Task.SKIP_ME
+					# check if the file is used in this task.  If so, we must execute this task
+					for input in tsk.inputs:
 						if input.abspath() in file_filter_list:
 							bExecuteTask = True
 							break
-					
-					if tsk in self.required_tasks:
-						bExecuteTask = True
 
+					# this task is included in the filter
 					if bExecuteTask:
-						st = tsk.runnable_status()
+						# a task may require other tasks run first.  These may have been skipped earlier.
+						if not hasattr(tsk, 'required_tasks'):
+							tsk.required_tasks = []
 
-						if st == Task.ASK_LATER:
-							for t in tsk.run_after:
-								self.required_tasks += [t]
+							def add_dependent_tasks(depends, tsk):
+								for t in tsk.run_after:
+									if t.hasrun == Task.NOT_RUN or t.hasrun == Task.SKIPPED:
+										add_dependent_tasks(depends, t)
+										depends.append(t)
+							# cant run a task until the run_after list is completed for all tasks in the dependency chain
+							# recurse and create a list of everything that needs to be considered
+							add_dependent_tasks(tsk.required_tasks, tsk)
+
+						if tsk.required_tasks:
+							# process the run_after tasks first.  postpone the current task similar to ASK_LATER handling
+							self.postpone(tsk)
+							# grab a prereq and replace the task under consideration.  These tasks may have been skipped earlier
+							tsk = tsk.required_tasks.pop(0)
+							st = tsk.runnable_status()
+							# fallout, do normal task processing
 						else:
-							for input in tsk.inputs:			
+							# prerequisites already handled, must be runnable now.  Computing the status for side effects
+							st = tsk.runnable_status()
+							assert(st != Task.ASK_LATER)
+							st = Task.RUN_ME	# but forcing the task to run anyways
+
+							# override the inputs for special handling
+							for input in tsk.inputs:
 								if input.abspath() in file_filter_list:
-									st = Task.RUN_ME									
-									
 									# patch output file to handle special commands
 									override_output_file = self.bld.is_option_true('show_preprocessed_file')  or self.bld.is_option_true('show_disassembly')
-									if override_output_file == True:	
+									if override_output_file == True:
 
 										# Get file extension
 										if self.bld.is_option_true('show_disassembly'):
-											file_ext = '.diasm'										
+											file_ext = '.diasm'
 										elif self.bld.is_option_true('show_preprocessed_file'):
 											file_ext = '.i'
 										else:
@@ -370,9 +386,8 @@ class Parallel(object):
 										
 										# Add post build message to allow VS user to open the file
 										if getattr(self.bld.options, 'execsolution', ""):
-											self.bld.post_build_msg_warning.append('%s(0): warning: %s.' % (out_file.abspath(), "Click here to open output file"))			
-									break
-									
+											self.bld.post_build_msg_warning.append('%s(0): warning: %s.' % (out_file.abspath(), "Click here to open output file"))
+							# fallout, resume normal task processing with the overrides
 			except Exception:
 				self.processed += 1
 				# TODO waf 1.7 this piece of code should go in the error_handler

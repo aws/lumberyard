@@ -12,10 +12,9 @@
 
 #pragma once
 
-// include the required headers
-#include "EMotionFXConfig.h"
-#include "EventHandler.h"
-#include "AnimGraphTransitionCondition.h"
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/EventHandler.h>
+#include <EMotionFX/Source/AnimGraphTransitionCondition.h>
 
 namespace EMotionFX
 {
@@ -31,28 +30,14 @@ namespace EMotionFX
     class EMFX_API AnimGraphStateCondition
         : public AnimGraphTransitionCondition
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphStateCondition, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_CONDITIONS);
-
-        // forward declaration
     private:
         class EventHandler;
 
     public:
-        AZ_RTTI(AnimGraphStateCondition, "{8C955719-5D14-4BB5-BA64-F2A3385CAF7E}", AnimGraphTransitionCondition);
+        AZ_RTTI(AnimGraphStateCondition, "{8C955719-5D14-4BB5-BA64-F2A3385CAF7E}", AnimGraphTransitionCondition)
+        AZ_CLASS_ALLOCATOR_DECL
 
-        enum
-        {
-            TYPE_ID = 0x09502005
-        };
-
-        enum
-        {
-            ATTRIB_STATE                = 0,
-            ATTRIB_FUNCTION             = 1,
-            ATTRIB_PLAYTIME             = 2
-        };
-
-        enum EFunction
+        enum TestFunction : AZ::u8
         {
             FUNCTION_EXITSTATES         = 0,
             FUNCTION_ENTERING           = 1,
@@ -67,15 +52,13 @@ namespace EMotionFX
         class EMFX_API UniqueData
             : public AnimGraphObjectData
         {
-            MCORE_MEMORYOBJECTCATEGORY(AnimGraphStateCondition::UniqueData, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_CONDITIONS);
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
 
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance);
             virtual ~UniqueData();
-
-            uint32 GetClassSize() const override                    { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override        { return new (destMem) UniqueData(object, animGraphInstance); }
 
             void CreateEventHandler();
             void DeleteEventHandler();
@@ -89,74 +72,78 @@ namespace EMotionFX
             bool                                        mTriggered;
         };
 
-        static AnimGraphStateCondition* Create(AnimGraph* animGraph);
+        AnimGraphStateCondition();
+        AnimGraphStateCondition(AnimGraph* animGraph);
+        ~AnimGraphStateCondition();
 
-        void RegisterAttributes() override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
+
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
-        void OnUpdateAttributes() override;
-        void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName) override;
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
 
         void Reset(AnimGraphInstance* animGraphInstance) override;
 
-        const char* GetTypeString() const override;
         void GetSummary(AZStd::string* outResult) const override;
         void GetTooltip(AZStd::string* outResult) const override;
         const char* GetPaletteName() const override;
         ECategory GetPaletteCategory() const override;
 
         bool TestCondition(AnimGraphInstance* animGraphInstance) const override;
+
+        void SetStateId(AnimGraphNodeId stateId);
+        AnimGraphNodeId GetStateId() const;
+        AnimGraphNode* GetState() const;
+
+        void SetPlayTime(float playTime);
+        float GetPlayTime() const;
+
+        void SetTestFunction(TestFunction testFunction);
+        TestFunction GetTestFunction() const;
         const char* GetTestFunctionString() const;
-        AnimGraphObject* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+
+        void GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const override;
+
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
         // the event handler
         class EMFX_API EventHandler
             : public AnimGraphInstanceEventHandler
         {
-            MCORE_MEMORYOBJECTCATEGORY(EventHandler, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_CONDITIONS);
-
         public:
+            AZ_CLASS_ALLOCATOR_DECL
+
             EventHandler(AnimGraphStateCondition* condition, UniqueData* uniqueData);
             virtual ~EventHandler();
 
-            // overloaded 
+            // overloaded
             void OnStateEnter(AnimGraphInstance* animGraphInstance, AnimGraphNode* state) override;
             void OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* state) override;
             void OnStateExit(AnimGraphInstance* animGraphInstance, AnimGraphNode* state) override;
             void OnStateEnd(AnimGraphInstance* animGraphInstance, AnimGraphNode* state) override;
 
         private:
-            bool IsTargetState(const AnimGraphNode* state) const
-            {
-                const AZStd::string& stateName = mCondition->GetAttributeString(ATTRIB_STATE)->GetValue();
-                return (stateName.empty() || stateName == state->GetName());
-            }
-
-            void OnStateChange(AnimGraphInstance* animGraphInstance, AnimGraphNode* state, EFunction targetFunction)
-            {
-                // check if the state and the anim graph instance are valid and
-                // return directly in case one of them is not
-                if (!state || !animGraphInstance)
-                {
-                    return;
-                }
-
-                const int32 functionIndex = mCondition->GetAttributeFloatAsInt32(ATTRIB_FUNCTION);
-                if (functionIndex == targetFunction && IsTargetState(state))
-                {
-                    mUniqueData->mTriggered = true;
-                }
-            }
+            bool IsTargetState(const AnimGraphNode* state) const;
+            void OnStateChange(AnimGraphInstance* animGraphInstance, AnimGraphNode* state, TestFunction targetFunction);
 
             AnimGraphStateCondition*    mCondition;
             UniqueData*                 mUniqueData;
         };
 
-        AnimGraphNode*     mState;
+        AZ::Crc32 GetTestFunctionVisibility() const;
+        AZ::Crc32 GetPlayTimeVisibility() const;
 
-        AnimGraphStateCondition(AnimGraph* animGraph);
-        ~AnimGraphStateCondition();
+        static const char* s_functionExitStateReached;
+        static const char* s_functionStartedTransitioning;
+        static const char* s_functionStateFullyBlendedIn;
+        static const char* s_functionLeavingState;
+        static const char* s_functionStateFullyBlendedOut;
+        static const char* s_functionHasReachedSpecifiedPlaytime;
+
+        AZ::u64             m_stateId;
+        AnimGraphNode*      m_state;
+        float               m_playTime;
+        TestFunction        m_testFunction;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

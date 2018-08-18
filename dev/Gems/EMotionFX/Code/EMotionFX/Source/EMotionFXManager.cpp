@@ -29,10 +29,13 @@
 #include <AzCore/std/algorithm.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzFramework/API/ApplicationAPI.h>
+#include <EMotionFX/Source/Allocators.h>
 
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(EMotionFXManager, EMotionFXManagerAllocator, 0)
+
     // the global EMotion FX manager object
     AZ::EnvironmentVariable<EMotionFXManager*> gEMFX;
 
@@ -47,6 +50,9 @@ namespace EMotionFX
             return true;
         }
 
+        // Create EMotion FX allocators
+        Allocators::Create();
+        
         // create the new object
         gEMFX = AZ::Environment::CreateVariable<EMotionFXManager*>(kEMotionFXInstanceVarName);
         gEMFX.Set(EMotionFXManager::Create());
@@ -97,6 +103,8 @@ namespace EMotionFX
         // delete the global object and reset it to nullptr
         gEMFX.Get()->Destroy();
         gEMFX.Reset();
+
+        Allocators::Destroy();
     }
 
     //-----------------------------------------------------------------------------
@@ -161,7 +169,7 @@ namespace EMotionFX
     // create
     EMotionFXManager* EMotionFXManager::Create()
     {
-        return new EMotionFXManager();
+        return aznew EMotionFXManager();
     }
 
 
@@ -531,7 +539,7 @@ namespace EMotionFX
     // shrink internal pools to minimize memory usage
     void EMotionFXManager::ShrinkPools()
     {
-        mAnimGraphManager->GetObjectDataPool().Shrink();
+        Allocators::ShrinkPools();
         mMotionInstancePool->Shrink();
         //MCore::GetAttributePool().Shrink();
     }
@@ -598,7 +606,6 @@ namespace EMotionFX
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_ANIMGRAPH_ATTRIBUTEINFOS,                "EMFX_MEMCATEGORY_ANIMGRAPH_ATTRIBUTEINFOS");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTUNIQUEDATA,              "EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTUNIQUEDATA");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTS,                       "EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTS");
-        memTracker.RegisterCategory(EMFX_MEMCATEGORY_ANIMGRAPH_CONDITIONS,                    "EMFX_MEMCATEGORY_ANIMGRAPH_CONDITIONS");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_ANIMGRAPH_TRANSITIONS,                   "EMFX_MEMCATEGORY_ANIMGRAPH_TRANSITIONS");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_ANIMGRAPH_SYNCTRACK,                     "EMFX_MEMCATEGORY_ANIMGRAPH_SYNCTRACK");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_ANIMGRAPH_POSE,                          "EMFX_MEMCATEGORY_ANIMGRAPH_POSE");
@@ -668,7 +675,6 @@ namespace EMotionFX
         idValues.push_back(EMFX_MEMCATEGORY_ANIMGRAPH_ATTRIBUTEINFOS);
         idValues.push_back(EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTUNIQUEDATA);
         idValues.push_back(EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTS);
-        idValues.push_back(EMFX_MEMCATEGORY_ANIMGRAPH_CONDITIONS);
         idValues.push_back(EMFX_MEMCATEGORY_ANIMGRAPH_TRANSITIONS);
         idValues.push_back(EMFX_MEMCATEGORY_ANIMGRAPH_SYNCTRACK);
         idValues.push_back(EMFX_MEMCATEGORY_ANIMGRAPH_POSE);

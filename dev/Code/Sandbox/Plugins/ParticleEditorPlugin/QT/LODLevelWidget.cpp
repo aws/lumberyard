@@ -48,10 +48,6 @@ void LODTreeWidget::mousePressEvent(QMouseEvent* e)
     {
         QTreeWidget::mousePressEvent(e);
     }
-    else
-    {
-        emit customContextMenuRequested(e->pos());
-    }
 }
 
 int LODTreeWidget::GetContentHeight()
@@ -453,9 +449,9 @@ void LODLevelWidget::OnItemContextMenu(const QPoint& pos)
     {
         return;
     }
-    QMenu* menu = new QMenu(this);
+    QMenu menu;
     //ignore selection
-    QAction* removeaction = menu->addAction("Remove");
+    QAction* removeaction = menu.addAction("Remove");
 
     bool* removed = new bool(false);
     connect(removeaction, &QAction::triggered, this, [=]()
@@ -478,7 +474,7 @@ void LODLevelWidget::OnItemContextMenu(const QPoint& pos)
             *removed = true;
         });
 
-    menu->exec(mapToGlobal(pos));
+    menu.exec(mapToGlobal(pos));
     if (*removed)
     {
         RefreshGUIDetour();

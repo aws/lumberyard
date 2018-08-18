@@ -12,7 +12,6 @@
 
 #pragma once
 
-// include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
 #include "AnimGraphNodeData.h"
@@ -32,30 +31,9 @@ namespace EMotionFX
     class EMFX_API AnimGraphMotionNode
         : public AnimGraphNode
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphMotionNode, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_BLENDTREENODES);
-
     public:
-        AZ_RTTI(AnimGraphMotionNode, "{B8B8AAE6-E532-4BF8-898F-3D40AA41BC82}", AnimGraphNode);
-
-        enum
-        {
-            TYPE_ID = 0x00000002
-        };
-
-        enum
-        {
-            ATTRIB_MOTION                       = 0,
-            ATTRIB_LOOP                         = 1,
-            ATTRIB_RETARGET                     = 2,
-            ATTRIB_REVERSE                      = 3,
-            ATTRIB_EVENTS                       = 4,
-            ATTRIB_MIRROR                       = 5,
-            ATTRIB_MOTIONEXTRACTION             = 6,
-            ATTRIB_PLAYSPEED                    = 7,
-            ATTRIB_INDEXMODE                    = 8,
-            ATTRIB_NEXTMOTIONAFTEREND           = 9,
-            ATTRIB_REWINDONZEROWEIGHT           = 10
-        };
+        AZ_RTTI(AnimGraphMotionNode, "{B8B8AAE6-E532-4BF8-898F-3D40AA41BC82}", AnimGraphNode)
+        AZ_CLASS_ALLOCATOR_DECL
 
         enum
         {
@@ -71,7 +49,7 @@ namespace EMotionFX
             PORTID_OUTPUT_MOTION                = 1
         };
 
-        enum
+        enum EIndexMode : AZ::u8
         {
             INDEXMODE_RANDOMIZE                 = 0,
             INDEXMODE_RANDOMIZE_NOREPEAT        = 1,
@@ -84,11 +62,10 @@ namespace EMotionFX
         {
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
         public:
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance, uint32 motionSetID, MotionInstance* instance);
-            ~UniqueData();
+            AZ_CLASS_ALLOCATOR_DECL
 
-            uint32 GetClassSize() const override                                                                                    { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override        { return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance, MCORE_INVALIDINDEX32, nullptr); }
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance, uint32 motionSetID, MotionInstance* instance);
+            ~UniqueData() override;
 
             void Reset() override;
 
@@ -100,10 +77,11 @@ namespace EMotionFX
             bool                mReload;
         };
 
-        static AnimGraphMotionNode* Create(AnimGraph* animGraph);
+        AnimGraphMotionNode();
+        ~AnimGraphMotionNode();
 
-        void Init(AnimGraphInstance* animGraphInstance) override;
-        void Prepare(AnimGraphInstance* animGraphInstance) override;
+        void Reinit() override;
+        bool InitAfterLoading(AnimGraph* animGraph) override;
 
         bool GetHasOutputPose() const override              { return true; }
         bool GetCanActAsState() const override              { return true; }
@@ -111,16 +89,9 @@ namespace EMotionFX
         bool GetSupportsVisualization() const override      { return true; }
         uint32 GetVisualColor() const override              { return MCore::RGBA(96, 61, 231); }
 
-        void RegisterPorts() override;
-        void RegisterAttributes() override;
-        void OnUpdateAttributes() override;
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         void OnActorMotionExtractionNodeChanged() override;
-        bool ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName) override;
-
-        const char* GetTypeString() const override;
-        AnimGraphNode* Clone(AnimGraph* animGraph) override;
-        AnimGraphObjectData* CreateObjectData() override;
+        void RecursiveOnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet) override;
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
@@ -137,27 +108,56 @@ namespace EMotionFX
         float ExtractCustomPlaySpeed(AnimGraphInstance* animGraphInstance) const;
         void PickNewActiveMotion(UniqueData* uniqueData);
 
-        AZ::u32 GetNumMotions() const;
-        const char* GetMotionID(uint32 index) const;
+        size_t GetNumMotions() const;
+        const char* GetMotionId(size_t index) const;
+        void ReplaceMotionId(const char* what, const char* replaceWith);
+        void AddMotionId(const AZStd::string& name);
+
+        bool GetIsLooping() const                   { return m_loop; }
+        bool GetIsRetargeting() const               { return m_retarget; }
+        bool GetIsReversed() const                  { return m_reverse; }
+        bool GetEmitEvents() const                  { return m_emitEvents; }
+        bool GetMirrorMotion() const                { return m_mirrorMotion; }
+        bool GetIsMotionExtraction() const          { return m_motionExtraction; }
+
+        void SetMotionIds(const AZStd::vector<AZStd::string>& motionIds);
+        void SetLoop(bool loop);
+        void SetRetarget(bool retarget);
+        void SetReverse(bool reverse);
+        void SetEmitEvents(bool emitEvents);
+        void SetMirrorMotion(bool mirrorMotion);
+        void SetMotionExtraction(bool motionExtraction);
+        void SetMotionPlaySpeed(float playSpeed);
+        void SetIndexMode(EIndexMode eIndexMode);
+        void SetNextMotionAfterLooop(bool nextMotionAfterLoop);
+        void SetRewindOnZeroWeight(bool rewindOnZeroWeight);
+
+        static void Reflect(AZ::ReflectContext* context);
 
     private:
-        PlayBackInfo                    mPlayInfo;
-        AZStd::string                   mCurMotionArrayString;
-        AZStd::string                   mLastMotionArrayString;
-        bool                            mLastLoop;
-        bool                            mLastRetarget;
-        bool                            mLastReverse;
-        bool                            mLastEvents;
-        bool                            mLastMirror;
-        bool                            mLastMotionExtraction;
-
-        AnimGraphMotionNode(AnimGraph* animGraph);
-        ~AnimGraphMotionNode();
+        PlayBackInfo                    m_playInfo;
+        AZStd::vector<AZStd::string>    m_motionIds;
+        float                           m_playSpeed;
+        EIndexMode                      m_indexMode;
+        bool                            m_loop;
+        bool                            m_retarget;
+        bool                            m_reverse;
+        bool                            m_emitEvents;
+        bool                            m_mirrorMotion;
+        bool                            m_motionExtraction;
+        bool                            m_nextMotionAfterLoop;
+        bool                            m_rewindOnZeroWeight;
 
         MotionInstance* CreateMotionInstance(ActorInstance* actorInstance, AnimGraphInstance* animGraphInstance);
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void Output(AnimGraphInstance* animGraphInstance) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+
+        void OnMotionIdsChanged();
+        void OnMirrorMotionChanged();
+
+        AZ::Crc32 GetRewindOnZeroWeightVisibility() const;
+        AZ::Crc32 GetMultiMotionWidgetsVisibility() const;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

@@ -55,7 +55,12 @@ bool CreateDatabase(IDBConnection* pConn, const std::string& schemafile, int typ
         break;
     }
 
-    FILE* fp = fopen(fullfilename.c_str(), "r");
+    FILE* fp = nullptr;
+#ifdef _WIN32
+    fopen_s(&fp, fullfilename.c_str(), "r");
+#else
+    fp = fopen(fullfilename.c_str(), "r");
+#endif
     if (!fp)
     {
         return false;

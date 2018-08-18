@@ -44,7 +44,6 @@ namespace MCore
 
         MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(&mValue); }
         MCORE_INLINE uint32 GetRawDataSize() const                  { return sizeof(AZ::Vector4); }
-        bool GetSupportsRawDataPointer() const override             { return true; }
 
         // adjust values
         MCORE_INLINE const AZ::Vector4& GetValue() const                { return mValue; }
@@ -71,7 +70,6 @@ namespace MCore
         //      void ConvertCoordinateSystem()                              { GetCoordinateSystem().ConvertVector4(&mValue); }
         uint32 GetClassSize() const override                        { return sizeof(AttributeVector4); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_VECTOR4; }
-        void Scale(float scaleFactor) override                      { mValue *= scaleFactor; }
 
     private:
         AZ::Vector4     mValue;     /**< The Vector4 value. */
@@ -104,17 +102,5 @@ namespace MCore
             return true;
         }
 
-        // write to a stream
-        bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override
-        {
-            AZ::Vector4 streamValue = mValue;
-            Endian::ConvertVector4To(&streamValue, targetEndianType);
-            if (stream->Write(&streamValue, sizeof(AZ::Vector4)) == 0)
-            {
-                return false;
-            }
-
-            return true;
-        }
     };
 }   // namespace MCore

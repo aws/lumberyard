@@ -23,12 +23,12 @@ namespace EMotionFX
     class EMFX_API MeshBuilderSkinningInfo
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(MeshBuilderSkinningInfo, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MESHBUILDER_SKINNINGINFO);
+        AZ_CLASS_ALLOCATOR_DECL
 
     public:
         struct Influence
         {
-            MCORE_MEMORYOBJECTCATEGORY(MeshBuilderSkinningInfo::Influence, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MESHBUILDER_SKINNINGINFO);
+            AZ_CLASS_ALLOCATOR_DECL
 
             float   mWeight;
             uint32  mNodeNr;

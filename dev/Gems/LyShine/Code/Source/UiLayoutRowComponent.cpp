@@ -384,7 +384,6 @@ void UiLayoutRowComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiLayoutRowBus>("UiLayoutRowBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetPadding", &UiLayoutRowBus::Events::GetPadding)
             ->Event("SetPadding", &UiLayoutRowBus::Events::SetPadding)
             ->Event("GetSpacing", &UiLayoutRowBus::Events::GetSpacing)

@@ -23,7 +23,7 @@ class UiScrollBoxInterface
 public: // types
 
     //! Callback for when box is scrolled
-    typedef std::function<void(AZ::EntityId sendingEntityId, AZ::Vector2 newScrollOffset)> ScrollOffsetChangeCallback;
+    typedef AZStd::function<void(AZ::EntityId sendingEntityId, AZ::Vector2 newScrollOffset)> ScrollOffsetChangeCallback;
 
     enum class SnapMode
     {

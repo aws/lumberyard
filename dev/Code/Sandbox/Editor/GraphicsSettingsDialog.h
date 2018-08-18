@@ -13,6 +13,9 @@
 
 #include <QDialog>
 
+#include <AzToolsFramework/UI/PropertyEditor/PropertyDoubleSpinCtrl.hxx>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyIntSpinCtrl.hxx>
+
 class QGridLayout;
 class QLabel;
 
@@ -26,7 +29,7 @@ class GraphicsSettingsDialog
 {
     Q_OBJECT
 
-public:    
+public:
 
     explicit GraphicsSettingsDialog(QWidget* parent = nullptr);
     virtual ~GraphicsSettingsDialog();
@@ -40,12 +43,12 @@ private slots:
     //Update UIs
     void PlatformChanged(const QString& platform);
     bool CVarChanged(AZStd::any val, const char* cvarName, int specLevel);
-    void CVarChanged(int i);
+    void CVarChanged(AZ::s64 i);
     void CVarChanged(double d);
     void CVarChanged(const QString& s);
 
 private:
-    
+
     // The struct ParameterWidget is used to store the parameter widget
     // m_parameterName will be the name of the parameter the widget represent.
     struct ParameterWidget
@@ -102,9 +105,9 @@ private:
     // Cleaning out UI before loading new platform information
     void CleanUI();
     // Shows/hides custom spec option
-    void ToggleCustomSpecOption();
+    void ShowCustomSpecOption(bool show);
     // Shows/hides category labels and dropdowns
-    void ToggleCategories();
+    void ShowCategories(bool show);
     // Warns about unsaved changes (returns true if accepted)
     bool SendUnsavedChangesWarning(bool cancel);
 
@@ -136,28 +139,28 @@ private:
     const char* CFG_FILEFILTER = "Cfg File(*.cfg);;All files(*)";
 
     bool m_isLoading;
-    bool m_customSpecChosen;
+    bool m_showCustomSpec;
     bool m_showCategories;
 
     QScopedPointer<Ui::GraphicsSettingsDialog> m_ui;
 
     QVector<CollapseGroup*> m_uiCollapseGroup;
-    
+
     QVector<ParameterWidget*> m_parameterWidgets;
 
     // cvar name --> pair(type, CVarStatus for each file)
     AZStd::unordered_map<AZStd::string, CVarInfo> m_cVarTracker;
 
-    AZStd::unordered_map<ESystemConfigPlatform, AZStd::vector<AZStd::string>> m_cfgFiles;
+    AZStd::unordered_map<ESystemConfigPlatform, AZStd::vector<AZStd::string> > m_cfgFiles;
 
-    AZStd::vector<AZStd::pair<AZStd::string, ESystemConfigPlatform>> m_platformStrings;
+    AZStd::vector<AZStd::pair<AZStd::string, ESystemConfigPlatform> > m_platformStrings;
 
     struct CVarGroupInfo
     {
         QVector<QLabel*> m_platformLabels;
         QVector<QLabel*> m_cvarLabels;
-        QVector<QSpinBox*> m_cvarSpinBoxes;
-        QVector<QDoubleSpinBox*> m_cvarDoubleSpinBoxes;
+        QVector<AzToolsFramework::PropertyIntSpinCtrl*> m_cvarSpinBoxes;
+        QVector<AzToolsFramework::PropertyDoubleSpinCtrl*> m_cvarDoubleSpinBoxes;
         QVector<QLineEdit*> m_cvarLineEdits;
         QGridLayout* m_layout;
     };

@@ -100,7 +100,7 @@ namespace UnitTest
             if (serializeContext)
             {
                 serializeContext->Class<NetBindingTestComponent, AZ::Component, AzFramework::NetBindable>()
-                    ->SerializerForEmptyClass();
+                    ;
             }
 
             // We also need to register the chunk type, and this would be a good time to do so.

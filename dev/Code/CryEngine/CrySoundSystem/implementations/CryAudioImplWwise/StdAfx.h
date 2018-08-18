@@ -27,7 +27,6 @@
 
 
 #if defined(AZ_PLATFORM_WINDOWS)
-    #include <windows.h>
     #if defined(AZ_PLATFORM_WINDOWS_X64)
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Windows64
@@ -59,6 +58,7 @@
 #if defined(AZ_PLATFORM_ANDROID)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Android
+    #include <AzCore/Android/AndroidEnv.h>
 #endif
 
 #if defined(AZ_PLATFORM_LINUX_X64)

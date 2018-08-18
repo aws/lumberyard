@@ -17,7 +17,7 @@
 
 #include "smartptr.h"
 #include "ZipFileFormat.h"
-#include "ZipDirStructures.h"
+#include "zipdirstructures.h"
 #include "smartptr.h"
 #include "ZipDirTree.h"
 #include "ZipDirList.h"

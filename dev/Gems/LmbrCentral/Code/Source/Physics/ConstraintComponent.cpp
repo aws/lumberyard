@@ -235,21 +235,6 @@ namespace LmbrCentral
 
         PhysicsComponentNotificationBus::MultiHandler::BusConnect(m_config.m_owningEntity);
         PhysicsComponentNotificationBus::MultiHandler::BusConnect(m_config.m_targetEntity);
-
-        auto checkIfPhysicsAlreadyEnabled = [this](AZ::EntityId entityId)
-        {
-            bool physicsEnabled = false;
-            CryPhysicsComponentRequestBus::EventResult(physicsEnabled, entityId, &CryPhysicsComponentRequestBus::Events::IsPhysicsFullyEnabled);
-            if (physicsEnabled)
-            {
-                OnPhysicsEnabledChanged(true, entityId);
-            }
-        };
-
-        // Owning and target entities could be activated before we connect the buses
-        // In this case we need to check it and notify the constraint manually
-        checkIfPhysicsAlreadyEnabled(m_config.m_owningEntity);
-        checkIfPhysicsAlreadyEnabled(m_config.m_targetEntity);
     }
 
     //=========================================================================
@@ -270,8 +255,7 @@ namespace LmbrCentral
     //=========================================================================
     void ConstraintComponent::OnPhysicsEnabled()
     {
-        AZ::EntityId entityId = *PhysicsComponentNotificationBus::GetCurrentBusId();
-        OnPhysicsEnabledChanged(true /* enabled */, entityId);
+        OnPhysicsEnabledChanged(true /* enabled */);
     }
 
     //=========================================================================
@@ -279,15 +263,15 @@ namespace LmbrCentral
     //=========================================================================
     void ConstraintComponent::OnPhysicsDisabled()
     {
-        AZ::EntityId entityId = *PhysicsComponentNotificationBus::GetCurrentBusId();
-        OnPhysicsEnabledChanged(false /* enabled */, entityId);
+        OnPhysicsEnabledChanged(false /* enabled */);
     }
 
     //=========================================================================
     // ConstraintComponent::OnPhysicsEnabledChanged
     //=========================================================================
-    void ConstraintComponent::OnPhysicsEnabledChanged(bool enabled, AZ::EntityId entityId)
+    void ConstraintComponent::OnPhysicsEnabledChanged(bool enabled)
     {
+        AZ::EntityId entityId = *PhysicsComponentNotificationBus::GetCurrentBusId();
         if (entityId == m_config.m_owningEntity)
         {
             m_ownerPhysicsEnabled = enabled;
@@ -316,7 +300,7 @@ namespace LmbrCentral
     //=========================================================================
     void ConstraintComponent::SetConstraintEntities(const AZ::EntityId& owningEntity, const AZ::EntityId& targetEntity)
     {
-        SetConstraintEntitiesWithPartIds(owningEntity, m_config.m_ownerPartId, targetEntity, m_config.m_targetPartId);
+        SetConstraintEntitiesWithPartIds(owningEntity, m_config.m_ownerPartId, m_config.m_targetEntity, m_config.m_targetPartId);
     }
 
     //=========================================================================

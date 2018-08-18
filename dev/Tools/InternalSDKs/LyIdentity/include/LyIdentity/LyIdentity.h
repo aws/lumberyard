@@ -30,7 +30,7 @@ namespace Ly
 {
     namespace Identity
     {
-        class IdentityModel
+        class LY_IDENTITY_API IdentityModel
         {
         public:
             IdentityModel(
@@ -53,7 +53,9 @@ namespace Ly
                 return m_applicationId;
             }
 
-            LY_IDENTITY_API static const IdentityModel DEV, PROD, TEST;
+            static IdentityModel GetDEV();
+            static IdentityModel GetPROD();
+            static IdentityModel GetTEST();
 
         private:
             const Aws::String m_accountId;
@@ -61,7 +63,7 @@ namespace Ly
             const Aws::String m_applicationId;
         };
 
-        LY_IDENTITY_API const IdentityModel& GetDeveloperCognitoSettings();
+        LY_IDENTITY_API IdentityModel GetDeveloperCognitoSettings();
         LY_IDENTITY_API std::shared_ptr<Aws::Auth::PersistentCognitoIdentityProvider> BuildLumberyardIdentityProvider();
     } // namespace Identity
 } // namespace Ly

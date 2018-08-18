@@ -19,30 +19,30 @@ export class CustomToastrOptions extends ToastOptions {
     positionClass = 'toast-bottom-right';
     messageClass = 'cgp-toastr-message';
     titleClass = 'cgp-toastr-title';
-    
+
 }
 
 @NgModule({
     imports: [
-        BrowserModule,      
-        BrowserAnimationsModule,          
+        BrowserModule,
+        BrowserAnimationsModule,
         NgbModule.forRoot(),
         AppSharedModule.forRoot(),
         ToastModule.forRoot(),
         ErrorModule,
-        AuthModule,                
+        AuthModule,
         GameModule,
         AppRoutingModule,  //This must be defined last as the order of the route defintions matters and the app defines '**' which would capute all routes
-        ],    
+        ],
     declarations: [
-        AppComponent        
-    ],  
+        AppComponent
+    ],
     providers: [
         { provide: APP_BASE_HREF, useValue: '/' },
         { provide: LOCALE_ID, useValue: "en-US" },
-        { provide: ToastOptions, useClass: CustomToastrOptions } 
+        { provide: ToastOptions, useClass: CustomToastrOptions }
     ],
-    bootstrap: [AppComponent]  
+    bootstrap: [AppComponent]
 })
 
 export class AppModule { }

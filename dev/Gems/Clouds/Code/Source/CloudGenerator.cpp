@@ -29,8 +29,8 @@
 
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
-#include <QApplication.h>
-#include <QMessageBox.h>
+#include <QApplication>
+#include <QMessageBox>
 
 namespace CloudsGem
 {

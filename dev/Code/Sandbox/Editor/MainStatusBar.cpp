@@ -331,13 +331,13 @@ void SourceControlItem::InitMenu()
             UpdateMenuItems();
         }
 
-        connect(m_settingsAction, &QAction::triggered, [&]()
+        connect(m_settingsAction, &QAction::triggered, this, [&]()
         {
             GetIEditor()->GetSourceControl()->ShowSettings();
         });
 
-        connect(m_enableAction, &QAction::triggered, [this]() {SetSourceControlEnabledState(true); });
-        connect(m_disableAction, &QAction::triggered, [this]() {SetSourceControlEnabledState(false); });
+        connect(m_enableAction, &QAction::triggered, this, [this]() {SetSourceControlEnabledState(true); });
+        connect(m_disableAction, &QAction::triggered, this, [this]() {SetSourceControlEnabledState(false); });
     }
     else
     {

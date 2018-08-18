@@ -13,7 +13,7 @@
 #pragma once
 
 #include <AzCore/base.h>
-#include <AzCore/Memory/memory.h>
+#include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
 #include <QtCore/QSortFilterProxyModel>

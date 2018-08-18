@@ -49,7 +49,7 @@ export class PlayerAccountIndexComponent extends AbstractCloudGemIndexComponent 
     private editModel: PlayerAccountEditModel;
     private listModel: PlayerAccountModel[];
     private showModel: PlayerAccountModel;
-    private searchTypes: [{ text: string, functionCb: Function, previousPaginationToken?: string, nextPaginationToken?: string }];
+    private searchTypes: { text: string, functionCb: Function, previousPaginationToken?: string, nextPaginationToken?: string }[];
     private actionStubActions: ActionItem[];
     private awsCognitoLink = "https://console.aws.amazon.com/cognito/home"
     private currentSearch: any;

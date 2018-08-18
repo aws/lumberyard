@@ -33,9 +33,8 @@ namespace ScriptCanvasEditor
         setWindowModality(Qt::ApplicationModal);
         setWindowTitle(tr("Welcome to Script Canvas"));
         setSizeGripEnabled(false);
-        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-        setFixedSize(420, 200);
-        setMaximumWidth(420);
+        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Minimum);
+        const int maximumWidth = 420;
 
         QPoint dialogCenter = mapToGlobal(rect().center());
         QPoint parentWindowCenter = parent->mapToGlobal(window()->rect().center());
@@ -43,21 +42,25 @@ namespace ScriptCanvasEditor
 
         QVBoxLayout* layout = new QVBoxLayout();
         layout->setSpacing(8);
+        layout->setSizeConstraint(QLayout::SetFixedSize); // Prevent the user from resizing the dialog
 
         QLabel* label = new QLabel();
         label->setText(tr("Welcome to Script Canvas <i>preview</i>, a new visual scripting system that unlocks Lumberyard functionality previously available only to programmers."));
         label->setWordWrap(true);
+        label->setFixedWidth(maximumWidth);
         layout->addWidget(label);
 
         label = new QLabel();
         label->setOpenExternalLinks(true);
         label->setWordWrap(true);
+        label->setFixedWidth(maximumWidth);
         label->setText(tr("Get started with the <a href=\"http://docs.aws.amazon.com/console/lumberyard/userguide/script-canvas\">Script Canvas</a> topic in the Lumberyard User Guide and the <a href=\"http://docs.aws.amazon.com/console/lumberyard/userguide/script-canvas-sample\">Script Canvas Basic Sample</a>."));
         layout->addWidget(label);
 
         label = new QLabel();
         label->setOpenExternalLinks(true);
         label->setWordWrap(true);
+        label->setFixedWidth(maximumWidth);
         label->setText(tr("We've only just begun and Script Canvas will change, improve, and grow in future releases based on your feedback. Tell us what you like or what's missing, report bugs, or join the discussion on our <a href=\"https://gamedev.amazon.com/forums/spaces/115/scripting.html\">forums</a>."));
         layout->addWidget(label);
 

@@ -90,6 +90,10 @@ def build(bld):
         ios_framework = gem_ios_framework,
         appletv_framework = gem_appletv_framework,
 
+        # warning added in clang 6.0 / ndk r17, the issue stems from an object in AWS that has virtual functions
+        # but no virtual destructor in the base class
+        android_cxxflags = ['-Wno-delete-non-virtual-dtor'],
+
         StaticLibrary = dict(
             file_list = static_lib_file_list,
 

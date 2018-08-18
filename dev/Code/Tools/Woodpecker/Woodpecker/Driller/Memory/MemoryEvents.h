@@ -15,7 +15,7 @@
 
 #include "Woodpecker/Driller/DrillerEvent.h"
 
-#include <AzCore/Memory/allocationrecords.h>
+#include <AzCore/Memory/AllocationRecords.h>
 
 namespace Driller
 {

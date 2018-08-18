@@ -1,0 +1,15 @@
+{
+  "commands": [
+    "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12",
+    "Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.6.3/python-3.6.3-amd64.exe -Outfile C:\\python-3.6.3-amd64.exe",
+    "Start-Process -wait C:\\python-3.6.3-amd64.exe -ArgumentList '/passive InstallAllUsers=1 TargetDir=C:\\Python36 PrependPath=1'",
+    "C:\\Python36\\Scripts\\pip.exe install boto3"
+  ],
+  "files": [
+    {
+      "source": "..\\..\\Harness",
+      "dest": "C:\\CloudCanvasHarness",
+      "include_folder": false
+    }
+  ]
+}

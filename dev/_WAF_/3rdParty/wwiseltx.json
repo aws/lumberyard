@@ -1,0 +1,344 @@
+{
+    "name": "wwiseltx",
+    "source": "@3P:wwiseLtx@",
+    "description": "Wwise LTX Audio Middleware",
+    "includes": [
+        "SDK/include"
+    ],
+    "aliases": {
+        "ak_core_libs": [
+            "AkMemoryMgr",
+            "AkMusicEngine",
+            "AkSoundEngine",
+            "AkStreamMgr",
+            "AkSpatialAudio"
+        ],
+        "ak_effect_libs": [
+            "AkCompressorFX",
+            "AkDelayFX",
+            "AkExpanderFX",
+            "AkFlangerFX",
+            "AkGainFX",
+            "AkGuitarDistortionFX",
+            "AkHarmonizerFX",
+            "AkMatrixReverbFX",
+            "AkMeterFX",
+            "AkParametricEQFX",
+            "AkPeakLimiterFX",
+            "AkPitchShifterFX",
+            "AkRecorderFX",
+            "AkRoomVerbFX",
+            "AkStereoDelayFX",
+            "AkTimeStretchFX",
+            "AkTremoloFX"
+        ],
+        "ak_source_libs": [
+            "AkAudioInputSource",
+            "AkMotionGeneratorSource",
+            "AkSilenceSource",
+            "AkSineSource",
+            "AkSynthOneSource",
+            "AkToneSource"
+        ],
+        "ak_vorbis_libs": [
+            "AkVorbisDecoder"
+        ],
+        "communication_libs": [
+            "CommunicationCentral"
+        ],
+        "common_libs": [
+            "${ak_core_libs}",
+            "AkMotionSink",
+            "${ak_effect_libs}",
+            "${ak_vorbis_libs}",
+            "${ak_source_libs}"
+        ],
+        "common_libs_nix": [
+            "${ak_core_libs}",
+            "${ak_effect_libs}",
+            "${ak_vorbis_libs}",
+            "${ak_source_libs}"
+        ]
+    },
+    "suppress_warning": "True",
+    "lib_required": "True",
+    "engine_configs": "True",
+    "defines_debug": [
+        "WWISE_LTX",
+        "WWISE_FOR_DEBUG"
+    ],
+    "defines_profile": [
+        "WWISE_LTX",
+        "WWISE_FOR_PROFILE"
+    ],
+    "defines_performance": [
+        "WWISE_LTX",
+        "WWISE_FOR_RELEASE",
+        "AK_OPTIMIZED"
+    ],
+    "defines_release": [
+        "WWISE_LTX",
+        "WWISE_FOR_RELEASE",
+        "AK_OPTIMIZED"
+    ],
+    "platform": {
+        "win_x64_vs2013": {
+            "libpath_debug": [
+                "SDK/x64_vc120/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/x64_vc120/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/x64_vc120/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/x64_vc120/Release/lib"
+            ],
+            "lib_debug": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "SFLib.lib"
+            ],
+            "lib_profile": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "SFLib.lib"
+            ],
+            "lib_performance": [
+                "${common_libs}.lib"
+            ],
+            "lib_release": [
+                "${common_libs}.lib"
+            ]
+        },
+        "win_x64_vs2015": {
+            "libpath_debug": [
+                "SDK/x64_vc140/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/x64_vc140/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/x64_vc140/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/x64_vc140/Release/lib"
+            ],
+            "lib_debug": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "SFLib.lib"
+            ],
+            "lib_profile": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "SFLib.lib"
+            ],
+            "lib_performance": [
+                "${common_libs}.lib"
+            ],
+            "lib_release": [
+                "${common_libs}.lib"
+            ]
+        },
+        "win_x64_vs2017": {
+            "libpath_debug": [
+                "SDK/x64_vc150/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/x64_vc150/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/x64_vc150/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/x64_vc150/Release/lib"
+            ],
+            "lib_debug": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "SFLib.lib"
+            ],
+            "lib_profile": [
+                "${communication_libs}.lib",
+                "${common_libs}.lib",
+                "SFLib.lib"
+            ],
+            "lib_performance": [
+                "${common_libs}.lib"
+            ],
+            "lib_release": [
+                "${common_libs}.lib"
+            ]
+        },
+        "darwin_x64": {
+            "libpath_debug": [
+                "SDK/Mac/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/Mac/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/Mac/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/Mac/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs_nix}.a"
+            ]
+        },
+        "ios": {
+            "libpath_debug": [
+                "SDK/iOS/Debug-iphoneos/lib"
+            ],
+            "libpath_profile": [
+                "SDK/iOS/Profile-iphoneos/lib"
+            ],
+            "libpath_performance": [
+                "SDK/iOS/Release-iphoneos/lib"
+            ],
+            "libpath_release": [
+                "SDK/iOS/Release-iphoneos/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs_nix}.a"
+            ]
+        },
+        "appletv": {
+            "libpath_debug": [
+                "SDK/tvOS/Debug-appletvos/lib"
+            ],
+            "libpath_profile": [
+                "SDK/tvOS/Profile-appletvos/lib"
+            ],
+            "libpath_performance": [
+                "SDK/tvOS/Release-appletvos/lib"
+            ],
+            "libpath_release": [
+                "SDK/tvOS/Release-appletvos/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs_nix}.a"
+            ]
+        },
+        "android_armv7_clang": {
+            "libpath_debug": [
+                "SDK/Android_armeabi-v7a/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/Android_armeabi-v7a/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/Android_armeabi-v7a/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/Android_armeabi-v7a/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a"
+            ]
+        },
+        "android_armv8_clang": {
+            "libpath_debug": [
+                "SDK/Android_arm64-v8a/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/Android_arm64-v8a/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/Android_arm64-v8a/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/Android_arm64-v8a/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a"
+            ]
+        },
+        "linux_x64": {
+            "libpath_debug": [
+                "SDK/Linux_x64/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/Linux_x64/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/Linux_x64/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/Linux_x64/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs_nix}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs_nix}.a"
+            ]
+        }
+    }
+}

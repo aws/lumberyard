@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 // All plugins suffer from the following warning:
 //  warning C4273: 'GetIEditor' : inconsistent dll linkage

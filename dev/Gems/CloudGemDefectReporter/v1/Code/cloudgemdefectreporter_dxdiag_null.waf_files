@@ -1,0 +1,7 @@
+{
+    "auto": {
+        "Source": [
+            "Source/DxDiag_null.cpp"
+        ]
+    }
+}

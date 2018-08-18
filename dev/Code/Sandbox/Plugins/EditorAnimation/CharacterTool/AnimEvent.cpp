@@ -25,7 +25,7 @@ namespace CharacterTool
         static const char* audioEvents[] = { "sound", "foley", "footstep" };
         for (int i = 0; i < sizeof audioEvents / sizeof audioEvents[0]; ++i)
         {
-            if (stricmp(type, audioEvents[i]))
+            if (azstricmp(type, audioEvents[i]))
             {
                 return true;
             }

@@ -93,7 +93,7 @@ void ModuleReflectionTest<ApplicationT, ModuleT>::SetUpTestCase()
     {
         modules.emplace_back(new ModuleT);
     };
-    
+
     // Framework application types need to have CalculateAppRoot called before
     // calling Create
     AZ::ComponentApplication* app = s_application.get();
@@ -131,7 +131,7 @@ void LoadReflectedObjectTest<ApplicationT, ModuleT, ObjectT>::SetUp()
         AZ::ObjectStream::FilterDescriptor filter;
         filter.m_assetCB = [](const AZ::Data::Asset<AZ::Data::AssetData>&) { return false; };
 
-        m_object.reset(AZ::Utils::LoadObjectFromBuffer<ObjectT>(buffer, strlen(buffer) + 1, GetApplication()->GetSerializeContext(), filter));
+        m_object.reset(AZ::Utils::LoadObjectFromBuffer<ObjectT>(buffer, strlen(buffer) + 1, this->GetApplication()->GetSerializeContext(), filter));
     }
 }
 

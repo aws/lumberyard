@@ -24,6 +24,7 @@ namespace GraphCanvas
         // are stacked over each other.
         Neutral     = 0,
         Preview,
+        GroupHighlight,
         Inspection,
         InspectionTransparent,
         Deletion

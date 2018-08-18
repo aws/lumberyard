@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "PropertyMotionCtrl.h"
 #include <QtWidgets/QHBoxLayout>
@@ -122,7 +122,7 @@ void MotionPropertyCtrl::UpdateTabOrder()
 QWidget* MotionPropertyWidgetHandler::CreateGUI(QWidget *pParent)
 {
     MotionPropertyCtrl* newCtrl = aznew MotionPropertyCtrl(pParent);
-    connect(newCtrl, &MotionPropertyCtrl::ValueChanged, [newCtrl]()
+    connect(newCtrl, &MotionPropertyCtrl::ValueChanged, newCtrl, [newCtrl]()
     {
         EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
     });

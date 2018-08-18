@@ -17,7 +17,6 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
 #include "MysticQtConfig.h"
-#include "AttributeWidgetFactory.h"
 #include <QWidget>
 
 
@@ -64,8 +63,6 @@ namespace MysticQt
 
         const QIcon& FindIcon(const char* filename);
 
-        MCORE_INLINE AttributeWidgetFactory* GetAttributeWidgetFactory() const  { return mAttributeWidgetFactory; }
-
     private:
         struct MYSTICQT_API IconData
         {
@@ -79,7 +76,6 @@ namespace MysticQt
         };
 
         QWidget*                            mMainWindow;
-        AttributeWidgetFactory*             mAttributeWidgetFactory;
         MCore::Array<IconData*>             mIcons;
         AZStd::string                       mAppDir;
         AZStd::string                       mDataDir;

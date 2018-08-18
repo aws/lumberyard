@@ -22,18 +22,15 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/RTTI/RTTI.h>
 
-//#define REMOTEFILEIO_USE_EXCLUDED_FILEIO
-//#define REMOTEFILEIO_USE_FILE_REMAPS
-
-#ifdef REMOTEFILEIO_USE_EXCLUDED_FILEIO
-#include <regex>
-#endif
+//ColinB - There is a bug in caching on VFS, so I'm turning it off until I can fix it
+//#define VFS_CACHING
 
 namespace AZ
 {
     namespace IO
     {
-        const size_t CACHE_LOOKAHEAD_SIZE = 1024 * 64;
+
+#ifdef VFS_CACHING
         struct VFSCacheLine
         {
             AZ_CLASS_ALLOCATOR(VFSCacheLine, OSAllocator, 0);
@@ -42,9 +39,9 @@ namespace AZ
             AZ::u64 m_fileSizeSnapshot = 0;
             AZ::u64 m_fileSizeSnapshotTime = 0;
 
-            // note that m_position caches the actual physical pointer location of the file - not the cache pos.
+            // note that m_filePosition caches the actual physical pointer location of the file - not the cache pos.
             // the actual 'tell position' should be this number minus the number of bytes its ahead by in the cache.
-            AZ::u64 m_position = 0;
+            AZ::u64 m_filePosition = 0;
             
             VFSCacheLine() = default;
             VFSCacheLine(const VFSCacheLine& other) = default;
@@ -62,12 +59,85 @@ namespace AZ
                     m_cacheLookaheadPos = other.m_cacheLookaheadPos;
                     m_fileSizeSnapshot = other.m_fileSizeSnapshot;
                     m_fileSizeSnapshotTime = other.m_fileSizeSnapshotTime;
-                    m_position = other.m_position;
+                    m_filePosition = other.m_filePosition;
                 }
                 return *this;
             }
 
+            AZ::u64 Read(void* buffer,  AZ::u64 requestedSize)
+            {
+                AZ::u64 bytesRead = 0;
+                AZ::u64 remainingBytesInCache = RemainingBytes();
+                AZ::u64 remainingBytesToRead = requestedSize;
+                if (remainingBytesInCache > 0)
+                {
+                    AZ::u64 bytesToReadFromCache = AZStd::GetMin(remainingBytesInCache, remainingBytesToRead);
+                    memcpy(buffer, m_cacheLookaheadBuffer.data() + m_cacheLookaheadPos, bytesToReadFromCache);
+                    bytesRead = bytesToReadFromCache;
+                    remainingBytesToRead -= bytesToReadFromCache;
+                    m_cacheLookaheadPos += bytesToReadFromCache;
+                }
+
+                return bytesRead;
+            }
+
+            void Write(void* buffer,  AZ::u64 size)
+            {
+                AZ_Assert(!RemainingBytes(),"RemoteFileIO::WriteToCacheLine: Failed to write to a cache that it not empty!");
+
+                OffsetFilePosition(size);
+                m_cacheLookaheadBuffer.resize(size);
+                memcpy(m_cacheLookaheadBuffer.data(), buffer, size);
+                m_cacheLookaheadPos = 0;
+            }
+
+            inline void Invalidate()
+            {
+                m_cacheLookaheadPos = 0;
+                m_cacheLookaheadBuffer.clear();
+            }
+
+            inline AZ::u64 RemainingBytes()
+            {
+                return m_cacheLookaheadBuffer.size() - m_cacheLookaheadPos;
+            }
+
+            inline AZ::u64 CacheFilePosition()
+            {
+                return m_filePosition - RemainingBytes();
+            }
+
+            inline AZ::u64 CacheStartFilePosition()
+            {
+                return m_filePosition - m_cacheLookaheadBuffer.size();
+            }
+
+            inline AZ::u64 CacheEndFilePosition()
+            {
+                return m_filePosition;
+            }
+
+            inline bool IsFilePositionInCache(AZ::u64 filePosition)
+            {
+                return filePosition >= CacheStartFilePosition() && filePosition < CacheEndFilePosition();
+            }
+
+            inline void SetCachePositionFromFilePosition(AZ::u64 filePosition)
+            {
+                m_cacheLookaheadPos = filePosition - CacheStartFilePosition();
+            }
+
+            inline void SetFilePosition(AZ::u64 filePosition)
+            {
+                m_filePosition = filePosition;
+            }
+
+            inline void OffsetFilePosition(AZ::s64 offset)
+            {
+                m_filePosition += offset;
+            }
         };
+#endif
 
         class RemoteFileIO
             : public FileIOBase
@@ -76,7 +146,7 @@ namespace AZ
             AZ_RTTI(RemoteFileIO, "{A863335E-9330-44E2-AD89-B5309F3B8B93}");
             AZ_CLASS_ALLOCATOR(RemoteFileIO, OSAllocator, 0);
 
-            RemoteFileIO(FileIOBase* excludedFileIO = nullptr);
+            RemoteFileIO();
             ~RemoteFileIO();
 
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -111,38 +181,21 @@ namespace AZ
             bool GetFilename(HandleType fileHandle, char* filename, AZ::u64 filenameSize) const override;
             ////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef REMOTEFILEIO_USE_EXCLUDED_FILEIO
-            void AddExclusion(const char* exclusion_regex);
-            bool IsFileExcluded(const char* filePath);
-            bool IsFileRemote(const char* filePath);
-            bool IsFileExcluded(HandleType fileHandle);
-            bool IsFileRemote(HandleType fileHandle);
-#endif
-
-#ifdef REMOTEFILEIO_USE_FILE_REMAPS
-            void RemapFile(const char* filePath, const char* remappedToFileName);
-            const char* GetFileRemap(const char* filePath, bool returnFileNameIfNotRemapped = true) const;
-#endif
-
         private:
-            FileIOBase* m_excludedFileIO;
-#ifdef REMOTEFILEIO_USE_EXCLUDED_FILEIO
-            AZStd::mutex m_excludedFileIOGuard;
-            std::vector<std::regex> m_excludes;
-            std::map<HandleType, std::string> m_excludedFiles;
-#endif
-
-#ifdef REMOTEFILEIO_USE_FILE_REMAPS
-            std::map<std::string, std::string> m_fileRemap;
-#endif
             mutable AZStd::recursive_mutex m_remoteFilesGuard;
             AZStd::unordered_map<HandleType, AZ::OSString, AZStd::hash<HandleType>, AZStd::equal_to<HandleType>, AZ::OSStdAllocator> m_remoteFiles;
+#ifdef VFS_CACHING
             AZStd::unordered_map<HandleType, VFSCacheLine, AZStd::hash<HandleType>, AZStd::equal_to<HandleType>, AZ::OSStdAllocator> m_remoteFileCache;
 
-            VFSCacheLine& GetCacheLine(HandleType handle);
-            void InvalidateReadaheadCache(HandleType handle);
-            AZ::u64 ReadFromCache(HandleType handle, void* buffer,  AZ::u64 requestedSize);
-            Result SeekInternal(HandleType handle, VFSCacheLine& cacheLine, AZ::s64 offset, SeekType type);
+            // (assumes you're inside a remote files guard lock already for creation, which is true since we create one on open)
+            inline VFSCacheLine& GetCacheLine(HandleType handle)
+            {
+                auto found = m_remoteFileCache.find(handle);
+                // check this because it is a serious error since it may be that you're in an unguarded access to a non-existant handle.
+                AZ_Assert(found != m_remoteFileCache.end(), "RemoteFileIO::GetCacheLine() Attempt to Get cache line missed, did something go wrong with open?");
+                return found->second;
+            }
+#endif
         };
     } // namespace IO
 } // namespace AZ

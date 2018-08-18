@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "MemoryDataView.hxx"
 #include <Woodpecker/Driller/Memory/MemoryDataView.moc>

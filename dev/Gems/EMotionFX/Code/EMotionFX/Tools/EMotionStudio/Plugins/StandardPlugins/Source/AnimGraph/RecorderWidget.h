@@ -40,7 +40,6 @@ namespace EMStudio
         ~RecorderWidget();
 
         void UpdateButtons();
-        void Init();
 
     public slots:
         void OnRecordButton();

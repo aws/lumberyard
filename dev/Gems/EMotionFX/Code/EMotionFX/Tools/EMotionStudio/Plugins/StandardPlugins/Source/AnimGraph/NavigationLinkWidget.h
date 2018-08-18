@@ -16,7 +16,6 @@
 //
 #include <MCore/Source/StandardHeaders.h>
 #include "../StandardPluginsConfig.h"
-#include <MysticQt/Source/SearchButton.h>
 #include <MysticQt/Source/LinkWidget.h>
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include "AnimGraphPlugin.h"
@@ -26,7 +25,10 @@
 #include <QDialog>
 #include <QListWidget>
 
-
+namespace AzQtComponents
+{
+    class FilteredSearchWidget;
+}
 
 namespace EMStudio
 {
@@ -50,14 +52,14 @@ namespace EMStudio
         void Update(EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphNode* node);
 
     private slots:
-        void OnHierarchyNavigationLinkClicked();
+        void OnHierarchyNavigationLinkClicked(const QString& text);
         void StartSearchMode()                                          { OnModeChanged(true); }
         void DropDownChildren();
         void DropDownHistory();
         void OnShowNode();
 
     private:
-        MysticQt::LinkWidget* AddNodeToHierarchyNavigationLink(EMotionFX::AnimGraphNode* node, QHBoxLayout* hLayout);
+        QWidget* AddNodeToHierarchyNavigationLink(EMotionFX::AnimGraphNode* node, QHBoxLayout* hLayout);
         void focusOutEvent(QFocusEvent* event);
         void OnModeChanged(bool searchMode);
 
@@ -69,7 +71,7 @@ namespace EMStudio
         QWidget*                            mInnerWidget;
         QWidget*                            mNavigationLink;
         QHBoxLayout*                        mLinksLayout;
-        MysticQt::SearchButton*             mSearchButton;
+        AzQtComponents::FilteredSearchWidget* m_searchWidget;
         AnimGraphPlugin*                   mPlugin;
     };
 

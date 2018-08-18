@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "EditorDefs.h"
 #include "Resource.h"
 #include "UiEditorAnimationBus.h"
@@ -359,7 +359,7 @@ CUiAnimViewNodesCtrl::CUiAnimViewNodesCtrl(QWidget* hParentWnd, CUiAnimViewDialo
     action->setShortcut(QKeySequence::Delete);
     action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     QObject::connect(action,
-        &QAction::triggered,
+        &QAction::triggered, this,
         [this](bool checked)
         {
             CUiAnimViewSequence* pSequence = nullptr;

@@ -54,6 +54,7 @@
 #define GPF_TAG_MODULE_TYPE_EDITOR_MODULE   "EditorModule"
 #define GPF_TAG_MODULE_TYPE_STATIC_LIB      "StaticLib"
 #define GPF_TAG_MODULE_TYPE_BUILDER         "Builder"
+#define GPF_TAG_MODULE_TYPE_STANDALONE      "Standalone"
 #define GPF_TAG_MODULE_EXTENDS              "Extends"
 #define GPF_TAG_IS_GAME_GEM                 "IsGameGem"
 #define GPF_TAG_IS_REQUIRED                 "IsRequired"

@@ -13,6 +13,8 @@
 #include "RecentFiles.h"
 #include "MysticQtManager.h"
 #include <AzFramework/API/ApplicationAPI.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
 #include <QtCore/QFileInfo>
 #include <QtCore/QSettings>
 #include <QtGui/QHelpEvent>
@@ -31,7 +33,7 @@ namespace MysticQt
             mParent = parent;
         }
 
-        virtual bool event(QEvent* e) override
+        bool event(QEvent* e) override
         {
             bool result = QMenu::event(e);
             const QHelpEvent* helpEvent = static_cast<QHelpEvent*>(e);
@@ -69,147 +71,132 @@ namespace MysticQt
         m_configStringName   = configStringName;
         m_maxNumRecentFiles  = numRecentFiles;
 
+        Load();
+
         m_resetRecentFilesAction = nullptr;
         m_recentFilesMenu = new ToolTipMenu(subMenuName, parentMenu);
         parentMenu->addMenu(m_recentFilesMenu);
 
         SetMaxRecentFiles(numRecentFiles);
+        UpdateMenu();
+    }
 
-        m_recentFilesMenu->addSeparator();
-        m_resetRecentFilesAction = m_recentFilesMenu->addAction("Reset Recent Files", this, &RecentFiles::OnClearRecentFiles);
+
+    void RecentFiles::OnClearRecentFiles()
+    {
+        m_recentFiles.clear();
+
+        Save();
+        UpdateMenu();
+    }
+
+
+    void RecentFiles::Save()
+    {
+        QSettings settings(this);
+        settings.beginGroup("EMotionFX");
+        settings.setValue(m_configStringName, m_recentFiles);
+        settings.endGroup();
+    }
+
+
+    void RecentFiles::Load()
+    {
+        QSettings settings(this);
+        settings.beginGroup("EMotionFX");
+        m_recentFiles = settings.value(m_configStringName).toStringList();
+        settings.endGroup();
+
+        // Remove deleted or non-existing files from the recent files.
+        QString filename;
+        for (int i = 0; i < m_recentFiles.size(); )
+        {
+            if (!QFile::exists(m_recentFiles[i]))
+            {
+                m_recentFiles.removeAt(i);
+            }
+            else
+            {
+                i++;
+            }
+        }
 
         // Remove legacy duplicates or duplicated filenames with inconsistent casing.
         RemoveDuplicates();
     }
 
 
-    void RecentFiles::OnClearRecentFiles()
+    void RecentFiles::UpdateMenu()
     {
-        QSettings settings(this);
-        settings.beginGroup("EMotionFX");
-        settings.setValue(m_configStringName, QStringList());
+        m_recentFilesMenu->clear();
 
-        UpdateRecentFileActions();
-        settings.endGroup();
-    }
+        AZStd::string sourceFolder = EMotionFX::GetEMotionFX().GetAssetSourceFolder();
+        AZStd::string cacheFolder = EMotionFX::GetEMotionFX().GetAssetCacheFolder();
+        AzFramework::StringFunc::Path::Normalize(sourceFolder);
+        AzFramework::StringFunc::Path::Normalize(cacheFolder);
 
-
-    void RecentFiles::UpdateRecentFileActions(bool checkFilesExist)
-    {
-        QSettings settings(this);
-        settings.beginGroup("EMotionFX");
-        QStringList files = settings.value(m_configStringName).toStringList();
-
-        // Remove deleted or non-existing files from the recent files.
-        if (checkFilesExist)
+        int recentFilesAdded = 0;
+        QString menuItemText;
+        AZStd::string folder;
+        const int recentFileCount = m_recentFiles.size();
+        for (int i = 0; i < recentFileCount; ++i)
         {
-            QString filename;
-            for (int i = 0; i < files.size(); )
+            const QFileInfo fileInfo(m_recentFiles[i]);
+            folder = fileInfo.absolutePath().toUtf8().data();
+            AzFramework::StringFunc::Path::Normalize(folder);
+
+            // Skip files that are not part of the current game directory.
+            if (!AzFramework::StringFunc::Path::IsASuperFolderOfB(sourceFolder.c_str(), folder.c_str()) && !AzFramework::StringFunc::Path::IsASuperFolderOfB(cacheFolder.c_str(), folder.c_str()))
             {
-                if (!QFile::exists(files[i]))
-                {
-                    files.removeAt(i);
-                }
-                else
-                {
-                    i++;
-                }
+                continue;
             }
+            
+            menuItemText = QString("&%1 %2").arg(i + 1).arg(fileInfo.fileName());
+
+            QAction* action = new QAction(m_recentFilesMenu);
+            action->setText(menuItemText);
+            action->setData(m_recentFiles[i]);
+            action->setToolTip(m_recentFiles[i]);
+
+            m_recentFilesMenu->addAction(action);
+            recentFilesAdded++;
+
+            connect(action, SIGNAL(triggered()), this, SLOT(OnRecentFileSlot()));
         }
 
-        QString strippedName, menuItemText;
-        size_t numRecentFiles = m_recentFileActions.size();
-        for (size_t i = 0; i < numRecentFiles; ++i)
+        if (recentFilesAdded > 0)
         {
-            QAction* action = m_recentFileActions[i];
-
-            if (i < static_cast<size_t>(files.size()))
-            {
-                const int intIndex  = static_cast<int>(i);
-                strippedName        = QFileInfo(files[intIndex]).fileName();
-                menuItemText        = tr("&%1 %2").arg(i + 1).arg(strippedName);
-
-                action->setText(menuItemText);
-                action->setData(files[intIndex]);
-                action->setToolTip(files[intIndex]);
-                action->setVisible(true);
-            }
-            else
-            {
-                action->setVisible(false);
-            }
+            m_recentFilesMenu->addSeparator();
+            m_resetRecentFilesAction = m_recentFilesMenu->addAction("Reset Recent Files", this, &RecentFiles::OnClearRecentFiles);
         }
-
-        settings.setValue(m_configStringName, files);
-
-        if (m_resetRecentFilesAction)
-        {
-            if (files.size() > 0)
-            {
-                m_resetRecentFilesAction->setVisible(true);
-            }
-            else
-            {
-                m_resetRecentFilesAction->setVisible(false);
-            }
-        }
-        settings.endGroup();
     }
 
 
     void RecentFiles::SetMaxRecentFiles(size_t numRecentFiles)
     {
         m_maxNumRecentFiles = numRecentFiles;
-        const size_t numOldRecentFiles = m_recentFileActions.size();
 
-        // In case the new max recent files is bigger than the old one.
-        if (numOldRecentFiles < numRecentFiles)
+        if (m_recentFiles.size() > m_maxNumRecentFiles)
         {
-            m_recentFileActions.resize(numRecentFiles);
-
-            for (size_t i = numOldRecentFiles; i < numRecentFiles; ++i)
+            while (m_recentFiles.size() > m_maxNumRecentFiles)
             {
-                QAction* action = new QAction(m_recentFilesMenu);
-                action->setVisible(false);
-                m_recentFilesMenu->addAction(action);
-
-                connect(action, SIGNAL(triggered()), this, SLOT(OnRecentFileSlot()));
-                m_recentFileActions[i] = action;
+                m_recentFiles.removeLast();
             }
-        }
-        // In case we want to reduce the maximum number of recent files.
-        else
-        {
-            // remove the ones that are too much
-            while (m_recentFileActions.size() > numRecentFiles)
-            {
-                if (!m_recentFileActions.empty())
-                {
-                    const size_t index = m_recentFileActions.size() - 1;
-                    delete m_recentFileActions[index];
-                    m_recentFileActions.erase(m_recentFileActions.begin() + index);
-                }
-            }
-        }
 
-        UpdateRecentFileActions(true);
+            Save();
+            UpdateMenu();
+        }
     }
 
 
     AZStd::string RecentFiles::GetLastRecentFileName() const
     {
-        if (m_recentFileActions.empty())
+        if (m_recentFiles.empty())
         {
             return "";
         }
 
-        QAction* action = m_recentFileActions[0];
-        if (action == nullptr)
-        {
-            return "";
-        }
-
-        return action->data().toString().toUtf8().data();
+        return m_recentFiles[0].toUtf8().data();
     }
 
 
@@ -217,27 +204,22 @@ namespace MysticQt
     {
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
-        QSettings settings(this);
-        settings.beginGroup("EMotionFX");
-        QStringList files = settings.value(m_configStringName).toStringList();
-
         // Remove filename duplicates and add the new filename to the top of the recent files.
         if (!filename.empty())
         {
-            files.removeAll(filename.c_str());
-            files.prepend(filename.c_str());
+            m_recentFiles.removeAll(filename.c_str());
+            m_recentFiles.prepend(filename.c_str());
         }
 
         // Remove the oldest filenames.
         const int maxRecentFiles = static_cast<int>(m_maxNumRecentFiles);
-        while (files.size() > maxRecentFiles)
+        while (m_recentFiles.size() > maxRecentFiles)
         {
-            files.removeLast();
+            m_recentFiles.removeLast();
         }
 
-        settings.setValue(m_configStringName, files);
-        UpdateRecentFileActions();
-        settings.endGroup();
+        Save();
+        UpdateMenu();
     }
 
 
@@ -255,17 +237,13 @@ namespace MysticQt
 
     void RecentFiles::RemoveDuplicates()
     {
-        QSettings settings(this);
-        settings.beginGroup("EMotionFX");
-        QStringList files = settings.value(m_configStringName).toStringList();
-
-        for (int i = 0; i<files.size(); i++)
+        for (int i = 0; i < m_recentFiles.size(); i++)
         {
-            for (int j = i + 1; j<files.size(); )
+            for (int j = i + 1; j < m_recentFiles.size(); )
             {
-                if (files[i].compare(files[j], Qt::CaseSensitivity::CaseInsensitive) == 0)
+                if (m_recentFiles[i].compare(m_recentFiles[j], Qt::CaseSensitivity::CaseInsensitive) == 0)
                 {
-                    files.removeAt(j);
+                    m_recentFiles.removeAt(j);
                 }
                 else
                 {
@@ -273,9 +251,6 @@ namespace MysticQt
                 }
             }
         }
-
-        settings.setValue(m_configStringName, files);
-        settings.endGroup();
     }
 } // namespace MysticQt
 

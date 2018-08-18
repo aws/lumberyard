@@ -58,6 +58,13 @@ namespace AzFramework
 
     NetBindingSliceInstantiationHandler::~NetBindingSliceInstantiationHandler()
     {
+        // m_bindRequests in NetBindingSystemImpl could be cleaned before slice instantiation finished
+        if (m_state == State::Spawning)
+        {
+            AzFramework::SliceInstantiationResultBus::Handler::BusDisconnect();
+            EBUS_EVENT(GameEntityContextRequestBus, CancelDynamicSliceInstantiation, m_ticket);
+        }
+
         for (AZ::Entity* entity : m_boundEntities)
         {
             AZ_ExtraTracePrintf("NetBindingSystemImpl", "Cleanup - deleting %llu\n", entity->GetId());
@@ -74,10 +81,10 @@ namespace AzFramework
 
             if (AZ::Data::AssetManager::IsReady())
             {
-                auto remapFunc = [this](AZ::EntityId originalId, bool /*isEntityId*/, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
+                auto remapFunc = [bindingQueue=m_bindingQueue](AZ::EntityId originalId, bool /*isEntityId*/, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
                 {
-                    auto iter = m_bindingQueue.find(originalId);
-                    if (iter != m_bindingQueue.end())
+                    auto iter = bindingQueue.find(originalId);
+                    if (iter != bindingQueue.end())
                     {
                         return iter->second.m_desiredRuntimeEntityId;
                     }
@@ -912,12 +919,15 @@ namespace AzFramework
                 }
 
                 NetBindingHandlerInterface* binding = GetNetBindingHandler(entity);
-                AZ_Assert(binding, "Can't find NetBindingHandlerInterface!");
-                binding->BindToNetwork(bindTo);
-                binding->SetSliceInstanceId(sliceInstanceId);
+                AZ_Assert(binding, "Can't find NetBindingComponent on entity %llu (%s)!", static_cast<AZ::u64>(entity->GetId()), entity->GetName().c_str());
+                if (binding)
+                {
+                    binding->BindToNetwork(bindTo);
+                    binding->SetSliceInstanceId(sliceInstanceId);
 
-                entity->Activate();
-                success = true;
+                    entity->Activate();
+                    success = true;
+                }
             }
         }
 

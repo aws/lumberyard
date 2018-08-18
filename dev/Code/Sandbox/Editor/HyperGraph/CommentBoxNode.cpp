@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "CommentBoxNode.h"
 #include "QHyperNodePainter_CommentBox.h"
 #include "FlowGraphVariables.h"

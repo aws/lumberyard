@@ -147,12 +147,17 @@ namespace AssetProcessor
 
         virtual ~ProcessingJobInfoBusTraits() {}
 
-        // Will notify other systems which old product is just about to get removed from the cache 
-        // before we copy the new product instead along. 
-        virtual void BeginIgnoringCacheFileDelete(const AZStd::string /*productPath*/) {};
+        //! Will notify other systems which old product is just about to get removed from the cache 
+        //! before we copy the new product instead along. 
+        //! this path MUST be in normalized format - that is, forward slashes, correct case, absolute full path
+        //! and on windows, drive letter capital.
+        virtual void BeginIgnoringCacheFileDelete(const char* /*productPath*/) {};
+        
         // Will notify other systems which product we are trying to copy in the cache 
         // along with status of whether that copy succeeded or failed.
-        virtual void StopIgnoringCacheFileDelete(const AZStd::string /*productPath*/, bool /*queueAgainForProcessing*/) {};
+        //! this path MUST be in normalized format - that is, forward slashes, correct case, absolute full path
+        //! and on windows, drive letter capital.
+        virtual void StopIgnoringCacheFileDelete(const char* /*productPath*/, bool /*queueAgainForProcessing*/) {};
     };
 
     using ProcessingJobInfoBus = AZ::EBus<ProcessingJobInfoBusTraits>;

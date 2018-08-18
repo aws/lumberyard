@@ -9,8 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_EBUS_RESULTS_H
-#define AZ_EBUS_RESULTS_H
+#pragma once
+
+#include <AzCore/base.h>
+#include <AzCore/std/containers/vector.h>
 
 /**
  * @file
@@ -79,22 +81,24 @@ namespace AZ
             : value(initialValue)
             , unary(aggregator)
         { }
-
-        /**
-         * Overloads the assignment operator to aggregate a new value with  
-         * the existing aggregated value.
-         * @param rhs A reference to the value that will be aggregated with 
-         * the existing aggregated value.
-         */
-        AZ_FORCE_INLINE void operator=(const T& rhs)    { value = unary(value, rhs); }
-
+        
         /**
          * Overloads the assignment operator to aggregate a new value with
-         * the existing aggregated value.
-         * @param rhs A reference to the value that will be aggregated with
-         * the existing aggregated value.
+         * the existing aggregated value.  Used ONLY when the return value of the function is const, or const&
          */
-        AZ_FORCE_INLINE void operator=(T& rhs)          { value = unary(value, rhs); }
+        AZ_FORCE_INLINE void operator=(const T& rhs) { value = unary(value, rhs); }
+
+#if defined(AZ_HAS_RVALUE_REFS)
+        /**
+         * Overloads the assignment operator to aggregate a new value with
+         * the existing aggregated value using rvalue-ref to move
+         */
+        AZ_FORCE_INLINE void operator=(T&& rhs) { value = unary(value, AZStd::move(rhs)); }
+#endif // defined(AZ_HAS_RVALUE_REFS)
+        /**
+         * Disallows copying an EBusReduceResult object by reference.
+         */
+        EBusReduceResult& operator=(const EBusReduceResult&) = delete;
     };
     /**
      * Aggregates results returned by all handlers of an EBus event. 
@@ -155,21 +159,19 @@ namespace AZ
             , unary(aggregator)
         { }
 
+#if defined(AZ_HAS_RVALUE_REFS)
         /**
          * Overloads the assignment operator to aggregate a new value with
-         * the existing aggregated value.
-         * @param rhs A reference to the value that will be aggregated with
-         * the existing aggregated value.
+         * the existing aggregated value using rvalue-ref
          */
-        AZ_FORCE_INLINE void operator=(const T& rhs)    { value = unary(value, rhs); }
+        AZ_FORCE_INLINE void operator=(T&& rhs)          { value = unary(value, AZStd::move(rhs)); }
+#endif // defined(AZ_HAS_RVALUE_REFS)
+        /**
+        * Overloads the assignment operator to aggregate a new value with
+        * the existing aggregated value.  Used only when the return type is const, or const&
+        */
+        AZ_FORCE_INLINE void operator=(const T& rhs) { value = unary(value, rhs); }
 
-        /**
-         * Overloads the assignment operator to aggregate a new value with
-         * the existing aggregated value.
-         * @param rhs A reference to the value that will be aggregated with
-         * the existing aggregated value.
-         */
-        AZ_FORCE_INLINE void operator=(T& rhs)          { value = unary(value, rhs); }
 
         /**
          * Disallows copying an EBusReduceResult object by reference.
@@ -216,11 +218,17 @@ namespace AZ
         /**
          * Overloads the assignment operator to add a new result to a vector 
          * of previous results.
-         * @param rhs A reference to the value that will be added to the vector.
+         * This const T& version is required to support const& returning functions.
          */
         AZ_FORCE_INLINE void operator=(const T& rhs) { values.push_back(rhs); }
+        
+#if defined(AZ_HAS_RVALUE_REFS)
+        /**
+         * Overloads the assignment operator to add a new result to a vector 
+         * of previous results, using rvalue-reference to move
+         */
+        AZ_FORCE_INLINE void operator=(T&& rhs) { values.push_back(AZStd::move(rhs)); }
+#endif // defined(AZ_HAS_RVALUE_REFS)
     };
 }
 
-#endif //AZ_EBUS_RESULTS_H
-#pragma once

@@ -241,7 +241,7 @@ namespace LUAEditor
                 cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::MoveAnchor);
                 cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
 
-                auto block = document()->findBlock(cursor.position());
+                block = document()->findBlock(cursor.position());
                 if (block.isValid())
                 {
                     QString text = block.text();

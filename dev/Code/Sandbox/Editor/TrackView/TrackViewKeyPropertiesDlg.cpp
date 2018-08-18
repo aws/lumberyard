@@ -25,7 +25,26 @@
 #include <TrackView/ui_TrackViewTrackPropsDlg.h>
 
 //////////////////////////////////////////////////////////////////////////
-void CTrackViewKeyUIControls::OnInternalVariableChange(IVariable* pVar)
+void CTrackViewKeyUIControls::OnInternalVariableChange(IVariable* var)
+{
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
+    AZ_Assert(sequence, "Expected valid sequence.");
+    if (sequence)
+    {
+        if (sequence->GetSequenceType() == SequenceType::Legacy)
+        {
+            OnInternalVariableChangeLegacy(var);
+        }
+        else
+        {
+            CTrackViewKeyBundle keys = sequence->GetSelectedKeys();
+            OnUIChange(var, keys);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewKeyUIControls::OnInternalVariableChangeLegacy(IVariable* pVar)
 {
     CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
 
@@ -318,7 +337,11 @@ bool CTrackViewTrackPropsDlg::OnKeySelectionChange(CTrackViewKeyBundle& selected
 
     if (m_keyHandle.IsValid())
     {
+        // Block the callback, the values is already set in m_keyHandle.GetTime(), no need to
+        // reset it and create an undo even like the user was setting it via the UI.
+        ui->TIME->blockSignals(true);
         ui->TIME->setValue(m_keyHandle.GetTime());
+        ui->TIME->blockSignals(false);
         ui->PREVNEXT->setText(QString::number(m_keyHandle.GetIndex() + 1));
 
         ui->PREVNEXT->setEnabled(true);

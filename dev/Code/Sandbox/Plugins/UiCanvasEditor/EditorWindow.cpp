@@ -134,14 +134,8 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
     settings.endGroup();
 
     // update menus when the selection changes
-    connect(m_hierarchy, &HierarchyWidget::SetUserSelection, [this](HierarchyItemRawPtrList*)
-    {
-        UpdateActionsEnabledState();
-    });
-    m_clipboardConnection = connect(QApplication::clipboard(), &QClipboard::dataChanged, [this]()
-    {
-        UpdateActionsEnabledState();
-    });
+    connect(m_hierarchy, &HierarchyWidget::SetUserSelection, this, &EditorWindow::UpdateActionsEnabledState);
+    m_clipboardConnection = connect(QApplication::clipboard(), &QClipboard::dataChanged, this, &EditorWindow::UpdateActionsEnabledState);
 
     UpdatePrefabFiles();
 
@@ -1590,6 +1584,7 @@ void EditorWindow::OnCanvasTabContextMenuRequested(const QPoint &point)
         action->setEnabled(canvasMetadata && !canvasMetadata->m_canvasSourceAssetPathname.empty());
         QObject::connect(action,
             &QAction::triggered,
+            this,
             [this, canvasEntityId](bool checked)
         {
             UiCanvasMetadata *canvasMetadata = GetCanvasMetadata(canvasEntityId);

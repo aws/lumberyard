@@ -50,7 +50,7 @@ void CCustomAspectRatioDlg::OnInitDialog()
 
 int CCustomAspectRatioDlg::GetX() const
 {
-    return m_ui->m_y->value();
+    return m_ui->m_x->value();
 }
 
 int CCustomAspectRatioDlg::GetY() const

@@ -36,7 +36,7 @@ namespace CloudGemFramework
         {
             serialize->Class<CloudGemFrameworkEditorSystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
@@ -102,10 +102,7 @@ namespace CloudGemFramework
 
     bool CloudGemFrameworkEditorSystemComponent::ApplyConfiguration()
     {
-        if (GetISystem()->GetGlobalEnvironment()->IsEditorGameMode())
-        {
-            EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, ResetPlayerIdentity);
-        }
+        EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, ResetPlayerIdentity);
         // Return true to indicate it's been handled so if we're a game client we don't need to take action
         return true;
     }

@@ -40,9 +40,9 @@ namespace Camera
 
     void CameraComponent::Init()
     {
-        m_system = gEnv->pGame->GetIGameFramework()->GetISystem();
+        m_system = gEnv->pSystem;
         // Initialize local view.
-        m_viewSystem = gEnv->pGame->GetIGameFramework()->GetIViewSystem();
+        m_viewSystem = gEnv->pSystem->GetIViewSystem();
         if (!m_viewSystem)
         {
             AZ_Error("CameraComponent", m_viewSystem != nullptr, "The CameraComponent shouldn't be used without a local view system");

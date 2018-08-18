@@ -78,10 +78,10 @@ namespace ChatPlay
         };
 
         // Callback types
-        typedef std::function<void(ApiCallResult, Aws::Http::HttpResponseCode, bool)> BoolCallback;
-        typedef std::function<void(ApiCallResult, Aws::Http::HttpResponseCode, int)> IntCallback;
-        typedef std::function<void(ApiCallResult, Aws::Http::HttpResponseCode, float)> FloatCallback;
-        typedef std::function<void(ApiCallResult, Aws::Http::HttpResponseCode, const std::string&)> StringCallback;
+        typedef AZStd::function<void(ApiCallResult, Aws::Http::HttpResponseCode, bool)> BoolCallback;
+        typedef AZStd::function<void(ApiCallResult, Aws::Http::HttpResponseCode, int)> IntCallback;
+        typedef AZStd::function<void(ApiCallResult, Aws::Http::HttpResponseCode, float)> FloatCallback;
+        typedef AZStd::function<void(ApiCallResult, Aws::Http::HttpResponseCode, const std::string&)> StringCallback;
 
         virtual ~IBroadcast() = 0;
 

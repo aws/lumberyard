@@ -112,7 +112,8 @@ void CGameResourcesExporter::Save(const QString& outputDirectory)
             QString trgFileDir = Path::GetPath(trgFilename);
             CFileUtil::CreateDirectory(trgFileDir.toUtf8().data());
             // Create a file.
-            FILE* trgFile = fopen(trgFilename.toUtf8().data(), "wb");
+            FILE* trgFile = nullptr;
+            azfopen(&trgFile, trgFilename.toUtf8().data(), "wb");
             if (trgFile)
             {
                 // Save data to new file.
@@ -254,7 +255,8 @@ void CGameResourcesExporter::ExportPerLayerResourceList()
         }
         if (!files.empty())
         {
-            FILE* file = fopen(listFilename.toUtf8().data(), "wt");
+            FILE* file = nullptr;
+            azfopen(&file, listFilename.toUtf8().data(), "wt");
             if (file)
             {
                 for (size_t c = 0; c < files.size(); c++)

@@ -15,11 +15,11 @@
 
 #include <Serialization/IArchive.h>
 #include <Serialization/Decorators/ActionButton.h>
-#include <functional>
+#include <AzCore/std/functional.h>
 
 namespace Serialization
 {
-    typedef std::function<void()> StdFunctionActionButtonCalback;
+    typedef AZStd::function<void()> StdFunctionActionButtonCalback;
 
     struct StdFunctionActionButton
         : public IActionButton

@@ -15,7 +15,7 @@
 #include "LUAEditorMainWindow.hxx"
 
 #include <AzCore/UserSettings/UserSettings.h>
-#include <AzCore/debug/trace.h>
+#include <AzCore/Debug/Trace.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/delegate/delegate.h>
 #include <AzCore/Script/ScriptAsset.h>
@@ -183,7 +183,7 @@ namespace LUAEditor
 
         connect(m_gui->actionAutocomplete, SIGNAL(triggered(bool)), this, SLOT(OnAutocompleteChanged(bool)));
 
-        connect(this, &LUAEditorMainWindow::OnReferenceDataChanged, [this]() { luaClassFilterTextChanged(m_ClassReferenceFilter->GetFilter()); });
+        connect(this, &LUAEditorMainWindow::OnReferenceDataChanged, this, [this]() { luaClassFilterTextChanged(m_ClassReferenceFilter->GetFilter()); });
 
         // preset our running state based on outside conditions when we are created
         if (connectedState)
@@ -328,7 +328,7 @@ namespace LUAEditor
         //if we already have an open view tabbify, if not just add it to the side
         if (m_dOpenLUAView.size() && !m_lastFocusedAssetId.empty())
         {
-            TrackedLUAViewMap::iterator viewIter = m_dOpenLUAView.find(m_lastFocusedAssetId);
+            viewIter = m_dOpenLUAView.find(m_lastFocusedAssetId);
             if (viewIter != m_dOpenLUAView.end())
             {
                 qobject_cast<QMainWindow*>(this->centralWidget())->tabifyDockWidget(viewIter->second.luaDockWidget(), luaDockWidget);
@@ -1129,7 +1129,7 @@ namespace LUAEditor
         if (dlg.exec() != QDialog::Rejected)
         {
             // go to that line of the selected file.
-            int lineNumber = dlg.getLineNumber();
+            lineNumber = dlg.getLineNumber();
 
             currentView->SetCursorPosition(lineNumber - 1, 0);
         }
@@ -1379,7 +1379,7 @@ namespace LUAEditor
                         break;
                     }
 
-                    AZ_TracePrintf(LUAEditorDebugName, "LUAEditorMainWindow::OnGetPermissionToShutDown() SAVING %s\n", viewInfo.luaViewWidget()->m_Info.m_assetName);
+                    AZ_TracePrintf(LUAEditorDebugName, "LUAEditorMainWindow::OnGetPermissionToShutDown() SAVING %s\n", viewInfo.luaViewWidget()->m_Info.m_assetName.c_str());
 
                     EBUS_EVENT(Context_DocumentManagement::Bus, OnSaveDocument, viewInfo.luaViewWidget()->m_Info.m_assetId, false, false);
                 }

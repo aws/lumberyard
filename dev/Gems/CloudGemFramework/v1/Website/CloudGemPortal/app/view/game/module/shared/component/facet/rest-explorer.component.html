@@ -97,14 +97,22 @@
     <div class="show-swagger">
         <button type="button" (click)="send()" class="btn l-primary">Send</button>
     </div>
-    <div class="row mb-3" *ngIf="model.response.length > 0">
-        <div class="col-12 response-area" *ngFor="let result of model.response; let i = index" [attr.data-index]="i">
-            <h2>Run {{i + 1}} </h2>            
-            <pre>{{result | json }}</pre> 
+    <div [ngSwitch]="isRunningCommand">
+        <div *ngSwitchCase="true">
+            <loading-spinner> </loading-spinner>
         </div>
-    </div>      
+        <div *ngSwitchCase="false">
+            <div class="row mb-3" *ngIf="model.response.length > 0">
+                <div class="col-12 response-area" *ngFor="let result of model.response; let i = index" [attr.data-index]="i">
+                    <h2>Run {{i + 1}} </h2>
+                    <pre>{{result | json }}</pre>
+                </div>
+            </div>
+        </div>    
+    </div>
     <div *ngIf="model.showSwagger" class="row mb-3 response-area">        
         <h2>Swagger</h2>
         <pre>{{model.swagger | json }}</pre>
     </div>       
+
 </div>

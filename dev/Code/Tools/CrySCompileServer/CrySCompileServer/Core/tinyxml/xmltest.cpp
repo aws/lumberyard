@@ -604,7 +604,13 @@ int main()
                         break;
                     }
                 }
+            }
+            if(saved)
+            {
                 fclose(saved);
+            }
+            if(verify)
+            {
                 fclose(verify);
             }
             XmlTest("UTF-8: Verified multi-language round trip.", 1, okay);

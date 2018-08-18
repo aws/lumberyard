@@ -101,8 +101,14 @@ namespace Telemetry
         time(&currentTime);
 
         char    timeStamp[256];
-
-        strftime(timeStamp, 20, "_%y-%m-%d_%H-%M-%S", localtime(&currentTime));
+#ifdef AZ_COMPILER_MSVC
+        tm lt;
+        localtime_s(&lt, &currentTime);
+        strftime(timeStamp, 20, "_%y-%m-%d_%H-%M-%S", &lt);
+#else
+        auto lt = localtime(&currentTime);
+        strftime(timeStamp, 20, "_%y-%m-%d_%H-%M-%S", lt);
+#endif
 
         return string(timeStamp);
     }

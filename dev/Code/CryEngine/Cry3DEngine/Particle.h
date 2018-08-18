@@ -115,12 +115,7 @@ public:
     }
 };
 
-struct SFadeEmitterState
-    : public _plain_reference_target<int>
-{
-    float m_fFadeEmitterDot;
-};
-
+    
 struct SParticleState
     : STimeState
     , SMoveState
@@ -210,7 +205,6 @@ public:
     bool RenderGeometry(SRendParams& RenParamsShared, SParticleVertexContext& context, const SRenderingPassInfo& passInfo) const;
     void AddLight(const SRendParams& RenParams, const SRenderingPassInfo& passInfo) const;
     void SetVertices(SLocalRenderVertices& alloc, SParticleVertexContext& context, uint8 uAlpha) const;
-    void CalculateTrailEmitterFade(SParticleVertexContext& context);
     void GetTextureRect(RectF& rectTex, Vec3& vTexBlend) const;
     void ComputeRenderData(SParticleRenderData& RenderData, const SParticleVertexContext& context, float fObjectSize = 1.f) const;
     float ComputeRenderAlpha(const SParticleRenderData& RenderData, float fRelativeAge, SParticleVertexContext& context) const;
@@ -226,9 +220,7 @@ public:
         Vec3 vZ;
         GetRenderMatrix(Vert.xaxis, vZ, Vert.yaxis, Vert.xyz, loc, RenderData, context);
     }
-
-    void InitFadeParticle(float fAge);
-
+    
 #ifdef PARTICLE_EDITOR_FUNCTIONS
     void UpdateAllocations(int nPrevHistorySteps);
 #endif
@@ -241,7 +233,7 @@ public:
     inline void CreateBeamVertices(SLocalRenderVertices& alloc, SParticleVertexContext& context, SVF_Particle& baseVert) const;
     inline void InitBeam(SLocalRenderVertices& alloc, SParticleVertexContext& context, SVF_Particle& baseVert) const;
     inline void AddSegmentToBeam(SLocalRenderVertices& alloc, SParticleVertexContext& context, SVF_Particle& baseVert) const;
-    inline void FinishBeam(SLocalRenderVertices& alloc, SParticleVertexContext& context) const;
+    inline void FinishBeam(SLocalRenderVertices& alloc, SParticleVertexContext& context, SVF_Particle& baseVert) const;
 
     inline void GatherVertexData(SParticleVertexContext& Context, uint8 uAlpha, SParticleRenderData& renderData, SVF_Particle& baseVert) const;
     inline Vec2 CalculateConnectedTextureCoords(SParticleVertexContext& context) const;
@@ -392,9 +384,10 @@ private:
     {
         // Random modifiers for unsigned params.
         TFixed<uint8, 1>
-        SizeX,
+            SizeX,
             SizeY,
-            StretchOrTail,                                                      // Used for either stretch or tail (exclusive features)
+            SizeZ,
+            StretchOrTail,  // Used for either stretch or tail (exclusive features)
 
             AirResistance,
             Turbulence3DSpeed,
@@ -406,8 +399,9 @@ private:
 
         // Random modifiers for signed params.
         TFixed<int8, 1>
-        PivotX,
+            PivotX,
             PivotY,
+            PivotZ,
             GravityScale,
             TurbulenceSpeed,
             fTargetRadius,
@@ -416,13 +410,13 @@ private:
             RotateRateZ,
             ColorLerp;
 
-        Color3B         Color;
+        Color3B Color;
 
         void Init()
         {
             memset(this, 0xFF, sizeof(*this));
         }
-    }                                           m_BaseMods;
+    } m_BaseMods;
 
     uint8                                   m_nTileVariant;                     // Selects texture tile.
 
@@ -432,9 +426,7 @@ private:
 
     //! particle index in a connected particle sequence such as Trail or Beam
     uint16 m_indexInSequence;
-
-    SFadeEmitterState* m_pFadeEmitterState;
-
+            
     Vec3 m_originalEmitterLocation;
 
     // External references.
@@ -453,7 +445,7 @@ private:
     // Functions.
 
     //size scale from emitter's spawn parameter. save it in init since it has random element
-    Vec2 m_sizeScale;
+    Vec3 m_sizeScale;
 private:
 
     void SetState(SParticleState const& state)          { static_cast<SParticleState&>(*this) = state; }
@@ -484,6 +476,8 @@ private:
     void Physicalize();
     int GetSurfaceIndex() const;
     void GetCollisionParams(int nCollSurfaceIdx, float& fElasticity, float& fDrag) const;
+
+    void ApplyCameraNonFacingFade(const SParticleVertexContext& context, SVF_Particle& vertex) const;
 
     void SetTailVertices(const SVF_Particle& BaseVert, SParticleRenderData RenderData, SLocalRenderVertices& alloc, SParticleVertexContext const& context) const;
 

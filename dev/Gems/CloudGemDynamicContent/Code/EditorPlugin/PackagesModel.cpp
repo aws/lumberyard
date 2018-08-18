@@ -70,7 +70,13 @@ namespace DynamicContent
         {
             QStandardItem* pakItem = root->child(row);
             // remember the existing status of the paks
-            int status = item(row, ColumnName::S3Status)->data(StatusRole).toInt();
+            QStandardItem* statusItem = item(row, ColumnName::S3Status);
+            if (!statusItem)
+            {
+                AZ_Warning("Dynamic Content Editor", false, "Item in row %d is empty", row);
+                continue;
+            }
+            int status = statusItem->data(StatusRole).toInt();
             if (!statusMap.contains(pakItem->text()))
             {
                 if (status == PakStatus::New)
@@ -106,9 +112,11 @@ namespace DynamicContent
             auto pakPath = pak.pakFile;
             QStandardItem* pakItem = new QStandardItem(pakName);
             pakItem->setDropEnabled(true);
+            pakItem->setEditable(false);
 
             QStandardItem* s3StatusItem = new QStandardItem;
             s3StatusItem->setDropEnabled(false);
+            s3StatusItem->setEditable(false);
 
             if (statusMap.contains(pakName))
             {
@@ -130,6 +138,7 @@ namespace DynamicContent
             auto platformType = pak.platformType;
             QStandardItem* platformItem = new QStandardItem();
             platformItem->setDropEnabled(false);
+            platformItem->setEditable(false);
             QMap<QString, QDynamicContentEditorMainWindow::PlatformInfo> platformMap = QDynamicContentEditorMainWindow::PlatformMap();
             auto pixMap = QPixmap(platformMap[pak.platformType].SmallSizeIconLink);
             platformItem->setData(pixMap, Qt::DecorationRole);
@@ -144,11 +153,13 @@ namespace DynamicContent
                     auto fileName = QDir(file.localFolder).filePath(file.keyName);
                     auto fileItem = new QStandardItem(fileName);
                     fileItem->setDropEnabled(false);
+                    fileItem->setEditable(false);
                     fileItem->setData(file.keyName, NameRole);
 
                     auto filePlatform = file.platformType;
                     auto filePlatformItem = new QStandardItem();
                     filePlatformItem->setDropEnabled(false);
+                    filePlatformItem->setEditable(false);
                     auto pixMap = QPixmap(platformMap[filePlatform].SmallSizeIconLink);
                     filePlatformItem->setData(pixMap, Qt::DecorationRole);
                     filePlatformItem->setData(filePlatform, PlatformRole);
@@ -161,6 +172,7 @@ namespace DynamicContent
             }
             QStandardItem* pakFileCountItem = new QStandardItem(QString::number(fileCount));
             pakFileCountItem->setDropEnabled(false);
+            pakFileCountItem->setEditable(false);
             QList<QStandardItem*> rowItems;
             rowItems << pakItem;
             rowItems << platformItem;

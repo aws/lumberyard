@@ -1,0 +1,118 @@
+<div [ngSwitch]="loading">
+    
+    <div *ngSwitchCase="true">
+        <loading-spinner></loading-spinner>
+    </div>
+
+    <div *ngSwitchCase="false">
+        <div *ngIf="isDataAvailable(rows)" class="table-header">
+            <label class="reports-counter">{{filteredRows.length}} Results</label>
+            <!-- Column Selector -->
+            <div ngbDropdown  placement="bottom-right">
+                <button class="btn btn-outline-primary btn-columns" ngbDropdownToggle>
+                    <span>
+                        Columns
+                        <i class="fa fa-caret-down" aria-hidden="true"></i>
+                    </span>
+                </button>
+
+                <div class="dropdown-menu" ngbDropdownMenu (click)="$event.stopPropagation()">
+                    <!-- Filter Input -->
+                    <div>
+                        <input type="text" class="filter-input form-control" [(ngModel)]="columnFilterInput" placeholder="Search columns..." />
+                    </div>
+
+                    <!-- Column Toggle Area -->
+                    <div>
+                        <ul class="column-checkbox-area">
+                            <li *ngFor="let col of allColumns">
+                                <div *ngIf="isInColumnSelectorView(columnFilterInput,col.name)" class="column-selector-checkbox">
+                                    <input
+                                        type="checkbox"
+                                        class="l-checkbox"
+                                        [id]="col.name"
+                                        (click)="toggle(col)"
+                                        [checked]="isSelected(col)" />
+                                    <label [attr.for]="col.name">{{col.name}}</label>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Full Column Toggle Operation Buttons -->
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline-primary btn-select" (click)="selectAllColumns()">Select All</button>
+                        <button type="button" class="btn btn-outline-primary btn-select" (click)="clearSelections()">Select None</button>
+                    </div>                    
+                </div>
+            </div>
+            <!-- Read Status Selector -->
+            <div ngbDropdown placement="bottom-right">
+                <button class="btn btn-outline-primary btn-columns status-selector" ngbDropdownToggle>
+                    <span>
+                        Status
+                        <i class="fa fa-caret-down" aria-hidden="true"></i>
+                    </span>
+                </button>
+
+                <div class="dropdown-menu" ngbDropdownMenu (click)="$event.stopPropagation()">
+                    <!-- Read Status Toggle Area -->
+                    <div>
+                        <ul class="read-status-radio-button-area">
+                            <li>
+                                <div class="read-status-radio-button">
+                                    <label class="radio-btn-label read-status">
+                                        <input type="radio" value="read" [(ngModel)]="readStatusOption" (ngModelChange)="updateFilteredRows()" name="read-status" />
+                                        <span></span> Read
+                                    </label>
+                                </div>
+                                <div class="read-status-radio-button">
+                                    <label class="radio-btn-label read-status">
+                                        <input type="radio" value="unread" [(ngModel)]="readStatusOption" (ngModelChange)="updateFilteredRows()" name="read-status" />
+                                        <span></span> Unread
+                                    </label>
+                                </div>
+                                <div class="read-status-radio-button">
+                                    <label class="radio-btn-label read-status">
+                                        <input type="radio" value="" [(ngModel)]="readStatusOption" (ngModelChange)="updateFilteredRows()" name="read-status" />
+                                        <span></span> All
+                                    </label>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <ngx-datatable
+                class="material"
+                [(rows)]="filteredRows"
+                [columnMode]="'force'"
+
+                [headerHeight]="50"
+                [rowHeight]="50"
+                [footerHeight]="50"
+
+                [externalSorting]="true"
+
+                [limit]="numberOfRowsPerPage"
+
+                [loadingIndicator]="loadingSort"
+                [scrollbarH]="true"
+                (sort)="onSort($event)"
+                (activate)="onRowActivation($event)">   
+                <ngx-datatable-column name="" [sortable]="false" prop="bookmark">
+                    <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+                        <i *ngIf="value === 0" class="fa fa-bookmark-o"></i>
+                        <i *ngIf="value !== 0" class="fa fa-bookmark"></i>
+                    </ng-template>
+                </ngx-datatable-column>
+                <ng-container *ngIf="isDataAvailable(filteredRows)">
+                    <ngx-datatable-column *ngFor="let column of columns" [name]="column['name']" [sortable]="column['sortable']" [prop]="column['prop']"></ngx-datatable-column>
+                </ng-container>
+            </ngx-datatable>
+        </div>
+    </div>
+</div>

@@ -129,7 +129,7 @@
    <item>
     <widget class="QLabel" name="m_transparentAllRightReserved">
      <property name="text">
-      <string>Lumberyard and related materials Copyright © 2018 Amazon Web Services, Inc., its affiliates or licensors. By accessing or using these materials, you agree to the terms of the AWS Customer Agreement.</string>
+      <string>Specified in AboutDialog.cpp</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignHCenter|Qt::AlignTop</set>

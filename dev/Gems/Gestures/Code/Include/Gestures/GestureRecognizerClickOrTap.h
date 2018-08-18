@@ -13,34 +13,30 @@
 
 #include "IGestureRecognizer.h"
 
+#include <AzCore/RTTI/ReflectContext.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace Gestures
 {
-    class RecognizerClickOrTap;
-
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    struct IClickOrTapListener
-    {
-        virtual ~IClickOrTapListener() {}
-        virtual void OnClickOrTapRecognized(const RecognizerClickOrTap& recognizer) = 0;
-    };
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    class RecognizerClickOrTap
-        : public IRecognizer
+    class RecognizerClickOrTap : public RecognizerDiscrete
     {
     public:
-        inline static float GetDefaultMaxSecondsHeld() { return 0.5f; }
-        inline static float GetDefaultMaxPixelsMoved() { return 20.0f; }
-        inline static float GetDefaultMaxSecondsBetweenClicksOrTaps() { return 0.5f; }
-        inline static float GetDefaultMaxPixelsBetweenClicksOrTaps() { return 20.0f; }
-        inline static uint32_t GetDefaultMinClicksOrTaps() { return 1; }
-        inline static uint32_t GetDefaultPointerIndex() { return 0; }
-        inline static int32_t GetDefaultPriority() { return 0; }
+        static float GetDefaultMaxSecondsHeld() { return 0.5f; }
+        static float GetDefaultMaxPixelsMoved() { return 20.0f; }
+        static float GetDefaultMaxSecondsBetweenClicksOrTaps() { return 0.5f; }
+        static float GetDefaultMaxPixelsBetweenClicksOrTaps() { return 100.0f; }
+        static uint32_t GetDefaultMinClicksOrTaps() { return 1; }
+        static uint32_t GetDefaultPointerIndex() { return 0; }
+        static int32_t GetDefaultPriority() { return AzFramework::InputChannelEventListener::GetPriorityUI() + 1; }
 
         struct Config
         {
-            inline Config()
+            AZ_CLASS_ALLOCATOR(Config, AZ::SystemAllocator, 0);
+            AZ_RTTI(Config, "{E1B99E50-605A-467E-B26E-B9F72A98A04F}");
+            static void Reflect(AZ::ReflectContext* context);
+
+            Config()
                 : maxSecondsHeld(GetDefaultMaxSecondsHeld())
                 , maxPixelsMoved(GetDefaultMaxPixelsMoved())
                 , maxSecondsBetweenClicksOrTaps(GetDefaultMaxSecondsBetweenClicksOrTaps())
@@ -49,6 +45,9 @@ namespace Gestures
                 , pointerIndex(GetDefaultPointerIndex())
                 , priority(GetDefaultPriority())
             {}
+            virtual ~Config() = default;
+
+            bool IsMultiClickOrTap() const { return minClicksOrTaps > 1; }
 
             float maxSecondsHeld;
             float maxPixelsMoved;
@@ -58,22 +57,25 @@ namespace Gestures
             uint32_t pointerIndex;
             int32_t priority;
         };
-        inline static const Config& GetDefaultConfig() { static Config s_cfg; return s_cfg; }
+        static const Config& GetDefaultConfig() { static Config s_cfg; return s_cfg; }
 
-        inline explicit RecognizerClickOrTap(IClickOrTapListener& listener,
-            const Config& config = GetDefaultConfig());
-        inline ~RecognizerClickOrTap() override;
+        AZ_CLASS_ALLOCATOR(RecognizerClickOrTap, AZ::SystemAllocator, 0);
+        AZ_RTTI(RecognizerClickOrTap, "{C401A49C-6D88-4268-8E2D-6BAECFD7146E}", RecognizerDiscrete);
 
-        inline int32_t GetPriority() const override { return m_config.priority; }
-        inline bool OnPressedEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
-        inline bool OnDownEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
-        inline bool OnReleasedEvent(const Vec2& screenPosition, uint32_t pointerIndex) override;
+        explicit RecognizerClickOrTap(const Config& config = GetDefaultConfig());
+        ~RecognizerClickOrTap() override;
 
-        inline Config& GetConfig() { return m_config; }
-        inline const Config& GetConfig() const { return m_config; }
+        int32_t GetPriority() const override { return m_config.priority; }
+        bool OnPressedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
+        bool OnDownEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
+        bool OnReleasedEvent(const AZ::Vector2& screenPosition, uint32_t pointerIndex) override;
 
-        inline Vec2 GetStartPosition() const { return m_positionOfFirstEvent; }
-        inline Vec2 GetEndPosition() const { return m_positionOfLastEvent; }
+        Config& GetConfig() { return m_config; }
+        const Config& GetConfig() const { return m_config; }
+        void SetConfig(const Config& config) { m_config = config; }
+
+        AZ::Vector2 GetStartPosition() const { return m_positionOfFirstEvent; }
+        AZ::Vector2 GetEndPosition() const { return m_positionOfLastEvent; }
 
     private:
         enum class State
@@ -83,7 +85,6 @@ namespace Gestures
             Released
         };
 
-        IClickOrTapListener& m_listener;
         Config m_config;
 
         int64 m_timeOfLastEvent;

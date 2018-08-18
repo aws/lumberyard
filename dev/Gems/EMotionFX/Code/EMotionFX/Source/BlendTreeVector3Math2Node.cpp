@@ -10,53 +10,22 @@
 *
 */
 
-// include required headers
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "BlendTreeVector3Math2Node.h"
 #include <MCore/Source/FastMath.h>
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/AttributeSettings.h>
 
 
 namespace EMotionFX
 {
-    // constructor
-    BlendTreeVector3Math2Node::BlendTreeVector3Math2Node(AnimGraph* animGraph)
-        : AnimGraphNode(animGraph, nullptr, TYPE_ID)
-    {
-        // allocate space for the variables
-        CreateAttributeValues();
-        RegisterPorts();
-        InitInternalAttributesForAllInstances();
-
-        // default on sinus calculation
-        mMathFunction   = MATHFUNCTION_DOT;
-        mCalculateFunc  = CalculateDot;
-        SetNodeInfo("dot(x, y)");
-    }
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeVector3Math2Node, AnimGraphAllocator, 0)
 
 
-    // destructor
-    BlendTreeVector3Math2Node::~BlendTreeVector3Math2Node()
-    {
-    }
-
-
-    // create
-    BlendTreeVector3Math2Node* BlendTreeVector3Math2Node::Create(AnimGraph* animGraph)
-    {
-        return new BlendTreeVector3Math2Node(animGraph);
-    }
-
-
-    // create unique data
-    AnimGraphObjectData* BlendTreeVector3Math2Node::CreateObjectData()
-    {
-        return AnimGraphNodeData::Create(this, nullptr);
-    }
-
-
-    // register the ports
-    void BlendTreeVector3Math2Node::RegisterPorts()
+    BlendTreeVector3Math2Node::BlendTreeVector3Math2Node()
+        : AnimGraphNode()
+        , m_mathFunction(MATHFUNCTION_DOT)
+        , m_defaultValue(AZ::Vector3::CreateZero())
     {
         // setup the input ports
         InitInputPorts(2);
@@ -65,60 +34,84 @@ namespace EMotionFX
 
         // setup the output ports
         InitOutputPorts(2);
-        SetupOutputPort("Vector3",  INPUTPORT_X, MCore::AttributeVector3::TYPE_ID,  PORTID_OUTPUT_VECTOR3);
-        SetupOutputPort("Float",    INPUTPORT_Y, MCore::AttributeFloat::TYPE_ID,    PORTID_OUTPUT_FLOAT);
+        SetupOutputPort("Vector3", INPUTPORT_X, MCore::AttributeVector3::TYPE_ID, PORTID_OUTPUT_VECTOR3);
+        SetupOutputPort("Float", INPUTPORT_Y, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_FLOAT);
+
+        if (mAnimGraph)
+        {
+            Reinit();
+        }
     }
 
-
-    // register the parameters
-    void BlendTreeVector3Math2Node::RegisterAttributes()
+    
+    BlendTreeVector3Math2Node::~BlendTreeVector3Math2Node()
     {
-        // create the math function combobox
-        MCore::AttributeSettings* functionParam = RegisterAttribute("Math Function", "mathFunction", "The math function to use.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
-        functionParam->SetReinitGuiOnValueChange(true);
-        functionParam->ResizeComboValues((uint32)MATHFUNCTION_NUMFUNCTIONS);
-        functionParam->SetComboValue(MATHFUNCTION_DOT,          "Dot Product");
-        functionParam->SetComboValue(MATHFUNCTION_CROSS,        "Cross Product");
-        functionParam->SetComboValue(MATHFUNCTION_ADD,          "Add");
-        functionParam->SetComboValue(MATHFUNCTION_SUBTRACT,     "Subtract");
-        functionParam->SetComboValue(MATHFUNCTION_MULTIPLY,     "Multiply");
-        functionParam->SetComboValue(MATHFUNCTION_DIVIDE,       "Divide");
-        functionParam->SetComboValue(MATHFUNCTION_ANGLEDEGREES, "AngleDegrees");
-        functionParam->SetDefaultValue(MCore::AttributeFloat::Create(0));
-
-        // create the static value for x or y
-        MCore::AttributeSettings* staticParam = RegisterAttribute("Static Value", "staticValue", "The static value for x or y when one of them has no incomming connection.", MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3);
-        staticParam->SetDefaultValue(MCore::AttributeVector3::Create());
-        staticParam->SetMinValue(MCore::AttributeVector3::Create(-FLT_MAX, -FLT_MAX, -FLT_MAX));
-        staticParam->SetMaxValue(MCore::AttributeVector3::Create(FLT_MAX,  FLT_MAX,  FLT_MAX));
     }
 
 
-    // get the palette name
+    void BlendTreeVector3Math2Node::Reinit()
+    {
+        switch (m_mathFunction)
+        {
+        case MATHFUNCTION_DOT:
+            m_calculateFunc = CalculateDot;
+            SetNodeInfo("dot(x, y)");
+            break;
+        case MATHFUNCTION_CROSS:
+            m_calculateFunc = CalculateCross;
+            SetNodeInfo("cross(x, y)");
+            break;
+        case MATHFUNCTION_ADD:
+            m_calculateFunc = CalculateAdd;
+            SetNodeInfo("x + y");
+            break;
+        case MATHFUNCTION_SUBTRACT:
+            m_calculateFunc = CalculateSubtract;
+            SetNodeInfo("x - y");
+            break;
+        case MATHFUNCTION_MULTIPLY:
+            m_calculateFunc = CalculateMultiply;
+            SetNodeInfo("x * y");
+            break;
+        case MATHFUNCTION_DIVIDE:
+            m_calculateFunc = CalculateDivide;
+            SetNodeInfo("x / y");
+            break;
+        case MATHFUNCTION_ANGLEDEGREES:
+            m_calculateFunc = CalculateAngleDegrees;
+            SetNodeInfo("Angle Degr.");
+            break;
+        default:
+            AZ_Assert(false, "EMotionFX: Math function unknown.");
+        }
+
+        AnimGraphNode::Reinit();
+    }
+
+
+    bool BlendTreeVector3Math2Node::InitAfterLoading(AnimGraph* animGraph)
+    {
+        if (!AnimGraphNode::InitAfterLoading(animGraph))
+        {
+            return false;
+        }
+
+        InitInternalAttributesForAllInstances();
+
+        Reinit();
+        return true;
+    }
+
+
     const char* BlendTreeVector3Math2Node::GetPaletteName() const
     {
         return "Vector3 Math2";
     }
 
 
-    // get the category
     AnimGraphObject::ECategory BlendTreeVector3Math2Node::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_MATH;
-    }
-
-
-    // create a clone of this node
-    AnimGraphObject* BlendTreeVector3Math2Node::Clone(AnimGraph* animGraph)
-    {
-        // create the clone
-        BlendTreeVector3Math2Node* clone = new BlendTreeVector3Math2Node(animGraph);
-
-        // copy base class settings such as parameter values to the new clone
-        CopyBaseObjectTo(clone);
-
-        // return a pointer to the clone
-        return clone;
     }
 
 
@@ -129,22 +122,15 @@ namespace EMotionFX
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
         // if there are no incoming connections, there is nothing to do
-        if (mConnections.GetLength() == 0)
+        if (mConnections.empty())
         {
             return;
         }
 
-        //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
-
-        // update the math function if needed
-        SetMathFunction((EMathFunction)((uint32)GetAttributeFloat(ATTRIB_MATHFUNCTION)->GetValue()));
-
         // if both x and y inputs have connections
         AZ::Vector3 x, y;
-        if (mConnections.GetLength() == 2)
+        if (mConnections.size() == 2)
         {
-            //OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_X) );
-            //OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_Y) );
             x = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_X)->GetValue());
             y = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_Y)->GetValue());
         }
@@ -153,15 +139,13 @@ namespace EMotionFX
             // if only x has something plugged in
             if (mConnections[0]->GetTargetPort() == INPUTPORT_X)
             {
-                //OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_X) );
                 x = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_X)->GetValue());
-                y = AZ::Vector3(GetAttributeVector3(ATTRIB_STATICVECTOR)->GetValue());
+                y = m_defaultValue;
             }
             else // only y has an input
             {
                 MCORE_ASSERT(mConnections[0]->GetTargetPort() == INPUTPORT_Y);
-                x = AZ::Vector3(GetAttributeVector3(ATTRIB_STATICVECTOR)->GetValue());
-                //OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_Y) );
+                x = m_defaultValue;
                 y = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_Y)->GetValue());
             }
         }
@@ -169,76 +153,21 @@ namespace EMotionFX
         // apply the operation
         AZ::Vector3 vectorResult(0.0f, 0.0f, 0.0f);
         float floatResult = 0.0f;
-        mCalculateFunc(x, y, &vectorResult, &floatResult);
+        m_calculateFunc(x, y, &vectorResult, &floatResult);
 
         // update the output value
         GetOutputVector3(animGraphInstance, OUTPUTPORT_RESULT_VECTOR3)->SetValue(AZ::PackedVector3f(vectorResult));
         GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT_FLOAT)->SetValue(floatResult);
     }
 
-
-    // get the type string
-    const char* BlendTreeVector3Math2Node::GetTypeString() const
-    {
-        return "BlendTreeVector3Math2Node";
-    }
-
-
-    // set the math function to use
     void BlendTreeVector3Math2Node::SetMathFunction(EMathFunction func)
     {
-        // if it didn't change, don't update anything
-        if (func == mMathFunction)
+        m_mathFunction = func;
+        if (mAnimGraph)
         {
-            return;
+            Reinit();
         }
-
-        mMathFunction = func;
-        switch (mMathFunction)
-        {
-        case MATHFUNCTION_DOT:
-            mCalculateFunc = CalculateDot;
-            SetNodeInfo("dot(x, y)");
-            return;
-        case MATHFUNCTION_CROSS:
-            mCalculateFunc = CalculateCross;
-            SetNodeInfo("cross(x, y)");
-            return;
-        case MATHFUNCTION_ADD:
-            mCalculateFunc = CalculateAdd;
-            SetNodeInfo("x + y");
-            return;
-        case MATHFUNCTION_SUBTRACT:
-            mCalculateFunc = CalculateSubtract;
-            SetNodeInfo("x - y");
-            return;
-        case MATHFUNCTION_MULTIPLY:
-            mCalculateFunc = CalculateMultiply;
-            SetNodeInfo("x * y");
-            return;
-        case MATHFUNCTION_DIVIDE:
-            mCalculateFunc = CalculateDivide;
-            SetNodeInfo("x / y");
-            return;
-        case MATHFUNCTION_ANGLEDEGREES:
-            mCalculateFunc = CalculateAngleDegrees;
-            SetNodeInfo("Angle Degr.");
-            return;
-
-        default:
-            MCORE_ASSERT(false);        // function unknown
-        }
-        ;
     }
-
-
-    // update the data
-    void BlendTreeVector3Math2Node::OnUpdateAttributes()
-    {
-        // update the math function if needed
-        SetMathFunction((EMathFunction)((uint32)GetAttributeFloat(ATTRIB_MATHFUNCTION)->GetValue()));
-    }
-
 
     //-----------------------------------------------
     // the math functions
@@ -300,5 +229,51 @@ namespace EMotionFX
         MCORE_UNUSED(vectorOutput);
         const float radians = MCore::Math::ACos(MCore::SafeNormalize(inputX).Dot(MCore::SafeNormalize(inputY)));
         *floatOutput = MCore::Math::RadiansToDegrees(radians);
+    }
+
+    void BlendTreeVector3Math2Node::SetDefaultValue(const AZ::Vector3& value)
+    {
+        m_defaultValue = value;
+    }
+
+    void BlendTreeVector3Math2Node::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<BlendTreeVector3Math2Node, AnimGraphNode>()
+            ->Version(1)
+            ->Field("mathFunction", &BlendTreeVector3Math2Node::m_mathFunction)
+            ->Field("defaultValue", &BlendTreeVector3Math2Node::m_defaultValue)
+            ;
+
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        const AZ::VectorFloat maxVecFloat = AZ::VectorFloat(std::numeric_limits<float>::max());
+        editContext->Class<BlendTreeVector3Math2Node>("Vector3 Math2", "Vector3 Math2 attributes")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeVector3Math2Node::m_mathFunction, "Math Function", "The math function to use.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeVector3Math2Node::Reinit)
+                ->EnumAttribute(MATHFUNCTION_DOT,          "Dot Product")
+                ->EnumAttribute(MATHFUNCTION_CROSS,        "Cross Product")
+                ->EnumAttribute(MATHFUNCTION_ADD,          "Add")
+                ->EnumAttribute(MATHFUNCTION_SUBTRACT,     "Subtract")
+                ->EnumAttribute(MATHFUNCTION_MULTIPLY,     "Multiply")
+                ->EnumAttribute(MATHFUNCTION_DIVIDE,       "Divide")
+                ->EnumAttribute(MATHFUNCTION_ANGLEDEGREES, "AngleDegrees")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeVector3Math2Node::m_defaultValue, "Default Value", "The default value for x or y when one of them has no incomming connection.")
+                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
+                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( maxVecFloat,  maxVecFloat,  maxVecFloat))
+            ;
     }
 } // namespace EMotionFX

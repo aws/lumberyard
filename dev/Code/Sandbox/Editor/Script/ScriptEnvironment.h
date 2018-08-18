@@ -18,7 +18,6 @@
 
 #include <ScriptHelpers.h>
 #include <AzCore/EBus/EBus.h>
-#include "CryScriptSystem/ScriptSystem.h"
 #include <AzCore/Script/ScriptSystemComponent.h>
 
 

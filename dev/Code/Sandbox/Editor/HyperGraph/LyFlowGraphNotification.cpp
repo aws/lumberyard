@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "LyFlowGraphNotification.h"
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>

@@ -15,7 +15,7 @@
 #include <QtGui>
 
 #include <AzCore/base.h>
-#include <AzCore/Memory/memory.h>
+#include <AzCore/Memory/Memory.h>
 
 #include "ClassReferenceFilter.hxx"
 

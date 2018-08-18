@@ -149,14 +149,14 @@ namespace LUAEditor
         connect(m_gui->m_luaTextEdit, SIGNAL(blockCountChanged(int)), m_gui->m_breakpoints, SLOT(OnBlockCountChange()));
         connect(m_gui->m_luaTextEdit->document(), SIGNAL(contentsChange(int, int, int)), m_gui->m_breakpoints, SLOT(OnCharsRemoved(int, int)));
         connect(m_gui->m_luaTextEdit, &LUAEditorPlainTextEdit::FocusChanged, this, &LUAViewWidget::OnPlainTextFocusChanged);
-        connect(m_gui->m_folding, &FoldingWidget::TextBlockFoldingChanged, [&]() {m_gui->m_breakpoints->update(); });
-        connect(m_gui->m_folding, &FoldingWidget::TextBlockFoldingChanged, [&]() {m_gui->m_luaTextEdit->update(); });
+        connect(m_gui->m_folding, &FoldingWidget::TextBlockFoldingChanged, this, [&]() {m_gui->m_breakpoints->update(); });
+        connect(m_gui->m_folding, &FoldingWidget::TextBlockFoldingChanged, this, [&]() {m_gui->m_luaTextEdit->update(); });
         connect(m_gui->m_luaTextEdit->document(), &QTextDocument::contentsChange, m_gui->m_folding, &FoldingWidget::OnContentChanged);
         connect(m_gui->m_luaTextEdit, &LUAEditorPlainTextEdit::ZoomIn, this, &LUAViewWidget::OnZoomIn);
         connect(m_gui->m_luaTextEdit, &LUAEditorPlainTextEdit::ZoomOut, this, &LUAViewWidget::OnZoomOut);
         connect(m_Highlighter, &LUASyntaxHighlighter::LUANamesInScopeChanged, m_gui->m_luaTextEdit, &LUAEditorPlainTextEdit::OnScopeNamesUpdated);
-        connect(m_gui->m_folding, &FoldingWidget::destroyed, [&]() {m_gui->m_folding = nullptr; });
-        connect(m_gui->m_breakpoints, &LUAEditorBreakpointWidget::destroyed, [&]() {m_gui->m_breakpoints = nullptr; });
+        connect(m_gui->m_folding, &FoldingWidget::destroyed, this, [&]() {m_gui->m_folding = nullptr; });
+        connect(m_gui->m_breakpoints, &LUAEditorBreakpointWidget::destroyed, this, [&]() {m_gui->m_breakpoints = nullptr; });
 
         m_gui->m_breakpoints->OnToggleBreakpoint = AZStd::bind(&LUAViewWidget::BreakpointToggle, this, AZStd::placeholders::_1);
         m_gui->m_breakpoints->OnBreakpointLineMoved = AZStd::bind(&LUAViewWidget::OnBreakpointLineMoved, this, AZStd::placeholders::_1, AZStd::placeholders::_2);

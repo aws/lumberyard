@@ -38,9 +38,16 @@ MAPPING_FILE_SUFFIX = 'awsLogicalMappings.json'
 RESOURCE_DEFINITIONS_PATH = "resource-definitions"
 S3_DELIMETER = "/"
 
+## Deployment
+DEPLOYMENT_RESOURCE_GROUP_SETTINGS = "deployment-resource-group-settings.json"
+RESOURCE_SETTINGS_FOLDER = "resource-settings"
+GEM_SETTINGS_NAME = "GemSettings"
+DEPLOYMENT_TAGS = "DeploymentTags"
+
 ## Gem
 GEM_DEFINITION_FILENAME = "gem.json"
 RESOURCE_GROUP_TEMPLATE_FILENAME = "resource-template.json"
+RESOURCE_GROUP_TEMPLATE_EXTENSIONS_FILENAME = "resource-template-extensions.json"
 GEM_AWS_DIRECTORY_NAME = "AWS"
 GEM_CODE_DIRECTORY_NAME = "Code"
 GEM_CGP_DIRECTORY_NAME = "cgp-resource-code"

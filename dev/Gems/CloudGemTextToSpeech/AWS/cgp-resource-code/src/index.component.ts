@@ -242,10 +242,12 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         }
         this.isLoadingSpeechLibrary = true;
         this.sortDir = "asc";
+        this.originalfilterTagList = JSON.parse(JSON.stringify(this.filterTagList));
         this._apiHandler.filter(body).subscribe(response => {
             let obj = JSON.parse(response.body.text());
             this.speechLibrary = obj.result.entries;
             this.sort(0, this.speechLibrary.length - 1, this.speechLibrary, "character", "asc");
+            this.filterTagList = [];
             this.updatePaginationInfo();
             this.updatePageContent(1);
             this.isLoadingSpeechLibrary = false;
@@ -744,7 +746,16 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
                 return;
             }
         }
-        let tag = { name: tagName, isSelected: false , count: 1};
+
+        let tagIsSelected = false;
+        for (let tag of this.originalfilterTagList) {
+            if (tag["name"] == tagName) {
+                tagIsSelected = tag["isSelected"];
+                break;
+            }
+        }
+
+        let tag = { name: tagName, isSelected: tagIsSelected , count: 1};
         this.filterTagList.push(tag);
     }
 
@@ -1075,6 +1086,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         this.currentSpeech = this.defaultSpeech();
         this.speechBeforeChange = this.defaultSpeech();
         this.sortDir = "asc";
+        this.originalfilterTagList = [];
         this.isLoadingSpeechLibrary = true;
         // Get the existing character names first to generate the dropdown box in the character column
         this._apiHandler.getCharacterNames().subscribe(response => {
@@ -1157,6 +1169,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             // Delete the existing speech first
             this._apiHandler.deleteSpeech(body).subscribe(response => {
                 this.deleteCharacterInUseFromList(this.speechBeforeChange.character);
+                this.originalfilterTagList = JSON.parse(JSON.stringify(this.filterTagList));
                 for (let tagName of this.speechBeforeChange.tags) {
                     this.deleteExistingTagFromList(tagName);
                 }

@@ -69,7 +69,6 @@ struct SParticleUpdateContext
         { return fDist < r.fDist; }
     };
     Array<SSortElem>        aParticleSort;
-    Array<SSortElem>        aFadeParticleSort;
 
     struct SSpaceLoop
     {
@@ -274,21 +273,10 @@ public:
     }
     void OffsetPosition(const Vec3& delta);
 
-    CParticleContainer* GetFadeEffectContainer()
-    {
-        return m_FadeEffectContainer;
-    }
     CLodInfo*   GetStartLod();
     void    SetEndLod(CLodInfo* lod);
     void    SetStartLod(CLodInfo* lod);
-
-    void SetFadeEffectContainer(CParticleContainer* container)
-    {
-        m_FadeEffectContainer = container;
-    }
-
-    void FillFadeParticleSortArray(SParticleUpdateContext& context);
-
+    
     float ComputeLodBlend(float distanceToCamera, float updateTime);
 
     void GetContainerBounds(Vec3& totalBounds);
@@ -325,8 +313,7 @@ private:
     CParticleContainer*                                         m_pParentContainer;         // Parent container, if indirect.
     CParticleEmitter*                                           m_pMainEmitter;             // Emitter owning this container.
     float                                                       m_fMaxParticleFullLife;     // Cached value indicating max update time necessary.
-    CParticleContainer*                                         m_FadeEffectContainer;      // Link to the fade effect. This is used for trails with non-camera facing fade.
-
+    
     SContainerCounts                                            m_Counts;                   // Counts for stats.
 
     //Level of Detail

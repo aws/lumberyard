@@ -1,0 +1,18 @@
+{
+    "none": {
+        "Source": [
+            "Source/CloudGemDefectReportSample_precompiled.cpp",
+            "Source/CloudGemDefectReportSample_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/CloudGemDefectReportSample/CloudGemDefectReportSampleBus.h"
+        ],
+        "Source": [
+            "Source/CloudGemDefectReportSampleModule.cpp",
+            "Source/CloudGemDefectReportSampleSystemComponent.cpp",
+            "Source/CloudGemDefectReportSampleSystemComponent.h"
+        ]
+    }
+}

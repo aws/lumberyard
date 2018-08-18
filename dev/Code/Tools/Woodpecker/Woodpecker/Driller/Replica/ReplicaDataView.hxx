@@ -22,7 +22,7 @@
 
 #include <QAbstractTableModel>
 #include <QtWidgets/QMainWindow>
-#include <QtWidgets/qdialog.h>
+#include <QtWidgets/QDialog>
 #include <qstyleditemdelegate.h>
 #include <qitemselectionmodel.h>
 

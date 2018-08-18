@@ -86,7 +86,7 @@
   <customwidget>
    <class>AudioControls::QSimpleAudioControlListWidget</class>
    <extends>QTreeWidget</extends>
-   <header>qsimpleaudiocontrollistwidget.h</header>
+   <header>QSimpleAudioControlListWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources>

@@ -354,15 +354,24 @@ int RunGame(const char* commandLine)
         EditorGameRequestBus::BroadcastResult(pGameStartup, &EditorGameRequestBus::Events::CreateGameStartup);
     }
 
-    if (!pGameStartup)
+    // The legacy IGameStartup and IGameFramework are now optional,
+    // if they don't exist we need to create CrySystem here instead.
+    if (!pGameStartup || !pGameStartup->Init(startupParams))
     {
-        fprintf(stderr, "ERROR: Failed to create the GameStartup Interface!\n");
-        RunGame_EXIT(1);
+    #if !defined(AZ_MONOLITHIC_BUILD)
+        HMODULE systemLib = CryLoadLibraryDefName("CrySystem");
+        PFNCREATESYSTEMINTERFACE CreateSystemInterface = systemLib ? (PFNCREATESYSTEMINTERFACE)CryGetProcAddress(systemLib, "CreateSystemInterface") : nullptr;
+        if (CreateSystemInterface)
+        {
+            startupParams.pSystem = CreateSystemInterface(startupParams);
+        }
+    #else
+        startupParams.pSystem = CreateSystemInterface(startupParams);
+    #endif // AZ_MONOLITHIC_BUILD
     }
 
     // run the game
-    IGame* game = pGameStartup->Init(startupParams);
-    if (game)
+    if (startupParams.pSystem)
     {
 #if !defined(SYS_ENV_AS_STRUCT)
         gEnv = startupParams.pSystem->GetGlobalEnvironment();
@@ -372,16 +381,20 @@ int RunGame(const char* commandLine)
         gEnv->pConsole->ExecuteString("exec autoexec.cfg");
 
         // Run the main loop
-        LumberyardLauncher::RunMainLoop(gameApp, *gEnv->pGame->GetIGameFramework());
+        LumberyardLauncher::RunMainLoop(gameApp);
     }
     else
     {
-        fprintf(stderr, "ERROR: Failed to initialize the GameStartup Interface!\n");
+        fprintf(stderr, "ERROR: Failed to initialize the CrySystem Interface!\n");
+        exitCode = 1;
     }
 
     // if initialization failed, we still need to call shutdown
-    pGameStartup->Shutdown();
-    pGameStartup = 0;
+    if (pGameStartup)
+    {
+        pGameStartup->Shutdown();
+        pGameStartup = 0;
+    }
 
     gameApp.Stop();
 

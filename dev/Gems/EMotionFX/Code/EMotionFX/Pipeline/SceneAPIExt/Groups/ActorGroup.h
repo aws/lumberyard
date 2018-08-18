@@ -46,7 +46,7 @@ namespace EMotionFX
                 void OverrideId(const AZ::Uuid& id);
 
                 AZ::SceneAPI::Containers::RuleContainer& GetRuleContainer() override;
-                const AZ::SceneAPI::Containers::RuleContainer& GetRuleContainerConst() const;
+                const AZ::SceneAPI::Containers::RuleContainer& GetRuleContainerConst() const override;
 
                 // ISceneNodeGroup overrides
                 AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& GetSceneNodeSelectionList() override;

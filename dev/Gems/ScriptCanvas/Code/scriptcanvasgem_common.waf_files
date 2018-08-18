@@ -207,7 +207,6 @@
         "Include/ScriptCanvas/Libraries/Entity": [
             "Include/ScriptCanvas/Libraries/Entity/Entity.cpp",
             "Include/ScriptCanvas/Libraries/Entity/Entity.h",
-            "Include/ScriptCanvas/Libraries/Entity/EntityNodes.h",
             "Include/ScriptCanvas/Libraries/Entity/EntityIDNode.h",
             "Include/ScriptCanvas/Libraries/Entity/EntityIDNodes.h",
             "Include/ScriptCanvas/Libraries/Entity/EntityRef.h",

@@ -30,7 +30,7 @@
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 
 #include "native/assetprocessor.h"
-#include "native/utilities/assetUtilEBusHelper.h"
+#include "native/utilities/AssetUtilEBusHelper.h"
 #include "native/utilities/ThreadHelper.h"
 #include "native/AssetManager/AssetCatalog.h"
 #include "native/AssetDatabase/AssetDatabase.h"
@@ -160,8 +160,8 @@ namespace AssetProcessor
 
         //////////////////////////////////////////////////////////////////////////
         // ProcessingJobInfoBus::Handler overrides
-        void BeginIgnoringCacheFileDelete(const AZStd::string productPath) override;
-        void StopIgnoringCacheFileDelete(const AZStd::string productPath, bool queueAgainForProcessing) override;
+        void BeginIgnoringCacheFileDelete(const char* productPath) override;
+        void StopIgnoringCacheFileDelete(const char* productPath, bool queueAgainForProcessing) override;
         //////////////////////////////////////////////////////////////////////////
 
         AZStd::shared_ptr<AssetDatabaseConnection> GetDatabaseConnection() const;
@@ -183,7 +183,7 @@ Q_SIGNALS:
         //! Emit whenever a new asset is found or an existing asset is updated
         void AssetMessage(QString platform, AzFramework::AssetSystem::AssetNotificationMessage message);
         
-        // InputAssetProcessed - uses absolute asset path of input file.
+        // InputAssetProcessed - uses absolute asset path of input file - no outputprefix
         void InputAssetProcessed(QString fullAssetPath, QString platform);
 
         void RequestInputAssetStatus(QString inputAssetPath, QString platform, QString jobDescription);
@@ -234,7 +234,7 @@ Q_SIGNALS:
         void OnRequestAssetExists(NetworkRequestID requestId, QString platform, QString searchTerm);
 
         //! Searches the product and source asset tables to try and find a match
-        QString GuessProductOrSourceAssetName(QString searchTerm, bool useLikeSearch);
+        QString GuessProductOrSourceAssetName(QString searchTerm,  QString platform, bool useLikeSearch);
 
         void RequestReady(NetworkRequestID requestId, BaseAssetProcessorMessage* message, QString platform, bool fencingFailed = false);
 
@@ -253,8 +253,8 @@ Q_SIGNALS:
         void CheckSource(const FileEntry& source);
         void CheckMissingJobs(QString relativeSourceFile, const ScanFolderInfo* scanFolder, const AZStd::vector<JobDetails>& jobsThisTime);
         void CheckDeletedProductFile(QString normalizedPath);
-        void CheckDeletedSourceFile(QString normalizedPath, QString relativeSourceFile);
-        void CheckModifiedSourceFile(QString normalizedPath, QString relativeSourceFile);
+        void CheckDeletedSourceFile(QString normalizedPath, QString databaseSourceFile);
+        void CheckModifiedSourceFile(QString normalizedPath, QString databaseSourceFile);
         bool AnalyzeJob(JobDetails& details, const ScanFolderInfo* scanFolder, bool& sentSourceFileChangedMessage);
         void CheckDeletedCacheFolder(QString normalizedPath);
         void CheckDeletedSourceFolder(QString normalizedPath, QString relativePath, const ScanFolderInfo* scanFolderInfo);
@@ -314,6 +314,8 @@ Q_SIGNALS:
 
         void ProcessCreateJobsResponse(AssetBuilderSDK::CreateJobsResponse& createJobsResponse, const AssetBuilderSDK::CreateJobsRequest& createJobsRequest);
 
+        void QueueIdleCheck();
+
         AssetProcessor::PlatformConfiguration* m_platformConfig = nullptr;
 
         bool m_queuedExamination = false;
@@ -327,9 +329,15 @@ Q_SIGNALS:
         typedef QHash<QString, FileEntry> FileExamineContainer;
         FileExamineContainer m_filesToExamine; // order does not actually matter in this (yet)
         
-        //! This map contains all source files are are not relevant anymore, the key is the absolute path of the file 
-        //! and the value is the relative path stored in the db
-        QMap<QString, QString> m_SourceFilesInDatabase;
+        // this map contains a list of source files that were discovered in the database before asset scanning began.
+        // (so files from a previous run).
+        // as asset scanning encounters files, it will remove them from this map, and when its done,
+        // it will thus contain only the files that were in the database from last time, but were NOT found during file scan
+        // in other words, files that have been deleted from disk since last run.
+        // the key to this map is the absolute path of the file from last run, but with the current scan folder setup
+        // and the value is the database sourcename
+        QMap<QString, QString> m_sourceFilesInDatabase;
+
         QSet<QString> m_knownFolders; // a cache of all known folder names, normalized to have forward slashes.
 
         typedef AZStd::unordered_map<AZ::u64, AzToolsFramework::AssetSystem::JobInfo> JobRunKeyToJobInfoMap;  // for when network requests come in about the jobInfo
@@ -373,6 +381,7 @@ Q_SIGNALS:
         AZStd::multimap<QString, QString> m_dependsOnSourceToSourceMap; //multimap since different source files can declare dependency on the same file
         AZStd::multimap <AZ::Uuid, QString > m_dependsOnSourceUuidToSourceMap; //multimap since different source files can declare dependency on the same file
         bool m_SourceDependencyInfoNeedsUpdate = false;
+        bool m_alreadyQueuedCheckForIdle = false;
     };
 } // namespace AssetProcessor
 

@@ -17,9 +17,9 @@
 #include <QtGui/QPainter>
 #include <QtWidgets/QStyleOption>
 #include <QtWidgets/QCheckBox>
-#include <QtWidgets/qstyle.h>
-#include <QGuiApplication.h>
-#include <QTimer.h>
+#include <QtWidgets/QStyle>
+#include <QGuiApplication>
+#include <QTimer>
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerBus.h>

@@ -20,8 +20,11 @@
 #include <AzFramework/Components/CameraBus.h>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
+
+#include <QDateTime>
 
 #include <LmbrCentral/Ai/NavigationAreaBus.h>
 #include <LmbrCentral/Rendering/DecalComponentBus.h>
@@ -33,7 +36,6 @@
 #include <LmbrCentral/Rendering/ParticleComponentBus.h>
 #include <LmbrCentral/Rendering/FogVolumeComponentBus.h>
 #include <LmbrCentral/Rendering/GeomCacheComponentBus.h>
-#include <LmbrCentral/Rendering/MeshAsset.h>
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 #include <LmbrCentral/Shape/SphereShapeComponentBus.h>
 #include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
@@ -56,8 +58,6 @@
 #include "Objects/DecalObject.h"
 #include "Objects/MiscEntities.h" //Has CGeomCacheEntity
 #include "Material/Material.h"
-
-#include <AzCore/Math/VectorConversions.h>
 
 namespace LegacyConversionInternal
 {
@@ -135,7 +135,6 @@ namespace LegacyConversionInternal
         AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath, meshFileName.c_str(), AZ::Data::s_invalidAssetType, false);
 
         AZ::Uuid meshComponentId = "{FC315B86-3280-4D03-B4F0-5553D7D08432}";
-        bool isCDF = false;
         // its okay for us to not have a mesh, but if we're using a CDF file as our mesh, we need to use a skinned mesh component instead
         if (assetId.IsValid())
         {
@@ -146,13 +145,18 @@ namespace LegacyConversionInternal
             {
                 // switch to a skinned mesh
                 meshComponentId = "{D3E1A9FC-56C9-4997-B56B-DA186EE2D62A}";
-                isCDF = true;
             }
         }
 
         AZ::ComponentTypeList componentsToAdd {
             meshComponentId
         };
+
+        if ((isBrush || isSimpleEntity) && physics)
+        {
+            componentsToAdd.push_back("{2D559EB0-F6FE-46E0-9FCE-E8F375177724}"); // rigid body collider (mesh) shape
+            componentsToAdd.push_back("{C8D8C366-F7B7-42F6-8B86-E58FFF4AF984}"); // static physics component
+        }
 
         AZ::Outcome<AZ::EntityId, LegacyConversionResult> conversionResult = CreateEntityForConversion(entityToConvert, componentsToAdd);
         if (!conversionResult.IsSuccess())
@@ -277,7 +281,7 @@ namespace LegacyConversionInternal
 
     /*
         This is used to invert the legacy IgnoreVisAreas param
-        to the new UseVisAreas param. 
+        to the new UseVisAreas param.
      */
     bool UseVisAreaAdapter(const bool& ignoreVisAreas)
     {
@@ -1513,6 +1517,98 @@ namespace LegacyConversionInternal
 
         return AZ::LegacyConversion::LegacyConversionResult::HandledDeleteEntity;
     }
+
+    LegacyConversionResult ConvertDesignerObject(CBaseObject* entityToConvert)
+    {
+        if (!IsClassOf(entityToConvert, "Designer"))
+        {
+            return LegacyConversionResult::Ignored;
+        }
+
+        IStatObj* statObj = entityToConvert->GetIStatObj();
+        if (statObj == nullptr)
+        {
+            return LegacyConversionResult::Failed;
+        }
+
+        AZStd::string levelName = "";
+        AzToolsFramework::EditorRequestBus::BroadcastResult(
+            levelName, &AzToolsFramework::EditorRequests::GetLevelName);
+
+        const QString designerObjectName = entityToConvert->GetName();
+        // where we should put the new converted meshes
+        const QString relativeDesignerObjectPath = "/Objects/DesignerConversion/";
+        
+        // create full path to new cgf file to be created
+        // group designer objects into the level they were created in (in order to prevent name collisions)
+        // note: it is not possible to have two designer objects named the same thing in a level
+        QString designerObjectAbsolutePath = Path::GetEditingGameDataFolder().c_str();
+        designerObjectAbsolutePath += relativeDesignerObjectPath + QString(levelName.c_str()) + "/" + designerObjectName;
+        designerObjectAbsolutePath = Path::ToUnixPath(Path::RemoveBackslash(designerObjectAbsolutePath));
+
+        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+        QString designerObjectDirectoryAbsolutePath = Path::GetPath(designerObjectAbsolutePath).toUtf8().data();
+        // create directory if it does not already exist
+        if (!fileIO->Exists(designerObjectDirectoryAbsolutePath.toUtf8().data()))
+        {
+            fileIO->CreatePath(designerObjectDirectoryAbsolutePath.toUtf8().data());
+        }
+
+        // if the designer object is intentionally hidden, set the material back to the default
+        // and ensure we set the visible state of the component to false
+        bool visible = true;
+        if ((statObj->GetMaterial()->GetFlags() & MTL_FLAG_NODRAW) != 0)
+        {
+            statObj->SetMaterial(gEnv->p3DEngine->GetMaterialManager()->GetDefaultMaterial());
+            visible = false;
+        }
+
+        // create the cgf file
+        const QString designerObjectAbsolutePathWithExtension = designerObjectAbsolutePath + ".cgf";
+        statObj->SaveToCGF(designerObjectAbsolutePathWithExtension.toUtf8().data());
+
+        // checkout P4 file
+        AzToolsFramework::SourceControlCommandBus::Broadcast(
+            &AzToolsFramework::SourceControlCommandBus::Events::RequestEdit,
+            designerObjectAbsolutePathWithExtension.toUtf8().data(), true,
+            [](bool /*success*/, const AzToolsFramework::SourceControlFileInfo& /*info*/){});
+
+        // create an asset id for the newly created file
+        AZ::Data::AssetId assetId;
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(
+            assetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
+            Path::GetRelativePath(designerObjectAbsolutePathWithExtension).toUtf8().data(),
+            azrtti_typeid<LmbrCentral::MeshAsset>(), true);
+
+        AZ::Outcome<AZ::EntityId, LegacyConversionResult> conversionResult =
+            CreateEntityForConversion(entityToConvert, {
+                "{FC315B86-3280-4D03-B4F0-5553D7D08432}", // MeshComponent
+                "{2D559EB0-F6FE-46E0-9FCE-E8F375177724}", // MeshColliderComponent
+                "{C8D8C366-F7B7-42F6-8B86-E58FFF4AF984}" // StaticPhysicsComponent
+            });
+
+        if (!conversionResult.IsSuccess())
+        {
+            return conversionResult.GetError();
+        }
+
+        const AZ::EntityId entityId = conversionResult.GetValue();
+        // set newly created mesh asset on MeshComponent
+        LmbrCentral::MeshComponentRequestBus::Event(
+            entityId, &LmbrCentral::MeshComponentRequests::SetMeshAsset, assetId);
+        LmbrCentral::MeshComponentRequestBus::Event(
+            entityId, &LmbrCentral::MeshComponentRequests::SetVisibility, visible);
+
+        AZ::Entity* entity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
+        // set transform to be static
+        SetVarHierarchy<bool>(entity, AZ::EditorTransformComponentTypeId, { AZ_CRC("IsStatic", 0x460427c9) }, true);
+
+        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(
+            &AzToolsFramework::ToolsApplicationRequests::AddDirtyEntity, entityId);
+            
+        return LegacyConversionResult::HandledDeleteEntity;
+    }
 }
 
 namespace AZ
@@ -1558,6 +1654,7 @@ namespace AZ
                 ConvertFogVolumeEntity,
                 ConvertDistanceClouds,
                 ConvertGeomCache,
+                ConvertDesignerObject,
             };
 
             for (EntityConvertFunc convertFunc : entityConvertFuncs)

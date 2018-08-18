@@ -28,7 +28,7 @@
 #include <native/utilities/PlatformConfiguration.h>
 #include <native/utilities/AssetBuilderInfo.h>
 #include <native/AssetManager/assetScanFolderInfo.h>
-#include <native/utilities/AssetUtils.h>
+#include <native/utilities/assetUtils.h>
 #include <native/resourcecompiler/RCBuilder.h>
 #include <native/assetprocessor.h>
 
@@ -86,35 +86,6 @@ namespace AssetProcessor
             AZStd::string m_location;
             AZStd::string m_assetPath;
         };
-
-        void ComputeFingerprints(unsigned int& fingerprintForPC, unsigned int& fingerprintForES3, PlatformConfiguration& config, QString filePath, QString relPath)
-        {
-            QString extraInfoForPC;
-            QString extraInfoForES3;
-            RecognizerPointerContainer output;
-            config.GetMatchingRecognizers(filePath, output);
-            for (const AssetRecognizer* assetRecogniser : output)
-            {
-                extraInfoForPC.append(assetRecogniser->m_platformSpecs["pc"].m_extraRCParams);
-                extraInfoForES3.append(assetRecogniser->m_platformSpecs["es3"].m_extraRCParams);
-                extraInfoForPC.append(assetRecogniser->m_version);
-                extraInfoForES3.append(assetRecogniser->m_version);
-            }
-
-            //Calculating fingerprints for the file for pc and es3 platforms
-            JobEntry jobEntryPC(filePath, relPath, 0, { "pc" ,{ "desktop", "renderer" } }, "", 0, 1, AZ::Uuid::CreateRandom());
-            JobEntry jobEntryES3(filePath, relPath, 0, { "es3", { "mobile", "renderer" } }, "", 0, 2, AZ::Uuid::CreateRandom());
-
-            JobDetails jobDetailsPC;
-            jobDetailsPC.m_extraInformationForFingerprinting = extraInfoForPC;
-            jobDetailsPC.m_jobEntry = jobEntryPC;
-            JobDetails jobDetailsES3;
-            jobDetailsES3.m_extraInformationForFingerprinting = extraInfoForES3;
-            jobDetailsES3.m_jobEntry = jobEntryES3;
-            fingerprintForPC = AssetUtilities::GenerateFingerprint(jobDetailsPC);
-            fingerprintForES3 = AssetUtilities::GenerateFingerprint(jobDetailsES3);
-        }
-    }
 
     // Adds a scan folder to the config and to the database
     void AddScanFolder(const ScanFolderInfo& scanFolderInfo, PlatformConfiguration& config, AssetDatabaseConnection* dbConn)
@@ -214,7 +185,7 @@ namespace AssetProcessor
         AZStd::string fullPath(fileToCheck.toStdString().c_str());
 
         EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relPath);
-        
+
         if (relPathfound != expectedToFind)
         {
             return false;
@@ -237,9 +208,9 @@ namespace AssetProcessor
         bool fullPathfound = false;
         AZStd::string fullPath;
         AZStd::string relPath(fileToCheck.toStdString().c_str());
-        
+
         EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-        
+
         if (fullPathfound != expectToFind)
         {
             return false;
@@ -247,9 +218,11 @@ namespace AssetProcessor
 
         QString output(fullPath.c_str());
         output.remove(0, tempPath.path().length() + 1); //adding one for the native separator
-        
+
         return (output == expectedPath);
     }
+
+    } // end anon namespace
 
     void AssetCatalogUnitTests::StartTest()
     {
@@ -257,9 +230,14 @@ namespace AssetProcessor
         AssetUtilities::ComputeAssetRoot(oldRoot);
         AssetUtilities::ResetAssetRoot();
 
+        // the canonicalization of the path here is to get around the fact that on some platforms
+        // the "temporary" folder location could be junctioned into some other folder and getting "QDir::current()"
+        // and other similar functions may actually return a different string but still be referring to the same folder   
         QTemporaryDir dir;
-        UnitTestUtils::ScopedDir changeDir(dir.path());
         QDir tempPath(dir.path());
+        QString canonicalTempDirPath = AssetUtilities::NormalizeDirectoryPath(tempPath.canonicalPath());
+        UnitTestUtils::ScopedDir changeDir(canonicalTempDirPath);
+        tempPath = QDir(canonicalTempDirPath);
         NetworkRequestID requestId(1, 1);
 
         FakeDatabaseLocationListener listener(tempPath.filePath("statedatabase.sqlite").toUtf8().constData(), "displayString");
@@ -336,10 +314,10 @@ namespace AssetProcessor
 
         // make sure it picked up the one in the current folder
 
-        QString normalizedDirPathCheck = AssetUtilities::NormalizeDirectoryPath(QDir::current().absoluteFilePath("Cache/" + gameName));
+        QString normalizedDirPathCheck = AssetUtilities::NormalizeDirectoryPath(tempPath.absoluteFilePath("Cache/" + gameName));
         UNIT_TEST_EXPECT_TRUE(normalizedCacheRoot == normalizedDirPathCheck);
         QDir normalizedCacheRootDir(normalizedCacheRoot);
-        
+
         // ----- Test the get asset path functions, which given a full path to an asset, checks the mappings and turns it into an Asset ID ---
         {
             // sanity check - make sure it does not crash or misbehave when given empty names
@@ -355,16 +333,17 @@ namespace AssetProcessor
 
             UNIT_TEST_EXPECT_TRUE(TestGetRelativeProductPath("", false, {""}));
             UNIT_TEST_EXPECT_TRUE(TestGetFullSourcePath("", tempPath, false, ""));
-            
+
             // Add a source file with 4 products
             {
                 AZ::s64 jobId;
                 bool result = AddSourceAndJob("subfolder3", "BaseFile.txt", dbConn.get(), jobId);
                 UNIT_TEST_EXPECT_TRUE(result);
 
+                AZ::u32 productSubId = 0;
                 for (auto& relativeProductPath : { "subfolder3/basefilez.arc2", "subfolder3/basefileaz.azm2", "subfolder3/basefile.arc2", "subfolder3/basefile.azm2" })
                 {
-                    ProductDatabaseEntry newProduct(jobId, 0, cacheRoot.relativeFilePath(relativeProductPath).toStdString().c_str(), AZ::Data::AssetType::CreateRandom());
+                    ProductDatabaseEntry newProduct(jobId, productSubId++, cacheRoot.relativeFilePath(relativeProductPath).toStdString().c_str(), AZ::Data::AssetType::CreateRandom());
                     dbConn->SetProduct(newProduct);
                 }
             }
@@ -426,9 +405,10 @@ namespace AssetProcessor
                 bool result = AddSourceAndJob("subfolder3", "somerandomfile.random", dbConn.get(), jobId);
                 UNIT_TEST_EXPECT_TRUE(result);
 
+                AZ::u32 productSubID = 0;
                 for (auto& product : pcouts)
                 {
-                    ProductDatabaseEntry newProduct(jobId, 0, cacheRoot.relativeFilePath(product).toStdString().c_str(), AZ::Data::AssetType::CreateRandom());
+                    ProductDatabaseEntry newProduct(jobId, productSubID++, cacheRoot.relativeFilePath(product).toStdString().c_str(), AZ::Data::AssetType::CreateRandom());
                     dbConn->SetProduct(newProduct);
                 }
             }
@@ -484,10 +464,15 @@ namespace AssetProcessor
         using namespace AZ::Data;
         using namespace AzToolsFramework;
 
+        // the canonicalization of the path here is to get around the fact that on some platforms
+        // the "temporary" folder location could be junctioned into some other folder and getting "QDir::current()"
+        // and other similar functions may actually return a different string but still be referring to the same folder   
         QTemporaryDir dir;
-        UnitTestUtils::ScopedDir changeDir(dir.path());
         QDir tempPath(dir.path());
-
+        QString canonicalTempDirPath = AssetUtilities::NormalizeDirectoryPath(tempPath.canonicalPath());
+        UnitTestUtils::ScopedDir changeDir(canonicalTempDirPath);
+        tempPath = QDir(canonicalTempDirPath);
+        
         CreateDummyFile(tempPath.absoluteFilePath("bootstrap.cfg"), QString("sys_game_folder=SamplesProject\n"));
 
         // system is already actually initialized, along with gEnv, so this will always return that game name.
@@ -529,7 +514,7 @@ namespace AssetProcessor
         AzFramework::StringFunc::Path::Join(cacheRootPath.c_str(), assetAProductRelPath.c_str(), assetAProductFullPath);
         CreateDummyFile(QString::fromUtf8(assetAProductFullPath.c_str()), "Its a product A"); // 15 bytes of data
 
-        auto getAssetInfoById = [this, assetA, assetAType, subfolder1AbsolutePath](bool expectedResult, AZStd::string expectedRelPath, AZStd::string expectedRootPath, AssetType assetType) -> bool
+        auto getAssetInfoById = [assetA, assetAType, subfolder1AbsolutePath](bool expectedResult, AZStd::string expectedRelPath, AZStd::string expectedRootPath, AssetType assetType) -> bool
         {
             bool result = false;
             AssetInfo assetInfo;
@@ -567,7 +552,7 @@ namespace AssetProcessor
             return result;
         };
 
-        auto getSourceInfoBySourcePath = [this](bool expectedResult, AZStd::string sourcePath, AZ::Uuid expectedUuid, AZStd::string expectedRelPath, AZStd::string expectedRootPath) -> bool
+        auto getSourceInfoBySourcePath = [](bool expectedResult, AZStd::string sourcePath, AZ::Uuid expectedUuid, AZStd::string expectedRelPath, AZStd::string expectedRootPath) -> bool
         {
             bool result = false;
             AssetInfo assetInfo;
@@ -594,7 +579,7 @@ namespace AssetProcessor
         //Test 1: Asset not in database
         UNIT_TEST_EXPECT_TRUE(getAssetInfoByIdPair(false, "", ""));
         UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(false, "", AZ::Uuid::CreateNull(), "", ""));
-        
+
         // Add asset to database
         AZ::s64 jobId;
         UNIT_TEST_EXPECT_TRUE(AddSourceAndJob("subfolder1", assetASourceRelPath.c_str(), dbConn.get(), jobId, assetA.m_guid));
@@ -607,7 +592,7 @@ namespace AssetProcessor
         AzFramework::AssetSystem::AssetNotificationMessage message(assetAProductRelPath.c_str(), AssetNotificationMessage::AssetChanged, assetAType);
         message.m_sizeBytes = 15;
         message.m_assetId = AZ::Data::AssetId(assetA.m_guid, 0);
-        assetCatalog.OnAssetMessage(CURRENT_PLATFORM, message);
+        assetCatalog.OnAssetMessage("pc", message);
 
         // also of note:  When looking up products, you don't get a root path since they are all in the cache.
         // its important here that we specifically get an empty root path.
@@ -621,7 +606,7 @@ namespace AssetProcessor
 
         // similar to the above, because its not the DB that is used for products, we have to inform the catalog that its gone
         message.m_type = AssetNotificationMessage::AssetRemoved;
-        assetCatalog.OnAssetMessage(CURRENT_PLATFORM, message);
+        assetCatalog.OnAssetMessage("pc", message);
 
         // Add to queue
         assetCatalog.OnSourceQueued(assetA.m_guid, assetALegacyUuid, subfolder1AbsolutePath.c_str(), assetASourceRelPath.c_str());
@@ -638,7 +623,7 @@ namespace AssetProcessor
 
         //Test 4: Asset in queue, registered as source asset
         UNIT_TEST_EXPECT_TRUE(getAssetInfoByIdPair(true, assetASourceRelPath, subfolder1AbsolutePath));
-        
+
         // these calls are identical to the two above, but should continue to work even though we have registered the asset type as a source asset type.
         UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetASourceRelPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str()));
         UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetAFullPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str()));
@@ -653,7 +638,7 @@ namespace AssetProcessor
         //Test 5: Asset in database, registered as source asset
         UNIT_TEST_EXPECT_TRUE(getAssetInfoByIdPair(true, assetASourceRelPath, subfolder1AbsolutePath));
 
-        // at this point the details about the asset in question is no longer in memory, only the database.  However, these calls should continue find the 
+        // at this point the details about the asset in question is no longer in memory, only the database.  However, these calls should continue find the
         // information, because the system is supposed check both the database AND the in-memory queue in the to find the info being requested.
         UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetASourceRelPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str()));
         UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetAFullPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str()));

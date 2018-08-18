@@ -34,6 +34,7 @@ class CMaterialImageListCtrl;
 class QMaterialImageListModel;
 
 class QTreeView;
+class QAction;
 
 struct IDataBaseItem;
 class CMaterialBrowserRecord;
@@ -117,7 +118,6 @@ public:
     void OnAddNewMultiMaterial();
     void OnConvertToMulti();
     void OnMergeMaterials();
-    bool eventFilter(QObject* watched, QEvent* event);
 
 public slots:
     void OnSelectionChanged();
@@ -229,6 +229,13 @@ private:
 
     bool m_bShowOnlyCheckedOut;
 
+    QAction* m_cutAction;
+    QAction* m_copyAction;
+    QAction* m_pasteAction;
+    QAction* m_duplicateAction;
+    QAction* m_deleteAction;
+    QAction* m_renameItemAction;
+    QAction* m_addNewMaterialAction;
 };
 
 #endif // CRYINCLUDE_EDITOR_MATERIAL_MATERIALBROWSER_H

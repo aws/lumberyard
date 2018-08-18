@@ -35,10 +35,11 @@ namespace LmbrCentral
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<AudioListenerComponent, AZ::Component>()
-                ->Version(1)
-                ->Field("Rotation Entity", &AudioListenerComponent::m_rotationEntity)
-                ->Field("Position Entity", &AudioListenerComponent::m_positionEntity)
-                ->Field("Fixed offset", &AudioListenerComponent::m_fixedOffset)
+                ->Version(2)
+                    ->Field("Rotation Entity", &AudioListenerComponent::m_rotationEntity)
+                    ->Field("Position Entity", &AudioListenerComponent::m_positionEntity)
+                    ->Field("Fixed offset", &AudioListenerComponent::m_fixedOffset)
+                    ->Field("EnableListener", &AudioListenerComponent::m_defaultListenerState)
                 ;
         }
 
@@ -46,9 +47,10 @@ namespace LmbrCentral
         {
             behaviorContext->EBus<AudioListenerComponentRequestBus>("AudioListenerComponentRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
-                ->Event("SetRotationEntity", &AudioListenerComponentRequestBus::Events::SetRotationEntity)
-                ->Event("SetPositionEntity", &AudioListenerComponentRequestBus::Events::SetPositionEntity)
-                ->Event("SetFullTransformEntity", &AudioListenerComponentRequestBus::Events::SetFullTransformEntity)
+                    ->Event("SetRotationEntity", &AudioListenerComponentRequestBus::Events::SetRotationEntity)
+                    ->Event("SetPositionEntity", &AudioListenerComponentRequestBus::Events::SetPositionEntity)
+                    ->Event("SetFullTransformEntity", &AudioListenerComponentRequestBus::Events::SetFullTransformEntity)
+                    ->Event("SetListenerEnabled", &AudioListenerComponentRequestBus::Events::SetListenerEnabled)
                 ;
         }
     }
@@ -57,13 +59,7 @@ namespace LmbrCentral
     void AudioListenerComponent::Activate()
     {
         m_transform = AZ::Transform::CreateIdentity();
-
-        m_listenerObjectId = INVALID_AUDIO_OBJECT_ID;
-        // todo: Change the ReserveID apis to return the ID instead of a bool
-        Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::ReserveAudioListenerID, m_listenerObjectId);
-        Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::SetAudioListenerOverrideID, m_listenerObjectId);
-
-        RefreshBusConnections(m_rotationEntity, m_positionEntity);
+        SetListenerEnabled(m_defaultListenerState);
 
         AudioListenerComponentRequestBus::Handler::BusConnect(GetEntityId());
     }
@@ -75,21 +71,39 @@ namespace LmbrCentral
         AZ::TransformNotificationBus::MultiHandler::BusDisconnect();
         AudioListenerComponentRequestBus::Handler::BusDisconnect();
 
-        Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::ReleaseAudioListenerID, m_listenerObjectId);
-        Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::SetAudioListenerOverrideID, INVALID_AUDIO_OBJECT_ID);
-        m_listenerObjectId = INVALID_AUDIO_OBJECT_ID;
+        if (m_listenerObjectId != INVALID_AUDIO_OBJECT_ID)
+        {
+            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::ReleaseAudioListenerID, m_listenerObjectId);
+            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::SetAudioListenerOverrideID, INVALID_AUDIO_OBJECT_ID);
+            m_listenerObjectId = INVALID_AUDIO_OBJECT_ID;
+        }
     }
 
     //=========================================================================
     void AudioListenerComponent::SetRotationEntity(const AZ::EntityId entityId)
     {
-        RefreshBusConnections(entityId, m_currentRotationEntity);
+        if (m_listenerObjectId != INVALID_AUDIO_OBJECT_ID)
+        {
+            RefreshBusConnections(entityId, m_currentPositionEntity);
+        }
+        else
+        {
+            m_currentRotationEntity = entityId;
+        }
+        
     }
 
     //=========================================================================
     void AudioListenerComponent::SetPositionEntity(const AZ::EntityId entityId)
     {
-        RefreshBusConnections(m_currentPositionEntity, entityId);
+        if (m_listenerObjectId != INVALID_AUDIO_OBJECT_ID)
+        {
+            RefreshBusConnections(m_currentRotationEntity, entityId);
+        }
+        else
+        {
+            m_positionEntity = entityId;
+        }
     }
 
     //=========================================================================
@@ -145,6 +159,31 @@ namespace LmbrCentral
     void AudioListenerComponent::OnEntityDeactivated(const AZ::EntityId& entityId)
     {
         AZ::TransformNotificationBus::MultiHandler::BusDisconnect(entityId);
+    }
+
+    void AudioListenerComponent::SetListenerEnabled(bool enabled)
+    {
+        if (enabled && m_listenerObjectId == INVALID_AUDIO_OBJECT_ID)
+        {
+            m_listenerObjectId = INVALID_AUDIO_OBJECT_ID;
+            // todo: Change the ReserveID apis to return the ID instead of a bool
+            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::ReserveAudioListenerID, m_listenerObjectId);
+            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::SetAudioListenerOverrideID, m_listenerObjectId);
+
+            RefreshBusConnections(m_rotationEntity, m_positionEntity);
+        }
+        else if (!enabled && m_listenerObjectId != INVALID_AUDIO_OBJECT_ID)
+        {
+            AZ::EntityBus::MultiHandler::BusDisconnect(m_currentRotationEntity);
+            AZ::EntityBus::MultiHandler::BusDisconnect(m_currentPositionEntity);
+
+            AZ::TransformNotificationBus::MultiHandler::BusDisconnect(m_currentRotationEntity);
+            AZ::TransformNotificationBus::MultiHandler::BusDisconnect(m_currentPositionEntity);
+
+            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::ReleaseAudioListenerID, m_listenerObjectId);
+            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::SetAudioListenerOverrideID, INVALID_AUDIO_OBJECT_ID);
+            m_listenerObjectId = INVALID_AUDIO_OBJECT_ID;
+        }
     }
 
     //=========================================================================

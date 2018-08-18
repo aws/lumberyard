@@ -29,7 +29,7 @@
 
 CStartupLogoDialog* CStartupLogoDialog::s_pLogoWindow = 0;
 
-CStartupLogoDialog::CStartupLogoDialog(QString versionText, QWidget* pParent /*=NULL*/)
+CStartupLogoDialog::CStartupLogoDialog(QString versionText, QString richTextCopyrightNotice, QWidget* pParent /*=NULL*/)
     : QWidget(pParent, Qt::Dialog | Qt::FramelessWindowHint)
     , m_ui(new Ui::StartupLogoDialog)
 {
@@ -43,6 +43,9 @@ CStartupLogoDialog::CStartupLogoDialog(QString versionText, QWidget* pParent /*=
     QFont smallFont(QStringLiteral("MS Shell Dlg 2"));
     smallFont.setPointSizeF(7.5);
     m_ui->m_TransparentConfidential->setFont(smallFont);
+
+    m_ui->m_TransparentConfidential->setTextFormat(Qt::RichText);
+    m_ui->m_TransparentConfidential->setText(richTextCopyrightNotice);
 
     QFont bigFont(QStringLiteral("MS Shell Dlg 2"));
     bigFont.setPointSizeF(12);

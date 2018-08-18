@@ -26,8 +26,6 @@
 #include "AttributeQuaternion.h"
 #include "AttributeColor.h"
 #include "AttributePointer.h"
-#include "AttributeArray.h"
-#include "AttributeSet.h"
 
 
 namespace MCore
@@ -193,7 +191,5 @@ namespace MCore
         RegisterAttribute(new AttributeQuaternion());
         RegisterAttribute(new AttributeColor());
         RegisterAttribute(new AttributePointer());
-        RegisterAttribute(new AttributeArray());
-        RegisterAttribute(new AttributeSet());
     }
 }   // namespace MCore

@@ -49,6 +49,7 @@ def _create_parser():
     parser.add_argument('-nofetch', action='store_true',help='Do not download a zip (Must already be present in the download directory)')
     parser.add_argument('-dependencies', action='store_true',help='Skip fetching and unpacking, only install dependencies')
     parser.add_argument('-noheaders', action='store_true',help='Skip installing headers')
+    parser.add_argument('-skiprestricted', action='store_true',help='Skip restricted platforms')
 
     return parser
 
@@ -149,16 +150,42 @@ def get_darwin():
 
     return darwin_clang
 
-def get_android():
+def get_android_v7_19():
     android_arm = {}
     android_arm['platform'] = 'android'
     android_arm['zipfile'] = 'aws-sdk-cpp-Android-Arm.zip'
     android_arm['libraries'] = get_default_library_list()
     android_arm['libextensions'] = ['.so', '.a']
-    android_arm['filter-lib-include'] = 'armeabi-v7a'
+    android_arm['filter-lib-include'] = 'armeabi-v7a-api-19'
     android_arm['custom_path'] = os.path.join('ndk_r12','android-19','armeabi-v7a','clang-3.8')
     android_arm['build_lib_folder'] = True
-    android_arm['name'] = 'android'
+    android_arm['name'] = 'androidv7-19'
+
+    return android_arm
+
+def get_android_v7_21():
+    android_arm = {}
+    android_arm['platform'] = 'android'
+    android_arm['zipfile'] = 'aws-sdk-cpp-Android-Arm.zip'
+    android_arm['libraries'] = get_default_library_list()
+    android_arm['libextensions'] = ['.so', '.a']
+    android_arm['filter-lib-include'] = 'armeabi-v7a-api-21'
+    android_arm['custom_path'] = os.path.join('ndk_r12','android-21','armeabi-v7a','clang-3.8')
+    android_arm['build_lib_folder'] = True
+    android_arm['name'] = 'androidv7-21'
+
+    return android_arm
+
+def get_android_v8():
+    android_arm = {}
+    android_arm['platform'] = 'android'
+    android_arm['zipfile'] = 'aws-sdk-cpp-Android-Arm.zip'
+    android_arm['libraries'] = get_default_library_list()
+    android_arm['libextensions'] = ['.so', '.a']
+    android_arm['filter-lib-include'] = 'arm64-v8a-api-21'
+    android_arm['custom_path'] = os.path.join('ndk_r12','android-21','arm64-v8a','clang-3.8')
+    android_arm['build_lib_folder'] = True
+    android_arm['name'] = 'androidv8'
 
     return android_arm
 
@@ -199,12 +226,15 @@ def get_platform_list(args):
     platform_list = []
 
     platform_list.append(get_windows_vs2015())
-    platform_list.append(get_windows_vs2013())
     platform_list.append(get_darwin())
     platform_list.append(get_ios())
-    platform_list.append(get_appletv())
-    platform_list.append(get_android())
+    platform_list.append(get_android_v7_19())
+    platform_list.append(get_android_v7_21())
+    platform_list.append(get_android_v8())
     platform_list.append(get_linux())
+
+    if not args.skiprestricted:
+        add_restricted_platform_list(platform_list)
 
     if args.platform is not None:
         platform_list = [ this_obj for this_obj in platform_list if re.search(args.platform, this_obj.get('name'), re.I) ]
@@ -215,7 +245,7 @@ def get_lib_prefix():
     return 'aws-cpp-sdk-'
 
 def fetch_item(platform_info, version_url, args):
-    if args.nofetch:
+    if args.nofetch or platform_info.get('nofetch'):
         print 'Skipping fetch'
         return True
     if args.dependencies:
@@ -254,17 +284,19 @@ def fetch_item(platform_info, version_url, args):
 def get_output_paths(platform_info, file_name):
     if not platform_info.get('build_lib_folder'):
         return [ file_name ]
+    full_path = file_name.replace('\\','/')
+    bin_lib_str = 'bin' if '/bin/' in full_path or full_path.startswith('bin/') else 'lib'
     return_dir, name_and_ext = os.path.split(file_name)
     path_base, debug_release = os.path.split(return_dir)
     custom_path = platform_info.get('custom_path','')
     if debug_release == 'Debug' or debug_release == 'Release':
-        return [ os.path.join('lib', platform_info.get('platform'), custom_path, debug_release, name_and_ext) ]
+        return [ os.path.join(bin_lib_str, platform_info.get('platform'), custom_path, debug_release, name_and_ext) ]
 
     print 'WARNING - Could not determine path for {} - Returning as Debug and Release'.format(file_name)
 
     return_strings = []
-    return_strings.append(os.path.join('lib', platform_info.get('platform'),'Debug', name_and_ext))
-    return_strings.append(os.path.join('lib', platform_info.get('platform'),'Release', name_and_ext))
+    return_strings.append(os.path.join(bin_lib_str, platform_info.get('platform'),'Debug', name_and_ext))
+    return_strings.append(os.path.join(bin_lib_str, platform_info.get('platform'),'Release', name_and_ext))
 
     return return_strings
 
@@ -333,13 +365,11 @@ def extract_item(platform_info, target_dir, args):
 
     read_zip.close()
 
-def cleanup_item(platform_info):
-    file_name = platform_info.get('zipfile')   
-
+def cleanup_item(file_name):
     try:
         os.remove(file_name)
         print 'Removed {}'.format(file_name)
-    except IOError as e:
+    except Exception as e:
         print 'Could not cleanup {} ({})'.format(file_name, e)
 
 def copy_dir(source_dir, dest_dir):
@@ -365,12 +395,27 @@ def copy_extras(platform_info, target_dir):
 
 def get_all_items(version_url, target_dir, args):
     file_list = get_platform_list(args) 
+    fetched_set = set()
 
     for thisEntry in file_list:
-        if fetch_item(thisEntry, version_url, args):
+        file_name = thisEntry.get('zipfile')
+        if fetch_item(thisEntry, version_url, args) or file_name in fetched_set:
             extract_item(thisEntry, target_dir, args)
-            if not args.noclean:
-                cleanup_item(thisEntry)
-        copy_extras(thisEntry, target_dir)
+            fetched_set.add(file_name)
+            copy_extras(thisEntry, target_dir)
+
+    if not args.noclean:
+        for file_name in fetched_set:
+            cleanup_item(file_name)
+
+def add_restricted_platform_list(platform_list):
+    try:
+        from restricted_platforms import add_restricted_platforms
+        add_restricted_platforms(platform_list, get_default_library_list())
+    except ImportError as e:
+        print 'No restricted module found - {}'.format(e.message)
+        return False
+    else:
+        return True
 
 main()

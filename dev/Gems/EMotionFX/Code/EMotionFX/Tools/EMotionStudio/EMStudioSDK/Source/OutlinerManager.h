@@ -12,8 +12,8 @@
 
 #pragma once
 
+#include <AzCore/Memory/Memory.h>
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/Memory/SystemAllocator.h>
 #include <MCore/Source/CommandGroup.h>
 #include "EMStudioConfig.h"
 #include <QString>
@@ -34,7 +34,8 @@ namespace EMStudio
     // OutlinerCategoryItem struct
     struct OutlinerCategoryItem
     {
-        AZ_CLASS_ALLOCATOR(OutlinerCategoryItem, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR_DECL
+
         OutlinerCategoryItem()
         {
             mID         = MCORE_INVALIDINDEX32;

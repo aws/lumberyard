@@ -856,13 +856,13 @@ TEST_F(ScriptCanvasTestFixture, ColorNodes)
     { // Dot
         auto result = a.Dot(b);
         auto output = TestMathFunction<DotNode>({ "Color: A", "Color: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(NumberType()) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // Dot3
         auto result = a.Dot3(b);
         auto output = TestMathFunction<Dot3Node>({ "Color: A", "Color: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(NumberType()) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // FromValues
@@ -1095,7 +1095,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
         auto source = AABBType::CreateFromMinMax(min3, max3);
         auto output = TestMathFunction<DepthNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetDepth();
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // DistanceNode
@@ -1103,7 +1103,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
         auto point = Vector3Type(100, 3000, 15879);
         auto output = TestMathFunction<DistanceNode>({ "AABB: Source", "Vector3: Point" }, { Datum(source), Datum(point) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetDistance(point);
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // ExpandNode
@@ -1190,7 +1190,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
         auto source = AABBType::CreateFromMinMax(min3, max3);
         auto output = TestMathFunction<LengthNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetHeight();
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // NullNode
@@ -1223,7 +1223,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
         auto source = AABBType::CreateFromMinMax(min3, max3);
         auto output = TestMathFunction<SurfaceAreaNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetSurfaceArea();
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // GetMaxNode
@@ -1249,7 +1249,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
         source.GetAsSphere(center, radiusVF);
         EXPECT_TRUE(center.IsClose(*output[0].GetAs<Vector3Type>()));
         float radius = radiusVF;
-        EXPECT_FLOAT_EQ(radius, aznumeric_caster(*output[1].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(radius, aznumeric_caster(*output[1].GetAs<NumberType>()));
     }
 
     { // TranslateNode
@@ -1264,7 +1264,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
         auto source = AABBType::CreateFromMinMax(min3, max3);
         auto output = TestMathFunction<WidthNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetWidth();
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 }
 
@@ -2015,21 +2015,21 @@ TEST_F(ScriptCanvasTestFixture, OBBNodes)
         auto source = obbRotated;
         auto output = TestMathFunction<GetHalfLengthXNode>({ "OBB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetHalfLengthX();
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     {// GetHalfLengthYNode
         auto source = obbRotated;
         auto output = TestMathFunction<GetHalfLengthYNode>({ "OBB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetHalfLengthY();
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     {// GetHalfLengthZNode
         auto source = obbRotated;
         auto output = TestMathFunction<GetHalfLengthZNode>({ "OBB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetHalfLengthZ();
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 #endif
 
@@ -2090,7 +2090,7 @@ TEST_F(ScriptCanvasTestFixture, PlaneNodes)
     { // DistanceToPointNode
         auto result = source.GetPointDist(point);
         auto output = TestMathFunction<DistanceToPointNode>({ "Plane: Source", "Vector3: Point" }, { Datum(source), Datum(point) }, { "Result: Number" }, { Datum(-1.0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // IsFiniteNode
@@ -2119,7 +2119,7 @@ TEST_F(ScriptCanvasTestFixture, PlaneNodes)
     { // GetDistanceNode
         auto result = source.GetDistance();
         auto output = TestMathFunction<GetDistanceNode>({ "Plane: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(-1) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // GetNormalNode
@@ -2134,7 +2134,7 @@ TEST_F(ScriptCanvasTestFixture, PlaneNodes)
 
         for (int i = 0; i < 4; ++i)
         {
-            EXPECT_FLOAT_EQ(result.GetElement(i), aznumeric_caster(*output[i].GetAs<Data::NumberType>()));
+            SC_EXPECT_FLOAT_EQ(result.GetElement(i), aznumeric_caster(*output[i].GetAs<Data::NumberType>()));
         }
     }
 
@@ -2394,7 +2394,7 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
     { // ToDeterminant3x3Node
         auto output = TestMathFunction<ToDeterminant3x3Node>({ "Transform: Source" }, { Datum(invertable) }, { "Result: Number" }, { Datum(0) });
         auto result = invertable.GetDeterminant3x3();
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 #endif
 
@@ -2407,7 +2407,7 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
                 auto result = invertable.GetElement(row, col);
                 float resultFloat = invertable.GetElement(row, col);
                 float outputFloat = aznumeric_caster(*output[0].GetAs<NumberType>());
-                EXPECT_FLOAT_EQ(resultFloat, outputFloat);
+                SC_EXPECT_FLOAT_EQ(resultFloat, outputFloat);
             }
         }
     }
@@ -2531,7 +2531,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type b(-3, -2);
         auto result = a.GetDistance(b);
         auto output = TestMathFunction<DistanceNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // DistanceSqr
@@ -2539,7 +2539,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type b(-3, -2);
         auto result = a.GetDistanceSq(b);
         auto output = TestMathFunction<DistanceSquaredNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     {   // DivideByNumber
@@ -2563,7 +2563,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type b(-3, -2);
         auto result = a.Dot(b);
         auto output = TestMathFunction<DotNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
@@ -2601,8 +2601,8 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
     { // GetElements
         auto source = Vector2Type(1, 2);
         auto output = TestMathFunction<GetElementsNode>({ "Vector2: Source" }, { Datum(source) }, { "X: Number", "Y: Number" }, { Datum(0), Datum(0) });
-        EXPECT_FLOAT_EQ(source.GetX(), aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
-        EXPECT_FLOAT_EQ(source.GetY(), aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(source.GetX(), aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(source.GetY(), aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
     }
 #endif
 
@@ -2681,14 +2681,14 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type source(1, 2);
         auto result = source.GetLength();
         auto output = TestMathFunction<LengthNode>({ "Vector2: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthSquared
         Data::Vector2Type source(1, 2);
         auto result = source.GetLengthSq();
         auto output = TestMathFunction<LengthSquaredNode>({ "Vector2: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // Lerp
@@ -2789,7 +2789,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         auto output = TestMathFunction<NormalizeWithLengthNode>({ "Vector2: Source" }, { Datum(source) }, { "Normalized: Vector2", "Length: Number" }, { Datum(zero), Datum(0) });
         auto result = source.NormalizeSafeWithLength();
         EXPECT_TRUE(source.IsClose(*output[0].GetAs<Data::Vector2Type>()));
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
     }
 #endif
 
@@ -2851,7 +2851,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
             float result = aznumeric_caster(Data::FromVectorFloat(source.GetElement(index)));
             auto output = TestMathFunction<GetElementNode>({ "Vector2: Source", "Number: Index" }, { Datum(source), Datum(index) }, { "Result: Number" }, { Datum(0) });
             float outputNumber = aznumeric_caster(*output[0].GetAs<Data::NumberType>());
-            EXPECT_FLOAT_EQ(result, outputNumber);
+            SC_EXPECT_FLOAT_EQ(result, outputNumber);
         }
     }
 
@@ -2951,7 +2951,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type b(-3, -2, -1);
         auto result = a.GetDistance(b);
         auto output = TestMathFunction<DistanceNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // DistanceSqr
@@ -2959,7 +2959,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type b(-3, -2, -1);
         auto result = a.GetDistanceSq(b);
         auto output = TestMathFunction<DistanceSquaredNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     {   // DivideByNumber
@@ -2983,7 +2983,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type b(-3, -2, -1);
         auto result = a.Dot(b);
         auto output = TestMathFunction<DotNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
@@ -3106,21 +3106,21 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type source(1, 2, 3);
         auto result = source.GetLength();
         auto output = TestMathFunction<LengthNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthReciprocal
         Data::Vector3Type source(1, 2, 3);
         auto result = source.GetLengthReciprocal();
         auto output = TestMathFunction<LengthReciprocalNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthSquared
         Data::Vector3Type source(1, 2, 3);
         auto result = source.GetLengthSq();
         auto output = TestMathFunction<LengthSquaredNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // Lerp
@@ -3231,7 +3231,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         auto output = TestMathFunction<NormalizeWithLengthNode>({ "Vector3: Source" }, { Datum(source) }, { "Normalized: Vector3", "Length: Number" }, { Datum(zero), Datum(0) });
         auto result = source.NormalizeSafeWithLength();
         EXPECT_TRUE(source.IsClose(*output[0].GetAs<Data::Vector3Type>()));
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
     }
 #endif
 
@@ -3301,7 +3301,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
             float result = aznumeric_caster(Data::FromVectorFloat(source.GetElement(index)));
             auto output = TestMathFunction<GetElementNode>({ "Vector3: Source", "Number: Index" }, { Datum(source), Datum(index) }, { "Result: Number" }, { Datum(0) });
             float outputNumber = aznumeric_caster(*output[0].GetAs<Data::NumberType>());
-            EXPECT_FLOAT_EQ(result, outputNumber);
+            SC_EXPECT_FLOAT_EQ(result, outputNumber);
         }
     }
 
@@ -3375,7 +3375,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector4Type b(-4, -3, -2, -1);
         auto result = a.Dot(b);
         auto output = TestMathFunction<DotNode>({ "Vector4: A", "Vector4: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
@@ -3384,7 +3384,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector3Type b(-4, -3, -2);
         auto result = a.Dot3(b);
         auto output = TestMathFunction<Dot3Node>({ "Vector4: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // From Element
@@ -3414,10 +3414,10 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
     { // GetElements
         auto source = Vector4Type(1, 2, 3, 4);
         auto output = TestMathFunction<GetElementsNode>({ "Vector4: Source" }, { Datum(source) }, { "X: Number", "Y: Number", "Z: Number", "W: Number" }, { Datum(0), Datum(0), Datum(0), Datum(0) });
-        EXPECT_FLOAT_EQ(source.GetX(), aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
-        EXPECT_FLOAT_EQ(source.GetY(), aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
-        EXPECT_FLOAT_EQ(source.GetZ(), aznumeric_caster(*output[2].GetAs<Data::NumberType>()));
-        EXPECT_FLOAT_EQ(source.GetW(), aznumeric_caster(*output[3].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(source.GetX(), aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(source.GetY(), aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(source.GetZ(), aznumeric_caster(*output[2].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(source.GetW(), aznumeric_caster(*output[3].GetAs<Data::NumberType>()));
     }
 #endif
 
@@ -3496,21 +3496,21 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector4Type source(1, 2, 3, 4);
         auto result = source.GetLength();
         auto output = TestMathFunction<LengthNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthReciprocal
         Data::Vector4Type source(1, 2, 3, 4);
         auto result = source.GetLengthReciprocal();
         auto output = TestMathFunction<LengthReciprocalNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthSquared
         Data::Vector4Type source(1, 2, 3, 4);
         auto result = source.GetLengthSq();
         auto output = TestMathFunction<LengthSquaredNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
@@ -3596,7 +3596,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         auto output = TestMathFunction<NormalizeWithLengthNode>({ "Vector4: Source" }, { Datum(source) }, { "Normalized: Vector4", "Length: Number" }, { Datum(zero), Datum(0) });
         auto result = source.NormalizeSafeWithLength();
         EXPECT_TRUE(source.IsClose(*output[0].GetAs<Data::Vector4Type>()));
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
     }
 #endif
 
@@ -3623,7 +3623,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
             float result = aznumeric_caster(Data::FromVectorFloat(source.GetElement(index)));
             auto output = TestMathFunction<GetElementNode>({ "Vector4: Source", "Number: Index" }, { Datum(source), Datum(index) }, { "Result: Number" }, { Datum(0) });
             float outputNumber = aznumeric_caster(*output[0].GetAs<Data::NumberType>());
-            EXPECT_FLOAT_EQ(result, outputNumber);
+            SC_EXPECT_FLOAT_EQ(result, outputNumber);
         }
     }
 
@@ -3672,7 +3672,7 @@ TEST_F(ScriptCanvasTestFixture, QuaternionNodes)
         Data::QuaternionType b(-4, -3, -2, -1);
         auto result = a.Dot(b);
         auto output = TestMathFunction<DotNode>({ "Quaternion: A", "Quaternion: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // From AxisAngleDegrees
@@ -3740,10 +3740,10 @@ TEST_F(ScriptCanvasTestFixture, QuaternionNodes)
     { // GetElements
         auto source = QuaternionType(1, 2, 3, 4);
         auto output = TestMathFunction<GetElementsNode>({ "Quaternion: Source" }, { Datum(source) }, { "X: Number", "Y: Number", "Z: Number", "W: Number" }, { Datum(0), Datum(0), Datum(0), Datum(0) });
-        EXPECT_FLOAT_EQ(source.GetX(), aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
-        EXPECT_FLOAT_EQ(source.GetY(), aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
-        EXPECT_FLOAT_EQ(source.GetZ(), aznumeric_caster(*output[2].GetAs<Data::NumberType>()));
-        EXPECT_FLOAT_EQ(source.GetW(), aznumeric_caster(*output[3].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(source.GetX(), aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(source.GetY(), aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(source.GetZ(), aznumeric_caster(*output[2].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(source.GetW(), aznumeric_caster(*output[3].GetAs<Data::NumberType>()));
     }
 #endif
 
@@ -3807,21 +3807,21 @@ TEST_F(ScriptCanvasTestFixture, QuaternionNodes)
         Data::QuaternionType source(1, 2, 3, 4);
         auto result = source.GetLength();
         auto output = TestMathFunction<LengthNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthReciprocal
         Data::QuaternionType source(1, 2, 3, 4);
         auto result = source.GetLengthReciprocal();
         auto output = TestMathFunction<LengthReciprocalNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthSquared
         Data::QuaternionType source(1, 2, 3, 4);
         auto result = source.GetLengthSq();
         auto output = TestMathFunction<LengthSquaredNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // Lerp
@@ -3875,7 +3875,7 @@ TEST_F(ScriptCanvasTestFixture, QuaternionNodes)
         auto output = TestMathFunction<NormalizeWithLengthNode>({ "Quaternion: Source" }, { Datum(source) }, { "Normalized: Quaternion", "Length: Number" }, { Datum(zero), Datum(0) });
         auto result = source.NormalizeWithLength();
         EXPECT_TRUE(source.IsClose(*output[0].GetAs<Data::QuaternionType>()));
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
     }
 #endif
 
@@ -3940,7 +3940,7 @@ TEST_F(ScriptCanvasTestFixture, QuaternionNodes)
         Data::QuaternionType source(Data::QuaternionType::CreateFromAxisAngle(Vector3Type(-1, 0, 0).GetNormalized(), 0.75));
         auto output = TestMathFunction<ToAngleDegreesNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         float result = AZ::RadToDeg(source.GetAngle());
-        EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
+        SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
@@ -3952,7 +3952,7 @@ TEST_F(ScriptCanvasTestFixture, QuaternionNodes)
             float result = aznumeric_caster(Data::FromVectorFloat(source.GetElement(index)));
             auto output = TestMathFunction<GetElementNode>({ "Quaternion: Source", "Number: Index" }, { Datum(source), Datum(index) }, { "Result: Number" }, { Datum(0) });
             float outputNumber = aznumeric_caster(*output[0].GetAs<Data::NumberType>());
-            EXPECT_FLOAT_EQ(result, outputNumber);
+            SC_EXPECT_FLOAT_EQ(result, outputNumber);
         }
     }
 #endif
@@ -4042,7 +4042,7 @@ TEST_F(ScriptCanvasTestFixture, RandomNodes)
             auto output = TestMathFunction<RandomNodes::RandomPointOnCircleNode>({ "Number: Radius" }, { Datum(radius) }, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
             auto value = *output[0].GetAs<Data::Vector3Type>();
             float lenSq = value.GetLengthSq();
-            EXPECT_FLOAT_EQ(lenSq, aznumeric_cast<float>(radius * radius));
+            SC_EXPECT_FLOAT_EQ(lenSq, aznumeric_cast<float>(radius * radius));
         }
     }
 
@@ -4124,7 +4124,7 @@ TEST_F(ScriptCanvasTestFixture, RandomNodes)
             auto output = TestMathFunction<RandomNodes::RandomPointOnSphereNode>({ "Number: Radius" }, { Datum(radius) }, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
             auto value = *output[0].GetAs<Data::Vector3Type>();
             float lenSq = value.GetLengthSq();
-            EXPECT_FLOAT_EQ(lenSq, aznumeric_cast<float>(radius * radius));
+            SC_EXPECT_FLOAT_EQ(lenSq, aznumeric_cast<float>(radius * radius));
         }
     }
 
@@ -4134,7 +4134,7 @@ TEST_F(ScriptCanvasTestFixture, RandomNodes)
             auto output = TestMathFunction<RandomNodes::RandomUnitVector2Node>({}, {}, { "Result: Vector2" }, { Datum(Data::Vector2Type()) });
             auto value = *output[0].GetAs<Data::Vector2Type>();
             float lenSq = value.GetLengthSq();
-            EXPECT_FLOAT_EQ(lenSq, 1.f);
+            SC_EXPECT_FLOAT_EQ(lenSq, 1.f);
         }
     }
 
@@ -4144,7 +4144,7 @@ TEST_F(ScriptCanvasTestFixture, RandomNodes)
             auto output = TestMathFunction<RandomNodes::RandomUnitVector3Node>({}, {}, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
             auto value = *output[0].GetAs<Data::Vector3Type>();
             float lenSq = value.GetLengthSq();
-            EXPECT_FLOAT_EQ(lenSq, 1.f);
+            SC_EXPECT_FLOAT_EQ(lenSq, 1.f);
         }
     }
 

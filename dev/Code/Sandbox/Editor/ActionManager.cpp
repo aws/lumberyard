@@ -70,6 +70,15 @@ bool PatchedAction::event(QEvent* ev)
             }
             else if (associatedWindow && focusWindow)
             {
+                /**
+                 * But do allow if the focused window is actually a floating dock widget.
+                 * For example, If Entity Outliner is floating, the gizmos (key 1, 2, 3 4) should still work.
+                 *
+                 * FIXME: But then why are those main toolbar actions using Qt::WindowShortcut instead of Qt::ApplicationShortcut ?
+                 * This block goes against what the original PatchedAction fixed.
+                 * Consider either removing it and using regular QActions, or using Qt::ApplicationShortcut
+                 * See also LY-35177
+                 */
                 QString focusWindowName = focusWindow->objectName();
                 if (focusWindowName.isEmpty())
                 {
@@ -85,7 +94,8 @@ bool PatchedAction::event(QEvent* ev)
             }
         }
 
-        // Bug detected. Consume the event instead of processing it.
+        // Bug detected: Qt is propagating a shortcut with context Qt::WindowShortcut outside of window boundaries
+        // Consume the event instead of processing it.
         qDebug() << "Discarding buggy shortcut";
         return true;
     }

@@ -123,7 +123,6 @@ void UiFlipbookAnimationComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiFlipbookAnimationBus>("UiFlipbookAnimationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("Start", &UiFlipbookAnimationBus::Events::Start)
             ->Event("Stop", &UiFlipbookAnimationBus::Events::Stop)
             ->Event("IsPlaying", &UiFlipbookAnimationBus::Events::IsPlaying)
@@ -144,7 +143,6 @@ void UiFlipbookAnimationComponent::Reflect(AZ::ReflectContext* context)
         ;
 
         behaviorContext->EBus<UiFlipbookAnimationNotificationsBus>("UiFlipbookAnimationNotificationsBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiFlipbookAnimationNotificationsBusBehaviorHandler>();
 
         behaviorContext->Enum<(int)UiFlipbookAnimationInterface::LoopType::None>("eUiFlipbookAnimationLoopType_None")

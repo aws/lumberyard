@@ -634,10 +634,24 @@ void CSplinePanel::OnInitDialog()
 
     auto valueChanged = static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged);
 
-    connect(m_ui->angleSpin, valueChanged, [&](double value) { m_pSpline->SetPointAngle(value); });
-    connect(m_ui->widthSpin, valueChanged, [&](double value) { m_pSpline->SetPointWidth(value); });
+    //
+    // NOTE: do not directly connect these signals to CSplineObject:: slots. m_pSpline is not yet set when OnInitDialog is called.
+    connect(m_ui->angleSpin, valueChanged, this, [&](double value) {
+        if (m_pSpline != nullptr)
+        {
+            m_pSpline->SetPointAngle(value);
+        }
+    });
+    connect(m_ui->widthSpin, valueChanged, this, [&](double value) {
+        if (m_pSpline != nullptr)
+        {
+            m_pSpline->SetPointWidth(value);
+        }
+    });
+    //
+
     connect(m_ui->defaultWidthCheck, &QCheckBox::stateChanged, this, &CSplinePanel::OnDefaultWidth);
-    connect(m_ui->editSplineButton, &QEditorToolButton::clicked, []()
+    connect(m_ui->editSplineButton, &QEditorToolButton::clicked, this, []()
         {
 		CMeasurementSystem::GetMeasurementSystem().ShutdownMeasurementSystem();
 	} );

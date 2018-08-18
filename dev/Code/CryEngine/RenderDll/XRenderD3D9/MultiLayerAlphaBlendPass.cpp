@@ -59,6 +59,15 @@ bool MultiLayerAlphaBlendPass::IsSupported()
 {
     if (m_supported == SupportLevel::UNKNOWN)
     {
+        // Disabled on NVIDIA hardware to avoid a crash
+        int gpuVendor = gRenDev->GetFeatures() & RFT_HW_MASK;
+        if (gpuVendor == RFT_HW_NVIDIA)
+        {
+            m_supported = SupportLevel::NOT_SUPPORTED;
+            AZ_Warning("Rendering", false, "This feature is currently disabled on NVIDIA hardware due to a bug in the NVIDIA driver that leads to a device timeout.");
+            return false;
+        }
+
         #if SUPPORTS_WINDOWS_10_SDK
 
         D3D11_FEATURE_DATA_D3D11_OPTIONS2 featureData;

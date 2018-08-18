@@ -16,7 +16,6 @@
 #include <iterator>
 #include <I3DEngine.h>
 #include <IParticles.h>
-#include <IJobManager_JobDelegator.h>
 
 
 //////////////////////////////////////////////////////////////////////////

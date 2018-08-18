@@ -68,7 +68,7 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 
     if (auto result = numberResultNode->GetInput_UNIT_TEST<Data::NumberType>("Set"))
     {
-        EXPECT_DOUBLE_EQ(7.0, *result);
+        SC_EXPECT_DOUBLE_EQ(7.0, *result);
     }
     else
     {
@@ -86,7 +86,7 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 
     if (auto result = numberResultNode->GetInput_UNIT_TEST<Data::NumberType>("Set"))
     {
-        EXPECT_DOUBLE_EQ(5.0, *result);
+        SC_EXPECT_DOUBLE_EQ(5.0, *result);
     }
     else
     {
@@ -108,7 +108,7 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 
     if (auto result = numberResultNode->GetInput_UNIT_TEST<Data::NumberType>("Set"))
     {
-        EXPECT_DOUBLE_EQ(1.0 + 4.0 + 8.0 + 16.0, *result);
+        SC_EXPECT_DOUBLE_EQ(1.0 + 4.0 + 8.0 + 16.0, *result);
     }
     else
     {
@@ -126,7 +126,7 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 
     if (auto result = numberResultNode->GetInput_UNIT_TEST<Data::NumberType>("Set"))
     {
-        EXPECT_DOUBLE_EQ(4.0 + 8.0 + 16.0, *result);
+        SC_EXPECT_DOUBLE_EQ(4.0 + 8.0 + 16.0, *result);
     }
     else
     {
@@ -882,7 +882,7 @@ TEST_F(ScriptCanvasTestFixture, ValueTypes)
     EXPECT_TRUE(AZ::IsClose(numberDoubleValue, 3.0, std::numeric_limits<double>::epsilon()));
 
     EXPECT_NE(number0Value, number1Value);
-    EXPECT_FLOAT_EQ(numberPiValue, 3.14f);
+    SC_EXPECT_FLOAT_EQ(numberPiValue, 3.14f);
 
     EXPECT_NE(number0Value, numberPiValue);
     EXPECT_NE(numberPiValue, numberDoublePiValue);
@@ -1063,7 +1063,7 @@ TEST_F(ScriptCanvasTestFixture, SerializationSaveTest)
 
     if (auto result = printNode->GetInput_UNIT_TEST<float>("Value"))
     {
-        EXPECT_FLOAT_EQ(*result, 16.0f);
+        SC_EXPECT_FLOAT_EQ(*result, 16.0f);
     }
     else
     {
@@ -1160,7 +1160,7 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_Graph)
 
         if (auto result = printNode->GetInput_UNIT_TEST<float>("Value"))
         {
-            EXPECT_FLOAT_EQ(*result, 16.0f);
+            SC_EXPECT_FLOAT_EQ(*result, 16.0f);
         }
         else
         {
@@ -1237,7 +1237,7 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_RuntimeComponent)
 
         if (auto result = printNode->GetInput_UNIT_TEST<float>("Value"))
         {
-            EXPECT_FLOAT_EQ(*result, 16.0f);
+            SC_EXPECT_FLOAT_EQ(*result, 16.0f);
         }
         else
         {
@@ -1355,8 +1355,6 @@ TEST_F(ScriptCanvasTestFixture, Contracts)
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
 }
-
-#if defined (SCRIPTCANVAS_ERRORS_ENABLED)
 
 TEST_F(ScriptCanvasTestFixture, Error)
 {
@@ -1727,9 +1725,6 @@ TEST_F(ScriptCanvasTestFixture, InfiniteLoopDetected)
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
 }
-
-#endif // SCRIPTCANAS_ERRORS_ENABLED
-
 
 TEST_F(ScriptCanvasTestFixture, BinaryOperationTest)
 {

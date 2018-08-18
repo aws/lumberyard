@@ -23,6 +23,24 @@
 namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    // AudioObjectIDFactory
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    const TAudioObjectID AudioObjectIDFactory::s_invalidAudioObjectID = INVALID_AUDIO_OBJECT_ID;
+    const TAudioObjectID AudioObjectIDFactory::s_globalAudioObjectID = GLOBAL_AUDIO_OBJECT_ID;
+    const TAudioObjectID AudioObjectIDFactory::s_minValidAudioObjectID = (GLOBAL_AUDIO_OBJECT_ID + 1);
+    const TAudioObjectID AudioObjectIDFactory::s_maxValidAudioObjectID = static_cast<TAudioObjectID>(-256);
+    // Beyond the max ID value, allow for a range of 255 ID values which will be reserved for the audio middleware.
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    // static
+    TAudioObjectID AudioObjectIDFactory::GetNextID()
+    {
+        static TAudioObjectID s_nextId = s_minValidAudioObjectID;
+
+        return (s_nextId <= s_maxValidAudioObjectID ? s_nextId++ : s_invalidAudioObjectID);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     //  CAudioEventManager
     ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -254,14 +272,9 @@ namespace Audio
     //  CAudioObjectManager
     ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // IDs below this number are reserved for the various unique
-    // objects inside the AudioSystem a user may want to address
-    // (e.g. an AudioManager, a MusicSystem, AudioListeners?...)
-    const TAudioObjectID CAudioObjectManager::s_nMinAudioObjectID = 100;
-
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CAudioObjectManager::CAudioObjectManager(CAudioEventManager& refAudioEventManager)
-        : m_cObjectPool(g_audioCVars.m_nAudioObjectPoolSize, s_nMinAudioObjectID)
+        : m_cObjectPool(g_audioCVars.m_nAudioObjectPoolSize, AudioObjectIDFactory::s_minValidAudioObjectID)
         , m_fTimeSinceLastVelocityUpdateMS(0.0f)
         , m_refAudioEventManager(refAudioEventManager)
     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
@@ -356,58 +369,6 @@ namespace Audio
         return bSuccess;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    class CObjectIDPredicate
-    {
-    public:
-        CObjectIDPredicate(const TAudioObjectID nID)
-            : m_nID(nID)
-        {}
-
-        ~CObjectIDPredicate() {}
-
-        bool operator()(const CATLAudioObject* const pObject)
-        {
-            return pObject->GetID() == m_nID;
-        }
-
-    private:
-        const TAudioObjectID m_nID;
-    };
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    bool CAudioObjectManager::ReserveThisID(const TAudioObjectID nAudioObjectID)
-    {
-        bool bSuccess = false;
-        CATLAudioObject* pObject = LookupID(nAudioObjectID);
-
-        if (!pObject)
-        {
-            //no active object uses nAudioObjectID, so we can create one
-            auto audioObjectIter = AZStd::find_if(m_cObjectPool.m_cReserved.begin(), m_cObjectPool.m_cReserved.end(), CObjectIDPredicate(nAudioObjectID));
-
-            if (audioObjectIter != m_cObjectPool.m_cReserved.end())
-            {
-                // there is a reserved instance with the required ID
-                AZStd::swap((*audioObjectIter), m_cObjectPool.m_cReserved.back());
-                pObject = m_cObjectPool.m_cReserved.back();
-                m_cObjectPool.m_cReserved.pop_back();
-            }
-            else
-            {
-                // none of the reserved instances have the required ID
-                IATLAudioObjectData* pObjectData = nullptr;
-                AudioSystemImplementationRequestBus::BroadcastResult(pObjectData, &AudioSystemImplementationRequestBus::Events::NewAudioObjectData, nAudioObjectID);
-                pObject = azcreate(CATLAudioObject, (nAudioObjectID, pObjectData), Audio::AudioSystemAllocator, "ATLAudioObject");
-            }
-
-            m_cAudioObjects.emplace(nAudioObjectID, pObject);
-
-            bSuccess = true;
-        }
-
-        return bSuccess;
-    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     bool CAudioObjectManager::ReleaseID(const TAudioObjectID nAudioObjectID)
@@ -545,7 +506,7 @@ namespace Audio
         else
         {
             //need to get a new instance
-            const TAudioObjectID nNewID = m_cObjectPool.GetNextID();
+            const TAudioObjectID nNewID = AudioObjectIDFactory::GetNextID();
             IATLAudioObjectData* pObjectData = nullptr;
             AudioSystemImplementationRequestBus::BroadcastResult(pObjectData, &AudioSystemImplementationRequestBus::Events::NewAudioObjectData, nNewID);
             pObject = azcreate(CATLAudioObject, (nNewID, pObjectData), Audio::AudioSystemAllocator, "ATLAudioObject");
@@ -605,7 +566,7 @@ namespace Audio
 
         for (size_t i = 0; i < m_cObjectPool.m_nReserveSize - numRegisteredObjects; ++i)
         {
-            const TAudioObjectID nObjectID = static_cast<TAudioObjectID>(m_cObjectPool.GetNextID());
+            const auto nObjectID = AudioObjectIDFactory::GetNextID();
             IATLAudioObjectData* pObjectData = nullptr;
             AudioSystemImplementationRequestBus::BroadcastResult(pObjectData, &AudioSystemImplementationRequestBus::Events::NewAudioObjectData, nObjectID);
             auto pObject = azcreate(CATLAudioObject, (nObjectID, pObjectData), Audio::AudioSystemAllocator, "ATLAudioObject");
@@ -726,12 +687,11 @@ namespace Audio
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CAudioListenerManager::CAudioListenerManager()
-        : m_nMaxNumberListeners(8)
-        , m_pDefaultListenerObject(nullptr)
-        , m_nDefaultListenerID(50) // IDs 50-57 are reserved for the AudioListeners.
+        : m_pDefaultListenerObject(nullptr)
+        , m_nDefaultListenerID(AudioObjectIDFactory::GetNextID())
         , m_listenerOverrideID(INVALID_AUDIO_OBJECT_ID)
     {
-        m_cListenerPool.reserve(m_nMaxNumberListeners);
+        m_cListenerPool.reserve(m_numReservedListeners);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -748,7 +708,7 @@ namespace Audio
         IATLListenerData* pNewListenerData = nullptr;
 
         // Default listener...
-        AudioSystemImplementationRequestBus::BroadcastResult(pNewListenerData, &AudioSystemImplementationRequestBus::Events::NewDefaultAudioListenerObjectData);
+        AudioSystemImplementationRequestBus::BroadcastResult(pNewListenerData, &AudioSystemImplementationRequestBus::Events::NewDefaultAudioListenerObjectData, m_nDefaultListenerID);
         m_pDefaultListenerObject = azcreate(CATLListenerObject, (m_nDefaultListenerID, pNewListenerData), Audio::AudioSystemAllocator, "ATLListenerObject-Default");
         if (m_pDefaultListenerObject)
         {
@@ -756,12 +716,12 @@ namespace Audio
         }
 
         // Additional listeners...
-        for (size_t i = 1; i < m_nMaxNumberListeners; ++i)
+        for (size_t listener = 0; listener < m_numReservedListeners; ++listener)
         {
-            const TAudioObjectID nListenerID = m_nDefaultListenerID + i;
-            AudioSystemImplementationRequestBus::BroadcastResult(pNewListenerData, &AudioSystemImplementationRequestBus::Events::NewAudioListenerObjectData, i);
-            auto pListenerObject = azcreate(CATLListenerObject, (nListenerID, pNewListenerData), Audio::AudioSystemAllocator, "ATLListenerObject");
-            m_cListenerPool.push_back(pListenerObject);
+            const TAudioObjectID listenerId = AudioObjectIDFactory::GetNextID();
+            AudioSystemImplementationRequestBus::BroadcastResult(pNewListenerData, &AudioSystemImplementationRequestBus::Events::NewAudioListenerObjectData, listenerId);
+            auto listenerObject = azcreate(CATLListenerObject, (listenerId, pNewListenerData), Audio::AudioSystemAllocator, "ATLListenerObject");
+            m_cListenerPool.push_back(listenerObject);
         }
     }
 
@@ -816,7 +776,7 @@ namespace Audio
         }
         else
         {
-            g_audioLogger.Log(eALT_WARNING, "CAudioListenerManager::ReserveID - Maximum number of Audio Listeners reached (%d)!", m_nMaxNumberListeners);
+            g_audioLogger.Log(eALT_WARNING, "CAudioListenerManager::ReserveID - Reserved pool of pre-allocated Audio Listeners has been exhausted!");
         }
 
         return bSuccess;
@@ -1905,7 +1865,7 @@ namespace Audio
                 rAuxGeom.Draw2dLabel(fPosX, fPosY, 1.2f,
                     pColor,
                     false,
-                    "%s on %s : %u",
+                    "%s on %s : %llu",
                     m_pDebugNameStore->LookupAudioTriggerName(atlEvent->m_nTriggerID),
                     m_pDebugNameStore->LookupAudioObjectName(atlEvent->m_nObjectID),
                     atlEvent->GetID());
@@ -2018,7 +1978,7 @@ namespace Audio
                 rAuxGeom.Draw2dLabel(fPosX, fPosY, 1.2f,
                     bHasActiveEvents ? fItemActiveColor : fItemInactiveColor,
                     false,
-                    "%u : %s",
+                    "%llu : %s",
                     audioObject->GetID(),
                     sOriginalName);
 

@@ -1,0 +1,12 @@
+{
+    "none": {
+        "Editor": [
+
+            "Editor/IStaticDataMonitor.h",
+            "Editor/StaticDataMonitor.cpp",
+            "Editor/StaticDataMonitor.h",
+            "Editor/StaticDataEditorGem.cpp"
+
+        ]
+    }
+}

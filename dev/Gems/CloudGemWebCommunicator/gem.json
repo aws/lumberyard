@@ -1,0 +1,25 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "327bb13034c1459da8478826edba71f1",
+    "Name": "CloudGemWebCommunicator",
+    "DisplayName": "Cloud Gem Web Communicator",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Allows persistent socket communications between your Cloud Gems and Game Clients/Servers over WebSocket or OpenSSL using AWS IoT.",
+    "Tags": ["AWS", "Cloud Canvas", "IoT", "Lambda", "DynamoDB"],
+    "IconPath": "wc_proj.png",
+    "Dependencies": [
+        {
+            "Uuid" : "6fc787a982184217a5a553ca24676cfa",
+            "VersionConstraints": [ "~>1.0" ],
+            "_comment": "CloudGemFramework"
+        },
+        {
+            "Uuid" : "102e23cf4c4c4b748585edbce2bbdc65",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudCanvasCommon"
+        }
+    ]
+}

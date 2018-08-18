@@ -114,7 +114,7 @@ protected:
     static volatile int s_dirtyCount;
 };
 
-typedef std::shared_ptr<CDeviceResourceSet> CDeviceResourceSetPtr;
+typedef AZStd::shared_ptr<CDeviceResourceSet> CDeviceResourceSetPtr;
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -136,6 +136,7 @@ protected:
     };
 
     CDeviceResourceLayout();
+    virtual ~CDeviceResourceLayout() = default;
 
     bool IsValid();
 
@@ -144,7 +145,7 @@ protected:
     VectorMap<uint32, CDeviceResourceSetPtr> m_ResourceSets;
 };
 
-typedef std::shared_ptr<CDeviceResourceLayout> CDeviceResourceLayoutPtr;
+typedef AZStd::shared_ptr<CDeviceResourceLayout> CDeviceResourceLayoutPtr;
 
 ////////////////////////////////////////////////////////////////////////////
 class CDeviceGraphicsPSODesc
@@ -245,8 +246,8 @@ protected:
 };
 
 typedef CDeviceGraphicsPSO*                 CDeviceGraphicsPSOPtr;
-typedef std::unique_ptr<CDeviceGraphicsPSO> CDeviceGraphicsPSOUPtr;
-typedef std::shared_ptr<CDeviceComputePSO>  CDeviceComputePSOPtr;
+typedef AZStd::unique_ptr<CDeviceGraphicsPSO> CDeviceGraphicsPSOUPtr;
+typedef AZStd::shared_ptr<CDeviceComputePSO>  CDeviceComputePSOPtr;
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -256,6 +257,7 @@ class CDeviceCommandList
 
 public:
     CDeviceCommandList() {};
+    virtual ~CDeviceCommandList() = default;
 
     void  SpecifyResourceUsage(/* resource, state */); // set => begin+end
     void AnnounceResourceUsage(/* resource, state */); // begin
@@ -282,6 +284,7 @@ public:
 
 public:
     CDeviceCopyCommandList(ECopyType eType = eCT_OffCardResources) {};
+    ~CDeviceCopyCommandList() override = default;
 
     void CopySubresourceRegion(D3DResource* pDstResource, UINT DstSubresource, UINT DstX, UINT DstY, UINT DstZ, D3DResource* pSrcResource, UINT SrcSubresource, const D3D11_BOX* pSrcBox, UINT CopyFlags);
     void CopyResource(D3DResource* pDstResource, ID3D11Resource* pSrcResource, UINT CopyFlags);
@@ -299,6 +302,7 @@ class CDeviceGraphicsCommandList
 public:
     CDeviceGraphicsCommandList()
         : CDeviceCopyCommandList(eCT_GraphicsResources) {}
+    ~CDeviceGraphicsCommandList() override = default;
 
     void SetRenderTargets(uint32 targetCount, CTexture** pTargets, SDepthTexture* pDepthTarget);
     void SetViewports(uint32 vpCount, const D3DViewPort* pViewports);
@@ -357,6 +361,7 @@ class CDeviceComputeCommandList
 public:
     CDeviceComputeCommandList()
         : CDeviceCopyCommandList(eCT_GenericResources) {}
+    ~CDeviceComputeCommandList() override = default;
 
     void SetPipelineState(CDeviceComputePSOPtr devicePSO);
     void SetResourceLayout(CDeviceResourceLayout* pResourceLayout);
@@ -380,17 +385,17 @@ protected:
     CDeviceComputePSOPtr m_pCurrentPipelineState;
 };
 
-typedef std::shared_ptr<CDeviceGraphicsCommandList> CDeviceGraphicsCommandListPtr;
-typedef std::shared_ptr<CDeviceComputeCommandList> CDeviceComputeCommandListPtr;
-typedef std::shared_ptr<CDeviceCopyCommandList> CDeviceCopyCommandListPtr;
+typedef AZStd::shared_ptr<CDeviceGraphicsCommandList> CDeviceGraphicsCommandListPtr;
+typedef AZStd::shared_ptr<CDeviceComputeCommandList> CDeviceComputeCommandListPtr;
+typedef AZStd::shared_ptr<CDeviceCopyCommandList> CDeviceCopyCommandListPtr;
 
 typedef CDeviceGraphicsCommandList& CDeviceGraphicsCommandListRef;
 typedef CDeviceComputeCommandList& CDeviceComputeCommandListRef;
 typedef CDeviceCopyCommandList& CDeviceCopyCommandListRef;
 
-typedef std::unique_ptr<CDeviceGraphicsCommandList> CDeviceGraphicsCommandListUPtr;
-typedef std::unique_ptr<CDeviceComputeCommandList> CDeviceComputeCommandListUPtr;
-typedef std::unique_ptr<CDeviceCopyCommandList> CDeviceCopyCommandListUPtr;
+typedef AZStd::unique_ptr<CDeviceGraphicsCommandList> CDeviceGraphicsCommandListUPtr;
+typedef AZStd::unique_ptr<CDeviceComputeCommandList> CDeviceComputeCommandListUPtr;
+typedef AZStd::unique_ptr<CDeviceCopyCommandList> CDeviceCopyCommandListUPtr;
 
 ////////////////////////////////////////////////////////////////////////////
 // Device Object Factory
@@ -491,10 +496,10 @@ typedef struct D3D11_VIEWPORT
     FLOAT MinDepth;
     FLOAT MaxDepth;
 }   D3D11_VIEWPORT;
-typedef std::shared_ptr<uint32> CDeviceResourceSetPtr;
+typedef AZStd::shared_ptr<uint32> CDeviceResourceSetPtr;
 typedef void*                 CDeviceGraphicsPSOPtr;
-typedef std::unique_ptr<uint32> CDeviceGraphicsPSOUPtr;
-typedef std::shared_ptr<uint32>  CDeviceComputePSOPtr;
+typedef AZStd::unique_ptr<uint32> CDeviceGraphicsPSOUPtr;
+typedef AZStd::shared_ptr<uint32>  CDeviceComputePSOPtr;
 typedef uint32& CDeviceGraphicsCommandListRef;
 typedef uint32& CDeviceComputeCommandListRef;
 typedef uint32& CDeviceCopyCommandListRef;

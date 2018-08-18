@@ -13,7 +13,7 @@
 
 #include "stdafx.h"
 #include "ConvertContext.h"
-#include "iconfig.h"
+#include "IConfig.h"
 #include "StatCGFCompiler.h"
 
 #include "../CryEngine/Cry3DEngine/CGF/CGFLoader.h"
@@ -277,7 +277,8 @@ static bool debugDumpCGF(const char* a_filename)
     string dumpFilename = a_filename;
     dumpFilename += ".dump";
 
-    FILE* f = fopen(dumpFilename.c_str(), "wt");
+    FILE* f = nullptr; 
+    azfopen(&f, dumpFilename.c_str(), "wt");
 
     if (f == 0)
     {
@@ -577,7 +578,7 @@ static bool debugDumpCGF(const char* a_filename)
 
     bool hasError = false;
 
-    fprintf(f, "mesh#: %lu\n", meshes.size());
+    fprintf(f, "mesh#: %zu\n", meshes.size());
     fprintf(f, "\n");
 
     for (int meshIdx = 0; meshIdx < meshes.size(); ++meshIdx)

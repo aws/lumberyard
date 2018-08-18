@@ -68,20 +68,4 @@ namespace EMotionFX
         mPose.InitFromBindPose(actorInstance);
     }
 
-
-    // blend into another pose
-    void AnimGraphPose::Blend(const AnimGraphPose* dest, float weight)
-    {
-        // blend the local pose transformations
-        mPose.Blend(&dest->GetPose(), weight);
-    }
-
-
-    // additively blend the other pose onto this pose
-    void AnimGraphPose::BlendAdditive(const AnimGraphPose* dest, float weight)
-    {
-        // blend the local pose transforms
-        mPose.BlendAdditive(&dest->GetPose(), weight);
-    }
 }   // namespace EMotionFX
-

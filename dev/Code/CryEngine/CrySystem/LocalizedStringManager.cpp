@@ -398,7 +398,7 @@ bool CLocalizedStringsManager::SetLanguage(const char* sLanguage)
     // Check if already language loaded.
     for (uint32 i = 0; i < m_languages.size(); i++)
     {
-        if (_stricmp(sLanguage, m_languages[i]->sLanguage) == 0)
+        if (azstricmp(sLanguage, m_languages[i]->sLanguage) == 0)
         {
             InternalSetCurrentLanguage(m_languages[i]);
             return true;
@@ -1106,7 +1106,7 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
                 break;
             case ELOCALIZED_COLUMN_IS_DIRECT_RADIO:
                 sTmp.assign(cell.ptr, cell.count);
-                if (!_stricmp(sTmp.c_str(), "intercept"))
+                if (!azstricmp(sTmp.c_str(), "intercept"))
                 {
                     bIsIntercepted = true;
                 }
@@ -1611,7 +1611,7 @@ bool CLocalizedStringsManager::LocalizeStringInternal(const char* pStr, size_t l
         }
 
         // find the end of the label
-        const char* pLabelEnd = strchr(pLabel, ' ');
+        const char* pLabelEnd = strpbrk(pLabel, " \n\t\r");
         if (!pLabelEnd)
         {
             pLabelEnd = pEnd;
@@ -1654,11 +1654,12 @@ static void LogDecompTimer(__int64 nTotalTicks, __int64 nDecompTicks, __int64 nA
         char szFilenameBuffer[MAX_PATH];
         time_t rawTime;
         time(&rawTime);
-        struct tm* pTimeInfo = localtime(&rawTime);
+        tm timeInfo;
+        localtime_s(&timeInfo, &rawTime);
 
         CreateDirectory("TestResults\\", 0);
-        strftime(szFilenameBuffer, sizeof(szFilenameBuffer), "TestResults\\Decomp_%Y_%m_%d-%H_%M_%S.csv", pTimeInfo);
-        pDecompLog = fopen(szFilenameBuffer, "wb");
+        strftime(szFilenameBuffer, sizeof(szFilenameBuffer), "TestResults\\Decomp_%Y_%m_%d-%H_%M_%S.csv", &timeInfo);
+        azfopen(&pDecompLog, szFilenameBuffer, "wb");
         fprintf(pDecompLog, "Total,Decomp,Alloc\n");
     }
     float nTotalMillis = float( g_fSecondsPerTick * 1000.0 * nTotalTicks );
@@ -2220,7 +2221,7 @@ namespace
         const LanguageID defaultLanguage = { "English", 0x409 };
         for (int i = 0; i < numLanguagesIDs; ++i)
         {
-            if (_stricmp(language, languageIDArray[i].language) == 0)
+            if (azstricmp(language, languageIDArray[i].language) == 0)
             {
                 return languageIDArray[i];
             }
@@ -2416,7 +2417,7 @@ void CLocalizedStringsManager::LocalizeTime(time_t t, bool bMakeLocalTime, bool 
     if (bMakeLocalTime)
     {
         struct tm thetime;
-        thetime = *localtime(&t);
+        localtime_s(&thetime, &t);
         t = gEnv->pTimer->DateToSecondsUTC(thetime);
     }
     outTimeString.resize(0);
@@ -2440,7 +2441,7 @@ void CLocalizedStringsManager::LocalizeDate(time_t t, bool bMakeLocalTime, bool 
     if (bMakeLocalTime)
     {
         struct tm thetime;
-        thetime = *localtime(&t);
+        localtime_s(&thetime, &t);
         t = gEnv->pTimer->DateToSecondsUTC(thetime);
     }
     outDateString.resize(0);
@@ -2486,11 +2487,19 @@ void CLocalizedStringsManager::LocalizeTime(time_t t, bool bMakeLocalTime, bool 
     struct tm theTime;
     if (bMakeLocalTime)
     {
+#ifdef AZ_COMPILER_MSVC
+        localtime_s(&theTime, &t);
+#else
         theTime = *localtime(&t);
+#endif
     }
     else
     {
-        theTime = *gmtime(&t);
+#ifdef AZ_COMPILER_MSVC
+        gmtime_s(&theTime, &t);
+#else
+        theTime = *localtime(&t);
+#endif
     }
 
     wchar_t buf[256];
@@ -2505,11 +2514,19 @@ void CLocalizedStringsManager::LocalizeDate(time_t t, bool bMakeLocalTime, bool 
     struct tm theTime;
     if (bMakeLocalTime)
     {
+#ifdef AZ_COMPILER_MSVC
+        localtime_s(&theTime, &t);
+#else
         theTime = *localtime(&t);
+#endif
     }
     else
     {
+#ifdef AZ_COMPILER_MSVC
+        gmtime_s(&theTime, &t);
+#else
         theTime = *gmtime(&t);
+#endif
     }
 
     wchar_t buf[256];

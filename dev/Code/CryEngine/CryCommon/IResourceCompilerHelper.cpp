@@ -11,6 +11,8 @@
 */
 #include "IResourceCompilerHelper.h"
 
+// DO NOT USE AZSTD.
+
 #include <string> // std string used here.
 #include <memory>
 
@@ -151,12 +153,8 @@ IResourceCompilerHelper::ERcCallResult IResourceCompilerHelper::ConvertResourceC
 
     case   eRcExitCode_FatalError:
         return eRcCallResult_error;
-
     case   eRcExitCode_Crash:
         return eRcCallResult_crash;
-
-    case   eRcExitCode_Pending:
-        return eRcCallResult_queued;
     }
     return eRcCallResult_error;
 }
@@ -175,8 +173,6 @@ const char* IResourceCompilerHelper::GetCallResultDescription(IResourceCompilerH
         return "ResourceCompiler exited with an error.";
     case eRcCallResult_crash:
         return "ResourceCompiler crashed! Please report this. Include source asset and this log in the report.";
-    case eRcCallResult_queued:
-        return "ResourceCompiler added to the background-processing queue.";
     default:
         return "Unexpected failure in ResultCompilerHelper.";
     }

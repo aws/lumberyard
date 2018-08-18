@@ -16,11 +16,11 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <AZCore/Component/TransformBus.h>
+#include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/time.h>
-#include <CryAction.h>
+#include <ILevelSystem.h>
 #include <ICryAnimation.h>
 #include <AzFramework/Physics/PhysicsSystemComponentBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
@@ -65,16 +65,14 @@ namespace StarterGameGem
 
     bool StarterGameUtility::IsGameStarted()
     {
-        //CCryAction* pCryAction = CCryAction::GetCryAction();
-        CCryAction* pCryAction = static_cast<CCryAction*>(gEnv->pGame->GetIGameFramework());
-        return pCryAction->IsGameStarted();
+        return gEnv->pSystem->GetILevelSystem()->IsLevelLoaded();
     }
 
     void StarterGameUtility::RestartLevel(const bool& fade)
     {
-        //CCryAction* pCryAction = CCryAction::GetCryAction();
-        CCryAction* pCryAction = static_cast<CCryAction*>(gEnv->pGame->GetIGameFramework());
-        pCryAction->ScheduleEndLevelNow(pCryAction->GetLevelName(), fade);
+        const char* levelName = gEnv->pSystem->GetILevelSystem()->GetCurrentLevel()->GetLevelInfo()->GetName();
+        gEnv->pSystem->GetILevelSystem()->UnLoadLevel();
+        gEnv->pSystem->GetILevelSystem()->LoadLevel(levelName);
     }
 	bool StarterGameUtility::IsLegacyCharacter(const AZ::EntityId& entityId)
 	{

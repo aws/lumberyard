@@ -210,7 +210,7 @@ void cvs_MD5Final(unsigned char digest[16], cvs_MD5Context& rCtx)
 */
 void cvs_MD5Transform(uint32_t buf[4], const unsigned char inraw[64])
 {
-    register uint32_t a, b, c, d;
+    uint32_t a, b, c, d;
     uint32_t in[16];
     int i;
 

@@ -39,6 +39,7 @@ namespace LmbrCentral
     using AzFramework::PhysicsComponentNotificationBus;
     using AzFramework::PhysicsSystemRequestBus;
     using AzFramework::PhysicsSystemEventBus;
+    using AzFramework::PhysicalEntityTypes;
 
     // Class for putting ent_* flags on
     class PhysicalEntityTypesHolder
@@ -49,35 +50,40 @@ namespace LmbrCentral
 
         PhysicalEntityTypesHolder() = default;
         ~PhysicalEntityTypesHolder() = default;
+
+        static PhysicalEntityTypes ToggleEntityTypeMask(PhysicalEntityTypes currentEntityType, PhysicalEntityTypes entityTypeToggleValue)
+        {
+            return static_cast<PhysicalEntityTypes>(currentEntityType ^ entityTypeToggleValue);
+        }
     };
 
     AZ::u32 EntFromEntityTypes(AZ::u32 types)
     {
         // Shortcut when requesting all entities
-        if (types == AzFramework::PhysicalEntityTypes::All)
+        if (types == PhysicalEntityTypes::All)
         {
             return ent_all;
         }
 
         AZ::u32 result = 0;
 
-        if (types & AzFramework::PhysicalEntityTypes::Static)
+        if (types & PhysicalEntityTypes::Static)
         {
             result |= ent_static;
         }
-        if (types & AzFramework::PhysicalEntityTypes::Dynamic)
+        if (types & PhysicalEntityTypes::Dynamic)
         {
             result |= ent_rigid | ent_sleeping_rigid;
         }
-        if (types & AzFramework::PhysicalEntityTypes::Living)
+        if (types & PhysicalEntityTypes::Living)
         {
             result |= ent_living;
         }
-        if (types & AzFramework::PhysicalEntityTypes::Independent)
+        if (types & PhysicalEntityTypes::Independent)
         {
             result |= ent_independent;
         }
-        if (types & AzFramework::PhysicalEntityTypes::Terrain)
+        if (types & PhysicalEntityTypes::Terrain)
         {
             result |= ent_terrain;
         }
@@ -129,7 +135,6 @@ namespace LmbrCentral
         {
             serializeContext->Class<PhysicsSystemComponent, AZ::Component>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
             ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -152,7 +157,7 @@ namespace LmbrCentral
 
             serializeContext->Class<RayCastResult>()
                 ->Version(1)
-                ->SerializerForEmptyClass()
+                ->SerializeWithNoData()
                 ;
 
             serializeContext->Class<RayCastConfiguration>()
@@ -225,6 +230,10 @@ namespace LmbrCentral
                 ->Constant("All", BehaviorConstant(AzFramework::PhysicalEntityTypes::All))
                 ;
 
+            // Global function for bitwise toggle to configure ray casting entity types.
+            // Bit manipulation for Lua is disabled for security purposes.
+            behaviorContext->Method("TogglePhysicalEntityTypeMask", &PhysicalEntityTypesHolder::ToggleEntityTypeMask);
+
             behaviorContext->EBus<PhysicsSystemRequestBus>("PhysicsSystemRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("RayCast", &PhysicsSystemRequestBus::Events::RayCast)
@@ -279,7 +288,7 @@ namespace LmbrCentral
         static int GetSurfaceId(const EventPhysStereo& event, int entityIndex)
         {
             AZ_Assert(entityIndex >= 0 && entityIndex <= 1, "invalid entityI");
-            
+
             _smart_ptr<IMaterial> mat = nullptr;
             int type = event.iForeignData[entityIndex];
 
@@ -315,7 +324,7 @@ namespace LmbrCentral
             {
                 return 0;
             }
-            
+
             return mat->GetSurfaceType()->GetId();
         }
 
@@ -517,7 +526,7 @@ namespace LmbrCentral
 
         return gatheredEntityIds;
     }
-    
+
     AZStd::vector<AZ::EntityId> PhysicsSystemComponent::GatherPhysicalEntitiesAroundPoint(const AZ::Vector3& center, float radius, AZ::u32 query)
     {
         const float radiusSq = radius * radius;
@@ -545,7 +554,7 @@ namespace LmbrCentral
     {
         EBUS_EVENT(PhysicsSystemEventBus, OnPrePhysicsUpdate);
     }
-    
+
     void PhysicsSystemComponent::OnCrySystemPostPhysicsUpdate()
     {
         EBUS_EVENT(PhysicsSystemEventBus, OnPostPhysicsUpdate);

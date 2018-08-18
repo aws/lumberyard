@@ -37,7 +37,6 @@ namespace MCore
 
         MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(mValue.data()); }
         MCORE_INLINE uint32 GetRawDataSize() const                  { return static_cast<uint32>(mValue.size()); }
-        bool GetSupportsRawDataPointer() const override             { return true; }
 
         // adjust values
         MCORE_INLINE const char* AsChar() const                     { return mValue.c_str(); }
@@ -109,35 +108,5 @@ namespace MCore
             return true;
         }
 
-        // write to a stream
-        bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override
-        {
-            // write the number of characters
-            if (mValue.size() > 0)
-            {
-                uint32 numCharacters = static_cast<uint32>(mValue.size());
-                Endian::ConvertUnsignedInt32To(&numCharacters, targetEndianType);
-                if (stream->Write(&numCharacters, sizeof(uint32)) == 0)
-                {
-                    return false;
-                }
-
-                if (stream->Write(mValue.data(), mValue.size()) == 0)
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                uint32 numCharacters = 0;
-                Endian::ConvertUnsignedInt32To(&numCharacters, targetEndianType);
-                if (stream->Write(&numCharacters, sizeof(uint32)) == 0)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
     };
 }   // namespace MCore

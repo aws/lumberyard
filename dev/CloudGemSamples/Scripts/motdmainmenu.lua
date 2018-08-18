@@ -8,7 +8,7 @@ motdmainmenu =
 function motdmainmenu:OnActivate()
 	-- For handling tick events.
     self.tickBusHandler = TickBus.Connect(self,self.entityId);
-	
+
 	self.messageQueue = {}
 	self.displayTimer = 0.0
 
@@ -21,11 +21,11 @@ function motdmainmenu:OnActivate()
     util.SetMouseCursorVisible(true)
 
     self.notificationHandler = CloudGemMessageOfTheDayNotificationBus.Connect(self, self.entityId)
-	
+
 end
 
 function motdmainmenu:OnTick(deltaTime,timePoint)
-	
+
 	local queueSize = table.getn(self.messageQueue)
 	if(queueSize > 0) then
 		self.displayTimer = self.displayTimer - deltaTime
@@ -45,8 +45,6 @@ function motdmainmenu:OnTick(deltaTime,timePoint)
 			self.displayTimer = 3.0
 		end
 	end
-		
-
 end
 
 function motdmainmenu:OnDeactivate()
@@ -61,14 +59,14 @@ function motdmainmenu:OnGetPlayerMessagesRequestSuccess(response)
     self.displayTimer = 0.0
     Debug.Log("Response messages: "..tostring(#response.list));
     --This is a callback from C++ with an object containing a vector called list.
-    --Therefore we cannot treat it as a regular Lua table and must rely on the reflected methods and operators of the reflected vector class 
+    --Therefore we cannot treat it as a regular Lua table and must rely on the reflected methods and operators of the reflected vector class
     --for msgCount = 1, table.getn(response) do
     --    Debug.Log(response[msgCount])
     --    table.insert(self.messageQueue, response[msgCount])
     for msgCount = 1, #response.list do
         Debug.Log(tostring(response.list[msgCount].message))
 		table.insert(self.messageQueue, response.list[msgCount])
-	
+
     end
 end
 
@@ -84,7 +82,7 @@ function motdmainmenu:OnAction(entityId, actionName)
             Debug.Log("No Message Request Event found")
             return
         end
-        
+
         local timeVal = os.date("!%b %d %Y %H:%M")
         local lang = "Eng"
         Debug.Log(timeVal);

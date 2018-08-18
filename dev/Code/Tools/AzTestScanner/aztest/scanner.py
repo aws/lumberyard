@@ -14,7 +14,7 @@ import os
 import sys
 import json
 from aztest.common import create_output_directory, create_xml_output_filename, ModuleType, MODULE_UNIT_EXPORT_SYMBOL, \
-    MODULE_INTEG_EXPORT_SYMBOL, EXECUTABLE_EXPORT_SYMBOL, ScanResult
+    MODULE_INTEG_EXPORT_SYMBOL, EXECUTABLE_EXPORT_SYMBOL, ScanResult, SubprocessTimeoutException
 from aztest.filters import FileApprover, get_default_blacklist, get_default_whitelist
 from aztest.log import setup_logging
 from aztest.report import HTMLReporter, XMLGenerator
@@ -110,11 +110,15 @@ def scan_one(args, extra, type_, scanner, runner_path, bootstrap_config, file_na
         if not ran_with_bootstrapper:
             if scanner.exports_symbol(file_name, export_symbol):
                 try:
-                    ret = scanner.call(file_name, export_symbol, runner_path, args=cmd_args)
+                    ret = scanner.call(file_name, export_symbol, runner_path, args=cmd_args, timeout=args.module_timeout)
                     logger.debug("Code returned from call: {}".format(ret))
 
                 except KeyboardInterrupt:
                     raise
+
+                except SubprocessTimeoutException as ste:
+                    ret = RunnerReturnCodes.MODULE_TIMEOUT
+                    logger.exception(ste.message)
 
                 except:
                     ret = RunnerReturnCodes.UNEXPECTED_EXCEPTION
@@ -127,10 +131,14 @@ def scan_one(args, extra, type_, scanner, runner_path, bootstrap_config, file_na
         if scanner.exports_symbol(file_name, EXECUTABLE_EXPORT_SYMBOL):
             try:
                 cmd_args = ["--unittest"] + cmd_args
-                ret = scanner.run(file_name, args=cmd_args)
+                ret = scanner.run(file_name, args=cmd_args, timeout=args.module_timeout)
 
             except KeyboardInterrupt:
                 raise
+
+            except SubprocessTimeoutException as ste:
+                ret = RunnerReturnCodes.MODULE_TIMEOUT
+                logger.exception(ste.message)
 
             except:
                 ret = RunnerReturnCodes.UNEXPECTED_EXCEPTION

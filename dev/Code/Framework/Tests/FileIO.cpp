@@ -319,12 +319,9 @@ namespace UnitTest
                 AZ_TEST_ASSERT(local.CreatePath(fileRoot.c_str()));
                 AZ_TEST_ASSERT(local.IsDirectory(fileRoot.c_str()));
 
-#ifdef AZ_COMPILER_MSVC
-                FILE* tempFile;
-                fopen_s(&tempFile, file01Name.c_str(), "wb");
-#else
-                FILE* tempFile = fopen(file01Name.c_str(), "wb");
-#endif
+                FILE* tempFile = nullptr;
+                azfopen(&tempFile, file01Name.c_str(), "wb");
+
                 fwrite("this is just a test", 1, 19, tempFile);
                 fclose(tempFile);
 
@@ -718,6 +715,22 @@ namespace UnitTest
                 AZ_TEST_ASSERT(resolveDidWork);
                 AZStd::string expectedResolvedPath = folderName + "some/path/somefile.txt";
                 AZ_TEST_ASSERT(aliasResolvedPath == expectedResolvedPath);
+
+                // Test that sending in a too small output path fails,
+                // if the output buffer is smaller than the string being resolved
+                size_t SMALLER_THAN_PATH_BEING_RESOLVED = strlen(aliasTestPath) - 1;
+                AZ_TEST_START_ASSERTTEST;
+                resolveDidWork = local.ResolvePath(aliasTestPath, aliasResolvedPath, SMALLER_THAN_PATH_BEING_RESOLVED);
+                AZ_TEST_STOP_ASSERTTEST(1);
+                AZ_TEST_ASSERT(!resolveDidWork);
+
+                // Test that sending in a too small output path fails,
+                // if the output buffer is too small to hold the resolved path
+                size_t SMALLER_THAN_FINAL_RESOLVED_PATH = expectedResolvedPath.length() - 1;
+                AZ_TEST_START_ASSERTTEST;
+                resolveDidWork = local.ResolvePath(aliasTestPath, aliasResolvedPath, SMALLER_THAN_FINAL_RESOLVED_PATH);
+                AZ_TEST_STOP_ASSERTTEST(1);
+                AZ_TEST_ASSERT(!resolveDidWork);
 
                 // test clearing an alias
                 local.ClearAlias("@test@");

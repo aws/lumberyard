@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzCore/Serialization/SerializeContext.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphTransitionCondition.h"
 #include "EventManager.h"
@@ -18,15 +19,11 @@
 
 namespace EMotionFX
 {
-    AnimGraphTransitionCondition::AnimGraphTransitionCondition(AnimGraph* animGraph, uint32 typeID)
-        : AnimGraphObject(animGraph, typeID)
-    {
-        mPreviousTestResult = false;
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphTransitionCondition, AnimGraphAllocator, 0)
 
-        if (animGraph)
-        {
-            animGraph->AddObject(this);
-        }
+    AnimGraphTransitionCondition::AnimGraphTransitionCondition()
+        : AnimGraphObject()
+    {
     }
 
 
@@ -39,11 +36,18 @@ namespace EMotionFX
     }
 
 
-    uint32 AnimGraphTransitionCondition::GetBaseType() const
+    bool AnimGraphTransitionCondition::InitAfterLoading(AnimGraph* animGraph)
     {
-        return BASETYPE_ID;
-    }
+        SetAnimGraph(animGraph);
 
+        if (animGraph)
+        {
+            animGraph->AddObject(this);
+        }
+
+        return true;
+    }
+    
 
     AnimGraphObject::ECategory AnimGraphTransitionCondition::GetPaletteCategory() const
     {
@@ -51,35 +55,24 @@ namespace EMotionFX
     }
 
 
-    // Update the test result from the last test condition call and call the corresponding event.
-    void AnimGraphTransitionCondition::UpdatePreviousTestResult(AnimGraphInstance* animGraphInstance, bool newTestResult)
+    void AnimGraphTransitionCondition::GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const
     {
-        // Call the event in case the condition got triggered.
-        if (newTestResult != mPreviousTestResult)
-        {
-            GetEventManager().OnConditionTriggered(animGraphInstance, this);
-        }
-
-        // Update the previous test result.
-        mPreviousTestResult = newTestResult;
+        // Default implementation is that the condition is not affected, therefore we dont do anything
+        AZ_UNUSED(convertedIds);
+        AZ_UNUSED(attributesString);
     }
 
 
-    AnimGraphObject* AnimGraphTransitionCondition::RecursiveClone(AnimGraph* animGraph, AnimGraphObject* parentObject)
+    void AnimGraphTransitionCondition::Reflect(AZ::ReflectContext* context)
     {
-        MCORE_UNUSED(parentObject);
-
-        // Clone the condition (constructor already adds the object to the animgraph).
-        AnimGraphObject* result = Clone(animGraph);
-        MCORE_ASSERT(GetType() == result->GetType());
-
-        // Copy attribute values.
-        const uint32 numAttributes = mAttributeValues.GetLength();
-        for (uint32 i = 0; i < numAttributes; ++i)
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
         {
-            result->GetAttribute(i)->InitFrom(mAttributeValues[i]);
+            return;
         }
 
-        return result;
+        serializeContext->Class<AnimGraphTransitionCondition, AnimGraphObject>()
+            ->Version(1);
     }
+
 } // namespace EMotionFX

@@ -1069,7 +1069,7 @@ void CTerrainLightGen::GetSubImageStretched(const float fSrcLeft, const float fS
         CHeightmap& roHeightMap = *GetIEditor()->GetHeightmap();
 
         float fTerrainWidth = roHeightMap.GetWidth() * roHeightMap.GetUnitSize();
-        float fTerrainHeight = roHeightMap.GetWidth() * roHeightMap.GetUnitSize();
+        float fTerrainHeight = roHeightMap.GetHeight() * roHeightMap.GetUnitSize();
 
         //////////////////////////////////////////////////////////////////////////
         // Paint vegetation brighness.

@@ -1119,7 +1119,7 @@ bool CGravityVolumeObject::HitTestRect(HitContext& hc)
         // See if pnt0 to pnt1 line intersects with rectangle.
         // check see if one point is inside rect and other outside, or both inside.
         bool in0 = hc.rect.contains(pnt0);
-        bool in1 = hc.rect.contains(pnt0);
+        bool in1 = hc.rect.contains(pnt1);
         if ((in0 && in1) || (in0 && !in1) || (!in0 && in1))
         {
             hc.object = this;

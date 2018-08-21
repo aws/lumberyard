@@ -877,7 +877,7 @@ _inline void SortLightTypes(int Types[4], int nCount)
     {
         for (int i = 0; i < 4; i++)
         {
-            for (int j = i; j < 4; j++)
+            for (int j = i + 1; j < 4; j++)
             {
                 if (Types[i] > Types[j])
                 {

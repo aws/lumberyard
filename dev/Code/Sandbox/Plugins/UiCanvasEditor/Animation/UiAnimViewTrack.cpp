@@ -548,7 +548,7 @@ void CUiAnimViewTrack::SelectKeys(const bool bSelected)
     {
         // Affect sub tracks
         unsigned int childCount = GetChildCount();
-        for (unsigned int childIndex = 0; childIndex < childCount; ++childCount)
+        for (unsigned int childIndex = 0; childIndex < childCount; ++childIndex)
         {
             CUiAnimViewTrack* pChildTrack = static_cast<CUiAnimViewTrack*>(GetChild(childIndex));
             pChildTrack->SelectKeys(bSelected);

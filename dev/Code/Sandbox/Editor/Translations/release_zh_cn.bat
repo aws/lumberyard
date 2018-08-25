@@ -17,3 +17,5 @@
 %QTDIR%\lrelease .\PerforcePlugin_zh_cn.ts
 %QTDIR%\lrelease .\UiCanvasEditor_zh_cn.ts
 %QTDIR%\lrelease .\Gems_zh_cn.ts
+%QTDIR%\lrelease .\AzQtComponents_zh_cn.ts
+%QTDIR%\lrelease .\AzToolsFramework_zh_cn.ts

@@ -1043,16 +1043,14 @@ customNavCapsMask = %14
 radius = %15
 height = %16
 maxSlope = %17</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../AIPFPropertiesListDialog.cpp" line="284"/>
         <source>%1:
 
 Pathfinding properties unknown.</source>
-        <translation>%1:
-
-寻路属性未知.</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1421,9 +1419,7 @@ None of the selected assets is used by any of the level&apos;s objects.</source>
         <source>When removing library All items contained in this library will be deleted.
 Are you sure you want to remove libarary %1?
 (Note: Library file will not be deleted from the disk)</source>
-        <translation>删除库时将删除此库中包含的所有项。
-您确定要删除库 %1 吗？
-（注意：库文件不会从磁盘中删除）</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../BaseLibraryDialog.cpp" line="1121"/>
@@ -1474,8 +1470,7 @@ Showing %4 (SPACE=see in original size)</source>
         <location filename="../Objects/BrushObject.cpp" line="1206"/>
         <source>Geometry File %1 is used by multiple objects.
 Do you want to make an unique copy of this geometry?</source>
-        <translation>几何体文件 %1 被多个对象使用。
-是否想要制作此几何体的一个唯一副本？</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Objects/BrushObject.cpp" line="1207"/>
@@ -1879,9 +1874,7 @@ is read-only, and needs to be writable to continue.</source>
         <source>When removing library All items contained in this library will be deleted.
 Are you sure you want to remove libarary %1?
 (Note: Library file will not be deleted from the disk)</source>
-        <translation>删除库时将删除此库中包含的所有项。
-您确定要删除库 %1吗？
-（注意：库文件不会从磁盘中删除）</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../DatabaseFrameWnd.cpp" line="324"/>
@@ -1970,8 +1963,7 @@ Reloading layer will discard all modifications to this library!</source>
         <location filename="../DialogEditor/DialogEditorDialog.cpp" line="196"/>
         <source>Source Control Operation Failed.
 Check if Source Control Provider correctly setup and working directory is correct.</source>
-        <translation>版本控制操作失败。
-检查版本控制提供程序设置是否正确和工作目录是否正确。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../DialogEditor/DialogEditorDialog.cpp" line="267"/>
@@ -2353,8 +2345,7 @@ Check if Source Control Provider correctly setup and working directory is correc
         <location filename="../EntityProtLibDialog.cpp" line="934"/>
         <source>All objects from this library will be deleted from the level.
 Are you sure you want to delete this library?</source>
-        <translation>此库中的所有对象都将从关卡中删除。
-您确定要删除此库吗？</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2474,19 +2465,14 @@ Are you sure you want to delete this library?</source>
 Do you want to permanently remove them?
 
 </source>
-        <translation>无法找到包&apos;%1&apos;中的以下弹药项目。
-你想永久删除它们吗？
-
-</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../EquipPackDialog.cpp" line="316"/>
         <source>The following ammo items have been automatically added to pack &apos;%1&apos;:
 
 </source>
-        <translation>以下弹药项已自动添加到打包&apos;%1&apos;：
-
-</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../EquipPackDialog.cpp" line="324"/>
@@ -3045,9 +3031,7 @@ Do you want to permanently remove them?
         <source>The following fragments will be deleted. Are you sure you want to continue?
 
 </source>
-        <translation>以下片段将被删除。 你确定你要继续吗？
-
-</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Mannequin/Controls/FragmentBrowser.cpp" line="2127"/>
@@ -6348,15 +6332,13 @@ Actions 文件 - %1</translation>
         <location filename="../PanelDisplayLayer.cpp" line="297"/>
         <source>
 and all children layers with %1 object%2</source>
-        <translation>
-和%1对象%2的所有子图层</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../PanelDisplayLayer.cpp" line="357"/>
         <source>Layer %1 has been modified. All changes in this layer and related objects will be lost.
 Reload anyway?</source>
-        <translation>图层%1已被修改。 此图层和相关对象中的所有更改都将丢失。
-无论如何重新加载？</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../PanelDisplayLayer.cpp" line="449"/>
@@ -7202,8 +7184,7 @@ Is it a scope/barrel attachment that needs a gun tag setting first?</source>
         <location filename="../SelectMissionObjectiveDialog.cpp" line="116"/>
         <source>
 Plain Text: %1</source>
-        <translation>
-纯文本：%1</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../SelectMissionObjectiveDialog.cpp" line="128"/>
@@ -9394,35 +9375,28 @@ Is it a scope/barrel attachment that needs a gun tag setting first?</source>
         <location filename="../VegetationDataBasePage.cpp" line="600"/>
         <source>Groups %1 / %2
 </source>
-        <translation>组 %1 / %2
-</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../VegetationDataBasePage.cpp" line="601"/>
         <source>Instance Count:
    %1 / %2
 </source>
-        <translation>实例数:
-   %1 / %2
-</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../VegetationDataBasePage.cpp" line="602"/>
         <source>Texture Usage:
    %1 K / %2 K
 </source>
-        <translation>贴图使用量:
-   %1 K / %2 K
-</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../VegetationDataBasePage.cpp" line="603"/>
         <source>Sprite Memory Usage:
    %1 K / %2 K
 </source>
-        <translation>精灵内存使用量:
-   %1 K / %2 K
-</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../VegetationDataBasePage.cpp" line="717"/>
@@ -10997,40 +10971,32 @@ Assign and replace?</source>
 To add a new line double click in free area or use [Add ScriptLine] from the toolbar.
 To delete a line press [Delete] or use [Delete ScriptLine] from the toolbar.
 DoubleClick plays or stops the Sound of the Line.</source>
-        <translation>当前行。 单击此列以选择整行。 然后，您可以拖动线条。
-要添加新行，请在空闲区域双击或使用工具栏中的[添加ScriptLine]。
-要删除行，请按[删除]或使用工具栏中的[删除ScriptLine]。
-双击k播放或停止声音线。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../DialogEditor/DialogScriptView.cpp" line="1016"/>
         <source>Actor for this line. Select from the combo-box.
 Any Entity can be an Actor. An Entity can be assigned as Actor using the Dialog:PlayDialog flownode.</source>
-        <translation>这条线的Actor。 从组合框中选择。
-任何Entity都可以是Actor。 可以使用Dialog:PlayDialog flownode将Entity指定为Actor。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../DialogEditor/DialogScriptView.cpp" line="1018"/>
         <source>AudioControllID to be triggered. 
 If a sound is specified the time of &apos;Delay&apos; is relative to the end of the sound.</source>
-        <translation>要触发的AudioControllID。
-如果指定了声音，则“延迟”的时间相对于声音的结束。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../DialogEditor/DialogScriptView.cpp" line="1036"/>
         <source>When checked, Exact Positioning [EP] will be used to play the animation. The target for the EP is the LookAt target.
 If you want to make sure that an animation is exactly oriented, use this option.</source>
-        <translation>选中后，将使用精确定位[EP]播放动画。 EP的目标是LookAt目标。
-如果要确保动画完全定向，请使用此选项。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../DialogEditor/DialogScriptView.cpp" line="1038"/>
         <source>When you tell an Actor to look at its target, it&apos;s only applied right at the beginning of the current script line.
 If you want to make him constantly facing you, activate Sticky lookat.
 You can reset Sticky lookat by #RESET# as LookAt target or a new lookat target with Sticky enabled.</source>
-        <translation>当您告诉Actor查看其目标时，它仅应用于当前脚本行的开头。
-如果你想让他经常面对你，请激活粘性外观。
-您可以通过＃RESET＃作为LookAt目标重置Sticky lookat，或者在启用Sticky的情况下重置新的lookat目标。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../DialogEditor/DialogScriptView.cpp" line="1020"/>
@@ -11047,16 +11013,13 @@ You can reset Sticky lookat by #RESET# as LookAt target or a new lookat target w
         <source>Facial expression. Normally, every sound is already lip-synced and may already contain facial expressions. So use with care.
 Can be useful when you don&apos;t play a sound, but simply want the Actor make look with a specific mood/expression.
 Use #RESET# to reset expression to default state.</source>
-        <translation>面部表情。 通常情况下，每个声音都已经过唇形同步，并且可能已包含面部表情。 所以要小心使用。
-当你不播放声音时可以很有用，但只是希望Actor看起来具有特定的情绪/表情。
-使用＃RESET＃将表达式重置为默认状态。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../DialogEditor/DialogScriptView.cpp" line="1026"/>
         <source>Weight of the facial expression [0-1]. How strong the facial expression should be applied.
 When sound already contains a facial expression, use only small values &lt; 0.5.</source>
-        <translation>面部表情的权重[0-1]。 面部表情应该有多强烈。
-当声音已包含面部表情时，请仅使用小于0.5的小值。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../DialogEditor/DialogScriptView.cpp" line="1028"/>
@@ -11067,17 +11030,14 @@ When sound already contains a facial expression, use only small values &lt; 0.5.
         <location filename="../DialogEditor/DialogScriptView.cpp" line="1030"/>
         <source>Lookat target of the Actor. Actor will try to look at his target before he starts to talk/animate.
 Sometimes this cannot be guaranteed. Also, while doing his animation or talking he may no longer face his target. For these cases use Sticky lookat. To disable sticky look-at use #RESET#.</source>
-        <translation>查看Actor的目标。 在他开始说话/动画之前，Actor会试着看他的目标。
-有时这无法保证。 此外，在做动画或谈话时，他可能不再面对他的目标。 对于这些情况，请使用Sticky lookat。 要禁用粘性查看，请使用#RESET＃。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../DialogEditor/DialogScriptView.cpp" line="1032"/>
         <source>Delay in seconds before advancing to the next line. When a sound is played, Delay is relative to the end of the sound.
 So, to slightly overlap lines and to make dialog more natural, you can use negative delays.
 When no sound is specified, the delay is relative to the start of the line.</source>
-        <translation>在前进到下一行之前延迟几秒钟。 播放声音时，延迟相对于声音的结束。
-因此，为了使线条稍微重叠并使对话更自然，您可以使用负延迟。
-如果未指定声音，则延迟相对于行的开头。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../DialogEditor/DialogScriptView.cpp" line="1034"/>
@@ -11280,8 +11240,7 @@ Create a new one or use browser on the left to select one.</source>
         <location filename="../HyperGraph/LyFlowGraphNotification.cpp" line="46"/>
         <source>Learn more about Script Canvas:
 </source>
-        <translation>学习脚本画布：
-</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../HyperGraph/LyFlowGraphNotification.cpp" line="51"/>
@@ -12201,8 +12160,7 @@ Please create one in TrackView, first.</source>
         <location filename="../Controls/ReflectedPropertyControl/PropertyGenericCtrl.cpp" line="342"/>
         <source>English Text:
 </source>
-        <translation>英文文本:
-</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Controls/ReflectedPropertyControl/PropertyGenericCtrl.cpp" line="356"/>
@@ -14969,15 +14927,13 @@ Synchronize Player with Camera</source>
         <location filename="../Material/MaterialBrowser.cpp" line="857"/>
         <source>Source Control Operation Failed.
 Check if Source Control Provider correctly setup and working directory is correct.</source>
-        <translation>版本控制操作失败。
-检查版本控制提供程序是否正确设置和工作目录是否正确。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Material/MaterialBrowser.cpp" line="879"/>
         <source>Making new material will override material currently assigned to the slot %1 of %2
 Make new sub material?</source>
-        <translation>制作新材质将覆盖当前分配给%2的插槽%1的材质
-制作新的子材质？</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Material/MaterialBrowser.cpp" line="881"/>
@@ -15641,50 +15597,43 @@ p, li { white-space: pre-wrap; }
         <location filename="../AzAssetBrowser/Preview/PreviewWidget.cpp" line="151"/>
         <source>
 File Size: %1B</source>
-        <translation>
-文件大小:%1B</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../AzAssetBrowser/Preview/PreviewWidget.cpp" line="132"/>
         <source>
 File Size: %1kB</source>
-        <translation>
-文件大小: %1kB</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../AzAssetBrowser/Preview/PreviewWidget.cpp" line="137"/>
         <source>
 File Size: %1mB</source>
-        <translation>
-文件大小: %1mB</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../AzAssetBrowser/Preview/PreviewWidget.cpp" line="142"/>
         <source>
 File Size: %1gB</source>
-        <translation>
-文件大小: %1gB</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../AzAssetBrowser/Preview/PreviewWidget.cpp" line="156"/>
         <source>
 File Size: %1KB</source>
-        <translation>
-文件大小: %1KB</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../AzAssetBrowser/Preview/PreviewWidget.cpp" line="161"/>
         <source>
 File Size: %1MB</source>
-        <translation>
-文件大小: %1MB</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../AzAssetBrowser/Preview/PreviewWidget.cpp" line="166"/>
         <source>
 File Size: %1GB</source>
-        <translation>
-文件大小: %1GB</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../AzAssetBrowser/Preview/PreviewWidget.cpp" line="190"/>
@@ -15693,11 +15642,7 @@ File Size: %1GB</source>
 %2 Verts
 %3 MaxLod
 %4 Materials</source>
-        <translation>
-%1 面
-%2 顶点
-%3 最大Lod
-%4 材质</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -16699,8 +16644,7 @@ Do you want to start another one?</source>
         <location filename="../CryEdit.cpp" line="3199"/>
         <source>Auto Reminder: You did not save level for at least %1 minute(s)
 Do you want to save it now?</source>
-        <translation>自动提醒：您至少%1分钟没有保存关卡
-你想现在保存吗？</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../CryEdit.cpp" line="3411"/>
@@ -16764,9 +16708,7 @@ Do you want to save it now?</source>
         <source>Refine TerrainTexture?
 (all terrain texture tiles become split in 4 parts so a tile with 2048x2048
 no longer limits the resolution) You need to save afterwards!</source>
-        <translation>细化地形贴图？
-（所有地形贴图图块分为4个部分，因此是一个2048x2048的图块
-不再限制分辨率）之后你需要保存！</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../CryEdit.cpp" line="4085"/>
@@ -16809,9 +16751,7 @@ no longer limits the resolution) You need to save afterwards!</source>
         <source>The following object(s) already exist(s) in the level.
 
 </source>
-        <translation>关卡中已存在以下对象。
-
-</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../CryEdit.cpp" line="5164"/>
@@ -17085,8 +17025,7 @@ and try again.</source>
         <location filename="../CryEditDoc.cpp" line="1517"/>
         <source>The document contains unsaved data, it will be lost if fetched.
 Really fetch old state?</source>
-        <translation>该文档包含未保存的数据，如果获取它将丢失。
-确定取出旧状态？</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../CustomActions/CustomActionsEditorManager.cpp" line="218"/>
@@ -17186,8 +17125,7 @@ Creation canceled...</source>
         <location filename="../GameEngine.cpp" line="155"/>
         <source>Level has been successfully saved!
 Press Ok to terminate Editor.</source>
-        <translation>关卡已成功保存！
-按确定中止编辑器。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../GameEngine.cpp" line="907"/>
@@ -17380,8 +17318,7 @@ Do you want to save your changes?</source>
         <location filename="../HyperGraph/FlowGraphVariables.cpp" line="68"/>
         <source>
 Description: </source>
-        <translation>
-描述: </translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../HyperGraph/FlowGraphVariables.cpp" line="73"/>
@@ -17765,8 +17702,7 @@ Do you want to save your changes?</source>
         <location filename="../Material/MaterialManager.cpp" line="1372"/>
         <source>Delete Material %1?
 Note: Material file %2 will also be deleted.</source>
-        <translation>删除材质%1？
-注意：材质文件%2也将被删除。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Material/MaterialManager.cpp" line="1374"/>
@@ -17932,8 +17868,7 @@ Note: Material file %2 will also be deleted.</source>
         <location filename="../Objects/ObjectLayerManager.cpp" line="824"/>
         <source>Replace Layer %1?
 All object of replaced layer will be deleted.</source>
-        <translation>替换图层%1？
-替换图层的所有对象都将被删除。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Objects/ObjectLayerManager.cpp" line="825"/>
@@ -17944,8 +17879,7 @@ All object of replaced layer will be deleted.</source>
         <location filename="../Objects/ObjectLayerManager.cpp" line="837"/>
         <source>Layer name &apos;%1&apos; already in use.
 Would you like to rename the layer being imported?</source>
-        <translation>图层名称&apos;%1&apos;已在使用中。
-您要重命名要导入的图层吗？</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Objects/ObjectLayerManager.cpp" line="838"/>
@@ -17987,9 +17921,7 @@ Would you like to rename the layer being imported?</source>
         <source>Geometry file for object &quot;%1&quot; is missing/removed. 
 File: %2
 Attempt to locate this file?</source>
-        <translation>对象“%1”的几何体文件丢失/删除。
-档案：%2
-试图找到这个文件？</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Objects/ObjectManager.cpp" line="3735"/>
@@ -18001,9 +17933,7 @@ Attempt to locate this file?</source>
         <source>Material for object &quot;%1&quot; is missing/removed. 
 File: %2
 Attempt to locate this file?</source>
-        <translation>对象“%1”的材质缺失/删除。
-档案：%2
-试图找到这个文件？</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Objects/ObjectManager.cpp" line="3858"/>
@@ -18239,16 +18169,13 @@ Would you like to clip the image, resize it, or cancel?</source>
         <source>Error output from Lua compiler:
 %1
 Do you want to edit the file ?</source>
-        <translation>Lua编译器输出错误：
-%1
-你想编辑文件吗？</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Util/FileUtil.cpp" line="162"/>
         <source>File %1 is inside a PAK file %2
 Do you want it to be extracted for editing ?</source>
-        <translation>文件%1位于PAK文件%2中
-你想要它被提取出来进行编辑吗？</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Util/FileUtil.cpp" line="237"/>
@@ -18315,15 +18242,13 @@ Do you want it to be extracted for editing ?</source>
         <location filename="../Util/FileUtil.cpp" line="2032"/>
         <source>Source Control Check Out Failed.
 Check if Source Control Provider is correctly setup and working directory is correct.</source>
-        <translation>版本控制签出失败。
-检查版本控制提供程序是否已正确设置且工作目录是否正确。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Util/FileUtil.cpp" line="2065"/>
         <source>Source Control Add Failed.
 Check if Source Control Provider is correctly setup and working directory is correct.</source>
-        <translation>版本控制添加失败。
-检查版本控制提供程序是否已正确设置且工作目录是否正确。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Util/FileUtil.cpp" line="2037"/>
@@ -18334,8 +18259,7 @@ Check if Source Control Provider is correctly setup and working directory is cor
         <location filename="../Util/FileUtil.cpp" line="2042"/>
         <source>Source Control Undo Check Out Failed.
 Check if Source Control Provider is correctly setup and working directory is correct.</source>
-        <translation>版本控制撤消签出失败。
-检查版本控制提供程序是否已正确设置且工作目录是否正确。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Util/FileUtil.cpp" line="2047"/>
@@ -18346,8 +18270,7 @@ Check if Source Control Provider is correctly setup and working directory is cor
         <location filename="../Util/FileUtil.cpp" line="2054"/>
         <source>Source Control failed to get latest.
 Check if Source Control Provider is correctly setup and working directory is correct.</source>
-        <translation>版本控制未能获得最新信息。
-检查版本控制提供程序是否已正确设置且工作目录是否正确。</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../Util/FileUtil.cpp" line="2060"/>

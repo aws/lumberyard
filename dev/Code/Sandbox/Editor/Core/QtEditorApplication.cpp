@@ -601,11 +601,28 @@ namespace Editor
         return translator;
     }
 
+	QString GetLanguageFileName(const QString componentName)
+	{
+		return componentName + QString("_") + QLocale::system().name().toLower() + QString(".qm");
+	}
+
     void EditorQtApplication::InstallEditorTranslators()
     {
-        m_editorTranslator =        CreateAndInitializeTranslator("editor_en-us.qm", ":/Translations");
-        m_flowgraphTranslator =     CreateAndInitializeTranslator("flowgraph_en-us.qm", ":/Translations");
-        m_assetBrowserTranslator =  CreateAndInitializeTranslator("assetbrowser_en-us.qm", ":/Translations");
+		AzToolsFrameworkTranslator					= CreateAndInitializeTranslator(GetLanguageFileName("AzToolsFramework"), ":/Translations");
+		ComponentEntityEditorPluginTranslator		= CreateAndInitializeTranslator(GetLanguageFileName("ComponentEntityEditorPlugin"), ":/Translations");
+		CryDesignerTranslator						= CreateAndInitializeTranslator(GetLanguageFileName("CryDesigner"), ":/Translations");
+		DeploymentToolTranslator					= CreateAndInitializeTranslator(GetLanguageFileName("DeploymentTool"), ":/Translations");
+		EditorTranslator							= CreateAndInitializeTranslator(GetLanguageFileName("Editor"), ":/Translations");
+		EditorAssetImporterTranslator				= CreateAndInitializeTranslator(GetLanguageFileName("EditorAssetImporter"), ":/Translations");
+		EditorAudioControlsEditorTranslator			= CreateAndInitializeTranslator(GetLanguageFileName("EditorAudioControlsEditor"), ":/Translations");
+		EditorCommonTranslator						= CreateAndInitializeTranslator(GetLanguageFileName("EditorCommon"), ":/Translations");
+		EditorUI_QTTranslator						= CreateAndInitializeTranslator(GetLanguageFileName("EditorUI_QT"), ":/Translations");
+		FBXPluginTranslator							= CreateAndInitializeTranslator(GetLanguageFileName("FBXPlugin"), ":/Translations");
+		GemsTranslator								= CreateAndInitializeTranslator(GetLanguageFileName("Gems"), ":/Translations");
+		MaglevControlPanelTranslator				= CreateAndInitializeTranslator(GetLanguageFileName("MaglevControlPanel"), ":/Translations");
+		ParticleEditorPluginTranslator				= CreateAndInitializeTranslator(GetLanguageFileName("ParticleEditorPlugin"), ":/Translations");
+		PerforcePluginTranslator					= CreateAndInitializeTranslator(GetLanguageFileName("PerforcePlugin"), ":/Translations");
+		UiCanvasEditorTranslator					= CreateAndInitializeTranslator(GetLanguageFileName("UiCanvasEditor"), ":/Translations");
     }
 
     void EditorQtApplication::DeleteTranslator(QTranslator*& translator)
@@ -617,9 +634,21 @@ namespace Editor
 
     void EditorQtApplication::UninstallEditorTranslators()
     {
-        DeleteTranslator(m_editorTranslator);
-        DeleteTranslator(m_flowgraphTranslator);
-        DeleteTranslator(m_assetBrowserTranslator);
+		DeleteTranslator(AzToolsFrameworkTranslator);
+		DeleteTranslator(ComponentEntityEditorPluginTranslator);
+		DeleteTranslator(CryDesignerTranslator);
+		DeleteTranslator(DeploymentToolTranslator);
+		DeleteTranslator(EditorTranslator);
+		DeleteTranslator(EditorAssetImporterTranslator);
+		DeleteTranslator(EditorAudioControlsEditorTranslator);
+		DeleteTranslator(EditorCommonTranslator);
+		DeleteTranslator(EditorUI_QTTranslator);
+		DeleteTranslator(FBXPluginTranslator);
+		DeleteTranslator(GemsTranslator);
+		DeleteTranslator(MaglevControlPanelTranslator);
+		DeleteTranslator(ParticleEditorPluginTranslator);
+		DeleteTranslator(PerforcePluginTranslator);
+		DeleteTranslator(UiCanvasEditorTranslator);
     }
 
     void EditorQtApplication::EnableOnIdle(bool enable)

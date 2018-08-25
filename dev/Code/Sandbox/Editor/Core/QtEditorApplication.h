@@ -139,9 +139,22 @@ namespace Editor
         QTranslator* CreateAndInitializeTranslator(const QString& filename, const QString& directory);
         void DeleteTranslator(QTranslator*& translator);
 
-        QTranslator* m_editorTranslator = nullptr;
-        QTranslator* m_flowgraphTranslator = nullptr;
-        QTranslator* m_assetBrowserTranslator = nullptr;
+		QTranslator* AzToolsFrameworkTranslator = nullptr;
+		QTranslator* ComponentEntityEditorPluginTranslator = nullptr;
+		QTranslator* CryDesignerTranslator = nullptr;
+		QTranslator* DeploymentToolTranslator = nullptr;
+		QTranslator* EditorTranslator = nullptr;
+		QTranslator* EditorAssetImporterTranslator = nullptr;
+		QTranslator* EditorAudioControlsEditorTranslator = nullptr;
+		QTranslator* EditorCommonTranslator = nullptr;
+		QTranslator* EditorUI_QTTranslator = nullptr;
+		QTranslator* FBXPluginTranslator = nullptr;
+		QTranslator* GemsTranslator = nullptr;
+		QTranslator* MaglevControlPanelTranslator = nullptr;
+		QTranslator* ParticleEditorPluginTranslator = nullptr;
+		QTranslator* PerforcePluginTranslator = nullptr;
+		QTranslator* UiCanvasEditorTranslator = nullptr;
+
         QTimer* const m_idleTimer = nullptr;
         bool m_isMovingOrResizing = false;
 

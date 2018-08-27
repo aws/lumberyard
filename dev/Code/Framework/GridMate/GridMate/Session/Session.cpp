@@ -1024,7 +1024,7 @@ GridSession::RemoveMember(const MemberID& id)
         if (member->GetId() == id)
         {
             // Removing member from voice chat
-            EBUS_EVENT_ID(m_gridMate, VoiceChatServiceBus, RegisterMember, member);
+            EBUS_EVENT_ID(m_gridMate, VoiceChatServiceBus, UnregisterMember, member);
 
             // The only ones that can get a remove member call
             // without having lost that connection are the non-hosts.

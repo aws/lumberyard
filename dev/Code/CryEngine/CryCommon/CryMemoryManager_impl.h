@@ -404,7 +404,7 @@ size_t CryCrtSize(void* p)
 
 //This code causes a seg fault in clang in profile builds if optimizations are turned on. In XCode 6.4
 //TODO: Try to remove in a future version of XCode.
-#if defined(AZ_MONOLITHIC_BUILD)&& (defined(IOS) || defined(APPLETV))
+#if defined(AZ_MONOLITHIC_BUILD)&& (defined(IOS) || defined(APPLETV)) || defined(LINUX)
 #pragma clang optimize off
 #endif
 

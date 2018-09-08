@@ -15,6 +15,10 @@
 
 #include <process.h>
 
+#if AZ_TRAIT_OS_USE_WINDOWS_THREADS
+#include <AzCore/std/parallel/threadbus.h>
+#endif
+
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
 #define CRYTHREAD_WINDOWS_H_SECTION_1 1
@@ -298,6 +302,11 @@ private:
         self->m_bIsRunning = false;
         self->m_bCreatedThread = false;
         self->Terminate();
+
+#if defined(AZ_PROFILE_TELEMETRY) && AZ_TRAIT_OS_USE_WINDOWS_THREADS
+        EBUS_EVENT(AZStd::ThreadEventBus, OnThreadExit, AZStd::this_thread::get_id());
+#endif
+
         return 0;
     }
 
@@ -320,6 +329,11 @@ private:
         self->m_bIsRunning = false;
         self->m_bCreatedThread = false;
         self->Terminate();
+
+#if defined(AZ_PROFILE_TELEMETRY) && AZ_TRAIT_OS_USE_WINDOWS_THREADS
+        EBUS_EVENT(AZStd::ThreadEventBus, OnThreadExit, AZStd::this_thread::get_id());
+#endif
+
         return 0;
     }
 

@@ -82,7 +82,6 @@ struct _CryMemoryManagerPoolHelper
             return;
         }
 
-        m_bInitialized = 1;
         allocatedMemory = 0;
         freedMemory = 0;
         requestedMemory = 0;
@@ -104,17 +103,25 @@ struct _CryMemoryManagerPoolHelper
         for (iter = 0, hMod = GetModuleHandle(0); hMod; iter++)
 #endif
         {
-            _CryMalloc = (FNC_CryMalloc)CryGetProcAddress(hMod, DLL_ENTRY_CRYMALLOC);
-            _CryRealloc = (FNC_CryRealloc)CryGetProcAddress(hMod, DLL_ENTRY_CRYREALLOC);
-            _CryFree = (FNC_CryFree)CryGetProcAddress(hMod, DLL_ENTRY_CRYFREE);
-            _CryGetMemSize = (FNC_CryGetMemSize)CryGetProcAddress(hMod, DLL_ENTRY_CRYGETMEMSIZE);
-            _CryCrtMalloc = (FNC_CryCrtMalloc)CryGetProcAddress(hMod, DLL_ENTRY_CRYCRTMALLOC);
-            _CryCrtSize = (FNC_CryCrtSize)CryGetProcAddress(hMod, DLL_ENTRY_CRYCRTSIZE);
-            _CryCrtFree = (FNC_CryCrtFree)CryGetProcAddress(hMod, DLL_ENTRY_CRYCRTFREE);
-            _CryGetIMemoryManagerInterface = (FNC_CryGetIMemoryManagerInterface)CryGetProcAddress(hMod, DLL_ENTRY_GETMEMMANAGER);
+            auto pCryMalloc = (FNC_CryMalloc)CryGetProcAddress(hMod, DLL_ENTRY_CRYMALLOC);
+            auto pCryRealloc = (FNC_CryRealloc)CryGetProcAddress(hMod, DLL_ENTRY_CRYREALLOC);
+            auto pCryFree = (FNC_CryFree)CryGetProcAddress(hMod, DLL_ENTRY_CRYFREE);
+            auto pCryGetMemSize = (FNC_CryGetMemSize)CryGetProcAddress(hMod, DLL_ENTRY_CRYGETMEMSIZE);
+            auto pCryCrtMalloc = (FNC_CryCrtMalloc)CryGetProcAddress(hMod, DLL_ENTRY_CRYCRTMALLOC);
+            auto pCryCrtSize = (FNC_CryCrtSize)CryGetProcAddress(hMod, DLL_ENTRY_CRYCRTSIZE);
+            auto pCryCrtFree = (FNC_CryCrtFree)CryGetProcAddress(hMod, DLL_ENTRY_CRYCRTFREE);
+            auto pCryGetIMemoryManagerInterface = (FNC_CryGetIMemoryManagerInterface)CryGetProcAddress(hMod, DLL_ENTRY_GETMEMMANAGER);
 
-            if ((_CryMalloc && _CryRealloc && _CryFree && _CryGetMemSize && _CryCrtMalloc && _CryCrtFree && _CryCrtSize && _CryGetIMemoryManagerInterface) || iter == 1)
+            if ((pCryMalloc && pCryRealloc && pCryFree && pCryGetMemSize && pCryCrtMalloc && pCryCrtFree && pCryCrtSize && pCryGetIMemoryManagerInterface) || iter == 1)
             {
+                _CryMalloc = pCryMalloc;
+                _CryRealloc = pCryRealloc;
+                _CryFree = pCryFree;
+                _CryGetMemSize = pCryGetMemSize;
+                _CryCrtMalloc = pCryCrtMalloc;
+                _CryCrtSize = pCryCrtSize;
+                _CryCrtFree = pCryCrtFree;
+                _CryGetIMemoryManagerInterface = pCryGetIMemoryManagerInterface;
                 break;
             }
 
@@ -168,6 +175,8 @@ struct _CryMemoryManagerPoolHelper
         _CryCrtSize = (FNC_CryCrtSize)CrySystemCrtSize;
         _CryGetIMemoryManagerInterface = (FNC_CryGetIMemoryManagerInterface)CryGetIMemoryManagerInterface;
 #endif // AZ_MONOLITHIC_BUILD
+
+        m_bInitialized = 1;
     }
 
     static void FakeAllocation(long size)

@@ -345,6 +345,11 @@ void SRemoteServer::ClientDone(SRemoteClient* pClient)
         {
             it->pClient->Stop();
             delete it->pClient;
+
+            for (auto& evt : *it->pEvents)
+            {
+                delete evt;
+            }
             delete it->pEvents;
             m_clients.erase(it);
             break;
@@ -563,7 +568,7 @@ void SRemoteClient::Run()
     SNoDataEvent<eCET_Req> reqEvt;
 
     std::vector<string> autoCompleteList;
-    FillAutoCompleteList(autoCompleteList);
+    m_pServer->FillAutoCompleteList(autoCompleteList);
 
     bool ok = true;
     bool autoCompleteDoneSent = false;
@@ -610,6 +615,7 @@ void SRemoteClient::Run()
 /////////////////////////////////////////////////////////////////////////////////////////////
 bool SRemoteClient::RecvPackage(char* buffer, int& size)
 {
+    bool ok = true;
     size = 0;
     int ret, idx = 0;
     do
@@ -617,12 +623,14 @@ bool SRemoteClient::RecvPackage(char* buffer, int& size)
         ret = AZ::AzSock::Recv(m_socket, buffer + idx, DEFAULT_BUFFER - idx, 0);
         if (AZ::AzSock::SocketErrorOccured(ret))
         {
-            return false;
+            ok = false;
+            break;
         }
         idx += ret;
-    } while (buffer[idx - 1] != '\0');
+    } while (ret > 0 && buffer[idx - 1] != '\0');
     size = idx;
-    return true;
+    buffer[size > 0 ? size - 1 : 0] = '\0';
+    return ok;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -645,8 +653,10 @@ bool SRemoteClient::SendPackage(const char* buffer, int size)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-void SRemoteClient::FillAutoCompleteList(std::vector<string>& list)
+void SRemoteServer::FillAutoCompleteList(std::vector<string>& list)
 {
+    CryAutoLock<CryMutex> lock(m_lock);
+
     std::vector<const char*> cmds;
     size_t count = gEnv->pConsole->GetSortedVars(nullptr, 0);
     cmds.resize(count);

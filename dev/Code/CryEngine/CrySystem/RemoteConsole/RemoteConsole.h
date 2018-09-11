@@ -223,6 +223,8 @@ struct SRemoteServer
     void Run() override;
     // ~CrySimpleThread
 
+    void FillAutoCompleteList(std::vector<string>& list);
+
 private:
     bool WriteBuffer(SRemoteClient* pClient,  char* buffer, int& size);
     bool ReadBuffer(const char* buffer, int data);
@@ -274,7 +276,6 @@ struct SRemoteClient
 private:
     bool RecvPackage(char* buffer, int& size);
     bool SendPackage(const char* buffer, int size);
-    void FillAutoCompleteList(std::vector<string>& list);
 
 private:
     SRemoteServer* m_pServer;

@@ -517,7 +517,7 @@
             "Console_std.h",
             "CryAssert_Android.h",
             "CryAssert_impl.h",
-            "CryAssert_IOS.h",
+            "CryAssert_iOS.h",
             "CryAssert_Linux.h",
             "CryAssert_Mac.h",
             "CryDLMalloc.h",

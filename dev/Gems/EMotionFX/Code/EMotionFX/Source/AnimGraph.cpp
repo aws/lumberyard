@@ -25,7 +25,7 @@
 #include <EMotionFX/Source/AnimGraphNodeGroup.h>
 #include <EMotionFX/Source/AnimGraphObject.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
-#include <EMotioNFX/Source/BlendTree.h>
+#include <EMotionFX/Source/BlendTree.h>
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/EventManager.h>
 #include <EMotionFX/Source/Pose.h>

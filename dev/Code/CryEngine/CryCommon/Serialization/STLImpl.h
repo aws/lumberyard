@@ -242,7 +242,7 @@ namespace   std
     }
 
     template<class V>
-    bool Serialize(Serialization::IArchive& ar, std::pair<string, V>& pair, const char* name, const char* label)
+    bool Serialize(Serialization::IArchive& ar, std::pair<Serialization::string, V>& pair, const char* name, const char* label)
     {
         Serialization::StdStringPair<V> keyValue(pair);
         return ar(static_cast<Serialization::IKeyValue&>(keyValue), name, label);

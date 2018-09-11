@@ -661,6 +661,7 @@ def target_clean(self):
 def clean_output_targets(self):
 
     to_delete = []
+    is_msvc = False
 
     for base_output_folder_node in self.get_output_folders(self.env['PLATFORM'],self.env['CONFIGURATION']):
 

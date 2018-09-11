@@ -675,7 +675,7 @@ def LoadAdditionalFileSettings(ctx, kw):
             p = re.compile(setting['regex'])
 
             for file in kw['source']:
-                if p.match(file):
+                if p.match(file.abspath()):
                     file_list += [file]
 
         # insert files into lookup dictonary, but make sure no uber file and no file within an uber file is specified
@@ -2679,12 +2679,12 @@ def apply_monolithic_pch_objs(self):
             # If we cannot find the use name, check if its a uselib
             if not is_third_party_uselib_configured(self.bld, tgen_name):
                 Errors.WafError("Invalid 'use' reference ({}) defined in module {}'".format(tgen_name,self.name))
-
-        other_pch_task = getattr(other_tg, 'pch_task', None)
-        if other_pch_task:
-            if other_pch_task.outputs[0] not in self.link_task.inputs:
-                Logs.debug('Lumberyard: Monolithic build: Adding pch %s from %s to %s ' % (other_pch_task.outputs[0], tgen_name, self.target))
-                self.link_task.inputs.append(other_pch_task.outputs[0])
+        else:
+            other_pch_task = getattr(other_tg, 'pch_task', None)
+            if other_pch_task:
+                if other_pch_task.outputs[0] not in self.link_task.inputs:
+                    Logs.debug('Lumberyard: Monolithic build: Adding pch %s from %s to %s ' % (other_pch_task.outputs[0], tgen_name, self.target))
+                    self.link_task.inputs.append(other_pch_task.outputs[0])
 
 @conf
 def LoadSharedSettings(ctx, k, kw, file_path = None):

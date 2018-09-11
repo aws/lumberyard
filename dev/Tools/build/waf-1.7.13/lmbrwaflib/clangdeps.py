@@ -299,6 +299,10 @@ def wrap_compiled_task_clang(classname):
             node = None
             assert os.path.isabs(path)
 
+            # Support distcc - skip distcc-style self-dependency
+            if '<built-in>' in path:
+                continue
+
             drive_hack = False
             node = path_to_node(bld.root, path, cached_nodes, drive_hack)
 

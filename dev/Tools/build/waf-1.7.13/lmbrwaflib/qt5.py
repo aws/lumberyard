@@ -1492,16 +1492,16 @@ def qtlib_bootstrap(self, platform, configuration):
         # Used to track number of files copied by this function
         num_files_copied = 0
 
-        # Create the qtlibs subfolder
-        dst_qtlib = os.path.normcase(os.path.join(dst, 'qtlibs'))
-        if not os.path.exists(dst_qtlib):
-            os.makedirs(dst_qtlib)
-
         # If qt fails to configure, the folder copies below will give meaningless errors.
         # Test for this condition and error out here
         if not ctx.env.QT_LIB_DIR:
             Logs.warn('unable to find QT')
             return num_files_copied
+
+        # Create the qtlibs subfolder
+        dst_qtlib = os.path.normcase(os.path.join(dst, 'qtlibs'))
+        if not os.path.exists(dst_qtlib):
+            os.makedirs(dst_qtlib)
 
         # Copy the libs for qtlibs
         lib_pattern = patterns

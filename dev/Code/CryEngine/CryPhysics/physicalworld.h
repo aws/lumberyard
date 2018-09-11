@@ -1274,7 +1274,7 @@ struct ChangeRequest
         , m_bLocked(0)
         , m_bLockedCaller(0)
     {
-        if (pent->m_iSimClass == -1 && ((CPhysicalEntity*)pent)->m_iDeletionTime == 3)
+        if (pent->m_iSimClass == -1 &&  pent->m_iDeletionTime == 3)
         {
             bInactive |= bInactive - 1 >> 31;
         }

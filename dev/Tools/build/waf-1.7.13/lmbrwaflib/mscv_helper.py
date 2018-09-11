@@ -629,9 +629,10 @@ def gather_msvc_2017_targets(conf, versions, version, windows_kit, vc_path):
     #Looking for normal MSVC compilers!
     targets = []
     vcvarsall_bat = os.path.join(vc_path, 'VC', 'Auxiliary', 'Build', 'vcvarsall.bat')
+    vcvarsall_args = conf.options.win_vs2017_vcvarsall_args
     if os.path.isfile(vcvarsall_bat):
         try:
-            targets.append(('x64', ('x64', conf.get_msvc_version('msvc', version, 'x64', windows_kit, vcvarsall_bat))))
+            targets.append(('x64', ('x64', conf.get_msvc_version('msvc', version, 'x64', windows_kit, vcvarsall_bat, vcvarsall_args))))
         except conf.errors.ConfigurationError:
             pass
     if targets:
@@ -651,7 +652,7 @@ def _get_prog_names(conf, compiler):
     return compiler_name, linker_name, lib_name
     
 @conf
-def get_msvc_version(conf, compiler, version, target, windows_kit, vcvars):
+def get_msvc_version(conf, compiler, version, target, windows_kit, vcvars, vcvars_args=""):
     """
     Create a bat file to obtain the location of the libraries
 
@@ -667,11 +668,11 @@ def get_msvc_version(conf, compiler, version, target, windows_kit, vcvars):
     batfile.write("""@echo off
 set INCLUDE=
 set LIB=
-call "%s" %s %s
+call "%s" %s %s %s
 echo PATH=%%PATH%%
 echo INCLUDE=%%INCLUDE%%
 echo LIB=%%LIB%%;%%LIBPATH%%
-""" % (vcvars,target,windows_kit))
+""" % (vcvars,target,windows_kit,vcvars_args))
     sout = conf.cmd_and_log(['cmd', '/E:on', '/V:on', '/C', batfile.abspath()])
     lines = sout.splitlines()
     

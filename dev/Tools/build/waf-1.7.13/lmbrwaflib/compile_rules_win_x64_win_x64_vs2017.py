@@ -41,7 +41,7 @@ def load_win_x64_win_x64_vs2017_common_settings(conf):
     windows_kit = conf.options.win_vs2017_winkit
     vcvarsall_args = windows_kit + ' ' + conf.options.win_vs2017_vcvarsall_args
     try:
-        conf.auto_detect_msvc_compiler('msvc 15', 'x64', vcvarsall_args)
+        conf.auto_detect_msvc_compiler('msvc 15', 'x64', windows_kit)
     except:
         Logs.warn('Unable to find Visual Studio 2017 ({}) C++ compiler and/or Windows Kit {}, removing build target'.format(conf.options.win_vs2017_vswhere_args, vcvarsall_args))
         conf.mark_supported_platform_for_removal(PLATFORM)

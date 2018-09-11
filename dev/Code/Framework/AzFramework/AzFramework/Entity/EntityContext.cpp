@@ -731,60 +731,65 @@ namespace AzFramework
             [this, readyAsset]() // we intentionally capture readyAsset by value here, so that its refcount doesn't hit 0 by the time this call happens.
             {
                 const AZ::Data::AssetId readyAssetId = readyAsset.GetId();
-                for (auto iter = m_queuedSliceInstantiations.begin(); iter != m_queuedSliceInstantiations.end(); )
+                // We cannot save required assets to separate list, because on cancel m_queuedSliceInstantiations is cleaned and we should skip it here.
+                while (true) // Walk through all queued instantiations with given assetId
                 {
+                    auto iter = AZStd::find_if(m_queuedSliceInstantiations.begin(), m_queuedSliceInstantiations.end(),
+                        [readyAssetId](const InstantiatingSliceInfo& instantiating)
+                    {
+                        return instantiating.m_asset.GetId() == readyAssetId;
+                    });
+
+                    if (iter == m_queuedSliceInstantiations.end())
+                    {
+                        break;
+                    }
+
                     const InstantiatingSliceInfo& instantiating = *iter;
 
-                    if (instantiating.m_asset.GetId() == readyAssetId)
+                    // here we actually refcount / copy by value the internals of 'instantiating' since we will destroy it later
+                    // but still wish to send bus messages based on ticket/asset.
+                    AZ::Data::Asset<AZ::Data::AssetData> asset = instantiating.m_asset;
+                    SliceInstantiationTicket ticket = instantiating.m_ticket;
+                    AZ::Data::AssetId cachedAssetId = instantiating.m_asset.GetId();
+                    AZ::SliceComponent::SliceInstanceAddress instance = m_rootAsset.Get()->GetComponent()->AddSlice(asset, instantiating.m_customMapper);
+
+                    // its important to remove this instantiation from the instantiation list
+                    // as soon as possible, before we call these below notification functions, because they might result in our own functions
+                    // that search this list being called again.
+                    iter = m_queuedSliceInstantiations.erase(iter);
+                    // --------------------------- do not refer to 'instantiating' after the above call, it has been destroyed ------------
+
+                    bool isSliceInstantiated = false;
+                    if (instance.second)
                     {
-                        // here we actually refcount / copy by value the internals of 'instantiating' since we will destroy it later
-                        // but still wish to send bus messages based on ticket/asset.
-                        AZ::Data::Asset<AZ::Data::AssetData> asset = instantiating.m_asset;
-                        SliceInstantiationTicket ticket = instantiating.m_ticket;
-                        AZ::Data::AssetId cachedAssetId = instantiating.m_asset.GetId();
-                        AZ::SliceComponent::SliceInstanceAddress instance = m_rootAsset.Get()->GetComponent()->AddSlice(asset, instantiating.m_customMapper);
+                        AZ_Assert(instance.second->GetInstantiated(), "Failed to instantiate root slice!");
 
-                        // its important to remove this instantiation from the instantiation list
-                        // as soon as possible, before we call these below notification functions, because they might result in our own functions
-                        // that search this list being called again.
-                        iter = m_queuedSliceInstantiations.erase(iter);
-                        // --------------------------- do not refer to 'instantiating' after the above call, it has been destroyed ------------
-                        
-                        bool isSliceInstantiated = false;
-                        if (instance.second)
+                        if (instance.second->GetInstantiated() &&
+                            ValidateEntitiesAreValidForContext(instance.second->GetInstantiated()->m_entities))
                         {
-                            AZ_Assert(instance.second->GetInstantiated(), "Failed to instantiate root slice!");
+                            EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSlicePreInstantiate, cachedAssetId, instance);
+                            SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSlicePreInstantiate, cachedAssetId, instance);
 
-                            if (instance.second->GetInstantiated() &&
-                                ValidateEntitiesAreValidForContext(instance.second->GetInstantiated()->m_entities))
-                            {
-                                EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSlicePreInstantiate, cachedAssetId, instance);
-                                SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSlicePreInstantiate, cachedAssetId, instance);
+                            HandleEntitiesAdded(instance.second->GetInstantiated()->m_entities);
 
-                                HandleEntitiesAdded(instance.second->GetInstantiated()->m_entities);
+                            EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiated, cachedAssetId, instance);
+                            SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiated, cachedAssetId, instance);
 
-                                EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiated, cachedAssetId, instance);
-                                SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiated, cachedAssetId, instance);
-
-                                isSliceInstantiated = true;
-                            }
-                            else
-                            {
-                                // The prefab has already been added to the root slice. But we are disallowing the
-                                // instantiation. So we need to remove it
-                                m_rootAsset.Get()->GetComponent()->RemoveSlice(asset);
-                            }
+                            isSliceInstantiated = true;
                         }
-                      
-                        if (!isSliceInstantiated)
+                        else
                         {
-                            EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiationFailed, cachedAssetId);
-                            SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiationFailed, cachedAssetId);
+                            // The prefab has already been added to the root slice. But we are disallowing the
+                            // instantiation. So we need to remove it
+                            m_rootAsset.Get()->GetComponent()->RemoveSlice(asset);
                         }
                     }
-                    else
+
+                    if (!isSliceInstantiated)
                     {
-                        ++iter;
+                        EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiationFailed, cachedAssetId);
+                        SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiationFailed, cachedAssetId);
                     }
                 }
             };

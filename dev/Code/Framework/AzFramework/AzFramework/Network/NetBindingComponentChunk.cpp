@@ -30,6 +30,7 @@ namespace AzFramework
         , m_owningContextId(UnspecifiedNetBindingContextSequence)
         , m_staticEntityId(AZ::EntityId::InvalidEntityId)
         , m_sliceInstanceId(UnspecifiedSliceInstanceId)
+        , m_sliceAssetId(UnspecifiedSliceInstanceId, 0)
     {
     }
 

@@ -14,7 +14,7 @@
 #include "StdAfx.h"
 #include <IGem.h>
 
-#if !defined(ANDROID) && !defined(APPLE)
+#if !defined(ANDROID) && !defined(APPLE) && !defined(LINUX)
 #ifndef AZ_MONOLITHIC_BUILD
 // Include common type defines for static linking
 // Manually instantiate templates as needed here.

@@ -340,7 +340,10 @@ namespace LmbrCentral
 
     void CharacterDefinitionAssetHandler::ProcessQueuedAssetRequests()
     {
-        gEnv->pCharacterManager->ProcessAsyncLoadRequests();
+        if (gEnv->pCharacterManager)
+        {
+            gEnv->pCharacterManager->ProcessAsyncLoadRequests();
+        }
     }
 
     void CharacterDefinitionAssetHandler::Register()

@@ -25,6 +25,14 @@ namespace EMotionFX
     class AnimGraphInstance;
 }
 
+namespace AZ
+{
+    namespace Data
+    {
+        struct AssetId;
+    }
+}
+
 namespace EMotionFX
 {
     namespace Integration

@@ -1277,7 +1277,7 @@ void CCryAction::InitGameType(bool multiplayer, bool fromInit)
     ICVar* pEnableAI = gEnv->pConsole->GetCVar("sv_AISystem");
     if (!multiplayer || (pEnableAI && pEnableAI->GetIVal()))
     {
-        if (!m_pAIProxyManager)
+        if (!m_pAIProxyManager && gEnv->pAISystem)
         {
             m_pAIProxyManager = new CAIProxyManager;
             m_pAIProxyManager->Init();
@@ -1361,8 +1361,11 @@ bool CCryAction::CompleteInit()
     ICVar* pEnableAI = gEnv->pConsole->GetCVar("sv_AISystem");
     if (!gEnv->bMultiplayer || (pEnableAI && pEnableAI->GetIVal()))
     {
-        m_pAIProxyManager = new CAIProxyManager;
-        m_pAIProxyManager->Init();
+        if (gEnv->pAISystem)
+        {
+            m_pAIProxyManager = new CAIProxyManager;
+            m_pAIProxyManager->Init();
+        }
     }
 
     // in pure game mode we load the equipment packs from disk
@@ -2457,7 +2460,7 @@ void CCryAction::EndGameContext(bool loadEmptyLevel)
 
 void CCryAction::InitEditor(IGameToEditorInterface* pGameToEditor)
 {
-    uint32 commConfigCount = gEnv->pAISystem->GetCommunicationManager()->GetConfigCount();
+    uint32 commConfigCount = (gEnv->pAISystem) ? gEnv->pAISystem->GetCommunicationManager()->GetConfigCount() : 0;
     if (commConfigCount)
     {
         std::vector<const char*> configNames;
@@ -2472,8 +2475,8 @@ void CCryAction::InitEditor(IGameToEditorInterface* pGameToEditor)
     }
 
     const char* behaviorSelectionTreeType = "BehaviorSelectionTree";
-    uint32 behaviorSelectionTreeCount = gEnv->pAISystem->GetSelectionTreeManager()
-            ->GetSelectionTreeCountOfType(behaviorSelectionTreeType);
+    uint32 behaviorSelectionTreeCount = (gEnv->pAISystem) ? gEnv->pAISystem->GetSelectionTreeManager()
+        ->GetSelectionTreeCountOfType(behaviorSelectionTreeType) : 0;
 
     if (behaviorSelectionTreeCount)
     {
@@ -2490,7 +2493,7 @@ void CCryAction::InitEditor(IGameToEditorInterface* pGameToEditor)
         pGameToEditor->SetUIEnums(behaviorSelectionTreeType, &selectionTreeNames.front(), behaviorSelectionTreeCount + 1);
     }
 
-    uint32 factionCount = gEnv->pAISystem->GetFactionMap().GetFactionCount();
+    uint32 factionCount = (gEnv->pAISystem) ? gEnv->pAISystem->GetFactionMap().GetFactionCount() : 0;
     if (factionCount)
     {
         std::vector<const char*> factionNames;
@@ -2520,7 +2523,7 @@ void CCryAction::InitEditor(IGameToEditorInterface* pGameToEditor)
         pGameToEditor->SetUIEnums("ReactionFilter", reactions, reactionCount);
     }
 
-    uint32 agentTypeCount = gEnv->pAISystem->GetNavigationSystem()->GetAgentTypeCount();
+    uint32 agentTypeCount = (gEnv->pAISystem) ? gEnv->pAISystem->GetNavigationSystem()->GetAgentTypeCount() : 0;
     if (agentTypeCount)
     {
         std::vector<const char*> agentTypeNames;

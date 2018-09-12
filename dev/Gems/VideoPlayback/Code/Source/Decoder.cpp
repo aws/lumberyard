@@ -16,6 +16,8 @@
 #include <AzCore/std/functional.h>
 #include <Include/VideoPlayback/VideoPlaybackBus.h>
 
+AV_NOWARN_DEPRECATED(
+
 namespace AZ
 {
     namespace VideoPlayback
@@ -498,3 +500,4 @@ namespace AZ
         }
     } //namespace VideoPlayback
 }//namespace AZ
+) // AV_NOWARN_DEPRECATED

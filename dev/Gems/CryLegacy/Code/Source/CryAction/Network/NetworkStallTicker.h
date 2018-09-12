@@ -49,7 +49,7 @@ public:
     }
 
 private:
-    bool m_threadRunning;
+    AZStd::atomic_bool m_threadRunning;
 };
 
 

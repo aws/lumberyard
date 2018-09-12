@@ -468,7 +468,7 @@ void __cdecl operator delete[](void* p, const std::nothrow_t&) throw()
 	MEMREPLAY_SCOPE_FREE(p);
 }
 
-#if defined(AZ_MONOLITHIC_BUILD)&& (defined(IOS) || defined(APPLETV))
+#if defined(AZ_MONOLITHIC_BUILD)&& (defined(IOS) || defined(APPLETV)) || defined(LINUX)
 #pragma clang optimize on
 #endif
 

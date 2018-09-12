@@ -15,6 +15,7 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Asset/AssetCommon.h>
 
 namespace EMotionFX
 {

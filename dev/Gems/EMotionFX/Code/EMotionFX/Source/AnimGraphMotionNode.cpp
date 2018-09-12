@@ -192,7 +192,7 @@ namespace EMotionFX
         // rewind when the weight reaches 0 when we want to
         if (!m_loop)
         {
-            if (uniqueData->GetLocalWeight() < MCore::Math::epsilon && m_rewindOnZeroWeight)
+            if (uniqueData->mMotionInstance && uniqueData->GetLocalWeight() < MCore::Math::epsilon && m_rewindOnZeroWeight)
             {
                 uniqueData->mMotionInstance->SetCurrentTime(0.0f);
             }

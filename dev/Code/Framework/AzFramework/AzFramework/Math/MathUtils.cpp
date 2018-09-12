@@ -14,8 +14,13 @@
 
 namespace AzFramework
 {
+#if defined(AZ_COMPILER_MSVC)
 #pragma warning( push )         // disable deprecated warning from our own internal calls until they are removed
 #pragma warning(disable: 4996)
+#elif defined(AZ_COMPILER_CLANG)
+_Pragma("GCC diagnostic push")
+_Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+#endif
 
     // Technique from published work available here
     // https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2012/07/euler-angles1.pdf (Extracting Euler Angles from a Rotation Matrix - Mike Day, Insomniac Games mday@insomniacgames.com)
@@ -210,5 +215,9 @@ namespace AzFramework
         return transform;
     }
 
+#if defined(AZ_COMPILER_MSVC)
 #pragma warning( pop )
+#elif defined(AZ_COMPILER_CLANG)
+ _Pragma("GCC diagnostic pop")
+#endif
 } // namespace AzFramework

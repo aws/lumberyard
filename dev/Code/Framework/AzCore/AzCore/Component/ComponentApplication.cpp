@@ -1004,6 +1004,7 @@ namespace AZ
 #else
         // http://man7.org/linux/man-pages/man5/proc.5.html
         size_t pathLen = readlink("/proc/self/exe", exeDirectory, AZ_ARRAY_SIZE(exeDirectory));
+        exeDirectory[pathLen] = '\0';
 #endif // MSVC
 
         char* exeDirEnd = exeDirectory + pathLen;

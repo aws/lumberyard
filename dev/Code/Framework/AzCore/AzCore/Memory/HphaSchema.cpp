@@ -319,8 +319,8 @@ namespace AZ {
             {
                 BL_USED = 1
             };
-            block_header* mPrev;
-            size_t mSizeAndFlags;
+            block_header* mPrev { nullptr };
+            size_t mSizeAndFlags { 0 };
 #if defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning (disable : 4200) // zero sized array
@@ -2239,7 +2239,10 @@ namespace AZ {
         return VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
 #   endif
 #else
-        return memalign(align, size);
+        // Use the same behaviour as VirtualAlloc
+        void* mem = memalign(align, size);
+        memset(mem, 0, size);
+        return mem;
 #endif
     }
 

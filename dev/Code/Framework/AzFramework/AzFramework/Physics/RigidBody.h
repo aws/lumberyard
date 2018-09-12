@@ -48,6 +48,8 @@ namespace Physics
         Full,
     };
 
+    class RigidBody;
+
     /**
      * 
      */

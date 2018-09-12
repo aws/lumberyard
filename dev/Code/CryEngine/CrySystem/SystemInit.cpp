@@ -2029,7 +2029,7 @@ bool CSystem::InitPhysicsRenderer(const SSystemInitParams& initParams)
     {
         m_pPhysRenderer = new CPhysRenderer;
         m_pPhysRenderer->Init(); // needs to be created after physics and renderer
-        m_p_draw_helpers_str = REGISTER_STRING_CB("p_draw_helpers", "0", VF_CHEAT,
+        m_p_draw_helpers_str = REGISTER_STRING_CB("p_draw_helpers", "0", VF_DEV_ONLY,
                 "Same as p_draw_helpers_num, but encoded in letters\n"
                 "Usage [Entity_Types]_[Helper_Types] - [t|s|r|R|l|i|g|a|y|e]_[g|c|b|l|t(#)]\n"
                 "Entity Types:\n"
@@ -3569,7 +3569,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #endif // #if defined(DEDICATED_SERVER)
 
 #if !defined(CONSOLE)
-#if !defined(_RELEASE)
+#if !defined(_RELEASE) || defined(DEDICATED_SERVER)
     bool isDaemonMode = (m_pCmdLine->FindArg(eCLAT_Pre, "daemon") != 0);
 #else
     bool isDaemonMode = false;
@@ -3595,7 +3595,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #elif defined(USE_ANDROIDCONSOLE)
         CAndroidConsole* pConsole = new CAndroidConsole();
 #else
-        CNULLConsole* pConsole = new CNULLConsole(false);
+        CNULLConsole* pConsole = new CNULLConsole(isDaemonMode);
 #endif
         m_pTextModeConsole = static_cast<ITextModeConsole*>(pConsole);
 
@@ -3692,6 +3692,8 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         {
             m_env.pLog = startupParams.pLog;
         }
+
+        LogVersion();
 
         //here we should be good to ask Crypak to do something
 
@@ -3826,8 +3828,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #endif
 
         InitFileSystem_LoadEngineFolders(startupParams);
-
-        LogVersion();
 
         // CPU features detection.
         m_pCpu = new CCpuFeatures;
@@ -4312,7 +4312,8 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         if (!startupParams.bPreview && !startupParams.bShaderCacheGen)
         {
-            if (!gEnv->IsDedicated() || !m_svAISystem || m_svAISystem->GetIVal())
+            if ((gEnv->IsDedicated() && (!m_svAISystem || m_svAISystem->GetIVal())) ||
+                (!gEnv->IsDedicated() && (!m_clAISystem || m_clAISystem->GetIVal())))
             {
                 AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Initializing AI System");
                 INDENT_LOG_DURING_SCOPE();

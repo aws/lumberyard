@@ -417,6 +417,7 @@ public:
         , m_pProcObjPoolPtr(0)
         , m_nGSMFrameId(0)
         , m_pRNTmpData(0)
+        , m_bProcObjectsReady(0)
     {
         memset(&m_DistanceToCamera, 0, sizeof(m_DistanceToCamera));
     }

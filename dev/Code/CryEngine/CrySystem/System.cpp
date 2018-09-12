@@ -974,7 +974,9 @@ void CSystem::Quit()
     {
         GetIRenderer()->RestoreGamma();
     }
-    
+
+    SAFE_RELEASE(m_env.pNetwork);
+
 #if CAPTURE_REPLAY_LOG
     CryGetIMemReplay()->Stop();
 #endif
@@ -1564,7 +1566,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
         m_env.pLog->Update();
     }
 
-#if !defined(RELEASE) || defined(RELEASE_LOGGING)
+#if !defined(RELEASE) || defined(RELEASE_LOGGING) || defined(ENABLE_PROFILING_CODE)
     GetIRemoteConsole()->Update();
 #endif
 
@@ -1801,6 +1803,12 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
     {
         FRAME_PROFILER("SysUpdate:Console", this, PROFILE_SYSTEM);
         m_env.pConsole->Update();
+    }
+
+    if (IsQuitting())
+    {
+        Quit();
+        return (false);
     }
 
 #ifndef EXCLUDE_UPDATE_ON_CONSOLE

@@ -1916,8 +1916,8 @@ IStatObj* CStatObj::UpdateVertices(strided_pointer<Vec3> pVtx, strided_pointer<V
                 mesh->UnlockStream(VSF_TANGENTS);
             }
             mesh->UnlockStream(VSF_GENERAL);
-            mesh->UnLockForThreadAccess();
         }
+        mesh->UnLockForThreadAccess();
     }
     return pObj;
 }

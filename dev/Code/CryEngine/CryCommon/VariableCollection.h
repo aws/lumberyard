@@ -25,6 +25,8 @@
 # define USING_VARIABLE_COLLECTION_XML_DESCRIPTION_CREATION
 #endif
 
+#include <ITimer.h>
+
 #ifdef DEBUG_VARIABLE_COLLECTION
 #include "IAISystem.h"
 #include "IAIDebugRenderer.h"

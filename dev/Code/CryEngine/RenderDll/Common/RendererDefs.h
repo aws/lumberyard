@@ -572,7 +572,7 @@ typedef uintptr_t SOCKET;
 #       endif
 #   else
         typedef IDXGIFactory1           DXGIFactory;
-#       if !defined(ANDROID) && !defined(APPLE)
+#       if !defined(ANDROID) && !defined(APPLE) && !defined(LINUX)
             typedef IDXGIDevice1        DXGIDevice;
 #       endif
         typedef IDXGIAdapter1           DXGIAdapter;

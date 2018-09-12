@@ -1624,7 +1624,7 @@ void CRenderer::InitRenderer()
         "  1: Visualize g-buffer and l-buffers\n"
         "  2: Debug deferred lighting fillrate (brighter colors means more expensive)\n");
 
-    DefineConstIntCVar3("r_DebugGBuffer", CV_r_DeferredShadingDebugGBuffer, 0, VF_NULL,
+    DefineConstIntCVar3("r_DebugGBuffer", CV_r_DeferredShadingDebugGBuffer, 0, VF_DEV_ONLY,
         "Debug view for gbuffer attributes\n"
         "  0 - Disabled\n"
         "  1 - Normals\n"

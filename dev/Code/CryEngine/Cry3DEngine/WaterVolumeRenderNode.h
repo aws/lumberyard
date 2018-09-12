@@ -148,6 +148,7 @@ public:
 
     virtual IPhysicalEntity* GetPhysics() const;
     virtual void SetPhysics(IPhysicalEntity*);
+    inline IPhysicalEntity* GetPhysArea() const { return m_pPhysArea; }
 
     virtual void CheckPhysicalized();
     virtual void Physicalize(bool bInstant = false);

@@ -89,11 +89,12 @@ namespace LmbrCentral
         if (serializeContext)
         {
             serializeContext->Class<LensFlareConfiguration>()->
-                Version(3, &VersionConverter)->
+                Version(4, &VersionConverter)->
                 Field("Visible", &LensFlareConfiguration::m_visible)->
                 Field("LensFlare", &LensFlareConfiguration::m_lensFlare)->
 
                 Field("MinimumSpec", &LensFlareConfiguration::m_minSpec)->
+                Field("VoxelGIMode", &LensFlareConfiguration::m_voxelGIMode)->
                 Field("LensFlareFrustumAngle", &LensFlareConfiguration::m_lensFlareFrustumAngle)->
                 Field("Size", &LensFlareConfiguration::m_size)->
                 Field("AttachToSun", &LensFlareConfiguration::m_attachToSun)->

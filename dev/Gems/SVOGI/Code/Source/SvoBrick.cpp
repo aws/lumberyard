@@ -770,7 +770,8 @@ namespace SVOGI
             for (AZ::s32 nObjType = 0; nObjType < eERType_TypesNum; nObjType++)
             {
                 if ((nObjType == eERType_Brush) ||
-                    (nObjType == eERType_Vegetation))
+                    (nObjType == eERType_Vegetation)) ||
+                    (nObjType == eERType_StaticMeshRenderComponent))
                 {
                     PodArray<IRenderNode*> arrRenderNodes;
                     AABB legacyAABB = AZAabbToLyAABB(worldBrickAabb);
@@ -813,7 +814,11 @@ namespace SVOGI
 
                             info.pStatObj = info.pStatObj->GetLodObject(nLod, true);
 
-                            if (pNode->GetRenderNodeType() == eERType_Brush)
+                            if (pNode->GetRenderNodeType() == eERType_StaticMeshRenderComponent)
+                            {
+                                info.fObjScale = max(max(pNode->GetColumnScale(0), pNode->GetColumnScale(1)), pNode->GetColumnScale(2));
+                            }
+                            else if (pNode->GetRenderNodeType() == eERType_Brush)
                             {
                                 info.fObjScale = ((IBrush*)pNode)->GetScale();
                             }

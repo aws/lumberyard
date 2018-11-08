@@ -4135,7 +4135,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         // AUDIO
         //////////////////////////////////////////////////////////////////////////
-        if (!startupParams.bMinimal)
         {
             if (!InitAudioSystem(startupParams))
             {
@@ -4390,7 +4389,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         // Initialize Gems
         //////////////////////////////////////////////////////////////////////////
-        if (!startupParams.bPreview && !startupParams.bShaderCacheGen && !startupParams.bMinimal)
+        if (!startupParams.bPreview && !startupParams.bShaderCacheGen)
         {
             if (m_pUserCallback)
             {

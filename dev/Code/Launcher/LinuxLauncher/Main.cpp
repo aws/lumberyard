@@ -275,7 +275,7 @@ int RunGame(const char* commandLine)
     startupParams.sLogFileName = "Server.log";
     startupParams.bDedicatedServer = true;
     startupParams.pUserCallback = NULL;
-    startupParams.bMinimal = false;
+    startupParams.bMinimal = true;
 
     startupParams.pSharedEnvironment = AZ::Environment::GetInstance();
 

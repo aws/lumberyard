@@ -357,6 +357,11 @@ namespace Metastream
             m_server->Stop();
             m_server.reset();
 
+            if (m_cache)
+            {
+                m_cache->ClearCache();
+            }
+
             m_serverEnabled = 0;
         }
     }

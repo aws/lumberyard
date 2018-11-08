@@ -371,6 +371,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void SystemComponent::Activate()
         {
+            AZ::SessionTickComponent::Activate();
             // Start EMotionFX allocator.
             EMotionFXAllocator::Descriptor allocatorDescriptor;
             allocatorDescriptor.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
@@ -411,7 +412,6 @@ namespace EMotionFX
             RegisterAssetTypesAndHandlers();
 
             SystemRequestBus::Handler::BusConnect();
-            AZ::TickBus::Handler::BusConnect();
             CrySystemEventBus::Handler::BusConnect();
             EMotionFXRequestBus::Handler::BusConnect();
 
@@ -447,7 +447,6 @@ namespace EMotionFX
             AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
 #endif // EMOTIONFXANIMATION_EDITOR
 
-            AZ::TickBus::Handler::BusDisconnect();
             CrySystemEventBus::Handler::BusDisconnect();
             EMotionFXRequestBus::Handler::BusDisconnect();
 
@@ -460,6 +459,8 @@ namespace EMotionFX
                 EMotionFX::Initializer::Shutdown();
                 MCore::Initializer::Shutdown();
             }
+
+            AZ::SessionTickComponent::Deactivate();
 
             // Memory leaks will be reported.
             AZ::AllocatorInstance<EMotionFXAllocator>::Destroy();

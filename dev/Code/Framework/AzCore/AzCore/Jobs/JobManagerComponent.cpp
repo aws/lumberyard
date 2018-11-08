@@ -23,6 +23,9 @@
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/Math/MathUtils.h>
 
+#include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
+
 namespace AZ
 {
     //=========================================================================
@@ -51,6 +54,17 @@ namespace AZ
         JobManagerThreadDesc threadDesc;
 
         int numberOfWorkerThreads = m_numberOfWorkerThreads;
+#ifdef DEDICATED_SERVER
+        AZ::ComponentApplication* app = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(app, &AZ::ComponentApplicationBus::Events::GetApplication);
+
+        if (app != nullptr)
+        {
+            const auto& params = app->GetStartupParameters();
+            numberOfWorkerThreads = params.m_jobThreadCount;
+        }
+#endif // DEDICATED_SERVER
+
         if (numberOfWorkerThreads <= 0)
         {
             numberOfWorkerThreads = AZ::GetMin(static_cast<unsigned int>(desc.m_workerThreads.capacity()), AZStd::thread::hardware_concurrency());

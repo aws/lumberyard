@@ -16,8 +16,7 @@
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerBus.h>
-#include <AzCore/Component/Component.h>
-#include <AzCore/Component/TickBus.h>
+#include <AzFramework/Components/SessionTickComponent.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzFramework/Physics/Action.h>
 #include <AzFramework/Physics/Character.h>
@@ -115,8 +114,7 @@ namespace PhysX
     * meshes and heightfields ready for use in PhysX).
     */
     class PhysXSystemComponent
-        : public AZ::Component
-        , public AZ::TickBus::Handler
+        : public AZ::SessionTickComponent
         , public LegacyTerrain::LegacyTerrainNotificationBus::Handler
         , public LegacyTerrain::LegacyTerrainRequestBus::Handler
         , public PhysXSystemRequestBus::Handler
@@ -155,7 +153,7 @@ namespace PhysX
         physx::PxPvdTransport*          m_pvdTransport = nullptr;
         physx::PxPvd*                   m_pvd = nullptr;
         physx::PxCooking*               m_cooking = nullptr;
-        AzPhysXCpuDispatcher*           m_cpuDispatcher = nullptr;
+        physx::PxCpuDispatcher*         m_cpuDispatcher = nullptr;
 
         // Terrain data
         AZStd::vector<physx::PxRigidStatic*>   m_terrainTiles;

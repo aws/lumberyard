@@ -64,7 +64,9 @@
             "Components/BootstrapReaderComponent.cpp",
             "Components/CameraBus.h",
             "Components/ConsoleBus.h",
-            "Components/ConsoleBus.cpp"
+            "Components/ConsoleBus.cpp",
+            "Components/SessionTickComponent.cpp",
+            "Components/SessionTickComponent.h"
         ],
         "FileFunc": [
             "FileFunc/FileFunc.h",

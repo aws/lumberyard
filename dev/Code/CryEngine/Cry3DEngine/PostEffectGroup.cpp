@@ -210,7 +210,9 @@ PostEffectGroupManager::PostEffectGroupManager()
     PostEffectGroup* base = new PostEffectGroup(this, "Base", PostEffectGroup::kPriorityBase, true, 0.f);
     base->SetEnable(true);
     m_groups.push_back(std::unique_ptr<PostEffectGroup>(base));
+#ifndef DEDICATED_SERVER
     gEnv->pRenderer->RegisterSyncWithMainListener(this);
+#endif
     if (gEnv->IsEditor())
     {
         //  Only monitor assets in the editor.
@@ -220,7 +222,9 @@ PostEffectGroupManager::PostEffectGroupManager()
 
 PostEffectGroupManager::~PostEffectGroupManager()
 {
+#ifndef DEDICATED_SERVER
     gEnv->pRenderer->RemoveSyncWithMainListener(this);
+#endif
     if (gEnv->IsEditor())
     {
         AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();

@@ -14,6 +14,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <PhysXSystemComponent.h>
+#include <PhysXCollisionFilter.h>
 #include <AzPhysXCpuDispatcher.h>
 #include <PhysXRigidBody.h>
 #include <Pipeline/PhysXMeshAsset.h>
@@ -85,6 +86,7 @@ namespace PhysX
             return;
         }
 
+        AZ::SessionTickComponent::Activate();
         // Start PhysX allocator
         PhysXAllocator::Descriptor allocatorDescriptor;
         allocatorDescriptor.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
@@ -105,7 +107,6 @@ namespace PhysX
         // connect to relevant buses
         Physics::SystemRequestBus::Handler::BusConnect();
         PhysXSystemRequestBus::Handler::BusConnect();
-        AZ::TickBus::Handler::BusConnect();
         LegacyTerrain::LegacyTerrainNotificationBus::Handler::BusConnect();
         LegacyTerrain::LegacyTerrainRequestBus::Handler::BusConnect();
 #ifdef PHYSX_EDITOR
@@ -113,8 +114,11 @@ namespace PhysX
 #endif
 
         // set up CPU dispatcher
+#ifdef DEDICATED_SERVER
+        m_cpuDispatcher = physx::PxDefaultCpuDispatcherCreate(0);
+#else
         m_cpuDispatcher = AzPhysXCpuDispatcherCreate();
-
+#endif
         // create default world
         if (m_createDefaultWorld)
         {
@@ -159,7 +163,6 @@ namespace PhysX
 #endif
         LegacyTerrain::LegacyTerrainRequestBus::Handler::BusDisconnect();
         LegacyTerrain::LegacyTerrainNotificationBus::Handler::BusDisconnect();
-        AZ::TickBus::Handler::BusDisconnect();
         PhysXSystemRequestBus::Handler::BusDisconnect();
         Physics::SystemRequestBus::Handler::BusDisconnect();
 
@@ -186,6 +189,8 @@ namespace PhysX
         m_assetHandlers.clear();
 
         AZ::AllocatorInstance<PhysXAllocator>::Destroy();
+
+        AZ::SessionTickComponent::Deactivate();
     }
 
     // PhysXSystemComponentRequestBus interface implementation
@@ -235,6 +240,8 @@ namespace PhysX
 
     void PhysXSystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     {
+        FUNCTION_PROFILER(GetISystem(), PROFILE_GAME);
+
         for (auto world_it : m_worlds)
         {
             world_it.second->Update(deltaTime);

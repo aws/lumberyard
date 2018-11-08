@@ -2067,6 +2067,13 @@ bool CScriptSystem::ToVec3(Vec3& vec, int tableIndex)
 //////////////////////////////////////////////////////////////////////////
 void CScriptSystem::Update()
 {
+#ifdef DEDICATED_SERVER
+    if (!m_levelLoaded)
+    {
+        return;
+    }
+#endif
+
     CRYPROFILE_SCOPE_PROFILE_MARKER("SysUpdate:ScriptSystem");
     FUNCTION_PROFILER_LEGACYONLY(m_pSystem, PROFILE_SCRIPT);
     AZ_TRACE_METHOD();
@@ -2322,10 +2329,12 @@ void CScriptSystem::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR 
     {
     case ESYSTEM_EVENT_LEVEL_POST_UNLOAD:
         ForceGarbageCollection();
+        m_levelLoaded = false;
         break;
 
     case ESYSTEM_EVENT_LEVEL_LOAD_START:
         ForceGarbageCollection();
+        m_levelLoaded = true;
         break;
     }
 

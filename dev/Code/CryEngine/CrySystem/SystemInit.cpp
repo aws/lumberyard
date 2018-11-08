@@ -103,6 +103,7 @@
 #include "Log.h"
 #include "XML/xml.h"
 #include "StreamEngine/StreamEngine.h"
+#include "StreamEngine/NullStreamEngine.h"
 #include "BudgetingSystem.h"
 #include "PhysRenderer.h"
 #include "LocalizedStringManager.h"
@@ -2867,7 +2868,11 @@ bool CSystem::InitStreamEngine()
         m_pUserCallback->OnInitProgress("Initializing Stream Engine...");
     }
 
+#ifdef DEDICATED_SERVER
+    m_pStreamEngine = new CNullStreamEngine();
+#else
     m_pStreamEngine = new CStreamEngine();
+#endif
 
     return true;
 }

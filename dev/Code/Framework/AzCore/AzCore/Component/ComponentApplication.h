@@ -144,6 +144,11 @@ namespace AZ
 
             /// Specifies which system components to create & activate. If no tags specified, all system components are used. Specify as comma separated list.
             const char* m_systemComponentTags = nullptr;
+
+            /// Specifies amount of threads used by job system
+            int m_jobThreadCount = 1;
+            /// Specifies amount of threads used by asset manager system
+            int m_assetManagerThreadCount = 1;
         };
 
         ComponentApplication();

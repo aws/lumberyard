@@ -315,6 +315,8 @@ public: // ---------------------------------------------------------------------
 
 	string m_sLastBreakSource;		//!
 	int    m_nLastBreakLine;		//!
+
+	bool m_levelLoaded { false };
 };
 
 #endif // CRYINCLUDE_CRYSCRIPTSYSTEM_SCRIPTSYSTEM_H

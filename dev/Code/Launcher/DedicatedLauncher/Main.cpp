@@ -277,6 +277,18 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 
         AzGameFramework::GameApplication::StartupParameters gameAppParams;
+
+        const char* sThreadCount = strstr(lpCmdLine, "job_thread_count");
+        if (sThreadCount != nullptr)
+        {
+            gameAppParams.m_jobThreadCount = atoi(sThreadCount);
+        }
+        sThreadCount = strstr(lpCmdLine, "asset_thread_count");
+        if (sThreadCount != nullptr)
+        {
+            gameAppParams.m_assetManagerThreadCount = atoi(sThreadCount);
+        }
+
 #ifdef AZ_MONOLITHIC_BUILD
         gameAppParams.m_createStaticModulesCallback = CreateStaticModules;
         gameAppParams.m_loadDynamicModules = false;

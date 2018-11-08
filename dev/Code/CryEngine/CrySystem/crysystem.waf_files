@@ -375,7 +375,8 @@
             "StreamEngine/StreamAsyncFileRequest.h",
             "StreamEngine/StreamEngine.h",
             "StreamEngine/StreamIOThread.h",
-            "StreamEngine/StreamReadStream.h"
+            "StreamEngine/StreamReadStream.h",
+            "StreamEngine/NullStreamEngine.h"
         ]
     },
     "CrySystem_Tests_uber.cpp":

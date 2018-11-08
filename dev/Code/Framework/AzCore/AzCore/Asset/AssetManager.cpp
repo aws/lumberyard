@@ -25,6 +25,9 @@
 #include <AzCore/IO/Streamer.h>
 #include <AzCore/IO/GenericStreams.h>
 
+#include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
+
 namespace AZ
 {
     namespace Data
@@ -434,7 +437,19 @@ namespace AZ
 
             JobManagerDesc jobDesc;
 #if !(defined AZCORE_JOBS_IMPL_SYNCHRONOUS)
-            m_numberOfWorkerThreads = AZ::GetMin(desc.m_maxWorkerThreads, AZStd::thread::hardware_concurrency());
+            AZ::u32 numberOfWorkerThreads = desc.m_maxWorkerThreads;
+#ifdef DEDICATED_SERVER
+            AZ::ComponentApplication* app = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(app, &AZ::ComponentApplicationBus::Events::GetApplication);
+
+            if (app != nullptr)
+            {
+                const auto& params = app->GetStartupParameters();
+                numberOfWorkerThreads = params.m_assetManagerThreadCount;
+            }
+#endif // DEDICATED_SERVER
+
+            m_numberOfWorkerThreads = AZ::GetMin(numberOfWorkerThreads, AZStd::thread::hardware_concurrency());
 
             JobManagerThreadDesc threadDesc(m_firstThreadCPU);
             for (unsigned int i = 0; i < m_numberOfWorkerThreads; ++i)

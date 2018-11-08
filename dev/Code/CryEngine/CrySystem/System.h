@@ -922,8 +922,8 @@ private: // ------------------------------------------------------
 
     std::map<CCryNameCRC, WIN_HMODULE> m_moduleDLLHandles;
 
-    //! THe streaming engine
-    class CStreamEngine* m_pStreamEngine;
+    //! The streaming engine
+    struct IStreamEngine* m_pStreamEngine;
 
     //! current active process
     IProcess* m_pProcess;

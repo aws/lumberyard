@@ -13,8 +13,7 @@
 
 #pragma once
 
-#include <AzCore/Component/Component.h>
-#include <AzCore/Component/TickBus.h>
+#include <AzFramework/Components/SessionTickComponent.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
 #include <Integration/AnimationBus.h>
@@ -41,9 +40,8 @@ namespace EMotionFX
     namespace Integration
     {
         class SystemComponent
-            : public AZ::Component
+            : public AZ::SessionTickComponent
             , private SystemRequestBus::Handler
-            , private AZ::TickBus::Handler
             , private CrySystemEventBus::Handler
             , private EMotionFXRequestBus::Handler
 #if defined (EMOTIONFXANIMATION_EDITOR)

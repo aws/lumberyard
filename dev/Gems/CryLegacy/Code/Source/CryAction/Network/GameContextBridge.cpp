@@ -126,7 +126,6 @@ void CGameContextBridge::OnContextBridgeDataDeactivated(CGameContextBridgeDataPt
 {
     AZ_Assert(m_netData == netData, "This is not our data!");
     m_netData = nullptr;
-	ClearRootSliceLoadModeOverride();
 }
 
 void CGameContextBridge::OnStartGameContext(const SGameStartParams* pGameStartParams)

@@ -266,12 +266,6 @@ namespace AzFramework
             m_overrideRootSliceLoadAuthoritative = true;
         }
 
-		void ClearRootSliceLoadModeOverride()
-		{
-			m_isAuthoritativeRootSliceLoad = false;
-			m_overrideRootSliceLoadAuthoritative = false;
-		}
-
     private:
         /**
          * \brief True if the root slice is to be loaded authoritatively

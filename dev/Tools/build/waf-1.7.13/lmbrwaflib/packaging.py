@@ -9,46 +9,125 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-import subprocess, os, shutil, plistlib
+import os
+import plistlib
+import shutil
+import subprocess
 
-from utils import *
 from branch_spec import spec_modules
 from gems import Gem
-from qt5 import QT5_LIBS
-from waflib import Context, Build, Utils, Logs, TaskGen
-from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
-from waf_branch_spec import PLATFORMS, CONFIGURATIONS, PLATFORM_CONFIGURATION_FILTER
-from contextlib import contextmanager
 from lumberyard_sdks import get_dynamic_lib_extension, get_platform_lib_prefix
-from waflib.Utils import Timer
+from qt5 import QT5_LIBS
+from utils import *
+from waf_branch_spec import PLATFORMS, CONFIGURATIONS, PLATFORM_CONFIGURATION_FILTER
+
+from waflib import Context, Build, Utils, Logs, TaskGen
 from waflib.Scripting import run_command
+from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
 
-def run_xcode_build(pkg, target, destination):
-    if pkg.platform not in ['darwin_x64', 'ios', 'applettv'] or not pkg.is_option_true('run_xcode_for_packaging'):
-        Logs.debug("package: Not running xcode because either we are not on a macOS platform or the command line option disabled it")
-        return
 
-    Logs.info("Running xcode build command to create App Bundle")
+################################################################
+#                            Globals                           #
+DEFAULT_RC_JOB = os.path.join('Bin64', 'rc', 'RCJob_Generic_MakePaks.xml')
+#                                                              #
+################################################################
 
-    platform = pkg.platform
-    if 'darwin' in platform:
-        platform = "mac" 
+
+def run_subprocess(command_args, working_dir = None, as_shell = False):
+    exe_name = os.path.basename(command_args[0])
+    command = ' '.join(command_args)
+    Logs.debug('package: Running command - %s', command)
 
     try:
-        result = subprocess.check_output(["xcodebuild", 
-            "-project", "{}/{}.xcodeproj".format(getattr(pkg.options, platform + "_project_folder", None), getattr(pkg.options, platform + "_project_name", None)),
-            "-target", target, 
-            "-quiet",
-            "RUN_WAF_BUILD=NO", 
-            "CONFIGURATION="+pkg.config, 
-            "CONFIGURATION_BUILD_DIR="+destination.abspath()])
-        Logs.debug("package: xcode result is {}".format(result))
+        cmd = command if as_shell else command_args
+        output = subprocess.check_output(cmd, stderr = subprocess.STDOUT, cwd = working_dir, shell = as_shell)
+        Logs.debug('package: Output = %s', output.rstrip())
+        return True
+
+    except subprocess.CalledProcessError as process_err:
+        Logs.debug('package: "%s" exited with a non-zero return code', exe_name)
+        Logs.debug('package: Return Code = %d', process_err.returncode)
+        Logs.debug('package: Output = %s', process_err.output)
+
     except Exception as err:
-        Logs.error("Can't run xcode {}".format(err))
+        Logs.debug('package: An exception was thrown while running "%s"', exe_name)
+        Logs.debug('package: Exception = %s', err)
+
+    return False
+
+
+def run_xcode_build(ctx, target, platform, config):
+    if platform not in ('appletv', 'darwin_x64', 'ios') or not ctx.is_option_true('run_xcode_for_packaging'):
+        Logs.debug('package: Not running xcode because either we are not on a macOS platform or the command line option disabled it')
+        return True
+
+    Logs.info('Running xcode build command to create App Bundle')
+
+    if 'darwin' in platform:
+        platform = 'mac'
+
+    get_project_name = getattr(ctx, 'get_{}_project_name'.format(platform), lambda : '')
+    project_name = get_project_name()
+
+    xcodebuild_cmd = [
+        'xcodebuild',
+        '-project', '{}.xcodeproj'.format(project_name),
+        '-target', target,
+        '-configuration', config,
+        '-quiet',
+        'RUN_WAF_BUILD=NO'
+    ]
+
+    return run_subprocess(xcodebuild_cmd)
+
+
+def get_resource_compiler_path(ctx):
+    output_folders = ctx.get_standard_host_output_folders()
+    if not output_folders:
+        ctx.fatal('[ERROR] Unable to determine possible binary directories for host {}'.format(Utils.unversioned_sys_platform()))
+
+    rc_search_paths = [ os.path.join(output_node.abspath(), 'rc') for output_node in output_folders ]
+    try:
+        return ctx.find_program('rc', path_list = rc_search_paths, silent_output = True)
+    except:
+        ctx.fatal('[ERROR] Failed to find the Resource Compiler in paths: {}'.format(rc_search_paths))
+
+
+def run_rc_job(ctx, game, job, assets_platform, source_path, target_path, is_obb = False):
+    rc_path = get_resource_compiler_path(ctx)
+
+    rc_cmd = [
+        '"{}"'.format(rc_path),
+        '/game={}'.format(game.lower()),
+        '/job="{}"'.format(job),
+        '/p={}'.format(assets_platform),
+        '/src="{}"'.format(source_path),
+        '/trg="{}"'.format(target_path),
+
+         # forcing the job to run single threaded since anything higher than one is effectively ingored on mac
+         # while pc produces a bunch of "thread not joinable" errors
+        '/threads=1',
+    ]
+
+    if is_obb:
+        pacakge_name = ctx.get_android_package_name(game)
+        app_version_number = ctx.get_android_version_number(game)
+
+        rc_cmd.extend([
+            '/obb_pak=main.{}.{}.obb'.format(app_version_number, pacakge_name),
+            '/obb_patch_pak=patch.{}.{}.obb'.format(app_version_number, pacakge_name)
+        ])
+
+    # Invoking RC as non-shell exposes how rigid it's command line parsing is...
+    return run_subprocess(rc_cmd, working_dir = ctx.launch_dir, as_shell = True)
 
 
 def should_copy_and_not_link(pkg):
-    return Utils.is_win32 or 'release' in pkg.config or pkg.is_option_true('copy_assets') or pkg.force_copy_of_assets
+    return (   Utils.is_win32
+            or 'release' in pkg.config
+            or pkg.is_option_true('copy_assets')
+            or pkg.force_copy_of_assets
+            or pkg.platform in ('appletv', 'ios'))
 
 
 class package_task(Task):
@@ -83,12 +162,10 @@ class package_task(Task):
         :type resources: list of strings
         :param dir_resources: [Optional] Directories that contain resources required for the executable (such as QtLibs). These directories will either be linked or copied into the location of the executable
         :type dir_resources: list of strings
-        :param assets_path: [Optional] Path to where the assets for the executbale are located. They will be either copied into the package or a symlink will be created to them.
-        :type assets_path: string
-        :param use_pak_files: [Optional] If pak files should be used instead of assets. This takes precendence over assets_path parameter if both are specified.
+        :param include_assets: [Optional] If assets should be included in the package.  They will be either copied into the package or a symlink will be created to them.
+        :type include_assets: boolean
+        :param use_pak_files: [Optional] If pak files should be used instead of loose assets. This requires include_assets to be set to True, otherwise its ignored.
         :type use_pak_files: boolean
-        :param pak_file_path: [Optional] Location of the pak files. if not specified will default to "[project name]_[asset platform name]_paks"
-        :type pak_file_path: string
         :param finalize_func: [Optional] A function to execute when the package task has finished. The package context and node containing the destination of the executable is passed into the function.
         :type finalize_func: function
         """
@@ -145,8 +222,10 @@ class package_task(Task):
 
         Logs.debug("package: packaging {} to destination {}".format(executable_source_node.abspath(), self.destination_node.abspath()))
 
-        if 'darwin' in self.bld.platform:
-            run_xcode_build(self.bld, self.task_gen_name, self.destination_node) 
+        if any(plat for plat in ('appletv', 'darwin', 'ios') if plat in self.bld.platform):
+            if not run_xcode_build(self.bld, self.task_gen_name, self.bld.platform, self.bld.config):
+                Logs.error('[ERROR] Failed to to run xcodebuild.  Run the command again with "--zones=package" included for more information.')
+                return
 
         self.process_executable()
         self.process_qt()
@@ -284,63 +363,85 @@ class package_task(Task):
             self.bld.create_symlink_or_copy(executable_source_location_node.make_node(dir), executable_dest_node.make_node(dir).abspath(), postpone=False)
 
     def process_assets(self):
-        """ 
-        Packages any assets. 
-        
-        Assets can come from the asset_source attribute or will use pak_files instead of use_pak_files has been specified. 
         """
+        Packages any assets but only if requested from include_assets.  If use_pak_files has been specified, they will be created and
+        used instead of loose assets.
+        """
+        if not getattr(self, 'include_assets', False):
+            return
 
-        assets_source = getattr(self, 'assets_path', None)
-        if getattr(self, 'use_pak_files', False):
-            assets_source = getattr(self, 'pak_file_path', None)
-            if assets_source and not os.path.exists(assets_source):
-                Logs.warn("Specified pak file location {} does not exist. Defaulting to use the standard generated file path".format(assets_source))
-                assets_source = None
+        ctx = self.bld
 
-            if not assets_source:
-                assets_platform = self.bld.get_bootstrap_assets(self.bld.platform)
-                pak_file_dir = self.bld.project + "_" + assets_platform + "_paks"
-                pak_file_dir = pak_file_dir.lower()
-                assets_source = self.bld.Path(pak_file_dir)
+        assets_platform = ctx.get_bootstrap_assets(ctx.platform)
+        assets_dir = os.path.join('Cache', ctx.project, assets_platform)
+        assets_source_path = ctx.Path(assets_dir)
 
-        game_assets_node = get_game_assets_node(self.bld.platform, self.executable_name, self.destination_node)
+        if not os.path.exists(assets_source_path):
+            if should_copy_and_not_link(ctx):
+                output_folders = [ node.name for node in ctx.get_standard_host_output_folders() ]
+                Logs.error('[ERROR] There is no asset cache to read from at "{}". Please run AssetProcessor or '
+                           'AssetProcessorBatch from {} with "{}" assets enabled in the '
+                           'AssetProcessorPlatformConfig.ini'.format(assets_dir, '/'.join(output_folders), assets_platform))
+                return
 
-        Logs.debug("package: source {} dest {}".format(assets_source, game_assets_node.abspath()))
-
-        if assets_source:
-            if not os.path.exists(assets_source):
-                Logs.warn("[WARNING] Asset source location {} does not exist on the file system. Creating the assets source folder.".format(assets_source))
+            else:
+                Logs.warn("[WARNING] Asset source location {} does not exist on the file system. Creating the assets source folder.".format(assets_source_path))
                 try:
-                    os.makedirs(assets_source)
+                    os.makedirs(assets_source_path)
                 except OSError as e:
-                    Logs.warn("[WARNING] Creating the assets source folder failed, no assets will be put into the package. {}".format(e))
+                    Logs.error("[ERROR] Creating the assets source folder failed, no assets will be put into the package. {}".format(e))
                     return
 
-            if os.path.isdir(game_assets_node.abspath()):
-                if should_copy_and_not_link(self.bld):
-                    if os.path.islink(game_assets_node.abspath()):
-                        # Need to remove the junction as rmtree does not do that and
-                        # fails if there is a junction
-                        remove_junction(game_assets_node.abspath())
-                else: 
-                    # Going from a copy to a link so remove the directory if it exists
-                    if not os.path.islink(game_assets_node.abspath()):
-                        shutil.rmtree(game_assets_node.abspath())
+        if getattr(self, 'use_pak_files', False):
+            Logs.info('Generating the necessary pak files')
+            pak_files_path = '{}_paks'.format(assets_source_path)
 
-            # Make the parent directory so that when we either make a link or copy
-            # assets the parent directory is there and waf install/symlink commands
-            # will work correctly
-            game_assets_node.parent.mkdir()
+            # if the source asset cache exists but is empty the rc job to create the pak files will succeed but
+            # won't create the destination directory (since the source is empty), so we need to make sure it exists
+            if not os.path.exists(pak_files_path):
+                os.makedirs(pak_files_path)
 
-            Logs.info("Putting assets into folder {}".format(game_assets_node.abspath()))
-            self.bld.create_symlink_or_copy(self.bld.root.find_node(assets_source), game_assets_node.abspath(), postpone=False)
+            if not run_rc_job(ctx, ctx.project, DEFAULT_RC_JOB, assets_platform, assets_source_path, pak_files_path):
+                Logs.error('[ERROR] Failed to generate pak files.  Run the command again with "--zones=package" included for more information.')
+                return
+
+            assets_source_path = pak_files_path
+
+        game_assets_node = get_game_assets_node(ctx.platform, self.executable_name, self.destination_node)
+        Logs.debug('package: Assets source      = {}'.format(assets_source_path))
+        Logs.debug('package: Assets destination = {}'.format(game_assets_node.abspath()))
+
+        if os.path.isdir(game_assets_node.abspath()):
+            if should_copy_and_not_link(ctx):
+                if os.path.islink(game_assets_node.abspath()):
+                    # Need to remove the junction as rmtree does not do that and fails if there is a junction
+                    remove_junction(game_assets_node.abspath())
+            else:
+                # Going from a copy to a link so remove the directory if it exists
+                if not os.path.islink(game_assets_node.abspath()):
+                    shutil.rmtree(game_assets_node.abspath())
+
+        # Make the parent directory so that when we either make a link or copy assets the parent directory is
+        # there and waf install/symlink commands will work correctly
+        game_assets_node.parent.mkdir()
+
+        Logs.info('Placing assets into folder {}'.format(game_assets_node.abspath()))
+        ctx.create_symlink_or_copy(ctx.root.find_node(assets_source_path), game_assets_node.abspath(), postpone = False)
 
 
 def execute(self):
     """
     Extended Context.execute to perform packaging on games and tools.
 
-    For an executable package to be processed by this context the wscript file must implement the package_[platform] function (i.e. package_darwin_x64), which can call the package_game or package_tool methods on this context. Those functions will create the necessary package_task objects that will be executed after all directories have been recursed through. The package_game/tool functions accept keyword arguments that define how the package_task should packge executable, resources, and assets that are needed. For more information about valid keyword arguments look at the package_task.__init__ method.
+    For an executable package to be processed by this context the wscript file
+    must implement the package_[platform] function (i.e. package_darwin_x64),
+    which can call the package_game or package_tool methods on this context.
+    Those functions will create the necessary package_task objects that will
+    be executed after all directories have been recursed through. The
+    package_game/tool functions accept keyword arguments that define how the
+    package_task should packge executable, resources, and assets that are needed.
+    For more information about valid keyword arguments look at the
+    package_task.__init__ method.
     """
 
     # When the package_* functions are called they will set the group to
@@ -367,14 +468,11 @@ def execute(self):
         Logs.info("Could not run the package command: {}.".format(the_error))
         return
 
-    # display the time elapsed in the progress bar
-    self.timer = Utils.Timer()
-
     group = self.get_group('packaging')
 
     # Generating the xcode project should only be done on macOS and if we actually have something to package (len(group) > 0)
-    if len(group) > 0 and self.is_option_true('run_xcode_for_packaging') and self.platform in ['darwin_x64', 'ios', 'appletv']:
-        Logs.debug("package: checking for xcode project... ") 
+    if len(group) > 0 and self.is_option_true('run_xcode_for_packaging') and self.platform in ('appletv', 'darwin_x64', 'ios'):
+        Logs.debug("package: checking for xcode project... ")
         platform = self.platform
         if 'darwin' in platform:
             platform = "mac" 
@@ -438,7 +536,7 @@ def is_valid_package_request(pkg, **kw):
     """ Returns if the platform and configuration specified for the package_task match what the package context has been created for"""
     executable_name = kw.get('target', None)
     if not executable_name:
-        Logs.info("Skipping package because no target was specified.")
+        Logs.warn("[WARN] Skipping package because no target was specified.")
         return False
 
     has_valid_platform = False
@@ -447,19 +545,20 @@ def is_valid_package_request(pkg, **kw):
             has_valid_platform = True
             break
 
+    task_gen_name = kw.get('task_gen_name', executable_name)
+
     if 'all' not in kw['platforms'] and not has_valid_platform:
-        Logs.info("Skipping packaging {} because the host platform {} is not supported".format(executable_name, pkg.platform))
+        Logs.debug('package: Skipping packaging {} because the platform {} is not supported'.format(task_gen_name, pkg.platform))
         return False
 
     if 'all' not in kw['configurations'] and pkg.config not in kw['configurations']:
-        Logs.info("Skipping packaging {} because the configuration {} is not supported".format(executable_name, pkg.config))
+        Logs.debug('package: Skipping packaging {} because the configuration {} is not supported'.format(task_gen_name, pkg.config))
         return False
 
     if pkg.options.project_spec:
-        task_gen_name = kw.get('task_gen_name', executable_name)
         modules_in_spec = pkg.loaded_specs_dict[pkg.options.project_spec]['modules']
         if task_gen_name not in modules_in_spec:
-            Logs.info("Skipping packaging {} because it is not part of the spec {}".format(executable_name, pkg.options.project_spec))
+            Logs.debug('package: Skipping packaging {} because it is not part of the spec {}'.format(task_gen_name, pkg.options.project_spec))
             return False
 
     if pkg.options.targets and executable_name not in pkg.options.targets.split(','):
@@ -471,26 +570,12 @@ def is_valid_package_request(pkg, **kw):
 
 def create_package_task(self, **kw):
     executable_name = kw.get('target', None)
+    task_gen_name = kw.get('task_gen_name', executable_name)
 
-    Logs.debug("package: create_package_task {}".format(executable_name))
-
-    has_valid_platform = False
-    for platform in kw['platforms']:
-        if platform in self.platform:
-            has_valid_platform = True
-            break
-
-    if (not has_valid_platform and 'all' not in kw['platforms']):
-        Logs.info("Skipping packaging {} because the host platform {} is not supported".format(executable_name, self.platform))
-        return
-
-    if (self.config not in kw['configurations'] and 'all' not in kw['configurations']):
-        Logs.info("Skipping packaging {} because the configuration {} is not supported".format(executable_name, self.config))
-        return
+    Logs.debug('package: create_package_task {}'.format(task_gen_name))
 
     kw['bld'] = self # Needed for when we build the task
 
-    task_gen_name = kw.get('task_gen_name', executable_name)
     executable_task_gen = self.get_tgen_by_name(task_gen_name)
 
     if executable_task_gen and getattr(executable_task_gen,'output_folder', None):
@@ -513,7 +598,7 @@ def create_package_task(self, **kw):
         if os.path.exists(executable_dest_node.make_node(executable_name).abspath()):
             Logs.info("Final package output already exists, skipping packaging of %s" % executable_source_node.abspath())
         else:
-            Logs.warn("[WARNING] Source executable %s does not exist and final package artifact does not exist either. Did you run the build command before the package ommand?" % executable_source_node.abspath())
+            Logs.warn("[WARNING] Source executable %s does not exist and final package artifact does not exist either. Did you run the build command before the package command?" % executable_source_node.abspath())
 
 
 def symlink_libraries(self, source, destination): 
@@ -659,11 +744,11 @@ for platform in PLATFORMS[Utils.unversioned_sys_platform()]:
 
         # Create new class to execute package command with variant
         class_attributes = {
-            'cmd'                    : 'package_' + platform_config_key, 
-            'variant'                : platform_config_key, 
-            'fun'                    : 'package_' + platform, 
-            'config'                 : configuration, 
-            'platform'               : platform, 
+            'cmd'                    : 'package_' + platform_config_key,
+            'variant'                : platform_config_key,
+            'fun'                    : 'package',
+            'config'                 : configuration,
+            'platform'               : platform,
             'force_copy_of_assets'   : False,
 
             'execute'                : execute,

@@ -53,13 +53,15 @@ namespace GridMate
         bool IsSend(TrafficControlConnectionId id) override;
         /// Return true if you should send ACK/NACK data at this time.
         bool IsSendAck(TrafficControlConnectionId id) override;
-        /// Return max packet size we are allow to send at the moment in bytes. The size can/will vary over time.
-        unsigned int GetMaxPacketSize(TrafficControlConnectionId id) const override;
+        /// Return number of bytes we are allowed to send at the moment. The size can/will vary over time.
+        unsigned int GetAvailableWindowSize(TrafficControlConnectionId id) const override;
         /**
         * Called for every package waiting for Ack. If this function returns true the packet will be considered lost.
         * You should resend it and call OnReSend function ASAP.
         */
         bool IsResend(TrafficControlConnectionId id, const DataGramControlData& info, unsigned int resendDataSize) override;
+
+        TimeStamp GetResendTime(TrafficControlConnectionId id, const DataGramControlData& info) override;
 
         bool IsDisconnect(TrafficControlConnectionId id, float conditionThreshold) override;
 

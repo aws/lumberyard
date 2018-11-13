@@ -643,21 +643,19 @@ static pe_gridthunk* AllocateThunks(int& nNewSize)
     size_t bytes = sizeof(pe_gridthunk) * nNewSize;
     size_t numPages = (bytes + 64 * 1024 - 1) >> 16;
     nNewSize = (numPages << 16) / sizeof(pe_gridthunk);
-    void* memory = malloc(numPages << 16);
+    void* memory = CryModuleMalloc(numPages << 16);
     return new (memory) pe_gridthunk[nNewSize];
 }
 
 static void FreeThunks(pe_gridthunk* thunks)
 {
     // NB: Dont care about the destructors
-    free(thunks);
+    CryModuleFree(thunks);
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CPhysicalWorld::AllocGThunksPool(int nNewSize)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Physics, 0, "Physical Grid Pool");
-
     if (nNewSize == m_thunkPoolSz)
     {
         return;
@@ -1406,8 +1404,7 @@ IPhysicalEntity* CPhysicalWorld::CreatePhysicalEntity(pe_type type, float lifeTi
     int id, IPhysicalEntity* pHostPlaceholder, IGeneralMemoryHeap* pHeap)
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_PHYSICS);
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "CreatePhysicalEntity");
-
+    
     CPhysicalEntity* res = 0;
     CPhysicalPlaceholder* pEntityHost = (CPhysicalPlaceholder*)pHostPlaceholder;
     //#ifdef _DEBUG
@@ -6159,22 +6156,6 @@ void CPhysicalWorld::GetMemoryStatistics(ICrySizer* pSizer)
     int i, j, n;
     CPhysicalEntity* pent;
 
-#ifndef AZ_MONOLITHIC_BUILD // Only when compiling as dynamic library
-    {
-        //SIZER_COMPONENT_NAME(pSizer,"Strings");
-        //pSizer->AddObject( (this+1),string::_usedMemory(0) );
-    }
-    {
-#ifndef NOT_USE_CRY_MEMORY_MANAGER
-        SIZER_COMPONENT_NAME(pSizer, "STL Allocator Waste");
-        CryModuleMemoryInfo meminfo;
-        ZeroStruct(meminfo);
-        CryGetMemoryInfoForModule(&meminfo);
-        pSizer->AddObject((this + 2), meminfo.STL_wasted);
-#endif
-    }
-#endif // AZ_MONOLITHIC_BUILD
-
     /*#ifdef WIN32
         static char *sec_ids[] = { ".text",".textbss",".data",".idata" };
         static char *sec_names[] = { "code section","code section","data section","data section" };
@@ -6399,6 +6380,9 @@ void CPhysicalWorld::AddFuncProfileInfo(const char* name, int nTicks)
 
 void CPhysicalWorld::AddEventClient(int type, int (* func)(const EventPhys*), int bLogged, float priority)
 {
+    AZ_Assert(type < EVENT_TYPES_NUM, "Expected type wihin limits");
+    AZ_Assert(bLogged == 0 || bLogged == 1, "Expected bLogged 1 or 0");
+
     RemoveEventClient(type, func, bLogged);
     WriteLock lock(m_lockEventClients);
     EventClient* pSlot = new EventClient, * pCurSlot, * pSlot0 = m_pEventClients[type][bLogged];
@@ -6422,6 +6406,9 @@ void CPhysicalWorld::AddEventClient(int type, int (* func)(const EventPhys*), in
 
 int CPhysicalWorld::RemoveEventClient(int type, int (* func)(const EventPhys*), int bLogged)
 {
+    AZ_Assert(type < EVENT_TYPES_NUM, "Expected type wihin limits");
+    AZ_Assert(bLogged == 0 || bLogged == 1, "Expected bLogged 1 or 0");
+
     WriteLock lock(m_lockEventClients);
     EventClient* pSlot = m_pEventClients[type][bLogged];
     if (!pSlot)
@@ -6565,7 +6552,7 @@ void CPhysicalWorld::PumpLoggedEvents()
         {
             if (pClient->ticks * 300 > m_vars.ticksPerSecond)
             {
-                sprintf_s(pClient->tag, "PhysEventHandler(%d,%d)", iEvent, iClient);
+                sprintf_s(pClient->tag, 32, "PhysEventHandler(%d,%d)", iEvent, iClient);
                 AddFuncProfileInfo(pClient->tag, pClient->ticks);
             }
             pClient->ticks = 0;

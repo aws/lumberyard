@@ -17,7 +17,8 @@
 
 
 #include <IFlowSystem.h>
-
+#include "../FlowSystem.h"
+#include "../FlowSerialize.h"
 #include <IActorSystem.h>
 
 //////////////////////////////////////////////////////////////////////////

@@ -15,6 +15,8 @@
 
 #include <AzCore/Component/Component.h>
 
+#include <AzCore/std/containers/map.h>
+
 #include <CloudCanvas/CloudCanvasIdentityBus.h>
 #include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
@@ -105,7 +107,7 @@ namespace CloudGemFramework
         std::shared_ptr<Aws::Auth::CognitoCachingCredentialsProvider> m_authCredsProvider;
         std::shared_ptr<Aws::Auth::PersistentCognitoIdentityProvider> m_authIdentityProvider;
 
-        Aws::Map<Aws::String, std::shared_ptr<TokenRetrievalStrategy> > m_additionalStrategyMappings;
+        AZStd::map<Aws::String, std::shared_ptr<TokenRetrievalStrategy> > m_additionalStrategyMappings;
 
         std::shared_ptr<Aws::Auth::AWSCredentialsProvider> m_credsProvider;
 

@@ -62,6 +62,7 @@ namespace EMotionFX
             void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override final;
             AZ::Uuid GetComponentTypeId() const override final;
             const char* GetAssetTypeDisplayName() const override final;
+            const char* GetBrowserIcon() const override;
         };
     } // namespace Integration
 } // namespace EMotionFX

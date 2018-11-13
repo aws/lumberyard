@@ -317,11 +317,17 @@ namespace AzToolsFramework
         {
             for (size_t i = 0; i < m_instances.size(); ++i)
             {
+                // check capacity of container before attempting to reserve an element
+                if (container->IsFixedCapacity() && !container->IsSmartPointer() && container->Size(GetInstance(i)) >= container->Capacity(GetInstance(i)))
+                {
+                    AZ_Warning("Serializer", false, "Cannot add additional entries to the container as it is at its capacity of %zu", container->Capacity(GetInstance(i)));
+                    return false;
+                }
                 // reserve entry in the container
                 void* dataAddress = container->ReserveElement(GetInstance(i), containerClassElement);
                 bool noDefaultData = (containerClassElement->m_flags & AZ::SerializeContext::ClassElement::FLG_NO_DEFAULT_VALUE) != 0;
 
-                if (!fillData(dataAddress, containerClassElement, noDefaultData, m_context) && noDefaultData) // fill default data
+                if (!dataAddress || !fillData(dataAddress, containerClassElement, noDefaultData, m_context) && noDefaultData) // fill default data
                 {
                     return false;
                 }

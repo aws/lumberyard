@@ -24,17 +24,10 @@ local debugmanager =
 	},
 }
 
-function debugmanager:OnActivate()
-	-- We can't gaurantee that everything will already be initialised at this point and thus
-	-- some entities may not receive our messages.
-	-- Additionally, as we can't control the update order we can't set the values on the first tick
-	-- because it's likely that something else will want to do initialisation on the first tick and
-	-- may update before us.
-	-- As a result, we have to wait for a callback from the DebugManagerComponent saying that it's
-	-- been activated (which SHOULD be before anything is ticked).
-	self.debugHandler = DebugManagerComponentNotificationBus.Connect(self, self.entityId);
-	
+function debugmanager:OnActivate()	
+
 	self.tickBusHandler = TickBus.Connect(self);
+	
 end
 
 function debugmanager:OnDeactivate()
@@ -53,6 +46,13 @@ end
 
 function debugmanager:OnTick(deltaTime, timePoint)
 	
+	if (not StarterGameUtility.IsGameStarted()) then
+		return;
+	end
+	
+	self:StoreValues();
+	DebugManagerComponentRequestsBus.Event.SetVariablesAreReady(self.entityId);
+	
 	if (self.Properties.Player.StartWithLauncher) then
 		local playerId = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCharacter"));
 		if (playerId:IsValid()) then
@@ -65,8 +65,7 @@ function debugmanager:OnTick(deltaTime, timePoint)
 	
 end
 
-function debugmanager:OnDebugManagerComponentActivated()
-
+function debugmanager:StoreValues()
 	local mt = getmetatable(self.Properties);
 	self:StoreDebugVarBool("EnableAISpawning", self.Properties.AI.EnableAISpawning, mt.AI.EnableAISpawning.default);
 	self:StoreDebugVarBool("EnableAICombat", self.Properties.AI.EnableAICombat, mt.AI.EnableAICombat.default);

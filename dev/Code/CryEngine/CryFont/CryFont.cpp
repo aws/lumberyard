@@ -548,16 +548,6 @@ void CCryFont::GetMemoryUsage(ICrySizer* pSizer) const
     }
 
     pSizer->AddObject(m_fonts);
-
-#ifndef AZ_MONOLITHIC_BUILD
-    {
-        SIZER_COMPONENT_NAME(pSizer, "STL Allocator Waste");
-        CryModuleMemoryInfo meminfo;
-        ZeroStruct(meminfo);
-        CryGetMemoryInfoForModule(&meminfo);
-        pSizer->AddObject((this + 2), (size_t)meminfo.STL_wasted);
-    }
-#endif
 }
 
 string CCryFont::GetLoadedFontNames() const
@@ -579,6 +569,13 @@ string CCryFont::GetLoadedFontNames() const
 }
 
 void CCryFont::OnLanguageChanged()
+{
+    ReloadAllFonts();
+
+    EBUS_EVENT(LanguageChangeNotificationBus, LanguageChanged);
+}
+
+void CCryFont::ReloadAllFonts()
 {
     AZStd::list<AZStd::string> fontFamilyFilenames;
     AZStd::list<FontFamily*> fontFamilyWeakPtrs;
@@ -604,7 +601,7 @@ void CCryFont::OnLanguageChanged()
 
     // All UI text components need to reload their font assets (both in-game
     // and in-editor).
-    EBUS_EVENT(LanguageChangeNotificationBus, LanguageChanged);
+    EBUS_EVENT(FontNotificationBus, OnFontsReloaded);
 }
 
 void CCryFont::UnregisterFont(const char* pFontName)

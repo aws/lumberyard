@@ -11,6 +11,7 @@ import { HeatmapComponent } from './module/analytic/component/heatmap/heatmap.co
 import { DashboardComponent } from './module/analytic/component/dashboard/dashboard.component';
 import { SupportComponent } from './module/support/component/support.component';
 import { GemIndexComponent } from './module/cloudgems/component/gem-index.component';
+import { JiraCredentialsComponent } from './module/admin/component/jira/jira-credentials.component';
 
 @NgModule({
     imports: [
@@ -51,7 +52,7 @@ import { GemIndexComponent } from './module/cloudgems/component/gem-index.compon
                        component: HeatmapComponent
                     },
                     {
-                        path: 'admin',
+                        path: 'administration',
                         canActivate: [AuthGuardService],
                         component: AdminComponent,
                     },
@@ -64,7 +65,12 @@ import { GemIndexComponent } from './module/cloudgems/component/gem-index.compon
                         path: 'admin/logs',
                         canActivate: [AuthGuardService],
                         component: ProjectLogComponent
-                    }
+                    },
+                    {
+                        path: 'admin/jira',
+                        canActivate: [AuthGuardService, DependencyGuard],
+                        component: JiraCredentialsComponent
+                    },
                 ]
             }
         ])

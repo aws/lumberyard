@@ -670,7 +670,7 @@ bool CVisArea::IsPointInsideVisArea(const Vec3& vPos) const
     const int kNumPoints = m_lstShapePoints.Count();
     if (kNumPoints)
     {
-        Vec3* pLstShapePoints = &m_lstShapePoints[0];
+        const Vec3* pLstShapePoints = &m_lstShapePoints[0];
         PrefetchLine(pLstShapePoints, 0);
         if (Overlap::Point_AABB(vPos, m_boxArea))
         {

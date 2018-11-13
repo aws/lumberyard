@@ -37,11 +37,15 @@ namespace AZ
 
         TICK_INPUT          = 75,      ///< Suggested tick handler position for input components.
 
+        TICK_GAME           = 80,      ///< Suggested tick handler for game-related components.
+
         TICK_ANIMATION      = 100,     ///< Suggested tick handler position for animation components.
 
         TICK_PHYSICS        = 200,     ///< Suggested tick handler position for physics components.
 
         TICK_ATTACHMENT     = 500,     ///< Suggested tick handler position for attachment components.
+
+        TICK_PRE_RENDER     = 750,     ///< Suggested tick handler position to update render-related data.
 
         TICK_DEFAULT        = 1000,    ///< Default tick handler position when the handler is constructed.
 
@@ -177,8 +181,12 @@ namespace AZ
 
     /**
      * Interface for AZ::SystemTickBus, which is the EBus that dispatches system tick events.
-     * System tick events are only dispatched for some tools, never during games. System
-     * ticks are dispatched even when the tool is not in focus.
+     * System tick events are dispatched at some interval of a small number of milliseconds,
+     * even when the host application does not have focus. It can be be used for anything that needs to be serviced
+     * regularly, such as network or asset processor polling.
+     * Note that it does not necessarily occur at a consistent interval. In some tools, such as the Editor, 
+     * OnSystemTick() can be called more often than the regular interval.
+     * If timing matters, use TickEvents::OnTick() instead.
      * @note Do not add a mutex to SystemTickEvents. It is unnecessary and typically degrades performance.
      */
     class SystemTickEvents : public AZ::EBusTraits

@@ -125,18 +125,24 @@ namespace AzFramework
                 apConnection->Configure(m_branchToken.c_str(), m_platform.c_str(), "");
             }
 
+            AzFramework::AssetSystemBus::AllowFunctionQueuing(true);
             AssetSystemRequestBus::Handler::BusConnect();
+            AZ::SystemTickBus::Handler::BusConnect();
         }
 
         void AssetSystemComponent::Deactivate()
         {
+            AZ::SystemTickBus::Handler::BusDisconnect();
             AssetSystemRequestBus::Handler::BusDisconnect();
+            
             m_socketConn->RemoveMessageHandler(AZ_CRC("AssetProcessorManager::AssetNotification", 0xd6191df5), m_cbHandle);
             m_socketConn->Disconnect();
-
-            AzFramework::AssetSystemBus::ClearQueuedEvents();
-
+            
             DisableSocketConnection();
+
+            // clear the queue out early
+            AzFramework::AssetSystemBus::AllowFunctionQueuing(false);
+            AzFramework::AssetSystemBus::ClearQueuedEvents();
         }
 
         void AssetSystemComponent::Reflect(AZ::ReflectContext* context)
@@ -340,7 +346,7 @@ namespace AzFramework
             return SendAssetStatusRequest(assetPath, true);
         }
 
-        void AssetSystemComponent::UpdateQueuedEvents()
+        void AssetSystemComponent::OnSystemTick()
         {
             AZ_TRACE_METHOD();
             AssetSystemBus::ExecuteQueuedEvents();

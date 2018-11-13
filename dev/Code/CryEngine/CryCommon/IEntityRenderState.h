@@ -116,7 +116,7 @@ enum EOcclusionObjectType
 #define ERF_NO_PHYSICS                  BIT(17)
 #define ERF_NO_DECALNODE_DECALS         BIT(18)
 #define ERF_REGISTER_BY_POSITION        BIT(19)
-// UNUSED                               BIT(20)
+#define ERF_COMPONENT_ENTITY            BIT(20)
 #define ERF_RECVWIND                    BIT(21)
 #define ERF_COLLISION_PROXY             BIT(22) // Collision proxy is a special object that is only visible in editor
 // and used for physical collisions with player and vehicles.
@@ -317,6 +317,18 @@ struct IRenderNode
     //   Queries override material of this instance.
     virtual _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = NULL) = 0;
     virtual _smart_ptr<IMaterial> GetMaterialOverride() = 0;
+    virtual void GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials)
+    {
+        _smart_ptr<IMaterial> currentMaterial = GetMaterialOverride();
+        if (!currentMaterial)
+        {
+            currentMaterial = GetMaterial();
+        }
+        if (currentMaterial)
+        {
+            materials.push_back(currentMaterial);
+        }
+    }
 
     // Used by the editor during export
     virtual void SetCollisionClassIndex(int tableIndex) {}

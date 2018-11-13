@@ -16,6 +16,8 @@
 #include "StandardHeaders.h"
 #include "Attribute.h"
 #include "StringConversions.h"
+#include <AzCore/Memory/Memory.h>
+
 
 namespace MCore
 {
@@ -26,6 +28,8 @@ namespace MCore
     class MCORE_API AttributeFloat
         : public Attribute
     {
+        AZ_CLASS_ALLOCATOR_DECL
+
         friend class AttributeFactory;
     public:
         enum
@@ -44,7 +48,6 @@ namespace MCore
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeFloat::Create(mValue); }
-        Attribute* CreateInstance(void* destMemory) override        { return new(destMemory) AttributeFloat(); }
         const char* GetTypeString() const override                  { return "AttributeFloat"; }
         bool InitFrom(const Attribute* other) override;
         bool InitFromString(const AZStd::string& valueString) override

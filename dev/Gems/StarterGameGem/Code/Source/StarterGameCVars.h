@@ -15,37 +15,34 @@
 
 namespace StarterGameGem
 {
+    class StarterGameCVars
+    {
+    public:
+        StarterGameCVars();
 
-	class StarterGameCVars
-	{
-	public:
-		StarterGameCVars();
+        static const StarterGameCVars& GetInstance()
+        {
+            static StarterGameCVars instance;
+            return instance;
+        }
 
-		static const StarterGameCVars& GetInstance()
-		{
-			static StarterGameCVars instance;
-			return instance;
-		}
-
-		int m_viewAISightRange;
-		int m_viewAISuspicionRange;
+        int m_viewAISightRange;
+        int m_viewAISuspicionRange;
         int m_viewAIStates;
 
-		float m_viewWaypoints;
-		int m_viewPaths;
+        float m_viewWaypoints;
+        int m_viewPaths;
 
         float m_viewSoundRanges;
 
-		int m_pd_showData;
-		int m_pd_showCallbacks;
-		const char* m_pd_showFilter;
-		int m_pd_dumpData;
+        int m_pd_showData;
+        int m_pd_showCallbacks;
+        const char* m_pd_showFilter;
+        int m_pd_dumpData;
 
-	private:
-		// Only the gem component should unregister the CVars (to ensure it's only done once).
-		friend class StarterGameGemModule;
-		static void DeregisterCVars();
-
-	};
-
+    private:
+        // Only the gem component should unregister the CVars (to ensure it's only done once).
+        friend class StarterGameGemModule;
+        static void DeregisterCVars();
+    };
 } // namespace StarterGameGem

@@ -26,6 +26,7 @@
 #   include <AzCore/Debug/Timer.h>
 #   include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #   include <AzToolsFramework/API/EditorAnimationSystemRequestBus.h>
+#   include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #endif // EMOTIONFXANIMATION_EDITOR
 
 namespace AZ
@@ -49,6 +50,7 @@ namespace EMotionFX
 #if defined (EMOTIONFXANIMATION_EDITOR)
             , private AzToolsFramework::EditorEvents::Bus::Handler
             , private AzToolsFramework::EditorAnimationSystemRequestsBus::Handler
+            , private AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
 #endif // EMOTIONFXANIMATION_EDITOR
         {
         public:
@@ -101,6 +103,11 @@ namespace EMotionFX
             void UpdateAnimationEditorPlugins(float delta);
             void NotifyRegisterViews() override;
             bool IsSystemActive(EditorAnimationSystemRequests::AnimationSystem systemType);
+
+            //////////////////////////////////////////////////////////////////////////////////////
+            // AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
+            AzToolsFramework::AssetBrowser::SourceFileDetails GetSourceFileDetails(const char* fullSourceFileName) override;
+            //////////////////////////////////////////////////////////////////////////////////////
 
             AZ::Debug::Timer m_updateTimer;
 #endif // EMOTIONFXANIMATION_EDITOR

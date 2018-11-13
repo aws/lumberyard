@@ -130,15 +130,6 @@ MaterialBrowserWidget::MaterialBrowserWidget(QWidget* parent)
     m_filterModel->SetSearchFilter(m_ui->m_searchWidget);
     connect(m_ui->m_searchWidget->GetFilter().data(), &AssetBrowserEntryFilter::updatedSignal, m_filterModel.data(), &MaterialBrowserFilterModel::SearchFilterUpdated);
 
-    connect(m_filterModel.data(), &QAbstractItemModel::rowsInserted, this, [this](const QModelIndex &parent, int start, int end)
-    {
-        if (start == end) {
-            const QModelIndex index = parent.child(start, 0);
-            m_ui->treeView->expand(index);
-            m_ui->treeView->setCurrentIndex(index);
-        }
-    });
-
     // Call LoadState to initialize the AssetBrowserTreeView's QTreeViewStateSaver
     // This must be done BEFORE StartRecordUpdateJobs(). A race condition from the update jobs was causing a 5-10% crash/hang when opening the Material Editor.
     m_ui->treeView->LoadState("MaterialBrowserTreeView");
@@ -155,6 +146,8 @@ MaterialBrowserWidget::MaterialBrowserWidget(QWidget* parent)
     connect(m_ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &MaterialBrowserWidget::OnSelectionChanged);
     //Wait for the signal emitted on record update jobs finished, then we can restore the selection for the previous selected item
     connect(this, SIGNAL(refreshSelection()), this, SLOT(OnRefreshSelection()));
+
+    connect(this, SIGNAL(materialAdded()), this, SLOT(OnMaterialAdded()));
 
     m_bIgnoreSelectionChange = false;
     m_bItemsValid = true;
@@ -266,6 +259,7 @@ void MaterialBrowserWidget::OnEditorNotifyEvent(EEditorNotifyEvent event)
     break;
     case eNotify_OnCloseScene:
     {
+        m_filterModel->ShowOnlyLevelMaterials(false, true);
         ClearItems();
         m_ui->treeView->SaveState();
         //Need to make sure the selection is cleared before clearing the record map
@@ -276,6 +270,7 @@ void MaterialBrowserWidget::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnEndNewScene:
     case eNotify_OnEndSceneOpen:
     {
+        m_filterModel->ShowOnlyLevelMaterials(false, true);
         m_filterModel->StartRecordUpdateJobs();
         m_ui->treeView->ApplyTreeViewSnapshot();
     }
@@ -471,6 +466,11 @@ void MaterialBrowserWidget::OnCopyName()
         CClipboard clipboard(this);
         clipboard.PutString(pMtl->GetName(), "Material Name");
     }
+}
+
+void MaterialBrowserWidget::ShowOnlyLevelMaterials(bool levelOnly)
+{
+    m_filterModel->ShowOnlyLevelMaterials(levelOnly);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -710,6 +710,7 @@ void MaterialBrowserWidget::OnRenameItem()
         }
         pMtl->SetName(itemName);
         pMtl->Save();
+        SetSelectedItem(pMtl, 0, true);
     }
 }
 
@@ -1506,11 +1507,6 @@ void MaterialBrowserWidget::OnContextMenuAction(int command, _smart_ptr<CMateria
         break;
         //case MENU_MAKE_SUBMTL: OnAddNewMultiMaterial(); break;
     }
-
-    if (command != 0) // no need to refresh everything if we canceled menu
-    {
-        OnRefreshSelection();
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1660,6 +1656,20 @@ void MaterialBrowserWidget::OnRefreshSelection()
     }
 }
 
+void MaterialBrowserWidget::OnMaterialAdded()
+{
+    if (m_delayedSelection)
+    {
+        SetSelectedItem(m_delayedSelection, nullptr, true);
+
+        // Force update the material dialog
+        if (m_pListener)
+        {
+            m_pListener->OnBrowserSelectItem(GetCurrentMaterial(), true);
+        }
+    }
+}
+
 void MaterialBrowserWidget::OnSubMaterialSelectedInPreviewPane(const QModelIndex& current, const QModelIndex& previous)
 {
     if (!m_pMaterialImageListCtrl)
@@ -1730,6 +1740,10 @@ void MaterialBrowserWidget::expandAllNotMatchingIndexes(const QModelIndex& paren
     }
 }
 
+void MaterialBrowserWidget::MaterialAddFinished()
+{
+    emit materialAdded();
+}
 
 void MaterialBrowserWidget::MaterialFinishedProcessing(_smart_ptr<CMaterial> material, const QPersistentModelIndex& filterModelIndex)
 {

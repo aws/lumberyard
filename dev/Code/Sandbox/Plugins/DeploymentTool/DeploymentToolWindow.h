@@ -11,15 +11,17 @@
 */
 
 #pragma once
+
+#include <QScopedPointer>
 #include <QtWidgets/QMainWindow>
-#include <QtWidgets/qlabel.h>
+
 #include <IEditor.h>
-#include <Include/IPlugin.h>
 
+#include "BootstrapConfigContainer.h"
 #include "DeploymentConfig.h"
-#include "IDeploymentTool.h"
+#include "DeployNotificationsQBridge.h"
+#include "RemoteLog.h"
 
-#include "DeploymentUtil.h"
 
 namespace Ui
 {
@@ -27,70 +29,80 @@ namespace Ui
 }
 
 class AssetSystemListener;
-class BootstrapConfigContainer;
-class DeploymentUtil;
+class DeployWorkerBase;
+
+class QTimer;
+
 
 // main window for deployment tool
-class DeploymentToolWindow : public QMainWindow, public IEditorNotifyListener, public IDeploymentTool
+class DeploymentToolWindow
+    : public QMainWindow
 {
     Q_OBJECT
 public:
-    DeploymentToolWindow();
-    DeploymentToolWindow(const DeploymentToolWindow& rhs) = delete;
-    DeploymentToolWindow& operator=(const DeploymentToolWindow& rhs) = delete;
-    DeploymentToolWindow& operator=(DeploymentToolWindow&& rhs) = delete;
-    ~DeploymentToolWindow();
-
-    void OnEditorNotifyEvent(EEditorNotifyEvent ev) override { }
-
-    void Success(const AZStd::string& msg) override;
-    void Log(const AZStd::string& msg) override;
-    void LogEndLine(const AZStd::string& msg) override;
-    void Error(const AZStd::string& msg) override;
-
     // you are required to implement this to satisfy the unregister/registerclass requirements on "AzToolsFramework::RegisterViewPane"
     // make sure you pick a unique GUID
     static const GUID& GetClassID()
     {
         // {75D24BBB-F0AA-49AA-B92A-276C404BDC33}
-        static const GUID guid =
-        { 0x75d24bbb, 0xf0aa, 0x49aa,{ 0xb9, 0x2a, 0x27, 0x6c, 0x40, 0x4b, 0xdc, 0x33 } };
-
+        static const GUID guid = {
+            0x75d24bbb, 0xf0aa, 0x49aa, { 0xb9, 0x2a, 0x27, 0x6c, 0x40, 0x4b, 0xdc, 0x33 }
+        };
         return guid;
     }
+
+    DeploymentToolWindow();
+    ~DeploymentToolWindow();
+
+
 private:
+    AZ_DISABLE_COPY_MOVE(DeploymentToolWindow);
 
-    static const char* s_settingsFileName;
+    // callbacks
+    void OnDeployFinished(bool success);
+    void OnRemoteLogConnectionStateChange(bool isConnected);
+    void OnPlatformChanged(const QString& currentplatform);
+    void OnAssetModeChanged(const QString& currentMode);
+    void OnShaderCompilerUseAPToggle(int state);
+    void OnDevicePollTimer();
+    void OnDeployClick();
 
-    void ToggleAdvanceOptions();
+    void ToggleInteractiveUI(bool enabled);
+    void UpdateIpAddressOptions();
 
-    void Deploy();
+    void UpdateUiFromSystemConfig(const char* systemConfigFile);
     bool PopulateDeploymentConfigFromUi();
+
     void WaitForAssetProcessorToFinish();
-    void WriteToLog(const AZStd::string& msg);
-    void ResetDeployWidget();
 
-    void SetupUi();
+    void InternalDeployFailure(const AZStd::string& reason);
+    void LogToWindow(DeployTool::LogStream stream, DeployTool::LogSeverity logSeverity, const QString& message);
+
+    void Reset();
     void InitializeUi();
-
     void SaveUiState();
-    void RestoreUiState();
 
-    bool ValidateIPAddress(const QString& ipAddressString);
 
     QScopedPointer<Ui::DeploymentToolWindow> m_ui;
-    QIcon m_openIcon;
-    QIcon m_closedIcon;
     QMovie m_animatedSpinningIcon;
+
+    QIcon m_connectedIcon;
+    QIcon m_notConnectedIcon;
+
+    QBrush m_defaultDeployOutputBrush;
+    QBrush m_defaultRemoteDeviceOutputBrush;
+
+    QScopedPointer<AssetSystemListener> m_assetSystemListener;
+    QScopedPointer<QTimer> m_devicePollTimer;
+    QScopedPointer<DeployWorkerBase> m_deployWorker;
 
     QSettings m_deploySettings;
 
-    QScopedPointer<AssetSystemListener> m_assetSystemListener;
+    DeployTool::RemoteLog m_remoteLog;
+    DeployTool::NotificationsQBridge m_notificationsBridge;
 
     DeploymentConfig m_deploymentCfg;
     BootstrapConfigContainer m_bootstrapConfig;
 
-    DeploymentUtil* m_deploymentUtil;
-
-    bool m_hideAdvancedOptions;
+    QString m_lastDeployedDevice;
 };

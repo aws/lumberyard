@@ -49,7 +49,6 @@ struct ICaptureFrameListener
     };
 };
 
-
 // Forward declarations.
 //////////////////////////////////////////////////////////////////////
 typedef void* WIN_HWND;
@@ -1116,6 +1115,10 @@ struct IRenderer
     virtual bool IsPost3DRendererEnabled() const { return false; }
 
     virtual int GetFeatures() = 0;
+    virtual const void SetApiVersion(const AZStd::string& apiVersion) = 0;
+    virtual const void SetAdapterDescription(const AZStd::string& adapterDescription) = 0;
+    virtual const AZStd::string& GetApiVersion() const = 0;
+    virtual const AZStd::string& GetAdapterDescription() const = 0;
     virtual void GetVideoMemoryUsageStats(size_t& vidMemUsedThisFrame, size_t& vidMemUsedRecently, bool bGetPoolsSizes = false) = 0;
     virtual int GetNumGeomInstances() = 0;
     virtual int GetNumGeomInstanceDrawCalls() = 0;
@@ -1633,6 +1636,8 @@ struct IRenderer
     // Note:
     //  3d engine set this color to fog color.
     virtual void SetClearColor(const Vec3& vColor) = 0;
+  
+    virtual void SetClearBackground(bool bClearBackground) = 0;
 
     // Summary:
     //  Creates/deletes RenderMesh object.
@@ -2007,11 +2012,11 @@ struct IRenderer
     };
 
     //Debug draw call info (per node)
-    typedef std::map< IRenderNode*, IRenderer::SDrawCallCountInfo > RNDrawcallsMapNode;
+    typedef AZStd::unordered_map< IRenderNode*, IRenderer::SDrawCallCountInfo, AZStd::hash<IRenderNode*>, AZStd::equal_to<IRenderNode*>, AZ::StdLegacyAllocator > RNDrawcallsMapNode;
     typedef RNDrawcallsMapNode::iterator RNDrawcallsMapNodeItor;
 
     //Debug draw call info (per mesh)
-    typedef std::map< IRenderMesh*, IRenderer::SDrawCallCountInfo > RNDrawcallsMapMesh;
+    typedef AZStd::unordered_map< IRenderMesh*, IRenderer::SDrawCallCountInfo, AZStd::hash<IRenderMesh*>, AZStd::equal_to<IRenderMesh*>, AZ::StdLegacyAllocator > RNDrawcallsMapMesh;
     typedef RNDrawcallsMapMesh::iterator RNDrawcallsMapMeshItor;
 
 #if !defined(_RELEASE)
@@ -2512,6 +2517,7 @@ struct SRendParams
         nRenderList = EFSLIST_GENERAL;
         nAfterWater = 1;
         mRenderFirstContainer = false;
+        NoDecalReceiver = false;
     }
 
     // Summary:
@@ -2633,4 +2639,6 @@ struct SRendParams
     //Summary:
     // Force drawing static instead of deformable meshes
     bool bForceDrawStatic;
+
+    bool NoDecalReceiver;
 };

@@ -145,7 +145,7 @@ local aicontroller =
 		Idle =
 		{
 			OnEnter = function(self, sm)
-				VisualiseAIStatesSystemRequestBus.Broadcast.SetAIState(sm.UserData.entityId, AIStates.Idle);
+				VisualizeAIStatesSystemRequestBus.Broadcast.SetAIState(sm.UserData.entityId, AIStates.Idle);
 				
 				sm.UserData:SetMoveSpeed(sm.UserData.Properties.StateMachines.AI.Idle.MoveSpeed);
 				sm.UserData:TravelToCurrentWaypoint();
@@ -203,7 +203,7 @@ local aicontroller =
 		Suspicious =
 		{
 			OnEnter = function(self, sm)
-				VisualiseAIStatesSystemRequestBus.Broadcast.SetAIState(sm.UserData.entityId, AIStates.Suspicious);
+				VisualizeAIStatesSystemRequestBus.Broadcast.SetAIState(sm.UserData.entityId, AIStates.Suspicious);
 				
 				local speed = sm.UserData.Properties.StateMachines.AI.Suspicious.MoveSpeed;
 				if (self.suspiciousFromBeingShot == true) then
@@ -283,7 +283,7 @@ local aicontroller =
 		Combat =
 		{
 			OnEnter = function(self, sm, prevState)
-				VisualiseAIStatesSystemRequestBus.Broadcast.SetAIState(sm.UserData.entityId, AIStates.Combat);
+				VisualizeAIStatesSystemRequestBus.Broadcast.SetAIState(sm.UserData.entityId, AIStates.Combat);
 				
 				if (prevState ~= "Tracking") then
 					sm.UserData:AdjustPersistentDataCount(sm.UserData.AIStates.AwareOfPlayerCount, 1);
@@ -369,7 +369,7 @@ local aicontroller =
 					sm.UserData:AdjustPersistentDataCount(sm.UserData.AIStates.AwareOfPlayerCount, 1);
 				end
 				
-				VisualiseAIStatesSystemRequestBus.Broadcast.SetAIState(sm.UserData.entityId, AIStates.Tracking);
+				VisualizeAIStatesSystemRequestBus.Broadcast.SetAIState(sm.UserData.entityId, AIStates.Tracking);
 				
 				sm.UserData:SetMoveSpeed(sm.UserData.Properties.StateMachines.AI.Tracking.MoveSpeed);
 				sm.UserData.justBecomeSuspicious = true;
@@ -431,7 +431,7 @@ local aicontroller =
 		Dead =
 		{
 			OnEnter = function(self, sm)
-				VisualiseAIStatesSystemRequestBus.Broadcast.ClearAIState(sm.UserData.entityId);
+				VisualizeAIStatesSystemRequestBus.Broadcast.ClearAIState(sm.UserData.entityId);
 				sm.UserData:CancelNavigation();
 			end,
 			
@@ -585,7 +585,7 @@ function aicontroller:OnDeactivate()
 	self.AIStateMachine:Stop();
 	
 	AISoundManagerSystemRequestBus.Broadcast.UnregisterEntity(self.entityId);
-	VisualiseAIStatesSystemRequestBus.Broadcast.ClearAIState(self.entityId);
+	VisualizeAIStatesSystemRequestBus.Broadcast.ClearAIState(self.entityId);
 	
 	if (self.tickBusHandler ~= nil) then
 		self.tickBusHandler:Disconnect();
@@ -756,8 +756,8 @@ function aicontroller:OnTick(deltaTime, timePoint)
 		self.prevTm = TransformBus.Event.GetWorldTM(self.entityId);
 		
 		-- Setup the variables for debugging the range visualisations.
-		VisualiseRangeComponentRequestsBus.Event.SetSightRange(self.entityId, self.Properties.StateMachines.AI.Combat.AggroRange, self.Properties.StateMachines.AI.Combat.SightRange);
-		VisualiseRangeComponentRequestsBus.Event.SetSuspicionRange(self.entityId, self.Properties.StateMachines.AI.Suspicious.SuspicionRange, self.Properties.StateMachines.AI.Suspicious.AIFieldOfView, self.Properties.StateMachines.AI.Suspicious.SuspicionRangeRear);
+		VisualizeRangeComponentRequestsBus.Event.SetSightRange(self.entityId, self.Properties.StateMachines.AI.Combat.AggroRange, self.Properties.StateMachines.AI.Combat.SightRange);
+		VisualizeRangeComponentRequestsBus.Event.SetSuspicionRange(self.entityId, self.Properties.StateMachines.AI.Suspicious.SuspicionRange, self.Properties.StateMachines.AI.Suspicious.AIFieldOfView, self.Properties.StateMachines.AI.Suspicious.SuspicionRangeRear);
 		
 		-- Make sure we don't do this 'first update' again.
 		self.performedFirstUpdate = true;
@@ -1818,7 +1818,7 @@ function aicontroller:OnPathFoundFirstPoint(navRequestId, path)
 	self.searchingForPath = false;
 	
 	self.navPath = path;
-	VisualisePathSystemRequestBus.Broadcast.AddPath(self.entityId, path);
+	VisualizePathSystemRequestBus.Broadcast.AddPath(self.entityId, path);
 	self.cancelSentByOnPathFound = true;
 	return false;
 	
@@ -1852,7 +1852,7 @@ function aicontroller:OnTraversalComplete(navRequestId)
 	--Debug.Log("Navigation Complete " .. tostring(navRequestId));
 	self.requestId = 0;
 	self.navPath = nil;
-	VisualisePathSystemRequestBus.Broadcast.ClearPath(self.entityId);
+	VisualizePathSystemRequestBus.Broadcast.ClearPath(self.entityId);
 	self.reachedWaypoint = true;
 	self:SetMovement(0.0, 0.0);
 end
@@ -1884,7 +1884,7 @@ function aicontroller:OnTraversalCancelled(navRequestId)
 	-- Reset the request ID as we don't want to store an invalid ID.
 	self.requestId = 0;
 	self.navPath = nil;
-	VisualisePathSystemRequestBus.Broadcast.ClearPath(self.entityId);
+	VisualizePathSystemRequestBus.Broadcast.ClearPath(self.entityId);
 end
 
 function aicontroller:TravelToFirstWaypoint()

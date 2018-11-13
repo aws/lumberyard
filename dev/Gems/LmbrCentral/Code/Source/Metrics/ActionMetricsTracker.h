@@ -29,7 +29,7 @@ namespace LyEditorMetrics
         , public AzToolsFramework::EditorEvents::Bus::Handler
     {
     public:
-
+        AZ_CLASS_ALLOCATOR(ActionMetricsTracker, AZ::SystemAllocator, 0);
         explicit ActionMetricsTracker(QObject* parent = nullptr);
         ~ActionMetricsTracker();
 

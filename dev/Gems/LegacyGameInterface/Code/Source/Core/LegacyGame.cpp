@@ -151,10 +151,18 @@ namespace LegacyGameInterface
             case AZ::PLATFORM_APPLE_OSX:
                 platformName = "PC";
                 break;
-            case AZ::PLATFORM_XBOX_360: // ACCEPTED_USE
-            case AZ::PLATFORM_XBONE: // ACCEPTED_USE
-                platformName = "Xbox"; // ACCEPTED_USE
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+            case AZ::PLATFORM_##PUBLICNAME:\
+                platformName = #CodeName;\
                 break;
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
+                AZ_EXPAND_FOR_RESTRICTED_PLATFORM
+#else
+                AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#endif
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
+#endif
             default:
                 platformName = AZ::GetPlatformName(AZ::g_currentPlatform);
                 break;

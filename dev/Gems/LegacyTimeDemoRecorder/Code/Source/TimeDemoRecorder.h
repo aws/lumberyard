@@ -327,8 +327,6 @@ public:
 
     int m_demo_scroll_pause;
     int m_demo_quit;
-    int m_finish_replaysizer;
-    int m_finish_replaystop;
     int m_demo_screenshot_frame;
     int m_demo_max_frames;
     int m_demo_savestats;

@@ -8,9 +8,6 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-#
-# Original file Copyright Crytek GMBH or its affiliates, used under license.
-#
 ########################################################################################
 
 def build(bld):
@@ -22,18 +19,30 @@ def build(bld):
         file_list                   = 'deploymenttool.waf_files',
         platforms                   = ['win', 'darwin'],
         configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
-        pch                         = "stdafx.cpp",
+        pch                         = "DeploymentTool_precompiled.cpp",
         use                         = ['AzToolsFramework',
-                                       'EditorCommon'
+                                       'EditorLib',
+                                       'EditorCommon',
+                                       'RemoteConsoleCore',
                                        ],
         uselib                      = ['QT5CORE',
                                        'QT5GUI',
                                        'QT5WIDGETS',
                                        'QT5NETWORK'],
         features                    = ['qt5'],
-        defines                     = [ 'EDITOR_COMMON_IMPORTS'],
-        #==============================
-        # Testing
-        #==============================
+        defines                     = ['EDITOR_COMMON_IMPORTS'],
+
+        win_file_list    = ['deploymenttool_win.waf_files'],
+
+        darwin_file_list = ['deploymenttool_darwin.waf_files'],
+        # For the macOS we require the AWS libs in order to link the editor
+        # because there are implicit dependencies on LyMetrics/LyIdentity
+        # and those libraries use AWS. Not including them here results in
+        # a failure to build the gem due to missing symbols
+        darwin_uselib   = ['AWS_CPP_SDK_CORE',
+                           'AWS_CPP_SDK_COGNITO_IDENTITY',
+                           'AWS_CPP_SDK_MOBILEANALYTICS',
+                           'AWS_CPP_SDK_IDENTITY_MANAGEMENT'],
+
         test_all_file_list = ['deploymenttool_tests.waf_files'],
     )

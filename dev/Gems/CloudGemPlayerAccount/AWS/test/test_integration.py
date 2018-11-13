@@ -16,6 +16,7 @@ from copy import deepcopy
 import datetime
 import json
 from resource_manager.test import lmbr_aws_test_support
+from resource_manager.test import base_stack_test
 import os
 from random import randint
 from requests_aws4auth import AWS4Auth
@@ -26,7 +27,7 @@ import uuid
 
 REGION='us-east-1'
 
-class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_aws_TestCase):
+class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTestCase):
 
     # Fails in cleanup to keep the deployment stack intact for the next test rerun.
     FAST_TEST_RERUN = False
@@ -63,24 +64,18 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
         super(IntegrationTest_CloudGemPlayerAccount_EndToEnd, self).__init__(*args, **kwargs)
 
     def setUp(self):
-        self.prepare_test_envionment("cloud_gem_player_account_test")
+        self.prepare_test_environment("cloud_gem_player_account_test")
+        self.register_for_shared_resources()
+        self.enable_shared_gem(self.GEM_NAME)
 
     def test_end_to_end(self):
         self.run_all_tests()
 
     def __000_create_stacks(self):
-        self.enable_real_gem(self.GEM_NAME)
-
-        if not self.__has_project_stack():
-            self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--confirm-aws-usage', '--confirm-security-change', '--region', lmbr_aws_test_support.REGION)
-        else:
-            print 'Reusing existing project stack {}'.format(self.get_project_stack_arn())
-        if not self.__has_deployment_stack():
-            self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change')
-        else:
-            print 'Reusing existing deployment stack.'
-            if self.UPLOAD_LAMBDA_CODE_FOR_EXISTING_STACK:
-                self.lmbr_aws('function', 'upload-code', '--resource-group', 'CloudGemPlayerAccount')
+        new_proj_created, new_deploy_created = self.setup_base_stack()
+            
+        if not new_deploy_created and self.UPLOAD_LAMBDA_CODE_FOR_EXISTING_STACK:
+            self.lmbr_aws('function', 'upload-code', '--resource-group', self.GEM_NAME, '-d', self.TEST_DEPLOYMENT_NAME)
 
         self.context['user_pool_id'] = self.get_stack_resource_physical_id(self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.GEM_NAME), 'PlayerUserPool')
         clients_response = self.aws_cognito_idp.list_user_pool_clients(UserPoolId=self.context['user_pool_id'], MaxResults=1)
@@ -94,7 +89,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
     # ------------------------------------------------ Create player account, get auth tokens, custom auth flow ------------------------------------------------
 
     def __010_create_test_user_and_sign_in(self):
-        self.context['test_username'] = self.TEST_USERNAME_PREFIX + '-' + self.__generate_id()
+        self.context['test_username'] = self.TEST_USERNAME_PREFIX + '5-' + self.__generate_id()
         print 'Creating user {} in pool {}'.format(self.context['test_username'], self.context['user_pool_id'])
 
         self.__signup(self.context['test_username'], self.TEST_PASSWORD, self.TEST_EMAIL)
@@ -762,7 +757,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
             print '\n*** SKIPPING cpp tests because the ENABLE_CLOUD_CANVAS_CPP_INTEGRATION_TESTS envionment variable is not set.\n'
         else:
 
-            self.lmbr_aws('update-mappings', '--release')
+            self.lmbr_aws('update-mappings', '--release', '-d', self.TEST_DEPLOYMENT_NAME)
 
             mappings_file = os.path.join(self.GAME_DIR, 'Config', self.TEST_DEPLOYMENT_NAME + '.player.awsLogicalMappings.json')
             print 'Using mappings from', mappings_file
@@ -823,8 +818,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
         if self.FAST_TEST_RERUN:
             print 'Tests passed enough to reach cleanup, failing in cleanup to prevent stack deletion since FAST_TEST_RERUN is true.'
             self.assertFalse(self.FAST_TEST_RERUN)
-        self.lmbr_aws('deployment', 'delete', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-resource-deletion')
-        self.lmbr_aws('project', 'delete', '--confirm-resource-deletion')
+        self.teardown_base_stack()
 
     # ------------------------------------------------ Helpers ------------------------------------------------
 
@@ -888,12 +882,6 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
         else:
             return response.text
 
-    def __has_project_stack(self):
-        return bool(self.get_project_stack_arn())
-
-    def __has_deployment_stack(self):
-        return bool(self.get_deployment_stack_arn(self.TEST_DEPLOYMENT_NAME))
-
     def __signup(self, username, password, email):
         self.aws_cognito_idp.sign_up(
             ClientId=self.context['user_pool_client_id'],
@@ -911,7 +899,6 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
             ClientId=self.context['user_pool_client_id']
         )
         self.assertEqual('BasicAuth', challenge_response.get('ChallengeParameters').get('type'))
-
         auth_response = self.aws_cognito_idp.respond_to_auth_challenge(
             ClientId=self.context['user_pool_client_id'],
             ChallengeName='CUSTOM_CHALLENGE',

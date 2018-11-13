@@ -92,7 +92,6 @@ COctreeNode::COctreeNode(int nSID, const AABB& box, CVisArea* pVisArea, COctreeN
 //////////////////////////////////////////////////////////////////////////
 COctreeNode* COctreeNode::Create(int nSID, const AABB& box, struct CVisArea* pVisArea, COctreeNode* pParent)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Terrain, EMemStatContextFlags::MSF_Instance, "Octree node");
     return new COctreeNode(nSID, box, pVisArea, pParent);
 }
 

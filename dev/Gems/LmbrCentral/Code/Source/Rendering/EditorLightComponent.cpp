@@ -545,15 +545,6 @@ namespace LmbrCentral
                         EnumAttribute(EngineSpec::Medium, "Medium")->
                         EnumAttribute(EngineSpec::Low, "Low")->
 
-                    DataElement(AZ::Edit::UIHandlers::ComboBox, &LightConfiguration::m_castShadowsSpec, "Cast shadow spec", "Min spec for shadow casting.")->
-                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetShadowSpecVisibility)->
-                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
-                        EnumAttribute(EngineSpec::Never, "Never")->
-                        EnumAttribute(EngineSpec::VeryHigh, "Very high")->
-                        EnumAttribute(EngineSpec::High, "High")->
-                        EnumAttribute(EngineSpec::Medium, "Medium")->
-                        EnumAttribute(EngineSpec::Low, "Low")->
-
                     DataElement(AZ::Edit::UIHandlers::ComboBox, &LightConfiguration::m_voxelGIMode, "Voxel GI mode", "Mode for light interaction with voxel GI.")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
                         EnumAttribute(IRenderNode::VM_None, "None")->
@@ -582,9 +573,20 @@ namespace LmbrCentral
                         Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_Hide", 0x32ab90f7))->         // Deprecated on non mobile platforms - hidden until we have a platform to use this
 
                     ClassElement(AZ::Edit::ClassElements::Group, "Shadow Settings")->
+                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetShadowSpecVisibility)->
                         Attribute(AZ::Edit::Attributes::AutoExpand, true)->
 
+                    DataElement(AZ::Edit::UIHandlers::ComboBox, &LightConfiguration::m_castShadowsSpec, "Cast shadow spec", "Min spec for shadow casting.")->
+                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetShadowSpecVisibility)->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
+                        EnumAttribute(EngineSpec::Never, "Never")->
+                        EnumAttribute(EngineSpec::VeryHigh, "Very high")->
+                        EnumAttribute(EngineSpec::High, "High")->
+                        EnumAttribute(EngineSpec::Medium, "Medium")->
+                        EnumAttribute(EngineSpec::Low, "Low")->
+
                     DataElement(0, &LightConfiguration::m_castTerrainShadows, "Terrain Shadows", "Include the terrain in the shadow casters for this light")->
+                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetShadowSettingsVisibility)->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
 
 
@@ -742,6 +744,7 @@ namespace LmbrCentral
             OnViewCubemapChanged(); // Check to see if it should be displayed now.
         }
 
+        EditorCameraCorrectionRequestBus::Handler::BusConnect(GetEntityId());
         EditorLightComponentRequestBus::Handler::BusConnect(GetEntityId());
         RenderNodeRequestBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
@@ -752,6 +755,7 @@ namespace LmbrCentral
 
     void EditorLightComponent::Deactivate()
     {
+        EditorCameraCorrectionRequestBus::Handler::BusDisconnect();
         EditorLightComponentRequestBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();

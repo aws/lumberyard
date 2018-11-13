@@ -233,7 +233,7 @@ CDataWriteStreamBuffer::~CDataWriteStreamBuffer()
     // Free all memory partitions that were allocated dynamically
     for (size_t i = 0; i < m_pPartitions.size(); ++i)
     {
-        free(m_pPartitions[i]);
+        CryModuleFree(m_pPartitions[i]);
     }
 }
 
@@ -311,7 +311,7 @@ void CDataWriteStreamBuffer::Write(const void* pData, const uint32 size)
         if (m_leftInPartition == 0)
         {
             // Allocate new partition data
-            char* partitionMemory = (char*)malloc(kAdditionalPartitionSize);
+            char* partitionMemory = (char*)CryModuleMalloc(kAdditionalPartitionSize);
             CRY_ASSERT(partitionMemory != NULL);
 
             // add new partition to list

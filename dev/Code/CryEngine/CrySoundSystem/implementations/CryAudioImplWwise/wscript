@@ -30,6 +30,7 @@ def build(bld):
         uselib               = ['WWISELTX'],
         includes             = ['.',
                                 '../../Common'],
+        defines              = ['USE_CRY_NEW_AND_DELETE'],
 
         # Complier Specific
         msvc_cxxflags        = ['/wd4819'],
@@ -37,11 +38,7 @@ def build(bld):
         # Platform Specific
         win_lib              = ['Ole32', 'OleAut32', 'dxguid', 'ws2_32', 'XInput', 'Winmm', 'DInput8', 'DSound'],
 
-       
-       
-
-       
-       
+        restricted_script   = 'update_restricted_parameters',
 
         ios_lib              = ['AkAACDecoder'],
         ios_framework        = ['AVFoundation', 'AudioToolbox', 'CoreAudio'],

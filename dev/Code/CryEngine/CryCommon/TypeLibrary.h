@@ -17,6 +17,9 @@
 
 #include <ISoftCodeMgr.h> // <> required for Interfuscator
 
+#include <AzCore/std/containers/map.h>
+#include <AzCore/std/string/string.h>
+
 #ifdef SOFTCODE_ENABLED
 
 // Internal: Used by SC types to auto-remove themselves from their TypeRegistrar on destruction.
@@ -489,7 +492,8 @@ public:
 #endif
 
 private:
-    typedef std::map<string, ITypeRegistrar*> TTypeMap;
+    typedef AZStd::basic_string<char, AZStd::char_traits<char>, AZ::AZStdAlloc<CryLegacySTLAllocator>> TypeString;
+    typedef AZStd::map<TypeString, ITypeRegistrar*, AZStd::less<TypeString>, AZ::AZStdAlloc<CryLegacySTLAllocator>> TTypeMap;
     TTypeMap m_typeMap;
 
     // The name for this TypeLibrary used during SC registration

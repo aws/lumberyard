@@ -28,7 +28,7 @@ float CTerrain::GetBilinearZ(MeterF xWS, MeterF yWS) const
     float x1 = xWS * CTerrain::GetInvUnitSize();
     float y1 = yWS * CTerrain::GetInvUnitSize();
 
-    if (!Cry3DEngineBase::GetTerrain() || x1 < 1 || y1 < 1)
+    if (!Cry3DEngineBase::GetTerrain() || x1 < 0 || y1 < 0)
     {
         return TERRAIN_BOTTOM_LEVEL;
     }
@@ -38,7 +38,7 @@ float CTerrain::GetBilinearZ(MeterF xWS, MeterF yWS) const
 
     int nHMSize = CTerrain::GetTerrainSize() / CTerrain::GetHeightMapUnitSize();
 
-    if (!Cry3DEngineBase::GetTerrain() || nX < 1 || nY < 1 || nX >= nHMSize || nY >= nHMSize)
+    if (!Cry3DEngineBase::GetTerrain() || nX < 0 || nY < 0 || nX >= nHMSize || nY >= nHMSize)
     {
         fZ = TERRAIN_BOTTOM_LEVEL;
     }

@@ -376,8 +376,6 @@ void CReadStream::ExecuteAsyncCallback_CBLocked()
     if (!m_bIsAsyncCallbackExecuted && m_pCallback)
     {
         m_bIsAsyncCallbackExecuted = true;
-        MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Steaming Callback %s", gEnv->pSystem->GetStreamEngine()->GetStreamTaskTypeName(m_Type));
-
         m_pCallback->StreamAsyncOnComplete(this, m_nIOError);
     }
 }
@@ -417,7 +415,6 @@ void CReadStream::ExecuteSyncCallback_CBLocked()
 
 void* CReadStream::operator new (size_t sz)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
     return CryModuleMemalign(sz, alignof(CReadStream));
 }
 

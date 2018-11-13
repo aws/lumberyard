@@ -23,15 +23,6 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="api\account.py" />
-    <Compile Include="api\admin_accounts.py" />
-    <Compile Include="api\admin_accountSearch.py" />
-    <Compile Include="api\admin_identityProviders.py" />
-    <Compile Include="api\admin_identityProviders_Cognito_users.py" />
-    <Compile Include="api\admin_identityProviders_Cognito_users_confirmSignUp.py" />
-    <Compile Include="api\admin_identityProviders_Cognito_users_resetUserPassword.py" />
-    <Compile Include="api\service_status.py" />
-    <Compile Include="api\__init__.py" />
     <Compile Include="custom_auth_flow.py" />
     <Compile Include="errors.py" />
   </ItemGroup>

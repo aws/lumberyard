@@ -165,16 +165,17 @@ namespace AzToolsFramework
         class StatementAutoFinalizer
         {
         public:
+            StatementAutoFinalizer() = default;
             StatementAutoFinalizer(Connection& connect, const char* statementName);
             Statement* Get() const;
             ~StatementAutoFinalizer();
 
-            // no default construction allowed neither is copy:
-            StatementAutoFinalizer(const StatementAutoFinalizer& other) = delete;
-            StatementAutoFinalizer(StatementAutoFinalizer&& other) = delete;
-            StatementAutoFinalizer& operator=(const StatementAutoFinalizer& other) = delete;
+            StatementAutoFinalizer(StatementAutoFinalizer&& other);
+            StatementAutoFinalizer& operator=(StatementAutoFinalizer&& other);
 
         private:
+            AZ_DISABLE_COPY(StatementAutoFinalizer);
+
             Statement* m_statement = nullptr;
         };
 

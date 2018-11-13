@@ -20,29 +20,29 @@
 
 namespace AZ
 {
-	class ReflectContext;
+    class ReflectContext;
 }
 
 namespace StarterGameGem
 {
-	/*!
-	* Wrapper for entity utility functions exposed to Lua for StarterGame.
-	*/
-	class StarterGameEntityUtility
-	{
-	public:
-		AZ_TYPE_INFO(StarterGameEntityUtility, "{54761E81-5476-4047-BA09-CC0CF76FB6F3}");
-		AZ_CLASS_ALLOCATOR(StarterGameEntityUtility, AZ::SystemAllocator, 0);
+    /*!
+    * Wrapper for entity utility functions exposed to Lua for StarterGame.
+    */
+    class StarterGameEntityUtility
+    {
+    public:
+        AZ_TYPE_INFO(StarterGameEntityUtility, "{54761E81-5476-4047-BA09-CC0CF76FB6F3}");
+        AZ_CLASS_ALLOCATOR(StarterGameEntityUtility, AZ::SystemAllocator, 0);
 
-		static void Reflect(AZ::ReflectContext* reflection);
+        static void Reflect(AZ::ReflectContext* reflection);
 
-        static bool GetEntitysVelocity(const AZ::EntityId& entityId, AZ::Vector3& velocity);
+        static void GetEntitysVelocity(const AZ::EntityId& entityId, AZ::Vector3& velocity);
+        static bool GetEntitysVelocityLegacy(const AZ::EntityId& entityId, AZ::Vector3& velocity);
         static AZ::EntityId GetParentEntity(const AZ::EntityId& entityId);
         static AZStd::string GetEntityName(const AZ::EntityId& entityId);
         static bool EntityHasTag(const AZ::EntityId& entityId, const AZStd::string& tag);
         static bool EntityHasComponent(const AZ::EntityId& entityId, const AZStd::string& componentName);
         static bool AddTagComponentToEntity(const AZ::EntityId& entityId);
-		static void SetCharacterHalfHeight(const AZ::EntityId& entityId, float halfHeight);
-	};
-
+        static void SetCharacterHalfHeight(const AZ::EntityId& entityId, float halfHeight);
+    };
 } // namespace StarterGameGem

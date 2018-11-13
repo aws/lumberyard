@@ -1225,7 +1225,7 @@ namespace EMStudio
         }
 
         CommandSystem::CommandRecorderClear* clearRecorderCommand = static_cast<CommandSystem::CommandRecorderClear*>(command);
-        if (clearRecorderCommand->m_wasRecording)
+        if (clearRecorderCommand->m_wasRecording || clearRecorderCommand->m_wasInPlayMode)
         {
             AnimGraphPlugin* animGraphPlugin = static_cast<AnimGraphPlugin*>(plugin);
             animGraphPlugin->GetRecorderWidget()->OnClearButton();

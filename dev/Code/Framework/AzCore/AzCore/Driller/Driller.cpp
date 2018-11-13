@@ -71,12 +71,15 @@ namespace AZ
         //=========================================================================
         DrillerManager* DrillerManager::Create(/*const Descriptor& desc*/)
         {
-            if (!AZ::AllocatorInstance<OSAllocator>::IsReady())
+            const bool createAllocator = !AZ::AllocatorInstance<OSAllocator>::IsReady();
+            if (createAllocator)
             {
                 AZ::AllocatorInstance<OSAllocator>::Create();
             }
 
-            return aznew DrillerManagerImpl;
+            DrillerManagerImpl* impl = aznew DrillerManagerImpl;
+            impl->m_ownsOSAllocator = createAllocator;
+            return impl;
         }
 
         //=========================================================================
@@ -85,7 +88,12 @@ namespace AZ
         //=========================================================================
         void DrillerManager::Destroy(DrillerManager* manager)
         {
+            const bool allocatorCreated = manager->m_ownsOSAllocator;
             delete manager;
+            if (allocatorCreated)
+            {
+                AZ::AllocatorInstance<OSAllocator>::Destroy();
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////

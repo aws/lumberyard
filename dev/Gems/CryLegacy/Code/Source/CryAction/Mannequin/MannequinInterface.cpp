@@ -58,13 +58,11 @@ IAnimationDatabaseManager& CMannequinInterface::GetAnimationDatabaseManager()
 
 IActionController* CMannequinInterface::CreateActionController(IEntity* pEntity, SAnimationContext& context)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Mannequin, 0, "ActionController (%s)", pEntity ? pEntity->GetName() ? pEntity->GetName() : "<unknown>" : "<no entity>");
     return new CActionController(pEntity, context);
 }
 
 IActionController* CMannequinInterface::CreateActionController(const AZ::EntityId& entityId, SAnimationContext& context)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Mannequin, 0, "ActionController (%llu)", entityId);
     return new CActionController(entityId, context);
 }
 

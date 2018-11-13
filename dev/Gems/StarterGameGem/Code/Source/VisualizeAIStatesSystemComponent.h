@@ -21,76 +21,76 @@
 
 namespace StarterGameGem
 {
-	/*!
-	* Requests for the A.I. state visualisation system.
-	*/
-	class VisualiseAIStatesSystemRequests
-		: public AZ::EBusTraits
-	{
-	public:
-		////////////////////////////////////////////////////////////////////////
-		// EBusTraits
-		// singleton pattern
-		static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-		static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
-		////////////////////////////////////////////////////////////////////////
+    /*!
+    * Requests for the A.I. state visualisation system.
+    */
+    class VisualizeAIStatesSystemRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        ////////////////////////////////////////////////////////////////////////
+        // EBusTraits
+        // singleton pattern
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        ////////////////////////////////////////////////////////////////////////
 
-		virtual ~VisualiseAIStatesSystemRequests() = default;
+        virtual ~VisualizeAIStatesSystemRequests() = default;
 
         virtual void SetAIState(const AZ::EntityId& entityId, int state) = 0;
         virtual void ClearAIState(const AZ::EntityId& entityId) = 0;
-	};
+    };
 
-	using VisualiseAIStatesSystemRequestBus = AZ::EBus<VisualiseAIStatesSystemRequests>;
+    using VisualizeAIStatesSystemRequestBus = AZ::EBus<VisualizeAIStatesSystemRequests>;
 
-	/*!
-	 * System component which listens for A.I. state changes and display visualises to clearly
+    /*!
+     * System component which listens for A.I. state changes and display visualises to clearly
      * indicate what state each A.I. is in.
-	 */
-	class VisualiseAIStatesSystemComponent
-		: public AZ::Component
-		, public VisualiseAIStatesSystemRequestBus::Handler
-		, private AZ::TickBus::Handler
-	{
-	public:
-		AZ_COMPONENT(VisualiseAIStatesSystemComponent, "{B099B349-0451-4439-B40A-20CFF4764F7B}");
-
-		////////////////////////////////////////////////////////////////////////
-		// AZ::Component interface implementation
-		void Activate() override;
-		void Deactivate() override;
-		////////////////////////////////////////////////////////////////////////
-
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::TickBus interface implementation
-		void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
-		//////////////////////////////////////////////////////////////////////////
-
-		// Required Reflect function.
-		static void Reflect(AZ::ReflectContext* context);
-
-		static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
-		{
-			provided.push_back(AZ_CRC("VisualiseAIStatesSystemService"));
-		}
-
-		static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
-		{
-			incompatible.push_back(AZ_CRC("VisualiseAIStatesSystemService"));
-		}
-
-		~VisualiseAIStatesSystemComponent() override {}
-
-		static VisualiseAIStatesSystemComponent* GetInstance();
+     */
+    class VisualizeAIStatesSystemComponent
+        : public AZ::Component
+        , public VisualizeAIStatesSystemRequestBus::Handler
+        , private AZ::TickBus::Handler
+    {
+    public:
+        AZ_COMPONENT(VisualizeAIStatesSystemComponent, "{B099B349-0451-4439-B40A-20CFF4764F7B}");
 
         ////////////////////////////////////////////////////////////////////////
-        // VisualiseAIStatesSystemRequests
+        // AZ::Component interface implementation
+        void Activate() override;
+        void Deactivate() override;
+        ////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::TickBus interface implementation
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        //////////////////////////////////////////////////////////////////////////
+
+        // Required Reflect function.
+        static void Reflect(AZ::ReflectContext* context);
+
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC("VisualizeAIStatesSystemService"));
+        }
+
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+        {
+            incompatible.push_back(AZ_CRC("VisualizeAIStatesSystemService"));
+        }
+
+        ~VisualizeAIStatesSystemComponent() override {}
+
+        static VisualizeAIStatesSystemComponent* GetInstance();
+
+        ////////////////////////////////////////////////////////////////////////
+        // VisualizeAIStatesSystemRequests
         virtual void SetAIState(const AZ::EntityId& entityId, int state) override;
         virtual void ClearAIState(const AZ::EntityId& entityId) override;
         ////////////////////////////////////////////////////////////////////////
 
 
-	private:
+    private:
         struct AIState
         {
             AZ::EntityId m_entityId;
@@ -99,7 +99,6 @@ namespace StarterGameGem
 
         AIState* const FindState(const AZ::EntityId& entityId);
 
-		AZStd::list<AIState> m_states;
-
-	};
+        AZStd::list<AIState> m_states;
+    };
 } // namespace StarterGameGem

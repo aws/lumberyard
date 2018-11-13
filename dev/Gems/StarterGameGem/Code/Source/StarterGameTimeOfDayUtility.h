@@ -15,21 +15,21 @@
 
 namespace AZ
 {
-	class ReflectContext;
+    class ReflectContext;
 }
 
 namespace StarterGameGem
 {
-	/*!
-	* Wrapper for time of day utility functions exposed to Lua for StarterGame.
-	*/
-	class StarterGameTimeOfDayUtility
-	{
-	public:
-		AZ_TYPE_INFO(StarterGameTimeOfDayUtility, "{A54E9CC3-D351-44A9-86FD-0065346A0FAC}");
-		AZ_CLASS_ALLOCATOR(StarterGameTimeOfDayUtility, AZ::SystemAllocator, 0);
+    /*!
+    * Wrapper for time of day utility functions exposed to Lua for StarterGame.
+    */
+    class StarterGameTimeOfDayUtility
+    {
+    public:
+        AZ_TYPE_INFO(StarterGameTimeOfDayUtility, "{A54E9CC3-D351-44A9-86FD-0065346A0FAC}");
+        AZ_CLASS_ALLOCATOR(StarterGameTimeOfDayUtility, AZ::SystemAllocator, 0);
 
-		static void Reflect(AZ::ReflectContext* reflection);
+        static void Reflect(AZ::ReflectContext* reflection);
 
         static void SetTimeOfDayPaused(bool pause);
 
@@ -41,7 +41,5 @@ namespace StarterGameGem
         static float GetSunLatitude();
         static float GetSunLongitude();
         static void SetSunPosition(float longitude, float latitude);
-
-	};
-
+    };
 } // namespace StarterGameGem

@@ -72,7 +72,7 @@ namespace GridMate
             StringStorage m_string;
         };
 
-        std::vector<TrackedDebugMsg> s_trackedMessages;
+        AZStd::vector<TrackedDebugMsg, AZ::StdLegacyAllocator> s_trackedMessages;
         CryCriticalSection s_debugLock;
 
         void TrackMessage(DebugMessageType type, const char* msg)

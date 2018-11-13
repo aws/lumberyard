@@ -119,9 +119,9 @@ namespace LegacyCryAnimation
         g_pISystem = pSystem;
         g_InitInterfaces();
 
-        if (!g_controllerHeap.IsInitialised())
+        if (!g_controllerHeap->IsInitialised())
         {
-            g_controllerHeap.Init(Console::GetInst().ca_MemoryDefragPoolSize);
+            g_controllerHeap->Init(Console::GetInst().ca_MemoryDefragPoolSize);
         }
 
         pSystem->GetISystemEventDispatcher()->RegisterListener(&g_system_event_listener_anim);
@@ -163,7 +163,7 @@ bool* g_usedParametrics = NULL;
 int32 g_totalParametrics = 0;
 AABB g_IdentityAABB = AABB(ZERO, ZERO);
 
-CControllerDefragHeap g_controllerHeap;
+StaticInstance<CControllerDefragHeap> g_controllerHeap;
 
 
 

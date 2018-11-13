@@ -43,7 +43,7 @@
                 }
             }
         },
-        "/send/{cog_id}": {
+        "/send/{cognito_id}": {
             "x-amazon-cloud-canvas-lambda-dispatch": {
                 "module": "send_direct"
             },
@@ -53,7 +53,7 @@
                     {
                         "in": "path",
                         "description": "The players Cognito Identity ID.",
-                        "name": "cog_id",
+                        "name": "cognito_id",
                         "required": true,
                         "type": "string"
                     },

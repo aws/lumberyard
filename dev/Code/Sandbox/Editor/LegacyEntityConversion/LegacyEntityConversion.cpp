@@ -1178,10 +1178,25 @@ namespace LegacyConversionInternal
         if (CVarBlock* varBlock = entityToConvert->GetVarBlock())
         {
             conversionSuccess &= ConvertVarHierarchy<float>(newEntity, editorDecalComponentId, { AZ_CRC("View Distance Multiplier", 0xa5643f50), AZ_CRC("EditorDecalConfiguration", 0x912ed516) }, "ViewDistanceMultiplier", varBlock);
-            conversionSuccess &= ConvertVarHierarchy<int>(newEntity, editorDecalComponentId, { AZ_CRC("ProjectionType", 0x1fef2617), AZ_CRC("EditorDecalConfiguration", 0x912ed516) }, "ProjectionType", varBlock);
-            conversionSuccess &= ConvertVarHierarchy<bool>(newEntity, editorDecalComponentId, { AZ_CRC("Deferred", 0xa364e89a), AZ_CRC("EditorDecalConfiguration", 0x912ed516) }, "Deferred", varBlock);
             conversionSuccess &= ConvertVarHierarchy<int, AZ::u32>(newEntity, editorDecalComponentId, { AZ_CRC("SortPriority", 0xb35a33a7), AZ_CRC("EditorDecalConfiguration", 0x912ed516) }, "SortPriority", varBlock);
             conversionSuccess &= ConvertVarHierarchy<float>(newEntity, editorDecalComponentId, { AZ_CRC("Depth", 0xfaa31c69), AZ_CRC("EditorDecalConfiguration", 0x912ed516) }, "ProjectionDepth", varBlock);
+
+            bool deferred = false;
+            if (ConvertOldVar<bool, bool>("Deferred", varBlock, &deferred))
+            {
+                conversionSuccess &= SetVarHierarchy<bool>(newEntity, editorDecalComponentId, { AZ_CRC("Deferred", 0xa364e89a), AZ_CRC("EditorDecalConfiguration", 0x912ed516) }, deferred);
+            }
+
+            if (deferred)
+            {
+                // Set the projection type to OnTerrainAndStaticObjects as this matches the rendering path of the 
+                // decal object with the deferred flag set.
+                conversionSuccess &= SetVarHierarchy<int>(newEntity, editorDecalComponentId, { AZ_CRC("ProjectionType", 0x1fef2617), AZ_CRC("EditorDecalConfiguration", 0x912ed516) }, SDecalProperties::eProjectOnTerrainAndStaticObjects);
+            }
+            else
+            {
+                conversionSuccess &= ConvertVarHierarchy<int>(newEntity, editorDecalComponentId, { AZ_CRC("ProjectionType", 0x1fef2617), AZ_CRC("EditorDecalConfiguration", 0x912ed516) }, "ProjectionType", varBlock);
+            }
         }
 
         AZ::u32 engineSpec;

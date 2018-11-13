@@ -152,8 +152,8 @@
 			"../Common/Textures/TextureStreamPool.h",
 			"../Common/Textures/PowerOf2BlockPacker.h",
 			"../Common/Textures/Texture.h",
-            "../Common/Textures/StereoTexture.cpp",
-            "../Common/Textures/StereoTexture.h",
+			"../Common/Textures/StereoTexture.cpp",
+			"../Common/Textures/StereoTexture.h",
 			"../Common/Textures/TextureManager.h"
 		],
 		"Common/Textures/Image":
@@ -172,6 +172,7 @@
 		[
 			"../Common/Shaders/Parser.cpp",
 			"../Common/Shaders/ParserBin.cpp",
+			"../Common/Shaders/PoundPoundParser.cpp",
 			"../Common/Shaders/ShaderCache.cpp",
 			"../Common/Shaders/ShaderComponents.cpp",
 			"../Common/Shaders/ShaderCore.cpp",
@@ -184,6 +185,7 @@
 			"../Common/Shaders/CShaderBin.h",
 			"../Common/Shaders/Parser.h",
 			"../Common/Shaders/ParserBin.h",
+			"../Common/Shaders/PoundPoundParser.h",
 			"../Common/Shaders/Shader.h",
 			"../Common/Shaders/ShaderCache.h",
 			"../Common/Shaders/ShaderComponents.h",

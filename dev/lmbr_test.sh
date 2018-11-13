@@ -23,6 +23,8 @@ else
     exit 1
 fi
 
-
+echo Dumping parameters
+echo $*
+echo Dumped parameters
 PYP=$ENGINE_DIR/Code/Tools/AzTestScanner
 env PYTHONPATH=$PYP python -m aztest $*

@@ -9,190 +9,180 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include "DeploymentTool_precompiled.h"
 
-#include "stdafx.h"
+#include <QDir>
+
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/IO/SystemFile.h>
+#include <AzCore/std/string/regex.h>
+
 #include "ConfigFileContainer.h"
-#include <regex>
-#include <AzCore/JSON/document.h>
+
 
 namespace
 {
-    // index of a key's value in smatch array
-    // (first entry is entire match, subsequent entries for each sub-expression in regex)
-    const int valueIndexInRegexMatch = 3;
+    const char* s_commentPrefix = "^\\s*--\\s*";
+    const char* s_regexPrefix = "^\\s*";
+    const char* s_regexPostfix = "\\s*=\\s*(\\S+)\\b";
 
-    AZStd::string GetValueFromRegexSearch(const char* pattern, const char* content)
+
+    AZStd::string BuildStandardRegexString(const AZStd::string& key)
     {
-        std::smatch matches;
+        return AZStd::string::format("%s%s%s", s_regexPrefix, key.c_str(), s_regexPostfix);
+    }
 
-        std::regex sysGameRegex(pattern);
-        // Need this string to exist outside regex_seawrch otherwise it returns invalid data
-        std::string contentToSearch(content);
-        std::regex_search(contentToSearch, matches, sysGameRegex);
+    AZStd::string BuildCommentRegexString(const AZStd::string& key)
+    {
+        return AZStd::string::format("%s%s%s", s_commentPrefix, key.c_str(), s_regexPostfix);
+    }
 
-        if (matches.empty() || !matches.ready())
+    AZStd::string GetValueFromRegexSearch(const AZStd::string& pattern, const AZStd::string& content)
+    {
+        AZStd::string value;
+
+        AZStd::regex configRegex(pattern, AZStd::regex::ECMAScript | AZStd::regex::icase);
+        AZStd::smatch match;
+        if (AZStd::regex_search(content, match, configRegex))
         {
-            return "";
+            value = match[1].str();
         }
 
-        AZStd::string val = AZStd::string(matches[valueIndexInRegexMatch].str().c_str());
-
-        // get rid of leading equals sign
-        return val.substr(1);
+        return value;
     }
 }
 
-const char* ConfigFileContainer::s_commentPrefix = "(^\\s*--\\s*)";
-const char* ConfigFileContainer::s_regexPrefix = "(^\\s*)";
-const char* ConfigFileContainer::s_regexPostfix = "(\\s*)(=\\s*[\\w_.]*)\\b";
-
-ConfigFileContainer::ConfigFileContainer(const AZStd::string& localFilePath)
+StringOutcome ReadFile(const AZStd::string& file, AZStd::string& fileContents)
 {
-    AZStd::string appRoot;
-    EBUS_EVENT_RESULT(appRoot, AZ::ComponentApplicationBus, GetAppRoot);
-    m_filePath = appRoot + localFilePath;
-}
+    using AZ::IO::SystemFile;
+    const char* filePath = file.c_str();
 
-StringOutcome ConfigFileContainer::ReadContents()
-{
-    m_configValues.clear();
-    return ReadFile(m_filePath.c_str(), m_fileContents);
-}
-
-StringOutcome ConfigFileContainer::WriteContents()
-{
-    return WriteFile(m_filePath.c_str(), m_fileContents);
-}
-
-AZStd::string ConfigFileContainer::GetString(const char* key) const
-{
-    // if key is not cached read it from m_fileContents
-    AZStd::string keyString = AZStd::string(key);
-    if (m_configValues.count(keyString) == 0)
+    if (!SystemFile::Exists(filePath))
     {
-        m_configValues[keyString] = ReadValue(m_fileContents, keyString);
+        return AZ::Failure(AZStd::string::format("%s file doesn't exist.", filePath));
     }
 
-    return m_configValues.at(keyString);
-}
-
-AZStd::string ConfigFileContainer::GetStringIncludingComments(const char* key) const
-{
-    // if key is not cached read it from m_fileContents
-    AZStd::string keyString = AZStd::string(key);
-    if (m_configValues.count(keyString) == 0)
-    {
-        m_configValues[keyString] = ReadValueIncludingComments(m_fileContents, keyString);
-    }
-
-    return m_configValues.at(keyString);
-}
-
-bool ConfigFileContainer::GetBool(const char* key) const
-{
-    return (GetString(key) == "1") ? true : false;
-}
-
-bool ConfigFileContainer::GetBoolIncludingComments(const char* key) const
-{
-    return (GetStringIncludingComments(key) == "1") ? true : false;
-}
-
-void ConfigFileContainer::SetString(const char* key, const AZStd::string& newValue)
-{
-    m_configValues[AZStd::string(key)] = newValue;
-    if (HasKey(m_fileContents, key))
-    {
-        ReplaceValue(m_fileContents, key, newValue);
-    }
-    else
-    {
-        InsertKey(m_fileContents, key, newValue);
-    }
-}
-
-void ConfigFileContainer::SetBool(const char* key, bool newValue)
-{
-    AZStd::string val = (newValue) ? "1" : "0";
-    SetString(key, val);
-}
-
-// read contents of file into contents
-StringOutcome ConfigFileContainer::ReadFile(const char* filePath, AZStd::string& contents)
-{
     SystemFile settingsFile;
-    LMBR_ENSURE(SystemFile::Exists(filePath), "%s file doesn't exist.", filePath);
-    LMBR_ENSURE(settingsFile.Open(filePath, SystemFile::SF_OPEN_READ_ONLY), "Failed to open settings file %s.", filePath);
-    contents = AZStd::string(settingsFile.Length(), '\0');
-    settingsFile.Read(contents.size(), contents.data());
+    if (!settingsFile.Open(filePath, SystemFile::SF_OPEN_READ_ONLY))
+    {
+        return AZ::Failure(AZStd::string::format("Failed to open settings file %s.", filePath));
+    }
+
+    fileContents = AZStd::string(settingsFile.Length(), '\0');
+    settingsFile.Read(fileContents.size(), fileContents.data());
+
     settingsFile.Close();
     return AZ::Success();
 }
 
-StringOutcome ConfigFileContainer::WriteFile(const char* filePath, const AZStd::string& contents)
+ConfigFileContainer::ConfigFileContainer(const AZStd::string& filePath)
+    : m_filePath(filePath)
+    , m_fileContents()
+    , m_configValues()
 {
+    if (!QDir::isAbsolutePath(filePath.c_str()))
+    {
+        AZStd::string appRoot;
+        EBUS_EVENT_RESULT(appRoot, AZ::ComponentApplicationBus, GetAppRoot);
+        m_filePath = appRoot + filePath;
+    }
+}
+
+StringOutcome ConfigFileContainer::ApplyConfiguration(const DeploymentConfig&)
+{
+    return AZ::Success();
+}
+
+StringOutcome ConfigFileContainer::Load()
+{
+    return ReadFile(m_filePath, m_fileContents);
+}
+
+StringOutcome ConfigFileContainer::Reload()
+{
+    m_configValues.clear();
+    return ReadFile(m_filePath, m_fileContents);
+}
+
+StringOutcome ConfigFileContainer::Write() const
+{
+    using AZ::IO::SystemFile;
+    const char* filePath = m_filePath.c_str();
+
     // Delete and recreate file to prevent inconsistent state
     if (SystemFile::Exists(filePath))
     {
-        LMBR_ENSURE(SystemFile::Delete(filePath), "Failed to delete existing settings file %s.", filePath);
+        if (!SystemFile::Delete(filePath))
+        {
+            return AZ::Failure(AZStd::string::format("Failed to delete existing settings file %s.", filePath));
+        }
     }
+
     SystemFile settingsFile;
-    LMBR_ENSURE(settingsFile.Open(filePath, SystemFile::SF_OPEN_WRITE_ONLY | SystemFile::SF_OPEN_CREATE), "Failed to open settings file %s.", filePath);
-    LMBR_ENSURE(settingsFile.Write(contents.c_str(), contents.size()) == contents.size(), "Failed to write to config file %s.", filePath);
+    if (!settingsFile.Open(filePath, SystemFile::SF_OPEN_WRITE_ONLY | SystemFile::SF_OPEN_CREATE))
+    {
+        return AZ::Failure(AZStd::string::format("Failed to open settings file %s for write.", filePath));
+    }
+
+    if (settingsFile.Write(m_fileContents.c_str(), m_fileContents.size()) != m_fileContents.size())
+    {
+        return AZ::Failure(AZStd::string::format("Failed to write to config file %s.", filePath));
+    }
+
     settingsFile.Close();
     return AZ::Success();
 }
 
-bool ConfigFileContainer::HasKey(const AZStd::string& fileContents, const AZStd::string& key)
+const AZStd::string& ConfigFileContainer::GetString(const AZStd::string& key, bool includeComments) const
 {
-    std::smatch matches;
-    // Finds anything matching the pattern "[key] = [value]", with all possible whitespace variations accounted for.
-    AZStd::string regexStr = s_regexPrefix + key + s_regexPostfix;
-    std::regex sysGameRegex(regexStr.c_str());
-    // need to store fileContentsStdStr in variable because matches[] contains pointers to it
-    std::string fileContentsStdStr = fileContents.c_str();
-    std::regex_search(fileContentsStdStr, matches, sysGameRegex);
-    return !matches.empty();
-}
-
-// read value at key in .cfg type config file
-AZStd::string ConfigFileContainer::ReadValue(const AZStd::string& fileContents, const AZStd::string& key)
-{
-    // Finds anything matching the pattern "[key] = [value]", with all possible whitespace variations accounted for.
-    AZStd::string regexStr = AZStd::move(AZStd::string::format("%s%s%s", s_regexPrefix, key.c_str(), s_regexPostfix));
-    return GetValueFromRegexSearch(regexStr.c_str(), fileContents.c_str());
-}
-
-AZStd::string ConfigFileContainer::ReadValueIncludingComments(const AZStd::string& fileContents, const AZStd::string& key)
-{
-    AZStd::string result = ReadValue(fileContents, key);
-    if (!result.empty())
+    if (m_configValues.count(key) == 0)
     {
-        return result;
+        AZStd::string regexStr = AZStd::move(BuildStandardRegexString(key));
+        AZStd::string value = AZStd::move(GetValueFromRegexSearch(regexStr, m_fileContents));
+
+        if (includeComments && value.empty())
+        {
+            regexStr = AZStd::move(BuildCommentRegexString(key));
+            value = AZStd::move(GetValueFromRegexSearch(regexStr, m_fileContents));
+        }
+
+        m_configValues[key] = value;
     }
 
-    // Finds anything matching the pattern "-- [key] = [value]", with all possible whitespace variations accounted for.
-    AZStd::string regexStr = AZStd::move(AZStd::string::format("%s%s%s", s_commentPrefix, key.c_str(), s_regexPostfix));
-    return GetValueFromRegexSearch(regexStr.c_str(), fileContents.c_str());
+    return m_configValues.at(key);
 }
 
-void ConfigFileContainer::InsertKey(AZStd::string& fileContents, const AZStd::string& key, const AZStd::string& value)
+bool ConfigFileContainer::GetBool(const AZStd::string& key, bool includeComments) const
 {
-    // insert key and value at the end of file
-    fileContents = AZStd::string::format("%s\n%s=%s\n", fileContents.c_str(), key.c_str(), value.c_str());
+    const AZStd::string& value = GetString(key, includeComments);
+    return (value == "1");
 }
 
-void ConfigFileContainer::ReplaceValue(AZStd::string& fileContents, const AZStd::string& key, const AZStd::string& newValue)
+void ConfigFileContainer::SetString(const AZStd::string& key, const AZStd::string& newValue)
 {
-    // Generate regex str and replacement str
-    AZStd::string lhsStr = key;
-    // Finds anything matching the pattern "[key] = [value]", with all possible whitespace variations accounted for.
-    AZStd::string regexStr = s_regexPrefix + lhsStr + s_regexPostfix;
-    AZStd::string replaceStr = "$1" + lhsStr + "=" + newValue;
+    m_configValues[key] = newValue;
 
-    // Replace the current key with the new value
-    std::regex sysGameRegex(regexStr.c_str());
-    std::string fileContentsStdStr = fileContents.c_str();
-    std::string result = std::regex_replace(fileContentsStdStr, sysGameRegex, replaceStr.c_str());
-    fileContents = result.c_str();
+    if (IsKeyInFile(key))
+    {
+        AZStd::string regexStr = AZStd::move(BuildStandardRegexString(key));
+        AZStd::string replaceStr = AZStd::move(AZStd::string::format("%s=%s", key.c_str(), newValue.c_str()));
+
+        m_fileContents = AZStd::regex_replace(m_fileContents, AZStd::regex(regexStr), replaceStr);
+    }
+    else
+    {
+        m_fileContents = AZStd::string::format("%s\n%s=%s", m_fileContents.c_str(), key.c_str(), newValue.c_str());
+    }
+}
+
+void ConfigFileContainer::SetBool(const AZStd::string& key, bool newValue)
+{
+    SetString(key, (newValue ? "1" : "0"));
+}
+
+bool ConfigFileContainer::IsKeyInFile(const AZStd::string& key) const
+{
+    AZStd::string regexStr = AZStd::move(BuildStandardRegexString(key));
+    AZStd::string value = AZStd::move(GetValueFromRegexSearch(regexStr, m_fileContents));
+    return !value.empty();
 }

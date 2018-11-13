@@ -154,11 +154,12 @@ template<>
 inline void TAnimTrack<ICharacterKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<ICharacterKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<ICharacterKey>::m_flags)
         ->Field("Range", &TAnimTrack<ICharacterKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<ICharacterKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<ICharacterKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<ICharacterKey>::m_keys)
+        ->Field("Id", &TAnimTrack<ICharacterKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////

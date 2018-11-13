@@ -34,6 +34,8 @@
 #include <Util/FileUtil.h>
 #include "XConsoleVariable.h"
 
+#include <AzFramework/IO/LocalFileIO.h>
+
 #include "ui_graphicssettingsdialog.h"
 
 GraphicsSettingsDialog::GraphicsSettingsDialog(QWidget* parent /* = nullptr */)
@@ -51,16 +53,8 @@ GraphicsSettingsDialog::GraphicsSettingsDialog(QWidget* parent /* = nullptr */)
     /////////////////////////////////////////////
 
     m_currentPlatform = GetISystem()->GetConfigPlatform();
-
-    gEnv->pSystem->SetGraphicsSettingsMap(&m_cVarTracker);
-    
-    // CVars are currently unable to be overwritten in the PC config files due to SysSpecOverrideSink in SystemInit.cpp
-    
-    // Remove once cvars can be overwritten in the PC config files
-    if (m_currentPlatform == CONFIG_PC)
-    {
-        m_currentPlatform = CONFIG_OSX_METAL;
-    }
+    m_currentSpecIndex = 0;
+    m_dirtyCVarCount = 0;
 
     m_showCustomSpec = true;
     ShowCustomSpecOption(false);
@@ -69,7 +63,16 @@ GraphicsSettingsDialog::GraphicsSettingsDialog(QWidget* parent /* = nullptr */)
     m_showCategories = true;
     m_ui->ApplyButton->setEnabled(false);
 
-    m_cfgFiles[CONFIG_OSX_METAL].push_back("osx_metal.cfg");
+    m_iconRemove = QIcon(":/PropertyEditor/Resources/cross-small.png");
+
+    m_cfgFiles[CONFIG_PC].push_back("pc_low.cfg");
+    m_cfgFiles[CONFIG_PC].push_back("pc_medium.cfg");
+    m_cfgFiles[CONFIG_PC].push_back("pc_high.cfg");
+    m_cfgFiles[CONFIG_PC].push_back("pc_veryhigh.cfg");
+    m_cfgFiles[CONFIG_OSX_METAL].push_back("osx_metal_low.cfg");
+    m_cfgFiles[CONFIG_OSX_METAL].push_back("osx_metal_medium.cfg");
+    m_cfgFiles[CONFIG_OSX_METAL].push_back("osx_metal_high.cfg");
+    m_cfgFiles[CONFIG_OSX_METAL].push_back("osx_metal_veryhigh.cfg");
     m_cfgFiles[CONFIG_ANDROID].push_back("android_low.cfg");
     m_cfgFiles[CONFIG_ANDROID].push_back("android_medium.cfg");
     m_cfgFiles[CONFIG_ANDROID].push_back("android_high.cfg");
@@ -79,12 +82,12 @@ GraphicsSettingsDialog::GraphicsSettingsDialog(QWidget* parent /* = nullptr */)
     m_cfgFiles[CONFIG_IOS].push_back("ios_high.cfg");
     m_cfgFiles[CONFIG_IOS].push_back("ios_veryhigh.cfg");
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
     m_cfgFiles[CONFIG_##PUBLICNAME].push_back(#publicname "_low.cfg");\
     m_cfgFiles[CONFIG_##PUBLICNAME].push_back(#publicname "_medium.cfg");\
     m_cfgFiles[CONFIG_##PUBLICNAME].push_back(#publicname "_high.cfg");
     AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
     m_cfgFiles[CONFIG_APPLETV].push_back("appletv.cfg");
 
@@ -102,16 +105,35 @@ GraphicsSettingsDialog::GraphicsSettingsDialog(QWidget* parent /* = nullptr */)
     m_cvarGroupData["Config/CVarGroups/sys_spec_textureresolution.cfg"].m_layout = m_ui->TextureResolutionLayout;
     m_cvarGroupData["Config/CVarGroups/sys_spec_volumetriceffects.cfg"].m_layout = m_ui->VolumetricEffectsLayout;
     m_cvarGroupData["Config/CVarGroups/sys_spec_water.cfg"].m_layout = m_ui->WaterLayout;
+    m_cvarGroupData["SpecFile"].m_layout = m_ui->SpecFileHeaderLayout;
     m_cvarGroupData["miscellaneous"].m_layout = m_ui->MiscellaneousLayout;
 
+    // Since the layout order is set by the .ui file we need to match the order here so that tabbing works correctly.
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_gameeffects.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_light.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_objectdetail.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_particles.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_physics.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_postprocessing.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_quality.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_shading.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_shadows.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_sound.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_texture.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_textureresolution.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_volumetriceffects.cfg");
+    m_cvarGroupOrder.push_back("Config/CVarGroups/sys_spec_water.cfg");
+    m_cvarGroupOrder.push_back("miscellaneous");
+
+    m_platformStrings.push_back(AZStd::make_pair("PC", CONFIG_PC));
     m_platformStrings.push_back(AZStd::make_pair("OSX Metal", CONFIG_OSX_METAL));
     m_platformStrings.push_back(AZStd::make_pair("Android", CONFIG_ANDROID));
     m_platformStrings.push_back(AZStd::make_pair("iOS", CONFIG_IOS));
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
     m_platformStrings.push_back(AZStd::make_pair(PublicAuxName2, CONFIG_##PUBLICNAME));
     AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
     m_platformStrings.push_back(AZStd::make_pair("Apple TV", CONFIG_APPLETV));
     m_platformStrings.push_back(AZStd::make_pair("Custom", CONFIG_INVALID_PLATFORM));
@@ -122,6 +144,22 @@ GraphicsSettingsDialog::GraphicsSettingsDialog(QWidget* parent /* = nullptr */)
         m_ui->PlatformEntry->addItem(platform);
     }
 
+    QSettings settings("Amazon", "Lumberyard");
+    settings.beginGroup("GraphicsSettingsDialog");
+
+    if (settings.contains("Platform"))
+    {
+        QString platformName = settings.value("Platform").toString();
+        AZStd::string azPlatform = platformName.toUtf8().data();
+        m_currentPlatform = GetConfigPlatformFromName(azPlatform);
+        if (m_currentPlatform == CONFIG_INVALID_PLATFORM)
+        {
+            ShowCustomSpecOption(true);
+        }
+    }
+
+    settings.endGroup();
+
     SetPlatformEntry(m_currentPlatform);
 
     BuildUI();
@@ -131,6 +169,31 @@ GraphicsSettingsDialog::GraphicsSettingsDialog(QWidget* parent /* = nullptr */)
 
 GraphicsSettingsDialog::~GraphicsSettingsDialog()
 {
+    QSettings settings("Amazon", "Lumberyard");
+    settings.beginGroup("GraphicsSettingsDialog");
+
+    auto platformCheck = [this](AZStd::pair<AZStd::string, ESystemConfigPlatform>& stringConfigPair) { return stringConfigPair.second == m_currentPlatform; };
+    auto platformStringsIterator = AZStd::find_if(m_platformStrings.begin(), m_platformStrings.end(), platformCheck);
+    if (platformStringsIterator != m_platformStrings.end())
+    {
+        settings.setValue("Platform", platformStringsIterator->first.c_str());
+    }
+    else
+    {
+        settings.remove("Platform");
+    }
+
+    settings.beginGroup("cvarGroup");
+
+    for (auto& collapseIterator : m_uiCollapseGroup)
+    {
+        settings.setValue(collapseIterator->m_groupName, collapseIterator->m_isCollapsed);
+    }
+
+    settings.endGroup();
+    settings.endGroup();
+    settings.sync();
+
     for (CollapseGroup* group : m_uiCollapseGroup)
     {
         // Destructor of CollapseGroup will set the members
@@ -147,16 +210,122 @@ GraphicsSettingsDialog::~GraphicsSettingsDialog()
         delete widget;
     }
 
-    gEnv->pSystem->SetGraphicsSettingsMap(nullptr);
-
     // Delete m_ui will destruct all the UI elements with in the ui file
     // Since m_ui is a QScopedPointer which will cleanup itself on the end
     // of the scope.
 }
 
+void GraphicsSettingsDialog::OnLoadConfigurationEntry(const char* strKey, const char* strValue, const char* strGroup)
+{
+    AZStd::string key = strKey;
+    ICVar* cvar = gEnv->pConsole->GetCVar(strKey);
+
+    if (cvar)
+    {
+        AZStd::transform(key.begin(), key.end(), key.begin(), tolower);
+        if (azstricmp(key.c_str(), "sys_spec_full") == 0 || key.find("sys_spec_") == key.npos)
+        {
+            int type = cvar->GetType();
+            AZStd::any val;
+            if (type == CVAR_INT)
+            {
+                val = atoi(strValue);
+            }
+            else if (type == CVAR_FLOAT)
+            {
+                val = static_cast<float>(atof(strValue));
+            }
+            else
+            {
+                val = AZStd::string(strValue);
+            }
+
+            // Platform cfg file (ex. pc_veryhigh.cfg)
+            if (strGroup[0] == '\0')
+            {
+                // New cvar loaded into map
+                if (m_cVarTracker.find(key) == m_cVarTracker.end())
+                {
+                    m_cVarTracker[key].type = type;
+                    m_cVarTracker[key].cvarGroup = "miscellaneous";
+                    AZStd::any empty;
+                    if (type == CVAR_INT)
+                    {
+                        empty = 0;
+                    }
+                    else if (type == CVAR_FLOAT)
+                    {
+                        empty = 0.0f;
+                    }
+                    else
+                    {
+                        empty = AZStd::string("");
+                    }
+                    m_cVarTracker[key].fileVals.resize(m_numSpecLevels, CVarFileStatus(empty, empty, empty));
+                }
+
+                m_cVarTracker[key].fileVals[m_currentSpecIndex].editedValue = val;
+                m_cVarTracker[key].fileVals[m_currentSpecIndex].overwrittenValue = val;
+            }
+            // default group in sys_spec cfg file
+            else if (azstricmp(strGroup, "default") == 0)
+            {
+                CVarFileStatus defaultVal(val, val, val);
+                if (m_cVarTracker.find(key) == m_cVarTracker.end())
+                {
+                    // New cvar loaded into map
+                    CVarInfo& currentCVar = m_cVarTracker[key];
+                    currentCVar.type = cvar->GetType();
+                    currentCVar.fileVals.resize(m_numSpecLevels, defaultVal);
+                }
+                else
+                {
+                    // Reset values, if there's a platform override it always follows the sys_spec_*.cfg files.
+                    // Resetting avoids the issue where some spec levels are never set because of an extra platform
+                    // override load happening earlier just to store the value of sys_spec_full.
+                    for (int specLevel = 0; specLevel < m_numSpecLevels; ++specLevel)
+                    {
+                        m_cVarTracker[key].fileVals[specLevel] = defaultVal;
+                    }
+                }
+                // Overwrite miscellaneous if mentioned in platform config file
+                m_cVarTracker[key].cvarGroup = m_currentConfigFilename;
+            }
+            // specific index in sys_spec cfg file
+            else
+            {
+                int group = 0;
+
+                if (azsscanf(strGroup, "%d", &group) == 1)
+                {
+                    auto sysSpecFull = m_cVarTracker.find("sys_spec_full");
+                    if (sysSpecFull != m_cVarTracker.end())
+                    {
+                        CVarFileStatus indexAssignment(val, val, val);
+                        for (int specLevel = 0; specLevel < m_numSpecLevels; ++specLevel)
+                        {
+                            // Only apply cvar change to configurations with sys_spec_Full matching the index
+                            int overwrittenValue = 0;
+                            if (AZStd::any_numeric_cast<int>(&sysSpecFull->second.fileVals[specLevel].overwrittenValue, overwrittenValue) && group == overwrittenValue)
+                            {
+                                m_cVarTracker[key].fileVals[specLevel] = indexAssignment;
+                            }
+                        }
+                    }                    
+                }
+            }
+        }
+    }
+}
+
 // Loads UI column for specific cfg file (ex. pc_low.cfg)
 void GraphicsSettingsDialog::BuildColumn(int specLevel)
 {
+    if (specLevel < 0 || specLevel >= m_numSpecLevels)
+    {
+        return;
+    }
+
     int row = CVAR_ROW_OFFSET;
     for (auto& it : m_cVarTracker)
     {
@@ -164,8 +333,8 @@ void GraphicsSettingsDialog::BuildColumn(int specLevel)
         QWidget* input = nullptr;
         if (it.second.type == CVAR_INT)
         {
-            AzToolsFramework::PropertyIntSpinCtrl* intval = aznew AzToolsFramework::PropertyIntSpinCtrl(nullptr);
-            intval->setStep(1);
+            AzToolsFramework::DHQSpinbox* intval = aznew AzToolsFramework::DHQSpinbox(nullptr);
+            intval->setFocusPolicy(Qt::StrongFocus);
             intval->setMaximum(INT32_MAX);
             intval->setMinimum(INT32_MIN);
             int editedValue;
@@ -174,12 +343,13 @@ void GraphicsSettingsDialog::BuildColumn(int specLevel)
                 intval->setValue(editedValue);
             }
             m_cvarGroupData[it.second.cvarGroup].m_cvarSpinBoxes.push_back(intval);
-            connect(intval, SIGNAL(valueChanged(AZ::s64)), this, SLOT(CVarChanged(AZ::s64)));
+            connect(intval, SIGNAL(valueChanged(int)), this, SLOT(CVarChanged(int)));
             input = intval;
         }
         else if (it.second.type == CVAR_FLOAT)
         {
-            AzToolsFramework::PropertyDoubleSpinCtrl* doubleval = aznew AzToolsFramework::PropertyDoubleSpinCtrl(nullptr);
+            AzToolsFramework::DHQDoubleSpinbox* doubleval = aznew AzToolsFramework::DHQDoubleSpinbox(nullptr);
+            doubleval->setFocusPolicy(Qt::StrongFocus);
             doubleval->setMaximum(FLT_MAX);
             doubleval->setMinimum(-FLT_MAX);
             float editedValue;
@@ -211,6 +381,7 @@ void GraphicsSettingsDialog::BuildColumn(int specLevel)
             input->setMinimumSize(QSize(INPUT_MIN_WIDTH, INPUT_MIN_HEIGHT));
             m_cvarGroupData[it.second.cvarGroup].m_layout->addWidget(input, row, specLevel + CVAR_VALUE_COLUMN_OFFSET, INPUT_ROW_SPAN, INPUT_COLUMN_SPAN);
             m_parameterWidgets.push_back(new ParameterWidget(input, it.first.c_str()));
+            m_cvarGroupData[it.second.cvarGroup].m_widgetInsertOrder.push_back(input);
         }
 
         row++;
@@ -219,15 +390,21 @@ void GraphicsSettingsDialog::BuildColumn(int specLevel)
 
 void GraphicsSettingsDialog::LoadPlatformConfigurations()
 {
+    for (ParameterWidget* widget : m_parameterWidgets)
+    {
+        delete widget;
+    }
     m_parameterWidgets.clear();
 
     m_ui->ApplyButton->setEnabled(false);
     m_dirtyCVarCount = 0;
 
     // Load platform cfg files to load in sys_spec_Full
-    for (int cfgFileIndex = 0; cfgFileIndex < m_cfgFiles[m_currentPlatform].size(); ++cfgFileIndex)
+    for (size_t cfgFileIndex = 0; cfgFileIndex < m_cfgFiles[m_currentPlatform].size(); ++cfgFileIndex)
     {
-        GetISystem()->LoadConfiguration(m_cfgFiles[m_currentPlatform][cfgFileIndex].c_str(), 0, true);
+        m_currentSpecIndex = cfgFileIndex;
+        m_currentConfigFilename = m_cfgFiles[m_currentPlatform][cfgFileIndex];
+        GetISystem()->LoadConfiguration(m_currentConfigFilename.c_str(), this, true);
     }
 
     if (m_cVarTracker.find("sys_spec_full") == m_cVarTracker.end())
@@ -241,28 +418,62 @@ void GraphicsSettingsDialog::LoadPlatformConfigurations()
     }
 
     // Load sys_spec cfgs based on sys_spec_Full values
-    gEnv->pSystem->AddCVarGroupDirectory("Config/CVarGroups");
+    LoadCVarGroupDirectory(m_cvarGroupsFolder);
 
     setUpdatesEnabled(false);
 
     // Reload platform cfg files to override sys_spec index assignments and load rows with filenames of given platform
-    for (int cfgFileIndex = 0; cfgFileIndex < m_cfgFiles[m_currentPlatform].size(); ++cfgFileIndex)
+    for (size_t cfgFileIndex = 0; cfgFileIndex < m_cfgFiles[m_currentPlatform].size(); ++cfgFileIndex)
     {
-        GetISystem()->LoadConfiguration(m_cfgFiles[m_currentPlatform][cfgFileIndex].c_str(), 0, true);
+        m_currentSpecIndex = cfgFileIndex;
+        m_currentConfigFilename = m_cfgFiles[m_currentPlatform][cfgFileIndex];
+        GetISystem()->LoadConfiguration(m_currentConfigFilename.c_str(), this, true);
 
-        for (auto& it : m_cvarGroupData)
+        CVarGroupInfo& specFileGroup = m_cvarGroupData["SpecFile"];
+
+        QPushButton* invisibleButton = new QPushButton(nullptr);
+        invisibleButton->setMinimumWidth(INPUT_MIN_WIDTH);
+        invisibleButton->setMinimumHeight(INPUT_MIN_HEIGHT);
+        specFileGroup.m_layout->addWidget(invisibleButton, PLATFORM_LABEL_ROW - 1, cfgFileIndex + CVAR_VALUE_COLUMN_OFFSET, INPUT_ROW_SPAN, INPUT_COLUMN_SPAN);
+        
+        QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        invisibleButton->setSizePolicy(sizePolicy);
+        invisibleButton->setStyleSheet("border: none; background-color: transparent; padding: 0ex;");
+        invisibleButton->setProperty("SpecConfigFileIndex", static_cast<int>(cfgFileIndex));
+        invisibleButton->installEventFilter(this);
+        specFileGroup.m_specFileArea.push_back(invisibleButton);
+        
+        QHBoxLayout* specFileLayout = new QHBoxLayout(invisibleButton);
+        specFileLayout->setContentsMargins(0, 0, 0, 0);
+        specFileLayout->setSpacing(5);
+        
+        QLabel* platformLabel = new QLabel(nullptr);
+        QString str = m_cfgFiles[m_currentPlatform][cfgFileIndex].c_str();
+        platformLabel->setObjectName(str.append("Label"));
+        sizePolicy.setHeightForWidth(platformLabel->sizePolicy().hasHeightForWidth());
+        platformLabel->setSizePolicy(sizePolicy);
+        platformLabel->setMinimumHeight(INPUT_MIN_HEIGHT);
+        platformLabel->setAlignment(Qt::AlignLeading | Qt::AlignLeft | Qt::AlignVCenter);
+            
+        specFileLayout->addWidget(platformLabel);
+        platformLabel->setText(QApplication::translate("GraphicsSettingsDialog", m_cfgFiles[m_currentPlatform][cfgFileIndex].c_str(), 0));
+        specFileGroup.m_platformLabels.push_back(platformLabel);
+
+        if (m_showCustomSpec)
         {
-            QLabel* platformLabel = new QLabel(nullptr);
-            QString str = m_cfgFiles[m_currentPlatform][cfgFileIndex].c_str();
-            platformLabel->setObjectName(str.append("Label"));
-            QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-            sizePolicy.setHeightForWidth(platformLabel->sizePolicy().hasHeightForWidth());
-            platformLabel->setSizePolicy(sizePolicy);
-            platformLabel->setMinimumSize(QSize(INPUT_MIN_WIDTH, INPUT_MIN_HEIGHT));
-            platformLabel->setAlignment(Qt::AlignLeading | Qt::AlignLeft | Qt::AlignVCenter);
-            it.second.m_layout->addWidget(platformLabel, PLATFORM_LABEL_ROW, cfgFileIndex + CVAR_VALUE_COLUMN_OFFSET, INPUT_ROW_SPAN, INPUT_COLUMN_SPAN);
-            platformLabel->setText(QApplication::translate("GraphicsSettingsDialog", m_cfgFiles[m_currentPlatform][cfgFileIndex].c_str(), 0));
-            it.second.m_platformLabels.push_back(platformLabel);
+            QPushButton* customSpecUnloadButton = new QPushButton(nullptr);
+            customSpecUnloadButton->setVisible(false);
+            customSpecUnloadButton->setFlat(true);
+            customSpecUnloadButton->setStyleSheet("border: none; background-color: transparent; padding: 0ex;");
+            customSpecUnloadButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            customSpecUnloadButton->setFixedSize(QSize(16, 16));
+            customSpecUnloadButton->setIcon(m_iconRemove);
+            customSpecUnloadButton->setToolTip(tr("Unload this spec file."));
+
+            specFileLayout->addWidget(customSpecUnloadButton);
+            specFileLayout->addStretch(1);
+            connect(customSpecUnloadButton, &QPushButton::clicked, this, [this, cfgFileIndex]() {UnloadCustomSpec(cfgFileIndex); });
+            specFileGroup.m_customSpecUnloadButtons.push_back(customSpecUnloadButton);
         }
     }
 
@@ -297,75 +508,225 @@ void GraphicsSettingsDialog::LoadPlatformConfigurations()
         BuildColumn(cfgFileIndex);
     }
 
+    // Hide any section that has no visible controls
+    for (auto& it : m_cvarGroupData)
+    {
+        int totalControlCount = 0;
+        CVarGroupInfo& currentCvarGroupInfo = it.second;
+        totalControlCount += currentCvarGroupInfo.m_cvarDoubleSpinBoxes.size();
+        totalControlCount += currentCvarGroupInfo.m_cvarSpinBoxes.size();
+        totalControlCount += currentCvarGroupInfo.m_cvarLineEdits.size();
+        totalControlCount += currentCvarGroupInfo.m_platformLabels.size();
+
+        if (totalControlCount == 0)
+        {
+            // disable labels
+            for (auto& label : currentCvarGroupInfo.m_platformLabels)
+            {
+                if (label)
+                {
+                    label->setVisible(false);
+                }
+            }
+
+            // disable widgets
+            QGridLayout* currentLayout = currentCvarGroupInfo.m_layout;
+            for (int currentLayoutItem = 0; currentLayoutItem < currentLayout->count(); ++currentLayoutItem)
+            {
+                QWidget* widget = currentLayout->itemAt(currentLayoutItem)->widget();
+                if (widget)
+                {
+                    widget->setVisible(false);
+                }
+            }
+        }
+    }
+
+    SetCVarWidgetTabOrder();
+
     setUpdatesEnabled(true);
+
+    QSettings settings("Amazon", "Lumberyard");
+    settings.beginGroup("GraphicsSettingsDialog");
+    settings.beginGroup("cvarGroup");
+
+    for (auto& collapseIterator : m_uiCollapseGroup)
+    {
+        bool groupCollapsed = settings.value(collapseIterator->m_groupName, collapseIterator->m_isCollapsed).toBool();
+        if (collapseIterator->m_isCollapsed != groupCollapsed)
+        {
+            collapseIterator->ToggleCollpased();
+        }
+    }
+
+    settings.endGroup();
+    settings.endGroup();
+}
+
+void GraphicsSettingsDialog::SetCVarWidgetTabOrder()
+{
+    int numColumns = m_cfgFiles[m_currentPlatform].size();
+    if (numColumns == 0)
+    {
+        return;
+    }
+
+    QWidget* lastGroupWidget = nullptr;
+    for (auto& it : m_cvarGroupOrder)
+    {
+        QVector<QWidget*>& widgetTabVector = m_cvarGroupData[it].m_widgetInsertOrder;
+        int numWidgets = widgetTabVector.size();
+        int rowsInGroup = numWidgets / numColumns;
+
+        if (numWidgets)
+        {
+            if (lastGroupWidget)
+            {
+                // set the last widget of the last group to tab to the first of this one
+                setTabOrder(lastGroupWidget, widgetTabVector.first());
+            }
+            lastGroupWidget = widgetTabVector.back();
+        }
+
+        for (int currentRow = 0; currentRow < rowsInGroup; ++currentRow)
+        {
+            for (int currentColumn = 0; currentColumn < numColumns - 1; ++currentColumn)
+            {
+                setTabOrder(widgetTabVector[currentRow + (rowsInGroup*currentColumn)], widgetTabVector[currentRow + (rowsInGroup*(currentColumn + 1))]);
+            }
+            if (currentRow < rowsInGroup - 1)
+            {
+                // Set the last input on this row to the first of the next row
+                setTabOrder(widgetTabVector[currentRow + (rowsInGroup*(numColumns - 1))], widgetTabVector[currentRow + 1]);
+            }
+        }
+    }
+}
+
+bool GraphicsSettingsDialog::eventFilter(QObject *obj, QEvent *event)
+{
+    // This event filter is currently only used for the inivisible button
+    // in which case we still want to pass the events to the other Qt objects
+    // even when the Enter/Leave is handled here.
+    if ((event->type() == QEvent::Enter) || (event->type() == QEvent::Leave))
+    {
+        CVarGroupInfo& fileSpecGroup = m_cvarGroupData["SpecFile"];
+        QVariant cfgFileIndexVariant = obj->property("SpecConfigFileIndex");
+        int cfgFileIndex = cfgFileIndexVariant.toInt();
+        if (cfgFileIndex >= 0 && cfgFileIndex < fileSpecGroup.m_customSpecUnloadButtons.size())
+        {
+            bool unloadButtonVisible = (event->type() == QEvent::Enter);
+            fileSpecGroup.m_customSpecUnloadButtons[cfgFileIndex]->setVisible(unloadButtonVisible);
+        }
+    }
+
+    return QWidget::eventFilter(obj, event);
+}
+
+void GraphicsSettingsDialog::LoadCVarGroupDirectory(const AZStd::string& path)
+{
+    AZ::IO::LocalFileIO::FindFilesCallbackType fileFinderCb;
+    fileFinderCb = [&](const char* fullPath) -> bool
+    {
+        if (gEnv->pFileIO->IsDirectory(fullPath))
+        {
+            // recurse into subdirectory
+            gEnv->pFileIO->FindFiles(fullPath, "*.cfg", fileFinderCb);
+        }
+        else
+        {
+            m_currentConfigFilename = fullPath;
+            GetISystem()->LoadConfiguration(fullPath, this, false);
+        }
+
+        return true; // keep searching
+    };
+
+    gEnv->pFileIO->FindFiles(path.c_str(), "*.cfg", fileFinderCb);
 }
 
 //Build UI, link signals and set the data for device list.
 void GraphicsSettingsDialog::BuildUI()
 {
     //Collpase Buttons
-    SetCollapsedLayout(m_ui->GameEffectsDropdown, m_ui->GameEffectsLayout);
-    SetCollapsedLayout(m_ui->LightDropdown, m_ui->LightLayout);
-    SetCollapsedLayout(m_ui->ObjectDetailDropdown, m_ui->ObjectDetailLayout);
-    SetCollapsedLayout(m_ui->ParticlesDropdown, m_ui->ParticlesLayout);
-    SetCollapsedLayout(m_ui->PhysicsDropdown, m_ui->PhysicsLayout);
-    SetCollapsedLayout(m_ui->PostProcessingDropdown, m_ui->PostProcessingLayout);
-    SetCollapsedLayout(m_ui->QualityDropdown, m_ui->QualityLayout);
-    SetCollapsedLayout(m_ui->ShadingDropdown, m_ui->ShadingLayout);
-    SetCollapsedLayout(m_ui->ShadowsDropdown, m_ui->ShadowsLayout);
-    SetCollapsedLayout(m_ui->SoundDropdown, m_ui->SoundLayout);
-    SetCollapsedLayout(m_ui->TextureDropdown, m_ui->TextureLayout);
-    SetCollapsedLayout(m_ui->TextureResolutionDropdown, m_ui->TextureResolutionLayout);
-    SetCollapsedLayout(m_ui->VolumetricEffectsDropdown, m_ui->VolumetricEffectsLayout);
-    SetCollapsedLayout(m_ui->WaterDropdown, m_ui->WaterLayout);
-    SetCollapsedLayout(m_ui->MiscellaneousDropdown, m_ui->MiscellaneousLayout);
+    SetCollapsedLayout("GameEffects", m_ui->GameEffectsDropdown, m_ui->GameEffectsLayout);
+    SetCollapsedLayout("Light", m_ui->LightDropdown, m_ui->LightLayout);
+    SetCollapsedLayout("ObjectDetail", m_ui->ObjectDetailDropdown, m_ui->ObjectDetailLayout);
+    SetCollapsedLayout("Particles", m_ui->ParticlesDropdown, m_ui->ParticlesLayout);
+    SetCollapsedLayout("Physics", m_ui->PhysicsDropdown, m_ui->PhysicsLayout);
+    SetCollapsedLayout("PostProcessing", m_ui->PostProcessingDropdown, m_ui->PostProcessingLayout);
+    SetCollapsedLayout("Quality", m_ui->QualityDropdown, m_ui->QualityLayout);
+    SetCollapsedLayout("Shading", m_ui->ShadingDropdown, m_ui->ShadingLayout);
+    SetCollapsedLayout("Shadows", m_ui->ShadowsDropdown, m_ui->ShadowsLayout);
+    SetCollapsedLayout("Sound", m_ui->SoundDropdown, m_ui->SoundLayout);
+    SetCollapsedLayout("Texture", m_ui->TextureDropdown, m_ui->TextureLayout);
+    SetCollapsedLayout("TextureResolution", m_ui->TextureResolutionDropdown, m_ui->TextureResolutionLayout);
+    SetCollapsedLayout("VolumetricEffects", m_ui->VolumetricEffectsDropdown, m_ui->VolumetricEffectsLayout);
+    SetCollapsedLayout("Water", m_ui->WaterDropdown, m_ui->WaterLayout);
+    SetCollapsedLayout("Miscellaneous", m_ui->MiscellaneousDropdown, m_ui->MiscellaneousLayout);
 
     connect(m_ui->CancelButton, &QPushButton::clicked, this, &GraphicsSettingsDialog::reject);
     connect(m_ui->ApplyButton, &QPushButton::clicked, this, &GraphicsSettingsDialog::accept);
     connect(m_ui->PlatformEntry, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(PlatformChanged(const QString&)));
     connect(m_ui->SelectCustomSpecButton, &QPushButton::clicked, this, &GraphicsSettingsDialog::OpenCustomSpecDialog);
-    connect(m_ui->CustomSpec, &QLineEdit::editingFinished, this, [=]() {ApplyCustomSpec(m_ui->CustomSpec->text()); });
 
-    LoadPlatformConfigurations();
+    if (!m_cfgFiles[m_currentPlatform].empty())
+    {
+        LoadPlatformConfigurations();
+    }
+    else
+    {
+        m_cVarTracker.clear();
+        CleanUI();
+        ShowCategories(false);
+    }
+}
+
+template<typename T>
+void GraphicsSettingsDialog::RemoveWidgetsFromLayout(QVector<T*>& widgetVector, QGridLayout* layout)
+{
+    if (layout == nullptr)
+    {
+        AZ_Error("GraphicsSettingsDialog", false, "Trying to remove widgets from a layout that doesn't exist.");
+        return;
+    }
+
+    for (auto& it : widgetVector)
+    {
+        layout->removeWidget(it);
+        delete it;
+    }
+    widgetVector.clear();
 }
 
 void GraphicsSettingsDialog::CleanUI()
 {
     setUpdatesEnabled(false);
 
+    QSettings settings("Amazon", "Lumberyard");
+    settings.beginGroup("GraphicsSettingsDialog");
+    settings.beginGroup("cvarGroup");
+
+    for (auto& collapseIterator : m_uiCollapseGroup)
+    {
+        settings.setValue(collapseIterator->m_groupName, collapseIterator->m_isCollapsed);
+    }
+
+    settings.endGroup();
+    settings.endGroup();
+    settings.sync();
+
     for (auto& cvarGroupIt : m_cvarGroupData)
     {
-        for (auto& it : cvarGroupIt.second.m_platformLabels)
-        {
-            cvarGroupIt.second.m_layout->removeWidget(it);
-            delete it;
-        }
-        for (auto& it : cvarGroupIt.second.m_cvarLabels)
-        {
-            cvarGroupIt.second.m_layout->removeWidget(it);
-            delete it;
-        }
-        for (auto& it : cvarGroupIt.second.m_cvarSpinBoxes)
-        {
-            cvarGroupIt.second.m_layout->removeWidget(it);
-            delete it;
-        }
-        for (auto& it : cvarGroupIt.second.m_cvarDoubleSpinBoxes)
-        {
-            cvarGroupIt.second.m_layout->removeWidget(it);
-            delete it;
-        }
-        for (auto& it : cvarGroupIt.second.m_cvarLineEdits)
-        {
-            cvarGroupIt.second.m_layout->removeWidget(it);
-            delete it;
-        }
-
-        cvarGroupIt.second.m_platformLabels.clear();
-        cvarGroupIt.second.m_cvarLabels.clear();
-        cvarGroupIt.second.m_cvarSpinBoxes.clear();
-        cvarGroupIt.second.m_cvarDoubleSpinBoxes.clear();
-        cvarGroupIt.second.m_cvarLineEdits.clear();
+        CVarGroupInfo& currentGroup = cvarGroupIt.second;
+        RemoveWidgetsFromLayout(currentGroup.m_platformLabels, currentGroup.m_layout);
+        RemoveWidgetsFromLayout(currentGroup.m_cvarLabels, currentGroup.m_layout);
+        RemoveWidgetsFromLayout(currentGroup.m_cvarSpinBoxes, currentGroup.m_layout);
+        RemoveWidgetsFromLayout(currentGroup.m_cvarDoubleSpinBoxes, currentGroup.m_layout);
+        RemoveWidgetsFromLayout(currentGroup.m_cvarLineEdits, currentGroup.m_layout);
+        RemoveWidgetsFromLayout(currentGroup.m_customSpecUnloadButtons, currentGroup.m_layout);
+        RemoveWidgetsFromLayout(currentGroup.m_specFileArea, currentGroup.m_layout);
+        currentGroup.m_widgetInsertOrder.clear();
     }
 
     m_cVarTracker.clear();
@@ -407,6 +768,7 @@ void GraphicsSettingsDialog::ShowCategories(bool show)
     m_ui->WaterDropdown->setVisible(m_showCategories);
     m_ui->MiscellaneousDropdown->setVisible(m_showCategories);
 
+    m_ui->SpecFileHeaderLabel->setVisible(m_showCategories);
     m_ui->GameEffectsLabel->setVisible(m_showCategories);
     m_ui->LightLabel->setVisible(m_showCategories);
     m_ui->ObjectDetailLabel->setVisible(m_showCategories);
@@ -433,8 +795,7 @@ void GraphicsSettingsDialog::ShowCustomSpecOption(bool show)
 
     m_showCustomSpec = show;
 
-    m_ui->CustomSpecLabel->setVisible(m_showCustomSpec);
-    m_ui->CustomSpecWidget->setVisible(m_showCustomSpec);
+    m_ui->SelectCustomSpecButton->setVisible(m_showCustomSpec);
 }
 
 void GraphicsSettingsDialog::PlatformChanged(const QString& platform)
@@ -528,8 +889,10 @@ bool GraphicsSettingsDialog::CVarChanged(AZStd::any val, const char* cvarName, i
         {
             // Updating sys_spec_full for when adding cvargroup directory
             m_cVarTracker[cvarName].fileVals[specLevel].editedValue = val;
-            gEnv->pSystem->AddCVarGroupDirectory("Config/CVarGroups");
-            GetISystem()->LoadConfiguration(m_cfgFiles[m_currentPlatform][specLevel].c_str(), 0, true);
+            gEnv->pSystem->AddCVarGroupDirectory(m_cvarGroupsFolder);
+            m_currentConfigFilename = m_cfgFiles[m_currentPlatform][specLevel];
+            m_currentSpecIndex = specLevel;
+            GetISystem()->LoadConfiguration(m_currentConfigFilename.c_str(), this, true);
             // Updating sys_spec_full since overwritten from loading platform cfg
             m_cVarTracker[cvarName].fileVals[specLevel].editedValue = val;
             BuildColumn(specLevel);
@@ -595,9 +958,9 @@ bool GraphicsSettingsDialog::CVarChanged(AZStd::any val, const char* cvarName, i
     return true;
 }
 
-void GraphicsSettingsDialog::CVarChanged(AZ::s64 i)
+void GraphicsSettingsDialog::CVarChanged(int i)
 {
-    AzToolsFramework::PropertyIntSpinCtrl* box = qobject_cast<AzToolsFramework::PropertyIntSpinCtrl*>(sender());
+    AzToolsFramework::DHQSpinbox* box = static_cast<AzToolsFramework::DHQSpinbox*>(sender());
     QString str = box->objectName();
     QByteArray ba = str.toUtf8();
     const char* cvarName = ba.data();
@@ -605,7 +968,7 @@ void GraphicsSettingsDialog::CVarChanged(AZ::s64 i)
     int specLevel = box->property("specLevel").toInt();
 
     AZStd::any val;
-    val = static_cast<int>(i);
+    val = i;
 
     if (!CVarChanged(val, cvarName, specLevel))
     {
@@ -622,7 +985,7 @@ void GraphicsSettingsDialog::CVarChanged(AZ::s64 i)
 
 void GraphicsSettingsDialog::CVarChanged(double d)
 {
-    AzToolsFramework::PropertyDoubleSpinCtrl* box = qobject_cast<AzToolsFramework::PropertyDoubleSpinCtrl*>(sender());
+    AzToolsFramework::DHQDoubleSpinbox* box = static_cast<AzToolsFramework::DHQDoubleSpinbox*>(sender());
     QString str = box->objectName();
     QByteArray ba = str.toUtf8();
     const char* cvarName = ba.data();
@@ -748,8 +1111,7 @@ void GraphicsSettingsDialog::OpenCustomSpecDialog()
         QString file = importCustomSpecDialog.selectedFiles().first();
         if (!file.isEmpty())
         {
-            m_ui->CustomSpec->setText(file);
-            ApplyCustomSpec(m_ui->CustomSpec->text());
+            ApplyCustomSpec(file);
         }
     }
 }
@@ -782,13 +1144,21 @@ void GraphicsSettingsDialog::ApplyCustomSpec(const QString& customFilePath)
 
         m_currentPlatform = CONFIG_INVALID_PLATFORM;
 
-        if (m_cfgFiles[CONFIG_INVALID_PLATFORM].empty())
+        bool alreadyLoaded = IsCustomSpecAlreadyLoaded(filename);
+        if (m_cfgFiles[CONFIG_INVALID_PLATFORM].size() < m_numSpecLevels && !alreadyLoaded)
         {
             m_cfgFiles[CONFIG_INVALID_PLATFORM].push_back(filename);
         }
-        else
+        else if (alreadyLoaded)
         {
-            m_cfgFiles[CONFIG_INVALID_PLATFORM][0] = filename;
+            QMessageBox::warning(this, "Warning", "The selected custom spec file is already loaded. No changes have been made.",
+                QMessageBox::Ok);
+            return;
+        }
+
+        if (m_cfgFiles[CONFIG_INVALID_PLATFORM].size() == m_numSpecLevels)
+        {
+            m_ui->SelectCustomSpecButton->setEnabled(false);
         }
 
         ShowCategories(true);
@@ -799,9 +1169,45 @@ void GraphicsSettingsDialog::ApplyCustomSpec(const QString& customFilePath)
     }
 }
 
-void GraphicsSettingsDialog::SetCollapsedLayout(QPushButton* togglebutton, QGridLayout* layout)
+void GraphicsSettingsDialog::UnloadCustomSpec(int specLevel)
+{
+    if (specLevel < 0 || specLevel >= m_cfgFiles[CONFIG_INVALID_PLATFORM].size())
+    {
+        return;
+    }
+
+    bool shouldUnload = m_dirtyCVarCount <= 0 || SendUnsavedChangesWarning(false);
+
+    if (shouldUnload)
+    {
+        m_cfgFiles[CONFIG_INVALID_PLATFORM].erase(m_cfgFiles[CONFIG_INVALID_PLATFORM].begin() + specLevel);
+        m_ui->SelectCustomSpecButton->setEnabled(true);
+
+        CleanUI();
+
+        if (!m_cfgFiles[CONFIG_INVALID_PLATFORM].empty())
+        {
+            LoadPlatformConfigurations();
+        }
+        else
+        {
+            ShowCategories(false);
+        }
+    }
+}
+
+bool GraphicsSettingsDialog::IsCustomSpecAlreadyLoaded(const AZStd::string& filename) const
+{
+    auto& customConfigFilenames = m_cfgFiles.at(CONFIG_INVALID_PLATFORM);
+    const auto& findResult = AZStd::find(customConfigFilenames.begin(), customConfigFilenames.end(), filename.c_str());
+
+    return findResult != customConfigFilenames.end();
+}
+
+void GraphicsSettingsDialog::SetCollapsedLayout(const QString& groupName, QPushButton* togglebutton, QGridLayout* layout)
 {
     CollapseGroup* cgroup = new CollapseGroup();
+    cgroup->m_groupName = groupName;
     cgroup->m_dropDownButton = togglebutton;
     cgroup->m_gridlayout = layout;
     cgroup->m_isCollapsed = false;
@@ -930,40 +1336,41 @@ void GraphicsSettingsDialog::SaveSystemSettings()
                 commandList += it;
             }
 
-            if (!CFileUtil::CheckoutFile(settingsFile.toStdString().c_str()))
+            if (CFileUtil::OverwriteFile(settingsFile.toStdString().c_str()))
             {
-                QMessageBox::warning(this, "Warning", "Could not check out the file \"" + settingsFile + "\". Failed to apply Graphics Setting.",
-                    QMessageBox::Ok);
-                continue;
-            }
+                if (!CFileUtil::CreateDirectory(settingsPath.toStdString().c_str()))
+                {
+                    QMessageBox::warning(this, "Warning", "Could not create the directory for file \"" + settingsFile + "\". Failed to apply Graphics Setting.",
+                        QMessageBox::Ok);
+                    continue;
+                }
 
-            if (!CFileUtil::CreateDirectory(settingsPath.toStdString().c_str()))
-            {
-                QMessageBox::warning(this, "Warning", "Could not create the directory for file \"" + settingsFile + "\". Failed to apply Graphics Setting.",
-                    QMessageBox::Ok);
-                continue;
-            }
+                QByteArray data = commandList.toUtf8().data();
 
-            QByteArray data = commandList.toUtf8().data();
+                QFile file(settingsFile);
+                if (!file.open(QIODevice::WriteOnly) || file.write(data) != data.size())
+                {
+                    QMessageBox::warning(this, "Warning", "Could not write settings to file \"" + settingsFile + ". Failed to apply Graphics Setting.",
+                        QMessageBox::Ok);
+                    file.close();
+                    continue;
+                }
 
-            QFile file(settingsFile);
-            if (!file.open(QIODevice::WriteOnly) || file.write(data) != data.size())
-            {
-                QMessageBox::warning(this, "Warning", "Could not write settings to file \"" + settingsFile + ". Failed to apply Graphics Setting.",
-                    QMessageBox::Ok);
+                successFiles.push_back(settingsFile);
+
+                // Update platform cvars to reflect new values
+                for (auto& it : m_cVarTracker)
+                {
+                    it.second.fileVals[cfgFileIndex].overwrittenValue = it.second.fileVals[cfgFileIndex].editedValue;
+                }
+
                 file.close();
-                continue;
             }
-
-            successFiles.push_back(settingsFile);
-
-            // Update platform cvars to reflect new values
-            for (auto& it : m_cVarTracker)
+            else
             {
-                it.second.fileVals[cfgFileIndex].overwrittenValue = it.second.fileVals[cfgFileIndex].editedValue;
+                QMessageBox::warning(this, "Warning", "Could not check out or make file writable: \"" + settingsFile + "\". Failed to apply Graphics Setting.",
+                    QMessageBox::Ok);
             }
-
-            file.close();
         }
         else
         {
@@ -991,6 +1398,13 @@ void GraphicsSettingsDialog::SaveSystemSettings()
             message += successFiles[i] + "\n";
         }
         QMessageBox::information(this, "Log", message, QMessageBox::Ok);
+    }
+
+    // if we saved all of the files that we needed to then disable the save button again
+    if (nochangeFiles.size() + successFiles.size() == m_cfgFiles[m_currentPlatform].size())
+    {
+        m_dirtyCVarCount = 0;
+        m_ui->ApplyButton->setEnabled(false);
     }
 }
 

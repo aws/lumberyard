@@ -72,7 +72,7 @@ namespace
     const char* kScriptTablePrefix = "ScriptTable:";
 
     bool s_nodeParamsInitialized = false;
-    std::vector<CUiAnimNode::SParamInfo> s_nodeParams;
+    StaticInstance<std::vector<CUiAnimNode::SParamInfo>> s_nodeParams;
 
     void AddSupportedParam(std::vector<CUiAnimNode::SParamInfo>& nodeParams, const char* sName, int paramId, EUiAnimValue valueType, int flags = 0)
     {
@@ -98,7 +98,7 @@ namespace
     {
         return (fabs_tpl(q1.v.x - q2.v.x) <= epsilon)
                && (fabs_tpl(q1.v.y - q2.v.y) <= epsilon)
-               && (fabs_tpl(q2.v.z - q2.v.z) <= epsilon)
+               && (fabs_tpl(q1.v.z - q2.v.z) <= epsilon)
                && (fabs_tpl(q1.w - q2.w) <= epsilon);
     }
 

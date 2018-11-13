@@ -115,6 +115,6 @@ private: // data
     //! Saved prior base state from before rendering (non-persistent variable, only used during rendering)
     int m_priorBaseState;
 
-    //! Saved enabled state of the child mask element
-    bool m_priorChildMaskElementIsEnabled = true;
+    //! Saved render enabled state of the child mask element
+    bool m_priorChildMaskElementIsRenderEnabled = true;
 };

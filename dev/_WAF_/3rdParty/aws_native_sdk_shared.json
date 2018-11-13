@@ -111,9 +111,6 @@
         "ios_framework": [
             "security"
         ], 
-        "appletv_framework": [
-            "security"
-        ], 
         "linux_rpath": [
             "$ORIGIN"
         ]

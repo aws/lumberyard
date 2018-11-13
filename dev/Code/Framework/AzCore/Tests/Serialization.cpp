@@ -1147,7 +1147,7 @@ namespace UnitTest
         Entity* FindEntity(const EntityId&) override { return nullptr; }
         SerializeContext* GetSerializeContext() override { return m_serializeContext.get(); }
         BehaviorContext*  GetBehaviorContext() override { return nullptr; }
-        const char* GetExecutableFolder() override { return nullptr; }
+        const char* GetExecutableFolder() const override { return nullptr; }
         const char* GetAppRoot() override { return nullptr; }
         Debug::DrillerManager* GetDrillerManager() override { return nullptr; }
         void EnumerateEntities(const EntityCallback& /*callback*/) override {}
@@ -3891,6 +3891,7 @@ namespace UnitTest
         AZ_TEST_ASSERT(cloneObj->m_smartArray[1] && cloneObj->m_smartArray[1]->m_data == 201);
         AZ_TEST_ASSERT(cloneObj->m_smartArray[2] && cloneObj->m_smartArray[2]->m_data == 301);
         delete cloneObj;
+        delete reinterpret_cast<MyClassMix*>(testObj.m_fieldValues[0].m_data);
     }
 
     TEST_F(Serialization, CloneInplaceTest)
@@ -3933,6 +3934,7 @@ namespace UnitTest
         AZ_TEST_ASSERT(cloneObj.m_smartArray[0] && cloneObj.m_smartArray[0]->m_data == 101);
         AZ_TEST_ASSERT(cloneObj.m_smartArray[1] && cloneObj.m_smartArray[1]->m_data == 201);
         AZ_TEST_ASSERT(cloneObj.m_smartArray[2] && cloneObj.m_smartArray[2]->m_data == 301);
+        delete reinterpret_cast<MyClassMix*>(testObj.m_fieldValues[0].m_data);
     }
 
     TEST_F(Serialization, CloneAssociativeContainerOfPointersTest)
@@ -5297,6 +5299,20 @@ namespace UnitTest
             DataElementTestClass(const DataElementTestClass&) = delete;
         };
 
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            m_dataElementClass = AZStd::make_unique<DataElementTestClass>();
+        }
+
+        void TearDown() override
+        {
+            m_dataElementClass.reset(); // reset it before the allocators are destroyed
+
+            AllocatorsFixture::TearDown();
+        }
+
         static bool VersionConverter(AZ::SerializeContext& sc, AZ::SerializeContext::DataElementNode& classElement)
         {
             if (classElement.GetVersion() == 0)
@@ -5322,14 +5338,14 @@ namespace UnitTest
             return true;
         }
 
-        DataElementTestClass m_dataElementClass;
+        AZStd::unique_ptr<DataElementTestClass> m_dataElementClass;
 
         void run()
         {
-            m_dataElementClass.m_data = AZStd::make_unique<AZ::Entity>("DataElement");
-            m_dataElementClass.m_data->SetId(AZ::EntityId(47));
-            m_dataElementClass.m_positions.emplace_back(1.0f, 2.0f);
-            m_dataElementClass.m_positions.emplace_back(2.0f, 4.0f);
+            m_dataElementClass->m_data = AZStd::make_unique<AZ::Entity>("DataElement");
+            m_dataElementClass->m_data->SetId(AZ::EntityId(47));
+            m_dataElementClass->m_positions.emplace_back(1.0f, 2.0f);
+            m_dataElementClass->m_positions.emplace_back(2.0f, 4.0f);
 
             // Write original data
             AZStd::vector<AZ::u8> binaryBuffer;
@@ -5344,7 +5360,7 @@ namespace UnitTest
                 // Binary
                 AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8> > binaryStream(&binaryBuffer);
                 AZ::ObjectStream* binaryObjStream = ObjectStream::Create(&binaryStream, sc, ObjectStream::ST_BINARY);
-                binaryObjStream->WriteClass(&m_dataElementClass);
+                binaryObjStream->WriteClass(m_dataElementClass.get());
                 EXPECT_TRUE(binaryObjStream->Finalize());
             }
 
@@ -5360,7 +5376,15 @@ namespace UnitTest
                 // Binary
                 IO::ByteContainerStream<const AZStd::vector<AZ::u8> > binaryStream(&binaryBuffer);
                 binaryStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                ObjectStream::LoadBlocking(&binaryStream, sc, {});
+
+                AZ::ObjectStream::ClassReadyCB readyCB([&](void* classPtr, const AZ::Uuid& classId, AZ::SerializeContext* sc)
+                {
+                    AZ_UNUSED(classId);
+                    AZ_UNUSED(sc);
+
+                    delete reinterpret_cast<DataElementTestClass*>(classPtr);
+                });
+                ObjectStream::LoadBlocking(&binaryStream, sc, readyCB);
             }
         }
     };
@@ -5605,7 +5629,17 @@ namespace UnitTest
             // Binary
             IO::ByteContainerStream<const AZStd::vector<AZ::u8> > binaryStream(&binaryBuffer);
             binaryStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-            ObjectStream::LoadBlocking(&binaryStream, sc, {});
+            
+            AZ::ObjectStream::ClassReadyCB readyCB([&](void* classPtr, const AZ::Uuid& classId, AZ::SerializeContext* sc)
+            {
+                AZ_UNUSED(classId);
+                AZ_UNUSED(sc);
+
+                EntityWrapperTest* entityWrapper = reinterpret_cast<EntityWrapperTest*>(classPtr);
+                delete entityWrapper->m_entity;
+                delete entityWrapper;
+            });
+            ObjectStream::LoadBlocking(&binaryStream, sc, readyCB);
         }
 
         delete entityWrapperTest.m_entity;

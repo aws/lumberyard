@@ -463,7 +463,11 @@ void CRoadRenderNode::SetSortPriority(uint8 sortPrio)
 
 void CRoadRenderNode::SetIgnoreTerrainHoles(bool bVal)
 {
-    m_bIgnoreTerrainHoles = bVal;
+    if (bVal != m_bIgnoreTerrainHoles)
+    {
+        m_bIgnoreTerrainHoles = bVal;
+        ScheduleRebuild();
+    }
 }
 
 void CRoadRenderNode::Render(const SRendParams& _RendParams, const SRenderingPassInfo& passInfo)

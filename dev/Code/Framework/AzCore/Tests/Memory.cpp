@@ -170,19 +170,9 @@ namespace UnitTest
                 AllocatorInstance<SystemAllocator>::Destroy();
             }
 #endif
-            memset(address, 0, AZ_ARRAY_SIZE(address)*sizeof(void*));
+            memset(address, 0, AZ_ARRAY_SIZE(address) * sizeof(void*));
 
-            // Preallocate some memory to be used. We use a AZSTD_SYS_ALIGNED_MALLOC
-            // as temp solution in real case you will need to use the system memory
-            // allocators which suite best allocating all the available memory.
-            SystemAllocator::Descriptor desc;
-            desc.m_allocationRecords = true;
-            desc.m_heap.m_numMemoryBlocks = 1;
-            unsigned int memoryBufferSize = 100 * 1024 * 1024;
-            desc.m_heap.m_memoryBlocksByteSize[0] = memoryBufferSize;
-            desc.m_heap.m_memoryBlocks[0] = DebugAlignAlloc(desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
-
-            AllocatorInstance<SystemAllocator>::Create(desc);
+            AllocatorInstance<SystemAllocator>::Create();
             SystemAllocator& sysAlloc = AllocatorInstance<SystemAllocator>::Get();
 
             for (int i = 0; i < 100; ++i)
@@ -193,7 +183,7 @@ namespace UnitTest
                 EXPECT_GE(sysAlloc.AllocationSize(address[i]), 1000); // check allocation size
             }
 
-            EXPECT_TRUE(sysAlloc.NumAllocatedBytes()>=100000); // we requested 100 * 1000 so we should have at least this much allocated
+            EXPECT_TRUE(sysAlloc.NumAllocatedBytes() >= 100000); // we requested 100 * 1000 so we should have at least this much allocated
 
 // If tracking and recording is enabled, we can verify that the alloc info is valid
 #if defined(AZCORE_ENABLE_MEMORY_TRACKING) && defined(AZ_DEBUG_BUILD)
@@ -213,7 +203,7 @@ namespace UnitTest
                 EXPECT_TRUE(ai.m_stackFrames[0].IsValid());  // We need to have at least one frame
 #       if defined(AZ_PLATFORM_WINDOWS) && defined(_DEBUG)
                 // For windows we should be able to decode the program counters into readable content.
-                // This is possible on X360 and PS3 too, but weed to load the map file manually and so on... it's tricky. // ACCEPTED_USE
+                // This is possible on deprecated platforms too, but we would need to load the map file manually and so on... it's tricky.
                 SymbolStorage::StackLine stackLine{ 0 };
                 SymbolStorage::DecodeFrames(ai.m_stackFrames, 1, &stackLine);
                 EXPECT_THAT((char*)stackLine, testing::HasSubstr("SystemAllocatorTest::run")); // We should have proper callstack
@@ -293,8 +283,6 @@ namespace UnitTest
             //////////////////////////////////////////////////////////////////////////
 
             AllocatorInstance<SystemAllocator>::Destroy();
-
-            DebugAlignFree(desc.m_heap.m_memoryBlocks[0]);
         }
     };
 
@@ -831,9 +819,9 @@ namespace UnitTest
     TEST(BestFitExternalMap, Test)
     {
         SystemAllocator::Descriptor sysDesc;
-        sysDesc.m_heap.m_numMemoryBlocks = 1;
-        sysDesc.m_heap.m_memoryBlocksByteSize[0] = 5 * 1024 * 1024;
-        sysDesc.m_heap.m_memoryBlocks[0] = DebugAlignAlloc(sysDesc.m_heap.m_memoryBlocksByteSize[0], sysDesc.m_heap.m_memoryBlockAlignment);
+        sysDesc.m_heap.m_numFixedMemoryBlocks = 1;
+        sysDesc.m_heap.m_fixedMemoryBlocksByteSize[0] = 5 * 1024 * 1024;
+        sysDesc.m_heap.m_fixedMemoryBlocks[0] = DebugAlignAlloc(sysDesc.m_heap.m_fixedMemoryBlocksByteSize[0], sysDesc.m_heap.m_memoryBlockAlignment);
         AllocatorInstance<SystemAllocator>::Create(sysDesc);
 
         BestFitExternalMapAllocator::Descriptor desc;
@@ -2586,16 +2574,16 @@ namespace UnitTest
             DebugSysAlloc da;
             {
                 HphaSchema::Descriptor hphaDesc;
-                hphaDesc.m_memoryBlockByteSize = AZ_TRAIT_OS_HPHA_MEMORYBLOCKBYTESIZE;
-                hphaDesc.m_memoryBlock = DebugAlignAlloc(hphaDesc.m_memoryBlockByteSize, hphaDesc.m_memoryBlockAlignment);
+                hphaDesc.m_fixedMemoryBlockByteSize = AZ_TRAIT_OS_HPHA_MEMORYBLOCKBYTESIZE;
+                hphaDesc.m_fixedMemoryBlock = DebugAlignAlloc(hphaDesc.m_fixedMemoryBlockByteSize, hphaDesc.m_memoryBlockAlignment);
                 HeapSchema::Descriptor dlMallocDesc;
                 dlMallocDesc.m_numMemoryBlocks = 1;
-                dlMallocDesc.m_memoryBlocksByteSize[0] = hphaDesc.m_memoryBlockByteSize;
+                dlMallocDesc.m_memoryBlocksByteSize[0] = hphaDesc.m_fixedMemoryBlockByteSize;
                 dlMallocDesc.m_memoryBlocks[0] = DebugAlignAlloc(dlMallocDesc.m_memoryBlocksByteSize[0], hphaDesc.m_memoryBlockAlignment);
                 PoolSchema::Descriptor poolDesc;
                 poolDesc.m_pageAllocator = &da;
                 poolDesc.m_numStaticPages = 100;
-                printf("\t\t\tPrealocated memory %.2f MB!\n", (float)hphaDesc.m_memoryBlockByteSize / (1024.f*1024.f));
+                printf("\t\t\tPrealocated memory %.2f MB!\n", (float)hphaDesc.m_fixedMemoryBlockByteSize / (1024.f*1024.f));
                 {
                     HphaSchema hpha(hphaDesc);
                     HeapSchema dl(dlMallocDesc);
@@ -2626,7 +2614,7 @@ namespace UnitTest
                     pool.Destroy();
                     threadPool.Destroy();
                 }
-                DebugAlignFree(hphaDesc.m_memoryBlock);
+                DebugAlignFree(hphaDesc.m_fixedMemoryBlock);
                 DebugAlignFree(dlMallocDesc.m_memoryBlocks[0]);
             }
 

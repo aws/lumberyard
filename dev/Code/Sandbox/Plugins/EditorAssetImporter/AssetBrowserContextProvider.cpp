@@ -47,7 +47,7 @@ namespace AZ
 
         AZStd::string targetExtension = entry->GetExtension();
 
-        for (AZStd::string potentialExtension : extensions)
+        for (const AZStd::string& potentialExtension : extensions)
         {
             const char* extension = potentialExtension.c_str();
 
@@ -60,47 +60,48 @@ namespace AZ
         return false;
     }
 
-    void AssetBrowserContextProvider::AddContextMenuActions(QWidget* /*caller*/, QMenu* menu, const AZStd::vector<AssetBrowserEntry*>& entries)
-    {
-        auto entryIt = AZStd::find_if(entries.begin(), entries.end(),
-            [](const AssetBrowserEntry* entry) -> bool { return entry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Source; });
-        if (entryIt == entries.end())
-        {
-            return;
-        }
-        SourceAssetBrowserEntry* source = azrtti_cast<SourceAssetBrowserEntry*>(*entryIt);
-
-        if (!HandlesSource(source))
-        {
-            return;
-        }
-
-        AZStd::string sourcePath = source->GetFullPath();
-        QAction* editImportSettingsAction = menu->addAction("Edit Settings...", [sourcePath]()
-        {
-            AssetImporterPlugin::GetInstance()->EditImportSettings(sourcePath);
-        });
-
-        using namespace AzToolsFramework;
-        EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBus::Events::RegisterAction, editImportSettingsAction, QString("AssetBrowserContextMenu EditImportSettings"));
-    }
-
     void AssetBrowserContextProvider::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)
     {
         using namespace AzToolsFramework;
 
-        if (const SourceAssetBrowserEntry* source = SourceAssetBrowserEntry::GetSourceByAssetId(sourceUUID))
+        if (const SourceAssetBrowserEntry* source = SourceAssetBrowserEntry::GetSourceByUuid(sourceUUID))
         {
             if (!HandlesSource(source))
             {
                 return;
             }
         }
+        else
+        {
+            // its not something we can actually open if its not a source file at all
+            return;
+        }
 
         openers.push_back({ "Lumberyard_FBX_Settings_Edit", "Edit Settings...", QIcon(), [](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
         {
+            AzToolsFramework::EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBus::Events::MenuTriggered, "AssetBrowserContextMenu EditImportSettings", AzToolsFramework::MetricsActionTriggerType::MenuClick);
             AZStd::string sourceName(fullSourceFileNameInCallback); // because the below call absolutely requires a AZStd::string.
             AssetImporterPlugin::GetInstance()->EditImportSettings(sourceName);
         } });
+    }
+
+    AzToolsFramework::AssetBrowser::SourceFileDetails AssetBrowserContextProvider::GetSourceFileDetails(const char* fullSourceFileName)
+    {
+        AZStd::string extensionString;
+        if (AzFramework::StringFunc::Path::GetExtension(fullSourceFileName, extensionString, true))
+        {
+            // this does include the "." in the extension.
+            AZStd::unordered_set<AZStd::string> extensions;
+            EBUS_EVENT(AZ::SceneAPI::Events::AssetImportRequestBus, GetSupportedFileExtensions, extensions);
+            for (AZStd::string potentialExtension : extensions)
+            {
+                if (AzFramework::StringFunc::Equal(extensionString.c_str(), potentialExtension.c_str()))
+                {
+                    return AzToolsFramework::AssetBrowser::SourceFileDetails("Editor/Icons/AssetBrowser/FBX_16.png");
+                }
+            }
+        }
+
+        return AzToolsFramework::AssetBrowser::SourceFileDetails();
     }
 }

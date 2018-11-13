@@ -166,7 +166,7 @@ def __generate_presigned_post(s3_client, bucket_name, fields=None, conditions=No
 def __get_bucket_name():
     ''' Retrieve bucket name from Cloud Canvas settings. '''
 
-    bucket_name = CloudCanvas.get_setting('AttachmentBucket')
+    bucket_name = CloudCanvas.get_setting(constants.ATTACHMENT_BUCKET)
 
     __validate_attachment_bucket(bucket_name)
 

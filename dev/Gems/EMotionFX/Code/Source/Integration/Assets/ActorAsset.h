@@ -38,7 +38,7 @@ namespace EMotionFX
 
     namespace Integration
     {
-        enum class SkinningMethod:AZ::u32
+        enum class SkinningMethod: AZ::u32
         {
             DualQuat = 0,
             Linear
@@ -53,39 +53,49 @@ namespace EMotionFX
          * and materials are created, since it's technically no longer necessary. At this stage it's worth keeping
          * around for testing.
          */
-        class ActorAsset : public EMotionFXAsset
+        class ActorAsset
+            : public EMotionFXAsset
         {
         public:
-
             typedef AZStd::vector<AZ::u32> BoneIndexToNodeMap;
+            using MaterialList = AZStd::vector<AzFramework::SimpleAssetReference<LmbrCentral::MaterialAsset> >;
 
-            using MaterialList = AZStd::vector<AzFramework::SimpleAssetReference<LmbrCentral::MaterialAsset>>;
+            struct Primitive
+            {
+                AZStd::vector<SMeshBoneMapping_uint16>  m_vertexBoneMappings;
+                _smart_ptr<IRenderMesh> m_renderMesh;
+                CMesh*                  m_mesh = nullptr;      // Non-null only until asset is finalized.
+                bool                    m_isDynamic = false; // Indicates if the mesh is dynamic (e.g. has morph targets)
+                EMotionFX::SubMesh*     m_subMesh = nullptr;
+
+                Primitive() = default;
+                ~Primitive()
+                {
+                    delete m_mesh;
+                }
+            };
 
             /// Holds render representation for a single LOD.
             struct MeshLOD
             {
-                _smart_ptr<IRenderMesh>                 m_renderMesh;
-
-                CMesh*                                  m_mesh;      // Non-null only until asset is finalized.
-                AZStd::vector<SMeshBoneMapping_uint16>  m_vertexBoneMappings;
-                bool                                    m_IsDynamic; // Indicates if the mesh is dynamic (e.g. has morph targets)
-                AZStd::atomic_bool                      m_isReady;
+                AZStd::vector<Primitive>    m_primitives;
+                AZStd::atomic_bool          m_isReady;
+                bool                        m_hasDynamicMeshes;
 
                 MeshLOD()
-                    : m_mesh(nullptr)
-                    , m_IsDynamic(false)
+                    : m_hasDynamicMeshes(false)
                 {
                     m_isReady.store(false);
                 }
 
                 MeshLOD(MeshLOD&& rhs)
                 {
-                    m_mesh = rhs.m_mesh;
-                    m_renderMesh = rhs.m_renderMesh;
-                    m_vertexBoneMappings = AZStd::move(rhs.m_vertexBoneMappings);
+                    m_primitives = AZStd::move(rhs.m_primitives);
+                    m_hasDynamicMeshes = rhs.m_hasDynamicMeshes;
                     m_isReady.store(rhs.m_isReady.load());
-                    rhs.m_mesh = nullptr;
                 }
+
+                ~MeshLOD() = default;
             };
 
             friend class ActorAssetHandler;
@@ -102,10 +112,9 @@ namespace EMotionFX
             EMotionFXPtr<EMotionFX::Actor> GetActor() const { return m_emfxActor; }
 
             size_t GetNumLODs() const { return m_meshLODs.size(); }
-            MeshLOD* GetMeshLOD(AZ::u32 lodIndex) { return m_meshLODs[lodIndex].m_isReady ? &m_meshLODs[lodIndex] : nullptr; }
+            MeshLOD* GetMeshLOD(size_t lodIndex) { return m_meshLODs[lodIndex].m_isReady ? &m_meshLODs[lodIndex] : nullptr; }
 
         private:
-
             EMotionFXPtr<EMotionFX::Actor>  m_emfxActor;    ///< Pointer to shared EMotionFX actor
             AZStd::vector<MeshLOD>          m_meshLODs;     ///< Mesh render data (for CryRenderer)
         };
@@ -115,7 +124,8 @@ namespace EMotionFX
          * The OnInitAsset stage constructs Lumberyard render meshes and materials by extracting
          * said data from the EMotionFX actor.
          */
-        class ActorAssetHandler : public EMotionFXAssetHandler<ActorAsset>
+        class ActorAssetHandler
+            : public EMotionFXAssetHandler<ActorAsset>
         {
         public:
             AZ_CLASS_ALLOCATOR_DECL
@@ -125,9 +135,9 @@ namespace EMotionFX
             void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override;
             AZ::Uuid GetComponentTypeId() const override;
             const char* GetAssetTypeDisplayName() const override;
+            const char* GetBrowserIcon() const override;
 
         private:
-
             static bool BuildLODMeshes(const AZ::Data::Asset<ActorAsset>& asset);
             static void FinalizeActorAssetForRendering(const AZ::Data::Asset<ActorAsset>& asset);
         };
@@ -153,6 +163,7 @@ namespace EMotionFX
 
             void SetActorAsset(const AZ::Data::Asset<ActorAsset>& asset);
             void SetMaterials(const ActorAsset::MaterialList& materialPerLOD);
+            void BuildRenderMeshPerLOD();
 
             //////////////////////////////////////////////////////////////////////////
             // IRenderNode interface implementation
@@ -198,14 +209,14 @@ namespace EMotionFX
             SSkinningData* GetSkinningData();
             void SetSkinningMethod(SkinningMethod method);
 
-            // Determines if the morph target weights were updated since the last call. 
+            // Determines if the morph target weights were updated since the last call.
             // It is used to avoid calling UpdateDynamicSkin if the weights have not been
             // updated.
             bool MorphTargetWeightsWereUpdated(uint32 lodLevel);
-            
+
             // Updates the vertices, normals and tangents buffers in cry based on the emfx
             // mesh. This is used to update morph targets in the ly viewport.
-            void UpdateDynamicSkin(AZ::u32 lodIndex);
+            void UpdateDynamicSkin(size_t lodIndex, size_t primitiveIndex);
 
             AZ::Data::Asset<ActorAsset>             m_actorAsset;
             EMotionFXPtr<EMotionFX::ActorInstance>  m_actorInstance;
@@ -215,7 +226,7 @@ namespace EMotionFX
             AABB                                    m_worldBoundingBox;
             AZ::EntityId                            m_entityId;
 
-            AZStd::vector<_smart_ptr<IMaterial>>    m_materialPerLOD;
+            AZStd::vector<_smart_ptr<IMaterial> >    m_materialPerLOD;
 
             bool                                    m_isRegisteredWithRenderer;
             SkinningMethod                          m_skinningMethod;
@@ -228,9 +239,24 @@ namespace EMotionFX
                 SSkinningData* pSkinningData;
                 int nFrameID;
             } m_arrSkinningRendererData[3];  // triple buffered for motion blur
+
+            // If our actor has dynamic skin, we need each actor instance to have its own render mesh so we can send separate
+            // meshes to cry to render. If they don't have dynamic skin, the render mesh will be the same as the one in the
+            // actor asset
+            AZStd::vector<AZStd::vector<_smart_ptr<IRenderMesh> > > m_renderMeshesPerLOD; // Index as: [lod][primitiveNr]
+
+            // We are using this shared_ptr as a mean to detect this object is still alive by the time BuildRenderMeshPerLOD
+            // is about to be called. We are deferring BuildRenderMeshPerLOD to be executed in the main thread because it
+            // is required by Cry.
+            // It could happen that this ActorRenderNode is destroyed by the time the the deferred method is called.
+            // To solve this situation we use a shared pointer to detect when the object got deleted. The deferred lambda 
+            // holds a copy to this shared pointer (so we have to clients). 
+            // If the counter of the shared_ptr.use_count == 1 when we are about to execute BuildRenderMeshPerLOD, that means 
+            // only the lambda is holding it and the render node was already deleted. 
+            // If the shared_ptr.use_count == 2, that means this object is still alive.
+            AZStd::shared_ptr<int> m_renderNodeLifetime;
         };
     } // namespace Integration
-    
 } // namespace EMotionFX
 
 namespace AZ

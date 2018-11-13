@@ -129,7 +129,7 @@ namespace EMotionFX
             {
                 if (mParamValues[i])
                 {
-                    mParamValues[i]->Destroy();
+                    delete mParamValues[i];
                 }
             }
         }
@@ -147,7 +147,7 @@ namespace EMotionFX
         {
             if (internalAttribute)
             {
-                internalAttribute->Destroy();
+                delete internalAttribute;
             }
         }
     }
@@ -189,7 +189,7 @@ namespace EMotionFX
             MCore::Attribute* internalAttribute = m_internalAttributes[index];
             if (internalAttribute)
             {
-                internalAttribute->Destroy();
+                delete internalAttribute;
             }
         }
 
@@ -280,7 +280,7 @@ namespace EMotionFX
         {
             if (mParamValues[index])
             {
-                mParamValues[index]->Destroy();
+                delete mParamValues[index];
             }
         }
 
@@ -293,7 +293,7 @@ namespace EMotionFX
     {
         if (mParamValues[index])
         {
-            mParamValues[index]->Destroy();
+            delete mParamValues[index];
         }
 
         mParamValues[index] = mAnimGraph->FindValueParameter(index)->ConstructDefaultValueAsAttribute();

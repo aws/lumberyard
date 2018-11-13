@@ -120,7 +120,20 @@ void UiElementComponent::RenderElement(bool isInGame, bool displayBounds)
         return;
     }
 
-    if (!isInGame)
+    if (!m_isRenderEnabled)
+    {
+        return;
+    }
+
+    if (isInGame)
+    {
+        if (!m_isEnabled)
+        {
+            // Nothing to do - whole element and all children are disabled
+            return;
+        }
+    }
+    else
     {
         // We are in editing mode (not running the game)
         // Use the UiEditorBus to query any UiEditorComponent on this element to see if this element is
@@ -936,6 +949,18 @@ void UiElementComponent::SetIsEnabled(bool isEnabled)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiElementComponent::IsRenderEnabled()
+{
+    return m_isRenderEnabled;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::SetIsRenderEnabled(bool isRenderEnabled)
+{
+    m_isRenderEnabled = isRenderEnabled;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiElementComponent::GetIsVisible()
 {
     return m_isVisibleInEditor;
@@ -1190,6 +1215,7 @@ void UiElementComponent::Reflect(AZ::ReflectContext* context)
         serializeContext->Class<UiElementComponent, AZ::Component>()
             ->Version(2, &VersionConverter)
             ->Field("Id", &UiElementComponent::m_elementId)
+            ->Field("IsEnabled", &UiElementComponent::m_isEnabled)
             ->Field("Children", &UiElementComponent::m_children)
             ->Field("IsVisibleInEditor", &UiElementComponent::m_isVisibleInEditor)
             ->Field("IsSelectableInEditor", &UiElementComponent::m_isSelectableInEditor)
@@ -1211,6 +1237,10 @@ void UiElementComponent::Reflect(AZ::ReflectContext* context)
                 "This read-only ID is used to reference the element from FlowGraph")
                 ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
                 ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::NotPushable);
+
+            editInfo->DataElement(0, &UiElementComponent::m_isEnabled, "Start Enabled",
+                "Determines whether the \"Is Enabled\" flag is set to true or false when the element is created.\n"
+                "If an element is not enabled, neither it nor any of its children are drawn or interactive.");
 
             // This is not visible in the PropertyGrid but is required for Push to Slice to be able
             // to push the addition/removal of children

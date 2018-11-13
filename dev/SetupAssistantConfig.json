@@ -631,10 +631,10 @@
             ]
         },
         {
-            "identifier" : "mikkelsen",
+            "identifier" : "mikkt",
             "name" : "mikkelsenName",
-            "version" : "1.0.0",
-            "source" : "mikkelsen/1.0.0",
+            "version" : "1.0.0-az.1",
+            "source" : "mikkelsen/1.0.0-az.1",
             "optional" : 0,
             "description" : "mikkelsenDescriptionSummary",
             "detailedInstructions" : "mikkelsenDetailedInstructions",
@@ -642,7 +642,7 @@
             "symlinks" :
             [
                 {
-                    "source" : "mikkelsen/1.0.0",
+                    "source" : "mikkelsen/1.0.0-az.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/TangentBasisComputation",
                     "exampleFile" : "mikkelsen/mikktspace.cpp"
                 }
@@ -1638,8 +1638,8 @@
         {
             "identifier" : "benchmark",
             "name" : "benchmarkName",
-            "version" : "1.2.0",
-            "source" : "benchmark/1.2.0",
+            "version" : "1.4.1",
+            "source" : "benchmark/1.4.1",
             "optional" : 1,
             "description" : "benchmarkDetailedSummary",
             "detailedInstructions" : "benchmarkDetailedInstructions",
@@ -1648,7 +1648,7 @@
             "symlinks" :
             [
                 {
-                    "source" : "benchmark/1.2.0",
+                    "source" : "benchmark/1.4.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/benchmark",
                     "exampleFile" : "include/benchmark/benchmark.h"
                 }
@@ -1693,8 +1693,8 @@
         {
            "identifier" : "DirectXShaderCompiler",
            "name" : "DirectXShaderCompilerName",
-           "version" : "1.0.0-az",
-           "source" : "DirectXShaderCompiler/1.0.0-az",
+           "version" : "1.0.1-az.1",
+           "source" : "DirectXShaderCompiler/1.0.1-az.1",
            "optional" : 0,
            "description" : "DirectXShaderCompilerDescriptionSummary",
            "detailedInstructions" : "DirectXShaderCompilerDetailedInstructions",
@@ -1704,25 +1704,25 @@
            [
                 {
                     "hostOS" : ["windows"],
-                    "source" : "DirectXShaderCompiler/1.0.0-az",
+                    "source" : "DirectXShaderCompiler/1.0.1-az.1",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/DirectXShaderCompiler",
                     "exampleFile" : "bin/win_x64/release/dxcGL.exe"
                 },
                 {
                     "hostOS" : ["windows"],
-                    "source" : "DirectXShaderCompiler/1.0.0-az",
+                    "source" : "DirectXShaderCompiler/1.0.1-az.1",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/DirectXShaderCompiler",
                     "exampleFile" : "bin/win_x64/release/dxcMetal.exe"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "DirectXShaderCompiler/1.0.0-az",
+                    "source" : "DirectXShaderCompiler/1.0.1-az.1",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/DirectXShaderCompiler",
                     "exampleFile" : "bin/darwin_x64/release/dxcGL"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "DirectXShaderCompiler/1.0.0-az",
+                    "source" : "DirectXShaderCompiler/1.0.1-az.1",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/DirectXShaderCompiler",
                     "exampleFile" : "bin/darwin_x64/release/dxcMetal"
                 }

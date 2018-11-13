@@ -732,9 +732,6 @@ STexPoolItem* CTexture::StreamGetPoolItem(int nStartMip, int nMips, bool bShould
         }
     }
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Texture, 0, "Creating Texture");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Texture, 0, "%s %ix%ix%i %08x", m_SrcName.c_str(), m_nWidth, m_nHeight, m_nMips, m_nFlags);
-
     STextureInfo ti;
     std::vector<STextureInfoData> srti;
     STextureInfo* pTI = NULL;

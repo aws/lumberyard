@@ -41,9 +41,13 @@ namespace AZ
     namespace Data
     {
         class AssetData;
-        template<typename AssetType>
-        struct AssetBlends;
     }
+}
+
+namespace Maestro
+{
+    template<typename AssetType>
+    struct AssetBlends;
 }
 
 typedef IMovieSystem* (* PFNCREATEMOVIESYSTEM)(struct ISystem*);
@@ -82,10 +86,11 @@ enum class AnimParamType;
 //! Flags that can be set on animation node.
 enum EAnimNodeFlags
 {
-    eAnimNodeFlags_Expanded         = BIT(0), //!< Deprecated, handled by sandbox now
-    eAnimNodeFlags_EntitySelected   = BIT(1), //!< Set if the referenced entity is selected in the editor
-    eAnimNodeFlags_CanChangeName    = BIT(2), //!< Set if this node allow changing of its name.
-    eAnimNodeFlags_Disabled         = BIT(3), //!< Disable this node.
+    eAnimNodeFlags_Expanded                 = BIT(0), //!< Deprecated, handled by sandbox now
+    eAnimNodeFlags_EntitySelected           = BIT(1), //!< Set if the referenced entity is selected in the editor
+    eAnimNodeFlags_CanChangeName            = BIT(2), //!< Set if this node allow changing of its name.
+    eAnimNodeFlags_Disabled                 = BIT(3), //!< Disable this node.
+    eAnimNodeFlags_DisabledForComponent     = BIT(4), //!< Disable this node for a disabled or pending entity component.
 };
 
 enum ENodeExportType
@@ -112,7 +117,7 @@ public:
     {
         *this = name;
     }
-
+   
     CAnimParamType(AnimParamType type)
     {
         *this = type;
@@ -130,6 +135,11 @@ public:
         m_name = name;
     }
 
+    void operator =(const AZStd::string& name)
+    {
+        m_type = kAnimParamTypeByString;
+        m_name = name;
+    }
     // Convert to enum. This needs to be explicit,
     // otherwise operator== will be ambiguous
     AnimParamType GetType() const { return m_type; }
@@ -453,7 +463,7 @@ struct IAnimTrack
     virtual void GetValue(float time, Vec4& value, bool applyMultiplier = false) = 0;
     virtual void GetValue(float time, Quat& value) = 0;
     virtual void GetValue(float time, bool& value) = 0;
-    virtual void GetValue(float time, AZ::Data::AssetBlends<AZ::Data::AssetData>& value) = 0;
+    virtual void GetValue(float time, Maestro::AssetBlends<AZ::Data::AssetData>& value) = 0;
 
     // support for AZ:: vector types - re-route to legacy types
     void GetValue(float time, AZ::Vector3& value, bool applyMultiplier = false)
@@ -478,7 +488,7 @@ struct IAnimTrack
     virtual void SetValue(float time, const Vec4& value, bool bDefault = false, bool applyMultiplier = false) = 0;
     virtual void SetValue(float time, const Quat& value, bool bDefault = false) = 0;
     virtual void SetValue(float time, const bool& value, bool bDefault = false) = 0;
-    virtual void SetValue(float time, const AZ::Data::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) = 0;
+    virtual void SetValue(float time, const Maestro::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) = 0;
 
     // support for AZ:: vector types - re-route to legacy types
     void SetValue(float time, AZ::Vector3& value, bool bDefault = false, bool applyMultiplier = false)
@@ -517,6 +527,9 @@ struct IAnimTrack
 
     virtual void SelectKey(int key, bool select) {}
 
+    virtual void SetSortMarkerKey(unsigned int keyIndex, bool enabled) {}
+    virtual bool IsSortMarkerKey(unsigned int keyIndex) const { return false; }
+
     //! Return the index of the key which lies right after the given key in time.
     //! @param key Index of of key.
     //! @return Index of the next key in time. If the last key given, this returns -1.
@@ -549,6 +562,9 @@ struct IAnimTrack
     // Expanded state interface
     virtual void SetExpanded(bool expanded) = 0;
     virtual bool GetExpanded() const = 0;
+
+    virtual unsigned int GetId() const = 0;
+    virtual void SetId(unsigned int id) = 0;
 
     // </interfuscator:shuffle>
 };
@@ -584,6 +600,7 @@ public:
     enum ESupportedParamFlags
     {
         eSupportedParamFlags_MultipleTracks = 0x01, // Set if parameter can be assigned multiple tracks.
+        eSupportedParamFlags_Hidden         = 0x02, // Hidden from the Track View UI.
     };
 
     struct SParamInfo
@@ -862,6 +879,9 @@ public:
     // Expanded state interface
     virtual void SetExpanded(bool expanded) = 0;
     virtual bool GetExpanded() const = 0;
+
+    // Return the node id. This id is unique within a given sequence.
+    virtual int GetId() const = 0;
 };
 
 //! Track event listener
@@ -1118,6 +1138,8 @@ struct IAnimSequence
     virtual void SetExpanded(bool expanded) = 0;
     virtual bool GetExpanded() const = 0;
 
+    virtual unsigned int GetUniqueTrackIdAndGenerateNext() = 0;
+
     // </interfuscator:shuffle>
 };
 
@@ -1308,6 +1330,9 @@ struct IMovieSystem
     // Actually turn on/off the capturing.
     // This is needed for the timing issue of turning on/off the capturing.
     virtual void ControlCapture() = 0;
+
+    // Returns true if a Render Output capture is currently active.
+    virtual bool IsCapturing() const = 0;
 
     // Set movie system into recording mode,
     // While in recording mode any changes made to node will be added as keys to tracks.

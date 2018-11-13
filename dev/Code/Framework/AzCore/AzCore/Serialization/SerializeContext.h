@@ -723,7 +723,7 @@ namespace AZ
 
             AZ_DEPRECATED(
                 ClassBuilder* SerializerForEmptyClass(),
-                "This function was oft misused, and as such has been removed. If you truely need this functionality, please use SerializeWithNoData()");
+                "This function was oft misused, and as such has been removed. If you truly need this functionality, please use SerializeWithNoData()");
 
             /**
              * Implement and provide interface for event handling when necessary.

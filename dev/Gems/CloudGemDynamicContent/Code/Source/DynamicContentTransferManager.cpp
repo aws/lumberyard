@@ -86,7 +86,7 @@ namespace CloudCanvas
         {
         public:
             AZ_EBUS_BEHAVIOR_BINDER(BehaviorDynamicContentComponentNotificationBusHandler, "{9CE84D29-3DEF-4021-B899-6D971E39F75D}", AZ::SystemAllocator,
-                NewContentReady, NewPakContentReady, RequestsCompleted);
+                NewContentReady, NewPakContentReady, FileStatusChanged, RequestsCompleted, FileStatusFailed);
 
             void NewContentReady(const AZStd::string& outputFile) override
             {
@@ -101,6 +101,14 @@ namespace CloudCanvas
             void RequestsCompleted() override
             {
                 Call(FN_RequestsCompleted);
+            }
+            void FileStatusChanged(const AZStd::string& fileName, const AZStd::string& fileStatus) override
+            {
+                Call(FN_FileStatusChanged, fileName, fileStatus);
+            }
+            void FileStatusFailed(const AZStd::string& outputFile) override
+            {
+                Call(FN_FileStatusFailed, outputFile);
             }
         };
 
@@ -173,6 +181,7 @@ namespace CloudCanvas
                     ->Event("DeletePak", &DynamicContentRequestBus::Events::DeletePak)
                     ->Event("GetPakStatus", &DynamicContentRequestBus::Events::GetPakStatus)
                     ->Event("GetPakStatusString", &DynamicContentRequestBus::Events::GetPakStatusString)
+                    ->Event("HandleWebCommunicatorUpdate", &DynamicContentRequestBus::Events::HandleWebCommunicatorUpdate)
                     ;
 
                 behaviorContext->Class<DynamicContentTransferManager>("DynamicContent")
@@ -971,6 +980,7 @@ namespace CloudCanvas
                 // Top level manifests and user requested paks can be removed from the pending list - they have no dependencies
                 RemovePendingPak(requestPtr);
             }
+            EBUS_EVENT(CloudCanvas::DynamicContent::DynamicContentUpdateBus, FileStatusFailed, requestPtr->GetKeyName());
         }
 
         bool DynamicContentTransferManager::RequestFileStatus(FileTransferSupport::FileRequestMap& requestMap, bool manifestRequest)
@@ -1111,6 +1121,27 @@ namespace CloudCanvas
                 AZStd::remove(m_pakFilesToMount.begin(), m_pakFilesToMount.end(), returnPtr);
             }
             return true;
+        }
+
+        void DynamicContentTransferManager::HandleWebCommunicatorUpdate(const AZStd::string& messageData)
+        {
+            rapidjson::Document parseDoc;
+            parseDoc.Parse<rapidjson::kParseStopWhenDoneFlag>(messageData.c_str());
+
+            if (parseDoc.HasParseError())
+            {
+                return;
+            }
+
+            const rapidjson::Value& updateType = parseDoc["update"];
+            const AZStd::string updateStr{ updateType.GetString() };
+            if (updateStr == "FILE_STATUS_CHANGED")
+            {
+                const AZStd::string fileName{ parseDoc["pak_name"].GetString() };
+                const AZStd::string fileStatus{ parseDoc["status"].GetString() };
+
+                EBUS_EVENT(CloudCanvas::DynamicContent::DynamicContentUpdateBus, FileStatusChanged, fileName, fileStatus);
+            }
         }
 
         DynamicContentTransferManager::SignatureHashVec DynamicContentTransferManager::GetMD5Hash(const AZStd::string& filePath)

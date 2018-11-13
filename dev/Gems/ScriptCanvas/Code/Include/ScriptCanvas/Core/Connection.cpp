@@ -63,7 +63,7 @@ namespace ScriptCanvas
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
         if (serializeContext)
         {
-            serializeContext->Class<Connection>()
+            serializeContext->Class<Connection, AZ::Component>()
                 ->Version(0)
                 ->Field("sourceEndpoint", &Connection::m_sourceEndpoint)
                 ->Field("targetEndpoint", &Connection::m_targetEndpoint)

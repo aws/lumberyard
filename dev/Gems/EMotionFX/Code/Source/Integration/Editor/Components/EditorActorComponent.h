@@ -60,7 +60,9 @@ namespace EMotionFX
             void Deactivate() override;
 
             // ActorComponentRequestBus::Handler
-            EMotionFX::ActorInstance* GetActorInstance() override { return m_actorInstance.get(); }
+            EMotionFX::ActorInstance* GetActorInstance() override { return m_actorInstance ? m_actorInstance.get() : nullptr; }
+            bool GetRenderCharacter() const override;
+            void SetRenderCharacter(bool enable) override;
 
             // EditorActorComponentRequestBus::Handler
             const AZ::Data::AssetId& GetActorAssetId() override;
@@ -130,6 +132,7 @@ namespace EMotionFX
             // AZ::Data::AssetBus::Handler
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+            void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
             // AZ::TransformNotificationBus::Handler
             void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;

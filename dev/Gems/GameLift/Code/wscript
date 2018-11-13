@@ -37,8 +37,8 @@ def build(bld):
         linux_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
         linux_file_list   = ['gridmate_gamelift.waf_files'],
 
-       
-       
+        restricted_script   = 'update_restricted_parameters',
+
         # Testing
         test_all_file_list = ['gamelift_test.waf_files'],
 

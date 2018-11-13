@@ -291,6 +291,7 @@ Q_SIGNALS:
         //! Since this method is recursive therefore if we find a source file dependency it will add source file dependencies of that file as well
         void PopulateSourceDependencyList(JobDetails& jobDetail, QString relSourceFilePath, AZStd::unordered_set<AZStd::string>& sourceFileDependencyNameList);
 
+
     protected:
         AZ::s64 GenerateNewJobRunKey();
         // Attempt to erase a log file.  Failing to erase it is not a critical problem, but should be logged.
@@ -339,7 +340,6 @@ Q_SIGNALS:
         QMap<QString, QString> m_sourceFilesInDatabase;
 
         QSet<QString> m_knownFolders; // a cache of all known folder names, normalized to have forward slashes.
-
         typedef AZStd::unordered_map<AZ::u64, AzToolsFramework::AssetSystem::JobInfo> JobRunKeyToJobInfoMap;  // for when network requests come in about the jobInfo
 
         JobRunKeyToJobInfoMap m_jobRunKeyToJobInfoMap;

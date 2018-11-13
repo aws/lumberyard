@@ -25,8 +25,8 @@ def load_win_x64_win_x64_vs2017_common_settings(conf):
 
     global PLATFORM
 
-    # Add defines to indicate a win64 build
-    v['DEFINES'] += ['_WIN32', '_WIN64', 'NOMINMAX', '_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING']
+    # Add defines to indicate a win64 build and configure VS2017 warnings
+    v['DEFINES'] += ['_WIN32', '_WIN64', 'NOMINMAX', '_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING', '_ENABLE_EXTENDED_ALIGNED_STORAGE']
 
     restricted_tool_list_macro_header = 'AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS='
     restricted_tool_list_macro = restricted_tool_list_macro_header
@@ -43,7 +43,8 @@ def load_win_x64_win_x64_vs2017_common_settings(conf):
     try:
         conf.auto_detect_msvc_compiler('msvc 15', 'x64', vcvarsall_args)
     except:
-        Logs.warn('Unable to find Visual Studio 2017 ({}) C++ compiler and/or Windows Kit {}, removing build target'.format(conf.options.win_vs2017_vswhere_args, vcvarsall_args))
+        Logs.warn('MSVS 2017 will be removed as a build target. We were unable to find an installation of Visual Studio 2017 that matches win_vs2017_vswhere_args=({}), Windows Kit with win_vs2017_winkit=({}), and win_vs2017_vcvarsall_args=({}).'.format(conf.options.win_vs2017_vswhere_args, windows_kit, conf.options.win_vs2017_vcvarsall_args))
+        Logs.warn('Lumberyard defaults use a known good set of options at the time of product release. If your project requires different configuration for MSVS 2017, you can modify these settings in _WAF_/user_settings.options under [Windows Options].')
         conf.mark_supported_platform_for_removal(PLATFORM)
         return
 

@@ -10,6 +10,7 @@
 #
 
 import json
+import os
 import boto3
 import survey_utils
 import survey_common
@@ -17,6 +18,8 @@ import sys
 import StringIO
 import CloudCanvas
 import zlib
+
+from botocore.client import Config
 
 def handle(upload_info, context):
     part_data = StringIO.StringIO()
@@ -42,7 +45,13 @@ def handle(upload_info, context):
         if is_collect_enough(part_data):
             break;
 
-    s3 = boto3.client('s3')
+    current_region = os.environ.get('AWS_REGION')
+    if current_region is None:
+        raise RuntimeError('AWS region is empty')
+
+    configuration = Config(signature_version="s3v4", s3={'addressing_style': 'path'})
+    s3 = boto3.client('s3', region_name=current_region, config=configuration)
+
     upload_part(s3, part_data.getvalue(), upload_info)
 
     if is_end:

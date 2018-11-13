@@ -20,6 +20,7 @@ import boto3.session
 import urllib
 
 from resource_manager_common import constant
+import custom_resource_utils
 import json_utils
 
 from botocore.exceptions import ClientError
@@ -32,16 +33,23 @@ from botocore.exceptions import UnknownEndpointError
 current_region = os.environ.get('AWS_REGION')
 
 
+LOG_ATTEMPT = 3
+LOG_SUCCESS = 2
+LOG_FAILURE = 1
+LOG_LEVEL_NONE = []
+LOG_LEVEL_ALL = [LOG_ATTEMPT, LOG_SUCCESS, LOG_FAILURE]
+
 class ClientWrapper(object):
-    BACKOFF_BASE_SECONDS = 0.25
+    BACKOFF_BASE_SECONDS = 1.25
     BACKOFF_MAX_SECONDS = 60.0
     BACKOFF_MAX_TRYS = 15
     MAX_LOG_STRING_LENGTH = 200
 
-    def __init__(self, wrapped_client, do_not_log_args = []):
+    def __init__(self, wrapped_client, do_not_log_args = [], log_level=LOG_LEVEL_ALL):
         self.__wrapped_client = wrapped_client
         self.__client_type = type(wrapped_client).__name__
-        self.__do_not_log_args = do_not_log_args;
+        self.__do_not_log_args = do_not_log_args
+        self.__log_level = log_level
 
     @property
     def client_type(self):
@@ -119,7 +127,8 @@ class ClientWrapper(object):
         print msg
 
     def __log_attempt(self, method_name, args, kwargs):
-
+        if not LOG_ATTEMPT in self.__log_level:
+            return
         msg = 'attempt: '
 
         comma_needed = False
@@ -147,7 +156,8 @@ class ClientWrapper(object):
         self.__log(method_name, msg)
 
     def __log_success(self, method_name, result):
-
+        if not LOG_SUCCESS in self.__log_level:
+            return
         msg = 'success: '
         msg += type(result).__name__
         if isinstance(result, dict):
@@ -158,7 +168,8 @@ class ClientWrapper(object):
         self.__log(method_name, msg)
 
     def __log_failure(self, method_name, e):
-
+        if not LOG_FAILURE in self.__log_level:
+            return
         msg = ' failure '
         msg += type(e).__name__
         msg += ': '
@@ -173,14 +184,15 @@ ID_DATA_MARKER = '::'
 def get_data_from_custom_physical_resource_id(physical_resource_id):
     '''Returns data extracted from a physical resource id with embedded JSON data.'''
     if physical_resource_id:
-        i_data_marker = physical_resource_id.find(ID_DATA_MARKER)
+        embedded_physical_resource_id = custom_resource_utils.get_embedded_physical_id(physical_resource_id)
+        i_data_marker = embedded_physical_resource_id.find(ID_DATA_MARKER)
         if i_data_marker == -1:
             id_data = {}
         else:
             try:
-                id_data = json.loads(physical_resource_id[i_data_marker + len(ID_DATA_MARKER):])
+                id_data = json.loads(embedded_physical_resource_id[i_data_marker + len(ID_DATA_MARKER):])
             except Exception as e:
-                print 'Could not parse JSON data from physical resource id {}. {}'.format(physical_resource_id,
+                print 'Could not parse JSON data from physical resource id {}. {}'.format(embedded_physical_resource_id,
                                                                                           e.message)
                 id_data = {}
     else:
@@ -228,8 +240,31 @@ def get_cloud_canvas_metadata(resource, metadata_name):
     return cloud_canvas_metadata.get(metadata_name, None)
 
 
-def get_resource_arn(type_definitions, stack_arn, resource_type, resource_name, optional=False, lambda_client=None):
+def paginate(fn, params, paginator_key='Marker', next_paginator_key='NextMarker'):
+    """
+    A generic paginator that should work with any paginated AWS function, including those that do not have a built-in
+    paginator supplied for them.
+
+    :param fn: A client function to call, e.g. boto3.client('s3').list_objects
+    :param params: A dictionary of parameters to pass into the function, e.g. {'Bucket': "foo"}
+    :param paginator_key: The key used as the marker for fetching results, e.g. 'Marker'
+    :param next_paginator_key: The key returned in the response to fetch the next page, e.g. 'NextMarker'
+    :return: An iterator to the results of the function call.
+    """
+    while True:
+        response = fn(**params)
+        yield response
+
+        next_key = response.get(next_paginator_key, None)
+        if next_key and len(next_key):
+            params[paginator_key] = next_key
+        else:
+            break
+
+
+def get_resource_arn(type_definitions, stack_arn, resource_type, physical_id, optional=False, lambda_client=None):
     result = None
+    physical_id = custom_resource_utils.get_embedded_physical_id(physical_id)
     type_definition = type_definitions.get(resource_type, None)
     if type_definition is None:
         if optional:
@@ -237,7 +272,7 @@ def get_resource_arn(type_definitions, stack_arn, resource_type, resource_name, 
         else:
             raise RuntimeError(
                 'Unsupported ARN mapping for resource type {} on resource {}. To add support for additional resource types, add a Custom::ResourceTypes dependency to your resource describing the type.'.format(
-                    resource_type, resource_name))
+                    resource_type, physical_id))
 
     if type_definition.arn_function:
         if not lambda_client:
@@ -250,7 +285,7 @@ def get_resource_arn(type_definitions, stack_arn, resource_type, resource_name, 
                     'ResourceType': resource_type,
                     'Region': get_region_from_stack_arn(stack_arn),
                     'AccountId': get_account_id_from_stack_arn(stack_arn),
-                    'ResourceName': resource_name
+                    'ResourceName': physical_id
                 }
             )
         )
@@ -271,12 +306,12 @@ def get_resource_arn(type_definitions, stack_arn, resource_type, resource_name, 
             resource_type=resource_type,
             region=get_region_from_stack_arn(stack_arn),
             account_id=get_account_id_from_stack_arn(stack_arn),
-            resource_name=resource_name)
+            resource_name=physical_id)
 
     else:
         raise RuntimeError(
             'Invalid ARN definition for resource type {} on resource {}. (This should have been detected earlier when the type was loaded.)'.format(
-                resource_type, resource_name))
+                resource_type, physical_id))
 
     return result
 

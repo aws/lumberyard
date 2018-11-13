@@ -37,6 +37,25 @@ namespace Serialization {
     class CEnumDescription
     {
     public:
+        struct NameValue
+        {
+            NameValue*  m_next;
+            const char* m_name;
+            const int   m_value;
+            const char* m_label;
+
+            NameValue(CEnumDescription& desc, const char* name, int value, const char* label="")
+                : m_next(desc.m_regListHead)
+                , m_name(name)
+                , m_value(value)
+                , m_label(label)
+            {
+                desc.m_regListHead = this;
+            }
+        };
+
+        NameValue* m_regListHead = nullptr;
+
         CEnumDescription(const Serialization::TypeID& type)
             : type_(type) {}
         inline int value(const char* name) const;
@@ -61,21 +80,23 @@ namespace Serialization {
         bool registered() const { return !names_.empty(); }
         TypeID type() const{ return type_; }
     private:
+        void lazyRegister() const;
+
         StringListStatic names_;
         StringListStatic labels_;
 
-        typedef std::map<const char*, int, LessStrCmp> NameToValue;
+        typedef AZStd::unordered_map<const char*, int, AZStd::hash<const char*>, AZStd::equal_to<const char*>, AZ::StdLegacyAllocator> NameToValue;
         NameToValue nameToValue_;
-        typedef std::map<const char*, int, LessStrCmp> LabelToValue;
+        typedef AZStd::unordered_map<const char*, int, AZStd::hash<const char*>, AZStd::equal_to<const char*>, AZ::StdLegacyAllocator> LabelToValue;
         LabelToValue labelToValue_;
-        typedef std::map<int, int> ValueToIndex;
+        typedef AZStd::unordered_map<int, int, AZStd::hash<int>, AZStd::equal_to<int>, AZ::StdLegacyAllocator> ValueToIndex;
         ValueToIndex valueToIndex_;
-        typedef std::map<int, const char*> ValueToName;
+        typedef AZStd::unordered_map<int, const char*, AZStd::hash<int>, AZStd::equal_to<int>, AZ::StdLegacyAllocator> ValueToName;
         ValueToName valueToName_;
-        typedef std::map<int, const char*> ValueToLabel;
+        typedef AZStd::unordered_map<int, const char*, AZStd::hash<int>, AZStd::equal_to<int>, AZ::StdLegacyAllocator> ValueToLabel;
         ValueToName valueToLabel_;
-        std::vector<int> values_;
-        TypeID type_;
+        AZStd::vector<int, AZ::StdLegacyAllocator> values_;
+        TypeID type_;        
     };
 
     template<class Enum>
@@ -127,15 +148,16 @@ namespace Serialization {
 
 
 #define SERIALIZATION_ENUM_VALUE(value, label) \
-    description.add(int(value), #value, label);
+    static Serialization::CEnumDescription::NameValue AZ_JOIN(enumValue, __LINE__)(description, label, (int)value);
+
 #define SERIALIZATION_ENUM(value, name, label) \
-    description.add(int(value), name, label);
+    static Serialization::CEnumDescription::NameValue AZ_JOIN(enumValue, __LINE__)(description, name, (int)value, label);
 
 #define SERIALIZATION_ENUM_VALUE_NESTED(Class, value, label) \
-    description.add(int(Class::value), #value, label);
+    static Serialization::CEnumDescription::NameValue AZ_JOIN(enumValue, __LINE__)(description, #value, (int)Class::value, label);
 
 #define SERIALIZATION_ENUM_VALUE_NESTED2(Class, Class1, value, label) \
-    description.add(int(Class::Class1::value), #value, label);
+    static Serialization::CEnumDescription::NameValue AZ_JOIN(enumValue, __LINE__)(description, #value, (int)Class::Class1::value, label);
 
 
 #define SERIALIZATION_ENUM_END() \

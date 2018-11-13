@@ -36,8 +36,7 @@ class CAsyncIOFileRequest_TransferPtr;
 struct SStreamEngineTempMemStats;
 
 #ifdef SUPPORT_RSA_AND_STREAMCIPHER_PAK_ENCRYPTION  //Could check for INCLUDE_LIBTOMCRYPT here, but only decryption is implemented here, not signing
-#include "tomcrypt.h"
-#undef byte // tomcrypt defines a byte macro which conflicts with out byte data type
+#include "CryTomcrypt.h"
 #endif
 
 #if !defined(USE_EDGE_ZLIB)

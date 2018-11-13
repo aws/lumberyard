@@ -12,9 +12,12 @@
 #ifndef AZ_UNITY_BUILD
 
 #include <AzCore/PlatformDef.h>
+#include <AzCore/std/string/memorytoascii.h>
 #include <GridMate/Carrier/SecureSocketDriver.h>
 #include <GridMate/Serialize/Buffer.h>
 #include <GridMate/Serialize/DataMarshal.h>
+
+//#define PRINT_IPADDRESS
 
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
 #include <openssl/ssl.h>
@@ -31,7 +34,21 @@ namespace GridMate
     {
         const AZ::u32 kSSLContextDriverPtrArg = 0;
         const AZ::u32 kDTLSSecretExpirationTime = 1000 * 30; // 30 Seconds
-        const AZ::u32 kSSLHandshakeAttempts = 4;
+        const AZ::u32 kSSLHandshakeAttempts = 10;
+    }
+
+    namespace Internal
+    {
+        const char *SafeGetAddress(const AZStd::string& addr)
+        {
+        #ifdef PRINT_IPADDRESS
+            return addr.c_str();
+        #else
+            // can't display real addresses, so lets just display a ...|0
+            (void)addr;
+            return "x.x.x.x|x";
+        #endif
+        }
     }
 
     namespace ConnectionSecurity
@@ -343,44 +360,92 @@ namespace GridMate
 
         // Functions
         //
-        AZ_INLINE bool IsHandshake(const char* data, AZ::u32 dataSize)
+        bool IsHandshake(const char* data, AZ::u32 dataSize)
         {
             const AZ::u8* bytes = reinterpret_cast<const AZ::u8*>(data);
             return dataSize >= (DTLS1_RT_HEADER_LENGTH + DTLS1_HM_HEADER_LENGTH)
                 && bytes[0] == SSL3_RT_HANDSHAKE
                 && bytes[1] == DTLS1_VERSION_MAJOR;
         }
+        bool IsChangeCipherSpec(const char* data, AZ::u32 dataSize)
+        {
+            const AZ::u8* bytes = reinterpret_cast<const AZ::u8*>(data);
+            return dataSize == 14
+                && bytes[0] == SSL3_RT_CHANGE_CIPHER_SPEC
+                && bytes[1] == DTLS1_VERSION_MAJOR;
+        }
 
-        AZ_INLINE bool IsClientHello(const char* data, AZ::u32 dataSize)
+        bool IsClientHello(const char* data, AZ::u32 dataSize)
         {
             const AZ::u8* bytes = reinterpret_cast<const AZ::u8*>(data);
             return IsHandshake(data, dataSize)
                 && bytes[DTLS1_RT_HEADER_LENGTH] == SSL3_MT_CLIENT_HELLO;
         }
 
-        AZ_INLINE bool IsHelloVerifyRequest(const char* data, AZ::u32 dataSize)
+        bool IsHelloVerifyRequest(const char* data, AZ::u32 dataSize)
         {
             const AZ::u8* bytes = reinterpret_cast<const AZ::u8*>(data);
             return IsHandshake(data, dataSize)
                 && bytes[DTLS1_RT_HEADER_LENGTH] == DTLS1_MT_HELLO_VERIFY_REQUEST;
         }
 
-        AZ_INLINE bool IsHelloRequestHandshake(const char* data, AZ::u32 dataSize)
+        bool IsHelloRequestHandshake(const char* data, AZ::u32 dataSize)
         {
             const AZ::u8* bytes = reinterpret_cast<const AZ::u8*>(data);
             return IsHandshake(data, dataSize)
-                && bytes[DTLS1_RT_HEADER_LENGTH] == SSL3_MT_HELLO_REQUEST;
+                && dataSize == DTLS1_RT_HEADER_LENGTH + DTLS1_HM_HEADER_LENGTH
+                && bytes[DTLS1_RT_HEADER_LENGTH] == SSL3_MT_HELLO_REQUEST
+                && bytes[DTLS1_RT_HEADER_LENGTH + 1] == 0
+                && bytes[DTLS1_RT_HEADER_LENGTH + 2] == 0
+                && bytes[DTLS1_RT_HEADER_LENGTH + 3] == 0;
+        }
+
+        const char* TypeToString(const char* data, AZ::u32 dataSize)
+        {
+            const AZ::u8* bytes = reinterpret_cast<const AZ::u8*>(data);
+
+            if(!IsHandshake(data, dataSize) && !IsChangeCipherSpec(data, dataSize))
+            {
+                switch(bytes[0])
+                {
+                case SSL3_RT_APPLICATION_DATA:  return "AppData";
+                case TLS1_RT_HEARTBEAT:         return "HeartBeat";
+                case SSL3_RT_ALERT:             return "Alert";
+                default:                        return "Unknown";
+                }
+            }
+
+            switch (bytes[DTLS1_RT_HEADER_LENGTH])
+            {
+            case SSL3_MT_HELLO_REQUEST:                 return "HelloRequest";
+            case SSL3_MT_CLIENT_HELLO | SSL3_MT_CCS:    return IsChangeCipherSpec(data, dataSize) ?
+                                                                "ChangeCipherSpec" : "ClientHello";
+            case SSL3_MT_SERVER_HELLO:                  return "ServerHello";
+            case SSL3_MT_NEWSESSION_TICKET:             return "NewSessionTicket";
+            case SSL3_MT_CERTIFICATE:                   return "Certificate";
+            case SSL3_MT_SERVER_KEY_EXCHANGE:           return "ServerKeyExch";
+            case SSL3_MT_CERTIFICATE_REQUEST:           return "CertRequest";
+            case SSL3_MT_SERVER_DONE:                   return "ServerDone";
+            case SSL3_MT_CERTIFICATE_VERIFY:            return "CertVerify";
+            case SSL3_MT_CLIENT_KEY_EXCHANGE:           return "ClientKeyExch";
+            case SSL3_MT_FINISHED:                      return "Finished";
+            case SSL3_MT_CERTIFICATE_STATUS:            return "CertStatus";
+            case DTLS1_MT_HELLO_VERIFY_REQUEST:         return "HelloVerifyReq";
+            default:
+                //AZ_TracePrintf("GridMate", "%s\n", AZStd::MemoryToASCII::ToString(data, dataSize, 256).c_str());
+                return "Unknown Handshake/CCS";
+            }
         }
 
         enum class NextAction
         {
             Error,
-            MakeNewConnection,
+            VerifyCookie,
             SendHelloVerifyRequest
         };
 
 
-        AZ_INLINE NextAction DetermineHandshakeState(char* ptr, AZ::u32 bytesReceived)
+        NextAction DetermineHandshakeState(char* ptr, AZ::u32 bytesReceived)
         {
             if (!IsClientHello(ptr, bytesReceived))
             {
@@ -427,7 +492,7 @@ namespace GridMate
                     //   3. process the DTLS sequence for ssl_accept latter on during CS_ACCEPT
                     if (clientHello.m_cookieSize == kExpectedCookieSize)
                     {
-                        return NextAction::MakeNewConnection;
+                        return NextAction::VerifyCookie;
                     }
                 }
             }
@@ -451,6 +516,69 @@ namespace GridMate
         EVP_PKEY* privateKey = PEM_read_bio_PrivateKey(tempBio, nullptr, nullptr, nullptr);
         BIO_free(tempBio);
         return privateKey;
+    }
+
+    AZStd::string X509NameToString(X509_NAME *subj_or_issuer)
+    {
+        BIO * bio_out = BIO_new(BIO_s_mem());
+        X509_NAME_print(bio_out, subj_or_issuer, 0);
+        BUF_MEM *bio_buf;
+        BIO_get_mem_ptr(bio_out, &bio_buf);
+        AZStd::string issuer = string(bio_buf->data, bio_buf->length);
+        BIO_free(bio_out);
+        return issuer;
+    }
+
+    AZStd::string X509IntegerToString(const ASN1_INTEGER *bs)
+    {
+        AZStd::string ashex;
+
+        for (int i = 0; i < bs->length; i++)
+        {
+            ashex += AZStd::string::format("%02x", bs->data[i]);
+        }
+
+        return ashex;
+    }
+
+    AZStd::string X509DateToString(const ASN1_TIME *time)
+    {
+        int year=0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
+        const char* str = (const char*)time->data;
+        size_t i = 0;
+
+        if( ((time->type == V_ASN1_UTCTIME) && (time->length < 13)) ||
+            ((time->type == V_ASN1_GENERALIZEDTIME) && (time->length < 17)) )
+        {
+            return "??";
+        }
+
+        if (time->type == V_ASN1_UTCTIME)
+        {
+            year = (str[i++] - '0') * 10;
+            year += (str[i++] - '0');
+            year += (year < 70 ? 2000 : 1900);
+        }
+        else if (time->type == V_ASN1_GENERALIZEDTIME)
+        {
+            year = (str[i++] - '0') * 1000;
+            year += (str[i++] - '0') * 100;
+            year += (str[i++] - '0') * 10;
+            year += (str[i++] - '0');
+        }
+
+        month = (str[i++] - '0') * 10;
+        month += (str[i++] - '0') - 1; // -1 since January is 0 not 1.
+        day = (str[i++] - '0') * 10;
+        day += (str[i++] - '0');
+        hour = (str[i++] - '0') * 10;
+        hour += (str[i++] - '0');
+        minute = (str[i++] - '0') * 10;
+        minute += (str[i++] - '0');
+        second = (str[i++] - '0') * 10;
+        second += (str[i++] - '0');
+
+        return AZStd::string::format("%02d-%02d-%4d %02d:%02d:%02d", month, day, year, hour, minute, second);
     }
 
     void CreateCertificateChainFromEncodedPEM(const char* encodedPem, AZStd::vector<X509*>& certificateChain)
@@ -478,8 +606,16 @@ namespace GridMate
             X509* newCertificate = CreateCertificateFromEncodedPEM(encodedPemCertStr.c_str());
             if (newCertificate == nullptr)
             {
+                AZ_Warning("GridMateSecure", false, "Could not create certificate from PEM data!\n");
                 break;
             }
+
+            AZ_Printf("GridMateSecure", "Certinfo: Issuer:\"%s\" Serial:%s Not Before:%s Not After:%s\n",
+                X509NameToString(X509_get_issuer_name(newCertificate)).c_str(),
+                X509IntegerToString(X509_get_serialNumber(newCertificate)).c_str(),
+                X509DateToString(newCertificate->cert_info->validity->notBefore).c_str(),
+                X509DateToString(newCertificate->cert_info->validity->notAfter).c_str()
+                );
 
             certificateChain.push_back(newCertificate);
 
@@ -487,56 +623,56 @@ namespace GridMate
         }
     }
 
-    SecureSocketDriver::Connection::Connection(const AddrPtr& addr, AZ::u32 bufferSize, AZStd::queue<DatagramAddr>* inQueue, AZ::u64 timeoutMS)
+    SecureSocketDriver::Connection::Connection(const AddrPtr& addr, AZ::u32 bufferSize, AZStd::queue<DatagramAddr>* inQueue, AZ::u64 timeoutMS, int port)
         : m_isInitialized(false)
         , m_timeoutMS(timeoutMS)
         , m_inDTLSBuffer(nullptr)
         , m_outDTLSBuffer(nullptr)
-        , m_outPlainQueue(inQueue)
+        , m_inboundPlaintextQueue(inQueue)
         , m_ssl(nullptr)
         , m_sslContext(nullptr)
         , m_addr(addr)
-        , m_tempBIOBuffer(nullptr)
         , m_maxTempBufferSize(bufferSize)
         , m_sslError(SSL_ERROR_NONE)
         , m_mtu(576) // RFC-791
         , m_dbgDgramsSent(0)
         , m_dbgDgramsReceived(0)
+        , m_dbgPort((port&0xFF)<<8 | (port&0xFF00)>>8)
     {
     }
 
     SecureSocketDriver::Connection::~Connection()
     {
+#ifdef AZ_DebugUseSocketDebugLog
+        if (m_sm.GetCurrentState() != CS_ESTABLISHED)
+        {
+            AZ_TracePrintf("GridMate", "DTOR Disconnected LOG: %s\n", m_dbgLog.c_str());
+        }
+#endif
         Shutdown();
     }
 
     bool SecureSocketDriver::Connection::Initialize(SSL_CTX* sslContext, ConnectionState startState, AZ::u32 mtu)
     {
         AZ_Assert(!m_isInitialized, "SecureSocket connection object is already initialized!");
-        AZ_Assert(startState == ConnectionState::CS_ACCEPT || startState == ConnectionState::CS_CONNECT, "SecureSocket connection object must be initialized to CS_ACCEPT or CS_CONNECT!");
+        AZ_Assert(startState == ConnectionState::CS_SEND_HELLO_REQUEST || startState == ConnectionState::CS_COOKIE_EXCHANGE, "SecureSocket connection object must be initialized to CS_SEND_HELLO_REQUEST or CS_COOKIE_EXCHANGE!");
 
         m_isInitialized = true;
 
         m_sslContext = sslContext;
         m_mtu = mtu;
 
+        ///////////Shared states///////////
         m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_TOP), AZ::HSM::StateHandler(&AZ::DummyStateHandler<true>), AZ::HSM::InvalidStateId, CS_ACTIVE);
-
         m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_ACTIVE), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateActive), CS_TOP, AZ::HSM::StateId(startState));
-
-        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_ACCEPT), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateAccept), CS_ACTIVE, CS_WAIT_FOR_STATEFUL_HANDSHAKE);
-        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_WAIT_FOR_STATEFUL_HANDSHAKE), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateWaitForStatefulHandshake), CS_ACCEPT);
-        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_SSL_HANDSHAKE_ACCEPT), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateSslHandshakeAccept), CS_ACCEPT);
-
-        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_CONNECT), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateConnect), CS_ACTIVE, CS_COOKIE_EXCHANGE);
-        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_COOKIE_EXCHANGE), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateCookieExchange), CS_CONNECT);
-        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_SSL_HANDSHAKE_CONNECT), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateSslHandshakeConnect), CS_CONNECT);
-        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_HANDSHAKE_RETRY), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateHandshakeRetry), CS_CONNECT);
-
         m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_ESTABLISHED), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateEstablished), CS_ACTIVE);
-
         m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_DISCONNECTED), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateDisconnected), CS_TOP);
-        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_SSL_ERROR), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateSSLError), CS_TOP);
+        ///////////Server states///////////
+        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_SEND_HELLO_REQUEST), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateSendHelloRequest), CS_ACTIVE);
+        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_ACCEPT), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateAccept), CS_ACTIVE);
+        ///////////Client states///////////
+        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_COOKIE_EXCHANGE), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateCookieExchange), CS_ACTIVE);
+        m_sm.SetStateHandler(AZ_HSM_STATE_NAME(CS_CONNECT), AZ::HSM::StateHandler(this, &SecureSocketDriver::Connection::OnStateConnect), CS_ACTIVE);
 
         m_sm.Start();
 
@@ -547,6 +683,33 @@ namespace GridMate
     {
         DestroySSL();
         m_isInitialized = false;
+    }
+
+    int SecureSocketDriver::Connection::QueueDatagrams()
+    {
+        AZStd::vector<SecureSocketDriver::Datagram> dgramList;
+        int dgrams = 0;
+
+        if (ReadDgramFromBuffer(m_outDTLSBuffer, dgramList))
+        {
+            for (const auto& dgram : dgramList)
+            {
+                ++dgrams;
+                m_outDTLSQueue.push(dgram);
+                //DEBUG high
+                AZ_DebugSecureSocketConnection("GridMateSecure", "%lld | [%08x] RawSend %s size %d to %s\n",
+                    AZStd::chrono::system_clock::now().time_since_epoch().count(), this,
+                    ConnectionSecurity::TypeToString(dgram.data(), dgram.size()), dgram.size(),
+                    Internal::SafeGetAddress(m_addr->ToString()));
+            }
+        }
+
+        if (dgrams)
+        {
+            AZ_DebugSecureSocketConnection("GridMateSecure", "%lld | [%08x] Server Handshake sent %d tot %d. State '%s'\n", AZStd::chrono::system_clock::now().time_since_epoch().count(), this, dgrams, m_outDTLSQueue.size(), SSL_state_string_long(m_ssl));
+        }
+
+        return dgrams;
     }
 
     bool SecureSocketDriver::Connection::OnStateActive(AZ::HSM& sm, const AZ::HSM::Event& event)
@@ -562,12 +725,14 @@ namespace GridMate
             }
             case CE_UPDATE:
             {
-                if (!m_addr->IsBoundToCarrierConnection())
+                if (!m_addr->IsBoundToCarrierConnection()) //If the Carrier never bound or bound and unbounded
                 {
+                    const auto now = AZStd::chrono::system_clock::now();
                     // If connection is not bound any time after the handshake period, disconnect.
-                    if (AZStd::chrono::milliseconds(AZStd::chrono::system_clock::now() - m_creationTime).count() > m_timeoutMS)
+                    if (AZStd::chrono::milliseconds(now - m_creationTime).count() > m_timeoutMS)
                     {
-                        m_sm.Transition(CS_DISCONNECTED);
+                        AZ_DebugSecureSocketConnection("GridMateSecure", "%lld | [%08x] :%d Connection unbound from %s. DgramsSent=%d, DgramsReceived=%d timeout %llu\n", now.time_since_epoch().count(), this, m_dbgPort, Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived, m_timeoutMS);
+                        sm.Transition(CS_DISCONNECTED);
                         return true;
                     }
                 }
@@ -582,17 +747,16 @@ namespace GridMate
         switch (event.id)
         {
             case AZ::HSM::EnterEventId:
-#ifdef PRINT_IPADDRESS
-                AZ_TracePrintf("GridMateSecure", "Accepting a new connection from %s. DgramsSent=%d, DgramsReceived=%d\n", m_addr->ToString().c_str(), m_dbgDgramsSent, m_dbgDgramsReceived);
-#else
-                AZ_TracePrintf("GridMateSecure", "Accepting a new connection. DgramsSent=%d, DgramsReceived=%d\n", m_dbgDgramsSent, m_dbgDgramsReceived);
-#endif
-                SSL_set_accept_state(m_ssl);
+            {
+                AZ_DebugSecureSocketConnection("GridMateSecure", "%lld | \tS [%08x] :%d Accepting a new connection from %s. DgramsSent=%d, DgramsReceived=%d\n", AZStd::chrono::system_clock::now().time_since_epoch().count(), this, m_dbgPort, Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived);
+                SSL_accept(m_ssl);
                 return true;
+            }
             case AZ::HSM::ExitEventId:
                 return true;
-        }
-
+            case CE_NEW_INCOMING_DGRAM:
+            case CE_UPDATE:
+            {
                 bool changedState = false;
 
                 int result = SSL_accept(m_ssl);
@@ -603,143 +767,122 @@ namespace GridMate
                 }
                 else if (result <= 0)
                 {
-                    AZ::s32 sslError = SSL_get_error(m_ssl, result);
-                    if (sslError != SSL_ERROR_WANT_READ && sslError != SSL_ERROR_WANT_WRITE)
-                    {
-                        m_sslError = sslError;
-                        sm.Transition(ConnectionState::CS_SSL_ERROR);
-                        changedState = true;
+                    changedState = HandleSSLError(result);
                     }
-                }
 
-                AZStd::vector<SecureSocketDriver::Datagram> dgramList;
-                if (ReadDgramFromBuffer(m_outDTLSBuffer, dgramList))
-                {
-                    for (const auto& dgram : dgramList)
-                    {
-                        m_outDTLSQueue.push(dgram);
-                    }
-                }
-
+                QueueDatagrams();
                 return changedState;
             }
+            default: break;
+        }
 
-    bool SecureSocketDriver::Connection::OnStateWaitForStatefulHandshake(AZ::HSM& sm, const AZ::HSM::Event& event)
+        return false;
+    }
+
+    bool SecureSocketDriver::Connection::OnStateSendHelloRequest(AZ::HSM& sm, const AZ::HSM::Event& event)
+    {
+        (void)sm;
+
+        const auto SendHello = [&](const AZStd::chrono::system_clock::time_point &now)
+        {
+            (void)now;
+            char buffer[ConnectionSecurity::kMaxPacketSize];
+            WriteBufferStaticInPlace writer(EndianType::BigEndian, buffer, sizeof(buffer));
+            ConnectionSecurity::HelloRequest helloRequest;
+            if (!helloRequest.Pack(writer))
+            {
+                AZ_DebugSecureSocketConnection("GridMateSecure", "%lld | S [%08x] :%d Failed to Pack HelloRequest!\n", now.time_since_epoch().count(), this, m_dbgPort);
+                return;
+            }
+
+            m_outDTLSQueue.emplace(&buffer[0], &buffer[0] + writer.Size());
+            m_dbgDgramsSent++;
+
+        };
+
+        const AZStd::chrono::system_clock::time_point now = AZStd::chrono::system_clock::now();
+
+        switch (event.id)
+        {
+            case AZ::HSM::EnterEventId:
+            {
+                AZ_DebugSecureSocketConnection("GridMateSecure", "%lld | \tS [%08x] :%d Waiting for stateful handshake from %s. DgramsSent=%d, DgramsReceived=%d\n", now.time_since_epoch().count(), this, m_dbgPort, Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived);
+
+                m_helloRequestResendInterval = k_initialHelloRequestResendInterval;
+                m_nextHelloRequestResend = now + m_helloRequestResendInterval;
+                SendHello(now);
+                break;
+            }
+            case CE_STATEFUL_HANDSHAKE:
+                AZ_DebugSecureSocketConnection("GridMateSecure", "%lld | \tS [%08x] :%d Starting SSL portion of handshake with %s. DgramsSent=%d, DgramsReceived=%d\n", now.time_since_epoch().count(), this, m_dbgPort, Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived);
+                sm.Transition(CS_ACCEPT);
+                return true;
+            case CE_UPDATE:
+            {
+                //Enter this state when re-handshaking or an initial move from cookie to handshake
+                if (now > m_nextHelloRequestResend)
+                {
+                    m_nextHelloRequestResend = now + m_helloRequestResendInterval;
+                    m_helloRequestResendInterval *= 2; // exponential backoff
+                    m_helloRequestResendInterval = GetMin(m_helloRequestResendInterval, AZStd::chrono::milliseconds(1000));
+                    SendHello(now);
+                }
+                break;
+            }
+            default: break;
+        }
+        return false;
+    }
+
+    bool SecureSocketDriver::Connection::OnStateConnect(AZ::HSM& sm, const AZ::HSM::Event& event)
     {
         (void)sm;
         switch (event.id)
         {
             case AZ::HSM::EnterEventId:
             {
-#ifdef PRINT_IPADDRESS
-                AZ_TracePrintf("GridMateSecure", "Waiting for stateful handshake from %s. DgramsSent=%d, DgramsReceived=%d\n", m_addr->ToString().c_str(), m_dbgDgramsSent, m_dbgDgramsReceived);
-#else
-                AZ_TracePrintf("GridMateSecure", "Waiting for stateful handshake. DgramsSent=%d, DgramsReceived=%d\n", m_dbgDgramsSent, m_dbgDgramsReceived);
-#endif
-                m_helloRequestResendInterval = AZStd::chrono::milliseconds(1000);
-                break;
-            }
-            case CE_STATEFUL_HANDSHAKE:
-                m_sm.Transition(CS_SSL_HANDSHAKE_ACCEPT);
+                AZ_DebugSecureSocketConnection("GridMateSecure", "%p Connecting to %s.DgramsSent=%d, DgramsReceived=%d\n", this, Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived);
+
+                SSL_connect(m_ssl);
+                QueueDatagrams();
+                m_nextHandshakeRetry = AZStd::chrono::system_clock::now() + AZStd::chrono::milliseconds(m_timeoutMS / kSSLHandshakeAttempts);
                 return true;
-            default: break;
-        }
-
-                AZStd::chrono::system_clock::time_point now = AZStd::chrono::system_clock::now();
-                if (now > m_nextHelloRequestResend)
+            }
+            case AZ::HSM::ExitEventId:
+                return true;
+            case CE_NEW_INCOMING_DGRAM:
+            {
+                bool changedState = false;
+                int result = SSL_connect(m_ssl);
+                if (result == 1)
                 {
-                    m_nextHelloRequestResend = now + m_helloRequestResendInterval;
-                    m_helloRequestResendInterval *= 2; // exponential backoff
-
-                    char buffer[ConnectionSecurity::kMaxPacketSize];
-                    WriteBufferStaticInPlace writer(EndianType::BigEndian, buffer, sizeof(buffer));
-                    ConnectionSecurity::HelloRequest helloRequest;
-                    if (!helloRequest.Pack(writer) || static_cast<SecureSocketDriver*>(m_addr->GetDriver())->SocketDriver::Send(m_addr, buffer, static_cast<unsigned int>(writer.Size())) != EC_OK)
-                    {
-                        AZ_TracePrintf("GridMateSecure", "Failed to send HelloRequest!");
-                    }
-                    else
-                    {
-#ifdef PRINT_IPADDRESS
-                        AZ_TracePrintf("GridMateSecure", "Sending HelloRequest to %s.\n", m_addr->ToString().c_str());
-#else
-                        AZ_TracePrintf("GridMateSecure", "Sending HelloRequest.\n");
-#endif
-                        m_dbgDgramsSent++;
-                    }
+                    sm.Transition(ConnectionState::CS_ESTABLISHED);
+                    changedState = true;
+                }
+                else if (result <= 0)
+                {
+                    changedState = HandleSSLError(result);
                 }
 
-                return false;
+                QueueDatagrams();
+                return changedState;
             }
-
-    bool SecureSocketDriver::Connection::OnStateSslHandshakeAccept(AZ::HSM& sm, const AZ::HSM::Event& event)
-    {
-        (void)sm;
-        switch (event.id)
-        {
-        case AZ::HSM::EnterEventId:
-#ifdef PRINT_IPADDRESS
-            AZ_TracePrintf("GridMateSecure", "Starting SSL portion of handshake with %s. DgramsSent=%d, DgramsReceived=%d\n", m_addr->ToString().c_str(), m_dbgDgramsSent, m_dbgDgramsReceived);
-#else
-            AZ_TracePrintf("GridMateSecure", "Starting SSL portion of handshake. DgramsSent=%d, DgramsReceived=%d\n", m_dbgDgramsSent, m_dbgDgramsReceived);
-#endif
-            break;
-        default: break;
+            case CE_UPDATE:
+            {
+                if (m_nextHandshakeRetry <= AZStd::chrono::system_clock::now())
+                {
+                    AZ_DebugSecureSocketConnection("GridMateSecure", ":%d CS_HANDSHAKE_RETRY to %s.DgramsSent=%d, DgramsReceived=%d outQueue %d State %s\n", m_dbgPort, Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived, m_outDTLSQueue.size(), SSL_state_string_long(m_ssl));
+                    m_nextHandshakeRetry = AZStd::chrono::system_clock::now() + AZStd::chrono::milliseconds(m_timeoutMS / kSSLHandshakeAttempts);
+                    ForceDTLSTimeout();
+                    QueueDatagrams();
+                }
+                break;
+            }
+            default: break;
         }
 
         return false;
     }
-
-    bool SecureSocketDriver::Connection::OnStateConnect(AZ::HSM& sm, const AZ::HSM::Event& event)
-    {
-        switch (event.id)
-        {
-            case AZ::HSM::EnterEventId:
-                AZ_TracePrintf("GridMateSecure", "Connecting to %s.DgramsSent=%d, DgramsReceived=%d\n", m_addr->ToString().c_str(), m_dbgDgramsSent, m_dbgDgramsReceived);
-                SSL_set_connect_state(m_ssl);
-                return true;
-            case AZ::HSM::ExitEventId:
-                return true;
-        }
-
-                bool changedState = false;
-
-                if (m_nextHandshakeRetry <= AZStd::chrono::system_clock::now())
-                {
-                    sm.Transition(CS_HANDSHAKE_RETRY);
-                    changedState = true;
-                }
-                else
-                {
-                    int result = SSL_connect(m_ssl);
-                    if (result == 1)
-                    {
-                        sm.Transition(ConnectionState::CS_ESTABLISHED);
-                        changedState = true;
-                    }
-                    else if (result <= 0)
-                    {
-                        AZ::s32 sslError = SSL_get_error(m_ssl, result);
-                        if (sslError != SSL_ERROR_WANT_READ && sslError != SSL_ERROR_WANT_WRITE)
-                        {
-                            m_sslError = sslError;
-                            sm.Transition(ConnectionState::CS_SSL_ERROR);
-                            changedState = true;
-                        }
-                    }
-
-                    AZStd::vector<SecureSocketDriver::Datagram> dgramList;
-                    if (ReadDgramFromBuffer(m_outDTLSBuffer, dgramList))
-                    {
-                        for (const auto& dgram : dgramList)
-                        {
-                            m_outDTLSQueue.push(dgram);
-                        }
-                    }
-                }
-
-                return changedState;
-            }
 
     bool SecureSocketDriver::Connection::OnStateCookieExchange(AZ::HSM& sm, const AZ::HSM::Event& event)
     {
@@ -747,119 +890,106 @@ namespace GridMate
         switch (event.id)
         {
             case AZ::HSM::EnterEventId:
-                AZ_TracePrintf("GridMateSecure", "Exchanging cookie with %s.DgramsSent=%d, DgramsReceived=%d\n", m_addr->ToString().c_str(), m_dbgDgramsSent, m_dbgDgramsReceived);
-                m_nextHandshakeRetry = AZStd::chrono::system_clock::now() + AZStd::chrono::milliseconds(m_timeoutMS);
+                AZ_DebugSecureSocketConnection("GridMateSecure", "%lld | [%08x] :%d Exchanging cookie with %s. DgramsSent=%d, DgramsReceived=%d\n", AZStd::chrono::system_clock::now().time_since_epoch().count(), this, m_dbgPort, Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived);
+
+                SSL_connect(m_ssl);
+                QueueDatagrams();
+                m_nextHandshakeRetry = AZStd::chrono::system_clock::now() + AZStd::chrono::milliseconds(m_timeoutMS / kSSLHandshakeAttempts);
                 break;
             case CE_COOKIE_EXCHANGE_COMPLETED:
-                m_sm.Transition(CS_SSL_HANDSHAKE_CONNECT);
+            {
+                AZ_DebugSecureSocketConnection("GridMateSecure", "%lld | C [%08x] :%d Cookie exchange completed. Starting NEW SSL portion of handshake with %s. DgramsSent=%d, DgramsReceived=%d\n", AZStd::chrono::system_clock::now().time_since_epoch().count(), this, m_dbgPort, Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived);
+                //We have to restart SSL for the non-cookie handshake
+                DestroySSL();
+                CreateSSL(m_sslContext);
+                sm.Transition(CS_CONNECT);
                 return true;
-            default: break;
+            }
+            case CE_NEW_INCOMING_DGRAM:
+            {
+                bool changedState = false;
+                int result = SSL_connect(m_ssl);
+                if (result <= 0)
+                {
+                    changedState = HandleSSLError(result);
+                }
+                QueueDatagrams();
+                return changedState;
+            }
+            case CE_UPDATE:
+            {
+                if (m_nextHandshakeRetry <= AZStd::chrono::system_clock::now())
+                {
+                    AZ_DebugSecureSocketConnection("GridMateSecure", "CS_HANDSHAKE_RETRY to %s.DgramsSent=%d, DgramsReceived=%d\n", Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived);
+
+                    m_nextHandshakeRetry = AZStd::chrono::system_clock::now() + AZStd::chrono::milliseconds(m_timeoutMS / kSSLHandshakeAttempts);
+                    ForceDTLSTimeout();
+                    QueueDatagrams();
+                }
+                break;
+            }
+        default: break;
         }
 
         return false;
     }
 
-    bool SecureSocketDriver::Connection::OnStateSslHandshakeConnect(AZ::HSM& sm, const AZ::HSM::Event& event)
+    bool SecureSocketDriver::Connection::OnStateEstablished(AZ::HSM& sm, const AZ::HSM::Event& event)
     {
         (void)sm;
         switch (event.id)
         {
             case AZ::HSM::EnterEventId:
             {
-                AZ_TracePrintf("GridMateSecure", "Starting SSL portion of handshake with %s. DgramsSent=%d, DgramsReceived=%d\n", m_addr->ToString().c_str(), m_dbgDgramsSent, m_dbgDgramsReceived);
-                DestroySSL();
-                CreateSSL(m_sslContext);
-                SSL_set_connect_state(m_ssl);
-                break;
-            }
-            default: break;
-        }
-
-        return false;
-    }
-
-    bool SecureSocketDriver::Connection::OnStateHandshakeRetry(AZ::HSM& sm, const AZ::HSM::Event& event)
-    {
-        (void)sm;
-        switch (event.id)
-        {
-        case AZ::HSM::EnterEventId:
-        {
-            AZ_TracePrintf("GridMateSecure", "Waiting for handshake retry to %s. DgramsSent=%d, DgramsReceived=%d\n", m_addr->ToString().c_str(), m_dbgDgramsSent, m_dbgDgramsReceived);
-            DestroySSL();
-            CreateSSL(m_sslContext);
-            SSL_set_connect_state(m_ssl);
-            return true;
-        }
-        case AZ::HSM::ExitEventId:
-            return true;
-        default: break;
-        }
-
-        sm.Transition(CS_COOKIE_EXCHANGE);
-        return true;
-    }
-
-    bool SecureSocketDriver::Connection::OnStateEstablished(AZ::HSM& sm, const AZ::HSM::Event& event)
-    {
-        switch (event.id)
-        {
-            case AZ::HSM::EnterEventId:
-#ifdef PRINT_IPADDRESS
-                AZ_TracePrintf("GridMateSecure", "Successfully established connection to %s. DgramsSent=%d, DgramsReceived=%d\n", m_addr->ToString().c_str(), m_dbgDgramsSent, m_dbgDgramsReceived);
-#else
-                AZ_TracePrintf("GridMateSecure", "Successfully established connection. DgramsSent=%d, DgramsReceived=%d\n");
-#endif
+                /*static AZStd::atomic_int count = 0;
+                ++count;
+                AZ_TracePrintf("GridMateSecure", "OnStateEstablished %d\n", count);*/
+                /*AZ_DebugSecureSocketConnection("GridMateSecure", "%lld | [%08x] :%d Successfully established connection to %s. DgramsSent=%d, DgramsReceived=%d\n", AZStd::chrono::system_clock::now().time_since_epoch().count(), this, m_dbgPort, Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived);*/
                 return true;
+            }
             case AZ::HSM::ExitEventId:
                 return true;
-        }
-
-                while (true)
+            case CE_NEW_INCOMING_DGRAM:
+            {
+                while (BIO_pending(m_inDTLSBuffer)) //TODO ratelimit
                 {
-                    AZ::s32 bytesRead = SSL_read(m_ssl, m_tempBIOBuffer, m_maxTempBufferSize);
+                    Datagram newReceived;
+                    newReceived.resize_no_construct(m_mtu);
+                    AZ::s32 bytesRead = SSL_read(m_ssl, newReceived.data(), m_mtu);
                     if (bytesRead <= 0)
                     {
-                        AZ::s32 sslError = SSL_get_error(m_ssl, bytesRead);
-                        if (sslError != SSL_ERROR_WANT_READ && sslError != SSL_ERROR_WANT_WRITE)
+                        if(HandleSSLError(bytesRead))
                         {
-                            m_sslError = sslError;
-                            sm.Transition(ConnectionState::CS_SSL_ERROR);
                             return true;
                         }
                         break;
                     }
-
-                    m_outPlainQueue->push(DatagramAddr(Datagram(m_tempBIOBuffer, m_tempBIOBuffer + bytesRead), m_addr));
+                    newReceived.resize_no_construct(bytesRead);
+                    m_inboundPlaintextQueue->emplace(AZStd::move(newReceived), m_addr);
                 }
-
-                while (!m_inPlainQueue.empty())
+                return false;
+            }
+            case CE_NEW_OUTGOING_DGRAM:
+            {
+                for (; !m_outboundPlainQueue.empty(); m_outboundPlainQueue.pop())   //TODO rate limit
                 {
-                    const Datagram& plainDgram = m_inPlainQueue.front();
+                    const Datagram& plainDgram = m_outboundPlainQueue.front();
                     AZ::s32 bytesWritten = SSL_write(m_ssl, plainDgram.data(), static_cast<int>(plainDgram.size()));
                     if (bytesWritten <= 0)
                     {
-                        AZ::s32 sslError = SSL_get_error(m_ssl, bytesWritten);
-                        if (sslError != SSL_ERROR_WANT_READ && sslError != SSL_ERROR_WANT_WRITE)
+                        if(HandleSSLError(bytesWritten))
                         {
-                            m_sslError = sslError;
-                            sm.Transition(ConnectionState::CS_SSL_ERROR);
                             return true;
                         }
                         break;
                     }
 
-                    AZStd::vector<SecureSocketDriver::Datagram> cipherDgramList;
-                    if (ReadDgramFromBuffer(m_outDTLSBuffer, cipherDgramList))
-                    {
-                        for (const auto& cipherDgram : cipherDgramList)
-                        {
-                            m_outDTLSQueue.push(cipherDgram);
-                        }
-                    }
-
-                    m_inPlainQueue.pop();
+                    QueueDatagrams();
                 }
+                return false;
+            }
+            default: break;
+        }
 
         return false;
     }
@@ -871,54 +1001,45 @@ namespace GridMate
         switch (event.id)
         {
         case AZ::HSM::EnterEventId:
-#ifdef PRINT_IPADDRESS
-            AZ_TracePrintf("GridMateSecure", "Secure connection to %s terminated. DgramsSent=%d, DgramsReceived=%d\n", m_addr->ToString().c_str(), m_dbgDgramsSent, m_dbgDgramsReceived);
-#else
-            AZ_TracePrintf("GridMateSecure", "Secure connection terminated. DgramsSent=%d, DgramsReceived=%d\n", m_dbgDgramsSent, m_dbgDgramsReceived);
+            AZ_DebugSecureSocketConnection("GridMateSecure", "[%08x] :%d Secure connection to %s terminated. DgramsSent=%d, DgramsReceived=%d\n", this, m_dbgPort, Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived);
+#ifdef AZ_DebugUseSocketDebugLog
+            AZ_TracePrintf("GridMate", "Disconnected LOG: %s\n", m_dbgLog.c_str());
 #endif
             return true;
         }
         return false;
     }
 
-    bool SecureSocketDriver::Connection::OnStateSSLError(AZ::HSM& sm, const AZ::HSM::Event& event)
+    bool SecureSocketDriver::Connection::HandleSSLError(AZ::s32 result)
     {
-        (void)sm;
-        (void)event;
-        switch (event.id)
+        AZ::s32 sslError = SSL_get_error(m_ssl, result);
+        if (sslError != SSL_ERROR_WANT_READ && sslError != SSL_ERROR_WANT_WRITE)
         {
-        case AZ::HSM::EnterEventId:
-        {
-            static const AZ::u32 BUFFER_SIZE = 256;
-            char buffer[BUFFER_SIZE];
+            m_sslError = sslError;
             if (m_sslError == SSL_ERROR_SSL)
             {
+                static const AZ::u32 BUFFER_SIZE = 256;
+                char buffer[BUFFER_SIZE];
                 ERR_error_string_n(ERR_get_error(), buffer, BUFFER_SIZE);
-#ifdef PRINT_IPADDRESS
-                AZ_TracePrintf("GridMateSecure", "Connection error occured on %s with SSL error %s.\n", m_addr->ToString().c_str(), buffer);
-#else
-                AZ_TracePrintf("GridMateSecure", "Connection error occured with SSL error %s.\n", buffer);
-#endif
+                AZ_DebugSecureSocketConnection("GridMateSecure", "[%08x] Connection error occurred on %s with SSL error %s.\n", this, Internal::SafeGetAddress(m_addr->ToString()), buffer);
             }
             else
             {
-#ifdef PRINT_IPADDRESS
-                AZ_TracePrintf("GridMateSecure", "Connection error occured on %s with SSL error %d.\n", m_addr->ToString().c_str(), m_sslError);
-#else
-                AZ_TracePrintf("GridMateSecure", "Connection error occured with SSL error %d.\n", m_sslError);
-#endif
+                AZ_DebugSecureSocketConnection("GridMateSecure", "[%08x] Connection error occurred on %s with SSL error %d.\n", this, Internal::SafeGetAddress(m_addr->ToString()), m_sslError);
             }
-            return true;
-        }
-
-        case CE_UPDATE:
-        {
             m_sm.Transition(CS_DISCONNECTED);
             return true;
         }
-        }
 
         return false;
+    }
+
+    void SecureSocketDriver::Connection::ForceDTLSTimeout()
+    {
+        m_ssl->d1->next_timeout.tv_sec = 0;
+        m_ssl->d1->next_timeout.tv_usec = 1;    //Add just enough to not detect as NULL
+        BIO_ctrl(m_inDTLSBuffer, BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0, &(m_ssl->d1->next_timeout));
+        DTLSv1_handle_timeout(m_ssl);
     }
 
     bool SecureSocketDriver::Connection::CreateSSL(SSL_CTX* sslContext)
@@ -928,11 +1049,7 @@ namespace GridMate
         m_ssl = SSL_new(sslContext);
         if (m_ssl == nullptr)
         {
-#ifdef PRINT_IPADDRESS
-            AZ_Warning("GridMateSecure", false, "Failed to create ssl object for %s!", m_addr->ToString().c_str());
-#else
-            AZ_Warning("GridMateSecure", false, "Failed to create ssl object!");
-#endif
+            AZ_Warning("GridMateSecure", false, "Failed to create ssl object for %s!", Internal::SafeGetAddress( m_addr->ToString()));
             return false;
         }
 
@@ -946,11 +1063,7 @@ namespace GridMate
         m_inDTLSBuffer = BIO_new(BIO_s_mem());
         if (m_inDTLSBuffer == nullptr)
         {
-#ifdef PRINT_IPADDRESS
-            AZ_Warning("GridMateSecure", false, "Failed to instantiate m_inDTLSBuffer for %s!", m_addr->ToString().c_str());
-#else
-            AZ_Warning("GridMateSecure", false, "Failed to instantiate m_inDTLSBuffer!");
-#endif
+            AZ_Warning("GridMateSecure", false, "Failed to instantiate m_inDTLSBuffer for %s!", Internal::SafeGetAddress(m_addr->ToString()));
             SSL_free(m_ssl);
             m_ssl = nullptr;
 
@@ -960,11 +1073,8 @@ namespace GridMate
         m_outDTLSBuffer = BIO_new(BIO_s_mem());
         if (m_outDTLSBuffer == nullptr)
         {
-#ifdef PRINT_IPADDRESS
-            AZ_Warning("GridMateSecure", false, "Failed to instantiate m_outDTLSBuffer for %s!", m_addr->ToString().c_str());
-#else
-            AZ_Warning("GridMateSecure", false, "Failed to instantiate m_outDTLSBuffer!");
-#endif
+            AZ_Warning("GridMateSecure", false, "Failed to instantiate m_outDTLSBuffer for %s!", Internal::SafeGetAddress(m_addr->ToString()));
+
             SSL_free(m_ssl);
             m_ssl = nullptr;
 
@@ -979,24 +1089,11 @@ namespace GridMate
 
         SSL_set_bio(m_ssl, m_inDTLSBuffer, m_outDTLSBuffer);
 
-        m_tempBIOBuffer = static_cast<char*>(azmalloc(m_maxTempBufferSize));
-        if (m_tempBIOBuffer == nullptr)
-        {
-            AZ_Assert(false, "Failed to allocate m_tempBIOBuffer!");
-            return false;
-        }
-
         return true;
     }
 
     bool SecureSocketDriver::Connection::DestroySSL()
     {
-        if (m_tempBIOBuffer)
-        {
-            azfree(m_tempBIOBuffer);
-            m_tempBIOBuffer = nullptr;
-        }
-
         if (m_ssl)
         {
             // Calls to SSL_free() also free any attached BIO objects.
@@ -1017,50 +1114,53 @@ namespace GridMate
         // Drain the BIO buffer and store the contents in a temporary buffer for
         // deserialization. This is necessary because the BIO object doesn't provide
         // a way to directly access it's memory.
-        AZStd::vector<char> buffer;
-        while (true)
+        bool isSuccess = true;
+        int availableEncryptedBytes = BIO_pending(bio);
+        if (availableEncryptedBytes > 0)
         {
-            AZ::s32 bytesRead = BIO_read(bio, m_tempBIOBuffer, m_maxTempBufferSize);
-            if (bytesRead <= 0)
+            AZStd::vector<char> tempBuffer;
+            tempBuffer.resize_no_construct(availableEncryptedBytes);
+            int bytesRead = BIO_read(bio, tempBuffer.data(), availableEncryptedBytes);
+            if (bytesRead != availableEncryptedBytes)
             {
-                break;
+                AZ_Assert(false, "We did not extract the expected number of bytes from OpenSSL (expected=%d, read=%d)", availableEncryptedBytes, bytesRead);
+                isSuccess = false;
             }
+            else
+            {
+                // Multiple DTLS records (datagrams) may have been written to the BIO buffer so
+                // each one must be extracted and stored as a separate Datagram object in the driver.
+                static const size_t lengthOffsetInDTLSRecord = DTLS1_RT_HEADER_LENGTH - sizeof(AZ::u16);
+                size_t recordStart = 0, recordEnd = (lengthOffsetInDTLSRecord + sizeof(AZ::u16));
+                        while (recordEnd < tempBuffer.size())
+                {
+                    AZ::u16 recordLength = *reinterpret_cast<AZ::u16*>(tempBuffer.data() + recordEnd - sizeof(AZ::u16));
 
-            AZStd::vector<char> tempBuffer(m_tempBIOBuffer, m_tempBIOBuffer + bytesRead);
-            buffer.insert(buffer.end(), tempBuffer.begin(), tempBuffer.end());
-        }
-
-        // Multiple DTLS records (datagrams) may have been written to the BIO buffer so
-        // each one must be extracted and stored as a separate Datagram object in the driver.
-        static const size_t lengthOffsetInDTLSRecord = DTLS1_RT_HEADER_LENGTH - sizeof(AZ::u16);
-        size_t recordStart = 0, recordEnd = (lengthOffsetInDTLSRecord + sizeof(AZ::u16));
-        while (recordEnd < buffer.size())
-        {
-            AZ::u16 recordLength = *reinterpret_cast<AZ::u16*>(buffer.data() + recordEnd - sizeof(AZ::u16));
-
-            // The fields in a DTLS record are stored in big-endian format so perform
-            // an endian swap on little-endian machines.
+                    // The fields in a DTLS record are stored in big-endian format so perform
+                    // an endian swap on little-endian machines.
 #if !defined(AZ_BIG_ENDIAN)
-            AZStd::endian_swap<AZ::u16>(recordLength);
+                    AZStd::endian_swap<AZ::u16>(recordLength);
 #endif
+                    recordEnd += recordLength;
+                            if (recordEnd > tempBuffer.size())
+                    {
+                        break;
+                    }
 
-            recordEnd += recordLength;
-            if (recordEnd > buffer.size())
-            {
-                break;
+                    outDgramList.emplace_back(tempBuffer.data() + recordStart, tempBuffer.data() + recordEnd);
+
+                    recordStart = recordEnd;
+                    recordEnd += (lengthOffsetInDTLSRecord + sizeof(AZ::u16));
+                }
+
+                // If a deserialization error occurred (i.e. not all bytes in the buffer were read) all datagrams
+                // after the malformation are discarded. It's assumed that the BIO buffer only contained complete
+                // DTLS record datagrams.
+                bool isComplete = (recordStart == tempBuffer.size());
+                (void)isComplete;
+                AZ_Assert(isComplete, "Malformed DTLS record found, dropping remaining records in the buffer (%d bytes lost).\n", (tempBuffer.size() - recordStart));
             }
-
-            outDgramList.push_back(Datagram(buffer.data() + recordStart, buffer.data() + recordEnd));
-
-            recordStart = recordEnd;
-            recordEnd += (lengthOffsetInDTLSRecord + sizeof(AZ::u16));
         }
-
-        // If a deserialization error occurred (i.e. not all bytes in the buffer were read) all datagrams
-        // after the malformation are discarded. It's assumed that the BIO buffer only contained complete
-        // DTLS record datagrams.
-        bool isSuccess = (recordStart == buffer.size());
-        AZ_Assert(isSuccess, "Malformed DTLS record found, dropping remaining records in the buffer (%d bytes lost).\n", (buffer.size() - recordStart));
         return isSuccess;
     }
 
@@ -1074,53 +1174,83 @@ namespace GridMate
 
     void SecureSocketDriver::Connection::AddDgram(const char* data, AZ::u32 dataSize)
     {
-        m_inPlainQueue.push(Datagram(data, data + dataSize));
+        m_outboundPlainQueue.push(Datagram(data, data + dataSize));
     }
 
-    void SecureSocketDriver::Connection::AddDTLSDgram(const char* data, AZ::u32 dataSize)
+    void SecureSocketDriver::Connection::ProcessIncomingDTLSDgram(const char* data, AZ::u32 dataSize)
     {
+        using namespace ConnectionSecurity;
+        using namespace AZStd::chrono;
+        bool keepDgram = false;
+
         switch (m_sm.GetCurrentState())
         {
-            case CS_WAIT_FOR_STATEFUL_HANDSHAKE:
+            case CS_SEND_HELLO_REQUEST:    //Server
             {
-                if (ConnectionSecurity::IsClientHello(data, dataSize))
+                if (IsClientHello(data, dataSize))
                 {
                     // We are only interested in new ClientHellos at this point
                     ReadBuffer reader(EndianType::BigEndian, data, dataSize);
-                    ConnectionSecurity::ClientHello clientHello;
+                    ClientHello clientHello;
                     clientHello.Unpack(reader);
-                    if (clientHello.m_hsSequence == 0)
+                    if (clientHello.m_hsSequence == 0)  //Received the start of a new handshake
                     {
                         m_sm.Dispatch(CE_STATEFUL_HANDSHAKE);
-                        BIO_write(m_inDTLSBuffer, data, dataSize);
+                        keepDgram = true;
                     }
                 }
                 break;
             }
             case CS_COOKIE_EXCHANGE:
             {
-                if (ConnectionSecurity::IsHelloRequestHandshake(data, dataSize))
+                if (IsHelloRequestHandshake(data, dataSize))
                 {
-                    m_sm.Dispatch(CE_COOKIE_EXCHANGE_COMPLETED);
+                    m_sm.Dispatch(CE_COOKIE_EXCHANGE_COMPLETED);    //transition and discard datagram
                 }
                 else
                 {
-                    BIO_write(m_inDTLSBuffer, data, dataSize);
+                    keepDgram = true;
                 }
                 break;
             }
-            case CS_SSL_HANDSHAKE_CONNECT:
+            case CS_CONNECT:
             {
-                if (!ConnectionSecurity::IsHelloRequestHandshake(data, dataSize))
-                {
-                    BIO_write(m_inDTLSBuffer, data, dataSize);
-                }
+                keepDgram = !IsHelloRequestHandshake(data, dataSize);
                 break;
             }
             default:
-                BIO_write(m_inDTLSBuffer, data, dataSize);
+                keepDgram = true;
                 break;
         }
+
+        if (keepDgram)
+        {
+            const auto now = system_clock::now();
+
+            //Received handshake while established (but still before timeout)
+            if (m_sm.GetCurrentState() == CS_ESTABLISHED
+                && IsHandshake(data, dataSize)
+                && now >= m_creationTime
+                && milliseconds(now - m_creationTime).count() <= m_timeoutMS)
+            {
+                //Resend Finished to close handshake
+                Datagram newReceived;
+                newReceived.resize_no_construct(m_mtu);
+
+                size_t bytesRead = SSL_get_finished(m_ssl, newReceived.data(), m_mtu);
+                if (bytesRead > 0)
+                {
+                    newReceived.resize_no_construct(bytesRead);
+                    m_outDTLSQueue.push(newReceived);
+                }
+
+                QueueDatagrams();
+            }
+
+            BIO_write(m_inDTLSBuffer, data, dataSize);
+            m_sm.Dispatch(CE_NEW_INCOMING_DGRAM);
+        }
+
     }
 
     AZ::u32 SecureSocketDriver::Connection::GetDTLSDgram(char* data, AZ::u32 dataSize)
@@ -1136,7 +1266,7 @@ namespace GridMate
             }
             else
             {
-                AZ_TracePrintf("GridMateSecure", "Dropped datagram of %d bytes.\n", dgram.size());
+                AZ_DebugSecureSocketConnection("GridMateSecure", "[%08x] Dropped datagram of %d bytes.\n", this, dgram.size());
             }
 
             m_outDTLSQueue.pop();
@@ -1145,22 +1275,33 @@ namespace GridMate
         return dgramSize;
     }
 
+    void SecureSocketDriver::Connection::FlushOutgoingDTLSDgrams()
+    {
+        if (!m_outboundPlainQueue.empty())
+        {
+            m_sm.Dispatch(CE_NEW_OUTGOING_DGRAM);
+        }
+    }
+
     bool SecureSocketDriver::Connection::IsDisconnected() const
     {
         return m_sm.GetCurrentState() == CS_DISCONNECTED;
     }
 
-    SecureSocketDriver::SecureSocketDriver(const SecureSocketDesc& desc, bool isFullPackets, bool crossPlatform)
-        : SocketDriver(isFullPackets, crossPlatform)
-        , m_dh(nullptr)
+    SecureSocketDriver::SecureSocketDriver(const SecureSocketDesc& desc, bool isFullPackets, bool crossPlatform, bool highPerformance)
+        : SocketDriver(isFullPackets, crossPlatform, highPerformance)
         , m_privateKey(nullptr)
         , m_certificate(nullptr)
         , m_sslContext(nullptr)
-        , m_tempSocketBuffer(nullptr)
+        , m_tempSocketWriteBuffer(nullptr)
+        , m_tempSocketReadBuffer(nullptr)
         , m_maxTempBufferSize(10 * 1024)
         , m_desc(desc)
+        , m_lastTimerCheck(AZStd::chrono::system_clock::now())
     {
-        m_tempSocketBuffer = static_cast<char*>(azmalloc(m_maxTempBufferSize));
+        m_tempSocketWriteBuffer = static_cast<char*>(azmalloc(m_maxTempBufferSize));
+        m_tempSocketReadBuffer = static_cast<char*>(azmalloc(m_maxTempBufferSize));
+        AZ_Warning("GridMateSecure", m_desc.m_connectionTimeoutMS / kSSLHandshakeAttempts <= 1000, "Capping SecureSocketDriver connection timeout at 1 second.");
     }
 
     SecureSocketDriver::~SecureSocketDriver()
@@ -1170,10 +1311,16 @@ namespace GridMate
             delete addrConn.second;
         }
 
-        if (m_tempSocketBuffer)
+        if (m_tempSocketWriteBuffer)
         {
-            azfree(m_tempSocketBuffer);
-            m_tempSocketBuffer = nullptr;
+            azfree(m_tempSocketWriteBuffer);
+            m_tempSocketWriteBuffer = nullptr;
+        }
+
+        if (m_tempSocketReadBuffer)
+        {
+            azfree(m_tempSocketReadBuffer);
+            m_tempSocketReadBuffer = nullptr;
         }
 
         if (m_certificate)
@@ -1186,12 +1333,6 @@ namespace GridMate
         {
             EVP_PKEY_free(m_privateKey);
             m_privateKey = nullptr;
-        }
-
-        if (m_dh)
-        {
-            DH_free(m_dh);
-            m_dh = nullptr;
         }
 
         if (m_sslContext)
@@ -1218,6 +1359,76 @@ namespace GridMate
 
         return SocketDriverCommon::GetMaxSendSize() - sDTLSHeader - sCipherOverhead;
     }
+    void SecureSocketDriver::apps_ssl_info_callback(const SSL *s, int loc, int ret)
+    {
+        const char *str;
+        int w = loc& ~SSL_ST_MASK;
+
+        if (w & SSL_ST_CONNECT) str = "SSL_connect()";
+        else if (w & SSL_ST_ACCEPT) str = "SSL_accept()";
+        else str = "undefined";
+
+        if (loc & SSL_CB_LOOP)
+        {
+            //AZ_TracePrintf("GridMate", "%s:%s\n", str, SSL_state_string_long(s));
+        }
+        else if (loc & SSL_CB_ALERT)
+        {
+            /*str = (loc & SSL_CB_READ) ? "read" : "write";
+            AZ_TracePrintf("GridMate", "SSL3 alert %s:%s:%s\n",
+                str,
+                SSL_alert_type_string_long(ret),
+                SSL_alert_desc_string_long(ret))*/
+        }
+        else if (loc & SSL_CB_EXIT)
+        {
+            if (SSL_get_error(s, ret) == SSL_ERROR_WANT_READ || SSL_get_error(s, ret) == SSL_ERROR_WANT_WRITE)
+            {
+                //Don't spam non-blocking read/write updates
+                return;
+            }
+            char errorTextBuffer[256] = {0};
+            ERR_error_string_n( SSL_get_error(s, ret), errorTextBuffer, sizeof(errorTextBuffer) );
+
+            if (ret == 0)
+            {
+                AZ_Printf("GridMateSecure", "[%08x] %s: failed in %s : %s\n",s, str, SSL_state_string_long(s), errorTextBuffer);
+            }
+            else if (ret < 0)
+            {
+                AZ_Printf("GridMateSecure", "[%08x] %s: error in %s : %s\n", s, str, SSL_state_string_long(s), errorTextBuffer);
+            }
+        }
+    }
+
+    void apps_ssl_msg_callback(int write_p, int version, int content_type, const void *buf, size_t len, SSL *ssl, void * /*arg*/)
+    {
+        const char* ctype;
+        switch (content_type)
+        {
+        case SSL3_RT_CHANGE_CIPHER_SPEC:
+            ctype = "cipher_spec";
+            break;
+        case SSL3_RT_ALERT:
+            ctype = "alert";
+            break;
+        case SSL3_RT_HANDSHAKE:
+            ctype = "handshake";
+            break;
+        case SSL3_RT_HEADER:
+            ctype = "RecordHeaderOnly";       //Tx/Rx header only see SSL_CTX_set_msg_callback
+            break;
+        case SSL3_RT_APPLICATION_DATA:
+            ctype = "AppData";
+            break;
+        default:
+            ctype = "unkn_type";
+        }
+
+        AZ_Printf("GridMateSecure", "[%08x] : %s %04xv %s(%d) buf %p len %d\n", ssl, write_p ? "Rx" : "Tx", version, ctype, content_type, buf, len);
+        AZ_Printf("GridMate", "%s\n", AZStd::MemoryToASCII::ToString(buf, len, 256).c_str() );
+    }
+
 
     Driver::ResultCode SecureSocketDriver::Initialize(AZ::s32 ft, const char* address, AZ::u32 port, bool isBroadcast, AZ::u32 receiveBufferSize, AZ::u32 sendBufferSize)
     {
@@ -1240,7 +1451,11 @@ namespace GridMate
         }
 
         SSL_library_init();
+
+        ERR_load_crypto_strings();
+        ERR_load_BIO_strings();
         ERR_load_SSL_strings();
+        SSL_load_error_strings();
 
         m_sslContext = SSL_CTX_new(DTLSv1_2_method());
         if (m_sslContext == nullptr)
@@ -1250,6 +1465,12 @@ namespace GridMate
 
         // Disable automatic MTU discovery so it can be set explicitly in SecureSocketDriver::Connection.
         SSL_CTX_set_options(m_sslContext, SSL_OP_NO_QUERY_MTU);
+
+        //Detailed SSL Debugging
+        {
+            //SSL_CTX_set_info_callback(m_sslContext, &apps_ssl_info_callback);
+            //SSL_CTX_set_msg_callback(m_sslContext, &apps_ssl_msg_callback);     //Per-protocol message logging
+        }
 
         // Only support a single cipher suite in OpenSSL that supports:
         //
@@ -1294,7 +1515,7 @@ namespace GridMate
 
         if (m_desc.m_certificateAuthorityPEM)
         {
-            // SSL context should already have empty cert storage
+            // SSL context should have empty cert storage
             X509_STORE* caLocalStore = SSL_CTX_get_cert_store(m_sslContext);
             if (caLocalStore == nullptr)
             {
@@ -1316,12 +1537,13 @@ namespace GridMate
         }
         else
         {
+            AZ_TracePrintf("GridMateSecure", "No certificateAuthorityPEM set, using NULL verifier.\n");
             SSL_CTX_set_verify(m_sslContext, verificationMode, SecureSocketDriver::VerifyCertificate);
         }
 
         if (!SSL_CTX_set_ex_data(m_sslContext, kSSLContextDriverPtrArg, this))
         {
-            AZ_TracePrintf("GridMateSecure", "Failed to set driver for ssl context");
+            AZ_TracePrintf("GridMateSecure", "Failed to set driver for ssl context\n");
             return EC_SECURE_CREATE;
         }
 
@@ -1333,8 +1555,24 @@ namespace GridMate
 
     void SecureSocketDriver::Update()
     {
-        FlushSocketToConnectionBuffer();
+        using namespace AZStd::chrono;
+        static const auto k_timerResolutionMS = milliseconds(15);  //Use 15ms resolution from OpenSSL
+        const auto now = system_clock::now();
+
+        if (now > m_lastTimerCheck && milliseconds(now - m_lastTimerCheck) >= k_timerResolutionMS)
+        {
+            m_lastTimerCheck = now;
         UpdateConnections();
+    }
+    }
+
+    void SecureSocketDriver::ProcessIncoming()
+    {
+        FlushSocketToConnectionBuffer();
+    }
+
+    void SecureSocketDriver::ProcessOutgoing()
+    {
         FlushConnectionBuffersToSocket();
     }
 
@@ -1363,7 +1601,7 @@ namespace GridMate
             return static_cast<AZ::u32>(datagram.size());
         }
 
-        AZ_TracePrintf("GridMateSecure", "Dropped datagram of %d bytes from %s.\n", datagram.size(), fromAddr->ToString().c_str());
+        AZ_DebugSecureSocket("GridMateSecure", "Dropped datagram of %d bytes from %s.\n", datagram.size(), Internal::SafeGetAddress(fromAddr->ToString()));
         if (resultCode)
         {
             *resultCode = EC_RECEIVE;
@@ -1408,18 +1646,15 @@ namespace GridMate
         auto connItr = m_connections.find(*connKey);
         if (connItr == m_connections.end())
         {
-            connection = aznew Connection(to, m_maxTempBufferSize, &m_globalInQueue, m_desc.m_connectionTimeoutMS / kSSLHandshakeAttempts);
-            if (connection->Initialize(m_sslContext, ConnectionState::CS_CONNECT, SecureSocketDriver::GetMaxSendSize()))
+            connection = aznew Connection(to, m_maxTempBufferSize, &m_globalInQueue, m_desc.m_connectionTimeoutMS, m_port);
+            if (connection->Initialize(m_sslContext, ConnectionState::CS_COOKIE_EXCHANGE, SecureSocketDriver::GetMaxSendSize()))
             {
+                ++m_ipToNumConnections[connKey->GetIP()];
                 m_connections[*connKey] = connection;
             }
             else
             {
-#ifdef PRINT_IPADDRESS
-                AZ_Warning("GridMate", false, "Failed to initialize secure outbound connection object for %s.\n", to->ToString().c_str());
-#else
-                AZ_Warning("GridMate", false, "Failed to initialize secure outbound connection object.\n");
-#endif
+                AZ_Warning("GridMate", false, "Failed to initialize secure outbound connection object for %s.\n", Internal::SafeGetAddress(to->ToString()));
                 delete connection;
                 connection = nullptr;
                 return EC_SEND;
@@ -1437,6 +1672,8 @@ namespace GridMate
 
     int SecureSocketDriver::VerifyCertificate(int ok, X509_STORE_CTX* ctx)
     {
+        //This is the NULL verifier. It should only be used when no PEM is set and will accept all certificates.
+
         // Called when a certificate has been received and needs to be verified (e.g.
         // verify that it has been signed by the appropriate CA, has the correct
         // hostname, etc).
@@ -1526,7 +1763,7 @@ namespace GridMate
             }
         }
 
-        AZ_TracePrintf("GridMate", "Failed to validate the cookie for %s\n", addrStr.c_str());
+        AZ_TracePrintf("GridMate", "Failed to validate the cookie for %s\n", Internal::SafeGetAddress(addrStr) );
         return 0;
     }
 
@@ -1536,11 +1773,22 @@ namespace GridMate
         {
             AddrPtr from;
             ResultCode result;
-            AZ::u32 bytesReceived = SocketDriver::Receive(m_tempSocketBuffer, m_maxTempBufferSize, from, &result);
+            AZ::u32 bytesReceived = SocketDriver::Receive(m_tempSocketReadBuffer, m_maxTempBufferSize, from, &result);
             if (result != EC_OK || bytesReceived == 0)
             {
                 break;
             }
+
+            const char* type = ConnectionSecurity::TypeToString(m_tempSocketReadBuffer, bytesReceived);
+            (void)type;
+#ifdef AZ_DebugUseSocketDebugLog
+            bool handshake = false;
+            if (ConnectionSecurity::IsHandshake(m_tempSocketReadBuffer, bytesReceived)
+                || ConnectionSecurity::IsChangeCipherSpec(m_tempSocketReadBuffer, bytesReceived))
+            {
+                handshake = true;
+            }
+#endif
 
             Connection* connection = nullptr;
             SocketDriverAddress* connKey = static_cast<SocketDriverAddress*>(from.get());
@@ -1549,15 +1797,33 @@ namespace GridMate
             {
                 connection = itConnection->second;
                 connection->m_dbgDgramsReceived++;
+                AZ_DebugSecureSocket("GridMateSecure", "%lld | [%08x] RawRecv %s size %d connection exists\n", AZStd::chrono::system_clock::now().time_since_epoch().count(), this, type, bytesReceived);
+#ifdef AZ_DebugUseSocketDebugLog
+                if (handshake)
+                {
+                    GridMate::string line = GridMate::string::format("%lld | [%08x] RawRecv %s size %d connection exists\n", AZStd::chrono::system_clock::now().time_since_epoch().count(), this, type, bytesReceived);
+                    connection->m_dbgLog += line;
             }
-            else
+#endif
+            }
+            else    //Stateless server or client received spurious datagram
             {
-                const auto nextAction = ConnectionSecurity::DetermineHandshakeState(m_tempSocketBuffer, bytesReceived);
+                auto numConnIt = m_ipToNumConnections.insert_key(from->GetIP());
+                if (static_cast<AZ::s64>(numConnIt.first->second) >= m_desc.m_maxDTLSConnectionsPerIP) // cut off number of connections accepted per ip
+                {
+                    AZ_DebugSecureSocket("GridMateSecure", "Maximum connections per IP exceeded!");
+                    continue;
+                }
+
+                const auto nextAction = ConnectionSecurity::DetermineHandshakeState(m_tempSocketReadBuffer, bytesReceived);
                 if (nextAction == ConnectionSecurity::NextAction::SendHelloVerifyRequest)
                 {
+                    AZ_DebugSecureSocket("GridMateSecure", "%lld | \tS [%08x] RawRecv %s size %d SendHelloVerify\n", AZStd::chrono::system_clock::now().time_since_epoch().count(), this, type, bytesReceived);
                     ConnectionSecurity::HelloVerifyRequest helloVerifyRequest;
                     unsigned int cookieLen = 0;
-                    if (GenerateCookie(from, helloVerifyRequest.m_cookie, &cookieLen) == 1)
+                    if (CanSend())
+                    {
+                        if (GenerateCookie(from, helloVerifyRequest.m_cookie, &cookieLen) == 1)
                     {
                         helloVerifyRequest.m_cookieSize = static_cast<AZ::u8>(cookieLen);
 
@@ -1568,88 +1834,76 @@ namespace GridMate
                         }
                         else
                         {
-                            AZ_TracePrintf("GridMateSecure", "Failed to generate HelloVerifyRequest!");
+                                AZ_DebugSecureSocket("GridMateSecure", "Failed to pack HelloVerifyRequest!\n");
+                            }
                         }
-                    }
-
-                    SocketDriver::DestroyDriverAddress(from.get()); //Discard address until cookie exchange completes
-                }
-                else if (nextAction == ConnectionSecurity::NextAction::MakeNewConnection)
-                {
-                    auto numConnIt = m_ipToNumConnections.insert_key(from->GetIP());
-                    if (static_cast<AZ::s64>(numConnIt.first->second) >= m_desc.m_maxDTLSConnectionsPerIP) // limit number of connections per IP
+                        else
+                        {
+                            AZ_DebugSecureSocket("GridMateSecure", "Failed to generate HelloVerifyRequest!\n");
+                        }
+                        }
+                    else
                     {
-                        AZ_TracePrintf("GridMateSecure", "Maximum connections per IP exceeded!");
-                        SocketDriver::DestroyDriverAddress(from.get()); //Discard rejected addresses
-                        continue;
+                        AZ_DebugSecureSocket("GridMateSecure", "No buffer space to send HelloVerifyRequest!\n");
                     }
-
-                    ReadBuffer readBuffer(EndianType::BigEndian, m_tempSocketBuffer, bytesReceived);
+                }
+                else if (nextAction == ConnectionSecurity::NextAction::VerifyCookie)
+                {
+                    AZ_DebugSecureSocket("GridMateSecure", "%lld | \tS [%08x] RawRecv %s size %d VerifyCookie\n", AZStd::chrono::system_clock::now().time_since_epoch().count(), this, type, bytesReceived);
+                    ReadBuffer readBuffer(EndianType::BigEndian, m_tempSocketReadBuffer, bytesReceived);
                     ConnectionSecurity::ClientHello clientHello;
                     if (clientHello.Unpack(readBuffer))
                     {
                         if (VerifyCookie(from, clientHello.m_cookie, clientHello.m_cookieSize) != 1)
                         {
-                            AZ_TracePrintf("GridMateSecure", "ClientHello cookie failed verification!");
+                            AZ_DebugSecureSocket("GridMateSecure", "ClientHello cookie failed verification!");
                         }
                         else
                         {
-                            Connection* newConnection = aznew Connection(from, m_maxTempBufferSize, &m_globalInQueue, m_desc.m_connectionTimeoutMS / kSSLHandshakeAttempts);
-                            if (newConnection->Initialize(m_sslContext, ConnectionState::CS_ACCEPT, SecureSocketDriver::GetMaxSendSize()))
+                            Connection* newConnection = aznew Connection(from, m_maxTempBufferSize, &m_globalInQueue, m_desc.m_connectionTimeoutMS, m_port);
+                            if (newConnection->Initialize(m_sslContext, ConnectionState::CS_SEND_HELLO_REQUEST, SecureSocketDriver::GetMaxSendSize()))
                             {
                                 ++(numConnIt.first->second);
                                 m_connections[*connKey] = newConnection;
+                                connection = newConnection;
+
                             }
                             else
                             {
-#ifdef PRINT_IPADDRESS
-                                AZ_Warning("GridMate", false, "Failed to initialize secure connection object for %s.\n", from->ToString().c_str());
-#else
-                                AZ_Warning("GridMate", false, "Failed to initialize secure connection object.\n");
-#endif
+                                AZ_Warning("GridMate", false, "Failed to initialize secure connection object for %s.\n", Internal::SafeGetAddress( from->ToString() ));
                                 delete newConnection;
                             }
                         }
                     }
                     else
                     {
-#ifdef PRINT_IPADDRESS
-                        AZ_TracePrintf("GridMate", "Failed to unpack clientHello(cookie) for %s.\n", from->ToString().c_str());
-#else
-                        AZ_TracePrintf("GridMate", "Failed to unpack clientHello(cookie).\n");
-#endif
+                        AZ_DebugSecureSocket("GridMate", "Failed to unpack clientHello(cookie) for %s.\n", Internal::SafeGetAddress(from->ToString()) );
                     }
-                }
-                else
-                {
-                    AZ_TracePrintf("GridMateSecure", "ERROR processing handshake packet");
                 }
             }
 
             if (connection)
             {
-                connection->AddDTLSDgram(m_tempSocketBuffer, bytesReceived);
+                connection->ProcessIncomingDTLSDgram(m_tempSocketReadBuffer, bytesReceived);
             }
         }
     }
 
     void SecureSocketDriver::UpdateConnections()
     {
-        for (AZStd::pair<SocketDriverAddress, Connection*>& addrConn : m_connections)
+        for (auto itr = m_connections.begin(); itr != m_connections.end(); )
         {
+            AZStd::pair<SocketDriverAddress, Connection*>& addrConn = *itr;
             addrConn.second->Update();
-        }
-
-        auto itr = m_connections.begin();
-        while (itr != m_connections.end())
-        {
-            AZStd::pair<SocketDriverAddress, Connection*> addrConn = *itr;
-            itr++;
             if (addrConn.second->IsDisconnected())
             {
                 --m_ipToNumConnections[addrConn.first.GetIP()];
                 delete addrConn.second;
-                m_connections.erase(addrConn.first);
+                itr = m_connections.erase(itr);
+            }
+            else
+            {
+                ++itr;
             }
         }
     }
@@ -1659,21 +1913,27 @@ namespace GridMate
         for (AZStd::pair<SocketDriverAddress, Connection*>& addrConn : m_connections)
         {
             Connection* connection = addrConn.second;
-            while (true)
+            connection->FlushOutgoingDTLSDgrams();
+            while (CanSend())
             {
-                AZ::s32 bytesRead = connection->GetDTLSDgram(m_tempSocketBuffer, m_maxTempBufferSize);
+                AZ::s32 bytesRead = connection->GetDTLSDgram(m_tempSocketWriteBuffer, m_maxTempBufferSize);
                 if (bytesRead <= 0)
                 {
                     break;
                 }
 
                 DriverAddress* addr = static_cast<DriverAddress*>(&addrConn.first);
-                SocketDriver::Send(addr, m_tempSocketBuffer, bytesRead);
+                SocketDriver::Send(addr, m_tempSocketWriteBuffer, bytesRead);
                 connection->m_dbgDgramsSent++;
+
+                AZ_DebugSecureSocket("GridMateSecure", "%lld | [%08x] RawSend %s size %d to %s\n",
+                    AZStd::chrono::system_clock::now().time_since_epoch().count(), this,
+                    ConnectionSecurity::TypeToString(m_tempSocketWriteBuffer, bytesRead),
+                    bytesRead, Internal::SafeGetAddress(addr->ToString()));
             }
         }
     }
 }
-#endif
+#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
 
-#endif
+#endif // AZ_UNITY_BUILD

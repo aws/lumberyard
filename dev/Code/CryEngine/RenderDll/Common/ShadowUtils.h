@@ -24,8 +24,6 @@ class CPoissonDiskGen
 {
     std::vector<Vec2> m_vSamples;
 
-    static std::vector<CPoissonDiskGen> s_kernelSizeGens;   // the size of the kernel for each entry is the index in this vector
-
 private:
     static void RandomPoint(CRndGen& rand, Vec2& p);
     void InitSamples();

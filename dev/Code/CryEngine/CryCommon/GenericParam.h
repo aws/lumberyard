@@ -517,13 +517,13 @@ namespace GenericParamUtils
         {
             if (m_pData)
             {
-                free(m_pData);
+                CryModuleFree(m_pData);
             }
         }
 
         inline void Store(const void* pData, size_t size)
         {
-            m_pData = memcpy(malloc(size), pData, size);
+            m_pData = memcpy(CryModuleMalloc(size), pData, size);
         }
 
         inline const void* Data() const

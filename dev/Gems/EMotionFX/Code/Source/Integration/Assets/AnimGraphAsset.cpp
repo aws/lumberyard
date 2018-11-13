@@ -80,7 +80,6 @@ namespace EMotionFX
                 }
                 else
                 {
-                    AZ_Warning("EMotionFX", false, "Failed to retrieve asset source path with alias '@devassets@'. Cannot set absolute filename for '%s'", assetFilename.c_str());
                     assetData->m_emfxAnimGraph->SetFileName(assetFilename.c_str());
                 }
             }
@@ -133,5 +132,11 @@ namespace EMotionFX
         {
             return "EMotion FX Anim Graph";
         }
+
+        const char* AnimGraphAssetHandler::GetBrowserIcon() const
+        {
+            return "Editor/Images/AssetBrowser/AnimGraph_16.png";
+        }
+
     } // namespace Integration
 } // namespace EMotionFX

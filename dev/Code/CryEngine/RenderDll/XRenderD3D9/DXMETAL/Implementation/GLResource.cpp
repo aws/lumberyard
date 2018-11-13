@@ -2948,7 +2948,7 @@ namespace NCryMetal
                                  sourceSize: sourceSize
                                   toTexture: pDstTexture->m_Texture
                            destinationSlice: kDstSubID.m_uElement
-                           destinationLevel: kDstSubID.m_uElement
+                           destinationLevel: kDstSubID.m_iMipLevel
                           destinationOrigin: destinationOrigin];
 #if defined(AZ_PLATFORM_APPLE_OSX)
         if (pDstTexture->m_Texture.storageMode == MTLStorageModeManaged)
@@ -2958,7 +2958,7 @@ namespace NCryMetal
             // writes the GPU does to the texture
             [blitCommandEncoder synchronizeTexture: pDstTexture->m_Texture
                                              slice: kDstSubID.m_uElement
-                                             level:kDstSubID.m_uElement];
+                                             level:kDstSubID.m_iMipLevel];
         }
 #endif
     }

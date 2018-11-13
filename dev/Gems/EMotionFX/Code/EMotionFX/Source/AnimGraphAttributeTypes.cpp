@@ -15,24 +15,27 @@
 #include "AnimGraphNodeGroup.h"
 #include "AnimGraphNode.h"
 #include <MCore/Source/Attribute.h>
-#include <MCore/Source/AttributePool.h>
 #include <MCore/Source/MCoreSystem.h>
 #include "Importer/SharedFileFormatStructs.h"
 #include "AnimGraph.h"
 
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(AttributeRotation, MCore::AttributeAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AttributePose, MCore::AttributeAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AttributeMotionInstance, MCore::AttributeAllocator, 0)
+
     // static create
     AttributeRotation* AttributeRotation::Create()
     {
-        return static_cast<AttributeRotation*>(MCore::GetAttributePool().RequestNew(AttributeRotation::TYPE_ID));
+        return aznew AttributeRotation();
     }
 
 
     // static create
     AttributeRotation* AttributeRotation::Create(const AZ::Vector3& angles, const MCore::Quaternion& quat, ERotationOrder order)
     {
-        AttributeRotation* result = static_cast<AttributeRotation*>(MCore::GetAttributePool().RequestNew(AttributeRotation::TYPE_ID));
+        AttributeRotation* result = aznew AttributeRotation();
         result->SetDirect(angles, quat, order);
         return result;
     }
@@ -41,7 +44,7 @@ namespace EMotionFX
     // static create
     AttributeRotation* AttributeRotation::Create(float xDeg, float yDeg, float zDeg)
     {
-        AttributeRotation* result = static_cast<AttributeRotation*>(MCore::GetAttributePool().RequestNew(AttributeRotation::TYPE_ID));
+        AttributeRotation* result = aznew AttributeRotation();
         result->SetRotationAngles(AZ::Vector3(xDeg, yDeg, zDeg), true);
         return result;
     }
@@ -194,14 +197,14 @@ namespace EMotionFX
     // static create
     AttributePose* AttributePose::Create()
     {
-        return static_cast<AttributePose*>(MCore::GetAttributePool().RequestNew(AttributePose::TYPE_ID));
+        return aznew AttributePose();
     }
 
 
     // static create
     AttributePose* AttributePose::Create(AnimGraphPose* pose)
     {
-        AttributePose* result = static_cast<AttributePose*>(MCore::GetAttributePool().RequestNew(AttributePose::TYPE_ID));
+        AttributePose* result = aznew AttributePose();
         result->SetValue(pose);
         return result;
     }
@@ -212,14 +215,14 @@ namespace EMotionFX
     // static create
     AttributeMotionInstance* AttributeMotionInstance::Create()
     {
-        return static_cast<AttributeMotionInstance*>(MCore::GetAttributePool().RequestNew(AttributeMotionInstance::TYPE_ID));
+        return aznew AttributeMotionInstance();
     }
 
 
     // static create
     AttributeMotionInstance* AttributeMotionInstance::Create(MotionInstance* motionInstance)
     {
-        AttributeMotionInstance* result = static_cast<AttributeMotionInstance*>(MCore::GetAttributePool().RequestNew(AttributeMotionInstance::TYPE_ID));
+        AttributeMotionInstance* result = aznew AttributeMotionInstance();
         result->SetValue(motionInstance);
         return result;
     }

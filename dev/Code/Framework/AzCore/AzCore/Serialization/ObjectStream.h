@@ -179,6 +179,13 @@ namespace AZ
         /// SlicesOnly filter ignores all asset references except for slices.
         static bool AssetFilterSlicesOnly(const Data::Asset<Data::AssetData>& asset);
 
+        /// Filter ignores all asset references except for the specified classes.
+        template<typename T>
+        static bool AssetFilterAssetTypesOnly(const Data::Asset<Data::AssetData>& asset);
+
+        template<typename T0, typename T1, typename... Args>
+        static bool AssetFilterAssetTypesOnly(const Data::Asset<Data::AssetData>& asset);
+
         /// NoAssetLoading filter ignores all asset references.
         static bool AssetFilterNoAssetLoading(const Data::Asset<Data::AssetData>& asset);
 
@@ -217,6 +224,28 @@ namespace AZ
         }
         return WriteClass(classPtr, classId);
     }
+
+    /// Filter ignores all asset references except for the specified classes.
+    template<typename T>
+    /*static*/ bool ObjectStream::AssetFilterAssetTypesOnly(const Data::Asset<Data::AssetData>& asset)
+    {
+        static_assert(std::is_base_of<Data::AssetData, T>::value, "T not derived from Data::AssetData.");
+
+        const bool isValidAsset = asset.GetType() == AzTypeInfo<T>::Uuid();
+        if (isValidAsset)
+        {
+            return AssetFilterDefault(asset);
+        }
+
+        return false;
+    }
+
+    template<typename T0, typename T1, typename... Args>
+    /*static*/ bool ObjectStream::AssetFilterAssetTypesOnly(const Data::Asset<Data::AssetData>& asset)
+    {
+        return ObjectStream::AssetFilterAssetTypesOnly<T0>(asset) || AssetFilterAssetTypesOnly<T1, Args...>(asset);
+    }
+
 } // namespace AZ
 
 #endif  // AZCORE_OBJECT_STREAM_H

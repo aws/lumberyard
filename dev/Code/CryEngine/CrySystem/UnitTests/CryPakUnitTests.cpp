@@ -20,12 +20,14 @@
 #include <CryPakFileIO.h>
 #include <AzCore/std/functional.h> // for function<> in the find files callback.
 
-#if defined(WIN32) || defined(WIN64)
-
-// Note:  none of the below is really a unit test, its all basic feature tests
-// for critical functionality
 namespace CryPakUnitTests
 {
+
+#if defined(WIN32) || defined(WIN64)
+
+    // Note:  none of the below is really a unit test, its all basic feature tests
+    // for critical functionality
+    
     // for fuzzing test, how much work to do?
     static int s_numTrialsToPerform = 200500; // as much we can do in about a second.
 
@@ -1231,7 +1233,102 @@ namespace CryPakUnitTests
         }
         
     }
-}
-
 
 #endif //defined(WIN32) || defined(WIN64)
+
+    // Unit tests for CCryPak::BeautifyPath
+    TEST(CryPakUnitTests, BeautifyPath_AliasedPathMakeLowerTrue_PathIsToLoweredSlashesReplaced)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        AZStd::string aliasedPath = "@alias@/someDir/SomeFile.EXT";
+        CCryPak::BeautifyPath(aliasedPath.data(), true);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "@alias@%csomedir%csomefile.ext", nativeSlash, nativeSlash);
+
+        EXPECT_STREQ(aliasedPath.data(), expectedPath);
+    }
+
+    TEST(CryPakUnitTests, BeautifyPath_AliasedPathMakeLowerFalse_PathNotToLoweredSlashesReplaced)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        AZStd::string falseMakeLowerPath = "@alias@/someDir/SomeFile.EXT";
+        CCryPak::BeautifyPath(falseMakeLowerPath.data(), false);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "@alias@%csomeDir%cSomeFile.EXT", nativeSlash, nativeSlash);
+
+        EXPECT_STREQ(falseMakeLowerPath.data(), expectedPath);
+    }
+
+    TEST(CryPakUnitTests, BeautifyPath_UnaliasedPath_PathIsToLoweredSlashesReplaced)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        AZStd::string unaliasedPath = "someDir/SomeFile.EXT";
+        CCryPak::BeautifyPath(unaliasedPath.data(), true);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "somedir%csomefile.ext", nativeSlash);
+
+        EXPECT_STREQ(unaliasedPath.data(), expectedPath);
+    }
+
+    TEST(CryPakUnitTests, BeautifyPath_CaseSensitiveAlias_AliasUnalteredButPathToLowered)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        AZStd::string caseSensitiveAliasPath = "@ALiAs@/someDir/SomeFile.EXT";
+        CCryPak::BeautifyPath(caseSensitiveAliasPath.data(), true);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "@ALiAs@%csomedir%csomefile.ext", nativeSlash, nativeSlash);
+
+        EXPECT_STREQ(caseSensitiveAliasPath.data(), expectedPath);
+    }
+
+    TEST(CryPakUnitTests, BeautifyPath_AbsolutePathMakeLowerTrue_NotToLoweredButSlashesSwitched)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+        AZStd::string caseSensitiveAliasPath = "//absolutePath\\someDir\\SomeFile.EXT";
+        CCryPak::BeautifyPath(caseSensitiveAliasPath.data(), true);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "//absolutePath%csomeDir%cSomeFile.EXT", nativeSlash, nativeSlash);
+#else // WINDOWS
+        AZStd::string caseSensitiveAliasPath = "C:/absolutePath/someDir/SomeFile.EXT";
+        CCryPak::BeautifyPath(caseSensitiveAliasPath.data(), true);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "C:%cabsolutePath%csomeDir%cSomeFile.EXT", nativeSlash, nativeSlash, nativeSlash);
+#endif // defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+
+        EXPECT_STREQ(caseSensitiveAliasPath.data(), expectedPath);
+    }
+
+    TEST(CryPakUnitTests, BeautifyPath_EmptyString_ReturnsNullTerminatedEmptyString)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        AZStd::string emptyPath("");
+        CCryPak::BeautifyPath(emptyPath.data(), true);
+        
+        EXPECT_STREQ(emptyPath.data(), "\0");
+    }
+
+    /*
+    // Commenting this test out since CryPak tests do not support AZ_TEST_START_ASSERTTEST
+    TEST(CryPakUnitTests, BeautifyPath_NullCharPtr_AssertsPathIsNullptr)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        char* nullPath = nullptr;
+
+        CCryPak::BeautifyPath(nullPath, true);
+    }
+    */
+
+}

@@ -107,6 +107,7 @@ namespace LmbrCentral
         m_decalRenderNode = static_cast<IDecalRenderNode*>(gEnv->p3DEngine->CreateRenderNode(eERType_Decal));
         if (m_decalRenderNode)
         {
+            m_decalRenderNode->SetRndFlags(m_decalRenderNode->GetRndFlags() | ERF_COMPONENT_ENTITY);
             m_decalRenderNode->SetDecalProperties(decalProperties);
             m_decalRenderNode->SetMinSpec(static_cast<int>(decalProperties.m_minSpec));
             m_decalRenderNode->SetMatrix(AZTransformToLYTransform(transform));

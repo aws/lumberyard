@@ -89,52 +89,55 @@ TEST_F(ScriptCanvasTestFixture, CreateVariableTest)
     propertyEntity->CreateComponent<GraphVariableManagerComponent>();
     propertyEntity->Init();
     propertyEntity->Activate();
-
-    auto vector3Datum1 = Datum(Data::Vector3Type(1.1f, 2.0f, 3.6f));
-    auto vector3Datum2 = Datum(Data::Vector3Type(0.0f, -86.654f, 134.23f));
-    auto vector4Datum = Datum(Data::Vector4Type(6.0f, 17.5f, -41.75f, 400.875f));
     
-    TestBehaviorContextObject testObject;
-    auto behaviorMatrix4x4Datum = Datum(testObject);
-        
-    auto stringArrayDatum = Datum(StringArray());
+    // execute this in a scoped section since some Datum's destructions depend on type ids that get removed when the 
+    // serialization context is removed
+    {
+        auto vector3Datum1 = Datum(Data::Vector3Type(1.1f, 2.0f, 3.6f));
+        auto vector3Datum2 = Datum(Data::Vector3Type(0.0f, -86.654f, 134.23f));
+        auto vector4Datum = Datum(Data::Vector4Type(6.0f, 17.5f, -41.75f, 400.875f));
 
-    AZ::Outcome<VariableId, AZStd::string> addPropertyOutcome(AZ::Failure(AZStd::string("Uninitialized")));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "FirstVector3", vector3Datum1);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+        TestBehaviorContextObject testObject;
+        auto behaviorMatrix4x4Datum = Datum(testObject);
 
-    addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "SecondVector3", vector3Datum2);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+        auto stringArrayDatum = Datum(StringArray());
 
-    addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "FirstVector4", vector4Datum);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+        AZ::Outcome<VariableId, AZStd::string> addPropertyOutcome(AZ::Failure(AZStd::string("Uninitialized")));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "FirstVector3", vector3Datum1);
+        EXPECT_TRUE(addPropertyOutcome);
+        EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
 
-    addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "ProjectionMatrix", behaviorMatrix4x4Datum);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+        addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "SecondVector3", vector3Datum2);
+        EXPECT_TRUE(addPropertyOutcome);
+        EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
 
-    addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "My String Array", stringArrayDatum);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+        addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "FirstVector4", vector4Datum);
+        EXPECT_TRUE(addPropertyOutcome);
+        EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
 
-    AZStd::vector<AZ::Outcome<VariableId, AZStd::string>> addVariablesOutcome;
-    AZStd::vector<AZStd::pair<AZStd::string_view, Datum>> datumsToAdd;
-    datumsToAdd.emplace_back("FirstBoolean", Datum(true));
-    datumsToAdd.emplace_back("FirstString", Datum(AZStd::string("Test")));
-    GraphVariableManagerRequestBus::EventResult(addVariablesOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariables<decltype(datumsToAdd)::iterator>, datumsToAdd.begin(), datumsToAdd.end());
-    EXPECT_EQ(2, addVariablesOutcome.size());
-    EXPECT_TRUE(addVariablesOutcome[0]);
-    EXPECT_TRUE(addVariablesOutcome[0].GetValue().IsValid());
-    EXPECT_TRUE(addVariablesOutcome[1]);
-    EXPECT_TRUE(addVariablesOutcome[1].GetValue().IsValid());
-    
+        addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "ProjectionMatrix", behaviorMatrix4x4Datum);
+        EXPECT_TRUE(addPropertyOutcome);
+        EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+
+        addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "My String Array", stringArrayDatum);
+        EXPECT_TRUE(addPropertyOutcome);
+        EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+
+        AZStd::vector<AZ::Outcome<VariableId, AZStd::string>> addVariablesOutcome;
+        AZStd::vector<AZStd::pair<AZStd::string_view, Datum>> datumsToAdd;
+        datumsToAdd.emplace_back("FirstBoolean", Datum(true));
+        datumsToAdd.emplace_back("FirstString", Datum(AZStd::string("Test")));
+        GraphVariableManagerRequestBus::EventResult(addVariablesOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariables<decltype(datumsToAdd)::iterator>, datumsToAdd.begin(), datumsToAdd.end());
+        EXPECT_EQ(2, addVariablesOutcome.size());
+        EXPECT_TRUE(addVariablesOutcome[0]);
+        EXPECT_TRUE(addVariablesOutcome[0].GetValue().IsValid());
+        EXPECT_TRUE(addVariablesOutcome[1]);
+        EXPECT_TRUE(addVariablesOutcome[1].GetValue().IsValid());
+    }
     propertyEntity.reset();
     m_serializeContext->EnableRemoveReflection();
     m_behaviorContext->EnableRemoveReflection();
@@ -192,110 +195,114 @@ TEST_F(ScriptCanvasTestFixture, RemoveVariableTest)
     propertyEntity->Init();
     propertyEntity->Activate();
 
-    auto vector3Datum1 = Datum(Data::Vector3Type(1.1f, 2.0f, 3.6f));
-    auto vector3Datum2 = Datum(Data::Vector3Type(0.0f, -86.654f, 134.23f));
-    auto vector4Datum = Datum(Data::Vector4Type(6.0f, 17.5f, -41.75f, 400.875f));
-    
-    TestBehaviorContextObject testObject;
-    auto behaviorMatrix4x4Datum = Datum(testObject);
-	
-    auto stringArrayDatum = Datum(StringArray());
-
-    size_t numVariablesAdded = 0U;
-    AZ::Outcome<VariableId, AZStd::string> addPropertyOutcome(AZ::Failure(AZStd::string("Uninitialized")));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "FirstVector3", vector3Datum1);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
-    const VariableId firstVector3Id = addPropertyOutcome.GetValue();
-    ++numVariablesAdded;
-
-    addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "SecondVector3", vector3Datum2);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
-    const VariableId secondVector3Id = addPropertyOutcome.GetValue();
-    ++numVariablesAdded;
-
-    addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "FirstVector4", vector4Datum);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
-    const VariableId firstVector4Id = addPropertyOutcome.GetValue();
-    ++numVariablesAdded;
-
-    addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "ProjectionMatrix", behaviorMatrix4x4Datum);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
-    const VariableId projectionMatrixId = addPropertyOutcome.GetValue();
-    ++numVariablesAdded;
-
-    addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "My String Array", stringArrayDatum);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
-    const VariableId stringArrayId = addPropertyOutcome.GetValue();
-    ++numVariablesAdded;
-
-    AZStd::vector<AZ::Outcome<VariableId, AZStd::string>> addVariablesOutcome;
-    AZStd::vector<AZStd::pair<AZStd::string_view, Datum>> datumsToAdd;
-    datumsToAdd.emplace_back("FirstBoolean", Datum(true));
-    datumsToAdd.emplace_back("FirstString", Datum(AZStd::string("Test")));
-    GraphVariableManagerRequestBus::EventResult(addVariablesOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariables<decltype(datumsToAdd)::iterator>, datumsToAdd.begin(), datumsToAdd.end());
-    EXPECT_EQ(2, addVariablesOutcome.size());
-    EXPECT_TRUE(addVariablesOutcome[0]);
-    EXPECT_TRUE(addVariablesOutcome[0].GetValue().IsValid());
-    EXPECT_TRUE(addVariablesOutcome[1]);
-    EXPECT_TRUE(addVariablesOutcome[1].GetValue().IsValid());
-    numVariablesAdded += addVariablesOutcome.size();
-
-    const AZStd::unordered_map<VariableId, VariableNameValuePair>* properties{};
-    GraphVariableManagerRequestBus::EventResult(properties, propertyEntity->GetId(), &GraphVariableManagerRequests::GetVariables);
-    ASSERT_NE(nullptr, properties);
-    EXPECT_EQ(numVariablesAdded, (*properties).size());
-
+    // execute this in a scoped section since some Datum's destructions depend on type ids that get removed when the 
+    // serialization context is removed
     {
-        // Remove Property By Id
-        bool removePropertyResult = false;
-        GraphVariableManagerRequestBus::EventResult(removePropertyResult, propertyEntity->GetId(), &GraphVariableManagerRequests::RemoveVariable, stringArrayId);
-        EXPECT_TRUE(removePropertyResult);
+        auto vector3Datum1 = Datum(Data::Vector3Type(1.1f, 2.0f, 3.6f));
+        auto vector3Datum2 = Datum(Data::Vector3Type(0.0f, -86.654f, 134.23f));
+        auto vector4Datum = Datum(Data::Vector4Type(6.0f, 17.5f, -41.75f, 400.875f));
 
-        properties = {};
-        GraphVariableManagerRequestBus::EventResult(properties, propertyEntity->GetId(), &GraphVariableManagerRequests::GetVariables);
-        ASSERT_NE(nullptr, properties);
-        EXPECT_EQ(numVariablesAdded, (*properties).size() + 1);
+        TestBehaviorContextObject testObject;
+        auto behaviorMatrix4x4Datum = Datum(testObject);
 
-        // Attempt to remove already removed property
-        GraphVariableManagerRequestBus::EventResult(removePropertyResult, propertyEntity->GetId(), &GraphVariableManagerRequests::RemoveVariable, stringArrayId);
-        EXPECT_FALSE(removePropertyResult);
-    }
+        auto stringArrayDatum = Datum(StringArray());
 
-    {
-        // Remove Property by name
-        size_t numVariablesRemoved = 0U;
-        GraphVariableManagerRequestBus::EventResult(numVariablesRemoved, propertyEntity->GetId(), &GraphVariableManagerRequests::RemoveVariableByName, "ProjectionMatrix");
-        EXPECT_EQ(1U, numVariablesRemoved);
+        size_t numVariablesAdded = 0U;
+        AZ::Outcome<VariableId, AZStd::string> addPropertyOutcome(AZ::Failure(AZStd::string("Uninitialized")));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "FirstVector3", vector3Datum1);
+        EXPECT_TRUE(addPropertyOutcome);
+        EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+        const VariableId firstVector3Id = addPropertyOutcome.GetValue();
+        ++numVariablesAdded;
 
-        properties = {};
-        GraphVariableManagerRequestBus::EventResult(properties, propertyEntity->GetId(), &GraphVariableManagerRequests::GetVariables);
-        ASSERT_NE(nullptr, properties);
-        EXPECT_EQ(numVariablesAdded, (*properties).size() + 2);
+        addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "SecondVector3", vector3Datum2);
+        EXPECT_TRUE(addPropertyOutcome);
+        EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+        const VariableId secondVector3Id = addPropertyOutcome.GetValue();
+        ++numVariablesAdded;
 
-        // Attempt to remove property again.
-        GraphVariableManagerRequestBus::EventResult(numVariablesRemoved, propertyEntity->GetId(), &GraphVariableManagerRequests::RemoveVariableByName, "ProjectionMatrix");
-        EXPECT_EQ(0U, numVariablesRemoved);
-    }
+        addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "FirstVector4", vector4Datum);
+        EXPECT_TRUE(addPropertyOutcome);
+        EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+        const VariableId firstVector4Id = addPropertyOutcome.GetValue();
+        ++numVariablesAdded;
 
-    {
-        // Re-add removed Property
         addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
         GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "ProjectionMatrix", behaviorMatrix4x4Datum);
         EXPECT_TRUE(addPropertyOutcome);
         EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
-        
-        properties = {};
+        const VariableId projectionMatrixId = addPropertyOutcome.GetValue();
+        ++numVariablesAdded;
+
+        addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "My String Array", stringArrayDatum);
+        EXPECT_TRUE(addPropertyOutcome);
+        EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+        const VariableId stringArrayId = addPropertyOutcome.GetValue();
+        ++numVariablesAdded;
+
+        AZStd::vector<AZ::Outcome<VariableId, AZStd::string>> addVariablesOutcome;
+        AZStd::vector<AZStd::pair<AZStd::string_view, Datum>> datumsToAdd;
+        datumsToAdd.emplace_back("FirstBoolean", Datum(true));
+        datumsToAdd.emplace_back("FirstString", Datum(AZStd::string("Test")));
+        GraphVariableManagerRequestBus::EventResult(addVariablesOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariables<decltype(datumsToAdd)::iterator>, datumsToAdd.begin(), datumsToAdd.end());
+        EXPECT_EQ(2, addVariablesOutcome.size());
+        EXPECT_TRUE(addVariablesOutcome[0]);
+        EXPECT_TRUE(addVariablesOutcome[0].GetValue().IsValid());
+        EXPECT_TRUE(addVariablesOutcome[1]);
+        EXPECT_TRUE(addVariablesOutcome[1].GetValue().IsValid());
+        numVariablesAdded += addVariablesOutcome.size();
+
+        const AZStd::unordered_map<VariableId, VariableNameValuePair>* properties{};
         GraphVariableManagerRequestBus::EventResult(properties, propertyEntity->GetId(), &GraphVariableManagerRequests::GetVariables);
-        EXPECT_EQ(numVariablesAdded, (*properties).size() + 1);
+        ASSERT_NE(nullptr, properties);
+        EXPECT_EQ(numVariablesAdded, (*properties).size());
+
+        {
+            // Remove Property By Id
+            bool removePropertyResult = false;
+            GraphVariableManagerRequestBus::EventResult(removePropertyResult, propertyEntity->GetId(), &GraphVariableManagerRequests::RemoveVariable, stringArrayId);
+            EXPECT_TRUE(removePropertyResult);
+
+            properties = {};
+            GraphVariableManagerRequestBus::EventResult(properties, propertyEntity->GetId(), &GraphVariableManagerRequests::GetVariables);
+            ASSERT_NE(nullptr, properties);
+            EXPECT_EQ(numVariablesAdded, (*properties).size() + 1);
+
+            // Attempt to remove already removed property
+            GraphVariableManagerRequestBus::EventResult(removePropertyResult, propertyEntity->GetId(), &GraphVariableManagerRequests::RemoveVariable, stringArrayId);
+            EXPECT_FALSE(removePropertyResult);
+        }
+
+        {
+            // Remove Property by name
+            size_t numVariablesRemoved = 0U;
+            GraphVariableManagerRequestBus::EventResult(numVariablesRemoved, propertyEntity->GetId(), &GraphVariableManagerRequests::RemoveVariableByName, "ProjectionMatrix");
+            EXPECT_EQ(1U, numVariablesRemoved);
+
+            properties = {};
+            GraphVariableManagerRequestBus::EventResult(properties, propertyEntity->GetId(), &GraphVariableManagerRequests::GetVariables);
+            ASSERT_NE(nullptr, properties);
+            EXPECT_EQ(numVariablesAdded, (*properties).size() + 2);
+
+            // Attempt to remove property again.
+            GraphVariableManagerRequestBus::EventResult(numVariablesRemoved, propertyEntity->GetId(), &GraphVariableManagerRequests::RemoveVariableByName, "ProjectionMatrix");
+            EXPECT_EQ(0U, numVariablesRemoved);
+        }
+
+        {
+            // Re-add removed Property
+            addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
+            GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "ProjectionMatrix", behaviorMatrix4x4Datum);
+            EXPECT_TRUE(addPropertyOutcome);
+            EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+
+            properties = {};
+            GraphVariableManagerRequestBus::EventResult(properties, propertyEntity->GetId(), &GraphVariableManagerRequests::GetVariables);
+            EXPECT_EQ(numVariablesAdded, (*properties).size() + 1);
+        }
     }
 
     propertyEntity.reset();
@@ -429,67 +436,70 @@ TEST_F(ScriptCanvasTestFixture, SerializationTest)
     propertyEntity->Init();
     propertyEntity->Activate();
 
-    auto stringArrayDatum = Datum(StringArray());
-
-    AZ::Outcome<VariableId, AZStd::string> addPropertyOutcome(AZ::Failure(AZStd::string("Uninitialized")));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "My String Array", stringArrayDatum);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
-
-    VariableDatum* stringArrayProperty{};
-    GraphVariableManagerRequestBus::EventResult(stringArrayProperty, propertyEntityId, &GraphVariableManagerRequests::FindVariable, "My String Array");
-    ASSERT_NE(nullptr, stringArrayProperty);
-    EXPECT_EQ(stringArrayDatum, stringArrayProperty->GetData());
-    const VariableId stringArrayVariableId = stringArrayProperty->GetId();
-
-    // Save Property Component Entity
-    AZStd::vector<AZ::u8> binaryBuffer;
-    AZ::IO::ByteContainerStream<decltype(binaryBuffer)> byteStream(&binaryBuffer);
-    const bool objectSaved = AZ::Utils::SaveObjectToStream(byteStream, AZ::DataStream::ST_BINARY, propertyEntity.get(), m_serializeContext);
-    EXPECT_TRUE(objectSaved);
-
-    // Delete the Property Component 
-    propertyEntity.reset();
-
-    // Attempt to lookup the My String Array property using the old property component entity id
-    // PropertyRequestBus should be disconnected
-    stringArrayProperty = {};
-    GraphVariableManagerRequestBus::EventResult(stringArrayProperty, propertyEntityId, &GraphVariableManagerRequests::FindVariable, "My String Array");
-    EXPECT_EQ(nullptr, stringArrayProperty);
-
-    // Attempt to add a new property after deleting the Property Component Entity
-    auto identityMatrixDatum = Datum(Data::Matrix3x3Type::CreateIdentity());
-    addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntityId, &GraphVariableManagerRequests::AddVariable, "Super Matrix Bros", identityMatrixDatum);
-    EXPECT_FALSE(addPropertyOutcome);
-
-    // Load Variable Component Entity
+    // execute this in a scoped section since some Datum's destructions depend on type ids that get removed when the 
+    // serialization context is removed
     {
-        byteStream.Seek(0U, AZ::IO::GenericStream::ST_SEEK_BEGIN);
-        propertyEntity.reset(AZ::Utils::LoadObjectFromStream<AZ::Entity>(byteStream, m_serializeContext));
-        ASSERT_TRUE(propertyEntity);
-        propertyEntity->Init();
-        propertyEntity->Activate();
+        auto stringArrayDatum = Datum(StringArray());
+
+        AZ::Outcome<VariableId, AZStd::string> addPropertyOutcome(AZ::Failure(AZStd::string("Uninitialized")));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, "My String Array", stringArrayDatum);
+        EXPECT_TRUE(addPropertyOutcome);
+        EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+
+        VariableDatum* stringArrayProperty{};
+        GraphVariableManagerRequestBus::EventResult(stringArrayProperty, propertyEntityId, &GraphVariableManagerRequests::FindVariable, "My String Array");
+        ASSERT_NE(nullptr, stringArrayProperty);
+        EXPECT_EQ(stringArrayDatum, stringArrayProperty->GetData());
+        const VariableId stringArrayVariableId = stringArrayProperty->GetId();
+
+        // Save Property Component Entity
+        AZStd::vector<AZ::u8> binaryBuffer;
+        AZ::IO::ByteContainerStream<decltype(binaryBuffer)> byteStream(&binaryBuffer);
+        const bool objectSaved = AZ::Utils::SaveObjectToStream(byteStream, AZ::DataStream::ST_BINARY, propertyEntity.get(), m_serializeContext);
+        EXPECT_TRUE(objectSaved);
+
+        // Delete the Property Component 
+        propertyEntity.reset();
+
+        // Attempt to lookup the My String Array property using the old property component entity id
+        // PropertyRequestBus should be disconnected
+        stringArrayProperty = {};
+        GraphVariableManagerRequestBus::EventResult(stringArrayProperty, propertyEntityId, &GraphVariableManagerRequests::FindVariable, "My String Array");
+        EXPECT_EQ(nullptr, stringArrayProperty);
+
+        // Attempt to add a new property after deleting the Property Component Entity
+        auto identityMatrixDatum = Datum(Data::Matrix3x3Type::CreateIdentity());
+        addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntityId, &GraphVariableManagerRequests::AddVariable, "Super Matrix Bros", identityMatrixDatum);
+        EXPECT_FALSE(addPropertyOutcome);
+
+        // Load Variable Component Entity
+        {
+            byteStream.Seek(0U, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+            propertyEntity.reset(AZ::Utils::LoadObjectFromStream<AZ::Entity>(byteStream, m_serializeContext));
+            ASSERT_TRUE(propertyEntity);
+            propertyEntity->Init();
+            propertyEntity->Activate();
+        }
+
+        // Attempt to lookup the My String Array property after loading from object stream
+        stringArrayProperty = {};
+        GraphVariableManagerRequestBus::EventResult(stringArrayProperty, propertyEntityId, &GraphVariableManagerRequests::FindVariable, "My String Array");
+        ASSERT_NE(nullptr, stringArrayProperty);
+        EXPECT_EQ(stringArrayVariableId, stringArrayProperty->GetId());
+
+        addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
+        GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntityId, &GraphVariableManagerRequests::AddVariable, "Super Matrix Bros", identityMatrixDatum);
+        EXPECT_TRUE(addPropertyOutcome);
+        EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
+
+        VariableNameValuePair* propertyPair{};
+        GraphVariableManagerRequestBus::EventResult(propertyPair, propertyEntityId, &GraphVariableManagerRequests::FindVariableById, addPropertyOutcome.GetValue());
+        ASSERT_NE(nullptr, propertyPair);
+        VariableDatum* superMatrixProperty = &propertyPair->m_varDatum;
+        const Datum& matrix3x3Datum = superMatrixProperty->GetData();
+        EXPECT_EQ(identityMatrixDatum, matrix3x3Datum);
     }
-
-    // Attempt to lookup the My String Array property after loading from object stream
-    stringArrayProperty = {};
-    GraphVariableManagerRequestBus::EventResult(stringArrayProperty, propertyEntityId, &GraphVariableManagerRequests::FindVariable, "My String Array");
-    ASSERT_NE(nullptr, stringArrayProperty);
-    EXPECT_EQ(stringArrayVariableId, stringArrayProperty->GetId());
-
-    addPropertyOutcome = AZ::Failure(AZStd::string("Uninitialized"));
-    GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntityId, &GraphVariableManagerRequests::AddVariable, "Super Matrix Bros", identityMatrixDatum);
-    EXPECT_TRUE(addPropertyOutcome);
-    EXPECT_TRUE(addPropertyOutcome.GetValue().IsValid());
-
-    VariableNameValuePair* propertyPair{};
-    GraphVariableManagerRequestBus::EventResult(propertyPair, propertyEntityId, &GraphVariableManagerRequests::FindVariableById, addPropertyOutcome.GetValue());
-    ASSERT_NE(nullptr, propertyPair);
-    VariableDatum* superMatrixProperty = &propertyPair->m_varDatum;
-    const Datum& matrix3x3Datum= superMatrixProperty->GetData();
-    EXPECT_EQ(identityMatrixDatum, matrix3x3Datum);
-
     propertyEntity.reset();
 
     m_serializeContext->EnableRemoveReflection();
@@ -626,64 +636,68 @@ TEST_F(ScriptCanvasTestFixture, SetVariableNodeTest)
 
     graphEntity->Init();
 
-    Datum planeDatum(Data::PlaneType::CreateFromCoefficients(0.0f, 0.0f, 0.0f, 0.0f));
-
-    // Add in Plane Variable to Variable Component
-    AZStd::string_view varName = "TestPlane";
-    AZ::Outcome<VariableId, AZStd::string> addVariableOutcome(AZ::Failure(AZStd::string("Uninitialized")));
-    GraphVariableManagerRequestBus::EventResult(addVariableOutcome, graphUniqueId, &GraphVariableManagerRequests::AddVariable, varName, planeDatum);
-    EXPECT_TRUE(addVariableOutcome);
-    EXPECT_TRUE(addVariableOutcome.GetValue().IsValid());
-    const VariableId planeVariableId = addVariableOutcome.GetValue();
-
-    // Create Set Variable Node
-    AZ::EntityId outID;
-    auto startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, outID);
-    auto setVariableNode = CreateTestNode<Nodes::Core::SetVariableNode>(graphUniqueId, outID);
-    auto fromNormalAndPointNode = CreateTestNode<PlaneNodes::FromNormalAndPointNode>(graphUniqueId, outID);
-
-    auto testPlane = Data::PlaneType::CreateFromNormalAndPoint(Data::Vector3Type(3.0f, -1.0f, 2.0f), Data::Vector3Type::CreateZero());
-    auto vector3NormalNode = CreateDataNode(graphUniqueId, testPlane.GetNormal(), outID);
-    auto vector3PointNode = CreateDataNode(graphUniqueId, Data::Vector3Type::CreateZero(), outID);
-
-    // data
-    EXPECT_TRUE(Connect(*graph, vector3NormalNode->GetEntityId(), "Get", fromNormalAndPointNode->GetEntityId(), "Vector3: Normal"));
-    EXPECT_TRUE(Connect(*graph, vector3PointNode->GetEntityId(), "Get", fromNormalAndPointNode->GetEntityId(), "Vector3: Point"));
-
-    // This should fail to connect until the SetVariableNode has a valid Variable associated with it
     {
-        ScopedOutputSuppression suppressOutput;
-        EXPECT_FALSE(graph->Connect(fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Plane: Result"), setVariableNode->GetEntityId(), setVariableNode->GetDataInSlotId()));
+        Datum planeDatum(Data::PlaneType::CreateFromCoefficients(0.0f, 0.0f, 0.0f, 0.0f));
+
+        // Add in Plane Variable to Variable Component
+        AZStd::string_view varName = "TestPlane";
+        AZ::Outcome<VariableId, AZStd::string> addVariableOutcome(AZ::Failure(AZStd::string("Uninitialized")));
+        GraphVariableManagerRequestBus::EventResult(addVariableOutcome, graphUniqueId, &GraphVariableManagerRequests::AddVariable, varName, planeDatum);
+        EXPECT_TRUE(addVariableOutcome);
+        EXPECT_TRUE(addVariableOutcome.GetValue().IsValid());
+        const VariableId planeVariableId = addVariableOutcome.GetValue();
+
+        // Create Set Variable Node
+        AZ::EntityId outID;
+        auto startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, outID);
+        auto setVariableNode = CreateTestNode<Nodes::Core::SetVariableNode>(graphUniqueId, outID);
+        auto fromNormalAndPointNode = CreateTestNode<PlaneNodes::FromNormalAndPointNode>(graphUniqueId, outID);
+
+        auto testPlane = Data::PlaneType::CreateFromNormalAndPoint(Data::Vector3Type(3.0f, -1.0f, 2.0f), Data::Vector3Type::CreateZero());
+        auto vector3NormalNode = CreateDataNode(graphUniqueId, testPlane.GetNormal(), outID);
+        auto vector3PointNode = CreateDataNode(graphUniqueId, Data::Vector3Type::CreateZero(), outID);
+
+        // data
+        EXPECT_TRUE(Connect(*graph, vector3NormalNode->GetEntityId(), "Get", fromNormalAndPointNode->GetEntityId(), "Vector3: Normal"));
+        EXPECT_TRUE(Connect(*graph, vector3PointNode->GetEntityId(), "Get", fromNormalAndPointNode->GetEntityId(), "Vector3: Point"));
+
+        // This should fail to connect until the SetVariableNode has a valid Variable associated with it
+        {
+            ScopedOutputSuppression suppressOutput;
+            EXPECT_FALSE(graph->Connect(fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Plane: Result"), setVariableNode->GetEntityId(), setVariableNode->GetDataInSlotId()));
+        }
+        EXPECT_FALSE(setVariableNode->GetId().IsValid());
+        EXPECT_FALSE(setVariableNode->GetDataInSlotId().IsValid());
+        setVariableNode->SetId(planeVariableId); // This associates the variable with the node and adds the input slot
+        auto dataInputSlotId = setVariableNode->GetDataInSlotId();
+        EXPECT_TRUE(graph->Connect(fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane"), setVariableNode->GetEntityId(), dataInputSlotId));
+
+        // logic
+        EXPECT_TRUE(Connect(*graph, startNode->GetEntityId(), "Out", fromNormalAndPointNode->GetEntityId(), "In"));
+        EXPECT_TRUE(Connect(*graph, fromNormalAndPointNode->GetEntityId(), "Out", setVariableNode->GetEntityId(), "In"));
+
+        // execute
+        graphEntity->Activate();
+        EXPECT_FALSE(graph->IsInErrorState());
+        graphEntity->Deactivate();
+
+        AZ::Entity* connectionEntity{};
+        EXPECT_TRUE(graph->FindConnection(connectionEntity, { fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane") }, { setVariableNode->GetEntityId(), dataInputSlotId }));
+        setVariableNode->SetId({});
+        EXPECT_FALSE(graph->FindConnection(connectionEntity, { fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane") }, { setVariableNode->GetEntityId(), dataInputSlotId }));
+        EXPECT_FALSE(setVariableNode->GetId().IsValid());
+        EXPECT_FALSE(setVariableNode->GetDataInSlotId().IsValid());
+
+        VariableDatum* variableDatum{};
+        GraphVariableManagerRequestBus::EventResult(variableDatum, graphUniqueId, &GraphVariableManagerRequests::FindVariable, varName);
+        ASSERT_NE(nullptr, variableDatum);
+
+        // Get Variable Plane and verify that it is the same as the plane created from
+        auto variablePlane = variableDatum->GetData().ModAs<Data::PlaneType>();
+        ASSERT_NE(nullptr, variablePlane);
+
+        EXPECT_EQ(testPlane, *variablePlane);
     }
-    EXPECT_FALSE(setVariableNode->GetId().IsValid());
-    EXPECT_FALSE(setVariableNode->GetDataInSlotId().IsValid());
-    setVariableNode->SetId(planeVariableId); // This associates the variable with the node and adds the input slot
-    auto dataInputSlotId = setVariableNode->GetDataInSlotId();
-    EXPECT_TRUE(graph->Connect(fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane"), setVariableNode->GetEntityId(), dataInputSlotId));
 
-    // logic
-    EXPECT_TRUE(Connect(*graph, startNode->GetEntityId(), "Out", fromNormalAndPointNode->GetEntityId(), "In"));
-    EXPECT_TRUE(Connect(*graph, fromNormalAndPointNode->GetEntityId(), "Out", setVariableNode->GetEntityId(), "In"));
-
-    // execute
-    graphEntity->Activate();
-    EXPECT_FALSE(graph->IsInErrorState());
-    graphEntity->Deactivate();
-
-    AZ::Entity* connectionEntity{};
-    EXPECT_TRUE(graph->FindConnection(connectionEntity, { fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane") }, { setVariableNode->GetEntityId(), dataInputSlotId }));
-    setVariableNode->SetId({});
-    EXPECT_FALSE(graph->FindConnection(connectionEntity, { fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane") }, { setVariableNode->GetEntityId(), dataInputSlotId }));
-    EXPECT_FALSE(setVariableNode->GetId().IsValid());
-    EXPECT_FALSE(setVariableNode->GetDataInSlotId().IsValid());
-
-    VariableDatum* variableDatum{};
-    GraphVariableManagerRequestBus::EventResult(variableDatum, graphUniqueId, &GraphVariableManagerRequests::FindVariable, varName);
-    ASSERT_NE(nullptr, variableDatum);
-
-    // Get Variable Plane and verify that it is the same as the plane created from
-    auto variablePlane = variableDatum->GetData().ModAs<Data::PlaneType>();
-    ASSERT_NE(nullptr, variablePlane);
-
-    EXPECT_EQ(testPlane, *variablePlane);
+    graphEntity.reset();
 }

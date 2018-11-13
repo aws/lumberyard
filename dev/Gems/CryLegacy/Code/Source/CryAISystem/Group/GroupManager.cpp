@@ -15,7 +15,7 @@
 #include "GroupManager.h"
 #include "Group.h"
 
-static Group s_emptyGroup;
+static StaticInstance<Group> s_emptyGroup;
 
 CGroupManager::CGroupManager()
     : m_notifications(0)

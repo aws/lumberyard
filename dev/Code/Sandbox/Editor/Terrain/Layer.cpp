@@ -444,9 +444,7 @@ inline bool IsPower2(int n)
 bool CLayer::LoadTexture(QString strFileName)
 {
     CLogFile::FormatLine("Loading layer texture (%s)...", strFileName.toUtf8().data());
-
-    // Save the filename
-    m_strLayerTexPath = Path::FullPathToGamePath(strFileName);
+    m_strLayerTexPath = strFileName;
     if (m_strLayerTexPath.isEmpty())
     {
         m_strLayerTexPath = strFileName;

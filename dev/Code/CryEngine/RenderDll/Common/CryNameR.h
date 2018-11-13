@@ -65,10 +65,9 @@ public:
 
     ~CNameTableR()
     {
-        ScopedSwitchToGlobalHeap globalHeapScope;
         for (NameMap::iterator it = m_nameMap.begin(); it != m_nameMap.end(); ++it)
         {
-            free(it->second);
+            CryModuleFree(it->second);
         }
     }
 
@@ -84,14 +83,14 @@ public:
     SNameEntryR* GetEntry(const char* str)
     {
         CheckThread();
-        ScopedSwitchToGlobalHeap globalHeapScope;
+        
         SNameEntryR* pEntry = stl::find_in_map(m_nameMap, str, 0);
         if (!pEntry)
         {
             // Create a new entry.
             unsigned int nLen = strlen(str);
             unsigned int allocLen = sizeof(SNameEntryR) + (nLen + 1) * sizeof(char);
-            pEntry = (SNameEntryR*)malloc(allocLen);
+            pEntry = (SNameEntryR*)CryModuleMalloc(allocLen);
             assert(pEntry != NULL);
             pEntry->nRefCount = 0;
             pEntry->nLength = nLen;
@@ -110,10 +109,10 @@ public:
     void Release(SNameEntryR* pEntry)
     {
         CheckThread();
-        ScopedSwitchToGlobalHeap globalHeapScope;
+        
         assert(pEntry);
         m_nameMap.erase(pEntry->GetStr());
-        free(pEntry);
+        CryModuleFree(pEntry);
     }
     int GetMemoryUsage()
     {
@@ -172,6 +171,11 @@ public:
     bool operator==(const CCryNameR& n) const;
     bool operator<(const CCryNameR& n) const;
 
+    operator size_t() const
+    {
+        return AZStd::hash_string(m_str, _length());
+    }
+
     bool empty() const
     {
         return length() == 0;
@@ -221,7 +225,6 @@ private:
     static CNameTableR* GetNameTable()
     {
         static CNameTableR* ms_table;
-        ScopedSwitchToGlobalHeap globalHeapScope;
         // Note: can not use a 'static CNameTable sTable' here, because that
         // implies a static destruction order dependency - the name table is
         // accessed from static destructor calls.
@@ -335,6 +338,11 @@ public:
 
     CCryNameTSCRC& operator=(const CCryNameTSCRC& n);
     CCryNameTSCRC& operator=(const char* s);
+
+    operator size_t() const
+    {
+        return m_nID;
+    }
 
     bool  operator==(const CCryNameTSCRC& n) const;
     bool  operator!=(const CCryNameTSCRC& n) const;

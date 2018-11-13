@@ -156,16 +156,16 @@ namespace EMotionFX
     }
 
 
-    // calculate the tangent and binormal for a given triangle
-    void Mesh::CalcTangentAndBiNormalForFace(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC,
+    // calculate the tangent and bitangent for a given triangle
+    void Mesh::CalcTangentAndBitangentForFace(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC,
         const AZ::Vector2& uvA,  const AZ::Vector2& uvB,  const AZ::Vector2& uvC,
-        AZ::Vector3* outTangent, AZ::Vector3* outBiNormal)
+        AZ::Vector3* outTangent, AZ::Vector3* outBitangent)
     {
-        // reset the tangent and binormal
+        // reset the tangent and bitangent
         *outTangent = AZ::Vector3::CreateZero();
-        if (outBiNormal)
+        if (outBitangent)
         {
-            *outBiNormal = AZ::Vector3::CreateZero();
+            *outBitangent = AZ::Vector3::CreateZero();
         }
 
         const float x1 = posB.GetX() - posA.GetX();
@@ -192,174 +192,51 @@ namespace EMotionFX
             r = 1.0f / divider;
         }
 
-        const AZ::Vector3 sdir((t2 * x1 - t1 * x2) * r,  (t2 * y1 - t1 * y2) * r,    (t2 * z1 - t1 * z2) * r);
-        const AZ::Vector3 tdir((s1 * x2 - s2 * x1) * r,  (s1 * y2 - s2 * y1) * r,    (s1 * z2 - s2 * z1) * r);
+        const AZ::Vector3 sdir((t2* x1 - t1* x2) * r,  (t2* y1 - t1* y2) * r,    (t2* z1 - t1* z2) * r);
+        const AZ::Vector3 tdir((s1* x2 - s2* x1) * r,  (s1* y2 - s2* y1) * r,    (s1* z2 - s2* z1) * r);
 
         *outTangent = sdir;
-        if (outBiNormal)
+        if (outBitangent)
         {
-            *outBiNormal = tdir;
+            *outBitangent = tdir;
         }
     }
 
-    /*
+
     // calculate the S and T vectors
-    void Mesh::CalcTangents(uint32 uvSet)
+    bool Mesh::CalcTangents(uint32 uvSet, bool storeBitangents)
     {
-        if (IsTriangleMesh() == false)
+        if (!CheckIfIsTriangleMesh())
         {
-            MCore::LogWarning("EMotionFX::Mesh::CalcTangents() - Generating tangents for non-triangle meshes is currently not supported.");
-            return;
+            AZ_Warning("EMotionFX", false, "Cannot calculate tangents for mesh that isn't a pure triangle mesh.");
+            return false;
         }
 
         // find the uv layer, if it exists, otherwise return
         AZ::Vector2* uvData = static_cast<AZ::Vector2*>(FindVertexData(Mesh::ATTRIB_UVCOORDS, uvSet));
-        if (uvData == nullptr)
-            return;
-
-        // calculate the number of tangent layers that are already available
-        uint32 i, f;
-        Vector4* tangents;
-        Vector4* orgTangents;
-        const uint32 numTangentLayers = CalcNumAttributeLayers(Mesh::ATTRIB_TANGENTS);
-
-        // make sure we have tangent data allocated for all uv layers before the given one
-        for (i=numTangentLayers; i<=uvSet; ++i)
+        if (!uvData)
         {
-            // add a new tangent layer
-            AddVertexAttributeLayer( VertexAttributeLayerAbstractData::Create( mNumVertices, Mesh::ATTRIB_TANGENTS, sizeof(Vector4), true) );
-            tangents    = (Vector4*)FindVertexData(Mesh::ATTRIB_TANGENTS, i);
-            orgTangents = (Vector4*)FindOriginalVertexData(Mesh::ATTRIB_TANGENTS, i);
-
-            // default all tangents for the newly created layer
-            Vector4 defaultTangent(1.0f, 0.0f, 0.0f, 1.0f);
-            for (uint32 vtx=0; vtx<mNumVertices; ++vtx)
+            // Try UV 0 as fallback.
+            if (uvSet != 0)
             {
-                tangents[vtx]    = defaultTangent;
-                orgTangents[vtx] = defaultTangent;
+                uvData = static_cast<AZ::Vector2*>(FindVertexData(Mesh::ATTRIB_UVCOORDS, 0));
             }
-        }
 
-        // get access to the tangent layer for the given uv set
-        tangents    = (Vector4*)FindVertexData(Mesh::ATTRIB_TANGENTS, uvSet);
-        orgTangents = (Vector4*)FindOriginalVertexData(Mesh::ATTRIB_TANGENTS, uvSet);
-    */
-    /*
-        // make sure we have bitangent data allocated
-        Vector3* biTangents     = (Vector3*)FindVertexData( Mesh::ATTRIB_BITANGENTS );
-        Vector3* orgBiTangents  = (Vector3*)FindOriginalVertexData( Mesh::ATTRIB_BITANGENTS );
-        if (biTangents == nullptr)
-        {
-            // create a new tangent layer if there wasn't one yet
-            AddVertexAttributeLayer( new VertexAttributeLayerAbstractData(mNumVertices, Mesh::ATTRIB_BITANGENTS, sizeof(Vector3), true) );
-            biTangents = (Vector3*)FindVertexData( Mesh::ATTRIB_BITANGENTS );
-            orgBiTangents = (Vector3*)FindOriginalVertexData( Mesh::ATTRIB_BITANGENTS );
-            MCORE_ASSERT(biTangents);
-        }
-    */
-    /*
-        Vector3*        positions   = (Vector3*)FindOriginalVertexData( Mesh::ATTRIB_POSITIONS );
-        Vector3*        normals     = (Vector3*)FindOriginalVertexData( Mesh::ATTRIB_NORMALS );
-        uint32*         indices     = GetIndices();     // the indices (face data)
-        Vector3         curTangent;
-        Vector3         curBiNormal;
+            if (!uvData)
+            {
+                return false;
+            }
 
-        // calculate for every vertex the tangent and binormal
-        for (i=0; i<mNumVertices; ++i)
-        {
-            orgTangents[i].Zero();
-            tangents[i].Zero();
-
-            //orgBiTangents[i].Zero();
-            //biTangents[i].Zero();
-        }
-
-        // calculate the tangents and binormals for all vertices
-        // by traversing all faces
-        for (f=0; f<mNumIndices; f+=3)
-        {
-            // get the face indices
-            const uint32 indexA = indices[f];
-            const uint32 indexB = indices[f+1];
-            const uint32 indexC = indices[f+2];
-
-            // calculate the tangent and binormal for the face
-            CalcTangentAndBiNormalForFace(  positions[indexA], positions[indexB], positions[indexC],
-                                            uvData[indexA], uvData[indexB], uvData[indexC],
-                                            &curTangent, &curBiNormal);
-
-            // normalize the vectors
-            curTangent.SafeNormalize();
-            curBiNormal.SafeNormalize();
-
-            // store the tangents in the orgTangents array
-            const Vector4 vec4Tangent(curTangent.x, curTangent.y, curTangent.z, 0.0f);
-            orgTangents[indexA] += vec4Tangent;
-            orgTangents[indexB] += vec4Tangent;
-            orgTangents[indexC] += vec4Tangent;
-
-            // store the binormals in the tangents array for now
-            const Vector4 vec4Binormal(curBiNormal.x, curBiNormal.y, curBiNormal.z, 0.0f);
-            tangents[indexA]    += vec4Binormal;
-            tangents[indexB]    += vec4Binormal;
-            tangents[indexC]    += vec4Binormal;
-        }
-
-        // calculate the per vertex tangents now, fixing up orthogonality and handling mirroring of the binormal
-        for (i=0; i<mNumVertices; ++i)
-        {
-            // get the normal
-            Vector3 normal = normals[i];
-            normal.SafeNormalize();
-
-            // get the tangent
-            Vector3 tangent = Vector3(orgTangents[i].x, orgTangents[i].y, orgTangents[i].z);
-            if (tangent.SafeLength() < Math::epsilon)
-                tangent.Set(1.0f, 0.0f, 0.0f);
-            else
-                tangent.Normalize();
-
-            // get the binormal
-            Vector3 binormal = Vector3(tangents[i].x, tangents[i].y, tangents[i].z);
-            if (binormal.SafeLength() < Math::epsilon)
-                binormal.Set(0.0f, 1.0f, 0.0f);
-            else
-                binormal.Normalize();
-
-            // Gram-Schmidt orthogonalize
-            Vector3 fixedTangent = tangent - (normal * normal.Dot(tangent));
-            fixedTangent.SafeNormalize();
-
-            // calculate handedness
-            const Vector3 crossResult = normal.Cross(tangent);
-            const float tangentW = (crossResult.Dot(binormal) < 0.0f) ? -1.0f : 1.0f;
-
-            // store the real final tangents
-            orgTangents[i].Set(fixedTangent.x, fixedTangent.y, fixedTangent.z, tangentW);
-            tangents[i] = orgTangents[i];
-
-            //orgBiTangents[i] = binormal;
-            //biTangents[i] = binormal;
-        }
-    }
-    */
-
-
-
-    // calculate the S and T vectors
-    void Mesh::CalcTangents(uint32 uvSet)
-    {
-        // find the uv layer, if it exists, otherwise return
-        AZ::Vector2* uvData = static_cast<AZ::Vector2*>(FindVertexData(Mesh::ATTRIB_UVCOORDS, uvSet));
-        if (uvData == nullptr)
-        {
-            return;
+            AZ_Warning("EMotionFX", false, "Cannot find UV set %d for this mesh during tangent generation. Falling back to UV set 0.", uvSet);
+            uvSet = 0;
         }
 
         // calculate the number of tangent layers that are already available
         uint32 i, f;
-        AZ::Vector4* tangents;
-        AZ::Vector4* orgTangents;
+        AZ::Vector4* tangents = nullptr;
+        AZ::Vector4* orgTangents = nullptr;
+        AZ::PackedVector3f* bitangents = nullptr;
+        AZ::PackedVector3f* orgBitangents = nullptr;
         const uint32 numTangentLayers = CalcNumAttributeLayers(Mesh::ATTRIB_TANGENTS);
 
         // make sure we have tangent data allocated for all uv layers before the given one
@@ -370,50 +247,57 @@ namespace EMotionFX
             tangents    = static_cast<AZ::Vector4*>(FindVertexData(Mesh::ATTRIB_TANGENTS, i));
             orgTangents = static_cast<AZ::Vector4*>(FindOriginalVertexData(Mesh::ATTRIB_TANGENTS, i));
 
+            // Add the bitangents layer.
+            if (storeBitangents)
+            {
+                AddVertexAttributeLayer(VertexAttributeLayerAbstractData::Create(mNumVertices, Mesh::ATTRIB_BITANGENTS, sizeof(AZ::PackedVector3f), true));
+                bitangents    = static_cast<AZ::PackedVector3f*>(FindVertexData(Mesh::ATTRIB_BITANGENTS, i));
+                orgBitangents = static_cast<AZ::PackedVector3f*>(FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS, i));
+            }
+
             // default all tangents for the newly created layer
-            AZ::Vector4 defaultTangent(1.0f, 0.0f, 0.0f, 1.0f);
+            AZ::Vector4 defaultTangent(1.0f, 0.0f, 0.0f, 0.0f);
+            AZ::PackedVector3f defaultBitangent(0.0f, 0.0f, 1.0f);
             for (uint32 vtx = 0; vtx < mNumVertices; ++vtx)
             {
-                tangents[vtx]    = defaultTangent;
-                orgTangents[vtx] = defaultTangent;
+                tangents[vtx]      = defaultTangent;
+                orgTangents[vtx]   = defaultTangent;
+
+                if (orgBitangents && bitangents)
+                {
+                    bitangents[vtx]    = defaultBitangent;
+                    orgBitangents[vtx] = defaultBitangent;
+                }
             }
         }
 
         // get access to the tangent layer for the given uv set
-        tangents    = static_cast<AZ::Vector4*>(FindVertexData(Mesh::ATTRIB_TANGENTS, uvSet));
-        orgTangents = static_cast<AZ::Vector4*>(FindOriginalVertexData(Mesh::ATTRIB_TANGENTS, uvSet));
+        tangents      = static_cast<AZ::Vector4*>(FindVertexData(Mesh::ATTRIB_TANGENTS, uvSet));
+        orgTangents   = static_cast<AZ::Vector4*>(FindOriginalVertexData(Mesh::ATTRIB_TANGENTS, uvSet));
+        bitangents    = static_cast<AZ::PackedVector3f*>(FindVertexData(Mesh::ATTRIB_BITANGENTS, uvSet));
+        orgBitangents = static_cast<AZ::PackedVector3f*>(FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS, uvSet));
 
-        /*
-            // make sure we have bitangent data allocated
-            Vector3* biTangents     = (Vector3*)FindVertexData( Mesh::ATTRIB_BITANGENTS );
-            Vector3* orgBiTangents  = (Vector3*)FindOriginalVertexData( Mesh::ATTRIB_BITANGENTS );
-            if (biTangents == nullptr)
-            {
-                // create a new tangent layer if there wasn't one yet
-                AddVertexAttributeLayer( new VertexAttributeLayerAbstractData(mNumVertices, Mesh::ATTRIB_BITANGENTS, sizeof(Vector3), true) );
-                biTangents = (Vector3*)FindVertexData( Mesh::ATTRIB_BITANGENTS );
-                orgBiTangents = (Vector3*)FindOriginalVertexData( Mesh::ATTRIB_BITANGENTS );
-                MCORE_ASSERT(biTangents);
-            }
-        */
-        AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
-        AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)FindOriginalVertexData(Mesh::ATTRIB_NORMALS);
+        AZ::PackedVector3f* positions   = static_cast<AZ::PackedVector3f*>(FindOriginalVertexData(Mesh::ATTRIB_POSITIONS));
+        AZ::PackedVector3f* normals     = static_cast<AZ::PackedVector3f*>(FindOriginalVertexData(Mesh::ATTRIB_NORMALS));
         uint32*         indices     = GetIndices(); // the indices (face data)
         uint8*          vertCounts  = GetPolygonVertexCounts();
         AZ::Vector3     curTangent;
-        AZ::Vector3     curBiNormal;
+        AZ::Vector3     curBitangent;
 
-        // calculate for every vertex the tangent and binormal
+        // calculate for every vertex the tangent and bitangent
         for (i = 0; i < mNumVertices; ++i)
         {
             orgTangents[i] = AZ::Vector4::CreateZero();
             tangents[i] = AZ::Vector4::CreateZero();
 
-            //orgBiTangents[i].Zero();
-            //biTangents[i].Zero();
+            if (orgBitangents && bitangents)
+            {
+                orgBitangents[i].Set(0.0f, 0.0f, 0.0f);
+                bitangents[i].Set(0.0f, 0.0f, 0.0f);
+            }
         }
 
-        // calculate the tangents and binormals for all vertices by traversing all polys
+        // calculate the tangents and bitangents for all vertices by traversing all polys
         uint32 polyStartIndex = 0;
         uint32 indexA, indexB, indexC;
         const uint32 numPolygons = GetNumPolygons();
@@ -431,32 +315,32 @@ namespace EMotionFX
                 indexB = indices[polyStartIndex + i];
                 indexC = indices[polyStartIndex + i - 1];
 
-                // calculate the tangent and binormal for the face
-                CalcTangentAndBiNormalForFace(AZ::Vector3(positions[indexA]), AZ::Vector3(positions[indexB]), AZ::Vector3(positions[indexC]),
+                // calculate the tangent and bitangent for the face
+                CalcTangentAndBitangentForFace(AZ::Vector3(positions[indexA]), AZ::Vector3(positions[indexB]), AZ::Vector3(positions[indexC]),
                     uvData[indexA], uvData[indexB], uvData[indexC],
-                    &curTangent, &curBiNormal);
+                    &curTangent, &curBitangent);
 
                 // normalize the vectors
                 curTangent = MCore::SafeNormalize(curTangent);
-                curBiNormal = MCore::SafeNormalize(curBiNormal);
+                curBitangent = MCore::SafeNormalize(curBitangent);
 
                 // store the tangents in the orgTangents array
-                const AZ::Vector4 vec4Tangent(curTangent.GetX(), curTangent.GetY(), curTangent.GetZ(), 0.0f);
+                const AZ::Vector4 vec4Tangent(curTangent.GetX(), curTangent.GetY(), curTangent.GetZ(), 1.0f);
                 orgTangents[indexA] += vec4Tangent;
                 orgTangents[indexB] += vec4Tangent;
                 orgTangents[indexC] += vec4Tangent;
 
-                // store the binormals in the tangents array for now
-                const AZ::Vector4 vec4Binormal(curBiNormal.GetX(), curBiNormal.GetY(), curBiNormal.GetZ(), 0.0f);
-                tangents[indexA]    += vec4Binormal;
-                tangents[indexB]    += vec4Binormal;
-                tangents[indexC]    += vec4Binormal;
+                // store the bitangents in the tangents array for now
+                const AZ::Vector4 vec4Bitangent(curBitangent.GetX(), curBitangent.GetY(), curBitangent.GetZ(), 0.0f);
+                tangents[indexA]    += vec4Bitangent;
+                tangents[indexB]    += vec4Bitangent;
+                tangents[indexC]    += vec4Bitangent;
             }
 
             polyStartIndex += numPolyVerts;
         }
 
-        // calculate the per vertex tangents now, fixing up orthogonality and handling mirroring of the binormal
+        // calculate the per vertex tangents now, fixing up orthogonality and handling mirroring of the bitangent
         for (i = 0; i < mNumVertices; ++i)
         {
             // get the normal
@@ -471,18 +355,18 @@ namespace EMotionFX
             }
             else
             {
-                tangent.Normalize();
+                tangent.NormalizeSafeExact();
             }
 
-            // get the binormal
-            AZ::Vector3 binormal = AZ::Vector3(tangents[i].GetX(), tangents[i].GetY(), tangents[i].GetZ());
-            if (MCore::SafeLength(binormal) < MCore::Math::epsilon)
+            // get the bitangent
+            AZ::Vector3 bitangent = AZ::Vector3(tangents[i].GetX(), tangents[i].GetY(), tangents[i].GetZ());    // We stored the bitangents inside the tangents array temporarily.
+            if (MCore::SafeLength(bitangent) < MCore::Math::epsilon)
             {
-                binormal.Set(0.0f, 1.0f, 0.0f);
+                bitangent.Set(0.0f, 1.0f, 0.0f);
             }
             else
             {
-                binormal.Normalize();
+                bitangent.NormalizeSafeExact();
             }
 
             // Gram-Schmidt orthogonalize
@@ -491,15 +375,21 @@ namespace EMotionFX
 
             // calculate handedness
             const AZ::Vector3 crossResult = normal.Cross(tangent);
-            const float tangentW = (crossResult.Dot(binormal) < 0.0f) ? -1.0f : 1.0f;
+            const float tangentW = (crossResult.Dot(bitangent) < 0.0f) ? -1.0f : 1.0f;
 
             // store the real final tangents
             orgTangents[i].Set(fixedTangent.GetX(), fixedTangent.GetY(), fixedTangent.GetZ(), tangentW);
             tangents[i] = orgTangents[i];
 
-            //orgBiTangents[i] = binormal;
-            //biTangents[i] = binormal;
+            // store the bitangent
+            if (bitangents && orgBitangents)
+            {
+                orgBitangents[i] = AZ::PackedVector3f(bitangent);
+                bitangents[i] = orgBitangents[i];
+            }
         }
+
+        return true;
     }
 
 
@@ -1066,7 +956,7 @@ namespace EMotionFX
         for (uint32 w = 0; w < numVertsToRemove; ++w)
         {
             // adjust all submesh start index offsets changed
-            for (uint32 s = 0; s < mSubMeshes.GetLength(); )
+            for (uint32 s = 0; s < mSubMeshes.GetLength();)
             {
                 SubMesh* subMesh = mSubMeshes[s];
 
@@ -1120,7 +1010,7 @@ namespace EMotionFX
         uint32 numRemoved = 0;
 
         // for all the submeshes
-        for (uint32 i = 0; i < mSubMeshes.GetLength(); )
+        for (uint32 i = 0; i < mSubMeshes.GetLength();)
         {
             SubMesh* subMesh = mSubMeshes[i];
 
@@ -1695,7 +1585,6 @@ namespace EMotionFX
         }
         else
         {
-            // calculate for every vertex the tangent and binormal
             for (uint32 i = 0; i < mNumVertices; ++i)
             {
                 normals[i] = AZ::PackedVector3f(0.0f);

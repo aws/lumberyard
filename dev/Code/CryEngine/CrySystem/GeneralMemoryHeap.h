@@ -17,16 +17,39 @@
 
 
 #include "IMemory.h"
-#include "CryDLMalloc.h"
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/parallel/atomic.h>
+#include <AzCore/std/containers/set.h>
 
-class CPageMappingHeap;
+class GeneralMemoryHeapAllocator;
 
 class CGeneralMemoryHeap
     : public IGeneralMemoryHeap
 {
-public:
-    CGeneralMemoryHeap();
+    struct Alloc
+    {
+        void*  m_base;
+        size_t m_size;
 
+        Alloc(void* base = nullptr, size_t size = 0)
+            : m_base(base)
+            , m_size(size)
+        {}
+        
+        bool operator==(const Alloc& rhs) const
+        {
+            // size doesn't matter
+            return m_base == rhs.m_base;
+        }
+
+        bool operator<(const Alloc& rhs) const
+        {
+            // this will cause allocs to be sorted by address
+            return m_base < rhs.m_base;
+        }
+    };
+
+public:
     // Create a heap that will map/unmap pages in the range [baseAddress, baseAddress + upperLimit).
     CGeneralMemoryHeap(UINT_PTR baseAddress, size_t upperLimit, size_t reserveSize, const char* sUsage);
 
@@ -52,30 +75,18 @@ public: // IGeneralMemoryHeap Members
     size_t UsableSize(void* ptr) const;
 
 private:
-    static void* DLMMap(void* self, size_t sz);
-    static int DLMUnMap(void* self, void* mem, size_t sz);
+    CGeneralMemoryHeap(const CGeneralMemoryHeap&) = delete;
+    CGeneralMemoryHeap& operator = (const CGeneralMemoryHeap&) = delete;
+
+    void RecordAlloc(void* ptr, size_t size);
+    void RecordFree(void* ptr, size_t size);
 
 private:
-    CGeneralMemoryHeap(const CGeneralMemoryHeap&);
-    CGeneralMemoryHeap& operator = (const CGeneralMemoryHeap&);
-
-private:
-    volatile int m_nRefCount;
-
-    bool m_isResizable;
-
-    CryCriticalSectionNonRecursive m_mspaceLock;
-    dlmspace m_mspace;
-
-    CPageMappingHeap* m_pHeap;
-    void* m_pBlock;
+    AZStd::unique_ptr<GeneralMemoryHeapAllocator> m_allocator;
+    AZStd::atomic_int m_refCount;
+    void* m_block;
     size_t m_blockSize;
-
-    int m_numAllocs;
-
-#ifdef CRY_TRACE_HEAP
-    IMemoryManager::HeapHandle m_nTraceHeapHandle;
-#endif
+    AZStd::set<Alloc, AZStd::less<Alloc>, AZ::AZStdAlloc<AZ::LegacyAllocator>> m_allocs;
 };
 
 #endif // CRYINCLUDE_CRYSYSTEM_GENERALMEMORYHEAP_H

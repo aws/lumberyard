@@ -34,8 +34,8 @@ namespace EMotionFX
 
         // setup the output ports
         InitOutputPorts(2);
-        SetupOutputPort("Vector3", INPUTPORT_X, MCore::AttributeVector3::TYPE_ID, PORTID_OUTPUT_VECTOR3);
-        SetupOutputPort("Float", INPUTPORT_Y, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_FLOAT);
+        SetupOutputPort("Vector3", OUTPUTPORT_RESULT_VECTOR3, MCore::AttributeVector3::TYPE_ID, PORTID_OUTPUT_VECTOR3);
+        SetupOutputPort("Float", OUTPUTPORT_RESULT_FLOAT, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_FLOAT);
 
         if (mAnimGraph)
         {

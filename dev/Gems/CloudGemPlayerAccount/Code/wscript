@@ -24,7 +24,7 @@ def build(bld):
         else:
             file_list.append('lmbraws_unsupported.waf_files')
 
-    bld.DefineGem(
+    kw = dict(
         includes        = [bld.Path('Code/CryEngine/CryAction')
         ],
         platforms = ['all'],
@@ -32,8 +32,8 @@ def build(bld):
         file_list = file_list,
         uselib = ['AWS_CPP_SDK_COGNITO_IDP','AWS_CPP_SDK_CORE'],
  
-       
-
-       
-       
+        restricted_script = 'update_restricted_parameters',
     )
+    for p in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p)] = ['Source/{0}/cloudgemplayeraccount_{0}.waf_files'.format(p)]
+    bld.DefineGem(**kw)

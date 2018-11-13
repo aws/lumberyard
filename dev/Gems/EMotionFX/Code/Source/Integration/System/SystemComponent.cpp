@@ -41,6 +41,7 @@
 // EMStudio tools and main window registration
 #   include <LyViewPaneNames.h>
 #   include <AzToolsFramework/API/ViewPaneOptions.h>
+#   include <AzCore/std/string/wildcard.h>
 #   include <QApplication>
 #   include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
 #   include <EMotionStudio/EMStudioSDK/Source/MainWindow.h>
@@ -418,6 +419,7 @@ namespace EMotionFX
 #if defined (EMOTIONFXANIMATION_EDITOR)
             AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
             AzToolsFramework::EditorAnimationSystemRequestsBus::Handler::BusConnect();
+            AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
             m_updateTimer.Stamp();
 
             // Register custom property handlers for the reflected property editor.
@@ -443,6 +445,7 @@ namespace EMotionFX
                 EditorRequests::Bus::Broadcast(&EditorRequests::UnregisterViewPane, EMStudio::MainWindow::GetEMotionFXPaneName());
             }
 
+            AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
             AzToolsFramework::EditorAnimationSystemRequestsBus::Handler::BusDisconnect();
             AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
 #endif // EMOTIONFXANIMATION_EDITOR
@@ -669,6 +672,22 @@ namespace EMotionFX
         bool SystemComponent::IsSystemActive(EditorAnimationSystemRequests::AnimationSystem systemType)
         {
             return (systemType == AnimationSystem::EMotionFX);
+        }
+        
+        // AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
+        AzToolsFramework::AssetBrowser::SourceFileDetails SystemComponent::GetSourceFileDetails(const char* fullSourceFileName)
+        {
+            using namespace AzToolsFramework::AssetBrowser;
+            if (AZStd::wildcard_match("*.motionset", fullSourceFileName))
+            {
+                return SourceFileDetails("Editor/Images/AssetBrowser/MotionSet_16.png");
+            }
+            else if (AZStd::wildcard_match("*.animgraph", fullSourceFileName))
+            {
+                return SourceFileDetails("Editor/Images/AssetBrowser/AnimGraph_16.png");
+
+            }
+            return SourceFileDetails(); // no result
         }
 
 #endif // EMOTIONFXANIMATION_EDITOR

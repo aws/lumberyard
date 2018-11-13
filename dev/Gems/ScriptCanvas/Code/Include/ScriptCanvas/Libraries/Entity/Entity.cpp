@@ -86,6 +86,7 @@ namespace ScriptCanvas
             AddNodeToRegistry<Entity, EntityID>(nodeRegistry);
             AddNodeToRegistry<Entity, EntityRef>(nodeRegistry);
             EntityIDNodes::Registrar::AddToRegistry<Entity>(nodeRegistry);
+            EntityNodes::Registrar::AddToRegistry<Entity>(nodeRegistry);
         }
 
         AZStd::vector<AZ::ComponentDescriptor*> Entity::GetComponentDescriptors()
@@ -93,10 +94,12 @@ namespace ScriptCanvas
             AZStd::vector<AZ::ComponentDescriptor*> descriptors = {
                 ScriptCanvas::Nodes::Entity::Rotate::CreateDescriptor(),
                 ScriptCanvas::Nodes::Entity::EntityID::CreateDescriptor(),
-                ScriptCanvas::Nodes::Entity::EntityRef::CreateDescriptor(),   
+                ScriptCanvas::Nodes::Entity::EntityRef::CreateDescriptor()
             };
 
             EntityIDNodes::Registrar::AddDescriptors(descriptors);
+            EntityNodes::Registrar::AddDescriptors(descriptors);
+
             return descriptors;
         }
     }

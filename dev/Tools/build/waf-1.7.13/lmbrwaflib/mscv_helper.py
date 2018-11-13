@@ -404,7 +404,7 @@ def strip_all_but_last_dependent_options(flags):
             delete.append(len(flags) -1 -idx)
         except:
             pass
-    for idx in reversed(delete):
+    for idx in delete:
         del flags[idx]
 
 

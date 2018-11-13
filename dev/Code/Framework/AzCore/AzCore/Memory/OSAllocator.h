@@ -83,9 +83,13 @@ namespace AZ
 #   define AZ_OS_MALLOC(byteSize, alignment) _aligned_malloc(byteSize, alignment)
 #   define AZ_OS_FREE(pointer) _aligned_free(pointer)
 #elif AZ_TRAIT_OS_USE_CUSTOM_ALLOCATOR_FOR_MALLOC
-    #if defined(AZ_RESTRICTED_PLATFORM)
-        #include AZ_RESTRICTED_FILE(OSAllocator_h, AZ_RESTRICTED_PLATFORM)
-    #endif
+namespace AZ 
+{
+    void* OnionAlloc(size_t size, size_t alignment);
+    void OnionFree(void* ptr);
+}
+#   define AZ_OS_MALLOC(size, alignment) AZ::OnionAlloc(size, alignment)
+#   define AZ_OS_FREE(ptr) AZ::OnionFree(ptr)
 #else
 #   if defined(AZ_PLATFORM_APPLE)
 inline void* memalign(size_t blocksize, size_t bytes)

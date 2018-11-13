@@ -150,6 +150,12 @@ public:
         return m_expanded;
     }
 
+    unsigned int GetUniqueTrackIdAndGenerateNext() override
+    {
+        AZ_Assert(m_nextTrackId < UINT_MAX, "Max unique track ids used.");
+        return m_nextTrackId++;
+    }
+
     static void Reflect(AZ::SerializeContext* serializeContext);
 
 private:
@@ -203,7 +209,8 @@ private:
     // NOTE: for Legacy components this contains the Sequence Id so that we have a single way to find an existing sequence
     AZ::EntityId        m_sequenceEntityId;  // SequenceComponent entities are connected by Id
 
-    IAnimNode* m_pActiveDirector;
+    IAnimNode* m_activeDirector;
+    int m_activeDirectorNodeId;
 
     float m_time;
 
@@ -211,6 +218,8 @@ private:
     SequenceType m_sequenceType;       // indicates if this sequence is connected to a legacy sequence entity or Sequence Component
 
     bool m_expanded;
+
+    unsigned int m_nextTrackId = 1;
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_ANIMSEQUENCE_H

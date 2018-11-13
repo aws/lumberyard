@@ -426,8 +426,6 @@ void CLog::LogV(const ELogType type, int flags, const char* szFormat, va_list ar
         return;
 
     }
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     if (!szFormat)
     {
         return;

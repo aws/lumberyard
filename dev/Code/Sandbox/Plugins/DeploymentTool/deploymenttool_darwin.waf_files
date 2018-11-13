@@ -1,0 +1,11 @@
+ {
+    "auto":
+    {
+        "Root":
+        [
+            "DeployWorker_ios.cpp",
+            "DeployWorker_ios.h",
+            "NetworkUtils_darwin.cpp"
+        ]
+    }
+}

@@ -269,6 +269,20 @@ namespace CD
     typedef std::map<CD::EDesignerTool, _smart_ptr<BaseTool> > TOOLDESIGNER_MAP;
     typedef std::map<CD::EToolGroup, std::set<CD::EDesignerTool> > TOOLGROUP_MAP;
 
+    class ToolGroupRegister
+    {
+    public:
+        ToolGroupRegister(EToolGroup group, EDesignerTool tool, const char* name, const char* classname);
+
+        void Register();
+
+        ToolGroupRegister* m_next;
+        EToolGroup m_group;
+        EDesignerTool m_tool;
+        const char* m_name;
+        const char* m_className;
+    };
+
     class ToolGroupMapper
     {
     public:
@@ -278,6 +292,12 @@ namespace CD
             return toolGroupMapper;
         }
 
+        void AddTool(class ToolGroupRegister* tool)
+        {
+            tool->m_next = m_head;
+            m_head = tool;
+        }
+
         void AddTool(EToolGroup group, EDesignerTool tool)
         {
             m_ToolGroupMap[group].insert(tool);
@@ -285,6 +305,7 @@ namespace CD
 
         std::vector<CD::EDesignerTool> GetToolList(EToolGroup group)
         {
+            lazyRegister();
             auto iter = m_ToolGroupMap.find(group);
             std::vector<CD::EDesignerTool> toolList;
             toolList.insert(toolList.begin(), iter->second.begin(), iter->second.end());
@@ -292,20 +313,39 @@ namespace CD
         }
 
     private:
-
+        void lazyRegister()
+        {
+            if (m_head)
+            {
+                ToolGroupRegister* tool = m_head;
+                while (tool)
+                {
+                    tool->Register();
+                    tool = tool->m_next;
+                }
+                m_head = nullptr;
+            }
+        }
         ToolGroupMapper(){}
         TOOLGROUP_MAP m_ToolGroupMap;
+        ToolGroupRegister* m_head;
     };
 
-    class ToolGroupRegister
+    inline ToolGroupRegister::ToolGroupRegister(EToolGroup group, EDesignerTool tool, const char* name, const char* classname)
+        : m_next(nullptr)
+        , m_group(group)
+        , m_tool(tool)
+        , m_name(name)
+        , m_className(classname)
     {
-    public:
-        ToolGroupRegister(EToolGroup group, EDesignerTool tool, const char* name, const char* classname)
-        {
-            ToolGroupMapper::the().AddTool(group, tool);
-            Serialization::getEnumDescription<CD::EDesignerTool>().add(tool, name, classname);
-        }
-    };
+        ToolGroupMapper::the().AddTool(this);
+    }
+
+    inline void ToolGroupRegister::Register()
+    {
+        ToolGroupMapper::the().AddTool(m_group, m_tool);
+        Serialization::getEnumDescription<CD::EDesignerTool>().add(m_tool, m_name, m_className);
+    }
 }
 
 typedef CD::DesignerFactory<const char*, IBasePanel, BaseTool*> uiFactory;

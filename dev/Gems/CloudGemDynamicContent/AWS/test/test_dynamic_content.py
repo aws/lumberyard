@@ -32,31 +32,15 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
     content_pak_file = content_pak_name + os.path.extsep + content_pak_platform + os.path.extsep + 'pak'
 
     def setUp(self):
-        self.prepare_test_envionment("dynamic_content_tests")
+        self.prepare_test_environment("dynamic_content_tests")
+        self.register_for_shared_resources()
+        self.enable_shared_gem(self.gem_name)
 
     def test_end_to_end(self):
         self.run_all_tests()
 
     def __000_setup_base_stack(self):
         self.setup_base_stack()
-
-    def __080_add_gem_resource_group(self):
-        self.enable_real_gem(self.gem_name)
-
-    def __085_upload_gem_resources(self):
-        self.lmbr_aws('upload-resources', '--deployment', self.TEST_DEPLOYMENT_NAME, '--resource-group', self.gem_name, '--confirm-aws-usage', '--confirm-security-change')
-        self.lmbr_aws('list-resource-groups', '--deployment', self.TEST_DEPLOYMENT_NAME)
-        self.assertIn(self.gem_name, self.lmbr_aws_stdout)
-        self.assertIn('CREATE_COMPLETE', self.lmbr_aws_stdout)
-
-    def make_temp_asset_file(self,temp_file_name, temp_file_content):
-        cache_dir = self.PC_CACHE_DIR
-        if not os.path.exists(cache_dir):
-            os.mkdir(cache_dir)
-        output_path = os.path.join(cache_dir, temp_file_name)
-        print 'writing ' + temp_file_content + ' to '+  output_path
-        with open(output_path, 'w') as f:
-            f.write(temp_file_content)
 
     def __090_add_monitored_content(self):
         self.make_temp_asset_file(self.monitored_content_name, 'TESTCONTENT1')
@@ -84,7 +68,7 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
 
     def __105_upload_monitored_content(self):
 
-        self.lmbr_aws('dynamic-content', 'upload-manifest-content','--manifest-path',self.manifest_name)
+        self.lmbr_aws('dynamic-content', 'upload-manifest-content','--manifest-path',self.manifest_name, '--deployment-name', self.TEST_DEPLOYMENT_NAME)
         self.lmbr_aws('dynamic-content', 'list-bucket-content', '--manifest-path',self.manifest_name)
         self.assertIn(self.manifest_pak_name, self.lmbr_aws_stdout)
         self.assertIn(self.content_pak_name, self.lmbr_aws_stdout)
@@ -100,7 +84,7 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
         self.assertIn('UPDATE Manifest', self.lmbr_aws_stdout)
 
     def __120_upload_monitored_content(self):
-        self.lmbr_aws('dynamic-content', 'upload-manifest-content','--manifest-path',self.manifest_name)
+        self.lmbr_aws('dynamic-content', 'upload-manifest-content','--manifest-path',self.manifest_name, '--deployment-name', self.TEST_DEPLOYMENT_NAME)
         self.lmbr_aws('dynamic-content', 'compare-bucket-content', '--manifest-path',self.manifest_name)
         self.assertIn('MATCH Manifest', self.lmbr_aws_stdout)
 
@@ -111,3 +95,12 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
 
     def __999_teardown_base_stack(self):
         self.teardown_base_stack()
+
+    def make_temp_asset_file(self,temp_file_name, temp_file_content):
+        cache_dir = self.PC_CACHE_DIR
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir)
+        output_path = os.path.join(cache_dir, temp_file_name)
+        print 'writing ' + temp_file_content + ' to '+  output_path
+        with open(output_path, 'w') as f:
+            f.write(temp_file_content)

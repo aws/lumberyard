@@ -40,7 +40,8 @@ public:
     void ProcessNewFileEvent(const QString& file);
     void ProcessDeleteFileEvent(const QString& file);
     void ProcessModifyFileEvent(const QString& file);
-    
+    void ProcessRenameFileEvent(const QString& fileOld, const QString& fileNew);
+
 public Q_SLOTS:
     bool Start();
     void Stop();

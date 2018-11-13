@@ -40,13 +40,13 @@ struct D3DBaseTexture;
 #define TEXTURESPLITTER_H_SECTION_CTEXTURE 2
 #define TEXTURESPLITTER_H_SECTION_SMARTPOINTER 3
 
-#if defined(TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_DEFINES
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XENIA)
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_DEFINES
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PROVO)
 #endif
 #endif
 
@@ -125,7 +125,6 @@ public:
 
     virtual void DeInit();
     virtual ICompiler* CreateCompiler();
-    virtual bool SupportsMultithreading() const;
     virtual const char* GetExt(int index) const;
 
     // Used to override reported name of the source file.
@@ -157,13 +156,13 @@ protected:
     };
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_CTEXTURE
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XENIA)
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_CTEXTURE
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PROVO)
 #endif
 #endif
 
@@ -226,13 +225,13 @@ protected:
         std::list<SChunkDesc>           m_chunks;                   // all file chunks
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_SMARTPOINTER
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XENIA)
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_SMARTPOINTER
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PROVO)
 #endif
 #endif
 

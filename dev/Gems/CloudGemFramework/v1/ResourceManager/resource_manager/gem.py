@@ -18,6 +18,7 @@ import os, stat
 import shutil
 import subprocess
 import uuid
+import sys
 
 # Resource manager modules...
 from resource_manager_common import constant
@@ -25,6 +26,7 @@ import file_util
 import util
 from errors import HandledError
 from cgf_utils.version_utils import Version
+from resource_group import ResourceGroup
 
 class GemContext(object):
 
@@ -36,11 +38,21 @@ class GemContext(object):
         self.__lmbr_exe_path = None
         self.__initial_gem_content_list = None
         self.__verbose = False
-
+        #needed to allow the config bootstrap to initialize since it requires the enabled gems
+        self.__explicit_cloud_gems = []
 
     def bootstrap(self, args):
         self.__verbose = args.verbose
-
+        self.__explicit_cloud_gems = args.only_cloud_gems 
+        gem_id = "CloudGemFramework"
+        if self.__explicit_cloud_gems:
+            self.__explicit_cloud_gems.append(gem_id)
+        
+        #reset the enabled gems as all gems are added on the init due to the local projects setting initialization occuring before the bootstrap of the GemContext
+        self.__enabled_gems = None
+        #Initialize the resource groups based on the gems defined
+        for gem in self.enabled_gems:                        
+            self.__add_gem_to_resource_groups(gem)         
 
     @property
     def initial_content_list(self):
@@ -57,7 +69,8 @@ class GemContext(object):
         asset_only = False, 
         version = '1.0.0', 
         relative_directory_path = None,
-        lmbr_exe_path_override = None):
+        lmbr_exe_path_override = None,
+        no_sln_change = False):
 
         # Validate arguments
 
@@ -90,7 +103,7 @@ class GemContext(object):
 
         # Copy initial gem content...
 
-        self.__copy_initial_gem_content(gem_name, root_directory_path, initial_content)
+        self.__copy_initial_gem_content(gem_name, root_directory_path, initial_content, no_sln_change)
 
         # Set the c++ build configuration for the gem.
 
@@ -162,7 +175,7 @@ class GemContext(object):
             json.dump(gem_file_content, file)
 
 
-    def __copy_initial_gem_content(self, gem_name, root_directory_path, initial_content):
+    def __copy_initial_gem_content(self, gem_name, root_directory_path, initial_content, no_sln_change):
 
         self.__context.view.copying_initial_gem_content(initial_content)
 
@@ -178,7 +191,8 @@ class GemContext(object):
             '$-RELATIVE-RETURNS-$': ''.join(relative_returns)
         }
         
-        self.__copy_project_to_solution(content_substitutions, src_content_path, os.path.join(self.__context.config.gem_directory_path, "CloudGemFramework", "v1", "Website", "CloudGemPortal.sln"), '..\..\..{0}\AWS\cgp-resource-code\src'.format(relative_path), '.njsproj')        
+        if not no_sln_change:
+            self.__copy_project_to_solution(content_substitutions, src_content_path, os.path.join(self.__context.config.gem_directory_path, "CloudGemFramework", "v1", "Website", "CloudGemPortal.sln"), '..\..\..{0}\AWS\cgp-resource-code\src'.format(relative_path), '.njsproj')        
 
         file_util.copy_directory_content(
             self.__context, 
@@ -276,7 +290,6 @@ class GemContext(object):
 
 
     def enable_gem(self, gem_name, lmbr_exe_path_override = None):
-
         # verify files are writable
 
         if not util.validate_writable_list(self.__context, [ self.get_gems_file_path() ]):
@@ -293,17 +306,15 @@ class GemContext(object):
             raise HandledError('Gem enable failed. {}'.format(e.message))
 
         # add the gem to list of gems, and load as resource group if needed
-
         gems_file_content = self.__get_gems_file_content()
         for gem_file_entry in gems_file_content.get('Gems', []):
-            if gem_file_entry.get('_comment') == gem_name:
+            if gem_file_entry.get('_comment') == gem_name :
                 directory_path = self.__get_gem_root_directory_path_from_gems_file_entry(gem_file_entry)
                 gem = self.__add_gem(directory_path, is_enabled = True)
-                self.__context.resource_groups.gem_enabled(gem)
+                self.__add_gem_to_resource_groups(gem)
                 break
 
         # all done
-
         self.__context.view.gem_enabled(gem_name)
 
 
@@ -330,12 +341,16 @@ class GemContext(object):
         if gem in self.__enabled_gems:
             self.__enabled_gems.remove(gem)
 
-        self.__context.resource_groups.gem_disabled(gem)
+        self.__context.resource_groups.remove_resource_group(gem)
 
         # all done
 
         self.__context.view.gem_disabled(gem_name)
 
+    def __add_gem_to_resource_groups(self, gem):        
+        if gem and gem.has_aws_file(constant.RESOURCE_GROUP_TEMPLATE_FILENAME):                 
+            gem_resource_group = ResourceGroup(self.__context, gem.name, gem.aws_directory_path, gem.cpp_base_directory_path, gem.cpp_aws_directory_path)        
+            self.__context.resource_groups.add_resource_group(gem_resource_group)        
 
     def __execute(self, args, use_shell=False):
 
@@ -384,14 +399,13 @@ class GemContext(object):
 
 
     def __load_enabled_gems(self, version = 'latest'):
-
         if self.__enabled_gems:
             return
 
         self.__enabled_gems = []
 
         gems_file = self.__get_gems_file_content()
-        if gems_file:            
+        if gems_file:
             for gems_file_entry in gems_file.get('Gems',[]):
                 root_directory_path = self.__get_gem_root_directory_path_from_gems_file_entry(gems_file_entry)
                 self.__add_gem(root_directory_path, is_enabled = True)
@@ -418,9 +432,12 @@ class GemContext(object):
 
     def __add_gem(self, root_directory_path, is_enabled):
         gem = self.__get_loaded_gem_by_root_directory_path(root_directory_path, is_enabled)
-        if gem is not None and is_enabled and gem not in self.__enabled_gems:
-            self.__enabled_gems.append(gem)
-        return gem
+        # check to see if the user only wants to act against a specific set of cloud gems            
+        is_cloud_gem_allowed = gem and gem.name in self.__explicit_cloud_gems if self.__explicit_cloud_gems else True
+        
+        if gem is not None and is_enabled and gem not in self.__enabled_gems and is_cloud_gem_allowed:
+            self.__enabled_gems.append(gem) 
+        
 
 
     def get_by_root_directory_path(self, root_directory_path):
@@ -453,7 +470,7 @@ class GemContext(object):
     def get_lmbr_exe_path_from_root(root_path):
 
         directory_names = []
-        # lmbr.exe now lives in Tools/LmbrSetup/{platform].{compiler}(.Debug)(.Test)
+        # lmbr.exe used to live in Tools/LmbrSetup/{platform].{compiler}(.Debug)(.Test)
         baselmbrpath = os.path.join('Tools', 'LmbrSetup')
 
         for platformname in ['Win','Win.vc120','Win.vc140','Win.vc141','Mac','Mac.clang','Linux','Linux.clang','Linux.gcc']:
@@ -461,11 +478,27 @@ class GemContext(object):
             directory_names.append(os.path.join(baselmbrpath,'{}'.format(platformname)))
             directory_names.append(os.path.join(baselmbrpath,'{}.Debug'.format(platformname)))
 
+        if sys.platform == 'win32':
+            folder_list = ["Bin64vc140", "Bin64vc141"]
+            lmbr_name = 'lmbr.exe'
+        elif sys.platform == 'darwin':
+            folder_list = ["BinMac64"]
+            lmbr_name = 'lmbr'
+        # lmbr.exe was moved back to normal Bin directory
+        for bin_folder_name in folder_list:
+            directory_names.append(os.path.join(
+                root_path, '{}.Debug.Test'.format(bin_folder_name)))
+            directory_names.append(os.path.join(
+                root_path, '{}.Debug'.format(bin_folder_name)))
+            directory_names.append(os.path.join(
+                root_path, '{}'.format(bin_folder_name)))
+
         newest_timestamp = None
         newest_path = None
 
         for directory_name in directory_names:
-            path = os.path.join(root_path, directory_name, 'lmbr.exe')
+            path = os.path.join(root_path, directory_name, lmbr_name)
+
             if os.path.isfile(path):
                 if newest_path is None:
                     newest_path = path
@@ -475,6 +508,7 @@ class GemContext(object):
                     if timestamp > newest_timestamp:
                         newest_timestamp = timestamp
                         newest_path = path
+
 
         if newest_path is None:
             raise HandledError('Could not find lmbr.exe in any of the following subirectories of {}: {}. Please use lmbr_waf to build lmbr.exe.'.format(
@@ -619,6 +653,7 @@ def add_gem_cli_commands(context, subparsers, add_common_args):
     subparser.add_argument('--version', dest='version', required=False, default='1.0.0', metavar='VERSION', help='Specifies the initial version for the gem. Defaults to 1.0.0.')
     subparser.add_argument('--directory', dest='relative_directory_path', required=False, default=None, metavar='PATH', help='The location in the Gems directory where the gem will be created. The default is ...\dev\Gems\NAME\vMAJOR, where NAME was specified by the --gem option and vMAJOR is the major part of the gem\'s version as specified by the --version option.')
     subparser.add_argument('--lmbr-exe', dest='lmbr_exe_path_override', required=False, default=None, metavar='PATH', help='The path to the lmbr.exe executable that will be used. The default is the most recently built executable.')
+    subparser.add_argument('--no-sln-change', dest='no_sln_change', required=False, default=False, action='store_true', help='Defines whether the solution files should not be touched when creating this gem.  By default the project solution files add the new gem project.')
     add_common_args(subparser)
     subparser.set_defaults(context_func=context.gem.create_gem)
 
@@ -633,6 +668,10 @@ def add_gem_cli_commands(context, subparsers, add_common_args):
     subparser.add_argument('--lmbr-exe', dest='lmbr_exe_path_override', required=False, default=None, metavar='PATH', help='The path to the lmbr.exe executable that will be used. The default is the most recently built executable.')
     add_common_args(subparser)
     subparser.set_defaults(context_func=context.gem.disable_gem)
+
+
+def create_gem(context, args):
+    context.gem.create_gem(args.gem_name, initial_content=args.initial_content, enable=True)
 
 
 CLOUD_GEM_WSCRIPT_FILE_CONTENT = '''
@@ -651,7 +690,7 @@ def build(bld):
 
     bld.DefineGem(
         
-        includes = [bld.ThirdPartyPath('AWSNativeSDK','include')],
+        disable_pch = True,
 
         file_list = file_list,
 
@@ -665,12 +704,6 @@ def build(bld):
 
 AWS_UNSUPPORTED_WAF_FILES_FILE_CONTENT = '''
 {
-    "none": {
-        "Source": [
-            "Source/$-GEM-NAME-$_precompiled.cpp",
-            "Source/$-GEM-NAME-$_precompiled.h"
-        ]
-    },
     "auto": {
         "Implementation": [
             "Source/ComponentStub.cpp"
@@ -680,10 +713,7 @@ AWS_UNSUPPORTED_WAF_FILES_FILE_CONTENT = '''
 '''
 
 COMPONENT_STUB_CPP_FILE_CONTENT = '''
-#include "StdAfx.h"
-#include <platform_impl.h>
-
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 AZ_DECLARE_MODULE_CLASS($-GEM-NAME-$_$-GEM-UUID-$, AZ::Module)
 '''

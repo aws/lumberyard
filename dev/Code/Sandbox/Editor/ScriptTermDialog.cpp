@@ -65,7 +65,7 @@ void CScriptTermDialog::InitCompleter()
         = CAutoRegisterPythonModuleHelper::s_modules;
     for (size_t i = 0; i < modules.size(); ++i)
     {
-        inputs.append(QtUtil::ToQString(modules[i].name.c_str()));
+        inputs.append(QtUtil::ToQString(modules[i].name));
     }
 
     // Add full command names to the auto-completion list.
@@ -73,7 +73,7 @@ void CScriptTermDialog::InitCompleter()
     while (pCurrent)
     {
         QString command = pCurrent->m_name;
-        QString fullCmd = CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name.c_str();
+        QString fullCmd = CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name;
         fullCmd += ".";
         fullCmd += command;
         fullCmd += "()";

@@ -186,8 +186,7 @@ int CArticulatedEntity::AddGeometry(phys_geometry* pgeom, pe_geomparams* _params
             delete[] pInfos;
         }
     }
-    MEMSTAT_USAGE(m_infos, sizeof(ae_part_info) * m_nParts);
-
+    
     for (i = 0; i < m_nJoints && m_joints[i].idbody != params->idbody; i++)
     {
         ;
@@ -1113,10 +1112,7 @@ int CArticulatedEntity::SetParams(const pe_params* _params, int bThreadSafe)
                 }
                 m_nPartsAlloc = params->nJointsAlloc;
                 m_parts = pNewParts;
-                if (m_nPartsAlloc != 1)
-                {
-                    MEMSTAT_USAGE(m_parts, sizeof(geom) * m_nParts);
-                }
+                
                 // Reallocate infos
                 ReallocateList(m_infos, m_nParts, m_nPartsAlloc, true);
                 for (int i = m_nParts; i < m_nPartsAlloc; i++)

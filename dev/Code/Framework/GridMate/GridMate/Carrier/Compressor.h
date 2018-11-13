@@ -53,12 +53,12 @@ namespace GridMate
         /*
         * Returns max possible size of uncompressed data chunk needed to fit compressed data in maxCompSize bytes
         */
-        virtual size_t GetMaxChunkSize(size_t maxCompSize) = 0;
+        virtual size_t GetMaxChunkSize(size_t maxCompSize) const = 0;
 
         /*
         * Returns size of compressed buffer needed to uncompress uncompSize of bytes
         */
-        virtual size_t GetMaxCompressedBufferSize(size_t uncompSize) = 0;
+        virtual size_t GetMaxCompressedBufferSize(size_t uncompSize) const = 0;
 
         /*
         * Finalizes the stream, and returns composed packet
@@ -98,12 +98,7 @@ namespace GridMate
         /*
         * Instantiate new compressor
         */
-        virtual Compressor* CreateCompressor() = 0;
-
-        /*
-        * Destroy compressor
-        */
-        virtual void DestroyCompressor(Compressor* compressor) = 0;
+        virtual AZStd::shared_ptr<Compressor> CreateCompressor() = 0;
     };
 }
 

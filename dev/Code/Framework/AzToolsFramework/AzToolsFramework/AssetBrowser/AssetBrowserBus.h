@@ -108,12 +108,68 @@ namespace AzToolsFramework
 
         typedef AZStd::vector<SourceFileOpenerDetails> SourceFileOpenerList;
 
+        /**
+        * used by the API to (optionally) let systems describe details about source files
+        * see /ref AssetBrowserInteractionNotifications to see how it is used.
+        * The intended behavior of this is that listeners respond with a SourceFileDetails struct
+        * which has only the field(s) filled in which they can fill in, and the system combines all responses
+        * to fill in details from many systems.
+        * More fields may be added to SourceFileDetails as more systems require other kinds of details.
+        */
+        struct SourceFileDetails
+        {
+            /** 
+            * An openable path to a resource that can be used as the thumbnail for this type of file.
+            * This can be a Qt resource system string like ":/tools/something.png" for resources embedded in your 
+            * dlls, or an absolute path, or relative source asset path like "editor/icons/whatever.png"
+            */
+            AZStd::string m_sourceThumbnailPath;
+
+            // Update this constructor or add more constructors if you add fields so that existing ones continue to work.
+            SourceFileDetails(const char* thumbnailPath)
+            {
+                m_sourceThumbnailPath = thumbnailPath;
+            }
+            
+            /** Remember to update this function also if you add fields to this struct.
+            * this is the function that will be used to "fold" multiple returned values from other results onto
+            * one canonical result containing all the result fields.  This function gets called repeatedly, once
+            * for every responding listener and can be used to avoid allocations.
+            */
+            SourceFileDetails& operator=(SourceFileDetails&& other)
+            {
+                if (this != &other)
+                {
+                    if (m_sourceThumbnailPath.empty())
+                    {
+                        m_sourceThumbnailPath = AZStd::move(other.m_sourceThumbnailPath);
+                    }
+                }
+                return *this;
+            }
+
+            ////////////////////////////////// boilerplate below here ///////////////////////////
+            SourceFileDetails() = default;
+            
+            SourceFileDetails(const SourceFileDetails& other) = default;
+            SourceFileDetails(SourceFileDetails&& other)
+            {
+                if (this != &other)
+                {
+                    *this = AZStd::move(other); // forward this to the below operator=&&
+                }
+            }
+            SourceFileDetails& operator=(const SourceFileDetails& other) = default;
+           
+        };
+ 
         //! Bus for interaction with asset browser widget
         class AssetBrowserInteractionNotifications
             : public AZ::EBusTraits
         {
         public:
             using Bus = AZ::EBus<AssetBrowserInteractionNotifications>;
+            typedef AZStd::recursive_mutex MutexType;
 
             //! Override this to get first attempt at handling these messages.   Higher priority goes first.
             virtual AZ::s32 GetPriority() const { return 0; }
@@ -142,6 +198,17 @@ namespace AzToolsFramework
             * finally, if its not a generic asset, it tries the operating system.
             */
             virtual void OpenAssetInAssociatedEditor(const AZ::Data::AssetId& /*assetId*/, bool& /*alreadyHandled*/) {}
+
+            /**
+            * Allows you to recognise the source files that your plugin cares about and provide information about the source file
+            * for display in the Asset Browser.  This allows you to override the default behavior if you wish to.
+            * note that you'll get SourceFileDetails for every file in view, and you should only return something if its YOUR
+            * kind of file that you have details to provide.
+            */
+            virtual SourceFileDetails GetSourceFileDetails(const char* /*fullSourceFileName*/)
+            {
+                return SourceFileDetails();
+            }
 
             //! required in order to sort the busses.
             inline bool Compare(const AssetBrowserInteractionNotifications* other) const

@@ -32,6 +32,8 @@
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManagerBus.h>
 
+#include <AzFramework/StringFunc/StringFunc.h>
+
 #include <network/WebSocket/WebSocketConnection.hpp>
 #include <network/OpenSSL/OpenSSLConnection.hpp>
 #include <ResponseCode.hpp>
@@ -276,7 +278,7 @@ namespace CloudGemWebCommunicator
 
     AZStd::string CloudGemWebCommunicatorComponent::GetDeviceInfoFilePath() const
     {
-        return GetResolvedPath("@user@/certs/aws/deviceinfo.json");
+        return GetUserOrStorage("certs/aws/deviceinfo.json");
     }
 
     AZStd::string CloudGemWebCommunicatorComponent::GetEndpoint() const
@@ -380,14 +382,65 @@ namespace CloudGemWebCommunicator
         return filePath;
     }
 
+    AZStd::string CloudGemWebCommunicatorComponent::GetUserOrStorage(const AZStd::string& filePath)
+    {
+        AZStd::string userPath{ "@user@/" + filePath };
+        userPath = GetResolvedPath(userPath.c_str());
+        if (!AZ::IO::FileIOBase::GetInstance()->Exists(userPath.c_str()))
+        {
+            if (AZ::IO::FileIOBase::GetInstance()->Exists(filePath.c_str()))
+            {
+                CopyToUserStorage(filePath, userPath);
+            }
+        }
+        return userPath;
+    }
+
+    // These files need to be in a place accessible to the 3rdParty library by file name on all platforms.  For consistency we maintain this behavior with
+    // all platforms.
+    bool CloudGemWebCommunicatorComponent::CopyToUserStorage(const AZStd::string& filePath, const AZStd::string& userPath)
+    {
+
+        AZ::IO::HandleType inputFile;
+        AZ::IO::FileIOBase::GetInstance()->Open(filePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, inputFile);
+        if (!inputFile)
+        {
+            AZ_Warning("CloudCanvas", false, "Could not open %s for reading", filePath);
+            return false;
+        }
+
+        AZ::IO::SystemFile outputFile;
+        if (!outputFile.Open(userPath.c_str(), AZ::IO::SystemFile::SF_OPEN_CREATE | AZ::IO::SystemFile::SF_OPEN_CREATE_PATH | AZ::IO::SystemFile::SF_OPEN_READ_WRITE))
+        {
+            AZ::IO::FileIOBase::GetInstance()->Close(inputFile);
+            AZ_Warning("CloudCanvas", false, "Could not open %s for writing", userPath.c_str());
+            return false;
+        }
+
+        AZ::u64 fileSize{ 0 };
+        AZ::IO::FileIOBase::GetInstance()->Size(inputFile, fileSize);
+        if (fileSize > 0)
+        {
+            AZStd::string fileBuf;
+            fileBuf.resize(fileSize);
+            size_t read = AZ::IO::FileIOBase::GetInstance()->Read(inputFile, fileBuf.data(), fileSize);
+            outputFile.Write(fileBuf.data(), fileSize);
+            AZ_TracePrintf("CloudCanvas", "Successfully wrote %s to %s", filePath.c_str(), userPath.c_str());
+        }
+        AZ::IO::FileIOBase::GetInstance()->Close(inputFile);
+        outputFile.Close();
+        return true;
+    }
+
+
     AZStd::string CloudGemWebCommunicatorComponent::GetKeyPath() 
     {
-        return GetResolvedPath("@user@/certs/aws/webcommunicatorkey.pem");
+        return GetUserOrStorage("certs/aws/webcommunicatorkey.pem");
     }
 
     AZStd::string CloudGemWebCommunicatorComponent::GetDeviceCertPath() 
     {
-        return GetResolvedPath("@user@/certs/aws/webcommunicatordevice.pem");
+        return GetUserOrStorage("certs/aws/webcommunicatordevice.pem");
     }
 
     bool CloudGemWebCommunicatorComponent::WriteDeviceFile(const AZStd::string& filePath, const AZStd::string& fileData) const
@@ -402,14 +455,14 @@ namespace CloudGemWebCommunicator
         outputFile.Close();
         return true;
     }
-
+    
     bool CloudGemWebCommunicatorComponent::ReadCertificate(const AZStd::string& filePath) 
     {
         AZ::IO::HandleType inputFile;
         AZ::IO::FileIOBase::GetInstance()->Open(filePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, inputFile);
         if (!inputFile)
         {
-            AZ_TracePrintf("CloudCanvas", "CloudGemWebCommunicatorComponent could not open device certificate %s for reading", GetDeviceInfoFilePath().c_str());
+            AZ_TracePrintf("CloudCanvas", "CloudGemWebCommunicatorComponent could not open device certificate %s for reading", filePath.c_str());
             return false;
         }
 

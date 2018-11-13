@@ -156,12 +156,12 @@ namespace AzFramework
         m_legacyAssetIdToRealAssetId.erase(legacyId);
     }
 
-    void AssetRegistry::SetAssetDependencies(AZ::Data::AssetId id, const AZStd::vector<AZ::Data::ProductDependency>& dependencies)
+    void AssetRegistry::SetAssetDependencies(const AZ::Data::AssetId& id, const AZStd::vector<AZ::Data::ProductDependency>& dependencies)
     {
         m_assetDependencies[id] = dependencies;
     }
 
-    void AssetRegistry::RegisterAssetDependency(AZ::Data::AssetId id, const AZ::Data::ProductDependency& dependency)
+    void AssetRegistry::RegisterAssetDependency(const AZ::Data::AssetId& id, const AZ::Data::ProductDependency& dependency)
     {
         m_assetDependencies[id].push_back(dependency);
     }

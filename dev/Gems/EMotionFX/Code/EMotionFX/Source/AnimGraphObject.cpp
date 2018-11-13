@@ -14,7 +14,6 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/AttributeFactory.h>
-#include <MCore/Source/AttributePool.h>
 #include <MCore/Source/MCoreSystem.h>
 #include <MCore/Source/ReflectionSerializer.h>
 #include <EMotionFX/Source/AnimGraphBus.h>

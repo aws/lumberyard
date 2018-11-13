@@ -22,6 +22,31 @@
 
 namespace Maestro
 {
+    void MaestroAllocatorComponent::Activate()
+    {
+        MaestroAllocatorScope::ActivateAllocators();
+    }
+
+    void MaestroAllocatorComponent::Deactivate()
+    {
+        MaestroAllocatorScope::DeactivateAllocators();
+    }
+
+    void MaestroAllocatorComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+    {
+        provided.push_back(AZ_CRC("MemoryAllocators", 0xd59acbcc));
+    }
+
+    void MaestroAllocatorComponent::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serializeContext)
+        {
+            serializeContext->Class<MaestroAllocatorComponent, AZ::Component>()->Version(1)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AZ_CRC("AssetBuilder", 0xc739c7d7) }));
+        }
+    }
+
     void MaestroSystemComponent::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
@@ -54,7 +79,7 @@ namespace Maestro
 
     void MaestroSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
-        (void)required;
+        required.push_back(AZ_CRC("MemoryAllocators", 0xd59acbcc));
     }
 
     void MaestroSystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
@@ -68,6 +93,7 @@ namespace Maestro
 
     void MaestroSystemComponent::Activate()
     {
+        MaestroAllocatorScope::ActivateAllocators();
         MaestroRequestBus::Handler::BusConnect();
         CrySystemEventBus::Handler::BusConnect();
     }
@@ -76,6 +102,7 @@ namespace Maestro
     {
         MaestroRequestBus::Handler::BusDisconnect();
         CrySystemEventBus::Handler::BusDisconnect();
+        MaestroAllocatorScope::DeactivateAllocators();
     }
 
     //////////////////////////////////////////////////////////////////////////

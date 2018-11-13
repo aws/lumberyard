@@ -108,8 +108,8 @@ private:
     typedef std::set< const CFogVolumeRenderNode* > GlobalFogVolumeMap;
 
     static AABB s_tracableFogVolumeArea;
-    static CachedFogVolumes s_cachedFogVolumes;
-    static GlobalFogVolumeMap s_globalFogVolumeMap;
+    static StaticInstance<CachedFogVolumes> s_cachedFogVolumes;
+    static StaticInstance<GlobalFogVolumeMap> s_globalFogVolumeMap;
     static bool s_forceTraceableAreaUpdate;
 
     struct SFader

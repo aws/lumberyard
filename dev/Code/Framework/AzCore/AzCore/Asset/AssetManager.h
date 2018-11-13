@@ -136,6 +136,8 @@ namespace AZ
             // @{ Asset handler management
             /// Register handler with the system for a particular asset type.
             /// A handler should be registered for each asset type it handles.
+            /// Please note that all the handlers are registered just once during app startup from the main thread
+            /// and therefore this is not a thread safe method and should not be invoked from different threads. 
             void RegisterHandler(AssetHandler* handler, const AssetType& assetType);
             /// Register handler with the system for a particular asset type, with the id of thread that can cause race conditions if
             /// a blocking asset of that type is requested on. If there are outstanding requests of that asset type and a blocking request
@@ -143,6 +145,8 @@ namespace AZ
             /// A handler should be registered for each asset type it handles.
             void RegisterLegacyHandler(LegacyAssetHandler* handler, const AssetType& assetType, AZStd::thread::id threadThatLoadsAssets);
             /// Unregister handler from the asset system.
+            /// Please note that all the handlers are unregistered just once during app shutdown from the main thread
+            /// and therefore this is not a thread safe method and should not be invoked from different threads.
             void UnregisterHandler(AssetHandler* handler);
             // @}
 
@@ -258,13 +262,10 @@ namespace AZ
             //////////////////////////////////////////////////////////////////////////
 
             AssetHandlerMap         m_handlers;
-            AZStd::recursive_mutex  m_handlerMutex;     // lock when accessing the handler map
             AssetCatalogMap         m_catalogs;
             AZStd::recursive_mutex  m_catalogMutex;     // lock when accessing the catalog map
             AssetMap                m_assets;
             AZStd::recursive_mutex  m_assetMutex;       // lock when accessing the asset map
-
-            AZStd::recursive_mutex  m_assetReadyMutex;  // special-case lock so marking an asset ready and firing the notifications is an atomic operation
 
             typedef AZStd::unordered_map<AssetId, Asset<AssetData> > ReloadMap;
             ReloadMap               m_reloads;          // book-keeping and reference-holding for asset reloads

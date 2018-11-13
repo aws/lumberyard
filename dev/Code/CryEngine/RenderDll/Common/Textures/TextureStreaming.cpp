@@ -91,7 +91,7 @@ ITextureStreamer* CTexture::s_pTextureStreamer;
 CryCriticalSection CTexture::s_streamFormatLock;
 SStreamFormatCode CTexture::s_formatCodes[256];
 uint32 CTexture::s_nFormatCodes = 1;
-CTexture::TStreamFormatCodeKeyMap CTexture::s_formatCodeMap;
+StaticInstance<CTexture::TStreamFormatCodeKeyMap> CTexture::s_formatCodeMap;
 
 const int CTexture::LOW_SPEC_PC = 5;
 const int CTexture::MEDIUM_SPEC_PC = 6;

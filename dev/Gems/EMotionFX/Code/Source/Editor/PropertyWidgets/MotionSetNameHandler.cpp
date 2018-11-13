@@ -66,12 +66,17 @@ namespace EMotionFX
 
     void MotionSetNameHandler::WriteGUIValuesIntoProperty(size_t index, QComboBox* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node)
     {
-        instance = AZStd::string(GUI->currentText().toUtf8().data());
+        AZ_UNUSED(index);
+        AZ_UNUSED(node);
+        const QString& currentText = GUI->currentText();
+        instance = AZStd::string(currentText.toUtf8().data(), currentText.length());
     }
 
 
     bool MotionSetNameHandler::ReadValuesIntoGUI(size_t index, QComboBox* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)
     {
+        AZ_UNUSED(index);
+        AZ_UNUSED(node);
         QSignalBlocker signalBlocker(GUI);
         GUI->clear();
         if (m_motionSetAsset && m_motionSetAsset->Get() && m_motionSetAsset->Get()->m_emfxMotionSet)
@@ -81,7 +86,6 @@ namespace EMotionFX
             const bool isOwnedByRutime = emfxMotionSet->GetIsOwnedByRuntime();
             emfxMotionSet->RecursiveGetMotionSets(motionSets, isOwnedByRutime);
 
-            GUI->clear();
             for (const EMotionFX::MotionSet* motionSet : motionSets)
             {
                 GUI->addItem(motionSet->GetName());

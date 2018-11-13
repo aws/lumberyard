@@ -4189,4 +4189,7 @@ TEST_F(ScriptCanvasTestFixture, RandomNodes)
             EXPECT_TRUE(value.GetW() >= min.GetW() && value.GetW() <= max.GetW());
         }
     }
+
+    MathRandom::DeleteRandomDetails();
+
 } // Test RandomNodes

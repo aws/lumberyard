@@ -4,7 +4,7 @@ from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.conditions import Attr
 from boto3 import resource
 import metric_constant as c
-import boto3
+import boto3_util
 import uuid
 import retry
 import time
@@ -20,8 +20,8 @@ class DynamoDb(object):
         self.__telemetry_table = None
         self.__context_table = None
         self.__context = context
-        self.__resource = boto3.resource('dynamodb', region_name=os.environ[c.ENV_REGION], api_version='2012-08-10')    
-        self.__client = boto3.client('dynamodb', region_name=os.environ[c.ENV_REGION], api_version='2012-08-10')
+        self.__resource = boto3_util.resource('dynamodb', api_version='2012-08-10')
+        self.__client = boto3_util.client('dynamodb', api_version='2012-08-10')        
         self.update_context()
 
     @property

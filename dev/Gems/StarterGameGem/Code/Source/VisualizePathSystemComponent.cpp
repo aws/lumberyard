@@ -10,7 +10,7 @@
 *
 */
 #include "StarterGameGem_precompiled.h"
-#include "VisualisePathSystemComponent.h"
+#include "VisualizePathSystemComponent.h"
 
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -25,24 +25,24 @@
 
 namespace StarterGameGem
 {
-	VisualisePathSystemComponent* g_vpsc_instance = nullptr;
+	VisualizePathSystemComponent* g_vpsc_instance = nullptr;
 
-	VisualisePathSystemComponent* VisualisePathSystemComponent::GetInstance()
+	VisualizePathSystemComponent* VisualizePathSystemComponent::GetInstance()
 	{
 		return g_vpsc_instance;
 	}
 
-	void VisualisePathSystemComponent::Reflect(AZ::ReflectContext* context)
+	void VisualizePathSystemComponent::Reflect(AZ::ReflectContext* context)
 	{
 		if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
 		{
-			serializeContext->Class<VisualisePathSystemComponent, AZ::Component>()
+			serializeContext->Class<VisualizePathSystemComponent, AZ::Component>()
 				->Version(1)
 			;
 
 			if (AZ::EditContext* editContext = serializeContext->GetEditContext())
 			{
-				editContext->Class<VisualisePathSystemComponent>("Visualise Path System", "Renders lines for given paths for debugging")
+				editContext->Class<VisualizePathSystemComponent>("Visualize Path System", "Renders lines for given paths for debugging")
 					->ClassElement(AZ::Edit::ClassElements::EditorData, "")
 						->Attribute(AZ::Edit::Attributes::Category, "Game")
 						->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
@@ -52,34 +52,34 @@ namespace StarterGameGem
 
 		if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
 		{
-			behaviorContext->EBus<VisualisePathSystemRequestBus>("VisualisePathSystemRequestBus")
-                ->Event("AddPath", &VisualisePathSystemRequestBus::Events::AddPath)
-                ->Event("ClearPath", &VisualisePathSystemRequestBus::Events::ClearPath)
+			behaviorContext->EBus<VisualizePathSystemRequestBus>("VisualizePathSystemRequestBus")
+                ->Event("AddPath", &VisualizePathSystemRequestBus::Events::AddPath)
+                ->Event("ClearPath", &VisualizePathSystemRequestBus::Events::ClearPath)
 			;
 		}
 	}
 
-	void VisualisePathSystemComponent::Activate()
+	void VisualizePathSystemComponent::Activate()
 	{
 #if defined(_DEBUG) || defined(_PROFILE)
-		VisualisePathSystemRequestBus::Handler::BusConnect();
+		VisualizePathSystemRequestBus::Handler::BusConnect();
 		AZ::TickBus::Handler::BusConnect();
 #endif
 
 		g_vpsc_instance = this;
 	}
 
-	void VisualisePathSystemComponent::Deactivate()
+	void VisualizePathSystemComponent::Deactivate()
 	{
 #if defined(_DEBUG) || defined(_PROFILE)
-		VisualisePathSystemRequestBus::Handler::BusDisconnect();
+		VisualizePathSystemRequestBus::Handler::BusDisconnect();
 #endif
 		//AZ::TickBus::Handler::BusDisconnect();
 
 		g_vpsc_instance = nullptr;
 	}
 
-	void VisualisePathSystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+	void VisualizePathSystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
 	{
 		IRenderAuxGeom* renderAuxGeom = gEnv->pRenderer->GetIRenderAuxGeom();
 		SAuxGeomRenderFlags flags;
@@ -122,7 +122,7 @@ namespace StarterGameGem
 		}
 	}
 
-    void VisualisePathSystemComponent::AddPath(const AZ::EntityId& id, const StarterGameNavigationComponentNotifications::StarterGameNavPath& path)
+    void VisualizePathSystemComponent::AddPath(const AZ::EntityId& id, const StarterGameNavigationComponentNotifications::StarterGameNavPath& path)
     {
 #if defined(_DEBUG) || defined(_PROFILE)
         Path* newPath = this->GetPath(id);
@@ -142,7 +142,7 @@ namespace StarterGameGem
 #endif
     }
 
-    void VisualisePathSystemComponent::ClearPath(const AZ::EntityId& id)
+    void VisualizePathSystemComponent::ClearPath(const AZ::EntityId& id)
     {
 #if defined(_DEBUG) || defined(_PROFILE)
         AZStd::list<Path>::iterator it = m_paths.begin();
@@ -158,7 +158,7 @@ namespace StarterGameGem
 #endif
     }
 
-	VisualisePathSystemComponent::Path* VisualisePathSystemComponent::GetPath(const AZ::EntityId& id)
+	VisualizePathSystemComponent::Path* VisualizePathSystemComponent::GetPath(const AZ::EntityId& id)
 	{
 		AZStd::list<Path>::iterator it = m_paths.begin();
 		for (it; it != m_paths.end(); ++it)

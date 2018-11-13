@@ -53,15 +53,11 @@ namespace MCore
      */
     class MCORE_API Attribute
     {
-        MCORE_MEMORYOBJECTCATEGORY(Attribute, MCORE_SIMD_ALIGNMENT, MCORE_MEMCATEGORY_ATTRIBUTES);
-
-        friend class AttributePool;
         friend class AttributeFactory;
     public:
-        virtual void Destroy(bool lock = true);
+        virtual ~Attribute();
 
         virtual Attribute* Clone() const = 0;
-        virtual Attribute* CreateInstance(void* destMemory) = 0;
         virtual const char* GetTypeString() const = 0;
         MCORE_INLINE uint32 GetType() const                                         { return mTypeID; }
         virtual bool InitFromString(const AZStd::string& valueString) = 0;
@@ -79,7 +75,6 @@ namespace MCore
     protected:
         uint32      mTypeID;    /**< The unique type ID of the attribute class. */
 
-        virtual ~Attribute();
         Attribute(uint32 typeID);
 
         /**

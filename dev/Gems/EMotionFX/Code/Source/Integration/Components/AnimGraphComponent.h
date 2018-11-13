@@ -49,7 +49,7 @@ namespace EMotionFX
             {
                 AZ_TYPE_INFO(ParameterDefaults, "{E6826EB9-C79B-43F3-A03F-3298DD3C724E}")
 
-                    ParameterDefaults();
+                ParameterDefaults();
                 ~ParameterDefaults();
                 ParameterDefaults& operator=(const ParameterDefaults& rhs)
                 {
@@ -148,14 +148,18 @@ namespace EMotionFX
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
             {
                 incompatible.push_back(AZ_CRC("EMotionFXAnimGraphService", 0x9ec3c819));
+                incompatible.push_back(AZ_CRC("EMotionFXSimpleMotionService", 0xea7a05d8));
             }
 
-            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& /*dependent*/)
+            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
             {
+                dependent.push_back(AZ_CRC("PhysicsService", 0xa7350d22));
+                dependent.push_back(AZ_CRC("MeshService", 0x71d8a455));
             }
 
             static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
             {
+                required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
                 required.push_back(AZ_CRC("EMotionFXActorService", 0xd6e8f48d));
             }
 

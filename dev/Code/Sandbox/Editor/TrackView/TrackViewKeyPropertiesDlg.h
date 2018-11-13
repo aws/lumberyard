@@ -133,9 +133,6 @@ public:
     bool OnKeySelectionChange(CTrackViewKeyBundle& keys);
     void ReloadKey();
 
-protected:
-    void SetCurrKey(CTrackViewKeyHandle& keyHandle);
-
 protected slots:
     void OnUpdateTime();
 
@@ -190,6 +187,7 @@ protected:
     CTrackViewDopeSheetBase* m_keysCtrl;
 
     CTrackViewTrack* m_pLastTrackSelected;
+    CTrackViewSequence* m_sequence;
 };
 
 #endif // CRYINCLUDE_EDITOR_TRACKVIEW_TRACKVIEWKEYPROPERTIESDLG_H

@@ -370,8 +370,7 @@ bool CGameSerialize::SaveGame(CCryAction* pCryAction, const char* method, const 
     }
 
     Vec3 camPos = gEnv->pSystem->GetViewCamera().GetPosition();
-    MEMSTAT_LABEL_FMT("Savegame_start (pos=%4.2f,%4.2f,%4.2f)", camPos.x, camPos.y, camPos.z);
-
+    
     Clean();
     checkpoint.Check("Clean");
 
@@ -412,11 +411,9 @@ bool CGameSerialize::SaveGame(CCryAction* pCryAction, const char* method, const 
     checkpoint.Check("Clean2");
 
     // final serialization
-    MEMSTAT_LABEL("Savegame_flush");
     bResult = saveEnvironment.m_pSaveGame.Complete();
     checkpoint.Check("Writing");
 
-    MEMSTAT_LABEL("Savegame_end");
     checkpoint.Check("Flushed memory");
     return bResult;
 }
@@ -661,7 +658,6 @@ ELoadGameResult CGameSerialize::LoadGame(CCryAction* pCryAction, const char* met
         return eLGR_Failed;
     }
 
-    CryGetIMemReplay()->AddLabel("Loadgame_start");
     Checkpoint total(CHECKPOINT_OUTPUT, "TotalTime");
     Checkpoint checkpoint(CHECKPOINT_OUTPUT);
 
@@ -1015,8 +1011,6 @@ ELoadGameResult CGameSerialize::LoadGame(CCryAction* pCryAction, const char* met
         gEnv->pFlowSystem->Update();
     }
 
-    CryGetIMemReplay()->AddLabel("Loadgame_end");
-
     return eLGR_Ok;
 }
 
@@ -1078,7 +1072,6 @@ void CGameSerialize::SaveEngineSystems(SSaveEnvironment& savEnv)
     savEnv.m_checkpoint.Check("3DEngine");
     {
         // game tokens
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Game token serialization");
         savEnv.m_pCryAction->GetIGameTokenSystem()->Serialize(savEnv.m_pSaveGame->AddSection(SAVEGAME_GAMETOKEN_SECTION));
         savEnv.m_checkpoint.Check("GameToken");
     }
@@ -1136,8 +1129,6 @@ bool CGameSerialize::SaveEntities(SSaveEnvironment& savEnv)
     entities.reserve(gEnv->pEntitySystem->GetNumEntities());
 
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Basic entity data serialization");
-
         gameState.BeginGroup("BasicEntityData");
         int nSavedEntityCount = 0;
 
@@ -1158,8 +1149,6 @@ bool CGameSerialize::SaveEntities(SSaveEnvironment& savEnv)
             }
 
             {
-                MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Basic entity data serialization");
-
                 // basic entity data
                 SBasicEntityData bed;
                 bed.pEntity = pEntity;
@@ -1247,8 +1236,6 @@ bool CGameSerialize::SaveEntities(SSaveEnvironment& savEnv)
     // Entity pools get serialized just before the normal entity data, so they can be re-created just before
     //  the normal entities are re-created
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Entity pool serialization");
-
         // Store entity ids sorted in a file.
         IEntityPoolManager* pEntityPoolManager = gEnv->pEntitySystem->GetIEntityPoolManager();
         assert(pEntityPoolManager);

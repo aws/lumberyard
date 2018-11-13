@@ -25,6 +25,10 @@
     <Content Include="api-definition\LoadTest_1_0_0.json" />
     <Content Include="lambda-code\AmoebaLauncher\.ignore" />
     <Content Include="lambda-code\AmoebaLauncher\.import" />
+    <Content Include="lambda-code\Amoeba\.ignore" />
+    <Content Include="lambda-code\Amoeba\.import" />
+    <Content Include="lambda-code\EventEmitter\.ignore" />
+    <Content Include="lambda-code\EventEmitter\.import" />
     <Content Include="lambda-code\FIFOProducer\.ignore" />
     <Content Include="lambda-code\FIFOProducer\.import" />
     <Content Include="lambda-code\GlueCrawlerLauncher\.ignore" />
@@ -58,6 +62,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="common-code\AWSCommon\sqs.py" />
+    <Compile Include="common-code\AWSCommon\boto3_util.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="common-code\Constant\metric_error_code.py">
       <SubType>Code</SubType>
     </Compile>
@@ -67,6 +74,7 @@
     <Compile Include="common-code\Constant\metric_constant.py" />
     <Compile Include="common-code\LoadTest\LoadTest__CloudGemMetric.py" />
     <Compile Include="common-code\MemoryUtils\mem_util.py" />
+    <Compile Include="common-code\MetricUtils\data_generator.py" />
     <Compile Include="common-code\MetricUtils\enum_type.py">
       <SubType>Code</SubType>
     </Compile>
@@ -81,6 +89,8 @@
     <Compile Include="lambda-code\AmoebaLauncher\amoeba_launcher.py" />
     <Compile Include="common-code\AWSCommon\keyparts.py" />
     <Compile Include="common-code\AWSCommon\s3crawler.py" />
+    <Compile Include="lambda-code\Amoeba\amoeba_generator.py" />
+    <Compile Include="lambda-code\EventEmitter\event_emitter.py" />
     <Compile Include="lambda-code\FIFOProducer\data_generator.py" />
     <Compile Include="lambda-code\FIFOProducer\lambda_fifo_message_producer.py" />
     <Compile Include="lambda-code\GlueCrawlerLauncher\glue_crawler.py" />
@@ -130,6 +140,8 @@
     <Folder Include="common-code\ParquetUtils\" />
     <Folder Include="lambda-code" />
     <Folder Include="lambda-code\AmoebaLauncher\" />
+    <Folder Include="lambda-code\Amoeba\" />
+    <Folder Include="lambda-code\EventEmitter\" />
     <Folder Include="lambda-code\FIFOProducer\" />
     <Folder Include="lambda-code\GlueCrawlerLauncher\" />
     <Folder Include="test\" />

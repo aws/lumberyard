@@ -35,213 +35,350 @@ def after_this_resource_group_updated(hook, deployment_name, **kwargs):
         return
     params = dict({})
 
-    params["TableName"]=db_id
-    params["Item"]={
-        "key": { "S": c.KEY_GROWTH_RATE_BEFORE_ADDING_LAMBDAS },
-        "value": { "N": "0.05" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_CSV_PARQUET_COMPRESSION_RATIO },
-        "value": { "N": "13" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_FREQUENCY_TO_CHECK_TO_SPAWN_ANOTHER },
-        "value": { "N": "5" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_FREQUENCY_TO_CHECK_SQS_STATE },
-        "value": { "N": "5" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_BACKOFF_MAX_SECONDS },
-        "value": { "N": "5.0" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_BACKOFF_BASE_SECONDS },
-        "value": { "N": "5.0" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_RECORD_DETAIL_METRIC_DATA },
-        "value": { "BOOL": False }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_BACKOFF_MAX_TRYS },
-        "value":  { "N": "5.0" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_MAX_MESSAGE_RETRY },
-        "value":  { "N": "10" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_SEPERATOR_CSV },
-        "value":  { "S": c.CSV_SEP_DEFAULT }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_FIFO_GROWTH_TRIGGER },
-        "value":  { "N": "3000" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_MEMORY_FLUSH_TRIGGER },
-        "value":  { "N": "75" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_AMOEBA_MEMORY_FLUSH_TRIGGER },
-        "value":  { "N": "60" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_TARGET_AGGREGATION_FILE_SIZE_IN_MB },
-        "value":  { "N": "128" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_MAX_LAMBDA_TIME },
-        "value":  { "N": "275" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_SEPERATOR_PARTITION },
-        "value":  { "S": "/" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_AGGREGATION_PERIOD_IN_SEC },
-        "value":  { "N": "220" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_THRESHOLD_BEFORE_SPAWN_NEW_CONSUMER },
-        "value":  { "N": "3000" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_MAX_INFLIGHT_MESSAGES },
-        "value":  { "N": "12000" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_FILTERS },
-        "value":  { "L": [] }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_PRIORITIES },
-        "value":  { "L": [] }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_NUMBER_OF_INIT_LAMBDAS },
-        "value":  { "N": "3" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.CLIENT_BUFFER_FLUSH_TO_FILE_IN_BYTES },
-        "value":  { "N": "204800" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.CLIENT_BUFFER_GAME_FLUSH_PERIOD_IN_SEC },
-        "value":  { "N": "60" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.CLIENT_FILE_NUM_METRICS_TO_SEND_IN_BATCH },
-        "value":  { "N": "5" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.CLIENT_FILE_SEND_METRICS_INTERVAL_IN_SECONDS },
-        "value":  { "N": "300" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.CLIENT_FILE_MAX_METRICS_TO_SEND_IN_BATCH_IN_MB },
-        "value":  { "N": "5" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.CLIENT_FILE_PRIORITIZATION_THRESHOLD_IN_PERC },
-        "value":  { "N": "60" }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_HEATMAPS },
-        "value": { "L": [] }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_SAVE_GLOBAL_COORDINATES },
-        "value": { "BOOL": False }
-    }
-    dynamoDB.put_item(**params)
-    params["Item"]={
-        "key": { "S": c.KEY_PARTITIONS },
-        "value":  { "L": [
-                    {"M":{
-                      "key": { "S": schema.EVENT.id },
-                      "parts": { "L": [] } ,
-                      "type": {"S":"str"},
-                      "description": {"S":"The identifying name of the game event."}
-                    }},
-                    {"M":{
-                      "key": { "S": schema.SERVER_TIMESTAMP.id },
-                      "parts": { "L": [
-                        {"S":".strftime('"+util.partition_date_format()+"')"}
-                      ]},
-                      "type": {"S":"datetime.datetime.utcfromtimestamp"},
-                      "description": {"S":"The server UTC timestamp.  This partition has parts associated to it.  The parts will result in a S3 folder gather data in a folder named 20180101230000"}
-                    }},
-                    {"M":{
-                      "key": { "S": schema.SERVER_TIMESTAMP.id },
-                      "parts": { "L": [
-                        {"S":".year"},
-                        {"S":".month"},
-                        {"S":".day"},
-                        {"S":".hour"}
-                      ]},
-                      "type": {"S":"datetime.datetime.utcfromtimestamp"},
-                      "description": {"S":"The server UTC timestamp.  This partition has parts associated to it.  The parts will be extracted from the srv_tmutc attribute value.  Example:  2018-01-01T13:00:00Z will result in a S3 key path .../2018/01/01/05/..."}
-                    }},
-                    {"M":{
-                      "key": { "S": schema.SOURCE.id },
-                      "parts": { "L": [] },
-                      "type": {"S":"str"},
-                      "description": {"S":"Where the data is originating from.  Most often this will be 'cloudgemmetric' but could be other Cloud Gems such as Cloud Gem Defect Reporter."}
-                    }},
-                    {"M":{
-                      "key": { "S": schema.BUILD_ID.id },
-                      "parts": { "L": [] },
-                      "type": {"S":"str"},
-                      "description": {"S":"The build identifier the event originated on."}
-                    }},
-                    {"M":{
-                      "key": { "S": schema.SENSITIVITY.id },
-                      "parts": { "L": [] },
-                      "type": {"S":"map"},
-                      "description": {"S":"A flag used to defining if the data is encrypted in S3."}
-                    }},
-                    {"M":{
-                      "key": { "S": schema.SCHEMA_HASH.id },
-                      "parts": { "L": [] },
-                      "type": {"S":"map"},
-                      "description": {"S":"A hash of the event schema."}
-                    }}
-                  ]
+    params["RequestItems"]={
+        db_id:
+        [
+            {
+                "PutRequest":
+                {
+                    "Item": {
+                        "key": { "S": c.KEY_GROWTH_RATE_BEFORE_ADDING_LAMBDAS },
+                        "value": { "N": "0.05" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {
+                    "Item": {
+                        "key": { "S": c.KEY_CSV_PARQUET_COMPRESSION_RATIO },
+                        "value": { "N": "13" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {
+                    "Item": {
+                        "key": { "S": c.KEY_FREQUENCY_TO_CHECK_TO_SPAWN_ANOTHER },
+                        "value": { "N": "5" }
+                    }
+                },
+            },
+            {
+                "PutRequest":        
+                {    
+                    "Item": {
+                        "key": { "S": c.KEY_FREQUENCY_TO_CHECK_SQS_STATE },
+                        "value": { "N": "5" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {    
+                    "Item": {
+                        "key": { "S": c.KEY_BACKOFF_MAX_SECONDS },
+                        "value": { "N": "5.0" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {    
+                    "Item": {
+                        "key": { "S": c.KEY_BACKOFF_BASE_SECONDS },
+                        "value": { "N": "5.0" }
+                    }
+                },
+            },
+            {
+                "PutRequest":        
+                {    
+                    "Item": {
+                        "key": { "S": c.KEY_RECORD_DETAIL_METRIC_DATA },
+                        "value": { "BOOL": False }
+                    }
+                }
+            },    
+            {
+                "PutRequest":        
+                {   
+                    "Item": { 
+                        "key": { "S": c.KEY_BACKOFF_MAX_TRYS },
+                        "value":  { "N": "5.0" }
+                    }
+                }    
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_MAX_MESSAGE_RETRY },
+                        "value":  { "N": "10" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_SEPERATOR_CSV },
+                        "value":  { "S": c.CSV_SEP_DEFAULT }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_FIFO_GROWTH_TRIGGER },
+                        "value":  { "N": "3000" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_MEMORY_FLUSH_TRIGGER },
+                        "value":  { "N": "75" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_AMOEBA_MEMORY_FLUSH_TRIGGER },
+                        "value":  { "N": "60" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_TARGET_AGGREGATION_FILE_SIZE_IN_MB },
+                        "value":  { "N": "32" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_MAX_LAMBDA_TIME },
+                        "value":  { "N": "275" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_SEPERATOR_PARTITION },
+                        "value":  { "S": "/" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_AGGREGATION_PERIOD_IN_SEC },
+                        "value":  { "N": "220" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_THRESHOLD_BEFORE_SPAWN_NEW_CONSUMER },
+                        "value":  { "N": "3000" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_MAX_INFLIGHT_MESSAGES },
+                        "value":  { "N": "12000" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_FILTERS },
+                        "value":  { "L": [] }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_PRIORITIES },
+                        "value":  { "L": [] }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_NUMBER_OF_INIT_LAMBDAS },
+                        "value":  { "N": "3" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.CLIENT_BUFFER_FLUSH_TO_FILE_IN_BYTES },
+                        "value":  { "N": "204800" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.CLIENT_BUFFER_GAME_FLUSH_PERIOD_IN_SEC },
+                        "value":  { "N": "60" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.CLIENT_FILE_NUM_METRICS_TO_SEND_IN_BATCH },
+                        "value":  { "N": "5" }
+                    }
+                }
             }
+        ]   
     }
-    dynamoDB.put_item(**params)
+    #batch write has a 25 length limit    
+    #hard coding the schema.SERVER_TIMESTAMP.id datetime format to '%Y%m%d%H0000' as there seems to be an import issues for the util module that occassionally fails the tests.
+    dynamoDB.batch_write_item(**params)
+    params["RequestItems"]={
+        db_id:        
+        [
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.CLIENT_FILE_SEND_METRICS_INTERVAL_IN_SECONDS },
+                        "value":  { "N": "300" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.CLIENT_FILE_MAX_METRICS_TO_SEND_IN_BATCH_IN_MB },
+                        "value":  { "N": "5" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.CLIENT_FILE_PRIORITIZATION_THRESHOLD_IN_PERC },
+                        "value":  { "N": "60" }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_HEATMAPS },
+                        "value": { "L": [] }
+                    }
+                }
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_SAVE_GLOBAL_COORDINATES },
+                        "value": { "BOOL": False }
+                    }
+                }    
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
+                        "key": { "S": c.KEY_PARTITIONS },
+                        "value":  { "L": [
+                                {"M":{
+                                  "key": { "S": schema.EVENT.id },
+                                  "parts": { "L": [] } ,
+                                  "type": {"S":"str"},
+                                  "description": {"S":"The identifying name of the game event."}
+                                }},
+                                {"M":{
+                                  "key": { "S": schema.SERVER_TIMESTAMP.id },
+                                  "parts": { "L": [
+                                    {"S":".strftime('%Y%m%d%H0000')"}
+                                  ]},
+                                  "type": {"S":"datetime.datetime.utcfromtimestamp"},
+                                  "description": {"S":"The server UTC timestamp.  This partition has parts associated to it.  The parts will result in a S3 folder gather data in a folder named 20180101230000"}
+                                }},
+                                {"M":{
+                                  "key": { "S": schema.SERVER_TIMESTAMP.id },
+                                  "parts": { "L": [
+                                    {"S":".year"},
+                                    {"S":".month"},
+                                    {"S":".day"},
+                                    {"S":".hour"}
+                                  ]},
+                                  "type": {"S":"datetime.datetime.utcfromtimestamp"},
+                                  "description": {"S":"The server UTC timestamp.  This partition has parts associated to it.  The parts will be extracted from the srv_tmutc attribute value.  Example:  2018-01-01T13:00:00Z will result in a S3 key path .../2018/01/01/05/..."}
+                                }},
+                                {"M":{
+                                  "key": { "S": schema.SOURCE.id },
+                                  "parts": { "L": [] },
+                                  "type": {"S":"str"},
+                                  "description": {"S":"Where the data is originating from.  Most often this will be 'cloudgemmetric' but could be other Cloud Gems such as Cloud Gem Defect Reporter."}
+                                }},
+                                {"M":{
+                                  "key": { "S": schema.BUILD_ID.id },
+                                  "parts": { "L": [] },
+                                  "type": {"S":"str"},
+                                  "description": {"S":"The build identifier the event originated on."}
+                                }},
+                                {"M":{
+                                  "key": { "S": schema.SENSITIVITY.id },
+                                  "parts": { "L": [] },
+                                  "type": {"S":"map"},
+                                  "description": {"S":"A flag used to defining if the data is encrypted in S3."}
+                                }},
+                                {"M":{
+                                  "key": { "S": schema.SCHEMA_HASH.id },
+                                  "parts": { "L": [] },
+                                  "type": {"S":"map"},
+                                  "description": {"S":"A hash of the event schema."}
+                                }}
+                              ]
+                        }
+                    }
+                }
+            }
+        ]
+    }
+    dynamoDB.batch_write_item(**params)
     seed_cgp_queries(db_id, dynamoDB)
 
 

@@ -12,6 +12,7 @@
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManagerBus.h>
+#include <AzCore/std/string/regex.h>
 
 #include <CloudGemFramework/CloudGemFrameworkBus.h>
 
@@ -124,9 +125,17 @@ namespace CloudGemDefectReporter
         std::vector<std::string> tokens{ std::istream_iterator<std::string>{iss},
             std::istream_iterator<std::string>{} };
 
+        AZStd::regex domainNameRegex("^([a-z0-9]+(-[a-z0-9]+)*\\.)+[a-z]{2,}$", AZStd::regex::extended);
         for (auto& domainName : tokens)
         {
-            m_serverDomainNames.push_back(domainName.c_str());
+            if (AZStd::regex_match(domainName.c_str(), domainNameRegex))
+            {
+                m_serverDomainNames.push_back(domainName.c_str());
+            }
+            else
+            {
+                AZ_Warning("CloudCanvas", false, "Invalid domain name encountered, skip..");
+            }
         }        
 
         return true;

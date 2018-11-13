@@ -12,43 +12,62 @@
 
 #pragma once
 
+#include <QHash>
+#include <QString>
+
+#include <AzCore/JSON/document.h>
+#include <AzCore/Outcome/Outcome.h>
+#include <AzCore/std/string/string.h>
+
 #include "DeploymentConfig.h"
-#include "CommandLauncher.h"
-#include "IDeploymentTool.h"
-#include "BootstrapConfigContainer.h"
+#include "SystemConfigContainer.h"
+
 
 using StringOutcome = AZ::Outcome<void, AZStd::string>;
+using DeviceMap = QHash<QString, QString>; // <device id, display name>
+
+
+class QProcess;
 
 // abstract class for platform independent project building / deployment
-class DeploymentUtil 
+class DeployWorkerBase
 {
 public:
-    DeploymentUtil(IDeploymentTool& deploymentTool, DeploymentConfig& cfg);
-    DeploymentUtil(const DeploymentUtil& rhs) = delete;
-    DeploymentUtil& operator=(const DeploymentUtil& rhs) = delete;
-    DeploymentUtil& operator=(DeploymentUtil&& rhs) = delete;
-    virtual ~DeploymentUtil();
-    
-    virtual void ConfigureAssetProcessor() = 0;
-    virtual void BuildAndDeploy() = 0;
-    virtual void DeployFromFile(const AZStd::string& buildPath) = 0;
-    virtual StringOutcome Launch() = 0;
+    DeployWorkerBase(const char* systemConfigFile);
+    virtual ~DeployWorkerBase();
+
+    virtual const char* GetSystemConfigFileName() const = 0;
+    virtual bool GetConnectedDevices(DeviceMap& connectedDevices) const = 0;
+
+    StringOutcome ApplyConfiguration(const DeploymentConfig& deployConfig);
+
+    void Run();
+
 
 protected:
-    static const char* s_shaderCompilerCmd;
-    static const char* s_pathToShaderCompiler;
-    static const char* s_debugBuildCfg;
-    static const char* s_profileBuildCfg;
-    static const char* s_releaseBuildCfg;
-    static const char* s_buildOptions;
+    virtual AZStd::string GetWafBuildArgs() const = 0;
+    virtual AZStd::string GetWafDeployArgs() const = 0;
 
-    DeploymentConfig& m_cfg;
-    IDeploymentTool& m_deploymentTool;
-    CommandLauncher* m_cmdLauncher;
+    virtual StringOutcome Prepare() = 0;
+    virtual void StartBuildAndDeploy();
+    virtual void StartDeploy();
+    virtual StringOutcome Launch() = 0;
 
-    // Log std out of process
-    void LogStdOut(QProcess* process);
+    bool LaunchShaderCompiler() const;
 
-    // Launch shader compiler
-    bool LaunchShaderCompiler();
+    void StartWafCommand(const char* commandType, const AZStd::string& commandArgs);
+    bool RunBlockingCommand(const AZStd::string& command, QString* output = nullptr) const;
+
+    StringOutcome LoadJsonData(const AZStd::string& file, rapidjson::Document& jsonData) const;
+
+
+    DeploymentConfig m_deploymentConfig;
+    SystemConfigContainer m_systemConfig;
+
+    QProcess* m_wafProcess;
+    QMetaObject::Connection m_finishedConnection;
+
+
+private:
+    AZ_DISABLE_COPY_MOVE(DeployWorkerBase);
 };

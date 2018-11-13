@@ -125,10 +125,10 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
         }
 
         this.subNavActiveIndex = subNavItemIndex;
-        if (subNavItemIndex == 0) {
+        if (subNavItemIndex === 0) {
             this.updateUsers();
         }
-        if (subNavItemIndex == 1) {
+        if (subNavItemIndex === 1) {
             this.mode = Mode.List;
             this.updateChannels();
         }
@@ -243,7 +243,7 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
     **/
     public sendMessageViaChannel(): void {
         let channel = JSON.parse(JSON.stringify(this.currentChannel));
-        channel.CommunicationType = this.selectedUser == "allClients" ? "BROADCAST" : "PRIVATE";
+        channel.CommunicationType = this.selectedUser === "allClients" ? "BROADCAST" : "PRIVATE";
         this.publishMessage(channel, this.selectedUser);
         this.modalRef.close();
     }
@@ -254,7 +254,7 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
     public sendMessageToUser(): void {
         let privateChannel = new ChannelEntry({});
         for (let channel of this.channels) {
-            if (channel.ChannelName == this.selectedChannel && channel.CommunicationType == "PRIVATE") {
+            if (channel.ChannelName === this.selectedChannel && channel.CommunicationType === "PRIVATE") {
                 privateChannel = channel;
                 break;
             }
@@ -294,13 +294,13 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
         this.newMessage = "";
 
         if (this.users.length > 0) {
-            this.selectedUser = channel.CommunicationType == "PRIVATE" ? this.users[0].ClientID : "allClients";
+            this.selectedUser = channel.CommunicationType === "PRIVATE" ? this.users[0].ClientID : "allClients";
             this.mode = Mode.SendMessageViaChannel;
             return;
         }
 
         this.getAllUsers().then(function () {
-            this.selectedUser = channel.CommunicationType == "PRIVATE" ? this.users[0].ClientID : "allClients";
+            this.selectedUser = channel.CommunicationType === "PRIVATE" ? this.users[0].ClientID : "allClients";
             this.mode = Mode.SendMessageViaChannel;
         }.bind(this))
     }
@@ -337,7 +337,7 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
      * @param currentPageIndex the current page index on the users page
     **/
     public updatePaginationInfo(currentPageIndex: number): void {
-        if (this.subNavActiveIndex == 0) {
+        if (this.subNavActiveIndex === 0) {
             let numberEntries: number = this.filteredUsers.length;
             this.userPages = Math.ceil(numberEntries / this.pageSize);
 
@@ -552,9 +552,9 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
         this.messageList = [];
         let communicationChannels = [];
         for (let channel of this.channels) {
-            if (channelName == "allChannels" || channel.ChannelName == channelName) {
+            if (channelName === "allChannels" || channel.ChannelName === channelName) {
                 let channelSubscription = this.getChannelSubscription(channel, clientID);
-                if (communicationChannels.indexOf(channelSubscription) == -1) {
+                if (communicationChannels.indexOf(channelSubscription) === -1) {
                     communicationChannels.push(this.getChannelSubscription(channel, clientID));
                 }
                 this.subscribeToChannel(channel, clientID);
@@ -568,7 +568,7 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
                     messageType = "(PRIVATE) ";
                 }
                 let messageContent = JSON.parse(message.payloadString);
-                if (channelName == "allChannels" || messageContent.ChannelName == channelName) {
+                if (channelName === "allChannels" || messageContent.Channel === channelName) {
                     this.messageList.push(messageType + messageContent.Message);
                 }
             }
@@ -582,7 +582,7 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
     **/
     private publishMessage(channel: ChannelEntry, clientID: string): void {
         this.subscribeToChannel(channel, clientID).then(function () {
-            let message = new Paho1.MQTT.Message(JSON.stringify({ "ChannelName": channel.ChannelName, "Message": this.newMessage }));
+            let message = new Paho1.MQTT.Message(JSON.stringify({ "Channel": channel.ChannelName, "Message": this.newMessage }));
             message.destinationName = this.getChannelSubscription(channel, clientID);
             this.client.send(message);
         }.bind(this));
@@ -667,7 +667,7 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
             if (channelSubscriptions.indexOf(message.destinationName) !== -1) {
                 let messageContent = JSON.parse(message.payloadString);
                 let messageType = message.destinationName.indexOf("/client/") === -1 ? "(BROADCAST) " : "(PRIVATE) ";
-                if (messageContent.ChannelName == this.currentChannel.ChannelName) {
+                if (messageContent.Channel === this.currentChannel.ChannelName) {
                     this.messageList.push(messageType + messageContent.Message);
                 }
             }
@@ -699,7 +699,7 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
     private getChannelSubscription(channel: ChannelEntry, clientID: string): string {
         let communicationChannel = this.getCommunicationChannel(channel);
         let channelSubscription = communicationChannel.Subscription;
-        if (channel.CommunicationType == "PRIVATE") {
+        if (channel.CommunicationType === "PRIVATE") {
             channelSubscription = "";
             let parsedSubscription = communicationChannel.Subscription.split("/");
             for (let index = 0; index < parsedSubscription.length - 1; index++) {
@@ -717,8 +717,8 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
     **/
     private getCommunicationChannel(channel: ChannelEntry): ChannelEntry {
         for (let channelEntry of this.channels) {
-            let findCommunicationChannel = !channel.CommunicationChannel && channel.ChannelName == channelEntry.ChannelName && channel.CommunicationType == channelEntry.CommunicationType;
-            findCommunicationChannel = findCommunicationChannel || (channel.CommunicationChannel == channelEntry.ChannelName && channel.CommunicationType == channelEntry.CommunicationType);
+            let findCommunicationChannel = !channel.CommunicationChannel && channel.ChannelName === channelEntry.ChannelName && channel.CommunicationType === channelEntry.CommunicationType;
+            findCommunicationChannel = findCommunicationChannel || (channel.CommunicationChannel === channelEntry.ChannelName && channel.CommunicationType === channelEntry.CommunicationType);
             if (findCommunicationChannel) {
                 return channelEntry;
             }
@@ -732,7 +732,7 @@ export class WebCommunicatorIndexComponent extends AbstractCloudGemIndexComponen
     **/
     private getChannelCommunicationType(channelName: string): string {
         for (let channel of this.simplifiedChannels) {
-            if (channel.ChannelName == channelName) {
+            if (channel.ChannelName === channelName) {
                 return channel.CommunicationType;
             }
         }

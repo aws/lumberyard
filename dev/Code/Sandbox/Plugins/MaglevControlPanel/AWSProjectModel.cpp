@@ -1485,7 +1485,7 @@ QModelIndex AWSProjectModel::ProjectStackIndex() const
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void AWSProjectModel::AddResourceGroup(const QString& resourceGroupName, bool includeExampleResources, AsyncOperationCallback callback)
+void AWSProjectModel::CreateCloudGem(const QString& name, const QString& initialContent, AsyncOperationCallback callback)
 {
 
     auto _callback = [callback](const QString& key, const QVariant value)
@@ -1501,9 +1501,9 @@ void AWSProjectModel::AddResourceGroup(const QString& resourceGroupName, bool in
     };
 
     QVariantMap args;
-    args["resource_group"] = resourceGroupName;
-    args["include_example_resources"] = includeExampleResources;
-    ResourceManager()->ExecuteAsync(_callback, "add-resource-group", args);
+    args["gem_name"] = name;
+    args["initial_content"] = initialContent;
+    ResourceManager()->ExecuteAsync(_callback, "create-cloud-gem", args);
 
 }
 

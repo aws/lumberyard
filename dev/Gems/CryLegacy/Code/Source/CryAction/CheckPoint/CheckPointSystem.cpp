@@ -34,7 +34,7 @@
 
 //statics
 FixedCheckpointString CCheckpointSystem::g_lastSavedCheckpoint;
-std::list<ICheckpointListener*> CCheckpointSystem::g_vCheckpointSystemListeners;
+StaticInstance<std::list<ICheckpointListener*>>  CCheckpointSystem::g_vCheckpointSystemListeners;
 
 const static int CHECKPOINT_VERSION_NUMBER      = 0;
 const static char* FILENAME_EXTENSION           = ".jmc";
@@ -996,8 +996,8 @@ void CCheckpointSystem::RemoveListener(ICheckpointListener* pListener)
 void CCheckpointSystem::UpdateListener(SCheckpointData data, bool wasSaving)
 {
     //external listeners may also read/write checkpoint data now
-    std::list<ICheckpointListener*>::iterator it = g_vCheckpointSystemListeners.begin();
-    std::list<ICheckpointListener*>::iterator end = g_vCheckpointSystemListeners.end();
+    std::list<ICheckpointListener*>::iterator it = GetInstance()->g_vCheckpointSystemListeners.begin();
+    std::list<ICheckpointListener*>::iterator end = GetInstance()->g_vCheckpointSystemListeners.end();
     for (; it != end; ++it)
     {
         //send update - the global checkpoint flownode also is set here, but is not triggered until the flowgraph updates

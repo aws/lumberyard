@@ -299,7 +299,7 @@ public:
 
 
 protected:
-    static CGoalOpXMLReader s_xml;
+    static StaticInstance<CGoalOpXMLReader> s_xml;
 };
 
 
@@ -744,7 +744,7 @@ public:
     COPIgnoreAll(bool bIgnoreAll)
         : m_bIgnoreAll(bIgnoreAll) {}
     COPIgnoreAll(const XmlNodeRef& node)
-        : m_bIgnoreAll(s_xml.GetBool(node, "id", true)) {}
+        : m_bIgnoreAll(s_xml->GetBool(node, "id", true)) {}
 
     virtual EGoalOpResult Execute(CPipeUser* pPipeUser);
 };
@@ -961,7 +961,7 @@ public:
     COPForm(const char* name)
         : m_sName(name) {}
     COPForm(const XmlNodeRef& node)
-        : m_sName(s_xml.GetMandatoryString(node, "name")) {}
+        : m_sName(s_xml->GetMandatoryString(node, "name")) {}
 
     virtual EGoalOpResult Execute(CPipeUser* pPipeUser);
 };

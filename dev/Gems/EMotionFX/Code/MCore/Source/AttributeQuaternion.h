@@ -17,6 +17,7 @@
 #include "Attribute.h"
 #include "Vector.h"
 #include "StringConversions.h"
+#include <MCore/Source/AttributeAllocator.h>
 
 
 namespace MCore
@@ -28,6 +29,8 @@ namespace MCore
     class MCORE_API AttributeQuaternion
         : public Attribute
     {
+        AZ_CLASS_ALLOCATOR(AttributeQuaternion, AttributeAllocator, 0)
+
         friend class AttributeFactory;
     public:
         enum
@@ -48,7 +51,6 @@ namespace MCore
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeQuaternion::Create(mValue); }
-        Attribute* CreateInstance(void* destMemory) override        { return new(destMemory) AttributeQuaternion(); }
         const char* GetTypeString() const override                  { return "AttributeQuaternion"; }
         bool InitFrom(const Attribute* other) override
         {

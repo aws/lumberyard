@@ -887,6 +887,20 @@ namespace AssetProcessor
         return nullptr; // not found.
     }
 
+    //! Given a scan folder path, get its complete info
+    const AssetProcessor::ScanFolderInfo* PlatformConfiguration::GetScanFolderByPath(const QString& scanFolderPath) const
+    {
+        QString normalized = AssetUtilities::NormalizeFilePath(scanFolderPath);
+        for (int pathIdx = 0; pathIdx < m_scanFolders.size(); ++pathIdx)
+        {
+            if (QString::compare(m_scanFolders[pathIdx].ScanPath(), normalized, Qt::CaseSensitive) == 0)
+            {
+                return &m_scanFolders[pathIdx];
+            }
+        }
+        return nullptr;
+    }
+
     int PlatformConfiguration::GetMinJobs() const
     {
         return m_minJobs;
@@ -1233,7 +1247,7 @@ namespace AssetProcessor
             // note that we normalize this gem path with slashes so that there's nothing special about it compared to other scan folders
             gemFolder = AssetUtilities::NormalizeDirectoryPath(gemFolder);
 
-            QString assetBrowserDisplayName = QString("Gems/%1/Assets").arg(gemDisplayName);
+            QString assetBrowserDisplayName = "Assets"; // Gems always use assets folder as their displayname...
             QString portableKey = QString("gemassets-%1").arg(gemGuid);
             QString outputPrefix; // empty intentionally here
             bool isRoot = false;

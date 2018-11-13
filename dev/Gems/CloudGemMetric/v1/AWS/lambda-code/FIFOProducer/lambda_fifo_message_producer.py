@@ -46,7 +46,7 @@ def main(event, lambdacontext):
         context[c.KEY_REQUEST_ID] = lambdacontext.aws_request_id if hasattr(lambdacontext, 'aws_request_id') else None
         db = DynamoDb(context)
         prefix = util.get_stack_name_from_arn(stack_id)
-        aws_sqs = Sqs(context, queue_prefix=prefix) 
+        aws_sqs = Sqs(context, queue_prefix="{}_".format(prefix))
         aws_sqs.set_queue_url(True)         
         timestamp = datetime.datetime.utcnow() 
     else:
@@ -74,8 +74,8 @@ def main(event, lambdacontext):
         message_chunks, total_metrics = payload_type.chunk(data)   
     
         for message in message_chunks:                    
-            print "Sending a sqs message with {} bytes".format(len(message))                
-            aws_sqs.send_message(sensitivity_type, message, compression_mode, payload_type)    
+            print "Sending a sqs message with {} bytes".format(len(message))            
+            aws_sqs.send_message(message, sensitivity_type, compression_mode, payload_type)    
     except Exception as e:        
         traceback.print_exc()                
         raise errors.ClientError(e.message)     

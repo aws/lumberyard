@@ -467,6 +467,12 @@ namespace AzToolsFramework
             AZ_Assert(exportEntity, "Failed to create target entity \"%s\" for export.",
                 entity->GetName().c_str());
 
+            // This is a sanity check that the editor source entity was created and validated before starting export to game target entity
+            // Note - this assert should *not* live directly in PreExportEntity implementation,
+            //   because of the case where we are modifying system entities we do not want system components active, ticking tick buses, running simulations, etc.
+            AZ_Assert(entity->GetState() == AZ::Entity::ES_ACTIVE, "Source entity must be active.");
+            AZ_Assert(exportEntity->GetState() != AZ::Entity::ES_ACTIVE, "Target entity must not be active.");
+
             ToolsApplicationRequests::Bus::Broadcast(
                 &ToolsApplicationRequests::PreExportEntity, *entity, *exportEntity);
 
@@ -488,6 +494,12 @@ namespace AzToolsFramework
         auto targetIter = targetEntities.begin();
         for (; sourceIter != sourceEntities.end(); ++sourceIter, ++targetIter)
         {
+            // This is a sanity check that the editor source entity was created and validated and didn't suddenly get out of an active state during export
+            // Note - this assert should *not* live directly in PostExportEntity implementation,
+            //   because of the case where we are modifying system entities we do not want system components active, ticking tick buses, running simulations, etc.
+            AZ_Assert((*sourceIter)->GetState() == AZ::Entity::ES_ACTIVE, "Source entity must be active.");
+            AZ_Assert((*targetIter)->GetState() != AZ::Entity::ES_ACTIVE, "Target entity must not be active.");
+
             ToolsApplicationRequests::Bus::Broadcast(
                 &ToolsApplicationRequests::PostExportEntity, **sourceIter, **targetIter);
         }

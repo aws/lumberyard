@@ -676,7 +676,7 @@ namespace AZ
                         {
                             dataAddress = classContainer->GetElementByIndex(parentClassPtr, classElement, currentContainerElementIndex);
                         }
-                        else
+                        else if(parentClassPtr)
                         {
                             dataAddress = classContainer->ReserveElement(parentClassPtr, classElement);
                         }
@@ -687,6 +687,7 @@ namespace AZ
                             
                             result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                             m_errorLogger.ReportError(error.c_str());
+                            continue; // go to next element
                         }
 
                         currentContainerElementIndex++;
@@ -863,7 +864,8 @@ namespace AZ
                     currentStream->Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
 
                     // read the class value
-                    if (!classData->m_serializer->Load(dataAddress, *currentStream, element.m_version, element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE))
+                    if (dataAddress == nullptr || 
+                        !classData->m_serializer->Load(dataAddress, *currentStream, element.m_version, element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE))
                     {
                         result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                     }
@@ -1918,7 +1920,7 @@ namespace AZ
                         jsonDocument.ParseInsitu(memoryBuffer.data());
                         if (jsonDocument.HasParseError())
                         {
-                            AZ_Error("Serialize", false, "JSON parse error: %d (%u)", rapidjson::GetParseError_En(jsonDocument.GetParseError()), jsonDocument.GetErrorOffset());
+                            AZ_Error("Serialize", false, "JSON parse error: %s (%u)", rapidjson::GetParseError_En(jsonDocument.GetParseError()), jsonDocument.GetErrorOffset());
                             // this is considered a "fatal" error since the entire stream is unreadable.
                             result = false;
                         }
@@ -2073,7 +2075,7 @@ namespace AZ
         // Expand regular slice references (but not dynamic slice references).
         if (asset.GetType() == AzTypeInfo<SliceAsset>::Uuid())
         {
-            return 0 == (asset.GetFlags() & static_cast<u8>(Data::AssetFlags::OBJECTSTREAM_NO_LOAD));
+            return AssetFilterDefault(asset);
         }
 
         return false;

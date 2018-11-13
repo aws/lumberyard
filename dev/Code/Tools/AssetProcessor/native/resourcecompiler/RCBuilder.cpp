@@ -292,12 +292,12 @@ namespace AssetProcessor
             QString gameRoot = assetRoot.absoluteFilePath(AssetUtilities::ComputeGameName());
             AZStd::string appBranchToken;
             AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::CalculateBranchTokenForAppRoot, appBranchToken);
-            cmdLine = QString("\"%1\" /p=%2 %3 /unattended=true /threads=1 /gameroot=\"%4\" /watchfolder=\"%6\" /targetroot=\"%5\" /logprefix=\"%5/\" /port=%7 /gamesubdirectory=\"%8\" /branchtoken=\"%9\"");
+            cmdLine = QString("\"%1\" /p=%2 %3 /unattended=true /gameroot=\"%4\" /watchfolder=\"%6\" /targetroot=\"%5\" /logprefix=\"%5/\" /port=%7 /gamesubdirectory=\"%8\" /branchtoken=\"%9\"");
             cmdLine = cmdLine.arg(inputFile, platformIdentifier, params, gameRoot, dest, watchFolder).arg(portNumber).arg(gameName).arg(appBranchToken.c_str());
         }
         else
         {
-            cmdLine = QString("\"%1\" /p=%2 %3 /threads=1").arg(inputFile, platformIdentifier, params);
+            cmdLine = QString("\"%1\" /p=%2 %3").arg(inputFile, platformIdentifier, params);
         }
         return cmdLine;
     }

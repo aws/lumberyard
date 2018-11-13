@@ -3,7 +3,8 @@
     {
         "Tests":
         [
-            "Lib/Tests/test_Main.cpp"
+            "Lib/Tests/test_Main.cpp",
+            "Lib/Tests/test_EditorUtils.cpp"
         ]
     }
 }

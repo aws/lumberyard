@@ -1,0 +1,41 @@
+﻿<h3>Search Defects</h3>
+<form class="searchForm">
+
+    <!-- Query input -->
+    <input type="text" class="form-control" [(ngModel)]="partialInputQuery" [ngModelOptions]="{standalone: true}" placeholder="Preview with empty field or enter the parameters after the WHERE statement in a standard ANSI SQL query here..." />
+
+    <!-- Limit Selector dropdown button -->
+    <div class="btn-group" ngbDropdown placement="bottom-right" role="group">
+        <button class="btn btn-outline-primary btn-limit" type="button" ngbDropdownToggle>
+            <span>
+                {{limit}}
+                <i class="fa fa-caret-down" aria-hidden="true"></i>
+            </span>
+        </button>
+        <div class="dropdown-menu" ngbDropdownMenu>
+            <button type="button" class="dropdown-item" (click)="setLimit('10')">10</button>
+            <button type="button" class="dropdown-item" (click)="setLimit('50')">50</button>
+            <button type="button" class="dropdown-item" (click)="setLimit('100')">100</button>
+            <button type="button" class="dropdown-item" (click)="setLimit('ALL')">ALL</button>
+        </div>
+
+        <!-- Search Button-->
+        <button #searchButton type="submit" class="btn l-primary btn-search" (click)="datatable.fetchQueryFromInput(partialInputQuery, true)">
+            Search
+        </button>
+    </div>
+</form>
+
+<!-- Ngx Datatable -->
+<defect-datatable #datatable
+                  [aws]="aws"
+                  [isJiraIntegrationEnabled]="isJiraIntegrationEnabled"
+                  [metricApiHandler]="metricApiHandler"
+                  [defectReporterApiHandler]="defectReporterApiHandler"
+                  [partialQuery]="partialInputQuery"
+                  [tableName]="'overview'"
+                  [limit]="limit"
+                  [toDefectDetailsPageCallback]="toDefectDetailsPageCallback"
+                  (updateJiraMappings)="updateJiraMappings.emit()"
+                  [bookmark]="false">
+</defect-datatable>

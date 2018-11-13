@@ -24,8 +24,8 @@ export class MetricQuery {
             sql = directive.construct(sql)           
         }
         var date = new Date();
-        let projectName = this.aws.context.name.replace('-', '_').toLowerCase()
-        let deploymentName = this.aws.context.project.activeDeployment.settings.name.replace('-', '_').toLowerCase()
+        let projectName = this.aws.context.name.replace(new RegExp('-', 'g'), '_').toLowerCase()
+        let deploymentName = this.aws.context.project.activeDeployment.settings.name.replace(new RegExp('-', 'g'), '_').toLowerCase()
         let table_prefix = `${projectName}_${deploymentName}_table_`
         let table = `${table_prefix}${this._table}`
         let database = `${projectName}_${deploymentName}`
@@ -41,8 +41,14 @@ export class MetricQuery {
             + " let hour = " + date.getHours() + ";"            
             + " let table_clientinitcomplete = '\"" + table_clientinitcomplete + "\"';"
             + " let table_sessionstart = '\"" + table_sessionstart + "\"';"            
-            + " return `" + sql.replace(/[\r\n]/g, ' ') + "`;"             
-        return new Function(    str        )()
+            + " return `" + sql.replace(/[\r\n]/g, ' ') + "`;"
+        try {
+            let results = new Function(str)()
+            return results
+        } catch (err) {
+            console.log(err)
+            return err
+        }        
     }
 
     public toString = (sql: string) => {

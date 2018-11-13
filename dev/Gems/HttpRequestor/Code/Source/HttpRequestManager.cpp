@@ -46,7 +46,6 @@ namespace HttpRequestor
             m_thread.join();
         }
 
-        m_thread.detach();
     }
 
     void Manager::AddRequest(Parameters && httpRequestParameters)
@@ -80,7 +79,7 @@ namespace HttpRequestor
     {
         // Lock mutex and wait for work to be signalled via the condition variable
         AZStd::unique_lock<AZStd::mutex> lock(m_requestMutex);
-        m_requestConditionVar.wait(lock);
+        m_requestConditionVar.wait(lock, [&] { return !m_runThread || !m_requestsToHandle.empty() || !m_textRequestsToHandle.empty(); });
 
         // Swap queues
         AZStd::queue<Parameters> requestsToHandle;

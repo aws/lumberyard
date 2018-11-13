@@ -13,6 +13,7 @@
 #include "EMStudioManager.h"
 #include "LayoutManager.h"
 #include "MainWindow.h"
+#include <EMotionStudio/EMStudioSDK/Source/DockWidgetPlugin.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/Array.h>
@@ -297,6 +298,17 @@ namespace EMStudio
                     {
                         plugin = *itActivePlugin;
                         plugin->SetObjectName(pluginHeader.mObjectName);
+                        if (plugin->GetPluginType() == EMStudioPlugin::PLUGINTYPE_DOCKWIDGET)
+                        {
+                            DockWidgetPlugin* dockPlugin = static_cast<DockWidgetPlugin*>(plugin);
+                            // Dock widgets, when maximized, sometimes fail to
+                            // get a mouse release event when they are moved.
+                            // Calling setFloating(false) ensures they are not
+                            // in the middle of a drag operation while their
+                            // geometry is being restored from the saved
+                            // layout.
+                            dockPlugin->GetDockWidget()->setFloating(false);
+                        }
                         activePlugins.erase(itActivePlugin);
                         break;
                     }

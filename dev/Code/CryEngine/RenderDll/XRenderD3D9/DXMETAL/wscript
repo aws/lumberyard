@@ -38,6 +38,7 @@ def build(bld):
                                 'XRENDERGL_EXPORTS',
                                 '_RENDERER',
                                 'DXSDK="'+bld.Path('Code/SDKs/DXSDK/Include')+'/"',
+                                'USE_CRY_NEW_AND_DELETE',
                                 'OPENGL', 
                                 'CRY_USE_METAL'], # Defining this will get StdAfx.h to include the correct header file for OpenGl/Metal
         lib                 = [ 'HLSLcc' ],

@@ -154,8 +154,7 @@ namespace CharacterTool
                 }
 
                 uint32 numProxyNames = allProxyNames.size();
-                DynArray<bool> arrUsedProxies(numProxyNames, false);
-
+                DynArray<bool> arrUsedProxies;
                 arrUsedProxies.resize(numProxyNames);
                 uint32 numNames = set.names.size();
                 for (uint32 crcIndex = 0; crcIndex < numNames; crcIndex++)

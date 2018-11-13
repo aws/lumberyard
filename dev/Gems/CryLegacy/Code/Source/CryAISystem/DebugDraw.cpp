@@ -2355,7 +2355,7 @@ static inline bool CheckDistance(const Vec3 pos1, const std::vector<Vec3>* focus
 // A bit ugly, but make this global - it caches the debug graph that needs to be drawn.
 // If it's empty then DebugDrawGraph tries to fill it. Otherwise we just draw it
 // It will get zeroed when the graph is regenerated.
-std::vector<const GraphNode*> g_DebugGraphNodesToDraw;
+StaticInstance<std::vector<const GraphNode*>> g_DebugGraphNodesToDraw;
 static CGraph* lastDrawnGraph = 0; // detects swapping between hide and nav
 
 //====================================================================

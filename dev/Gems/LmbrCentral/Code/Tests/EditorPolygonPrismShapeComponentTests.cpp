@@ -10,10 +10,8 @@
 *
 */
 #include "LmbrCentral_precompiled.h"
-#include "LmbrCentralEditor.h"
 #include "LmbrCentralReflectionTest.h"
 #include "Shape/EditorPolygonPrismShapeComponent.h"
-#include <AzToolsFramework/Application/ToolsApplication.h>
 
 namespace LmbrCentral
 {
@@ -45,37 +43,10 @@ namespace LmbrCentral
     </ObjectStream>)DELIMITER";
 
     class LoadEditorPolygonPrismShapeComponentFromVersion1
-        : public LoadReflectedObjectTest<AZ::ComponentApplication, LmbrCentralEditorModule, EditorPolygonPrismShapeComponent>
+        : public LoadEditorComponentTest<EditorPolygonPrismShapeComponent>
     {
     protected:
         const char* GetSourceDataBuffer() const override { return kEditorPolygonPrismComponentVersion1; }
-
-        void SetUp() override
-        {
-            LoadReflectedObjectTest::SetUp();
-
-            if (m_object)
-            {
-                m_editorPolygonPrismShapeComponent = m_object.get();
-
-                // The component needs to be attached on an entity to make bus calls
-                m_entity.AddComponent(m_editorPolygonPrismShapeComponent);
-                m_entity.Init();
-                m_entity.Activate();
-                PolygonPrismShapeComponentRequestBus::EventResult(m_polygonPrism, m_editorPolygonPrismShapeComponent->GetEntityId(), &PolygonPrismShapeComponentRequestBus::Events::GetPolygonPrism);
-            }
-        }   
-        
-        void TearDown() override
-        {
-            m_entity.Deactivate();
-            m_entity.RemoveComponent(m_editorPolygonPrismShapeComponent);
-        }
-
-        AZ::Entity m_entity; 
-        EditorPolygonPrismShapeComponent* m_editorPolygonPrismShapeComponent = nullptr;
-        AZ::ConstPolygonPrismPtr m_polygonPrism;
-
     };
 
     TEST_F(LoadEditorPolygonPrismShapeComponentFromVersion1, Application_IsRunning)
@@ -90,21 +61,23 @@ namespace LmbrCentral
 
     TEST_F(LoadEditorPolygonPrismShapeComponentFromVersion1, EditorComponent_Found)
     {
-        EXPECT_NE(m_editorPolygonPrismShapeComponent, nullptr);
-    }
-
-    TEST_F(LoadEditorPolygonPrismShapeComponentFromVersion1, PolygonPrism_Found)
-    {
-        EXPECT_NE(m_polygonPrism, nullptr);
+        EXPECT_EQ(m_entity->GetComponents().size(), 2);
+        EXPECT_NE(m_entity->FindComponent(m_object->GetId()), nullptr);
     }
 
     TEST_F(LoadEditorPolygonPrismShapeComponentFromVersion1, Height_MatchesSourceData)
     {
-        EXPECT_FLOAT_EQ(m_polygonPrism->GetHeight(), 1.57f);
+        AZ::ConstPolygonPrismPtr polygonPrism;
+        PolygonPrismShapeComponentRequestBus::EventResult(polygonPrism, m_entity->GetId(), &PolygonPrismShapeComponentRequestBus::Events::GetPolygonPrism);
+
+        EXPECT_FLOAT_EQ(polygonPrism->GetHeight(), 1.57f);
     }
 
     TEST_F(LoadEditorPolygonPrismShapeComponentFromVersion1, Vertices_MatchesSourceData)
     {
+        AZ::ConstPolygonPrismPtr polygonPrism;
+        PolygonPrismShapeComponentRequestBus::EventResult(polygonPrism, m_entity->GetId(), &PolygonPrismShapeComponentRequestBus::Events::GetPolygonPrism);
+
         AZStd::vector<AZ::Vector2> sourceVertices = 
         {
             AZ::Vector2(-0.57, -0.57),
@@ -112,7 +85,7 @@ namespace LmbrCentral
             AZ::Vector2(0.57, 0.57),
             AZ::Vector2(-0.57, 0.57)
         };
-        EXPECT_EQ(m_polygonPrism->m_vertexContainer.GetVertices(), sourceVertices);
+        EXPECT_EQ(polygonPrism->m_vertexContainer.GetVertices(), sourceVertices);
     }
 }
 

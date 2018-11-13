@@ -64,8 +64,12 @@
     #define LoadLibrary  LoadLibraryA
   #endif // !UNICODE
 
-# include <amd_ags.h>
-# include <nvapi.h>
+#include <amd_ags.h>
+#pragma warning(push)
+#pragma warning(disable:4819)   // Invalid character not in default code page
+#pragma warning(disable:4828)
+#include <nvapi.h>
+#pragma warning(pop)
 
 #endif // defined(WIN32)
 
@@ -1571,8 +1575,6 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
 {
     LOADING_TIME_PROFILE_SECTION;
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Renderer initialisation");
-
     if (!iSystem || !iLog)
     {
         return 0;
@@ -2093,6 +2095,7 @@ void CD3D9Renderer::InitNVAPI()
     {
         iLog->LogError("NVAPI: Unable to get driver version (%d)", status);
     }
+    SetNvidiaDriverVersion(version2);
 
     // enumerate displays
     for (int i = 0; i < NVAPI_MAX_DISPLAYS; ++i)
@@ -2443,6 +2446,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
     // Vendor-specific initializations and workarounds for driver bugs.
     {
         const DXGI_ADAPTER_DESC1& adapterDesc = rd->m_devInfo.AdapterDesc();
+
+        rd->m_adapterDescription = AZStd::string::format("%ls", adapterDesc.Description);
 
         if (adapterDesc.VendorId == RenderCapabilities::s_gpuVendorIdAMD)
         {

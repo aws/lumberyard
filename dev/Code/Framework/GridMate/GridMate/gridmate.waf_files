@@ -33,6 +33,7 @@
             "Carrier/DefaultTrafficControl.cpp",
             "Carrier/DefaultTrafficControl.h",
             "Carrier/Driver.h",
+            "Carrier/DriverEvents.h",
             "Carrier/Handshake.h",
             "Carrier/Simulator.h",
             "Carrier/SocketDriver.cpp",

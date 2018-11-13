@@ -27,6 +27,7 @@ def build(bld):
         configurations  = ['all'],
         pch             = 'StdAfx.cpp',
         use             = ['AzCore'],
+        defines         = ['ENGINE_EXPORTS', 'USE_CRY_NEW_AND_DELETE'],
 
         # Platform Specific
         uselib              = ['FREETYPE2'],

@@ -43,6 +43,7 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
                            help='The path where the component client code will be written. Defaults to the '
                                 'Code\{game}\AWS\{group}\ServiceAPI directory, or the Gem\Code\AWS\ServiceAPI '
                                 'directory if the resource group is defined by a Gem.')
+    subparser.add_argument('--language', required=False, default='cpp', help='Language to generate for - options cpp, csharp')
     add_common_args(subparser)
     subparser.set_defaults(func=__generate_service_api_code)
 
@@ -94,7 +95,10 @@ def __generate_service_api_code(context, args):
     else:
         namespace_name = resource_group.name
 
-    waf_files_updates = __generate_component_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger, gem)
+    if args.language == 'csharp':
+        waf_files_updates = __generate_cs_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger, gem)
+    else:
+        waf_files_updates = __generate_component_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger, gem)
 
     waf_files_updated = False
     if args.update_waf_files and gem:
@@ -221,6 +225,23 @@ def __generate_component_client(context, base_code_path, destination_code_path, 
         }
     }
 
+def __generate_cs_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger, gem):
+
+    if not os.path.exists(destination_code_path):
+        print 'Making directory {}'.format(destination_code_path)
+        os.makedirs(destination_code_path)
+
+    template_cs = jinja.get_template('component-client/component_template.cs')
+    out_path_cs = os.path.join(destination_code_path, '{}Requests.cs'.format(namespace_name).replace('CloudGem','CloudCanvas'))
+    jinja_json_cs = component_gen_utils.generate_cs_json(namespace_name, swagger)
+
+    __write_file(template_cs, jinja_json_cs, out_path_cs)
+
+    return {
+        'auto': {
+            'Source': [ __make_wscript_relative_path(base_code_path, out_path_cs) ]
+        }
+    }
 
 def __make_wscript_relative_path(base_path, file_path):
     return os.path.relpath(file_path, base_path).replace(os.sep, '/')

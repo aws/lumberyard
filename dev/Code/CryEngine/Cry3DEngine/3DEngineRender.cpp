@@ -727,7 +727,7 @@ struct SDebugFrustrum
     float                     m_fQuadDist;      // < 0 if not used
 };
 
-static std::vector<SDebugFrustrum> g_DebugFrustrums;
+static StaticInstance<std::vector<SDebugFrustrum>> g_DebugFrustrums;
 
 void C3DEngine::DebugDraw_Draw()
 {
@@ -1641,7 +1641,7 @@ void C3DEngine::SetSkyMaterial(_smart_ptr<IMaterial> pSkyMat)
 
 bool C3DEngine::IsHDRSkyMaterial(_smart_ptr<IMaterial> pMat) const
 {
-    return pMat && !azstricmp(pMat->GetShaderItem().m_pShader->GetName(), "SkyHDR");
+    return pMat && !azstricmp(pMat->GetSafeSubMtl(0)->GetShaderItem().m_pShader->GetName(), "SkyHDR");
 }
 
 void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& passInfo)
@@ -1756,6 +1756,10 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     {
         RenderSkyBox(GetSkyMaterial(), passInfo);
     }
+    
+    // Outdoor is not visible, that means there is no SkyBox to render.
+    // So we want to clear the GBuffer RT/background in order to avoid artifacts.
+    GetRenderer()->SetClearBackground(!IsOutdoorVisible());
 
     if (nRenderFlags & SHDF_ALLOW_AO)
     {
@@ -2213,7 +2217,7 @@ void C3DEngine::RenderSkyBox(_smart_ptr<IMaterial> pMat, const SRenderingPassInf
 
             // add sky dome to render list
             SRendItemSorter rendItemSorter = SRendItemSorter::CreateRendItemSorter(passInfo);
-            GetRenderer()->EF_AddEf(m_pREHDRSky, pMat->GetShaderItem(), pObj, passInfo, EFSLIST_GENERAL, 1, rendItemSorter);
+            GetRenderer()->EF_AddEf(m_pREHDRSky, pMat->GetSafeSubMtl(0)->GetShaderItem(), pObj, passInfo, EFSLIST_GENERAL, 1, rendItemSorter);
         }
     }
     // skybox
@@ -2241,7 +2245,7 @@ void C3DEngine::RenderSkyBox(_smart_ptr<IMaterial> pMat, const SRenderingPassInf
             m_pRESky->m_fSkyBoxStretching = m_fSkyBoxStretching;
 
             SRendItemSorter rendItemSorter = SRendItemSorter::CreateRendItemSorter(passInfo);
-            GetRenderer()->EF_AddEf(m_pRESky, pMat->GetShaderItem(), pObj, passInfo, EFSLIST_GENERAL, 1, rendItemSorter);
+            GetRenderer()->EF_AddEf(m_pRESky, pMat->GetSafeSubMtl(0)->GetShaderItem(), pObj, passInfo, EFSLIST_GENERAL, 1, rendItemSorter);
         }
     }
 }
@@ -2918,25 +2922,6 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     //////////////////////////////////////////////////////////////////////////
     {
         {
-#if TRACK_LEVEL_HEAP_USAGE
-            {
-                bool usingLevelHeap;
-                size_t lvlAllocs, lvlSize;
-                bool leaked = CryGetIMemoryManager()->GetLevelHeapViolationState(usingLevelHeap, lvlAllocs, lvlSize);
-                if (usingLevelHeap)
-                {
-                    if (leaked)
-                    {
-                        DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, 1.3f, Col_Red, "Level Heap Leaked (%i allocs, totalling %iKB)", (int) lvlAllocs, (int) (lvlSize / 1024));
-                    }
-                    else
-                    {
-                        DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, 1.3f, Col_Green, "Level Heap Healthy");
-                    }
-                }
-            }
-#endif
-
 #ifndef _RELEASE
             // Checkpoint loading information
             if (!gEnv->bMultiplayer)
@@ -3027,20 +3012,7 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
 
         m_nDeferredLightsNum = 0;
     }
-#if CAPTURE_REPLAY_LOG
-    {
-        CryReplayInfo replayInfo;
-        CryGetIMemReplay()->GetInfo(replayInfo);
-        if (replayInfo.filename)
-        {
-            DrawTextRightAligned(
-                fTextPosX, fTextPosY += fTextStepY,
-                "MemReplay log sz: %lluMB cost: %i MB",
-                (replayInfo.writtenLength + (512ULL * 1024ULL)) / (1024ULL * 1024ULL),
-                (replayInfo.trackingSize + (512 * 1024)) / (1024 * 1024));
-        }
-    }
-#endif
+
     assert(pDisplayInfo);
     if (bEnhanced)
     {

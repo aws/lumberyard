@@ -33,8 +33,12 @@ AZStd::mutex s_squishLock;
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wnull-dereference"
 #endif
+#pragma warning(push)
+#pragma warning(disable:4819)   // Invalid character not in default code page
+#pragma warning(disable:4828)
 #include <squish.h>
 #include <squish.inl>
+#pragma warning(pop)
 #if defined(__clang__)
 #   pragma clang diagnostic pop
 #endif

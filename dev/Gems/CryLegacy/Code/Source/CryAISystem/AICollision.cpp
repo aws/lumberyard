@@ -1106,7 +1106,7 @@ inline bool PointSorterAndrew(const Vec3& lhs, const Vec3& rhs)
 // liable for any real or imagined damage resulting from its use.
 // Users of this code must verify correctness for their application.
 //===================================================================
-static std::vector<Vec3> ConvexHull2DAndrewTemp;
+static StaticInstance<std::vector<Vec3>> ConvexHull2DAndrewTemp;
 
 void ConvexHull2DAndrew(std::vector<Vec3>& ptsOut, const std::vector<Vec3>& ptsIn)
 {

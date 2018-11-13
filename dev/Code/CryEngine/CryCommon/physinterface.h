@@ -345,12 +345,12 @@ public:
     {
         if (bDeleteBuf)
         {
-            free(m_pBuf);
+            CryModuleFree(m_pBuf);
         }
     }
     virtual void Prealloc()
     {
-        m_pBuf = (char*)malloc(m_nSize = 0x1000);
+        m_pBuf = (char*)CryModuleMalloc(m_nSize = 0x1000);
     }
 
     ILINE void* GetBuf() { return m_pBuf; }
@@ -382,9 +382,9 @@ public:
     {
         int prevsz = m_nSize;
         char* prevbuf = m_pBuf;
-        m_pBuf = (char*)malloc(m_nSize = (m_iPos + sz - 1 & ~0xFFF) + 0x1000);
+        m_pBuf = (char*)CryModuleMalloc(m_nSize = (m_iPos + sz - 1 & ~0xFFF) + 0x1000);
         memcpy(m_pBuf, prevbuf, (unsigned int)prevsz);
-        free(prevbuf);
+        CryModuleFree(prevbuf);
     }
 
     template<class ftype>

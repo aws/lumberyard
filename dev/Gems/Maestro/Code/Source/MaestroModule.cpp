@@ -36,6 +36,7 @@ namespace Maestro
         {
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {
+                MaestroAllocatorComponent::CreateDescriptor(),
                 MaestroSystemComponent::CreateDescriptor(),
                 SequenceComponent::CreateDescriptor(),
                 SequenceAgentComponent::CreateDescriptor(),
@@ -53,6 +54,7 @@ namespace Maestro
         AZ::ComponentTypeList GetRequiredSystemComponents() const override
         {
             return AZ::ComponentTypeList{
+                azrtti_typeid<MaestroAllocatorComponent>(),
                 azrtti_typeid<MaestroSystemComponent>(),
                 azrtti_typeid<SequenceAgentExternalCreator>(),
             };

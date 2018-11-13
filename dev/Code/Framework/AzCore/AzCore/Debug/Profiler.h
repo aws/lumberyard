@@ -26,7 +26,7 @@ namespace AZ
 {
     namespace Debug
     {
-        using ProfileCategoryPrimitiveType = AZ::u32;
+        using ProfileCategoryPrimitiveType = AZ::u64;
 
         /**
         * Profiling categories consumed by AZ_PROFILE_FUNCTION and AZ_PROFILE_SCOPE variants for profile filtering
@@ -66,22 +66,24 @@ namespace AZ
             AzRender,
             AzFramework,
             AzToolsFramework,
-            // Add new major categories here (and add names to the parallel position in ProfileCategoryNames) - these categories are enabled by default
             ScriptCanvas,
+            // Add new major categories here (and add names to the parallel position in ProfileCategoryNames) - these categories are enabled by default
 
             FirstDetailedCategory,
             RendererDetailed = FirstDetailedCategory,
             ThreeDEngineDetailed,
+            JobManagerDetailed,
             // Add new detailed categories here (and add names to the parallel position in ProfileCategoryNames) -- these categories are disabled by default
             
             // Internal reserved categories, not for use with performance events
             FirstReservedCategory,
             MemoryReserved = FirstReservedCategory,
+            Global,
 
             // Must be last
             Count
         };
-        static_assert(static_cast<ProfileCategoryPrimitiveType>(ProfileCategory::Count) < (sizeof(ProfileCategoryPrimitiveType) * 8), "The number of profile categories must not exceed the number of bits in ProfileCategoryPrimitiveType");
+        static_assert(static_cast<size_t>(ProfileCategory::Count) < (sizeof(ProfileCategoryPrimitiveType) * 8), "The number of profile categories must not exceed the number of bits in ProfileCategoryPrimitiveType");
 
         /**
         * Parallel array to ProfileCategory as string category names to be used as Driller category names or for debug purposes
@@ -121,11 +123,13 @@ namespace AZ
             "ScriptCanvas",
 
             "RendererDetailed",
-            "3EngineDetailed",
+            "3DEngineDetailed",
+            "JobManagerDetailed",
 
-            "MemoryReserved"
+            "MemoryReserved",
+            "Global"
         };
-        static_assert(AZ_ARRAY_SIZE(ProfileCategoryNames) == static_cast<AZ::u32>(ProfileCategory::Count), "ProfileCategory and ProfileCategoryNames size mismatch");
+        static_assert(AZ_ARRAY_SIZE(ProfileCategoryNames) == static_cast<size_t>(ProfileCategory::Count), "ProfileCategory and ProfileCategoryNames size mismatch");
     }
 }
 

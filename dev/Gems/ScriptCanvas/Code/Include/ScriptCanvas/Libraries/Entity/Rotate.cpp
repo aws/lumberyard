@@ -93,18 +93,24 @@ namespace ScriptCanvas
                             }
                         }
 
-                        AZ::Transform rotation(
-                              AZ::Transform::CreateRotationX(AZ::DegToRad(angles.GetX()))
-                            * AZ::Transform::CreateRotationY(AZ::DegToRad(angles.GetY()))
-                            * AZ::Transform::CreateRotationZ(AZ::DegToRad(angles.GetZ()))
-                        );
+                        AZ::Quaternion rotation = AZ::ConvertEulerDegreesToQuaternion(angles);
 
                         AZ::Transform currentTransform = AZ::Transform::CreateIdentity();
                         AZ::TransformBus::EventResult(currentTransform, targetEntity, &AZ::TransformInterface::GetWorldTM);
                         
-                        auto position = currentTransform.GetTranslation();
-                        AZ::Transform newTransform = rotation * currentTransform;
+                        AZ::Vector3 position = currentTransform.GetTranslation();
+
+                        AZ::Quaternion currentRotation = AZ::Quaternion::CreateFromTransform(currentTransform);
+
+                        AZ::Quaternion newRotation = (rotation * currentRotation);
+                        newRotation.Normalize();
+
+                        AZ::Transform newTransform = AZ::Transform::CreateIdentity();
+
+                        newTransform.CreateScale(currentTransform.ExtractScale());
+                        newTransform.SetRotationPartFromQuaternion(newRotation);
                         newTransform.SetTranslation(position);
+
                         AZ::TransformBus::Event(targetEntity, &AZ::TransformInterface::SetWorldTM, newTransform);
                     }
                 }

@@ -145,7 +145,12 @@ namespace AZ
 
     AZ_MATH_FORCE_INLINE const Quaternion Quaternion::Lerp(const Quaternion& dest, const VectorFloat& t) const
     {
-        return (*this) + (dest - (*this)) * t;
+        if (Dot(dest) >= 0.0f)
+        {
+            return (*this) + (dest - (*this)) * t;
+        }
+
+        return (*this) - (dest + (*this)) * t;
     }
 
     AZ_MATH_FORCE_INLINE bool Quaternion::IsClose(const Quaternion& q, const VectorFloat& tolerance) const

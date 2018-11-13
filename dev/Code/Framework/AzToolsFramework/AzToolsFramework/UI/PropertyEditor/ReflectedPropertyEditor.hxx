@@ -137,7 +137,7 @@ namespace AzToolsFramework
         std::unique_ptr<Impl> m_impl;
 
         virtual void paintEvent(QPaintEvent* event) override;
-
+        int m_updateDepth = 0;
 
     private slots:
         void OnPropertyRowExpandedOrContracted(PropertyRowWidget* widget, InstanceDataNode* node, bool expanded, bool fromUserInteraction);

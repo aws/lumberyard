@@ -18,29 +18,35 @@ import urllib
 
 from resource_manager.test import lmbr_aws_test_support
 import resource_management
-
 import cgf_service_client
+from resource_manager.test import base_stack_test
 
-class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aws_TestCase):
+class IntegrationTest_CloudGemFramework_ServiceApi(base_stack_test.BaseStackTestCase):
 
     CGP_CONTENT_FILE_NAME = "Foo.js"
     TEST_PLUGIN_NAME = 'TestPlugin'
     TEST_EMPTY_PLUGIN_NAME = 'TestEmptyPlugin'
     TEST_PLUGIN_GEM_NAME = 'TestPluginCloudGem'
 
+    FAST_TEST_RERUN = False
+
     def __init__(self, *args, **kwargs):
         super(IntegrationTest_CloudGemFramework_ServiceApi, self).__init__(*args, **kwargs)
 
-    def setUp(self):        
-        self.prepare_test_envionment("cloud_gem_framework_service_api_test")
+    def setUp(self):
+        self.set_deployment_name(lmbr_aws_test_support.unique_name())
+        self.set_resource_group_name(lmbr_aws_test_support.unique_name('sapi'))
+        self.prepare_test_environment("cloud_gem_framework_service_api_test")
+        self.register_for_shared_resources()
 
     def test_end_to_end(self):
         self.run_all_tests()
 
-    def __000_create_stacks(self): 
-        self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--confirm-aws-usage', '--confirm-security-change', '--region', lmbr_aws_test_support.REGION)
-        self.lmbr_aws('cloud-gem', 'create', '--gem', self.TEST_RESOURCE_GROUP_NAME, '--initial-content', 'no-resources', '--enable')
-        self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change')
+    def __000_create_stacks(self):
+        self.base_create_project_stack()
+        self.lmbr_aws('cloud-gem', 'create', '--gem', self.TEST_RESOURCE_GROUP_NAME, '--initial-content', 'no-resources', '--enable', '--no-cpp-code', '--no-sln-change', ignore_failure=True)
+        self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change', '--parallel', '--only-cloud-gems', *self.__STACK_CLOUD_GEMS_TO_MODIFY() )
+        self.lmbr_aws('deployment', 'default', '--set', self.TEST_DEPLOYMENT_NAME)
 
     def __010_add_service_api_resources(self):
         self.lmbr_aws('cloud-gem-framework', 'add-service-api-resources', '--resource-group', self.TEST_RESOURCE_GROUP_NAME)
@@ -49,7 +55,6 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
         self.lmbr_aws('resource-group', 'upload-resources', '--resource-group', self.TEST_RESOURCE_GROUP_NAME, '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change')
 
     def __030_verify_service_api_resources(self):
-
         self.verify_stack("resource group stack", self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME),
             {
                 'StackStatus': 'UPDATE_COMPLETE',
@@ -69,14 +74,9 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
                 }
             })
 
-        # ServiceApi not player accessible (yet), so should be no mapping
-        expected_logical_ids = []
-        self.verify_user_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
-
-
     def __040_call_simple_api(self):
 
-        client = self.get_service_client()
+        client = self.get_service_client(stack_id=self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME))
 
         result = client.navigate('service', 'status').GET()
 
@@ -84,9 +84,9 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
 
 
     def __050_call_simple_api_with_no_credentials(self):
-        
-        client = self.get_service_client(use_aws_auth=False)
-        
+
+        client = self.get_service_client(use_aws_auth=False, stack_id=self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME))
+
         with self.assertRaises(cgf_service_client.NotAllowedError):
             client.navigate('service', 'status').GET()
 
@@ -112,10 +112,10 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
     def __120_add_interfaces(self):
 
         # create gem that will define interface
-        self.lmbr_aws('cloud-gem', 'create', '--initial-content', 'no-resources', '--gem', self.INTERFACE_DEFINER_GEM_NAME, '--enable')
+        self.lmbr_aws('cloud-gem', 'create', '--initial-content', 'no-resources', '--gem', self.INTERFACE_DEFINER_GEM_NAME, '--enable', '--no-sln-change', ignore_failure=True)
 
         # create gem that will call interface
-        self.lmbr_aws('cloud-gem', 'create', '--initial-content', 'lambda', '--gem', self.INTERFACE_CALLER_GEM_NAME, '--enable')
+        self.lmbr_aws('cloud-gem', 'create', '--initial-content', 'lambda', '--gem', self.INTERFACE_CALLER_GEM_NAME, '--enable', '--no-sln-change', ignore_failure=True)
 
         # add interface api definition to definer gem
         self.make_gem_aws_json(self.INTERFACE_SWAGGER, self.INTERFACE_DEFINER_GEM_NAME, 'api-definition', self.INTERFACE_NAME + '.json')
@@ -148,7 +148,7 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
 
     def __130_add_legacy_plugin(self):
 
-        self.lmbr_aws('cloud-gem', 'create', '--gem', self.TEST_PLUGIN_GEM_NAME, '--initial-content', 'no-resources', '--enable')
+        self.lmbr_aws('cloud-gem', 'create', '--gem', self.TEST_PLUGIN_GEM_NAME, '--initial-content', 'no-resources', '--enable', '--no-sln-change', ignore_failure=True)
 
         # add imports to test resource group
         with open(self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME, 'lambda-code', 'ServiceLambda', '.import'), 'a') as file:
@@ -205,17 +205,18 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
 
 
     def __200_update_deployment(self):
-        self.lmbr_aws('deployment', 'update', '-d', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change')
-        time.sleep(30) # seems as if API Gateway can take a few seconds to update
+        self.lmbr_aws('deployment', 'update', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change', '--parallel', '--only-cloud-gems', *self.__STACK_CLOUD_GEMS_TO_MODIFY() )
+        time.sleep(60) # seems as if API Gateway can take a few seconds to update
+        self.lmbr_aws('mappings', 'update')
 
 
     def __210_verify_service_api_mapping(self):
         self.refresh_stack_resources(self.get_deployment_stack_arn(self.TEST_DEPLOYMENT_NAME));
-        expected_logical_ids = [ 
-            self.TEST_RESOURCE_GROUP_NAME + '.ServiceApi', 
+        expected_logical_ids = [
+            self.TEST_RESOURCE_GROUP_NAME + '.ServiceApi',
             self.INTERFACE_CALLER_GEM_NAME + '.Lambda'
         ]
-        expected_service_url = self.get_service_url()
+        expected_service_url = self.get_service_url(self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME))
         expected_physical_resource_ids = { self.TEST_RESOURCE_GROUP_NAME + '.ServiceApi': expected_service_url }
         self.verify_user_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids, expected_physical_resource_ids = expected_physical_resource_ids)
 
@@ -267,20 +268,38 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
 
 
     def __400_call_test_plugin(self):
-        client = self.get_service_client()
+        client = self.get_service_client(stack_id=self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME))
         result = client.navigate('test', 'plugin').GET()
         self.assertEqual(result.result, 'pass')
 
 
     def __500_call_interface_directly(self):
-        client = self.get_service_client()
+        client = self.get_service_client(stack_id=self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME))
         body = {'test': 'data'}
         param = 'test'
         result = client.navigate('parent', 'child').POST(body, param = param)
         self.assertEquals(result, {'body': body, 'param': param})
 
 
-    def __501_invoke_interface_caller(self):
+    def __501_call_interface_directly_with_player_credential(self):
+        client = self.get_service_client(assumed_role='Player', stack_id=self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME))
+        body = {'test': 'data'}
+        param = 'test'
+
+        with self.assertRaises(cgf_service_client.NotAllowedError):
+            client.navigate('parent', 'child').POST(body, param = param)
+
+
+    def __502_call_interface_directly_without_credential(self):
+        client = self.get_service_client(use_aws_auth=False, stack_id=self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME))
+        body = {'test': 'data'}
+        param = 'test'
+
+        with self.assertRaises(cgf_service_client.NotAllowedError):
+            client.navigate('parent', 'child').POST(body, param = param)
+
+
+    def __503_invoke_interface_caller(self):
 
         self.refresh_stack_resources(self.get_deployment_stack_arn(self.TEST_DEPLOYMENT_NAME))
 
@@ -296,11 +315,9 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
             Payload = json.dumps(input)
         )
 
-        print 'response', response
         self.assertEquals(response['StatusCode'], 200)
 
         payload = response['Payload'].read()
-        print 'payload', payload
         self.assertEquals(json.loads(payload.decode()), input)
 
 
@@ -310,20 +327,20 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
             print '\n*** SKIPPING cpp tests because the ENABLE_CLOUD_CANVAS_CPP_INTEGRATION_TESTS envionment variable is not set.\n'
         else:
 
-            self.lmbr_aws('update-mappings', '--release')
-        
+            self.lmbr_aws('update-mappings', '--release', '-d', self.TEST_DEPLOYMENT_NAME)
+
             mappings_file = os.path.join(self.GAME_DIR, 'Config', self.TEST_DEPLOYMENT_NAME + '.player.awsLogicalMappings.json')
             print 'Using mappings from', mappings_file
             os.environ["cc_override_resource_map"] = mappings_file
 
             lmbr_test_cmd = os.path.join(self.REAL_ROOT_DIR, 'lmbr_test.cmd')
             args =[
-                lmbr_test_cmd, 
-                'scan', 
+                lmbr_test_cmd,
+                'scan',
                 # '--wait-for-debugger', # uncomment if the tests are failing and you want to debug them.
-                '--include-gems', 
-                '--integ', 
-                '--only', 'Gem.CloudGemFramework.6fc787a982184217a5a553ca24676cfa.v0.1.0.dll', 
+                '--include-gems',
+                '--integ',
+                '--only', 'Gem.CloudGemFramework.6fc787a982184217a5a553ca24676cfa.v0.1.0.dll',
                 '--dir', os.environ.get("TEST_BUILD_DIR", "Bin64vc140.Debug.Test")
             ]
             print 'EXECUTING', ' '.join(args)
@@ -341,6 +358,7 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
 
     def __910_delete_resources(self):
         self.lmbr_aws('resource-group', 'upload-resources', '--resource-group', self.TEST_RESOURCE_GROUP_NAME, '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change', '--confirm-resource-deletion')
+        self.lmbr_aws('mappings', 'update', '-d', self.TEST_DEPLOYMENT_NAME, '--ignore-cache')
         self.verify_stack("resource group stack", self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME),
             {
                 'StackStatus': 'UPDATE_COMPLETE',
@@ -354,8 +372,16 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
         self.verify_user_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
 
     def __999_cleanup(self):
-        self.lmbr_aws('deployment', 'delete', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-resource-deletion')
-        self.lmbr_aws('project', 'delete', '--confirm-resource-deletion')
+        if self.FAST_TEST_RERUN:
+            print 'Tests passed enough to reach cleanup, failing in cleanup to prevent stack deletion since FAST_TEST_RERUN is true.'
+            self.assertFalse(self.FAST_TEST_RERUN)
+        self.unregister_for_shared_resources()
+        self.lmbr_aws(
+            'deployment', 'delete',
+            '--deployment', self.TEST_DEPLOYMENT_NAME,
+            '--confirm-resource-deletion'
+        )
+        self.teardown_base_stack()
 
     def __add_complex_api(self, param_type):
         self.__add_complex_api_to_swagger(param_type)
@@ -410,7 +436,7 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
                 "data": {
                     "type": param_type
                 }
-            }, 
+            },
             "required": [
                 "data"
             ]
@@ -463,9 +489,9 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
             json.dump(template, file, indent=4, sort_keys=True)
 
     def __call_complex_api(self, param_type, path_param, query_param, body_param, assumed_role=None, expected_status_code=200):
-        
+
         expected = {}
-        
+
         body = { 'data': body_param } if body_param is not None else None
         expected['bodyparam'] = body
 
@@ -479,14 +505,14 @@ class IntegrationTest_CloudGemFramework_ServiceApi(lmbr_aws_test_support.lmbr_aw
 
         # Make strings unicode so they match, this is a python json thing
         # not something API Gateway or the Lambda Function is doing.
-        expected = json.loads(json.dumps(expected)) 
+        expected = json.loads(json.dumps(expected))
 
         # 'encode' url parametrs in JSON format
-        if param_type == 'boolean': 
+        if param_type == 'boolean':
             path_param = 'true' if path_param else 'false'
             query_param = 'true' if query_param else 'false'
 
-        client = self.get_service_client(assumed_role = assumed_role)
+        client = self.get_service_client(assumed_role = assumed_role, stack_id=self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME))
 
         params = {}
         if query_param is not None:
@@ -586,7 +612,7 @@ def post(request, pathparam, queryparam, bodyparam):
                 "data": {
                     "type": "string"
                 }
-            }, 
+            },
             "required": [
                 "data"
             ]
@@ -623,11 +649,11 @@ def post(request, pathparam, queryparam, bodyparam):
 
 
     def __call_api_with_optional_parameters(self, with_defaults = False, query_param = None, body_param = None, assumed_role=None, expected_status_code=200):
-        
+
         expected = {}
-        
+
         if body_param is not None:
-            body = { 'data': body_param } 
+            body = { 'data': body_param }
             expected['bodyparam'] = body
         else:
             body = None
@@ -640,14 +666,14 @@ def post(request, pathparam, queryparam, bodyparam):
 
         # Make strings unicode so they match, this is a python json thing
         # not something API Gateway or the Lambda Function is doing.
-        expected = json.loads(json.dumps(expected)) 
+        expected = json.loads(json.dumps(expected))
 
         params = {}
         if query_param is not None:
             params['queryparam'] = str(query_param)
 
-        client = self.get_service_client(assumed_role = assumed_role)
-        
+        client = self.get_service_client(assumed_role = assumed_role, stack_id=self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME))
+
         try:
             result = client.navigate('test', 'optional', self.__with_defaults_postfix(with_defaults)).POST(body, **params)
             self.assertEquals(expected_status_code, 200)
@@ -655,6 +681,14 @@ def post(request, pathparam, queryparam, bodyparam):
         except cgf_service_client.HttpError as e:
             self.assertEquals(e.code, expected_status_code)
 
+    def __STACK_CLOUD_GEMS_TO_MODIFY(self):
+        return [
+                self.TEST_RESOURCE_GROUP_NAME,
+                self.INTERFACE_DEFINER_GEM_NAME,
+                self.INTERFACE_CALLER_GEM_NAME,
+                self.TEST_PLUGIN_NAME,
+                self.TEST_EMPTY_PLUGIN_NAME,
+                self.TEST_PLUGIN_GEM_NAME ]
 
     OPTIONAL_API_CODE = '''
 import cgf_lambda_service
@@ -672,9 +706,9 @@ def post(request, queryparam=None, bodyparam=None):
 
     INTERFACE_DEFINER_GEM_NAME = 'InterfaceDefininer'
     INTERFACE_CALLER_GEM_NAME = 'InterfaceCaller'
-    
+
     INTERFACE_NAME = 'TestInterface_1_0_0'
-    
+
     INTERFACE_ID = INTERFACE_DEFINER_GEM_NAME + '_' + INTERFACE_NAME
 
     INTERFACE_SWAGGER = {
@@ -723,7 +757,7 @@ def post(request, queryparam=None, bodyparam=None):
                     "param": {
                         "type": "string"
                     }
-                }, 
+                },
                 "required": [
                     "body",
                     "param"
@@ -749,12 +783,9 @@ import cgf_service_client
 import boto3
 
 def handler(event, context):
-    print 'event', event
-    interface = cgf_lambda_settings.settings.Services.{INTERFACE_ID}
-    print 'interface', interface
-    service_client = cgf_service_client.for_url(interface.InterfaceUrl, verbose=True, session=boto3._get_default_session())
+    interface_url = cgf_lambda_settings.get_service_url("{INTERFACE_ID}")
+    service_client = cgf_service_client.for_url(interface_url, verbose=True, session=boto3._get_default_session())
     result = service_client.navigate('child').POST(event['body'], param=event['param']);
-    print 'result', result
     return result.DATA
 '''.format(INTERFACE_ID = INTERFACE_ID)
 
@@ -792,4 +823,3 @@ def __assert(result, msg):
     if not result:
         raise AssertionError(msg)
 '''
-

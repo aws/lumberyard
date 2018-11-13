@@ -171,6 +171,11 @@ namespace RenderCapabilities
         return capabilities.m_frameBufferFetchSupport;
     }
 
+    bool SupportsIndependentBlending()
+    {
+        return GetGLDevice()->IsFeatureSupported(NCryOpenGL::eF_IndependentBlending);
+    }
+
     uint32 GetDeviceGLVersion()
     {
         return GetGLDevice()->GetFeatureSpec().m_kVersion.ToUint();

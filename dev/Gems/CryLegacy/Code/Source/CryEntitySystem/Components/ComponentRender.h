@@ -586,7 +586,7 @@ private:
     static float s_fViewDistRatio;
     static float s_fViewDistRatioCustom;
     static float s_fViewDistRatioDetail;
-    static std::vector<CComponentRender*> s_arrCharactersToRegisterForRendering;
+    static StaticInstance<std::vector<CComponentRender*>> s_arrCharactersToRegisterForRendering;
 
     //////////////////////////////////////////////////////////////////////////
     // Variables.

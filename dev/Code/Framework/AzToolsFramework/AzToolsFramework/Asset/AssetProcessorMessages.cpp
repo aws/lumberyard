@@ -233,5 +233,24 @@ namespace AzToolsFramework
                     ->Field("ScanFolders", &GetScanFoldersResponse::m_scanFolders);
             }
         }
+
+        //---------------------------------------------------------------------
+        void FileInfosNotificationMessage::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<FileInfosNotificationMessage, BaseAssetProcessorMessage>()
+                    ->Field("NotificationType", &FileInfosNotificationMessage::m_type)
+                    ->Field("FileID", &FileInfosNotificationMessage::m_fileID)
+                    ->Version(1);
+            }
+        }
+
+        unsigned FileInfosNotificationMessage::GetMessageType() const
+        {
+            static unsigned int messageType = AZ_CRC("FileProcessor::FileInfosNotification", 0x001c43f5);
+            return messageType;
+        }
     } // namespace AssetSystem
 } // namespace AzToolsFramework

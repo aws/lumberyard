@@ -90,6 +90,10 @@ namespace NCryMetal
     
     inline int GetAvailableMRTbpp()
     {
+#if defined(AZ_PLATFORM_APPLE_OSX)
+        // Mac doesn't support Gmem
+        return 0;
+#else
         static int ret = 0;
         
         if (ret == 0)
@@ -119,9 +123,11 @@ namespace NCryMetal
         }
         
         return ret;
+#endif
     }
     
     static bool s_isIosMinVersion9_0 = false;
+    static bool s_isIosMinVersion11_0 = false;
     static bool s_isOsxMinVersion10_11 = false;
     static bool s_isIOSGPUFamily3 = false;
     
@@ -132,6 +138,7 @@ namespace NCryMetal
         s_isOsxMinVersion10_11 = [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){10, 11, 0}];
 #elif defined(AZ_PLATFORM_APPLE_IOS)
         s_isIosMinVersion9_0 = [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){9, 0, 0}];
+        s_isIosMinVersion11_0 = [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){11, 0, 0}];
 #endif
     }
     

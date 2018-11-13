@@ -18,8 +18,8 @@
 #include "ResFile.h"
 
 
-CResFile CResFile::m_Root("Root");
-CResFile CResFile::m_RootStream("RootStream");
+CResFile CResFile::m_Root(nullptr);
+CResFile CResFile::m_RootStream(nullptr);
 int CResFile::m_nNumOpenResources = 0;
 uint32 CResFile::m_nSizeComprDir;
 uint32 CResFile::m_nMaxOpenResFiles = MAX_OPEN_RESFILES;
@@ -185,8 +185,12 @@ CResFile::CResFile(const char* name)
     m_bDirCompressed = false;
     m_nOffset = OFFSET_BIG_POSITIVE;
 
-    if (!m_Root.m_Next)
+    // If the root hasn't been set up before and this isn't a statically created
+    // CResFile (like the root/root stream), then lazy init the resource list
+    if (!m_Root.m_Next && name)
     {
+        m_Root.m_name = "Root";
+        m_RootStream.m_name = "RootStream";
         m_Root.m_Next = &m_Root;
         m_Root.m_Prev = &m_Root;
         m_RootStream.m_NextStream = &m_RootStream;
@@ -1292,8 +1296,6 @@ byte* CResFile::mfFileReadCompressed(SDirEntry* de, uint32& nSizeDecomp, uint32&
     {
         return NULL;
     }
-
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Shader, 0, "Shaders File Read Compressed");
 
     if (m_fileHandle == AZ::IO::InvalidHandle)
     {

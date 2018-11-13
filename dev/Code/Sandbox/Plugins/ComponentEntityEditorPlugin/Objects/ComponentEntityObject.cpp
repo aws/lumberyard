@@ -48,6 +48,7 @@
 
 #include <Material/MaterialManager.h>
 #include <Objects/ObjectLayer.h>
+#include <Objects/StatObjValidator.h>
 
 /**
  * Scalars for icon drawing behavior.
@@ -452,6 +453,7 @@ void CComponentEntityObject::OnMeshCreated(const AZ::Data::Asset<AZ::Data::Asset
 
     // Need to recalculate bounds when the mesh changes.
     OnBoundsReset();
+    ValidateMeshStatObject();
 }
 
 void CComponentEntityObject::OnBoundsReset()
@@ -1111,6 +1113,8 @@ void CComponentEntityObject::SetMaterial(CMaterial* material)
             EBUS_EVENT_ID(m_entityId, LmbrCentral::MaterialOwnerRequestBus, SetMaterial, nullptr);
         }
     }
+
+    ValidateMeshStatObject();
 }
 
 CMaterial* CComponentEntityObject::GetMaterial() const
@@ -1136,6 +1140,15 @@ CMaterial* CComponentEntityObject::GetRenderMaterial() const
     }
 
     return nullptr;
+}
+
+void CComponentEntityObject::ValidateMeshStatObject()
+{
+    IStatObj* statObj = GetIStatObj();
+    CMaterial* editorMaterial = GetMaterial();
+    CStatObjValidator statValidator;
+    // This will print out warning messages to the console.
+    statValidator.Validate(statObj, editorMaterial, nullptr);
 }
 
 #include <Objects/ComponentEntityObject.moc>

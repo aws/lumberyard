@@ -60,13 +60,20 @@
                 }
             }
         },
-
         "Lambda": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "Description": "Function called by the game to perform some action.",
                 "Handler": "main.handler",
                 "Role": { "Fn::GetAtt": [ "LambdaConfiguration", "Role" ] },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "LambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": { "Fn::GetAtt": [ "LambdaConfiguration", "Runtime" ] },
                 "Code": {
                     "S3Bucket": { "Fn::GetAtt": [ "LambdaConfiguration", "ConfigurationBucket" ] },

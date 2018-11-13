@@ -3,7 +3,7 @@ import { Http } from '@angular/http';
 import { AwsService } from "app/aws/aws.service";
 import { ModalComponent } from 'app/shared/component/index';
 import { ToastsManager } from 'ng2-toastr';
-import { Observable } from 'rxjs/Observable';
+import { Observable } from 'rxjs/rx';
 import { LyMetricService } from 'app/shared/service/index';
 
 import {

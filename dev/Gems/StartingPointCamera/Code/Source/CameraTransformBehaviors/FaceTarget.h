@@ -13,6 +13,7 @@
 #include <CameraFramework/ICameraTransformBehavior.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Math/Transform.h>
+#include <AzCore/Memory/SystemAllocator.h>
 
 namespace AZ
 {
@@ -30,6 +31,7 @@ namespace Camera
     public:
         ~FaceTarget() override = default;
         AZ_RTTI(FaceTarget, "{1A2CBCD0-1841-493C-8DB7-1BCA0D293019}", ICameraTransformBehavior)
+        AZ_CLASS_ALLOCATOR(FaceTarget, AZ::SystemAllocator, 0); ///< Use AZ::SystemAllocator, otherwise a CryEngine allocator will be used. This will cause the Asset Processor to crash when this object is deleted, because of the wrong uninitialisation order
         static void Reflect(AZ::ReflectContext* reflection);
 
         //////////////////////////////////////////////////////////////////////////

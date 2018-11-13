@@ -396,7 +396,7 @@ void CStandardGraphicsPipeline::UpdatePerShadowConstantBuffer(const ShadowParame
         shadowFrustum.fNearDist,
         shadowFrustum.m_eFrustumType != ShadowMapFrustum::e_HeightMapAO ? shadowFrustum.fFarDist : 1.f,
         0.0f,
-        shadowFrustum.fDepthTestBias);
+        0.0f);
     cb->PerShadow_LightPos = Vec4(params.m_ShadowFrustum->vLightSrcRelPos + params.m_ShadowFrustum->vProjTranslation, 0);
     cb->PerShadow_ViewPos = Vec4(params.m_ViewerPos, 0);
 

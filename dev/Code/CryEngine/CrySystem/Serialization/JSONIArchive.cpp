@@ -611,14 +611,14 @@ namespace Serialization {
             void* buffer = 0;
             if (fileSize > 0)
             {
-                buffer = malloc(fileSize + 1);
+                buffer = CryModuleMalloc(fileSize + 1);
                 CRY_ASSERT(buffer != 0);
                 memset(buffer, 0, fileSize + 1);
                 size_t elementsRead = fread(buffer, fileSize, 1, file);
                 CRY_ASSERT(((char*)(buffer))[fileSize] == '\0');
                 if (elementsRead != 1)
                 {
-                    free(buffer);
+                    CryModuleFree(buffer);
                     return false;
                 }
             }

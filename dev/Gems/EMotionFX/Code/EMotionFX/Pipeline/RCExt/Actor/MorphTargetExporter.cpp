@@ -28,8 +28,6 @@
 #include <SceneAPI/SceneCore/DataTypes/GraphData/ITransform.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IBlendShapeRule.h>
 
-
-
 #include <SceneAPIExt/Groups/IActorGroup.h>
 #include <RCExt/ExportContexts.h>
 #include <RCExt/Actor/MorphTargetExporter.h>
@@ -41,6 +39,7 @@
 #include <EMotionFX/Source/MorphTargetStandard.h>
 #include <EMotionFX/Source/MorphSetup.h>
 #include <Integration/System/SystemCommon.h>
+
 
 namespace EMotionFX
 {
@@ -157,30 +156,30 @@ namespace EMotionFX
             return SceneEvents::ProcessingResult::Success;
         }
 
+
         void MorphTargetExporter::BuildMorphTargetMesh(EMotionFX::Actor* actor, EMotionFX::Node* emfxNode,
             const AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IBlendShapeData>& morphTargetData, const AZ::Transform& globalTransform, const AZ::Transform& globalTransformN, CoordinateSystemConverter& coordinateSystemConverter, bool optimizeTriangleList)
         {
-            //// Get the number of triangles (faces)
             const AZ::u32 numFaces = morphTargetData->GetFaceCount();
 
-            //// Get the number of orgVerts (control point)
+            // Get the number of orgVerts (control point)
             const AZ::u32 controlPointCount = morphTargetData->GetUsedControlPointCount();
-            const AZ::u32 normalCount = morphTargetData->GetVertexCount();
-            EMotionFX::MeshBuilder* meshBuilder = EMotionFX::MeshBuilder::Create(emfxNode->GetNodeIndex(), controlPointCount, false);
+            //const AZ::u32 numVertices = morphTargetData->GetVertexCount();
+            EMotionFX::MeshBuilder* meshBuilder = EMotionFX::MeshBuilder::Create(emfxNode->GetNodeIndex(), controlPointCount, false, false /* Disable vertex duplication optimization for morphed meshes. */);
 
-            //// Original vertex numbers
+            // Original vertex numbers
             EMotionFX::MeshBuilderVertexAttributeLayerUInt32* orgVtxLayer = EMotionFX::MeshBuilderVertexAttributeLayerUInt32::Create(controlPointCount, EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS, false, false);
             meshBuilder->AddLayer(orgVtxLayer);
 
-            //// The positions layer
+            // The positions layer
             EMotionFX::MeshBuilderVertexAttributeLayerVector3* posLayer = EMotionFX::MeshBuilderVertexAttributeLayerVector3::Create(controlPointCount, EMotionFX::Mesh::ATTRIB_POSITIONS, false, true);
             meshBuilder->AddLayer(posLayer);
 
-            //// The normals layer
-            EMotionFX::MeshBuilderVertexAttributeLayerVector3* normalsLayer = EMotionFX::MeshBuilderVertexAttributeLayerVector3::Create(normalCount, EMotionFX::Mesh::ATTRIB_NORMALS, false, true);
+            // The normals layer
+            EMotionFX::MeshBuilderVertexAttributeLayerVector3* normalsLayer = EMotionFX::MeshBuilderVertexAttributeLayerVector3::Create(controlPointCount, EMotionFX::Mesh::ATTRIB_NORMALS, false, true);
             meshBuilder->AddLayer(normalsLayer);
 
-            //// Data for each vertex
+            // Data for each vertex
             AZ::Vector3 pos;
             AZ::Vector3 normal;
 
@@ -190,11 +189,18 @@ namespace EMotionFX
                 const AZ::u32 materialID = 0;
                 meshBuilder->BeginPolygon(materialID);
 
+                AZ::u32 order[3] = { 0, 1, 2 };
+                if (coordinateSystemConverter.IsSourceRightHanded() != coordinateSystemConverter.IsTargetRightHanded())
+                {
+                    order[0] = 2;
+                    order[1] = 1;
+                    order[2] = 0;
+                }
+
                 // Add all triangle points (We are not supporting non-triangle face)
                 for (AZ::u32 vertexIndexInsidePoly = 0; vertexIndexInsidePoly < 3; ++vertexIndexInsidePoly)
                 {
-                    const uint32 vertexIndex = morphTargetData->GetFaceVertexIndex(faceIndex, vertexIndexInsidePoly);
-
+                    const AZ::u32 vertexIndex = morphTargetData->GetFaceVertexIndex(faceIndex, order[vertexIndexInsidePoly]);
                     const AZ::u32 controlPointIndex = morphTargetData->GetControlPointIndex(vertexIndex);
 
                     int orgVertexNumber = morphTargetData->GetUsedPointIndexForControlPoint(controlPointIndex);
@@ -209,7 +215,7 @@ namespace EMotionFX
                     normal = coordinateSystemConverter.ConvertVector3(normal);
 
                     posLayer->SetCurrentVertexValue(&pos);
-                    normal.Normalize();
+                    normal.NormalizeSafeExact();
                     normalsLayer->SetCurrentVertexValue(&normal);
 
                     meshBuilder->AddPolygonVertex(orgVertexNumber);

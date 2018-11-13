@@ -21,16 +21,6 @@ namespace ComponentFactoryTests
     class ComponentFactoryTests
         : public ::testing::Test
     {
-    public:
-        void SetUp() override
-        {
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
-        }
-
-        void TearDown() override
-        {
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-        }
     };
 
     class IComponentDog
@@ -109,23 +99,23 @@ namespace ComponentFactoryTests
             EXPECT_TRUE(dogFactoryNode.GetCreateFactoryFunction() ? true : false);
 
             // check that global list now contains new node
-            EXPECT_TRUE(ComponentFactoryCreationNode::GetGlobalList().size() == (oldNodeCount + 1));
+            EXPECT_EQ(oldNodeCount + 1, ComponentFactoryCreationNode::GetGlobalList().size());
             EXPECT_TRUE(stl::find(ComponentFactoryCreationNode::GetGlobalList(), &dogFactoryNode));
 
             // create factory
-            EXPECT_TRUE(createDogFactoryFunctionRunCount == 0);
+            EXPECT_EQ(0, createDogFactoryFunctionRunCount);
             AZStd::unique_ptr<IComponentFactoryBase> dogFactory = dogFactoryNode.GetCreateFactoryFunction()();
-            EXPECT_TRUE(createDogFactoryFunctionRunCount == 1);
-            EXPECT_TRUE(dogFactory.get() != nullptr);
-            EXPECT_TRUE(dogFactory->GetComponentType() == IComponentDog::Type());
+            EXPECT_EQ(1, createDogFactoryFunctionRunCount);
+            EXPECT_NE(nullptr, dogFactory.get());
+            EXPECT_EQ(IComponentDog::Type(), dogFactory->GetComponentType());
 
             // grab address of node before it goes out of scope.
             staleOldNodePointer = &dogFactoryNode;
         }
 
         // check that global list no longer contains dog factory node
-        EXPECT_TRUE(ComponentFactoryCreationNode::GetGlobalList().size() == oldNodeCount);
-        EXPECT_TRUE(!stl::find(ComponentFactoryCreationNode::GetGlobalList(), staleOldNodePointer));
+        EXPECT_EQ(oldNodeCount, ComponentFactoryCreationNode::GetGlobalList().size());
+        EXPECT_FALSE(stl::find(ComponentFactoryCreationNode::GetGlobalList(), staleOldNodePointer));
     }
 
     TEST_F(ComponentFactoryTests, CUT_DefaultComponentFactoryCreationNode)
@@ -143,7 +133,7 @@ namespace ComponentFactoryTests
         }
 
         // check that global list no longer contains default dog factory node
-        EXPECT_TRUE(ComponentFactoryCreationNode::GetGlobalList().size() == oldNodeCount);
+        EXPECT_EQ(oldNodeCount, ComponentFactoryCreationNode::GetGlobalList().size());
     }
 } // namespace ComponentFactoryTests
 

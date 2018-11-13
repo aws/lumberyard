@@ -760,11 +760,6 @@ void CTextureSplitter::Release()
 
 bool CTextureSplitter::Process()
 {
-    // Warning: this one is not multithread-safe (even if we
-    // return true in SupportsMultithreading()) if platforms
-    // specified for different CTextureSplitter compilers are
-    // different.
-
     const PlatformInfo* const pPlatformInfo = m_CC.pRC->GetPlatformInfo(m_CC.platform);
 
     m_currentEndian = pPlatformInfo->bBigEndian ? eBigEndian : eLittleEndian;
@@ -886,11 +881,6 @@ ICompiler* CTextureSplitter::CreateCompiler()
     }
     CTextureSplitter* pNewSplitter = new CTextureSplitter();
     return pNewSplitter;
-}
-
-bool CTextureSplitter::SupportsMultithreading() const
-{
-    return true;
 }
 
 void CTextureSplitter::ProcessPlatformSpecificConversions(std::vector<STexture>& resourcesOut, byte* fileContent, const size_t fileSize)
@@ -1066,13 +1056,13 @@ void CTextureSplitter::ProcessPlatformSpecificConversions(std::vector<STexture>&
         }
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
         if (m_targetType == eTT_##PrivateName)\
         {\
             ProcessPlatformSpecificConversions_##PrivateName(resource, dwSides, dwWidth, dwHeight, dwDepth, dwMips, format, bBlockCompressed, nBitsPerPixel);\
         }
         AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
     }
 

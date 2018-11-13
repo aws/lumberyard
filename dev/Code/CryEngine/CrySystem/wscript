@@ -15,8 +15,7 @@
 
 def build(bld):
 
-    bld.CryEngineModule(
-
+    kw = dict(
         # Settings
         target                  = 'CrySystem',
         vs_filter               = 'CryEngine',
@@ -27,7 +26,8 @@ def build(bld):
         pch                     = 'StdAfx.cpp',
         use                     = ['AzFramework',
                                    'GridMate',
-                                   'CrashHandler'],
+                                   'CrashHandler',
+                                   'RemoteConsoleCore'],
         uselib                  = ['LZ4',
                                    'TIFF',
                                    'TOMCRYPT',
@@ -37,6 +37,7 @@ def build(bld):
                                    'MD5'],
         includes                = [bld.Path('Code/Tools/GemRegistry/include') ],
         features                = ['link_running_program'],
+        defines                 = ['ENGINE_EXPORTS', 'USE_CRY_NEW_AND_DELETE'],
 
         # Platform Specific
         win_defines             = ['EXCLUDE_CINEMIZER_SDK'],
@@ -50,17 +51,9 @@ def build(bld):
         linux_file_list         = 'platformos_pc.waf_files',
         linux_lib               = [ 'tomcrypt', 'tommath', 'm' ],
 
-       
-       
-
-       
-       
-       
+        restricted_script       = 'update_restricted_parameters',
 
         android_file_list       = [ 'platformos_pc.waf_files', 'autodetect_android.waf_files' ],
-        android_includes        = [bld.Path('/Code/CryEngine/CrySystem/JobManager'),
-                                   bld.Path('/Code/CryEngine/CrySystem/XML/Expat'),
-                                   bld.Path('/Code/CryEngine/RenderDll/XRenderD3D9') ],
 
         ios_file_list           = [ 'platformos_pc.waf_files', 'autodetect_ios.waf_files' ],
 
@@ -71,5 +64,6 @@ def build(bld):
         # Testing
         test_all_file_list      = ['crysystem_test.waf_files'],
     )
-
-
+    for p in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p)] = ['{0}/platformos_{0}.waf_files'.format(p)]
+    bld.CryEngineModule(**kw)

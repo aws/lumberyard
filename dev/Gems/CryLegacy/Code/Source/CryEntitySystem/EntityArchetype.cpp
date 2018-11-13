@@ -129,8 +129,6 @@ IEntityArchetype* CEntityArchetypeManager::LoadArchetype(const char* sArchetype)
 
     const string& sLibName = GetLibraryFromName(sArchetype);
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_ArchetypeLib, 0, sLibName.c_str());
-
     // If archetype is not found try to load the library first.
     if (LoadLibrary(sLibName))
     {
@@ -143,8 +141,6 @@ IEntityArchetype* CEntityArchetypeManager::LoadArchetype(const char* sArchetype)
 //////////////////////////////////////////////////////////////////////////
 void CEntityArchetypeManager::Reset()
 {
-    MEMSTAT_LABEL_SCOPED("CEntityArchetypeManager::Reset");
-
     m_nameToArchetypeMap.clear();
     DynArray<string>().swap(m_loadedLibs);
 }

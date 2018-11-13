@@ -30,7 +30,6 @@ public:
 
     // IConvertor methods.
     virtual ICompiler* CreateCompiler();
-    virtual bool SupportsMultithreading() const;
     virtual const char* GetExt(int index) const { return (index == 0) ? "lua" : 0; }
 
     // ICompiler methods.

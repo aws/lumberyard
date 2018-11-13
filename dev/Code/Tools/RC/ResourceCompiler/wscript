@@ -15,7 +15,7 @@
 
 def build(bld):
 
-    defines = ['NOT_USE_CRY_MEMORY_MANAGER']
+    defines = []
 
     bld.CryResourceCompiler(
         # Settings

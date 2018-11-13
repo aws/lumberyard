@@ -50,6 +50,12 @@
             "_comment": "CryLegacy"
         },
         {
+            "Path": "Gems/AWSLambdaLanguageDemo/v1",
+            "Uuid": "35d2c0caf522417398ce5807cbedb60c",
+            "Version": "1.0.0",
+            "_comment": "AWSLambdaLanguageDemo"
+        },
+        {
             "Path": "Gems/CloudGemDynamicContent",
             "Uuid": "3a3eeef064a04c37b4513c6378f4f56a",
             "Version": "0.1.0",
@@ -98,6 +104,12 @@
             "_comment": "SceneProcessing"
         },
         {
+            "Path": "Gems/GraphicsReflectContext",
+            "Uuid": "81d5967d0b9b41d89754cce68a20882e",
+            "Version": "0.1.0",
+            "_comment": "GraphicsReflectContext"
+        },
+        {
             "Path": "Gems/ScriptCanvas",
             "Uuid": "869a0d0ec11a45c299917d45c81555e6",
             "Version": "0.1.0",
@@ -134,6 +146,12 @@
             "_comment": "UserLoginDefault"
         },
         {
+            "Path": "Gems/NativeUI",
+            "Uuid": "d2a325d80a0445dbb64b22f7d2f20960",
+            "Version": "0.1.0",
+            "_comment": "NativeUI"
+        },
+        {
             "Path": "Gems/ScriptCanvasDiagnosticLibrary",
             "Uuid": "d969b997bb7f4342ba0b3eedc378025d",
             "Version": "0.1.0",
@@ -162,6 +180,12 @@
             "Uuid": "eeea32a28cba4992a3aad86812a71477",
             "Version": "0.1.0",
             "_comment": "CloudGemAWSScriptBehaviors"
+        },
+        {
+            "Path": "Gems/ScriptCanvasDeveloper",
+            "Uuid": "f905c05883b94fd6bddc91052c3c5a86",
+            "Version": "0.1.0",
+            "_comment": "ScriptCanvasDeveloperGem"
         },
         {
             "Path": "Gems/Camera",

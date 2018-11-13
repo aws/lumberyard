@@ -58,7 +58,7 @@ namespace GridMate
         {
             LBSTOR_INVALID,
             LBSTOR_INT32,
-            LBSTOR_INT64,   // Only supported on X360 and PS3, not on Steam. // ACCEPTED_USE
+            LBSTOR_INT64,   // Only supported on deprecated platforms, not on Steam.
             LBSTOR_FLOAT,
             LBSTOR_CONTEXT,
         };

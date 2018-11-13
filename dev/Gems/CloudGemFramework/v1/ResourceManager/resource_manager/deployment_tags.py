@@ -17,6 +17,68 @@ import copy
 from resource_manager_common import constant
 
 
+# Class supporting modifying resource-template.json for a given deployment through modification tags
+# To use, within your region section in local-project-settings.json add a "DeploymentTags" section
+# such as:
+#
+# "us-east-1": {
+#    "ProjectStackId": "<someProjectStackId>",
+#    "DisabledResourceGroups": [
+#    ],
+#    "FrameworkVersion": "1.1.3",
+#    "DeploymentTags": {
+#        "<deploymentName>": [
+#            "<override-file-name>"
+#        ]
+#    }
+# }
+# then within dev/ProjectName/AWS/deployment-tags add a <override-file-name>.json that contains
+# sections of Resource Groups to override and sections of Tag Lists : Template Modifiers to make
+# like below:
+# {
+#    "<ResourceGroupName such as CloudGemDynamicContent>":
+#        {
+#            "Resources:ServiceLambdaConfiguration:Properties:Settings:Distribution":
+#                {
+#                    "EditType": "Add",
+#                    "TemplateData": {"Ref": "ContentDistribution"}
+#                },
+#
+#            "Resources:ContentDistribution": {
+#                "EditType": "Add",
+#                "TemplateData": {
+#                    "Type": "AWS::CloudFront::Distribution",
+#                    "Properties": {
+#                        "DistributionConfig": {
+#                            "Origins": [{
+#                                "DomainName": {"Fn::GetAtt": ["ContentBucket", "DomainName"]},
+#                                "Id": "contentOriginId",
+#                                "S3OriginConfig":
+#                                {
+#
+#                                }
+#                            }],
+#                            "Enabled": "true",
+#                            "Comment": "CDN for Dynamic Content",
+#                            "DefaultCacheBehavior": {
+#                                "AllowedMethods": ["HEAD", "GET"],
+#                                "TargetOriginId": "contentOriginId",
+#                                "ForwardedValues": {
+#                                    "QueryString": "false",
+#                                    "Cookies": {"Forward": "none"}
+#                                },
+#                                "TrustedSigners": [{"Ref": "AWS::AccountId"}],
+#                                "ViewerProtocolPolicy": "https-only"
+#                            },
+#                            "PriceClass": "PriceClass_200"
+#                        }
+#                    },
+#                    "DependsOn": ["ContentBucket"]
+#                }
+#            }
+#        }
+# }
+
 class DeploymentTag():
     def __init__(self, deployment_name, context):
         self._context = context
@@ -93,6 +155,7 @@ class DeploymentTag():
                 del json_data[path_list[0]]
             else:
                 json_data[path_list[0]] = override_template_data
+            self.path_found.append(path_list[0])
             return json_data
 
         new_key = path_list.pop(0)
@@ -108,8 +171,19 @@ class DeploymentTag():
 
     def load_tag(self, tag):
         overrides = {}
-        tags_file_path = os.path.join(self._context.config.aws_directory_path, "deployment-tags", "{}.json".format(tag))
-        if not os.path.exists(tags_file_path):
+        tags_file_path = None
+        deployment_path = os.path.join(self._context.config.aws_directory_path, "deployment-tags", "{}.json".format(tag))
+
+        if os.path.isfile(deployment_path):
+            tags_file_path = deployment_path
+        else:
+            for gem in self._context.gem.enabled_gems:
+                gem_path = os.path.join(gem.aws_directory_path, "deployment-tags", "{}.json".format(tag))
+                if os.path.isfile(gem_path):
+                    tags_file_path = gem_path
+                    break
+
+        if not tags_file_path:
             self._context.view._output_message("Could not find file for tag {}".format(tag))
             return overrides
 

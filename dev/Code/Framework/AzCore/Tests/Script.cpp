@@ -59,6 +59,9 @@ namespace UnitTest
 
     int g_globalValue = 501;
     int g_globalData = 0;
+    int g_globalTestClassesConstructed = 0;
+    int g_globalTestClassesDestructed = 0;
+
     GlobalClassEnum globalClassEnumValue = GlobalClassEnum::Value3;
 
     int globalPropertyGetter()
@@ -134,6 +137,16 @@ namespace UnitTest
             , m_dataReadOnly(3)
         {
             g_globalData = 1020;
+            g_globalTestClassesConstructed++;
+        }
+
+        BehaviorTestClass(const BehaviorTestClass& other)
+            : m_data(other.m_data)
+            , m_data1(other.m_data1)
+            , m_dataReadOnly(other.m_dataReadOnly)
+        {
+            g_globalData = 1025;
+            g_globalTestClassesConstructed++;
         }
 
         BehaviorTestClass(int data)
@@ -142,11 +155,13 @@ namespace UnitTest
             , m_dataReadOnly(4)
         {
             g_globalData = 1030;
+            g_globalTestClassesConstructed++;
         }
 
         virtual ~BehaviorTestClass()
         {
             g_globalData = 1040;
+            g_globalTestClassesDestructed++;
         }
 
         enum MyEnum
@@ -298,6 +313,8 @@ namespace UnitTest
         virtual AZStd::string OnEventWithDefaultValueAndStringResult(AZStd::string_view view1, AZStd::string_view) { return AZStd::string::format("Default Value: %s", view1.data()); }
 
         virtual void OnEventConst() const {};
+
+        virtual BehaviorTestClass OnEventResultWithBehaviorClassParameter(BehaviorTestClass data) { return BehaviorTestClass(); };
     };
 
     typedef AZ::EBus<BehaviorTestBusEvents> BehaviorTestBus;
@@ -314,6 +331,7 @@ namespace UnitTest
             , OnEventWithStringResult
             , OnEventWithClassResult
             , OnEventWithDefaultValueAndStringResult
+            , OnEventResultWithBehaviorClassParameter
         );
         
         // User code
@@ -363,6 +381,13 @@ namespace UnitTest
         AZStd::string OnEventWithDefaultValueAndStringResult(AZStd::string_view view1, AZStd::string_view view2) override
         {
             return BehaviorTestBus::Handler::OnEventWithDefaultValueAndStringResult(view1, view2);
+        }
+
+
+        BehaviorTestClass OnEventResultWithBehaviorClassParameter(BehaviorTestClass data) override
+        {
+            BehaviorTestClass result = data;
+            return result;
         }
     };
 
@@ -664,6 +689,8 @@ namespace UnitTest
             // EBus
             const AZStd::string_view defaultStringViewValue = "DEFAULT!!!!";
             AZStd::string expectedDefaultValueAndStringResult = AZStd::string::format("Default Value: %s", defaultStringViewValue.data());
+            BehaviorDefaultValue* defaultStringViewBehaviorValue = aznew BehaviorDefaultValue(defaultStringViewValue);
+            BehaviorDefaultValue* superDefaultStringViewBehaviorValue = aznew BehaviorDefaultValue(AZStd::string_view("SUPER DEFAULT!!!!"));
 
             behaviorContext.EBus<BehaviorTestBus>("TestBus")
                     ->Attribute("EBusAttr", 40)
@@ -675,9 +702,10 @@ namespace UnitTest
                 ->Event("OnEventWithResultContainer", &BehaviorTestBus::Events::OnEventWithResultContainer)
                 ->Event("OnEventWithClassEnumResult", &BehaviorTestBus::Events::OnEventWithClassEnumResult)
                 ->Event("OnEventWithStringResult", &BehaviorTestBus::Events::OnEventWithStringResult)
+                ->Event("OnEventResultWithBehaviorClassParameter", &BehaviorTestBus::Events::OnEventResultWithBehaviorClassParameter)
                 ->Event("OnEventWithDefaultValueAndStringResult", &BehaviorTestBus::Events::OnEventWithDefaultValueAndStringResult,
-                { {{"view1", "string_view without string trait", aznew BehaviorDefaultValue(defaultStringViewValue), AZ::BehaviorParameter::TR_NONE, AZ::BehaviorParameter::TR_STRING},
-                    {"view2", "string_view with string trait", aznew BehaviorDefaultValue(AZStd::string_view("SUPER DEFAULT!!!!"))}} }) // Remove string trait from parameter
+                { {{"view1", "string_view without string trait", defaultStringViewBehaviorValue, AZ::BehaviorParameter::TR_NONE, AZ::BehaviorParameter::TR_STRING},
+                    {"view2", "string_view with string trait", superDefaultStringViewBehaviorValue}} }) // Remove string trait from parameter
                 ->Event("OnEventConst", &BehaviorTestBus::Events::OnEventConst)
                 ;
 
@@ -919,6 +947,8 @@ namespace UnitTest
 
             BehaviorTestBus::ExecuteQueuedEvents();
 
+            delete superDefaultStringViewBehaviorValue;
+            delete defaultStringViewBehaviorValue;
             delete testBusHandler;
             delete genericTestBusHandler;
 
@@ -1073,30 +1103,52 @@ namespace UnitTest
                 sc.Execute("globalMethodSetClassEnum(result2)");
                 AZ_TEST_ASSERT(globalClassEnumValue == GlobalClassEnum::Value1);
 
+                // collect garbage before running next test so any destructors get called
+                sc.Execute(R"LUA(
+                    collectgarbage()
+                )LUA");
+
+                g_globalTestClassesConstructed = 0;
+                g_globalTestClassesDestructed = 0;
+
+                // test whether the behavior parameters that are passed by value have their
+                // constructors/destructors called equally
+                sc.Execute(R"LUA(
+                    local behaviorParameter = BehaviorTestClass();
+                    local result = TestBus.Broadcast.OnEventResultWithBehaviorClassParameter(behaviorParameter);
+                    behaviorParameter = nil;
+                    result = nil;
+                    collectgarbage();
+                )LUA");
+
+                AZ_TEST_ASSERT(g_globalTestClassesConstructed > 0);
+                AZ_TEST_ASSERT(g_globalTestClassesDestructed > 0);
+                AZ_TEST_ASSERT(g_globalTestClassesConstructed == g_globalTestClassesDestructed);
+
                 myTestBusHandler1.BusDisconnect();
                 myTestBusHandler2.BusDisconnect();
                 //////////////////////////////////////////////////////////////////////////
 
                 // create handler
                 sc.Execute(R"LUA(
-testBusHandler = {}
-function testBusHandler:OnEvent(data)
-    globalProperty = data
-    globalProperty = TestBus.GetCurrentBusId()
-end
-function testBusHandler:OnEventWithClassEnumResult()
-    return BehaviorGlobalClassEnumWrapper.VALUE2
-end
-function testBusHandler:OnEventWithStringResult()
-    return 'success';
-end
-function testBusHandler:OnEventWithClassResult()
-    local result = BehaviorTestClass(100);
-    result.data = 100;
-    return result;
-end
-testBusHandler = TestBus.Connect(testBusHandler,1)
-)LUA");
+                    testBusHandler = {}
+                    function testBusHandler:OnEvent(data)
+                        globalProperty = data
+                        globalProperty = TestBus.GetCurrentBusId()
+                    end
+                    function testBusHandler:OnEventWithClassEnumResult()
+                        return BehaviorGlobalClassEnumWrapper.VALUE2
+                    end
+                    function testBusHandler:OnEventWithStringResult()
+                        return 'success';
+                    end
+                    function testBusHandler:OnEventWithClassResult()
+                        local result = BehaviorTestClass(100);
+                        result.data = 100;
+                        return result;
+                    end
+                    testBusHandler = TestBus.Connect(testBusHandler,1)
+                )LUA");
 
                 // check if we can handle event 
                 BehaviorTestBus::Broadcast(&BehaviorTestBus::Events::OnEvent, 101);

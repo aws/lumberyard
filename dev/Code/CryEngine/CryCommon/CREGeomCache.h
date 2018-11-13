@@ -38,6 +38,12 @@ public:
         _smart_ptr<IRenderMesh> m_pRenderMesh;
     };
 
+    struct UpdateList
+    {
+        CryCriticalSection m_mutex;
+        AZStd::vector<CREGeomCache*, AZ::AZStdAlloc<CryLegacySTLAllocator>> m_geoms;
+    };
+
 public:
     CREGeomCache();
     ~CREGeomCache();
@@ -79,8 +85,8 @@ private:
     DynArray<SMeshRenderData> m_meshFillData[2];
     DynArray<SMeshRenderData> m_meshRenderData;
 
-    static CryCriticalSection ms_updateListCS[2];
-    static std::vector<CREGeomCache*> ms_updateList[2];
+    static StaticInstance<UpdateList> sm_updateList[2]; // double buffered update lists
+
     AZ::Vertex::Format m_geomCacheVertexFormat;
 };
 

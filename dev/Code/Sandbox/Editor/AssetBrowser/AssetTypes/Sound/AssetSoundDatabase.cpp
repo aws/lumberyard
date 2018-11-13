@@ -186,7 +186,7 @@ void CAssetSoundDatabase::CollectCachedEventgroup(XmlNodeRef& gr, const QString&
             poSoundDatabaseItem->SetFileExtension("fsb");
             poSoundDatabaseItem->SetFlag(IAssetItem::eFlag_Visible, true);
             fpath += pNameEv;
-            poSoundDatabaseItem->SetHash(AssetBrowser::HashStringSbdm(fpath.toUtf8().data()));
+            poSoundDatabaseItem->SetHash(CAssetBrowserManager::HashStringSbdm(fpath.toUtf8().data()));
             m_assets[fpath] = poSoundDatabaseItem;
         }
         else if (!strcmp(ev->getTag(), "eventgroup"))

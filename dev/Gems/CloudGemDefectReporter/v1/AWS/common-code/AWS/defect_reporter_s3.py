@@ -19,14 +19,12 @@ import defect_reporter_constants as constants
 
 def get_client():
     '''Returns a S3 client with proper configuration.'''
+    if not hasattr(get_client, 'client'):
+        current_region = os.environ.get('AWS_REGION')
+        if current_region is None:
+            raise RuntimeError('AWS region is empty')
 
-    current_region = os.environ.get('AWS_REGION')
+        configuration = Config(signature_version=constants.S3_SIGNATURE_VERSION, s3={'addressing_style': 'path'})
+        get_client.client = boto3.client('s3', region_name=current_region, api_version=constants.S3_API_VERSION, config=configuration)
 
-    if current_region is None:
-        raise RuntimeError('AWS region is empty')
-
-    configuration = Config(signature_version=constants.S3_SIGNATURE_VERSION)
-
-    client = boto3.client('s3', region_name=current_region, api_version=constants.S3_API_VERSION, config=configuration)
-
-    return client
+    return get_client.client

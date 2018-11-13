@@ -211,6 +211,7 @@ void UiCanvasAssetRefComponent::Reflect(AZ::ReflectContext* context)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasAssetRefComponent::Activate()
 {
+#if !defined(DEDICATED_SERVER)
     UiCanvasRefBus::Handler::BusConnect(GetEntityId());
     UiCanvasAssetRefBus::Handler::BusConnect(GetEntityId());
     UiCanvasManagerNotificationBus::Handler::BusConnect();
@@ -224,11 +225,13 @@ void UiCanvasAssetRefComponent::Activate()
             EBUS_EVENT_ID(m_canvasEntityId, UiCanvasBus, SetEnabled, false);
         }
     }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasAssetRefComponent::Deactivate()
 {
+#if !defined(DEDICATED_SERVER)
     if (m_canvasEntityId.IsValid())
     {
         gEnv->pLyShine->ReleaseCanvas(m_canvasEntityId);
@@ -238,4 +241,5 @@ void UiCanvasAssetRefComponent::Deactivate()
     UiCanvasAssetRefBus::Handler::BusDisconnect();
     UiCanvasRefBus::Handler::BusDisconnect();
     UiCanvasManagerNotificationBus::Handler::BusDisconnect();
+#endif
 }

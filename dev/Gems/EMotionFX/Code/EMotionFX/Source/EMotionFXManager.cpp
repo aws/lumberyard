@@ -541,7 +541,6 @@ namespace EMotionFX
     {
         Allocators::ShrinkPools();
         mMotionInstancePool->Shrink();
-        //MCore::GetAttributePool().Shrink();
     }
 
 

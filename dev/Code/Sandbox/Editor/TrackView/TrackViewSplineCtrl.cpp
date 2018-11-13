@@ -56,7 +56,7 @@ protected:
             if (pTrack->GetSpline() == pSpline)
             {
                 CSplineEntry entry;
-                entry.m_pTrack = pTrack;
+                entry.m_trackId = pTrack->GetId();
                 m_splineEntries.push_back(entry);
             }
         }
@@ -190,24 +190,36 @@ private:
     public:
         _smart_ptr<ISplineBackup> m_undo;
         _smart_ptr<ISplineBackup> m_redo;
-        CTrackViewTrack* m_pTrack;
+        unsigned int m_trackId;
     };
 
     void SerializeSplines(_smart_ptr<ISplineBackup> CSplineEntry::* backup, bool bLoading)
     {
+        const CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
+        CTrackViewSequence* sequence = sequenceManager->GetSequenceByEntityId(m_sequenceEntityId);
+        AZ_Assert(sequence, "Expected valid sequence");
+        if (!sequence)
+        {
+            return;
+        }
+
         CTrackViewSplineCtrl* pCtrl = FindControl(m_pCtrl);
         for (auto it = m_splineEntries.begin(); it != m_splineEntries.end(); ++it)
         {
             CSplineEntry& entry = *it;
-            ISplineInterpolator* pSpline = entry.m_pTrack->GetSpline();
+            CTrackViewTrack* track = sequence->FindTrackById(entry.m_trackId);
+            if (track)
+            {
+                ISplineInterpolator* pSpline = track->GetSpline();
 
-            if (pSpline && bLoading)
-            {
-                pSpline->Restore(entry.*backup);
-            }
-            else if (pSpline)
-            {
-                (entry.*backup) = pSpline->Backup();
+                if (pSpline && bLoading)
+                {
+                    pSpline->Restore(entry.*backup);
+                }
+                else if (pSpline)
+                {
+                    (entry.*backup) = pSpline->Backup();
+                }
             }
         }
     }

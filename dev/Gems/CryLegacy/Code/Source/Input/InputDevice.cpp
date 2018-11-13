@@ -25,6 +25,8 @@ extern CInputCVars* g_pInputCVars;
 
 #include "ISystem.h"
 
+#include <AzCore/std/string/string_view.h>
+
 CInputDevice::CInputDevice(IInput& input, const char* deviceName)
     : m_input(input)
     , m_deviceName(deviceName)
@@ -224,10 +226,10 @@ void CInputDevice::Enable(bool enable)
 #if !defined(RELEASE)
 namespace // anonymous
 {
-    const string s_kButtonA = "xi_a";
-    const string s_kButtonB = "xi_b";
-    const string s_kButtonX = "xi_x";
-    const string s_kButtonY = "xi_y";
+    AZStd::string_view s_kButtonA = "xi_a";
+    AZStd::string_view s_kButtonB = "xi_b";
+    AZStd::string_view s_kButtonX = "xi_x";
+    AZStd::string_view s_kButtonY = "xi_y";
 
     const ColorF s_KColA(0.f, 1.f, 0.f, 1.f);
     const ColorF s_KColB(1.f, 0.f, 0.f, 1.f);
@@ -263,22 +265,22 @@ CInputDevice::CDebugPressedButtons::SData::SData(const SInputSymbol* pSymbol_, u
             state = "?State?";
         }
         key = pSymbol_->name.c_str();
-        if (key == s_kButtonA)
+        if (s_kButtonA.compare(key.c_str()) == 0)
         {
             color = s_KColA;
             key = "A";
         }
-        else if (key == s_kButtonB)
+        else if (s_kButtonB.compare(key.c_str()) == 0)
         {
             color = s_KColB;
             key = "B";
         }
-        else if (key == s_kButtonX)
+        else if (s_kButtonX.compare(key.c_str()) == 0)
         {
             color = s_KColX;
             key = "X";
         }
-        else if (key == s_kButtonY)
+        else if (s_kButtonY.compare(key.c_str()) == 0)
         {
             color = s_KColY;
             key = "Y";

@@ -124,7 +124,7 @@ namespace
 }
 
 // TODO: Add compiler assert to check for alignment between these arrays and the enums in ParamLoader.h
-static const string g_nodeTypeCategoryNames[] =
+static const char* g_nodeTypeCategoryNames[] =
 {
     "Lod",                  // e_chrParamsNodeBoneLod
     "BBoxExcludeList",      // e_chrParamsNodeBBoxExclude
@@ -135,7 +135,7 @@ static const string g_nodeTypeCategoryNames[] =
     "AnimationList",        // e_chrParamsNodeAnimation
 };
 
-static const string g_ikSubNodeTypeNames[] =
+static const char* g_ikSubNodeTypeNames[] =
 {
     "LimbIK_Definition",            // e_chrParamsIKNodeSubTypeLimb
     "Animation_Driven_IK_Targets",  // e_chrParamsIKNodeSubTypeAnimDriven
@@ -1264,7 +1264,7 @@ bool CIKDefinitionNode::SerializeFromXml(XmlNodeRef inputNode)
         {
             if (m_ikSubTypeNodes[nodeType] != nullptr)
             {
-                Warning(m_owner->GetName(), VALIDATOR_WARNING, "Warning: Found duplicate IK subnode of type %s", g_ikSubNodeTypeNames[nodeType].c_str());
+                Warning(m_owner->GetName(), VALIDATOR_WARNING, "Warning: Found duplicate IK subnode of type %s", g_ikSubNodeTypeNames[nodeType]);
                 continue;
             }
             CreateNewIKSubNode(nodeType);
@@ -1527,7 +1527,7 @@ bool CChrParams::AddNode(XmlNodeRef newNode, EChrParamNodeType type)
     // This means we have already found a block of this type, discard the new one
     if (m_categoryNodes[type])
     {
-        Warning(GetName(), VALIDATOR_WARNING, "Warning: Found a second block of type %s, it will be discarded", g_nodeTypeCategoryNames[type].c_str());
+        Warning(GetName(), VALIDATOR_WARNING, "Warning: Found a second block of type %s, it will be discarded", g_nodeTypeCategoryNames[type]);
         return false;
     }
 
@@ -1541,7 +1541,7 @@ bool CChrParams::AddNode(XmlNodeRef newNode, EChrParamNodeType type)
     {
         m_categoryNodes[type] = nullptr;
         delete newChrParamsNode;
-        Warning(GetName(), VALIDATOR_ERROR, "Error parsing %s: %s", g_nodeTypeCategoryNames[type].c_str(), static_cast<const char*>(newNode->getXML()));
+        Warning(GetName(), VALIDATOR_ERROR, "Error parsing %s: %s", g_nodeTypeCategoryNames[type], static_cast<const char*>(newNode->getXML()));
         return false;
     }
 }
@@ -2838,7 +2838,7 @@ bool CParamLoader::LoadRuntimeData(const CChrParams* rootChrParams, DynArray<uin
         bool success = LoadCategoryType(rootChrParams, (EChrParamNodeType)type);
         if (!success)
         {
-            Warning(rootChrParams->GetName(), VALIDATOR_WARNING, "Warning: Error when trying to load chrparams block %s\n", g_nodeTypeCategoryNames[type].c_str());
+            Warning(rootChrParams->GetName(), VALIDATOR_WARNING, "Warning: Error when trying to load chrparams block %s\n", g_nodeTypeCategoryNames[type]);
         }
     }
 

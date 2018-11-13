@@ -36,5 +36,5 @@ def build(bld):
                   'AWS_CPP_SDK_LAMBDA',
                   'AWS_CPP_SDK_S3'],
 
-       
+        restricted_script   = 'update_restricted_parameters',
     )

@@ -262,8 +262,8 @@
             "MeshCompiler/PVRTTriStrip/PVRTTriStrip.cpp",
             "MeshCompiler/VertexCacheOptimizer.cpp",
             "MeshCompiler/VertexCacheOptimizer.h",
-            "@3P:mikkelsen@/mikkelsen/mikktspace.cpp",
-            "@3P:mikkelsen@/mikkelsen/mikktspace.h"
+            "@3P:mikkt@/mikkelsen/mikktspace_stdafx.cpp",
+            "@3P:mikkt@/mikkelsen/mikktspace.h"
         ],
         "CVars":
         [

@@ -488,9 +488,6 @@ IParticleEffect* CParticleManager::FindEffect(cstr sEffectName, cstr sSource, bo
         }
     }
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Particles");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_ParticleEffect, EMemStatContextFlags::MSF_Instance, "%s", sEffectName);
-
     assert(pEffect);
     if (pEffect->IsEnabled() || pEffect->GetChildCount())
     {
@@ -1186,9 +1183,6 @@ bool CParticleManager::LoadLibrary(cstr sParticlesLibrary, cstr sParticlesLibrar
 
 XmlNodeRef CParticleManager::ReadLibrary(cstr sParticlesLibrary)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "ParticleLibraries");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_ParticleLibrary, 0, "Particle lib (%s)", sParticlesLibrary);
-
     string sLibSubPath = PathUtil::Make(EFFECTS_SUBPATH, sParticlesLibrary, "xml");
     if (GetCVars()->e_ParticlesUseLevelSpecificLibs)
     {
@@ -1276,9 +1270,6 @@ bool CParticleManager::LoadLibrary(cstr sParticlesLibrary, XmlNodeRef& libNode, 
         return false;
     }
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "ParticleLibraries");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_ParticleLibrary, 0, "Particle lib (%s)", sParticlesLibrary);
-
     CRY_DEFINE_ASSET_SCOPE("ParticleLibrary", sParticlesLibrary);
 
     m_LoadedLibs[sParticlesLibrary] = libNode;
@@ -1312,8 +1303,6 @@ IParticleEffect* CParticleManager::LoadEffect(cstr sEffectName, XmlNodeRef& effe
     {
         return NULL;
     }
-
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_ParticleEffect, 0, "%s", sEffectName);
 
     CParticleEffect* pEffect = FindLoadedEffect(sEffectName);
     if (!pEffect)

@@ -155,8 +155,13 @@ namespace AzToolsFramework
         }
 
         //--------------------------------------------------------------------
-        UndoStack::UndoStack(int limit, IUndoNotify* notify)
-            : m_SequencePointsBuffer(limit)
+        UndoStack::UndoStack(int /* no longer used */, IUndoNotify* notify)
+            : UndoStack(notify)
+        {
+        }
+
+        UndoStack::UndoStack(IUndoNotify* notify)
+            : m_SequencePointsBuffer()
         {
             m_notify = notify;
             reentryGuard = false;
@@ -186,14 +191,6 @@ namespace AzToolsFramework
             // any commands beyond the cursor are invalidated thereby
             Slice();
 
-            if (m_SequencePointsBuffer.full())
-            {
-                delete m_SequencePointsBuffer[0];
-                m_SequencePointsBuffer[0] = nullptr;
-
-                m_SequencePointsBuffer.pop_front();
-                --m_CleanPoint;
-            }
             m_SequencePointsBuffer.push_back(cmd);
             m_Cursor = int(m_SequencePointsBuffer.size()) - 1;
 #ifdef _DEBUG

@@ -157,12 +157,6 @@ namespace EMStudio
         mIsRemoving = true;
         delete mList->takeItem(historyIndex);
         mIsRemoving = false;
-
-        // Disable the undo/redo if the list is empty.
-        if (mList->count() == 0)
-        {
-            GetMainWindow()->DisableUndoRedo();
-        }
     }
 
 
@@ -266,9 +260,6 @@ namespace EMStudio
                 mList->item(index)->setForeground(QBrush(QColor(200, 200, 200))); // TODO: use style sheet color
             }
         }
-
-        // Update the undo/redo menu items.
-        GetMainWindow()->UpdateUndoRedo();
     }
 
 

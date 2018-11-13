@@ -24,7 +24,6 @@
 #include "ScriptSystem.h"
 #include "ScriptTable.h"
 #include "StackGuard.h"
-#include "BucketAllocator.h"
 
 #include <ISystem.h> // For warning and errors.
 // needed for crypak
@@ -87,9 +86,6 @@ extern HANDLE gDLLHandle;
 int g_dumpStackOnAlloc = 0;
 
 
-// Script memory allocator.
-//PageBucketAllocatorForLua gLuaAlloc;
-
 #if LUA_REMOTE_DEBUG_ENABLED
 CLuaRemoteDebug* g_pLuaRemoteDebug = 0;
 #endif
@@ -127,77 +123,6 @@ namespace
     inline CScriptTable* AllocTable() { return new CScriptTable; }
     //  inline void FreeTable( CScriptTable *pTable ) { /*delete pTable;*/ }
 }
-
-// Module-level overrides to the allocator in use.
-
-#include "CryMemoryAllocator.h"
-#include <BucketAllocatorImpl.h> // needs full implementation before instantiation
-
-#if USE_RAW_LUA_ALLOCS
-
-extern void* _LuaAlloc(size_t size);
-extern void   _LuaFree(void* p);
-extern void* _LuaRealloc(void* p, size_t size);
-
-#else
-
-class lua_allocator :
-#if defined(USE_GLOBAL_BUCKET_ALLOCATOR)
-    public BucketAllocator<BucketAllocatorDetail::DefaultTraits<12*1024*1024, BucketAllocatorDetail::SyncPolicyUnlocked> >
-#else
-    public node_alloc<LUA_NODE_ALLOCATOR_TYPE, false, LUA_NODE_ALLOCATOR_BLOCKSIZE>
-#endif
-{
-public:
-    lua_allocator()
-#if defined(USE_GLOBAL_BUCKET_ALLOCATOR)
-        : m_iAllocated(0)
-#else
-        : m_iAllocated(0)
-#endif
-    {
-    }
-
-    void* re_alloc(void* ptr, size_t osize, size_t nsize)
-    {
-        if (NULL == ptr)
-        {
-            if (nsize)
-            {
-                m_iAllocated += nsize;
-                return alloc(nsize);
-            }
-
-            return 0;
-        }
-        else
-        {
-            void* nptr = 0;
-            if (nsize)
-            {
-                nptr = (char*)alloc(nsize);
-                memcpy(nptr, ptr, nsize > osize ? osize : nsize);
-                m_iAllocated += nsize;
-            }
-            dealloc(ptr, osize);
-            m_iAllocated -= osize;
-            return nptr;
-        }
-    }
-
-    size_t get_alloc_size() { return m_iAllocated; }
-
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-    }
-private:
-    int m_iAllocated;
-};
-
-
-static lua_allocator gLuaAlloc;
-
-#endif // USE_RAW_LUA_ALLOCS
 
 CScriptSystem* CScriptSystem::s_mpScriptSystem = NULL;
 
@@ -243,19 +168,11 @@ void* custom_lua_alloc (void* ud, void* ptr, size_t osize, size_t nsize)
 #if USE_RAW_LUA_ALLOCS
     return _LuaRealloc(ptr, nsize);
 #else
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_LUA, 0, "Lua");
-    ScopedSwitchToGlobalHeap toGlobalHeap;
-
+    
     if (g_dumpStackOnAlloc)
     {
         DumpCallStack(g_LStack);
     }
-
-    #if !defined(NOT_USE_CRY_MEMORY_MANAGER) && !defined(_DEBUG)
-    void* ret = gLuaAlloc.re_alloc(ptr, osize, nsize);
-    return ret;
-    #endif
-
 
     (void)ud;
     (void)osize;
@@ -721,10 +638,6 @@ void CScriptSystem::PostInit()
         ExecuteFile("scripts/common.lua", true, false);
     }
 
-#if CAPTURE_REPLAY_LOG && defined(USE_GLOBAL_BUCKET_ALLOCATOR)
-    gLuaAlloc.ReplayRegisterAddressRange("Lua Buckets");
-#endif
-
 #if LUA_REMOTE_DEBUG_ENABLED
     g_pLuaRemoteDebug = new CLuaRemoteDebug(this);
 #endif
@@ -1077,15 +990,11 @@ void CScriptSystem::DumpLoadedScripts()
 //////////////////////////////////////////////////////////////////////
 void CScriptSystem::AddFileToList(const char* sName)
 {
-    ScopedSwitchToGlobalHeap globalHeap;
-
     m_dqLoadedFiles.insert(sName);
 }
 
 void CScriptSystem::RemoveFileFromList(const ScriptFileListItor& itor)
 {
-    ScopedSwitchToGlobalHeap globalHeap;
-
     m_dqLoadedFiles.erase(itor);
 }
 
@@ -1183,9 +1092,6 @@ void CScriptSystem::GetScriptHash(const char* sPath, const char* szKey, unsigned
 bool CScriptSystem::ExecuteBuffer(const char* sBuffer, size_t nSize, const char* sBufferDescription, IScriptTable* pEnv)
 {
     int status;
-
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Lua LoadScript");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_ScriptCall, 0, "%s", sBufferDescription);
 
     if (m_scriptContext)
     {
@@ -1769,13 +1675,6 @@ void CScriptSystem::ForceGarbageCollection()
         int fracUsage = lua_gc(L, LUA_GCCOUNTB, 0);
         int totalUsage = lua_gc(L, LUA_GCCOUNT, 0) * 1024 + fracUsage;
 
-    #if USE_RAW_LUA_ALLOCS
-        // Nothing to do.
-    #ifdef USE_GLOBAL_BUCKET_ALLOCATOR
-        gLuaAlloc.cleanup();
-    #endif
-    #endif
-
         CryComment("Lua garbage collection %i -> %i", beforeUsage, totalUsage);
     }
 }
@@ -2238,10 +2137,7 @@ void CScriptSystem::LoadScriptedSurfaceTypes(const char* sFolder, bool bReload)
 //////////////////////////////////////////////////////////////////////////
 void* CScriptSystem::Allocate(size_t sz)
 {
-#if USE_RAW_LUA_ALLOCS
-    _LuaAlloc(sz);
-#else
-    void* ret = gLuaAlloc.alloc(sz);
+    void* ret = azmalloc(sz, 0, AZ::LegacyAllocator);
 #ifndef _RELEASE
     if (!ret)
     {
@@ -2249,16 +2145,13 @@ void* CScriptSystem::Allocate(size_t sz)
     }
 #endif
     return ret;
-#endif
 }
 
 size_t CScriptSystem::Deallocate(void* ptr)
 {
-#if USE_RAW_LUA_ALLOCS
-    _LuaFree(ptr);
-#else
-    return gLuaAlloc.dealloc(ptr);
-#endif
+    size_t size = azallocsize(ptr, AZ::LegacyAllocator);
+    azfree(ptr, AZ::LegacyAllocator);
+    return size;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2270,49 +2163,12 @@ int CScriptSystem::GetStackSize()
 //////////////////////////////////////////////////////////////////////////
 uint32 CScriptSystem::GetScriptAllocSize()
 {
-#if USE_RAW_LUA_ALLOCS
     return 0;
-#else
-    return gLuaAlloc.get_alloc_size();
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CScriptSystem::GetMemoryStatistics(ICrySizer* pSizer) const
 {
-    {
-        SIZER_COMPONENT_NAME(pSizer, "Self");
-        pSizer->AddObject(this, sizeof(*this));
-        pSizer->AddObject(m_pScriptTimerMgr);
-        pSizer->AddObject(m_dqLoadedFiles);
-        pSizer->AddObject(m_vecPreCached);
-    }
-
-#ifndef AZ_MONOLITHIC_BUILD // Only when compiling as dynamic library
-    {
-        SIZER_COMPONENT_NAME(pSizer, "Strings");
-        pSizer->AddObject((this + 1), string::_usedMemory(0));
-    }
-    {
-        SIZER_COMPONENT_NAME(pSizer, "STL Allocator Waste");
-        CryModuleMemoryInfo meminfo;
-        ZeroStruct(meminfo);
-        CryGetMemoryInfoForModule(&meminfo);
-        pSizer->AddObject((this + 2), (size_t)meminfo.STL_wasted);
-    }
-#endif
-    {
-#if USE_RAW_LUA_ALLOCS
-        // Nothing to do.
-#else
-        SIZER_COMPONENT_NAME(pSizer, "Lua");
-#ifdef AZ_MONOLITHIC_BUILD
-        pSizer->AddObject(&gLuaAlloc, gLuaAlloc.get_alloc_size());
-#else
-        pSizer->AddObject(&gLuaAlloc, gLuaAlloc.get_alloc_size() + gLuaAlloc.get_wasted_in_blocks() + gLuaAlloc.get_wasted_in_allocation());
-#endif
-#endif // USE_RAW_LUA_ALLOCS
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2328,35 +2184,6 @@ void CScriptSystem::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR 
         ForceGarbageCollection();
         break;
     }
-
-#if USE_RAW_LUA_ALLOCS
-    // Nothing to do.
-#else
-#if defined(USE_GLOBAL_BUCKET_ALLOCATOR)
-    switch (event)
-    {
-    case ESYSTEM_EVENT_LEVEL_UNLOAD:
-        gLuaAlloc.EnableExpandCleanups(true);
-        gLuaAlloc.cleanup();
-        break;
-
-    case ESYSTEM_EVENT_LEVEL_LOAD_START:
-        gLuaAlloc.EnableExpandCleanups(true);
-        gLuaAlloc.cleanup();
-        break;
-
-    case ESYSTEM_EVENT_LEVEL_LOAD_END:
-        gLuaAlloc.EnableExpandCleanups(false);
-        gLuaAlloc.cleanup();
-        break;
-
-    case ESYSTEM_EVENT_LEVEL_POST_UNLOAD:
-        gLuaAlloc.EnableExpandCleanups(true);
-        gLuaAlloc.cleanup();
-        break;
-    }
-#endif
-#endif // USE_RAW_LUA_ALLOCS
 }
 
 

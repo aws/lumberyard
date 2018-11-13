@@ -11,7 +11,17 @@ import {
     CloudGemDefectReporterPlayerInformationComponent,
     CloudGemDefectReporterSystemInformationComponent,
     CloudGemDefectReporterClientConfigurationComponent,
-    CloudGemDefectReporterReportConfigurationComponent
+    CloudGemDefectReporterReportConfigurationComponent,
+    CloudGemDefectReporterJiraIntegrationComponent,
+    CloudGemDefectReporterCreateJiraIssueWindowComponent,
+    CloudGemDefectReporterDefectDetailOverviewTabComponent,
+    CloudGemDefectReporterRawDataTabComponent,
+    CloudGemDefectReporterRecentSearchesTabComponent,
+    CloudGemDefectReporterDefectListOverviewTabComponent,
+    CloudGemDefectReporterDashboardTabComponent,
+    CloudGemDefectReporterCustomFieldValueComponent,
+    CloudGemDefectReporterClientConfigurationFieldComponent,
+    CloudGemDefectReporterFieldMappingComponent
  } from './index';
 
 @NgModule({
@@ -29,7 +39,18 @@ import {
         CloudGemDefectReporterPlayerInformationComponent,
         CloudGemDefectReporterSystemInformationComponent,
         CloudGemDefectReporterClientConfigurationComponent,
-        CloudGemDefectReporterReportConfigurationComponent
+        CloudGemDefectReporterJiraIntegrationComponent,
+        CloudGemDefectReporterReportConfigurationComponent,
+        CloudGemDefectReporterCreateJiraIssueWindowComponent,
+        CloudGemDefectReporterDefectDetailOverviewTabComponent,
+        CloudGemDefectReporterRawDataTabComponent,
+        CloudGemDefectReporterRecentSearchesTabComponent,
+        CloudGemDefectReporterDefectListOverviewTabComponent,
+        CloudGemDefectReporterDefectListOverviewTabComponent,
+        CloudGemDefectReporterDashboardTabComponent,
+        CloudGemDefectReporterCustomFieldValueComponent,
+        CloudGemDefectReporterClientConfigurationFieldComponent,
+        CloudGemDefectReporterFieldMappingComponent
     ],
     providers: [
 

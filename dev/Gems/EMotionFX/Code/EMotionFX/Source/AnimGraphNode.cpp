@@ -738,7 +738,6 @@ namespace EMotionFX
 
         SetOutputPortName(outputPortNr, name);
         mOutputPorts[outputPortNr].Clear();
-        //mOutputPorts[outputPortNr].mValue = MCore::GetAttributePool().RequestNew( attributeTypeID );
         mOutputPorts[outputPortNr].mCompatibleTypes[0] = attributeTypeID;
         mOutputPorts[outputPortNr].mPortID = portID;
     }
@@ -1910,23 +1909,18 @@ namespace EMotionFX
         AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
         if (uniqueData->GetPoseRefCount() == 0)
         {
-            //MCore::LogInfo("Node %s of type %s has 0 refcount (parent=%s)", GetName(), RTTI_GetTypeName(), GetParentNode()->GetName());
             return;
         }
 
-        //MCORE_ASSERT( GetPoseRefCount() > 0 );
         uniqueData->DecreasePoseRefCount();
-        if (uniqueData->GetPoseRefCount() > 0)
+        if (uniqueData->GetPoseRefCount() > 0 || !GetHasOutputPose())
         {
             return;
         }
 
         //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
-        //MCore::LogInfo("AnimGraphNode::DecreaseRef() - Releasing poses for node %s", GetName());
         const uint32 threadIndex = animGraphInstance->GetActorInstance()->GetThreadIndex();
-
         AnimGraphPosePool& posePool = GetEMotionFX().GetThreadData(threadIndex)->GetPosePool();
-
         const uint32 numOutputs = GetNumOutputs();
         for (uint32 i = 0; i < numOutputs; ++i)
         {
@@ -1970,7 +1964,6 @@ namespace EMotionFX
 
             AnimGraphPose* pose = posePool.RequestPose(actorInstance);
             AttributePose* poseAttribute = static_cast<AttributePose*>(attribute);
-            //      MCORE_ASSERT(poseAttribute->GetValue() == nullptr);
             poseAttribute->SetValue(pose);
         }
     }
@@ -1979,7 +1972,6 @@ namespace EMotionFX
     // free all poses from all incoming nodes
     void AnimGraphNode::FreeIncomingPoses(AnimGraphInstance* animGraphInstance)
     {
-        //MCore::LogInfo("Free incoming poses for node %s with parent %s", GetName(), (GetParentNode()) ? GetParentNode()->GetName() : "ROOT");
         const uint32 numInputPorts = mInputPorts.GetLength();
         for (uint32 i = 0; i < numInputPorts; ++i)
         {
@@ -1990,7 +1982,6 @@ namespace EMotionFX
             }
 
             AnimGraphNode* sourceNode = connection->GetSourceNode();
-            //if (sourceNode->GetOutputPort(connection->GetSourcePort()).mCompatibleTypes[0] == AttributePose::TYPE_ID)
             sourceNode->DecreaseRef(animGraphInstance);
         }
     }
@@ -2009,7 +2000,6 @@ namespace EMotionFX
             }
 
             AnimGraphNode* sourceNode = connection->GetSourceNode();
-            //MCore::LogInfo("*********** Free ref data of incoming %s", sourceNode->GetName());
             sourceNode->DecreaseRefDataRef(animGraphInstance);
         }
     }
@@ -2023,9 +2013,6 @@ namespace EMotionFX
 
         AnimGraphRefCountedDataPool& pool = GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool();
         AnimGraphRefCountedData* newData = pool.RequestNew();
-        //MCORE_ASSERT( FindUniqueNodeData(animGraphInstance)->GetRefCountedData() == nullptr);
-        //if (FindUniqueNodeData(animGraphInstance)->GetRefCountedData())
-        //DebugBreak();
 
         FindUniqueNodeData(animGraphInstance)->SetRefCountedData(newData);
     }
@@ -2035,7 +2022,6 @@ namespace EMotionFX
     void AnimGraphNode::DecreaseRefDataRef(AnimGraphInstance* animGraphInstance)
     {
         AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
-        //MCore::LogInfo("******************** %s has refcount %d", GetName(), uniqueData->GetRefDataRefCount());
         if (uniqueData->GetRefDataRefCount() == 0)
         {
             return;
@@ -2047,8 +2033,6 @@ namespace EMotionFX
             return;
         }
 
-        //MCore::LogInfo("******************** freeing %s", GetName());
-
         // free it
         const uint32 threadIndex = animGraphInstance->GetActorInstance()->GetThreadIndex();
         AnimGraphRefCountedDataPool& pool = GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool();
@@ -2057,23 +2041,6 @@ namespace EMotionFX
             pool.Free(uniqueData->GetRefCountedData());
             uniqueData->SetRefCountedData(nullptr);
         }
-        /*
-            // force free of the child nodes
-            const uint32 numChildNodes = mChildNodes.GetLength();
-            for (uint32 i=0; i<numChildNodes; ++i)
-            {
-                AnimGraphNodeData* childUniqueData = mChildNodes[i]->FindUniqueNodeData(animGraphInstance);
-                if (childUniqueData->GetRefDataRefCount() > 0)
-                {
-                    if (childUniqueData->GetRefCountedData())
-                    {
-                        pool.Free( childUniqueData->GetRefCountedData() );
-                        childUniqueData->SetRefCountedData( nullptr );
-                    }
-
-                    childUniqueData->SetRefDataRefCount(0);
-                }
-            }*/
     }
 
 
@@ -2100,12 +2067,10 @@ namespace EMotionFX
         // check if we already did update
         if (animGraphInstance->GetIsPostUpdateReady(mObjectIndex))
         {
-            FreeIncomingRefDatas(animGraphInstance);
             return;
         }
 
         // perform the actual post update
-        //MCore::LogInfo("PostUpdate on '%s' - refCount = %d", GetName(), FindUniqueNodeData(animGraphInstance)->GetRefDataRefCount());
         PostUpdate(animGraphInstance, timePassedInSeconds);
 
         // free the incoming refs
@@ -2130,7 +2095,6 @@ namespace EMotionFX
         IncreaseInputRefDataRefCounts(animGraphInstance);
 
         // perform the actual node update
-        //MCore::LogInfo("Update for node %s (refCount=%d)", GetName(), FindUniqueNodeData(animGraphInstance)->GetRefDataRefCount());
         Update(animGraphInstance, timePassedInSeconds);
 
         // mark as output
@@ -2144,18 +2108,11 @@ namespace EMotionFX
         // check if we already did output
         if (animGraphInstance->GetIsOutputReady(mObjectIndex))
         {
-            // now decrease ref counts of all input nodes as we do not need the poses of this input node anymore for this node
-            // once the pose ref count of a node reaches zero it will automatically release the poses back to the pool so they can be reused again by others
-            FreeIncomingPoses(animGraphInstance);
-
             return;
         }
 
         // perform the output
         Output(animGraphInstance);
-
-        //if (HasOutputPose())
-        //MCore::LogInfo("%s     used=%d/%d  ref=%d", GetName(), GetActorManager().GetScheduler()->GetPosePool(threadIndex).GetNumUsedPoses(), GetActorManager().GetScheduler()->GetPosePool(threadIndex).GetNumPoses(), FindUniqueNodeData(animGraphInstance)->GetPoseRefCount());
 
         // now decrease ref counts of all input nodes as we do not need the poses of this input node anymore for this node
         // once the pose ref count of a node reaches zero it will automatically release the poses back to the pool so they can be reused again by others
@@ -2311,7 +2268,7 @@ namespace EMotionFX
         for (uint32 p = 0; p < numOutputPorts; ++p)
         {
             AnimGraphNode::Port& port = GetOutputPort(p);
-            MCore::Attribute* newAttribute = MCore::GetAttributePool().RequestNew(port.mCompatibleTypes[0]); // assume compatibility type 0 to be the attribute type ID
+            MCore::Attribute* newAttribute = MCore::GetAttributeFactory().CreateAttributeByType(port.mCompatibleTypes[0]); // assume compatibility type 0 to be the attribute type ID
             port.mAttributeIndex = animGraphInstance->AddInternalAttribute(newAttribute);
         }
     }

@@ -87,7 +87,7 @@
         "ServiceLambda": {
             "Type": "AWS::Lambda::Function", 
             "Properties": {
-                "Handler": "service.dispatch", 
+                "Handler": "cgf_lambda_service.dispatch", 
                 "Code": {
                     "S3Bucket": {
                         "Fn::GetAtt": [
@@ -107,6 +107,14 @@
                         "ServiceLambdaConfiguration", 
                         "Role"
                     ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
                 },
                 "Runtime": {
                     "Fn::GetAtt": [
@@ -246,7 +254,13 @@
                 "Settings": {
                     "StagingTable": { "Ref": "StagingSettingsTable" },
                     "StagingBucket": { "Ref": "ContentBucket" }
-                }
+                },
+                "Services": [
+                    {
+                        "InterfaceId": "CloudGemWebCommunicator_sendmessage_1_0_0",
+                        "Optional": "True"
+                    }
+                ]
             }
         }
     },

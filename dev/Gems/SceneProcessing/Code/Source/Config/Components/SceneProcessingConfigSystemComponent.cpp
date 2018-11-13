@@ -54,15 +54,19 @@ namespace AZ
             // cause only animations to be exported from the .fbx file even if there's other data available.
             m_softNames.push_back(aznew FileSoftNameSetting("_anim", PatternMatcher::MatchApproach::PostFix, "Ignore", false,
                 { FileSoftNameSetting::GraphType(SceneAPI::DataTypes::IAnimationData::TYPEINFO_Name()) }));
+
+            m_UseCustomNormals = true;
         }
 
         void SceneProcessingConfigSystemComponent::Activate()
         {
             SceneProcessingConfigRequestBus::Handler::BusConnect();
+            AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusConnect();
         }
 
         void SceneProcessingConfigSystemComponent::Deactivate()
         {
+            AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusDisconnect();
             SceneProcessingConfigRequestBus::Handler::BusDisconnect();
         }
 
@@ -77,11 +81,17 @@ namespace AZ
         {
             m_softNames.clear();
             m_softNames.shrink_to_fit();
+            m_UseCustomNormals = true;
         }
 
         const AZStd::vector<SoftNameSetting*>* SceneProcessingConfigSystemComponent::GetSoftNames()
         {
             return &m_softNames;
+        }
+
+        void SceneProcessingConfigSystemComponent::AreCustomNormalsUsed(bool &value)
+        {
+            value = m_UseCustomNormals;
         }
 
         void SceneProcessingConfigSystemComponent::Reflect(AZ::ReflectContext* context)
@@ -98,9 +108,10 @@ namespace AZ
             if (serialize)
             {
                 serialize->Class<SceneProcessingConfigSystemComponent, AZ::Component>()
-                    ->Version(1)
+                    ->Version(2)
                     ->EventHandler<SceneProcessingConfigSystemComponentSerializationEvents>() 
-                    ->Field("softNames", &SceneProcessingConfigSystemComponent::m_softNames);
+                    ->Field("softNames", &SceneProcessingConfigSystemComponent::m_softNames)
+                    ->Field("useCustomNormals", &SceneProcessingConfigSystemComponent::m_UseCustomNormals);
 
                 if (AZ::EditContext* ec = serialize->GetEditContext())
                 {
@@ -111,6 +122,9 @@ namespace AZ
                             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &SceneProcessingConfigSystemComponent::m_softNames,
                             "Soft naming conventions", "Update the naming conventions to suit your project.")
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &SceneProcessingConfigSystemComponent::m_UseCustomNormals,
+                            "Use Custom Normals", "When enabled, Lumberyard will use the DCC assets custom or tangent space normals. When disabled, the normals will be averaged. This setting can be overridden on individual FBX asset settings.")
                             ->Attribute(AZ::Edit::Attributes::AutoExpand, false);
                 }
             }

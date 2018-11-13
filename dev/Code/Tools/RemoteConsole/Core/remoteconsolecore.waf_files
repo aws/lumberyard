@@ -1,0 +1,8 @@
+{
+    "auto" : {
+        "Root" : [
+            "RemoteConsoleCore.cpp",
+            "RemoteConsoleCore.h"
+        ]
+    }
+}

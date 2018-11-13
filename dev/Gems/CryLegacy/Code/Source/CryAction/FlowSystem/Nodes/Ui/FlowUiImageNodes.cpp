@@ -23,8 +23,8 @@
 
 namespace
 {
-    const string g_setImageNodePath = "UI:Image:SetImageSource";
-    const string g_getImageNodePath = "UI:Image:GetImageSource";
+    const char* g_setImageNodePath = "UI:Image:SetImageSource";
+    const char* g_getImageNodePath = "UI:Image:GetImageSource";
 }
 
 
@@ -82,7 +82,7 @@ public:
             AZ::EntityId canvasEntityId = gEnv->pLyShine->FindCanvasById(canvasID);
             if (!canvasEntityId.IsValid())
             {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI canvas with ID: %d\n", g_getImageNodePath.c_str(), canvasID);
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI canvas with ID: %d\n", g_getImageNodePath, canvasID);
                 return;
             }
 
@@ -93,7 +93,7 @@ public:
 
             if (!element)
             {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI element with ID: %d\n", g_getImageNodePath.c_str(), elementID);
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI element with ID: %d\n", g_getImageNodePath, elementID);
                 return;
             }
 
@@ -106,7 +106,7 @@ public:
             }
             else
             {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find an image component on UI element with ID: %d\n", g_getImageNodePath.c_str(), elementID);
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find an image component on UI element with ID: %d\n", g_getImageNodePath, elementID);
                 return;
             }
         }
@@ -191,7 +191,7 @@ public:
             AZ::EntityId canvasEntityId = gEnv->pLyShine->FindCanvasById(canvasID);
             if (!canvasEntityId.IsValid())
             {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI canvas with ID: %d\n", g_setImageNodePath.c_str(), canvasID);
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI canvas with ID: %d\n", g_setImageNodePath, canvasID);
                 return;
             }
 
@@ -202,7 +202,7 @@ public:
 
             if (!element)
             {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI element with ID: %d\n", g_setImageNodePath.c_str(), elementID);
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI element with ID: %d\n", g_setImageNodePath, elementID);
                 return;
             }
 
@@ -212,7 +212,7 @@ public:
             EBUS_EVENT_ID(element->GetId(), UiImageBus, SetSprite, sprite);
             if (!sprite)
             {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI Image with source: %s\n", g_setImageNodePath.c_str(), imgSrc.c_str());
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI Image with source: %s\n", g_setImageNodePath, imgSrc.c_str());
                 return;
             }
             sprite->Release();

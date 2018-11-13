@@ -12,6 +12,7 @@
 #ifndef AZ_UNITY_BUILD
 
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/FileIOEventBus.h>
 #include <AzCore/Casting/numeric_cast.h>
 
@@ -34,7 +35,6 @@
 #define SYSTEMFILE_CPP_SECTION_9 9
 #define SYSTEMFILE_CPP_SECTION_10 10
 #define SYSTEMFILE_CPP_SECTION_11 11
-#define SYSTEMFILE_CPP_SECTION_12 12
 #define SYSTEMFILE_CPP_SECTION_13 13
 #define SYSTEMFILE_CPP_SECTION_14 14
 #define SYSTEMFILE_CPP_SECTION_15 15
@@ -1106,10 +1106,43 @@ SystemFile::Exists(const char* fileName)
 #endif
 }
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_12
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
-#endif
+#if !AZ_TRAIT_USE_WINDOWS_FILE_API
+//=========================================================================
+// FormatAndPeelOffWildCardExtension
+// [11/22/2011]
+//=========================================================================
+void FormatAndPeelOffWildCardExtension(const char* sourcePath, char* filePath, char* extensionPath)
+{
+    const char* pSrcPath = sourcePath;
+    char*       pDestPath = filePath;
+    unsigned    numFileChars = 0;
+    unsigned    numExtensionChars = 0;
+    unsigned*   pNumDestChars = &numFileChars;
+    bool        bIsWildcardExtension = false;
+    while (*pSrcPath)
+    {
+        char srcChar = *pSrcPath++;
+
+        // Skip '*' and '.'
+        if ((!bIsWildcardExtension && srcChar != '*') || (bIsWildcardExtension && srcChar != '.' && srcChar != '*'))
+        {
+            unsigned numChars = *pNumDestChars;
+            pDestPath[ numChars++ ] = srcChar;
+            *pNumDestChars = numChars;
+        }
+        // Wild-card extension is separate
+        if (srcChar == '*')
+        {
+            bIsWildcardExtension = true;
+            pDestPath = extensionPath;
+            pNumDestChars = &numExtensionChars;
+        }
+    }
+    // Close strings
+    filePath[ numFileChars ] = 0;
+    extensionPath[ numExtensionChars ] = 0;
+}
+#endif //!AZ_TRAIT_USE_WINDOWS_FILE_API
 
 
 //=========================================================================
@@ -1188,8 +1221,13 @@ SystemFile::FindFiles(const char* filter, FindFileCB cb)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_13
 #include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    //TODO: Linux implementation does not correctly handle filters
-    DIR* dir = opendir(filter);
+    // If we have wildcards, peel off
+    char    filePath[AZ_MAX_PATH_LEN];
+    char    extensionPath[AZ_MAX_PATH_LEN];
+
+    FormatAndPeelOffWildCardExtension(filter, filePath, extensionPath);
+
+    DIR* dir = opendir(filePath);
 
     if (dir != NULL)
     {
@@ -1200,7 +1238,10 @@ SystemFile::FindFiles(const char* filter, FindFileCB cb)
         // List all the other files in the directory.
         while (entry != NULL)
         {
-            cb(entry->d_name, (entry->d_type & DT_DIR) == 0);
+            if (NameMatchesFilter(entry->d_name, extensionPath))
+            {
+                cb(entry->d_name, (entry->d_type & DT_DIR) == 0);
+            }
             entry = readdir(dir);
         }
 

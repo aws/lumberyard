@@ -107,113 +107,58 @@ namespace EMotionFX
 
         // find the skinning layer
         SkinningInfoVertexAttributeLayer* layer = (SkinningInfoVertexAttributeLayer*)mMesh->FindSharedVertexAttributeLayer(SkinningInfoVertexAttributeLayer::TYPE_ID);
-        MCORE_ASSERT(layer);
+        AZ_Assert(layer, "Cannot find skinning info");
 
-        AZ::Vector3   newPos, newNormal;
-        AZ::Vector3   vtxPos, normal;
-        AZ::Vector4      tangent, newTangent;
-        AZ::PackedVector3f* __restrict  positions   = (AZ::PackedVector3f*)mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS);
-        AZ::PackedVector3f* __restrict  normals     = (AZ::PackedVector3f*)mMesh->FindVertexData(Mesh::ATTRIB_NORMALS);
-        AZ::Vector4*    __restrict  tangents    = (AZ::Vector4*)mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS);
-        uint32*  __restrict orgVerts    = (uint32*) mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS);
-
-        //if (mMesh->GetNumVertices() <= 40000)
-        SkinVertexRange(0, mMesh->GetNumVertices(), positions, normals, tangents, orgVerts, layer);
-        /*  else
-            {
-                // split the vertex data into different sections, processing each section in another job
-                MCore::JobList* jobList = MCore::JobList::Create();
-                const uint32 numVertices = mMesh->GetNumVertices();
-                MCore::GetJobManager().GetJobPool().Lock();
-                uint32 curStartVertex = 0;
-                uint32 curEndVertex = 0;
-                while (curStartVertex < numVertices)
-                {
-                    curEndVertex += 20000;  // max vertices per job
-                    if (curEndVertex > numVertices)
-                        curEndVertex = numVertices;
-
-                    MCore::Job* job = MCore::Job::CreateWithoutLock(    [this, curStartVertex, curEndVertex, positions, normals, tangents, orgVerts, layer](const MCore::Job* job)
-                                                                        {
-                                                                            MCORE_UNUSED(job);
-                                                                            SkinVertexRange(curStartVertex, curEndVertex, positions, normals, tangents, orgVerts, layer);
-                                                                        } );
-
-                    curStartVertex = curEndVertex;
-                    jobList->AddJob( job );
-                }
-                MCore::GetJobManager().GetJobPool().Unlock();
-                MCore::ExecuteJobList( jobList );
-            }*/
-
-        /*
-            // if there are tangents and binormals to skin
-            if (tangents)
-            {
-                const uint32 numVertices = mMesh->GetNumVertices();
-                for (uint32 v=0; v<numVertices; ++v)
-                {
-                    // reset the skinned position
-                    newPos.Zero();
-                    newNormal.Zero();
-                    newTangent.Zero();
-
-                    vtxPos  = *positions;
-                    normal  = *normals;
-                    tangent = *tangents;
-
-                    const uint32 orgVertex = *(orgVerts++); // get the original vertex number
-                    const uint32 numInfluences = layer->GetNumInfluences( orgVertex );
-                    for (i=0; i<numInfluences; ++i)
-                    {
-                        const SkinInfluence* influence = layer->GetInfluence(orgVertex, i);
-                        mBoneMatrices[ influence->GetBoneNr() ].Skin(&vtxPos, &normal, &tangent, &newPos, &newNormal, &newTangent, influence->GetWeight());
-                    }
-
-                    newTangent.w = tangent.w;
-
-                    // output the skinned values
-                    *positions  = newPos;       positions++;
-                    *normals    = newNormal;    normals++;
-                    *tangents   = newTangent;   tangents++;
-                }
-            }
-            else    // there are no tangents and binormals to skin
-            {
-                const uint32 numVertices = mMesh->GetNumVertices();
-                for (uint32 v=0; v<numVertices; ++v)
-                {
-                    newPos.Zero();
-                    newNormal.Zero();
-
-                    vtxPos  = *positions;
-                    normal  = *normals;
-
-                    // skin the vertex
-                    const uint32 orgVertex = *(orgVerts++); // get the original vertex number
-                    const uint32 numInfluences = layer->GetNumInfluences( orgVertex );
-                    for (i=0; i<numInfluences; ++i)
-                    {
-                        const SkinInfluence* influence = layer->GetInfluence(orgVertex, i);
-                        mBoneMatrices[ influence->GetBoneNr() ].Skin(&vtxPos, &normal, &newPos, &newNormal, influence->GetWeight());
-                    }
-
-                    // output the skinned values
-                    *positions  = newPos;       positions++;
-                    *normals    = newNormal;    normals++;
-                }
-            }*/
+        // Perform the skinning.
+        AZ::PackedVector3f* __restrict positions    = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS));
+        AZ::PackedVector3f* __restrict normals      = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_NORMALS));
+        AZ::Vector4*        __restrict tangents     = static_cast<AZ::Vector4*>(mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS));
+        AZ::PackedVector3f* __restrict bitangents   = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_BITANGENTS));
+        AZ::u32*            __restrict orgVerts     = static_cast<AZ::u32*>(mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
+        SkinVertexRange(0, mMesh->GetNumVertices(), positions, normals, tangents, bitangents, orgVerts, layer);
     }
 
 
-    void SoftSkinDeformer::SkinVertexRange(uint32 startVertex, uint32 endVertex, AZ::PackedVector3f* positions, AZ::PackedVector3f* normals, AZ::Vector4* tangents, uint32* orgVerts, SkinningInfoVertexAttributeLayer* layer)
+    void SoftSkinDeformer::SkinVertexRange(uint32 startVertex, uint32 endVertex, AZ::PackedVector3f* positions, AZ::PackedVector3f* normals, AZ::Vector4* tangents, AZ::PackedVector3f* bitangents, uint32* orgVerts, SkinningInfoVertexAttributeLayer* layer)
     {
         AZ::Vector3 newPos, newNormal;
         AZ::Vector3 vtxPos, normal;
         AZ::Vector4 tangent, newTangent;
+        AZ::Vector3 bitangent, newBitangent;
 
-        // if there are tangents and binormals to skin
-        if (tangents)
+        // if there are tangents and bitangents to skin
+        if (tangents && bitangents)
+        {
+            for (uint32 v = startVertex; v < endVertex; ++v)
+            {
+                newPos = AZ::Vector3::CreateZero();
+                newNormal = AZ::Vector3::CreateZero();
+                newTangent = AZ::Vector4::CreateZero();
+                newBitangent = AZ::Vector3::CreateZero();
+
+                vtxPos  = AZ::Vector3(positions[v]);
+                normal  = AZ::Vector3(normals[v]);
+                tangent = tangents[v];
+                bitangent = AZ::Vector3(bitangents[v]);
+
+                const uint32 orgVertex = orgVerts[v]; // get the original vertex number
+                const uint32 numInfluences = layer->GetNumInfluences(orgVertex);
+                for (uint32 i = 0; i < numInfluences; ++i)
+                {
+                    const SkinInfluence* influence = layer->GetInfluence(orgVertex, i);
+                    mBoneMatrices[influence->GetBoneNr()].Skin(&vtxPos, &normal, &tangent, &bitangent, &newPos, &newNormal, &newTangent, &newBitangent, influence->GetWeight());
+                }
+
+                newTangent.SetW(tangents[v].GetW());
+
+                // output the skinned values
+                positions[v]    = AZ::PackedVector3f(newPos);
+                normals[v]      = AZ::PackedVector3f(newNormal);
+                tangents[v]     = newTangent;
+                bitangents[v]   = AZ::PackedVector3f(newBitangent);
+            }
+        }
+        else if (tangents) // only tangents but no bitangents
         {
             for (uint32 v = startVertex; v < endVertex; ++v)
             {
@@ -230,10 +175,10 @@ namespace EMotionFX
                 for (uint32 i = 0; i < numInfluences; ++i)
                 {
                     const SkinInfluence* influence = layer->GetInfluence(orgVertex, i);
-                    mBoneMatrices[ influence->GetBoneNr() ].Skin(&vtxPos, &normal, &tangent, &newPos, &newNormal, &newTangent, influence->GetWeight());
+                    mBoneMatrices[influence->GetBoneNr()].Skin(&vtxPos, &normal, &tangent, &newPos, &newNormal, &newTangent, influence->GetWeight());
                 }
 
-                newTangent.SetW(tangent.GetW());
+                newTangent.SetW(tangents[v].GetW());
 
                 // output the skinned values
                 positions[v]    = AZ::PackedVector3f(newPos);
@@ -241,7 +186,7 @@ namespace EMotionFX
                 tangents[v]     = newTangent;
             }
         }
-        else // there are no tangents and binormals to skin
+        else // there are no tangents and bitangents to skin
         {
             for (uint32 v = startVertex; v < endVertex; ++v)
             {
@@ -257,7 +202,7 @@ namespace EMotionFX
                 for (uint32 i = 0; i < numInfluences; ++i)
                 {
                     const SkinInfluence* influence = layer->GetInfluence(orgVertex, i);
-                    mBoneMatrices[ influence->GetBoneNr() ].Skin(&vtxPos, &normal, &newPos, &newNormal, influence->GetWeight());
+                    mBoneMatrices[influence->GetBoneNr()].Skin(&vtxPos, &normal, &newPos, &newNormal, influence->GetWeight());
                 }
 
                 // output the skinned values

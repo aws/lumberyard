@@ -11,7 +11,7 @@
 */
 
 #include "StarterGameGem_precompiled.h"
-#include "VisualiseRangeComponent.h"
+#include "VisualizeRangeComponent.h"
 
 #include "StarterGameUtility.h"
 
@@ -35,7 +35,7 @@ namespace StarterGameGem
 	}
 
 
-	void VisualiseRangeComponent::Init()
+	void VisualizeRangeComponent::Init()
 	{
 		m_suspicionRange = m_suspicionFoV = m_suspicionRearRange = -1.0f;
 		m_colourSuspicion = AZ::Vector4(255.0f, 255.0f, 130.0f, s_alpha);
@@ -44,64 +44,64 @@ namespace StarterGameGem
 		m_colourCombat = AZ::Vector4(255.0f, 0.0f, 0.0f, s_alpha);
 	}
 
-	void VisualiseRangeComponent::Activate()
+	void VisualizeRangeComponent::Activate()
 	{
         m_currentEntityTransform = AZ::Transform::CreateIdentity();
         EBUS_EVENT_ID_RESULT(m_currentEntityTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
 		
 		AZ::TickBus::Handler::BusConnect();
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
-		VisualiseRangeComponentRequestsBus::Handler::BusConnect(GetEntityId());
+		VisualizeRangeComponentRequestsBus::Handler::BusConnect(GetEntityId());
 	}
 
-	void VisualiseRangeComponent::Deactivate()
+	void VisualizeRangeComponent::Deactivate()
 	{
         AZ::TransformNotificationBus::Handler::BusDisconnect();
-		VisualiseRangeComponentRequestsBus::Handler::BusDisconnect();
+		VisualizeRangeComponentRequestsBus::Handler::BusDisconnect();
 	}
 
-	void VisualiseRangeComponent::Reflect(AZ::ReflectContext* reflection)
+	void VisualizeRangeComponent::Reflect(AZ::ReflectContext* reflection)
 	{
 		AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
 		if (serializeContext)
 		{
-			serializeContext->Class<VisualiseRangeComponent, AZ::Component>()
+			serializeContext->Class<VisualizeRangeComponent, AZ::Component>()
 				->Version(1)
 				// For suspicion.
-				->Field("SuspicionRange", &VisualiseRangeComponent::m_suspicionRange)
-				->Field("SuspicionFoV", &VisualiseRangeComponent::m_suspicionFoV)
-				->Field("SuspicionRearRange", &VisualiseRangeComponent::m_suspicionRearRange)
-				->Field("ColourSuspicion", &VisualiseRangeComponent::m_colourSuspicion)
+				->Field("SuspicionRange", &VisualizeRangeComponent::m_suspicionRange)
+				->Field("SuspicionFoV", &VisualizeRangeComponent::m_suspicionFoV)
+				->Field("SuspicionRearRange", &VisualizeRangeComponent::m_suspicionRearRange)
+				->Field("ColourSuspicion", &VisualizeRangeComponent::m_colourSuspicion)
 				// For combat.
-				->Field("RangeSight", &VisualiseRangeComponent::m_rangeSight)
-				->Field("RangeAggro", &VisualiseRangeComponent::m_rangeAggro)
-				->Field("ColourCombat", &VisualiseRangeComponent::m_colourCombat)
+				->Field("RangeSight", &VisualizeRangeComponent::m_rangeSight)
+				->Field("RangeAggro", &VisualizeRangeComponent::m_rangeAggro)
+				->Field("ColourCombat", &VisualizeRangeComponent::m_colourCombat)
 			;
 
 			AZ::EditContext* editContext = serializeContext->GetEditContext();
 			if (editContext)
 			{
-				editContext->Class<VisualiseRangeComponent>("VisualiseRange", "Allows visualisation of conceptual things at runtime.")
+				editContext->Class<VisualizeRangeComponent>("Visualize Range", "Allows visualization of conceptual things at runtime.")
 					->ClassElement(AZ::Edit::ClassElements::EditorData, "")
 						->Attribute(AZ::Edit::Attributes::Category, "AI")
 						->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SG_Icon.png")
 						->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/SG_Icon.dds")
 						->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
-					//->DataElement(0, &VisualiseRangeComponent::m_colour, "Colour", "The colour of the visualisations.")
+					//->DataElement(0, &VisualizeRangeComponent::m_colour, "Colour", "The colour of the visualisations.")
 				;
 			}
 		}
 
 		if (AZ::BehaviorContext* behavior = azrtti_cast<AZ::BehaviorContext*>(reflection))
 		{
-			behavior->EBus<VisualiseRangeComponentRequestsBus>("VisualiseRangeComponentRequestsBus")
-				->Event("SetSightRange", &VisualiseRangeComponentRequestsBus::Events::SetSightRange)
-				->Event("SetSuspicionRange", &VisualiseRangeComponentRequestsBus::Events::SetSuspicionRange)
+			behavior->EBus<VisualizeRangeComponentRequestsBus>("VisualizeRangeComponentRequestsBus")
+				->Event("SetSightRange", &VisualizeRangeComponentRequestsBus::Events::SetSightRange)
+				->Event("SetSuspicionRange", &VisualizeRangeComponentRequestsBus::Events::SetSuspicionRange)
 				;
 		}
 	}
 
-    void VisualiseRangeComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+    void VisualizeRangeComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     {
         if (!GetEntityId().IsValid())
             return;
@@ -148,18 +148,18 @@ namespace StarterGameGem
 		}
     }
 
-    void VisualiseRangeComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
+    void VisualizeRangeComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
         m_currentEntityTransform = world;
     }
 
-	void VisualiseRangeComponent::SetSightRange(float aggroRange, float sightRange)
+	void VisualizeRangeComponent::SetSightRange(float aggroRange, float sightRange)
 	{
 		m_rangeSight = sightRange;
 		m_rangeAggro = aggroRange;
 	}
 
-	void VisualiseRangeComponent::SetSuspicionRange(float range, float fov, float rearRange)
+	void VisualizeRangeComponent::SetSuspicionRange(float range, float fov, float rearRange)
 	{
 		m_suspicionRange = range;
 		m_suspicionFoV = DEG2RAD(fov * 0.5f);

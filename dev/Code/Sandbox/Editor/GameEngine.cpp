@@ -93,6 +93,8 @@
 #include <QMessageBox>
 #include <QThread>
 
+#include "ActionManager.h"
+
 static const char defaultFileExtension[] = ".ly";
 static const char oldFileExtension[] = ".cry";
 
@@ -805,7 +807,6 @@ void CGameEngine::SetLevelPath(const QString& path)
     QByteArray levelPath;
     levelPath.reserve(AZ_MAX_PATH_LEN);
     levelPath = Path::ToUnixPath(Path::RemoveBackslash(path)).toUtf8();
-    AZ::IO::FileIOBase::GetInstance()->ConvertToAlias(levelPath.data(), levelPath.capacity());
     m_levelPath = levelPath;
 
     m_levelName = m_levelPath.mid(m_levelPath.lastIndexOf('/') + 1);
@@ -820,15 +821,14 @@ void CGameEngine::SetLevelPath(const QString& path)
         m_levelExtension = defaultFileExtension;
     }
 
-    QString relativeLevelPath = Path::GetRelativePath(path);
     if (gEnv->p3DEngine)
     {
-        gEnv->p3DEngine->SetLevelPath(relativeLevelPath.toUtf8().data());
+        gEnv->p3DEngine->SetLevelPath(m_levelPath.toUtf8().data());
     }
 
     if (gEnv->pAISystem)
     {
-        gEnv->pAISystem->SetLevelPath(relativeLevelPath.toUtf8().data());
+        gEnv->pAISystem->SetLevelPath(m_levelPath.toUtf8().data());
     }
 }
 
@@ -1247,6 +1247,13 @@ void CGameEngine::SwitchToInEditor()
     IEntity* myPlayer = m_pEditorGame ? m_pEditorGame->GetPlayer() : nullptr;
     if (myPlayer)
     {
+        // save the current gameView matrix for editor
+        if (pGameViewport)
+        {
+            Matrix34 gameView = gEnv->pSystem->GetViewCamera().GetMatrix();
+            pGameViewport->SetGameTM(gameView);
+        }
+
         // Move the camera to the entity position so it doesn't shift backward each time you drop in.
         CCamera& cam = gEnv->pSystem->GetViewCamera();
         Vec3 pos = myPlayer->GetPos();
@@ -2133,8 +2140,6 @@ void CGameEngine::Update()
 
         GetIEditor()->GetAI()->NavigationDebugDisplay();
     }
-
-    EBUS_EVENT(AzToolsFramework::AssetSystemRequestBus, UpdateQueuedEvents);
 
     m_pNavigation->Update();
 }

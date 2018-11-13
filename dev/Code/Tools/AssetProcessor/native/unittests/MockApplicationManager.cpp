@@ -9,8 +9,6 @@
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#if defined (UNIT_TEST)
-
 #include <QElapsedTimer>
 #include <QCoreApplication>
 
@@ -384,5 +382,3 @@ namespace AssetProcessor
     }
 
 }
-
-#endif // UNIT_TEST

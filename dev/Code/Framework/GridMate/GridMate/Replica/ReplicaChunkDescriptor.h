@@ -172,7 +172,7 @@ namespace GridMate
             {
                 // Descriptor memory is owned by the table.
                 // All entries will be freed automatically when the table is destroyed.
-                descriptor = new(AZ_OS_MALLOC(sizeof(ReplicaChunkDescriptorType), AZStd::alignment_of<ReplicaChunkDescriptorType>::value))ReplicaChunkDescriptorType();
+                descriptor = azcreate(ReplicaChunkDescriptorType, (), AZ::OSAllocator);
                 AddReplicaChunkDescriptor(chunkTypeId, descriptor);
             }
 
@@ -209,7 +209,7 @@ namespace GridMate
         struct DescriptorInfo
             : public AZStd::intrusive_list_node<DescriptorInfo>
         {
-        public:
+            AZ_CLASS_ALLOCATOR(DescriptorInfo, AZ::OSAllocator, 0);
             ReplicaChunkClassId m_chunkTypeId;
             ReplicaChunkDescriptor* m_descriptor; // pointer to the replica descriptor
         };

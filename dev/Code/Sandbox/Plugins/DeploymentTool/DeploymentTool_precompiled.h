@@ -14,41 +14,22 @@
 #include <AzCore/PlatformDef.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
-#include <stdio.h>
-#include <WinSock2.h>
-#include <ws2tcpip.h>
+    #include <WinSock2.h>
+    #include <ws2tcpip.h>
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+    #include <QUuid> // required to be here in order to include CryEdit
 #endif
 
-#pragma warning(disable: 4244) // warning C4244: 'argument' : conversion from 'float' to 'uint8', possible loss of data
-#pragma warning(disable: 4800) // 'int' : forcing value to bool 'true' or 'false' (performance warning)
-#pragma warning(disable: 4266) // no override available for virtual member function from base 'CObject'; function is hidden
-//#pragma warning(disable: 4264) // no override available for virtual member function from base 'CObject'; function is hidden
-
 /////////////////////////////////////////////////////////////////////////////
-// CRY Stuff ////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-#include <platform.h>
-
-/////////////////////////////////////////////////////////////////////////////
-// STL
-/////////////////////////////////////////////////////////////////////////////
-#include <vector>
-#include <list>
-#include <map>
-#include <set>
-#include <algorithm>
-
-/////////////////////////////////////////////////////////////////////////////
-// CRY Stuff ////////////////////////////////////////////////////////////////
+// Engine
 /////////////////////////////////////////////////////////////////////////////
 #include <ISystem.h>
-#include "Util/EditorUtils.h"
-#include "IEditor.h"
-#include "Util/PathUtil.h"
-
-
 #include <Cry_Math.h>
 
+/////////////////////////////////////////////////////////////////////////////
+// Qt
+/////////////////////////////////////////////////////////////////////////////
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
+

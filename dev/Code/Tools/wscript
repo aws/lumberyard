@@ -14,6 +14,7 @@
 ########################################################################################
 
 import os
+from runpy import run_path
 
 SUBFOLDERS = [
     '3rdParty',
@@ -30,7 +31,6 @@ SUBFOLDERS = [
     'CrySCompileServer',
     'HLSLCrossCompiler',
     'HLSLCrossCompilerMetal',
-    
     'SceneAPI',
     'AzTestScanner',
     'Woodpecker',
@@ -39,7 +39,8 @@ SUBFOLDERS = [
     'AzCodeGenerator',
     'CrashHandler',
     'SharedQMLResource',
-    'AWSNativeSDKInit'
+    'AWSNativeSDKInit',
+    'RemoteConsole',
 ]
 
 def build(bld):
@@ -72,3 +73,14 @@ def build(bld):
 
     for subfolder in SUBFOLDERS:
         bld.recurse([subfolder], mandatory = False)
+
+    # Handle any restricted platform recursions
+    for p in bld.env['RESTRICTED_PLATFORMS']:
+        script_dir, script_base = os.path.split(bld.cur_script.abspath())
+        restricted_script_filename = os.path.join(script_dir, p, '{0}_{1}'.format(script_base, p))
+        if os.path.exists(restricted_script_filename):
+            restricted_script = run_path(restricted_script_filename)
+            if 'restricted_subfolders' in restricted_script:
+                restricted_subfolders = restricted_script['restricted_subfolders']()
+                for subfolder in restricted_subfolders:
+                    bld.recurse([subfolder], mandatory=False)

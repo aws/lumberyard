@@ -699,10 +699,31 @@ namespace AzToolsFramework
             m_statement = connect.GetStatement(statementName);
         }
 
+        StatementAutoFinalizer::StatementAutoFinalizer(StatementAutoFinalizer&& other)
+            : m_statement(AZStd::move(other.m_statement))
+        {
+            other.m_statement = nullptr;
+        }
+
+        StatementAutoFinalizer& StatementAutoFinalizer::operator=(StatementAutoFinalizer&& other)
+        {
+            if (this != &other)
+            {
+                m_statement = AZStd::move(other.m_statement);
+
+                other.m_statement = nullptr;
+            }
+
+            return *this;
+        }
+
         StatementAutoFinalizer::~StatementAutoFinalizer()
         {
-            m_statement->Finalize();
-            m_statement = nullptr;
+            if (m_statement)
+            {
+                m_statement->Finalize();
+                m_statement = nullptr;
+            }
         }
 
         Statement* StatementAutoFinalizer::Get() const

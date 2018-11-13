@@ -23,92 +23,100 @@
 
 namespace AZ
 {
-	class ReflectContext;
+    class ReflectContext;
 }
 
 namespace StarterGameGem
 {
+    struct DebugVarBase
+    {
+        AZ_RTTI(DebugVarBase, "{6CEFB353-B765-4808-8F4F-01970D9C2365}");
+        AZ_CLASS_ALLOCATOR(DebugVarBase, AZ::SystemAllocator, 0);
 
-	struct DebugVarBase
-	{
-		AZ_RTTI(DebugVarBase, "{6CEFB353-B765-4808-8F4F-01970D9C2365}");
-		AZ_CLASS_ALLOCATOR(DebugVarBase, AZ::SystemAllocator, 0);
+        AZStd::string m_eventName;
+    };
 
-		AZStd::string m_eventName;
-	};
+    struct DebugVarBool final
+        : public DebugVarBase
+    {
+        AZ_RTTI(DebugVarBool, "{33B62F09-93E5-432E-9808-F1963E8BC6DE}", DebugVarBase);
+        AZ_CLASS_ALLOCATOR(DebugVarBool, AZ::SystemAllocator, 0);
 
-	struct DebugVarBool final
-		: public DebugVarBase
-	{
-		AZ_RTTI(DebugVarBool, "{33B62F09-93E5-432E-9808-F1963E8BC6DE}", DebugVarBase);
-		AZ_CLASS_ALLOCATOR(DebugVarBool, AZ::SystemAllocator, 0);
+        bool m_value;
+    };
 
-		bool m_value;
-	};
+    struct DebugVarFloat final
+        : public DebugVarBase
+    {
+        AZ_RTTI(DebugVarFloat, "{15C258BE-67B7-4076-A127-55EE69E21549}", DebugVarBase);
+        AZ_CLASS_ALLOCATOR(DebugVarFloat, AZ::SystemAllocator, 0);
 
-	struct DebugVarFloat final
-		: public DebugVarBase
-	{
-		AZ_RTTI(DebugVarFloat, "{15C258BE-67B7-4076-A127-55EE69E21549}", DebugVarBase);
-		AZ_CLASS_ALLOCATOR(DebugVarFloat, AZ::SystemAllocator, 0);
+        float m_value;
+    };
 
-		float m_value;
-	};
+    /*!
+    * DebugManagerComponentRequests
+    * Messages serviced by the DebugManagerComponent
+    */
+    class DebugManagerComponentRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        virtual ~DebugManagerComponentRequests() {}
 
-	/*!
-	* DebugManagerComponentRequests
-	* Messages serviced by the DebugManagerComponent
-	*/
-	class DebugManagerComponentRequests
-		: public AZ::ComponentBus
-	{
-	public:
-		virtual ~DebugManagerComponentRequests() {}
+        //! Get whether debug variables are ready.
+        virtual bool GetVariablesAreReady() = 0;
 
-		//! Set the debug variables.
-		virtual void SetDebugBool(const AZStd::string& eventName, bool value) = 0;
-		virtual void SetDebugFloat(const AZStd::string& eventName, float value) = 0;
+        //! Set that the debug variables are ready.
+        virtual void SetVariablesAreReady() = 0;
 
-		//! Access the debug variables.
-		virtual bool GetDebugBool(const AZStd::string& eventName) = 0;
-		virtual float GetDebugFloat(const AZStd::string& eventName) = 0;
+        //! Set the debug variables.
+        virtual void SetDebugBool(const AZStd::string& eventName, bool value) = 0;
+        virtual void SetDebugFloat(const AZStd::string& eventName, float value) = 0;
 
-	};
+        //! Access the debug variables.
+        virtual bool GetDebugBool(const AZStd::string& eventName) = 0;
+        virtual float GetDebugFloat(const AZStd::string& eventName) = 0;
+    };
 
-	using DebugManagerComponentRequestsBus = AZ::EBus<DebugManagerComponentRequests>;
+    using DebugManagerComponentRequestsBus = AZ::EBus<DebugManagerComponentRequests>;
 
 
-	class DebugManagerComponent
-		: public AZ::Component
-		, private DebugManagerComponentRequestsBus::Handler
-	{
-	public:
-		AZ_COMPONENT(DebugManagerComponent, "{42FD7720-253C-44AB-9FAF-5F82B462A394}");
+    class DebugManagerComponent
+        : public AZ::Component
+        , private DebugManagerComponentRequestsBus::Handler
+    {
+    public:
+        AZ_COMPONENT(DebugManagerComponent, "{42FD7720-253C-44AB-9FAF-5F82B462A394}");
 
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::Component interface implementation
-		void Init() override;
-		void Activate() override;
-		void Deactivate() override;
-		//////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::Component interface implementation
+        void Init() override;
+        void Activate() override;
+        void Deactivate() override;
+        //////////////////////////////////////////////////////////////////////////
 
-		// Required Reflect function.
-		static void Reflect(AZ::ReflectContext* context);
+        // Required Reflect function.
+        static void Reflect(AZ::ReflectContext* context);
 
-		//////////////////////////////////////////////////////////////////////////
-		// DebugManagerComponentRequestsBus::Handler
-		//! Set the debug variables.
-		virtual void SetDebugBool(const AZStd::string& eventName, bool value) override;
-		virtual void SetDebugFloat(const AZStd::string& eventName, float value) override;
+        //! Set the variables are ready.
+        virtual bool GetVariablesAreReady() override;
+        virtual void SetVariablesAreReady() override;
 
-		//! Access the debug variables.
-		virtual bool GetDebugBool(const AZStd::string& eventName) override;
-		virtual float GetDebugFloat(const AZStd::string& eventName) override;
+        //////////////////////////////////////////////////////////////////////////
+        // DebugManagerComponentRequestsBus::Handler
+        //! Set the debug variables.
+        virtual void SetDebugBool(const AZStd::string& eventName, bool value) override;
+        virtual void SetDebugFloat(const AZStd::string& eventName, float value) override;
 
-	protected:
-		AZStd::vector<DebugVarBool> m_bools;
-		AZStd::vector<DebugVarFloat> m_floats;
+        //! Access the debug variables.
+        virtual bool GetDebugBool(const AZStd::string& eventName) override;
+        virtual float GetDebugFloat(const AZStd::string& eventName) override;
 
-	};
+    protected:
+        AZStd::vector<DebugVarBool> m_bools;
+        AZStd::vector<DebugVarFloat> m_floats;
 
+        bool m_variablesAreReady = false;
+    };
 } // namespace StarterGameGem

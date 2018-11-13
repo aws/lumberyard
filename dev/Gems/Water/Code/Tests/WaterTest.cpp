@@ -67,6 +67,9 @@ TEST(WaterTest, ComponentsWithComponentApplication)
     AZ::ComponentApplication app;
     AZ::Entity* systemEntity = app.Create(appDesc);
     ASSERT_TRUE(systemEntity != nullptr);
+    app.RegisterComponentDescriptor(Water::WaterSystemComponent::CreateDescriptor());
+    app.RegisterComponentDescriptor(Water::WaterOceanComponent::CreateDescriptor());
+
     systemEntity->CreateComponent<Water::WaterSystemComponent>();
 
     systemEntity->Init();
@@ -90,6 +93,20 @@ public:
     {
     }
 
+    class MockTransformComponent
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(MockTransformComponent, "{8F4C932A-6BAD-464B-AFB3-87CC8EA31FB5}", AZ::Component);
+        void Activate() override {}
+        void Deactivate() override {}
+        static void Reflect(AZ::ReflectContext* reflect) { AZ_UNUSED(reflect); }
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC("TransformService", 0x8ee22c50));
+        }
+    };
+
     void SetUp() override
     {
         AZ::ComponentApplication::Descriptor appDesc;
@@ -107,10 +124,14 @@ public:
         m_systemEntity = m_application.Create(appDesc, appStartup);
         m_systemEntity->Init();
         m_systemEntity->Activate();
+
+        m_application.RegisterComponentDescriptor(MockTransformComponent::CreateDescriptor());
+        m_application.RegisterComponentDescriptor(Water::WaterOceanComponent::CreateDescriptor());
     }
 
     void TearDown() override
     {
+        delete m_systemEntity;
         m_application.Destroy();
     }
 
@@ -241,6 +262,7 @@ TEST_F(WaterTestApp, Ocean_ScriptingOceanEnvironmentRequestBus)
 
     AZ::Entity* waterEntity = aznew AZ::Entity("water_entity");
     ASSERT_TRUE(waterEntity != nullptr);
+    waterEntity->CreateComponent<MockTransformComponent>();
     waterEntity->CreateComponent<Water::WaterOceanComponent>();
     waterEntity->Init();
     waterEntity->Activate();
@@ -320,6 +342,7 @@ TEST_F(WaterTestApp, Ocean_EditorCreateGameEntity)
     Water::WaterOceanEditor editor;
     auto* editorBase = static_cast<AzToolsFramework::Components::EditorComponentBase*>(&editor);
     editorBase->BuildGameEntity(infiniteOceanEntity);
+    m_application.AddEntity(infiniteOceanEntity);
 
     // the new game entity's ocean component should look like the default one
     Water::WaterOceanComponentData cfg;

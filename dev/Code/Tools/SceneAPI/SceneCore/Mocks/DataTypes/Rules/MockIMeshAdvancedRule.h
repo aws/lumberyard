@@ -44,6 +44,8 @@ namespace AZ
                     bool(size_t index));
                 MOCK_CONST_METHOD0(GetUVStreamCount,
                     size_t());
+                MOCK_CONST_METHOD0(UseCustomNormals,
+                    bool());
             };
         }  // DataTypes
     }  // SceneAPI

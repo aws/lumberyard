@@ -52,7 +52,7 @@ namespace RADTelemetry
         if (IsInitialized())
         {
             tmShutdown();
-            free(m_buffer);
+            AZ_OS_FREE(m_buffer);
             m_buffer = nullptr;
         }
     }
@@ -144,7 +144,16 @@ namespace RADTelemetry
 
     void ProfileTelemetryComponent::OnSystemTick()
     {
+        // NOTE: in the Editor, this does not necessarily correlate with
+        // a viewport render end frame.
+        // The rendering can happen in multiple viewports simultaneously, and triggered by different events
+        // besides a SystemTick.
         tmTick(0);
+    }
+
+    bool ProfileTelemetryComponent::IsEnabled()
+    {
+        return m_running;
     }
 
     void ProfileTelemetryComponent::ToggleEnabled()
@@ -254,18 +263,12 @@ namespace RADTelemetry
         }
 
         tmLoadLibrary(TM_RELEASE);
-
-        if (!TM_API_PTR)
-        {
-            // Telemetry must be compiled as a static lib, set our global instance pointer to the internal telemetry one
-            TM_API_PTR = g_tm_api;
-        }
         AZ_Assert(TM_API_PTR, "Invalid RAD Telemetry API pointer state");
 
         tmSetMaxThreadCount(MaxProfileThreadCount);
 
         const tm_int32 telemetryBufferSize = 16 * 1024 * 1024;
-        m_buffer = static_cast<char*>(malloc(telemetryBufferSize));
+        m_buffer = static_cast<char*>(AZ_OS_MALLOC(telemetryBufferSize, sizeof(void*)));
         tmInitialize(telemetryBufferSize, m_buffer);
 
         // Notify so individual modules can update their Telemetry pointer
@@ -282,9 +285,31 @@ namespace RADTelemetry
         m_port = port;
     }
 
-    void ProfileTelemetryComponent::SetCaptureMask(AZ::u32 mask)
+    void ProfileTelemetryComponent::SetCaptureMask(AZ::Debug::ProfileCategoryPrimitiveType mask)
     {
         m_captureMask = mask;
+        if (IsInitialized())
+        {
+            tmSetCaptureMask(m_captureMask);
+        }
+    }
+
+    AZ::Debug::ProfileCategoryPrimitiveType ProfileTelemetryComponent::GetDefaultCaptureMaskInternal()
+    {
+        using MaskType = AZ::Debug::ProfileCategoryPrimitiveType;
+
+        // Set all the category bits "below" FirstDetailedCategory and do not enable memory capture by default
+        return (static_cast<MaskType>(1) << static_cast<MaskType>(AZ::Debug::ProfileCategory::FirstDetailedCategory)) - 1;
+    }
+
+    AZ::Debug::ProfileCategoryPrimitiveType ProfileTelemetryComponent::GetDefaultCaptureMask()
+    {
+        return GetDefaultCaptureMaskInternal();
+    }
+
+    AZ::Debug::ProfileCategoryPrimitiveType ProfileTelemetryComponent::GetCaptureMask()
+    {
+        return m_captureMask;
     }
 
     void ProfileTelemetryComponent::Reflect(AZ::ReflectContext* context)

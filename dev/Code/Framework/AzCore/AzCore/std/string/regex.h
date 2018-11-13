@@ -1347,6 +1347,8 @@ namespace AZStd
         typedef AZ_REGEX_DIFFT (ForwardIterator) DiffType;
 
         Builder(const RegExTraits& traits, regex_constants::syntax_option_type);
+        ~Builder();
+
         bool BeginExpression() const;
         void SetLong();
         void DiscardPattern();
@@ -2627,6 +2629,16 @@ namespace AZStd
         , m_bitmapArrayMax(flags & regex_constants::collate ? 0 : BITMAP_ARRAY_THRESHOLD)
     {
     }
+
+    template<class ForwardIterator, class Element, class RegExTraits>
+    inline Builder<ForwardIterator, Element, RegExTraits>::~Builder()
+    {
+        if (m_root && m_root->m_refs == 0)
+        {
+            DestroyNode(m_root);
+        }
+    }
+
 
     template<class ForwardIterator, class Element, class RegExTraits>
     inline void Builder<ForwardIterator, Element, RegExTraits>::SetLong()

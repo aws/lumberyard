@@ -11,6 +11,10 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+#if defined(AZ_MONOLITHIC_BUILD)
+#define USE_CRY_NEW_AND_DELETE
+#endif
+
 #include "StdAfx.h"
 #include "resource.h"
 #include <CryLibrary.h>
@@ -207,6 +211,7 @@ ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg, AzGameFrame
 
     // Execute autoexec.cfg to load the initial level
     gEnv->pConsole->ExecuteString("exec autoexec.cfg");
+    gEnv->pSystem->ExecuteCommandLine(false);
 
     // Run the main loop
     LumberyardLauncher::RunMainLoop(gameApp);
@@ -228,8 +233,8 @@ ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg, AzGameFrame
 ///////////////////////////////////////////////
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    // we need pass the full command line, including the filename
-    // lpCmdLine does not contain the filename.
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+    AZ::AllocatorInstance<CryStringAllocator>::Create();
 
     InitRootDir();
 
@@ -283,13 +288,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #endif
         gameApp.Start(configPath, gameAppParams);
 
-#if CAPTURE_REPLAY_LOG
-#ifndef AZ_MONOLITHIC_BUILD
-        CryLoadLibrary("CrySystem.dll");
-#endif
-        CryGetIMemReplay()->StartOnCommandLine(lpCmdLine);
-#endif
-
         char cmdLine[2048];
         azstrcpy(cmdLine, GetCommandLineA());
 
@@ -322,6 +320,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         }
     }
 #endif // AZ_MONOLITHIC_BUILD
+
+    AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
 
     return result;
 }

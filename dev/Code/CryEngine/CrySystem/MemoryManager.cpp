@@ -14,19 +14,15 @@
 #include "StdAfx.h"
 #include "MemoryManager.h"
 #include "platform.h"
-#include "MemReplay.h"
 #include "CustomMemoryHeap.h"
 #include "GeneralMemoryHeap.h"
 #include "PageMappingHeap.h"
-#include "LevelHeap.h"
 #include "DefragAllocator.h"
 
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
 #define MEMORYMANAGER_CPP_SECTION_1 1
-#define MEMORYMANAGER_CPP_SECTION_2 2
-#define MEMORYMANAGER_CPP_SECTION_3 3
 #endif
 
 #if defined(WIN32)
@@ -43,7 +39,6 @@
 #include <sys/types.h> // required by mman.h
 #include <sys/mman.h> //mmap - virtual memory manager
 #endif
-extern LONG g_TotalAllocatedMemory;
 
 #ifdef MEMMAN_STATIC
 CCryMemoryManager g_memoryManager;
@@ -59,15 +54,6 @@ CCryMemoryManager* CCryMemoryManager::GetInstance()
     return &memman;
 #endif
 }
-
-#ifndef MEMMAN_STATIC
-int CCryMemoryManager::s_sys_MemoryDeadListSize;
-
-void CCryMemoryManager::RegisterCVars()
-{
-    REGISTER_CVAR2("sys_MemoryDeadListSize", &s_sys_MemoryDeadListSize, 0, VF_REQUIRE_APP_RESTART, "Keep upto size bytes in a \"deadlist\" of allocations to assist in capturing tramples");
-}
-#endif
 
 //////////////////////////////////////////////////////////////////////////
 bool CCryMemoryManager::GetProcessMemInfo(SProcessMemInfo& minfo)
@@ -165,12 +151,6 @@ bool CCryMemoryManager::GetProcessMemInfo(SProcessMemInfo& minfo)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCryMemoryManager::FakeAllocation(long size)
-{
-    CryInterlockedExchangeAdd((LONG volatile*)&g_TotalAllocatedMemory, (LONG)size);
-}
-
-//////////////////////////////////////////////////////////////////////////
 CCryMemoryManager::HeapHandle CCryMemoryManager::TraceDefineHeap(const char* heapName, size_t size, const void* pBase)
 {
     return 0;
@@ -204,17 +184,6 @@ uint32 CCryMemoryManager::TraceHeapGetColor()
 }
 
 //////////////////////////////////////////////////////////////////////////
-IMemReplay* CCryMemoryManager::GetIMemReplay()
-{
-#if CAPTURE_REPLAY_LOG
-    return CMemReplay::GetInstance();
-#else
-    static IMemReplay m;
-    return &m;
-#endif
-}
-
-//////////////////////////////////////////////////////////////////////////
 ICustomMemoryHeap* const CCryMemoryManager::CreateCustomMemoryHeapInstance(IMemoryManager::EAllocPolicy const eAllocPolicy)
 {
     return new CCustomMemoryHeap(eAllocPolicy);
@@ -245,68 +214,11 @@ IDefragAllocator* CCryMemoryManager::CreateDefragAllocator()
     return new CDefragAllocator();
 }
 
-void* CCryMemoryManager::AllocPages(size_t size)
-{
-    void* ret = NULL;
-    MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MEMORYMANAGER_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(MemoryManager_cpp, AZ_RESTRICTED_PLATFORM)
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(APPLE) || defined(LINUX)
-    ret = mmap(0, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
-#else
-
-    ret = VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-
-#endif
-
-    if (ret)
-    {
-        MEMREPLAY_SCOPE_ALLOC(ret, size, 4096);
-    }
-
-    return ret;
-}
-
-void CCryMemoryManager::FreePages(void* p, size_t size)
-{
-    UINT_PTR id = (UINT_PTR)p;
-    MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MEMORYMANAGER_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(MemoryManager_cpp, AZ_RESTRICTED_PLATFORM)
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(APPLE) || defined(LINUX)
-#if defined(_DEBUG)
-    int ret = munmap(p, size);
-    CRY_ASSERT_MESSAGE(ret == 0, "munmap returned error.");
-#else
-    munmap(p, size);
-#endif
-#else
-
-    VirtualFree(p, 0, MEM_RELEASE);
-
-#endif
-
-    MEMREPLAY_SCOPE_FREE(id);
-}
-
-
-
-//////////////////////////////////////////////////////////////////////////
 extern "C"
 {
-CRYMEMORYMANAGER_API void CryGetIMemoryManagerInterface(void** pIMemoryManager)
-{
-    // Static instance of the memory manager
-    *pIMemoryManager = CCryMemoryManager::GetInstance();
-}
+    CRYMEMORYMANAGER_API void CryGetIMemoryManagerInterface(void** pIMemoryManager)
+    {
+        // Static instance of the memory manager
+        *pIMemoryManager = CCryMemoryManager::GetInstance();
+    }
 };

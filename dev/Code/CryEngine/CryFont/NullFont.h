@@ -79,6 +79,7 @@ public:
     virtual void GetMemoryUsage(ICrySizer* pSizer) const {}
     virtual string GetLoadedFontNames() const { return ""; }
     virtual void OnLanguageChanged() override { }
+    virtual void ReloadAllFonts() override { } 
 
 private:
     static CNullFont ms_nullFont;

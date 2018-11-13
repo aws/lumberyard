@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #1 $
+# $Revision: #2 $
 
 from errors import HandledError
 import os
@@ -21,11 +21,13 @@ from config import ResourceTemplateAggregator
 import time
 import file_util
 
+from cgf_utils import lambda_utils
 import mappings
 import project
 import security
 import common_code
 from deployment_tags import DeploymentTag
+import deployment
 
 from botocore.exceptions import NoCredentialsError
 
@@ -33,15 +35,14 @@ from uploader import ProjectUploader, ResourceGroupUploader, Phase
 
 class ResourceGroup(object):
 
-    def __init__(self, context, resource_group_name, directory_path, cpp_base_directory_path, cpp_aws_directory_path, gem = None):
+    def __init__(self, context, resource_group_name, directory_path, cpp_base_directory_path, cpp_aws_directory_path):
         '''Initialize an ResourceGroup object.'''
 
         self.__context = context
         self.__name = resource_group_name
         self.__directory_path = directory_path
         self.__cpp_aws_directory_path = cpp_aws_directory_path
-        self.__cpp_base_directory_path = cpp_base_directory_path
-        self.__gem = gem
+        self.__cpp_base_directory_path = cpp_base_directory_path        
         self.__template_path = os.path.join(self.__directory_path, constant.RESOURCE_GROUP_TEMPLATE_FILENAME)
         self.__template = None
         self.__cli_plugin_code_path = os.path.join(self.__directory_path, 'cli-plugin-code')
@@ -88,27 +89,6 @@ class ResourceGroup(object):
         return self.__cpp_base_directory_path
 
     @property
-    def is_gem(self):
-        return self.__gem is not None
-
-    @property
-    def gem(self):
-        return self.__gem
-
-    def verify_gem_enabled(self):
-        if self.gem:
-            if not self.gem.is_defined:
-                raise HandledError('The resource group {resource_group_name} relies on a gem from {gem_path} which does not exist.'.format(
-                    resource_group_name = self.name, 
-                    gem_path = self.gem.root_directory_path))
-            if not self.gem.is_enabled:
-                raise HandledError('The resource group {resource_group_name} relies on gem {gem_name} version {gem_version} (from {gem_path}) which is not enabled for the project. Please enable the gem {gem_name} in the project configurator.'.format(
-                    resource_group_name = self.name, 
-                    gem_name = self.gem.name,
-                    gem_version = self.gem.version,
-                    gem_path = self.gem.root_directory_path))
-
-    @property
     def template_path(self):
         return self.__template_path
 
@@ -119,7 +99,6 @@ class ResourceGroup(object):
         return self.__template
 
     def effective_template(self, deployment_name):
-        template = self.template
         tags = DeploymentTag(deployment_name, self.__context)
         return tags.apply_overrides(self)
 
@@ -167,6 +146,26 @@ class ResourceGroup(object):
 
         return resource_group_template
 
+    def record_lambda_language_usage(self, context):
+        lang_count = {}
+        for resource_name, resource_description in self.template["Resources"].iteritems():
+            if resource_description.get("Type", "") != "Custom::LambdaConfiguration":
+                continue
+            runtime = resource_description["Properties"]["Runtime"]
+            lang_count[runtime] = lang_count.get(runtime, 0) + 1
+        if not lang_count:
+            return
+
+        metric_id = context.metrics.create_new_event_id(
+            "ResourceManagement_LambdaLanguage")
+
+        if metric_id == -1:
+            return
+
+        for runtime, count in lang_count.iteritems():
+            context.metrics.add_metric_to_event_by_id(
+                metric_id, "{}".format(runtime), count)
+        context.metrics.submit_event_by_id(metric_id)
 
     def __find_setting(self, dictionary, *levels):
 
@@ -245,11 +244,12 @@ class ResourceGroup(object):
         resources = self.template["Resources"]
         for name, description in  resources.iteritems():
 
-            if not description["Type"] == "AWS::Lambda::Function":
+            if not description["Type"] == "Custom::LambdaConfiguration":
                 continue
 
-            code_path, imported_paths, multi_imports = ResourceGroupUploader.get_lambda_function_code_paths(self.__context, self.name, name)
-
+            function_runtime = description["Properties"]["Runtime"]
+            code_path, imported_paths, multi_imports = ResourceGroupUploader.get_lambda_function_code_paths(
+                self.__context, self.name, description["Properties"]["FunctionName"], function_runtime)
             lambda_function_content_paths.append(code_path)
             lambda_function_content_paths.extend(imported_paths)
 
@@ -329,8 +329,6 @@ class ResourceGroup(object):
             self.__context.view.output_not_found(self.template_path, logical_id)
 
         return changed
-
-
 
     def add_resources(self, resource_definitions, force=False, dependencies=None):
         '''Adds resource definitions to a resource group's resource-template.json file.
@@ -621,42 +619,6 @@ def disable(context, args):
     context.view.resource_group_disabled(group.name)
 
 
-def add(context, args):
-
-    # Old functionality, which created project local resource group directories, was deprcated 
-    # in Lumberyard 1.11 (CGF 1.1.1). The new "gem create" or "resource-group enable" commands 
-    # should be used instead.
-    #
-    # This command approximates the old behavior by either executing gem create or enabling
-    # a resource group if it exists but was disabled.
-
-    if not args.is_gui:
-        context.view.using_deprecated_command('resource-group add', ['cloud-gem create', 'cloud-gem enable'])
-
-    if args.resource_group in context.config.local_project_settings.get(constant.DISABLED_RESOURCE_GROUPS_KEY, []):
-        enable(context, util.Args(resource_group = args.resource_group))
-    else:
-        context.gem.create_gem(
-            gem_name = args.resource_group,
-            initial_content = 'api-lambda-dynamodb' if args.include_example_resources else 'no-resources',
-            enable = True,
-            asset_only = True)
-
-
-def remove(context, args):
-
-    # Deprecated in Lumberyard 1.11 (CGF 1.1.1).
-
-    if not args.is_gui:
-        context.view.using_deprecated_command('resource-group remove', 'cloud-gem disable')
-
-    group = context.resource_groups.get(args.resource_group)
-    if group.is_gem:
-        context.gem.disable_gem(gem_name = args.resource_group)
-    else:
-        disable(context, args)
-
-
 def update_stack(context, args):
 
     deployment_name = args.deployment
@@ -698,6 +660,7 @@ def update_stack(context, args):
         uploader = resource_group_uploader
     )
 
+
     # wait a bit for S3 to help insure that templates can be read by cloud formation
     time.sleep(constant.STACK_UPDATE_DELAY_TIME)
 
@@ -707,6 +670,7 @@ def update_stack(context, args):
         parameters = parameters, 
         pending_resource_status = pending_resource_status,
         capabilities = capabilities
+
     )
 
     after_update(deployment_uploader, resource_group_name)
@@ -726,7 +690,9 @@ def create_stack(context, args):
     # resource groups as a side effect of the deployment update.
 
     resource_group = context.resource_groups.get(args.resource_group)
+
     pending_resource_status = resource_group.get_pending_resource_status(args.deployment)
+
 
     # Is it ok to do this?
 
@@ -737,6 +703,7 @@ def create_stack(context, args):
         pending_resource_status
     )
 
+    
     # Do the create...
 
     project_uploader = ProjectUploader(context)
@@ -769,6 +736,9 @@ def create_stack(context, args):
         resource_group_config_resource.get('Properties', {})['ConfigurationKey'] = deployment_uploader.key
         deployment_resources[resource_group_config_name] = resource_group_config_resource
 
+    add_deployment_capabilities(context, args, deployment_stack_id,
+                                deployment_template, deployment_parameters, capabilities)
+
     if 'EmptyDeployment' in deployment_resources:
         del deployment_resources['EmptyDeployment']
 
@@ -784,7 +754,7 @@ def create_stack(context, args):
             deployment_template_url, 
             deployment_parameters,
             pending_resource_status = __nest_pending_resource_status(args.deployment, pending_resource_status),
-            capabilities = capabilities
+            capabilities= capabilities
         )
     except:
         context.config.force_gui_refresh()
@@ -802,6 +772,16 @@ def create_stack(context, args):
         deprecated=True
     )
 
+
+def add_deployment_capabilities(context, args, deployment_stack_id, template, params, capabilities):
+    deployment_resource_status = deployment.get_pending_deployment_resource_status(
+        context, args.deployment, deployment_stack_id, template, params)
+    deployment_capabilities = context.stack.get_stack_operation_capabilities(
+        deployment_resource_status)
+
+    for capability in deployment_capabilities:
+        if not capability in capabilities:
+            capabilities.append(capability)
 
 
 def delete_stack(context, args):
@@ -855,6 +835,9 @@ def delete_stack(context, args):
                 "ServiceToken": { "Ref": "ProjectResourceHandler" }
             }
         }
+
+    add_deployment_capabilities(context, args, deployment_stack_id,
+                                deployment_template, deployment_parameters, capabilities)
 
     deployment_template_url = deployment_uploader.upload_content(constant.DEPLOYMENT_TEMPLATE_FILENAME, json.dumps(deployment_template),
                                                                  'deployment template without resource group definitions')
@@ -974,8 +957,8 @@ def __zip_individual_lambda_code_folders(group, uploader, deployment_name):
     for name, description in  resources.iteritems():
         if not description["Type"] == "Custom::LambdaConfiguration":
             continue
-
-        uploader.zip_and_upload_lambda_function_code(description["Properties"]["FunctionName"])
+        uploader.upload_lambda_function_code(
+            description["Properties"]["FunctionName"], description["Properties"]["Runtime"])
 
 
 def list(context, args):
@@ -1081,10 +1064,11 @@ def __gather_additional_code_directories(context, group):
         if description == None: # This can happen with a malformed template
             continue
 
-        if not description.get("Type", "") == "AWS::Lambda::Function":
+        if not description.get("Type", "") == "Custom::LambdaConfiguration":
             continue
         
-        code_path = ResourceGroupUploader.get_lambda_function_code_path(context, group.name, name)
+        code_path = ResourceGroupUploader.get_lambda_function_code_path(
+            context, group.name, description["Properties"]["FunctionName"], description["Properties"]["Runtime"])
         additional_dirs.append(code_path)
 
     # TODO: should this list include common-code directories as well?

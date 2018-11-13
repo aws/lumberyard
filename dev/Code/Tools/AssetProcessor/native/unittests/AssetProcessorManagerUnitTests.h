@@ -9,10 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef ASSETPROCESSORMANAGERUNITTESTS_H
-#define ASSETPROCESSORMANAGERUNITTESTS_H
-
-#if defined (UNIT_TEST)
+#pragma once
 #include "UnitTestRunner.h"
 
 namespace AssetProcessor
@@ -61,6 +58,4 @@ Q_SIGNALS:
         virtual void StartTest() override;
     };
 } // namespace assetprocessor
-#endif // defined(UNIT_TEST)
-#endif // ASSETPROCESSORMANAGERUNITTESTS_H
 

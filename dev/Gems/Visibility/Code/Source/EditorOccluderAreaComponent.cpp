@@ -30,23 +30,23 @@ namespace Visibility
 {
     void EditorOccluderAreaComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provides)
     {
-        provides.push_back(AZ_CRC("EditorOccluderAreaService"));
-        provides.push_back(AZ_CRC("OccluderAreaService"));
+        provides.push_back(AZ_CRC("EditorOccluderAreaService", 0xf943e16a));
+        provides.push_back(AZ_CRC("OccluderAreaService", 0x2fefad66));
     }
     void EditorOccluderAreaComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& requires)
     {
-        requires.push_back(AZ_CRC("TransformService"));
+        requires.push_back(AZ_CRC("TransformService", 0x8ee22c50));
     }
 
     void EditorOccluderAreaComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
     {
-        dependent.push_back(AZ_CRC("QuadShapeService"));
+        dependent.push_back(AZ_CRC("QuadShapeService", 0xe449b0fc));
     }
 
     void EditorOccluderAreaComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("EditorOccluderAreaService"));
-        incompatible.push_back(AZ_CRC("OccluderAreaService"));
+        incompatible.push_back(AZ_CRC("EditorOccluderAreaService", 0xf943e16a));
+        incompatible.push_back(AZ_CRC("OccluderAreaService", 0x2fefad66));
     }
 
     void EditorOccluderAreaConfiguration::Reflect(AZ::ReflectContext* context)

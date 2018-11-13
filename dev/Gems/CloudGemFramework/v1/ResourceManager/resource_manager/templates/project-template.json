@@ -233,7 +233,8 @@
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "arn:aws:s3:::", {
+                                            "arn:aws:s3:::",
+                                            {
                                                 "Ref": "Configuration"
                                             },
                                             "/upload/*"
@@ -244,7 +245,8 @@
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "arn:aws:s3:::", {
+                                            "arn:aws:s3:::",
+                                            {
                                                 "Ref": "Configuration"
                                             },
                                             "/project-settings.json"
@@ -255,26 +257,56 @@
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "arn:aws:s3:::", {
+                                            "arn:aws:s3:::",
+                                            {
+                                                "Ref": "Configuration"
+                                            },
+                                            "/dstack*"
+                                        ]
+                                    ]
+                                },
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:s3:::",
+                                            {
                                                 "Ref": "Configuration"
                                             },
                                             "/cgp-resource-code/*"
                                         ]
                                     ]
                                 },
-                                { 
-                                    "Fn::Join": [ 
-                                        "", 
-                                        [ 
-                                            "arn:aws:s3:::",  { 
-                                                "Ref": "Configuration" 
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:s3:::",
+                                            {
+                                                "Ref": "Configuration"
                                             },
-                                            "/resource-settings/*" 
+                                            "/resource-settings/*"
                                         ]
-                                    ] 
+                                    ]
                                 }
                             ]
                         },
+                        {
+                            "Sid": "ListStacks",
+                            "Effect": "Allow",
+                            "Action": "s3:ListBucket",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:s3:::",
+                                            { "Ref": "Configuration" }
+                                        ]
+                                    ]
+                                }
+                            ]
+                        },                      
                         {
                             "Sid": "ExecuteServiceAPI",
                             "Effect": "Allow",
@@ -932,6 +964,44 @@
                                     ]
                                 },
                                 {
+                                    "Sid": "DescribeVpcConfig",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ec2:DescribeSecurityGroups",
+                                        "ec2:DescribeSubnets",
+                                        "ec2:DescribeVpcs"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                },
+                                {
+                                    "Sid": "ManageKmsKey",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kms:Decrypt",
+                                        "kms:Encrypt"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:kms:",
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    },
+                                                    ":",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":key/*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
                                     "Sid": "DescribeStacksAndResources",
                                     "Effect": "Allow",
                                     "Action": [
@@ -1202,7 +1272,16 @@
                             "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/project-settings.json" ]] },
                                 { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/project-settings/*" ]] },
-                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-settings/*" ]] }
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-settings/*" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/dstack*" ]] }
+                            ]
+                        },
+                        {
+                            "Sid": "ListStacks",
+                            "Effect": "Allow",
+                            "Action": "s3:ListBucket",
+                            "Resource":[
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" } ]] }
                             ]
                         }
                     ]
@@ -1573,7 +1652,7 @@
                         ]
                     }
                 },
-                "MemorySize":  1024
+                "MemorySize": 3008
             }
         },
 
@@ -1640,7 +1719,8 @@
                                         { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/upload/*" ]] },
                                         { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-definitions/*" ]] },
                                         { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/project-settings.json" ]] },
-                                        { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-settings/*" ]] }
+                                        { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-settings/*" ]] },
+                                        { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/dstack*" ]] }
                                     ]
                                 },
                                 {
@@ -1887,6 +1967,14 @@
                         "Role"
                     ]
                 },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
                         "ServiceLambdaConfiguration",
@@ -1967,7 +2055,8 @@
                             "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/upload/*" ]] },
                                 { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/project-settings.json" ]] },
-                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-settings/*" ]] }
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-settings/*" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/dstack*" ]] }
                             ]
                         },
                         {

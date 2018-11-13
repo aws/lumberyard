@@ -342,7 +342,6 @@ inline bool CGraphLinkManager::IsToBeDeleted (const GraphLinkBidirectionalData* 
 
 inline unsigned CGraphLinkManager::CreateLink()
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Navigation, 0, "Links");
     if (!m_freeList)
     {
         m_buckets.push_back(new GraphLinkBidirectionalData[BUCKET_SIZE]);

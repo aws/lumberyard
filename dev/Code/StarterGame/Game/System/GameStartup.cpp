@@ -85,11 +85,6 @@ IGameRef GameStartup::Init(SSystemInitParams& startupParams)
                 0
                 );
 
-            if (startupParams.bExecuteCommandLine)
-            {
-                system->ExecuteCommandLine();
-            }
-
             system->GetPlatformOS()->UserDoSignIn(0);
         }
         else

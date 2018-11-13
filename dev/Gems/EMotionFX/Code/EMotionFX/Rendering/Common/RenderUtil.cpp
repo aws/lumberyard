@@ -669,8 +669,8 @@ namespace MCommon
     }
 
 
-    // render tangents and binormals of the mesh
-    void RenderUtil::RenderTangents(EMotionFX::Mesh* mesh, const MCore::Matrix& globalTM, float scale, const MCore::RGBAColor& colorTangents, const MCore::RGBAColor& mirroredBinormalColor, const MCore::RGBAColor& colorBiNormals, bool directlyRender)
+    // render tangents and bitangents of the mesh
+    void RenderUtil::RenderTangents(EMotionFX::Mesh* mesh, const MCore::Matrix& globalTM, float scale, const MCore::RGBAColor& colorTangents, const MCore::RGBAColor& mirroredBitangentColor, const MCore::RGBAColor& colorBitangent, bool directlyRender)
     {
         // check if the mesh is valid and skip the node in case it's not
         if (mesh == NULL)
@@ -685,29 +685,39 @@ namespace MCommon
             return;
         }
 
+        AZ::PackedVector3f* bitangents = static_cast<AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_BITANGENTS));
+
         PrepareForMesh(mesh, globalTM);
 
-        AZ::PackedVector3f*     normals     = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
-        const uint32    numVertices = mesh->GetNumVertices();
+        AZ::PackedVector3f* normals = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
+        const uint32 numVertices = mesh->GetNumVertices();
 
-        // render the tangents and binormals
-        AZ::Vector3 position, orgTangent, tangent, biNormal;
+        // render the tangents and bitangents
+        AZ::Vector3 position, orgTangent, tangent, bitangent;
         for (uint32 i = 0; i < numVertices; ++i)
         {
             orgTangent.Set(tangents[i].GetX(), tangents[i].GetY(), tangents[i].GetZ());
-            tangent     = globalTM.Mul3x3(orgTangent).GetNormalized();
-            biNormal    = tangents[i].GetW() * (AZ::Vector3(normals[i]).Cross(orgTangent));
-            biNormal    = globalTM.Mul3x3(biNormal).GetNormalized();
+            tangent = globalTM.Mul3x3(orgTangent).GetNormalized();
+
+            if (bitangents)
+            {
+                bitangent= AZ::Vector3(bitangents[i]);
+            }
+            else
+            {
+                bitangent = tangents[i].GetW() * (AZ::Vector3(normals[i]).Cross(orgTangent));
+            }
+            bitangent = globalTM.Mul3x3(bitangent).GetNormalized();
 
             RenderLine(mGlobalPositions[i], mGlobalPositions[i] + (tangent * scale), colorTangents);
 
             if (tangents[i].GetW() < 0.0f)
             {
-                RenderLine(mGlobalPositions[i], mGlobalPositions[i] + (biNormal * scale), mirroredBinormalColor);
+                RenderLine(mGlobalPositions[i], mGlobalPositions[i] + (bitangent * scale), mirroredBitangentColor);
             }
             else
             {
-                RenderLine(mGlobalPositions[i], mGlobalPositions[i] + (biNormal * scale), colorBiNormals);
+                RenderLine(mGlobalPositions[i], mGlobalPositions[i] + (bitangent * scale), colorBitangent);
             }
         }
 

@@ -542,7 +542,7 @@ namespace UnitTest
         Entity* FindEntity(const EntityId&) override { return nullptr; }
         SerializeContext* GetSerializeContext() override { return m_serializeContext.get(); }
         BehaviorContext*  GetBehaviorContext() override { return nullptr; }
-        const char* GetExecutableFolder() override { return nullptr; }
+        const char* GetExecutableFolder() const override { return nullptr; }
         const char* GetAppRoot() override { return nullptr; }
         Debug::DrillerManager* GetDrillerManager() override { return nullptr; }
         void EnumerateEntities(const EntityCallback& /*callback*/) override {}

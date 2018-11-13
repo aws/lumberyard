@@ -5,6 +5,7 @@
             "Include/Integration/ActorComponentBus.h",
             "Include/Integration/AnimGraphComponentBus.h",
             "Include/Integration/AnimAudioComponentBus.h",
+            "Include/Integration/EditorSimpleMotionComponentBus.h",
             "Include/Integration/SimpleMotionComponentBus.h"
         ],
         "GemShared/Source/System": [

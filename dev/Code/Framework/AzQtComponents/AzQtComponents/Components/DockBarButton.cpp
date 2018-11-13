@@ -93,9 +93,15 @@ namespace AzQtComponents
     QPixmap DockBarButton::pixmapForButton(bool pressed, bool hovered) const
     {
         // Construct the icon path suffix from the button state and dark style flag
-        QString suffix = pressed ? QString("_press")
-            : hovered ? QString("_hover")
-            : QString("");
+        QString suffix;
+        
+        if (isEnabled())
+        {
+            suffix = pressed ? QString("_press")
+                : hovered ? QString("_hover")
+                : QString("");
+        }
+
         if (m_isDarkStyle)
         {
             suffix.append("_dark");

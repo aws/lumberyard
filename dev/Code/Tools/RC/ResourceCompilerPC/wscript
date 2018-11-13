@@ -31,7 +31,7 @@ def build(bld):
                                    'QT5WIDGETS',
                                    'AWS_CPP_SDK_CORE'],
         includes                = ['.',
-                                   bld.ThirdPartyPath('mikkelsen'),
+                                   bld.ThirdPartyPath('mikkt'),
                                    bld.Path('Code/Tools'),
                                    bld.Path('Code/Tools/RC/ResourceCompiler'),
                                    bld.Path('Code/Tools/CryCommonTools'),
@@ -39,8 +39,7 @@ def build(bld):
                                    bld.Path('Code/Sandbox')],        
         defines                 = ['CRYTOOLS',
                                    'RESOURCECOMPILERPC_EXPORTS',
-                                   'OFFLINE_COMPUTATION',
-                                   'NOT_USE_CRY_MEMORY_MANAGER' ],
+                                   'OFFLINE_COMPUTATION' ],
         
         debug_dedicated_defines         = [ 'LY_IGNORE_METRICS' ],
         debug_test_dedicated_defines    = [ 'LY_IGNORE_METRICS' ],

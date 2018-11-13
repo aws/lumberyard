@@ -13,10 +13,7 @@
 #define GEM_F79C1285_700E_4E56_B77B_A78562B2365B_CODE_SOURCE_AWS_PRECOMPILED_H
 #pragma once
 
-#define eCryModule eCryM_Game
-
 #include <platform.h>
-#include <CryName.h>
 #include <I3DEngine.h>
 #include <ISerialize.h>
 #include <IGem.h>
@@ -24,5 +21,6 @@
 #undef IN
 #undef GetObject
 #undef SendMessage
+
 
 #endif//GEM_F79C1285_700E_4E56_B77B_A78562B2365B_CODE_SOURCE_AWS_PRECOMPILED_H

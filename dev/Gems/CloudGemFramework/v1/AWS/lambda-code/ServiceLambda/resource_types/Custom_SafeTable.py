@@ -176,7 +176,8 @@ def update_table(table_name, event):
 
     update_global_secondary_indexes(dynamodb, table_name, event, description)
 
-    return { "TableName": table_name }
+    description = dynamodb.describe_table(TableName = table_name)
+    return {'TableDescription': description['Table']}
 
 
 def update_throughput(dynamodb, table_name, event, description):

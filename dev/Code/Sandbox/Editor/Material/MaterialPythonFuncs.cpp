@@ -1046,7 +1046,7 @@ namespace
             DynArray<SShaderParam>& shaderParams = pMaterial->GetShaderResources().m_ShaderParams;
             for (int i = 0; i < shaderParams.size(); i++)
             {
-                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script))
+                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script.c_str()))
                 {
                     if (shaderParams[i].m_Type == eType_FLOAT)
                     {
@@ -1055,7 +1055,7 @@ namespace
                         {
                             throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                         }
-                        std::map<QString, float> range = ParseValidRangeFromPublicParamsScript(shaderParams[i].m_Script);
+                        std::map<QString, float> range = ParseValidRangeFromPublicParamsScript(shaderParams[i].m_Script.c_str());
                         if (value.property.floatValue < range["UIMin"] ||  value.property.floatValue > range["UIMax"])
                         {
                             QString errorMsg;
@@ -1556,7 +1556,7 @@ namespace
 
             for (int i = 0; i < shaderParams.size(); i++)
             {
-                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script))
+                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script.c_str()))
                 {
                     if (shaderParams[i].m_Type == eType_FLOAT)
                     {
@@ -2121,7 +2121,7 @@ namespace
 
             for (int i = 0; i < shaderParams.size(); i++)
             {
-                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script))
+                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script.c_str()))
                 {
                     if (shaderParams[i].m_Type == eType_FLOAT)
                     {

@@ -12,7 +12,7 @@
 
 #pragma once
 
-// include required headers
+#include <AzCore/std/containers/vector.h>
 #include "StandardHeaders.h"
 #include "Vector.h"
 #include "Array.h"
@@ -137,7 +137,7 @@ namespace MCore
          * @param p2 The base of the halton sequence (must be a prime value).
          * @result An array containing the generated vectors.
          */
-        static Array<AZ::Vector3> RandomDirVectorsHalton(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 p2 = 3);
+        static AZStd::vector<AZ::Vector3> RandomDirVectorsHalton(const AZ::Vector3& dir, float coneAngle, size_t numVectors, uint32 p2 = 3);
 
         /**
          * Generate a given amount of uniform direction vectors using hammersley sets.
@@ -148,7 +148,7 @@ namespace MCore
          * @param baseB The second base value (must be a prime value).
          * @result An array containing the generated vectors.
          */
-        static Array<AZ::Vector3> RandomDirVectorsHalton2(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 baseA = 2, uint32 baseB = 3);
+        static AZStd::vector<AZ::Vector3> RandomDirVectorsHalton2(const AZ::Vector3& dir, float coneAngle, size_t numVectors, uint32 baseA = 2, uint32 baseB = 3);
 
         /**
          * Generates a set of Halton numbers, which are pseudo random numbers.

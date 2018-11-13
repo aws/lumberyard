@@ -555,6 +555,11 @@ void CTrackViewTrack::SetKeyTime(const int index, const float time, bool notifyL
 
     if (notifyListeners && (bOldTime != time))
     {
+        // The keys were just make invalid by the above SetKeyTime(), so sort them now
+        // to make sure they are ready to be used. Only do this when notifyListeners
+        // is set so client callers can batch up a bunch of SetKeyTime calls if desired.
+        m_pAnimTrack->SortKeys();
+
         m_pTrackAnimNode->GetSequence()->OnKeysChanged();
     }
 }
@@ -609,6 +614,23 @@ void CTrackViewTrack::SelectKeys(const bool bSelected)
     m_pTrackAnimNode->GetSequence()->SubmitPendingNotifcations();
 }
 
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewTrack::SortKeysByTime()
+{
+    if (m_bIsCompoundTrack)
+    {
+        unsigned int childCount = GetChildCount();
+        for (unsigned int childIndex = 0; childIndex < childCount; ++childCount)
+        {
+            CTrackViewTrack* childTrack = static_cast<CTrackViewTrack*>(GetChild(childIndex));
+            childTrack->SortKeysByTime();
+        }
+    }
+    else
+    {
+        m_pAnimTrack->SortKeys();
+    }
+}
 
 //////////////////////////////////////////////////////////////////////////
 bool CTrackViewTrack::IsKeySelected(unsigned int keyIndex) const
@@ -616,6 +638,26 @@ bool CTrackViewTrack::IsKeySelected(unsigned int keyIndex) const
     if (m_pAnimTrack)
     {
         return m_pAnimTrack->IsKeySelected(keyIndex);
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewTrack::SetSortMarkerKey(unsigned int keyIndex, bool enabled)
+{
+    if (m_pAnimTrack)
+    {
+        return m_pAnimTrack->SetSortMarkerKey(keyIndex, enabled);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CTrackViewTrack::IsSortMarkerKey(unsigned int keyIndex) const
+{
+    if (m_pAnimTrack)
+    {
+        return m_pAnimTrack->IsSortMarkerKey(keyIndex);
     }
 
     return false;

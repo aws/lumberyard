@@ -371,7 +371,7 @@ namespace PhysX
         transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
         entity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
 
-        auto boxComponent = entity->CreateComponent(AZ::Uuid::CreateString("{5EDF4B9E-0D3D-40B8-8C91-5142BCFC30A6}")); // BoxShapeComponent
+        AZ::Component* boxComponent = entity->CreateComponent(AZ::Uuid::CreateString("{5EDF4B9E-0D3D-40B8-8C91-5142BCFC30A6}")); // BoxShapeComponent
         entity->CreateComponent(AZ::Uuid::CreateString("{C53C7C88-7131-4EEB-A602-A7DF5B47898E}")); // PhysXColliderComponent
 
         PhysXRigidBodyConfiguration rigidBodyConfig;
@@ -381,6 +381,7 @@ namespace PhysX
         // Removing and adding component can cause race condition in component activation code if dependencies are not correct
         // Simulation of user removing one collider and adding another
         entity->RemoveComponent(boxComponent);
+        delete boxComponent;
         entity->CreateComponent(AZ::Uuid::CreateString("{5EDF4B9E-0D3D-40B8-8C91-5142BCFC30A6}")); // BoxShapeComponent
 
         entity->Init();

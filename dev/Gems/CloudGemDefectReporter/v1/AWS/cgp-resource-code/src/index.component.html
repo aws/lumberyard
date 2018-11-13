@@ -2,6 +2,7 @@
     
     <!-- Defect List Tab -->
     <defect-list-page #DefectListPage
+        [isJiraIntegrationEnabled]="isJiraIntegrationEnabled"
         [hidden]="showingPage !== 0" 
         [context]="context" 
         [metricApiHandler]="getMetricApiHandler()"
@@ -11,10 +12,11 @@
     <!-- Defect Details Tab -->
     <defect-details-page 
         *ngIf="showingPage === 1" 
+        [isJiraIntegrationEnabled]="isJiraIntegrationEnabled"
         [context]="context"
         [configurationMappings]="defectListPage.configurationMappings" 
         [toDefectListPageCallback]="toDefectListPage" 
-        [defect]="showingDefect">
+        [defect]="showingDefect"
+        (updateJiraMappings)="updateJiraMappings()">
     </defect-details-page>
-
 </div>

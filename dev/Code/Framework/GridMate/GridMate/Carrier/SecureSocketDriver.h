@@ -19,6 +19,18 @@
 #include <AzCore/State/HSM.h>
 
 #include <GridMate/Carrier/SocketDriver.h>
+#include <GridMate/Carrier/OpenSSLThreadSafetyHook.h>
+
+#define AZ_DebugSecureSocket(...)
+#define AZ_DebugSecureSocketConnection(window, fmt, ...)
+
+//#define AZ_DebugUseSocketDebugLog
+//#define AZ_DebugSecureSocket AZ_TracePrintf
+//#define AZ_DebugSecureSocketConnection(window, fmt, ...) \
+//{\
+//    GridMate::string line = GridMate::string::format(fmt, __VA_ARGS__);\
+//    this->m_dbgLog += line;\
+//}
 
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
 struct ssl_st;
@@ -43,6 +55,17 @@ namespace GridMate
 {
     static const int COOKIE_SECRET_LENGTH = 16; //128 bit key
     static const int MAX_COOKIE_LENGTH = 255; // largest length that will fit in one byte
+
+    namespace ConnectionSecurity
+    {
+        bool IsHandshake(const char* data, AZ::u32 dataSize);
+        bool IsClientHello(const char* data, AZ::u32 dataSize);
+        bool IsChangeCipherSpec(const char* data, AZ::u32 dataSize);
+        bool IsHelloVerifyRequest(const char* data, AZ::u32 dataSize);
+        bool IsHelloRequestHandshake(const char* data, AZ::u32 dataSize);
+        const char* TypeToString(const char* data, AZ::u32 dataSize);
+    }
+
     struct SecureSocketDesc
     {
         SecureSocketDesc()
@@ -90,31 +113,30 @@ namespace GridMate
         typedef AZStd::vector<char>                 Datagram;
         typedef AZStd::pair<Datagram, AddrPtr>      DatagramAddr;
 
-        SecureSocketDriver(const SecureSocketDesc& desc, bool isFullPackets = false, bool crossPlatform = false);
+        SecureSocketDriver(const SecureSocketDesc& desc, bool isFullPackets = false, bool crossPlatform = false, bool isHighPerformance = true);
         virtual ~SecureSocketDriver();
+        static void apps_ssl_info_callback(const SSL *s, int where, int ret);
 
         AZ::u32 GetMaxSendSize() const override;
 
         Driver::ResultCode Initialize(AZ::s32 ft, const char* address, AZ::u32 port, bool isBroadcast, AZ::u32 receiveBufferSize, AZ::u32 sendBufferSize) override;
         void               Update() override;
+        void               ProcessIncoming() override;
+        void               ProcessOutgoing() override;
         Driver::ResultCode Receive(char* data, AZ::u32 maxDataSize, AddrPtr& from, ResultCode* resultCode) override;
         AZ::u32            Send(const AddrPtr& to, const char* data, AZ::u32 dataSize) override;
 
-    private:
+    protected:
         enum ConnectionState
         {
             CS_TOP,
                 CS_ACTIVE,                              // Processing datagrams
-                    CS_ACCEPT,                          // Performing TLS/DTLS handshake for an incoming connection.
-                        CS_WAIT_FOR_STATEFUL_HANDSHAKE, // Waiting for client to restart handshake
-                        CS_SSL_HANDSHAKE_ACCEPT,        // SSL handshake
-                    CS_CONNECT,                         // Performing TLS/DTLS handshake for an outgoing connection.
-                        CS_COOKIE_EXCHANGE,             // Waiting for cookie verification
-                        CS_SSL_HANDSHAKE_CONNECT,       // SSL handshake
-                        CS_HANDSHAKE_RETRY,             // Restart handshake
-                    CS_ESTABLISHED,                     // SSL handshake succeeded.
-                CS_DISCONNECTED,                        // Disconnected.
-                CS_SSL_ERROR,                           // Error.
+                    CS_SEND_HELLO_REQUEST,              // S: Waiting for client to start TLS/DTLS handshake
+                    CS_ACCEPT,                          // S: Performing TLS/DTLS handshake for an incoming connection.
+                    CS_COOKIE_EXCHANGE,                 // C: Performing cookie verification
+                    CS_CONNECT,                         // C: Performing TLS/DTLS handshake for an outgoing connection.
+                    CS_ESTABLISHED,                     // Both: SSL handshake succeeded.
+                CS_DISCONNECTED,                        // Both: Disconnected.
             CS_MAX
         };
 
@@ -139,7 +161,7 @@ namespace GridMate
         {
         public:
             GM_CLASS_ALLOCATOR(Connection);
-            Connection(const AddrPtr& addr, AZ::u32 bufferSize, AZStd::queue<DatagramAddr>* inQueue, AZ::u64 timeoutMS);
+            Connection(const AddrPtr& addr, AZ::u32 bufferSize, AZStd::queue<DatagramAddr>* inQueue, AZ::u64 timeoutMS, int port);
             virtual ~Connection();
 
             bool    Initialize(SSL_CTX* sslContext, ConnectionState startState, AZ::u32 mtu);
@@ -147,10 +169,12 @@ namespace GridMate
 
             void    Update();
             void    AddDgram(const char* data, AZ::u32 dataSize);
-            void    AddDTLSDgram(const char* data, AZ::u32 dataSize);
+            void    ProcessIncomingDTLSDgram(const char* data, AZ::u32 dataSize);
             AZ::u32 GetDTLSDgram(char* data, AZ::u32 dataSize);
+            void    FlushOutgoingDTLSDgrams();
             bool    IsDisconnected() const;
 
+            void ForceDTLSTimeout();
             bool CreateSSL(SSL_CTX* sslContext);
             bool DestroySSL();
             const SSL* GetSSL() { return m_ssl; }
@@ -158,51 +182,57 @@ namespace GridMate
         private:
             bool OnStateActive(AZ::HSM& sm, const AZ::HSM::Event& event);
             bool OnStateAccept(AZ::HSM& sm, const AZ::HSM::Event& event);
-            bool OnStateWaitForStatefulHandshake(AZ::HSM& sm, const AZ::HSM::Event& event);
-            bool OnStateSslHandshakeAccept(AZ::HSM& sm, const AZ::HSM::Event& event);
+            bool OnStateSendHelloRequest(AZ::HSM& sm, const AZ::HSM::Event& event);
             bool OnStateConnect(AZ::HSM& sm, const AZ::HSM::Event& event);
             bool OnStateCookieExchange(AZ::HSM& sm, const AZ::HSM::Event& event);
-            bool OnStateSslHandshakeConnect(AZ::HSM& sm, const AZ::HSM::Event& event);
-            bool OnStateHandshakeRetry(AZ::HSM& sm, const AZ::HSM::Event& event);
             bool OnStateEstablished(AZ::HSM& sm, const AZ::HSM::Event& event);
             bool OnStateDisconnected(AZ::HSM& sm, const AZ::HSM::Event& event);
-            bool OnStateSSLError(AZ::HSM& sm, const AZ::HSM::Event& event);
+            bool HandleSSLError(AZ::s32 result);
 
             // Read a DTLS record (datagram) from a BIO buffer. Return true if records were read and stored
             // in outDgramList, or false if nothing was found.
             bool ReadDgramFromBuffer(BIO* buffer, AZStd::vector<SecureSocketDriver::Datagram>& outDgramQueue);
 
+            // Queue outbound Datagrams from SSL BIO into m_outDTLSQueue
+            int QueueDatagrams();
+
             enum ConnectionEvents
             {
                 CE_UPDATE = 1,
                 CE_STATEFUL_HANDSHAKE,
-                CE_COOKIE_EXCHANGE_COMPLETED
+                CE_COOKIE_EXCHANGE_COMPLETED,
+                CE_NEW_INCOMING_DGRAM,
+                CE_NEW_OUTGOING_DGRAM,
             };
 
             bool m_isInitialized;
             TimeStamp m_creationTime;    // The time the connection reached the established state.
             AZ::u64 m_timeoutMS;
-            BIO* m_inDTLSBuffer;
-            BIO* m_outDTLSBuffer;
-            AZStd::queue<Datagram> m_inPlainQueue;       // Plaintext datagrams given to the connection.
-            AZStd::queue<Datagram> m_outDTLSQueue;       // DTLS datagrams output by the connection.
-            AZStd::queue<DatagramAddr>* m_outPlainQueue; // Plaintext datagrams output by the connection.
+            AZStd::queue<Datagram>          m_outboundPlainQueue;   // Outbound plaintext datagrams from application
+            BIO*                            m_outDTLSBuffer;        // Outbound DTLS serialization buffer ready for -> m_outDTLSQueue
+            AZStd::queue<Datagram>          m_outDTLSQueue;         // Outbound DTLS datagrams ready for Socket Send
+            BIO*                            m_inDTLSBuffer;         // Inbound DTLS decryption buffer ready for -> m_inboundPlaintextQueue
+            AZStd::queue<DatagramAddr>*     m_inboundPlaintextQueue;// Inbound plaintext datagrams ready for application read
             AZ::HSM m_sm;
             SSL* m_ssl;
             SSL_CTX* m_sslContext;
             AddrPtr m_addr;
-            char* m_tempBIOBuffer;
             AZ::u32 m_maxTempBufferSize;
             AZ::s32 m_sslError;
             AZ::u32 m_mtu;
 
             AZStd::chrono::system_clock::time_point m_nextHelloRequestResend;
+            AZStd::chrono::milliseconds k_initialHelloRequestResendInterval = AZStd::chrono::milliseconds(100);
             AZStd::chrono::milliseconds m_helloRequestResendInterval;
             AZStd::chrono::system_clock::time_point m_nextHandshakeRetry;
 
         public:
             int m_dbgDgramsSent;
             int m_dbgDgramsReceived;
+            int m_dbgPort;
+#ifdef AZ_DebugUseSocketDebugLog
+            GridMate::string m_dbgLog;
+#endif
         };
 
         bool RotateCookieSecret(bool bForce = false);
@@ -214,11 +244,12 @@ namespace GridMate
         void UpdateConnections();
         void FlushConnectionBuffersToSocket();
 
-        DH* m_dh;
         EVP_PKEY* m_privateKey;
         X509* m_certificate;
         SSL_CTX* m_sslContext;
-        char* m_tempSocketBuffer;
+        char* m_tempSocketWriteBuffer;
+        char* m_tempSocketReadBuffer;
+
         struct GridMateSecret
         {
             TimeStamp m_lastSecretGenerationTime;
@@ -238,6 +269,8 @@ namespace GridMate
         AZStd::unordered_map<SocketDriverAddress, Connection*, SocketDriverAddress::Hasher> m_connections;
         AZStd::unordered_map<string, int> m_ipToNumConnections;
         SecureSocketDesc m_desc;
+        OpenSSLThreadSafetyHook m_sslThreadHook;
+        AZStd::chrono::system_clock::time_point m_lastTimerCheck;       ///Time last timers were checked
     };
 }
 

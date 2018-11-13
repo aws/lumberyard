@@ -28,7 +28,12 @@
             "native/connection/connectionworker.cpp",
             "native/connection/connectionworker.h"
         ],
-        
+
+        "FileProcessor": [
+            "native/FileProcessor/FileProcessor.cpp",
+            "native/FileProcessor/FileProcessor.h"
+        ],
+
         "FileWatcher": [
             "native/FileWatcher/FileWatcher.cpp",
             "native/FileWatcher/FileWatcher.h",

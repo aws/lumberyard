@@ -1624,11 +1624,12 @@ function movementcontroller:UpdateFallingNudging(deltaTime, jumpingDir)
 			
 			-- Get the vertical velocity.
 			local vVel = Vector3(0.0);
-			if (not StarterGameEntityUtility.GetEntitysVelocity(self.entityId, vVel)) then
-				Debug.Log(tostring(self.entityId) .. " failed to get velocity.");
+			if (not StarterGameEntityUtility.GetEntitysVelocityLegacy(self.entityId, vVel)) then
+				--Debug.Log(tostring(self.entityId) .. " failed to get velocity.");
 			--else
 			--	Debug.Log(tostring(self.entityId) .. " vel: " .. tostring(vVel));
 			end
+			--StarterGameEntityUtility.GetEntitysVelocity(self.entityId, vVel);
 			
 			-- Combine the vertical and horizontal velocities and set it.
 			hVel.z = vVel.z;

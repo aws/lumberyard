@@ -36,10 +36,12 @@ function plasmarifle:SendEventToParticle(event, from, to, targetToFollow)
 	GameplayNotificationBus.Event.OnEventBegin(self.particleSpawnEventId, params);
 
 end
+
 function plasmarifle:DoFirstUpdate()
 	local particleMan = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("ParticleManager"));
 	self.particleSpawnEventId = GameplayNotificationId(particleMan, "SpawnParticleEvent", "float");
 end
+
 function plasmarifle:DoFire(useForwardForAiming, playerOwned)
 	-- Perform a raycast from the gun into the world. If the ray hits something then apply an
 	-- impulse to it. This weapon's bullet won't have physics because it's the raycast that'll
@@ -62,8 +64,14 @@ function plasmarifle:DoFire(useForwardForAiming, playerOwned)
 	-- Always use the weapon's direction for A.I.
 	if (not playerOwned or useForwardForAiming == true) then
 	
-		local weaponForward = self.weapon:GetWeaponForward();
+		local weaponForward;		
+		if (self.targetPos ~= nil) then
+			weaponForward = self.targetPos - endOfBarrelPos;
+		else
+			weaponForward = self.weapon:GetWeaponForward();
+		end
 		dir = self.weapon:GetJitteredDirection(weaponForward:GetNormalized());
+		
 		rayCastConfig.origin = endOfBarrelPos;
 		rayCastConfig.direction =  dir;
 		hits = PhysicsSystemRequestBus.Broadcast.RayCast(rayCastConfig);
@@ -200,6 +208,7 @@ function plasmarifle:DoFire(useForwardForAiming, playerOwned)
 		end
 	end
 end
+
 function plasmarifle:OnActivate()
 	-- Use this to get the camera information when firing. It saves making an entity property
 	-- and linking the weapon to a specific camera entity.
@@ -208,10 +217,28 @@ function plasmarifle:OnActivate()
 	self.cameraFinderTag = Crc32("PlayerCamera");
 	self.weapon = weapon:new();
 	self.weapon:OnActivate(self, self.entityId, self.Properties);
+	
+	if (self.Properties.Owner ~= nil) then
+		self.setTargetPosEventId = GameplayNotificationId(self.Properties.Owner, "SetTargetPos", "float");
+		self.setTargetPosHandler = GameplayNotificationBus.Connect(self, self.setTargetPosEventId);
+	end	
 end
 
 function plasmarifle:OnDeactivate()
 	self.weapon:OnDeactivate();
+	
+	if (self.setTargetPosHandler ~= nil) then
+		self.setTargetPosHandler:Disconnect();
+		self.setTargetPosHandler = nil;
+	end	
+end
+
+function plasmarifle:OnEventBegin(value)
+	local busId = GameplayNotificationBus.GetCurrentBusId();
+	
+	if (busId == self.setTargetPosEventId) then
+		self.targetPos = value;
+	end
 end
 
 return plasmarifle;

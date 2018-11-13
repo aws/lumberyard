@@ -43,6 +43,8 @@ namespace CloudCanvas
             virtual ReturnStr GetStrValue(const char* structName, const char* fieldName, bool& wasSuccess) const = 0;
             virtual ReturnDouble GetDoubleValue(const char* structName, const char* fieldName, bool& wasSuccess) const = 0;
 
+            virtual size_t GetNumElements() const = 0;
+
             friend class StaticDataManager;
         protected:
             virtual bool LoadData(const char* dataBuffer) = 0;

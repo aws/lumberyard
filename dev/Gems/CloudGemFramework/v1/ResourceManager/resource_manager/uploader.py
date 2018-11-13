@@ -25,6 +25,9 @@ import common_code
 from resource_manager_common import constant
 import file_util
 
+import lambda_code_packager
+
+
 class Phase():
     PRE_UPDATE=0
     POST_UPDATE=1
@@ -32,7 +35,6 @@ class Phase():
 class Uploader(object):
 
     '''Supports uploading data to the project's configuration bucket.'''
-
     def __init__(self, context, bucket=None, key=None):
 
         '''Initializes an Uploader object.
@@ -51,15 +53,15 @@ class Uploader(object):
 
         '''
 
-        if bucket is None:        
-            bucket = context.config.configuration_bucket_name            
+        if bucket is None:
+            bucket = context.config.configuration_bucket_name
 
         if key is None:
-            key = 'upload/{}'.format(uuid4())      
+            key = 'upload/{}'.format(uuid4())
 
         self.__context = context
         self._bucket = bucket
-        self._key = key      
+        self._key = key
 
     @property
     def context(self):
@@ -79,11 +81,10 @@ class Uploader(object):
     @property
     def key(self):
         '''The object name prefix that will be used when naming uploaded content.'''
-        return self._key 
-
+        return self._key
 
     @staticmethod
-    def _get_lambda_function_code_path(context, function_name, source_directory_paths):
+    def _get_lambda_function_code_path(context, function_name, source_directory_paths, function_runtime):
         '''Get the directory where the code for the specified lambda function is located.
 
         Lambda function code is taken from the following locations. All but the first one is deprecated:
@@ -91,7 +92,7 @@ class Uploader(object):
             - {source-directory}/lambda-code/{function-name}
             - {source-directory}/{function-name}-lambda-code
             - {source-directory}/lambda-function-code
-        
+
         Arguments:
 
             context: a Context object.
@@ -107,37 +108,17 @@ class Uploader(object):
 
         for source_directory_path in source_directory_paths:
 
-            code_path = os.path.join(source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME, function_name)
+            code_path = os.path.join(source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME)
+            if function_runtime.startswith('python'):
+                code_path = os.path.join(code_path, function_name)
             if os.path.isdir(code_path):
                 return code_path
-
-            searched_paths.append(code_path)
-
-            prefered_path = code_path
-
-            # TODO The use of Name-lambda-code and lambda-function-code directories was deprecated in Lumberyard 1.10.
-
-            code_path = os.path.join(source_directory_path, '{}-lambda-code'.format(function_name))
-            if os.path.isdir(code_path):
-                context.view.using_deprecated_lambda_code_path(function_name, code_path, prefered_path)
-                return code_path
-
-            searched_paths.append(code_path)
-
-            code_path = os.path.join(source_directory_path, 'lambda-function-code'.format(function_name))
-            if os.path.isdir(code_path):                
-                return code_path
-
-            searched_paths.append(code_path)
-
-            # End deprecated code.
 
         raise HandledError('No code was found for the {} AWS Lambda Function. Expected to find one of these directories: {}.'.format(function_name, ', '.join(searched_paths)))
 
-
     @staticmethod
-    def _get_lambda_function_code_paths(context, function_name, source_directory_paths):
-        '''Gets the path to the lambda code directory and paths all to the directories identified 
+    def _get_lambda_function_code_paths(context, function_name, source_directory_paths, function_runtime):
+        '''Gets the path to the lambda code directory and paths all to the directories identified
         by the .import file found in the lambda code directory.
 
         The lambda code directory is determined using get_lambda_function_code_path.
@@ -157,24 +138,21 @@ class Uploader(object):
            multi_imports: a dictionary of import names to the set of gem names that will participate in the import.
                           The multi-imports come from .import files containing *.ImportName entries.
         '''
-        code_path = Uploader._get_lambda_function_code_path(context, function_name, source_directory_paths)
+        code_path = Uploader._get_lambda_function_code_path(context, function_name, source_directory_paths, function_runtime)
 
-        imported_paths, multi_imports = common_code.resolve_imports(context, code_path)
+        imported_paths = []
+        multi_imports = [] 
+        if function_runtime.startswith('python'):
+            imported_paths, multi_imports = common_code.resolve_imports(context, code_path)
 
-        # TODO: The use of shared-lambda-code was deprecated in Lumberyard 1.10.
-        for source_directory_path in source_directory_paths:
-            shared_lambda_code_path = os.path.join(source_directory_path, 'shared-lambda-code')
-            if os.path.isdir(shared_lambda_code_path):
-                context.view.using_deprecated_lambda_code_path(function_name, shared_lambda_code_path, os.path.join(source_directory_path, 'common-code', 'LambdaCommon'))
-                imported_paths.add(shared_lambda_code_path)
-        # End deprecated code
         return code_path, imported_paths, multi_imports
 
+    def upload_lambda_function_code(self, function_name, function_runtime, aggregated_directories = None, aggregated_content = None, source_gem=None, keep = False):
+        ''' Verifies and uploads the zip package for the lambda function
 
-    def zip_and_upload_lambda_function_code(self, function_name, aggregated_directories = None, aggregated_content = None, source_gem=None, keep = False):
-        '''Zips and uploads all of the specified lambda function's code from the uploader's source directory.
+        If runtime is Python: aggregates zips and uploads all of the specified lambda function's code from the uploader's source directory.
 
-        The get_lambda_function_code_paths function is used to locate the lambda function's code. The zip will 
+        The get_lambda_function_code_paths function is used to locate the lambda function's code. The zip will
         include all the content from common-code directories identified by the .import file found in the lambda
         code directory.
 
@@ -183,7 +161,7 @@ class Uploader(object):
         Arguments:
 
             function_name: the name of the function
-            
+
             aggregated_content (named): Additional content included in the zip file. See the docs for
             zip_and_upload_directory.
 
@@ -197,11 +175,51 @@ class Uploader(object):
 
         self.context.view.processing_lambda_code(self._source_description, function_name)
 
+        # Just use the default upload logic
+        if function_runtime.startswith('python'):
+            return self.do_python_zip_and_upload(function_name, aggregated_directories, aggregated_content, source_gem, keep, function_runtime)
+
+        code_packager = None
+        base_params = {"codepaths": self.source_directory_paths}
+        validator_prefix_mapping = {
+            'nodejs': {
+                "class": lambda_code_packager.NodeLambdaPackageValidator,
+                "params": base_params
+            },
+            'java': {
+                "class": lambda_code_packager.JavaCodePackageValidator,
+                "params": base_params
+            },
+            'dotnetcore': {
+                "class": lambda_code_packager.DotNetCodePackageValidator,
+                "params": base_params
+            },
+            'go1': {
+                "class": lambda_code_packager.GolangCodePackageValidator,
+                "params": base_params
+            }
+        }
+        # Use a lambda code package validator
+        for prefix, validator in validator_prefix_mapping.iteritems():
+            if function_runtime.startswith(prefix):
+                code_packager = validator["class"](self.context, function_name)
+                code_packager.validate_package(validator["params"])
+                break
+
+
+        if code_packager is None:
+            raise HandledError("Lambda function {} does not have a valid runtime".format(function_name))
+
+        return code_packager.upload(self)
+
+    def do_python_zip_and_upload(self, function_name, aggregated_directories, aggregated_content, source_gem, keep, function_runtime):
         source_directory_paths = self.source_directory_paths
+        # if source_gem exists then this is for a project-level lambda
         if source_gem:
             source_directory_paths.append(os.path.join(source_gem.aws_directory_path, 'project-code'))
 
-        code_path, imported_directory_paths, multi_imports = Uploader._get_lambda_function_code_paths(self.context, function_name, source_directory_paths)
+        code_path, imported_directory_paths, multi_imports = Uploader._get_lambda_function_code_paths(
+            self.context, function_name, source_directory_paths, function_runtime)
 
         if imported_directory_paths:
             aggregated_directories = copy.deepcopy(aggregated_directories) if aggregated_directories else {}
@@ -232,16 +250,15 @@ class Uploader(object):
             aggregated_content['{}/__init__.py'.format(import_package_name)] = '\n'.join(init_content)
 
         return self.zip_and_upload_directory(
-            code_path, 
-            aggregated_directories = aggregated_directories, 
+            code_path,
+            aggregated_directories = aggregated_directories,
             aggregated_content = aggregated_content,
             file_name = '{}-lambda-code.zip'.format(function_name),
             keep = keep)
 
-
     def upload_content(self, name, content, description):
         '''Creates an object in an S3 bucket using the specified content.
-        
+
         Args:
 
             name: Appended to the uploader's key and used as the object's
@@ -249,14 +266,14 @@ class Uploader(object):
             and the specified name.
 
             content: The content to upload.
-            
+
             description: A description of the content displayed to the user
             during the upload.
 
         Returns:
 
             A string containing the URL of the uploaded content.
-         
+
         '''
 
         bucket = self.bucket
@@ -276,7 +293,7 @@ class Uploader(object):
             raise HandledError(
                 'Cloud not upload {} to S3 bucket {}.'.format(
                     key,
-                    bucket 
+                    bucket
                 ),
                 e
             )
@@ -285,7 +302,7 @@ class Uploader(object):
 
     def upload_file(self, name, path, extra_args = None):
         '''Creates an object in an S3 bucket using content from the specified file.
-        
+
         Args:
 
             name: Appended to the uploader's key and used as the object's
@@ -296,16 +313,15 @@ class Uploader(object):
 
         Returns:
 
-            A string containing the URL of the uploaded file.
-         
+            A dictionary with an s3 url and the s3 key of the uploaded file.
+
         '''
         key = self.__upload_file(name, path, extra_args = extra_args)
-        return self.__make_s3_url(self.bucket, key)
-
+        return { "url": self.__make_s3_url(self.bucket, key), "key": key }
 
     def __upload_file(self, name, path, extra_args = None):
         '''Creates an object in an S3 bucket using content from the specified file.
-        
+
         Args:
 
             name: Appended to the uploader's key and used as the object's
@@ -317,7 +333,7 @@ class Uploader(object):
         Returns:
 
             A the key of the uploaded file.
-         
+
         '''
 
         bucket = self.bucket
@@ -344,7 +360,7 @@ class Uploader(object):
 
     def upload_dir(self, name, path, extraargs = None, alternate_root = None, suffix = None):
         '''Creates an object in an S3 bucket using content from the specified directory.
-        
+
         Args:
 
             name: Appended to the uploader's key and used as the object's
@@ -354,15 +370,15 @@ class Uploader(object):
 
             path: The path to the file to upload.
 
-            alternate_root (named): if not None (the default), replaces the 
+            alternate_root (named): if not None (the default), replaces the
             upload/<uuid> part of the key.
 
         Returns:
 
             A string containing the URL of the uploaded file.
-         
+
         '''
-        
+
         if not os.path.isdir(path):
             raise HandledError("The requested path \'{}\' is not a directory.".format(path))
 
@@ -378,25 +394,25 @@ class Uploader(object):
                 key = alternate_root
             else:
                 key = alternate_root + key[i:]
-        if suffix is not None: 
+        if suffix is not None:
             key = '{}/{}'.format(key, suffix)
-        self.context.view.uploading_file(bucket, key, path)        
+        self.context.view.uploading_file(bucket, key, path)
         s3 = self.context.aws.client('s3')
-    
-        for root, dirs, files in os.walk(path):          
-          for filename in files:            
+
+        for root, dirs, files in os.walk(path):
+          for filename in files:
             file_path = root  + '/' +  filename
             relative_path = os.path.relpath(file_path, path)
             s3_path = key + '/' +  relative_path
             #AWS S3 requires paths to be split by /
-            s3_path = s3_path.replace("\\","/")            
+            s3_path = s3_path.replace("\\","/")
             mime_type = mimetypes.guess_type(file_path)
             mime = mime_type[0]
             s3_extraargs = ({'ContentType':mime} if mime else {})
             if extraargs:
                 s3_extraargs.update(extraargs)
-            try:                              
-                self.context.view.uploading_file(bucket, s3_path, relative_path)        
+            try:
+                self.context.view.uploading_file(bucket, s3_path, relative_path)
                 s3.upload_file(file_path,bucket,s3_path,s3_extraargs)
             except Exception as e:
                 raise HandledError(
@@ -407,14 +423,12 @@ class Uploader(object):
                     ),
                     e
                  )
-                
+
 
         return self.__make_s3_url(bucket, key)
 
-
     def __make_s3_url(self, bucket, key):
         return 'https://{bucket}.s3.amazonaws.com/{key}'.format(bucket=bucket, key=key)
-
 
     def zip_and_upload_directory(self, directory_path, file_name = None, aggregated_directories = None, aggregated_content = None, extra_args = None, keep = False):
         '''Creates an object in an S3 bucket using a zip file created from the contents of the specified directory.
@@ -422,8 +436,8 @@ class Uploader(object):
         Args:
 
             directory_path: The path to the directory to upload. The object's name in the
-            S3 bucket will be the uploader's key with '/', the last element of the path, 
-            and '.zip' appended. 
+            S3 bucket will be the uploader's key with '/', the last element of the path,
+            and '.zip' appended.
 
             aggregated_directories (named): a dictionary where the values are additional
             directories whose contents will be included in the zip file, as either a single
@@ -443,24 +457,24 @@ class Uploader(object):
         Returns:
 
             The key of the uploaded zip file.
-         
+
         Note:
 
             The directory may contain a .ignore file. If it does, the file should contain
-            the names of the files in the directory that will not be included in the zip. 
+            the names of the files in the directory that will not be included in the zip.
 
         '''
 
         zip_file_path = file_util.zip_directory(
-            self.context, 
-            directory_path, 
-            aggregated_content = aggregated_content, 
+            self.context,
+            directory_path,
+            aggregated_content = aggregated_content,
             aggregated_directories = aggregated_directories)
 
         try:
 
             file_name = file_name or os.path.basename(directory_path) + '.zip'
-            return self.__upload_file(file_name, zip_file_path, extra_args=extra_args) 
+            return self.__upload_file(file_name, zip_file_path, extra_args=extra_args)
 
         finally:
             if os.path.exists(zip_file_path) and not keep:
@@ -476,7 +490,7 @@ class Uploader(object):
 class ProjectUploader(Uploader):
 
     '''Supports the uploading of project global data to the project's configuration bucket.'''
-    
+
     def __init__(self, context):
         '''Initializes a ProjectUploader object.
 
@@ -486,27 +500,22 @@ class ProjectUploader(Uploader):
 
         '''
         Uploader.__init__(self, context)
-        
 
     @staticmethod
     def __get_source_directory_paths(context):
         return [ context.config.framework_aws_directory_path, context.config.aws_directory_path ]
 
+    @staticmethod
+    def get_lambda_function_code_path(context, function_name, function_runtime):
+        return Uploader._get_lambda_function_code_path(context, function_name, ProjectUploader.__get_source_directory_paths(context), function_runtime)
 
     @staticmethod
-    def get_lambda_function_code_path(context, function_name):
-        return Uploader._get_lambda_function_code_path(context, function_name, ProjectUploader.__get_source_directory_paths(context))
-
-
-    @staticmethod
-    def get_lambda_function_code_paths(context, function_name):
-        return Uploader._get_lambda_function_code_paths(context, function_name, ProjectUploader.__get_source_directory_paths(context))
-
+    def get_lambda_function_code_paths(context, function_name, function_runtime):
+        return Uploader._get_lambda_function_code_paths(context, function_name, ProjectUploader.__get_source_directory_paths(context), function_runtime)
 
     @property
     def source_directory_paths(self):
         return ProjectUploader.__get_source_directory_paths(self.context)
-
 
     def get_deployment_uploader(self, deployment_name):
         '''Returns an uploader for deployment specific data.
@@ -518,7 +527,7 @@ class ProjectUploader(Uploader):
         Returns:
 
             A DeploymentUploader object.
-            
+
         '''
         return DeploymentUploader(self, deployment_name)
 
@@ -527,8 +536,8 @@ class ProjectUploader(Uploader):
         '''Calls the upload_project_content_pre methods defined by uploader hook modules for uploading before the project stack has been updated.
 
         The methods are called with this uploader as their only parameter.
-        
-        Uploader hook modules are defined by upload.py files in the project's AWS directory 
+
+        Uploader hook modules are defined by upload.py files in the project's AWS directory
         and in resource group directories.'''
 
         self._execute_uploader_hooks('upload_project_content_pre')
@@ -538,20 +547,21 @@ class ProjectUploader(Uploader):
         '''Calls the upload_project_content_post methods defined by uploader hook modules for uploading after the project stack has been updated.
 
         The methods are called with this uploader as their only parameter.
-        
-        Uploader hook modules are defined by upload.py files in the project's AWS directory 
+
+        Uploader hook modules are defined by upload.py files in the project's AWS directory
         and in resource group directories.'''
 
         self._execute_uploader_hooks('upload_project_content_post')
-    
+
     @property
     def _source_description(self):
         return "project's"
 
+
 class DeploymentUploader(Uploader):
-    
+
     '''Supports the uploading of deployment specific data to the project's configuration bucket.'''
-    
+
     def __init__(self, project_uploader, deployment_name):
         '''Initializes a DeploymentUploader object.
 
@@ -564,35 +574,30 @@ class DeploymentUploader(Uploader):
         '''
 
         Uploader.__init__(
-            self, 
-            project_uploader.context, 
-            project_uploader.bucket, 
+            self,
+            project_uploader.context,
+            project_uploader.bucket,
             project_uploader.key + '/deployment/' + deployment_name)
 
         self._project_uploader = project_uploader
         self._deployment_name = deployment_name
         self._resource_group_uploaders = {}
 
-
     @staticmethod
     def __get_source_directory_paths(context):
         return [ context.config.framework_aws_directory_path, context.config.aws_directory_path ]
 
+    @staticmethod
+    def get_lambda_function_code_path(context, function_name, function_runtime):
+        return Uploader._get_lambda_function_code_path(context, function_name, DeploymentUploader.__get_source_directory_paths(context), function_runtime)
 
     @staticmethod
-    def get_lambda_function_code_path(context, function_name):
-        return Uploader._get_lambda_function_code_path(context, function_name, DeploymentUploader.__get_source_directory_paths(context))
-
-
-    @staticmethod
-    def get_lambda_function_code_paths(context, function_name):
-        return Uploader._get_lambda_function_code_paths(context, function_name, DeploymentUploader.__get_source_directory_paths(context))
-
+    def get_lambda_function_code_paths(context, function_name, function_runtime):
+        return Uploader._get_lambda_function_code_paths(context, function_name, DeploymentUploader.__get_source_directory_paths(context), function_runtime)
 
     @property
     def source_directory_paths(self):
         return DeploymentUploader.__get_source_directory_paths(self.context)
-
 
     @property
     def project_uploader(self):
@@ -603,7 +608,7 @@ class DeploymentUploader(Uploader):
     def deployment_name(self):
         '''The name of the deployment targeted by ths uploader.'''
         return self._deployment_name
-        
+
     def get_resource_group_uploader(self, resource_group_name):
         '''Returns an uploader for resource group specific data.
 
@@ -614,12 +619,12 @@ class DeploymentUploader(Uploader):
         Returns:
 
             A ResourceGroupUploader object.
-            
+
         '''
-        
+
         if self._resource_group_uploaders.has_key(resource_group_name):
             return self._resource_group_uploaders[resource_group_name]
-        
+
         rgu = ResourceGroupUploader(self, resource_group_name)
         self._resource_group_uploaders[resource_group_name] = rgu
 
@@ -630,19 +635,19 @@ class DeploymentUploader(Uploader):
         '''Calls the upload_deployment_pre_content methods defined by uploader hook modules.
 
         The methods are called with this uploader as their only parameter.
-        
-        Uploader hook modules are defined by upload.py files in the project's AWS directory 
+
+        Uploader hook modules are defined by upload.py files in the project's AWS directory
         and in resource group directories.'''
 
-        self._execute_uploader_hooks('upload_deployment_content_pre')    
-        
+        self._execute_uploader_hooks('upload_deployment_content_pre')
+
     # Deprecated in 1.9. TODO remove
     def execute_uploader_post_hooks(self):
         '''Calls the upload_deployment_post_content methods defined by uploader hook modules.
 
         The methods are called with this uploader as their only parameter.
-        
-        Uploader hook modules are defined by upload.py files in the project's AWS directory 
+
+        Uploader hook modules are defined by upload.py files in the project's AWS directory
         and in resource group directories.'''
 
         self._execute_uploader_hooks('upload_deployment_content_post')
@@ -654,7 +659,7 @@ class DeploymentUploader(Uploader):
 
 class ResourceGroupUploader(Uploader):
     '''Supports the uploading of deployment specific data to the project's configuration bucket.'''
-    
+
     def __init__(self, deployment_uploader, resource_group_name):
         '''Initializes a ResourceGroupUploader object.
 
@@ -667,9 +672,9 @@ class ResourceGroupUploader(Uploader):
         '''
 
         Uploader.__init__(
-            self, 
-            deployment_uploader.context, 
-            deployment_uploader.bucket, 
+            self,
+            deployment_uploader.context,
+            deployment_uploader.bucket,
             deployment_uploader.key + '/resource-group/' + resource_group_name)
 
         self._deployment_uploader = deployment_uploader
@@ -681,9 +686,9 @@ class ResourceGroupUploader(Uploader):
         return [ resource_group.directory_path ]
 
     @staticmethod
-    def get_lambda_function_code_path(context, resource_group_name, function_name):
+    def get_lambda_function_code_path(context, resource_group_name, function_name, function_runtime):
         try:
-            return Uploader._get_lambda_function_code_path(context, function_name, ResourceGroupUploader.__get_source_directory_paths(context, resource_group_name))
+            return Uploader._get_lambda_function_code_path(context, function_name, ResourceGroupUploader.__get_source_directory_paths(context, resource_group_name), function_runtime)
         except HandledError as e:
             error_message = e.msg
             error_message = error_message + '\n\n'
@@ -691,9 +696,9 @@ class ResourceGroupUploader(Uploader):
             raise HandledError(error_message)
 
     @staticmethod
-    def get_lambda_function_code_paths(context, resource_group_name, function_name):
+    def get_lambda_function_code_paths(context, resource_group_name, function_name, function_runtime):
         try:
-            return Uploader._get_lambda_function_code_paths(context, function_name, ResourceGroupUploader.__get_source_directory_paths(context, resource_group_name))
+            return Uploader._get_lambda_function_code_paths(context, function_name, ResourceGroupUploader.__get_source_directory_paths(context, resource_group_name), function_runtime)
         except HandledError as e:
             error_message = e.msg
             error_message = error_message + '\n\n'
@@ -703,7 +708,6 @@ class ResourceGroupUploader(Uploader):
     @property
     def source_directory_paths(self):
         return ResourceGroupUploader.__get_source_directory_paths(self.context, self.resource_group_name)
-
 
     @property
     def deployment_uploader(self):
@@ -719,28 +723,28 @@ class ResourceGroupUploader(Uploader):
     def resource_group(self):
         '''A ResourceGroup object representing the resource group targeted by this uploader.'''
         return self.context.resource_groups.get(self.resource_group_name)
-        
+
     # Deprecated in 1.9. TODO remove
     def execute_uploader_pre_hooks(self):
         '''Calls the upload_resource_group_pre_content methods defined by uploader hook modules.
 
         The methods are called with the context, and this uploader as their only parameters.
-        
-        Uploader hook modules are defined by upload.py files in the project's AWS directory 
+
+        Uploader hook modules are defined by upload.py files in the project's AWS directory
         and in resource group directories.'''
 
-        self._execute_uploader_hooks('upload_resource_group_content_pre')        
+        self._execute_uploader_hooks('upload_resource_group_content_pre')
 
     # Deprecated in 1.9. TODO remove
     def execute_uploader_post_hooks(self):
         '''Calls the upload_resource_group_post_content methods defined by uploader hook modules.
 
         The methods are called with the context, and this uploader as their only parameters.
-        
-        Uploader hook modules are defined by upload.py files in the project's AWS directory 
+
+        Uploader hook modules are defined by upload.py files in the project's AWS directory
         and in resource group directories.'''
 
-        self._execute_uploader_hooks('upload_resource_group_content_post')        
+        self._execute_uploader_hooks('upload_resource_group_content_post')
 
     @property
     def _source_description(self):

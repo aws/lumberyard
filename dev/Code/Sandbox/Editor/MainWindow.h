@@ -25,7 +25,6 @@
 #include <QAbstractNativeEventFilter>
 
 #include "Include/SandboxAPI.h"
-#include "ActionManager.h"
 #include <AzQtComponents/Components/ToolButtonComboBox.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <QAbstractNativeEventFilter>
@@ -50,6 +49,7 @@ class QRollupCtrl;
 class ToolbarManager;
 class ToolbarCustomizationDialog;
 class QWidgetAction;
+class ActionManager;
 
 namespace AzToolsFramework
 {

@@ -65,7 +65,7 @@ namespace ControllerHelper
     extern const uint8 m_byteHighBit[256];
 }
 
-extern CControllerDefragHeap g_controllerHeap;
+extern StaticInstance<CControllerDefragHeap> g_controllerHeap;
 
 // don't add values which incrase the maximum enum value over 255 because this will break IControllerOptNonVirtual!!!!
 enum EKeyTimesFormat
@@ -209,7 +209,7 @@ public:
     {
         if (!IsConstant() && m_hHdl.IsValid())
         {
-            g_controllerHeap.Free(m_hHdl);
+            g_controllerHeap->Free(m_hHdl);
         }
     }
 
@@ -309,19 +309,19 @@ public:
 
         if (m_hHdl.IsValid())
         {
-            g_controllerHeap.Free(m_hHdl);
+            g_controllerHeap->Free(m_hHdl);
         }
 
         uint32 sz = numElements * sizeof(TKeyTime);
 
         this->LinkTo(NULL);
-        CControllerDefragHdl hdl = g_controllerHeap.AllocPinned(sz, this);
-        m_pKeys = (TKeyTime*)g_controllerHeap.WeakPin(hdl);
+        CControllerDefragHdl hdl = g_controllerHeap->AllocPinned(sz, this);
+        m_pKeys = (TKeyTime*)g_controllerHeap->WeakPin(hdl);
         m_hHdl = hdl;
         m_numKeys = numElements;
 
         memcpy(m_pKeys, pData, sz);
-        g_controllerHeap.Unpin(hdl);
+        g_controllerHeap->Unpin(hdl);
 
         return sz;
     }
@@ -1069,7 +1069,7 @@ public:
     {
         if (!IsConstant() && m_hHdl.IsValid())
         {
-            g_controllerHeap.Free(m_hHdl);
+            g_controllerHeap->Free(m_hHdl);
         }
     }
 
@@ -1085,17 +1085,17 @@ public:
 
         if (m_hHdl.IsValid())
         {
-            g_controllerHeap.Free(m_hHdl);
+            g_controllerHeap->Free(m_hHdl);
         }
 
         uint32 sz = numElements * sizeof(_Storage);
         this->LinkTo(NULL);
-        CControllerDefragHdl hdl = g_controllerHeap.AllocPinned(sz, this);
+        CControllerDefragHdl hdl = g_controllerHeap->AllocPinned(sz, this);
         m_hHdl = hdl;
-        m_pKeys = (_Storage*)g_controllerHeap.WeakPin(hdl);
+        m_pKeys = (_Storage*)g_controllerHeap->WeakPin(hdl);
         m_numKeys = numElements;
         memcpy(m_pKeys, pData, sz);
-        g_controllerHeap.Unpin(hdl);
+        g_controllerHeap->Unpin(hdl);
 
         return sz;
     }

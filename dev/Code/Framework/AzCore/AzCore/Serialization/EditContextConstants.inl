@@ -136,6 +136,7 @@ namespace AZ
             const static AZ::Crc32 PropertyPosition = AZ_CRC("Position", 0x462ce4f5);
             const static AZ::Crc32 PropertyRotation = AZ_CRC("Rotation", 0x297c98f1);
             const static AZ::Crc32 PropertyScale = AZ_CRC("Scale", 0xec462584);
+            const static AZ::Crc32 PropertyHidden = AZ_CRC("Hidden", 0x885de9bd);
 
             // Attribute for storing a Id Generator function used by GenerateNewIdsAndFixRefs to remapping old id's to new id's
             const static AZ::Crc32 IdGeneratorFunction = AZ_CRC("IdGeneratorFunction", 0x4269a3fd);

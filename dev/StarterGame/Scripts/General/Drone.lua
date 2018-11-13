@@ -74,22 +74,18 @@ local drone =
 	-- A.I. State Machine Definition
 	-- States:
 	--		Inactivate	- does nothing
-	--		Idling		- comfortably next to player and doesn't need to move
-	--		Following	- moving to follow the player
+	--		Following	- moving to follow the player or idling
 	--		Talking		- playing audio
 	--		
 	-- Transitions:
-	--		Inactivate	<-> Idling
-	--					<-  Following
+	--		Inactivate	<-  Following
 	--					<-  Talking
 	--		Idling		<-> Inactivate
 	--					 -> Following
 	--					 -> Talking
 	--		Following	 -> Inactivate
-	--					<-> Idling
 	--					 -> Talking
 	--		Talking		 -> Inactivate
-	--					 -> Idling
 	--					<-  Following
     --------------------------------------------------
 	States = 
@@ -139,47 +135,6 @@ local drone =
             },
 		},
 		
-		Idling =
-		{
-            OnEnter = function(self, sm)
-				sm.UserData.Movement = sm.UserData.Properties.Movement;
-            end,
-			
-            OnExit = function(self, sm)
-            end,
-			
-            OnUpdate = function(self, sm, deltaTime)
-				sm.UserData:UpdateWobble(deltaTime);
-				sm.UserData:UpdateRotation(deltaTime);
-				sm.UserData:UpdateTransform(deltaTime);
-            end,
-			
-            Transitions =
-            {
-				Following = 
-				{
-                    Evaluate = function(state, sm)
-						local playerPos = TransformBus.Event.GetWorldTM(sm.UserData.playerId):GetTranslation();
-						local prevPlayerPos = sm.UserData.lastPlayerPosReactedTo:GetTranslation();
-						local diff = playerPos - prevPlayerPos;
-						return diff:GetLength() >= sm.UserData.Properties.DistanceBeforeFollowing or sm.UserData.justStartedStrafing;
-                    end	
-				},
-				Talking = 
-				{
-                    Evaluate = function(state, sm)
-						return sm.UserData:IsTalking(); -- talking starts
-                    end	
-				},
-				Inactive = 
-				{
-                    Evaluate = function(state, sm)
-						return not sm.UserData.isEnabled;
-                    end	
-				},
-            },
-		},
-		
 		Following = 
 		{
             OnEnter = function(self, sm)
@@ -214,12 +169,6 @@ local drone =
 			
             Transitions =
             {
-				Idling =
-				{
-					Evaluate = function(state, sm)
-						return state.reachedTargetPos;
-					end
-				},
 				Talking = 
 				{
                     Evaluate = function(state, sm)
@@ -619,9 +568,13 @@ end
 function drone:OnEventBegin(value)
 	local busId = GameplayNotificationBus.GetCurrentBusId();
 	if (busId == self.audioEventId) then
-		AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, value);
-		table.insert(self.talkingEventNames, value);
-		self.talkingRefCount = self.talkingRefCount + 1;
+		if (value ~= nil and value ~= "") then
+			AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, value);
+			table.insert(self.talkingEventNames, value);
+			self.talkingRefCount = self.talkingRefCount + 1;
+		else
+			Debug.Log("DroneSpeak event received with empty payload. Ignoring.");
+		end
 	elseif (busId == self.enableEventId) then
 		self.isEnabled = value;
 	elseif (busId == self.setVisibleEventId) then

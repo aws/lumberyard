@@ -717,31 +717,39 @@ namespace AZ
         componentsToActivate.insert(componentsToActivate.begin(), m_systemComponents.begin(), m_systemComponents.end());
 
         // Get all the components from the System Entity, to include for sorting purposes
-        // This is so that components in modules may have dependencies on components on the system entity
         if (systemEntity)
         {
             const Entity::ComponentArrayType& systemEntityComponents = systemEntity->GetComponents();
             componentsToActivate.insert(componentsToActivate.begin(), systemEntityComponents.begin(), systemEntityComponents.end());
         }
-
+        
         // Topo sort components, activate them
         Entity::DependencySortResult result = ModuleEntity::DependencySort(componentsToActivate);
         switch (result)
         {
-        case Entity::DSR_MISSING_REQUIRED:
+        case Entity::DependencySortResult::Success:
+            break;
+        case Entity::DependencySortResult::MissingRequiredService:
             AZ_Error(s_moduleLoggingScope, false, "Module Entities have missing required services and cannot be activated.");
             return;
-        case Entity::DSR_CYCLIC_DEPENDENCY:
+        case Entity::DependencySortResult::HasCyclicDependency:
             AZ_Error(s_moduleLoggingScope, false, "Module Entities' components order have cyclic dependency and cannot be activated.");
             return;
-        case Entity::DSR_OK:
-            break;
+        case Entity::DependencySortResult::HasIncompatibleServices:
+            AZ_Error(s_moduleLoggingScope, false, "Module Entities' components are incompatible and cannot be activated.");
+            return;
+        case Entity::DependencySortResult::DescriptorNotRegistered:
+            AZ_Error(s_moduleLoggingScope, false, "Module Entities' components are not registered with the component application.");
+            return;
+        default:
+            AZ_Error(s_moduleLoggingScope, false, "Module Entities's components have an unexpected issue and cannot be activated.");
+            return;
         }
-
+        
         for (auto componentIt = componentsToActivate.begin(); componentIt != componentsToActivate.end(); )
         {
             Component* component = *componentIt;
-
+        
             // Remove the system entity and already activated components, we don't need to activate or store those
             if (component->GetEntityId() == SystemEntityId ||
                 AZStd::find(m_systemComponents.begin(), m_systemComponents.end(), component) != m_systemComponents.end())
@@ -753,6 +761,7 @@ namespace AZ
                 ++componentIt;
             }
         }
+        
 
         // Activate the entities in the appropriate order
         for (Component* component : componentsToActivate)

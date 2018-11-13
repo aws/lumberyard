@@ -10,10 +10,20 @@
 #
 
 import importlib
+import os
 import boto3
 import CloudCanvas
 import service
 from datetime import datetime
+from cloudfront_request import cdn_name, get_cdn_presigned
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+
+from botocore.client import Config
+
 
 staging_table_name = CloudCanvas.get_setting('StagingTable')
 
@@ -30,7 +40,6 @@ def request_url_list(request, request_content = None):
     print 'querying status of {}'.format(request_content)
     print 'Content bucket is ' + content_bucket_name
     
-    result = 'What i heard was {}'.format(request_content)
     file_list = request_content.get('FileList')
     
     resultList = []
@@ -42,7 +51,7 @@ def request_url_list(request, request_content = None):
             _add_file_response(resultList, file_name)
     
     return { 'ResultList' : resultList }
-    
+
 def _get_time_format():
     return '%b %d %Y %H:%M'
     
@@ -57,7 +66,19 @@ def get_struct_time(timestring):
         
 def _get_formatted_time(timeval):
     return datetime.strftime(timeval, '%b %d %Y %H:%M')
-    
+
+def _get_s3_presigned(file_name):
+    print 'Getting presigned url for {} from s3'.format(file_name)
+
+    s3Client = _get_s3_client()
+    return s3Client.generate_presigned_url('get_object', Params = {'Bucket': content_bucket_name, 'Key': file_name}, ExpiresIn = get_presigned_url_lifetime())
+
+def _get_presigned_url(file_name):
+    if cdn_name:
+        return get_cdn_presigned(file_name)
+    else:
+        return _get_s3_presigned(file_name)
+
 def _add_file_response(resultList, file_name):
     print 'file name requested is {}'.format(file_name)
 
@@ -124,9 +145,9 @@ def _add_file_response(resultList, file_name):
                 print 'End date is in the past, content no longer available'
                 resultData['FileStatus'] = 'No longer available'
                 return
-            
-    s3Client = boto3.client('s3')
-    returnUrl = s3Client.generate_presigned_url('get_object', Params = {'Bucket': content_bucket_name, 'Key': file_name}, ExpiresIn = get_presigned_url_lifetime())
+
+    returnUrl = _get_presigned_url(file_name)
+
        
     print 'Returned url is ' + returnUrl
     resultData['PresignedURL'] = returnUrl
@@ -134,6 +155,18 @@ def _add_file_response(resultList, file_name):
     signature = item_data.get('Signature','')
     print 'Returning Signature {}'.format(signature)
     resultData['Signature'] = signature
+
+def _get_s3_client():
+    '''Returns a S3 client with proper configuration.'''
+    if not hasattr(_get_s3_client, 'client'):
+        current_region = os.environ.get('AWS_REGION')
+        if current_region is None:
+            raise RuntimeError('AWS region is empty')
+
+        configuration = Config(signature_version='s3v4', s3={'addressing_style': 'path'})
+        _get_s3_client.client = boto3.client('s3', region_name=current_region, config=configuration)
+
+    return _get_s3_client.client
 
         
  

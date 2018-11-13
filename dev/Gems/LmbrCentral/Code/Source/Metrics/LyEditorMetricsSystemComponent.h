@@ -85,7 +85,7 @@ namespace LyEditorMetrics
         ////////////////////////////////////////////////////////////////////////
         // ToolsApplicationEvents
         void BeforeEntitySelectionChanged() override;
-        void AfterEntitySelectionChanged() override;
+        void AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList&, const AzToolsFramework::EntityIdList&) override;
         void BeforeUndoRedo() override;
         void AfterUndoRedo() override;
 

@@ -17,6 +17,7 @@
 #include <SceneAPI/SceneData/Rules/StaticMeshAdvancedRule.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexUVData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexColorData.h>
+#include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
 
 namespace AZ
 {
@@ -29,7 +30,9 @@ namespace AZ
             StaticMeshAdvancedRule::StaticMeshAdvancedRule()
                 : m_use32bitVertices(false)
                 , m_mergeMeshes(true)
+                , m_useCustomNormals(true)
             {
+                AZ::SceneAPI::Events::AssetImportRequestBus::Broadcast(&AZ::SceneAPI::Events::AssetImportRequestBus::Events::AreCustomNormalsUsed, m_useCustomNormals);
             }
 
             void StaticMeshAdvancedRule::SetUse32bitVertices(bool value)
@@ -50,6 +53,16 @@ namespace AZ
             bool StaticMeshAdvancedRule::MergeMeshes() const
             {
                 return m_mergeMeshes;
+            }
+
+            void StaticMeshAdvancedRule::SetUseCustomNormals(bool value)
+            {
+                m_useCustomNormals = value;
+            }
+
+            bool StaticMeshAdvancedRule::UseCustomNormals() const
+            {
+                return m_useCustomNormals;
             }
 
             void StaticMeshAdvancedRule::SetVertexColorStreamName(const AZStd::string& name)
@@ -81,9 +94,10 @@ namespace AZ
                     return;
                 }
 
-                serializeContext->Class<StaticMeshAdvancedRule, DataTypes::IMeshAdvancedRule>()->Version(5)
+                serializeContext->Class<StaticMeshAdvancedRule, DataTypes::IMeshAdvancedRule>()->Version(6)
                     ->Field("use32bitVertices", &StaticMeshAdvancedRule::m_use32bitVertices)
                     ->Field("mergeMeshes", &StaticMeshAdvancedRule::m_mergeMeshes)
+                    ->Field("useCustomNormals", &StaticMeshAdvancedRule::m_useCustomNormals)
                     ->Field("vertexColorStreamName", &StaticMeshAdvancedRule::m_vertexColorStreamName);
 
                 EditContext* editContext = serializeContext->GetEditContext();
@@ -95,18 +109,12 @@ namespace AZ
                             ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
                         ->DataElement(AZ::Edit::UIHandlers::RadioButton, &StaticMeshAdvancedRule::m_use32bitVertices, "Vertex Precision",
                             "Selecting 32-bits of precision increases the accuracy of the position of each vertex which can be useful when the mesh is located far from its pivot.\n\n"
-#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
-#include AZ_RESTRICTED_FILE(StaticMeshAdvancedRule_cpp, TOOLS_SUPPORT_XBONE)
-#endif
-#if defined(TOOLS_SUPPORT_PS4)
-#include AZ_RESTRICTED_FILE(StaticMeshAdvancedRule_cpp, TOOLS_SUPPORT_PS4)
-#endif
-#endif
+                            "Please note that not all platforms support 32-bit vertices. For more details please see documentation."
                         )
                             ->Attribute(AZ::Edit::Attributes::FalseText, "16-bit")
                             ->Attribute(AZ::Edit::Attributes::TrueText, "32-bit")
                         ->DataElement(Edit::UIHandlers::Default, &StaticMeshAdvancedRule::m_mergeMeshes, "Merge Meshes", "Merge all meshes into one single mesh.")
+                        ->DataElement(Edit::UIHandlers::Default, &StaticMeshAdvancedRule::m_useCustomNormals, "Use Custom Normals", "Use custom normals from DCC data or average them.")
                         ->DataElement("NodeListSelection", &StaticMeshAdvancedRule::m_vertexColorStreamName, "Vertex Color Stream",
                             "Select a vertex color stream to enable Vertex Coloring or 'Disable' to turn Vertex Coloring off.\n\n"
                             "Vertex Coloring works in conjunction with materials. If a material was previously generated,\n"

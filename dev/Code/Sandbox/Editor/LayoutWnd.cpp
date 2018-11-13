@@ -22,6 +22,8 @@
 #include <QSettings>
 #include <QMessageBox>
 
+#include <QToolBar>
+
 class CLayoutSplitterHandle
     : public QSplitterHandle
 {

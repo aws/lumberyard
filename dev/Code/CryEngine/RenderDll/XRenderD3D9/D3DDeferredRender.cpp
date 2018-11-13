@@ -1384,7 +1384,7 @@ void CD3D9Renderer::FX_DeferredShadowMaskGen(const TArray<uint32>& shadowPoolLig
                         TS.SetComparisonFilter(true);
 
                         CTexture* pShadowMap = firstFrustum.bUseShadowsPool ? CTexture::s_ptexRT_ShadowPool : firstFrustum.pDepthTex;
-                        pShadowMap->Apply(1, CTexture::GetTexState(TS));
+                        pShadowMap->Apply(1, CTexture::GetTexState(TS), EFTT_UNKNOWN, 6);
 
                         SD3DPostEffectsUtils::SetTexture(CTextureManager::Instance()->GetDefaultTexture("ShadowJitterMap"), 7, FILTER_POINT, 0);
 

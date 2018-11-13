@@ -20,6 +20,8 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Casting/numeric_cast.h>
 
+#if AZ_VIDEOPLAYBACK_GEM_TRAIT_ENABLE_DECODER
+
 namespace AZ
 {
     namespace VideoPlayback
@@ -372,3 +374,4 @@ namespace AZ
     } //namespace VideoPlayback
 }//namespace AZ
 
+#endif

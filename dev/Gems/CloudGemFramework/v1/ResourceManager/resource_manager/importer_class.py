@@ -414,8 +414,10 @@ class S3Importer(ResourceImporter):
 
                 if not os.path.exists(directory):
                     os.makedirs(directory)
-                #Download the contents
-                self.client.download_file(bucket_name, object['Key'], directory + '/' + string_list[len(string_list) - 1])
+
+                if not object['Key'].endswith('/'): # the key is actually an empty dir
+                    #Download the contents
+                    self.client.download_file(bucket_name, object['Key'], directory + '/' + string_list[len(string_list) - 1])
 
 class LambdaImporter(ResourceImporter):
     def __init__(self, region, context):

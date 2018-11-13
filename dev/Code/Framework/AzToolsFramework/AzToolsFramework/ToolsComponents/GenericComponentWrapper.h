@@ -56,6 +56,7 @@ namespace AzToolsFramework
             void Init() override;
             void Activate() override;
             void Deactivate() override;
+            const AZ::TypeId& GetUnderlyingComponentType() const override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////

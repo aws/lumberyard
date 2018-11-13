@@ -202,7 +202,7 @@ void MainWindow::Activate()
 
     connect(logButton, &QPushButton::clicked, this, []()
     {
-        QString currentDir(QCoreApplication::applicationDirPath());
+        QString currentDir(AZ::IO::FileIOBase::GetInstance()->GetAlias("@log@"));
         QDir dir(currentDir);
         QString logFolder = dir.filePath("logs");
         if (QFile::exists(logFolder))

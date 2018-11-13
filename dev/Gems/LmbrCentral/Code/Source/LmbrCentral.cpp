@@ -19,6 +19,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/std/containers/list.h>
+#include <AzCore/Memory/AllocatorScope.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
@@ -142,6 +143,90 @@ namespace LmbrCentral
 {
     static const char* s_assetCatalogFilename = "assetcatalog.xml";
 
+    using LmbrCentralAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
+
+    // This component boots the required allocators for LmbrCentral everywhere but AssetBuilders
+    class LmbrCentralAllocatorComponent
+        : public AZ::Component
+        , protected LmbrCentralAllocatorScope
+    {
+    public:
+        AZ_COMPONENT(LmbrCentralAllocatorComponent, "{B0512A75-AC4A-423A-BB55-C3355C0B186A}", AZ::Component);
+
+        LmbrCentralAllocatorComponent() = default;
+        ~LmbrCentralAllocatorComponent() override = default;
+
+        void Activate() override
+        {
+            LmbrCentralAllocatorScope::ActivateAllocators();
+        }
+
+        void Deactivate() override
+        {
+            LmbrCentralAllocatorScope::DeactivateAllocators();
+        }
+
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC("MemoryAllocators", 0xd59acbcc));
+        }
+
+        static void Reflect(AZ::ReflectContext* context)
+        {
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serializeContext)
+            {
+                serializeContext->Class<LmbrCentralAllocatorComponent, AZ::Component>()->Version(1);
+
+                if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+                {
+                    editContext->Class<LmbrCentralAllocatorComponent>(
+                        "LmbrCentral Allocator Component", "Manages initialization of memory allocators required by LmbrCentral")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Engine")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
+                        ;
+                }
+            }
+        }
+    };
+
+    // This component is opted in to AssetBuilders
+    class LmbrCentralAssetBuilderAllocatorComponent
+        : public LmbrCentralAllocatorComponent
+    {
+    public:
+        AZ_COMPONENT(LmbrCentralAssetBuilderAllocatorComponent, "{030B63DE-7DC1-4E08-9AAF-1D089D3D0C46}", LmbrCentralAllocatorComponent);
+
+        LmbrCentralAssetBuilderAllocatorComponent() = default;
+        ~LmbrCentralAssetBuilderAllocatorComponent() override = default;
+
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC("MemoryAllocators", 0xd59acbcc));
+        }
+
+        static void Reflect(AZ::ReflectContext* context)
+        {
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serializeContext)
+            {
+                serializeContext->Class<LmbrCentralAssetBuilderAllocatorComponent, LmbrCentralAllocatorComponent>()->Version(1)
+                    ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AZ_CRC("AssetBuilder", 0xc739c7d7) }));
+
+                if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+                {
+                    editContext->Class<LmbrCentralAssetBuilderAllocatorComponent>(
+                        "LmbrCentral Asset Builder Allocator Component", "Manages initialization of memory allocators required by LmbrCentral during asset building")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Engine")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
+                        ;
+                }
+            }
+        }
+    };
+
     ////////////////////////////////////////////////////////////////////////////
     // LmbrCentral::LmbrCentralModule
     ////////////////////////////////////////////////////////////////////////////
@@ -168,6 +253,8 @@ namespace LmbrCentral
             FlowGraphComponent::CreateDescriptor(),
             LensFlareComponent::CreateDescriptor(),
             LightComponent::CreateDescriptor(),
+            LmbrCentralAllocatorComponent::CreateDescriptor(),
+            LmbrCentralAssetBuilderAllocatorComponent::CreateDescriptor(),
             LmbrCentralSystemComponent::CreateDescriptor(),
             HighQualityShadowComponent::CreateDescriptor(),
             MeshComponent::CreateDescriptor(),
@@ -234,6 +321,8 @@ namespace LmbrCentral
     AZ::ComponentTypeList LmbrCentralModule::GetRequiredSystemComponents() const
     {
         return {
+                   azrtti_typeid<LmbrCentralAllocatorComponent>(),
+                   azrtti_typeid<LmbrCentralAssetBuilderAllocatorComponent>(),
                    azrtti_typeid<LmbrCentralSystemComponent>(),
                    azrtti_typeid<PhysicsSystemComponent>(),
                    azrtti_typeid<CharacterAnimationManagerComponent>(),
@@ -300,11 +389,24 @@ namespace LmbrCentral
 
     void LmbrCentralSystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
     {
+        dependent.push_back(AZ_CRC("MemoryAllocators", 0xd59acbcc));
         dependent.push_back(AZ_CRC("AssetCatalogService", 0xc68ffc57));
     }
 
     void LmbrCentralSystemComponent::Activate()
     {
+        if (!AZ::AllocatorInstance<AZ::LegacyAllocator>::IsReady())
+        {
+            AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+            m_allocatorShutdowns.push_back([]() { AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy(); });
+        }
+
+        if (!AZ::AllocatorInstance<CryStringAllocator>::IsReady())
+        {
+            AZ::AllocatorInstance<CryStringAllocator>::Create();
+            m_allocatorShutdowns.push_back([]() { AZ::AllocatorInstance<CryStringAllocator>::Destroy(); });
+        }
+
         // Register asset handlers. Requires "AssetDatabaseService"
         AZ_Assert(AZ::Data::AssetManager::IsReady(), "Asset manager isn't ready!");
 
@@ -468,6 +570,12 @@ namespace LmbrCentral
 
         // AssetHandler's destructor calls Unregister()
         m_assetHandlers.clear();
+
+        for (auto allocatorIt = m_allocatorShutdowns.rbegin(); allocatorIt != m_allocatorShutdowns.rend(); ++allocatorIt)
+        {
+            (*allocatorIt)();
+        }
+        m_allocatorShutdowns.clear();
     }
 
     void LmbrCentralSystemComponent::OnAssetEventsDispatched()

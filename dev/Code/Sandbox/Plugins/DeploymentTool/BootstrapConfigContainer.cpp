@@ -9,21 +9,30 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-#include "stdafx.h"
+#include "DeploymentTool_precompiled.h"
 #include "BootstrapConfigContainer.h"
 
-const char* BootstrapConfigContainer::s_localFilePath = "bootstrap.cfg";
-const char* BootstrapConfigContainer::s_gameFolderKey = "sys_game_folder";
-const char* BootstrapConfigContainer::s_remoteFileSystemKey = "remote_filesystem";
-const char* BootstrapConfigContainer::s_remoteIPKey = "remote_ip";
-const char* BootstrapConfigContainer::s_remotePortKey = "remote_port";
-const char* BootstrapConfigContainer::s_connectToRemoteKey = "connect_to_remote";
-const char* BootstrapConfigContainer::s_waitForConnectKey = "wait_for_connect";
-const char* BootstrapConfigContainer::s_androidConnectToRemoteKey = "android_connect_to_remote";
+#include <AzFramework/StringFunc/StringFunc.h>
+
+#include "DeploymentConfig.h"
+
+
+namespace
+{
+    const char* bootstrapFilePath = "bootstrap.cfg";
+    const char* gameFolderKey = "sys_game_folder";
+    const char* remoteFileSystemKey = "remote_filesystem";
+    const char* remoteIPKey = "remote_ip";
+    const char* remotePortKey = "remote_port";
+    const char* whitelistKey = "white_list";
+    const char* waitForConnectKey = "wait_for_connect";
+
+    const char* androidConnectToRemoteKey = "android_connect_to_remote";
+    const char* iosConnectToRemoteKey = "ios_connect_to_remote";
+}
 
 BootstrapConfigContainer::BootstrapConfigContainer()
-    : ConfigFileContainer(s_localFilePath)
+    : ConfigFileContainer(bootstrapFilePath)
 {
 }
 
@@ -31,103 +40,58 @@ BootstrapConfigContainer::~BootstrapConfigContainer()
 {
 }
 
-StringOutcome BootstrapConfigContainer::ConfigureForVFSUsage(const AZStd::string& remoteIpAddress, const AZStd::string& remoteIpPort)
+StringOutcome BootstrapConfigContainer::ApplyConfiguration(const DeploymentConfig& deploymentConfig)
 {
-    SetRemoteFileSystem(true);
-    SetRemoteIP(remoteIpAddress);
-    SetAndroidConnectToRemote(true);
-    SetConnectToRemote(true);
-    SetWaitForConnect(false);
-    SetRemotePort(remoteIpPort);
+    SetBool(remoteFileSystemKey, deploymentConfig.m_useVFS);
 
-    return WriteContents();
-}
+    SetString(remoteIPKey, deploymentConfig.m_assetProcessorIpAddress);
+    SetString(remotePortKey, deploymentConfig.m_assetProcessorPort);
 
-StringOutcome BootstrapConfigContainer::Reset()
-{
-    SetRemoteFileSystem(false);
-    SetAndroidConnectToRemote(false);
-    SetConnectToRemote(false);
+    AZStd::string allowedAddresses = GetString(whitelistKey, true);
 
-    return WriteContents();
-}
+    AZStd::vector<AZStd::string> allowedIpAddrs;
+    AzFramework::StringFunc::Tokenize(allowedAddresses.c_str(), allowedIpAddrs, ',');
 
-AZStd::string BootstrapConfigContainer::GetRemoteIP() const
-{
-    return GetString(s_remoteIPKey);
+    const auto& iterator = AZStd::find(allowedIpAddrs.begin(), allowedIpAddrs.end(), deploymentConfig.m_deviceIpAddress);
+    if (iterator == allowedIpAddrs.end())
+    {
+        if (!allowedAddresses.empty())
+        {
+            allowedAddresses.append(",");
+        }
+        allowedAddresses.append(deploymentConfig.m_deviceIpAddress);
+    }
+
+    SetString(whitelistKey, allowedAddresses);
+
+    SetBool(waitForConnectKey, false);
+
+    switch (deploymentConfig.m_platformOption)
+    {
+        case PlatformOptions::Android_ARMv7:
+        case PlatformOptions::Android_ARMv8:
+            SetBool(androidConnectToRemoteKey, deploymentConfig.m_shaderCompilerUseAP);
+            break;
+
+    #if defined(AZ_PLATFORM_APPLE_OSX)
+        case PlatformOptions::iOS:
+            SetBool(iosConnectToRemoteKey, deploymentConfig.m_shaderCompilerUseAP);
+            break;
+    #endif
+
+        default:
+            break;
+    }
+
+    return Write();
 }
 
 AZStd::string BootstrapConfigContainer::GetGameFolder() const
 {
-    return GetString(s_gameFolderKey);
+    return GetString(gameFolderKey);
 }
 
-bool BootstrapConfigContainer::GetRemoteFileSystem() const
+AZStd::string BootstrapConfigContainer::GetRemoteIP() const
 {
-    return GetBool(s_remoteFileSystemKey);
-}
-
-AZStd::string BootstrapConfigContainer::GetRemotePort() const
-{
-    return GetString(s_remotePortKey);
-}
-
-bool BootstrapConfigContainer::GetConnectToRemote() const
-{
-    return GetBool(s_connectToRemoteKey);
-}
-
-bool BootstrapConfigContainer::GetWaitForConnect() const
-{
-    return GetBool(s_waitForConnectKey);
-}
-
-bool BootstrapConfigContainer::GetAndroidConnectToRemote() const
-{
-    return GetBool(s_androidConnectToRemoteKey);
-}
-
-AZStd::string BootstrapConfigContainer::GetRemoteIPIncludingComments() const
-{
-    return GetStringIncludingComments(s_remoteIPKey);
-}
-
-AZStd::string BootstrapConfigContainer::GetRemotePortIncludingComments() const
-{
-    return GetStringIncludingComments(s_remotePortKey);
-}
-
-void BootstrapConfigContainer::SetRemoteIP(const AZStd::string& newIp)
-{
-    SetString(s_remoteIPKey, newIp);
-}
-
-void BootstrapConfigContainer::SetGameFolder(const AZStd::string& gameFolder)
-{
-    SetString(s_gameFolderKey, gameFolder);
-}
-
-void BootstrapConfigContainer::SetRemoteFileSystem(bool remoteFileSystem)
-{
-    SetBool(s_remoteFileSystemKey, remoteFileSystem);
-}
-
-void BootstrapConfigContainer::SetRemotePort(const AZStd::string& newPort)
-{
-    SetString(s_remotePortKey, newPort);
-}
-
-void BootstrapConfigContainer::SetConnectToRemote(bool connectToRemote)
-{
-    SetBool(s_connectToRemoteKey, connectToRemote);
-}
-
-void BootstrapConfigContainer::SetWaitForConnect(bool waitForConnect)
-{
-    SetBool(s_waitForConnectKey, waitForConnect);
-}
-
-void BootstrapConfigContainer::SetAndroidConnectToRemote(bool androidConnectToRemote)
-{
-    SetBool(s_androidConnectToRemoteKey, androidConnectToRemote);
+    return GetString(remoteIPKey);
 }

@@ -1,0 +1,141 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+    },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/source": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Return an object which contains the gem name",
+                        "schema": {
+                            "$ref": "#/definitions/Source"
+                        }
+                    }
+                }
+            }
+        },
+        "/emit": {
+            "post": {
+                "description": "Create JIRA tickets",
+                "parameters": [
+                    {
+                        "name": "context",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/DefectReports"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Indicate whether the JIRA tickets are created successfully or not",
+                        "schema": {
+                            "$ref": "#/definitions/ResponseStatus"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "ResponseStatus": {
+            "description": "An object to hold the response.",
+            "type": "object",
+            "properties": {
+                "emitted": {
+                    "description": "Emitted event contextual information.",
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "description": "The source of the events.",
+                            "type": "string"
+                        },
+                        "sensitivitylevel": {
+                            "description": "The level of sensitivity of the events.",
+                            "type": "string"
+                        },
+                        "key": {
+                            "description": "The S3 key of the location in which the events are stored.",
+                            "type": "string"
+                        },
+                        "datetimeformat": {
+                            "description": "The datetime format of the event timestamp.",
+                            "type": "string"
+                        },
+                        "buildid": {
+                            "description": "The build identifier associated to the events.",
+                            "type": "string"
+                        },
+                        "type": {
+                            "description": "The type of events.  Example:  cloudgemdefectreporter",
+                            "type": "string"
+                        },
+                        "datetime": {
+                            "description": "The datetime of the events.  Rounded to nearest hour.",
+                            "type": "string"
+                        },
+                        "bucket": {
+                            "description": "The bucket in which the temporary events file is located.",
+                            "type": "string"
+                        },
+                        "filename": {
+                            "description": "The temporary filename.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "source",
+                        "key",
+                        "bucket",
+                        "type"
+                    ]
+                }
+            },
+            "required": [
+                "emitted"
+            ]
+        },
+        "DefectReports": {
+            "description": "An object defining the location of the s3 files of the defect reports to read",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "A string to hold the gem name.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ]
+        },
+        "Source": {
+            "description": "A object to hold the gem name",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "A string to hold the gem name.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ]
+        }
+    }
+}

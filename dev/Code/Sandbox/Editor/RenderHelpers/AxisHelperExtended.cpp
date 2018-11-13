@@ -131,6 +131,8 @@ void CAxisHelperExtended::DrawAxes(DisplayContext& dc, const Matrix34& matrix, b
 //////////////////////////////////////////////////////////////////////////
 void CAxisHelperExtended::DrawAxis(DisplayContext& dc, const Vec3& vDir, const Vec3& vUpAxis, const Vec3& col, bool bUsePhysicalProxy)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     const float fBallSize = 0.005f;
     const float fTextSize = 1.4f;
 

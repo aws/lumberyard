@@ -24,6 +24,7 @@ namespace AZ
         namespace DataTypes
         {
             class IMeshData;
+            class IBlendShapeRule;
         }
     }
     namespace GFxFramework
@@ -127,6 +128,7 @@ namespace EMotionFX
             void SetupMaterialDataForMesh(const ActorBuilderContext& context, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex);
 
             void GetNodeIndicesOfSelectedMeshes(ActorBuilderContext& context, NodeIndexSet& meshNodeIndexSet) const;
+            bool GetIsMorphed(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, const AZ::SceneAPI::DataTypes::IBlendShapeRule* morphTargetRule) const;
 
         private:
             AZStd::shared_ptr<AZ::GFxFramework::IMaterialGroup> m_materialGroup;

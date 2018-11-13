@@ -126,7 +126,7 @@ public:
 
 CTerrainUpdateDispatcher::CTerrainUpdateDispatcher()
 {
-    m_pHeapStorage = CryGetIMemoryManager()->AllocPages(TempPoolSize);
+    m_pHeapStorage = CryMemory::AllocPages(TempPoolSize);
     m_pHeap = CryGetIMemoryManager()->CreateGeneralMemoryHeap(m_pHeapStorage, TempPoolSize, "Terrain temp pool");
 }
 
@@ -141,7 +141,7 @@ CTerrainUpdateDispatcher::~CTerrainUpdateDispatcher()
     }
 
     m_pHeap = NULL;
-    CryGetIMemoryManager()->FreePages(m_pHeapStorage, TempPoolSize);
+    CryMemory::FreePages(m_pHeapStorage, TempPoolSize);
 }
 
 void CTerrainUpdateDispatcher::QueueJob(CTerrainNode* pNode, const SRenderingPassInfo& passInfo)
@@ -215,8 +215,6 @@ bool CTerrainUpdateDispatcher::AddJob(CTerrainNode* pNode, bool executeAsJob, co
 
         if (executeAsJob)
         {
-            ScopedSwitchToGlobalHeap useGlobalHeap;
-
             meshData->m_jobExecutor.Reset();
             meshData->m_jobExecutor.StartJob([pNode, passInfo]() { pNode->BuildIndices_Wrapper(passInfo); });
             meshData->m_jobExecutor.StartJob([pNode]() { pNode->BuildVertices_Wrapper(); });
@@ -327,7 +325,7 @@ void CTerrainUpdateDispatcher::RemoveJob(CTerrainNode* pNode)
     }
 }
 
-PodArray<vtx_idx> CTerrainNode::m_SurfaceIndices[SurfaceTile::MaxSurfaceCount][4];
+PodArray<vtx_idx> CTerrainNode::s_SurfaceIndices[SurfaceTile::MaxSurfaceCount][4];
 
 void CTerrainNode::ResetStaticData()
 {
@@ -335,7 +333,7 @@ void CTerrainNode::ResetStaticData()
     {
         for (int p = 0; p < 4; p++)
         {
-            stl::free_container(m_SurfaceIndices[s][p]);
+            s_SurfaceIndices[s][p].Free();
         }
     }
 }
@@ -347,7 +345,7 @@ void CTerrainNode::GetStaticMemoryUsage(ICrySizer* sizer)
     {
         for (int j = 0; j < 4; ++j)
         {
-            sizer->AddObject(CTerrainNode::m_SurfaceIndices[i][j]);
+            sizer->AddObject(CTerrainNode::s_SurfaceIndices[i][j]);
         }
     }
 }
@@ -917,7 +915,7 @@ void CTerrainNode::RenderSectorUpdate_Finish(const SRenderingPassInfo& passInfo)
                     if (b3D || surfaceType->GetMaterialOfProjection(szProj[p]))
                     {
                         int nProjId = b3D ? p : 3;
-                        PodArray<vtx_idx>& lstIndices = m_SurfaceIndices[surfaceType->ucThisSurfaceTypeId][nProjId];
+                        PodArray<vtx_idx>& lstIndices = s_SurfaceIndices[surfaceType->ucThisSurfaceTypeId][nProjId];
 
                         if (m_DetailLayers[i].triplanarMeshes[p] && (lstIndices.Count() != m_DetailLayers[i].triplanarMeshes[p]->GetIndicesCount()))
                         {
@@ -1041,7 +1039,7 @@ void CTerrainNode::GenerateIndicesForAllSurfaces(IRenderMesh* mesh, int surfaceA
     {
         for (int axis = 0; axis < 4; axis++)
         {
-            m_SurfaceIndices[surfaceId][axis].Clear();
+            s_SurfaceIndices[surfaceId][axis].Clear();
             surfaceAxisIndexCount[surfaceId][axis] = -1;
         }
 
@@ -1122,7 +1120,7 @@ void CTerrainNode::GenerateIndicesForAllSurfaces(IRenderMesh* mesh, int surfaceA
             }
 
             assert(projectionAxis >= 0 && projectionAxis < 4);
-            m_SurfaceIndices[surfaceId][projectionAxis].AddList(triangle, 3);
+            s_SurfaceIndices[surfaceId][projectionAxis].AddList(triangle, 3);
         }
 
         // Reset counters for next triangle

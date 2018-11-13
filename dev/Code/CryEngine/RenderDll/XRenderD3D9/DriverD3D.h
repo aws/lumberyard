@@ -1407,7 +1407,8 @@ public:
     {
         eGT_REGULAR_PATH = 0, // No GMEM path is enabled. Using regular render path.
         eGT_256bpp_PATH,
-        eGT_128bpp_PATH
+        eGT_128bpp_PATH,
+        eGT_PathCount // Must be last
     };
 
     enum EGmemPathState
@@ -1416,6 +1417,20 @@ public:
         eGT_DEV_UNSUPPORTED,        // GMEM path not supported due to device limitations
         eGT_FEATURES_UNSUPPORTED    // Some rendering features are no supported with the GMEM path defined in .cfg file (r_EnableGMEMPath)
     };
+
+    enum EGmemRendertargetType
+    {
+        eGT_Diffuse,
+        eGT_Specular,
+        eGT_Normals,
+        eGT_DepthStencil,
+        eGT_DiffuseLight,
+        eGT_SpecularLight,
+        eGT_VelocityBuffer,
+        eGT_RenderTargetCount // Must be last
+    };
+
+    static const int s_gmemRendertargetSlots[eGT_PathCount][eGT_RenderTargetCount];
 
     // Checks if GMEM path is enabled.
     EGmemPath FX_GetEnabledGmemPath(EGmemPathState* const gmemPathStateOut) const;
@@ -1653,6 +1668,7 @@ public:
     virtual uint32 GetBackBufferHeight() override { return m_backbufferHeight; }
 
     CTexture* FX_GetCurrentRenderTarget(int target);
+    D3DSurface* FX_GetCurrentRenderTargetSurface(int target) const;
 
     // CONFETTI BEGIN: David Srour
     // Following is used to assign load/store actions for the nTarget render target.
@@ -2275,7 +2291,7 @@ inline D3DDeviceContext& CD3D9Renderer::GetDeviceContext()
 void UserOverrideDisplayProperties(DXGI_MODE_DESC& desc);
 #endif
 
-extern CD3D9Renderer gcpRendD3D;
+extern StaticInstance<CD3D9Renderer> gcpRendD3D;
 
 //=========================================================================================
 

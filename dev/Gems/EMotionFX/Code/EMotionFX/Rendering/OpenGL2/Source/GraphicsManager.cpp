@@ -29,6 +29,7 @@
 
 namespace RenderGL
 {
+    size_t GraphicsManager::mNumRandomOffsets = 64;
     GraphicsManager* gGraphicsManager = nullptr;
 
 
@@ -93,8 +94,9 @@ namespace RenderGL
         mSkipLoadingTextures    = false;
 
         // init random offsets
-        MCore::Array<AZ::Vector3> samples = MCore::Random::RandomDirVectorsHalton(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::twoPi, 64);
-        for (uint32 i = 0; i < 64; ++i)
+        mRandomOffsets.resize(mNumRandomOffsets);
+        AZStd::vector<AZ::Vector3> samples = MCore::Random::RandomDirVectorsHalton(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::twoPi, mNumRandomOffsets);
+        for (size_t i = 0; i < mNumRandomOffsets; ++i)
         {
             mRandomOffsets[i] = samples[i] * MCore::Random::RandF(0.1f, 1.0f);
         }

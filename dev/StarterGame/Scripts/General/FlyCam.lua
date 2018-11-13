@@ -165,13 +165,13 @@ function flycam:OnTick(deltaTime)
 	-- update fov
 	if (self.InputValues.Shared.FOVChange ~= 0.0) then
 		self.CamProps.FOV = utilities.Clamp(self.CamProps.FOV + (self.Properties.FOVStep * self.InputValues.Shared.FOVChange), self.Properties.MinFOV, self.Properties.MaxFOV);
-		CameraRequestBus.Event.SetFov(self.entityId, self.CamProps.FOV);
+		CameraRequestBus.Event.SetFovDegrees(self.entityId, self.CamProps.FOV);
 		Debug.Log("FlyCam FOV: " .. self.CamProps.FOV .. " (default is " .. self.CamProps.DefaultFOV .. ")");
 		self.InputValues.Shared.FOVChange = 0.0;
 	end
 	if (self.InputValues.Shared.FOVReset ~= 0.0) then
 		self.CamProps.FOV = self.CamProps.DefaultFOV;
-		CameraRequestBus.Event.SetFov(self.entityId, self.CamProps.FOV);
+		CameraRequestBus.Event.SetFovDegrees(self.entityId, self.CamProps.FOV);
 		Debug.Log("FlyCam FOV Reset to " .. self.CamProps.FOV);
 		self.InputValues.Shared.FOVReset = 0.0;
 	end

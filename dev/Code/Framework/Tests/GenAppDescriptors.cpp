@@ -61,12 +61,16 @@ namespace UnitTest
                 { "Win64",      "DebugEditor",      ".dll"},
                 { "Win64",      "DebugOptEditor",   ".dll"},
                 { "Win64",      "ReleaseEditor",    ".dll"},
-                { "XB1",        "Debug",            ".dll"},
-                { "XB1",        "DebugOpt",         ".dll"},
-                { "XB1",        "Release",          ".dll"},
-                { "PS4",        "Debug",            ".so"},
-                { "PS4",        "DebugOpt",         ".so"},
-                { "PS4",        "Release",          ".so"},
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(GenAppDescriptors_cpp, AZ_RESTRICTED_PLATFORM)
+#elif defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XENIA)
+#include AZ_RESTRICTED_FILE(GenAppDescriptors_cpp, TOOLS_SUPPORT_XENIA)
+#endif
+#if defined(TOOLS_SUPPORT_PROVO)
+#include AZ_RESTRICTED_FILE(GenAppDescriptors_cpp, TOOLS_SUPPORT_PROVO)
+#endif
+#endif
                 { "Linux",      "Debug",            ".so"},
                 { "Linux",      "DebugOpt",         ".so"},
                 { "Linux",      "Release",          ".so"},

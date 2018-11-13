@@ -13,7 +13,7 @@ from __future__ import print_function
 import json
 import boto3
 import CloudCanvas
-
+from cgf_utils import custom_resource_utils
 from botocore.exceptions import ClientError
 
 FLEET_CONFIGURATION_KEY = 'fleet_configuration.json'
@@ -79,7 +79,7 @@ def create_launch_configuration(config):
         'div_task': CloudCanvas.get_setting('DivTask'),
         'build_task': CloudCanvas.get_setting('BuildTask'),
         'merge_task': CloudCanvas.get_setting('MergeTask'),
-        'log_db': CloudCanvas.get_setting('LogDB'),
+        'log_db': custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('LogDB')),
         's3': CloudCanvas.get_setting('S3Bucket')
     }
 

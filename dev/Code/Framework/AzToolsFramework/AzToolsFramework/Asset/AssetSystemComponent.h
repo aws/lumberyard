@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/Component/Component.h>
 #include <AzFramework/Network/SocketConnection.h>
@@ -34,6 +35,7 @@ namespace AzToolsFramework
             , private AzToolsFramework::AssetSystemJobRequestBus::Handler
             , private AzToolsFramework::AssetSystemBus::Handler
             , private AzToolsFramework::ToolsAssetSystemBus::Handler
+            , private AZ::SystemTickBus::Handler
         {
         public:
             AZ_COMPONENT(AssetSystemComponent, "{B1352D59-945B-446A-A7E1-B2D3EB717C6D}")
@@ -61,7 +63,6 @@ namespace AzToolsFramework
             const char* GetAbsoluteDevRootFolderPath() override;
             bool GetRelativeProductPathFromFullSourceOrProductPath(const AZStd::string& fullPath, AZStd::string& outputPath) override;
             bool GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullPath) override;
-            void UpdateQueuedEvents() override;
             bool GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath) override;
             bool GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override;
             bool GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override;
@@ -88,6 +89,11 @@ namespace AzToolsFramework
             // AzToolsFramework::ToolsAssetSystemBus::Handler overrides
             void RegisterSourceAssetType(const AZ::Data::AssetType& assetType, const char* assetFileFilter) override;
             void UnregisterSourceAssetType(const AZ::Data::AssetType& assetType) override;
+            //////////////////////////////////////////////////////////////////////////
+
+            //////////////////////////////////////////////////////////////////////////
+            // SystemTickBus::Handler overrides
+            void OnSystemTick() override;
             //////////////////////////////////////////////////////////////////////////
 
             AzFramework::SocketConnection::TMessageCallbackHandle m_cbHandle = 0;

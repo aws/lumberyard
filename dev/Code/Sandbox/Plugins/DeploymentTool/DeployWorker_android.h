@@ -12,41 +12,34 @@
 
 #pragma once
 
-#include "DeploymentUtil.h"
-#include "DeploymentConfig.h"
-#include "CommandLauncher.h"
-#include "SystemConfigContainer.h"
+#include "DeployWorkerBase.h"
+
 
 // Utility to build/deploy projects for android devices
-class AndroidDeploymentUtil : public DeploymentUtil
+class DeployWorkerAndroid : public DeployWorkerBase
 {
 public:
-    AndroidDeploymentUtil(IDeploymentTool& deploymentTool, DeploymentConfig& cfg);
-    AndroidDeploymentUtil(const AndroidDeploymentUtil& rhs) = delete;
-    AndroidDeploymentUtil& operator=(const AndroidDeploymentUtil& rhs) = delete;
-    AndroidDeploymentUtil& operator=(AndroidDeploymentUtil&& rhs) = delete;
-    ~AndroidDeploymentUtil();
+    DeployWorkerAndroid();
+    ~DeployWorkerAndroid();
 
-    static const char* GetSystemConfigFileName();
+    const char* GetSystemConfigFileName() const override;
+    bool GetConnectedDevices(DeviceMap& connectedDevices) const override;
 
-    void ConfigureAssetProcessor() override;
-    void BuildAndDeploy() override;
-    void DeployFromFile(const AZStd::string& buildPath) override;
+
+protected:
+    AZStd::string GetWafBuildArgs() const override;
+    AZStd::string GetWafDeployArgs() const override;
+
+    StringOutcome Prepare() override;
     StringOutcome Launch() override;
 
+
 private:
+    AZ_DISABLE_COPY_MOVE(DeployWorkerAndroid);
 
-    SystemConfigContainer m_androidConfig;
-    QMetaObject::Connection m_deployCallbackConnection;
-    QMetaObject::Connection m_deployLogConnection;
-    QProcess* m_deployProcess;
 
-    const char* GetBuildTarget() const;
-    const char* GetBuildConfiguration() const;
-    void DeployCallback(int exitCode, QProcess::ExitStatus exitStatus);
-    // try to push bootstrap.cfg to possible emulated sdcard paths in s_internalStoragePaths
-    bool PushBootstrapCfg(QProcess* process);
-    // try to push game.xml to possible emulated sdcard paths in s_internalStoragePaths
-    bool PushGameXml(QProcess* process);
+    AZStd::string m_adbPath;
+    AZStd::string m_package;
+    bool m_installAPK;
 };
 

@@ -11,7 +11,7 @@ import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
         <div *ngIf="options" class="d-inline-block" ngbDropdown>
             <button [ngStyle]="{'width.px': width }" type="button" class="btn l-dropdown" ngbDropdownToggle>
                 <span> {{ dropdownText }} </span>
-                <i class="fa fa-caret-down" aria-hidden="true"></i>
+                <span class="fa fa-caret-down" style="right:5px" aria-hidden="true"></span>
             </button>
             <div class="dropdown-menu" aria-labelledby="priority-dropdown">
                 <button (click)="changedDropdown(option)" type="button" *ngFor="let option of options" class="dropdown-item">

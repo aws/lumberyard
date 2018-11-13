@@ -82,7 +82,7 @@ namespace AZ
 
         /// Maps to the created map. If size == 0 it will map the whole memory.
         bool Map(AccessMode mode = ReadWrite, unsigned int size = 0);
-        bool IsMapped() const;
+        bool IsMapped() const { return m_mappedBase != nullptr; }
         bool UnMap();
 
         /// Naming is conforming with AZStd::lock_guard/unique_lock/etc.

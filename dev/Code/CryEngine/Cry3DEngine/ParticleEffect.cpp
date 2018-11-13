@@ -728,6 +728,7 @@ void ResourceParticleParams::ComputeEnvironmentFlags()
     }
 
     if (!fParticleLifeTime || bRemainWhileVisible                       // Infinite particle lifetime
+        || bDynamicCulling
         || bBindEmitterToCamera                                                             // Visible every frame
         || ePhysicsType >= EPhysics::SimplePhysics)                     // Physicalized particles
     {
@@ -799,10 +800,10 @@ bool ResourceParticleParams::IsActive() const
 #include AZ_RESTRICTED_FILE(ParticleEffect_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
         !Platforms.PublicAuxName1 && platform_spec == CONFIG_##PUBLICNAME ||
         AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
         !Platforms.hasIOS && platform_spec == CONFIG_IOS)
     {

@@ -168,7 +168,6 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 #include "ServerThrottle.h"
 #include "ILocalMemoryUsage.h"
 #include "ResourceManager.h"
-#include "MemoryManager.h"
 #include "LoadingProfiler.h"
 #include "HMDBus.h"
 #include "OverloadSceneManager/OverloadSceneManager.h"
@@ -314,6 +313,8 @@ struct SCVarsWhitelistConfigSink
 
 #if defined(AZ_MONOLITHIC_BUILD)
 SC_API struct SSystemGlobalEnvironment* gEnv = NULL;
+ComponentFactoryCreationNode* ComponentFactoryCreationNode::sm_head = nullptr;
+size_t ComponentFactoryCreationNode::sm_size = 0;
 #endif // AZ_MONOLITHIC_BUILD
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -564,8 +565,6 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
 #endif
 
     m_ConfigPlatform = CONFIG_INVALID_PLATFORM;
-
-    m_GraphicsSettingsMap = nullptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -974,11 +973,6 @@ void CSystem::Quit()
     {
         GetIRenderer()->RestoreGamma();
     }
-    
-#if CAPTURE_REPLAY_LOG
-    CryGetIMemReplay()->Stop();
-#endif
-
 
     /*
     * TODO: This call to _exit, _Exit, TerminateProcess etc. needs to
@@ -1262,8 +1256,7 @@ void CSystem::CreatePhysicsThread()
 #include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
-        {
-            ScopedSwitchToGlobalHeap globalHeap;
+        {            
             m_PhysThread = new CPhysicsThreadTask;
             GetIThreadTaskManager()->RegisterTask(m_PhysThread, threadParams);
         }
@@ -1502,17 +1495,6 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
 #endif // defined(MAP_LOADING_SLICING)
     }
 #endif //EXCLUDE_UPDATE_ON_CONSOLE
-#if CAPTURE_REPLAY_LOG
-    if (CryGetIMemoryManager() && CryGetIMemReplay())
-    {
-        CryGetIMemReplay()->AddFrameStart();
-        if ((--m_ttMemStatSS) <= 0)
-        {
-            CryGetIMemReplay()->AddScreenshot();
-            m_ttMemStatSS = 30;
-        }
-    }
-#endif //CAPTURE_REPLAY_LOG
 
     gEnv->pOverloadSceneManager->Update();
 
@@ -1556,8 +1538,6 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
     }
 #endif //EXCLUDE_UPDATE_ON_CONSOLE
        //////////////////////////////////////////////////////////////////////////
-
-    EBUS_EVENT(AzFramework::AssetSystemRequestBus, UpdateQueuedEvents);
 
     if (m_env.pLog)
     {
@@ -2212,8 +2192,6 @@ bool CSystem::UpdatePostTickBus(int updateFlags, int nPauseMode)
     }
 
     {
-        ScopedSwitchToGlobalHeap globalHeap;
-
         if (it != m_updateTimes.begin())
         {
             m_updateTimes.erase(m_updateTimes.begin(), it);
@@ -2669,8 +2647,15 @@ void CSystem::ApplicationTest(const char* szParam)
     m_pTestSystem->ApplicationTest(szParam);
 }
 
-void CSystem::ExecuteCommandLine()
+void CSystem::ExecuteCommandLine(bool deferred)
 {
+    if (m_executedCommandLine)
+    {
+        return;
+    }
+
+    m_executedCommandLine = true;
+
     // auto detect system spec (overrides profile settings)
     if (m_pCmdLine->FindArg(eCLAT_Pre, "autodetect"))
     {
@@ -2683,7 +2668,6 @@ void CSystem::ExecuteCommandLine()
     assert(pCmdLine);
 
     const int iCnt = pCmdLine->GetArgCount();
-
     for (int i = 0; i < iCnt; ++i)
     {
         const ICmdLineArg* pCmd = pCmdLine->GetArg(i);
@@ -2702,7 +2686,7 @@ void CSystem::ExecuteCommandLine()
                 }
 
                 GetILog()->Log("Executing command from command line: \n%s\n", sLine.c_str()); // - the actual command might be executed much later (e.g. level load pause)
-                GetIConsole()->ExecuteString(sLine.c_str(), false, true);
+                GetIConsole()->ExecuteString(sLine.c_str(), false, deferred);
             }
 #if defined(DEDICATED_SERVER)
 #if defined(CVARS_WHITELIST)
@@ -2783,18 +2767,6 @@ void CSystem::SetConfigPlatform(const ESystemConfigPlatform platform)
 ESystemConfigPlatform CSystem::GetConfigPlatform() const
 {
     return m_ConfigPlatform;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CSystem::SetGraphicsSettingsMap(AZStd::unordered_map<AZStd::string, CVarInfo>* map)
-{
-    m_GraphicsSettingsMap = map;
-}
-
-//////////////////////////////////////////////////////////////////////////
-AZStd::unordered_map<AZStd::string, CVarInfo>* CSystem::GetGraphicsSettingsMap() const
-{
-    return m_GraphicsSettingsMap;
 }
 
 //////////////////////////////////////////////////////////////////////////

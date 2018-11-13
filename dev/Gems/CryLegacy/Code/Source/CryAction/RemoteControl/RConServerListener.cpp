@@ -18,7 +18,7 @@
 #include "IRemoteControl.h"
 #include "RConServerListener.h"
 
-CRConServerListener CRConServerListener::s_singleton;
+StaticInstance<CRConServerListener> CRConServerListener::s_singleton;
 
 IRemoteControlServer* CRConServerListener::s_rcon_server = NULL;
 

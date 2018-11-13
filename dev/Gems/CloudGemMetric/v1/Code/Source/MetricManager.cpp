@@ -42,14 +42,6 @@ namespace CloudGemMetric
     {        
     }
 
-    MetricManager::~MetricManager()
-    {
-        if (m_metricsConfigs.IsNeedLiveUpdate())
-        {
-            FlushLiveUpdateMetricsConfigsToFile();
-        }        
-    }   
-
     bool MetricManager::Init()
     {
         AZStd::lock_guard<AZStd::mutex> lock(m_metricsConfigsMutex);
@@ -83,6 +75,14 @@ namespace CloudGemMetric
         SendStartEvents();
 
         return true;
+    }
+
+    void MetricManager::Shutdown()
+    {
+        if (m_metricsConfigs.IsNeedLiveUpdate())
+        {
+            FlushLiveUpdateMetricsConfigsToFile();
+        }
     }
 
     void MetricManager::GetMetricsConfigsFromServerAsync()

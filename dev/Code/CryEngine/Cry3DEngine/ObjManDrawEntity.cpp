@@ -400,6 +400,7 @@ void CObjManager::RenderObject(IRenderNode* pEnt,
     if (pEnt->m_dwRndFlags & ERF_NO_DECALNODE_DECALS)
     {
         DrawParams.dwFObjFlags |= FOB_DYNAMIC_OBJECT;
+        DrawParams.NoDecalReceiver = true;
     }
 
     DrawParams.m_pVisArea =   pVisArea;

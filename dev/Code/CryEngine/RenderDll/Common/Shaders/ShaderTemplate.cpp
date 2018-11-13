@@ -154,8 +154,7 @@ CShaderResources* CShaderMan::mfCreateShaderResources(const SInputShaderResource
     CShaderResources*   pSR = new CShaderResources(&localCopySR);
     pSR->m_nRefCounter = 1;
     if (!CShader::s_ShaderResources_known.Num())
-    {
-        ScopedSwitchToGlobalHeap globalHeap;
+    {        
         CShader::s_ShaderResources_known.AddIndex(1);
         CShaderResources* pSRNULL = new CShaderResources;
         pSRNULL->m_nRefCounter = 1;
@@ -174,8 +173,7 @@ CShaderResources* CShaderMan::mfCreateShaderResources(const SInputShaderResource
         CShader::s_ShaderResources_known[nFree] = pSR;
     }
     else
-    {
-        ScopedSwitchToGlobalHeap globalHeap;
+    {        
         pSR->m_Id = CShader::s_ShaderResources_known.Num();
         pSR->m_IdGroup = pSR->m_Id;
         CShader::s_ShaderResources_known.AddElem(pSR);
@@ -448,7 +446,7 @@ CTexture* CShaderMan::mfCheckTemplateTexName(const char* mapname, ETEX_Type eTT)
 
         if (slot != EFTT_MAX)
         {
-            return &CTexture::s_ShaderTemplates[slot];
+            return &(*CTexture::s_ShaderTemplates)[slot];
         }
     }
 

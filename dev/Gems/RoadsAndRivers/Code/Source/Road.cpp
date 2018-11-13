@@ -250,7 +250,7 @@ namespace RoadsAndRivers
     {
         for(const auto& renderNode : m_roadRenderNodes)
         {
-            renderNode.GetRenderNode()->SetRndFlags(0);
+            renderNode.GetRenderNode()->SetRndFlags(ERF_COMPONENT_ENTITY);
             renderNode.GetRenderNode()->SetViewDistanceMultiplier(m_viewDistanceMultiplier); 
             renderNode.GetRenderNode()->SetMinSpec(static_cast<AZ::u32>(m_minSpec));
             renderNode.GetRenderNode()->SetSortPriority(m_sortPriority);

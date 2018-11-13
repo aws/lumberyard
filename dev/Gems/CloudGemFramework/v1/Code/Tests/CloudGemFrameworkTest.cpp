@@ -545,8 +545,21 @@ TEST(JsonWriter, Array)
 
 ///////////////////////////////////////////////////////////////////////////////
 // HttpRequestJob Unit Tests
+class HttpRequestJobTest
+    : public ::testing::Test
+{
+    void SetUp() override
+    {
+        CloudGemFramework::HttpRequestJob::StaticInit();
+    }
 
-TEST(HttpRequestJob, StringToHttpMethod)
+    void TearDown() override
+    {
+        CloudGemFramework::HttpRequestJob::StaticShutdown();
+    }
+};
+
+TEST_F(HttpRequestJobTest, StringToHttpMethod)
 {
     EXPECT_EQ(CloudGemFramework::HttpRequestJob::HttpMethod::HTTP_GET, *CloudGemFramework::HttpRequestJob::StringToHttpMethod("GET"));
     EXPECT_EQ(CloudGemFramework::HttpRequestJob::HttpMethod::HTTP_POST, *CloudGemFramework::HttpRequestJob::StringToHttpMethod("POST"));
@@ -562,7 +575,7 @@ TEST(HttpRequestJob, StringToHttpMethod)
 // RequestBuilder Unit Tests
 
 class RequestBuilderTest
-    : public Test
+    : public HttpRequestJobTest
 {
 public:
 

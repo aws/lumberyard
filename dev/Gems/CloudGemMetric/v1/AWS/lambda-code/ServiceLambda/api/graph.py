@@ -62,18 +62,19 @@ def sum_delete_duration(request):
     cw = CloudWatch()
     return cw.sum_delete_duration(util.get_cloudwatch_namespace(os.environ[c.ENV_DEPLOYMENT_STACK_ARN]))
 
-def cli(context, args):        
+def cli(context, args):
+    from resource_manager_common import constant
+    credentials = context.aws.load_credentials()
+
     resources = util.get_resources(context)        
     os.environ[c.ENV_DB_TABLE_CONTEXT] = resources[c.RES_DB_TABLE_CONTEXT]   
     os.environ[c.ENV_DEPLOYMENT_STACK_ARN] = resources[c.RES_LAMBDA_FIFOCONSUMER]   
     os.environ[c.ENV_LAMBDA_PRODUCER] = resources[c.RES_LAMBDA_FIFOPRODUCER]   
-    os.environ[c.ENV_AMOEBA_1] = resources[c.RES_AMOEBA_1]   
-    os.environ[c.ENV_AMOEBA_2] = resources[c.RES_AMOEBA_2]   
-    os.environ[c.ENV_AMOEBA_3] = resources[c.RES_AMOEBA_3]   
-    os.environ[c.ENV_AMOEBA_4] = resources[c.RES_AMOEBA_4]   
-    os.environ[c.ENV_AMOEBA_5] = resources[c.RES_AMOEBA_5]   
+    os.environ[c.ENV_AMOEBA] = resources[c.RES_AMOEBA]
     os.environ[c.ENV_VERBOSE] = str(args.verbose) if args.verbose else ""
     os.environ[c.ENV_REGION] = context.config.project_region
-    os.environ[c.ENV_S3_STORAGE] = resources[c.RES_S3_STORAGE]  
+    os.environ[c.ENV_S3_STORAGE] = resources[c.RES_S3_STORAGE]
+    os.environ["AWS_ACCESS_KEY"] = args.aws_access_key if args.aws_access_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.ACCESS_KEY_OPTION)
+    os.environ["AWS_SECRET_KEY"] = args.aws_secret_key if args.aws_secret_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.SECRET_KEY_OPTION)
     
     print eval(args.function)( type('obj', (object,), {c.ENV_STACK_ID: resources[c.ENV_STACK_ID]}))

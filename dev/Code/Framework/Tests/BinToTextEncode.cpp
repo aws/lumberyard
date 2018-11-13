@@ -29,6 +29,7 @@ namespace UnitTest
     public:
         Base64Test()
             : AllocatorsFixture(15, false)
+            , m_systemEntity(nullptr)
         {
         }
 
@@ -39,11 +40,12 @@ namespace UnitTest
             AllocatorInstance<ThreadPoolAllocator>::Create();
             ComponentApplication::Descriptor desc;
             desc.m_useExistingAllocator = true;
-            m_app.Create(desc);
+            m_systemEntity = m_app.Create(desc);
         }
 
         void TearDown() override
         {
+            delete m_systemEntity;
             m_app.Destroy();
             AllocatorInstance<PoolAllocator>::Destroy();
             AllocatorInstance<ThreadPoolAllocator>::Destroy();
@@ -55,6 +57,7 @@ namespace UnitTest
             
         }
 
+        AZ::Entity* m_systemEntity;
         ComponentApplication m_app;
     };
 

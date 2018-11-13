@@ -21,7 +21,7 @@
 
 #include <Woodpecker/LUA/ui_LUAEditorFindDialog.h>
 
-namespace
+namespace LUAEditorInternal
 {
     // this stuff goes in  the user preferences rather than the global stuff:
     class FindSavedState
@@ -187,7 +187,7 @@ namespace LUAEditor
     {
         if (m_bAnyDocumentsOpen)
         {
-            auto pState = AZ::UserSettings::CreateFind<FindSavedState>(m_bWasFindInAll ? AZ_CRC("LUAFindInAny", 0x9b85f4f9) : AZ_CRC("FindInCurrent", 0xba0962af), AZ::UserSettings::CT_LOCAL);
+            auto pState = AZ::UserSettings::CreateFind<LUAEditorInternal::FindSavedState>(m_bWasFindInAll ? AZ_CRC("LUAFindInAny", 0x9b85f4f9) : AZ_CRC("FindInCurrent", 0xba0962af), AZ::UserSettings::CT_LOCAL);
             pState->m_lastSearchInFilesMode = m_gui->searchWhereComboBox->currentIndex();
         }
     }
@@ -198,7 +198,7 @@ namespace LUAEditor
         // restore prior global mode:
         if (m_bAnyDocumentsOpen)
         {
-            auto pState = AZ::UserSettings::Find<FindSavedState>(findInAny ? AZ_CRC("LUAFindInAny", 0x9b85f4f9) : AZ_CRC("FindInCurrent", 0xba0962af), AZ::UserSettings::CT_LOCAL);
+            auto pState = AZ::UserSettings::Find<LUAEditorInternal::FindSavedState>(findInAny ? AZ_CRC("LUAFindInAny", 0x9b85f4f9) : AZ_CRC("FindInCurrent", 0xba0962af), AZ::UserSettings::CT_LOCAL);
             if (pState)
             {
                 m_gui->searchWhereComboBox->setCurrentIndex(pState->m_lastSearchInFilesMode); // theres three options!
@@ -1372,7 +1372,7 @@ namespace LUAEditor
 
     void LUAEditorFindDialog::Reflect(AZ::ReflectContext* reflection)
     {
-        FindSavedState::Reflect(reflection);
+        LUAEditorInternal::FindSavedState::Reflect(reflection);
     }
 }//namespace LUAEditor
 

@@ -15,6 +15,9 @@
 #include "EditorToolsApplication.h"
 
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+#include <AzToolsFramework/Thumbnails/ThumbnailerComponent.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
+#include <AzToolsFramework/MaterialBrowser/MaterialBrowserComponent.h>
 #include <ParseEngineConfig.h>
 #include <Crates/Crates.h>
 #include <Engines/EnginesAPI.h> // For LyzardSDK
@@ -64,6 +67,9 @@ namespace EditorInternal
         AZ::ComponentTypeList components = AzToolsFramework::ToolsApplication::GetRequiredSystemComponents();
 
         components.emplace_back(azrtti_typeid<AZ::CratesHandler>());
+        components.emplace_back(azrtti_typeid<AzToolsFramework::Thumbnailer::ThumbnailerComponent>());
+        components.emplace_back(azrtti_typeid<AzToolsFramework::AssetBrowser::AssetBrowserComponent>());
+        components.emplace_back(azrtti_typeid<AzToolsFramework::MaterialBrowser::MaterialBrowserComponent>());
 
         return components;
     }
@@ -72,23 +78,16 @@ namespace EditorInternal
     void EditorToolsApplication::StartCommon(AZ::Entity* systemEntity)
     {
         AzToolsFramework::ToolsApplication::StartCommon(systemEntity);
+        if (systemEntity->GetState() != AZ::Entity::ES_ACTIVE)
+        {
+            m_StartupAborted = true;
+            return;
+        }
 
         AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::LoadDynamicModule, "LyzardEngines", AZ::ModuleInitializationSteps::ActivateEntity, true);
         AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::LoadDynamicModule, "LyzardGems", AZ::ModuleInitializationSteps::ActivateEntity, true);
         AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::LoadDynamicModule, "LyzardProjects", AZ::ModuleInitializationSteps::ActivateEntity, true);
     }
-
-
-    AZ::Outcome<AZStd::string, AZStd::string> EditorToolsApplication::ResolveToolApplicationPath(const char* toolName)
-    {
-        Engines::EngineId activeEngineId;
-        Engines::EngineManagerRequestBus::BroadcastResult(activeEngineId, &Engines::EngineManagerRequests::GetActiveEngineId);
-
-        AZ::Outcome<AZStd::string, AZStd::string> resolveEngineToolPathResult = AZ::Failure(AZStd::string("Failed calling Engines::EngineManagerRequestBus::GetActiveEngineId()"));
-        Engines::EngineRequestBus::EventResult(resolveEngineToolPathResult, activeEngineId, &Engines::EngineRequests::ResolveEngineToolPath, AZStd::string(toolName), true);
-        return resolveEngineToolPathResult;
-    }
-
 
     bool EditorToolsApplication::Start(int argc, char* argv[])
     {

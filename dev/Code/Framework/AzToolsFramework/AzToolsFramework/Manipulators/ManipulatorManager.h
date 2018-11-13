@@ -94,6 +94,8 @@ namespace AzToolsFramework
             ViewportInteraction::KeyboardModifiers keyboardModifiers,
             const ViewportInteraction::MousePick& mousePick);
 
+        bool Interacting() const { return m_activeManipulator != nullptr; }
+
     private:
         /**
          * @param rayOrigin The origin of the ray to test intersection with.
@@ -106,8 +108,6 @@ namespace AzToolsFramework
 
         // EditorEntityInfoNotifications
         void OnEntityInfoUpdatedVisibility(AZ::EntityId entityId, bool visible) override;
-
-        bool Interacting() const { return m_activeManipulator != nullptr; }
 
         ManipulatorManagerId m_manipulatorManagerId; ///< This manipulator manager's id.
         ManipulatorId m_nextManipulatorIdToGenerate; ///< Id to use for the next manipulator that is registered with this manager.

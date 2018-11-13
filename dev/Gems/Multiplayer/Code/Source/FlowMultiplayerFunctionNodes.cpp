@@ -66,13 +66,13 @@ namespace
     const char* g_multiplayerListServersLANNodePath = "Multiplayer:Functions:LAN:ListServers";
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_LANPATH
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XENIA)
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_LANPATH
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PROVO)
 #endif
 #endif
 }
@@ -1047,13 +1047,13 @@ public:
 // </LAN>
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_FLOWNODES
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XENIA)
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_FLOWNODES
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PROVO)
 #endif
 #endif
 
@@ -1116,13 +1116,13 @@ REGISTER_FLOW_NODE(g_multiplayerConnectLANNodePath,LANFlowNode_Connect);
 REGISTER_FLOW_NODE(g_multiplayerListServersLANNodePath,LANFlowNode_ListServers);
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_REGISTERNODES
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XENIA)
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_REGISTERNODES
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PROVO)
 #endif
 #endif
 

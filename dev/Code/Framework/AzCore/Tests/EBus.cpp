@@ -2581,40 +2581,101 @@ namespace UnitTest
     struct SimulatedTickBusHandler
         : public SimulatedTickBus::Handler
     {
-        void OnTick() override {}
-        void OnPayload(size_t) override {}
+        void OnTick() override 
+        {
+            // do something non trivial here so that it doesn't optimize out or something...
+            AZStd::this_thread::yield();
+            m_ticks++;
+        }
+        void OnPayload(size_t) override 
+        {
+            m_payloads++;
+        }
+
+        AZStd::atomic<size_t> m_ticks = { 0 };
+        AZStd::atomic<size_t> m_payloads = { 0 };
     };
 
     TEST_F(EBus, QueueDuringDispatchOnSingleThreadedBus)
     {
+        // make sure that its okay to queue events from any thread, on an EBUS with no mutex protecting its dispatch
+        // (only its queue).
+        // the general startegy here will be to start a 'main thread' which will be ticking as fast as it can
+        // (with some thread yielding) and many child threads which are placing many messages into the queue as they can
+        // (with some thread yielding also).
+        // to make it extra likely that we find problems we will make sure the main thread is already ticking before we
+        // create any child threads, and we will also have all the child threads 'line up' to start with, before they start
+        // spamming to maximize the contention.
         const size_t numLoops = 10000;
-        auto mainLoop = [numLoops]()
-        {
-            size_t loops = 0;
-            while (loops++ < numLoops)
-            {
-                SimulatedTickBus::ExecuteQueuedEvents();
-                SimulatedTickBus::Event(0, &SimulatedTickBus::Events::OnTick);
-            }
-        };
-
-        auto workerLoop = [numLoops]()
-        {
-            size_t loops = 0;
-            while (loops++ < numLoops)
-            {
-                SimulatedTickBus::QueueEvent(0, &SimulatedTickBus::Events::OnPayload, loops);
-            }
-        };
+        const int numThreads = 8;
 
         SimulatedTickBusHandler handler;
         handler.BusConnect(0);
 
-        AZStd::thread mainThread(mainLoop);
-        AZStd::thread workerThread(workerLoop);
+        AZStd::atomic_int numThreadsWarmedUp = { false };
+        AZStd::atomic_bool mainloopStop = { false };
+        AZStd::atomic_int numFunctionsQueued = { 0 };
+        auto mainLoop = [&mainloopStop, &handler]()
+        {
+            while (mainloopStop.load() == false)
+            {
+                SimulatedTickBus::ExecuteQueuedEvents();
+                SimulatedTickBus::Event(0, &SimulatedTickBus::Events::OnTick);
+            }
+            
+            // empty the queued events after we terminate just in case there are leftover events.
+            SimulatedTickBus::ExecuteQueuedEvents();
+        };
 
+        auto incrementFunctionQueue = [&numFunctionsQueued]()
+        {
+            numFunctionsQueued++;
+        };
+
+        auto workerLoop = [numLoops, &numThreadsWarmedUp, numThreads, incrementFunctionQueue]()
+        {
+            numThreadsWarmedUp++;
+            while (numThreadsWarmedUp.load() != numThreads)
+            {
+                AZStd::this_thread::yield(); // prepare to go!
+            }
+
+            size_t loops = 0;
+            while (loops++ < numLoops)
+            {
+                SimulatedTickBus::QueueEvent(0, &SimulatedTickBus::Events::OnPayload, loops);
+                SimulatedTickBus::QueueFunction(incrementFunctionQueue);
+                AZStd::this_thread::yield();
+            }
+        };
+
+
+        AZStd::thread mainThread(mainLoop);
+        // wait for the main thread to start ticking:
+        while (handler.m_ticks.load() == 0)
+        {
+            AZStd::this_thread::yield();
+        }
+
+        // start the other threads.  They'll actually go all at once:
+        AZStd::vector<AZStd::thread> threadsToJoin;
+        threadsToJoin.reserve(numThreads);
+
+        // simulate a lot of threads spamming the queue rapidly:
+        for (int threadIdx = 0; threadIdx < numThreads; ++threadIdx)
+        {
+            threadsToJoin.emplace_back(AZStd::thread(workerLoop));
+        }
+
+        for (AZStd::thread& thread : threadsToJoin)
+        {
+            thread.join();
+        }
+
+        mainloopStop = true;
         mainThread.join();
-        workerThread.join();
+
+        EXPECT_EQ(handler.m_payloads, ((size_t)numThreads) * numLoops);
     }
 
     struct LastHandlerDisconnectInterface
@@ -2796,15 +2857,15 @@ namespace Benchmark
 
         explicit Connector(::benchmark::State& state)
         {
-            int numAddresses = state.range(0);
-            int numHandlers = state.range(1);
+            int64_t numAddresses = state.range(0);
+            int64_t numHandlers = state.range(1);
 
             // Connect handlers
-            for (int address = 0; address < numAddresses; ++address)
+            for (int64_t  address = 0; address < numAddresses; ++address)
             {
-                for (int handler = 0; handler < numHandlers; ++handler)
+                for (int64_t  handler = 0; handler < numHandlers; ++handler)
                 {
-                    m_handlers.emplace_back(AZStd::make_unique<HandlerT>(address));
+                    m_handlers.emplace_back(AZStd::make_unique<HandlerT>(static_cast<int>(address)));
                 }
             }
         }

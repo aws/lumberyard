@@ -1,0 +1,15 @@
+﻿<div [ngSwitch]="isLoading">
+    <div *ngSwitchCase="true">
+        <loading-spinner></loading-spinner>
+    </div>
+    <div *ngSwitchCase="false">
+        <form class="raw-data-container">
+            <div *ngFor="let key of rawDataKeys">
+                <div *ngIf="defect[key] != ''" class="form-group row">
+                    <label class="col-3 col-form-label affix">{{key}}</label>
+                    <label class="col-6 form-control affix">{{defect[key]}}</label>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

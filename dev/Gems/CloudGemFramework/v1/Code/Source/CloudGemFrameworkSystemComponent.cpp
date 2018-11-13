@@ -12,6 +12,7 @@
 
 #include "CloudGemFrameworkSystemComponent.h"
 #include "CloudGemFramework/AwsApiJob.h"
+#include "CloudGemFramework/HttpRequestJob.h"
 
 #include <aws/core/auth/AWSCredentialsProvider.h>
 
@@ -90,6 +91,7 @@ namespace CloudGemFramework
 
     void CloudGemFrameworkSystemComponent::Activate()
     {
+        HttpRequestJob::StaticInit();
         CloudGemFrameworkRequestBus::Handler::BusConnect();
         CloudCanvasCommon::CloudCanvasCommonNotificationsBus::Handler::BusConnect();
     }
@@ -123,14 +125,14 @@ namespace CloudGemFramework
             AZ_Error(COMPONENT_DISPLAY_NAME, g_jobCount == 0, "%i AwsApiJob objects were not deleted before CloudGemFrameworkSystemComponent was deactivated.", (int)g_jobCount);
         }
 #endif
-
+        HttpRequestJob::StaticShutdown();
     }
 
     AZStd::string CloudGemFrameworkSystemComponent::GetServiceUrl(const AZStd::string& serviceName) {
         AZStd::string configName = serviceName + ".ServiceApi";
         AZStd::string serviceUrl;
         EBUS_EVENT_RESULT(serviceUrl, CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, configName);
-        AZ_Error(COMPONENT_DISPLAY_NAME, !serviceUrl.empty(), "No mapping provided for the %s service.", serviceName.c_str());
+        AZ_Warning(COMPONENT_DISPLAY_NAME, !serviceUrl.empty(), "No mapping provided for the %s service.", serviceName.c_str());
         return serviceUrl;
     }
 

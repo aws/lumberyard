@@ -383,6 +383,14 @@
                         "Role"
                     ]
                 },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
                         "ServiceLambdaConfiguration",
@@ -443,6 +451,14 @@
                         "Role"
                     ]
                 },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "CustomAuthFlowLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
                         "CustomAuthFlowLambdaConfiguration",
@@ -480,7 +496,7 @@
                 "Action" : "lambda:InvokeFunction",
                 "FunctionName": { "Ref":  "CustomAuthFlowLambda" },
                 "Principal" : "cognito-idp.amazonaws.com",
-                "SourceArn" : { "Fn::Join": [ "", [ "arn:aws:cognito-idp:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":userpool/", { "Ref": "PlayerUserPool" } ] ] }
+                "SourceArn" : { "Fn::Join": [ "", [ "arn:aws:cognito-idp:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":userpool/", { "Fn::GetAtt" : [ "PlayerUserPool", "UserPoolId" ] } ] ] }
             }
         }
     }

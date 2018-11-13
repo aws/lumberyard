@@ -872,11 +872,6 @@ ICompiler* CAnimationConvertor::CreateCompiler()
     return new CAnimationCompiler(this);
 }
 
-bool CAnimationConvertor::SupportsMultithreading() const
-{
-    return true;
-}
-
 void CAnimationConvertor::IncrementChangedAnimationCount()
 {
     ++m_changedAnimationCount;
@@ -1385,7 +1380,8 @@ bool CAnimationCompiler::ProcessCBA()
         }
 
         CAnimationManager animationManager;
-        ThreadUtils::StealingThreadPool pool(m_CC.threads, true);
+        const static int numThreads = 1;    // RC does not support multiple threads
+        ThreadUtils::StealingThreadPool pool(numThreads, true);
 
         RCLog("Processing CBA, source folder: %s", m_CC.sourceFolder);
 

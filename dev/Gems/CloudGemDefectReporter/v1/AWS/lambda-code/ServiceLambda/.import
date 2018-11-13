@@ -1,3 +1,5 @@
 CloudGemFramework.LambdaService
 CloudGemDefectReporter.Constant
 CloudGemDefectReporter.AWS
+CloudGemDefectReporter.Python
+CloudGemDefectReporter.DefectReporterCommon

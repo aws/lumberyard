@@ -15,8 +15,9 @@
 #include <GridMate/Types.h>
 #include <GridMate/String/string.h>
 #include <GridMate/EBus.h>
-#include <GridMate/Carrier/TrafficControl.h>
+#include <GridMate/Carrier/Compressor.h>
 #include <GridMate/Carrier/Driver.h>
+#include <GridMate/Carrier/TrafficControl.h>
 
 #include <AzCore/Driller/DrillerBus.h>
 #include <AzCore/Driller/Driller.h>
@@ -111,9 +112,9 @@ namespace GridMate
         * responsibility of the callback creator to add thread safety.
         *
         * This adds reasonable overhead to the carrier data handling, and so should only be used when a callback is essential to operations.
-        *
+         *
         * Note: ACK callback is not supported with broadcast targets and will assert.
-        */
+         */
         virtual void            SendWithCallback(const char* data, unsigned int dataSize, AZStd::unique_ptr<CarrierACKCallback> ackCallback, ConnectionID target = AllConnections, DataReliability reliability = SEND_RELIABLE, DataPriority priority = PRIORITY_NORMAL, unsigned char channel = 0) = 0;
         /**
         * Sends a buffer to the target with the parameterized reliability, priority and channel.
@@ -146,8 +147,6 @@ namespace GridMate
         virtual void                Update() = 0;
 
         virtual unsigned int        GetNumConnections() const = 0;
-
-        virtual ConnectionID        GetConnectionId(unsigned int index) const = 0;
 
         //virtual ConnectionStates  GetConnectionState(unsigned int index) const = 0;
         //virtual ConnectionStates  GetConnectionState(ConnectionID id) const = 0;
@@ -183,6 +182,7 @@ namespace GridMate
         virtual void            DebugEnableDisconnectDetection(bool isEnabled)                  { (void)isEnabled; }
         virtual bool            DebugIsEnableDisconnectDetection() const                        { return false; }
         // @}
+        virtual ConnectionID    DebugGetConnectionId(unsigned int index) const = 0;
 
         //////////////////////////////////////////////////////////////////////////
         // Synchronized clock in milliseconds. It will wrap around ~49.7 days.
@@ -219,6 +219,7 @@ namespace GridMate
         unsigned int m_maxSendRateMS;           ///< Maximum send rate in milliseconds.
         unsigned int m_connectionRetryIntervalBase;
         unsigned int m_connectionRetryIntervalMax;
+        unsigned int m_batchPacketCount;        ///< Number of packets queued to force send (rather than wait for m_maxSendRateMS expiration)
     };
 
     /**
@@ -255,6 +256,7 @@ namespace GridMate
             , m_maxConnections(~0u)
             , m_connectionRetryIntervalBase(10)
             , m_connectionRetryIntervalMax(1000)
+            , m_sendBatchPacketCount(0)         //0 = instant send; N = wait for N full packets or m_threadUpdateTimeMS timeout
         {}
 
         // connection params, driver interfaces, status callbacks
@@ -263,7 +265,7 @@ namespace GridMate
         class Handshake*                m_handshake;
         class Simulator*                m_simulator;
 
-        class CompressionFactory*       m_compressionFactory;       ///< Abstract factory to provide carrier with compression implementation
+        AZStd::shared_ptr<CompressionFactory>       m_compressionFactory;       ///< Abstract factory to provide carrier with compression implementation
 
         int                             m_familyType;               ///< Family type (this is driver specific value) for default family use 0.
         const char*                     m_address;                  ///< Communication address, when 0 we use any address otherwise we bind a specific one.
@@ -314,6 +316,7 @@ namespace GridMate
 
         unsigned int m_connectionRetryIntervalBase; ///< Base for expotential backoff of connection request retries (ie. if it's 30, will retry connection request with 30, 60, 120, 240 msec, ... delays)
         unsigned int m_connectionRetryIntervalMax; ///< Cap for interval between connection requests
+        unsigned int m_sendBatchPacketCount;            ///< Number of packets queued to force send (rather than wait for m_maxSendRateMS expiration)
     };
 
     /**
@@ -470,6 +473,22 @@ namespace GridMate
             (void)carrier;
             (void)id;
             (void)sendLimitBytesPerSec;
+        };
+
+        /**
+         * Notifies of message arrival
+         *
+         * Note: as with all EBUS functions the callee must add thread safety if required
+         *
+         * carrier ptr to carrier
+         * id connection with new message
+         * channel channel receiving message
+         */
+        virtual void OnReceive(Carrier* carrier, ConnectionID id, unsigned char channel)
+        {
+            (void)carrier;
+            (void)id;
+            (void)channel;
         };
     };
 

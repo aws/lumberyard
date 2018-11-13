@@ -23,8 +23,8 @@
 
 enum EAnimKeyFlags
 {
-    //! This key is selected in track view.
-    AKEY_SELECTED = 0x01,
+    AKEY_SELECTED = 0x01,       //! This key is selected in track view.
+    AKEY_SORT_MARKER = 0x02     //! Internal use to locate a key after a sort.
 };
 
 //! Interface to animation key.
@@ -240,21 +240,25 @@ struct ITimeRangeKey
         return endTime;
     }
 
-    float GetActualDuration() const
+    float GetValidSpeed() const
     {
-        float endTime = GetValidEndTime();
         float speed = m_speed;
         if (speed <= 0.0f)
         {
             speed = 1.0f;
         }
-        return (endTime - m_startTime) / speed;
+        return speed;
+    }
+
+    float GetActualDuration() const
+    {
+        return (GetValidEndTime() - m_startTime) / GetValidSpeed();
     }
 
     // Return true if the input time falls in range of the start/end time for this key.
     bool IsInRange(float sequenceTime) const
     {
-        return sequenceTime >= (time + m_startTime) && sequenceTime <= (time + GetValidEndTime());
+        return sequenceTime >= time && sequenceTime <= (time + GetActualDuration());
     }
 };
 

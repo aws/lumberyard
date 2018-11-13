@@ -9,9 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef ASSETPROCESSINGSTATEDATAUNITTEST_H
-#define ASSETPROCESSINGSTATEDATAUNITTEST_H
-#ifdef UNIT_TEST
+#pragma once
+
 #include "UnitTestRunner.h"
 
 namespace AssetProcessor
@@ -36,5 +35,3 @@ public Q_SLOTS:
 private:
 };
 
-#endif
-#endif // ASSETPROCESSINGSTATEDATAUNITTEST_H

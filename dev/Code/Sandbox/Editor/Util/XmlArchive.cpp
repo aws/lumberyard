@@ -144,8 +144,7 @@ bool CXmlArchive::SaveToPak(const QString& levelPath, CPakFile& pakFile)
 //////////////////////////////////////////////////////////////////////////
 bool CXmlArchive::LoadFromPak(const QString& levelPath, CPakFile& pakFile)
 {
-    // Add a path separator to GetRelativePath because it may or may not return a path with a trailing separator.
-    QString xmlFilename = Path::AddSlash(Path::GetRelativePath(levelPath)) + "Level.editor_xml";
+    QString xmlFilename = QDir(levelPath).absoluteFilePath("Level.editor_xml");
     root = XmlHelpers::LoadXmlFromFile(xmlFilename.toUtf8().data());
     if (!root)
     {

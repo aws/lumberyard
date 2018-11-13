@@ -39,7 +39,6 @@
 #include <StringUtils.h>
 #include "NullImplementation/NullInput.h"
 #include "NullImplementation/NullResponseSystem.h"
-#include "MemoryManager.h"
 #include <IThreadManager.h>
 
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
@@ -133,7 +132,6 @@
 #include "ZLibCompressor.h"
 #include "ZLibDecompressor.h"
 #include "LZ4Decompressor.h"
-#include "LevelHeap.h"
 #include "OverloadSceneManager/OverloadSceneManager.h"
 #include "ServiceNetwork.h"
 #include "RemoteCommand.h"
@@ -450,6 +448,32 @@ struct SysSpecOverrideSink
                         applyCvar = true;
                     }
                 }
+                else
+                {
+                    // This could bypass the restricted/whitelisted cvar checks that exist elsewhere depending on
+                    // the calling code so we also need check here before setting.
+                    bool isConst = pCvar->IsConstCVar();
+                    bool isCheat = ((pCvar->GetFlags() & (VF_CHEAT | VF_CHEAT_NOCHECK | VF_CHEAT_ALWAYS_CHECK)) != 0);
+                    bool isReadOnly = ((pCvar->GetFlags() & VF_READONLY) != 0);
+                    bool isDeprecated = ((pCvar->GetFlags() & VF_DEPRECATED) != 0);
+                    bool allowApplyCvar = true;
+                    bool whitelisted = true;
+
+#if defined CVARS_WHITELIST
+                    ICVarsWhitelist* cvarWhitelist = gEnv->pSystem->GetCVarsWhiteList();
+                    whitelisted = cvarWhitelist ? cvarWhitelist->IsWhiteListed(szKey, true) : true;
+#endif
+
+                    if ((isConst || isCheat || isReadOnly) || isDeprecated)
+                    {
+                        allowApplyCvar = !isDeprecated && (gEnv->pSystem->IsDevMode()) || (gEnv->IsEditor());
+                    }
+
+                    if ((allowApplyCvar && whitelisted) || ALLOW_CONST_CVAR_MODIFICATIONS)
+                    {
+                        applyCvar = true;
+                    }
+                }
             }
 
             if (applyCvar)
@@ -521,7 +545,7 @@ static ESystemConfigPlatform GetDevicePlatform()
 #endif
 }
 
-static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string& cfgFile, int platform)
+static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string& cfgFile, ESystemConfigPlatform platform)
 {
     switch (platform)
     {
@@ -539,16 +563,18 @@ static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string& cfgFile, int pla
 #include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
     case CONFIG_##PUBLICNAME:\
         cfgFile = #publicname;\
         break;
         AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
+    case CONFIG_OSX_METAL:
+        cfgFile = "osx_metal";
+        break;
     case CONFIG_APPLETV:
     case CONFIG_OSX_GL:
-    case CONFIG_OSX_METAL:
         // Spec level is hardcoded for these platforms
         cfgFile = "";
         return;
@@ -605,10 +631,10 @@ static void LoadDetectedSpec(ICVar* pVar)
     no_recursive = true;
 
     int spec = pVar->GetIVal();
-    int platform = GetDevicePlatform();
+    ESystemConfigPlatform platform = GetDevicePlatform();
     if (gEnv->IsEditor())
     {
-        int configPlatform = GetISystem()->GetConfigPlatform();
+        ESystemConfigPlatform configPlatform = GetISystem()->GetConfigPlatform();
         // Check if the config platform is set first. 
         if (configPlatform != CONFIG_INVALID_PLATFORM)
         {
@@ -723,7 +749,7 @@ static void LoadDetectedSpec(ICVar* pVar)
 #include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
         case CONFIG_##PUBLICNAME:\
         {\
             pVar->Set(CONFIG_LOW_SPEC);\
@@ -731,7 +757,7 @@ static void LoadDetectedSpec(ICVar* pVar)
             break;\
         }
         AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
         case CONFIG_APPLETV:
         {
@@ -748,7 +774,7 @@ static void LoadDetectedSpec(ICVar* pVar)
         case CONFIG_OSX_METAL:
         {
             pVar->Set(CONFIG_HIGH_SPEC);
-            GetISystem()->LoadConfiguration("osx_metal.cfg", pSysSpecOverrideSinkConsole);
+            GetISystem()->LoadConfiguration("osx_metal_high.cfg", pSysSpecOverrideSinkConsole);
             break;
         }
         default:
@@ -767,11 +793,25 @@ static void LoadDetectedSpec(ICVar* pVar)
     if (gEnv->pRenderer)
     {
         gEnv->pRenderer->EF_Query(EFQ_MultiGPUEnabled, bMultiGPUEnabled);
+
+#if defined(AZ_PLATFORM_ANDROID)
+        AZStd::string gpuConfigFile;
+        const AZStd::string& adapterDesc = gEnv->pRenderer->GetAdapterDescription();
+        const AZStd::string& apiver = gEnv->pRenderer->GetApiVersion();
+
+        if (!adapterDesc.empty())
+        {
+            MobileSysInspect::GetSpecForGPUAndAPI(adapterDesc, apiver, gpuConfigFile);
+            GetISystem()->LoadConfiguration(gpuConfigFile.c_str(), pSysSpecOverrideSinkConsole);
+        }
+#endif        
     }
     if (bMultiGPUEnabled)
     {
         GetISystem()->LoadConfiguration("mgpu.cfg");
     }
+
+    // override cvars just loaded based on current API version/GPU
 
     bool bChangeServerSpec = true;
     if (gEnv->pGame && gEnv->bMultiplayer)
@@ -780,7 +820,7 @@ static void LoadDetectedSpec(ICVar* pVar)
     }
     if (bChangeServerSpec)
     {
-        GetISystem()->SetConfigSpec((ESystemConfigSpec)spec, (ESystemConfigPlatform)platform, false);
+        GetISystem()->SetConfigSpec(static_cast<ESystemConfigSpec>(spec), platform, false);
     }
 
     if (gEnv->p3DEngine)
@@ -904,9 +944,6 @@ bool CSystem::UnloadDLL(const char* dllName)
 //////////////////////////////////////////////////////////////////////////
 bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClassName, const SSystemInitParams& initParams)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "InitializeEngineModule");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "%s", moduleClassName);
-
     bool bResult = false;
 
     stack_string msg;
@@ -966,7 +1003,6 @@ bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClas
     AZStd::shared_ptr<IEngineModule> pModule;
     if (CryCreateClassInstance(moduleClassName, pModule))
     {
-        MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Initialize module: %s", moduleClassName);
         bResult = pModule->Initialize(m_env, initParams);
     }
 
@@ -975,7 +1011,7 @@ bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClas
         GetIMemoryManager()->GetProcessMemInfo(memEnd);
 
         uint64 memUsed = memEnd.WorkingSetSize - memStart.WorkingSetSize;
-        AZ_TracePrintf(moduleClassName, "Initializing %s done, MemUsage=%dKb", dllName, uint32(memUsed / 1024));
+        AZ_TracePrintf("Initializing %s %s, MemUsage=%uKb", dllName, pModule ? "done" : "failed", uint32(memUsed / 1024));
     }
 
     return bResult;
@@ -1748,8 +1784,7 @@ void OnDrawHelpersStrChange(ICVar* pVar)
 bool CSystem::InitPhysics(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Physics, 0, "Init Physics");
-
+    
     const char* moduleName = "EngineModule_CryPhysics";
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_9
@@ -2083,8 +2118,6 @@ bool CSystem::InitAISystem(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init AISystem ");
-
     CryLegacyAISystemRequestBus::BroadcastResult(m_env.pAISystem, &CryLegacyAISystemRequests::InitAISystem);
 
     if (!m_env.pAISystem)
@@ -2100,8 +2133,6 @@ bool CSystem::InitAISystem(const SSystemInitParams& initParams)
 bool CSystem::InitScriptSystem(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
-
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_LUA, 0, "Init ScriptSystem");
 
     CryLegacyScriptSystemRequestBus::BroadcastResult(m_env.pScriptSystem, &CryLegacyScriptSystemRequests::InitScriptSystem);
 
@@ -2790,17 +2821,13 @@ void CSystem::ShutdownFileSystem()
 bool CSystem::InitFileSystem_LoadEngineFolders(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION;
-
-    // This CVar needs to be present before any files are loaded
-    REGISTER_INT("sys_FilesystemCaseSensitivity", 0, VF_NULL, "0 = Ignore letter casing mismatches, 1 = Show warning on mismatch, 2 = Show error on mismatch");
-
     // Load value of sys_game_folder from system.cfg into the sys_game_folder console variable
     {
         ILoadConfigurationEntrySink* pCVarsWhiteListConfigSink = GetCVarsWhiteListConfigSink();
         LoadConfiguration(m_systemConfigName.c_str(), pCVarsWhiteListConfigSink);
         AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Loading system configuration from %s...", m_systemConfigName.c_str());
     }
-    
+
     GetISystem()->SetConfigPlatform(GetDevicePlatform());
     
 #if defined(CRY_ENABLE_RC_HELPER)
@@ -2877,8 +2904,6 @@ bool CSystem::InitFont(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init FontSystem");
-
     if (!InitializeEngineModule(DLL_FONT, "EngineModule_CryFont", initParams))
     {
         return false;
@@ -2912,8 +2937,7 @@ bool CSystem::InitFont(const SSystemInitParams& initParams)
 bool CSystem::Init3DEngine(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init 3D Engine");
-
+    
     if (!InitializeEngineModule(DLL_3DENGINE, "EngineModule_Cry3DEngine", initParams))
     {
         return false;
@@ -2939,8 +2963,6 @@ bool CSystem::Init3DEngine(const SSystemInitParams& initParams)
 bool CSystem::InitAudioSystem(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init Audio System");
-
     // Initialize the main Audio system and implementation modules.
     bool bAudioInitSuccess = false;
     if (!initParams.bPreview
@@ -2985,8 +3007,7 @@ bool CSystem::InitAudioSystem(const SSystemInitParams& initParams)
 bool CSystem::InitAnimationSystem(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init AnimationSystem");
-
+    
     bool success = false;
     CryLegacyAnimationRequestBus::BroadcastResult(success, &CryLegacyAnimationRequests::InitCharacterManager, initParams);
 
@@ -3032,8 +3053,6 @@ bool CSystem::InitShine(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init LyShine");
-
     EBUS_EVENT(UiSystemBus, InitializeSystem);
 
     if (!m_env.pLyShine)
@@ -3066,8 +3085,6 @@ bool CSystem::InitGems(const SSystemInitParams& initParams)
 void CSystem::InitLocalization()
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Open Localization Pak");
-
     // Set the localization folder
     ICVar* pCVar = m_env.pConsole != 0 ? m_env.pConsole->GetCVar("sys_localization_folder") : 0;
     if (pCVar)
@@ -3125,8 +3142,7 @@ void CSystem::OpenBasicPaks()
     bBasicPaksLoaded = true;
 
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Open Pak Files");
-
+    
     // open pak files
     string paksFolder = "@assets@/*.pak"; // (@assets@ assumed)
     m_env.pCryPak->OpenPacks(paksFolder.c_str());
@@ -3398,8 +3414,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
     SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_INIT);
     gEnv->mMainThreadId = GetCurrentThreadId();         //Set this ASAP on startup
-
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "System Initialization");
 
     InlineInitializationProcessing("CSystem::Init start");
     m_szCmdLine = startupParams.szSystemCmdLine;
@@ -3823,9 +3837,14 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
 #if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS)
         MobileSysInspect::LoadDeviceSpecMapping();
-#endif
+#endif    
 
         InitFileSystem_LoadEngineFolders(startupParams);
+
+#if !defined(RELEASE) || defined(RELEASE_LOGGING)
+        // now that the system cfgs have been loaded, we can start the remote console
+        GetIRemoteConsole()->Update();
+#endif
 
         LogVersion();
 
@@ -4298,11 +4317,14 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         // Create MiniGUI
         //////////////////////////////////////////////////////////////////////////
-        minigui::IMiniGUIPtr pMiniGUI;
-        if (CryCreateClassInstanceForInterface(cryiidof<minigui::IMiniGUI>(), pMiniGUI))
+        if (!startupParams.bMinimal)
         {
-            m_pMiniGUI = pMiniGUI.get();
-            m_pMiniGUI->Init();
+            minigui::IMiniGUIPtr pMiniGUI;
+            if (CryCreateClassInstanceForInterface(cryiidof<minigui::IMiniGUI>(), pMiniGUI))
+            {
+                m_pMiniGUI = pMiniGUI.get();
+                m_pMiniGUI->Init();
+            }
         }
 
         InlineInitializationProcessing("CSystem::Init InitMiniGUI");
@@ -4532,8 +4554,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         // AI System needs to be initialized after entity system
         if (!startupParams.bPreview && m_env.pAISystem)
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Initialize AI System");
-
             if (m_pUserCallback)
             {
                 m_pUserCallback->OnInitProgress("Initializing AI System...");
@@ -4596,7 +4616,10 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
         //////////////////////////////////////////////////////////////////////////
         // BUDGETING SYSTEM
-        m_pIBudgetingSystem = new CBudgetingSystem();
+        if (!startupParams.bMinimal)
+        {
+            m_pIBudgetingSystem = new CBudgetingSystem();
+        }
 
         InlineInitializationProcessing("CSystem::Init BudgetingSystem");
 
@@ -4625,7 +4648,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #if defined(USE_PERFHUD)
         if (!gEnv->bTesting && !gEnv->IsInToolMode())
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init PerfHUD");
             //Create late in Init so that associated CVars have already been created
             ICryPerfHUDPtr pPerfHUD;
             if (CryCreateClassInstanceForInterface(cryiidof<ICryPerfHUD>(), pPerfHUD))
@@ -5416,73 +5438,6 @@ static void LvlRes_findunused(IConsoleCmdArgs* pParams)
     gEnv->pLog->LogWithType(ILog::eInputResponse, " ");
 }
 
-void CryResetStats(void);
-
-static void DumpAllocs(IConsoleCmdArgs* pParams)
-{
-    CryGetIMemReplay()->DumpStats();
-}
-
-static void ReplayDumpSymbols(IConsoleCmdArgs* pParams)
-{
-    CryGetIMemReplay()->DumpSymbols();
-}
-
-static void ReplayStop(IConsoleCmdArgs* pParams)
-{
-    CryGetIMemReplay()->Stop();
-}
-
-static void ReplayPause(IConsoleCmdArgs* pParams)
-{
-    CryGetIMemReplay()->Start(true);
-}
-
-static void ReplayResume(IConsoleCmdArgs* pParams)
-{
-    CryGetIMemReplay()->Start(false);
-}
-
-static void ResetAllocs(IConsoleCmdArgs* pParams)
-{
-    CryResetStats();
-}
-
-static void AddReplayLabel(IConsoleCmdArgs* pParams)
-{
-    if (pParams->GetArgCount() < 2)
-    {
-        CryLog("Not enough arguments");
-    }
-    else
-    {
-        CryGetIMemReplay()->AddLabel(pParams->GetArg(1));
-    }
-}
-
-static void ReplayInfo(IConsoleCmdArgs* pParams)
-{
-    CryReplayInfo info;
-    CryGetIMemReplay()->GetInfo(info);
-
-    CryLog("Uncompressed length: %llu", info.uncompressedLength);
-    CryLog("Written length: %llu", info.writtenLength);
-    CryLog("Tracking overhead: %u", info.trackingSize);
-    CryLog("Output filename: %s", info.filename ? info.filename : "(not open)");
-}
-
-static void AddReplaySizerTree(IConsoleCmdArgs* pParams)
-{
-    const char* name = "Sizers";
-
-    if (pParams->GetArgCount() >= 2)
-    {
-        name = pParams->GetArg(1);
-    }
-
-    CryGetIMemReplay()->AddSizerTree(name);
-}
-
 // --------------------------------------------------------------------------------------------------------------------------
 
 static void RecordClipCmd(IConsoleCmdArgs* pArgs)
@@ -5906,8 +5861,6 @@ static void VisRegTest(IConsoleCmdArgs* pParams)
 //////////////////////////////////////////////////////////////////////////
 void CSystem::CreateSystemVars()
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Create System CVars");
-
     assert(gEnv);
     assert(gEnv->pConsole);
 
@@ -6426,26 +6379,6 @@ void CSystem::CreateSystemVars()
 
     REGISTER_COMMAND("VisRegTest", &VisRegTest, 0, "Run visual regression test.\n"
         "Usage: VisRegTest [<name>=test] [<config>=visregtest.xml] [quit=false]");
-
-#if CAPTURE_REPLAY_LOG
-    REGISTER_COMMAND("memDumpAllocs", &DumpAllocs, 0, "print allocs with stack traces");
-    REGISTER_COMMAND("memReplayDumpSymbols", &ReplayDumpSymbols, 0, "dump symbol info to mem replay log");
-    REGISTER_COMMAND("memReplayStop", &ReplayStop, 0, "stop logging to mem replay");
-    REGISTER_COMMAND("memReplayPause", &ReplayPause, 0, "Pause collection of mem replay data");
-    REGISTER_COMMAND("memReplayResume", &ReplayResume, 0, "Resume collection of mem replay data (use with -memReplayPaused cmdline)");
-    REGISTER_COMMAND("memResetAllocs", &ResetAllocs, 0, "clears memHierarchy tree");
-    REGISTER_COMMAND("memReplayLabel", &AddReplayLabel, 0, "record a label in the mem replay log");
-    REGISTER_COMMAND("memReplayInfo", &ReplayInfo, 0, "output some info about the replay log");
-    REGISTER_COMMAND("memReplayAddSizerTree", &AddReplaySizerTree, 0, "output in-game sizer information to the log");
-#endif
-
-#if USE_LEVEL_HEAP
-    CLevelHeap::RegisterCVars();
-#endif
-
-#ifndef MEMMAN_STATIC
-    CCryMemoryManager::RegisterCVars();
-#endif
 
 #if defined(WIN32)
     REGISTER_CVAR2("sys_display_threads", &g_cvars.sys_display_threads, 0, 0, "Displays Thread info");

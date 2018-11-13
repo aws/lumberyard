@@ -376,7 +376,7 @@ struct PathFollowResult
         Vec3 pos;
         Vec3 vel;
     };
-    typedef DynArray<SPredictedState> TPredictedStates;
+    typedef AZStd::vector<SPredictedState, AZ::StdLegacyAllocator> TPredictedStates;
 
     // OLD: Obsolete & to be replaced by new impl.
 

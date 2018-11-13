@@ -118,13 +118,13 @@ struct SDirEntryRef
 #define RO_SORT_ALPHA_DESC 0x10
 
 #define MAX_OPEN_RESFILES 64
-typedef std::vector<SDirEntry> ResDir;
+typedef AZStd::vector<SDirEntry, AZ::StdLegacyAllocator> ResDir;
 typedef ResDir::iterator ResDirIt;
 
-typedef std::vector<SDirEntryRef> ResDirRef;
+typedef AZStd::vector<SDirEntryRef, AZ::StdLegacyAllocator> ResDirRef;
 typedef ResDirRef::iterator ResDirRefIt;
 
-typedef std::vector<SDirEntryOpen> ResDirOpen;
+typedef AZStd::vector<SDirEntryOpen, AZ::StdLegacyAllocator> ResDirOpen;
 typedef ResDirOpen::iterator ResDirOpenIt;
 
 #define MAX_DIR_SIZE      (2 * 1024 * 1024)   // Directory size in memory (consoles only)

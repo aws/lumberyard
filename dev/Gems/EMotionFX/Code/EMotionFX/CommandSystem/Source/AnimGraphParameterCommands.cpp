@@ -29,7 +29,6 @@
 #include <EMotionFX/Source/Parameter/ParameterFactory.h>
 #include <EMotionFX/Source/Parameter/ValueParameter.h>
 #include <MCore/Source/AttributeFactory.h>
-#include <MCore/Source/AttributePool.h>
 #include <MCore/Source/ReflectionSerializer.h>
 
 namespace CommandSystem
@@ -474,7 +473,12 @@ namespace CommandSystem
             outResult = AZStd::string::format("There is no parameter with the name '%s'.", mOldName.c_str());
             return false;
         }
-        const AZ::Outcome<size_t> parameterIndex = animGraph->FindParameterIndex(parameter);
+        AZ::Outcome<size_t> oldValueParameterIndex = AZ::Failure();
+        if (azrtti_istypeof<EMotionFX::ValueParameter*>(parameter))
+        {
+            const EMotionFX::ValueParameter* valueParameter = static_cast<const EMotionFX::ValueParameter*>(parameter);
+            oldValueParameterIndex = animGraph->FindValueParameterIndex(valueParameter);
+        }
 
         const EMotionFX::GroupParameter* currentParent = animGraph->FindParentGroupParameter(parameter);
 
@@ -622,12 +626,14 @@ namespace CommandSystem
         }
         else if (mOldType != azrtti_typeid<EMotionFX::GroupParameter>())
         {
+            AZ_Assert(oldValueParameterIndex.IsSuccess(), "Unable to find parameter index when changing parameter to a group");
+
             // Update all corresponding anim graph instances.
             const size_t numInstances = animGraph->GetNumAnimGraphInstances();
             for (uint32 i = 0; i < numInstances; ++i)
             {
                 EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
-                animGraphInstance->RemoveParameterValue(static_cast<uint32>(parameterIndex.GetValue()));
+                animGraphInstance->RemoveParameterValue(static_cast<uint32>(oldValueParameterIndex.GetValue()));
             }
            
             // Get an array of all parameter nodes.

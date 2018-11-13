@@ -128,6 +128,7 @@ namespace CloudCanvas
                     ->Event("GetStrValue", &StaticDataRequestBus::Events::GetStrValue)
                     ->Event("GetDoubleValue", &StaticDataRequestBus::Events::GetDoubleValue)
                     ->Event("LoadRelativeFile", &StaticDataRequestBus::Events::LoadRelativeFile)
+                    ->Event("GetNumElements", &StaticDataRequestBus::Events::GetNumElements)
                     ;
 
                 behaviorContext->EBus<StaticDataUpdateBus>("StaticDataUpdateBus")
@@ -237,6 +238,16 @@ namespace CloudCanvas
             }
             wasSuccess = false;
             return "";
+        }
+
+        size_t StaticDataManager::GetNumElements(const char* tagName)
+        {
+            StaticDataInterfacePtr thisBuffer = GetDataType(tagName);
+            if (thisBuffer)
+            {
+                return thisBuffer->GetNumElements();
+            }
+            return 0;
         }
 
         StaticDataManager::StaticDataInterfacePtrInternal StaticDataManager::CreateInterface(StaticDataType dataType, const char* initData, const char* tagName)

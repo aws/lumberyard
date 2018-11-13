@@ -36,6 +36,7 @@ namespace Serialization {
 
         const IClassFactory* find(TypeID baseType) const
         {
+            lazyRegisterFactories();
             Factories::const_iterator it = factories_.find(baseType);
             if (it == factories_.end())
             {
@@ -47,13 +48,29 @@ namespace Serialization {
             }
         }
 
-        void registerFactory(TypeID type, const IClassFactory* factory)
+        void registerFactory(TypeID type, IClassFactory* factory)
         {
-            factories_[type] = factory;
+            factory->m_next = m_head;
+            m_head = factory;
         }
     protected:
-        typedef std::map<TypeID, const IClassFactory*> Factories;
+        void lazyRegisterFactories() const
+        {
+            if (m_head)
+            {
+                IClassFactory* factory = m_head;
+                while (factory)
+                {
+                    const_cast<ClassFactoryManager*>(this)->factories_[factory->baseType_] = factory;
+                    factory = factory->m_next;
+                }
+                const_cast<ClassFactoryManager*>(this)->m_head = nullptr;
+            }
+        }
+
+        typedef AZStd::unordered_map<TypeID, const IClassFactory*, AZStd::hash<TypeID>, AZStd::equal_to<TypeID>, AZ::StdLegacyAllocator> Factories;
         Factories factories_;
+        IClassFactory* m_head = nullptr;
     };
 
     template<class BaseType>
@@ -63,8 +80,21 @@ namespace Serialization {
     public:
         static ClassFactory& the()
         {
-            static ClassFactory factory;
-            return factory;
+            static AZStd::aligned_storage_for_t<ClassFactory> storage;
+            if (s_instance != (decltype(s_instance))&storage)
+            {
+                s_instance = new(&storage) ClassFactory();
+            }
+            return *s_instance;
+        }
+
+        static void destroy()
+        {
+            if (s_instance)
+            {
+                s_instance->~ClassFactory();
+                s_instance = nullptr;
+            }
         }
 
         class CreatorBase
@@ -73,11 +103,13 @@ namespace Serialization {
             virtual ~CreatorBase() {}
             virtual BaseType* create() const = 0;
             virtual const TypeDescription& description() const{ return *description_; }
-            virtual void* vptr() const{ return vptr_; }
+            virtual void* vptr() const { return vptr_; }
             virtual TypeID typeID() const = 0;
         protected:
-            const TypeDescription* description_;
-            void* vptr_;
+            const TypeDescription* description_ = nullptr;
+            void* vptr_ = nullptr;
+        public:
+            CreatorBase* next;
         };
 
         static void* extractVPtr(BaseType* ptr)
@@ -100,9 +132,6 @@ namespace Serialization {
             {
                 this->description_ = description;
 
-                Derived vptrProbe;
-                this->vptr_ = extractVPtr(&vptrProbe);
-
                 if (!factory)
                 {
                     factory = &ClassFactory::the();
@@ -110,6 +139,17 @@ namespace Serialization {
 
                 factory->registerCreator(this);
             }
+
+            void* vptr() const override
+            {
+                if (!this->vptr_)
+                {
+                    Derived vptrProbe;
+                    const_cast<Creator*>(this)->vptr_ = extractVPtr(&vptrProbe);
+                }
+                return this->vptr_;
+            }
+
             BaseType* create() const override { return new Derived(); }
             TypeID typeID() const override { return Serialization::TypeID::get<Derived>(); }
         };
@@ -120,10 +160,20 @@ namespace Serialization {
             ClassFactoryManager::the().registerFactory(baseType_, this);
         }
 
-        typedef std::map<string, const CreatorBase*> TypeToCreatorMap;
+        ~ClassFactory()
+        {
+            m_data->~Data();
+            m_data = nullptr;
+        }
+
+        typedef AZStd::unordered_map<string, const CreatorBase*, AZStd::hash<string>, AZStd::equal_to<string>, AZ::StdLegacyAllocator> TypeToCreatorMap;
+        typedef AZStd::unordered_map<void*, CreatorBase*, AZStd::hash<void*>, AZStd::equal_to<void*>, AZ::StdLegacyAllocator> VPtrToCreatorMap;
+        typedef AZStd::unordered_map<string, TypeID, AZStd::hash<string>, AZStd::equal_to<string>, AZ::StdLegacyAllocator> RegisteredNameToTypeID;
+        typedef AZStd::unordered_map<TypeID, std::vector<std::pair<const char*, const char*> >, AZStd::hash<TypeID>, AZStd::equal_to<TypeID>, AZ::StdLegacyAllocator> AnnotationMap;
 
         virtual BaseType* create(const char* registeredName) const
         {
+            lazyRegisterCreators();
             if (!registeredName)
             {
                 return 0;
@@ -132,8 +182,8 @@ namespace Serialization {
             {
                 return 0;
             }
-            typename TypeToCreatorMap::const_iterator it = typeToCreatorMap_.find(registeredName);
-            if (it != typeToCreatorMap_.end())
+            typename TypeToCreatorMap::const_iterator it = m_data->typeToCreatorMap_.find(registeredName);
+            if (it != m_data->typeToCreatorMap_.end())
             {
                 return it->second->create();
             }
@@ -145,13 +195,14 @@ namespace Serialization {
 
         virtual const char* getRegisteredTypeName(BaseType* ptr) const
         {
+            lazyRegisterCreators();
             if (ptr == 0)
             {
                 return "";
             }
             void* vptr = extractVPtr(ptr);
-            typename VPtrToCreatorMap::const_iterator it = vptrToCreatorMap_.find(vptr);
-            if (it == vptrToCreatorMap_.end())
+            typename VPtrToCreatorMap::const_iterator it = m_data->vptrToCreatorMap_.find(vptr);
+            if (it == m_data->vptrToCreatorMap_.end())
             {
                 return "";
             }
@@ -160,36 +211,40 @@ namespace Serialization {
 
         BaseType* createByIndex(int index) const
         {
-            YASLI_ASSERT(size_t(index) < creators_.size());
-            return creators_[index]->create();
+            lazyRegisterCreators();
+            YASLI_ASSERT(size_t(index) < m_data->creators_.size());
+            return m_data->creators_[index]->create();
         }
 
         void serializeNewByIndex(IArchive& ar, int index, const char* name, const char* label)
         {
-            YASLI_ESCAPE(size_t(index) < creators_.size(), return );
-            BaseType* ptr = creators_[index]->create();
+            lazyRegisterCreators();
+            YASLI_ESCAPE(size_t(index) < m_data->creators_.size(), return );
+            BaseType* ptr = m_data->creators_[index]->create();
             ar(*ptr, name, label);
             delete ptr;
         }
         // from ClassFactoryInterface:
-        size_t size() const{ return creators_.size(); }
+        size_t size() const{ return m_data->creators_.size(); }
         const TypeDescription* descriptionByIndex(int index) const override
         {
-            if (size_t(index) >= int(creators_.size()))
+            lazyRegisterCreators();
+            if (size_t(index) >= int(m_data->creators_.size()))
             {
                 return 0;
             }
-            return &creators_[index]->description();
+            return &m_data->creators_[index]->description();
         }
 
         const TypeDescription* descriptionByRegisteredName(const char* name) const override
         {
-            const size_t numCreators = creators_.size();
+            lazyRegisterCreators();
+            const size_t numCreators = m_data->creators_.size();
             for (size_t i = 0; i < numCreators; ++i)
             {
-                if (strcmp(creators_[i]->description().name(), name) == 0)
+                if (strcmp(m_data->creators_[i]->description().name(), name) == 0)
                 {
-                    return &creators_[i]->description();
+                    return &m_data->creators_[i]->description();
                 }
             }
             return 0;
@@ -198,8 +253,9 @@ namespace Serialization {
 
         TypeID typeIDByRegisteredName(const char* registeredTypeName) const
         {
-            RegisteredNameToTypeID::const_iterator it = registeredNameToTypeID_.find(registeredTypeName);
-            if (it == registeredNameToTypeID_.end())
+            lazyRegisterCreators();
+            RegisteredNameToTypeID::const_iterator it = m_data->registeredNameToTypeID_.find(registeredTypeName);
+            if (it == m_data->registeredNameToTypeID_.end())
             {
                 return TypeID();
             }
@@ -208,9 +264,10 @@ namespace Serialization {
 
         const char* findAnnotation(const char* registeredTypeName, const char* name) const
         {
+            lazyRegisterCreators();
             TypeID typeID = typeIDByRegisteredName(registeredTypeName);
-            AnnotationMap::const_iterator it = annotations_.find(typeID);
-            if (it == annotations_.end())
+            AnnotationMap::const_iterator it = m_data->annotations_.find(typeID);
+            if (it == m_data->annotations_.end())
             {
                 return "";
             }
@@ -225,25 +282,38 @@ namespace Serialization {
         }
         void unregisterCreator(const TypeDescription& typeDescription)
         {
-            auto creator = typeToCreatorMap_.find(typeDescription.name());
-            if (creator != typeToCreatorMap_.end())
+            auto creator = m_data->typeToCreatorMap_.find(typeDescription.name());
+            if (creator != m_data->typeToCreatorMap_.end())
             {
-                creators_.erase(std::find(creators_.begin(), creators_.end(), creator->second));
-                vptrToCreatorMap_.erase(vptrToCreatorMap_.find(creator->second->vptr()));
-                typeToCreatorMap_.erase(creator);
+                m_data->creators_.erase(std::find(m_data->creators_.begin(), m_data->creators_.end(), m_data->creator->second));
+                m_data->vptrToCreatorMap_.erase(m_data->vptrToCreatorMap_.find(creator->second->vptr()));
+                m_data->typeToCreatorMap_.erase(creator);
             }
         }
 
     protected:
         virtual void registerCreator(CreatorBase* creator)
         {
-            if (!typeToCreatorMap_.insert(std::make_pair(creator->description().name(), creator)).second)
+            creator->next = creatorsList;
+            creatorsList = creator;
+        }
+
+        void lazyRegisterCreators() const
+        {
+            if (!m_data)
             {
-                YASLI_ASSERT(0 && "Type registered twice in the same factory. Was SERIALIZATION_CLASS_NAME put into header file by mistake?");
+                const_cast<ClassFactory*>(this)->m_data = ::new((void*)&m_dataStorage) Data();
+                for (CreatorBase* creator = creatorsList; creator; creator = creator->next)
+                {
+                    if (!const_cast<ClassFactory*>(this)->m_data->typeToCreatorMap_.insert(AZStd::make_pair(creator->description().name(), creator)).second)
+                    {
+                        YASLI_ASSERT(0 && "Type registered twice in the same factory. Was SERIALIZATION_CLASS_NAME put into header file by mistake?");
+                    }
+                    const_cast<ClassFactory*>(this)->m_data->creators_.push_back(creator);
+                    const_cast<ClassFactory*>(this)->m_data->registeredNameToTypeID_[creator->description().name()] = creator->typeID();
+                    const_cast<ClassFactory*>(this)->m_data->vptrToCreatorMap_[creator->vptr()] = creator;
+                }
             }
-            creators_.push_back(creator);
-            registeredNameToTypeID_[creator->description().name()] = creator->typeID();
-            vptrToCreatorMap_[creator->vptr()] =  creator;
         }
 
         template<class T>
@@ -254,21 +324,27 @@ namespace Serialization {
 
         virtual void addAnnotation(const Serialization::TypeID& id, const char* name, const char* value)
         {
-            annotations_[id].push_back(std::make_pair(name, value));
+            lazyRegisterCreators();
+            m_data->annotations_[id].push_back(std::make_pair(name, value));
         }
 
-        TypeToCreatorMap typeToCreatorMap_;
-        std::vector<CreatorBase*> creators_;
+        CreatorBase* creatorsList = nullptr;
+        static ClassFactory* s_instance;
 
-        typedef std::map<void*, CreatorBase*> VPtrToCreatorMap;
-        VPtrToCreatorMap vptrToCreatorMap_;
-
-        typedef std::map<string, TypeID> RegisteredNameToTypeID;
-        RegisteredNameToTypeID registeredNameToTypeID_;
-
-        typedef std::map<TypeID, std::vector<std::pair<const char*, const char*> > > AnnotationMap;
-        AnnotationMap annotations_;
+        struct Data
+        {
+            TypeToCreatorMap typeToCreatorMap_;
+            AZStd::vector<CreatorBase*, AZ::StdLegacyAllocator> creators_;
+            VPtrToCreatorMap vptrToCreatorMap_;
+            RegisteredNameToTypeID registeredNameToTypeID_;
+            AnnotationMap annotations_;
+        };
+        Data* m_data = nullptr;
+        AZStd::aligned_storage_for_t<Data> m_dataStorage;
     };
+
+    template <class T>
+    ClassFactory<T>* ClassFactory<T>::s_instance = nullptr;
 }
 
 #define SERIALIZATION_CLASS_NULL(BaseType, name)                                                          \

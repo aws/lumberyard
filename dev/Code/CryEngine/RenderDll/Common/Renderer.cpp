@@ -53,6 +53,10 @@
 #include "RenderCapabilities.h"
 #include "RenderView.h"
 
+#if !defined(NULL_RENDERER)
+#include "DriverD3D.h"  //Needed for eGT_256bpp_PATH
+#endif
+
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
 #define RENDERER_CPP_SECTION_1 1
@@ -497,7 +501,7 @@ int CRenderer::CV_r_shaderspreactivate;
 int CRenderer::CV_r_shadersAllowCompilation;
 AllocateConstIntCVar(CRenderer, CV_r_shadersediting);
 AllocateConstIntCVar(CRenderer, CV_r_shaderscompileautoactivate);
-int CRenderer::CV_r_shadersremotecompiler;
+AllocateConstIntCVar(CRenderer, CV_r_shadersremotecompiler);
 int CRenderer::CV_r_shadersasynccompiling;
 int CRenderer::CV_r_shadersasyncactivation;
 int CRenderer::CV_r_shadersasyncmaxthreads;
@@ -536,6 +540,7 @@ int CRenderer::CV_r_ParticlesGpuMaxEmitCount;
 
 int CRenderer::CV_r_AntialiasingMode_CB;
 int CRenderer::CV_r_AntialiasingMode;
+float CRenderer::CV_r_AntialiasingNonTAASharpening;
 int CRenderer::CV_r_AntialiasingTAAJitterPattern;
 float CRenderer::CV_r_AntialiasingTAAClampingFactor;
 float CRenderer::CV_r_AntialiasingTAANewFrameWeight;
@@ -839,6 +844,11 @@ int CRenderer::CV_r_OutputShaderSourceFiles = 0;
 // Specular antialiasing
 int CRenderer::CV_r_SpecularAntialiasing = 1;
 
+// Console
+float CRenderer::CV_r_minConsoleFontSize;
+float CRenderer::CV_r_maxConsoleFontSize;
+
+
 // Graphics programmers: Use these in your code for local tests/debugging.
 // Delete all references in your code before you submit
 int CRenderer::CV_r_GraphicsTest00;
@@ -944,6 +954,15 @@ static void OnChange_CV_r_AntialiasingMode(ICVar* pCVar)
     if (nVal == static_cast<int32>(eAT_SMAA1TX))
     {
         AZ_Warning("Rendering", false, "SMAA is not supported on this platform. Fallback to FXAA");
+        nVal = eAT_FXAA;
+    }
+#endif
+
+#if defined (CRY_USE_METAL) || defined (OPENGL_ES)
+    // We don't support switching to 128bpp after initialization of the gmem path.
+    if (CD3D9Renderer::EGmemPath::eGT_256bpp_PATH == gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && nVal == static_cast<int32>(eAT_TAA))
+    {
+        AZ_Warning("Rendering", pCVar->GetIVal() == 0, "TAA is not supported on 256bpp mode. Either switch to 128bpp or enable TAA at init so that the correct gmem mode is picked during initialization");
         nVal = eAT_FXAA;
     }
 #endif
@@ -1318,7 +1337,7 @@ static void OnChange_CV_r_Fur(ICVar* pCVar)
 
 #if defined (CRY_USE_METAL) || defined (OPENGL_ES)
     // We don't support fur on gmem/pls path yet so always force the cvar to 0
-    if (RenderCapabilities::Supports256bppGmemPath() || RenderCapabilities::Supports128bppGmemPath() || RenderCapabilities::SupportsPLSExtension())
+    if (CD3D9Renderer::EGmemPath::eGT_REGULAR_PATH != gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
         AZ_Warning("Rendering", pCVar->GetIVal() == 0, "Fur is not supported on gmem/pls for mobile");
         CRenderer::CV_r_Fur = 0;
@@ -1338,6 +1357,45 @@ static void OnChange_CV_r_SunShafts(ICVar* pCVar)
     else
     {
         CRenderer::CV_r_sunshafts = 0;
+    }
+#endif
+}
+
+static void OnChange_CV_r_SSDO(ICVar* pCVar)
+{
+    
+#if defined (CRY_USE_METAL) || defined (OPENGL_ES)
+    // We don't support switching to 128bpp after initialization of the gmem path.
+    if (CD3D9Renderer::EGmemPath::eGT_256bpp_PATH == gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    {
+        AZ_Warning("Rendering", pCVar->GetIVal() == 0, "SSDO is not supported on 256bpp mode. Either switch to 128bpp or enable r_ssdo at init so that the correct gmem mode is picked during initialization");
+        CRenderer::CV_r_ssdo = 0;
+    }
+#endif
+}
+
+static void OnChange_CV_r_SSReflections(ICVar* pCVar)
+{
+
+#if defined (CRY_USE_METAL) || defined (OPENGL_ES)
+    // We don't support switching to 128bpp after initialization of the gmem path.
+    if (CD3D9Renderer::EGmemPath::eGT_256bpp_PATH == gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    {
+        AZ_Warning("Rendering", pCVar->GetIVal() == 0, "SSReflections are not supported on 256bpp mode. Either switch to 128bpp or enable r_SSReflections at init so that the correct gmem mode is picked during initialization");
+        CRenderer::CV_r_SSReflections = 0;
+    }
+#endif
+}
+
+static void OnChange_CV_r_MotionBlur(ICVar* pCVar)
+{
+
+#if defined (CRY_USE_METAL) || defined (OPENGL_ES)
+    // We don't support switching to 128bpp after initialization of the gmem path.
+    if (CD3D9Renderer::EGmemPath::eGT_256bpp_PATH == gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    {
+        AZ_Warning("Rendering", pCVar->GetIVal() == 0, "MotionBlur is not supported on 256bpp mode. Either switch to 128bpp or enable r_MotionBlur at init so that the correct gmem mode is picked during initialization");
+        CRenderer::CV_r_MotionBlur = 0;
     }
 #endif
 }
@@ -1957,6 +2015,9 @@ void CRenderer::InitRenderer()
     REGISTER_CVAR3_CB("r_AntialiasingMode", CV_r_AntialiasingMode_CB, eAT_DEFAULT_AA, VF_NULL, aaModesDesc.c_str(), OnChange_CV_r_AntialiasingMode);
     CV_r_AntialiasingMode = CV_r_AntialiasingMode_CB;
 
+    REGISTER_CVAR3("r_AntialiasingNonTAASharpening", CV_r_AntialiasingNonTAASharpening, 0.f, VF_NULL,
+        "Enables non-TAA sharpening.\n");
+
     REGISTER_CVAR3("r_AntialiasingTAAJitterPattern", CV_r_AntialiasingTAAJitterPattern, 7, VF_NULL,
         "Selects TAA sampling pattern.\n"
         "  0: no subsamples\n  1: 2x\n  2: 3x\n  3: 4x\n  4: 8x\n  5: sparse grid 8x8\n  6: random\n  7: Halton 8x\n  8: Halton random");
@@ -2005,13 +2066,13 @@ void CRenderer::InitRenderer()
     DefineConstIntCVar3("r_MotionVectorsDebug", CV_r_MotionVectorsDebug, 0, VF_NULL,
         "Enables motion vector debug visualization.\n");
 
-    REGISTER_CVAR3("r_MotionBlur", CV_r_MotionBlur, 2, VF_NULL,
+    REGISTER_CVAR3_CB("r_MotionBlur", CV_r_MotionBlur, 2, VF_NULL,
         "Enables per object and camera motion blur.\n"
         "Usage: r_MotionBlur [0/1/2/3]\n"
         "Default is 1 (camera motion blur on).\n"
         "1: camera motion blur\n"
         "2: camera and object motion blur\n"
-        "3: debug mode\n");
+        "3: debug mode\n", OnChange_CV_r_MotionBlur);
 
     REGISTER_CVAR3("r_MotionBlurScreenShot", CV_r_MotionBlurScreenShot, 0, VF_NULL,
         "Enables motion blur during high res screen captures"
@@ -2098,11 +2159,11 @@ void CRenderer::InitRenderer()
 
     REGISTER_CVAR3("r_RainOccluderSizeTreshold", CV_r_rainOccluderSizeTreshold, 25.f, VF_NULL, "Only objects bigger than this size will occlude rain");
 
-    REGISTER_CVAR3("r_SSReflections", CV_r_SSReflections, 0, VF_NULL,
-        "Glossy screen space reflections [0/1]\n");
+    REGISTER_CVAR3_CB("r_SSReflections", CV_r_SSReflections, 0, VF_NULL,
+        "Glossy screen space reflections [0/1]\n", OnChange_CV_r_SSReflections);
     REGISTER_CVAR3("r_SSReflHalfRes", CV_r_SSReflHalfRes, 1, VF_NULL,
         "Toggles rendering reflections in half resolution\n");
-    REGISTER_CVAR3("r_ssdo", CV_r_ssdo, 1, VF_NULL, "Screen Space Directional Occlusion [0/1]\n");
+    REGISTER_CVAR3_CB("r_ssdo", CV_r_ssdo, 1, VF_NULL, "Screen Space Directional Occlusion [0/1]\n", OnChange_CV_r_SSDO);
     REGISTER_CVAR3("r_ssdoHalfRes", CV_r_ssdoHalfRes, 2, VF_NULL,
         "Apply SSDO bandwidth optimizations\n"
         "0 - Full resolution (not recommended)\n"
@@ -2483,7 +2544,7 @@ void CRenderer::InitRenderer()
         "Specify the limit (in bytes) that defrag update will stop");
 
     REGISTER_CVAR3("r_texturesskiplowermips", CV_r_texturesskiplowermips, 0, VF_NULL,
-        "Enabled skipping lower mips for X360.\n"); // ACCEPTED_USE
+        "Enabled skipping lower mips for deprecated platform.\n");
 
     int nDefaultTexPoolSize = 512;
 
@@ -2742,7 +2803,7 @@ void CRenderer::InitRenderer()
 
     REGISTER_CVAR3_CB("r_ShadersAllowCompilation", CV_r_shadersAllowCompilation, SHADERS_ALLOW_COMPILATION_DEFAULT_VAL, VF_NULL, "", OnChange_CV_r_ShadersAllowCompiliation);
 
-    REGISTER_CVAR3("r_ShadersRemoteCompiler", CV_r_shadersremotecompiler, 0, VF_DUMPTODISK, "Enables remote shader compilation on dedicated machine");
+    DefineConstIntCVar3("r_ShadersRemoteCompiler", CV_r_shadersremotecompiler, 0, VF_DUMPTODISK, "Enables remote shader compilation on dedicated machine");
     REGISTER_CVAR3("r_ShadersAsyncCompiling", CV_r_shadersasynccompiling, 1, VF_NULL,
         "Enable asynchronous shader compiling\n"
         "Usage: r_ShadersAsyncCompiling [0/1/2/3]\n"
@@ -2788,7 +2849,7 @@ void CRenderer::InitRenderer()
         "0 off, 1 import and allow fallback to getBinShader, 2 import, no fallback if import fails (optimal).");
 
     REGISTER_CVAR3("r_ShadersExport", CV_r_shadersExport, 1, VF_NULL,
-        "0 off, 1 allow shader export during shader cache generation - Currently 360 only.");
+        "0 off, 1 allow shader export during shader cache generation - deprecated platforms only.");
 
     REGISTER_CVAR3("r_ShadersCacheUnavailableShaders", CV_r_shadersCacheUnavailableShaders, 0, VF_NULL,
         "0 off (default), 1 cache unavailable shaders to avoid requesting their compilation in future executions.");
@@ -3111,7 +3172,7 @@ void CRenderer::InitRenderer()
         "Toggles vertical sync.\n"
         "0: Disabled\n"
         "1: Enabled\n"
-        "2: Enabled, use asynchronous swaps on X360"); // ACCEPTED_USE
+        "2: Enabled, use asynchronous swaps on deprecated platform");
 
     REGISTER_CVAR3("r_OldBackendSkip", CV_r_OldBackendSkip, 0, VF_RESTRICTEDMODE | VF_DUMPTODISK,
         "Ignores old backend processing.\n"
@@ -3139,7 +3200,7 @@ void CRenderer::InitRenderer()
         "While in fullscreen activities like notification pop ups of other applications won't cause a mode switch back into windowed mode.");
 #endif
     DefineConstIntCVar3("r_PredicatedTiling", CV_r_predicatedtiling, 0, VF_REQUIRE_APP_RESTART,
-        "Toggles predicated tiling mode (X360 only)\n" // ACCEPTED_USE
+        "Toggles predicated tiling mode (deprecated platform only)\n" // ACCEPTED_USE
         "Usage: r_PredicatedTiling [0/1]");
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_5
@@ -3151,7 +3212,7 @@ void CRenderer::InitRenderer()
         "1=pixel shader instructions,\n"
         "2=pass count,\n"
         "3=vertex shader instructions,\n"
-        "4=overdraw estimation with 360 Hi-Z,\n"
+        "4=overdraw estimation with Hi-Z (deprecated),\n"
         "Usage: r_MeasureOverdraw [0/1/2/3/4]");
     REGISTER_CVAR3("r_MeasureOverdrawScale", CV_r_measureoverdrawscale, 1.5f, VF_CHEAT, "");
 
@@ -3217,7 +3278,7 @@ void CRenderer::InitRenderer()
         "Usage: r_StereoOutput [0=off/1/2/3/4/5/6/...]\n"
         "0: Standard\n"
         "1: IZ3D\n"
-        "2: Checkerboard (not supported on X360)\n" // ACCEPTED_USE
+        "2: Checkerboard\n"
         "3: Above and Below (not supported)\n"
         "4: Side by Side\n"
         "5: Line by Line (Interlaced)\n"
@@ -3596,6 +3657,14 @@ void CRenderer::InitRenderer()
         "1: Skips native upscale."
         );
 
+    REGISTER_CVAR3("r_minConsoleFontSize", CV_r_minConsoleFontSize, 19.0f, VF_NULL,
+        "Minimum size used for scaling the font when rendering the console"
+    );
+
+    REGISTER_CVAR3("r_maxConsoleFontSize", CV_r_maxConsoleFontSize, 24.0f, VF_NULL,
+        "Maximum size used for scaling the font when rendering the console"
+    );
+
     REGISTER_CVAR3("r_GraphicsTest00", CV_r_GraphicsTest00, 0, VF_DEV_ONLY, "Graphics programmers: Use in your code for misc graphics tests/debugging.");
     REGISTER_CVAR3("r_GraphicsTest01", CV_r_GraphicsTest01, 0, VF_DEV_ONLY, "Graphics programmers: Use in your code for misc graphics tests/debugging.");
     REGISTER_CVAR3("r_GraphicsTest02", CV_r_GraphicsTest02, 0, VF_DEV_ONLY, "Graphics programmers: Use in your code for misc graphics tests/debugging.");
@@ -3635,6 +3704,7 @@ void CRenderer::InitRenderer()
 #endif
 
     m_cClearColor = ColorF(0, 0, 0, 128.0f / 255.0f);       // 128 is default GBuffer value
+    m_clearBackground = false;
     m_pDefaultFont = NULL;
     m_TexGenID = 1;
     m_VSync = CV_r_vsync;
@@ -5061,7 +5131,7 @@ ITexture* CRenderer::EF_GetTextureByName(const char* nameTex, uint32 flags)
         INDENT_LOG_DURING_SCOPE(true, "While trying to find texture '%s' flags=0x%x...", nameTex, flags);
 
         const char* ext = fpGetExtension(nameTex);
-        if (ext != 0 && (azstricmp(ext, ".tif") == 0 || azstricmp(ext, ".hdr") == 0))
+        if (ext != 0 && (azstricmp(ext, ".tif") == 0 || azstricmp(ext, ".hdr") == 0 || azstricmp(ext, ".png") == 0))
         {
             // for compilable files, register by the dds file name (to not load it twice)
             char nameDDS[256];
@@ -5087,7 +5157,7 @@ ITexture* CRenderer::EF_LoadTexture(const char* nameTex, const uint32 flags)
 
         //if its a source image format try to load the dds
         const char* ext = fpGetExtension(nameTex);
-        if (ext != 0 && (azstricmp(ext, ".tif") == 0 || azstricmp(ext, ".hdr") == 0))
+        if (ext != 0 && (azstricmp(ext, ".tif") == 0 || azstricmp(ext, ".hdr") == 0 || azstricmp(ext, ".png") == 0))
         {
             // for compilable files, register by the dds file name (to not load it twice)
             char nameDDS[256];
@@ -6617,9 +6687,6 @@ _smart_ptr<IRenderMesh> CRenderer::CreateRenderMesh(const char* szType, const ch
             pInitParams->eType, pInitParams->nRenderChunkCount, pInitParams->nClientTextureBindID, 0, 0, pInitParams->bOnlyVideoBuffer, pInitParams->bPrecache, pInitParams->pTangents, pInitParams->bLockForThreadAccess, pInitParams->pNormals);
     }
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_RenderMeshType, 0, szType);
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_RenderMesh, 0, szSourceName);
-
     // make material table with clean elements
     _smart_ptr<CRenderMesh> pRenderMesh = new CRenderMesh(szType, szSourceName);
     pRenderMesh->_SetRenderMeshType(eBufType);
@@ -6641,9 +6708,6 @@ _smart_ptr<IRenderMesh> CRenderer::CreateRenderMeshInitialized(
     const SPipTangents* pTangents, bool bLockForThreadAcc, Vec3* pNormals)
 {
     FUNCTION_PROFILER_RENDERER;
-
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_RenderMeshType, 0, szType);
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_RenderMesh, 0, szSourceName);
 
     _smart_ptr<CRenderMesh> pRenderMesh = new CRenderMesh(szType, szSourceName, bLockForThreadAcc);
     pRenderMesh->_SetRenderMeshType(eBufType);
@@ -6887,6 +6951,7 @@ static float LinearToGamma(float x)
 
 #pragma warning(push)
 #pragma warning(disable:4819)   // Invalid character not in default code page
+#pragma warning(disable:4828)
 #include <squish.h>
 #include <squish.inl>
 #pragma warning(pop)
@@ -7605,7 +7670,8 @@ void S3DEngineCommon::UpdateRainOccInfo(int nThreadID)
         m_RainOccluders.Release();
     }
 
-    const Vec3 vCamPos = gRenDev->GetViewParameters().vOrigin;
+    // Get the rendering camera position from the renderer
+    const Vec3 vCamPos = gEnv->p3DEngine->GetRenderingCamera().GetPosition();
     bool bDisableOcclusion = m_RainInfo.bDisableOcclusion;
     static bool bOldDisableOcclusion = true;    // set to true to allow update at first run
 

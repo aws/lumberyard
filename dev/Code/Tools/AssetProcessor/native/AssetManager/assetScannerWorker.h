@@ -36,6 +36,7 @@ namespace AssetProcessor
 Q_SIGNALS:
         void ScanningStateChanged(AssetProcessor::AssetScanningStatus status);
         void FileOfInterestFound(QString filepath);
+        void FolderOfInterestFound(QString folderpath);
 
     public Q_SLOTS:
         void StartScan();
@@ -48,6 +49,7 @@ Q_SIGNALS:
     private:
         volatile bool m_doScan = true;
         QSet<QString> m_fileList; // note:  neither QSet nor QString are qobject-derived
+        QSet<QString> m_folderList;
         PlatformConfiguration* m_platformConfiguration;
     };
 } // end namespace AssetProcessor

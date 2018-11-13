@@ -82,6 +82,34 @@ namespace AzToolsFramework
     //giving drop logic simple buffer so drops between editors don't go to the bottom
     static const int kComponentEditorDropTargetPrecision = 6;
 
+    //sentinel class to set an attribute on a widget, if need be, and restore the attribute's
+    //value back to what it was before in the destructor.
+    class AttributeSetterSentinel
+    {
+    public:
+        AttributeSetterSentinel(QWidget* widget, Qt::WidgetAttribute attribute) : m_widget(widget), m_attribute(attribute)
+        {
+            m_restoreInDestructor = !m_widget->testAttribute(m_attribute);
+            if (m_restoreInDestructor)
+            {
+                m_widget->setAttribute(m_attribute, true);
+            }
+        }
+
+        ~AttributeSetterSentinel()
+        {
+            if (m_restoreInDestructor)
+            {
+                m_widget->setAttribute(m_attribute, false);
+            }
+        }
+
+    private:
+        QWidget* m_widget;
+        Qt::WidgetAttribute m_attribute;
+        bool m_restoreInDestructor = false;
+    };
+
     //we require an overlay widget to act as a canvas to draw on top of everything in the inspector
     //attaching to inspector rather than component editors so we can draw outside of bounds
     class EntityPropertyEditorOverlay : public QWidget
@@ -151,6 +179,55 @@ namespace AzToolsFramework
                 drawDropIndicator(painter, currRect.left(), currRect.right(), currRect.bottom() + m_dropIndicatorOffset);
             }
         }
+
+        bool event(QEvent* ev) override
+        {
+            // Apparently, despite the Qt::WA_TransparentForMouseEvents flag being set,
+            // this overlay widget can still get mouse events (including mouse press and release).
+            // I couldn't determine how/when/or why, and it's only on certain systems (QA only found one
+            // in the entire studio) but it is an issue.
+            // To fix it, we resolve the widget that this event should go to and forward the event to that instead.
+            switch (ev->type())
+            {
+                case QEvent::MouseButtonPress:
+                case QEvent::MouseButtonRelease:
+                case QEvent::MouseButtonDblClick:
+                case QEvent::MouseMove:
+                {
+                    QMouseEvent* originalMouseEvent = static_cast<QMouseEvent*>(ev);
+
+                    // ensure that the TransparentForMouseEvents flag is set, so that
+                    // the widget under the mouse gets properly detected, otherwise, "this" will get returned by childAt()
+                    AttributeSetterSentinel attributeSetterSentinel(this, Qt::WA_TransparentForMouseEvents);
+                    
+                    QWidget* newWidget = m_editor->childAt(m_editor->mapFromGlobal(originalMouseEvent->globalPos()));
+
+                    if ((newWidget != this) && (newWidget != nullptr))
+                    {
+                        QPoint newLocal = newWidget->mapFromGlobal(originalMouseEvent->globalPos());
+                        QMouseEvent newMouseEvent(
+                            ev->type(),
+                            newLocal,
+                            originalMouseEvent->windowPos(),
+                            originalMouseEvent->screenPos(),
+                            originalMouseEvent->button(),
+                            originalMouseEvent->buttons(),
+                            originalMouseEvent->modifiers(),
+                            originalMouseEvent->source());
+
+                        bool handled = QApplication::sendEvent(newWidget, &newMouseEvent);
+
+                        ev->setAccepted(handled);
+
+                        return handled;
+                    }
+                }
+                break;
+            }
+
+            return QWidget::event(ev);
+        }
+
 
     private:
         void drawDragIndicator(QPainter& painter, const QRect& currRect)
@@ -344,15 +421,12 @@ namespace AzToolsFramework
             return;
         }
 
-        m_lastSelectedEntityIds.clear();
-        ToolsApplicationRequests::Bus::BroadcastResult(m_lastSelectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
-
         ClearComponentEditorDragging();
         ClearComponentEditorSelection();
         ClearComponentEditorState();
     }
 
-    void EntityPropertyEditor::AfterEntitySelectionChanged()
+    void EntityPropertyEditor::AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList& newlySelectedEntities, const AzToolsFramework::EntityIdList& newlyDeselectedEntities)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         if (IsLockedToSpecificEntities())
@@ -360,41 +434,31 @@ namespace AzToolsFramework
             return;
         }
 
-        EntityIdList selectedEntityIds;
-        GetSelectedEntities(selectedEntityIds);
-
-        EntityIdList selectionRemoved = m_lastSelectedEntityIds;
-
-        for (AZ::EntityId& selectedEntityId : selectedEntityIds)
+        for (AZ::EntityId newlySelectedEntity : newlySelectedEntities)
         {
-            auto it = AZStd::find(selectionRemoved.begin(), selectionRemoved.end(), selectedEntityId);
-            if (it != selectionRemoved.end())
-            {
-                selectionRemoved.erase(it);
-            }
-            else
-            {
-                // This is a new entity, so need to connect to its notification bus for property updates
-                ConnectToEntityBuses(selectedEntityId);
-            }
+            ConnectToEntityBuses(newlySelectedEntity);
         }
 
-        // Need to disconnect for notifications from entities that are no longer selected
-        for (AZ::EntityId& entityId : selectionRemoved)
+        for (AZ::EntityId newlyDeselectedEntity : newlyDeselectedEntities)
         {
-            DisconnectFromEntityBuses(entityId);
+            DisconnectFromEntityBuses(newlyDeselectedEntity);
         }
 
-        if (m_lastSelectedEntityIds != selectedEntityIds)
+        if (!newlySelectedEntities.empty() || !newlyDeselectedEntities.empty())
         {
             ClearSearchFilter();
         }
 
-        if (selectedEntityIds.empty())
+        if (newlySelectedEntities.empty())
         {
-            // Ensure a prompt refresh when all entities have been removed/deselected.
-            UpdateContents();
-            return;
+            bool areAnyEntitiesSelected = false;
+            ToolsApplicationRequests::Bus::BroadcastResult(areAnyEntitiesSelected, &ToolsApplicationRequests::AreAnyEntitiesSelected);
+            if (!areAnyEntitiesSelected)
+            {
+                // Ensure a prompt refresh when all entities have been removed/deselected.
+                UpdateContents();
+                return;
+            }
         }
 
         // when entity selection changed, we need to repopulate our GUI
@@ -3499,12 +3563,14 @@ namespace AzToolsFramework
 
     void EntityPropertyEditor::ConnectToEntityBuses(const AZ::EntityId& entityId)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         AzToolsFramework::EditorInspectorComponentNotificationBus::MultiHandler::BusConnect(entityId);
         AzToolsFramework::PropertyEditorEntityChangeNotificationBus::MultiHandler::BusConnect(entityId);
     }
 
     void EntityPropertyEditor::DisconnectFromEntityBuses(const AZ::EntityId& entityId)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         AzToolsFramework::EditorInspectorComponentNotificationBus::MultiHandler::BusDisconnect(entityId);
         AzToolsFramework::PropertyEditorEntityChangeNotificationBus::MultiHandler::BusDisconnect(entityId);
     }

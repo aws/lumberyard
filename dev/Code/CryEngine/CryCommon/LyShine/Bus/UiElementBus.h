@@ -140,6 +140,11 @@ public: // member functions
     virtual bool IsEnabled() = 0;
     virtual void SetIsEnabled(bool isEnabled) = 0;
 
+    //! This can be used to disable the render without disabling the update/interaction.
+    //! This is used internally by components that temporarily disable rendering of other elements (though they preserve the existing value).
+    virtual bool IsRenderEnabled() = 0;
+    virtual void SetIsRenderEnabled(bool isRenderEnabled) = 0;
+
 public: // static member data
 
     //! Only one component on a entity can implement the events

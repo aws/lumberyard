@@ -210,6 +210,8 @@ inline bool TAnimSplineTrack<Vec2>::Serialize(XmlNodeRef& xmlNode, bool bLoading
             m_spline->key(i).ComputeThetaAndScale();
         }
 
+        xmlNode->getAttr("Id", m_id);
+
         if ((!num) && (!bLoadEmptyTracks))
         {
             return false;
@@ -246,6 +248,7 @@ inline bool TAnimSplineTrack<Vec2>::Serialize(XmlNodeRef& xmlNode, bool bLoading
             keyNode->setAttr("ds", m_spline->key(i).ds);
             keyNode->setAttr("dd", m_spline->key(i).dd);
         }
+        xmlNode->setAttr("Id", m_id);
     }
     return true;
 }
@@ -385,9 +388,11 @@ template<>
 inline bool TAnimSplineTrack<Vec2>::VersionConverter(AZ::SerializeContext& context,
     AZ::SerializeContext::DataElementNode& classElement)
 {
-    bool converted = false;
+    bool result = true;
     if (classElement.GetVersion() == 1)
     {
+        bool converted = false;
+
         int splineElementIdx = classElement.FindElement(AZ_CRC("Spline", 0x35f655e9));
         if (splineElementIdx != -1)
         {
@@ -397,8 +402,7 @@ inline bool TAnimSplineTrack<Vec2>::VersionConverter(AZ::SerializeContext& conte
 
             // Reset the node, then convert it to an intrusive pointer
             splinePtrNodeRef = AZ::SerializeContext::DataElementNode();
-            const bool result = splinePtrNodeRef.Convert<AZStd::intrusive_ptr<spline::TrackSplineInterpolator<Vec2>>>(context, "Spline");
-            if (result)
+            if (splinePtrNodeRef.Convert<AZStd::intrusive_ptr<spline::TrackSplineInterpolator<Vec2>>>(context, "Spline"))
             {
                 // Use the standard name used with the smart pointers serialization
                 // (smart pointers are serialized as containers with one element);
@@ -409,11 +413,13 @@ inline bool TAnimSplineTrack<Vec2>::VersionConverter(AZ::SerializeContext& conte
                 converted = true;
             }
         }
+
+        // Did not convert. Discard unknown versions if failed to convert, and hope for the best
+        AZ_Assert(converted, "Failed to convert TUiAnimSplineTrack<Vec2> version %d to the current version", classElement.GetVersion());
+        result = converted;
     }
 
-    // Did not convert. Discard unknown versions if failed to convert, and hope for the best
-    AZ_Assert(converted, "Failed to convert TUiAnimSplineTrack<Vec2> version %d to the current version", classElement.GetVersion());
-    return converted;
+    return result;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -427,10 +433,11 @@ inline void TAnimSplineTrack<Vec2>::Reflect(AZ::SerializeContext* serializeConte
     BezierSplineVec2::Reflect(serializeContext);
 
     serializeContext->Class<TAnimSplineTrack<Vec2> >()
-        ->Version(2, &TAnimSplineTrack<Vec2>::VersionConverter)
+        ->Version(3, &TAnimSplineTrack<Vec2>::VersionConverter)
         ->Field("Flags", &TAnimSplineTrack<Vec2>::m_flags)
         ->Field("DefaultValue", &TAnimSplineTrack<Vec2>::m_defaultValue)
         ->Field("ParamType", &TAnimSplineTrack<Vec2>::m_nParamType)
-        ->Field("Spline", &TAnimSplineTrack<Vec2>::m_spline);
+        ->Field("Spline", &TAnimSplineTrack<Vec2>::m_spline)
+        ->Field("Id", &TAnimSplineTrack<Vec2>::m_id);
 }
 #endif // CRYINCLUDE_CRYMOVIE_ANIMSPLINETRACK_VEC2SPECIALIZATION_H

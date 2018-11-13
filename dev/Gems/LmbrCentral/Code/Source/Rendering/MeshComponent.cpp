@@ -67,11 +67,13 @@ namespace LmbrCentral
                 ->Event("GetVisibility", &MeshComponentRequestBus::Events::GetVisibility)
                 ->VirtualProperty("Visibility", "GetVisibility", "SetVisibility");
 
+            const AZStd::unique_ptr<AZ::BehaviorDefaultValue> paramMaterialIdDetailsDefaultValue(behaviorContext->MakeDefaultValue(1));
+
             const char* setMaterialParamTooltip = "Sets a Material param value for the given Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.";
             const char* getMaterialParamTooltip = "Returns a Material param value for the given Entity";
             AZ::BehaviorParameterOverrides setParamNameDetails = { "ParamName", "The name of the Material param to set" };
             AZ::BehaviorParameterOverrides getParamNameDetails = { "ParamName", "The name of the Material param to return" };
-            AZ::BehaviorParameterOverrides paramMaterialIdDetails = { "MaterialID", "The ID of a Material slot to access, if the Owner has multiple Materials. IDs start at 1.",  behaviorContext->MakeDefaultValue(1) };
+            AZ::BehaviorParameterOverrides paramMaterialIdDetails = { "MaterialID", "The ID of a Material slot to access, if the Owner has multiple Materials. IDs start at 1.", paramMaterialIdDetailsDefaultValue.get() };
             const AZStd::array<AZ::BehaviorParameterOverrides, 2> getMaterialParamArgs = { { getParamNameDetails, paramMaterialIdDetails } };
             const char* newValueTooltip = "The new value to apply";
 
@@ -620,6 +622,7 @@ namespace LmbrCentral
     {
         using MeshInternal::UpdateRenderFlag;
         unsigned int flags = GetRndFlags();
+        flags |= ERF_COMPONENT_ENTITY;
 
         // Turn off any flag which has ever been set via auxiliary render flags
         UpdateRenderFlag(false, m_auxiliaryRenderFlagsHistory, flags);
@@ -801,6 +804,13 @@ namespace LmbrCentral
     /*IRenderNode*/ EERType MeshComponentRenderNode::GetRenderNodeType()
     {
         return m_renderOptions.IsStatic() ? eERType_StaticMeshRenderComponent : eERType_DynamicMeshRenderComponent;
+    }
+
+    /*IRenderNode*/ bool MeshComponentRenderNode::CanExecuteRenderAsJob()
+    {
+        return !m_renderOptions.m_dynamicMesh 
+            && !m_renderOptions.m_receiveWind 
+            && (!m_deformNode || !m_deformNode->HasDeformableData());
     }
 
     /*IRenderNode*/ const char* MeshComponentRenderNode::GetName() const

@@ -125,7 +125,6 @@ def set_rc_flags(self, kw, ctx):
                                     self.CreateRootRelativePath('Code/Sandbox/Plugins/EditorCommon')])
     compileDefines =  ['RESOURCE_COMPILER',
                    'FORCE_STANDARD_ASSERT',
-                   'NOT_USE_CRY_MEMORY_MANAGER',
                    '_CRT_SECURE_NO_DEPRECATE=1',
                    '_CRT_NONSTDC_NO_DEPRECATE=1']
 
@@ -144,7 +143,6 @@ def set_pipeline_flags(self, kw, ctx):
 
     append_kw_entry(kw,'defines',['RESOURCE_COMPILER',
                                   'FORCE_STANDARD_ASSERT',
-                                  'NOT_USE_CRY_MEMORY_MANAGER',
                                   '_CRT_SECURE_NO_DEPRECATE=1',
                                   '_CRT_NONSTDC_NO_DEPRECATE=1'])
 

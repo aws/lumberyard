@@ -52,11 +52,16 @@ namespace AZ
     {
         PLATFORM_WINDOWS_32 = 0,
         PLATFORM_WINDOWS_64,
-        PLATFORM_XBOX_360, // ACCEPTED_USE
-        PLATFORM_XBONE, // ACCEPTED_USE
-        PLATFORM_PS3, // ACCEPTED_USE
-        PLATFORM_PS4, // ACCEPTED_USE
-        PLATFORM_WII, // ACCEPTED_USE
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+        PLATFORM_##PUBLICNAME,
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
+        AZ_EXPAND_FOR_RESTRICTED_PLATFORM
+#else
+        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#endif
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
+#endif
         PLATFORM_LINUX_64,
         PLATFORM_ANDROID,       // ARMv7 / 32-bit
         PLATFORM_APPLE_IOS,
@@ -96,16 +101,9 @@ namespace AZ
 #   error Platform Not supported!
 #endif
 
-    static inline bool IsBigEndian(PlatformID id)
+    static inline bool IsBigEndian(PlatformID /*id*/)
     {
-        switch (id)
-        {
-        case PLATFORM_XBOX_360: // ACCEPTED_USE
-        case PLATFORM_PS3: // ACCEPTED_USE
-            return true;
-        default:
-            return false;
-        }
+        return false;
     }
 
     const char* GetPlatformName(PlatformID platform);

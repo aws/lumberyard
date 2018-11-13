@@ -154,6 +154,6 @@ namespace EMotionFX
             return MCORE_INVALIDINDEX32;
         }
 
-        void SkinVertexRange(uint32 startVertex, uint32 endVertex, AZ::PackedVector3f* positions, AZ::PackedVector3f* normals, AZ::Vector4* tangents, uint32* orgVerts, SkinningInfoVertexAttributeLayer* layer);
+        void SkinVertexRange(uint32 startVertex, uint32 endVertex, AZ::PackedVector3f* positions, AZ::PackedVector3f* normals, AZ::Vector4* tangents, AZ::PackedVector3f* bitangents, uint32* orgVerts, SkinningInfoVertexAttributeLayer* layer);
     };
 } // namespace EMotionFX

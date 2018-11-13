@@ -34,9 +34,9 @@ using namespace PathUtil;
 namespace AudioControls
 {
     //-------------------------------------------------------------------------------------------//
-    const string CAudioControlsLoader::ms_sLevelsFolder = "levels";
-    const string CAudioControlsLoader::ms_sControlsLevelsFolder = "levels";
-    const string CAudioControlsLoader::ms_sConfigFile = "config.xml";
+    const char* CAudioControlsLoader::ms_sLevelsFolder = "levels";
+    const char* CAudioControlsLoader::ms_sControlsLevelsFolder = "levels";
+    const char* CAudioControlsLoader::ms_sConfigFile = "config.xml";
 
     //-------------------------------------------------------------------------------------------//
     EACEControlType TagToType(const string& tag)
@@ -100,7 +100,11 @@ namespace AudioControls
         // load the level specific controls
         _finddata_t fd;
         ICryPak* pCryPak = gEnv->pCryPak;
-        intptr_t handle = pCryPak->FindFirst(sControlsPath + ms_sControlsLevelsFolder + GetSlash() + "*.*", &fd);
+        string searchMask(sControlsPath);
+        searchMask.append(ms_sControlsLevelsFolder);
+        searchMask.append(GetSlash());
+        searchMask.append("*.*");
+        intptr_t handle = pCryPak->FindFirst(searchMask, &fd);
         if (handle != -1)
         {
             do
@@ -132,7 +136,8 @@ namespace AudioControls
     {
         const char* controlsPath = nullptr;
         Audio::AudioSystemRequestBus::BroadcastResult(controlsPath, &Audio::AudioSystemRequestBus::Events::GetControlsPath);
-        string sConfigFilePath = controlsPath + ms_sConfigFile;
+        string sConfigFilePath = controlsPath;
+        sConfigFilePath.append(ms_sConfigFile);
 
         XmlNodeRef root = GetISystem()->LoadXmlFromFile(sConfigFilePath);
         if (root)
@@ -192,7 +197,10 @@ namespace AudioControls
         string path = AddSlash(folderPath);
         if (!level.empty())
         {
-            path = AddSlash(path + ms_sControlsLevelsFolder + GetSlash() + level);
+            path.append(ms_sControlsLevelsFolder);
+            path.append(GetSlash());
+            path.append(level);
+            path = AddSlash(path);
         }
 
         string searchPath = path + "*.xml";

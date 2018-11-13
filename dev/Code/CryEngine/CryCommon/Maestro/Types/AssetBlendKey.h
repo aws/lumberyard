@@ -12,9 +12,13 @@ struct IAssetBlendKey
 {
     AZ::Data::AssetId m_assetId;    //!< Asset Id
     AZStd::string m_description;    //!< Description (filename part of path)
+    float m_blendInTime;            //!< Blend in time in seconds;
+    float m_blendOutTime;            //!< Blend in time in seconds;
 
     IAssetBlendKey()
         : ITimeRangeKey()
+        , m_blendInTime(0.0f)
+        , m_blendOutTime(0.0f)
     {
     }
 };

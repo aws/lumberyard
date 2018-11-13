@@ -51,6 +51,43 @@ void ClearPlatformCVars(ISystem* pISystem)
     pISystem->GetIConsole()->ExecuteString("r_ShadersGLES3 = 0");
 }
 
+static AZ::EnvironmentVariable<IMemoryManager*> s_cryMemoryManager = nullptr;
+HMODULE s_crySystemDll = nullptr;
+
+void AcquireCryMemoryManager()
+{
+    using GetMemoryManagerInterfaceFunction = decltype(CryGetIMemoryManagerInterface)*;
+
+    IMemoryManager* cryMemoryManager = nullptr;
+    GetMemoryManagerInterfaceFunction getMemoryManager = nullptr;
+
+    s_crySystemDll = CryLoadLibraryDefName("CrySystem");
+    AZ_Assert(s_crySystemDll, "Unable to load CrySystem to resolve memory manager");
+    getMemoryManager = reinterpret_cast<GetMemoryManagerInterfaceFunction>(CryGetProcAddress(s_crySystemDll, "CryGetIMemoryManagerInterface"));
+    AZ_Assert(getMemoryManager, "Unable to resolve CryGetIMemoryInterface via CrySystem");
+    getMemoryManager((void**)&cryMemoryManager);
+    AZ_Assert(cryMemoryManager, "Unable to resolve CryMemoryManager");
+    s_cryMemoryManager = AZ::Environment::CreateVariable<IMemoryManager*>("CryIMemoryManagerInterface", cryMemoryManager);
+}
+
+void ReleaseCryMemoryManager()
+{
+    s_cryMemoryManager.Reset();
+    if (s_crySystemDll)
+    {
+        while (CryFreeLibrary(s_crySystemDll))
+        {
+            // keep freeing until free.
+            // this is unfortunate, but CryMemoryManager currently in its internal impl grabs an extra handle to this and does not free it nor
+            // does it have an interface to do so.
+            // until we can rewrite the memory manager init and shutdown code, we need to do this here because we need crysystem GONE
+            // before we attempt to destroy the memory managers which it uses.
+            ;
+        }
+        s_crySystemDll = nullptr;
+    }
+}
+
 // wrapped main so that it can be inside the lifetime of an AZCore Application in the real main()
 // and all memory created on the stack here in main_wrapped can go out of scope before we stop the application
 int main_wrapped(int argc, char* argv[])
@@ -77,21 +114,8 @@ int main_wrapped(int argc, char* argv[])
 
     InitRootDir();
 
-#ifndef AZ_MONOLITHIC_BUILD
-    HMODULE hSystemHandle = LoadLibraryA("CrySystem.dll");
-    if (!hSystemHandle)
-    {
-        string errorStr;
-        errorStr.Format("Failed to load the CrySystem DLL!");
-
-        MessageBox(0, errorStr.c_str(), "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
-
-        return 1;
-    }
-
     PFNCREATESYSTEMINTERFACE CreateSystemInterface =
-        (PFNCREATESYSTEMINTERFACE)::GetProcAddress(hSystemHandle, "CreateSystemInterface");
-#endif // AZ_MONOLITHIC_BUILD
+        (PFNCREATESYSTEMINTERFACE)::GetProcAddress(s_crySystemDll, "CreateSystemInterface");
 
     COutputPrintSink printSink;
     SSystemInitParams sip;
@@ -125,7 +149,7 @@ int main_wrapped(int argc, char* argv[])
 
         MessageBox(0, errorStr.c_str(), "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
 
-        return 1;
+        return false;
     }
 
     ////////////////////////////////////
@@ -212,7 +236,6 @@ int main_wrapped(int argc, char* argv[])
         pISystem->Release();
     }
 
-    FreeLibrary(hSystemHandle);
     pISystem = NULL;
 
     CloseHandle(mutex);
@@ -222,14 +245,23 @@ int main_wrapped(int argc, char* argv[])
 //////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
 {
+    AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+    AZ::AllocatorInstance<CryStringAllocator>::Create();
+
     AzFramework::Application app;
     AzFramework::Application::StartupParameters startupParams;
     AzFramework::Application::Descriptor descriptor;
     app.Start(descriptor, startupParams);
+    AcquireCryMemoryManager();
 
     int returncode = main_wrapped(argc, argv);
 
     app.Stop();
+    
+    ReleaseCryMemoryManager();
+    AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
     return returncode;
 }
-

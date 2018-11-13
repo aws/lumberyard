@@ -68,6 +68,11 @@ namespace AzToolsFramework
             AZ_Assert(it != m_thumbnails.end(), "Context %s not registered", contextName);
             return it->second->GetThumbnail(key);
         }
+
+        void ThumbnailerComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC("ThumbnailerService", 0x65422b97));
+        }
     } // namespace Thumbnailer
 } // namespace AzToolsFramework
 #include <Thumbnails/ThumbnailerComponent.moc>

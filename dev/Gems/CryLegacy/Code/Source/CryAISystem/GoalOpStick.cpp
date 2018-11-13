@@ -100,13 +100,13 @@ COPStick::COPStick(const XmlNodeRef& node)
     , m_fStickDistance(0.f)
     , m_fEndAccuracy(0.f)
     , m_fDuration(0.f)
-    , m_bContinuous(s_xml.GetBool(node, "continuous", false))
-    , m_bTryShortcutNavigation(s_xml.GetBool(node, "tryShortcutNavigation"))
-    , m_bUseLastOpResult(s_xml.GetBool(node, "useLastOp"))
-    , m_bLookAtLastOp(s_xml.GetBool(node, "lookAtLastOp"))
+    , m_bContinuous(s_xml->GetBool(node, "continuous", false))
+    , m_bTryShortcutNavigation(s_xml->GetBool(node, "tryShortcutNavigation"))
+    , m_bUseLastOpResult(s_xml->GetBool(node, "useLastOp"))
+    , m_bLookAtLastOp(s_xml->GetBool(node, "lookAtLastOp"))
     , m_bInitialized(false)
-    , m_bForceReturnPartialPath(s_xml.GetBool(node, "requestPartialPath"))
-    , m_bStopOnAnimationStart(s_xml.GetBool(node, "stopOnAnimationStart"))
+    , m_bForceReturnPartialPath(s_xml->GetBool(node, "requestPartialPath"))
+    , m_bStopOnAnimationStart(s_xml->GetBool(node, "stopOnAnimationStart"))
     , m_targetPredictionTime(0.f)
     , m_pTraceDirective(0)
     , m_pPathfindDirective(0)
@@ -120,7 +120,7 @@ COPStick::COPStick(const XmlNodeRef& node)
     , m_playerDistForTeleport(3.f)
     , m_sLocateName(node->getAttr("locateName"))
     , m_bBodyIsAligned(false)
-    , m_bAlignBodyBeforeMove(s_xml.GetBool(node, "alignBeforeMove"))
+    , m_bAlignBodyBeforeMove(s_xml->GetBool(node, "alignBeforeMove"))
     , m_fCorrectBodyDirTime(0.0f)
     , m_fTimeSpentAligning(0.0f)
 {
@@ -165,12 +165,12 @@ COPStick::COPStick(const XmlNodeRef& node)
     if (m_bContinuous)
     {
         // Continuous stick defaults to speed adjustment, allow to make it constant.
-        m_bConstantSpeed = s_xml.GetBool(node, "constantSpeed");
+        m_bConstantSpeed = s_xml->GetBool(node, "constantSpeed");
     }
     else
     {
         // Non-continuous stick defaults to constant speed, allow to enable adjustment.
-        m_bConstantSpeed = !s_xml.GetBool(node, "adjustSpeed");
+        m_bConstantSpeed = !s_xml->GetBool(node, "adjustSpeed");
     }
 
     node->getAttr("regenDistThreshold", m_fTrhDistance);

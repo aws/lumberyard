@@ -518,9 +518,9 @@ namespace AZStd
         {
             return insert_impl(AZStd::forward<value_type>(value));
         }
-        AZ_FORCE_INLINE iterator        insert(const_iterator, value_type&& value)
+        AZ_FORCE_INLINE iterator  insert(const_iterator, value_type&& value)
         {
-            return insert_impl(AZStd::forward<value_type>(value));
+            return insert_impl(AZStd::forward<value_type>(value)).first;
         }
 
         template <typename... Args>

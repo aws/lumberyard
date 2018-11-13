@@ -11,11 +11,12 @@ end
 function AnimParamUpdateFlags:reset()
 	self.Speed = { update = true, show = false };
 	self.TurnSpeed = { update = true, show = false };
+	self.StrafeTurnSpeed = { update = false, show = false };
 	self.SlopeAngle = { update = true, show = false };
 	self.TurnAngle = { update = true, show = false };
 	self.PreviousSpeed = { update = true, show = false };
 	self.TargetPos = { update = true, show = false };
-	self.WantsToJump = { update = true, show = false };
+	self.WantsToJump = { update = true, show = true };
 	self.Aiming = { update = true, show = true };
 	self.AimAtTarget = { update = true, show = false };
 	self.ShouldLand = { update = true, show = false };
@@ -33,6 +34,7 @@ function AnimParamUpdateFlags:reset()
 	self.WasHit = { update = true, show = true };
 	self.HitDirection = { update = true, show = false };
 	self.Shot = { update = true, show = false };
+	self.FallingDuration = { update = false, show = false };
 end
 
 return AnimParamUpdateFlags;

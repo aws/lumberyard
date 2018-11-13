@@ -604,9 +604,6 @@ void SoftCodeMgr::LoadNewModules()
 
 void SoftCodeMgr::AddListener(const char* libraryName, ISoftCodeListener* pListener, const char* listenerName)
 {
-    // put SoftCode to global heap, since it doesn't have a well defined level scope
-    ScopedSwitchToGlobalHeap GlobalHeap;
-
     // Find an existing lib or create a new one to add the listener to
     DynamicTypeLibrary& lib = m_libraryMap[libraryName];
     lib.AddListener(libraryName, pListener, listenerName);

@@ -136,7 +136,7 @@ public:
     static void DumpClasses(IConsoleCmdArgs* pArgs);
 
     typedef std::map<string, int> TVehicleClassCount;
-    static TVehicleClassCount s_classInstanceCounts;
+    static StaticInstance<TVehicleClassCount> s_classInstanceCounts;
 #endif
 
 private:

@@ -699,6 +699,8 @@ public:
     SFogState m_FSStack[8];
     int m_nCurFSStackLevel;
 
+    AZStd::string m_apiVersion;
+    AZStd::string m_adapterDescription;
     DWORD m_Features;
     int m_MaxTextureSize;
     size_t m_MaxTextureMemory;
@@ -868,6 +870,13 @@ public:
     virtual bool IsCurrentContextMainVP() { return true; }
 
     virtual int GetFeatures() {return m_Features; }
+    virtual const void SetApiVersion(const AZStd::string& apiVersion) { m_apiVersion = apiVersion; }
+    virtual const void SetAdapterDescription(const AZStd::string& adapterDescription) { m_adapterDescription = adapterDescription; }
+    virtual const AZStd::string& GetApiVersion() const { return m_apiVersion; }
+    virtual const AZStd::string& GetAdapterDescription() const { return m_adapterDescription; }
+    
+    unsigned long GetNvidiaDriverVersion() const { return m_nvidiaDriverVersion; }
+    void SetNvidiaDriverVersion(unsigned long version) { m_nvidiaDriverVersion = version; }
 
     virtual int GetNumGeomInstances()
     {
@@ -1194,25 +1203,10 @@ public:
     int GetPolyCount()
     {
 #if defined(ENABLE_PROFILING_CODE)
-        ASSERT_IS_MAIN_THREAD(m_pRT);
         int nPolys = 0;
         for (int i = 0; i < EFSLIST_NUM; i++)
         {
-            nPolys += m_RP.m_PS[m_RP.m_nFillThreadID].m_nPolygons[i];
-        }
-        return nPolys;
-#else
-        return 0;
-#endif
-    }
-    int RT_GetPolyCount()
-    {
-#if defined(ENABLE_PROFILING_CODE)
-        ASSERT_IS_RENDER_THREAD(m_pRT);
-        int nPolys = 0;
-        for (int i = 0; i < EFSLIST_NUM; i++)
-        {
-            nPolys += m_RP.m_PS[m_RP.m_nProcessThreadID].m_nPolygons[i];
+            nPolys += m_RP.m_PS[m_pRT->IsMainThread()?m_RP.m_nFillThreadID:m_RP.m_nProcessThreadID].m_nPolygons[i];
         }
         return nPolys;
 #else
@@ -1846,6 +1840,7 @@ public:
     uint32 m_nFrameSwapID;                          // without recursive calls, access through GetFrameID(false)
 
     ColorF m_cClearColor;
+    bool m_clearBackground;
     int  m_NumResourceSlots;
     int  m_NumSamplerSlots;
 
@@ -1931,6 +1926,8 @@ public:
     //=================================================================
 
     virtual void SetClearColor(const Vec3& vColor) { m_cClearColor.r = vColor[0]; m_cClearColor.g = vColor[1]; m_cClearColor.b = vColor[2]; }
+    
+    virtual void SetClearBackground(bool clearBackground) { m_clearBackground = clearBackground; }
 
     static void ChangeGeomInstancingThreshold(ICVar* pVar = 0);
 
@@ -2055,7 +2052,7 @@ public:
 #endif
     //  static int CV_r_envcmwrite;
     static int CV_r_shaderspreactivate;
-    static int CV_r_shadersremotecompiler;
+    DeclareStaticConstIntCVar(CV_r_shadersremotecompiler, 0);
     static int CV_r_shadersasynccompiling;
     static int CV_r_shadersasyncactivation;
     static int CV_r_shadersasyncmaxthreads;
@@ -2421,6 +2418,7 @@ public:
 
     static int CV_r_AntialiasingMode_CB;
     static int CV_r_AntialiasingMode;
+    static float CV_r_AntialiasingNonTAASharpening;
     static int CV_r_AntialiasingTAAJitterPattern;
     DeclareStaticConstIntCVar(CV_r_AntialiasingTAAUseAntiFlickerFilter, 1);
     DeclareStaticConstIntCVar(CV_r_AntialiasingTAAUseJitterMipBias, 1);
@@ -2533,6 +2531,9 @@ public:
     
     static int CV_r_SkipNativeUpscale;
 
+    static float CV_r_minConsoleFontSize;
+    static float CV_r_maxConsoleFontSize;
+
     // Graphics programmers: Use these in your code for local tests/debugging.
     // Delete all references in your code before you submit
     static int CV_r_GraphicsTest00;
@@ -2551,16 +2552,6 @@ public:
 
     virtual void MakeMatrix(const Vec3& pos, const Vec3& angles, const Vec3& scale, Matrix34* mat){assert(0); };
 
-    void* operator new(size_t Size)
-    {
-        void* pPtrRes = CryModuleMemalign(Size, 16);
-        memset(pPtrRes, 0, Size);
-        return pPtrRes;
-    }
-    void operator delete(void* Ptr)
-    {
-        CryModuleMemalignFree(Ptr);
-    }
 
     virtual WIN_HWND GetHWND() = 0;
 
@@ -2689,6 +2680,8 @@ protected:
 private:
     std::vector<ISyncMainWithRenderListener*> m_syncMainWithRenderListeners;
     RendererAssetListener m_assetListener;
+
+    unsigned long m_nvidiaDriverVersion = 0;
 };
 
 

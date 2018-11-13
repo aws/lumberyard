@@ -74,6 +74,8 @@
 
 #include "QtUtil.h"
 
+#include "ActionManager.h"
+
 //#define PROFILE_LOADING_WITH_VTUNE
 
 // profilers api.
@@ -84,16 +86,18 @@
 #endif
 
 static const char* kAutoBackupFolder = "_autobackup";
-static const char* kHoldFolder = "_hold";
+static const char* kHoldFolder = "$tmp_hold"; // conform to the ignored file types $tmp[0-9]*_ regex
 static const char* kSaveBackupFolder = "_savebackup";
-static const char* kResizeTempFolder = "_tmpresize";
+static const char* kResizeTempFolder = "$tmp_resize"; // conform to the ignored file types $tmp[0-9]*_ regex
 
 static const char* kBackupOrTempFolders[] = 
 {
     kAutoBackupFolder,
     kHoldFolder,
     kSaveBackupFolder,
-    kResizeTempFolder
+    kResizeTempFolder,
+    "_hold", // legacy name
+    "_tmpresize", // legacy name
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -608,7 +612,6 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
 #endif
 
         LogLoadTime(GetTickCount() - t0);
-        GetIEditor()->CommitLevelErrorReport();
         m_pTmpXmlArchHack = 0;
         // Loaded with success, remove event from log file
         GetIEditor()->GetSettingsManager()->UnregisterEvent(loadEvent);
@@ -966,7 +969,7 @@ bool CCryEditDoc::OnOpenDocument(const QString& lpszPathName)
     {
         return FALSE;
     }
-    return DoOpenDocument(lpszPathName, context);
+    return DoOpenDocument(context);
 }
 
 bool CCryEditDoc::BeforeOpenDocument(const QString& lpszPathName, TOpenDocContext& context)
@@ -982,41 +985,38 @@ bool CCryEditDoc::BeforeOpenDocument(const QString& lpszPathName, TOpenDocContex
     QDir::setCurrent(GetIEditor()->GetMasterCDFolder());
 
     QString absoluteLevelPath = lpszPathName;
-    QString friendlyDisplayName = Path::GetRelativePath(absoluteLevelPath, true);
-    CLogFile::FormatLine("Opening document %s", friendlyDisplayName.toUtf8().data());
+    QFileInfo fileInfo(absoluteLevelPath);
+    QString friendlyDisplayName = fileInfo.fileName();
+    CLogFile::FormatLine("Opening level %s", friendlyDisplayName.toUtf8().data());
 
-    absoluteLevelPath = Path::GamePathToFullPath(friendlyDisplayName);
-
+    // normalize the file path.
+    absoluteLevelPath = Path::ToUnixPath(QFileInfo(absoluteLevelPath).canonicalFilePath());
     context.loading_start_time = loading_start_time;
     context.absoluteLevelPath = absoluteLevelPath;
     return TRUE;
 }
 
-bool CCryEditDoc::DoOpenDocument(const QString& lpszPathName, TOpenDocContext& context)
+bool CCryEditDoc::DoOpenDocument(TOpenDocContext& context)
 {
     CTimeValue& loading_start_time = context.loading_start_time;
-    QByteArray absoluteLevelCryFilePath;
-    absoluteLevelCryFilePath.reserve(AZ_MAX_PATH_LEN);
-    absoluteLevelCryFilePath = context.absoluteLevelPath.toUtf8();
-    AZ::IO::FileIOBase::GetDirectInstance()->ConvertToAlias(absoluteLevelCryFilePath.data(), absoluteLevelCryFilePath.capacity());
 
-    // write the full filename and path to the log
+    // normalize the path so that its the same in all following calls:
+    QString levelFilePath = QFileInfo(context.absoluteLevelPath).absoluteFilePath();
+    context.absoluteLevelPath = levelFilePath;
+
     m_bLoadFailed = false;
 
     ICryPak* pIPak = GetIEditor()->GetSystem()->GetIPak();
-    QString levelPath = Path::GetPath(absoluteLevelCryFilePath);
 
-    // if the level pack exists, open that, too.
-    QString levelPackPath = levelPath + QString("level.pak");
+    // if the level pack exists, open that, too:
+    QString levelFolderAbsolutePath = QFileInfo(context.absoluteLevelPath).absolutePath();
+    QString levelPackFileAbsolutePath = QDir(levelFolderAbsolutePath).absoluteFilePath("level.pak");
 
-    // load the pack if available.  Note that it is okay for it to be missing at this point
-    // we may still be generating it.  Note that it mounts it in "@assets@" so that game code continues functioning,
-    // even though it lives in the dev folder.
-
-    pIPak->OpenPack(levelPath.toUtf8().data(), levelPackPath.toUtf8().data());
+    // we mount the pack (level.pak) using the folder its sitting in as the mountpoint (first parameter)
+    pIPak->OpenPack(levelFolderAbsolutePath.toUtf8().constData(), levelPackFileAbsolutePath.toUtf8().constData());
 
     TDocMultiArchive arrXmlAr = {};
-    if (!LoadXmlArchiveArray(arrXmlAr, absoluteLevelCryFilePath, levelPath))
+    if (!LoadXmlArchiveArray(arrXmlAr, levelFilePath, levelFolderAbsolutePath))
     {
         m_bLoadFailed = true;
         return FALSE;
@@ -1037,7 +1037,7 @@ bool CCryEditDoc::DoOpenDocument(const QString& lpszPathName, TOpenDocContext& c
     ReleaseXmlArchiveArray(arrXmlAr);
 
     // Load AZ entities for the editor.
-    if (!LoadEntities(absoluteLevelCryFilePath))
+    if (!LoadEntities(context.absoluteLevelPath))
     {
         m_bLoadFailed = true;
     }
@@ -1052,7 +1052,7 @@ bool CCryEditDoc::DoOpenDocument(const QString& lpszPathName, TOpenDocContext& c
     CTimeValue loading_end_time = gEnv->pTimer->GetAsyncTime();
 
     CLogFile::FormatLine("-----------------------------------------------------------");
-    CLogFile::FormatLine("Successfully opened document %s", levelPath.toUtf8().data());
+    CLogFile::FormatLine("Successfully opened document %s", context.absoluteLevelPath.toUtf8().data());
     CLogFile::FormatLine("Level loading time: %.2f seconds", (loading_end_time - loading_start_time).GetSeconds());
     CLogFile::FormatLine("-----------------------------------------------------------");
 
@@ -1108,13 +1108,13 @@ bool CCryEditDoc::BeforeSaveDocument(const QString& lpszPathName, TSaveDocContex
 
     // If we do not have a level loaded, we will also have an empty path, and that will
     // cause problems later in the save process.  Early out here if that's the case
-    QString levelPath = Path::ToUnixPath(Path::GetRelativePath(lpszPathName));
-    if (levelPath.isEmpty())
+    QString levelFriendlyName = QFileInfo(lpszPathName).fileName();
+    if (levelFriendlyName.isEmpty())
     {
         return false;
     }
 
-    CryLog("Saving to %s...", levelPath.toUtf8().data());
+    CryLog("Saving to %s...", levelFriendlyName.toUtf8().data());
     GetIEditor()->Notify(eNotify_OnBeginSceneSave);
 
     bool bSaved(true);
@@ -1130,8 +1130,7 @@ bool CCryEditDoc::DoSaveDocument(const QString& filename, TSaveDocContext& conte
     {
         // Paranoia - we shouldn't get this far into the save routine without a level loaded (empty levelPath)
         // If nothing is loaded, we don't need to save anything
-        QString levelPath = Path::ToUnixPath(Path::GetRelativePath(filename, true));
-        if (levelPath.isEmpty())
+        if (filename.isEmpty())
         {
             bSaved = false;
         }
@@ -1143,10 +1142,12 @@ bool CCryEditDoc::DoSaveDocument(const QString& filename, TSaveDocContext& conte
                 CCryEditApp::instance()->SaveTagLocations();
             }
 
-            bSaved = SaveLevel(levelPath);
+            QString normalizedPath = Path::ToUnixPath(filename);
+
+            bSaved = SaveLevel(normalizedPath);
 
             // Changes filename for this document.
-            SetPathName(filename);
+            SetPathName(normalizedPath);
         }
     }
 
@@ -1194,11 +1195,11 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
 
     CAutoCheckOutDialogEnableForAll enableForAll;
 
-    QString fullPathName = filename;
+    QString fullPathName = Path::ToUnixPath(filename);
     if (QFileInfo(filename).isRelative())
     {
         // Resolving the path through resolvepath would normalize and lowcase it, and in this case, we don't want that.
-        fullPathName = QStringLiteral("%1/%2").arg(gEnv->pFileIO->GetAlias("@devassets@")).arg(filename);
+        fullPathName = Path::ToUnixPath(QDir(QString::fromUtf8(gEnv->pFileIO->GetAlias("@devassets@"))).absoluteFilePath(fullPathName));
     }
 
     if (!CFileUtil::OverwriteFile(fullPathName))
@@ -1208,26 +1209,22 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
 
     BackupBeforeSave();
 
-    QString levelAbsoluteFolder = Path::GetPath(fullPathName);
-    CFileUtil::CreateDirectory(levelAbsoluteFolder.toUtf8().data());
-    GetIEditor()->GetGameEngine()->SetLevelPath(levelAbsoluteFolder);
-
     // need to copy existing level data before saving to different folder
-    const QString oldLevelRelativePath = Path::ToUnixPath(Path::GetRelativePath(GetPathName()));
-    const QString oldLevelRelativeFolder = Path::GetPath(oldLevelRelativePath);
+    const QString oldLevelFolder = Path::GetPath(GetPathName()); // get just the folder name
+    QString newLevelFolder = Path::GetPath(fullPathName);
 
+    CFileUtil::CreateDirectory(newLevelFolder.toUtf8().data());
+    GetIEditor()->GetGameEngine()->SetLevelPath(newLevelFolder);
 
-    // is it the same folder?
-    QString currentLevelRelativeFolder = Path::ToUnixPath(Path::GetRelativePath(levelAbsoluteFolder));
-
-    if (oldLevelRelativeFolder.compare(currentLevelRelativeFolder, Qt::CaseInsensitive) != 0)
+    // QFileInfo operator== takes care of many side cases and will return true
+    // if the folder is the same folder, even if other things (like slashes, etc) are wrong
+    if (QFileInfo(oldLevelFolder) != QFileInfo(newLevelFolder))
     {
-        const QString oldLevelAbsoluteFolder = Path::GetPath(GetPathName());
         // if we're saving to a new folder, we need to copy the old folder tree.
         ICryPak* pIPak = GetIEditor()->GetSystem()->GetIPak();
         pIPak->Lock();
 
-        const QString oldLevelPattern = oldLevelAbsoluteFolder + "*.*";
+        const QString oldLevelPattern = QDir(oldLevelFolder).absoluteFilePath("*.*");
         const QString oldLevelName = Path::GetFile(GetPathName());
         const QString oldLevelXml = Path::ReplaceExtension(oldLevelName, "xml");
         _finddata_t findData;
@@ -1237,21 +1234,24 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
             do
             {
                 const QString sourceName(findData.name);
-                // copy all subdirectories that aren't filtered out.
                 if (findData.attrib & _A_SUBDIR)
                 {
+                    // we only end up here if sourceName is a folder name.
                     bool skipDir = sourceName == "." || sourceName == "..";
                     skipDir |= IsBackupOrTempLevelSubdirectory(sourceName);
                     skipDir |= sourceName == "Layers"; // layers folder will be created and written out as part of saving
                     if (!skipDir)
                     {
-                        CFileUtil::CreateDirectory(Path::AddSlash(levelAbsoluteFolder + sourceName).toUtf8().data());
-                        CFileUtil::CopyTree((oldLevelAbsoluteFolder + sourceName).toUtf8().data(), Path::AddSlash(levelAbsoluteFolder + sourceName).toUtf8().data());
+                        QString oldFolderName = QDir(oldLevelFolder).absoluteFilePath(sourceName);
+                        QString newFolderName = QDir(newLevelFolder).absoluteFilePath(sourceName);
+
+                        CFileUtil::CreateDirectory(newFolderName.toUtf8().data());
+                        CFileUtil::CopyTree(oldFolderName, newFolderName);
                     }
                     continue;
                 }
 
-                bool skipFile = sourceName.contains(".cry") || sourceName.contains(".ly"); // level file will be written out by saving, ignore the source one
+                bool skipFile = sourceName.endsWith(".cry", Qt::CaseInsensitive) || sourceName.endsWith(".ly", Qt::CaseInsensitive); // level file will be written out by saving, ignore the source one
                 if (skipFile)
                 {
                     continue;
@@ -1259,9 +1259,10 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
 
                 // close any paks in the source folder so that when the paks are re-opened there is
                 // no stale cached metadata in the pak system
-                if (sourceName.contains(".pak"))
+                if (sourceName.endsWith(".pak", Qt::CaseInsensitive))
                 {
-                    pIPak->ClosePack(sourceName.toUtf8().data());
+                    QString oldPackName = QDir(oldLevelFolder).absoluteFilePath(sourceName);
+                    pIPak->ClosePack(oldPackName.toUtf8().constData());
                 }
 
                 QString destName = sourceName;
@@ -1271,17 +1272,18 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
                     destName = Path::ReplaceExtension(Path::GetFile(fullPathName), "xml");
                 }
 
-                const QString sourceFile = oldLevelAbsoluteFolder + "/" + sourceName;
-                const QString destFile = levelAbsoluteFolder + "/" + destName;
-                CFileUtil::CopyFile(sourceFile, destFile);
+                QString oldFilePath = QDir(oldLevelFolder).absoluteFilePath(sourceName);
+                QString newFilePath = QDir(newLevelFolder).absoluteFilePath(sourceName);
+                CFileUtil::CopyFile(oldFilePath, newFilePath);
             } while (pIPak->FindNext(findHandle, &findData) >= 0);
             pIPak->FindClose(findHandle);
-            // ensure that copied files are not read-only
-            CFileUtil::ForEach(levelAbsoluteFolder, [](const QString& filePath)
-            {
-                QFile(filePath).setPermissions(QFile::ReadOther | QFile::WriteOther);
-            });
         }
+
+        // ensure that copied files are not read-only
+        CFileUtil::ForEach(newLevelFolder, [](const QString& filePath)
+        {
+            QFile(filePath).setPermissions(QFile::ReadOther | QFile::WriteOther);
+        });
 
         pIPak->Unlock();
     }
@@ -1290,7 +1292,9 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
     CXmlArchive xmlAr;
     Save(xmlAr);
 
-    QString tempSaveFile = Path::ReplaceExtension(fullPathName, "tmp");
+    // temp files (to be ignored by AssetProcessor take the form $tmp[0-9]*_...).  we will conform
+    // to that to make this file invisible to AP until it has been written completely.
+    QString tempSaveFile = QDir(newLevelFolder).absoluteFilePath("$tmp_levelSave.tmp");
     QFile(tempSaveFile).setPermissions(QFile::ReadOther | QFile::WriteOther);
     QFile::remove(tempSaveFile);
 
@@ -1434,20 +1438,19 @@ bool CCryEditDoc::LoadLevel(TDocMultiArchive& arrXmlAr, const QString& absoluteC
 {
     ICryPak* pIPak = GetIEditor()->GetSystem()->GetIPak();
 
-    QString relativeFilePath = Path::GetRelativePath(absoluteCryFilePath);
-    QString relativeFolder = Path::GetPath(relativeFilePath);
+    QString folderPath = QFileInfo(absoluteCryFilePath).absolutePath();
 
-    GetIEditor()->GetGameEngine()->SetLevelPath(Path::GetPath(absoluteCryFilePath));
+    GetIEditor()->GetGameEngine()->SetLevelPath(folderPath);
     OnStartLevelResourceList();
 
     // Load next level resource list.
-    pIPak->GetResourceList(ICryPak::RFOM_NextLevel)->Load(Path::Make(relativeFolder, "resourcelist.txt").toUtf8().data());
+    pIPak->GetResourceList(ICryPak::RFOM_NextLevel)->Load(Path::Make(folderPath, "resourcelist.txt").toUtf8().data());
     GetIEditor()->Notify(eNotify_OnBeginLoad);
     //GetISystem()->GetISystemEventDispatcher()->OnSystemEvent( ESYSTEM_EVENT_LEVEL_LOAD_START,0,0 );
     DeleteContents();
     SetModifiedFlag(TRUE);  // dirty during de-serialize
     SetModifiedModules(eModifiedAll);
-    Load(arrXmlAr, relativeFilePath);
+    Load(arrXmlAr, absoluteCryFilePath);
 
     GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_LEVEL_LOAD_END, 0, 0);
     // We don't need next level resource list anymore.
@@ -1626,11 +1629,17 @@ bool CCryEditDoc::BackupBeforeSave(bool force)
     gEnv->pCryPak->MakeDir(backupPath.toUtf8().data());
 
     QString sourcePath = QString::fromUtf8(resolvedLevelPath) + "/";
-    QString ignoredFiles(kAutoBackupFolder);
-    ignoredFiles += "|";
-    ignoredFiles += kSaveBackupFolder;
-    ignoredFiles += "|";
-    ignoredFiles += kHoldFolder;
+
+    QString ignoredFiles;
+
+    for (const char* backupOrTempFolderName : kBackupOrTempFolders)
+    {
+        if (!ignoredFiles.isEmpty())
+        {
+            ignoredFiles += "|";
+        }
+        ignoredFiles += QString::fromUtf8(backupOrTempFolderName);
+    }
 
     // copy that whole tree:
     AZ_TracePrintf("Editor", "Saving level backup to '%s'...\n", backupPath.toUtf8().data());

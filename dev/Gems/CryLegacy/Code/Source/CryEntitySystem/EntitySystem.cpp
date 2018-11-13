@@ -176,8 +176,6 @@ SEntityLoadParams& SEntityLoadParams::operator =(const SEntityLoadParams& other)
 //////////////////////////////////////////////////////////////////////
 void SEntityLoadParams::UseClonedEntityNode(const XmlNodeRef sourceEntityNode, XmlNodeRef parentNode)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, EMemStatContextFlags::MSF_Instance, "SEntityLoadParams Clone Xml");
-
     // Create clone of entity node to avoid adding reference to host XML
     bool bCloned = false;
     if (sourceEntityNode)
@@ -269,7 +267,8 @@ void SEntityLoadParams::RemoveRef()
 
 //////////////////////////////////////////////////////////////////////
 CEntitySystem::CEntitySystem(ISystem* pSystem)
-    :   m_entityTimeoutList(gEnv->pTimer)
+    : m_entityTimeoutList(gEnv->pTimer)
+    , m_pPhysicsEventListener(nullptr)
 {
     CComponentRender::SetTimeoutList(&m_entityTimeoutList);
 
@@ -694,8 +693,6 @@ IEntity* CEntitySystem::SpawnEntity(SEntitySpawnParams& params, bool bAutoInit)
     {
         params.pClass = params.pArchetype->GetClass();
     }
-
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, EMemStatContextFlags::MSF_Instance, "SpawnEntity %s", params.pClass ? params.pClass->GetName() : "WITH NO CLASS");
 
     assert(params.pClass != NULL);   // Class must always be specified
 
@@ -2184,20 +2181,6 @@ void CEntitySystem::GetMemoryStatistics(ICrySizer* pSizer) const
         SIZER_COMPONENT_NAME(pSizer, "EntityLoad");
         m_pEntityLoadManager->GetMemoryStatistics(pSizer);
     }
-
-#ifndef AZ_MONOLITHIC_BUILD // Only when compiling as dynamic library
-    {
-        //SIZER_COMPONENT_NAME(pSizer,"Strings");
-        //pSizer->AddObject( (this+1),string::_usedMemory(0) );
-    }
-    {
-        SIZER_COMPONENT_NAME(pSizer, "STL Allocator Waste");
-        CryModuleMemoryInfo meminfo;
-        ZeroStruct(meminfo);
-        CryGetMemoryInfoForModule(&meminfo);
-        pSizer->AddObject((this + 2), (size_t)meminfo.STL_wasted);
-    }
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2521,8 +2504,7 @@ void CEntitySystem::OnLevelLoadStart()
 void CEntitySystem::LoadEntities(XmlNodeRef& objectsNode, bool bIsLoadingLevelFile)
 {
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "LoadEntities");
-
+    
     //Update loading screen and important tick functions
     SYNCHRONOUS_LOADING_TICK();
 

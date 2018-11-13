@@ -199,10 +199,10 @@ class CEngineModule_CrySoundSystem
 
             // Generic Allocator:
             allocDesc.m_allocationRecords = true;
-            allocDesc.m_heap.m_numMemoryBlocks = 1;
-            allocDesc.m_heap.m_memoryBlocksByteSize[0] = poolSize;
+            allocDesc.m_heap.m_numFixedMemoryBlocks = 1;
+            allocDesc.m_heap.m_fixedMemoryBlocksByteSize[0] = poolSize;
 
-            allocDesc.m_heap.m_memoryBlocks[0] = AZ::AllocatorInstance<AZ::OSAllocator>::Get().Allocate(allocDesc.m_heap.m_memoryBlocksByteSize[0], allocDesc.m_heap.m_memoryBlockAlignment);
+            allocDesc.m_heap.m_fixedMemoryBlocks[0] = AZ::AllocatorInstance<AZ::OSAllocator>::Get().Allocate(allocDesc.m_heap.m_fixedMemoryBlocksByteSize[0], allocDesc.m_heap.m_memoryBlockAlignment);
 
             // Note: This allocator is destroyed in CAudioSystem::Release() after the CAudioSystem has been freed.
             AZ::AllocatorInstance<Audio::AudioSystemAllocator>::Create(allocDesc);

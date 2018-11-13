@@ -2,10 +2,10 @@
     "GemFormatVersion": 4,
     "Uuid": "09a70eb8876e49a8a919cabbb8f33b27",
     "Name": "SVOGI",
-    "DisplayName": "SVOGI",
+    "DisplayName": "Sparse Voxel Octree Global Illumination (SVOGI)",
     "Version": "0.1.0",
-    "Summary": "SVOGI solution for total illumination",
-    "Tags": ["Untagged"],
+    "Summary": "Sparse Voxel Octree Global Illumination (SVOGI) solution for total illumination",
+    "Tags": ["Rendering", "Lighting", "Global Illumination", "Voxel"],
     "IconPath": "preview.png",
     "Dependencies": [
         {

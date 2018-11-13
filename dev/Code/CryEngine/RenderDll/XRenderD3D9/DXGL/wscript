@@ -53,7 +53,8 @@ def build(bld):
                                 'XRENDERGL_EXPORTS',
                                 '_RENDERER',
                                 'EXCLUDE_CINEMIZER_SDK',
-                                'OPENGL' ],
+                                'OPENGL',
+                                'USE_CRY_NEW_AND_DELETE' ],
 
         # Compiler Specific
         win_x64_clang_cxxflags = [ '-Wno-microsoft-unqualified-friend',

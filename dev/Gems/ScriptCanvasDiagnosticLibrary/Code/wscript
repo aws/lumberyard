@@ -28,7 +28,7 @@ def build(bld):
                 'scripts' : [os.path.join(script_canvas_dir, 'CodeGen/Drivers/ScriptCanvasNode.py')],
             }]
 
-    bld.DefineGem(
+    kw = dict(
 
         pch         = "Source/precompiled.cpp",
 
@@ -36,7 +36,7 @@ def build(bld):
         configurations  = ['all'],
         features        = ['az_code_gen'],
         vs_filter       = 'Gems/ScriptCanvas',
-        defines         = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'NOT_USE_CRY_MEMORY_MANAGER'],
+        defines         = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED'],
         win_defines     = ['SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR'],
         darwin_defines  = ['SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR'],
         includes        = [ '.',
@@ -54,11 +54,10 @@ def build(bld):
         
         android_file_list = ['scriptcanvasdiagnosticlibrary_game.waf_files'],
         appletv_file_list = ['scriptcanvasdiagnosticlibrary_game.waf_files'],
-       
+
         ios_file_list = ['scriptcanvasdiagnosticlibrary_game.waf_files'],
         linux_file_list = ['scriptcanvasdiagnosticlibrary_game.waf_files'],
-       
-        
+
         darwin_file_list = ['scriptcanvasdiagnosticlibrary_editor.waf_files'],
         win_file_list = ['scriptcanvasdiagnosticlibrary_editor.waf_files'],
 
@@ -72,7 +71,7 @@ def build(bld):
          # Editor Gem configuration
         editor = dict(
             configurations  = ['debug', 'profile'],
-            defines         = ['SCRIPTCANVASDIAGNOSTICSLIBRARY_EDITOR', 'NOT_USE_CRY_MEMORY_MANAGER'],
+            defines         = ['SCRIPTCANVASDIAGNOSTICSLIBRARY_EDITOR'],
             win_defines     = ['SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR'],
             darwin_defines  = ['SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR'],
             features        = ['qt5', 'az_code_gen'],
@@ -95,3 +94,8 @@ def build(bld):
 
         )
     )
+
+    for p in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p)] = ['scriptcanvasdiagnosticlibrary_game.waf_files']
+    
+    bld.DefineGem(**kw)

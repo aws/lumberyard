@@ -802,7 +802,7 @@ void CDeferredShading::ReleaseData()
     m_shadowPoolAlloc.SetUse(0);
     stl::free_container(m_shadowPoolAlloc);
 
-    m_blockPack.FreeContainers();
+    m_blockPack->FreeContainers();
 
     m_nShadowPoolSize = 0;
 }
@@ -1244,7 +1244,7 @@ void GetDynamicDecalParams(DynArrayRef<SShaderParam>& shaderParams, float& decal
 
     for (uint32 i = 0, si = shaderParams.size(); i < si; ++i)
     {
-        const char* name = shaderParams[i].m_Name;
+        const char* name = shaderParams[i].m_Name.c_str();
         if (azstricmp(name, "DecalAlphaMult") == 0)
         {
             decalAlphaMult = shaderParams[i].m_Value.m_Float;
@@ -1797,7 +1797,7 @@ void CDeferredShading::GetLightRenderSettings(const SRenderLight* const __restri
     }
 }
 
-void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool bForceStencilDisable)
+void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool bForceStencilDisable /*= false*/, bool ignoreShadowCasting /*= false*/)
 {
     PROFILE_FRAME(CDeferredShading_LightPass);
     PROFILE_SHADER_SCOPE;
@@ -1818,6 +1818,9 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     CD3D9Renderer* const __restrict rd = gcpRendD3D;
     SRenderPipeline& RESTRICT_REFERENCE rRP = rd->m_RP;
 
+    CD3D9Renderer::EGmemPath gmemPath = gcpRendD3D->FX_GetEnabledGmemPath(nullptr);
+    bool castShadowMaps = (pDL->m_Flags & DLF_CASTSHADOW_MAPS) && !ignoreShadowCasting;
+    bool isGmemEnabled = gmemPath != CD3D9Renderer::eGT_REGULAR_PATH;
     const ITexture* pLightTex = pDL->m_pLightImage ? pDL->m_pLightImage : NULL;
     const bool bProj2D = (pDL->m_Flags & DLF_PROJECT) && pLightTex && !(pLightTex->GetFlags() & FT_REPLICATE_TO_ALL_SIDES);
     const bool bAreaLight = (pDL->m_Flags & DLF_AREA_LIGHT) && pDL->m_fAreaWidth && pDL->m_fAreaHeight && pDL->m_fLightFrustumAngle;
@@ -1915,7 +1918,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         //  Confetti End: Igor Lobanchikov
 
         rd->SetDepthBoundTest(0.0f, 1.0f, false); // stencil pre-passes are rop bound, using depth bounds increases even more rop cost
-        rd->FX_StencilFrustumCull((pDL->m_Flags & DLF_CASTSHADOW_MAPS) ? -4 : -1, pDL, NULL, 0);
+        rd->FX_StencilFrustumCull(castShadowMaps ? -4 : -1, pDL, NULL, 0);
     }
     else
     if (rd->m_bDeviceSupports_NVDBT && CRenderer::CV_r_DeferredShadingDepthBoundsTest == 1)
@@ -1949,6 +1952,20 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_SSDO];
     }
 
+    uint64 currentSample2MaskBit = rRP.m_FlagsShader_RT & g_HWSR_MaskBit[HWSR_SAMPLE2];
+    if (isGmemEnabled)
+    {
+        // Signal the shader if we support independent blending
+        if (RenderCapabilities::SupportsIndependentBlending())
+        {
+            rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE2];
+        }
+        else
+        {
+            rRP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE2];
+        }
+    }
+
     if (bUseLightVolumes)
     {
         rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_CUBEMAP0];
@@ -1965,7 +1982,8 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     nStates &= ~(GS_NODEPTHTEST | GS_DEPTHFUNC_MASK);           // Ensure zcull used.
     nStates |= GS_DEPTHFUNC_LEQUAL;
 
-    if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))     // We do programmable blending in fragment shader in GMEM render path
+    // For PLS we do programmable blending in the fragment shader since we need to write to the PLS struct
+    if (!(isGmemEnabled && RenderCapabilities::SupportsPLSExtension()))
     {
         if (!(pDL->m_Flags & DLF_AMBIENT))
         {
@@ -1984,6 +2002,25 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     }
 
     rd->FX_SetState(nStates);
+
+    SStateBlend currentBlendState = gcpRendD3D->m_StatesBL[gcpRendD3D->m_nCurStateBL];
+    if (CD3D9Renderer::eGT_256bpp_PATH == gmemPath && RenderCapabilities::SupportsIndependentBlending())
+    {
+        // For GMEM 256 we have 6 RTs so we need to disable blending and writing for all the non lighting RTs
+        SStateBlend newBlendState = currentBlendState;
+        newBlendState.Desc.IndependentBlendEnable = TRUE;
+        for (int i = 0; i < AZ_ARRAY_SIZE(newBlendState.Desc.RenderTarget); ++i)
+        {
+            newBlendState.Desc.RenderTarget[i].BlendEnable = FALSE;
+            newBlendState.Desc.RenderTarget[i].RenderTargetWriteMask = 0;
+        }
+
+        // Enable blending for specular and diffuse light buffers
+        // Copy all state info from slot 0 since the engine only update that slot when calling FX_State.
+        newBlendState.Desc.RenderTarget[CD3D9Renderer::s_gmemRendertargetSlots[gmemPath][CD3D9Renderer::eGT_SpecularLight]] = currentBlendState.Desc.RenderTarget[0];
+        newBlendState.Desc.RenderTarget[CD3D9Renderer::s_gmemRendertargetSlots[gmemPath][CD3D9Renderer::eGT_DiffuseLight]] = currentBlendState.Desc.RenderTarget[0];
+        gcpRendD3D->SetBlendState(&newBlendState);
+    }
 
     if (bStencilMask)
     {
@@ -2019,7 +2056,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         Vec2 vLightSize = Vec2(pDL->m_fAreaWidth * 0.5f, pDL->m_fAreaHeight * 0.5f);
 
         float fAreaFov = pDL->m_fLightFrustumAngle * 2.0f;
-        if ((pDL->m_Flags & DLF_CASTSHADOW_MAPS) && bAreaLight)
+        if (castShadowMaps && bAreaLight)
         {
             fAreaFov = min(fAreaFov, 135.0f);     // Shadow can only cover ~135 degree FOV without looking bad, so we clamp the FOV to hide shadow clipping.
         }
@@ -2046,7 +2083,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     const int ssdoTexSlot = 8;
     SetSSDOParameters(ssdoTexSlot);
     
-    if (pDL->m_Flags & DLF_CASTSHADOW_MAPS)
+    if (castShadowMaps)
     {
         static ICVar* pVar = iConsole->GetCVar("e_ShadowsPoolSize");
         int nShadowAtlasRes = pVar->GetIVal();
@@ -2076,9 +2113,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
 
     CTexture* pTexLightImage = (CTexture*)pLightTex;
 
-    
-
-    if (CD3D9Renderer::eGT_256bpp_PATH != gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    if (CD3D9Renderer::eGT_256bpp_PATH != gmemPath)
     {
         // Note: Shadows use slot 3 and slot 7 for shadow map and jitter map
         //  Confetti BEGIN: Igor Lobanchikov
@@ -2093,7 +2128,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         m_pSpecularRT->Apply(4, m_nTexStatePoint, EFTT_UNKNOWN, -1, SResourceView::DefaultView);
     }
 
-    if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    if (!isGmemEnabled)
     {
         m_pMSAAMaskRT->Apply(9, m_nTexStatePoint);
 
@@ -2109,7 +2144,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         SD3DPostEffectsUtils::SetTexture(pTexLightImage, 5, FILTER_TRILINEAR, bProj2D ? 1 : 0);
     }
 
-    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && nNumClipVolumes > 0)
+    if (isGmemEnabled && nNumClipVolumes > 0)
     {
         m_pShader->FXSetPSFloat(m_pClipVolumeParams, m_vClipVolumeParams, min((uint32)MAX_DEFERRED_CLIP_VOLUMES, nNumClipVolumes + VIS_AREAS_OUTDOOR_STENCIL_OFFSET));
 
@@ -2146,6 +2181,14 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     if (CRenderer::CV_r_DeferredShadingScissor)
     {
         rd->EF_Scissor(false, 0, 0, 0, 0);
+    }
+
+    // Restore blend state
+    if (CD3D9Renderer::eGT_256bpp_PATH == gmemPath)
+    {
+        gcpRendD3D->SetBlendState(&currentBlendState);
+        rRP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE2];
+        rRP.m_FlagsShader_RT |= currentSample2MaskBit;
     }
 }
 
@@ -3899,7 +3942,7 @@ void CDeferredShading::DeferredLights(TArray<SRenderLight>& rLights, bool bCastS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CPowerOf2BlockPacker CDeferredShading::m_blockPack(0, 0);
+StaticInstance<CPowerOf2BlockPacker> CDeferredShading::m_blockPack;
 TArray<SShadowAllocData> CDeferredShading::m_shadowPoolAlloc;
 
 bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bool bPreLoop)
@@ -3909,20 +3952,18 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
     const uint64 nPrevFlagsShaderRT = rd->m_RP.m_FlagsShader_RT;
 
     static ICVar* p_e_ShadowsPoolSize = iConsole->GetCVar("e_ShadowsPoolSize");
+    const bool isGmemEnabled = gcpRendD3D->FX_GetEnabledGmemPath(nullptr) != CD3D9Renderer::eGT_REGULAR_PATH;
 
     int nRequestedPoolSize = p_e_ShadowsPoolSize->GetIVal();
     if (m_nShadowPoolSize !=  nRequestedPoolSize)
     {
-        m_blockPack.UpdateSize(nRequestedPoolSize >> TEX_POOL_BLOCKLOGSIZE, nRequestedPoolSize >> TEX_POOL_BLOCKLOGSIZE);
+        m_blockPack->UpdateSize(nRequestedPoolSize >> TEX_POOL_BLOCKLOGSIZE, nRequestedPoolSize >> TEX_POOL_BLOCKLOGSIZE);
         m_nShadowPoolSize = nRequestedPoolSize;
 
         // clear pool and reset allocations
-        m_blockPack.Clear();
+        m_blockPack->Clear();
         m_shadowPoolAlloc.SetUse(0);
     }
-
-
-    bool bShadowRendered = false;
 
     // light pass here
     if (!bPreLoop)
@@ -3960,14 +4001,18 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
             uint32 currFrame = gcpRendD3D->GetFrameID(false) & 0xFF;
             if (!pAlloc->isFree()  && ((currFrame - pAlloc->m_frameID) > (uint)CRenderer::CV_r_ShadowPoolMaxFrames))
             {
-                m_blockPack.RemoveBlock(pAlloc->m_blockID);
+                m_blockPack->RemoveBlock(pAlloc->m_blockID);
                 pAlloc->Clear();
                 break;  //Max one delete per frame, this should spread updates across more frames
             }
         }
     }
 
-    while (m_nCurrentShadowPoolLight < arrLights.Num()   &&   (!bPreLoop || !bShadowRendered))
+    // In GMEM we only pack shadows during the preloop (that happens before the deferred lighting pass)
+    // We don't do it during the deferred lighting pass (preloop = false) because that would cause a resolve of the lighting accumulation buffers.
+    bool packShadows = bPreLoop || !isGmemEnabled;
+    bool bShadowRendered = false;
+    while (m_nCurrentShadowPoolLight < arrLights.Num() && (!bPreLoop || !bShadowRendered))
     {
         m_nFirstCandidateShadowPoolLight = m_nCurrentShadowPoolLight;
 
@@ -3980,19 +4025,18 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
         {
             PROFILE_LABEL_SCOPE("SHADOWMAP_POOL");
 
-            if (!bPreLoop && !gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+            if (!bPreLoop && !isGmemEnabled)
             {
                 ResolveCurrentBuffers();
             }
 
-            // Do not pack while in deferred lighting pass with GMEM! This would cause a resolve.
-            while (m_nCurrentShadowPoolLight < arrLights.Num() && (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) ? bPreLoop : true))
+            while (m_nCurrentShadowPoolLight < arrLights.Num())
             {
                 SRenderLight& rLight = arrLights[m_nCurrentShadowPoolLight];
 
-                if (!(rLight.m_Flags & (DLF_DIRECTIONAL | DLF_FAKE)) && (rLight.m_Flags & DLF_CASTSHADOW_MAPS))
+                if (packShadows && !(rLight.m_Flags & (DLF_DIRECTIONAL | DLF_FAKE)) && (rLight.m_Flags & DLF_CASTSHADOW_MAPS))
                 {
-                    bool bPacked = PackToPool(&m_blockPack, rLight, m_nCurrentShadowPoolLight, m_nFirstCandidateShadowPoolLight, m_bClearPool);
+                    bool bPacked = PackToPool(m_blockPack, rLight, m_nCurrentShadowPoolLight, m_nFirstCandidateShadowPoolLight, m_bClearPool);
                     m_bClearPool = !bPacked;
                     if (!bPacked)
                     {
@@ -4015,21 +4059,16 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
                 }
             }
 #endif
-
-            // In preloop? bail out
-            if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && bPreLoop)
-            {
-                return true;
-            }
         }
 
         if (!bPreLoop && bShadowRendered)
         {
-            if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+            if (!isGmemEnabled)
             {
                 RestoreCurrentBuffers();
             }
 
+            size_t numLightsWithoutShadow = 0;
             //insert light pass here
             for (uint nLightPacked = m_nFirstCandidateShadowPoolLight; nLightPacked < m_nCurrentShadowPoolLight; ++nLightPacked)
             {
@@ -4039,12 +4078,22 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
                     continue;
                 }
 
-                ShadowLightPasses(rLight, nLightPacked);
+                if (packShadows)
+                {
+                    ShadowLightPasses(rLight, nLightPacked);
+                }
+                else
+                {
+                    // We are not allow to pack shadows (like in GMEM during the ligthing pass) so this light doesn't have a shadowmap.
+                    // Because of this we just render this light without any shadows.
+                    LightPass(&rLight, false, true);
+                    ++numLightsWithoutShadow;
+                }
             }
-        }
-        else if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
-        {
-            return true;
+
+            AZ_Warning("Rendering", numLightsWithoutShadow == 0, "%d lights will be rendered without shadows because there's no more space in the shadowmap pool texture.\
+                Try decreasing the number of lights casting shadows or increasing the size of the shadowmap pool (e_ShadowsPoolSize)",
+                numLightsWithoutShadow);
         }
     }
 
@@ -4476,7 +4525,7 @@ bool CDeferredShading::ShadowLightPasses(const SRenderLight& light, const int nL
                 TS.SetClampMode(TADDR_CLAMP, TADDR_CLAMP, TADDR_CLAMP);
                 TS.m_bSRGBLookup = false;
                 TS.SetComparisonFilter(true);
-                CTexture::s_ptexRT_ShadowPool->Apply(3, CTexture::GetTexState(TS));
+                CTexture::s_ptexRT_ShadowPool->Apply(3, CTexture::GetTexState(TS), EFTT_UNKNOWN, 6);
                 //  Confetti BEGIN: Igor Lobanchikov
                 //  Igor: this assigned comparison sampler to correct sampler slot for shadowmapped light sources
                 if (!rd->UseHalfFloatRenderTargets())
@@ -5036,7 +5085,7 @@ void CDeferredShading::Render()
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
-        // Commit any potential render target changes - required for x360 resolves, do not remove this plz. // ACCEPTED_USE
+        // Commit any potential render target changes - required for deprecated platform resolves, do not remove this plz. // ACCEPTED_USE
         rd->FX_SetActiveRenderTargets(false);
 
         rd->FX_PopRenderTarget(0);

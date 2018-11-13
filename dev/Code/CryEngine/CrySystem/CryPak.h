@@ -451,8 +451,6 @@ public: // ---------------------------------------------------------------------
 
     void Register (CCachedFileData* p)
     {
-        ScopedSwitchToGlobalHeap globalHeap;
-
         // actually, registration may only happen when the set is already locked, but for generality..
         AUTO_MODIFYLOCK(m_csCachedFiles);
         m_setCachedFiles.push_back(p);

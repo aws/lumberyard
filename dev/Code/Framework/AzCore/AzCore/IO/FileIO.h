@@ -58,7 +58,8 @@ namespace AZ
             ModeAppend = (1 << 2),
             ModeBinary = (1 << 3),
             ModeText = (1 << 4),
-            ModeUpdate = (1 << 5)
+            ModeUpdate = (1 << 5),
+            ModeCreatePath = (1 << 6),
         };
 
         inline bool AnyFlag(OpenMode a)

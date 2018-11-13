@@ -19,3 +19,10 @@
 .no-margin {
     margin: 0;
 }
+
+.valign-middle {    
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    vertical-align: middle;
+}

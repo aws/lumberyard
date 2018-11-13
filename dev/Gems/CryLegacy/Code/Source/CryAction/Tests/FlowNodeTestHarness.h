@@ -190,6 +190,11 @@ public:
         }
     }
 
+    ~FlowNodeTestHarness()
+    {
+        delete[] m_inputPorts;
+    }
+
     // activate updates the node once and then clears all input activity
     void Activate()
     {

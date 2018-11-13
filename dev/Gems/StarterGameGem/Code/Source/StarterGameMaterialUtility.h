@@ -20,26 +20,25 @@
 
 namespace AZ
 {
-	class ReflectContext;
+    class ReflectContext;
 }
 
 struct IMaterial;
 
 namespace StarterGameGem
 {
+    /*!
+    * Wrapper for material utility functions exposed to Lua for StarterGame.
+    */
+    class StarterGameMaterialUtility
+    {
+    public:
+        AZ_TYPE_INFO(StarterGameMaterialUtility, "{2C135D40-3323-4BCB-8B34-3D33A86E7E35}");
+        AZ_CLASS_ALLOCATOR(StarterGameMaterialUtility, AZ::SystemAllocator, 0);
 
-	/*!
-	* Wrapper for material utility functions exposed to Lua for StarterGame.
-	*/
-	class StarterGameMaterialUtility
-	{
-	public:
-		AZ_TYPE_INFO(StarterGameMaterialUtility, "{2C135D40-3323-4BCB-8B34-3D33A86E7E35}");
-		AZ_CLASS_ALLOCATOR(StarterGameMaterialUtility, AZ::SystemAllocator, 0);
+        static void Reflect(AZ::ReflectContext* reflection);
 
-		static void Reflect(AZ::ReflectContext* reflection);
-
-		static bool SetShaderFloat(AZ::EntityId entityId, const AZStd::string& paramName, float var);
+        static bool SetShaderFloat(AZ::EntityId entityId, const AZStd::string& paramName, float var);
         static bool SetSubMtlShaderFloat(AZ::EntityId entityId, const AZStd::string& paramName, int subMtlIndex, float var);
         static bool SetShaderVec3(AZ::EntityId entityId, const AZStd::string& paramName, const AZ::Vector3& var);
         static bool SetSubMtlShaderVec3(AZ::EntityId entityId, const AZStd::string& paramName, int subMtlIndex, const AZ::Vector3& var);
@@ -48,8 +47,8 @@ namespace StarterGameGem
         static AZ::Vector3 GetShaderVec3(AZ::EntityId entityId, const AZStd::string& paramName);
         static AZ::Vector3 GetSubMtlShaderVec3(AZ::EntityId entityId, const AZStd::string& paramName, int subMtlIndex);
 
-		static bool ReplaceMaterialWithClone(AZ::EntityId entityId);
-		static void RestoreOriginalMaterial(AZ::EntityId entityId);
+        static bool ReplaceMaterialWithClone(AZ::EntityId entityId);
+        static void RestoreOriginalMaterial(AZ::EntityId entityId);
 
         static int GetSurfaceIndexFromName(const AZStd::string surfaceName);
         static AZStd::string GetSurfaceNameFromIndex(int surfaceId);
@@ -66,8 +65,6 @@ namespace StarterGameGem
         static bool SetShaderMatVec3(AZ::EntityId entityId, _smart_ptr<IMaterial> mat, const AZStd::string& paramName, const AZ::Vector3& var);
         static bool GetShaderMatFloat(AZ::EntityId entityId, _smart_ptr<IMaterial> mat, const AZStd::string& paramName, float& var);
         static bool GetShaderMatVec3(AZ::EntityId entityId, _smart_ptr<IMaterial> mat, const AZStd::string& paramName, AZ::Vector3& var);
-		static _smart_ptr<IMaterial> GetSubMaterial(_smart_ptr<IMaterial> parentMaterial, int subMtlIndex);
-
+        static _smart_ptr<IMaterial> GetSubMaterial(_smart_ptr<IMaterial> parentMaterial, int subMtlIndex);
     };
-
 } // namespace StarterGameGem

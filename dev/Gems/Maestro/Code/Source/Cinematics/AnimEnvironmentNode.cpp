@@ -27,7 +27,7 @@
 namespace AnimEnvironmentNode
 {
     bool s_environmentNodeParamsInit = false;
-    std::vector<CAnimNode::SParamInfo> s_environmentNodeParams;
+    StaticInstance<std::vector<CAnimNode::SParamInfo>> s_environmentNodeParams;
 
     void AddSupportedParam(const char* sName, AnimParamType paramId, AnimValueType valueType)
     {

@@ -88,7 +88,7 @@ namespace MaterialHelpers
             description += "\n";
         }
         description += "(Script Param Name = ";
-        description += pParam->m_Name;
+        description += pParam->m_Name.c_str();
         description += ")";
         pIVar->SetDescription(description);
     }
@@ -141,7 +141,7 @@ namespace MaterialHelpers
 
             if (pIVar)
             {
-                pIVar->SetName(pParam->m_Name);
+                pIVar->SetName(pParam->m_Name.c_str());
                 pPublicVars->AddVariable(pIVar);
 
                 if (pParam->m_Script.size())
@@ -178,7 +178,7 @@ namespace MaterialHelpers
             SShaderParam* pParam = NULL;
             for (int j = 0; j < pInputShaderResources.m_ShaderParams.size(); j++)
             {
-                if (QString::compare(pVar->GetName(), pInputShaderResources.m_ShaderParams[j].m_Name) == 0)
+                if (QString::compare(pVar->GetName(), pInputShaderResources.m_ShaderParams[j].m_Name.c_str()) == 0)
                 {
                     pParam = &pInputShaderResources.m_ShaderParams[j];
                     break;

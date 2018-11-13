@@ -39,35 +39,37 @@ namespace UnitTest
 {
     static const bool EnableLeakTracking = false;
 
-    class AllocatorsFixture
-        : public ::testing::Test
+    /**
+    * Base class to share common allocator code between fixture types.
+    */
+    class AllocatorsBase
     {
-        void* m_memBlock;
+        void* m_fixedMemBlock;
         AZ::Debug::DrillerManager* m_drillerManager;
         bool m_useMemoryDriller = true;
         unsigned int m_heapSizeMB = 15;
     public:
-        AllocatorsFixture(unsigned int heapSizeMB = 15, bool isMemoryDriller = true)
-            : m_memBlock(nullptr)
+
+        AllocatorsBase(unsigned int heapSizeMB = 15, bool isMemoryDriller = true)
+            : m_fixedMemBlock(nullptr)
             , m_heapSizeMB(heapSizeMB)
             , m_useMemoryDriller(isMemoryDriller)
         {
-            
         }
 
-        virtual ~AllocatorsFixture()
+        virtual ~AllocatorsBase()
         {
             // The allocator & memory block itself can't be destroyed in TearDown, because GTest hasn't actually destructed
             // the test class yet. This can leave containers and other structures pointing to garbage memory, resulting in
             // crashes. We have to free memory last, after absolutely everything else.
-            if (m_memBlock)
+            if (m_fixedMemBlock)
             {
                 AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-                DebugAlignFree(m_memBlock);
+                DebugAlignFree(m_fixedMemBlock);
             }
         }
 
-        void SetUp() override
+        void SetupAllocator()
         {
             if (m_useMemoryDriller)
             {
@@ -80,10 +82,10 @@ namespace UnitTest
             }
 
             AZ::SystemAllocator::Descriptor desc;
-            desc.m_heap.m_numMemoryBlocks = 1;
-            desc.m_heap.m_memoryBlocksByteSize[0] = m_heapSizeMB * 1024 * 1024;
-            m_memBlock = DebugAlignAlloc(desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
-            desc.m_heap.m_memoryBlocks[0] = m_memBlock;
+            desc.m_heap.m_numFixedMemoryBlocks = 1;
+            desc.m_heap.m_fixedMemoryBlocksByteSize[0] = m_heapSizeMB * 1024 * 1024;
+            m_fixedMemBlock = DebugAlignAlloc(desc.m_heap.m_fixedMemoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
+            desc.m_heap.m_fixedMemoryBlocks[0] = m_fixedMemBlock;
 
             if (EnableLeakTracking)
             {
@@ -103,7 +105,7 @@ namespace UnitTest
             }
         }
 
-        void TearDown() override
+        void TeardownAllocator()
         {
             if (m_drillerManager)
             {
@@ -111,6 +113,81 @@ namespace UnitTest
             }
         }
     };
+
+    /**
+    * Helper class to handle the boiler plate of setting up a test fixture that uses the system alloctors
+    * If you wish to do additional setup and tear down be sure to call the base class SetUp first and TearDown
+    * last.
+    * By default memory tracking through driller is enabled.
+    * Defaults to a heap size of 15 MB
+    */
+
+    class AllocatorsTestFixture
+        : public ::testing::Test
+        , public AllocatorsBase
+    {
+    public:
+        AllocatorsTestFixture(unsigned int heapSizeMB = 15, bool isMemoryDriller = true)
+            :AllocatorsBase(heapSizeMB, isMemoryDriller)
+        {
+        }
+
+        virtual ~AllocatorsTestFixture()
+        {
+        }
+
+        //GTest interface
+        void SetUp() override
+        {
+            SetupAllocator();
+        }
+
+        void TearDown() override
+        {
+            TeardownAllocator();
+        }
+    };
+
+    //Legacy alias to avoid needing to modify tons of files
+    //-- Do not use for new tests.
+    using AllocatorsFixture = AllocatorsTestFixture;
+
+#if defined(HAVE_BENCHMARK)
+    /**
+    * Helper class to handle the boiler plate of setting up a benchmark fixture that uses the system alloctors
+    * If you wish to do additional setup and tear down be sure to call the base class SetUp first and TearDown
+    * last.
+    * By default memory tracking through driller is disabled.
+    * Defaults to a heap size of 15 MB
+    */
+    class AllocatorsBenchmarkFixture
+        : public ::benchmark::Fixture
+        , public AllocatorsBase
+    {
+    public:
+        AllocatorsBenchmarkFixture(unsigned int heapSizeMB = 15, bool isMemoryDriller = false)
+            :AllocatorsBase(heapSizeMB, isMemoryDriller)
+        {
+        }
+
+        virtual ~AllocatorsBenchmarkFixture()
+        {
+        }
+
+        //Benchmark interface
+        void SetUp(::benchmark::State& st) override
+        {
+            AZ_UNUSED(st);
+            SetupAllocator();
+        }
+
+        void TearDown(::benchmark::State& st) override
+        {
+            AZ_UNUSED(st);
+            TeardownAllocator();
+        }
+    };
+#endif
 
     class DLLTestVirtualClass
     {

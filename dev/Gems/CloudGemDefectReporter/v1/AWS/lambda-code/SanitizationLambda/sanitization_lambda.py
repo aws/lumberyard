@@ -31,8 +31,8 @@ def main(event, request):
     __validate_event(event)
 
     s3_client = s3.get_client()
-    attachment_bucket = CloudCanvas.get_setting('AttachmentBucket')
-    sanitized_bucket = CloudCanvas.get_setting('SanitizedBucket')
+    attachment_bucket = CloudCanvas.get_setting(constants.ATTACHMENT_BUCKET)
+    sanitized_bucket = CloudCanvas.get_setting(constants.SANITIZED_BUCKET)
 
     sanitizer = Sanitizer(s3_client, attachment_bucket)
 
@@ -101,7 +101,7 @@ class Sanitizer:
         if not self.__validate_mime_type(key, content_type):
             return False
 
-        if content_type == constants.MIME_TYPE_IMAGE_JPEG and self.__validate_image(key, download_path):
+        if content_type in (constants.MIME_TYPE_IMAGE_JPEG, constants.MIME_TYPE_IMAGE_PNG) and self.__validate_image(key, content_type, download_path):
             return True
         elif content_type == constants.MIME_TYPE_TEXT_PLAIN and self.__validate_file(key, download_path):
             return True
@@ -165,10 +165,10 @@ class Sanitizer:
         return '/tmp/unsanitized-{}'.format(key)
 
         
-    def __validate_image(self, key, file_path):
+    def __validate_image(self, key, content_type, file_path):
         ''' Validates image is within the allowed parameters defined in the settings. '''
-
-        self.__remove_metadata(file_path)
+        if content_type == constants.MIME_TYPE_IMAGE_JPEG:
+            self.__remove_metadata(file_path)
 
         if not self.__validate_file_size(file_path):
             self.rejected_files.append(FileStatus(key, False, "Invalid file size.", ''))
@@ -242,7 +242,7 @@ class Sanitizer:
     def __validate_mime_type(self, key, content_type):
         ''' Validates mime type is of expected type. '''
 
-        if content_type == constants.MIME_TYPE_IMAGE_JPEG or content_type == constants.MIME_TYPE_TEXT_PLAIN:
+        if content_type in (constants.MIME_TYPE_IMAGE_JPEG, constants.MIME_TYPE_TEXT_PLAIN, constants.MIME_TYPE_IMAGE_PNG):
             return True
         else:
             self.rejected_files.append(FileStatus(key, False, "Content-type not valid. (Mime)", ''))

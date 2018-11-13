@@ -44,7 +44,7 @@ def build(bld):
         includes            = ['..',
                                bld.ThirdPartyPath('squish'),
                                bld.Path('Code/CryEngine/RenderDll/XRenderD3D9')],
-        defines             = ['NULL_RENDERER', '_RENDERER' ],
+        defines             = ['NULL_RENDERER', '_RENDERER', 'USE_CRY_NEW_AND_DELETE' ],
         use                 = ['AzFramework'],
         uselib              = ['LZMA',
                                'LZSS'],

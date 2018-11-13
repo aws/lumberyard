@@ -30,6 +30,11 @@ QT_FORWARD_DECLARE_CLASS(QGridLayout)
 QT_FORWARD_DECLARE_CLASS(QScrollArea)
 
 
+namespace EMotionFX
+{
+    class AnimGraphEditor;
+}
+
 namespace EMStudio
 {
     // forward declarations
@@ -92,10 +97,10 @@ namespace EMStudio
     private:
         void contextMenuEvent(QContextMenuEvent* event);
 
-        AzQtComponents::Card* CreateAnimGraphCard(AZ::SerializeContext* serializeContext, EMotionFX::AnimGraph* animGraph);
-
         AnimGraphPlugin*                        mPlugin;
         QWidget*                                mMainWidget;
+        QWidget*                                m_attributeWidget;
+        EMotionFX::AnimGraphEditor*             m_animGraphEditor;
         QGridLayout*                            mGridLayout;
         QVBoxLayout*                            mMainLayout;
         QScrollArea*                            mScrollArea;

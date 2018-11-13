@@ -20,6 +20,7 @@ utilities.BP_Hit = eMotionParamID_BlendWeight5	-- for when hit (injured)
 utilities.Joint_Head			= "head"
 utilities.Joint_Torso_Upper	= "spine3"
 utilities.EMFXNamespace = "jack:"
+utilities.raycastOffsets = {Vector3(0.25, 0.25, 0), Vector3(-0.25, 0.25, 0), Vector3(-0.25, -0.25, 0), Vector3(0.25, -0.25, 0)}
 
 utilities.SetBlendParam = function(sm, blendParam, blendParamID)
 	CharacterAnimationRequestBus.Event.SetBlendParameter(sm.EntityId, blendParamID, blendParam);
@@ -48,6 +49,13 @@ utilities.CheckFragmentPlaying = function(entityId, requestId)
 end
 
 utilities.GetDebugManagerBool = function(name, default)
+	
+	local variablesAreReady = DebugManagerComponentRequestsBus.Broadcast.GetVariablesAreReady();
+	
+	if (variablesAreReady == nil or variablesAreReady == false) then
+		return default;
+	end
+	
 	local doIt = default;
 	local response = DebugManagerComponentRequestsBus.Broadcast.GetDebugBool(name);
 	-- If 'response' is nil then it means the DebugManager doesn't exist.
@@ -108,7 +116,6 @@ end
 utilities.GetTerrainIntercept = function(worldPosition)
 	local up = Vector3(0,0,1);
 	local dist = 2.0;
-	
 	local rayCastConfig = RayCastConfiguration();
 	rayCastConfig.origin = worldPosition + Vector3(0,0,0.5);
 	rayCastConfig.direction =  Vector3(0,0,-1);
@@ -127,6 +134,12 @@ utilities.GetSlopeAngle = function(movementcontroller)
 	local tm = TransformBus.Event.GetWorldTM(movementcontroller.entityId);
 	local pos = tm:GetTranslation();
 	local up, dist = utilities.GetTerrainIntercept(pos);
+	for i = 1, 4 do
+		if(dist < 0.3) then
+			break;
+		end
+		up, dist = utilities.GetTerrainIntercept(pos + utilities.raycastOffsets[i]);
+	end
 	local forward = tm:GetColumn(1):GetNormalized();
 	local right = Vector3.Cross(forward, up);
 	forward = Vector3.Cross(up, right);

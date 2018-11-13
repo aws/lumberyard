@@ -122,7 +122,11 @@ struct IEditorParticleUtils;  // Leroy@conffx
 struct ILogFile; // Vladimir@conffx
 
 // Qt/QML
+
+#ifdef DEPRECATED_QML_SUPPORT
 class QQmlEngine;
+#endif // #ifdef DEPRECATED_QML_SUPPORT
+
 class QWidget;
 class QMimeData;
 class QString;
@@ -236,8 +240,15 @@ enum EEditorNotifyEvent
     eNotify_OnExportBrushes, // For Designer objects, or objects using the Designer Tool.
 
     eNotify_OnTextureLayerChange,      // Sent when texture layer was added, removed or moved
+
+#ifdef DEPRECATED_QML_SUPPORT
     eNotify_BeforeQMLDestroyed, // called before QML is destroyed so you can kill your resources (if any)
     eNotify_QMLReady, // when QML has been re-initialized - this can happen during runtime if plugins are unloaded and loaded and is your opportunity to register your types.
+#else
+    // QML is deprecated! These are left here so that the enum order doesn't change. Don't use
+    eNotify_BeforeQMLDestroyed_Deprecated,
+    eNotify_QMLReady_Deprecated,
+#endif
 
     eNotify_OnParticleUpdate,          // A particle effect was modified.
     eNotify_OnAddAWSProfile,           // An AWS profile was added
@@ -909,7 +920,11 @@ struct IEditor
     virtual IAssetBrowser* GetAssetBrowser() = 0; // Vladimir@Conffx
     virtual IImageUtil* GetImageUtil() = 0;  // Vladimir@conffx
     virtual SEditorSettings* GetEditorSettings() = 0;
+
+#ifdef DEPRECATED_QML_SUPPORT
     virtual QQmlEngine* GetQMLEngine() const = 0;
+#endif // #ifdef DEPRECATED_QML_SUPPORT
+
     virtual ILogFile* GetLogFile() = 0;  // Vladimir@conffx
 
     // unload all plugins.  Destroys the QML engine because it has to.

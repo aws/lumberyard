@@ -228,10 +228,34 @@ namespace Path
         return fname;
     }
 
+    inline bool EndsWithSlash(QString path)
+    {
+        return (path.endsWith(QStringLiteral("\\")) || path.endsWith(QStringLiteral("/")));
+    }
+    
+    template<size_t size>
+    inline bool EndsWithSlash(CryStackStringT<char, size>* path)
+    {
+        if ((!path) || (path->empty()))
+        {
+            return false;
+        }
+        
+        if (
+            ((*path)[path->size() - 1] != '\\') ||
+            ((*path)[path->size() - 1] != '/') 
+            )
+        {
+            return true;
+        }
+        
+        return false;
+    }
+
     //! add a backslash if needed
     inline QString AddBackslash(QString path)
     {
-        if (path.isEmpty() || path.endsWith(QStringLiteral("\\")))
+        if (path.isEmpty() || EndsWithSlash(path))
         {
             return path;
         }
@@ -242,7 +266,7 @@ namespace Path
     //! add a slash if needed
     inline QString AddSlash(const QString& path)
     {
-        if (path.isEmpty() || path.endsWith(QStringLiteral("/")))
+        if (path.isEmpty() || EndsWithSlash(path))
         {
             return path;
         }
@@ -253,7 +277,11 @@ namespace Path
     template<size_t size>
     inline void AddBackslash(CryStackStringT<char, size>* path)
     {
-        if (path->empty() || (*path)[path->size() - 1] != '\\')
+        if (path->empty())
+        {
+            return;
+        }
+        if (!EndsWithSlash(path))
         {
             (*path) += '\\';
         }
@@ -262,7 +290,11 @@ namespace Path
     template<size_t size>
     inline void AddSlash(CryStackStringT<char, size>* path)
     {
-        if (path->empty() || (*path)[path->size() - 1] != '/')
+        if (path->empty())
+        {
+            return;
+        }
+        if (!EndsWithSlash(path))
         {
             (*path) += '/';
         }

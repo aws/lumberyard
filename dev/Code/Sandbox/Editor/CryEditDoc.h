@@ -24,7 +24,8 @@ class CClouds;
 struct LightingSettings;
 
 // Filename of the temporary file used for the hold / fetch operation
-#define HOLD_FETCH_FILE "_hold"
+// conform to the "$tmp[0-9]_" naming convention
+#define HOLD_FETCH_FILE "$tmp_hold" 
 
 class SANDBOX_API CCryEditDoc
     : public QObject
@@ -68,7 +69,7 @@ public: // Create from serialization only
         QString absoluteLevelPath;
     };
     bool BeforeOpenDocument(const QString& lpszPathName, TOpenDocContext& context);
-    bool DoOpenDocument(const QString& lpszPathName, TOpenDocContext& context);
+    bool DoOpenDocument(TOpenDocContext& context);
     virtual BOOL LoadXmlArchiveArray(TDocMultiArchive& arrXmlAr, const QString& absoluteLevelPath, const QString& levelPath);
     virtual void ReleaseXmlArchiveArray(TDocMultiArchive& arrXmlAr);
 

@@ -72,12 +72,12 @@ namespace UnitTest
     protected:
         JobManager* m_jobManager = nullptr;
         JobContext* m_jobContext = nullptr;
-        void* m_memBlock = nullptr;
-        const size_t m_memBlockSize;
+        void* m_fixedMemBlock = nullptr;
+        const size_t m_fixedMemBlockSize;
         unsigned int m_numWorkerThreads;
     public:
         DefaultJobManagerSetupFixture(const size_t memBlockSize = 15 * 1024 * 1024, unsigned int numWorkerThreads = 0)
-            : m_memBlockSize(memBlockSize)
+            : m_fixedMemBlockSize(memBlockSize)
             , m_numWorkerThreads(numWorkerThreads)
         {
         }
@@ -86,11 +86,11 @@ namespace UnitTest
         {
             SystemAllocator::Descriptor memDesc;
 
-            m_memBlock = DebugAlignAlloc(m_memBlockSize, memDesc.m_heap.m_memoryBlockAlignment);
+            m_fixedMemBlock = DebugAlignAlloc(m_fixedMemBlockSize, memDesc.m_heap.m_memoryBlockAlignment);
 
-            memDesc.m_heap.m_numMemoryBlocks = 1;
-            memDesc.m_heap.m_memoryBlocksByteSize[0] = m_memBlockSize;
-            memDesc.m_heap.m_memoryBlocks[0] = m_memBlock;
+            memDesc.m_heap.m_numFixedMemoryBlocks = 1;
+            memDesc.m_heap.m_fixedMemoryBlocksByteSize[0] = m_fixedMemBlockSize;
+            memDesc.m_heap.m_fixedMemoryBlocks[0] = m_fixedMemBlock;
 
             AllocatorInstance<SystemAllocator>::Create(memDesc);
             AllocatorInstance<PoolAllocator>::Create();
@@ -132,7 +132,7 @@ namespace UnitTest
             AllocatorInstance<PoolAllocator>::Destroy();
             AllocatorInstance<SystemAllocator>::Destroy();
 
-            DebugAlignFree(m_memBlock);
+            DebugAlignFree(m_fixedMemBlock);
         }
     };
 

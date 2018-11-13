@@ -9,20 +9,20 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-// Original file Copyright Crytek GMBH or its affiliates, used under license.
-
-#include "stdafx.h"
+#include "DeploymentTool_precompiled.h"
 
 // you must include platform_impl in exactly one of your source files to provide implementations
 // of platform functionality such as CryAssert.
-
 #include <platform_impl.h>
-
-#include "DeploymentToolWindow.h"
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/ViewPaneOptions.h>
+
+#include <Include/IPlugin.h>
+
+#include "DeploymentToolWindow.h"
 #include "../Editor/LyViewPaneNames.h"
+
 
 class MyPlugin
     : public IPlugin

@@ -676,7 +676,7 @@ namespace EMotionFX
             "There is not enough memory to continue the current EMotionFX "
             "recording. It was deleted to free memory in order to keep the "
             "editor stable."
-        );
+            );
         return false;
     }
 
@@ -1084,22 +1084,6 @@ namespace EMotionFX
                     curItem->mEndTime = mRecordTime;
                     continue;
                 }
-
-                // check if the node changed during recording
-                if (azrtti_typeid(mActiveNodes[index]) == azrtti_typeid<AnimGraphMotionNode>())
-                {
-                    AnimGraphMotionNode* motionNode = static_cast<AnimGraphMotionNode*>(mActiveNodes[index]);
-                    MotionInstance* motionInstance = motionNode->FindMotionInstance(animGraphInstance);
-                    if (motionInstance == nullptr || motionInstance->GetMotion()->GetID() != curItem->mMotionID)
-                    {
-                        curItem->mIsFinalized = true;
-                        curItem->mEndTime = mRecordTime;
-                        curItem->mGlobalWeights.Optimize(0.0001f);
-                        curItem->mLocalWeights.Optimize(0.0001f);
-                        curItem->mPlayTimes.Optimize(0.0001f);
-                        continue;
-                    }
-                }
             }
 
             // iterate over all active nodes
@@ -1166,7 +1150,7 @@ namespace EMotionFX
                         MotionInstance* motionInstance = motionNode->FindMotionInstance(animGraphInstance);
                         if (motionInstance)
                         {
-                            item->mMotionID         = motionInstance->GetMotion()->GetID();
+                            item->mMotionID = motionInstance->GetMotion()->GetID();
                             AzFramework::StringFunc::Path::GetFileName(item->mMotionFileName.c_str(), item->mMotionFileName);
                         }
                     }
@@ -1551,7 +1535,7 @@ namespace EMotionFX
         Lock();
 
         // check if we recorded any actor instances at all
-        for (uint32 i = 0; i < mActorInstanceDatas.GetLength(); )
+        for (uint32 i = 0; i < mActorInstanceDatas.GetLength();)
         {
             if (mActorInstanceDatas[i]->mActorInstance == actorInstance)
             {

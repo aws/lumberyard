@@ -63,9 +63,10 @@ namespace EMotionFX
              */
             struct EMFX_API VertexDelta
             {
-                MCore::Compressed16BitVector3   mPosition;          /**< The position offset. */
-                MCore::Compressed8BitVector3    mNormal;            /**< The normal offset. */
-                MCore::Compressed8BitVector3    mTangent;           /**< The first tangent layer offset. */
+                MCore::Compressed16BitVector3   mPosition;          /**< The position delta. */
+                MCore::Compressed8BitVector3    mNormal;            /**< The normal delta. */
+                MCore::Compressed8BitVector3    mTangent;           /**< The first tangent layer delta. */
+                MCore::Compressed8BitVector3    mBitangent;         /**< The first bitangent layer delta. */
                 uint32                          mVertexNr;          /**< The vertex number inside the mesh to apply this to. */
             };
 

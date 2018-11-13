@@ -30,6 +30,8 @@ def load_darwin_common_settings(conf):
     
     # Setup common defines for darwin
     v['DEFINES'] += [ 'APPLE', 'MAC', '__APPLE__', 'DARWIN' ]
+    # This avoid the SDK to add defines for certain macros that collide against functions with the same name in the engine
+    v['DEFINES'] += [ '__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0']
     
     # Set Minimum mac os version to 10.10
     v['CFLAGS'] += [ '-mmacosx-version-min=10.10', '-msse4.2' ]

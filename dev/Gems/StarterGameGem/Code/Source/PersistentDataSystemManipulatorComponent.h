@@ -23,23 +23,22 @@
 
 namespace StarterGameGem
 {
+    /*!
+     * System component which listens for IPhysicalWorld events,
+     * filters for events that involve AZ::Entities,
+     * and broadcasts these events on the EntityPhysicsEventBus.
+     */
+    class PersistentDataSystemManipulatorComponent
+        : public AZ::Component
+        , public AZ::GameplayNotificationBus::Handler
+    {
+    public:
+        AZ_COMPONENT(PersistentDataSystemManipulatorComponent, "{7021A957-8A66-4EED-A24A-AA9691F0FA69}");
 
-	/*!
-	 * System component which listens for IPhysicalWorld events,
-	 * filters for events that involve AZ::Entities,
-	 * and broadcasts these events on the EntityPhysicsEventBus.
-	 */
-	class PersistentDataSystemManipulatorComponent
-		: public AZ::Component
-		, public AZ::GameplayNotificationBus::Handler
-	{
-	public:
-		AZ_COMPONENT(PersistentDataSystemManipulatorComponent, "{7021A957-8A66-4EED-A24A-AA9691F0FA69}");
-
-		PersistentDataSystemManipulatorComponent();
+        PersistentDataSystemManipulatorComponent();
         ~PersistentDataSystemManipulatorComponent() override {}
 
-		static void Reflect(AZ::ReflectContext* context);
+        static void Reflect(AZ::ReflectContext* context);
 
         virtual AZ::u32 MajorPropertyChanged();
 
@@ -47,38 +46,37 @@ namespace StarterGameGem
         bool IsDataString() const;
         bool IsDataNumber() const;
 
-		//static eBasicDataTypes GetBasicType(const AZStd::any& value);
-		//// ture if passes test, otherwise false, including type missmatch
-		//bool Compare(const AZStd::string& name, const AZStd::any& value, const PersistentDataSystemComponent::eComparison compareType);
-		//// returns tru if operation could be performed
-		//bool Manipulate(const AZStd::string& name, const AZStd::any& value, const PersistentDataSystemComponent::eDataManipulationTypes manipulationType);
+        //static eBasicDataTypes GetBasicType(const AZStd::any& value);
+        //// ture if passes test, otherwise false, including type missmatch
+        //bool Compare(const AZStd::string& name, const AZStd::any& value, const PersistentDataSystemComponent::eComparison compareType);
+        //// returns tru if operation could be performed
+        //bool Manipulate(const AZStd::string& name, const AZStd::any& value, const PersistentDataSystemComponent::eDataManipulationTypes manipulationType);
 
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::GameplayNotificationBus
-		void OnEventBegin(const AZStd::any& value) override;
-		void OnEventUpdating(const AZStd::any& value) override;
-		void OnEventEnd(const AZStd::any& value) override;
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::GameplayNotificationBus
+        void OnEventBegin(const AZStd::any& value) override;
+        void OnEventUpdating(const AZStd::any& value) override;
+        void OnEventEnd(const AZStd::any& value) override;
 
-	private:
-		////////////////////////////////////////////////////////////////////////
-		// AZ::Component
-		void Activate() override;
-		void Deactivate() override;
-		////////////////////////////////////////////////////////////////////////
-
-
-		AZStd::string m_keyName;
-
-		PersistentDataSystemComponent::eBasicDataTypes m_dataToUse;
-		bool m_BoolData;
-		AZStd::string m_stringData;
-		float m_numberData;
-		PersistentDataSystemComponent::eDataManipulationTypes m_useForData;
-
-		AZStd::string m_triggerMessage;
+    private:
+        ////////////////////////////////////////////////////////////////////////
+        // AZ::Component
+        void Activate() override;
+        void Deactivate() override;
+        ////////////////////////////////////////////////////////////////////////
 
 
-		AZ::GameplayNotificationId m_triggerMessageID;
+        AZStd::string m_keyName;
 
-	};
+        PersistentDataSystemComponent::eBasicDataTypes m_dataToUse;
+        bool m_BoolData;
+        AZStd::string m_stringData;
+        float m_numberData;
+        PersistentDataSystemComponent::eDataManipulationTypes m_useForData;
+
+        AZStd::string m_triggerMessage;
+
+
+        AZ::GameplayNotificationId m_triggerMessageID;
+    };
 } // namespace LmbrCentral

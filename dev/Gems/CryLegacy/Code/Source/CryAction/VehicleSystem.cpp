@@ -33,7 +33,7 @@ const char* gScriptPath = "Scripts/Entities/Vehicles/Implementations/";
 const char* gXmlPath    = "Scripts/Entities/Vehicles/Implementations/Xml/";
 
 #if ENABLE_VEHICLE_DEBUG
-CVehicleSystem::TVehicleClassCount CVehicleSystem::s_classInstanceCounts;
+StaticInstance<CVehicleSystem::TVehicleClassCount> CVehicleSystem::s_classInstanceCounts;
 #endif
 
 //------------------------------------------------------------------------
@@ -497,7 +497,10 @@ void CVehicleSystem::Reset()
     }
 
 #if ENABLE_VEHICLE_DEBUG
-    stl::free_container(s_classInstanceCounts);
+    if (s_classInstanceCounts.size())
+    {
+        stl::free_container(s_classInstanceCounts);
+    }
 #endif
     std::for_each(m_iteratorPool.begin(), m_iteratorPool.end(), DeleteVehicleIterator);
     stl::free_container(m_iteratorPool);

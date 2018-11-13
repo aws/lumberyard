@@ -62,5 +62,11 @@ namespace EMotionFX
             return "EMotion FX Motion";
         }
 
+        //////////////////////////////////////////////////////////////////////////
+        const char* MotionAssetHandler::GetBrowserIcon() const
+        {
+            return "Editor/Images/AssetBrowser/Motion_16.png";
+        }
+
     } // namespace Integration
 } // namespace EMotionFX

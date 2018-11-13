@@ -1,0 +1,19 @@
+﻿<div ngbDropdown>
+    <button class="btn btn-outline-primary" ngbDropdownToggle>
+        <span>
+            Select Time Period
+            <i class="fa fa-caret-down" aria-hidden="true"></i>
+        </span>
+    </button>
+    <div ngbDropdownMenu>
+        <button class="dropdown-item" (click)="updateGraph(queryLastXHours(12))">Last 12 Hours</button>
+        <button class="dropdown-item" (click)="updateGraph(queryLastXHours(24))">Last 24 Hours</button>
+        <button class="dropdown-item" (click)="updateGraph(queryLastXDays(7))">Last 7 Days</button>
+        <button class="dropdown-item" (click)="updateGraph(queryLastXDays(30))">Last 30 Days</button>
+        <button class="dropdown-item" (click)="updateGraph(queryLastXMonths(3))">Last 3 Months</button>
+        <button class="dropdown-item" (click)="updateGraph(queryLastXMonths(6))">Last 6 Months</button>
+        <button class="dropdown-item" (click)="updateGraph(queryLastXMonths(12))">Last 12 Months</button>
+    </div>
+</div>
+
+<graph [ref]="queryGraph"></graph>

@@ -168,7 +168,7 @@ void FileWatcher::StartWatching()
         AZ_Warning("FileWatcher", false, "StartWatching() called when already watching for file changes.");
         return;
     }
-  
+
     for (FolderRootWatch* root : m_folderWatchRoots)
     {
         root->Start();
@@ -185,12 +185,12 @@ void FileWatcher::StopWatching()
         AZ_Warning("FileWatcher", false, "StartWatching() called when is not watching for file changes.");
         return;
     }
-    
+
     for (FolderRootWatch* root : m_folderWatchRoots)
     {
         root->Stop();
     }
-    
+
     m_startedWatching = false;
 }
 

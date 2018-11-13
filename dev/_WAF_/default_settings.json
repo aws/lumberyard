@@ -38,7 +38,7 @@
         {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.15.0.0", 
+            "default_value": "1.16.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -163,6 +163,12 @@
             "description": "Zip/Upload symbols and build client with external crash reporting enabled.  Value set here will be used as an additional build tag passed through to the crash reporter system."
         }, 
         {
+            "long_form": "--packaged-build-time", 
+            "attribute": "packaged_build_time", 
+            "default_value": "", 
+            "description": "float value indicating the time the build was packaged."
+        }, 
+        {
             "long_form": "--symbol-token", 
             "attribute": "symbol_token", 
             "default_value": "", 
@@ -263,13 +269,13 @@
         {
             "long_form": "--output-folder-android-armv7-gcc", 
             "attribute": "out_folder_android_armv7_gcc", 
-            "default_value": "BinAndroidGcc", 
+            "default_value": "BinAndroidArmv7Gcc", 
             "description": "Absolute or relative Android ARMv7 gcc build output path"
         }, 
         {
             "long_form": "--output-folder-android-armv7-clang", 
             "attribute": "out_folder_android_armv7_clang", 
-            "default_value": "BinAndroidClang", 
+            "default_value": "BinAndroidArmv7Clang", 
             "description": "Absolute or relative Android ARMv7 clang build output path"
         }, 
         {
@@ -385,7 +391,7 @@
         {
             "long_form": "--win-vs2017-vswhere-args", 
             "attribute": "win_vs2017_vswhere_args", 
-            "default_value": "-version 15.7.4", 
+            "default_value": "-version [15.7.4,15.9]", 
             "description": "The arguments to pass to vswhere when locating vs2017 executables"
         }, 
         {
@@ -471,6 +477,12 @@
             "attribute": "deploy_android_asset_mode", 
             "default_value": "Loose", 
             "description": "Specify the asset deployment mode.  loose: Pushes the compiled loose assets to device or runs under VFS mode if set in the bootstrap.  paks: Generates and pushes the Pak files to device.  project_settings: Uses the options specified in your game's project.json file, release forces this mode."
+        }, 
+        {
+            "long_form": "--deploy-android-device-filter", 
+            "attribute": "deploy_android_device_filter", 
+            "default_value": "", 
+            "description": "Comma separated list of Android device IDs to deploy to.  If left empty, the deploy will be to all connected devices."
         }
     ], 
     "iOS Project Generator": [

@@ -172,7 +172,8 @@ namespace RenderGL
         PostProcessShader*  mVSmartBlur;
 
         Texture*            mRandomVectorTexture;
-        AZ::Vector3         mRandomOffsets[64];
+        AZStd::vector<AZ::Vector3> mRandomOffsets;
+        static size_t       mNumRandomOffsets;
 
         GLRenderUtil*       mRenderUtil;    /**< The rendering utility. */
         TextureCache        mTextureCache;  /**< The texture manager used to load and manage textures. */

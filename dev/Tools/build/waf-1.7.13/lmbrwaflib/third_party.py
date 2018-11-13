@@ -1893,7 +1893,7 @@ class ThirdPartySettings:
 
                 if not sdk_roles:
                     continue
-                    
+
                 sdk_in_capabilities = False
 
                 for role in sdk_roles:

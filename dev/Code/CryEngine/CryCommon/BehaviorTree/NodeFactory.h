@@ -18,9 +18,8 @@
 #include "Node.h"
 #include "VectorMap.h"
 #include "IBehaviorTree.h"
-#ifdef USE_GLOBAL_BUCKET_ALLOCATOR
-#   include "BucketAllocatorImpl.h"
-#endif
+#include "LegacyAllocator.h"
+
 
 namespace BehaviorTree
 {
@@ -31,14 +30,6 @@ namespace BehaviorTree
         NodeFactory()
             : m_nextNodeID(0)
         {
-#ifdef USE_GLOBAL_BUCKET_ALLOCATOR
-            s_bucketAllocator.EnableExpandCleanups(false);
-#endif
-        }
-
-        void CleanUpBucketAllocator()
-        {
-            s_bucketAllocator.cleanup();
         }
 
         virtual INodePtr CreateNodeOfType(const char* typeName)
@@ -69,8 +60,6 @@ namespace BehaviorTree
 
             if (node)
             {
-                MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "CreateNodeFromXml: %s", xml->getTag());
-
                 #ifdef DEBUG_MODULAR_BEHAVIOR_TREE
                 static_cast<Node*>(node.get())->SetXmlLine(xml->getLine());
                 #endif
@@ -140,16 +129,15 @@ namespace BehaviorTree
 
         virtual void* AllocateRuntimeDataMemory(const size_t size) override
         {
-            return s_bucketAllocator.allocate(size);
+            return azmalloc(size, sizeof(void*), AZ::LegacyAllocator);
         }
 
         virtual void FreeRuntimeDataMemory(void* pointer) override
         {
-            assert(s_bucketAllocator.IsInAddressRange(pointer));
-
-            if (s_bucketAllocator.IsInAddressRange(pointer))
+            assert(azallocsize(pointer, AZ::LegacyAllocator) != 0);
+            if (azallocsize(pointer, AZ::LegacyAllocator) != 0)
             {
-                s_bucketAllocator.deallocate(pointer);
+                azfree(pointer, AZ::LegacyAllocator);
             }
         }
 
@@ -158,27 +146,21 @@ namespace BehaviorTree
         // or we exit the game in the editor.
         virtual void* AllocateNodeMemory(const size_t size)
         {
-            return new char[size];
+            return azcalloc(size, 0, AZ::LegacyAllocator);
         }
 
         // This will be called while unloading a level or exiting game
         // in the editor.
         virtual void FreeNodeMemory(void* pointer)
         {
-            delete [] (char*)pointer;
+            azfree(pointer, AZ::LegacyAllocator);
         }
 
     private:
         typedef VectorMap<stack_string, INodeCreator*> NodeCreators;
- #ifdef USE_GLOBAL_BUCKET_ALLOCATOR
-        typedef BucketAllocator<BucketAllocatorDetail::DefaultTraits<(2*1024*1024), BucketAllocatorDetail::SyncPolicyUnlocked, false> > BehaviorTreeBucketAllocator;
- #else
-        typedef node_alloc<eCryDefaultMalloc, true, 2*1024*1024> BehaviorTreeBucketAllocator;
- #endif
 
         NodeCreators m_nodeCreators;
         NodeID m_nextNodeID;
-        static BehaviorTreeBucketAllocator s_bucketAllocator;
     };
 }
 

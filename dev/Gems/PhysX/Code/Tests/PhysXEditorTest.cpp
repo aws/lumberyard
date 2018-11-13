@@ -86,8 +86,8 @@ namespace Physics
 
     void PhysXEditorTestEnvironment::TeardownEnvironment()
     {
-        m_transformComponentDescriptor.release();
-        m_serializeContext.release();
+        m_transformComponentDescriptor.reset();
+        m_serializeContext.reset();
         delete m_application;
         AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
     }

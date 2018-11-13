@@ -361,7 +361,7 @@ void CVars::Init()
     DefineConstIntCVar(e_ShadowsLodBiasInvis, 0, VF_NULL,
         "Simplifies mesh for shadow map generation by X LOD levels, if object is not visible in main frame");
 
-    DefineConstIntCVar(e_Tessellation, 1, VF_NULL,
+    REGISTER_CVAR(e_Tessellation, 1, VF_NULL,
         "HW geometry tessellation  0 = not allowed, 1 = allowed");
     REGISTER_CVAR(e_TessellationMaxDistance, 30.f, VF_NULL,
         "Maximum distance from camera in meters to allow tessellation, also affects distance-based displacement fadeout");
@@ -623,7 +623,10 @@ void CVars::Init()
         "Activates drawing of water volumes\n"
         "1: use usual rendering path\n"
         "2: use fast rendering path with merged fog");
-
+    DefineConstIntCVar(e_RenderTransparentUnderWater, e_RenderTransparentUnderWaterDefault, VF_NULL,
+        "Determines how transparent/alphablended objects are rendered in WaterVolume\n"
+        "0: they are not rendered under water (fast performance)\n"
+        "1: they are rendered twice under water and above water (higher quality)");
     if (!OceanToggle::IsActive())
     {
         REGISTER_CVAR(e_WaterTessellationAmount, 200, VF_NULL,  // being deprecated by Water gem

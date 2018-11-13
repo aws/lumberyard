@@ -1,7 +1,7 @@
 ﻿<button class="btn l-primary create-button" (click)="createLaunchConfigurationModal()">
     New Fleet
 </button>
-<button class="btn btn-outline-primary create-button" (click)="createOrUpdateFleet(currentFleet)">
+<button class="btn btn-outline-primary create-button" (click)="createOrUpdateFleet(currentFleet)" [disabled]="!canSaveChanges()">
     Save Changes
 </button>
 <div [ngSwitch]="isLoadingFleet">
@@ -21,7 +21,7 @@
                 <div class="form-group row">
                     <label class="col-3 col-form-label affix">Number of Instances</label>
                     <div class="col-6">
-                        <input type="number" class="form-control" name="instance-number" [(ngModel)]="currentFleet.instanceNum">
+                        <input type="number" class="form-control" name="instance-number" [(ngModel)]="currentFleet.instanceNum" min="0">
                     </div>
                 </div>
                 <div class="form-group row">
@@ -41,6 +41,7 @@
         [title]="mode == Modes.CreateLaunchConfig ? 'Create launch configuration' : 'Create fleet'"
         [autoOpen]="true"
         [hasSubmit]="true"
+        [canSubmit]="canSubmitModal()"
         [onDismiss]="dismissModal"
         [onClose]="dismissModal"
         [submitButtonText]="mode == Modes.CreateLaunchConfig ? 'Continue' : 'Create'"
@@ -99,7 +100,7 @@
             <div class="form-group row">
                 <label class="col-3 col-form-label affix">instance number</label>
                 <div class="col-6">
-                    <input type="number" class="form-control" name="instance-number" [(ngModel)]="newFleet.instanceNum">
+                    <input type="number" class="form-control" name="instance-number" [(ngModel)]="newFleet.instanceNum" min="0">
                 </div>
             </div>
             <div class="form-group row">

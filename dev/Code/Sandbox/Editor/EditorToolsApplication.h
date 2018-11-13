@@ -36,8 +36,6 @@ namespace EditorInternal
 
         void StartCommon(AZ::Entity* systemEntity) override;
 
-        AZ::Outcome<AZStd::string, AZStd::string> ResolveToolApplicationPath(const char* toolName);
-
         using AzToolsFramework::ToolsApplication::Start;
         bool Start(int argc, char* argv[]);
 

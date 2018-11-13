@@ -18,6 +18,7 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/Random.h>
+#include <AzCore/Math/Sfmt.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/algorithm.h>
@@ -178,8 +179,16 @@ namespace LmbrCentral
         AZ::Vector3 boxMin = m_intersectionDataCache.m_dimensions * -half;
         AZ::Vector3 boxMax = m_intersectionDataCache.m_dimensions * half;
 
+		// As std:normal_distribution requires a std:random_engine to be passed in, create one using a random seed that is guaranteed to be properly
+		// random each time it is called
+        time_t seedVal;
+#ifdef AZ_OS32
+        seedVal = AZ::Sfmt::GetInstance().Rand32();
+#else
+        seedVal = AZ::Sfmt::GetInstance().Rand64();
+#endif
         std::default_random_engine generator;
-        generator.seed(static_cast<unsigned int>(time(nullptr)));
+        generator.seed(static_cast<unsigned int>(seedVal));
 
         switch(randomDistribution)
         {

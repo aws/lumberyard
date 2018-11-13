@@ -285,6 +285,7 @@
             "Memory/AllocatorBase.h",
             "Memory/AllocatorManager.cpp",
             "Memory/AllocatorManager.h",
+            "Memory/AllocatorScope.h",
             "Memory/BestFitExternalMapAllocator.cpp",
             "Memory/BestFitExternalMapAllocator.h",
             "Memory/BestFitExternalMapSchema.cpp",
@@ -293,6 +294,8 @@
             "Memory/HeapSchema.h",
             "Memory/HphaSchema.cpp",
             "Memory/HphaSchema.h",
+            "Memory/MallocSchema.cpp",
+            "Memory/MallocSchema.h",
             "Memory/Memory.cpp",
             "Memory/Memory.h",
             "Memory/MemoryComponent.cpp",
@@ -301,6 +304,7 @@
             "Memory/MemoryDriller.h",
             "Memory/MemoryDrillerBus.h",
             "Memory/nedmalloc.inl",
+            "Memory/NewAndDelete.inl",
             "Memory/OSAllocator.cpp",
             "Memory/OSAllocator.h",
             "Memory/PoolAllocator.cpp",
@@ -413,7 +417,8 @@
         ],
         "UnitTest":
         [
-            "UnitTest/UnitTest.h"
+            "UnitTest/UnitTest.h",
+            "UnitTest/TestTypes.h"
         ],
         "UserSettings":
         [

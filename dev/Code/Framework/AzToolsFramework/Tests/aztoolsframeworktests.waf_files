@@ -1,0 +1,10 @@
+{
+    "none": {
+        "Root": [
+            "Main.cpp"
+        ],
+        "AzToolsFramework" : [
+            "UndoStack.cpp"
+        ]
+    }
+}

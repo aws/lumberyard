@@ -19,9 +19,9 @@
 
 #include "CCryDXMETALDeviceChild.hpp"
 
-//  Confetti BEGIN: Igor Lobanchikov
+
 @protocol MTLSamplerState;
-//  Confetti End: Igor Lobanchikov
+#import <Metal/MTLSampler.h>
 
 namespace NCryMetal
 {
@@ -41,13 +41,14 @@ public:
     bool Initialize(CCryDXGLDevice* pDevice);
     void Apply(uint32 uStage, uint32 uSlot, NCryMetal::CContext* pContext);
 
-    // Implementation of ID3D11SamplerState
+    void SetLodMinClamp(float lodMinClamp);
     void GetDesc(D3D11_SAMPLER_DESC* pDesc);
 protected:
     D3D11_SAMPLER_DESC m_kDesc;
-    //  Confetti BEGIN: Igor Lobanchikov
-    id<MTLSamplerState>        m_MetalSamplerState;
-    //  Confetti End: Igor Lobanchikov
+    
+    id<MTLSamplerState> m_MetalSamplerState;
+    MTLSamplerDescriptor* m_MetalSamplerDescriptor;
+    CCryDXGLDevice* m_pDevice;
 };
 
 #endif //__CRYMETALGLSAMPLERSTATE__

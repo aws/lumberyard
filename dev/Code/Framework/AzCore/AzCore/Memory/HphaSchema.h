@@ -13,6 +13,7 @@
 #define AZ_HPHA_ALLOCATION_SCHEME_ALLOCATOR_H
 
 #include <AzCore/Memory/Memory.h>
+#include <AzCore/std/typetraits/aligned_storage.h>
 
 namespace AZ
 {
@@ -33,27 +34,26 @@ namespace AZ
         struct Descriptor
         {
             Descriptor()
-#if AZ_TRAIT_OS_USE_HPHASCHEMA_4KPAGESIZE
-                : m_pageSize(4 * 1024)
-#else
-                : m_pageSize(m_memoryBlockAlignment)
-#endif
+                : m_memoryBlockAlignment(AZ_PAGE_SIZE)
+                , m_pageSize(AZ_PAGE_SIZE)
                 , m_poolPageSize(4*1024)
                 , m_isPoolAllocations(true)
-                , m_memoryBlockByteSize(0)
-                , m_memoryBlock(0)
+                , m_fixedMemoryBlockByteSize(0)
+                , m_fixedMemoryBlock(nullptr)
                 , m_subAllocator(nullptr)
                 , m_systemChunkSize(0)
+                , m_capacity(AZ_CORE_MAX_ALLOCATOR_SIZE)
             {}
 
-            static const int        m_memoryBlockAlignment = AZ_TRAIT_OS_DEFAULT_PAGE_SIZE;
+            unsigned int            m_memoryBlockAlignment;
             unsigned int            m_pageSize;                             ///< Page allocation size must be 1024 bytes aligned.
             unsigned int            m_poolPageSize : 31;                    ///< Page size used to small memory allocations. Must be less or equal to m_pageSize and a multiple of it.
             unsigned int            m_isPoolAllocations : 1;                ///< True to allow allocations from pools, otherwise false.
-            size_t                  m_memoryBlockByteSize;                  ///< Memory block size, if 0 we use the OS memory allocation functions.
-            void*                   m_memoryBlock;                          ///< Can be NULL if so the we will allocate memory from the subAllocator if m_memoryBlocksByteSize is != 0.
+            size_t                  m_fixedMemoryBlockByteSize;             ///< Memory block size, if 0 we use the OS memory allocation functions.
+            void*                   m_fixedMemoryBlock;                     ///< Can be NULL if so the we will allocate memory from the subAllocator if m_memoryBlocksByteSize is != 0.
             IAllocatorAllocate*     m_subAllocator;                         ///< Allocator that m_memoryBlocks memory was allocated from or should be allocated (if NULL).
             size_t                  m_systemChunkSize;                      ///< Size of chunk to request from the OS when more memory is needed (defaults to m_pageSize)
+            size_t                  m_capacity;                             ///< Max size this allocator can grow to
         };
 
 
@@ -78,10 +78,12 @@ namespace AZ
 
     private:
         Descriptor          m_desc;
-
+#if defined(AZ_OS64)
+        int                 m_pad;      // pad the Descriptor to avoid C4355
+#endif
         size_type           m_capacity;                 ///< Capacity in bytes.
         HpAllocator*        m_allocator;
-        AZ_ALIGN(char m_hpAllocatorBuffer[5120], 16);    ///< Memory buffer for HpAllocator
+        AZStd::aligned_storage<5120, 16>::type m_hpAllocatorBuffer;    ///< Memory buffer for HpAllocator
         bool                m_ownMemoryBlock;
     };
 } // namespace AZ

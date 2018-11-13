@@ -46,14 +46,12 @@ namespace LmbrCentral
         {
             EditorBaseShapeComponent::GetProvidedServices(provided);
             provided.push_back(AZ_CRC("TubeShapeService", 0x3fe791b4));
-            provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
             EditorBaseShapeComponent::GetRequiredServices(required);
             required.push_back(AZ_CRC("SplineService", 0x2b674d3c));
-            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
         }
 
     private:

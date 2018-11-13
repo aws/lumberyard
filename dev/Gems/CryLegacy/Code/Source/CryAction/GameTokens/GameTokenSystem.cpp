@@ -715,7 +715,6 @@ bool CGameTokenSystem::_InternalLoadLibrary(const char* filename, const char* ta
 void CGameTokenSystem::SerializeSaveLevelToLevel(const char** ppGameTokensList, uint32 numTokensToSave)
 {
     {
-        ScopedSwitchToGlobalHeap globalHeap;
         m_levelToLevelSave = gEnv->pSystem->CreateXmlNode("GameTokensLevelToLevel");
     }
 
@@ -724,7 +723,6 @@ void CGameTokenSystem::SerializeSaveLevelToLevel(const char** ppGameTokensList, 
     TSerialize ser = TSerialize(pSer);
 
     {
-        ScopedSwitchToGlobalHeap globalHeap;
         uint32 numTokensSaved = 0;
         for (uint32 i = 0; i < numTokensToSave; ++i)
         {
@@ -762,7 +760,6 @@ void CGameTokenSystem::SerializeReadLevelToLevel()
     TSerialize ser = TSerialize(pSer);
 
     {
-        ScopedSwitchToGlobalHeap globalHeap;
         uint32 numTokens = 0;
         ser.Value("numTokens", numTokens);
         for (uint32 i = 0; i < numTokens; i++)

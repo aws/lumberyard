@@ -183,7 +183,7 @@ namespace AZ
         /// It's expected that derived applications will implement an application root.
         const char*  GetAppRoot() override { return ""; }
         /// Returns the path to the folder the executable is in.
-        const char* GetExecutableFolder() override { return m_exeDirectory; }
+        const char* GetExecutableFolder() const override { return m_exeDirectory; }
         /// Returns pointer to the driller manager if it's enabled, otherwise NULL.
         Debug::DrillerManager* GetDrillerManager() override { return m_drillerManager; }
         //////////////////////////////////////////////////////////////////////////
@@ -302,7 +302,7 @@ namespace AZ
         bool                                        m_isStarted;
         bool                                        m_isSystemAllocatorOwner;
         bool                                        m_isOSAllocatorOwner;
-        void*                                       m_memoryBlock;                  ///< Pointer to the memory block allocator, so we can free it OnDestroy.
+        void*                                       m_fixedMemoryBlock;                  ///< Pointer to the memory block allocator, so we can free it OnDestroy.
         IAllocatorAllocate*                         m_osAllocator;
         EntitySetType                               m_entities;
         char                                        m_exeDirectory[AZ_MAX_PATH_LEN];

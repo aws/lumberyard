@@ -15,6 +15,8 @@
 
 #include <Asset/RuntimeAssetSystemComponent.h>
 #include <ScriptCanvas/Core/Graph.h>
+#include <ScriptCanvas/Core/Connection.h>
+#include <ScriptCanvas/Core/PureData.h>
 
 #include <ScriptCanvas/Data/DataRegistry.h>
 #include <ScriptCanvas/Libraries/Libraries.h>
@@ -40,11 +42,13 @@ namespace ScriptCanvas
             // Components
             ScriptCanvas::Debugger::Component::CreateDescriptor(),
             ScriptCanvas::Graph::CreateDescriptor(),
+            ScriptCanvas::Connection::CreateDescriptor(),
+            ScriptCanvas::PureData::CreateDescriptor(),
             ScriptCanvas::GraphVariableManagerComponent::CreateDescriptor(),
             ScriptCanvas::RuntimeComponent::CreateDescriptor(),
             
             // ScriptCanvasBuilder
-            ScriptCanvas::RuntimeAssetSystemComponent::CreateDescriptor()
+            ScriptCanvas::RuntimeAssetSystemComponent::CreateDescriptor(),
         });
         
         ScriptCanvas::InitNodeRegistry();

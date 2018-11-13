@@ -237,6 +237,8 @@ namespace Amazon {
 
     void LoginDialog::networkFinished(QNetworkReply* reply)
     {
+
+
         m_loadingLbl.hide();
         if (reply->error() != QNetworkReply::NetworkError::NoError && reply->error() != QNetworkReply::NetworkError::OperationCanceledError)
         {

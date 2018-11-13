@@ -1218,7 +1218,7 @@ int CPhysicalEntity::SetParams(const pe_params* _params, int bThreadSafe)
         {
             m_pStructure->pJoints[i].bBroken = 0;
         }
-        MEMSTAT_USAGE(m_pStructure->pJoints, sizeof(m_pStructure->pJoints[0]) * m_pStructure->nJoints);
+        
         return 1;
     }
 
@@ -2235,10 +2235,6 @@ int CPhysicalEntity::AddGeometry(phys_geometry* pgeom, pe_geomparams* params, in
         {
             m_pWorld->FreeEntityParts(pparts, nPartsAlloc);
         }
-        if (m_nPartsAlloc != 1)
-        {
-            MEMSTAT_USAGE(m_parts, sizeof(geom) * m_nParts);
-        }
     }
     {
         WriteLock lock(m_lockPartIdx);
@@ -2367,12 +2363,7 @@ int CPhysicalEntity::AddGeometry(phys_geometry* pgeom, pe_geomparams* params, in
         WriteLock lock(m_lockUpdate);
         m_nParts++;
     }
-
-    if (m_nPartsAlloc != 1)
-    {
-        MEMSTAT_USAGE(m_parts, sizeof(geom) * m_nParts);
-    }
-
+    
     m_Extents.Clear();
 
     return id;
@@ -2476,10 +2467,6 @@ void CPhysicalEntity::RemoveGeometry(int id, int bThreadSafe)
                     }
                 }
                 m_nParts--;
-                if (m_nPartsAlloc != 1)
-                {
-                    MEMSTAT_USAGE(m_parts, sizeof(geom) * m_nParts);
-                }
                 ComputeBBox(m_BBox);
                 for (m_iLastIdx = i = 0; i < m_nParts; i++)
                 {
@@ -3123,11 +3110,6 @@ int CPhysicalEntity::UpdateStructure(float time_interval, pe_explosion* pexpl, i
             {
                 flags |= m_parts[i].flags & geom_structure_changes;
             }
-        }
-
-        if (m_nPartsAlloc != 1)
-        {
-            MEMSTAT_USAGE(m_parts, sizeof(m_parts[0]) * m_nParts);
         }
 
         PHYS_ENTITY_PROFILER

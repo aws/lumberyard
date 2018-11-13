@@ -131,6 +131,6 @@ namespace AzQtComponents
         bool m_shouldCenterInParent = false;
         bool m_restoringGeometry = false;
     };
-
-    Q_DECLARE_OPERATORS_FOR_FLAGS(WindowDecorationWrapper::Options)
 } // namespace AzQtComponents
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(AzQtComponents::WindowDecorationWrapper::Options)

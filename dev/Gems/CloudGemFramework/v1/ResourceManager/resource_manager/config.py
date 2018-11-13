@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #1 $
+# $Revision: #2 $
 
 import os
 import json
@@ -93,18 +93,14 @@ class ConfigContext(object):
         
         self.region = args.region_override if args.region_override else args.region
         self.local_project_settings = LocalProjectSettings(self.context, self.join_aws_directory_path(constant.PROJECT_LOCAL_SETTINGS_FILENAME), self.region)
-        
-
 
     def initialize(self, args):
-
         self.__load_user_settings()
         self.__load_aws_directory()
         self.__load_resource_name_validation_config()
 
         self.__assume_role_name = args.assume_role # may be None
-        self.__assume_role_deployment_name = args.deployment # may be None
-        
+        self.__assume_role_deployment_name = args.deployment # may be None        
         self.__no_prompt = args.no_prompt
 
     def __load_user_settings(self):
@@ -320,7 +316,7 @@ class ConfigContext(object):
                     self.project_template_aggregator.base_file_path))
 
             # If the project is initialized, we load our project file from S3
-            self.__project_settings = CloudProjectSettings(self.context, 
+            self.__project_settings = CloudProjectSettings.factory(self.context, 
                 self.configuration_bucket_name, 
                 verbose = self.__verbose)
 
@@ -610,7 +606,6 @@ class ConfigContext(object):
         self.save_project_settings()
 
     def finalize_deployment_stack_ids(self, deployment_name):
-
         deployment_map = self.__ensure_map(self.project_settings, 'deployment')
         deployment_name_map = self.__ensure_map(deployment_map, deployment_name)
 
@@ -623,7 +618,7 @@ class ConfigContext(object):
         if deployment_access_stack_id is None:
             raise RuntimeError('There is no PendingDeploymentAccessStackId property.')
         deployment_name_map['DeploymentAccessStackId'] = deployment_access_stack_id
-
+        
         self.save_project_settings()
 
     def remove_deployment(self, deployment_name):
@@ -690,7 +685,7 @@ class ConfigContext(object):
 
         settings_default_content = { "deployment": { "*": { "resource-group": {}} } }
 
-        self.__project_settings = CloudProjectSettings(self.context, 
+        self.__project_settings = CloudProjectSettings.factory(self.context, 
             self.configuration_bucket_name, 
             initial_settings = settings_default_content, 
             verbose = self.__verbose)
@@ -821,6 +816,8 @@ class LocalProjectSettings():
         return None
 
     def get(self, key, default=None):
+        if self.__default is None:
+            return default
         return self.__default.get(key, default)
 
     def is_default_set_to_region(self):
@@ -871,53 +868,280 @@ class LocalProjectSettings():
             self[constant.PENDING_PROJECT_STACK_ID] = migration_set[constant.PENDING_PROJECT_STACK_ID]
             migration_set.pop(constant.PENDING_PROJECT_STACK_ID, None)            
 
+'''
+Base class for the cloud project settings.
+Project settings are stored in the project configuration bucket at the root.
+There are two types of serializations.
 
-        
-        
+V1 (legacy before 1.16)
+V2 
 
-'''Client abstraction for project settings '''
+'''
 class CloudProjectSettings(dict):
 
-    def __init__(self, context, bucket, initial_settings=None, verbose=False):
+    ATTR_RELEASE_DEPLOYMENT_NAME = "ReleaseDeployment"
+    ATTR_DEFAULT_DEPLOYMENT_NAME = "DefaultDeployment"
+    ATTR_DEPLOYMENT = "deployment"
+    DEFAULT = "default"
 
-        self.__bucket = bucket
-        self.__key = constant.PROJECT_SETTINGS_FILENAME
-        self.__context = context
-
+    def __init__(self, context, bucket, initial_settings, verbose):          
         if not initial_settings:
-            try:
-                s3 = self.__context.aws.client('s3')
-                res = s3.get_object(Bucket=self.__bucket, Key=self.__key)
-                settings = res['Body'].read()
-                initial_settings = json.loads(settings)
-                self.__context.view.loaded_project_settings(initial_settings)
-            except Exception as e:
-                raise HandledError('Cloud not read project settings from bucket {} object {}: {}'.format(self.__bucket,
-                    self.__key,
-                    e.message))
+            initial_settings = self.load(context, bucket, initial_settings, verbose)                
+        context.view.loaded_project_settings(initial_settings)            
+        super(CloudProjectSettings, self).__init__(initial_settings)          
+        self.__bucket = bucket        
+        self.__context = context      
 
-        super(CloudProjectSettings, self).__init__(initial_settings)
+    @property
+    def bucket(self):
+        return self.__bucket
+
+    @property
+    def context(self):
+        return self.__context
+
+    @staticmethod
+    def factory(context, bucket, initial_settings=None, verbose=None):  
+        if not initial_settings:            
+            try:
+                return CloudProjectSettings_V1(context, bucket, initial_settings, verbose)
+            except Exception as e:                  
+                return CloudProjectSettings_V2(context, bucket, initial_settings, verbose)
+        return CloudProjectSettings_V2(context, bucket, initial_settings, verbose)
+
+'''
+Version two of the cloud project settings stores 
+each deployment in a seperate json file with the suffix 'dstack'.
+This was done to remove the bottleneck deployments had when performing actions 
+as they would require mutually exclusion locks on the project stack.
+
+Example:
+dstack.ReleaseDeployment.default.json
+    Contents:   TestDeployment1
+
+dstack.DefaultDeployment.default.json
+    Contents:   TestDeployment1
+
+dstack.deployment.TestDeployment1.json
+    Contents:   {
+                    "DeploymentAccessStackId": "arn:aws:cloudformation:us-east-1:XXXXXXXX:stack/cctestWUQW4NE-hyptest-cctest0DZ2Y8A-Access/9f5585f0-767a-11e8-a9bc-500abe22848d", 
+                    "DeploymentStackId": "arn:aws:cloudformation:us-east-1:XXXXXXXX:stack/cctestWUQW4NE-hyptest-cctest0DZ2Y8A/7557dbe0-767a-11e8-a1f5-503aca4a58d1"
+                }
+'''
+class CloudProjectSettings_V2(CloudProjectSettings):   
+
+    def __init__(self, context, bucket, initial_settings, verbose):          
+        super(CloudProjectSettings_V2, self).__init__(context, bucket, initial_settings, verbose)   
+        self.__initial_state_of_deployments = None
+
+    '''
+    Suffix for the files
+    '''
+    @staticmethod
+    def file_name():
+        return "dstack"
+
+    '''
+    S3 key name to use during the loading
+    '''
+    @property
+    def key(self):
+        return CloudProjectSettings_V2.file_name()
+
+    '''
+    Get the default project deployment stack name.  
+    User defaults have high priorities than the project default.
+    '''
+    def get_project_default_deployment(self):
+        return self.get(self.ATTR_DEFAULT_DEPLOYMENT_NAME, None)
+
+    '''
+    Set the default project deployment.
+    Requires the deletion of the s3 file associated to the previous default.
+    '''
+    def set_project_default_deployment(self, new_default):
+        self.remove_project_default_deployment()
+        self[self.ATTR_DEFAULT_DEPLOYMENT_NAME] = new_default
+
+    '''
+    Remove the project default deployment stack.
+    '''
+    def remove_project_default_deployment(self):
+        if self.ATTR_DEFAULT_DEPLOYMENT_NAME in self:
+            self.delete(self.ATTR_DEFAULT_DEPLOYMENT_NAME, self.DEFAULT)
+            self.pop(self.ATTR_DEFAULT_DEPLOYMENT_NAME, None)            
+
+    '''
+    Get the release deployment stack name
+    '''
+    def get_release_deployment(self):
+        return self.get(self.ATTR_RELEASE_DEPLOYMENT_NAME, None)
+
+    '''
+    Set the release deployment stack name
+    Requires the deletion of the s3 file associated to the previous default.
+    '''
+    def set_release_deployment(self, new_release_deployment):
+        self.remove_release_deployment()
+        self[self.ATTR_RELEASE_DEPLOYMENT_NAME] = new_release_deployment
+
+    '''
+    Remove the project default deployment stack.
+    '''
+    def remove_release_deployment(self):
+        if self.ATTR_RELEASE_DEPLOYMENT_NAME in self:
+            self.delete(self.ATTR_RELEASE_DEPLOYMENT_NAME, self.DEFAULT)
+            self.pop(self.ATTR_RELEASE_DEPLOYMENT_NAME, None)        
+
+    '''
+    Get a list of all of the deployments
+    '''
+    def get_deployments(self):
+        deployments = self.get(self.ATTR_DEPLOYMENT, {})        
+        return deployments
+
+    '''
+    Get information on a specific deployment
+    '''
+    def get_deployment(self, deployment_name):        
+        return self.get_deployments().get(deployment_name, {})
+
+    '''
+    Remove a specific deployment and any associated default files.
+    '''
+    def remove_deployment(self, deployment_name):        
+        self.delete(self.ATTR_DEPLOYMENT, deployment_name)
+        if self.get_release_deployment() == deployment_name:
+            self.remove_release_deployment()
+        if self.get_project_default_deployment() == deployment_name:
+            self.remove_project_default_deployment()
+        self.get_deployments().pop(deployment_name, None)        
+
+    '''
+    Get a resource group from within a deployment
+    '''
+    def get_resource_group_settings(self, deployment_name):        
+        return self.get_deployment(deployment_name).get("resource-group")
+
+    '''
+    Get the default resource group
+    '''
+    def get_default_resource_group_settings(self):
+        return self.get_resource_group_settings("*")
+
+    '''
+    Convert the individual files in the project configuration bucket to a dictionary
+    Each individual file and contents becomes a key and value in the dictionary
+    '''
+    def load(self, context, bucket, initial_settings, verbose):
+        try:            
+            s3 = context.aws.client('s3')
+            res = s3.list_objects_v2(Bucket=bucket, Prefix=CloudProjectSettings_V2.file_name())
+            cloud_deployments = res.get('Contents', {})
+            initial_settings = {
+                self.ATTR_DEPLOYMENT:{}
+            }
+            entries = initial_settings[self.ATTR_DEPLOYMENT]
+            for deployment in cloud_deployments:
+                file_name = deployment['Key']
+                prefix, group, deployment_name, ext = file_name.split('.')                
+                if group == self.ATTR_DEFAULT_DEPLOYMENT_NAME or group == self.ATTR_RELEASE_DEPLOYMENT_NAME:                    
+                    initial_settings[group] = s3.get_object(Bucket=bucket, Key=file_name)["Body"].read()
+                else:                    
+                    contents = json.load(s3.get_object(Bucket=bucket, Key=file_name)["Body"]) 
+                    self.__initial_state_of_deployments = entries[deployment_name] = contents                   
+            return initial_settings
+        except Exception as e:
+            raise HandledError('Cloud not read V2 project settings from bucket {} object {}: {}.'.format(bucket,
+                CloudProjectSettings_V2.file_name(),
+                e.message))
+
+    '''
+    Convert the dictionary to individual files in the project configuration bucket.
+    Each key of the dictionary becomes a individual file.
+    Only save what changed locally! Or you could overwrite another process deployment changes.
+    '''
+    def save(self):
+        s3 = self.context.aws.client('s3')                
+        for key1 in self.keys():            
+            if isinstance(self[key1], dict):                
+                for key2 in self[key1].keys():                    
+                    file_name = "{}.{}.{}.json".format(self.key, key1, key2)
+                    value = self[key1][key2]
+                    if self.__initial_state_of_deployments != None and key2 in self.__initial_state_of_deployments and value == self.__initial_state_of_deployments[key2]:
+                        continue
+                    s3.put_object(Bucket=self.bucket, Key=file_name, Body=json.dumps(value, indent=4, sort_keys=True))        
+            else:
+                file_name = "{}.{}.default.json".format(self.key, key1)
+                value = self[key1]                            
+                s3.put_object(Bucket=self.bucket, Key=file_name, Body=value)                
+        print "Saving the project configuration to {}".format(self.bucket)
+        self.context.view.saved_project_settings(self)        
+        
+    def delete(self, group_name, deployment):        
+        s3 = self.context.aws.client('s3')
+        file_name = "{}.{}.{}.json".format(self.key, group_name, deployment)        
+        res = s3.delete_object(Bucket=self.bucket, Key=file_name)        
+        
+'''
+Client abstraction for project settings 
+The original format for storing project information.
+
+Example:
+{
+    "DefaultDeployment": "TestDeployment1", 
+    "ReleaseDeployment": "TestDeployment1", 
+    "deployment": {
+        "*": {
+            "resource-group": {}
+        }, 
+        "TestDeployment1": {
+            "DeploymentAccessStackId": "arn:aws:cloudformation:us-east-1:XXXXXXXX:stack/cctestLL53V6J-hyptest-TestDeployment1-Access/d25fb420-6f59-11e8-9d4b-500c524294f2", 
+            "DeploymentStackId": "arn:aws:cloudformation:us-east-1:XXXXXXXX:stack/cctestLL53V6J-hyptest-TestDeployment1/5d61c800-6f56-11e8-a36c-500c28680ac6"
+        }      
+    }
+}
+
+'''
+class CloudProjectSettings_V1(CloudProjectSettings):
+
+    def __init__(self, context, bucket, initial_settings, verbose):
+        super(CloudProjectSettings_V1, self).__init__(context, bucket, initial_settings, verbose)    
+
+    '''
+    File name of the s3 file.
+    '''
+    @staticmethod
+    def file_name():
+        return constant.PROJECT_SETTINGS_FILENAME
+
+    '''
+    S3 key name to use during the loading
+    '''
+    @property
+    def key(self):
+        return CloudProjectSettings_V1.file_name()
 
     def get_project_default_deployment(self):
-        return self.get("DefaultDeployment", None)
+        return self.get(self.ATTR_DEFAULT_DEPLOYMENT_NAME, None)
 
     def set_project_default_deployment(self, new_default):
-        self["DefaultDeployment"] = new_default
+        self[self.ATTR_DEFAULT_DEPLOYMENT_NAME] = new_default
 
     def remove_project_default_deployment(self):
-        self.pop("DefaultDeployment", None)
+        self.pop(self.ATTR_DEFAULT_DEPLOYMENT_NAME, None)
 
     def get_release_deployment(self):
-        return self.get("ReleaseDeployment", None)
+        return self.get(self.ATTR_RELEASE_DEPLOYMENT_NAME, None)
 
     def set_release_deployment(self, new_release_deployment):
-        self["ReleaseDeployment"] = new_release_deployment
+        self[self.ATTR_RELEASE_DEPLOYMENT_NAME] = new_release_deployment
 
     def remove_release_deployment(self):
-        self.pop("ReleaseDeployment", None)
+        self.pop(self.ATTR_RELEASE_DEPLOYMENT_NAME, None)
 
     def get_deployments(self):
-        return self.get('deployment', {})
+        return self.get(self.ATTR_DEPLOYMENT, {})
 
     def get_deployment(self, deployment_name):
         return self.get_deployments().get(deployment_name, {})
@@ -930,17 +1154,28 @@ class CloudProjectSettings(dict):
 
     def get_default_resource_group_settings(self):
         return self.get_resource_group_settings("*")
+    
+    def load(self, context, bucket, initial_settings, verbose):
+        try:            
+            s3 = context.aws.client('s3')                
+            res = s3.get_object(Bucket=bucket, Key=CloudProjectSettings_V1.file_name())             
+            settings = res['Body'].read()                
+            initial_settings = json.loads(settings)                        
+            return initial_settings
+        except Exception as e:                           
+            raise HandledError('Cloud not read legacy V1 project settings from bucket {} object {}: {}.'.format(bucket,
+                CloudProjectSettings_V1.file_name(),
+                e.message))        
 
     def save(self):
-        s3 = self.__context.aws.client('s3')
-        s3.put_object(Bucket=self.__bucket, Key=self.__key, Body=json.dumps(self, indent=4, sort_keys=True))
-        self.__context.view.saved_project_settings(self)
-
+        s3 = self.context.aws.client('s3')
+        s3.put_object(Bucket=self.bucket, Key=self.key, Body=json.dumps(self, indent=4, sort_keys=True))
+        self.context.view.saved_project_settings(self)
 
 '''This class is used when no project has yet been defined.
 We just want our cloud-based interface that will return nothing but None.
 Once the project is setup, init_project_settings will create the inital settings in the cloud'''
-class UnitializedCloudProjectSettings(CloudProjectSettings):
+class UnitializedCloudProjectSettings(CloudProjectSettings_V2):
 
     def __init__(self, context):
         self.__context = context
@@ -1357,6 +1592,8 @@ class DeploymentTemplateAggregator(TemplateAggregator):
         super(DeploymentTemplateAggregator, self)._add_effective_content(effective_template, attribution)
 
         resources = effective_template.setdefault('Resources', {})
+        parameters = effective_template['Parameters']
+        config_key_param = parameters['ConfigurationKey']
 
         enabled_resource_group_names = [r.name for r in self.context.resource_groups.values() if r.is_enabled]
         inter_gem_deps_map = {}
@@ -1373,13 +1610,14 @@ class DeploymentTemplateAggregator(TemplateAggregator):
                     cross_gem_comms_dependencies.append(dep)
 
             configuration_name = resource_group.name + 'Configuration'
+            configuration_key_name = resource_group.name + 'ConfigurationKey'
 
             resources[configuration_name] = {
                 "Type": "Custom::ResourceGroupConfiguration",
                 "Properties": {
                     "ServiceToken": { "Ref": "ProjectResourceHandler" },
                     "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
-                    "ConfigurationKey": { "Ref": "ConfigurationKey" },
+                    "ConfigurationKey": { "Ref": configuration_key_name },
                     "ResourceGroupName": resource_group.name
                 }
             }
@@ -1399,6 +1637,8 @@ class DeploymentTemplateAggregator(TemplateAggregator):
                     "TimeoutInMinutes": 10+(5*number_of_resources)
                 }
             }
+
+            parameters[configuration_key_name] = config_key_param
 
             if cross_gem_comms_dependencies:
                 inter_gem_deps_map[resource_group.name] = cross_gem_comms_dependencies
@@ -1430,6 +1670,29 @@ class DeploymentAccessTemplateAggregator(TemplateAggregator):
     
     def __init__(self, context):
         super(DeploymentAccessTemplateAggregator, self).__init__(context, constant.DEPLOYMENT_ACCESS_TEMPLATE_FILENAME, constant.DEPLOYMENT_ACCESS_TEMPLATE_EXTENSIONS_FILENAME)
+
+    def _add_effective_content(self, effective_template, attribution):
+        super(DeploymentAccessTemplateAggregator, self)._add_effective_content(effective_template, attribution)
+
+        for gem in self.context.gem.enabled_gems:
+            path = os.path.join(gem.aws_directory_path, constant.DEPLOYMENT_ACCESS_TEMPLATE_FILENAME)
+            if os.path.isfile(path):
+                template = util.load_json(path)
+                self._copy_parameters(effective_template, template, path)
+                self._copy_resources(effective_template, template, path, gem.name)
+                self._copy_outputs(effective_template, template, path)
+
+        for resource_group_name in [r.name for r in self.context.resource_groups.values() if r.is_enabled]:
+            effective_template["Resources"][resource_group_name + "AccessControl"] = {
+                "Type": "Custom::AccessControl",
+                "Properties": {
+                    "ServiceToken": {"Ref": "ProjectResourceHandler"},
+                    "ConfigurationBucket": {"Ref": "ConfigurationBucket"},
+                    "ConfigurationKey": {"Ref": "ConfigurationKey"},
+                    "Gem": resource_group_name
+                },
+                "DependsOn": ["Player", "Server", "DeploymentOwner", "DeploymentAdmin", "AuthenticatedPlayer"]
+            }
 
 
 class ResourceTemplateAggregator(TemplateAggregator):

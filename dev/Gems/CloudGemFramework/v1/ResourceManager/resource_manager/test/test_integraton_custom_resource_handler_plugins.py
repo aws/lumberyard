@@ -19,39 +19,32 @@ from time import sleep
 
 from botocore.exceptions import ClientError
 
-import resource_manager_common.constant
+import resource_manager_common.constant as  c
 
 import lmbr_aws_test_support
 import mock_specification
+from resource_manager.test import base_stack_test
+import test_constant
 
-class IntegrationTest_CloudGemFramework_ResouceManager_ResourceHandlerPlugins(lmbr_aws_test_support.lmbr_aws_TestCase):
-
+class IntegrationTest_CloudGemFramework_ResouceManager_ResourceHandlerPlugins(base_stack_test.BaseStackTestCase):
 
     def setUp(self):        
-        self.prepare_test_envionment(type(self).__name__)
-        
+        self.set_deployment_name(lmbr_aws_test_support.unique_name())
+        self.set_resource_group_name(lmbr_aws_test_support.unique_name('rhp'))
+        self.prepare_test_environment(type(self).__name__)
+        self.register_for_shared_resources()
 
     def test_ressource_handler_plugins_end_to_end(self):
         self.run_all_tests()
 
-
-    def __120_create_project_stack(self):
-        self.lmbr_aws(
-            'project', 'create', 
-            '--stack-name', self.TEST_PROJECT_STACK_NAME, 
-            '--confirm-aws-usage',
-            '--confirm-security-change', 
-            '--region', lmbr_aws_test_support.REGION
-        )
-
-
-    def __180_create_test_gem(self):     
+    def __120_create_project_stack(self):        
         self.lmbr_aws(
             'cloud-gem', 'create',
             '--gem', self.TEST_RESOURCE_GROUP_NAME,
             '--initial-content', 'no-resources',
-            '--enable')
-
+            '--enable', '--no-sln-change', ignore_failure=True)
+        self.enable_shared_gem(self.TEST_RESOURCE_GROUP_NAME, 'v1', path=os.path.join(self.context[test_constant.ATTR_ROOT_DIR], os.path.join(test_constant.DIR_GEMS,  self.TEST_RESOURCE_GROUP_NAME)))
+        self.base_create_project_stack()
 
     def __440_add_custom_resource_handler_in_resource_group(self):
         self.add_custom_resource_to_gem()
@@ -59,20 +52,10 @@ class IntegrationTest_CloudGemFramework_ResouceManager_ResourceHandlerPlugins(lm
 
 
     def __450_update_project_to_add_custom_resource_handler(self):
-        self.lmbr_aws(
-            'project', 'upload-resources', 
-            '--confirm-aws-usage', 
-            '--confirm-security-change'
-        )
+        self.base_update_project_stack()
 
-
-    def __455_create_deployment_stack(self):
-        self.lmbr_aws(
-            'deployment', 'create', 
-            '--deployment', self.TEST_DEPLOYMENT_NAME, 
-            '--confirm-aws-usage', 
-            '--confirm-security-change'
-        )            
+    def __455_create_deployment_stack(self):        
+        self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change', '--parallel', '--only-cloud-gems', self.TEST_RESOURCE_GROUP_NAME)
 
 
     def __460_verify_custom_resource_handler_in_resource_group(self):
@@ -88,18 +71,12 @@ class IntegrationTest_CloudGemFramework_ResouceManager_ResourceHandlerPlugins(lm
 
 
     def __920_delete_deployment_stack(self):
-        self.lmbr_aws(
-            'deployment', 'delete',
-            '--deployment', self.TEST_DEPLOYMENT_NAME, 
-            '--confirm-resource-deletion'
-        )
+        self.unregister_for_shared_resources()
+        self.base_delete_deployment_stack()
 
 
     def __950_delete_project_stack(self):
-        self.lmbr_aws(
-            'project', 'delete', 
-            '--confirm-resource-deletion'
-        )
+        self.teardown_base_stack()
 
 
     CUSTOM_RESOURCE_HANDLER = '''
@@ -137,12 +114,12 @@ def handler(event, context):
 
     def add_custom_resource_to_gem(self):
         project_template_path = self.get_gem_aws_path(
-            self.TEST_RESOURCE_GROUP_NAME, 'project-template.json')
+            self.TEST_RESOURCE_GROUP_NAME, c.PROJECT_TEMPLATE_FILENAME)
         if not os.path.exists(project_template_path):
             with open(project_template_path, 'w') as f:
                 f.write('{}')
 
-        with self.edit_gem_aws_json(self.TEST_RESOURCE_GROUP_NAME, 'project-template.json') as gem_project_template:
+        with self.edit_gem_aws_json(self.TEST_RESOURCE_GROUP_NAME,  c.PROJECT_TEMPLATE_FILENAME) as gem_project_template:
 
             project_extension_resources = gem_project_template['Resources'] = {}
             project_extension_resources['testCustomResourceConfiguration'] = {

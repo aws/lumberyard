@@ -1,9 +1,9 @@
 <ObjectStream version="3">
 	<Class name="AZ::Entity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 		<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-			<Class name="AZ::u64" field="id" value="7187507164524" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			<Class name="AZ::u64" field="id" value="609616530168" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 		</Class>
-		<Class name="AZStd::string" field="Name" value="7187507164524" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+		<Class name="AZStd::string" field="Name" value="609616530168" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 		<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 			<Class name="SliceComponent" field="element" version="2" type="{AFD304E4-1773-47C8-855A-8B622398934F}">
 				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -77,7 +77,7 @@
 									<Class name="AZ::u64" field="Id" value="3273934100115450704" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 							</Class>
-							<Class name="TransformComponent" field="element" version="8" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+							<Class name="TransformComponent" field="element" version="9" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="1277986281140351617" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -184,7 +184,7 @@
 									<Class name="AZ::u64" field="Id" value="16283422453561651060" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 							</Class>
-							<Class name="TransformComponent" field="element" version="8" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+							<Class name="TransformComponent" field="element" version="9" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="15609725842996328793" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -404,7 +404,7 @@
 									<Class name="AZ::u64" field="Id" value="17067037509081334449" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 							</Class>
-							<Class name="TransformComponent" field="element" version="8" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+							<Class name="TransformComponent" field="element" version="9" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="12740318175183488678" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -458,7 +458,7 @@
 								<Class name="bool" field="Plays Immediately" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 								<Class name="bool" field="Send Finished Event" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 							</Class>
-							<Class name="EditorBoxShapeComponent" field="element" version="2" type="{2ADD9043-48E8-4263-859A-72E0024372BF}">
+							<Class name="EditorBoxShapeComponent" field="element" version="3" type="{2ADD9043-48E8-4263-859A-72E0024372BF}">
 								<Class name="EditorBaseShapeComponent" field="BaseClass1" type="{32B9D7E9-6743-427B-BAFD-1C42CFBE4879}">
 									<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 										<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -466,9 +466,13 @@
 										</Class>
 									</Class>
 									<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="GameView" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="DisplayFilled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 								</Class>
-								<Class name="BoxShapeConfig" field="Configuration" version="1" type="{F034FBA2-AC2F-4E66-8152-14DFB90D6283}">
-									<Class name="Vector3" field="Dimensions" value="0.2000000 0.0500000 0.4000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+								<Class name="BoxShape" field="BoxShape" version="1" type="{36D1BA94-13CF-433F-B1FE-28BEBBFE20AA}">
+									<Class name="BoxShapeConfig" field="Configuration" version="1" type="{F034FBA2-AC2F-4E66-8152-14DFB90D6283}">
+										<Class name="Vector3" field="Dimensions" value="0.2000000 0.0500000 0.4000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									</Class>
 								</Class>
 							</Class>
 							<Class name="GenericComponentWrapper" field="element" type="{68D358CA-89B9-4730-8BA6-E181DEA28FDE}">
@@ -510,6 +514,7 @@
 										<Class name="float" field="BuoyancyDamping" value="0.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="BuoyancyDensity" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="BuoyancyResistance" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+										<Class name="bool" field="Report state updates" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 									</Class>
 								</Class>
 							</Class>
@@ -565,6 +570,7 @@
 										<Class name="bool" field="AffectNavmesh" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 										<Class name="bool" field="VisibilityOccluder" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 										<Class name="bool" field="DynamicMesh" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										<Class name="bool" field="AffectsGI" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 									</Class>
 								</Class>
 							</Class>
@@ -855,7 +861,7 @@
 								</Class>
 								<Class name="bool" field="VisibilityFlag" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 							</Class>
-							<Class name="TransformComponent" field="element" version="8" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+							<Class name="TransformComponent" field="element" version="9" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="15186680153685574127" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -907,6 +913,7 @@
 										<Class name="bool" field="AffectNavmesh" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 										<Class name="bool" field="VisibilityOccluder" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 										<Class name="bool" field="DynamicMesh" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										<Class name="bool" field="AffectsGI" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 									</Class>
 								</Class>
 							</Class>
@@ -1033,7 +1040,7 @@
 									<Class name="AZ::u64" field="Id" value="17067037509081334449" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 							</Class>
-							<Class name="TransformComponent" field="element" version="8" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+							<Class name="TransformComponent" field="element" version="9" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="12740318175183488678" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -1087,7 +1094,7 @@
 								<Class name="bool" field="Plays Immediately" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 								<Class name="bool" field="Send Finished Event" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 							</Class>
-							<Class name="EditorBoxShapeComponent" field="element" version="2" type="{2ADD9043-48E8-4263-859A-72E0024372BF}">
+							<Class name="EditorBoxShapeComponent" field="element" version="3" type="{2ADD9043-48E8-4263-859A-72E0024372BF}">
 								<Class name="EditorBaseShapeComponent" field="BaseClass1" type="{32B9D7E9-6743-427B-BAFD-1C42CFBE4879}">
 									<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 										<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -1095,9 +1102,13 @@
 										</Class>
 									</Class>
 									<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="GameView" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="DisplayFilled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 								</Class>
-								<Class name="BoxShapeConfig" field="Configuration" version="1" type="{F034FBA2-AC2F-4E66-8152-14DFB90D6283}">
-									<Class name="Vector3" field="Dimensions" value="0.2000000 0.0500000 0.4000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+								<Class name="BoxShape" field="BoxShape" version="1" type="{36D1BA94-13CF-433F-B1FE-28BEBBFE20AA}">
+									<Class name="BoxShapeConfig" field="Configuration" version="1" type="{F034FBA2-AC2F-4E66-8152-14DFB90D6283}">
+										<Class name="Vector3" field="Dimensions" value="0.2000000 0.0500000 0.4000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									</Class>
 								</Class>
 							</Class>
 							<Class name="GenericComponentWrapper" field="element" type="{68D358CA-89B9-4730-8BA6-E181DEA28FDE}">
@@ -1139,6 +1150,7 @@
 										<Class name="float" field="BuoyancyDamping" value="0.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="BuoyancyDensity" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="BuoyancyResistance" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+										<Class name="bool" field="Report state updates" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 									</Class>
 								</Class>
 							</Class>
@@ -1194,6 +1206,7 @@
 										<Class name="bool" field="AffectNavmesh" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 										<Class name="bool" field="VisibilityOccluder" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 										<Class name="bool" field="DynamicMesh" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										<Class name="bool" field="AffectsGI" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 									</Class>
 								</Class>
 							</Class>
@@ -1261,7 +1274,7 @@
 													<Class name="AZ::u64" field="id" value="1487201101" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 													<Class name="AZStd::string" field="name" value="MaxJitterAngle" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 												</Class>
-												<Class name="double" field="value" value="0.5000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+												<Class name="double" field="value" value="5.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 											</Class>
 											<Class name="AzFramework::ScriptPropertyGenericClass" field="element" version="1" type="{80618224-814C-44D4-A7B8-14B5A36F96ED}">
 												<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
@@ -1559,7 +1572,7 @@
 									<Class name="AZ::u64" field="Id" value="12441156439854288321" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 							</Class>
-							<Class name="TransformComponent" field="element" version="8" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+							<Class name="TransformComponent" field="element" version="9" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="7760103573231850618" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -1633,7 +1646,7 @@
 									<Class name="AZ::u64" field="Id" value="9219341733537755366" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 							</Class>
-							<Class name="TransformComponent" field="element" version="8" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+							<Class name="TransformComponent" field="element" version="9" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="2791906179991669512" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -1643,7 +1656,7 @@
 									<Class name="AZ::u64" field="id" value="290345000659" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="0.0001221 0.0115967 1.7907562" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="0.0000000 0.0115967 1.7907562" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Rotate" value="198.8241882 270.0000000 198.8241882" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Scale" value="1.0000000 1.0000011 1.0000011" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
@@ -1773,9 +1786,16 @@
 									</Class>
 								</Class>
 								<Class name="WaypointsConfiguration" field="Config" version="1" type="{36B50649-8905-4D40-906E-8A916A2B4EFC}">
-									<Class name="bool" field="IsSentry" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-									<Class name="bool" field="IsLazySentry" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-									<Class name="AZStd::vector" field="Waypoints" type="{4841CFF0-7A5C-519C-BD16-D3625E99605E}"/>
+									<Class name="bool" field="IsSentry" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="IsLazySentry" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="AZStd::vector" field="Waypoints" type="{4841CFF0-7A5C-519C-BD16-D3625E99605E}">
+										<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+											<Class name="AZ::u64" field="id" value="3835344545050" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										</Class>
+										<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+											<Class name="AZ::u64" field="id" value="3839639512346" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										</Class>
+									</Class>
 									<Class name="unsigned int" field="CurrentWaypoint" value="3452816845" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 								</Class>
 							</Class>
@@ -1921,12 +1941,20 @@
 										<Class name="AZ::u64" field="SortIndex" value="20" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
 									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
-										<Class name="AZ::u64" field="ComponentId" value="11785088834138692459" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="ComponentId" value="15348588752124610203" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										<Class name="AZ::u64" field="SortIndex" value="21" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
 									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
-										<Class name="AZ::u64" field="ComponentId" value="15348588752124610203" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="ComponentId" value="4331449475705789882" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										<Class name="AZ::u64" field="SortIndex" value="22" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
+										<Class name="AZ::u64" field="ComponentId" value="8278027437349162175" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="SortIndex" value="23" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
+										<Class name="AZ::u64" field="ComponentId" value="11956370889596814419" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="SortIndex" value="23" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
 								</Class>
 							</Class>
@@ -1946,7 +1974,7 @@
 								</Class>
 								<Class name="bool" field="VisibilityFlag" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 							</Class>
-							<Class name="TransformComponent" field="element" version="8" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+							<Class name="TransformComponent" field="element" version="9" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="3036909602965443704" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -2062,6 +2090,9 @@
 									</Class>
 								</Class>
 								<Class name="AudioMultiListenerComponent" field="m_template" version="1" type="{062C4525-BB4E-49B3-8406-B16BFCCF1513}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
 									<Class name="AZStd::vector" field="Events" type="{1DF26621-ECF3-57A8-A232-D06884E4BD59}">
 										<Class name="AudioEvent" field="element" version="1" type="{1E982258-BB3D-400A-A5BA-CE1A62663160}">
 											<Class name="AZStd::string" field="EventName" value="EnteredCombat" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
@@ -2133,6 +2164,9 @@
 									</Class>
 								</Class>
 								<Class name="AudioMultiListenerComponent" field="m_template" version="1" type="{062C4525-BB4E-49B3-8406-B16BFCCF1513}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
 									<Class name="AZStd::vector" field="Events" type="{1DF26621-ECF3-57A8-A232-D06884E4BD59}">
 										<Class name="AudioEvent" field="element" version="1" type="{1E982258-BB3D-400A-A5BA-CE1A62663160}">
 											<Class name="AZStd::string" field="EventName" value="EnteredCombat" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
@@ -2198,7 +2232,7 @@
 										<Class name="AZ::u64" field="Id" value="362581529876298117" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
 								</Class>
-								<Class name="AudioAnimationEventsProxyComponent" field="m_template" value="" type="{F34C4439-A98F-4023-A297-6AFF3F8DBDDA}">
+								<Class name="AudioAnimationEventsProxyComponent" field="m_template" type="{F34C4439-A98F-4023-A297-6AFF3F8DBDDA}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
@@ -2218,7 +2252,7 @@
 									</Class>
 									<Class name="AZStd::string" field="Agent Type" value="MediumSizedCharacters" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 									<Class name="float" field="Agent Speed" value="3.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-									<Class name="float" field="Agent Radius" value="4.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+									<Class name="float" field="Agent Radius" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 									<Class name="float" field="Arrival Distance Threshold" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 									<Class name="float" field="Repath Threshold" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 									<Class name="bool" field="Move Physically" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -2247,285 +2281,6 @@
 								<Class name="bool" field="RenderSkeleton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 								<Class name="bool" field="RenderCharacter" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 								<Class name="unsigned int" field="SkinningMethod" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
-							</Class>
-							<Class name="EditorAnimGraphComponent" field="element" version="1" type="{770F0A71-59EA-413B-8DAB-235FB0FF1384}">
-								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
-									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
-										<Class name="AZ::u64" field="Id" value="11785088834138692459" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-									</Class>
-								</Class>
-								<Class name="Asset" field="AnimGraphAsset" value="id={41D84C3C-F017-531F-80D5-473B4B8EBC28}:0,type={28003359-4A29-41AE-8198-0AEFE9FF5263},hint={animations/jackanimgraph.animgraph}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
-								<Class name="Asset" field="MotionSetAsset" value="id={850BAE67-00B3-5BF1-8555-698FC4275273}:0,type={1DA936A0-F766-4B2F-B89C-9F4C8E1310F9},hint={animations/jackmotionset.motionset}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
-								<Class name="ParameterDefaults" field="ParameterDefaults" version="1" type="{E6826EB9-C79B-43F3-A03F-3298DD3C724E}">
-									<Class name="AZStd::vector" field="Parameters" type="{199BF315-BCCA-5268-971A-D03666AE3B04}">
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="254213878" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="Speed" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="805027648" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="TurnSpeed" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="1067084444" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="SlopeAngle" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="542901439" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="TurnAngle" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="2764891688" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="PreviousSpeed" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="4003913849" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="WantsToJump" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="27121566" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="AimWeightSpine1" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.3000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="2559870500" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="AimWeightSpine2" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.3000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="4019435186" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="AimWeightSpine3" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.5000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="1365721407" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="SimWeightShoulder" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.8000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="2897403715" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="AimWeightUpperArm" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.8000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="1138043356" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="AimWeightLowerArm" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.8000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="2678918565" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="AimWeightHand" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="2564725113" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="AimWeightNeck" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="524073398" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="AimWeightHead" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="1084884419" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="Aiming" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="2311613215" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="AimAtTarget" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="873737378" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="ShouldLand" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="1564770440" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="IsFalling" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="2351829723" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="SoftLandingFallTime" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="1523334655" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="MedLandingFallTime" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="105163546" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="CanDoubleJump" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="1014045278" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="LandType" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="3845529083" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="PreviousTurning" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="1919948402" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="TurnAngleDBuffer" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="1557748641" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="SpeedDBuffer" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="494301445" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="WantsToStrafe" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="648909007" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="MotionTurnTransitionReached" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="3858834226" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="MotionTurnEarlyOut" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="3245645176" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="MotionTurnMotionTurnTag" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="729451048" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="WantsToCrouch" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="3614110861" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="WantsToInteract" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="2818765915" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="DeathState" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="498095270" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="IdleTurnTransition" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="1509135579" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="HitDirection" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="3752735238" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="WasHit" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="1500303378" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="AdditiveBlendFactor" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="double" field="value" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-										</Class>
-										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
-											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-												<Class name="AZ::u64" field="id" value="2869397691" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-												<Class name="AZStd::string" field="name" value="Shot" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-										</Class>
-									</Class>
-								</Class>
 							</Class>
 							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -2936,7 +2691,10 @@
 										<Class name="AZ::u64" field="Id" value="5209416630476111085" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
 								</Class>
-								<Class name="VisualiseRangeComponent" field="m_template" version="1" type="{3D76625F-1D2E-43C1-95A9-D385189F4CFE}">
+								<Class name="VisualizeRangeComponent" field="m_template" version="1" type="{3D76625F-1D2E-43C1-95A9-D385189F4CFE}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
 									<Class name="float" field="SuspicionRange" value="-431602080.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 									<Class name="float" field="SuspicionFoV" value="-431602080.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 									<Class name="float" field="SuspicionRearRange" value="-431602080.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
@@ -3189,69 +2947,6 @@
 														</Class>
 														<Class name="double" field="value" value="55.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 													</Class>
-													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-															<Class name="AZ::u64" field="id" value="2678918565" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-															<Class name="AZStd::string" field="name" value="AimWeightHand" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-														</Class>
-														<Class name="double" field="value" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-													</Class>
-													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-															<Class name="AZ::u64" field="id" value="524073398" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-															<Class name="AZStd::string" field="name" value="AimWeightHead" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-														</Class>
-														<Class name="double" field="value" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-													</Class>
-													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-															<Class name="AZ::u64" field="id" value="1138043356" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-															<Class name="AZStd::string" field="name" value="AimWeightLowerArm" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-														</Class>
-														<Class name="double" field="value" value="0.8000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-													</Class>
-													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-															<Class name="AZ::u64" field="id" value="2564725113" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-															<Class name="AZStd::string" field="name" value="AimWeightNeck" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-														</Class>
-														<Class name="double" field="value" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-													</Class>
-													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-															<Class name="AZ::u64" field="id" value="2450147461" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-															<Class name="AZStd::string" field="name" value="AimWeightShoulder" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-														</Class>
-														<Class name="double" field="value" value="0.8000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-													</Class>
-													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-															<Class name="AZ::u64" field="id" value="27121566" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-															<Class name="AZStd::string" field="name" value="AimWeightSpine1" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-														</Class>
-														<Class name="double" field="value" value="0.3000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-													</Class>
-													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-															<Class name="AZ::u64" field="id" value="2559870500" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-															<Class name="AZStd::string" field="name" value="AimWeightSpine2" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-														</Class>
-														<Class name="double" field="value" value="0.3000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-													</Class>
-													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-															<Class name="AZ::u64" field="id" value="4019435186" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-															<Class name="AZStd::string" field="name" value="AimWeightSpine3" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-														</Class>
-														<Class name="double" field="value" value="0.3000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-													</Class>
-													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-															<Class name="AZ::u64" field="id" value="2897403715" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-															<Class name="AZStd::string" field="name" value="AimWeightUpperArm" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-														</Class>
-														<Class name="double" field="value" value="0.8000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-													</Class>
 												</Class>
 												<Class name="AZStd::vector" field="Groups" type="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}">
 													<Class name="ScriptPropertyGroup" field="element" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
@@ -3475,13 +3170,6 @@
 												<Class name="AZStd::vector" field="Properties" type="{199BF315-BCCA-5268-971A-D03666AE3B04}">
 													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
 														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-															<Class name="AZ::u64" field="id" value="1813669207" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-															<Class name="AZStd::string" field="name" value="FallingEscape" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-														</Class>
-														<Class name="double" field="value" value="8.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-													</Class>
-													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
 															<Class name="AZ::u64" field="id" value="927156498" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 															<Class name="AZStd::string" field="name" value="FallingHard" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 														</Class>
@@ -3514,6 +3202,13 @@
 															<Class name="AZStd::string" field="name" value="SlopeAngle" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 														</Class>
 														<Class name="double" field="value" value="73.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" version="1" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" value="1662801762" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" value="FallingSound" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" value="Play_pla_fol_jump_fallwind_loop" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 													</Class>
 												</Class>
 												<Class name="AZStd::vector" field="Groups" type="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}">
@@ -3658,11 +3353,305 @@
 										<Class name="AZ::u64" field="Id" value="15348588752124610203" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
 								</Class>
-								<Class name="EMFXFootstepComponent" field="m_template" value="" type="{01654896-2D06-4B43-B184-8ED407B35AF5}">
+								<Class name="EMFXFootstepComponent" field="m_template" version="1" type="{01654896-2D06-4B43-B184-8ED407B35AF5}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
+									<Class name="AZStd::string" field="Left Foot Event Name" value="LeftFootstep" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+									<Class name="AZStd::string" field="Right Foot Event Name" value="RightFootstep" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+									<Class name="AZStd::string" field="Left Foot Bone Name" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+									<Class name="AZStd::string" field="Right Foot Bone Name" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+									<Class name="AZStd::string" field="Default FXLib" value="footstep" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 								</Class>
+							</Class>
+							<Class name="EditorAnimGraphComponent" field="element" version="1" type="{770F0A71-59EA-413B-8DAB-235FB0FF1384}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="4331449475705789882" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="Asset" field="AnimGraphAsset" value="id={41D84C3C-F017-531F-80D5-473B4B8EBC28}:0,type={28003359-4A29-41AE-8198-0AEFE9FF5263},hint={animations/jackanimgraph.animgraph}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+								<Class name="Asset" field="MotionSetAsset" value="id={850BAE67-00B3-5BF1-8555-698FC4275273}:0,type={1DA936A0-F766-4B2F-B89C-9F4C8E1310F9},hint={animations/jackmotionset.motionset}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+								<Class name="AZStd::string" field="ActiveMotionSetName" value="JackMotionSet" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+								<Class name="ParameterDefaults" field="ParameterDefaults" version="1" type="{E6826EB9-C79B-43F3-A03F-3298DD3C724E}">
+									<Class name="AZStd::vector" field="Parameters" type="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="254213878" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="Speed" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="805027648" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="TurnSpeed" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="1067084444" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="SlopeAngle" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="542901439" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="TurnAngle" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="2764891688" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="PreviousSpeed" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="4003913849" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="WantsToJump" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="1084884419" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="Aiming" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="873737378" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="ShouldLand" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="1564770440" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="IsFalling" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="2351829723" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="SoftLandingFallTime" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="1523334655" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="MedLandingFallTime" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="105163546" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="CanDoubleJump" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="3845529083" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="PreviousTurning" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="1919948402" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="TurnAngleDBuffer" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="1557748641" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="SpeedDBuffer" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="494301445" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="WantsToStrafe" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="648909007" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="MotionTurnTransitionReached" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="3858834226" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="MotionTurnEarlyOut" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="3245645176" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="MotionTurnMotionTurnTag" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="729451048" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="WantsToCrouch" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="3614110861" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="WantsToInteract" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="498095270" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="IdleTurnTransition" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="1509135579" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="HitDirection" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="3752735238" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="WasHit" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="1500303378" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="AdditiveBlendFactor" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyBoolean" field="element" version="1" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="2869397691" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="Shot" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="745275153" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="TargetPitchAngle" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="473128549" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="StrafeTurnSpeed" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+										<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+											<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+												<Class name="AZ::u64" field="id" value="538743103" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+												<Class name="AZStd::string" field="name" value="FallingDuration" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+										</Class>
+									</Class>
+								</Class>
+							</Class>
+							<Class name="ScriptEditorComponent" field="element" type="{B5FC8679-FA2A-4C7C-AC42-DCC279EA613A}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="8278027437349162175" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AzFramework::ScriptComponent" field="ScriptComponent" version="3" type="{8D1BC97E-C55D-4D34-A460-E63C57CD0D4B}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="NetBindable" field="BaseClass2" type="{80206665-D429-4703-B42E-94434F82F381}">
+										<Class name="bool" field="m_isSyncEnabled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									</Class>
+									<Class name="unsigned int" field="ContextID" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+									<Class name="ScriptPropertyGroup" field="Properties" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+										<Class name="AZStd::string" field="Name" value="Properties" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+										<Class name="AZStd::vector" field="Properties" type="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+											<Class name="AzFramework::ScriptPropertyGenericClass" field="element" version="1" type="{80618224-814C-44D4-A7B8-14B5A36F96ED}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" value="2620155380" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" value="LensFlare" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="DynamicSerializableField" field="value" type="{D761E0C2-A098-497C-B8EB-EA62F5ED896B}">
+													<Class name="AZ::Uuid" field="TypeId" value="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+														<Class name="AZ::u64" field="id" value="286050033363" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													</Class>
+												</Class>
+											</Class>
+										</Class>
+										<Class name="AZStd::vector" field="Groups" type="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}"/>
+									</Class>
+									<Class name="Asset" field="Script" value="id={CB3DDD09-A1FD-5F7E-A890-3DA8042186A9}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/jack/characterstatedeathhandler.luac}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+								</Class>
+								<Class name="Asset" field="ScriptAsset" value="id={CB3DDD09-A1FD-5F7E-A890-3DA8042186A9}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/jack/characterstatedeathhandler.luac}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+							</Class>
+							<Class name="ScriptEditorComponent" field="element" type="{B5FC8679-FA2A-4C7C-AC42-DCC279EA613A}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="11956370889596814419" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AzFramework::ScriptComponent" field="ScriptComponent" version="3" type="{8D1BC97E-C55D-4D34-A460-E63C57CD0D4B}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="NetBindable" field="BaseClass2" type="{80206665-D429-4703-B42E-94434F82F381}">
+										<Class name="bool" field="m_isSyncEnabled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									</Class>
+									<Class name="unsigned int" field="ContextID" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+									<Class name="ScriptPropertyGroup" field="Properties" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+										<Class name="AZStd::string" field="Name" value="Properties" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+										<Class name="AZStd::vector" field="Properties" type="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+											<Class name="AzFramework::ScriptPropertyGenericClass" field="element" version="1" type="{80618224-814C-44D4-A7B8-14B5A36F96ED}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" value="2620155380" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" value="LensFlare" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="DynamicSerializableField" field="value" type="{D761E0C2-A098-497C-B8EB-EA62F5ED896B}">
+													<Class name="AZ::Uuid" field="TypeId" value="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+														<Class name="AZ::u64" field="id" value="286050033363" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													</Class>
+												</Class>
+											</Class>
+										</Class>
+										<Class name="AZStd::vector" field="Groups" type="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}"/>
+									</Class>
+									<Class name="Asset" field="Script" value="id={CB3DDD09-A1FD-5F7E-A890-3DA8042186A9}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/jack/characterstatedeathhandler.luac}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+								</Class>
+								<Class name="Asset" field="ScriptAsset" value="id={CB3DDD09-A1FD-5F7E-A890-3DA8042186A9}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/jack/characterstatedeathhandler.luac}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
 							</Class>
 						</Class>
 						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -3766,7 +3755,7 @@
 									<Class name="AZ::u64" field="Id" value="11913745858765856457" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 							</Class>
-							<Class name="TransformComponent" field="element" version="8" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+							<Class name="TransformComponent" field="element" version="9" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="7113136159568461769" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>

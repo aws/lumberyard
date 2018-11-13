@@ -182,8 +182,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandlerNonEntityIdBusId)
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
 
-    StringView::Reflect(m_serializeContext);
-    StringView::Reflect(m_behaviorContext);
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, StringView::CreateDescriptor());
     TemplateEventTestHandler<AZ::Uuid>::Reflect(m_serializeContext);
     TemplateEventTestHandler<AZ::Uuid>::Reflect(m_behaviorContext);
     TemplateEventTestHandler<AZStd::string>::Reflect(m_serializeContext);
@@ -308,14 +307,13 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandlerNonEntityIdBusId)
 
     m_serializeContext->EnableRemoveReflection();
     m_behaviorContext->EnableRemoveReflection();
-    StringView::Reflect(m_serializeContext);
-    StringView::Reflect(m_behaviorContext);
     TemplateEventTestHandler<AZ::Uuid>::Reflect(m_serializeContext);
     TemplateEventTestHandler<AZ::Uuid>::Reflect(m_behaviorContext);
     TemplateEventTestHandler<AZStd::string>::Reflect(m_serializeContext);
     TemplateEventTestHandler<AZStd::string>::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, StringView::CreateDescriptor());
 };
 
 void ReflectSignCorrectly()

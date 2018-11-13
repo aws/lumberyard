@@ -112,6 +112,8 @@ namespace UnitTest
                 systemEntity->Init();
                 systemEntity->Activate();
 
+                ScriptComponent::CreateDescriptor(); // descriptor is deleted by app
+
                 ScriptContext* scriptContext = nullptr;
                 EBUS_EVENT_RESULT(scriptContext, ScriptSystemRequestBus, GetContext, DefaultScriptContextId);
 

@@ -16,8 +16,8 @@ namespace CloudGemMetric
         : public AZ::Component
         , public CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler
         , public AZ::TickBus::Handler
-        , protected CloudGemMetricRequestBus::Handler
         , protected CrySystemEventBus::Handler
+        , protected CloudGemMetricRequestBus::Handler
     {
     public:
         CloudGemMetricSystemComponent();
@@ -66,7 +66,8 @@ namespace CloudGemMetric
 
         ////////////////////////////////////////////////////////////////////////
         // CrySystemEventBus interface implementation
-        virtual void OnCrySystemInitialized(ISystem& system, const SSystemInitParams& params) override;
+        void OnCrySystemInitialized(ISystem& system, const SSystemInitParams& params) override;
+        void OnCrySystemShutdown(ISystem& system) override;
         ////////////////////////////////////////////////////////////////////////
 
         using Attributes = AZStd::vector<MetricsAttribute>;

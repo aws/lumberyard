@@ -181,13 +181,13 @@ namespace AzFramework
                 // this will decrement the refcount of the asset, which could mean its invalid by the next line.
                 // the above line also ensures that our list no longer contains this particular instantiation.
                 // its important to do that, before calling any callbacks, because some listeners on the following functions
-                // may call additional functions on this context, and we could get into a sitaution
+                // may call additional functions on this context, and we could get into a situation
                 // where we end up iterating over this list again (before returning from the below bus calls).
                 m_queuedSliceInstantiations.pop_back(); 
 
                 AZ::Data::AssetBus::MultiHandler::BusDisconnect(idToNotify);
                 EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiationFailed, idToNotify);
-                SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiationFailed, idToNotify);
+                DispatchOnSliceInstantiationFailed(ticket, idToNotify, true);
             }
 
             EntityIdList entityIds = GetRootSliceEntityIds();
@@ -506,7 +506,7 @@ namespace AzFramework
 
             // No need to queue this notification.
             // (It's queued in other circumstances, to avoid holding the AssetBus lock any longer than necessary)
-            SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiationFailed, assetId);
+            DispatchOnSliceInstantiationFailed(ticket, assetId, true);
         }
     }
 
@@ -695,7 +695,7 @@ namespace AzFramework
                 AZStd::function<void()> notifyCallback =
                     [cachedId, ticket]() // capture these by value since we're about to leave the scope in which these variables exist.
                     {
-                    SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiationFailed, cachedId);
+                        DispatchOnSliceInstantiationFailed(ticket, cachedId, false);
                     };
 
                 // Instantiation is queued against the tick bus. This ensures we're not holding the AssetBus lock
@@ -779,7 +779,7 @@ namespace AzFramework
                         if (!isSliceInstantiated)
                         {
                             EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiationFailed, cachedAssetId);
-                            SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiationFailed, cachedAssetId);
+                            DispatchOnSliceInstantiationFailed(ticket, cachedAssetId, false);
                         }
                     }
                     else
@@ -823,4 +823,14 @@ namespace AzFramework
             m_rootAsset.Get()->GetComponent()->ListenForDependentAssetChanges();
         }
     }
+
+    //=========================================================================
+    // DispatchOnSliceInstantiationFailed - Helper function to send OnSliceInstantiationFailed events.
+    //=========================================================================
+    void EntityContext::DispatchOnSliceInstantiationFailed(const SliceInstantiationTicket& ticket, const AZ::Data::AssetId& assetId, bool canceled)
+    {
+        SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiationFailed, assetId);
+        SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiationFailedOrCanceled, assetId, canceled);
+    }
+
 } // namespace AzFramework

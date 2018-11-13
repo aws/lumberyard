@@ -10,10 +10,13 @@
 *
 */
 
+#include <AzCore/EBus/Results.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/AssetBrowser/Thumbnails/SourceThumbnail.h>
 #include <QString>
-#include <QFileIconProvider>
 
 namespace AzToolsFramework
 {
@@ -42,6 +45,7 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // SourceThumbnail
         //////////////////////////////////////////////////////////////////////////
+        static const char* DEFAULT_FILE_ICON_PATH = "Editor/Icons/AssetBrowser/Default_16.png";
         QMutex SourceThumbnail::m_mutex;
 
         SourceThumbnail::SourceThumbnail(SharedThumbnailKey key, int thumbnailSize)
@@ -54,22 +58,48 @@ namespace AzToolsFramework
             auto sourceKey = azrtti_cast<const SourceThumbnailKey*>(m_key.data());
             AZ_Assert(sourceKey, "Incorrect key type, excpected SourceThumbnailKey");
 
-            QString finalPath = QString::fromUtf8(sourceKey->GetFileName().c_str());
-            QFileInfo fileInfo(finalPath);
-            QFileIconProvider iconProvider;
-            QIcon fileIcon;
-            if (!fileInfo.exists())
+            // note that there might not actually be a UUID for this yet.  So we don't look it up.
+            SourceFileDetails results;
+            AssetBrowserInteractionNotificationBus::BroadcastResult(results, &AssetBrowserInteractionNotificationBus::Events::GetSourceFileDetails, sourceKey->GetFileName().c_str());
+
+            QString iconPathToUse = DEFAULT_FILE_ICON_PATH;
+
+            if (!results.m_sourceThumbnailPath.empty())
             {
-                fileIcon = iconProvider.icon(fileInfo);
+                const char* resultPath = results.m_sourceThumbnailPath.c_str();
+                // its an ordered bus, though, so first one wins.
+                // we have to massage this though.  there are three valid possibilities
+                // 1. its a relative path to source, in which case we have to find the full path
+                // 2. its an absolute path, in which case we use it as-is
+                // 3. its an embedded resource, in which case we use it as is.
+
+                // is it an embedded resource or absolute path?
+                if ((resultPath[0] == ':')||(!AzFramework::StringFunc::Path::IsRelative(resultPath)))
+                {
+                    iconPathToUse = QString::fromUtf8(resultPath);
+                }
+                else
+                {
+                    // getting here means its a relative path.  Can we find the real path of the file?  This also searches in gems for sources.
+                    bool foundIt = false;
+                    AZStd::string watchFolder;
+                    AZ::Data::AssetInfo assetInfo;
+                    AzToolsFramework::AssetSystemRequestBus::BroadcastResult(foundIt, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, resultPath, assetInfo, watchFolder);
+
+                    AZ_WarningOnce("Asset Browser", foundIt, "Unable to find source icon file in any source folders or gems: %s\n", resultPath);
+
+                    if (foundIt)
+                    {
+                        // the absolute path is join(watchfolder, relativepath); // since its relative to the watch folder.
+                        AZStd::string finalPath;
+                        AzFramework::StringFunc::Path::Join(watchFolder.c_str(), assetInfo.m_relativePath.c_str(), finalPath);
+                        iconPathToUse = QString::fromUtf8(finalPath.c_str());
+                    }
+                    
+                }
             }
-            else
-            {
-                fileIcon = iconProvider.icon(QFileIconProvider::IconType::File);
-            }
-            // fileIcon is not thread safe. Accessing it simultaneously from multiple threads produces incorrect results.
-            m_mutex.lock();
-            m_pixmap = fileIcon.pixmap(16).copy(0, 0, m_thumbnailSize, m_thumbnailSize);
-            m_mutex.unlock();
+
+            m_pixmap = QPixmap(iconPathToUse);
         }
 
         //////////////////////////////////////////////////////////////////////////

@@ -57,8 +57,8 @@ namespace EMStudio
     const char* RenderOptions::s_vertexNormalsColorOptionName = "vertexNormalsColor";
     const char* RenderOptions::s_faceNormalsColorOptionName = "faceNormalsColor";
     const char* RenderOptions::s_tangentsColorOptionName = "tangentsColor";
-    const char* RenderOptions::s_mirroredBinormalsColorOptionName = "mirroredBinormalsColor";
-    const char* RenderOptions::s_binormalsColorOptionName = "binormalsColor";
+    const char* RenderOptions::s_mirroredBitangentsColorOptionName = "mirroredBitangentsColor";
+    const char* RenderOptions::s_bitangentsColorOptionName = "bitangentsColor";
     const char* RenderOptions::s_nodeAABBColorOptionName = "nodeAABBColor";
     const char* RenderOptions::s_staticAABBColorOptionName = "staticAABBColor";
     const char* RenderOptions::s_meshAABBColorOptionName = "meshAABBColor";
@@ -104,8 +104,8 @@ namespace EMStudio
         , m_vertexNormalsColor(0.0f, 1.0f, 0.0f, 1.0f)
         , m_faceNormalsColor(0.5f, 0.5f, 1.0f, 1.0f)
         , m_tangentsColor(1.0f, 0.0f, 0.0f, 1.0f)
-        , m_mirroredBinormalsColor(1.0f, 1.0f, 0.0f, 1.0f)
-        , m_binormalsColor(1.0f, 1.0f, 1.0f, 1.0f)
+        , m_mirroredBitangentsColor(1.0f, 1.0f, 0.0f, 1.0f)
+        , m_bitangentsColor(1.0f, 1.0f, 1.0f, 1.0f)
         , m_nodeAABBColor(1.0f, 0.0f, 0.0f, 1.0f)
         , m_staticAABBColor(0.0f, 0.7f, 0.7f, 1.0f)
         , m_meshAABBColor(0.0f, 0.0f, 0.7f, 1.0f)
@@ -158,8 +158,8 @@ namespace EMStudio
         SetVertexNormalsColor(other.GetVertexNormalsColor());
         SetFaceNormalsColor(other.GetFaceNormalsColor());
         SetTangentsColor(other.GetTangentsColor());
-        SetMirroredBinormalsColor(other.GetMirroredBinormalsColor());
-        SetBinormalsColor(other.GetBinormalsColor());
+        SetMirroredBitangentsColor(other.GetMirroredBitangentsColor());
+        SetBitangentsColor(other.GetBitangentsColor());
         SetNodeAABBColor(other.GetNodeAABBColor());
         SetStaticAABBColor(other.GetStaticAABBColor());
         SetMeshAABBColor(other.GetMeshAABBColor());
@@ -196,8 +196,8 @@ namespace EMStudio
         settings->setValue(s_vertexNormalsColorOptionName, ColorToString(m_vertexNormalsColor));
         settings->setValue(s_faceNormalsColorOptionName, ColorToString(m_faceNormalsColor));
         settings->setValue(s_tangentsColorOptionName, ColorToString(m_tangentsColor));
-        settings->setValue(s_mirroredBinormalsColorOptionName, ColorToString(m_mirroredBinormalsColor));
-        settings->setValue(s_binormalsColorOptionName, ColorToString(m_binormalsColor));
+        settings->setValue(s_mirroredBitangentsColorOptionName, ColorToString(m_mirroredBitangentsColor));
+        settings->setValue(s_bitangentsColorOptionName, ColorToString(m_bitangentsColor));
         settings->setValue(s_nodeAABBColorOptionName, ColorToString(m_nodeAABBColor));
         settings->setValue(s_staticAABBColorOptionName, ColorToString(m_staticAABBColor));
         settings->setValue(s_meshAABBColorOptionName, ColorToString(m_meshAABBColor));
@@ -259,8 +259,8 @@ namespace EMStudio
         options.m_vertexNormalsColor = StringToColor(settings->value(s_vertexNormalsColorOptionName, ColorToString(options.m_vertexNormalsColor)).toString());
         options.m_faceNormalsColor = StringToColor(settings->value(s_faceNormalsColorOptionName, ColorToString(options.m_faceNormalsColor)).toString());
         options.m_tangentsColor = StringToColor(settings->value(s_tangentsColorOptionName, ColorToString(options.m_tangentsColor)).toString());
-        options.m_mirroredBinormalsColor = StringToColor(settings->value(s_mirroredBinormalsColorOptionName, ColorToString(options.m_mirroredBinormalsColor)).toString());
-        options.m_binormalsColor = StringToColor(settings->value(s_binormalsColorOptionName, ColorToString(options.m_binormalsColor)).toString());
+        options.m_mirroredBitangentsColor = StringToColor(settings->value(s_mirroredBitangentsColorOptionName, ColorToString(options.m_mirroredBitangentsColor)).toString());
+        options.m_bitangentsColor = StringToColor(settings->value(s_bitangentsColorOptionName, ColorToString(options.m_bitangentsColor)).toString());
         options.m_nodeAABBColor = StringToColor(settings->value(s_nodeAABBColorOptionName, ColorToString(options.m_nodeAABBColor)).toString());
         options.m_staticAABBColor = StringToColor(settings->value(s_staticAABBColorOptionName, ColorToString(options.m_staticAABBColor)).toString());
         options.m_meshAABBColor = StringToColor(settings->value(s_meshAABBColorOptionName, ColorToString(options.m_meshAABBColor)).toString());
@@ -371,8 +371,8 @@ namespace EMStudio
             ->Field(s_vertexNormalsColorOptionName, &RenderOptions::m_vertexNormalsColor)
             ->Field(s_faceNormalsColorOptionName, &RenderOptions::m_faceNormalsColor)
             ->Field(s_tangentsColorOptionName, &RenderOptions::m_tangentsColor)
-            ->Field(s_mirroredBinormalsColorOptionName, &RenderOptions::m_mirroredBinormalsColor)
-            ->Field(s_binormalsColorOptionName, &RenderOptions::m_binormalsColor)
+            ->Field(s_mirroredBitangentsColorOptionName, &RenderOptions::m_mirroredBitangentsColor)
+            ->Field(s_bitangentsColorOptionName, &RenderOptions::m_bitangentsColor)
             ->Field(s_nodeAABBColorOptionName, &RenderOptions::m_nodeAABBColor)
             ->Field(s_staticAABBColorOptionName, &RenderOptions::m_staticAABBColor)
             ->Field(s_meshAABBColorOptionName, &RenderOptions::m_meshAABBColor)
@@ -412,7 +412,7 @@ namespace EMStudio
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnFaceNormalsScaleChangedCallback)
                 ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
                 ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_tangentsScale, "Tangents & binormals scale", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_tangentsScale, "Tangents & bitangents scale", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnTangentsScaleChangedCallback)
                 ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
                 ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
@@ -488,10 +488,10 @@ namespace EMStudio
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnFaceNormalsColorChangedCallback)
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_tangentsColor, "Tangents color", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnTangentsColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mirroredBinormalsColor, "Mirrored binormals color", "")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMirroredBinormalsColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_binormalsColor, "Binormals color", "")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnBinormalsColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mirroredBitangentsColor, "Mirrored bitangents color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMirroredBitangentsColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_bitangentsColor, "Bitangents color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnBitangentsColorChangedCallback)
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nodeAABBColor, "Node based AABB color", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnNodeAABBColorChangedCallback)
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_staticAABBColor, "Static based AABB color", "")
@@ -784,21 +784,21 @@ namespace EMStudio
         }
     }
 
-    void RenderOptions::SetMirroredBinormalsColor(const AZ::Color& mirroredBinormalsColor)
+    void RenderOptions::SetMirroredBitangentsColor(const AZ::Color& mirroredBitangentsColor)
     {
-        if (!mirroredBinormalsColor.IsClose(m_mirroredBinormalsColor))
+        if (!mirroredBitangentsColor.IsClose(m_mirroredBitangentsColor))
         {
-            m_mirroredBinormalsColor = mirroredBinormalsColor;
-            OnMirroredBinormalsColorChangedCallback();
+            m_mirroredBitangentsColor = mirroredBitangentsColor;
+            OnMirroredBitangentsColorChangedCallback();
         }
     }
 
-    void RenderOptions::SetBinormalsColor(const AZ::Color& binormalsColor)
+    void RenderOptions::SetBitangentsColor(const AZ::Color& bitangentsColor)
     {
-        if (!binormalsColor.IsClose(m_binormalsColor))
+        if (!bitangentsColor.IsClose(m_bitangentsColor))
         {
-            m_binormalsColor = binormalsColor;
-            OnBinormalsColorChangedCallback();
+            m_bitangentsColor = bitangentsColor;
+            OnBitangentsColorChangedCallback();
         }
     }
 
@@ -1153,14 +1153,14 @@ namespace EMStudio
         PluginOptionsNotificationsBus::Event(s_tangentsColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_tangentsColorOptionName);
     }
 
-    void RenderOptions::OnMirroredBinormalsColorChangedCallback() const
+    void RenderOptions::OnMirroredBitangentsColorChangedCallback() const
     {
-        PluginOptionsNotificationsBus::Event(s_mirroredBinormalsColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_mirroredBinormalsColorOptionName);
+        PluginOptionsNotificationsBus::Event(s_mirroredBitangentsColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_mirroredBitangentsColorOptionName);
     }
 
-    void RenderOptions::OnBinormalsColorChangedCallback() const
+    void RenderOptions::OnBitangentsColorChangedCallback() const
     {
-        PluginOptionsNotificationsBus::Event(s_binormalsColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_binormalsColorOptionName);
+        PluginOptionsNotificationsBus::Event(s_bitangentsColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_bitangentsColorOptionName);
     }
 
     void RenderOptions::OnNodeAABBColorChangedCallback() const

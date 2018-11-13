@@ -77,7 +77,8 @@ void AssetProcessorManagerTest::SetUp()
     
     AssetUtilities::ResetAssetRoot();
 
-    m_scopeDir.Setup(m_tempDir.path());
+    m_scopeDir = AZStd::make_unique<UnitTestUtils::ScopedDir>();
+    m_scopeDir->Setup(m_tempDir.path());
     QDir tempPath(m_tempDir.path());
 
     UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("bootstrap.cfg"), QString("sys_game_folder=SamplesProject\n"));
@@ -136,6 +137,7 @@ void AssetProcessorManagerTest::TearDown()
     m_mockApplicationManager.reset();
     m_config.reset();
     m_qApp.reset();
+    m_scopeDir.reset();
 
     AssetProcessor::AssetProcessorTest::TearDown();
 }

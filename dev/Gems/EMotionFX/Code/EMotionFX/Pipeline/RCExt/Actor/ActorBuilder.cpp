@@ -24,9 +24,14 @@
 #include <SceneAPI/SceneCore/DataTypes/GraphData/ITransform.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexUVData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/ISkinWeightData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexTangentData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexBitangentData.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
+#include <SceneAPI/SceneCore/DataTypes/Rules/IBlendShapeRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IMaterialRule.h>
+#include <SceneAPI/SceneData/Rules/TangentsRule.h>
 
+#include <SceneAPIExt/Rules/MorphTargetRule.h>
 #include <SceneAPIExt/Rules/IMeshRule.h>
 #include <SceneAPIExt/Rules/ISkinRule.h>
 #include <SceneAPIExt/Rules/IActorScaleRule.h>
@@ -83,6 +88,7 @@ namespace EMotionFX
             BindToCall(&ActorBuilder::BuildActor);
         }
 
+
         void ActorBuilder::Reflect(AZ::ReflectContext* context)
         {
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -91,6 +97,47 @@ namespace EMotionFX
                 serializeContext->Class<ActorBuilder, AZ::SceneAPI::SceneCore::ExportingComponent>()->Version(1);
             }
         }
+
+
+        bool ActorBuilder::GetIsMorphed(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, const AZ::SceneAPI::DataTypes::IBlendShapeRule* morphTargetRule) const
+        {
+            if (!morphTargetRule)
+            {
+                return false;
+            }
+
+            const AZ::SceneAPI::Containers::SceneGraph::NodeIndex parentIndex = graph.GetNodeParent(nodeIndex);
+            const AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& morphTargetNodes = morphTargetRule->GetSceneNodeSelectionList();
+
+            auto nameStorage = graph.GetNameStorage();
+            auto contentStorage = graph.GetContentStorage();
+            auto nameContentView = SceneViews::MakePairView(nameStorage, contentStorage);
+
+            const size_t selectionNodeCount = morphTargetRule->GetSceneNodeSelectionList().GetSelectedNodeCount();
+            for (size_t morphIndex = 0; morphIndex < selectionNodeCount; ++morphIndex)
+            {
+                AZ::SceneAPI::Containers::SceneGraph::NodeIndex morphNodeIndex = graph.Find(morphTargetRule->GetSceneNodeSelectionList().GetSelectedNode(morphIndex));
+
+                // Check if the morph target node is one of the child nodes down the hierarchy.
+                auto graphDownwardsView = SceneViews::MakeSceneGraphDownwardsView<SceneViews::BreadthFirst>(graph, nodeIndex, nameContentView.begin(), true);
+                for (auto it = graphDownwardsView.begin(); it != graphDownwardsView.end(); ++it)
+                {
+                    const SceneContainers::SceneGraph::NodeIndex& graphNodeIndex = graph.ConvertToNodeIndex(it.GetHierarchyIterator());
+                    if (!it->second)
+                    {
+                        continue;
+                    }
+
+                    if (graphNodeIndex == morphNodeIndex)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
 
         SceneEvents::ProcessingResult ActorBuilder::BuildActor(ActorBuilderContext& context)
         {
@@ -199,8 +246,7 @@ namespace EMotionFX
 
                 // Set the decomposed bind pose local transformation
                 EMotionFX::Transform outTransform;
-                auto view = SceneViews::MakeSceneGraphChildView<SceneViews::AcceptEndPointsOnly>(graph, nodeIndex,
-                        graph.GetContentStorage().begin(), true);
+                auto view = SceneViews::MakeSceneGraphChildView<SceneViews::AcceptEndPointsOnly>(graph, nodeIndex, graph.GetContentStorage().begin(), true);
                 auto result = AZStd::find_if(view.begin(), view.end(), SceneContainers::DerivedTypeFilter<SceneDataTypes::ITransform>());
                 if (result != view.end())
                 {
@@ -214,8 +260,7 @@ namespace EMotionFX
                     AZStd::shared_ptr<const SceneDataTypes::ITransform> transformData = azrtti_cast<const SceneDataTypes::ITransform*>(graph.GetNodeContent(nodeIndex));
                     if (transformData)
                     {
-                        const AZ::Transform transform = coordSysConverter.ConvertTransform(transformData->GetMatrix());
-                        outTransform = AzTransformToEmfxTransformConverted(transform, coordSysConverter);
+                        outTransform = AzTransformToEmfxTransformConverted(transformData->GetMatrix(), coordSysConverter);
                     }
                 }
                 bindPose->SetLocalTransform(emfxNodeIndex, outTransform);
@@ -237,6 +282,8 @@ namespace EMotionFX
                     }
                     AZ_Assert(materialCount == actor->GetNumMaterials(0), "Didn't add the desired number of materials to the actor");
                 }
+
+                AZStd::vector<AZ::u32> meshIndices;
                 for (auto& nodeIndex : selectedMeshNodeIndices)
                 {
                     AZStd::shared_ptr<const SceneDataTypes::IMeshData> nodeMesh = azrtti_cast<const SceneDataTypes::IMeshData*>(graph.GetNodeContent(nodeIndex));
@@ -245,15 +292,11 @@ namespace EMotionFX
                     {
                         EMotionFX::Node* emfxNode = actorSkeletonLookup[nodeIndex.AsNumber()];
                         BuildMesh(context, emfxNode, nodeMesh, nodeIndex, boneNameEmfxIndexMap, actorSettings, coordSysConverter);
+                        meshIndices.push_back(nodeIndex.AsNumber());
                     }
                 }
                 //Process Morph Targets
                 {
-                    AZStd::vector< AZ::u32>  meshIndices;
-                    for (auto& nodeIndex : selectedMeshNodeIndices)
-                    {
-                        meshIndices.push_back(nodeIndex.AsNumber());
-                    }
                     ActorMorphBuilderContext actorMorphBuilderContext(context.m_scene, actorSettings.m_optimizeTriangleList, &meshIndices, context.m_group, context.m_actor, coordSysConverter, AZ::RC::Phase::Construction);
                     result += SceneEvents::Process(actorMorphBuilderContext);
                     result += SceneEvents::Process<ActorMorphBuilderContext>(actorMorphBuilderContext, AZ::RC::Phase::Filling);
@@ -283,6 +326,7 @@ namespace EMotionFX
             }
             return AZ::SceneAPI::Events::ProcessingResult::Failure;
         }
+
 
         void ActorBuilder::BuildPreExportStructure(const SceneContainers::SceneGraph& graph, const SceneContainers::SceneGraph::NodeIndex& rootBoneNodeIndex, const NodeIndexSet& selectedMeshNodeIndices,
             AZStd::vector<SceneContainers::SceneGraph::NodeIndex>& outNodeIndices, BoneNameEmfxIndexMap& outBoneNameEmfxIndexMap)
@@ -371,70 +415,124 @@ namespace EMotionFX
         {
             SetupMaterialDataForMesh(context, meshNodeIndex);
 
-            const SceneContainers::SceneGraph& graph = context.m_scene.GetGraph();
+            SceneContainers::SceneGraph& graph = const_cast<SceneContainers::SceneGraph&>(context.m_scene.GetGraph());
             EMotionFX::Actor* actor = context.m_actor;
 
-            // Get the number of triangles (faces)
-            const AZ::u32 numFaces = meshData->GetFaceCount();
+            // Check if this mesh is morphed.
+            AZStd::shared_ptr<const EMotionFX::Pipeline::Rule::MorphTargetRule> morphTargetRule = context.m_group.GetRuleContainerConst().FindFirstByType<EMotionFX::Pipeline::Rule::MorphTargetRule>();
+            const bool hasMorphTargets = GetIsMorphed(graph, meshNodeIndex, morphTargetRule.get());
 
-            // Get the number of orgVerts (control point)
+            // Get the tangent space setup in the tangents rule, or import from Fbx if there isn't any rule.
+            AZStd::shared_ptr<AZ::SceneAPI::SceneData::TangentsRule> tangentsRule = context.m_group.GetRuleContainerConst().FindFirstByType<AZ::SceneAPI::SceneData::TangentsRule>();
+            AZ::SceneAPI::DataTypes::TangentSpace tangentSpace = AZ::SceneAPI::DataTypes::TangentSpace::MikkT;
+            bool storeBitangents = false;
+            bool normalizeTangents = true;
+            size_t tangentUVSetIndex = 0;
+            if (tangentsRule)
+            {
+                tangentSpace = tangentsRule->GetTangentSpace();
+                storeBitangents = (tangentsRule->GetBitangentMethod() != AZ::SceneAPI::DataTypes::BitangentMethod::Orthogonal);
+                tangentUVSetIndex = tangentsRule->GetUVSetIndex();
+                normalizeTangents = tangentsRule->GetNormalizeVectors();
+            }
+
+            // Get the number of orgVerts (control point).
             const AZ::u32 numOrgVerts = aznumeric_cast<AZ::u32>(meshData->GetUsedControlPointCount());
-            EMotionFX::MeshBuilder* meshBuilder = EMotionFX::MeshBuilder::Create(emfxNode->GetNodeIndex(), numOrgVerts, false);
+            EMotionFX::MeshBuilder* meshBuilder = EMotionFX::MeshBuilder::Create(emfxNode->GetNodeIndex(), numOrgVerts, false, !hasMorphTargets /* Disable duplication optimization for morph targets. */);
 
             // Import the skinning info if there is any. Otherwise set it to a nullptr.
             EMotionFX::MeshBuilderSkinningInfo* skinningInfo = ExtractSkinningInfo(meshData, graph, meshNodeIndex, boneNameEmfxIndexMap, settings);
             meshBuilder->SetSkinningInfo(skinningInfo);
 
-            // Original vertex numbers
+            // Original vertex numbers.
             EMotionFX::MeshBuilderVertexAttributeLayerUInt32* orgVtxLayer = EMotionFX::MeshBuilderVertexAttributeLayerUInt32::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS, false, false);
             meshBuilder->AddLayer(orgVtxLayer);
 
-            // The positions layer
+            // The positions layer.
             EMotionFX::MeshBuilderVertexAttributeLayerVector3* posLayer = EMotionFX::MeshBuilderVertexAttributeLayerVector3::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_POSITIONS, false, true);
             meshBuilder->AddLayer(posLayer);
 
-            // The normals layer
+            // The normals layer.
             EMotionFX::MeshBuilderVertexAttributeLayerVector3* normalsLayer = EMotionFX::MeshBuilderVertexAttributeLayerVector3::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_NORMALS, false, true);
             meshBuilder->AddLayer(normalsLayer);
 
-            // The UV Layer
-            // A Mesh can have multiple children that contain UV data.
-            AZStd::vector<AZStd::shared_ptr<const SceneDataTypes::IMeshVertexUVData> > meshUVDatas;
-            AZStd::vector<EMotionFX::MeshBuilderVertexAttributeLayerVector2*> uvLayers;
+            // A Mesh can have multiple children that contain UV, tangent or bitangent data.
+            SceneDataTypes::IMeshVertexUVData*                  meshUVDatas[2]      = { nullptr, nullptr };
+            SceneDataTypes::IMeshVertexTangentData*             meshTangentData     = nullptr;
+            SceneDataTypes::IMeshVertexBitangentData*           meshBitangentData   = nullptr;
+            EMotionFX::MeshBuilderVertexAttributeLayerVector2*  uvLayers[2]         = { nullptr, nullptr };
+            EMotionFX::MeshBuilderVertexAttributeLayerVector4*  tangentLayer        = nullptr;
+            EMotionFX::MeshBuilderVertexAttributeLayerVector3*  bitangentLayer      = nullptr;
 
-            auto nameStorage = graph.GetNameStorage();
-            auto contentStorage = graph.GetContentStorage();
-            auto nameContentView = SceneViews::MakePairView(nameStorage, contentStorage);
+            // Get the UV sets.
+            meshUVDatas[0] = AZ::SceneAPI::SceneData::TangentsRule::FindUVData(graph, meshNodeIndex, 0);
+            meshUVDatas[1] = AZ::SceneAPI::SceneData::TangentsRule::FindUVData(graph, meshNodeIndex, 1);
 
-            auto meshChildView = SceneViews::MakeSceneGraphChildView<SceneContainers::Views::AcceptEndPointsOnly>(graph, meshNodeIndex,
-                    nameContentView.begin(), true);
-            for (auto it = meshChildView.begin(); it != meshChildView.end(); ++it)
+            // If we selected a UV set other than the first one (so the second), but it doesn't exist, then let's give a warning
+            if (!meshUVDatas[tangentUVSetIndex] && tangentUVSetIndex > 0 && tangentSpace != AZ::SceneAPI::DataTypes::TangentSpace::EMotionFX)
             {
-                AZStd::shared_ptr<const SceneDataTypes::IMeshVertexUVData> uvData = azrtti_cast<const SceneDataTypes::IMeshVertexUVData*>(it->second);
-                if (uvData)
+                AZ_TracePrintf(SceneUtil::WarningWindow, "The tangent UV set index '%d' is used, while there is no uv data for this set. There will be no tangent data!\n", tangentUVSetIndex);
+            }
+
+            // Get the tangents and bitangents for the first UV set, in the space the rule has setup.
+            meshTangentData = meshUVDatas[tangentUVSetIndex] ? AZ::SceneAPI::SceneData::TangentsRule::FindTangentData(graph, meshNodeIndex, tangentUVSetIndex, tangentSpace) : nullptr;
+            if (!meshTangentData)
+            {
+                // Try to grab the MikkT tangent space if the space we request isn't there (Fbx normals choosen, while they are not in the Fbx file).
+                meshTangentData = meshUVDatas[tangentUVSetIndex] ? AZ::SceneAPI::SceneData::TangentsRule::FindTangentData(graph, meshNodeIndex, tangentUVSetIndex, AZ::SceneAPI::DataTypes::TangentSpace::MikkT) : nullptr;
+                if (meshTangentData)
                 {
-                    EMotionFX::MeshBuilderVertexAttributeLayerVector2* uvLayer = EMotionFX::MeshBuilderVertexAttributeLayerVector2::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_UVCOORDS, false, false);
-                    uvLayer->SetName(it->first.GetName());
-                    meshBuilder->AddLayer(uvLayer);
-                    uvLayers.push_back(uvLayer);
-                    meshUVDatas.push_back(uvData);
+                    AZ_TracePrintf(SceneUtil::WarningWindow, "No Fbx tangent data found, falling back to MikkT tangent space.\n");
+                    tangentSpace = AZ::SceneAPI::DataTypes::TangentSpace::MikkT;
                 }
             }
 
-            const AZ::Transform globalTransform = SceneUtil::BuildWorldTransform(graph, meshNodeIndex);
-            // Inverse transpose for normal
-            const AZ::Transform globalTranformN = globalTransform.GetInverseFull().GetTranspose();
+            // Get the right bitangent data if we want to.
+            meshBitangentData = (storeBitangents && meshTangentData) ? AZ::SceneAPI::SceneData::TangentsRule::FindBitangentData(graph, meshNodeIndex, tangentUVSetIndex, tangentSpace) : nullptr;
 
-            // Data for each vertex
+            // Create the EMotion FX mesh data layers.
+            if (meshTangentData)
+            {
+                tangentLayer = EMotionFX::MeshBuilderVertexAttributeLayerVector4::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_TANGENTS, false, true);
+                meshBuilder->AddLayer(tangentLayer);
+            }
+
+            if (meshBitangentData)
+            {
+                bitangentLayer = EMotionFX::MeshBuilderVertexAttributeLayerVector3::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_BITANGENTS, false, true);
+                meshBuilder->AddLayer(bitangentLayer);
+            }
+
+            // Create the UV layers.
+            for (size_t i = 0; i < 2; ++i)
+            {
+                if (meshUVDatas[i])
+                {
+                    uvLayers[i] = EMotionFX::MeshBuilderVertexAttributeLayerVector2::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_UVCOORDS, false, false);
+                    meshBuilder->AddLayer(uvLayers[i]);
+                }
+            }
+
+            // Inverse transpose for normal, tangent and bitangent.
+            const AZ::Transform globalTransform = SceneUtil::BuildWorldTransform(graph, meshNodeIndex);
+            AZ::Transform globalTransformN = globalTransform.GetInverseFull().GetTranspose();
+            globalTransformN.SetTranslation(AZ::Vector3(0, 0, 0));
+
+            // Data for each vertex.
             AZ::Vector2 uv;
             AZ::Vector3 pos;
             AZ::Vector3 normal;
-            for (AZ::u32 i = 0; i < numFaces; ++i)
+            AZ::Vector4 tangent;
+            AZ::Vector3 bitangent;
+            AZ::Vector4 newTangent;
+            AZ::PackedVector3f bitangentVec;
+            const AZ::u32 numTriangles = meshData->GetFaceCount();
+            for (AZ::u32 i = 0; i < numTriangles; ++i)
             {
                 AZ::u32 materialID = 0;
                 if (m_materialGroup)
                 {
-                    AZ::u32 meshLocalMaterialID = meshData->GetFaceMaterialId(i);
+                    const AZ::u32 meshLocalMaterialID = meshData->GetFaceMaterialId(i);
                     if (meshLocalMaterialID < m_materialIndexMapForMesh.size())
                     {
                         materialID = m_materialIndexMapForMesh[meshLocalMaterialID];
@@ -445,7 +543,7 @@ namespace EMotionFX
                     }
                 }
 
-                // Start the triangle
+                // Start the triangle.
                 meshBuilder->BeginPolygon(materialID);
 
                 // Determine winding.
@@ -463,7 +561,7 @@ namespace EMotionFX
                     order[2] = 0;
                 }
 
-                // Add all triangle points (We are not supporting non-triangle face)
+                // Add all triangle points (We are not supporting non-triangle polygons)
                 for (AZ::u32 j = 0; j < 3; ++j)
                 {
                     const AZ::u32 vertexIndex = meshData->GetVertexIndex(i, order[j]);
@@ -478,36 +576,86 @@ namespace EMotionFX
                     if (skinningInfo)
                     {
                         pos = globalTransform * pos;
-                        normal = globalTranformN * normal;
+                        normal = globalTransformN * normal;
                     }
 
                     pos = coordSysConverter.ConvertVector3(pos);
                     posLayer->SetCurrentVertexValue(&pos);
 
                     normal = coordSysConverter.ConvertVector3(normal);
-                    normal.Normalize();
+                    normal.NormalizeSafeExact();
                     normalsLayer->SetCurrentVertexValue(&normal);
 
-                    for (AZ::u32 e = 0; e < uvLayers.size(); ++e)
+                    for (AZ::u32 e = 0; e < 2; ++e)
                     {
+                        if (!meshUVDatas[e])
+                        {
+                            continue;
+                        }
+
                         uv = meshUVDatas[e]->GetUV(vertexIndex);
                         uvLayers[e]->SetCurrentVertexValue(&uv);
+                    }
+
+                    // Feed the tangent.
+                    if (meshTangentData)
+                    {
+                        const AZ::Vector4& dataTangent = meshTangentData->GetTangent(vertexIndex);
+                        AZ::Vector3 tangentVec = dataTangent.GetAsVector3();
+                        if (skinningInfo)
+                        {
+                            tangentVec = globalTransformN * tangentVec;
+                        }
+                        tangentVec = coordSysConverter.ConvertVector3(tangentVec);
+                        if (normalizeTangents)
+                        {
+                            tangentVec.NormalizeSafeExact();
+                        }
+                        tangent.Set(tangentVec.GetX(), tangentVec.GetY(), tangentVec.GetZ(), dataTangent.GetW());
+                        tangentLayer->SetCurrentVertexValue(&tangent);
+                    }
+
+                    // Feed the bitangent.
+                    if (meshBitangentData)
+                    {
+                        bitangent = meshBitangentData->GetBitangent(vertexIndex);
+                        if (skinningInfo)
+                        {
+                            bitangent = globalTransformN * bitangent;
+                        }
+                        bitangent = coordSysConverter.ConvertVector3(bitangent);
+                        if (normalizeTangents)
+                        {
+                            bitangent.NormalizeSafeExact();
+                        }
+                        bitangentVec.Set(bitangent.GetX(), bitangent.GetY(), bitangent.GetZ());
+                        bitangentLayer->SetCurrentVertexValue(&bitangentVec);
                     }
 
                     meshBuilder->AddPolygonVertex(orgVertexNumber);
                 }
 
-                // End the triangle
+                // End the triangle.
                 meshBuilder->EndPolygon();
-            }   // End of all triangle
+            } // For all triangles.
 
-            // Cache optimize the index buffer list
+            // Cache optimize the index buffer list.
             if (settings.m_optimizeTriangleList)
             {
                 meshBuilder->OptimizeTriangleList();
             }
-            // Link the mesh to the node
+
+            // Convert the mesh builder mesh to an EMFX mesh.
             EMotionFX::Mesh* emfxMesh = meshBuilder->ConvertToEMotionFXMesh();
+
+            // Try to generate tangents post vertex duplication (the old EMFX method).
+            if (tangentSpace == AZ::SceneAPI::DataTypes::TangentSpace::EMotionFX)
+            {
+                if (!emfxMesh->CalcTangents(tangentUVSetIndex, false))
+                {
+                    AZ_Error("EMotionFX", "Failed to generate tangents for node '%s'.", emfxNode->GetName());
+                }
+            }
             actor->SetMesh(0, emfxNode->GetNodeIndex(), emfxMesh);
 
             if (!skinningInfo && settings.m_loadSkinningInfo)
@@ -515,11 +663,9 @@ namespace EMotionFX
                 CreateSkinningMeshDeformer(actor, emfxNode, emfxMesh, skinningInfo);
             }
 
-            // Calc the tangents for the first UV layer
-            emfxMesh->CalcTangents(0);
-
             meshBuilder->Destroy();
         }
+
 
         EMotionFX::MeshBuilderSkinningInfo* ActorBuilder::ExtractSkinningInfo(AZStd::shared_ptr<const SceneDataTypes::IMeshData> meshData,
             const SceneContainers::SceneGraph& graph, const SceneContainers::SceneGraph::NodeIndex& meshNodeIndex,
@@ -588,6 +734,7 @@ namespace EMotionFX
             return skinningInfo;
         }
 
+
         void ActorBuilder::CreateSkinningMeshDeformer(EMotionFX::Actor* actor, EMotionFX::Node* node, EMotionFX::Mesh* mesh, EMotionFX::MeshBuilderSkinningInfo* skinningInfo)
         {
             if (!skinningInfo)
@@ -611,6 +758,7 @@ namespace EMotionFX
             deformerStack->AddDeformer(deformer);
         }
 
+
         void ActorBuilder::ExtractActorSettings(const Group::IActorGroup& actorGroup, ActorSettings& outSettings)
         {
             const AZ::SceneAPI::Containers::RuleContainer& rules = actorGroup.GetRuleContainerConst();
@@ -628,6 +776,7 @@ namespace EMotionFX
                 outSettings.m_weightThreshold = skinRule->GetWeightThreshold();
             }
         }
+
 
         bool ActorBuilder::GetMaterialInfoForActorGroup(const ActorBuilderContext& context)
         {
@@ -664,6 +813,7 @@ namespace EMotionFX
             return fileRead;
         }
 
+
         void ActorBuilder::SetupMaterialDataForMesh(const ActorBuilderContext& context, const SceneContainers::SceneGraph::NodeIndex& meshNodeIndex)
         {
             m_materialIndexMapForMesh.clear();
@@ -694,6 +844,7 @@ namespace EMotionFX
             }
         }
 
+
         void ActorBuilder::GetNodeIndicesOfSelectedMeshes(ActorBuilderContext& context, NodeIndexSet& meshNodeIndexSet) const
         {
             meshNodeIndexSet.clear();
@@ -707,8 +858,7 @@ namespace EMotionFX
                 AZ_Assert(nodeIndex.IsValid(), "Invalid scene graph node index");
                 if (nodeIndex.IsValid())
                 {
-                    AZStd::shared_ptr<const SceneDataTypes::IMeshData> meshData =
-                        azrtti_cast<const SceneDataTypes::IMeshData*>(graph.GetNodeContent(nodeIndex));
+                    AZStd::shared_ptr<const SceneDataTypes::IMeshData> meshData = azrtti_cast<const SceneDataTypes::IMeshData*>(graph.GetNodeContent(nodeIndex));
                     if (meshData)
                     {
                         meshNodeIndexSet.insert(nodeIndex);

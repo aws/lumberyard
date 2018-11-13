@@ -623,6 +623,13 @@ namespace CommandSystem
         mOldWorkspaceDirtyFlag = GetCommandManager()->GetWorkspaceDirtyFlag();
         GetCommandManager()->SetWorkspaceDirtyFlag(true);
 
+        AZStd::string resultString;
+        GetCommandManager()->ExecuteCommandInsideCommand("Unselect -animGraphIndex SELECT_ALL", resultString);
+        if (animGraph)
+        {
+            GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("Select -animGraphID %d", animGraph->GetID()), resultString);
+        }
+
         // done
         return true;
     }
@@ -738,6 +745,13 @@ namespace CommandSystem
 
         // restore the workspace dirty flag
         GetCommandManager()->SetWorkspaceDirtyFlag(mOldWorkspaceDirtyFlag);
+
+        AZStd::string resultString;
+        GetCommandManager()->ExecuteCommandInsideCommand("Unselect -animGraphIndex SELECT_ALL", resultString);
+        if (animGraph)
+        {
+            GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("Select -animGraphID %d", animGraph->GetID()), resultString);
+        }
 
         // done
         return true;

@@ -16,7 +16,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/EBus/EBus.h>
-#include <AzCore/std/containers/ring_buffer.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 
 #pragma once
@@ -150,7 +150,8 @@ namespace AzToolsFramework
 
             AZ_CLASS_ALLOCATOR(UndoStack, AZ::SystemAllocator, 0);
 
-            UndoStack(int limit, IUndoNotify* notify);
+            UndoStack(IUndoNotify* notify);
+            UndoStack(int /*no longer used*/, IUndoNotify* notify);
             ~UndoStack();
 
             URSequencePoint* Post(URSequencePoint*);
@@ -195,7 +196,7 @@ namespace AzToolsFramework
             int m_Cursor;
             int m_CleanPoint;
 
-            typedef AZStd::ring_buffer<URSequencePoint*> SequencePointBuffer;
+            typedef AZStd::vector<URSequencePoint*> SequencePointBuffer;
 
             SequencePointBuffer m_SequencePointsBuffer;
             IUndoNotify* m_notify;

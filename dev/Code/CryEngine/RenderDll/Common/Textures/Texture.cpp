@@ -57,12 +57,12 @@ bool CTexture::s_bInLevelPhase = false;
 bool CTexture::s_bPrestreamPhase;
 int CTexture::s_nStreamingThroughput = 0;
 float CTexture::s_nStreamingTotalTime = 0;
-std::vector<STexState> CTexture::s_TexStates;
+AZStd::vector<STexState, AZ::StdLegacyAllocator> CTexture::s_TexStates;
 CTextureStreamPoolMgr* CTexture::s_pPoolMgr;
-std::set<string> CTexture::s_vTexReloadRequests;
+AZStd::set<string, AZStd::less<string>, AZ::StdLegacyAllocator> CTexture::s_vTexReloadRequests;
 CryCriticalSection CTexture::s_xTexReloadLock;
 #ifdef TEXTURE_GET_SYSTEM_COPY_SUPPORT
-CTexture::LowResSystemCopyType CTexture::s_LowResSystemCopy;
+StaticInstance<CTexture::LowResSystemCopyType> CTexture::s_LowResSystemCopy;
 #endif
 
 bool CTexture::m_bLoadedSystem;
@@ -188,9 +188,9 @@ CTexture* CTexture::s_ptexFlaresGather = NULL;
 SEnvTexture CTexture::s_EnvCMaps[MAX_ENVCUBEMAPS];
 SEnvTexture CTexture::s_EnvTexts[MAX_ENVTEXTURES];
 
-TArray<SEnvTexture> CTexture::s_CustomRT_2D;
+StaticInstance<TArray<SEnvTexture>> CTexture::s_CustomRT_2D;
 
-TArray<CTexture> CTexture::s_ShaderTemplates(EFTT_MAX);
+StaticInstance<TArray<CTexture>> CTexture::s_ShaderTemplates(EFTT_MAX);
 bool CTexture::s_ShaderTemplatesInitialized = false;
 
 CTexture* CTexture::s_pTexNULL = 0;
@@ -489,8 +489,6 @@ CTexture* CTexture::CreateTextureObject(const char* name, uint32 nWidth, uint32 
 
     bool bFound = false;
 
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Texture, 0, "%s", name);
-
     CTexture* pTex = NewTexture(name, nFlags, eTF, bFound);
     if (bFound)
     {
@@ -779,9 +777,6 @@ CTexture* CTexture::ForName(const char* name, uint32 nFlags, ETEX_Format eTFDst)
     SLICE_AND_SLEEP();
 
     bool bFound = false;
-
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Textures");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Texture, 0, "%s", name);
 
     CRY_DEFINE_ASSET_SCOPE("Texture", name);
 
@@ -1975,13 +1970,13 @@ void CTexture::Update()
 
     // reload pending texture reload requests
     {
-        std::set<string> queue;
+        AZStd::set<string, AZStd::less<string>, AZ::StdLegacyAllocator> queue;
 
         s_xTexReloadLock.Lock();
         s_vTexReloadRequests.swap(queue);
         s_xTexReloadLock.Unlock();
 
-        for (std::set<string>::iterator i = queue.begin(); i != queue.end(); i++)
+        for (auto i = queue.begin(); i != queue.end(); i++)
         {
             ReloadFile(*i);
         }
@@ -2587,10 +2582,10 @@ void CTexture::ShutDown()
     {
         for (i = 0; i < EFTT_MAX; i++)
         {
-            s_ShaderTemplates[i].~CTexture();
+            (*s_ShaderTemplates)[i].~CTexture();
         }
     }
-    s_ShaderTemplates.Free();
+    s_ShaderTemplates->Free();
 
     SAFE_DELETE(s_pTexNULL);
 
@@ -2790,7 +2785,7 @@ void CTexture::ReleaseSystemTextures()
 
     SAFE_RELEASE_FORCE(s_defaultEnvironmentProbeDummy);
 
-    s_CustomRT_2D.Free();
+    s_CustomRT_2D->Free();
 
     s_pPoolMgr->Flush();
 
@@ -2810,11 +2805,9 @@ void CTexture::LoadDefaultSystemTextures()
     char str[256];
     int i;
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Engine textures");
-
     if (!m_bLoadedSystem)
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
+        
 
         m_bLoadedSystem = true;
 
@@ -2950,8 +2943,6 @@ void CTexture::LoadDefaultSystemTextures()
             if (!s_ptexZTarget)
             {
                 //for d3d10 we cannot free it during level transition, therefore allocate once and keep it
-                ScopedSwitchToGlobalHeap globalHeapScope;
-
 #if defined(OPENGL_ES) || defined(CRY_USE_METAL)
                 // Custom Z-Target for GMEM render path
                 if (gcpRendD3D && gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
@@ -3024,9 +3015,9 @@ void CTexture::LoadDefaultSystemTextures()
 
         for (i = 0; i < EFTT_MAX; i++)
         {
-            ::new(&s_ShaderTemplates[i])CTexture(FT_DONT_RELEASE);
-            s_ShaderTemplates[i].SetCustomID(EFTT_DIFFUSE + i);
-            s_ShaderTemplates[i].SetFlags(FT_DONT_RELEASE);
+            ::new(&((*s_ShaderTemplates)[i]))CTexture(FT_DONT_RELEASE);
+            (*s_ShaderTemplates)[i].SetCustomID(EFTT_DIFFUSE + i);
+            (*s_ShaderTemplates)[i].SetFlags(FT_DONT_RELEASE);
         }
         s_ShaderTemplatesInitialized = true;
 

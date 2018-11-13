@@ -134,7 +134,7 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // ToolsApplicationEvents::Bus::Handler
         void BeforeEntitySelectionChanged() override;
-        void AfterEntitySelectionChanged() override;
+        void AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList& newlySelectedEntities, const AzToolsFramework::EntityIdList& newlyDeselectedEntities) override;
 
         virtual void EntityParentChanged(AZ::EntityId, AZ::EntityId, AZ::EntityId) {}
         //////////////////////////////////////////////////////////////////////////
@@ -424,8 +424,6 @@ namespace AzToolsFramework
 
         void GetSelectedEntities(EntityIdList& selectedEntityIds);
         bool IsLockedToSpecificEntities() { return m_overrideSelectedEntityIds.size() > 0; }
-
-        EntityIdList m_lastSelectedEntityIds;
 
         // When m_initiatingPropertyChangeNotification is set to true, it means this EntityPropertyEditor is
         // broadcasting a change to all listeners about a property change for a given entity.  This is needed

@@ -32,6 +32,8 @@ namespace UnitTests
     using AzToolsFramework::AssetDatabase::SourceDatabaseEntry;
     using AzToolsFramework::AssetDatabase::JobDatabaseEntry;
     using AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer;
+    using AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry;
+    using AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer;
     using AzToolsFramework::AssetDatabase::AssetDatabaseConnection;
     
     class MockDatabaseLocationListener : public AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Handler
@@ -1484,6 +1486,117 @@ namespace UnitTests
         EXPECT_EQ(AZStd::find(resultProducts.begin(), resultProducts.end(), m_data->m_product2), resultProducts.end());
         EXPECT_NE(AZStd::find(resultProducts.begin(), resultProducts.end(), m_data->m_product3), resultProducts.end());
         EXPECT_NE(AZStd::find(resultProducts.begin(), resultProducts.end(), m_data->m_product4), resultProducts.end());
+
+        EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
+    }
+
+    TEST_F(AssetDatabaseTest, SetProductDependencies_CorrectnessTest)
+    {
+        CreateCoverageTestData();
+        ProductDatabaseEntryContainer resultProducts;
+
+        EXPECT_TRUE(m_data->m_connection.GetProducts(resultProducts));
+        EXPECT_GT(resultProducts.size(), 0);
+
+        ProductDependencyDatabaseEntryContainer productDependencies;
+        AZStd::bitset<64> dependencyFlags = 0xFAA0FEEE;
+
+        productDependencies.reserve(200);
+
+        // make 100 product dependencies on the first productID
+        for (AZ::u32 productIndex = 0; productIndex < 100; ++productIndex)
+        {
+            ProductDependencyDatabaseEntry entry(resultProducts[0].m_productID, m_data->m_sourceFile1.m_sourceGuid, productIndex, dependencyFlags);
+            productDependencies.emplace_back(AZStd::move(entry));
+        }
+        
+        // make 100 product dependencies on the second productID
+        for (AZ::u32 productIndex = 0; productIndex < 100; ++productIndex)
+        {
+            ProductDependencyDatabaseEntry entry(resultProducts[1].m_productID, m_data->m_sourceFile2.m_sourceGuid, productIndex, dependencyFlags);
+            productDependencies.emplace_back(AZStd::move(entry));
+        }
+
+        // do a bulk insert:
+        EXPECT_TRUE(m_data->m_connection.SetProductDependencies(productDependencies));
+
+        // now, read all the data back and verify each field:
+        productDependencies.clear();
+        
+        // searching for the first product should only result in the first 100 results:
+        EXPECT_TRUE(m_data->m_connection.GetProductDependenciesByProductID(resultProducts[0].m_productID, productDependencies));
+        EXPECT_EQ(productDependencies.size(), 100);
+
+        for (AZ::u32 productIndex = 0; productIndex < 100; ++productIndex)
+        {
+            EXPECT_NE(productDependencies[productIndex].m_productDependencyID, -1);
+            EXPECT_EQ(productDependencies[productIndex].m_productPK, resultProducts[0].m_productID);
+            EXPECT_EQ(productDependencies[productIndex].m_dependencySourceGuid, m_data->m_sourceFile1.m_sourceGuid);
+            EXPECT_EQ(productDependencies[productIndex].m_dependencySubID, productIndex);
+            EXPECT_EQ(productDependencies[productIndex].m_dependencyFlags, dependencyFlags);
+        }
+
+        productDependencies.clear();
+
+        // searching for the second product should only result in the second 100 results:
+        EXPECT_TRUE(m_data->m_connection.GetProductDependenciesByProductID(resultProducts[1].m_productID, productDependencies));
+        EXPECT_EQ(productDependencies.size(), 100);
+
+        for (AZ::u32 productIndex = 0; productIndex < 100; ++productIndex)
+        {
+            EXPECT_NE(productDependencies[productIndex].m_productDependencyID, -1);
+            EXPECT_EQ(productDependencies[productIndex].m_productPK, resultProducts[1].m_productID);
+            EXPECT_EQ(productDependencies[productIndex].m_dependencySourceGuid, m_data->m_sourceFile2.m_sourceGuid);
+            EXPECT_EQ(productDependencies[productIndex].m_dependencySubID, productIndex);
+            EXPECT_EQ(productDependencies[productIndex].m_dependencyFlags, dependencyFlags);
+        }
+
+        // now, we replace the dependencies of the first product with fewer results, with different data:
+        productDependencies.clear();
+        for (AZ::u32 productIndex = 0; productIndex < 50; ++productIndex)
+        {
+            ProductDependencyDatabaseEntry entry(resultProducts[0].m_productID, m_data->m_sourceFile2.m_sourceGuid, productIndex, dependencyFlags);
+            productDependencies.emplace_back(AZStd::move(entry));
+        }
+
+        EXPECT_TRUE(m_data->m_connection.SetProductDependencies(productDependencies));
+
+        // searching for the first product should only result in 50 results, which proves that the original 100 were replaced with the new entries:
+        productDependencies.clear();
+        EXPECT_TRUE(m_data->m_connection.GetProductDependenciesByProductID(resultProducts[0].m_productID, productDependencies));
+        EXPECT_EQ(productDependencies.size(), 50);
+
+        for (AZ::u32 productIndex = 0; productIndex < 50; ++productIndex)
+        {
+            EXPECT_NE(productDependencies[productIndex].m_productDependencyID, -1);
+            EXPECT_EQ(productDependencies[productIndex].m_productPK, resultProducts[0].m_productID);
+            EXPECT_EQ(productDependencies[productIndex].m_dependencySourceGuid, m_data->m_sourceFile2.m_sourceGuid); // here we verify that the field has changed.
+            EXPECT_EQ(productDependencies[productIndex].m_dependencySubID, productIndex);
+            EXPECT_EQ(productDependencies[productIndex].m_dependencyFlags, dependencyFlags);
+        }
+
+        EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
+    }
+
+    TEST_F(AssetDatabaseTest, AddLargeNumberOfDependencies_PerformanceTest)
+    {
+        CreateCoverageTestData();
+        ProductDatabaseEntryContainer resultProducts;
+
+        EXPECT_TRUE(m_data->m_connection.GetProducts(resultProducts));
+        EXPECT_GT(resultProducts.size(), 0);
+
+        ProductDependencyDatabaseEntryContainer productDependencies;
+        AZStd::bitset<64> dependencyFlags;
+
+        productDependencies.reserve(20000);
+
+        for (AZ::u32 productIndex = 0; productIndex < 20000; ++productIndex)
+        {
+            ProductDependencyDatabaseEntry entry(resultProducts[0].m_productID, m_data->m_sourceFile1.m_sourceGuid, productIndex, dependencyFlags);
+            productDependencies.emplace_back(AZStd::move(entry));
+        }
+        EXPECT_TRUE(m_data->m_connection.SetProductDependencies(productDependencies));
 
         EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
     }

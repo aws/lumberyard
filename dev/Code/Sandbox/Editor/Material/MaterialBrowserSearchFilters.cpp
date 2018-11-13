@@ -14,6 +14,7 @@
 #include "MaterialBrowserSearchFilters.h"
 #include "MaterialBrowserFilterModel.h"
 #include "Material.h"
+#include "ITerrain.h"
 
 SubMaterialSearchFilter::SubMaterialSearchFilter(const MaterialBrowserFilterModel* filterModel)
     : m_filterModel(filterModel)
@@ -39,32 +40,102 @@ bool SubMaterialSearchFilter::MatchInternal(const AzToolsFramework::AssetBrowser
         return true;
     }
 
-    // Get the product material for the given asset browser entry
-    AZ::Data::AssetId assetId = GetMaterialProductAssetIdFromAssetBrowserEntry(entry);
-    if (assetId.IsValid() && m_filterModel)
+    if (m_filterModel)
     {
-        CMaterialBrowserRecord record;
-        bool found = m_filterModel->TryGetRecordFromAssetId(assetId, record);
-        if (found)
+        // Get the product material for the given asset browser entry
+        AZ::Data::AssetId assetId = GetMaterialProductAssetIdFromAssetBrowserEntry(entry);
+        if (assetId.IsValid())
         {
-            // If there is a valid product material, check to see if any of its sub-materials match the search string
-            if (record.m_material)
+            CMaterialBrowserRecord record;
+            bool found = m_filterModel->TryGetRecordFromAssetId(assetId, record);
+            if (found)
             {
-                for (int i = 0; i < record.m_material->GetSubMaterialCount(); ++i)
+                // If there is a valid product material, check to see if any of its sub-materials match the search string
+                if (record.m_material)
                 {
-                    CMaterial* subMaterial = record.m_material->GetSubMaterial(i);
-                    if (subMaterial)
+                    for (int i = 0; i < record.m_material->GetSubMaterialCount(); ++i)
                     {
-                        // If any of the product sub-materials matches the string, return true for this entry
-                        if (subMaterial->GetName().contains(m_filterString, Qt::CaseInsensitive))
+                        CMaterial* subMaterial = record.m_material->GetSubMaterial(i);
+                        if (subMaterial)
                         {
-                            return true;
+                            // If any of the product sub-materials matches the string, return true for this entry
+                            if (subMaterial->GetName().contains(m_filterString, Qt::CaseInsensitive))
+                            {
+                                return true;
+                            }
                         }
                     }
                 }
             }
         }
     }
+    return false;
+}
+
+LevelMaterialSearchFilter::LevelMaterialSearchFilter(const MaterialBrowserFilterModel* filterModel)
+    : m_filterModel(filterModel)
+{
+    AzToolsFramework::AssetBrowser::AssetBrowserEntryFilter::SetFilterPropagation(AzToolsFramework::AssetBrowser::AssetBrowserEntryFilter::PropagateDirection::Down);
+}
+
+QString LevelMaterialSearchFilter::GetNameInternal() const
+{
+    return "LoadedMaterialSearchFilter";
+}
+
+void LevelMaterialSearchFilter::CacheLoadedMaterials()
+{
+    m_localMap.clear();
+
+    AZStd::vector<IRenderNode*> foundRenderNodes;
+    unsigned int numFoundObjects = 0;
+
+    numFoundObjects = GetIEditor()->Get3DEngine()->GetObjectsByFlags(0);
+    foundRenderNodes.resize(numFoundObjects, nullptr);
+    GetIEditor()->Get3DEngine()->GetObjectsByFlags(0, foundRenderNodes.data());
+
+    AZStd::vector<_smart_ptr<IMaterial>> materials;
+    materials.reserve(foundRenderNodes.size());
+    for (IRenderNode* renderNode : foundRenderNodes)
+    {
+        renderNode->GetMaterials(materials);
+    }
+
+    if (GetIEditor()->Get3DEngine()->GetITerrain())
+    {
+        GetIEditor()->Get3DEngine()->GetITerrain()->GetMaterials(materials);
+    }
+
+    for (size_t i = 0; i < materials.size(); ++i)
+    {
+        if (materials[i])
+        {
+            m_localMap[materials[i]->GetName()] = materials[i];
+        }
+    }
+}
+
+bool LevelMaterialSearchFilter::MatchInternal(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) const
+{
+    // All entries match if show level materials isn't selected
+    if (!m_onlyShowLevelMaterials)
+    {
+        return true;
+    }
+
+    // Get the product material for the given asset browser entry
+    AZ::Data::AssetId assetId = GetMaterialProductAssetIdFromAssetBrowserEntry(entry);
+    if (assetId.IsValid() && m_filterModel)
+    {
+        CMaterialBrowserRecord record;
+        bool found = m_filterModel->TryGetRecordFromAssetId(assetId, record);
+        if (found && record.m_material)
+        {
+            // If there is a valid product material, check to see if it is used by the level
+            return m_localMap.find(record.m_material->GetName()) != m_localMap.end();
+        }
+    }
+
     return false;
 }
 

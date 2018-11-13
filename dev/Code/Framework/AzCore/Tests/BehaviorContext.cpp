@@ -47,6 +47,8 @@ namespace UnitTest
         EXPECT_EQ(1, Counter0::s_count);
         EXPECT_EQ(0, Counter0::s_copied);
         EXPECT_EQ(0, Counter0::s_moved);
+
+        m_counter0Class->Destroy(instance1);
     }
 
     TEST_F(BehaviorClassTest, BehaviorClass_CopyValid_WasCopied)
@@ -66,6 +68,9 @@ namespace UnitTest
         EXPECT_EQ(2, Counter0::s_count);
         EXPECT_EQ(1, Counter0::s_copied);
         EXPECT_EQ(0, Counter0::s_moved);
+
+        m_counter0Class->Destroy(instance2);
+        m_counter0Class->Destroy(instance1);
     }
 
     TEST_F(BehaviorClassTest, BehaviorClass_CopyInvalid_WasNoop)
@@ -78,6 +83,8 @@ namespace UnitTest
         EXPECT_EQ(0, Counter0::s_count);
         EXPECT_EQ(0, Counter0::s_copied);
         EXPECT_EQ(0, Counter0::s_moved);
+
+        m_counter0Class->Destroy(instance1);
     }
 
     TEST_F(BehaviorClassTest, BehaviorClass_Move_WasMoved)
@@ -97,6 +104,8 @@ namespace UnitTest
         EXPECT_EQ(1, Counter0::s_count);
         EXPECT_EQ(0, Counter0::s_copied);
         EXPECT_EQ(1, Counter0::s_moved);
+
+        m_counter0Class->Destroy(instance2);
     }
 
     TEST_F(BehaviorClassTest, BehaviorClass_MoveInvalid_WasNoop)
@@ -109,6 +118,8 @@ namespace UnitTest
         EXPECT_EQ(0, Counter0::s_count);
         EXPECT_EQ(0, Counter0::s_copied);
         EXPECT_EQ(0, Counter0::s_moved);
+
+        m_counter0Class->Destroy(instance1);
     }
 
     class ClassWithConstMethod

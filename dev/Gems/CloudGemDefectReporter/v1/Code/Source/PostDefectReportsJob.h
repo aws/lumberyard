@@ -25,7 +25,7 @@ namespace CloudGemDefectReporter
         void Process() override;                
 
     private:
-        void UploadAttachment(const char* filePath, const AZStd::string& url, const ServiceAPI::EncryptedPresignedPostFields& fields);
+        void UploadAttachment(const char* filePath, bool isAutoDelete,const AZStd::string& url, const ServiceAPI::EncryptedPresignedPostFields& fields);
     
         AZStd::vector<ReportWrapper> m_reports;
     };

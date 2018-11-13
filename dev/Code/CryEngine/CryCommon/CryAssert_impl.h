@@ -456,7 +456,7 @@ bool CryAssert(const char* _pszCondition, const char* _pszFile, unsigned int _ui
         }
     }
     
-    if (gEnv)
+    if (gEnv && gEnv->pSystem)
     {
         // this also can cause fatal / shutdown behavior:
         gEnv->pSystem->OnAssert(_pszCondition, gs_szMessage, _pszFile, _uiLine);

@@ -58,14 +58,15 @@ namespace GridMate
     {
         //-----------------------------------------------------------------------------
         uint32 s_actorRMIRepId = 0;
-        std::vector<IActorRMIRep*> s_actorRMIReps;
+        AZStd::vector<IActorRMIRep*, AZ::StdLegacyAllocator> s_actorRMIReps;
 
         typedef std::tuple<EntityId,
             LegacyInvocationWrapper::Ptr,
             ActorInvocationWrapper::Ptr,
             ScriptInvocationWrapper::Ptr> QueuedRMI;
 
-        std::vector<QueuedRMI> m_queuedRMIs;
+        using RMIQueue = AZStd::vector<QueuedRMI, AZ::StdLegacyAllocator>;
+        RMIQueue m_queuedRMIs;
 
         void InvokeLegacyInternal(EntityId entityId, const LegacyInvocationWrapper::Ptr& invocation);
         void InvokeActorInternal(EntityId entityId, const ActorInvocationWrapper::Ptr& invocation);
@@ -89,7 +90,7 @@ namespace GridMate
         //-----------------------------------------------------------------------------
         void FlushQueue()
         {
-            std::vector<QueuedRMI> queuedRMIs(std::move(m_queuedRMIs));
+            RMIQueue queuedRMIs(AZStd::move(m_queuedRMIs));
 
             for (const QueuedRMI& rmi : queuedRMIs)
             {

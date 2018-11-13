@@ -67,11 +67,12 @@ template<>
 inline void TAnimTrack<ISelectKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<ISelectKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<ISelectKey>::m_flags)
         ->Field("Range", &TAnimTrack<ISelectKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<ISelectKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<ISelectKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<ISelectKey>::m_keys)
+        ->Field("Id", &TAnimTrack<ISelectKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////

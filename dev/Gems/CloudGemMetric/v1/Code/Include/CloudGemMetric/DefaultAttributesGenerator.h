@@ -38,8 +38,7 @@ namespace CloudGemMetric
         AZStd::string m_sessionId;
         AZStd::string m_locale;
         int m_sequence{ 0 };
-        bool m_hasTimezoneInfo{ false };
-        AZStd::string m_timezoneSign;
+        AZStd::string m_timezoneSign{ "?" };
         int m_timezoneHour{ 0 };
         int m_timezoneMinute{ 0 };
     };    

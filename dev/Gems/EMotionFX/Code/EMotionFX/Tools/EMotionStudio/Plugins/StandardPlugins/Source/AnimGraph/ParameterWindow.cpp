@@ -45,8 +45,11 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
+
 namespace EMStudio
 {
+    int ParameterWindow::m_contextMenuWidth = 100;
+
     // constructor
     ParameterCreateRenameWindow::ParameterCreateRenameWindow(const char* windowTitle, const char* topText, const char* defaultName, const char* oldName, const AZStd::vector<AZStd::string>& invalidNames, QWidget* parent)
         : QDialog(parent)
@@ -90,6 +93,8 @@ namespace EMStudio
         // connect the buttons
         connect(mOKButton, &QPushButton::clicked, this, &ParameterCreateRenameWindow::accept);
         connect(mCancelButton, &QPushButton::clicked, this, &ParameterCreateRenameWindow::reject);
+
+        mOKButton->setDefault(true);
     }
 
 
@@ -154,8 +159,19 @@ namespace EMStudio
 
         // add the add button
         mAddButton = new QPushButton("");
-        EMStudioManager::MakeTransparentButton(mAddButton, "/Images/Icons/Plus.png", "Add new parameter");
-        connect(mAddButton, &QPushButton::clicked, this, &ParameterWindow::OnAddParameter);
+        EMStudioManager::MakeTransparentMenuButton(mAddButton, "/Images/Icons/Plus.png", "Add new parameter or group");
+        {
+            QMenu* contextMenu = new QMenu(mAddButton);
+
+            QAction* addParameterAction = contextMenu->addAction("Add parameter");
+            connect(addParameterAction, &QAction::triggered, this, &ParameterWindow::OnAddParameter);
+
+            QAction* addGroupAction = contextMenu->addAction("Add group");
+            connect(addGroupAction, &QAction::triggered, this, &ParameterWindow::OnAddGroup);
+
+            mAddButton->setMenu(contextMenu);
+        }
+
 
         // add the remove button
         mRemoveButton = new QPushButton();
@@ -542,13 +558,6 @@ namespace EMStudio
                     connect(makeDefaultAction, &QAction::triggered, this, &ParameterWindow::OnMakeDefaultValue);
                 }
             }
-            else
-            {
-                // rename group action
-                QAction* renameGroupAction = menu.addAction("Rename group");
-                renameGroupAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Edit.png"));
-                connect(renameGroupAction, &QAction::triggered, this, &ParameterWindow::OnRenameGroup);
-            }
 
             // edit action
             QAction* editAction = menu.addAction("Edit");
@@ -639,7 +648,7 @@ namespace EMStudio
         // add group action
         QAction* addGroupAction = menu.addAction("Add group");
         addGroupAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-        connect(addGroupAction, &QAction::triggered, this, &ParameterWindow::OnAddGroupButton);
+        connect(addGroupAction, &QAction::triggered, this, &ParameterWindow::OnAddGroup);
 
         menu.addSeparator();
 
@@ -1396,55 +1405,47 @@ namespace EMStudio
     }
 
 
-    // make it the default value
+    // Set the instance parameter value to the parameter's default value.
     void ParameterWindow::OnMakeDefaultValue()
     {
-        const EMotionFX::Parameter* parameter = GetSingleSelectedParameter();
-        if (!parameter)
-        {
-            return;
-        }
-
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
-        {
-            return;
-        }
-
-        // get the current selected anim graph
         EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
-
-        if (actorInstance == nullptr)
+        if (!actorInstance)
         {
             QMessageBox::warning(this, "Selection Issue", "We cannot perform this operation while you have multiple actor instances selected!");
             return;
         }
 
-        // get the attribute info
-        const AZ::Outcome<size_t> parameterIndex = animGraph->FindParameterIndex(parameter);
-        if (parameterIndex.IsSuccess() == false)
+        EMotionFX::Parameter* parameter = const_cast<EMotionFX::Parameter*>(GetSingleSelectedParameter());
+        if (!parameter)
         {
             return;
         }
 
-        // get the anim graph instance if there is any
+        EMotionFX::ValueParameter* valueParameter = azdynamic_cast<EMotionFX::ValueParameter*>(parameter);
+        if (!valueParameter)
+        {
+            return;
+        }
+
+        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
         EMotionFX::AnimGraphInstance* animGraphInstance = actorInstance->GetAnimGraphInstance();
-        if (!animGraphInstance)
+        if (!animGraph || !animGraphInstance)
         {
             return;
         }
 
-        // init the parameter default value from the current value
-        const MCore::Attribute* instanceValue = animGraphInstance->GetParameterValue(static_cast<uint32>(parameterIndex.GetValue()));
-        AZStd::string defaultValue;
-        instanceValue->ConvertToString(defaultValue);
-        MCore::ReflectionSerializer::DeserializeIntoMember(const_cast<EMotionFX::Parameter*>(parameter), "defaultValue", defaultValue);
-        animGraph->SetDirtyFlag(true);
+        const AZ::Outcome<size_t> parameterIndex = animGraph->FindParameterIndex(parameter);
+        if (parameterIndex.IsSuccess())
+        {
+            MCore::Attribute* instanceValue = animGraphInstance->GetParameterValue(static_cast<uint32>(parameterIndex.GetValue()));
+            valueParameter->SetDefaultValueFromAttribute(instanceValue);
+
+            animGraph->SetDirtyFlag(true);
+        }
     }
 
 
-    void ParameterWindow::OnAddGroupButton()
+    void ParameterWindow::OnAddGroup()
     {
         // get the anim graph
         EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
@@ -1462,7 +1463,7 @@ namespace EMStudio
         }
 
         // generate a unique group name
-        const AZStd::string uniqueGroupName = MCore::GenerateUniqueString("GroupParameter", [&invalidNames](const AZStd::string& value)
+        const AZStd::string uniqueGroupName = MCore::GenerateUniqueString("Group", [&invalidNames](const AZStd::string& value)
                 {
                     return AZStd::find(invalidNames.begin(), invalidNames.end(), value) == invalidNames.end();
                 });
@@ -1501,53 +1502,6 @@ namespace EMStudio
         SingleSelectGroupParameter(createWindow.GetName().c_str(), true);
 
         // Execute command.
-        AZStd::string result;
-        if (!GetCommandManager()->ExecuteCommand(command, result))
-        {
-            AZ_Error("EMotionFX", false, result.c_str());
-        }
-    }
-
-
-    void ParameterWindow::OnRenameGroup()
-    {
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (!animGraph)
-        {
-            return;
-        }
-
-        // get the currently selected group parameter, return in case none is selected
-        const EMotionFX::Parameter* parameter = GetSingleSelectedParameter();
-        ;
-        if (!parameter || azrtti_typeid(parameter) != azrtti_typeid<EMotionFX::GroupParameter>())
-        {
-            return;
-        }
-        const EMotionFX::GroupParameter* groupParameter = static_cast<const EMotionFX::GroupParameter*>(parameter);
-
-        // fill in the invalid names array
-        AZStd::vector<AZStd::string> invalidNames;
-        const EMotionFX::GroupParameterVector groupParameters = animGraph->RecursivelyGetGroupParameters();
-        for (const EMotionFX::GroupParameter* otherGroupParameter : groupParameters)
-        {
-            if (otherGroupParameter != groupParameter)
-            {
-                invalidNames.push_back(groupParameter->GetName());
-            }
-        }
-
-        // show the rename window
-        ParameterCreateRenameWindow renameWindow("Rename Group", "Please enter the new group name:", groupParameter->GetName().c_str(), groupParameter->GetName().c_str(), invalidNames, this);
-        if (renameWindow.exec() != QDialog::Accepted)
-        {
-            return;
-        }
-
-        // Build and execute command.
-        const AZStd::string command = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %i -name \"%s\" -newName \"%s\"", animGraph->GetID(), groupParameter->GetName().c_str(), renameWindow.GetName().c_str());
-
         AZStd::string result;
         if (!GetCommandManager()->ExecuteCommand(command, result))
         {

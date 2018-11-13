@@ -158,7 +158,6 @@ class CRMIAllocator
 public:
     static ILINE void* Allocate()
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
         if (!m_pAllocator)
         {
             m_pAllocator = new stl::PoolAllocator<N>;

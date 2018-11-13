@@ -705,7 +705,10 @@ class Integ_InterestTest
             , m_im(nullptr)
             , m_bitmaskHandler(nullptr)
             , m_num(0)
-        { }
+        {
+            GridMate::ReplicaChunkDescriptorTable::Get().RegisterChunkType<GridMate::BitmaskInterestChunk>();
+            GridMate::ReplicaChunkDescriptorTable::Get().RegisterChunkType<GridMate::ProximityInterestChunk>();
+        }
 
         void CreateTestReplica()
         {
@@ -1167,7 +1170,10 @@ class LargeWorldTest
             , m_im(nullptr)
             , m_proximityHandler(nullptr)
             , m_num(0)
-        { }
+        {
+            GridMate::ReplicaChunkDescriptorTable::Get().RegisterChunkType<GridMate::BitmaskInterestChunk>();
+            GridMate::ReplicaChunkDescriptorTable::Get().RegisterChunkType<GridMate::ProximityInterestChunk>();
+        }
 
         void CreateHostRuleHandler()
         {

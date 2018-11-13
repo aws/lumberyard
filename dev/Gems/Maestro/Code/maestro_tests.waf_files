@@ -3,6 +3,7 @@
     {
         "Source/Cinematics/Nodes/Tests":
         [
+            "Source/Cinematics/Tests/AssetBlendTrackTest.cpp",
             "Source/Cinematics/Tests/EntityNodeTest.cpp"
         ]
     },

@@ -132,6 +132,12 @@
   <ATLTrigger atl_name="Play_pla_fstp_run" path="chr/player/foley">
    <WwiseEvent wwise_name="Play_pla_fstp_run"/>
   </ATLTrigger>
+  <ATLTrigger atl_name="Stop_pla_foley_terminaltype_02_EFX" path="chr/player/foley/interactions">
+   <WwiseEvent wwise_name="Stop_pla_foley_terminaltype_02_NEW"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_foley_terminaltype_01_EFX" path="chr/player/foley/interactions">
+   <WwiseEvent wwise_name="Play_pla_foley_terminaltype_01_NEW"/>
+  </ATLTrigger>
   <ATLTrigger atl_name="Play_pla_foley_terminaltype" path="chr/player/foley/interactions">
    <WwiseEvent wwise_name="Play_pla_foley_terminaltype"/>
   </ATLTrigger>
@@ -763,9 +769,9 @@
     <Platform atl_name="linux" atl_config_group_name="default"/>
     <Platform atl_name="android" atl_config_group_name="default"/>
     <Platform atl_name="ios" atl_config_group_name="default"/>
+    <Platform atl_name="appletv" atl_config_group_name="default"/>
     <Platform atl_name="xboxone" atl_config_group_name="default"/>
     <Platform atl_name="ps4" atl_config_group_name="default"/>
-    <Platform atl_name="appletv" atl_config_group_name="default"/>
    </ATLPlatforms>
    <ATLConfigGroup atl_name="default">
     <WwiseFile wwise_name="content.bnk"/>

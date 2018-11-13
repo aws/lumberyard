@@ -25,7 +25,6 @@
 
 void CGlobalHeaderDBA::CreateDatabaseDBA(const char* filename)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_DBA, 0, filename);
     stack_string strPath = filename;
     CryStringUtils::UnifyFilePath(strPath);
     m_strFilePathDBA        = strPath.c_str();
@@ -33,11 +32,8 @@ void CGlobalHeaderDBA::CreateDatabaseDBA(const char* filename)
     m_nUsedAnimations       =   0;
 }
 
-
-
 void CGlobalHeaderDBA::LoadDatabaseDBA(const char* sForCharacter)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_DBA, 0, m_strFilePathDBA.c_str());
     m_nLastUsedTimeDelta = 0;
     if (m_pStream || m_pDatabaseInfo)
     {
@@ -135,7 +131,7 @@ CInternalDatabaseInfo::~CInternalDatabaseInfo()
 
     if (m_hStorage.IsValid())
     {
-        g_controllerHeap.Free(m_hStorage);
+        g_controllerHeap->Free(m_hStorage);
         m_hStorage = CControllerDefragHdl();
     }
 }
@@ -161,16 +157,14 @@ void CInternalDatabaseInfo::StreamOnComplete(IReadStream* pStream, unsigned nErr
 
 void* CInternalDatabaseInfo::StreamOnNeedStorage(IReadStream* pStream, unsigned nSize, bool& bAbortOnFailToAlloc)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_DBA, 0, m_strFilePath.c_str());
-
     char* pData = NULL;
 
     if (Console::GetInst().ca_StreamDBAInPlace)
     {
-        m_hStorage = g_controllerHeap.AllocPinned(nSize, this);
+        m_hStorage = g_controllerHeap->AllocPinned(nSize, this);
         if (m_hStorage.IsValid())
         {
-            pData = (char*)g_controllerHeap.WeakPin(m_hStorage);
+            pData = (char*)g_controllerHeap->WeakPin(m_hStorage);
         }
     }
 
@@ -181,8 +175,7 @@ void CInternalDatabaseInfo::StreamAsyncOnComplete(IReadStream* pStream, unsigned
 {
     DEFINE_PROFILER_FUNCTION();
     LOADING_TIME_PROFILE_SECTION(g_pISystem);
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_DBA, 0, m_strFilePath.c_str());
-
+    
     if (pStream->IsError())
     {
         g_pISystem->Warning(VALIDATOR_MODULE_ANIMATION, VALIDATOR_WARNING,  VALIDATOR_FLAG_FILE, m_strFilePath.c_str(), "Failed to stream DBA-file %x", nError);
@@ -344,21 +337,6 @@ bool CInternalDatabaseInfo::ReadController905(IChunkFile::ChunkDesc* pChunkDesc,
     m_iTotalControllers = 0;
 
     uint64 startedStatistics = 0;
-    if (Console::GetInst().ca_MemoryUsageLog)
-    {
-        CryModuleMemoryInfo info;
-        CryGetMemoryInfoForModule(&info);
-        startedStatistics = info.allocated - info.freed;
-        g_pILog->UpdateLoadingScreen("ReadController905. Init. Memstat %li", (long int)(info.allocated - info.freed));
-    }
-
-    if (Console::GetInst().ca_MemoryUsageLog)
-    {
-        CryModuleMemoryInfo info;
-        CryGetMemoryInfoForModule(&info);
-        g_pILog->UpdateLoadingScreen("ReadController905. TracksResize. Memstat %li", (long int)(info.allocated - info.freed));
-    }
-
 
     char* pData = (char*)(pCtrlChunk + 1);
     char* pData2 = pData;
@@ -513,14 +491,6 @@ bool CInternalDatabaseInfo::ReadController905(IChunkFile::ChunkDesc* pChunkDesc,
     else
     {
         pStorageData = pCtrlChunkEnd - nTrackLen;
-    }
-
-    // set pointers to keytimes, positions, rotations
-    if (Console::GetInst().ca_MemoryUsageLog)
-    {
-        CryModuleMemoryInfo info;
-        CryGetMemoryInfoForModule(&info);
-        g_pILog->UpdateLoadingScreen("ReadController905. All dynamic data resize. Memstat %li", (long int)(info.allocated - info.freed));
     }
 
     std::vector<CControllerInfo*> controllersOffsets(totalAnims, 0);
@@ -693,7 +663,7 @@ bool CInternalDatabaseInfo::ReadController905(IChunkFile::ChunkDesc* pChunkDesc,
 
     if (!hStorage.IsValid())
     {
-        hStorage = g_controllerHeap.AllocPinned(nTotalSize, this);
+        hStorage = g_controllerHeap->AllocPinned(nTotalSize, this);
     }
 
     if (!hStorage.IsValid())
@@ -701,7 +671,7 @@ bool CInternalDatabaseInfo::ReadController905(IChunkFile::ChunkDesc* pChunkDesc,
         return false;
     }
 
-    char* pAllocData = (char*)g_controllerHeap.WeakPin(hStorage);
+    char* pAllocData = (char*)g_controllerHeap->WeakPin(hStorage);
     uint16* pCAFList = (uint16*)pAllocData;
     char* pControllers = pAllocData + nCAFListSize;
 
@@ -798,29 +768,18 @@ bool CInternalDatabaseInfo::ReadController905(IChunkFile::ChunkDesc* pChunkDesc,
         }
     }
 
-    if (Console::GetInst().ca_MemoryUsageLog)
-    {
-        CryModuleMemoryInfo info;
-        CryGetMemoryInfoForModule(&info);
-        g_pILog->UpdateLoadingScreen("ReadController903. Finished. Memstat %li", (long int)(info.allocated - info.freed));
-        uint64 endStatistics = info.allocated - info.freed;
-        g_AnimStatisticsInfo.m_iDBASizes += endStatistics - startedStatistics;
-        g_pILog->UpdateLoadingScreen("Current DBA. Memstat %li", (long int)(endStatistics - startedStatistics));
-        g_pILog->UpdateLoadingScreen("ALL DBAs %li", (long int)g_AnimStatisticsInfo.m_iDBASizes);
-    }
-
     m_nRelocatableCAFs = nRelocatableCAFs;
 
     // Couldn't stream in place for some reason :(. Free the temporary alloc.
     if (m_hStorage.IsValid() && m_hStorage != hStorage)
     {
-        g_controllerHeap.Free(m_hStorage);
+        g_controllerHeap->Free(m_hStorage);
     }
 
     m_hStorage = hStorage;
-    m_nStorageLength = g_controllerHeap.UsableSize(hStorage);
+    m_nStorageLength = g_controllerHeap->UsableSize(hStorage);
 
-    g_controllerHeap.Unpin(hStorage);
+    g_controllerHeap->Unpin(hStorage);
 
     return true;
 }
@@ -876,7 +835,7 @@ const size_t CGlobalHeaderDBA::SizeOf_DBA() const
 
     if (m_pDatabaseInfo->m_hStorage.IsValid())
     {
-        nSize += g_controllerHeap.UsableSize(m_pDatabaseInfo->m_hStorage);
+        nSize += g_controllerHeap->UsableSize(m_pDatabaseInfo->m_hStorage);
     }
 
     return nSize;

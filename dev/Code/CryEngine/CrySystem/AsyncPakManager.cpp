@@ -405,8 +405,6 @@ void CAsyncPakManager::StreamOnComplete(
 
 void* CAsyncPakManager::StreamOnNeedStorage(IReadStream* pStream, unsigned nSize, bool& bAbortOnFailToAlloc)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "In-Memory Pak: %s", pStream->GetName());
-
     SAsyncPak* pAsyncPak = (SAsyncPak*)pStream->GetUserData();
 
     pAsyncPak->nSize = nSize;

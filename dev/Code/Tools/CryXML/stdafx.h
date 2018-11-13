@@ -17,10 +17,6 @@
 //
 #pragma once
 
-#ifndef NOT_USE_CRY_MEMORY_MANAGER
-#define NOT_USE_CRY_MEMORY_MANAGER
-#endif
-
 #include <cassert>
 
 #define CRY_ASSERT(condition) assert(condition)

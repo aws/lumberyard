@@ -613,7 +613,11 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     pcMenu.AddAction(ID_GAME_PC_ENABLEMEDIUMSPEC);
     pcMenu.AddAction(ID_GAME_PC_ENABLELOWSPEC);
 
-    graphicPerformanceSubMenu.AddAction(ID_GAME_OSXMETAL_ENABLESPEC);
+    auto osxmetalMenu = graphicPerformanceSubMenu.AddMenu(tr("OSX Metal"));
+    osxmetalMenu.AddAction(ID_GAME_OSXMETAL_ENABLEVERYHIGHSPEC);
+    osxmetalMenu.AddAction(ID_GAME_OSXMETAL_ENABLEHIGHSPEC);
+    osxmetalMenu.AddAction(ID_GAME_OSXMETAL_ENABLEMEDIUMSPEC);
+    osxmetalMenu.AddAction(ID_GAME_OSXMETAL_ENABLELOWSPEC);
 
     auto androidMenu = graphicPerformanceSubMenu.AddMenu(tr("Android"));
     androidMenu.AddAction(ID_GAME_ANDROID_ENABLEVERYHIGHSPEC);
@@ -628,13 +632,13 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     iosMenu.AddAction(ID_GAME_IOS_ENABLELOWSPEC);
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
     auto publicname##Menu = graphicPerformanceSubMenu.AddMenu(tr(PublicAuxName2));\
     publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLEHIGHSPEC);\
     publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLEMEDIUMSPEC);\
     publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLELOWSPEC);
     AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
 
     graphicPerformanceSubMenu.AddAction(ID_GAME_APPLETV_ENABLESPEC);
@@ -1382,6 +1386,7 @@ void LevelEditorMenuHandler::UpdateMRUFiles()
             RecentFileList* mruList = cryEdit->GetRecentFileList();
             cryEdit->OpenDocumentFile((*mruList)[i].toUtf8().data());
         });
+        m_actionManager->RegisterUpdateCallback(ID_FILE_MRU_FILE1 + i, cryEdit, &CCryEditApp::OnUpdateFileOpen);
 
         GetIEditor()->RegisterNotifyListener(new EditorListener(action, [action](EEditorNotifyEvent e) {
             DisableActionWhileLevelChanges(action, e);

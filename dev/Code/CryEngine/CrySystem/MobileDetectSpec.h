@@ -17,18 +17,19 @@
 
 namespace MobileSysInspect
 {
-    // Uses hash as key to reduce memory with larger map
-    extern AZStd::unordered_map<AZStd::string, AZStd::string> device_spec_map;
     extern const float LOW_SPEC_RAM;
     extern const float MEDIUM_SPEC_RAM;
     extern const float HIGH_SPEC_RAM;
 
     void LoadDeviceSpecMapping();
     bool GetAutoDetectedSpecName(AZStd::string &buffer);
+    bool GetSpecForGPUAndAPI(const AZStd::string& gpuName, const AZStd::string& apiDescription, AZStd::string& specName);
     const float GetDeviceRamInGB();
     
     namespace Internal
     {
         void LoadDeviceSpecMapping_impl(const char* fileName);
+        void LoadGpuSpecMapping_impl(const char* filename);
+        bool GetSpecForModelName(const AZStd::string& modelName, AZStd::string& specName);
     }
 }

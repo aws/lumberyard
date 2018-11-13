@@ -91,8 +91,6 @@ bool CLevelInfo::ReadInfo()
 
             if ((gameTypesNode != 0) && (gameTypesNode->getChildCount() > 0))
             {
-                // I can't be certain from looking at the code that these aren't used outside of a level, so better put them on the global heap
-                ScopedSwitchToGlobalHeap useGlobalHeap;
                 m_gameTypes.clear();
                 //m_musicLibs.clear();
 
@@ -272,7 +270,7 @@ struct SLevelNameAutoComplete
     virtual const char* GetValue(int nIndex) const { return levels[nIndex].c_str(); };
 };
 // definition and declaration must be separated for devirtualization
-SLevelNameAutoComplete g_LevelNameAutoComplete;
+static StaticInstance<SLevelNameAutoComplete, AZStd::no_destruct<SLevelNameAutoComplete>> g_LevelNameAutoComplete;
 
 //------------------------------------------------------------------------
 static void LoadMap(IConsoleCmdArgs* args)
@@ -336,7 +334,7 @@ CLevelSystem::CLevelSystem(ISystem* pSystem, const char* levelsFolder)
 
     REGISTER_COMMAND("map", LoadMap, VF_BLOCKFRAME, "Load a map");
     REGISTER_COMMAND("unload", UnloadMap, 0, "Unload current map");
-    gEnv->pConsole->RegisterAutoComplete("map", &g_LevelNameAutoComplete);
+    gEnv->pConsole->RegisterAutoComplete("map", &(*g_LevelNameAutoComplete));
 }
 
 //------------------------------------------------------------------------
@@ -365,10 +363,10 @@ void CLevelSystem::Rescan(const char* levelsFolder, const uint32 tag)
     m_levelInfos.reserve(64);
     ScanFolder(0, false, tag);
 
-    g_LevelNameAutoComplete.levels.clear();
+    g_LevelNameAutoComplete->levels.clear();
     for (int i = 0; i < (int)m_levelInfos.size(); i++)
     {
-        g_LevelNameAutoComplete.levels.push_back(PathUtil::GetFileName(m_levelInfos[i].GetName()));
+        g_LevelNameAutoComplete->levels.push_back(PathUtil::GetFileName(m_levelInfos[i].GetName()));
     }
 }
 
@@ -593,8 +591,6 @@ ILevel* CLevelSystem::LoadLevel(const char* _levelName)
 ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
 {
     gEnv->pSystem->SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_START);
-
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Level load (%s)", _levelName);
 
     CryLog ("Level system is loading \"%s\"", _levelName);
     INDENT_LOG_DURING_SCOPE();
@@ -864,10 +860,6 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         {
             pSpamDelay->Set(spamDelay);
         }
-
-#if CAPTURE_REPLAY_LOG
-        CryGetIMemReplay()->AddLabelFmt("loadEnd%d_%s", s_loadCount++, levelName);
-#endif
 
         m_bLevelLoaded = true;
         gEnv->pSystem->SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_END);

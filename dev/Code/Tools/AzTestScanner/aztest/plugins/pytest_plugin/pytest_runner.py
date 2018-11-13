@@ -14,8 +14,7 @@ import sys
 import subprocess
 import logging
 
-import aztest.common
-
+from aztest.common import subprocess_with_timeout, SubprocessTimeoutException, clean_timestamp
 from datetime import datetime
 
 log = logging.getLogger(__name__)
@@ -31,19 +30,28 @@ def run_pytest(known_args, extra_args):
         - output_path: the location to save XML results
     :param extra_args: Additional arguments, passed directly to pytest
     :raises: CalledProcessError if pytest detects failures (returning a non-zero return code)
+    :raises: SubprocessTimeoutException if pytest times out
     """
     xunit_command = _get_xunit_command(known_args.output_path)
-    argument_call = [sys.executable, "-m", "pytest", "-c", "lmbr_test_pytest.ini", xunit_command]
+    argument_call = [sys.executable, "-B", "-m", "pytest", "--cache-clear", "-c", "lmbr_test_pytest.ini", xunit_command]
     argument_call.extend(extra_args)
     log.info("Invoking pytest")
     log.info(argument_call)
 
-    # raise on failure
-    subprocess.check_call(argument_call)
+    timeout_sec = 1200  # 20 minutes
+    try:
+        # raise on failure
+        return_code = subprocess_with_timeout(argument_call, timeout_sec)
+        if return_code != 0:
+            raise subprocess.CalledProcessError(return_code, argument_call)
+    except SubprocessTimeoutException as ste:
+        log.error("Pytest timed out after {} seconds.".format(timeout_sec))
+        raise ste
+
 
 
 def _get_xunit_command(output_path):
-    timestamp = aztest.common.clean_timestamp(datetime.now().isoformat())
+    timestamp = clean_timestamp(datetime.now().isoformat())
     full_filename = "{}_{}{}".format(PYTEST_RESULT_FILENAME, timestamp, XML_EXTENSION)
     output_file = os.path.join(output_path, full_filename)
     return "--junitxml={}".format(output_file)

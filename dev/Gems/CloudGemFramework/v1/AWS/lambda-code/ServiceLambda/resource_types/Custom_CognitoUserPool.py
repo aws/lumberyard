@@ -11,6 +11,7 @@
 # $Revision: #5 $
 
 from cgf_utils import custom_resource_response
+from cgf_utils import custom_resource_utils
 from cgf_utils import aws_utils
 from cgf_utils import properties
 from resource_manager_common import stack_info
@@ -43,7 +44,7 @@ def handler(event, context):
     pool_name = props.PoolName.replace('-', ' ')
     pool_name = stack_name+pool_name
     cognito_idp_client = user_pool.get_idp_client()
-    pool_id = event.get('PhysicalResourceId')
+    pool_id = custom_resource_utils.get_embedded_physical_id(event.get('PhysicalResourceId'))
     found_pool = user_pool.get_user_pool(pool_id)
 
     request_type = event['RequestType']

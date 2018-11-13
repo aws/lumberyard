@@ -10,29 +10,29 @@
 *
 */
 
-#include "ParameterFactory.h"
-
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
-#include "BoolParameter.h"
-#include "ColorParameter.h"
-#include "FloatParameter.h"
-#include "FloatSliderParameter.h"
-#include "FloatSpinnerParameter.h"
-#include "GroupParameter.h"
-#include "IntParameter.h"
-#include "IntSliderParameter.h"
-#include "IntSpinnerParameter.h"
-#include "Parameter.h"
-#include "RotationParameter.h"
-#include "StringParameter.h"
-#include "TagParameter.h"
-#include "ValueParameter.h"
-#include "Vector2Parameter.h"
-#include "Vector3GizmoParameter.h"
-#include "Vector3Parameter.h"
-#include "Vector4Parameter.h"
+#include <EMotionFX/Source/Parameter/ParameterFactory.h>
+#include <EMotionFX/Source/Parameter/BoolParameter.h>
+#include <EMotionFX/Source/Parameter/ColorParameter.h>
+#include <EMotionFX/Source/Parameter/FloatParameter.h>
+#include <EMotionFX/Source/Parameter/FloatSliderParameter.h>
+#include <EMotionFX/Source/Parameter/FloatSpinnerParameter.h>
+#include <EMotionFX/Source/Parameter/GroupParameter.h>
+#include <EMotionFX/Source/Parameter/IntParameter.h>
+#include <EMotionFX/Source/Parameter/IntSliderParameter.h>
+#include <EMotionFX/Source/Parameter/IntSpinnerParameter.h>
+#include <EMotionFX/Source/Parameter/Parameter.h>
+#include <EMotionFX/Source/Parameter/RotationParameter.h>
+#include <EMotionFX/Source/Parameter/StringParameter.h>
+#include <EMotionFX/Source/Parameter/TagParameter.h>
+#include <EMotionFX/Source/Parameter/ValueParameter.h>
+#include <EMotionFX/Source/Parameter/Vector2Parameter.h>
+#include <EMotionFX/Source/Parameter/Vector3GizmoParameter.h>
+#include <EMotionFX/Source/Parameter/Vector3Parameter.h>
+#include <EMotionFX/Source/Parameter/Vector4Parameter.h>
+
 
 namespace EMotionFX
 {
@@ -58,24 +58,31 @@ namespace EMotionFX
         Vector4Parameter::Reflect(context);
     }
 
+    AZStd::vector<AZ::TypeId> ParameterFactory::GetValueParameterTypes()
+    {
+        return
+        {
+            azrtti_typeid<FloatSliderParameter>(),
+            azrtti_typeid<FloatSpinnerParameter>(),
+            azrtti_typeid<BoolParameter>(),
+            azrtti_typeid<TagParameter>(),
+            azrtti_typeid<IntSliderParameter>(),
+            azrtti_typeid<IntSpinnerParameter>(),
+            azrtti_typeid<Vector2Parameter>(),
+            azrtti_typeid<Vector3Parameter>(),
+            azrtti_typeid<Vector3GizmoParameter>(),
+            azrtti_typeid<Vector4Parameter>(),
+            azrtti_typeid<StringParameter>(),
+            azrtti_typeid<ColorParameter>(),
+            azrtti_typeid<RotationParameter>()
+        };
+    }
+
     AZStd::vector<AZ::TypeId> ParameterFactory::GetParameterTypes()
     {
-        return {
-                   azrtti_typeid<FloatSliderParameter>(),
-                   azrtti_typeid<FloatSpinnerParameter>(),
-                   azrtti_typeid<BoolParameter>(),
-                   azrtti_typeid<TagParameter>(),
-                   azrtti_typeid<IntSliderParameter>(),
-                   azrtti_typeid<IntSpinnerParameter>(),
-                   azrtti_typeid<Vector2Parameter>(),
-                   azrtti_typeid<Vector3Parameter>(),
-                   azrtti_typeid<Vector3GizmoParameter>(),
-                   azrtti_typeid<Vector4Parameter>(),
-                   azrtti_typeid<StringParameter>(),
-                   azrtti_typeid<ColorParameter>(),
-                   azrtti_typeid<RotationParameter>(),
-                   azrtti_typeid<GroupParameter>()
-        };
+        AZStd::vector<AZ::TypeId> result = GetValueParameterTypes();
+        result.push_back(azrtti_typeid<GroupParameter>());
+        return result;
     }
 
     Parameter* ParameterFactory::Create(const AZ::TypeId& type)

@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#if defined(UNIT_TEST)
 
 #include <AzCore/base.h>
 
@@ -3595,8 +3594,3 @@ namespace AssetProcessor
 
 #include <native/unittests/AssetProcessorManagerUnitTests.moc>
 } // namespace AssetProcessor
-
-#endif
-
-
-

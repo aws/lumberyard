@@ -45,7 +45,7 @@ namespace Maestro
     {
         // cache pointers and animatable addresses for animation
         //
-        CacheAllVirtualPropertiesFromBehaviorContext(GetEntity());
+        CacheAllVirtualPropertiesFromBehaviorContext();
 
         ConnectAllSequences();
     }
@@ -135,6 +135,21 @@ namespace Maestro
         SequenceAgent::GetAssetDuration(returnValue, componentId, assetId);
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SequenceAgentComponent::GetEntityComponents(AZ::Entity::ComponentArrayType& entityComponents) const
+    {
+        AZ::Entity* entity = GetEntity();
+        AZ_Assert(entity, "Expected valid entity.");
+        if (entity)
+        {
+            const AZ::Entity::ComponentArrayType& enabledComponents = entity->GetComponents();
+            for (AZ::Component* component : enabledComponents)
+            {
+                entityComponents.push_back(component);
+            }
+        }
+    }
+ 
     //=========================================================================
     namespace ClassConverters
     {

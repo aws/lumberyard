@@ -46,11 +46,6 @@ ICompiler* AlembicConvertor::CreateCompiler()
     return new AlembicCompiler(m_pXMLParser);
 }
 
-bool AlembicConvertor::SupportsMultithreading() const
-{
-    return false;
-}
-
 const char* AlembicConvertor::GetExt(int index) const
 {
     switch (index)

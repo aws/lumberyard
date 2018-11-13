@@ -386,6 +386,16 @@ IAnimTrack* CAnimNode::CreateTrackInternal(const CAnimParamType& paramType, EAni
     if (pTrack)
     {
         pTrack->SetParameterType(paramType);
+
+        // Assign a unique id for every track.
+        pTrack->SetId(m_pSequence->GetUniqueTrackIdAndGenerateNext());
+        int subTrackCount = pTrack->GetSubTrackCount();
+        for (int subTrackIndex = 0; subTrackIndex < subTrackCount; subTrackIndex++)
+        {
+            IAnimTrack* subTrack = pTrack->GetSubTrack(subTrackIndex);
+            subTrack->SetId(m_pSequence->GetUniqueTrackIdAndGenerateNext());
+        }
+
         AddTrack(pTrack);
     }
 
@@ -403,8 +413,6 @@ IAnimTrack* CAnimNode::CreateTrack(const CAnimParamType& paramType)
 //////////////////////////////////////////////////////////////////////////
 void CAnimNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Animation, 0, "CAnimNode");
-
     if (bLoading)
     {
         // Delete all tracks.
@@ -421,7 +429,6 @@ void CAnimNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmp
             XmlNodeRef trackNode = xmlNode->getChild(i);
             paramType.Serialize(trackNode, bLoading, paramTypeVersion);
 
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Animation, 0, CMovieSystem::GetParamTypeName(paramType));
 
             if (paramType.GetType() == AnimParamType::Music)
             {

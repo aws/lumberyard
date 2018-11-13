@@ -75,7 +75,7 @@ namespace LmbrCentral
         // SliceInstantiationResultBus::MultiHandler
         void OnSlicePreInstantiate(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress) override;
         void OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress) override;
-        void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId) override;
+        void OnSliceInstantiationFailedOrCanceled(const AZ::Data::AssetId& sliceAssetId, bool canceled) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

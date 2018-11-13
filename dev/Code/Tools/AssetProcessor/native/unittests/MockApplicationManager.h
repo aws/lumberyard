@@ -10,10 +10,7 @@
 *
 */
 
-#ifndef MOCK_APPLICATION_MANAGER_H
-#define MOCK_APPLICATION_MANAGER_H
-
-#if defined (UNIT_TEST)
+#pragma once
 
 #include "../utilities/ApplicationManagerAPI.h"
 #include "native/AssetManager/assetProcessorManager.h"
@@ -105,5 +102,4 @@ namespace AssetProcessor
         int m_numberOfJobsToCreate = 0;
     };
 }
-#endif // UNIT_TEST
-#endif //MOCK_APPLICATION_MANAGER_H
+

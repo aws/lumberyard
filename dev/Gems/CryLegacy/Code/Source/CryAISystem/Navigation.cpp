@@ -316,8 +316,6 @@ bool ReadPolygonArea(CCryBufferedFileReader& file, int version, string& name, Li
 //====================================================================
 bool ReadForbiddenArea(CCryBufferedFileReader& file, int version, CAIShape* shape)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Navigation, 0, "Forbidden areas");
-
     unsigned nameLen = maxForbiddenNameLen;
     file.ReadType(&nameLen);
     if (nameLen >= maxForbiddenNameLen)

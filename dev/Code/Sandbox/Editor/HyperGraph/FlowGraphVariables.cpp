@@ -649,7 +649,7 @@ namespace
             {
                 continue;
             }
-            item.name = param.m_Name;
+            item.name = param.m_Name.c_str();
             outItems.push_back(item);
         }
     }

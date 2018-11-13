@@ -26,14 +26,12 @@ def build(bld):
         configurations      = ['all'],
         pch                 = 'StdAfx.cpp',
         use                 = ['AzCore'],
+        defines             = ['ENGINE_EXPORTS', 'USE_CRY_NEW_AND_DELETE'],
 
         win_x64_clang_cxxflags = ['-Wno-deprecated-declarations'],
 
         # Platform Specific
-       
-
-       
-       
+        restricted_script   = 'update_restricted_parameters',
 
         darwin_cxxflags     = ['-Wno-shift-negative-value', '-Wno-shadow'],
 

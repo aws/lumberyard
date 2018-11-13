@@ -72,6 +72,7 @@ void CBrush::Render(const CLodValue& lodValue, const SRenderingPassInfo& passInf
     if (m_dwRndFlags & ERF_NO_DECALNODE_DECALS)
     {
         pObj->m_ObjFlags |= FOB_DYNAMIC_OBJECT;
+        pObj->m_NoDecalReceiver = true;
     }
     else
     {

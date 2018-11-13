@@ -153,6 +153,10 @@ void CErrorReport::ReportError(CErrorRecord& err)
             {
                 Warning(err.error.toUtf8().data());
             }
+            else
+            {
+                m_errors.push_back(err);
+            }
         }
     }
     else

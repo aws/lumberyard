@@ -1,36 +1,44 @@
 {
-	"swagger": "2.0",
-	"info": {
-		"version": "1.0.0",
-		"title": "$RestApiResourceName$",
-		"description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
-	},
-	"schemes": [
-		"https"
-	],
-	"consumes": [
-		"application/json"
-	],
-	"produces": [
-		"application/json"
-	],
-	"x-amazon-cloud-canvas-lambda-dispatch": {
-		"lambda": "$ServiceLambdaArn$"
-	},
-	"paths": {
-		"/service/status": {
-			"get": {
-				"description": "Returns the service's status. Useful for testing connectivity.",
-				"responses": {
-					"200": {
-						"description": "A successful service status response.",
-						"schema": {
-							"$ref": "#/definitions/ServiceStatus"
-						}
-					}
-				}
-			}
-		},
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+    },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/jiraintegration": {
+            "x-cloud-gem-framework-interface-implementation": {
+                "interface": "CloudGemDefectReporter_MetricsListener_1_0_0"
+            }
+        },
+        "/service/status": {
+            "get": {
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                     "function": "GetServiceStatus"
+                }
+            }
+        },
         "/service/upload": {
             "x-amazon-cloud-canvas-lambda-dispatch": {
                 "module": "service_upload",
@@ -67,6 +75,9 @@
                             "$ref": "#/definitions/ReportHeaders"
                         }
                     }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             }
         },
@@ -89,6 +100,9 @@
                             "$ref": "#/definitions/ServiceStatus"
                         }
                     }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             }
         },
@@ -111,6 +125,9 @@
                             "$ref": "#/definitions/ReportComments"
                         }
                     }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             }
         },
@@ -155,13 +172,16 @@
                             "$ref": "#/definitions/ServiceStatus"
                         }
                     }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             }
         },
         "/recentsearches/{user_id}": {
             "get": {
                 "description": "Get all the recent searches",
-                 "parameters": [
+                "parameters": [
                     {
                         "description": "The user id to get",
                         "name": "user_id",
@@ -177,6 +197,9 @@
                             "$ref": "#/definitions/RecentSearches"
                         }
                     }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             }
         },
@@ -212,133 +235,349 @@
                     }
                 }
             }
+        },
+        "/jiraintegration/settings": {
+            "get": {
+                "description": "Get the Jira integration settings",
+                "responses": {
+                    "200": {
+                        "description": "Object to hold the Jira integration settings",
+                        "schema": {
+                            "$ref": "#/definitions/JiraIntegrationSettings"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
+                }
+            }
+        },
+        "/jiraintegration/projectkeys": {
+            "get": {
+                "description": "Get all the available project keys",
+                "responses": {
+                    "200": {
+                        "description": "An object to hold all the project keys",
+                        "schema": {
+                            "$ref": "#/definitions/ProjectKeys"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
+                }
+            }
+        },
+        "/jiraintegration/issuetypes/{project_key}": {
+            "get": {
+                "description": "Get all the available issue types of a specific project",
+                "parameters": [
+                    {
+                        "description": "The project key to get. For example, 'LY'",
+                        "name": "project_key",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "An object to hold all the issue types",
+                        "schema": {
+                            "$ref": "#/definitions/IssueTypes"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
+                }
+            }
+        },
+        "/jiraintegration/mappings/{project_key}/{issue_type}": {
+            "get": {
+                "description": "Get the field mappings of the sepcific project key and issue type",
+                "parameters": [
+                    {
+                        "description": "The project key to get, For example, 'LY'",
+                        "name": "project_key",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "description": "The issue type to get. For example, 'Task', 'Bug', etc.",
+                        "name": "issue_type",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "An array to hold the field mappings",
+                        "schema": {
+                            "$ref": "#/definitions/JiraFieldMappings"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
+                }
+            }
+        },
+        "/jiraintegration/mappings": {
+            "put": {
+                "description": "Update the mappings for the JIRA fields",
+                "parameters": [
+                    {
+                        "name": "mappings",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/JiraFieldMappings"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "'SUCCEED' if the mappings are updated",
+                        "schema": {
+                            "$ref": "#/definitions/ResponseStatus"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
+                }
+            }
+        },
+        "/jiraintegration/credentials": {
+            "get": {
+                "description": "",
+                "responses": {
+                    "200": {
+                        "description": "An object to hold the Jira credentials status",
+                        "schema": {
+                            "$ref": "#/definitions/CredentialsStatus"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
+                }
+            },
+            "put": {
+                "description": "Update the mappings for the JIRA fields",
+                "parameters": [
+                    {
+                        "name": "credentials",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/Credentials"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "'SUCCEED' if the mappings are updated",
+                        "schema": {
+                            "$ref": "#/definitions/ResponseStatus"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
+                }
+            }
+        },
+        "/jiraintegration/cgpemit": {
+            "post": {
+                "description": "Create JIRA tickets in manual mode",
+                "parameters": [
+                    {
+                        "name": "reports",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/DefectReports"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Indicate whether the JIRA tickets are created successfully or not",
+                        "schema": {
+                            "$ref": "#/definitions/ResponseStatus"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
+                }
+            }
+        },
+        "/jiraintegration/group": {
+            "post": {
+                "description": "Update the mappings for the JIRA fields",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/DefectReportGroup"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Indicate whether the JIRA tickets are created successfully or not",
+                        "schema": {
+                            "$ref": "#/definitions/ResponseStatus"
+                        }
+                    }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
+                }
+            }
         }
-	},
-	"definitions": {
-		"EmptyResponse": {},
-		"Error": {
-			"description": "Object to hold error response.",
-			"type": "object",
-			"properties": {
-				"errorCode": {
-					"description": "String to hold a error code response.",
-					"type": "string"
-				},
-				"errorMessage": {
-					"description": "String to hold a error message response.",
-					"type": "string"
-				}
-			},
-			"required": [
-				"errorCode",
-				"errorMessage"
-			]
-		},
-		"ServiceStatus": {
-			"description": "Request to get status of service.",
-			"type": "object",
-			"properties": {
-				"status": {
-					"description": "String to hold the status response.",
-					"type": "string"
-				}
-			},
-			"required": [
-				"status"
-			]
-		},
-		"UploadRequest": {
-			"description": "Object to hold the number of presigned posts requested by the client. Posts may be encrypted server-side(SSE-S3) by requesting encrypted posts instead of unencrypted. At least one post of any type must be requested.",
-			"type": "object",
-			"properties": {
-				"NumberOfEncryptedPosts": {
-					"description": "The number of presigned posts to be generated with server side encryption(SSE-S3).",
-					"type": "integer",
-					"format": "int32"
-				},
-				"NumberOfUnencryptedPosts": {
-					"description": "The number of presigned posts to be generated without server side encryption.",
-					"type": "integer",
-					"format": "int32"
-				}
-			},
-			"required": [
-				"NumberOfEncryptedPosts",
-				"NumberOfUnencryptedPosts"
-			]
-		},
-		"UploadRequestResults": {
-			"description": "Object to contain results from the upload request.",
-			"type": "object",
-			"properties": {
-				"Url" : {
-					"description": "URL to be used when posting from client.",
-					"type": "string"
-				},
-				"EncryptedPresignedPostFieldsArray": {
-					"description" : "Array that holds objects that contain the necessary fields to do a presigned post from the client with server side encryption(SSE-S3).",
-					"type" : "array",
-					"items" : {
-						"$ref": "#/definitions/EncryptedPresignedPostFields"
-					}
-				},
-				"UnencryptedPresignedPostFieldsArray": {
-					"description" : "Array that holds objects that contain the necessary fields to do a presigned post from the client without encryption.",
-					"type" : "array",
-					"items" : {
-						"$ref": "#/definitions/UnencryptedPresignedPostFields"
-					}
-				}
-			}
-		},
-		"EncryptedPresignedPostFields": {
-			"description": "Object to hold fields to do a server side encrypted(SSE-S3) presigned post from a client. All fields must be used for a successful post.",
-			"type": "object",
-			"properties": {
-				"AmzAlgorithm": {
-					"description": "String to hold the x-amz-algorithm value.",
-					"type": "string"
-				},
-				"AmzServerSideEncryption": {
-					"description": "String to hold the x-amz-server-side-encryption value.",
-					"type": "string"
-				},
-				"AmzDate": {
-					"description": "String to hold the x-amz-date value.",
-					"type": "string"
-				},
-				"Key": {
-					"description": "String to hold the key, which is a UUID4 generated for the file to be uploaded.",
-					"type": "string"
-				},
-				"AmzSignature": {
-					"description": "String to hold the x-amz-signature value.",
-					"type": "string"
-				},
-				"AmzSecurityToken": {
-					"description": "String to hold the x-amz-security-token session token value.",
-					"type": "string"
-				},
-				"Policy": {
-					"description": "String to hold the policy.",
-					"type": "string"
-				},
-				"AmzCredential": {
-					"description": "String to hold the x-amz-credential value.",
-					"type": "string"
-				}
-			},
-			"required": [
-				"AmzAlgorithm",
-				"AmzServerSideEncryption",
-				"AmzDate", 
-				"Key", 
-				"AmzSignature", 
-				"AmzSecurityToken", 
-				"Policy", 
-				"AmzCredential"
-			]
-		},
+    },
+    "definitions": {
+        "EmptyResponse": {},
+        "Error": {
+            "description": "Object to hold error response.",
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "description": "String to hold a error code response.",
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "description": "String to hold a error message response.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ]
+        },
+        "ServiceStatus": {
+            "description": "Request to get status of service.",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "String to hold the status response.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "ResponseStatus": {
+            "description": "Object to hold the reponse of the PUT request",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "String to hold the response.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "UploadRequest": {
+            "description": "Object to hold the number of presigned posts requested by the client. Posts may be encrypted server-side(SSE-S3) by requesting encrypted posts instead of unencrypted. At least one post of any type must be requested.",
+            "type": "object",
+            "properties": {
+                "NumberOfEncryptedPosts": {
+                    "description": "The number of presigned posts to be generated with server side encryption(SSE-S3).",
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "NumberOfUnencryptedPosts": {
+                    "description": "The number of presigned posts to be generated without server side encryption.",
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "NumberOfEncryptedPosts",
+                "NumberOfUnencryptedPosts"
+            ]
+        },
+        "UploadRequestResults": {
+            "description": "Object to contain results from the upload request.",
+            "type": "object",
+            "properties": {
+                "Url" : {
+                    "description": "URL to be used when posting from client.",
+                    "type": "string"
+                },
+                "EncryptedPresignedPostFieldsArray": {
+                    "description" : "Array that holds objects that contain the necessary fields to do a presigned post from the client with server side encryption(SSE-S3).",
+                    "type" : "array",
+                    "items" : {
+                        "$ref": "#/definitions/EncryptedPresignedPostFields"
+                    }
+                },
+                "UnencryptedPresignedPostFieldsArray": {
+                    "description" : "Array that holds objects that contain the necessary fields to do a presigned post from the client without encryption.",
+                    "type" : "array",
+                    "items" : {
+                        "$ref": "#/definitions/UnencryptedPresignedPostFields"
+                    }
+                }
+            }
+        },
+        "EncryptedPresignedPostFields": {
+            "description": "Object to hold fields to do a server side encrypted(SSE-S3) presigned post from a client. All fields must be used for a successful post.",
+            "type": "object",
+            "properties": {
+                "AmzAlgorithm": {
+                    "description": "String to hold the x-amz-algorithm value.",
+                    "type": "string"
+                },
+                "AmzServerSideEncryption": {
+                    "description": "String to hold the x-amz-server-side-encryption value.",
+                    "type": "string"
+                },
+                "AmzDate": {
+                    "description": "String to hold the x-amz-date value.",
+                    "type": "string"
+                },
+                "Key": {
+                    "description": "String to hold the key, which is a UUID4 generated for the file to be uploaded.",
+                    "type": "string"
+                },
+                "AmzSignature": {
+                    "description": "String to hold the x-amz-signature value.",
+                    "type": "string"
+                },
+                "AmzSecurityToken": {
+                    "description": "String to hold the x-amz-security-token session token value.",
+                    "type": "string"
+                },
+                "Policy": {
+                    "description": "String to hold the policy.",
+                    "type": "string"
+                },
+                "AmzCredential": {
+                    "description": "String to hold the x-amz-credential value.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "AmzAlgorithm",
+                "AmzServerSideEncryption",
+                "AmzDate", 
+                "Key", 
+                "AmzSignature", 
+                "AmzSecurityToken", 
+                "Policy", 
+                "AmzCredential"
+            ]
+        },
         "UnencryptedPresignedPostFields": {
             "description": "Object to hold fields to do an unencrypted presigned post from a client. All fields must be used for a successful post.",
             "type": "object",
@@ -492,12 +731,57 @@
                     "description": "The type of the field",
                     "type": "string"
                 },
+                "defaultValue": {
+                    "description": "The default value",
+                    "type": "string"
+                },
                 "predefines": {
                     "description": "The options of the check box or radio button group",
                     "$ref": "#/definitions/StringList"
                 },
                 "maxChars": {
                     "description": "The maximum number of characters allowed for a text field",
+                    "type": "integer"
+                },
+                "properties": {
+                    "description": "An array to hold the properties of an object field",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ObjectFieldProperty"
+                    }
+                }
+            },
+            "required": [
+                "title",
+                "type"
+            ]
+        },
+        "ObjectFieldProperty": {
+            "description": "The property of a custom object field",
+            "type": "object",
+            "properties": {
+                "multipleSelect": {
+                    "description": "Whether the property will allow multiple selections",
+                    "type": "boolean"
+                },
+                "title": {
+                    "description": "The title of the property",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "The type of the property",
+                    "type": "string"
+                },
+                "defaultValue": {
+                    "description": "The default value",
+                    "type": "string"
+                },
+                "predefines": {
+                    "description": "The options of the check box or radio button group",
+                    "$ref": "#/definitions/StringList"
+                },
+                "maxChars": {
+                    "description": "The maximum number of characters allowed for a text property",
                     "type": "integer"
                 }
             },
@@ -511,6 +795,135 @@
             "items": {
                 "type": "string"
             }
+        },
+        "JiraFields": {
+            "description": "An array to hold JIRA fields",
+            "$ref": "#/definitions/StringList"
+        },
+        "ProjectKeys": {
+            "description": "An object to hold all the project keys",
+            "type": "object",
+            "properties": {
+                "projectKeys": {
+                    "$ref": "#/definitions/StringList"
+                }
+            }
+        },
+        "IssueTypes": {
+            "description": "An object to hold all the issue types",
+            "type": "object",
+            "properties": {
+                "issueTypes": {
+                    "$ref": "#/definitions/StringList"
+                }
+            }
+        },
+        "JiraFieldMappings": {
+            "description": "An array to hold the mappings for the JIRA fields",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/JiraFieldMapping"
+            }
+        },
+        "JiraFieldMapping": {
+            "description": "An object to hold the mapping info",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "ID of the JIRA ticket field",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the JIRA ticket field",
+                    "type": "string"
+                },
+                "mapping": {
+                    "description": "Defect report property that maps to the JIRA ticket field",
+                    "type": "string"
+                },                
+                "required": {
+                    "description": "Indicate whether the field is required or not",
+                    "type": "boolean"
+                }
+            }
+        },
+        "Credentials": {
+            "description": "An object to hold all the issue types",
+            "type": "object",
+            "properties": {
+                "userName": {
+                    "description": "JIRA user name",
+                    "type": "string"
+                },
+                "password": {
+                    "description": "JIRA password",
+                    "type": "string"
+                },
+                "server": {
+                    "description": "JIRA server",
+                    "type": "string"
+                }
+            }
+        },
+        "JiraIntegrationSettings": {
+            "description": "An object to hold the Jira integration settings",
+            "type": "object",
+            "properties": {
+                "submitMode": {
+                    "description": "The submit mode for Jira ticket creation, auto or manual",
+                    "type": "string"
+                },
+                "project": {
+                    "description": "The project key of the Jira ticket",
+                    "type": "string"
+                },
+                "issuetype": {
+                    "description": "The issue type of the Jira ticket",
+                    "type": "string"
+                }
+            }
+        },
+        "DefectReportGroup": {
+            "description": "An object to hold the defect report group",
+            "type": "object",
+            "properties": {
+                "reports": {
+                    "description": "Array that holds all the reports in the group",
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "groupContent": {
+                    "description": "An object to hold the report which contains the information of the entire group",
+                    "type": "object"
+                }
+            }
+        },
+        "CredentialsStatus": {
+            "description": "An object to hold all the Jira credentials status",
+            "type": "object",
+            "properties": {
+                "exist": {
+                    "description": "Indicate whether the Jira credentials exist or not",
+                    "type": "boolean"
+                },
+                "server": {
+                    "description": "The url to the Jira server",
+                    "type": "string"
+                }
+            }
+        },
+        "DefectReports": {
+            "description": "An array of defect reports",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/DefectReport"
+            }
+        },
+        "DefectReport": {
+            "description": "An object to hold all the information about a defect report",
+            "type": "object"
         }
-	}
+    }
 }

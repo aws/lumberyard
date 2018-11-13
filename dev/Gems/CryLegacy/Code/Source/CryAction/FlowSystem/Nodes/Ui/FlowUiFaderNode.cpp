@@ -18,8 +18,8 @@
 
 namespace
 {
-    const string g_faderNodePath = "UI:Fader:Animation";
-    const string g_entFaderNodePath = "UIe:Fader:Animation";
+    const char* g_faderNodePath = "UI:Fader:Animation";
+    const char* g_entFaderNodePath = "UIe:Fader:Animation";
 }
 
 #define FLOW_UI_FADER_NODE_COMMON_INPUT_PORT_CONFIGS \

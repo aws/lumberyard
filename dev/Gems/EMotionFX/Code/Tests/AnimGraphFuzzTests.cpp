@@ -96,8 +96,8 @@ namespace EMotionFX
         // Set the root state machine's Id so to ensure consistency between
         // test runs
         m_animGraph->GetRootStateMachine()->SetId(9347464774972852905u);
-        AZStd::vector<char> charBuffer;
-        AZ::IO::ByteContainerStream<AZStd::vector<char> > charStream(&charBuffer);
+        AZStd::string charBuffer;
+        AZ::IO::ByteContainerStream<AZStd::string > charStream(&charBuffer);
         AZ::Utils::SaveObjectToStream(charStream, AZ::ObjectStream::ST_XML, m_animGraph, GetSerializeContext());
 
         const Seed seed = GetParam();

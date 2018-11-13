@@ -48,4 +48,9 @@ namespace RenderCapabilities
     {
         return true;
     }
+
+    bool SupportsIndependentBlending()
+    {
+        return true;
+    }
 }

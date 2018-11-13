@@ -1,0 +1,16 @@
+{
+    "Resources": {
+        "EnvironmentVariableWriter": {
+            "DependsOn": [
+                "PlayerAccessIdentityPool"
+            ],
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "GemName" : "CloudGemPlayerAccount"
+            },
+            "Type": "Custom::EnvironmentVariableWriter"
+        }
+    }
+}

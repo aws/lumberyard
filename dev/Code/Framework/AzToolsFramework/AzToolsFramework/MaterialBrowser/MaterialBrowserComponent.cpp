@@ -54,6 +54,11 @@ namespace AzToolsFramework
                 serialize->Class<MaterialBrowserComponent, AZ::Component>();
             }
         }
+
+        void MaterialBrowserComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+        {
+            required.push_back(AZ_CRC("ThumbnailerService", 0x65422b97));
+        }
     } // namespace MaterialBrowser
 } // namespace AzToolsFramework
 #include <MaterialBrowser/MaterialBrowserComponent.moc>

@@ -14,15 +14,15 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetEntryChangeset.h>
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
-#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/AssetBrowser/Entries/RootAssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/AssetEntryChange.h>
 
 namespace AzToolsFramework
 {
     namespace AssetBrowser
     {
         AssetEntryChangeset::AssetEntryChangeset(
-            AZStd::shared_ptr<AssetDatabaseConnection> databaseConnection,
+            AZStd::shared_ptr<AssetDatabase::AssetDatabaseConnection> databaseConnection,
             AZStd::shared_ptr<RootAssetBrowserEntry> rootEntry)
             : m_databaseConnection(databaseConnection)
             , m_rootEntry(rootEntry)
@@ -30,58 +30,17 @@ namespace AzToolsFramework
             , m_updated(false)
         {}
 
-        AssetEntryChangeset::~AssetEntryChangeset() = default;
+        AssetEntryChangeset::~AssetEntryChangeset()
+        {
+            for (auto change : m_changes)
+            {
+                delete change;
+            }
+        }
 
         void AssetEntryChangeset::PopulateEntries()
         {
             m_fullUpdate = true;
-        }
-
-        void AssetEntryChangeset::AddEntry(const AZ::Data::AssetId& assetId)
-        {
-            AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
-            m_toAdd.push_back(assetId);
-        }
-
-        void AssetEntryChangeset::RemoveEntry(const AZ::Data::AssetId& assetId)
-        {
-            AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
-            m_toRemove.push_back(assetId);
-        }
-
-        void AssetEntryChangeset::RemoveSource(const AZ::Uuid& sourceUUID) 
-        {
-            AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
-            m_sourcesToRemove.push_back(sourceUUID);
-        }
-
-        void AssetEntryChangeset::Synchronize()
-        {
-            AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
-
-            if (m_updated)
-            {
-                m_rootEntry->Update(m_relativePath.c_str());
-                m_updated = false;
-            }
-
-            for (auto& entry : m_entriesToAdd)
-            {
-                m_rootEntry->AddAsset(entry);
-            }
-            m_entriesToAdd.clear();
-
-            for (auto& assetId : m_toRemove)
-            {
-                m_rootEntry->RemoveProduct(assetId);
-            }
-            m_toRemove.clear();
-
-            for (auto sourceUuid : m_sourcesToRemove)
-            {
-                m_rootEntry->RemoveSource(sourceUuid);
-            }
-            m_sourcesToRemove.clear();
         }
 
         void AssetEntryChangeset::Update()
@@ -92,38 +51,130 @@ namespace AzToolsFramework
 
                 m_fullUpdate = false;
                 m_updated = true;
-                {                    
-                    QueryEntireDatabase();
-                    m_toRemove.clear();
-                    m_toAdd.clear();
-                }
+                QueryEntireDatabase();
+                m_fileIdsToAdd.clear();
+                m_sourceUuidsToAdd.clear();
+                m_productAssetIdsToAdd.clear();
             }
             else
             {
-                AZStd::vector<AZ::Data::AssetId> toAdd;
-                {
-                    AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
-                    toAdd = m_toAdd;
-                    m_toAdd.clear();
-                }
+                QueryChangeset();
+            }
+        }
 
-                for (auto& assetId : toAdd)
+        void AssetEntryChangeset::Synchronize()
+        {
+            using namespace AssetDatabase;
+
+            AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
+
+            if (m_updated)
+            {
+                m_rootEntry->SetInitialUpdate(true);
+                m_rootEntry->Update(m_relativePath.c_str());
+                m_updated = false;
+            }
+
+            // iterate through new changes and try to apply them
+            // if application of change fails, try them again next tick
+            AZStd::vector<AssetEntryChange*> changesFailed;
+            for (auto change : m_changes)
+            {
+                if (change->Apply(m_rootEntry))
                 {
-                    QueryAsset(assetId);
+                    delete change;
+                }
+                else
+                {
+                    changesFailed.push_back(change);
                 }
             }
+
+#if AZ_DEBUG_BUILD
+            if (m_changes.size() > 0)
+            {
+                AZ_TracePrintf("Asset Browser DEBUG", "%d/%d data changes applied\n", m_changes.size() - changesFailed.size(), m_changes.size());
+            }
+#endif
+            // try again next time.
+            m_changes = changesFailed;
+
+            if (m_rootEntry->IsInitialUpdate())
+            {
+                m_rootEntry->SetInitialUpdate(false);
+            }
+        }
+
+        void AssetEntryChangeset::AddFile(const AZ::s64& fileId)
+        {
+            AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
+            m_fileIdsToAdd.push_back(fileId);
+        }
+
+        void AssetEntryChangeset::RemoveFile(const AZ::s64& fileId)
+        {
+            AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
+            m_changes.push_back(aznew RemoveFileChange(fileId));
+        }
+
+
+        void AssetEntryChangeset::AddSource(const AZ::Uuid& sourceUuid)
+        {
+            AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
+            m_sourceUuidsToAdd.push_back(sourceUuid);
+        }
+
+        void AssetEntryChangeset::RemoveSource(const AZ::Uuid& sourceUuid)
+        {
+            AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
+            m_changes.push_back(aznew RemoveSourceChange(sourceUuid));
+        }
+
+        void AssetEntryChangeset::AddProduct(const AZ::Data::AssetId& assetId)
+        {
+            AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
+            m_productAssetIdsToAdd.push_back(assetId);
+        }
+
+        void AssetEntryChangeset::RemoveProduct(const AZ::Data::AssetId& assetId)
+        {
+            AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
+            auto findPredicate = [&assetId](const AssetEntryChange* toCheck)
+            {
+                if (const AddProductChange* productChange = azrtti_cast<const AddProductChange*>(toCheck))
+                {
+                    return productChange->GetAssetId() == assetId;
+                }
+
+                return false;
+            };
+
+            // make sure any pending "add" commands are erased.
+            m_productAssetIdsToAdd.erase(AZStd::remove(m_productAssetIdsToAdd.begin(), m_productAssetIdsToAdd.end(), assetId), m_productAssetIdsToAdd.end());
+            auto foundExisting = AZStd::find_if(m_changes.begin(), m_changes.end(), findPredicate);
+            if (foundExisting != m_changes.end())
+            {
+                // remove the still-pending "add Product" from the list, no longer necesary.
+                m_changes.erase(foundExisting);
+            }
+
+            m_changes.push_back(aznew RemoveProductChange(assetId));
+            
+
         }
 
         void AssetEntryChangeset::QueryEntireDatabase()
         {
+            using namespace AssetDatabase;
+
             // If the current engine root folder is external to the current root folder, then we need to set the m_relativePath to the actual external engine
             // root folder instead, since that is where the Gems, Editor, and Engine folders will reside
             bool isEngineRootExternal = false;
-            AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(isEngineRootExternal, &AzToolsFramework::ToolsApplicationRequests::IsEngineRootExternal);
+            ToolsApplicationRequestBus::BroadcastResult(isEngineRootExternal, &ToolsApplicationRequests::IsEngineRootExternal);
             if (isEngineRootExternal)
             {
                 AZStd::string engineRoot;
-                AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(engineRoot, &AzToolsFramework::ToolsApplicationRequests::GetEngineRootPath);
+                ToolsApplicationRequestBus::BroadcastResult(engineRoot, &ToolsApplicationRequests::GetEngineRootPath);
                 AzFramework::StringFunc::AssetDatabasePath::Normalize(engineRoot);
                 m_relativePath = engineRoot;
             }
@@ -133,77 +184,136 @@ namespace AzToolsFramework
                 m_databaseConnection->QueryScanFolderByDisplayName(
                     "root",
                     [=](ScanFolderDatabaseEntry& scanFolderDatabaseEntry)
-                {
-                    m_relativePath = scanFolderDatabaseEntry.m_scanFolder.c_str();
-                    return true;
-                });
+                    {
+                        m_relativePath = scanFolderDatabaseEntry.m_scanFolder.c_str();
+                        return true;
+                    });
             }
 
-            m_databaseConnection->QueryCombined(
-                [&](CombinedDatabaseEntry& combinedDatabaseEntry)
+            // query all scanfolders
+            m_databaseConnection->QueryScanFoldersTable(
+                [&](ScanFolderDatabaseEntry& scanFolder)
                 {
-                    m_entriesToAdd.push_back(combinedDatabaseEntry);
-                    return true;
-                }, AZ::Uuid::CreateNull(),
-                nullptr,
-                AzToolsFramework::AssetSystem::GetHostAssetPlatform(),
-                AssetSystem::JobStatus::Any);
-
-            // query all sources in case they didn't produce any products
-            AZStd::vector<SourceDatabaseEntry> sources;
-            m_databaseConnection->QuerySourcesTable(
-                [&](SourceDatabaseEntry& sourceDatabaseEntry)
-                {
-                    sources.push_back(sourceDatabaseEntry);
-                    return true;
-                });
-
-            for (auto& source : sources)
-            {
-                if (AZStd::find_if(m_entriesToAdd.begin(), m_entriesToAdd.end(),
-                        [&source](const CombinedDatabaseEntry& combinedDatabaseEntry)
+                    // ignore scanfolders that are non-recursive (e.g. dev folder), as they are used generally for system assets
+                    if (scanFolder.m_isRoot)
+                    {
+                        return true;
+                    }
+                    m_changes.push_back(aznew AddScanFolderChange(scanFolder));
+                    return m_databaseConnection->QueryFilesByScanFolderID(scanFolder.m_scanFolderID,
+                        [&](FileDatabaseEntry& file)
                         {
-                            return combinedDatabaseEntry.m_sourceID == source.m_sourceID;
-                        }) == m_entriesToAdd.end())
-                {
-                    CombinedDatabaseEntry combinedDatabaseEntry;
-
-                    m_databaseConnection->QueryScanFolderByScanFolderID(
-                        source.m_scanFolderPK,
-                        [&combinedDatabaseEntry](ScanFolderDatabaseEntry& scanFolderDatabaseEntry)
-                        {
-                            combinedDatabaseEntry.m_scanFolderID = scanFolderDatabaseEntry.m_scanFolderID;
-                            combinedDatabaseEntry.m_scanFolder = scanFolderDatabaseEntry.m_scanFolder;
-                            combinedDatabaseEntry.m_displayName = scanFolderDatabaseEntry.m_displayName;
-                            combinedDatabaseEntry.m_portableKey = scanFolderDatabaseEntry.m_portableKey;
-                            combinedDatabaseEntry.m_outputPrefix = scanFolderDatabaseEntry.m_outputPrefix;
-                            return true;
+                            m_changes.push_back(aznew AddFileChange(file));
+                            return m_databaseConnection->QuerySourceBySourceNameScanFolderID(file.m_fileName.c_str(), scanFolder.m_scanFolderID,
+                                [&](SourceDatabaseEntry& source)
+                                {
+                                    m_changes.push_back(aznew AddSourceChange({ file.m_fileID, source }));
+                                    return m_databaseConnection->QueryProductBySourceID(source.m_sourceID,
+                                        [&](ProductDatabaseEntry& product)
+                                        {
+                                            m_changes.push_back(aznew AddProductChange({ source.m_sourceGuid, product }));
+                                            return true;
+                                        });
+                                });
                         });
-
-                    combinedDatabaseEntry.m_sourceID = source.m_sourceID;
-                    combinedDatabaseEntry.m_scanFolderPK = source.m_scanFolderPK;
-                    combinedDatabaseEntry.m_sourceName = source.m_sourceName;
-                    combinedDatabaseEntry.m_sourceGuid = source.m_sourceGuid;
-
-                    m_entriesToAdd.push_back(combinedDatabaseEntry);
-                }
-            }
+                });
         }
 
-        void AssetEntryChangeset::QueryAsset(AZ::Data::AssetId assetId)
+        // this function translates from a series of incoming change notifies into an actual
+        // changeset that can then be applied to the model.  Change notifies are brief and may contain
+        // only minimal information such as fileId.  This transforms them into larger sequences of changes
+        // that include the creation of intermediate parent(s) if necessary.
+        void AssetEntryChangeset::QueryChangeset()
         {
-            m_databaseConnection->QueryCombinedBySourceGuidProductSubId(
-                assetId.m_guid,
-                assetId.m_subId,
-                [&](CombinedDatabaseEntry& combinedDatabaseEntry)
+            using namespace AssetDatabase;
+
+            AZStd::vector<AZ::s64> fileIdsToAdd;
+            AZStd::vector<AZ::Uuid> sourceUuidsToAdd;
+            AZStd::vector<AZ::Data::AssetId> productAssetIdsToAdd;
+
+            {
+                AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
+                fileIdsToAdd = AZStd::move(m_fileIdsToAdd);
+                m_fileIdsToAdd.clear();
+                sourceUuidsToAdd = AZStd::move(m_sourceUuidsToAdd);
+                m_sourceUuidsToAdd.clear();
+                productAssetIdsToAdd = AZStd::move(m_productAssetIdsToAdd);
+                m_productAssetIdsToAdd.clear();
+            }
+
+            for (const AZ::s64& fileId : fileIdsToAdd)
+            {
+                m_databaseConnection->QueryFileByFileID(fileId,
+                    [&](FileDatabaseEntry& file)
+                    {
+                        return m_databaseConnection->QueryScanFolderByScanFolderID(file.m_scanFolderPK,
+                            [&](ScanFolderDatabaseEntry& scanFolder)
+                            {
+                                // ignore scanfolders that are non-recursive (e.g. dev folder), as they are used generally for system assets
+                                if (!scanFolder.m_isRoot)
+                                {
+                                    AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
+                                    m_changes.push_back(aznew AddFileChange(file));
+                                }
+                                return true;
+                            });
+                    });
+            }
+
+            for (const AZ::Data::AssetId& assetId : productAssetIdsToAdd)
+            {
+                if (AZStd::find(sourceUuidsToAdd.begin(), sourceUuidsToAdd.end(), assetId.m_guid) == sourceUuidsToAdd.end())
                 {
-                    AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
-                    m_entriesToAdd.push_back(combinedDatabaseEntry);
-                    return true;
-                }, AZ::Uuid::CreateNull(),
-                nullptr,
-                AzToolsFramework::AssetSystem::GetHostAssetPlatform(),
-                AssetSystem::JobStatus::Any);
+                    sourceUuidsToAdd.push_back(assetId.m_guid);
+                }
+
+                m_databaseConnection->QueryProductBySourceGuidSubID(assetId.m_guid, assetId.m_subId,
+                    [&](ProductDatabaseEntry& product)
+                    {
+                        AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
+                        m_changes.push_back(aznew AddProductChange({ assetId.m_guid, product }));
+                        return true;
+                    });
+            }
+
+            for (const AZ::Uuid& sourceUuid : sourceUuidsToAdd)
+            {
+                m_databaseConnection->QuerySourceBySourceGuid(sourceUuid,
+                    [&](SourceDatabaseEntry& source)
+                    {
+                        return m_databaseConnection->QueryFileByFileNameScanFolderID(source.m_sourceName.c_str(), source.m_scanFolderPK,
+                            [&](FileDatabaseEntry& file)
+                            {
+                                return m_databaseConnection->QueryScanFolderByScanFolderID(file.m_scanFolderPK,
+                                    [&](ScanFolderDatabaseEntry& scanFolder)
+                                    {
+                                        AZStd::lock_guard<AZStd::mutex> locker(m_mutex);
+                                        // ignore scanfolders that are non-recursive (e.g. dev folder), as they are used generally for system assets
+                                        if (!scanFolder.m_isRoot)
+                                        {
+                                            m_changes.push_back(new AddSourceChange({ file.m_fileID, source }));
+                                        }
+                                        else
+                                        {
+                                            // if products belonging to entry in root folder are considered, remove them from changes
+                                            m_changes.erase(AZStd::remove_if(m_changes.begin(), m_changes.end(),
+                                                        [sourceUuid](AssetEntryChange* change)
+                                                        {
+                                                            auto addProductChange = azrtti_cast<AddProductChange*>(change);
+                                                            if (addProductChange && addProductChange->GetUuid() == sourceUuid)
+                                                            {
+                                                                delete change;
+                                                                return true;
+                                                            }
+                                                            return false;
+                                                        }),
+                                                    m_changes.end());
+                                        }
+                                        return true;
+                                    });
+                            });
+                    });
+            }
         }
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

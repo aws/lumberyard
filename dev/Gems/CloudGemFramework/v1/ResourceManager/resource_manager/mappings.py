@@ -18,8 +18,10 @@ import util
 import glob
 from resource_manager_common import constant
 from botocore.exceptions import ClientError
+from boto3.exceptions import S3UploadFailedError
 
 from cgf_utils import aws_utils
+from cgf_utils import custom_resource_utils
 from resource_manager_common import resource_type_info
 from resource_manager_common import stack_info
 
@@ -45,8 +47,6 @@ def update(context, args, force=False):
     # Has the project been initialized?
     if not context.config.project_initialized:
         raise HandledError('The project has not been initialized.')
-
-    context.view.mapping_update(context.config.default_deployment, args)
 
     if args.release:
         args.deployment = context.config.release_deployment
@@ -96,9 +96,12 @@ def update(context, args, force=False):
         # __update_with_deployment will update the user settings if it is the default deployment
         __update_with_deployment(context, args)
 
-        # Upload the resultant files to s3 both for caching purposes and for non-admin users to download
-        for file_name, file_path in zip(mappings_file_names, mappings_file_paths):
-            s3_client.upload_file(file_path, config_bucket, _MAPPINGS_KEY_PREFIX + file_name)
+        try:
+            # Upload the resultant files to s3 both for caching purposes and for non-admin users to download
+            for file_name, file_path in zip(mappings_file_names, mappings_file_paths):
+                s3_client.upload_file(file_path, config_bucket, _MAPPINGS_KEY_PREFIX + file_name)
+        except S3UploadFailedError as e:
+            print "This client does not have upload permissions for the project configuration bucket. skipping upload"
 
     elif args.deployment == context.config.default_deployment:
         # we didn't need to get the mappings from the backend, update the user settings ourselves from local mappings
@@ -139,7 +142,15 @@ def __update_logical_mappings_files(context, deployment_name, args=None):
     ## The Player mappings file should include both
     player_mappings = __get_mappings(context, deployment_name, exclusions, 'AuthenticatedPlayer', args)
 
-    if context.config.default_deployment == deployment_name:
+    #update the user-settings.json file if this is the default deployment stack or a explicit deployment stack parameter was received in the CLI args list.
+    #If a explicit deployment stack parameter was received then someone is requesting the mappings to be set for to that specific deployment regardless whether it is the default    
+    if args:
+        print("Deployment: ", args.deployment)
+    else:
+        print("Deployment: ", "None")
+    print("Deployment (Default): ", context.config.default_deployment)
+    if context.config.default_deployment == deployment_name or args and args.deployment:
+        print("Setting the user mappings to", player_mappings)
         context.config.set_user_mappings(player_mappings)
 
     __update_launcher(context, deployment_name, 'Player', player_mappings, args)
@@ -223,7 +234,7 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
         if logical_name in exclusions:
             continue
 
-        physical_resource_id = description.get('PhysicalResourceId')
+        physical_resource_id = custom_resource_utils.get_embedded_physical_id(description.get('PhysicalResourceId'))
         if physical_resource_id:
             if __is_user_pool_resource(description):
                 mappings[logical_name] = {
@@ -240,7 +251,7 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
                     type_definitions=type_definitions,
                     stack_arn=stack_id,
                     resource_type=description['ResourceType'],
-                    resource_name=physical_resource_id,
+                    physical_id=physical_resource_id,
                     optional = True,
                     lambda_client=lambda_client
                 )
@@ -270,7 +281,8 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
                     continue
 
                 mappings[logical_name] = {
-                    'PhysicalResourceId': description['PhysicalResourceId'],
+                    'PhysicalResourceId': custom_resource_utils.
+                        get_embedded_physical_id(description['PhysicalResourceId']),
                     'ResourceType': description['ResourceType']
                 }
 
@@ -309,7 +321,7 @@ def __add_service_api_mapping(context, logical_name, resource_description, mappi
 
     if not found:
         resource_group_name = logical_name.split('.')[0]
-        raise HandledError('The {} resource group template defines a ServiceApi resource but does not provide a ServiecUrl Output value.'.format(resource_group_name))
+        raise HandledError('The {} resource group template defines a ServiceApi resource but does not provide a ServiceUrl Output value.'.format(resource_group_name))
 
 def __get_player_accessible_arns(context, deployment_name, role, args=None):
 
@@ -323,6 +335,7 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
 
     iam = context.aws.client('iam')
 
+    res = {}
     try:
         res = iam.list_role_policies(RoleName=player_role_id)
     except ClientError as e:
@@ -330,7 +343,6 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
             return {}
 
     for policy_name in res.get('PolicyNames', []):
-
         res = iam.get_role_policy(RoleName=player_role_id, PolicyName=policy_name)
 
         policy_document = res.get('PolicyDocument', {})
@@ -340,7 +352,6 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
             statements = [ statements ]
 
         for statement in statements:
-
             if statement.get('Effect', '') != 'Allow':
                 continue
 

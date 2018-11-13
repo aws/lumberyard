@@ -883,11 +883,11 @@ void OutlinerListModel::QueueEntityToExpand(AZ::EntityId entityId, bool expand)
 
 void OutlinerListModel::ProcessEntityUpdates()
 {
-    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     m_entityChangeQueued = false;
 
     {
-        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerListModel::ProcessEntityUpdates:ExpandQueue");
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "OutlinerListModel::ProcessEntityUpdates:ExpandQueue");
         for (auto entityId : m_entityExpandQueue)
         {
             emit ExpandEntity(entityId, IsExpanded(entityId));
@@ -896,7 +896,7 @@ void OutlinerListModel::ProcessEntityUpdates()
     }
 
     {
-        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerListModel::ProcessEntityUpdates:SelectQueue");
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "OutlinerListModel::ProcessEntityUpdates:SelectQueue");
         for (auto entityId : m_entitySelectQueue)
         {
             emit SelectEntity(entityId, IsSelected(entityId));
@@ -905,7 +905,7 @@ void OutlinerListModel::ProcessEntityUpdates()
     }
 
     {
-        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerListModel::ProcessEntityUpdates:ChangeQueue");
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "OutlinerListModel::ProcessEntityUpdates:ChangeQueue");
         for (auto entityId : m_entityChangeQueue)
         {
             auto startIndex = GetIndexFromEntity(entityId, ColumnName);
@@ -920,7 +920,7 @@ void OutlinerListModel::ProcessEntityUpdates()
     }
 
     {
-        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerListModel::ProcessEntityUpdates:LayoutChanged");
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "OutlinerListModel::ProcessEntityUpdates:LayoutChanged");
         if (m_entityLayoutQueued)
         {
             emit layoutAboutToBeChanged();
@@ -930,7 +930,7 @@ void OutlinerListModel::ProcessEntityUpdates()
     }
 
     {
-        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerListModel::ProcessEntityUpdates:InvalidateFilter");
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "OutlinerListModel::ProcessEntityUpdates:InvalidateFilter");
         InvalidateFilter();
     }
 }
@@ -1016,7 +1016,7 @@ void OutlinerListModel::OnEntityInfoUpdatedOrderBegin(AZ::EntityId parentId, AZ:
 
 void OutlinerListModel::OnEntityInfoUpdatedOrderEnd(AZ::EntityId parentId, AZ::EntityId childId, AZ::u64 index)
 {
-    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     (void)index;
     m_entityLayoutQueued = true;
     QueueEntityUpdate(parentId);
@@ -1178,7 +1178,7 @@ void OutlinerListModel::RestoreSelectionIfAppropriate()
     }
 }
 
-void OutlinerListModel::AfterEntitySelectionChanged()
+void OutlinerListModel::AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList&, const AzToolsFramework::EntityIdList&)
 {
     if (m_unfilteredSelectionEntityIds.size() > 0)
     {

@@ -19,25 +19,24 @@
 
 namespace AZ
 {
-	class ReflectContext;
+    class ReflectContext;
 }
 
 namespace StarterGameGem
 {
-	/*!
-	* Wrapper for A.I. utility functions exposed to Lua for StarterGame.
-	*/
-	class StarterGameAIUtility
-	{
-	public:
-		AZ_TYPE_INFO(StarterGameAIUtility, "{99787330-BF1F-4B86-B53B-C5CC3FF5B23F}");
-		AZ_CLASS_ALLOCATOR(StarterGameAIUtility, AZ::SystemAllocator, 0);
+    /*!
+    * Wrapper for A.I. utility functions exposed to Lua for StarterGame.
+    */
+    class StarterGameAIUtility
+    {
+    public:
+        AZ_TYPE_INFO(StarterGameAIUtility, "{99787330-BF1F-4B86-B53B-C5CC3FF5B23F}");
+        AZ_CLASS_ALLOCATOR(StarterGameAIUtility, AZ::SystemAllocator, 0);
 
-		static void Reflect(AZ::ReflectContext* reflection);
+        static void Reflect(AZ::ReflectContext* reflection);
 
         static bool IsOnNavMesh(const AZ::Vector3& pos);
         static bool GetClosestPointInNavMesh(const AZ::Vector3& pos, AZ::Vector3& found);
         static float GetArrivalDistanceThreshold(const AZ::EntityId& entityId);
-	};
-
+    };
 } // namespace StarterGameGem

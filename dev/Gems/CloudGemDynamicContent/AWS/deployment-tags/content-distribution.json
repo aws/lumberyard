@@ -1,0 +1,113 @@
+{
+    "CloudGemDynamicContent":
+    {
+        "Resources:ServiceLambdaConfiguration:Properties:Settings:Distribution":
+        {
+            "EditType":"Add",
+            "TemplateData" : { "Ref": "ContentDistribution"}     
+        },
+        "Resources:ServiceLambdaConfiguration:Properties:Settings:CDNAccessBucket":
+        {
+            "EditType":"Add",
+            "TemplateData" : { "Ref": "AccessBucket"}     
+        },       
+        "Resources:ContentDistribution" : {
+            "EditType":"Add",
+            "TemplateData" : {
+                "Type" : "AWS::CloudFront::Distribution",
+                "Properties" : {
+                    "DistributionConfig" : {
+                        "Origins" : [ {
+                            "DomainName" : { "Fn::GetAtt": [ "ContentBucket", "DomainName"] },
+                            "Id" : "contentOriginId",
+                            "S3OriginConfig" : {
+                                "OriginAccessIdentity": { "Fn::Join": [ "", [ "origin-access-identity/cloudfront/", {"Ref": "AccessIdentity"}]] }
+                            }
+                        }],
+                        "Enabled" : "true",
+                        "Comment" : "CDN for Dynamic Content",
+                        "DefaultCacheBehavior" : {
+                            "AllowedMethods" : ["HEAD","GET"],  
+                            "TargetOriginId" : "contentOriginId",
+                            "ForwardedValues" : {
+                                "QueryString" : "false",
+                                "Cookies" : { "Forward" : "none" }
+                            },
+                            "TrustedSigners" : [ {"Ref": "AWS::AccountId"} ],
+                            "ViewerProtocolPolicy" : "https-only"
+                        },
+                       "PriceClass" : "PriceClass_200"
+                    }
+                },
+                "DependsOn": [ "ContentBucket", "AccessIdentity"]
+            }
+        },
+        "Resources:AccessIdentity" : {
+            "EditType":"Add",
+            "TemplateData" : {
+                "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+                "Properties": {
+                    "CloudFrontOriginAccessIdentityConfig": {
+                        "Comment": "Access Identity for ContentDistribution"
+                    }
+                }
+            }
+        },
+        "Resources:AccessBucket": {
+            "EditType":"Add",
+            "TemplateData" : {
+                "Type": "AWS::S3::Bucket",
+                "Properties": { },
+                "Metadata": {
+                    "CloudCanvas": {
+                        "Permissions": [
+                            {
+                                "AbstractRole": "ServiceLambda",
+                                "Action": ["s3:GetObject"],
+                                "ResourceSuffix": "/*"
+                            },
+                            {
+                                "AbstractRole": "ServiceLambda",
+                                "Action": ["s3:ListBucket"],
+                                "ResourceSuffix": ""
+                            }                      
+                        ]
+                    }
+                }
+            }
+        },
+        "Resources:CloudFrontPermissions": {
+            "EditType": "Add",
+            "TemplateData" : {
+                "DependsOn": ["ServiceLambda"],
+                "Properties": {
+                    "ServiceToken": {
+                        "Ref": "ProjectResourceHandler"
+                    }
+                },
+                "Type": "Custom::CloudFrontPermissions"
+            }
+        },
+        "Resources:StorageBucketPolicy": {
+            "EditType": "Add",
+            "TemplateData" : {
+                 "DependsOn": ["ContentBucket", "AccessIdentity"],
+                 "Type" : "AWS::S3::BucketPolicy",
+                 "Properties" : {
+                    "Bucket" : {"Ref" : "ContentBucket"},
+                    "PolicyDocument": {
+                      "Version": "2012-10-17",
+                      "Id": "StoragePolicy",
+                      "Statement":[{
+                        "Sid": "Bucket policy for CloudFront Distribution Access Identity",
+                        "Action":["s3:GetObject"],
+                        "Effect":"Allow",
+                        "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ContentBucket" } , "/*" ]]},
+                        "Principal": { "CanonicalUser": { "Fn::GetAtt": [ "AccessIdentity", "S3CanonicalUserId"] } }
+                      }]
+                    }
+                 }
+            }
+        }
+    }
+}

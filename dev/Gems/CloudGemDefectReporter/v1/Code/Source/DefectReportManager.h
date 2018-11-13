@@ -129,9 +129,23 @@ namespace CloudGemDefectReporter
         // just deletes the cached file
         void RemoveBackedUpReports();
 
+        // remove the specified attachment
+        void DeleteAttachment(const AZStd::string& path);
+
         // used during initialization, shouldn't be called otherwise
         static void ReflectDataStructures(AZ::ReflectContext* context);
 
+        // Split a string by the specified delimiter
+        static AZStd::vector<AZStd::string> SplitString(const AZStd::string& input, const AZStd::string& delimiter);
+
+        // Retrieve the custom field key and value from the serialized metrics
+        static void RetrieveCustomFieldKeyAndValue(const AZStd::string& input, AZStd::string& key, AZStd::string& value);
+
+        // set backup file encryption key, key must be exactly 32 bytes
+        void SetBackupFileEncryptionKey(const char key[32]) { m_backupFileEncryptionKey = AZStd::string(key, 32); };
+
+        // set backup file encryption IV, IV must be exactly 16 bytes
+        void SetBackupFileEncryptionIV(const char iv[16]) { m_backupFileEncryptionIV = AZStd::string(iv, 16); };
     private:
 
         AZStd::string GetBackupFileName();
@@ -139,5 +153,7 @@ namespace CloudGemDefectReporter
         AZStd::map<int, ReportWrapper> m_reports;
         int m_nextReportID = 0;
         AZStd::string m_backupFileName;
+        AZStd::string m_backupFileEncryptionKey{ "s5v8x/A?D(G+KbPeShVmYq3t6w9z$B&E" }; // key must be exactly 32 bytes
+        AZStd::string m_backupFileEncryptionIV{ "60DB5672C97AA8F0" }; // IV must be exactly 16 bytes
     };
 }

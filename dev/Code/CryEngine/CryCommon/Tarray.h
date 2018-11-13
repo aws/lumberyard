@@ -20,6 +20,7 @@
 #include <ICryPak.h> //impl of fxopen
 #include <Cry_Math.h>
 #include <AzCore/IO/FileIO.h>
+#include <STLGlobalAllocator.h>
 
 #ifndef CLAMP
 #define CLAMP(X, mn, mx) ((X) < (mn) ? (mn) : ((X) < (mx) ? (X) : (mx)))
@@ -78,26 +79,21 @@ public:
     // Empty array.
     TArray()
     {
-        MEMSTAT_REGISTER_CONTAINER(this, EMemStatContainerType::MSC_Vector, T);
         ClearArr();
     }
 
     // Create a new array, delete it on destruction.
     TArray(int Count)
     {
-        MEMSTAT_REGISTER_CONTAINER(this, EMemStatContainerType::MSC_Vector, T);
         m_nCount = Count;
         m_nAllocatedCount = Count;
-        MEMSTAT_USAGE(begin(), MemSize());
         m_pElements = NULL;
         Realloc(0);
     }
     TArray(int Use, int Max)
     {
-        MEMSTAT_REGISTER_CONTAINER(this, EMemStatContainerType::MSC_Vector, T);
         m_nCount = Use;
         m_nAllocatedCount = Max;
-        MEMSTAT_USAGE(begin(), MemSize());
         m_pElements = NULL;
         Realloc(0);
     }
@@ -105,26 +101,21 @@ public:
     // Reference pre-existing memory. Does not delete it.
     TArray(T* Elems, int Count)
     {
-        MEMSTAT_REGISTER_CONTAINER(this, EMemStatContainerType::MSC_Vector, T);
         m_pElements = Elems;
         m_nCount = Count;
         m_nAllocatedCount = 0;
-        MEMSTAT_BIND_TO_CONTAINER(this, m_pElements);
-        MEMSTAT_USAGE(begin(), MemSize());
     }
     ~TArray()
     {
         Free();
-        MEMSTAT_UNREGISTER_CONTAINER(this);
     }
 
     void Free()
     {
         m_nCount = 0;
-        MEMSTAT_USAGE(begin(), MemSize());
         if (m_nAllocatedCount)
         {
-            CryModuleMemalignFree(m_pElements);
+            AZ::AllocatorInstance<CryLegacySTLAllocator>::Get().DeAllocate(m_pElements);
         }
         m_nAllocatedCount = 0;
         m_pElements = NULL;
@@ -132,8 +123,6 @@ public:
 
     void Create (int Count)
     {
-        MEMSTAT_USAGE(begin(), 0);
-        MEMSTAT_UNBIND_FROM_CONTAINER(this, m_pElements);
         m_pElements = NULL;
         m_nCount = Count;
         m_nAllocatedCount = Count;
@@ -142,8 +131,6 @@ public:
     }
     void Copy (const TArray<T>& src)
     {
-        MEMSTAT_USAGE(begin(), 0);
-        MEMSTAT_UNBIND_FROM_CONTAINER(this, m_pElements);
         m_pElements = NULL;
         m_nCount = m_nAllocatedCount = src.Num();
         Realloc(0);
@@ -173,15 +160,11 @@ public:
     {
         if (!m_nAllocatedCount)
         {
-            MEMSTAT_USAGE(begin(), 0);
-            MEMSTAT_UNBIND_FROM_CONTAINER(this, m_pElements);
             m_pElements = NULL;
         }
         else
         {
-            PREFAST_SUPPRESS_WARNING(6308) m_pElements = (T*)CryModuleReallocAlign(m_pElements, m_nAllocatedCount * sizeof(T), alignof(T));
-            MEMSTAT_BIND_TO_CONTAINER(this, m_pElements);
-            MEMSTAT_USAGE(begin(), MemSize());
+            m_pElements = static_cast<decltype(m_pElements)>(AZ::AllocatorInstance<CryLegacySTLAllocator>::Get().ReAllocate(m_pElements, m_nAllocatedCount * sizeof(T), alignof(T)));
             assert (m_pElements);
         }
     }
@@ -192,7 +175,6 @@ public:
         {
             memmove(m_pElements + Index, m_pElements + (Index + Count), sizeof(T) * (m_nCount - Index - Count));
             m_nCount -= Count;
-            MEMSTAT_USAGE(begin(), MemSize());
         }
     }
 
@@ -223,8 +205,8 @@ public:
     unsigned int Num(void) const  { return m_nCount; }
     unsigned int Capacity(void) const { return m_nAllocatedCount; }
     unsigned int MemSize(void) const { return m_nCount * sizeof(T); }
-    void SetNum(unsigned int n) { m_nCount = m_nAllocatedCount = n; MEMSTAT_USAGE(begin(), MemSize()); }
-    void SetUse(unsigned int n) { m_nCount = n; MEMSTAT_USAGE(begin(), MemSize()); }
+    void SetNum(unsigned int n) { m_nCount = m_nAllocatedCount = n; }
+    void SetUse(unsigned int n) { m_nCount = n;  }
     void Alloc(unsigned int n) { int nOldAllocatedCount = m_nAllocatedCount; m_nAllocatedCount = n; Realloc(nOldAllocatedCount); }
     void Reserve(unsigned int n) { int nOldAllocatedCount = m_nAllocatedCount; SetNum(n); Realloc(nOldAllocatedCount); Clear(); }
     void ReserveNoClear(unsigned int n) { int nOldAllocatedCount = m_nAllocatedCount; SetNum(n); Realloc(nOldAllocatedCount); }
@@ -245,14 +227,12 @@ public:
             Realloc(nOldAllocatedCount);
         }
         m_nCount = n;
-        MEMSTAT_USAGE(begin(), MemSize());
         memset(&m_pElements[num], 0, sizeof(T) * (m_nCount - num));
     }
     T* Grow(unsigned int n)
     {
         int nStart = m_nCount;
         m_nCount += n;
-        MEMSTAT_USAGE(begin(), MemSize());
         if (m_nCount > m_nAllocatedCount)
         {
             int nOldAllocatedCount = m_nAllocatedCount;
@@ -281,13 +261,9 @@ public:
 
     void Assign(TArray& fa)
     {
-        MEMSTAT_USAGE(begin(), 0);
-        MEMSTAT_UNBIND_FROM_CONTAINER(this, m_pElements);
         m_pElements = fa.m_pElements;
         m_nCount = fa.m_nCount;
         m_nAllocatedCount = fa.m_nAllocatedCount;
-        MEMSTAT_BIND_TO_CONTAINER(this, m_pElements);
-        MEMSTAT_USAGE(begin(), MemSize());
     }
 
 
@@ -322,7 +298,6 @@ public:
     {
         m_pElements = NULL;
         m_nCount = m_nAllocatedCount = cTA.Num();
-        MEMSTAT_USAGE(begin(), MemSize());
         Realloc(0);
         if (m_pElements)
         {
@@ -343,8 +318,6 @@ public:
     {
         m_nCount = 0;
         m_nAllocatedCount = 0;
-        MEMSTAT_USAGE(begin(), MemSize());
-        MEMSTAT_UNBIND_FROM_CONTAINER(this, m_pElements);
         m_pElements = NULL;
     }
 
@@ -379,14 +352,12 @@ public:
         }
 
         m_nCount = nNewCount;
-        MEMSTAT_USAGE(begin(), MemSize());
         return &m_pElements[nIndex];
     }
 
     T& Insert(unsigned int nIndex, unsigned int inc = 1)
     {
         m_nCount += inc;
-        MEMSTAT_USAGE(begin(), MemSize());
         if (m_nCount > m_nAllocatedCount)
         {
             int nOldAllocatedCount = m_nAllocatedCount;
@@ -401,7 +372,6 @@ public:
     void AddIndexNoCache(unsigned int inc)
     {
         m_nCount += inc;
-        MEMSTAT_USAGE(begin(), MemSize());
         if (m_nCount > m_nAllocatedCount)
         {
             int nOldAllocatedCount = m_nAllocatedCount;
@@ -449,7 +419,7 @@ public:
     // thus not very convenient interface of TArray, but are unlucky
     // enough not to be able to avoid using it.
     void clear(){Free(); }
-    void resize(unsigned int nSize) { reserve(nSize); m_nCount = nSize; MEMSTAT_USAGE(begin(), MemSize()); }
+    void resize(unsigned int nSize) { reserve(nSize); m_nCount = nSize; }
     void reserve(unsigned int nSize)
     {
         if (nSize > m_nAllocatedCount)
@@ -461,7 +431,7 @@ public:
     unsigned capacity() const {return m_nAllocatedCount; }
     bool empty() const {return size() == 0; }
     void push_back (const T& rSample) {Add(rSample); }
-    void pop_back () {m_nCount--; MEMSTAT_USAGE(begin(), MemSize()); }
+    void pop_back () {m_nCount--; }
     void erase (T* pElem)
     {
         int n = int(pElem - m_pElements);

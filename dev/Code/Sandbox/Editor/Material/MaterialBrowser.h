@@ -108,6 +108,8 @@ public:
     void StartRecordUpdateJobs();
 
     bool ShowCheckedOutRecursive(TMaterialBrowserRecords* pRecords);
+
+    void ShowOnlyLevelMaterials(bool levelOnly);
     
     void OnCopy();
     void OnCopyName();
@@ -124,9 +126,11 @@ public slots:
     void OnSubMaterialSelectedInPreviewPane(const QModelIndex& current, const QModelIndex& previous);
     void SaveCurrentMaterial();
     void OnRefreshSelection();
+    void OnMaterialAdded();
 
 signals:
     void refreshSelection();
+    void materialAdded();
     
 public:
     void OnUpdateShowCheckedOut();
@@ -145,6 +149,7 @@ public:
     void OnContextMenuAction(int command, _smart_ptr<CMaterial> material);
 
     // MaterialBrowserWidgetBus event handlers
+    void MaterialAddFinished() override;
     void MaterialFinishedProcessing(_smart_ptr<CMaterial> material, const QPersistentModelIndex &filterModelIndex) override;
     void MaterialRecordUpdateFinished() override;
 

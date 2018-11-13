@@ -175,9 +175,20 @@ namespace AssetProcessor
         bool GetDirectProductDependencies(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container);
         bool GetAllProductDependencies(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container);
         bool SetProductDependency(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry);
-        bool SetProductDependencies(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
+
+        // bulk inserts are lighter weight and don't change the input data.  Note that this also deletes old dependencies for the products mentioned in the container.
+        bool SetProductDependencies(const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
+
         bool RemoveProductDependencyByProductId(AZ::s64 productID);
- 
+
+        //Files
+        bool GetFileByFileID(AZ::s64 fileID, AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry);
+        bool GetFileByFileNameAndScanFolderId(QString fileName, AZ::s64 scanFolderId, AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry);
+        bool GetFilesLikeFileName(QString likeFileName, LikeType likeType, AzToolsFramework::AssetDatabase::FileDatabaseEntryContainer& container);
+
+        bool InsertFile(AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry);
+        bool UpdateFile(AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry);
+        bool RemoveFile(AZ::s64 sourceID);
     protected:
         void SetDatabaseVersion(AzToolsFramework::AssetDatabase::DatabaseVersion ver);
         void ExecuteCreateStatements();

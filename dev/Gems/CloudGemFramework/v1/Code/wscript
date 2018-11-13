@@ -10,6 +10,9 @@
 #
 ########################################################################################
 
+from runpy import run_path
+import os
+
 def build(bld):
 
     # Defines not only the Gem build, but a static library build as well. Gems that use
@@ -29,6 +32,7 @@ def build(bld):
     static_lib_appletv_lib = []
     static_lib_ios_framework = []
     static_lib_appletv_framework = []
+    static_lib_restricted_libs = {}
     static_lib_shared = []
 
     gem_file_list = []
@@ -49,6 +53,17 @@ def build(bld):
     gem_appletv_lib = []
     gem_ios_framework = []
     gem_appletv_framework = []
+    gem_restricted_libs = {}
+
+    restricted_scripts = {}
+    for p in bld.env['RESTRICTED_PLATFORMS']:
+        script_dir, script_base = os.path.split(bld.cur_script.abspath())
+        restricted_script_filename = os.path.join(script_dir, p, '{0}_{1}'.format(script_base, p))
+        if os.path.exists(restricted_script_filename):
+            script = run_path(restricted_script_filename)
+            restricted_scripts[p] = script
+            if 'init_libs' in script:
+                script['init_libs'](p, static_lib_restricted_libs, gem_restricted_libs)
 
     if is_project_gen:
         static_lib_file_list += ['static_library.waf_files']
@@ -72,9 +87,12 @@ def build(bld):
         gem_appletv_lib += ['curl']
         gem_ios_framework += [ 'security' ]
         gem_appletv_framework += [ 'security' ]
+        for p,script in restricted_scripts.iteritems():
+            if 'support_aws_native_sdk' in script:
+                script['support_aws_native_sdk'](p, gem_restricted_libs)
 
 
-    bld.DefineGem(
+    kw = dict(
 
         file_list = gem_file_list,
         test_all_file_list = gem_test_all_file_list,
@@ -82,7 +100,7 @@ def build(bld):
         includes = ['Source'],
         use = ['CloudGemFramework.StaticLibrary','AzFramework'],  
         test_all_uselib = gem_test_uselib,
-        uselib = ['AWS_CPP_SDK_COGNITO_IDENTITY', 'AWS_CPP_SDK_IDENTITY_MANAGEMENT','AWS_CPP_SDK_LAMBDA', 'AWS_CPP_SDK_CORE'],
+        uselib = ['AWS_CPP_SDK_COGNITO_IDENTITY', 'AWS_CPP_SDK_IDENTITY_MANAGEMENT','AWS_CPP_SDK_LAMBDA', 'AWS_CPP_SDK_STS', 'AWS_CPP_SDK_CORE'],
         darwin_lib = gem_darwin_lib,
         linux_lib = gem_linux_lib,
         ios_lib = gem_ios_lib,
@@ -105,7 +123,7 @@ def build(bld):
             ios_lib = static_lib_ios_lib,
             appletv_lib = static_lib_appletv_lib,
             ios_framework = static_lib_ios_framework,
-            appletv_framework = static_lib_appletv_framework, 
+            appletv_framework = static_lib_appletv_framework,
             shared_settings = static_lib_shared,
 
             vs_filter       = 'Gems',
@@ -118,3 +136,9 @@ def build(bld):
             defines = ['CLOUD_GEM_FRAMEWORK_EDITOR']
         )
     )
+    for p in restricted_scripts:
+        if p in gem_restricted_libs:
+            kw['{0}_lib'.format(p)] = gem_restricted_libs[p]
+        if p in static_lib_restricted_libs:
+            kw['StaticLibrary']['{0}_lib'.format(p)] = static_lib_restricted_libs[p]
+    bld.DefineGem(**kw)

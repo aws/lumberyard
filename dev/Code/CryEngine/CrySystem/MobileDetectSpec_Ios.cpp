@@ -24,12 +24,12 @@ namespace MobileSysInspect
         Internal::LoadDeviceSpecMapping_impl("@assets@/config/gpu/ios_models.xml");
     }
 
-    // Returns true if device is found in map
+    // Returns true if device is found in the device spec mapping
     bool GetAutoDetectedSpecName(AZStd::string &buffer)
     {
         AZStd::string name = SystemUtilsApple::GetMachineName();
-        buffer = device_spec_map[name];
-        return !buffer.empty();
+        
+        return Internal::GetSpecForModelName(name, buffer);
     }
 
     const float GetDeviceRamInGB()

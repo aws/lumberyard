@@ -42,6 +42,8 @@ protected:
     {
         AZ::AllocatorInstance<AZ::OSAllocator>::Create();
         AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+        AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+        AZ::AllocatorInstance<CryStringAllocator>::Create();
         Aws::Http::InitHttp();
 
         // Mocks need to be destroyed before the allocators are destroyed, 
@@ -64,6 +66,8 @@ protected:
         delete m_mocks;
 
         Aws::Http::CleanupHttp();
+        AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+        AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
         AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
         AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
     }

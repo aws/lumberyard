@@ -45,8 +45,7 @@ public:
         g_pXmlStrCmp = &strcmp; // Do case-sensitive compare
         bool bReturn = node->haveAttr(name);
         if (bReturn)
-        {
-            ScopedSwitchToGlobalHeap GlobalHeap;
+        {            
             value = node->getAttr(name);
         }
         g_pXmlStrCmp = pPrevCmpFunc;

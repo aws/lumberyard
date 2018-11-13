@@ -10,14 +10,13 @@
 *
 */
 
-// include required headers
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <EMotionFX/Source/Parameter/FloatParameter.h>
 #include <EMotionFX/Source/Parameter/ParameterFactory.h>
-#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
-#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterCreateEditDialog.h>
-#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterEditor/ParameterEditorFactory.h>
-#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterEditor/ValueParameterEditor.h>
+#include <EMotionFX/Source/Parameter/ValueParameter.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterCreateEditDialog.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterEditor/ParameterEditorFactory.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterEditor/ValueParameterEditor.h>
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/ReflectionSerializer.h>
 #include <MysticQt/Source/ComboBox.h>
@@ -27,11 +26,15 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
+
 namespace EMStudio
 {
+    int ParameterCreateEditDialog::m_parameterEditorMinWidth = 300;
+
     ParameterCreateEditDialog::ParameterCreateEditDialog(AnimGraphPlugin* plugin, QWidget* parent, const EMotionFX::Parameter* editParameter)
         : QDialog(parent)
         , m_plugin(plugin)
+        , m_valueTypeCombo(nullptr)
         , m_valueParameterEditor(nullptr)
     {
         if (!editParameter)
@@ -50,17 +53,20 @@ namespace EMStudio
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
 
         // Value Type
-        QHBoxLayout* valueTypeLayout = new QHBoxLayout();
-        QLabel* valueTypeLabel = new QLabel("Value type");
-        valueTypeLabel->setFixedWidth(100);
-        valueTypeLayout->addWidget(valueTypeLabel);
-        m_valueTypeCombo = new MysticQt::ComboBox();
-        m_valueTypeCombo->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-        m_valueTypeCombo->setMinimumWidth(200);
-        valueTypeLayout->addWidget(m_valueTypeCombo);
-        valueTypeLayout->addItem(new QSpacerItem(2, 0, QSizePolicy::Fixed, QSizePolicy::Fixed));
-        connect(m_valueTypeCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(OnValueTypeChange(int)));
-        mainLayout->addItem(valueTypeLayout);
+        if (!editParameter ||
+            (editParameter && editParameter->RTTI_IsTypeOf(azrtti_typeid<EMotionFX::ValueParameter>())))
+        {
+            QHBoxLayout* valueTypeLayout = new QHBoxLayout();
+            QLabel* valueTypeLabel = new QLabel("Value type");
+            valueTypeLabel->setFixedWidth(100);
+            valueTypeLayout->addWidget(valueTypeLabel);
+            m_valueTypeCombo = new MysticQt::ComboBox();
+            m_valueTypeCombo->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
+            valueTypeLayout->addWidget(m_valueTypeCombo);
+            valueTypeLayout->addItem(new QSpacerItem(2, 0, QSizePolicy::Fixed, QSizePolicy::Fixed));
+            connect(m_valueTypeCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(OnValueTypeChange(int)));
+            mainLayout->addItem(valueTypeLayout);
+        }
 
         // Add the RPE for the parameter
         m_parameterEditorWidget = aznew AzToolsFramework::ReflectedPropertyEditor(this);
@@ -68,6 +74,7 @@ namespace EMStudio
         m_parameterEditorWidget->setSizePolicy(QSizePolicy::Policy::MinimumExpanding, QSizePolicy::Policy::MinimumExpanding);
         m_parameterEditorWidget->SetSizeHintOffset(QSize(0, 0));
         m_parameterEditorWidget->SetLeafIndentation(0);
+        m_parameterEditorWidget->setMinimumWidth(m_parameterEditorMinWidth);
         mainLayout->addWidget(m_parameterEditorWidget);
 
         // Add the preview information
@@ -112,16 +119,28 @@ namespace EMStudio
         }
     }
 
-    // init the window
     void ParameterCreateEditDialog::Init()
     {
-        // Register all children of EMotionFX::ValueParameter
-        m_valueTypeCombo->blockSignals(true);
-        const AZStd::vector<AZ::TypeId> parameterTypes = EMotionFX::ParameterFactory::GetParameterTypes();
-        for (const AZ::TypeId& parameterType : parameterTypes)
+        if (m_valueTypeCombo)
         {
-            AZStd::unique_ptr<EMotionFX::Parameter> param(EMotionFX::ParameterFactory::Create(parameterType));
-            m_valueTypeCombo->addItem(QString(param->GetTypeDisplayName().c_str()), QString(parameterType.ToString<AZStd::string>().c_str()));
+            // We're editing a value parameter, allow to change the type to any other value parameter.
+            const AZStd::vector<AZ::TypeId> parameterTypes = EMotionFX::ParameterFactory::GetValueParameterTypes();
+
+            m_valueTypeCombo->blockSignals(true);
+
+            // Register all children of EMotionFX::ValueParameter
+            for (const AZ::TypeId& parameterType : parameterTypes)
+            {
+                AZStd::unique_ptr<EMotionFX::Parameter> param(EMotionFX::ParameterFactory::Create(parameterType));
+                m_valueTypeCombo->addItem(QString(param->GetTypeDisplayName().c_str()), QString(parameterType.ToString<AZStd::string>().c_str()));
+            }
+
+            if (m_parameter)
+            {
+                m_valueTypeCombo->setCurrentText(m_parameter->GetTypeDisplayName().c_str());
+            }
+
+            m_valueTypeCombo->blockSignals(false);
         }
 
         if (!m_parameter)
@@ -130,11 +149,8 @@ namespace EMStudio
         }
         else
         {
-            m_valueTypeCombo->setCurrentText(m_parameter->GetTypeDisplayName().c_str());
             InitDynamicInterface(azrtti_typeid(m_parameter.get()));
-
         }
-        m_valueTypeCombo->blockSignals(false);
     }
 
     // init the dynamic part of the interface
@@ -211,7 +227,7 @@ namespace EMStudio
     // when the value type changes
     void ParameterCreateEditDialog::OnValueTypeChange(int valueType)
     {
-        if (valueType != -1)
+        if (m_valueTypeCombo && valueType != -1)
         {
             QVariant variantData = m_valueTypeCombo->itemData(valueType);
             AZ_Assert(variantData != QVariant::Invalid, "Expected valid variant data");

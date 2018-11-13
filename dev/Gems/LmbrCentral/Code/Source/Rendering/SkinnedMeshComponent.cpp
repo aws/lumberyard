@@ -569,6 +569,7 @@ namespace LmbrCentral
     {
         using SkinnedMeshInternal::UpdateRenderFlag;
         unsigned int flags = GetRndFlags();
+        flags |= ERF_COMPONENT_ENTITY;
 
         // Turn off any flag which has ever been set via auxiliary render flags.
         UpdateRenderFlag(false, m_auxiliaryRenderFlagsHistory, flags);

@@ -60,6 +60,7 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/EBus/Results.h>
 #include <AzFramework/API/ApplicationAPI.h>
+#include <IGemManager.h>
 
 #include <AWSResourceManager.moc>
 #include <IAWSResourceManager.moc>
@@ -261,6 +262,15 @@ void AWSResourceManager::CheckGameConfigurations()
 void AWSResourceManager::RefreshGameConfigurations()
 {
     RefreshHasResourceGroupsStatus();
+
+    IGemManager* gemManager = GetISystem()->GetGemManager();
+    AZStd::vector<AZStd::string> versionConstraints;
+    versionConstraints.push_back(">=1.0");
+    if (gemManager && !gemManager->IsGemEnabled("6fc787a982184217a5a553ca24676cfa", versionConstraints))
+    {
+        // No CloudGemFramework means no reason to warn below - 
+        return;
+    }
 
     if (!GetDeploymentModel()->IsActiveDeploymentSet())
     {

@@ -1,0 +1,24 @@
+﻿<div class="property" *ngIf="jiraSchema.properties">
+    <div *ngFor="let prop of jiraSchema.properties | objKeys">
+        <div *ngIf="prop !== 'self' && prop !== 'id'" class="form-group row valign">
+            <div class="key">{{prop}} </div>
+            <div class="col-10 value no-padding">
+                <field-mapping *ngIf="jiraSchema.properties[prop].type !== 'boolean'" [model]="reportValue[prop]" [possibleFields]="possibleFields" (modelChange)="reportValue[prop] = ($event !== '') ? $event : undefined"></field-mapping>
+                <input *ngIf="jiraSchema.properties[prop].type === 'boolean'" type="checkbox" [id]="uniqueId + prop" [name]="uniqueId + prop" [(ngModel)]="reportValue[prop]" (ngModelChange)="updateObjectProperty(prop, reportValue[prop])" />
+                <label class="l-checkbox row-selector" [attr.for]="uniqueId + prop"></label>
+            </div>
+        </div>
+    </div>
+</div>
+<div *ngIf="jiraSchema.properties === undefined">
+    <div *ngIf="reportValue !== undefined" class="value">
+        <field-mapping *ngIf="jiraSchema.type !== 'boolean'" [model]="reportValue" [possibleFields]="possibleFields" [type]="jiraSchema.type" (modelChange)="updateStandardValue($event)"></field-mapping>
+        <input *ngIf="jiraSchema.type === 'boolean'" type="checkbox" [id]="uniqueId" [name]="uniqueId" [(ngModel)]="reportValue" (ngModelChange)="updateStandardValue(reportValue)" />
+        <label class="l-checkbox row-selector" [attr.for]="uniqueId"></label>
+    </div>
+    <div *ngIf="reportValue === undefined" class="value">
+        <field-mapping *ngIf="jiraSchema.type !== 'boolean'" [model]="reportValue" [possibleFields]="possibleFields" [type]="jiraSchema.type" (modelChange)="updateStandardValue($event)"></field-mapping>
+        <input *ngIf="jiraSchema.type === 'boolean'" type="checkbox" [id]="uniqueId" [name]="uniqueId" (change)="updateStandardValue($event.target.checked)" />
+        <label class="l-checkbox row-selector" [attr.for]="uniqueId"></label>
+    </div>
+</div>

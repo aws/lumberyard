@@ -71,6 +71,7 @@ namespace LmbrCentral
         AZ_Assert(!m_readyEventSent, "OnMaterialOwnerReady already sent");
         if (!m_readyEventSent)
         {
+            m_readyEventSent = true;
             MaterialOwnerNotificationBus::Event(m_notificationBus, &MaterialOwnerNotifications::OnMaterialOwnerReady);
         }
     }

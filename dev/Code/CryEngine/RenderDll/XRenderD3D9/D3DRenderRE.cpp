@@ -2095,7 +2095,7 @@ bool CREParticleGPU::mfPreDraw(SShaderPass* sl)
 
 bool CREParticleGPU::mfDraw(CShader* ef, SShaderPass* sl)
 {
-    if (gRenDev->GetGPUParticleEngine() == 0)
+    if (!m_instance || !gRenDev->GetGPUParticleEngine())
     {
         return false;
     }

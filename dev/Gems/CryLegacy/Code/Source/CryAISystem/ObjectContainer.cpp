@@ -318,8 +318,6 @@ void CObjectContainer::DumpRegistered()
 
 void CObjectContainer::Serialize(TSerialize ser)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Object Container serialization");
-
     CAISystem* pAISystem = GetAISystem();
 
     // Deal with the deregistration list as it makes no sense to serialize those objects
@@ -419,8 +417,6 @@ void CObjectContainer::Serialize(TSerialize ser)
 
         if (object)
         {
-            MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "AI object (%s) serialization", GetNameFromType(objHeader.aiClass));
-
             // (MATT) Note that this call may reach CAIActor, which currently handles serialising the proxies {2009/04/30}
             object->Serialize(ser);
         }

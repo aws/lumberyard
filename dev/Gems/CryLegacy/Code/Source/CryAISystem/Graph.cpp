@@ -1018,9 +1018,6 @@ bool CGraph::InsideOfBBox(const Vec3& pos) const
 
 unsigned CGraph::CreateNewNode(IAISystem::tNavCapMask type, const Vec3& pos, unsigned ID)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Navigation, 0, "Graph Node (%s)", StringFromTypeIndex(TypeIndexFromType(type)));
-    //GraphNode *pNode = new GraphNode(type, pos, ID);
-    //GraphNode *pNode = NodesPool.AddGraphNode(type, pos, ID);
     unsigned nodeIndex = m_pGraphNodeManager->CreateNode(type, pos, ID);
     GraphNode* pNode = m_pGraphNodeManager->GetNode(nodeIndex);
     pNode->AddRef();

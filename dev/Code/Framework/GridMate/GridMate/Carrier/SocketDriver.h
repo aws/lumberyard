@@ -22,10 +22,19 @@
 #include <AzCore/std/functional_basic.h>
 #include <AzCore/std/containers/unordered_set.h>
 #include <GridMate/Carrier/Driver.h>
+#include <AzCore/PlatformIncl.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/parallel/thread.h>
+#include <AzCore/std/parallel/atomic.h>
+#include <AzCore/std/parallel/conditional_variable.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #   include <WinSock2.h>
 #   include <ws2tcpip.h>
+#   include <Mswsock.h>
+#   ifdef WSAID_MULTIPLE_RIO
+#       define AZ_SOCKET_RIO_SUPPORT
+#   endif
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_H_SECTION_1
@@ -151,7 +160,7 @@ namespace GridMate
 #else
 #       error SocketType undefined
 #endif
-        SocketDriverCommon(bool isFullPackets = false, bool isCrossPlatform = false);
+        SocketDriverCommon(bool isFullPackets = false, bool isCrossPlatform = false, bool isHighPerformance = false);
         virtual ~SocketDriverCommon();
 
         /**
@@ -227,7 +236,96 @@ namespace GridMate
         /// set's default socket options
         virtual ResultCode  SetSocketOptions(bool isBroadcast, unsigned int receiveBufferSize, unsigned int sendBufferSize);
 
+        class PlatformSocketDriver
+        {
+        public:
+            GM_CLASS_ALLOCATOR(PlatformSocketDriver);
+            PlatformSocketDriver(SocketDriverCommon &parent, SocketType &socket);
+            virtual ~PlatformSocketDriver();
+            virtual ResultCode Initialize(unsigned int receiveBufferSize, unsigned int sendBufferSize);
+            virtual SocketType  CreateSocket(int af, int type, int protocol);
+            virtual ResultCode Send(const sockaddr* sockAddr, unsigned int addressSize, const char* data, unsigned int dataSize);
+            virtual unsigned int Receive(char* data, unsigned maxDataSize, sockaddr* sockAddr, socklen_t sockAddrLen, ResultCode* resultCode = 0);
+            virtual bool WaitForData(AZStd::chrono::microseconds timeOut = AZStd::chrono::microseconds(0));
+            virtual void StopWaitForData();
+            static bool isSupported();
+        protected:
+            SocketDriverCommon &m_parent;
+            SocketType         &m_socket;
 
+        };
+#ifdef AZ_SOCKET_RIO_SUPPORT
+        class RIOPlatformSocketDriver final : public PlatformSocketDriver
+        {
+        public:
+            GM_CLASS_ALLOCATOR(RIOPlatformSocketDriver);
+            RIOPlatformSocketDriver(SocketDriverCommon &parent, SocketType &socket);
+            ~RIOPlatformSocketDriver();
+            static bool isSupported();
+            SocketType CreateSocket(int af, int type, int protocol) override;
+            ResultCode Initialize(unsigned int receiveBufferSize, unsigned int sendBufferSize) override;
+            void SocketDriverCommon::RIOPlatformSocketDriver::WorkerSendThread();
+            ResultCode Send(const sockaddr* sockAddr, unsigned int /*addressSize*/, const char* data, unsigned int dataSize) override;
+            unsigned int Receive(char* data, unsigned maxDataSize, sockaddr* sockAddr, socklen_t sockAddrLen, ResultCode* resultCode) override;
+            bool WaitForData(AZStd::chrono::microseconds timeOut) override;
+            void StopWaitForData() override;
+
+        private:
+            AZ::u64 RoundUpAndDivide(AZ::u64 Value, AZ::u64 RoundTo) const
+            {
+                return ((Value + RoundTo - 1) / RoundTo);
+            }
+            AZ::u64 RoundUp(AZ::u64 Value, AZ::u64 RoundTo) const
+            {
+                // rounds value up to multiple of RoundTo
+                // Example: RoundTo: 4
+                // Value:  0 1 2 3 4 5 6 7 8
+                // Result: 0 4 4 4 4 8 8 8 8
+                return RoundUpAndDivide(Value, RoundTo) * RoundTo;
+            }
+            char *AllocRIOBuffer(AZ::u64 bufferSize, AZ::u64 numBuffers, AZ::u64* amountAllocated=nullptr);
+            bool FreeRIOBuffer(char *buffer);
+
+        protected:
+            //static const GUID               k_functionTableId = WSAID_MULTIPLE_RIO;
+            bool                            m_workersQuit = false;
+            AZStd::thread                   m_workerSendThread;
+            AZStd::mutex                    m_WorkerSendMutex;
+            AZStd::condition_variable       m_triggerWorkerSend;
+            AZStd::atomic<int>              m_workerBufferCount = 0;
+            RIO_EXTENSION_FUNCTION_TABLE    m_RIO_FN_TABLE;
+            RIO_RQ                          m_requestQueue = RIO_INVALID_RQ;
+            RIO_CQ                          m_RIORecvQueue = RIO_INVALID_CQ;
+            AZStd::mutex                    m_RIOSendQueueMutex;
+            RIO_CQ                          m_RIOSendQueue = RIO_INVALID_CQ;
+            int                             m_RIONextSendBuffer = 0;
+            int                             m_workerNextSendBuffer = 0;
+            int                             m_RIONextRecvBuffer = 0;
+            int                             m_RIOSendBufferCount = 64;
+            int                             m_RIORecvBufferCount = 2048;
+            int                             m_RIOSendBuffersInUse = 0;
+            int                             m_RIORecvBuffersInUse = 0;
+            bool                            m_isInitialized = false;
+            AZ::u64                         m_pageSize = 0;
+            AZStd::vector<RIO_BUF>          m_RIORecvBuffer;
+            AZStd::vector<RIO_BUF>          m_RIORecvAddressBuffer;
+            AZStd::vector<RIO_BUF>          m_RIOSendBuffer;
+            AZStd::vector<RIO_BUF>          m_RIOSendAddressBuffer;
+            static const int                m_RIOBufferSize = 1536;
+            char*                           m_rawRecvBuffer = nullptr;
+            char*                           m_rawRecvAddressBuffer = nullptr;
+            char*                           m_rawSendBuffer = nullptr;
+            char*                           m_rawSendAddressBuffer = nullptr;
+            enum
+            {
+                ReceiveEvent = 0,
+                SendEvent,
+                WakeupOnSend,
+                NumberOfEvents
+            };
+            WSAEVENT                        m_events[NumberOfEvents];            //send and recv events
+        };
+#endif
         SocketType      m_socket;
         unsigned short  m_port;
         bool            m_isStoppedWaitForData;     ///< True if last WaitForData was interrupted otherwise false.
@@ -235,6 +333,8 @@ namespace GridMate
         bool            m_isCrossPlatform;          ///< True if we support cross platform communication. Then we make sure we use common features.
         bool            m_isIpv6;                   ///< True if we use version 6 of the internet protocol, otherwise false.
         bool            m_isDatagram;               ///< True if the socket was created with SOCK_DGRAM
+        AZStd::unique_ptr<PlatformSocketDriver> m_platformDriver;      ///< Platform specific implementation of socket calls
+        bool            m_isHighPerformance;        ///< True if using platform-specific high-performance implementation
     };
 
     namespace SocketOperations
@@ -280,7 +380,6 @@ namespace GridMate
         Driver::ResultCode Send(SocketDriverCommon::SocketType sock, const char* buf, AZ::u32 bufLen, AZ::u32& bytesSent);
         Driver::ResultCode Receive(SocketDriverCommon::SocketType sock, char* buf, AZ::u32& inOutlen);
         Driver::ResultCode Bind(SocketDriverCommon::SocketType sock, const sockaddr* sockAddr, size_t sockAddrSize);
-
         bool IsWritable(SocketDriverCommon::SocketType sock, AZStd::chrono::microseconds timeOut);
         bool IsReceivePending(SocketDriverCommon::SocketType sock, AZStd::chrono::microseconds timeOut);
     }
@@ -292,8 +391,8 @@ namespace GridMate
     public:
         GM_CLASS_ALLOCATOR(SocketDriver);
 
-        SocketDriver(bool isFullPackets, bool isCrossPlatform)
-            : SocketDriverCommon(isFullPackets, isCrossPlatform) {}
+        SocketDriver(bool isFullPackets, bool isCrossPlatform, bool isHighPerformance = false)
+            : SocketDriverCommon(isFullPackets, isCrossPlatform, isHighPerformance) {}
         virtual ~SocketDriver() {}
 
         /**
@@ -320,7 +419,7 @@ namespace GridMate
 
     /**
     * Utility class to help retrieve socket address information
-    */      
+    */
     class SocketAddressInfo
     {
     public:
@@ -332,7 +431,7 @@ namespace GridMate
         enum class AdditionalOptionFlags
         {
             None = 0x00,        // Nothing to specify
-            Passive = 0x01,     // For wild card IP address 
+            Passive = 0x01,     // For wild card IP address
             NumericHost = 0x02, // then 'address' must be a numerical network address
         };
 
@@ -348,12 +447,12 @@ namespace GridMate
 
         /**
           * If Resolve() is True, then this returns the address information requested to resolve
-          */          
+          */
         const addrinfo* GetAddressInfo() const { return m_addrInfo; }
 
         /**
           * If Resolve() is True and valid socket, return the assigned port after a succesful bind() call
-          */          
+          */
         AZ::u16 RetrieveSystemAssignedPort(SocketDriverCommon::SocketType socket) const;
 
     private:

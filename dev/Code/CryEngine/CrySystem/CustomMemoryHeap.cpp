@@ -72,10 +72,13 @@ ICustomMemoryBlock* CCustomMemoryHeap::AllocateBlock(size_t const nAllocateSize,
     switch (m_eAllocPolicy)
     {
     case IMemoryManager::eapDefaultAllocator:
-        pBlock->m_pData = malloc(nAllocateSize);
+    {
+        size_t allocated = 0;
+        pBlock->m_pData = CryMalloc(nAllocateSize, allocated, nAlignment);
         break;
+    }
     case IMemoryManager::eapPageMapped:
-        pBlock->m_pData = CryGetIMemoryManager()->AllocPages(nAllocateSize);
+        pBlock->m_pData = CryMemory::AllocPages(nAllocateSize);
         break;
     case IMemoryManager::eapCustomAlignment:
 #if defined(DEBUG)
@@ -105,10 +108,10 @@ void CCustomMemoryHeap::DeallocateBlock(CCustomMemoryHeapBlock* pBlock)
     switch (m_eAllocPolicy)
     {
     case IMemoryManager::eapDefaultAllocator:
-        free(pBlock->m_pData);
+        CryFree(pBlock->m_pData, 0);
         break;
     case IMemoryManager::eapPageMapped:
-        CryGetIMemoryManager()->FreePages(pBlock->m_pData, pBlock->GetSize());
+        CryMemory::FreePages(pBlock->m_pData, pBlock->GetSize());
         break;
     case IMemoryManager::eapCustomAlignment:
         CryModuleMemalignFree(pBlock->m_pData);

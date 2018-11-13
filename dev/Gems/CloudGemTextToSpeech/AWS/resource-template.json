@@ -126,6 +126,14 @@
                         "Role"
                     ]
                 },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "PackageVoiceLinesConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
                         "PackageVoiceLinesConfiguration",
@@ -183,6 +191,22 @@
                 }
             },
             "Type": "Custom::Polly"
+        },
+        "CharacterDefsBucketClearer": {
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Buckets": [
+                    {
+                        "Ref": "characterdefs"
+                    }
+                ]
+            },
+            "DependsOn": [
+                "characterdefs"
+            ],
+            "Type": "Custom::BucketClearer"
         },
         "ServiceApi": {
             "Metadata": {
@@ -258,6 +282,14 @@
                         "ServiceLambdaConfiguration",
                         "Role"
                     ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
                 },
                 "Runtime": {
                     "Fn::GetAtt": [

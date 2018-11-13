@@ -197,27 +197,20 @@ namespace NCryOpenGL
         return true;
     }
 
-    bool InitializeBlendState(const D3D11_BLEND_DESC& kDesc, SBlendState& kState, CContext*)
+    bool InitializeBlendState(const D3D11_BLEND_DESC& kDesc, SBlendState& kState, CContext* context)
     {
-#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
-        COMPILE_TIME_ASSERT(DXGL_ARRAY_SIZE(kDesc.RenderTarget) == DXGL_ARRAY_SIZE(kState.m_kTargets));
-        kState.m_bIndependentBlendEnable = kDesc.IndependentBlendEnable == TRUE;
-#else
-        if (kDesc.IndependentBlendEnable)
+        if (kDesc.IndependentBlendEnable && !context->GetDevice()->IsFeatureSupported(eF_IndependentBlending))
         {
             DXGL_ERROR("Independent blend state is not supported");
             return false;
         }
-#endif //DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
+
+        COMPILE_TIME_ASSERT(DXGL_ARRAY_SIZE(kDesc.RenderTarget) == DXGL_ARRAY_SIZE(kState.m_kTargets));
+        kState.m_bIndependentBlendEnable = kDesc.IndependentBlendEnable == TRUE;
         kState.m_bAlphaToCoverageEnable = kDesc.AlphaToCoverageEnable == TRUE;
 
-        uint32 uTarget;
-#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
         uint32 uTargetEnd(kState.m_bIndependentBlendEnable ? DXGL_ARRAY_SIZE(kDesc.RenderTarget) :  1);
-        for (uTarget = 0; uTarget < uTargetEnd; ++uTarget)
-#else
-        uTarget = 0;
-#endif
+        for (uint32 uTarget = 0; uTarget < uTargetEnd; ++uTarget)
         {
             const D3D11_RENDER_TARGET_BLEND_DESC& kRTDesc(kDesc.RenderTarget[uTarget]);
             STargetBlendState& kRTState(kState.m_kTargets[uTarget]);

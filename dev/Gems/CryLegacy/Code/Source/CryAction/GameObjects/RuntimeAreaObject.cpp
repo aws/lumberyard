@@ -15,7 +15,7 @@
 #include "RuntimeAreaObject.h"
 #include "Components/IComponentAudio.h"
 
-CRuntimeAreaObject::TAudioControlMap CRuntimeAreaObject::m_cAudioControls;
+StaticInstance<CRuntimeAreaObject::TAudioControlMap> CRuntimeAreaObject::m_cAudioControls;
 
 DECLARE_DEFAULT_COMPONENT_FACTORY(CRuntimeAreaObject, CRuntimeAreaObject)
 

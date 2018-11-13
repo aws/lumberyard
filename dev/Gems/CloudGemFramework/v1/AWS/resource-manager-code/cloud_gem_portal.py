@@ -60,14 +60,17 @@ def open_portal(context, args):
     project_resources = context.config.project_resources
 
     if not project_resources.has_key(constant.PROJECT_CGP_RESOURCE_NAME):
-        raise HandledError('You can not open the Cloud Gem Portal without having the Cloud Gem Portal gem installed in your project.')
+        raise HandledError('You can not open the Cloud Gem Portal without having the Cloud Gem Framework gem installed in your project.')
 
     cgp_s3_resource = project_resources[constant.PROJECT_CGP_RESOURCE_NAME]
     stackid = cgp_s3_resource['StackId']
     bucket_id = cgp_s3_resource['PhysicalResourceId']
     expiration = args.duration_seconds if args.duration_seconds else constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS # default comes from argparse only on cli, gui call doesn't provide a default expiration
     region = resource_manager.util.get_region_from_arn(stackid)
-    s3_client = context.aws.session.client('s3',region, config=Config(signature_version='s3v4'))
+    #addressing_style - 
+    #https://docs.aws.amazon.com/cli/latest/topic/s3-config.html
+    #https://boto3.readthedocs.io/en/latest/guide/s3.html
+    s3_client = context.aws.session.client('s3',region, config=Config(region_name=region,signature_version='s3v4', s3={'addressing_style': 'virtual'}))
 
     if args.show_current_configuration:
         try:
@@ -98,7 +101,10 @@ def create_portal_administrator(context, args):
     is_new_user, administrator_name, password = update.create_portal_administrator(context)
     if(args.silent_create_admin):
         return
-    context.view.create_admin(administrator_name, password, 'The Cloud Gem Portal administrator account has been created.')
+    msg = 'The Cloud Gem Portal administrator account has been created.'
+    if password is None:
+        msg = "The administrator account already exists."
+    context.view.create_admin(administrator_name, password, msg)
 
 def upload_portal(context, args):
     if args.project:

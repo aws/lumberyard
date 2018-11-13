@@ -204,8 +204,6 @@ public:
             return;
         }
 
-        ScopedSwitchToGlobalHeap globalHeap;
-
         switch (event)
         {
         case eFE_Initialize:

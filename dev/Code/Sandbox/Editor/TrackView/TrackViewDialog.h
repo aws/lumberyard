@@ -113,7 +113,6 @@ protected slots:
     void OnGoToEnd();
     void OnPlay();
     void OnPlaySetScale();
-    void OnPlayToggleCamera();
     void OnStop();
     void OnStopHardReset();
     void OnPause();
@@ -243,6 +242,7 @@ private:
     bool m_bDoingUndoOperation;
     bool m_lazyInitDone;
     bool m_bEditLock;
+    bool m_newSequenceLock;
 
     float m_fLastTime;
     float m_fAutoRecordStep;

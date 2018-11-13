@@ -959,13 +959,13 @@ namespace AZ
         AZ_Assert(name != NULL && strlen(name) > 0, "Empty name is an INVALID element name!");
         u32 nameCrc = Crc32(name);
 
-#if defined(AZ_DEBUG_BUILD)
+#if defined(AZ_ENABLE_TRACING)
         if (FindElement(nameCrc) != -1)
         {
-            AZ_Error("Serialize", false, "We already have a class member %s!", name);
+            AZ_Error("Serialize", false, "During reflection of class '%s' - member %s is declared more than once.", m_classData->m_name ? m_classData->m_name : "<unknown class>", name);
             return false;
         }
-#endif // AZ_DEBUG_BUILD
+#endif // AZ_ENABLE_TRACING
 
         // remove sub elements
         while (!m_subElements.empty())
@@ -1080,13 +1080,13 @@ namespace AZ
         AZ_Assert(name != NULL && strlen(name) > 0, "Empty name is an INVALID element name!");
         u32 nameCrc = Crc32(name);
 
-    #if defined(AZ_DEBUG_BUILD)
+    #if defined(AZ_ENABLE_TRACING)
         if (!m_classData->m_container && FindElement(nameCrc) != -1)
         {
-            AZ_Error("Serialize", false, "We already have a class member %s!", name);
+            AZ_Error("Serialize", false, "During reflection of class '%s' - member %s is declared more than once.", classData.m_name ? classData.m_name : "<unknown class>", name);
             return -1;
         }
-    #endif // AZ_DEBUG_BUILD
+    #endif // AZ_ENABLE_TRACING
 
         DataElementNode node;
         node.m_element.m_name = name;
@@ -1534,18 +1534,21 @@ namespace AZ
     //=========================================================================
     SerializeContext::ClassBuilder::~ClassBuilder()
     {
-#if defined(AZ_DEBUG_BUILD)
+#if defined(AZ_ENABLE_TRACING)
         if (!m_context->IsRemovingReflection())
         {
             if (m_classData->second.m_serializer)
             {
                 AZ_Assert(
                     m_classData->second.m_elements.empty(),
-                    "Classes with custom serializers provided are not permeitted to contain any elements.\n"
-                    "Common causes of this error are calling SerializeWithNoData() or passing Class() a base class then specifying a serializer.");
+                    "Reflection error for class %s.\n"
+                    "Classes with custom serializers are not permitted to also declare serialized elements.\n"
+                    "This is often caused by calling SerializeWithNoData() or specifying a custom serializer on a class which \n"
+                    "is derived from a base class that has serialized elements.",
+                    m_classData->second.m_name ? m_classData->second.m_name : "<Unknown Class>");
             }
         }
-#endif // AZ_DEBUG_BUILD
+#endif // AZ_ENABLE_TRACING
     }
 
     //=========================================================================

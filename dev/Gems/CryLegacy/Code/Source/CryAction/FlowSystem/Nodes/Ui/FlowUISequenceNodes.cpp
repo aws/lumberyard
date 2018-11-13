@@ -29,8 +29,8 @@
 
 namespace
 {
-    const string g_sequencePlayNodePath = "UI:Sequence:Play";
-    const string g_entSequencePlayNodePath = "UIe:Sequence:Play";
+    const char* g_sequencePlayNodePath = "UI:Sequence:Play";
+    const char* g_entSequencePlayNodePath = "UIe:Sequence:Play";
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +77,7 @@ public:
 
         static const SOutputPortConfig outputs[] =
         {
-            OutputPortConfig_Void("OnStarted", _HELP("Sends a signal when the sequence sucesfully starts")),
+            OutputPortConfig_Void("OnStarted", _HELP("Sends a signal when the sequence successfully starts")),
             OutputPortConfig_Void("OnStopped", _HELP("Sends a signal when the sequence stops normally")),
             OutputPortConfig_Void("OnAborted", _HELP("Sends a signal when the sequence stops abnormally")),
             {0}
@@ -101,7 +101,7 @@ public:
             // so it doesn't get other random callbacks
             UnregisterListener();
 
-            const string& nodePath = m_hasTargetEntity ? g_entSequencePlayNodePath : g_sequencePlayNodePath;
+            const string nodePath = m_hasTargetEntity ? g_entSequencePlayNodePath : g_sequencePlayNodePath;
 
             // Get canvas entity Id
             AZ::EntityId canvasEntityId = UiFlow::GetCanvasEntityId(activationInfo,

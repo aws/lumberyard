@@ -37,6 +37,7 @@
 
 namespace PathUtil
 {
+    const static int maxAliasLength = 32;
     inline string GetLocalizationFolder()
     {
         return gEnv->pCryPak->GetLocalizationFolder();

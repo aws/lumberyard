@@ -20,6 +20,7 @@ import re
 BINTEMP_FOLDER = 'BinTemp'
 SOLUTION_FOLDER = 'Solutions'
 SOLUTION_NAME = 'Lumberyard'
+CACHE_FOLDER = 'Cache'
 
 
 # Version stamp (GUID) of lmbrwaf that is used to signal that a clean of bintemp is necessary
@@ -77,7 +78,7 @@ with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) 
 
 LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0').encode("ascii", "ignore")
 LUMBERYARD_COPYRIGHT_YEAR = ENGINE_JSON_DATA.get('LumberyardCopyrightYear', 2017)
-LUMBERYARD_BUILD = 664281
+LUMBERYARD_BUILD = 754138
 LUMBERYARD_ENGINE_PATH = os.path.normpath(ENGINE_JSON_DATA.get('ExternalEnginePath', '.').encode("ascii", "ignore"))
 
 # validate the Lumberyard version string above

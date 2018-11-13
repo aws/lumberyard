@@ -98,7 +98,6 @@ CSequenceBatchRenderDialog::CSequenceBatchRenderDialog(float fps, QWidget* pPare
     , m_ui(new Ui::SequenceBatchRenderDialog)
     , m_renderListModel(new QStringListModel(this))
     , CV_TrackViewRenderOutputCapturing(0)
-
 {
     m_ui->setupUi(this);
     setFixedSize(size());
@@ -868,6 +867,12 @@ void CSequenceBatchRenderDialog::InitializeContext()
 
 void CSequenceBatchRenderDialog::CaptureItemStart()
 {
+    // Disable most of the UI in group chunks.
+    // (Leave the start/cancel button and feedback elements).
+    m_ui->BATCH_RENDER_LIST_GROUP_BOX->setEnabled(false);
+    m_ui->BATCH_RENDER_INPUT_GROUP_BOX->setEnabled(false);
+    m_ui->BATCH_RENDER_OUTPUT_GROUP_BOX->setEnabled(false);
+
     m_renderContext.canceled = false;
 
     CV_TrackViewRenderOutputCapturing = 1;
@@ -1104,7 +1109,7 @@ void CSequenceBatchRenderDialog::OnUpdateEnd(IAnimSequence* sequence)
             [renderItem, outputFolder]
         {
             AZStd::string outputFile;
-            AzFramework::StringFunc::Path::Join(outputFolder.c_str(), renderItem.prefix.toLatin1().data(), outputFile);
+            AzFramework::StringFunc::Path::Join(outputFolder.c_str(), renderItem.prefix.toUtf8().data(), outputFile);
 
             QString inputFile = outputFile.c_str();
             outputFile += ".mp4";
@@ -1157,6 +1162,11 @@ void CSequenceBatchRenderDialog::OnUpdateFinalize()
 {
     SetEnableEditorIdleProcessing(true);
     m_renderTimer.stop();
+
+    // Turn disabled UI elements back on
+    m_ui->BATCH_RENDER_LIST_GROUP_BOX->setEnabled(true);
+    m_ui->BATCH_RENDER_INPUT_GROUP_BOX->setEnabled(true);
+    m_ui->BATCH_RENDER_OUTPUT_GROUP_BOX->setEnabled(true);
 
     // Check to see if there is more items to process
     bool done = m_renderContext.currentItemIndex == m_renderItems.size() - 1;

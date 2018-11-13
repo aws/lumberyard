@@ -21,6 +21,9 @@
 
 #include "MathConversion.h"
 
+#include <SetVectorDlg.h>
+#include "ActionManager.h"
+
 /////////////////////////////////////////////////////////////////////////////
 // CSetVectorDlg dialog
 

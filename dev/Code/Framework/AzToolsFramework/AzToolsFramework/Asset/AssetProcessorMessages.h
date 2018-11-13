@@ -160,5 +160,27 @@ namespace AzToolsFramework
 
             AZStd::vector<AZStd::string> m_scanFolders;
         };
+
+        class FileInfosNotificationMessage
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            enum NotificationType : unsigned int
+            {
+                Synced,
+                FileAdded,
+                FileRemoved
+            };
+
+            AZ_CLASS_ALLOCATOR(FileInfosNotificationMessage, AZ::OSAllocator, 0);
+            AZ_RTTI(FileInfosNotificationMessage, "{F5AF3ED1-1644-4972-AE21-B6A1B28D898A}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            FileInfosNotificationMessage() = default;
+            unsigned int GetMessageType() const override;
+
+            NotificationType m_type = NotificationType::Synced;
+            AZ::s64 m_fileID = 0;
+        };
     } // namespace AssetSystem
 } // namespace AzToolsFramework

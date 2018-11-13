@@ -211,10 +211,10 @@ union UParamVal
 //   if you don't like it, please write a substitute for all string within the project and use them everywhere.
 struct SShaderParam
 {
-    char m_Name[32];
-    EParamType m_Type;
+    AZStd::string m_Name;
+    AZStd::string m_Script;
     UParamVal m_Value;
-    string m_Script;
+    EParamType m_Type;
     uint8 m_eSemantic;
 
     inline void Construct()
@@ -222,7 +222,8 @@ struct SShaderParam
         memset(&m_Value, 0, sizeof(m_Value));
         m_Type = eType_UNKNOWN;
         m_eSemantic = 0;
-        m_Name[0] = 0;
+        m_Name.clear();
+        m_Script.clear();
     }
     inline SShaderParam()
     {
@@ -260,7 +261,7 @@ struct SShaderParam
     }
     inline SShaderParam (const SShaderParam& src)
     {
-        memcpy(m_Name, src.m_Name, sizeof(m_Name));
+        m_Name = src.m_Name;
         m_Script = src.m_Script;
         m_Type = src.m_Type;
         m_eSemantic = src.m_eSemantic;
@@ -292,7 +293,7 @@ struct SShaderParam
             {
                 continue;
             }
-            if (!azstricmp(sp->m_Name, name))
+            if (sp->m_Name == name)
             {
                 if (sp->m_Type == eType_STRING)
                 {
@@ -882,6 +883,8 @@ struct ShadowMapFrustum;
 _MS_ALIGN(16) class CRenderObject
 {
 public:
+    AZ_CLASS_ALLOCATOR(CRenderObject, AZ::LegacyAllocator, 0);
+
     struct SInstanceInfo
     {
         Matrix34 m_Matrix;
@@ -951,6 +954,7 @@ public:
     // Common flags
     uint32                     m_bWasDeleted : 1; //!< Object was deleted and in unusable state
     uint32                     m_bHasShadowCasters : 1; //!< Has non-empty list of lights casting shadows in render object data
+    uint32                     m_NoDecalReceiver : 1;
 
     //! Embedded SRenderObjData, optional data carried by CRenderObject
     SRenderObjData             m_data;
@@ -1007,7 +1011,7 @@ public:
         m_pNextSubObject = NULL;
         m_bWasDeleted = false;
         m_bHasShadowCasters = false;
-
+        m_NoDecalReceiver = false;
         m_data.Init();
     }
     void AssignId(uint32 id) { m_Id = id; }
@@ -1050,6 +1054,7 @@ enum EResClassName
 // className: CTexture, CHWShader_VS, CHWShader_PS, CShader
 struct SResourceAsync
 {
+    AZ_CLASS_ALLOCATOR(SResourceAsync, AZ::LegacyAllocator, 0);
     int nReady;          // 0: Not ready; 1: Ready; -1: Error
     byte* pData;
     EResClassName eClassName;     // Resource class name
@@ -1189,6 +1194,7 @@ enum ETexGenType
 
 struct SEfTexModificator
 {
+    AZ_CLASS_ALLOCATOR(SEfTexModificator, AZ::LegacyAllocator, 0);
     bool SetMember(const char* szParamName, float fValue)
     {
         CASE_TEXMODBYTE(m_eTGType);
@@ -1764,7 +1770,7 @@ struct SEfResTexture
     STexSamplerRT       m_Sampler;
     SEfResTextureExt    m_Ext;
 
-    void UpdateForCreate();
+    void UpdateForCreate(int nTSlot);
     void Update(int nTSlot);
     void UpdateWithModifier(int nTSlot);
 
@@ -2498,6 +2504,7 @@ enum ERenderListID
     EFSLIST_EYE_OVERLAY,                         // Eye overlay layer requires special processing
     EFSLIST_FOG_VOLUME,                          // Fog density injection passes.
     EFSLIST_GPU_PARTICLE_CUBEMAP_COLLISION,       // Cubemaps for GPU particle cubemap depth collision
+    EFSLIST_REFRACTIVE_SURFACE,                   // After decals, used for instance for the water surface that comes with water volumes.
 
     EFSLIST_NUM
 };

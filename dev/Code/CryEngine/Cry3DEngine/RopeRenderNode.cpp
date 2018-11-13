@@ -739,11 +739,11 @@ public:
 
 private:
     static CryCriticalSectionNonRecursive g_CacheLock;
-    static std::vector<CRopeSurfaceCache*> g_CachePool;
+    static StaticInstance<std::vector<CRopeSurfaceCache*>> g_CachePool;
 };
 
 CryCriticalSectionNonRecursive CRopeSurfaceCache::g_CacheLock;
-std::vector<CRopeSurfaceCache*> CRopeSurfaceCache::g_CachePool;
+StaticInstance<std::vector<CRopeSurfaceCache*>> CRopeSurfaceCache::g_CachePool;
 
 CRopeSurfaceCache* CRopeSurfaceCache::GetSurfaceCache()
 {

@@ -345,7 +345,7 @@ bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
     {
         SSShaderParam PR;
         SShaderParam& P = params.m_PublicParams[i];
-        PR.m_nameIdx = SC.AddString(P.m_Name);
+        PR.m_nameIdx = SC.AddString(P.m_Name.c_str());
         PR.m_Type = P.m_Type;
         PR.m_Value = P.m_Value;
         PR.m_nScriptOffs = SC.AddString(P.m_Script.c_str());
@@ -798,7 +798,7 @@ bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
         SSShaderParam& PR = SC.Params[i];
         SShaderParam P;
         const char* pName = sString(PR.m_nameIdx, SC.Strings);
-        cry_strcpy(P.m_Name, pName);
+        P.m_Name = pName;
         P.m_Type = PR.m_Type;
         P.m_Value = PR.m_Value;
         P.m_Script = sString(PR.m_nScriptOffs, SC.Strings);

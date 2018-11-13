@@ -50,7 +50,7 @@ private:
 };
 
 //--------------------------------------------------------------------------------
-static std::vector<CDebugVelocity, stl::STLGlobalAllocator<CDebugVelocity> > s_debugVelocities;
+static StaticInstance<std::vector<CDebugVelocity, stl::STLGlobalAllocator<CDebugVelocity> > > s_debugVelocities;
 
 extern float g_mannequinYPosEnd;
 //--------------------------------------------------------------------------------

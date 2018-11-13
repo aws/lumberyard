@@ -188,7 +188,6 @@
             "stdafx.h",
             "../../CryCommonTools/SuffixUtil.h",
             "TinyDocument.h",
-            "ImageExports.def",
             "tools.h",
             "../../CryCommonTools/Util.h",
             "ResourceCompilerImage.rc"

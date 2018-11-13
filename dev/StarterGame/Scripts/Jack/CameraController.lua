@@ -38,7 +38,7 @@ local cameracontroller =
 			LookLeftRight = 0.0,
 			LookUpDown = 0.0,
 		},
-		-- XBox/PS controller.
+		-- Controller.
 		Controller =
 		{
 			LookLeftRight = {0.0, false},
@@ -490,7 +490,7 @@ function cameracontroller:UpdateSettings(deltaTime)
 end
 
 function cameracontroller:ApplyRenderCameraValues()
-	CameraRequestBus.Event.SetFov(self.entityId, self.CurrentSettings.FOV);
+	CameraRequestBus.Event.SetFovDegrees(self.entityId, self.CurrentSettings.FOV);
 	CameraRequestBus.Event.SetNearClipDistance(self.entityId, self.CurrentSettings.NearClip);
 	CameraRequestBus.Event.SetFarClipDistance(self.entityId, self.CurrentSettings.FarClip);
 end

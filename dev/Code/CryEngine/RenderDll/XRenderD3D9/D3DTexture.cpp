@@ -441,7 +441,6 @@ D3DSurface* CTexture::GetSurface(int nCMSide, int nLevel)
 
     if (!pTargSurf)
     {
-        MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Texture, 0, "Create Render Target: %s", GetSourceName());
         int nMipLevel = 0;
         int nSlice = 0;
         int nSliceCount = -1;
@@ -2232,8 +2231,6 @@ void CTexture::Unbind()
 
 bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Texture, 0, "Creating Texture");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Texture, 0, "%s %ix%ix%i %08x", m_SrcName.c_str(), m_nWidth, m_nHeight, m_nMips, m_nFlags);
     SCOPED_RENDERER_ALLOCATION_NAME_HINT(GetSourceName());
 
     HRESULT hr;
@@ -2242,13 +2239,6 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_5
 #include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
-#endif
-
-#if defined(MAC)
-    if (!(m_nFlags & FT_FROMIMAGE) && (GetBlockDim(m_eTFDst) != Vec2i(1)))
-    {
-        m_bIsSRGB = true;
-    }
 #endif
 
     //if we have any device owned resources allocated, we must sync with render thread
@@ -3740,6 +3730,20 @@ void CTexture::Apply(int nTUnit, int nState, int nTexMatSlot, int nSUnit, SResou
     uint32 nTSSel = Isel32(nState, (int32)m_nDefState);
     assert(nTSSel >= 0 && nTSSel < s_TexStates.size());
 
+#if defined(OPENGL)
+    // Due to driver issues on MALI gpus only point filtering is allowed for 32 bit float textures.
+    // If another filtering is used the sampler returns black.
+    if ((gcpRendD3D->m_Features | RFT_HW_ARM_MALI) && 
+        (m_eTFDst == eTF_R32F || m_eTFDst == eTF_R32G32B32A32F) &&
+        (s_TexStates[nTSSel].m_nMagFilter != FILTER_POINT || s_TexStates[nTSSel].m_nMinFilter != FILTER_POINT))
+    {
+        STexState newState = s_TexStates[nTSSel];
+        newState.SetFilterMode(FILTER_POINT);
+        nTSSel = CTexture::GetTexState(newState);
+        AZ_WarningOnce("Texture", false, "The current device only supports point filtering for full float textures. Forcing filtering for texture in slot %d", nTUnit);
+    }
+#endif // defined(OPENGL)
+
     STexStageInfo* TexStages = s_TexStages;
 
     CDeviceTexture* pDevTex = m_pDevTexture;
@@ -3840,7 +3844,16 @@ void CTexture::Apply(int nTUnit, int nState, int nTexMatSlot, int nSUnit, SResou
             {
                 // one mip per half a second
                 m_fCurrentMipBias -= 0.26667f * fCurrentMipBias;
-                gcpRendD3D->GetDeviceContext().SetResourceMinLOD(pDevTex->Get2DTexture(), m_fCurrentMipBias + (float)m_nMinMipVidUploaded);
+#if defined(CRY_USE_METAL)
+                //For metal, the lodminclamp is set once at initialization for the mtlsamplerstate. The mtlSamplerDescriptor's properties
+                //are only used during mtlSamplerState object creation; once created the behaviour of a sampler state object is
+                //fixed and cannot be changed. Hence we modify the descriptor with minlod and recreate the sampler state.
+                STexState* pTS = &s_TexStates[nTSSel];
+                D3DSamplerState* pSamp = (D3DSamplerState*)pTS->m_pDeviceState;
+                pSamp->SetLodMinClamp(m_fCurrentMipBias + static_cast<float>(m_nMinMipVidUploaded));
+#else
+                gcpRendD3D->GetDeviceContext().SetResourceMinLOD(pDevTex->Get2DTexture(), m_fCurrentMipBias + static_cast<float>(m_nMinMipVidUploaded));
+#endif
             }
             else if (fCurrentMipBias != 0.f)
             {
@@ -4377,7 +4390,6 @@ void CTexture::DrawSceneToCubeSide(Vec3& Pos, int tex_size, int side)
 
     CRenderer* r = gRenDev;
     CCamera prevCamera = r->GetCamera();
-    CCamera tmpCamera = prevCamera;
 
     I3DEngine* eng = gEnv->p3DEngine;
 
@@ -4386,8 +4398,16 @@ void CTexture::DrawSceneToCubeSide(Vec3& Pos, int tex_size, int side)
 
     Matrix33 matRot = Matrix33::CreateOrientation(vForward, vUp, DEG2RAD(sCubeVector[side][6]));
     Matrix34 mFinal = Matrix34(matRot, Pos);
-    tmpCamera.SetMatrix(mFinal);
-    tmpCamera.SetFrustum(tex_size, tex_size, 90.0f * gf_PI / 180.0f, prevCamera.GetNearPlane(), prevCamera.GetFarPlane()); //90.0f*gf_PI/180.0f
+
+    // Use current viewport camera's near/far to capture what is shown in the editor
+    const CCamera& viewCamera = gEnv->pSystem->GetViewCamera();
+    const float captureNear = viewCamera.GetNearPlane();
+    const float captureFar = viewCamera.GetFarPlane();
+    const float captureFOV = DEG2RAD(90.0f);
+
+    CCamera captureCamera;
+    captureCamera.SetMatrix(mFinal);
+    captureCamera.SetFrustum(tex_size, tex_size, captureFOV, captureNear, captureFar);
 
 #ifdef DO_RENDERLOG
     if (CRenderer::CV_r_log)
@@ -4396,7 +4416,7 @@ void CTexture::DrawSceneToCubeSide(Vec3& Pos, int tex_size, int side)
     }
 #endif
 
-    eng->RenderWorld(SHDF_CUBEMAPGEN | SHDF_ALLOWPOSTPROCESS | SHDF_ALLOWHDR | SHDF_ZPASS | SHDF_NOASYNC | SHDF_STREAM_SYNC, SRenderingPassInfo::CreateGeneralPassRenderingInfo(tmpCamera, (SRenderingPassInfo::DEFAULT_FLAGS | SRenderingPassInfo::CUBEMAP_GEN)), __FUNCTION__);
+    eng->RenderWorld(SHDF_CUBEMAPGEN | SHDF_ALLOWPOSTPROCESS | SHDF_ALLOWHDR | SHDF_ZPASS | SHDF_NOASYNC | SHDF_STREAM_SYNC, SRenderingPassInfo::CreateGeneralPassRenderingInfo(captureCamera, (SRenderingPassInfo::DEFAULT_FLAGS | SRenderingPassInfo::CUBEMAP_GEN)), __FUNCTION__);
 
 #ifdef DO_RENDERLOG
     if (CRenderer::CV_r_log)
@@ -4613,12 +4633,6 @@ void CTexture::GenerateSceneMap(ETEX_Format eTF)
             s_ptexModelHudBuffer->m_nHeight = nHeight;
             s_ptexModelHudBuffer->CreateRenderTarget(eTF_R8G8B8A8, Clr_Transparent);
         }
-    }
-
-    // Editor fix: it is possible at this point that resolution has changed outside of ChangeResolution and stereoR, stereoL have not been resized
-    if (gEnv->IsEditor())
-    {
-        gcpRendD3D->GetS3DRend().OnResolutionChanged();
     }
 }
 
@@ -5159,7 +5173,7 @@ void CTexture::CreateSystemTargets()
 {
     if (!gcpRendD3D->m_bSystemTargetsInit)
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
+        
 
         gcpRendD3D->m_bSystemTargetsInit = 1;
 

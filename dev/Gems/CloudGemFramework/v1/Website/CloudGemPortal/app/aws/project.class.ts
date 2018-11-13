@@ -16,6 +16,8 @@ export class AwsProject {
 
     public static get BUCKET_CONFIG_NAME(): string { return "config_bucket" }
     public static get PROJECT_SETTING_FILE(): string { return "project-settings.json" }
+    public static get PROJECT_SETTING_V2_PREFIX(): string { return "dstack" }
+    public static get PROJECT_SETTING_ATTR_DEPLOYMENT(): string { return "deployment" }
 
     private _settings: Subject<ProjectSettings>;
     private _isInitialized: boolean;
@@ -114,7 +116,7 @@ export class AwsProject {
         let proj = this;
         var signedRequest = this.context.s3.getSignedUrl('getObject', { Bucket: this.context.configBucket, Key: AwsProject.PROJECT_SETTING_FILE, Expires: 120 })
         
-        this.http.request(signedRequest)
+        http.request(signedRequest)
             .subscribe(response => {
                 let settings = response.json();
 
@@ -124,9 +126,77 @@ export class AwsProject {
                 proj._settingsCache = settings
                 proj._settings.next(settings);
             },
-            err => {
-                console.error(err)
+            err => {                                
+                this.loadProjectSettingsV2(context, http, proj)
             })
         
     }
+
+    loadProjectSettingsV2 = (context: AwsContext, http: Http, proj: AwsProject) => {
+        console.log(`Attempting to load version V2 of the project settings.`)
+        var params = {
+            Bucket: context.configBucket,
+            Prefix: AwsProject.PROJECT_SETTING_V2_PREFIX
+        };
+        context.s3.listObjectsV2(params, function (err, data) {
+            if (err) console.error(err, err.stack);
+            else {
+                let content = data['Contents'];
+                let settings: any = {};                                
+                let length = content.length
+                let i = 1
+                settings[AwsProject.PROJECT_SETTING_ATTR_DEPLOYMENT] = {}
+                for (let item in content) {
+                    let key = content[item].Key
+                    var parts = key.split(".")
+
+                    //Ignore the resource groups without gems
+                    if (parts[2] == "*")
+                        continue
+                    
+                    if (key.includes(`${AwsProject.PROJECT_SETTING_V2_PREFIX}.${AwsProject.PROJECT_SETTING_ATTR_DEPLOYMENT}`)) {
+                        settings[AwsProject.PROJECT_SETTING_ATTR_DEPLOYMENT][parts[2]] = key                    
+                    } else {
+                        settings[parts[1]] = key
+                    }
+                    var signedRequest = context.s3.getSignedUrl('getObject', { Bucket: context.configBucket, Key: key, Expires: 120 })
+                    http.request(signedRequest)
+                        .subscribe(response => {
+                            i += 1
+                            let deployment = response.text();                            
+                            try {
+                                deployment = JSON.parse(deployment)
+                            } catch (e) {
+                            }                            
+                            
+                            parts = response.url.split("?")[0].split(".")                            
+                            if (parts.length < 2) {
+                                console.error(`The url '${response.url}' is not of the expected structure.  The filename should be structure as such a.b.c.json `)
+                                return
+                            }
+                            if (parts[parts.length - 3] == AwsProject.PROJECT_SETTING_ATTR_DEPLOYMENT)
+                                settings[AwsProject.PROJECT_SETTING_ATTR_DEPLOYMENT][parts[parts.length - 2]] = deployment
+                            else
+                                settings[parts[parts.length - 3]] = deployment                            
+                            
+                            if (i == length) {
+                                proj._settingsCache = settings
+                                proj._settings.next(settings);
+
+                            }                               
+                        },
+                        err => {
+                            console.log("Unable to load the default deployment.")
+                            i += 1
+                            if (i == length) {
+                                proj._settingsCache = settings
+                                proj._settings.next(settings);
+                            }
+                        })
+                    
+                }
+            }
+        });
+    }
 }
+

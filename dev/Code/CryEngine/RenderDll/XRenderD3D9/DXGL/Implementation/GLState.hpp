@@ -55,10 +55,7 @@ namespace NCryOpenGL
     {
         STargetBlendState m_kTargets[DXGL_NUM_SUPPORTED_BLEND_STATES];
         bool m_bAlphaToCoverageEnable;
-
-#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
         bool m_bIndependentBlendEnable;
-#endif //DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
     };
 
     struct SDepthStencilState

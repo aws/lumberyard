@@ -55,12 +55,6 @@ namespace
 
 namespace BehaviorTree
 {
-#ifdef USE_GLOBAL_BUCKET_ALLOCATOR
-    NodeFactory::BehaviorTreeBucketAllocator NodeFactory::s_bucketAllocator(NULL, false);
-#else
-    NodeFactory::BehaviorTreeBucketAllocator NodeFactory::s_bucketAllocator;
-#endif
-
     BehaviorTreeManager::BehaviorTreeManager()
     {
         m_nodeFactory.reset(new NodeFactory);
@@ -115,8 +109,6 @@ namespace BehaviorTree
 
     BehaviorTreeInstancePtr BehaviorTreeManager::LoadFromCache(const char* behaviorTreeName)
     {
-        MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Load Modular Behavior Tree From Cache: %s", behaviorTreeName);
-
         BehaviorTreeCache::iterator findResult = m_behaviorTreeCache.find(behaviorTreeName);
         if (findResult != m_behaviorTreeCache.end())
         {
@@ -139,19 +131,16 @@ namespace BehaviorTree
 
         if (XmlNodeRef timestampsXml = behaviorTreeXmlNode->findChild("Timestamps"))
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Timestamps");
             behaviorTreeTemplate.defaultTimestampCollection.LoadFromXml(timestampsXml);
         }
 
         if (XmlNodeRef variablesXml = behaviorTreeXmlNode->findChild("Variables"))
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Variables");
             behaviorTreeTemplate.variableDeclarations.LoadFromXML(variablesXml, behaviorTreeName);
         }
 
         if (XmlNodeRef signalsXml = behaviorTreeXmlNode->findChild("SignalVariables"))
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Signals");
             behaviorTreeTemplate.signalHandler.LoadFromXML(behaviorTreeTemplate.variableDeclarations, signalsXml, behaviorTreeName);
         }
 
@@ -173,8 +162,6 @@ namespace BehaviorTree
         {
             return;
         }
-
-        MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Load Modular Behavior Tree From Disk: %s", behaviorTreeName);
 
         XmlNodeRef behaviorTreeXmlNode = XmlLoader().LoadBehaviorTreeXmlFile("Scripts/AI/BehaviorTrees/", behaviorTreeName);
 
@@ -211,7 +198,6 @@ namespace BehaviorTree
         StopAllBehaviorTreeInstances();
         m_behaviorTreeCache.clear();
         m_nodeFactory->TrimNodeCreators();
-        m_nodeFactory->CleanUpBucketAllocator();
 #ifdef DEBUG_MODULAR_BEHAVIOR_TREE
         m_errorStatusTrees.clear();
 #endif // DEBUG_MODULAR_BEHAVIOR_TREE

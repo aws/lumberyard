@@ -19,6 +19,8 @@
 #define CRYINCLUDE_CRYCOMMON_CRYSTRING_H
 #pragma once
 
+#include <AzCore/std/hash.h>
+
 #if !defined(NOT_USE_CRY_STRING)
 
 #include <string.h>
@@ -28,6 +30,7 @@
 #include <ctype.h>
 #include "CompileTimeAssert.h"
 #include "platform.h"
+#include "LegacyAllocator.h"
 
 #define CRY_STRING
 
@@ -41,6 +44,25 @@ class CConstCharWrapper;    //forward declaration for special const char * witho
 //extern void CryDebugStr( const char *format,... );
 //#define CRY_STRING_DEBUG(s) { if (*s) CryDebugStr( "[%6d] %s",_usedMemory(0),(s) );}
 #define CRY_STRING_DEBUG(s)
+
+class CryStringAllocator
+    : public AZ::AllocatorBase<AZ::HphaSchema>
+{
+public:
+    AZ_TYPE_INFO(CryStringAllocator, "{763DFC83-8A6E-4FD9-B6BC-BBF56E93E4EE}");
+
+    using Base = AZ::AllocatorBase<AZ::HphaSchema>;
+    using Descriptor = Base::Descriptor;
+
+    CryStringAllocator()
+        : Base("CryStringAllocator", "Allocator for CryString<T>")
+    {
+        Descriptor desc;
+        desc.m_systemChunkSize = 4 * 1024 * 1024;     // grow by 4 MB at a time
+        desc.m_subAllocator = &AZ::AllocatorInstance<AZ::LegacyAllocator>::Get();
+        Create(desc);
+    }
+};
 
 //////////////////////////////////////////////////////////////////////////
 // CryStringT class.
@@ -771,7 +793,7 @@ inline void CryStringT<T>::_AllocData(size_type nLen)
     {
         size_type allocLen = sizeof(StrHeader) + (nLen + 1) * sizeof(value_type);
 
-        StrHeader* pData = (StrHeader*)CryModuleMalloc(allocLen);
+        StrHeader* pData = (StrHeader*)azmalloc(allocLen, 32, CryStringAllocator);
 
         _usedMemory(allocLen);   // For statistics.
         pData->nRefCount = 1;
@@ -805,12 +827,7 @@ inline void CryStringT<T>::_FreeData(StrHeader* pData)
 
     if (pData->nRefCount == 0 || pData->Release() <= 0)
     {
-        size_t allocLen = sizeof(StrHeader) + (pData->nAllocSize + 1) * sizeof(value_type);
-        _usedMemory(-check_cast<int>(allocLen));   // For statistics.
-
-        CryModuleFree((void*)pData);
-        //int allocLen = sizeof(StrHeader) + (pData->nAllocSize+1)*sizeof(value_type);
-        //string_alloc::deallocate( (value_type*)pData,allocLen );
+        azfree((void*)pData, CryStringAllocator);
     }
 }
 
@@ -2514,5 +2531,37 @@ typedef std::string string;
 typedef std::wstring wstring;
 
 #endif // !defined(NOT_USE_CRY_STRING)
+
+namespace AZStd
+{
+    template <>
+    struct hash<::string>
+    {
+        typedef ::string   argument_type;
+        typedef size_t     result_type;
+        inline result_type operator()(const argument_type& value) const 
+        { 
+            return hash_string(value.c_str(), value.length());
+        }
+
+        static size_t hash_string(const char* str, size_t length)
+        {
+#ifdef AZ_OS64
+            size_t hash = 14695981039346656037ULL;
+            const size_t fnvPrime = 1099511628211ULL;
+#else
+            size_t hash = 2166136261U;
+            const size_t fnvPrime = 16777619U;
+#endif
+            const char* cptr = str;
+            for (; length; --length)
+            {
+                hash ^= static_cast<size_t>(*cptr++);
+                hash *= fnvPrime;
+            }
+            return hash;
+        }
+    };
+}
 
 #endif // CRYINCLUDE_CRYCOMMON_CRYSTRING_H

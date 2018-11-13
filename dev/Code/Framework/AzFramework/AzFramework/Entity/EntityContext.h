@@ -166,6 +166,10 @@ namespace AzFramework
         /// \return true if this context owns the entity with the given id.
         bool IsOwnedByThisContext(const AZ::EntityId& entityId);
 
+        /// Helper function to send OnSliceInstantiationFailed events.
+        static void DispatchOnSliceInstantiationFailed(const SliceInstantiationTicket& ticket, const AZ::Data::AssetId& assetId, bool canceled);
+
+
         AZ::SerializeContext*                       m_serializeContext;
         EntityContextId                             m_contextId;            ///< Id of the context, used to address bus messages
         AZ::Data::Asset<AZ::SliceAsset>             m_rootAsset;            ///< Stores root entity and slice instance.

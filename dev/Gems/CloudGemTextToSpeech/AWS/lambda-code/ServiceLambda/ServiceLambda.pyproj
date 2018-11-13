@@ -22,12 +22,31 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="api\character.py" />
+    <Compile Include="api\characterlib.py" />
+    <Compile Include="api\characters.py" />
     <Compile Include="api\service_status.py" />
+    <Compile Include="api\speechlib.py" />
+    <Compile Include="api\speechlib_filter.py" />
+    <Compile Include="api\speechlib_import.py" />
+    <Compile Include="api\speechlib_preview.py" />
+    <Compile Include="api\tts_custommappings.py" />
+    <Compile Include="api\tts_exporter.py" />
+    <Compile Include="api\tts_exporter_library.py" />
+    <Compile Include="api\tts_generatedpackage.py" />
+    <Compile Include="api\tts_generatedpackages.py" />
+    <Compile Include="api\tts_runtimecache.py" />
+    <Compile Include="api\tts_runtimecapabilities.py" />
+    <Compile Include="api\tts_speechmarks.py" />
     <Compile Include="api\tts_voiceline.py" />
+    <Compile Include="api\voicelist.py" />
     <Compile Include="api\__init__.py" />
+    <Compile Include="resource_types\Custom_Polly.py" />
+    <Compile Include="resource_types\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="api" />
+    <Folder Include="resource_types\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".ignore">

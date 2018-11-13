@@ -32,7 +32,6 @@ class HookContext(object):
     def load_modules(self, module_name):
 
         module_hooks = []
-        gems_seen = set()
 
         project_module_path = os.path.join(self.context.config.aws_directory_path, module_name)
         if os.path.isfile(project_module_path):
@@ -43,15 +42,11 @@ class HookContext(object):
             resource_group_module_path = os.path.join(resource_group_directory_path, module_name)
             if os.path.isfile(resource_group_module_path):
                 module_hooks.append(HookModule(self.context, resource_group_module_path, resource_group = resource_group))
-            if resource_group.gem:
-                gems_seen.add(resource_group.gem)
 
-        for gem in self.context.gem.enabled_gems:
-            if gem in gems_seen:
-                continue
+        for gem in self.context.gem.enabled_gems:            
             gem_module_path = os.path.join(gem.aws_directory_path, module_name)
             if os.path.isfile(gem_module_path):
-                module_hooks.append(HookModule(self.context, gem_module_path, gem = gem))
+                module_hooks.append(HookModule(self.context, gem_module_path, gem = gem))            
 
         self.__hook_modules[module_name] = module_hooks
 

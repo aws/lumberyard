@@ -374,7 +374,7 @@ namespace Audio
 
         if (FindPlaceConst(m_cATLSwitchNames, nSwitchID, iterSwitch))
         {
-            const TAudioSwitchStateMap cStates = iterSwitch->second.second;
+            const TAudioSwitchStateMap& cStates = iterSwitch->second.second;
             TAudioSwitchStateMap::const_iterator iterState = cStates.begin();
 
             if (FindPlaceConst(cStates, nStateID, iterState))

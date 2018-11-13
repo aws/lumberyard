@@ -293,6 +293,8 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
 
     AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler::BusConnect();
 
+    FontNotificationBus::Handler::BusConnect();
+
     // Don't draw the viewport until the window is shown
     m_viewport->SetRedrawEnabled(false);
 
@@ -305,6 +307,8 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
 EditorWindow::~EditorWindow()
 {
     AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler::BusDisconnect();
+
+    FontNotificationBus::Handler::BusDisconnect();
 
     QObject::disconnect(m_clipboardConnection);
 
@@ -395,6 +399,11 @@ void EditorWindow::EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowser
 void EditorWindow::EntryRemoved(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* /*entry*/)
 {
     DeleteSliceLibraryTree();
+}
+
+void EditorWindow::OnFontsReloaded()
+{
+    OnEditorPropertiesRefreshEntireTree();
 }
 
 void EditorWindow::DestroyCanvas(const UiCanvasMetadata& canvasMetadata)

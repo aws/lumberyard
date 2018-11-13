@@ -42,7 +42,21 @@ namespace ScriptCanvas
     SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(ConvertTransformToRotation, "Math/Quaternion", "{C878982F-1B6B-4555-8723-7FF3830C8032}", "", "Transform");
     SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(CreateLookAt, "Math/Transform", "{D5223A1E-F725-4E67-8E70-2975720F91E8}", "", "From", "To", "Axis[0:5]");
     SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(CreateLookAtYPosAxis, "Math/Transform", "{8BD2AB7A-AF2E-4748-9530-71055E5EA986}", "", "From", "To");
-        
+
+    AZ_INLINE Data::NumberType MultiplyAndAdd(Data::NumberType multiplicand, Data::NumberType multiplier, Data::NumberType addend)
+    {
+        // result = src0 * src1 + src2
+        return multiplicand * multiplier + addend;
+    }
+    SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(MultiplyAndAdd, "Math/Number", "{827BDBD2-48CE-4DA4-90F3-F1B8E996613B}", "", "Multiplicand", "Multiplier", "Addend");
+
+    AZ_INLINE Data::NumberType StringToNumber(const Data::StringType& stringValue)
+    {
+        return AZStd::stof(stringValue);
+    }
+
+    SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(StringToNumber, "Math/Number", "{FD2D9758-5EA2-45A3-B293-A748D951C4A3}", "Converts the given string to it's numeric representation if possible.", "", "");
+
     using MathRegistrar = RegistrarGeneric
         < ConvertTransformToRotationNode
 
@@ -50,6 +64,8 @@ namespace ScriptCanvas
         , CreateLookAtNode
         , CreateLookAtYPosAxisNode
 #endif
+        , MultiplyAndAddNode
+        , StringToNumberNode
         >;
 } // namespace ScriptCanvas
 

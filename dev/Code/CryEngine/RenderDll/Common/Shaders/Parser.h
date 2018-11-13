@@ -11,8 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef PARSER_H
-#define PARSER_H
+#pragma once
 
 struct STokenDesc
 {
@@ -55,6 +54,3 @@ void shGetVector4(char* buf, vec4_t& v);
 void shGetColor(const char* buf, ColorF& v);
 void shGetColor(char* buf, float v[4]);
 int shGetVar (char** buf, char** vr, char** val);
-
-#endif
-

@@ -2151,7 +2151,10 @@ namespace AZ
             // check getter result type is equal to setter input type
             if (m_getter && m_getter->GetResult()->m_typeId != m_setter->GetArgument(1)->m_typeId)
             {
-                AZ_Assert(false, "Getter return type and Setter input arguement should be the same type!");
+                AZStd::string getterType, setterType;
+                m_getter->GetResult()->m_typeId.ToString(getterType);
+                m_setter->GetArgument(1)->m_typeId.ToString(setterType);
+                AZ_Assert(false, "Getter return type and Setter input argument should be the same type! (getter: %s, setter: %s)", getterType.c_str(), setterType.c_str());
                 delete m_setter;
                 m_setter = nullptr;
                 return false;
@@ -2194,7 +2197,10 @@ namespace AZ
             // check getter result type is equal to setter input type
             if (m_getter && m_getter->GetResult()->m_typeId != m_setter->GetArgument(valueIndex)->m_typeId)
             {
-                AZ_Assert(false, "Getter return type and Setter input arguement should be the same type!");
+                AZStd::string getterType, setterType;
+                m_getter->GetResult()->m_typeId.ToString(getterType);
+                m_setter->GetArgument(valueIndex)->m_typeId.ToString(setterType);
+                AZ_Assert(false, "Getter return type and Setter input argument should be the same type! (getter: %s, setter: %s)", getterType.c_str(), setterType.c_str());
                 delete m_setter;
                 m_setter = nullptr;
                 return false;

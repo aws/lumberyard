@@ -44,7 +44,7 @@ namespace ScriptCanvas
         , protected RuntimeRequestBus::Handler
         , protected VariableRequestBus::MultiHandler
         , private AZ::Data::AssetBus::Handler
-		, public AZ::EntityBus::Handler
+        , public AZ::EntityBus::Handler
     {
     public:
         friend class Node;
@@ -142,7 +142,7 @@ namespace ScriptCanvas
         // Script Canvas VariableId populated when the RuntimeAsset loads
         VariableIdMap m_editorToRuntimeVariableMap;
 
-		AZStd::unordered_set< Node* > m_entryNodes;
+        AZStd::unordered_set< Node* > m_entryNodes;
 
         // Script Canvas VariableId map populated by the EditorScriptCanvasComponent in build game Entity
         AZStd::unordered_map<AZ::u64, AZ::EntityId> m_variableEntityIdMap;

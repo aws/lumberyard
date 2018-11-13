@@ -151,20 +151,20 @@ namespace UnitTest
         //////////////////////////////////////////////////////////////////////////
         // static pool allocator
         // Generally we can't use more then 16 byte alignment on the stack.
-        // For instance X360 will fail. Which is ok, higher alignment should be handled by US. Or not on the stack. // ACCEPTED_USE
-        const int dataAlingment = 16;
+        // Some platforms might fail. Which is ok, higher alignment should be handled by US. Or not on the stack.
+        const int dataAlignment = 16;
 
-        typedef aligned_storage<sizeof(int), dataAlingment>::type aligned_int_type;
+        typedef aligned_storage<sizeof(int), dataAlignment>::type aligned_int_type;
         typedef static_pool_allocator<aligned_int_type, numNodes> aligned_int_node_pool_type;
         aligned_int_node_pool_type myaligned_pool;
-        aligned_int_type* aligned_data = reinterpret_cast<aligned_int_type*>(myaligned_pool.allocate(sizeof(aligned_int_type), dataAlingment));
+        aligned_int_type* aligned_data = reinterpret_cast<aligned_int_type*>(myaligned_pool.allocate(sizeof(aligned_int_type), dataAlignment));
 
         AZ_TEST_ASSERT(aligned_data != 0);
-        AZ_TEST_ASSERT(((AZStd::size_t)aligned_data & (dataAlingment - 1)) == 0);
+        AZ_TEST_ASSERT(((AZStd::size_t)aligned_data & (dataAlignment - 1)) == 0);
         AZ_TEST_ASSERT(myaligned_pool.get_max_size() == (numNodes - 1) * sizeof(aligned_int_type));
         AZ_TEST_ASSERT(myaligned_pool.get_allocated_size() == sizeof(aligned_int_type));
 
-        myaligned_pool.deallocate(aligned_data, sizeof(aligned_int_type), dataAlingment); // Make sure we free what we have allocated.
+        myaligned_pool.deallocate(aligned_data, sizeof(aligned_int_type), dataAlignment); // Make sure we free what we have allocated.
         //////////////////////////////////////////////////////////////////////////
     }
 

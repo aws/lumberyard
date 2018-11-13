@@ -946,6 +946,7 @@ void CObjectManager::DeleteAllObjects()
 
     m_aiTerritoryObjects.clear();
     m_aiWaveObjects.clear();
+    m_animatedAttachedEntities.clear();
 
     RefreshEntitiesAssignedToSelectedTnW();
 
@@ -1066,6 +1067,14 @@ bool CObjectManager::AddObject(CBaseObject* obj)
         {
             m_aiWaveObjects.insert(waveObj);
         }
+        else if (CEntityObject* entityObj = qobject_cast<CEntityObject*>(obj))
+        {
+            CEntityObject::EAttachmentType attachType = entityObj->GetAttachType();
+            if (attachType == CEntityObject::EAttachmentType::eAT_GeomCacheNode || attachType == CEntityObject::EAttachmentType::eAT_CharacterBone)
+            {
+                m_animatedAttachedEntities.insert(entityObj);
+            }
+        }
     }
 
     const AZ::Crc32 nameCrc(obj->GetName().toUtf8().data(), obj->GetName().toUtf8().count(), true);
@@ -1095,6 +1104,10 @@ void CObjectManager::RemoveObject(CBaseObject* obj)
         else if (CAIWaveObject* waveObj = qobject_cast<CAIWaveObject*>(obj))
         {
             m_aiWaveObjects.erase(waveObj);
+        }
+        else if (CEntityObject* entityObj = qobject_cast<CEntityObject*>(obj))
+        {
+            m_animatedAttachedEntities.erase(entityObj);
         }
     }
 
@@ -1797,7 +1810,7 @@ void CObjectManager::UnselectCurrent()
 //////////////////////////////////////////////////////////////////////////
 void CObjectManager::Display(DisplayContext& dc)
 {
-    FUNCTION_PROFILER(GetIEditor()->GetSystem(), PROFILE_EDITOR);
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
 
     int currentHideMask = GetIEditor()->GetDisplaySettings()->GetObjectHideMask();
     if (m_lastHideMask != currentHideMask)
@@ -1848,6 +1861,8 @@ void CObjectManager::ForceUpdateVisibleObjectCache(DisplayContext& dc)
 
 void CObjectManager::FindDisplayableObjects(DisplayContext& dc, bool bDisplay)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     CBaseObjectsCache* pDispayedViewObjects = dc.view->GetVisibleObjectsCache();
     if (!pDispayedViewObjects)
     {
@@ -1928,7 +1943,6 @@ void CObjectManager::FindDisplayableObjects(DisplayContext& dc, bool bDisplay)
         {
             CBaseObject* obj = m_visibleObjects[i];
 
-            obj->GetBoundBox(bbox);
             if (obj && obj->IsInCameraView(camera))
             {
                 // Check if object is too far.
@@ -3906,14 +3920,9 @@ void CObjectManager::ResolveMissingMaterials()
 //////////////////////////////////////////////////////////////////////////
 void CObjectManager::UpdateAttachedEntities()
 {
-    for (Objects::iterator it = m_objects.begin(); it != m_objects.end(); ++it)
+    for (CEntityObject* attachedEntityObj : m_animatedAttachedEntities)
     {
-        CBaseObject* obj = it->second;
-        if (qobject_cast<CEntityObject*>(obj))
-        {
-            CEntityObject* pEntity = static_cast<CEntityObject*>(obj);
-            pEntity->UpdateTransform();
-        }
+        attachedEntityObj->UpdateTransform();
     }
 }
 

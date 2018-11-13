@@ -75,8 +75,8 @@ public:
     void GetMemoryUsage(ICrySizer*) const;
 
     // disable copy/assignment
-    CThreadSafeRendererContainer(const CThreadSafeRendererContainer& rOther);
-    CThreadSafeRendererContainer& operator=(const CThreadSafeRendererContainer& rOther);
+    CThreadSafeRendererContainer(const CThreadSafeRendererContainer& rOther) = delete;
+    CThreadSafeRendererContainer& operator=(const CThreadSafeRendererContainer& rOther) = delete;
 
 private:
 
@@ -281,7 +281,7 @@ inline void CThreadSafeRendererContainer<T>::clear()
     {
         CMemoryPage* pOldPage = pCurrentMemoryPage;
         pCurrentMemoryPage = pCurrentMemoryPage->m_pNext;
-        free(pOldPage);
+        CryModuleFree(pOldPage);
     }
     m_pMemoryPages = NULL;
 
@@ -497,7 +497,7 @@ inline void CThreadSafeRendererContainer<T>::CoalesceMemory()
             // free page
             CMemoryPage* pOldPage = pCurrentMemoryPage;
             pCurrentMemoryPage = pCurrentMemoryPage->m_pNext;
-            free(pOldPage);
+            CryModuleFree(pOldPage);
         }
 
         m_pMemoryPages = NULL;
@@ -554,7 +554,7 @@ inline CThreadSafeRendererContainer<T>::CMemoryPage::CMemoryPage()
 template<typename T>
 inline typename CThreadSafeRendererContainer<T>::CMemoryPage * CThreadSafeRendererContainer<T>::CMemoryPage::AllocateNewPage()
 {
-    void* pNewPageMemoryChunk = malloc(nMemoryPageSize);
+    void* pNewPageMemoryChunk = CryModuleMalloc(nMemoryPageSize);
     assert(pNewPageMemoryChunk != NULL);
 
     memset(pNewPageMemoryChunk, 0, nMemoryPageSize);

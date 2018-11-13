@@ -381,8 +381,7 @@ T CObjManager::LoadStatObjInternal(const char* filename,
     LoadDefaultCGF(filename, nLoadingFlags);
 
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Static Geometry");
-
+    
     if (ppSubObject)
     {
         *ppSubObject = NULL;
@@ -874,8 +873,6 @@ void CObjManager::AddDecalToRenderer(float fDistance,
     const SRendItemSorter& rendItemSorter)
 {
     FUNCTION_PROFILER_3DENGINE;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "AddDecalToRenderer");
-
     bool bBending = pVegetation && pVegetation->m_pRNTmpData && !!pVegetation->m_pRNTmpData->userData.m_Bending.m_vBending;
 
     if (bBending)

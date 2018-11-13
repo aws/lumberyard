@@ -14,13 +14,14 @@ from botocore.exceptions import ClientError
 import datetime
 import json
 from resource_manager.test import lmbr_aws_test_support
+from resource_manager.test import base_stack_test
 from requests_aws4auth import AWS4Auth
 import requests
 import time
 
 REGION='us-east-1'
 
-class IntegrationTest_CloudGemInGameSurvey_EndToEnd(lmbr_aws_test_support.lmbr_aws_TestCase):
+class IntegrationTest_CloudGemInGameSurvey_EndToEnd(base_stack_test.BaseStackTestCase):
 
     # Fails in cleanup to keep the deployment stack intact for the next test rerun.
     FAST_TEST_RERUN = False
@@ -72,25 +73,18 @@ class IntegrationTest_CloudGemInGameSurvey_EndToEnd(lmbr_aws_test_support.lmbr_a
         super(IntegrationTest_CloudGemInGameSurvey_EndToEnd, self).__init__(*args, **kwargs)
 
     def setUp(self):
-        self.prepare_test_envionment("cloud_gem_in_game_survey_test")
+        self.prepare_test_environment("cloud_gem_in_game_survey_test")
+        self.register_for_shared_resources()
+        self.enable_shared_gem(self.GEM_NAME)
 
     def test_end_to_end(self):
         self.run_all_tests()
 
     def __000_create_stacks(self):
-        self.enable_real_gem(self.GEM_NAME)
-
-        if not self.__has_project_stack():
-            self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--confirm-aws-usage', '--confirm-security-change', '--region', lmbr_aws_test_support.REGION)
-        else:
-            print 'Reusing existing project stack {}'.format(self.get_project_stack_arn())
-
-        if not self.__has_deployment_stack():
-            self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change')
-        else:
-            print 'Reusing existing deployment stack.'
-            if self.UPLOAD_LAMBDA_CODE_FOR_EXISTING_STACK:
-                self.lmbr_aws('function', 'upload-code', '--resource-group', 'CloudGemInGameSurvey')
+        new_proj_created, new_deploy_created = self.setup_base_stack()
+            
+        if not new_deploy_created and self.UPLOAD_LAMBDA_CODE_FOR_EXISTING_STACK:
+            self.lmbr_aws('function', 'upload-code', '--resource-group', self.GEM_NAME, '-d', self.TEST_DEPLOYMENT_NAME)                
 
     def __create_survey(self, survey_data):
         survey_info = {}
@@ -243,8 +237,7 @@ class IntegrationTest_CloudGemInGameSurvey_EndToEnd(lmbr_aws_test_support.lmbr_a
         if self.FAST_TEST_RERUN:
             print 'Tests passed enough to reach cleanup, failing in cleanup to prevent stack deletion since FAST_TEST_RERUN is true.'
             self.assertFalse(self.FAST_TEST_RERUN)
-        self.lmbr_aws('deployment', 'delete', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-resource-deletion')
-        self.lmbr_aws('project', 'delete', '--confirm-resource-deletion')
+        self.teardown_base_stack()
 
     def __get_service_url(self, path):
         base_url = self.get_stack_output(self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.GEM_NAME), 'ServiceUrl')
@@ -305,12 +298,6 @@ class IntegrationTest_CloudGemInGameSurvey_EndToEnd(lmbr_aws_test_support.lmbr_a
             return result
         else:
             return response.text
-
-    def __has_project_stack(self):
-        return bool(self.get_project_stack_arn())
-
-    def __has_deployment_stack(self):
-        return bool(self.get_deployment_stack_arn(self.TEST_DEPLOYMENT_NAME))
 
     def __get_aws_credentials(self, identity_id, auth_tokens):
         logins = {self.context['user_pool_provider_id']: auth_tokens['IdToken']}

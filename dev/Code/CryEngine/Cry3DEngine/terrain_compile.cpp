@@ -612,7 +612,6 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
         PodArray<StatInstGroupChunk> lstStatInstGroupChunkFileChunks;
 
         { // get vegetation objects count
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Terrain, 0, "Vegetation");
             LOADING_TIME_PROFILE_SECTION_NAMED("Vegetation");
 
             int nObjectsCount = 0;
@@ -652,7 +651,6 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
         pStatObjTable = new std::vector < IStatObj* >;
 
         { // get brush objects count
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Terrain, 0, "Brushes");
             LOADING_TIME_PROFILE_SECTION_NAMED("Brushes");
 
             int nObjectsCount = 0;

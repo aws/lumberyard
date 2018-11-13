@@ -22,6 +22,7 @@ from branch_spec import PLATFORM_SHORTCUT_ALIASES
 from third_party import is_third_party_uselib_configured, get_third_party_platform_name, get_third_party_configuration_name
 from gems import Gem
 import os, stat, errno, json, re, threading
+from runpy import run_path
 
 COMMON_INPUTS = [
     'additional_settings',
@@ -718,6 +719,33 @@ def ConfigureTaskGenerator(ctx, kw):
     if 'name' not in kw:
         kw['name'] = target
 
+    # Deal with restricted platforms
+    for p in ctx.env['RESTRICTED_PLATFORMS']:
+        restricted_filelist_kw = '{}_file_list'.format(p)
+
+        # Unless the caller has overridden, look to see if we can automatically attach any waf_files for the platform
+        if restricted_filelist_kw not in kw:
+            waf_file = os.path.join(p, '{0}_{1}.waf_files'.format(target.lower(), p))
+            script_dir = os.path.dirname(ctx.cur_script.abspath())
+            if os.path.exists(os.path.join(script_dir, waf_file)):
+                append_kw_entry(kw, restricted_filelist_kw, waf_file)
+
+        # If a restricted script is specified, try and open a platform-specific version of the base calling script
+        if 'restricted_script' in kw:
+            script_dir, script_base = os.path.split(ctx.cur_script.abspath())
+            script_root, script_ext = os.path.splitext(script_base)
+            restricted_script_filename = ''
+            if len(script_ext) > 0:
+                restricted_script_filename = os.path.join(script_dir, p, '{0}_{1}.{2}'.format(script_root, p, script_ext))
+            else:
+                restricted_script_filename = os.path.join(script_dir, p, '{0}_{1}'.format(script_root, p))
+            if os.path.exists(restricted_script_filename):
+
+                # Open the script and look for the specific function name passed in. If we find it, call it with our parameters
+                restricted_script = run_path(restricted_script_filename)
+                if kw['restricted_script'] in restricted_script:
+                    restricted_script[kw['restricted_script']](ctx, kw)
+
     # Provide the module name to the test framework.
     if 'test' in ctx.env['CONFIGURATION'] and not ctx.is_mac_platform(ctx.env['PLATFORM']):
         module_define = 'AZ_MODULE_NAME="{}"'.format(target.upper())
@@ -828,6 +856,8 @@ def ConfigureTaskGenerator(ctx, kw):
     if len(kw['copyright_org'])==0:
         kw['copyright_org'] = ['Amazon']
 
+    if ctx.is_monolithic_build():
+        append_kw_entry(kw, 'defines',[ '_LIB', 'AZ_MONOLITHIC_BUILD' ])
 
 def RunTaskGenerator(ctx, build_type, *k, **kw ):
 
@@ -1100,9 +1130,6 @@ def MonolithicBuildModule(ctx, *k, **kw):
     if 'uselib' in kw:
         _append(prefix + 'uselib',        kw['uselib'] )
 
-    # Adjust own task gen settings
-    append_kw_entry(kw, 'defines',[ '_LIB', 'AZ_MONOLITHIC_BUILD' ])
-
     # Remove rc files from the sources for monolithic builds (only the rc of
     # the launcher will be used) and remove any duplicate files that may have
     # sneaked in as well (using the python idiom: list(set(...)) to do so
@@ -1149,6 +1176,15 @@ def BuildTaskGenerator(ctx, kw):
             configuration_list=kw.get('configurations', []),
             export_internal_3p_libs=kw.get('export_internal_3rd_party_libs', False),
             target=target)
+        return False
+
+    if ctx.cmd == 'generate_module_dependency_files':  # Command used by Integration Toolkit (ly_integration_toolkit.py)
+        ctx(features='generate_module_dependency_files',
+            use_module_list=kw['use'],
+            platform_list=kw.get('platforms', []),
+            configuration_list=kw.get('configurations', []),
+            target=target,
+            waf_files=kw.get('waf_file_entries', []))
         return False
 
     if current_platform == 'project_generator':
@@ -1918,8 +1954,7 @@ def CryEditorUiQt(ctx, *k, **kw):
                                     'IGNORE_CRY_COMMON_STATIC_VAR',
                                     'CRY_ENABLE_RC_HELPER',
                                     'PLUGIN_EXPORTS',
-                                    'EDITOR_COMMON_IMPORTS',
-                                    'NOT_USE_CRY_MEMORY_MANAGER'])
+                                    'EDITOR_COMMON_IMPORTS'])
 
     LoadSharedSettings(ctx,k,kw)
 
@@ -1954,7 +1989,7 @@ def CryPlugin(ctx, *k, **kw):
 
     append_kw_entry(kw,'msvc_cxxflags',['/EHsc'])
     append_kw_entry(kw,'msvc_cflags',['/EHsc'])
-    append_kw_entry(kw,'defines',[ 'SANDBOX_IMPORTS', 'PLUGIN_EXPORTS', 'EDITOR_COMMON_IMPORTS', 'NOT_USE_CRY_MEMORY_MANAGER' ])
+    append_kw_entry(kw,'defines',[ 'SANDBOX_IMPORTS', 'PLUGIN_EXPORTS', 'EDITOR_COMMON_IMPORTS' ])
     kw['output_sub_folder']     = 'EditorPlugins'
     kw['features'] += ['qt5']#added QT to all plugins
 
@@ -2030,7 +2065,7 @@ def CryStandAlonePlugin(ctx, *k, **kw):
 
     append_kw_entry(kw,'msvc_cxxflags',['/EHsc'])
     append_kw_entry(kw,'msvc_cflags',['/EHsc'])
-    append_kw_entry(kw,'defines',[ 'PLUGIN_EXPORTS', 'NOT_USE_CRY_MEMORY_MANAGER' ])
+    append_kw_entry(kw,'defines',[ 'PLUGIN_EXPORTS' ])
     append_kw_entry(kw,'win_debug_linkflags',['/NODEFAULTLIB:libcmtd.lib', '/NODEFAULTLIB:libcd.lib'])
     append_kw_entry(kw,'win_profile_linkflags',['/NODEFAULTLIB:libcmt.lib', '/NODEFAULTLIB:libc.lib'])
     append_kw_entry(kw,'win_release_linkflags',['/NODEFAULTLIB:libcmt.lib', '/NODEFAULTLIB:libc.lib'])
@@ -2078,7 +2113,7 @@ def CryPluginModule(ctx, *k, **kw):
 
     append_kw_entry(kw,'msvc_cxxflags',['/EHsc'])
     append_kw_entry(kw,'msvc_cflags',['/EHsc'])
-    append_kw_entry(kw,'defines',[ 'PLUGIN_EXPORTS', 'EDITOR_COMMON_EXPORTS', 'NOT_USE_CRY_MEMORY_MANAGER' ])
+    append_kw_entry(kw,'defines',[ 'PLUGIN_EXPORTS', 'EDITOR_COMMON_EXPORTS' ])
     if not 'output_sub_folder' in kw:
         kw['output_sub_folder'] = 'EditorPlugins'
 
@@ -2119,7 +2154,7 @@ def CryEditorCommon(ctx, *k, **kw):
 
     append_kw_entry(kw,'msvc_cxxflags',['/EHsc'])
     append_kw_entry(kw,'msvc_cflags',['/EHsc'])
-    append_kw_entry(kw,'defines',[ 'PLUGIN_EXPORTS', 'EDITOR_COMMON_EXPORTS', 'NOT_USE_CRY_MEMORY_MANAGER' ])
+    append_kw_entry(kw,'defines',[ 'PLUGIN_EXPORTS', 'EDITOR_COMMON_EXPORTS'])
 
     LoadSharedSettings(ctx,k,kw)
 
@@ -2368,6 +2403,12 @@ def ApplyBuildOptionSettings(self, kw):
         kw['defines'] += ['CRASH_HANDLER_TOKEN=' + self.options.crash_handler_token]
     if self.options.crash_handler_url:
         kw['defines'] += ['CRASH_HANDLER_URL=' + self.options.crash_handler_url]
+
+    # We always send in a packaged build time. It's only meaningful for packaged builds.
+    packaged_build_time = 0
+    if len(self.options.packaged_build_time) > 0:
+        packaged_build_time = self.options.packaged_build_time
+    kw['defines'] += ['LY_METRICS_BUILD_TIME={}'.format(packaged_build_time)]
 
 ###############################################################################
 # Helper function to extract platform specific flags
@@ -2717,6 +2758,8 @@ def is_building_dedicated_server(ctx):
     if ctx.cmd == 'generate_uber_files':
         return False
     if ctx.cmd == 'generate_module_def_files':
+        return False
+    if ctx.cmd == 'generate_module_dependency_files':
         return False
 
     config = ctx.env['CONFIGURATION']

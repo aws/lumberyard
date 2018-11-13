@@ -2,6 +2,7 @@
 import { LyMetricService } from 'app/shared/service/index';
 import { AwsService } from "app/aws/aws.service";
 import { ToastsManager } from 'ng2-toastr/ng2-toastr';
+import { ImageAttachment, TextAttachment } from './defect-details-page.component';
 
 @Component({
     selector: 'report-information',
@@ -16,26 +17,38 @@ export class CloudGemDefectReporterReportInformationComponent {
     @Input() configurationMappings: any;
     @Output() deleteComment = new EventEmitter<any>();
     @Output() editComment = new EventEmitter<any>();
+    @Output() viewJiraIssue = new EventEmitter<any>();
 
     private customizedReportPropertyMappings: Object;
 
-    constructor(private aws: AwsService, private toastr: ToastsManager, private metric: LyMetricService) {   
+    constructor(private aws: AwsService, private toastr: ToastsManager, private metric: LyMetricService) {
     }
 
     ngOnInit() {
         this.reportInformation['report_time'] = this.reportInformation.p_server_timestamp_month + '/' + this.reportInformation.p_server_timestamp_day + '/' + this.reportInformation.p_server_timestamp_year + this.reportInformation.p_server_timestamp_hour + ':00:00';
-        this.getScreenshotUrl();   
+        this.getScreenshotUrl();
     }
 
     /**
-    * Get the presigned URL of the screenshot
+    * Get the presigned URls of any text or image attachments for the defect report
     **/
     private getScreenshotUrl(): void {
-        let key = this.reportInformation.screenshot_attachment["id"];
-        let signedUrl = this.aws.context.s3.getSignedUrl('getObject', {
-            Bucket: this.context.SanitizedBucketName, Key: key, Expires: 600
+        this.reportInformation.imageAttachments.map((attachment: ImageAttachment) => {
+            let key = attachment.id;
+            let signedUrl = this.aws.context.s3.getSignedUrl('getObject', {
+                Bucket: this.context.SanitizedBucketName, Key: key, Expires: 600
+            })
+            attachment.url = signedUrl;
+        });
+
+        this.reportInformation.textAttachments.map((attachment: TextAttachment) => {
+            let key = attachment.id;
+            let signedUrl = this.aws.context.s3.getSignedUrl('getObject', {
+                Bucket: this.context.SanitizedBucketName, Key: key, Expires: 600
+            })
+            attachment.url = signedUrl;
+
         })
-        this.reportInformation.screenshot_attachment["url"] = signedUrl;
     }
 
     /**

@@ -172,7 +172,7 @@ bool CBreakablePlane::SetGeometry(IStatObj* pStatObj, _smart_ptr<IMaterial> pRen
                 {
                     if (!(nVtx & 31))
                     {
-                        pVtx = (vector2df*)realloc(pVtx, (nVtx + 32) * sizeof(pVtx[0]));
+                        pVtx = (vector2df*)CryModuleRealloc(pVtx, (nVtx + 32) * sizeof(pVtx[0]));
                     }
                     pVtx[nVtx++] = Vec2((pPhysMesh->pVertices[pPhysMesh->pIndices[i * 3 + j]] - m_center) * m_R);
                     for (iter0 = 0; iter0 < pPhysMesh->nTris; iter0++)
@@ -193,7 +193,7 @@ bool CBreakablePlane::SetGeometry(IStatObj* pStatObj, _smart_ptr<IMaterial> pRen
                 }   while (++iter1 <= pPhysMesh->nTris * 3 && (i != i0 || j != j0));
                 if (iter1 > pPhysMesh->nTris * 3)
                 {
-                    free(pVtx);
+                    CryModuleFree(pVtx);
                     return false;
                 }
             }
@@ -204,7 +204,7 @@ bool CBreakablePlane::SetGeometry(IStatObj* pStatObj, _smart_ptr<IMaterial> pRen
 
             if (mincos < 0.5f || (cosa = sqrt_tpl(1.0f - min(0.999f, sqr(mincos))) * maxcos - sqrt_tpl(1.0f - min(0.999f, sqr(maxcos))) * mincos) > 0.7f)
             {
-                free(pVtx);
+                CryModuleFree(pVtx);
                 return false;
             }
             if (cosa > 0.03f)
@@ -219,7 +219,7 @@ bool CBreakablePlane::SetGeometry(IStatObj* pStatObj, _smart_ptr<IMaterial> pRen
         }
         else
         {
-            pVtx = (vector2df*)malloc(4 * sizeof(pVtx[0]));
+            pVtx = (vector2df*)CryModuleMalloc(4 * sizeof(pVtx[0]));
             nVtx = 4;
             for (i = 0; i < 4; i++)
             {
@@ -300,7 +300,7 @@ bool CBreakablePlane::SetGeometry(IStatObj* pStatObj, _smart_ptr<IMaterial> pRen
         }
         IGeomManager* pGeoman = gEnv->pPhysicalWorld->GetGeomManager();
         m_pGrid = pGeoman->GenerateBreakableGrid(pVtx, nVtx, m_nCells, m_bStatic, seed);
-        free(pVtx);
+        CryModuleFree(pVtx);
         pStatObj->FreeIndexedMesh();
         //pPhysGeom->pGeom->SetForeignData(this,1);
     }

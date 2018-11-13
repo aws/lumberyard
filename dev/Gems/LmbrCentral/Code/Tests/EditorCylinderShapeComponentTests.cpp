@@ -10,10 +10,8 @@
 *
 */
 #include "LmbrCentral_precompiled.h"
-#include "LmbrCentralEditor.h"
 #include "LmbrCentralReflectionTest.h"
 #include "Shape/EditorCylinderShapeComponent.h"
-#include <AzToolsFramework/Application/ToolsApplication.h>
 
 namespace LmbrCentral
 {
@@ -34,32 +32,10 @@ namespace LmbrCentral
     </ObjectStream>)DELIMITER";
 
     class LoadEditorCylinderShapeComponentFromVersion1
-        : public LoadReflectedObjectTest<AZ::ComponentApplication, LmbrCentralEditorModule, EditorCylinderShapeComponent>
+        : public LoadEditorComponentTest<EditorCylinderShapeComponent>
     {
     protected:
         const char* GetSourceDataBuffer() const override { return kEditorCylinderComponentVersion1; }
-
-        void SetUp() override
-        {
-            LoadReflectedObjectTest::SetUp();
-
-            if (m_object)
-            {
-                m_editorCylinderShapeComponent = m_object.get();
-                m_entity.Init();
-                m_entity.AddComponent(m_editorCylinderShapeComponent);
-                m_entity.Activate();
-            }
-        }
-        
-        void TearDown() override
-        {
-            m_entity.Deactivate();
-            LoadReflectedObjectTest::TearDown();
-        }
-
-        AZ::Entity m_entity;
-        EditorCylinderShapeComponent* m_editorCylinderShapeComponent = nullptr;
     };
 
     TEST_F(LoadEditorCylinderShapeComponentFromVersion1, Application_IsRunning)
@@ -74,14 +50,15 @@ namespace LmbrCentral
 
     TEST_F(LoadEditorCylinderShapeComponentFromVersion1, EditorComponent_Found)
     {
-        EXPECT_NE(m_editorCylinderShapeComponent, nullptr);
+        EXPECT_EQ(m_entity->GetComponents().size(), 2);
+        EXPECT_NE(m_entity->FindComponent(m_object->GetId()), nullptr);
     }
 
     TEST_F(LoadEditorCylinderShapeComponentFromVersion1, Height_MatchesSourceData)
     {
         float height = 0.0f;
         CylinderShapeComponentRequestsBus::EventResult(
-            height, m_entity.GetId(), &CylinderShapeComponentRequests::GetHeight);
+            height, m_entity->GetId(), &CylinderShapeComponentRequests::GetHeight);
 
         EXPECT_FLOAT_EQ(height, 1.57f);
     }
@@ -90,7 +67,7 @@ namespace LmbrCentral
     {
         float radius = 0.0f;
         CylinderShapeComponentRequestsBus::EventResult(
-            radius, m_entity.GetId(), &CylinderShapeComponentRequests::GetRadius);
+            radius, m_entity->GetId(), &CylinderShapeComponentRequests::GetRadius);
 
         EXPECT_FLOAT_EQ(radius, 0.57f);
     }

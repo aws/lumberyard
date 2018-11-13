@@ -242,6 +242,7 @@ namespace MCore
 
         MCORE_INLINE void Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNormal, AZ::Vector3* outPos, AZ::Vector3* outNormal, float weight);
         MCORE_INLINE void Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNormal, const AZ::Vector4* inTangent, AZ::Vector3* outPos, AZ::Vector3* outNormal, AZ::Vector4* outTangent, float weight);
+        MCORE_INLINE void Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNormal, const AZ::Vector4* inTangent, const AZ::Vector3* inBitangent, AZ::Vector3* outPos, AZ::Vector3* outNormal, AZ::Vector4* outTangent, AZ::Vector3* outBitangent, float weight);
 
         /**
          * Perform skinning on an input vertex, and add the result to the output, weighted by a weight value.

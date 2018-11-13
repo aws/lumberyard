@@ -14,12 +14,13 @@
 ########################################################################################
 
 from waflib import Logs
+import os
+from runpy import run_path
 
 SUBFOLDERS = [
     'DXGL',
     'DXMETAL',
 ]
-
 
 def build(bld):
 
@@ -33,18 +34,31 @@ def build(bld):
         '-Wno-return-type',
     ]
 
+    restricted_scripts = {}
+    for p in bld.env['RESTRICTED_PLATFORMS']:
+        platform_wscript = os.path.join(bld.path.abspath(), p, 'wscript_{0}'.format(p))
+        if os.path.exists(platform_wscript):
+            restricted_scripts[p] = run_path(platform_wscript)
+
     configurations_dx11 = ['debug', 'debug_test', 'profile', 'profile_test']
     configurations_dx12 = ['debug', 'debug_test', 'profile', 'profile_test']
+    extended = False
     if 'win' in bld.variant and bld.options.win_build_renderer == 'DX12':
+        extended = True
         if not getattr(bld, 'has_dx12', None) or not bld.has_dx12():
             Logs.warn('win_build_renderer == DX12 but machine cant compile for DX12, reverting to DX11')
             configurations_dx11.extend(['performance', 'release'])
         else:
             configurations_dx12.extend(['performance', 'release'])
     else:
+        for p in restricted_scripts:
+            if 'restricted_dx12_configuration' in restricted_scripts[p]:
+                if restricted_scripts[p]['restricted_dx12_configuration'](bld, configurations_dx12):
+                    extended = True
+    if not extended:
         configurations_dx11.extend(['performance', 'release'])
 
-    bld.CryEngineModule(
+    kw = dict(
         #==============================
         # Common Settings
         #==============================
@@ -53,8 +67,7 @@ def build(bld):
         copyright_org       = 'Amazon-CryTek',
         file_list           = [ 'core_renderer.waf_files',
                                 'd3d11.waf_files'],
-        platforms           = ['win',
-                               ],
+        platforms           = ['win'],
         configurations      = configurations_dx11,
         pch                 = '../StdAfx.cpp',
         use                 = ['AzFramework'],
@@ -69,7 +82,9 @@ def build(bld):
                                'XRENDERD3D10_EXPORTS',
                                'DO_RENDERSTATS',
                                '_RENDERER',
-                               'EXCLUDE_CINEMIZER_SDK'],
+                               'EXCLUDE_CINEMIZER_SDK',
+                               'USE_CRY_NEW_AND_DELETE'],
+
 
         # Compiler Specific
         win_x64_clang_cxxflags = clang_cxxflags,
@@ -90,11 +105,15 @@ def build(bld):
         win_defines                 = ['DO_RENDERLOG' ],
         win_test_all_file_list      = ['d3d11_test.waf_files'],
     )
+    for p in restricted_scripts:
+        if 'update_d3d11_restricted_parameters' in restricted_scripts[p]:
+            restricted_scripts[p]['update_d3d11_restricted_parameters'](bld, kw)
+    bld.CryEngineModule(**kw)
     
     #==============================
     # Build CryRenderD3D12
     #==============================
-    bld.CryEngineModule(
+    kw = dict(
         #==============================
         # Common Settings
         #==============================
@@ -155,7 +174,10 @@ def build(bld):
         #==============================
         win_x64_test_all_file_list = ['d3d12_test.waf_files'],
     )
-
+    for p in restricted_scripts:
+        if 'update_d3d12_restricted_parameters' in restricted_scripts[p]:
+            restricted_scripts[p]['update_d3d12_restricted_parameters'](bld, kw)
+    bld.CryEngineModule(**kw)
 
     # Recursive into all sub projects
     bld.recurse(dirs=SUBFOLDERS, mandatory=False)

@@ -53,6 +53,9 @@
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.UserLoginDefault.c9c25313197f489a8e9e8e6037fc62eb.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.NativeUI.d2a325d80a0445dbb64b22f7d2f20960.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemMetric.e1bf83aa0ddc49418c6b5689c111cb26.v1.0.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
@@ -80,6 +83,9 @@
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemWebCommunicator.327bb13034c1459da8478826edba71f1.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.AWSLambdaLanguageDemo.35d2c0caf522417398ce5807cbedb60c.v1.0.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemDynamicContent.3a3eeef064a04c37b4513c6378f4f56a.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
@@ -98,6 +104,9 @@
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.ScriptCanvasDiagnosticLibrary.Editor.d969b997bb7f4342ba0b3eedc378025d.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.ScriptCanvasDeveloperGem.Editor.f905c05883b94fd6bddc91052c3c5a86.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemSamples.fcbd8e2e64af487fb1faecd2a133a0ce.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
@@ -105,6 +114,9 @@
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.StartingPointInput.Editor.09f4bedeee614358bc36788e77f97e51.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.GraphicsReflectContext.81d5967d0b9b41d89754cce68a20882e.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 		</Class>
 		<Class name="bool" field="x360PhysicalMemory" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>

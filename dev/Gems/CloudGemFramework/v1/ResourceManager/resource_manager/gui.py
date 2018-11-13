@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #1 $
+# $Revision: #2 $
 
 import thread
 import sys
@@ -23,6 +23,7 @@ import profile
 import util
 import importer
 import function
+import gem
 
 from errors import HandledError
 from context import Context
@@ -62,15 +63,15 @@ command_handlers = {
     'describe-resource-group-stack': resource_group.describe_stack,
     'upload-resources': deployment.upload_resources,
     'upload-lambda-code': function.upload_lambda_code,
-    'update-project-stack': project.update_stack,
-    'add-resource-group': resource_group.add,
+    'update-project-stack': project.update_stack,    
     'disable-resource-group': resource_group.disable,
     'enable-resource-group': resource_group.enable,
     'create-deployment-stack': deployment.create_stack,
     'delete-deployment-stack' : deployment.delete_stack,
     'protect-deployment' : deployment.protect,
     'create-function-folder': resource_group.create_function_folder,
-    'update-framework-version': project.update_framework_version
+    'update-framework-version': project.update_framework_version,
+    'create-cloud-gem': gem.create_gem
 }
 
 

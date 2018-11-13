@@ -25,6 +25,7 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Script/ScriptSystemComponent.h>
 #include <AzCore/UnitTest/UnitTest.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/chrono/chrono.h>
@@ -157,46 +158,29 @@ namespace UnitTest
         }
     };
 
-    class AllocatorsFixture
-        : public ::testing::Test
+    class MultiplayerAllocatorsFixture
+        : public AllocatorsTestFixture
     {
-        void* m_memBlock;
-        bool m_initSystemAlloc;
-        bool m_useMemoryDriller;
-        unsigned int m_heapSizeMB;
         GridMate::IGridMate* m_gridMate;
         TestNetwork m_testNetwork;
         SSystemGlobalEnvironment* m_oldEnv;
 
     public:
-        AllocatorsFixture(bool initSystemAlloc = true, unsigned int heapSizeMB = 15, bool isMemoryDriller = true)
-            : m_memBlock(nullptr)
-            , m_initSystemAlloc(initSystemAlloc)
-            , m_useMemoryDriller(isMemoryDriller)
-            , m_heapSizeMB(heapSizeMB)
+        MultiplayerAllocatorsFixture(unsigned int heapSizeMB = 15, bool isMemoryDriller = false)
+            : AllocatorsTestFixture(heapSizeMB, isMemoryDriller)
             , m_gridMate(nullptr)
             , m_oldEnv(gEnv)
         {
         }
 
-        virtual ~AllocatorsFixture()
+        virtual ~MultiplayerAllocatorsFixture()
         {
             gEnv = m_oldEnv;
         }
 
         void SetUp() override
         {
-            if (m_initSystemAlloc)
-            {
-                AZ::SystemAllocator::Descriptor desc;
-                desc.m_heap.m_numMemoryBlocks = 1;
-                desc.m_heap.m_memoryBlocksByteSize[0] = m_heapSizeMB * 1024 * 1024;
-                m_memBlock = DebugAlignAlloc(desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
-                desc.m_heap.m_memoryBlocks[0] = m_memBlock;
-                desc.m_stackRecordLevels = 10;
-
-                AZ::AllocatorInstance<AZ::SystemAllocator>::Create(desc);
-            }
+            AllocatorsTestFixture::SetUp();
 
             // faking the global environment
             g_testSystemGlobalEnvironment.pNetwork = &m_testNetwork;
@@ -213,11 +197,7 @@ namespace UnitTest
                 g_testSystemGlobalEnvironment.pNetwork = nullptr;
             }
 
-            if (m_initSystemAlloc)
-            {
-                AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-                DebugAlignFree(m_memBlock);
-            }
+            AllocatorsTestFixture::TearDown();
         }
 
         GridMate::IGridMate* GetGridMate()
@@ -241,7 +221,7 @@ namespace UnitTest
 */
 
 class MultiplayerTest
-    : public UnitTest::AllocatorsFixture
+    : public UnitTest::MultiplayerAllocatorsFixture
 {
 public:
     void run()
@@ -259,7 +239,7 @@ TEST_F(MultiplayerTest, SanityTest)
   * GridMateServiceWrapper
   */
 class GridMateServiceWrapperTest
-    : public UnitTest::AllocatorsFixture
+    : public UnitTest::MultiplayerAllocatorsFixture
 {
 public:
     void run()
@@ -341,7 +321,7 @@ TEST_F(GridMateServiceWrapperTest, Test)
 
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
 class MultiplayerGameLiftClientTest
-    : public UnitTest::AllocatorsFixture
+    : public UnitTest::MultiplayerAllocatorsFixture
 {
 public:
     MultiplayerGameLiftClientTest()
@@ -351,14 +331,14 @@ public:
 
     void SetUp() override
     {
-        AllocatorsFixture::SetUp();
+        MultiplayerAllocatorsFixture::SetUp();
         m_console = AZStd::make_unique<testing::NiceMock<UnitTest::MockConsole>>();
         gEnv->pConsole = m_console.get();
 
         ON_CALL(m_system, GetIConsole()).WillByDefault(testing::Return(gEnv->pConsole));
         ON_CALL(m_system, GetINetwork()).WillByDefault(testing::Return(gEnv->pNetwork));
 
-        m_gameLiftClientServiceBus.Start(AllocatorsFixture::GetGridMate());
+        m_gameLiftClientServiceBus.Start(MultiplayerAllocatorsFixture::GetGridMate());
     }
 
     void TearDown() override
@@ -367,7 +347,7 @@ public:
 
         m_console.reset();
         gEnv->pConsole = nullptr;
-        AllocatorsFixture::TearDown();
+        MultiplayerAllocatorsFixture::TearDown();
     }
 
 protected:
@@ -488,7 +468,7 @@ TEST_F(MultiplayerGameLiftClientTest, GameLiftClient_JoinSession)
 }
 #endif
 
-namespace LuaTesting
+namespace UnitTest
 {
     //////////////////////////////////////////////////////////////////////////
     // helper methods/classes
@@ -511,6 +491,8 @@ namespace LuaTesting
 
         systemEntity->Init();
         systemEntity->Activate();
+
+        app.RegisterComponentDescriptor(AzFramework::ScriptComponent::CreateDescriptor());
 
         AZ::BehaviorContext* behaviorContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationBus::Events::GetBehaviorContext);
@@ -627,18 +609,9 @@ namespace LuaTesting
     //////////////////////////////////////////////////////////////////////////
     // GridMateLuaTesting
 
-    class GridMateLuaTesting
-        : public UnitTest::AllocatorsFixture
+    TEST_F(MultiplayerAllocatorsFixture, GridMateLua_Testing)
     {
-    public:
-
-        const char* k_LuaScript;
-
-        GridMateLuaTesting()
-            : UnitTest::AllocatorsFixture(false)
-            , k_LuaScript(nullptr)
-        {
-            k_LuaScript = R"(
+        const char* k_LuaScript = R"(
 local testlua =
 {
 }
@@ -665,82 +638,65 @@ end
 
 return testlua;
 )";
-        }
+        AZ::ComponentApplication app;
+        AZ::ComponentApplication::Descriptor appDesc;
+        appDesc.m_memoryBlocksByteSize = 20 * 1024 * 1024;
+        appDesc.m_stackRecordLevels = 10;
+        AZ::Entity* systemEntity = app.Create(appDesc);
+        GetGridMate();
 
-        void run()
-        {
-            AZ::ComponentApplication app;
-            AZ::ComponentApplication::Descriptor appDesc;
-            appDesc.m_memoryBlocksByteSize = 20 * 1024 * 1024;
-            appDesc.m_stackRecordLevels = 10;
-            AZ::Entity* systemEntity = app.Create(appDesc);
-            GetGridMate();
+        systemEntity->CreateComponent<AZ::MemoryComponent>();
+        systemEntity->CreateComponent("{CAE3A025-FAC9-4537-B39E-0A800A2326DF}"); // JobManager component
+        systemEntity->CreateComponent<AZ::StreamerComponent>();
+        systemEntity->CreateComponent<AZ::AssetManagerComponent>();
+        systemEntity->CreateComponent("{A316662A-6C3E-43E6-BC61-4B375D0D83B4}"); // Usersettings component
+        systemEntity->CreateComponent("{22FC6380-C34F-4a59-86B4-21C0276BCEE3}"); // ObjectStream component
+        systemEntity->CreateComponent<AZ::ScriptSystemComponent>();
 
-            systemEntity->CreateComponent<AZ::MemoryComponent>();
-            systemEntity->CreateComponent("{CAE3A025-FAC9-4537-B39E-0A800A2326DF}"); // JobManager component
-            systemEntity->CreateComponent<AZ::StreamerComponent>();
-            systemEntity->CreateComponent<AZ::AssetManagerComponent>();
-            systemEntity->CreateComponent("{A316662A-6C3E-43E6-BC61-4B375D0D83B4}"); // Usersettings component
-            systemEntity->CreateComponent("{22FC6380-C34F-4a59-86B4-21C0276BCEE3}"); // ObjectStream component
-            systemEntity->CreateComponent<AZ::ScriptSystemComponent>();
+        systemEntity->Init();
+        systemEntity->Activate();
 
-            systemEntity->Init();
-            systemEntity->Activate();
+        app.RegisterComponentDescriptor(AzFramework::ScriptComponent::CreateDescriptor());
 
-            AZ::BehaviorContext* behaviorContext = nullptr;
-            AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationBus::Events::GetBehaviorContext);
+        AZ::BehaviorContext* behaviorContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationBus::Events::GetBehaviorContext);
 
-            Multiplayer::MultiplayerEventsComponent::Reflect(behaviorContext);
+        Multiplayer::MultiplayerEventsComponent::Reflect(behaviorContext);
 
-            AZStd::string script(k_LuaScript);
+        AZStd::string script(k_LuaScript);
 
-            AZ::Data::Asset<AZ::ScriptAsset> scriptAsset = AZ::Data::AssetManager::Instance().CreateAsset<AZ::ScriptAsset>(AZ::Uuid::CreateRandom());
-            // put the script into the script asset by all means including a const_cast<>!
-            AZStd::vector<char>& buffer = const_cast<AZStd::vector<char>&>(scriptAsset.Get()->GetScriptBuffer());
-            buffer.assign(script.begin(), script.end());
+        AZ::Data::Asset<AZ::ScriptAsset> scriptAsset = AZ::Data::AssetManager::Instance().CreateAsset<AZ::ScriptAsset>(AZ::Uuid::CreateRandom());
+        // put the script into the script asset by all means including a const_cast<>!
+        AZStd::vector<char>& buffer = const_cast<AZStd::vector<char>&>(scriptAsset.Get()->GetScriptBuffer());
+        buffer.assign(script.begin(), script.end());
 
-            AZ::Data::AssetManagerBus::Broadcast(&AZ::Data::AssetManagerBus::Events::OnAssetReady, scriptAsset);
-            app.Tick();
+        AZ::Data::AssetManagerBus::Broadcast(&AZ::Data::AssetManagerBus::Events::OnAssetReady, scriptAsset);
+        app.Tick();
 
-            AZ::Entity* entity1 = aznew AZ::Entity();
-            entity1->CreateComponent<AzFramework::ScriptComponent>()->SetScript(scriptAsset);
-            entity1->Init();
-            entity1->Activate();
+        AZ::Entity* entity1 = aznew AZ::Entity();
+        entity1->CreateComponent<AzFramework::ScriptComponent>()->SetScript(scriptAsset);
+        entity1->Init();
+        entity1->Activate();
 
-            delete entity1;
-            AZStd::string().swap(script);
-            AZStd::vector<char>().swap(buffer);
-            scriptAsset.Release();
-            scriptAsset = nullptr;
+        delete entity1;
+        AZStd::string().swap(script);
+        AZStd::vector<char>().swap(buffer);
+        scriptAsset.Release();
+        scriptAsset = nullptr;
 
-            TearDown();
-            app.Destroy();
-        }
-    };
-
-    TEST_F(GridMateLuaTesting, GridMateLua_Testing)
-    {
-        run();
+        TearDown();
+        app.Destroy();
     }
 
     //////////////////////////////////////////////////////////////////////////
     // very basic Lua test that starts and shuts down a GridSearch
 
-    class GridMateLuaSearchTesting
-        : public UnitTest::AllocatorsFixture
+    TEST_F(MultiplayerAllocatorsFixture, GridMateLua_SearchTesting)
     {
-    public:
-
-        GridMateLuaSearchTesting()
-            : UnitTest::AllocatorsFixture(false)
+        auto setup = [&](AZ::BehaviorContext*)
         {
-        }
-        void run()
-        {
-            auto setup = [&](AZ::BehaviorContext*)
-            {
-                GetGridMate();
-                return R"(
+            GetGridMate();
+            return R"(
                             local testlua =
                             {
                             }
@@ -767,44 +723,30 @@ return testlua;
 
                             return testlua;
                             )";
-            };
+        };
 
-            auto update = [&]()
-            {
-                GetGridMate()->Update();
-                return false;
-            };
+        auto update = [&]()
+        {
+            GetGridMate()->Update();
+            return false;
+        };
 
-            auto teardown = [&]()
-            {
-                TearDown();
-            };
+        auto teardown = [&]()
+        {
+            TearDown();
+        };
 
-            RunLuaScript(3, setup, update, teardown);
-        }
-    };
-
-    TEST_F(GridMateLuaSearchTesting, GridMateLua_SearchTesting)
-    {
-        run();
+        RunLuaScript(3, setup, update, teardown);
     }
 
     //////////////////////////////////////////////////////////////////////////
     // finds one Grid SearchInfo after a few tries
 
-    class GridMateLuaListSesionsTesting
-        : public UnitTest::AllocatorsFixture
+
+    TEST_F(MultiplayerAllocatorsFixture, GridMateLua_ListSesionsTesting)
     {
-    public:
-
         static AZStd::atomic_int s_count;
-        const char* k_LuaScript;
-
-        GridMateLuaListSesionsTesting()
-            : UnitTest::AllocatorsFixture(false)
-            , k_LuaScript(nullptr)
-        {
-            k_LuaScript = R"(
+        const char* k_LuaScript = R"(
 local testlua =
 {
 }
@@ -829,68 +771,57 @@ end
 
 return testlua;
 )";
-        }
 
-        void run()
+
+        Multiplayer::GridMateLANServiceWrapper gmLANService;
+
+        GridMate::SessionParams sessionParams;
+        sessionParams.m_topology = GridMate::ST_CLIENT_SERVER;
+        sessionParams.m_numPublicSlots = 2;
+        Multiplayer::GridMateServiceParams serviceParams(sessionParams, FetchLANParam);
+        GridMate::CarrierDesc carrierDesc;
+
+        auto setup = [&](AZ::BehaviorContext* bc)
         {
-            Multiplayer::GridMateLANServiceWrapper gmLANService;
+            GetGridMate();
 
-            GridMate::SessionParams sessionParams;
-            sessionParams.m_topology = GridMate::ST_CLIENT_SERVER;
-            sessionParams.m_numPublicSlots = 2;
-            Multiplayer::GridMateServiceParams serviceParams(sessionParams, FetchLANParam);
-            GridMate::CarrierDesc carrierDesc;
-
-            auto setup = [&](AZ::BehaviorContext* bc)
+            // used to assert the event happened
+            s_count = 0;
+            static const auto fnPingFlag = []()
             {
-                GetGridMate();
-
-                // used to assert the event happened
-                GridMateLuaListSesionsTesting::s_count = 0;
-                static const auto fnPingFlag = []()
-                {
-                    ++GridMateLuaListSesionsTesting::s_count;
-                };
-                bc->Method("PingFlag", fnPingFlag);
-
-                gmLANService.CreateServer(GetGridMate(), carrierDesc, serviceParams);
-
-                return k_LuaScript;
+                ++s_count;
             };
+            bc->Method("PingFlag", fnPingFlag);
 
-            auto update = [&]()
-            {
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
-                GetGridMate()->Update();
-                return GridMateLuaListSesionsTesting::s_count > 0;
-            };
+            gmLANService.CreateServer(GetGridMate(), carrierDesc, serviceParams);
 
-            auto teardown = [&]()
-            {
-                gmLANService.StopSessionService(GetGridMate());
-                TearDown();
-            };
+            return k_LuaScript;
+        };
 
-            // it can take an average of 2000ms to actually register as session, so we give it up to 500x10ms here.
-            RunLuaScript(400, setup, update, teardown);
-            AZ_TEST_ASSERT(GridMateLuaListSesionsTesting::s_count > 0);
-        }
-    };
-    AZStd::atomic_int GridMateLuaListSesionsTesting::s_count;
+        auto update = [&]()
+        {
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
+            GetGridMate()->Update();
+            return s_count > 0;
+        };
 
-    TEST_F(GridMateLuaListSesionsTesting, GridMateLua_ListSesionsTesting)
-    {
-        run();
+        auto teardown = [&]()
+        {
+            gmLANService.StopSessionService(GetGridMate());
+            TearDown();
+        };
+
+        // it can take an average of 2000ms to actually register as session, so we give it up to 500x10ms here.
+        RunLuaScript(400, setup, update, teardown);
+        AZ_TEST_ASSERT(s_count > 0);
+
     }
 
     //////////////////////////////////////////////////////////////////////////
     //
 
-    class GridMateLuaHostListFindAndJoinTesting
-        : public UnitTest::AllocatorsFixture
+    TEST_F(MultiplayerAllocatorsFixture, GridMateLua_HostListFindAndJoinTesting)
     {
-    public:
-
         struct TestGridMateSessionEventBusHandler
             : public GridMate::SessionEventBus::Handler
         {
@@ -948,13 +879,7 @@ return testlua;
             }
         };
 
-        const char* k_LuaScript;
-
-        GridMateLuaHostListFindAndJoinTesting()
-            : UnitTest::AllocatorsFixture(false)
-            , k_LuaScript(nullptr)
-        {
-            k_LuaScript = R"(
+        const char* k_LuaScript = R"(
 local testlua =
 {
 }
@@ -995,56 +920,46 @@ end
 
 return testlua;
 )";
-        }
+        int numMembersAdded = 0;
+        int numMembersLeft = 0;
+        TestGridMateSessionEventBusHandler testGridMateSessionEventBusHandler(numMembersAdded, numMembersLeft);
+        UnitTest::TestingNetworkProcessor clientProcessor;
 
-        void run()
+        auto setup = [&](AZ::BehaviorContext* bc)
         {
-            int numMembersAdded = 0;
-            int numMembersLeft = 0;
-            TestGridMateSessionEventBusHandler testGridMateSessionEventBusHandler(numMembersAdded, numMembersLeft);
-            UnitTest::TestingNetworkProcessor clientProcessor;
+            clientProcessor.SetGridMate(GetGridMate());
+            testGridMateSessionEventBusHandler.Start();
+            LuaNetworkTestingBusHandler::Reflect(bc);
+            return k_LuaScript;
+        };
 
-            auto setup = [&](AZ::BehaviorContext* bc)
+        auto update = [&]()
+        {
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(25));
+            testGridMateSessionEventBusHandler.Update();
+            clientProcessor.Update();
+            if (numMembersAdded > 1)
             {
-                clientProcessor.SetGridMate(GetGridMate());
-                testGridMateSessionEventBusHandler.Start();
-                LuaNetworkTestingBusHandler::Reflect(bc);
-                return k_LuaScript;
-            };
-
-            auto update = [&]()
-            {
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(25));
-                testGridMateSessionEventBusHandler.Update();
-                clientProcessor.Update();
-                if (numMembersAdded > 1)
+                if (numMembersLeft > 0)
                 {
-                    if (numMembersLeft > 0)
-                    {
-                        // all done
-                        return true;
-                    }
-                    EBUS_EVENT(LuaNetworkTestingBus, OnTestEvent, "connected", "1");
+                    // all done
+                    return true;
                 }
-                return false;
-            };
+                EBUS_EVENT(LuaNetworkTestingBus, OnTestEvent, "connected", "1");
+            }
+            return false;
+        };
 
-            auto teardown = [&]()
-            {
-                clientProcessor.Reset();
-                testGridMateSessionEventBusHandler.Stop();
-                TearDown();
-            };
+        auto teardown = [&]()
+        {
+            clientProcessor.Reset();
+            testGridMateSessionEventBusHandler.Stop();
+            TearDown();
+        };
 
-            RunLuaScript(200, setup, update, teardown);
-            AZ_TEST_ASSERT(numMembersAdded > 0);
-            AZ_TEST_ASSERT(numMembersLeft > 0);
-        }
-    };
-
-    TEST_F(GridMateLuaHostListFindAndJoinTesting, GridMateLua_HostListFindAndJoinTesting)
-    {
-        run();
+        RunLuaScript(200, setup, update, teardown);
+        AZ_TEST_ASSERT(numMembersAdded > 0);
+        AZ_TEST_ASSERT(numMembersLeft > 0);
     }
 }
 

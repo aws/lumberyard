@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_4">
    <item>
-    <widget class="QGroupBox" name="groupBox">
+    <widget class="QGroupBox" name="BATCH_RENDER_INPUT_GROUP_BOX">
      <property name="title">
       <string>Input</string>
      </property>
@@ -99,7 +99,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="groupBox_3">
+    <widget class="QGroupBox" name="BATCH_RENDER_OUTPUT_GROUP_BOX">
      <property name="title">
       <string>Output</string>
      </property>
@@ -296,7 +296,7 @@ p, li { white-space: pre-wrap; }
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="groupBox_2">
+    <widget class="QGroupBox" name="BATCH_RENDER_LIST_GROUP_BOX">
      <property name="title">
       <string>Batch</string>
      </property>

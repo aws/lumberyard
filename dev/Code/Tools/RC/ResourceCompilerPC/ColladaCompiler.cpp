@@ -791,11 +791,6 @@ ICompiler* ColladaCompiler::CreateCompiler()
     return this;
 }
 
-bool ColladaCompiler::SupportsMultithreading() const
-{
-    return false;
-}
-
 const char* ColladaCompiler::GetExt(int index) const
 {
     switch (index)

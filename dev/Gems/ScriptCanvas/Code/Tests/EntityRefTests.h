@@ -29,7 +29,7 @@ namespace ScriptCanvasTests
         , EntityRefTestEventBus::Handler
     {
     public:
-        AZ_COMPONENT(TestComponent, "{527680AE-BF46-4BC8-A923-A39B458A3B53}");
+        AZ_COMPONENT(TestComponent, "{527680AE-BF46-4BC8-A923-A39B458A3B53}", AZ::Component);
 
         void Init() override {}
         void Activate() override

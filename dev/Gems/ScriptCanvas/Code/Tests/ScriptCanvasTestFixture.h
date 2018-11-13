@@ -29,6 +29,7 @@
 #include <ScriptCanvas/SystemComponent.h>
 #include <Asset/RuntimeAssetSystemComponent.h>
 #include <AzFramework/IO/LocalFileIO.h>
+#include <ScriptCanvas/Core/Connection.h>
 
 // disable test bodies to see if there's anything wrong with the system or test framework not related to ScriptCanvas testing
 #define TEST_BODIES_ENABLED 1 // 1 = enabled by default, 0 = disabled by default
@@ -98,6 +99,7 @@ namespace ScriptCanvasTests
 
             s_application->RegisterComponentDescriptor(ScriptCanvasTests::TestComponent::CreateDescriptor());
             s_application->RegisterComponentDescriptor(TraceMessageComponent::CreateDescriptor());
+            s_application->RegisterComponentDescriptor(TestNodes::TestResult::CreateDescriptor());
 
             systemEntity->CreateComponent<AZ::MemoryComponent>();
             systemEntity->CreateComponent<AZ::AssetManagerComponent>();
@@ -144,19 +146,10 @@ namespace ScriptCanvasTests
                 AZ::IO::FileIOBase::SetInstance(m_fileIO.get());
             }
             AZ_Assert(AZ::IO::FileIOBase::GetInstance(), "File IO was not properly installed");
-
-            TestNodes::TestResult::Reflect(m_serializeContext);
-            TestNodes::TestResult::Reflect(m_behaviorContext);
         }
 
         void TearDown() override
         {
-            m_serializeContext->EnableRemoveReflection();
-            TestNodes::TestResult::Reflect(m_serializeContext);
-            m_serializeContext->DisableRemoveReflection();
-            m_behaviorContext->EnableRemoveReflection();
-            TestNodes::TestResult::Reflect(m_behaviorContext);
-            m_behaviorContext->DisableRemoveReflection();
             AZ::IO::FileIOBase::SetInstance(nullptr);
             m_fileIO = nullptr;
         }

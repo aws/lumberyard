@@ -48,7 +48,7 @@ MotionPropertyCtrl::~MotionPropertyCtrl()
 void MotionPropertyCtrl::SetValue(const CReflectedVarMotion &motion)
 {
     m_motion = motion;
-    m_motionLabel->setText(motion.m_motion.c_str());
+    SetLabelText(motion.m_motion);
 }
 
 CReflectedVarMotion MotionPropertyCtrl::value() const
@@ -72,7 +72,7 @@ void MotionPropertyCtrl::OnBrowseClicked()
         {
             m_motion.m_motion = product->GetRelativePath();
             m_motion.m_assetId = product->GetAssetId();
-            m_motionLabel->setText(m_motion.m_motion.c_str());
+            SetLabelText(m_motion.m_motion);
             emit ValueChanged(m_motion);
         }
     }
@@ -97,7 +97,7 @@ void MotionPropertyCtrl::OnApplyClicked()
         if (!rstrCurrentAnimAction.isEmpty())
         {
             m_motion.m_motion = rstrCurrentAnimAction.toLatin1().data();
-            m_motionLabel->setText(m_motion.m_motion.c_str());
+            SetLabelText(m_motion.m_motion);
             emit ValueChanged(m_motion);
         }
     }
@@ -116,6 +116,26 @@ QWidget* MotionPropertyCtrl::GetLastInTabOrder()
 void MotionPropertyCtrl::UpdateTabOrder()
 {
     setTabOrder(m_pBrowseButton, m_pApplyButton);
+}
+
+void MotionPropertyCtrl::SetLabelText(const AZStd::string& motion)
+{
+    if (!motion.empty())
+    {
+        AZStd::string filename;
+        if (AzFramework::StringFunc::Path::GetFileName(motion.c_str(), filename))
+        {
+            m_motionLabel->setText(filename.c_str());
+        }
+        else
+        {
+            m_motionLabel->setText(motion.c_str());
+        }
+    }
+    else
+    {
+        m_motionLabel->setText("");
+    }
 }
 
 

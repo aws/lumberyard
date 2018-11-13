@@ -55,7 +55,10 @@ namespace RADTelemetry
         // ProfileTelemetryRequestBus
         void ToggleEnabled() override;
         void SetAddress(const char *address, AZ::u16 port) override;
-        void SetCaptureMask(AZ::u32 mask) override;
+        void SetCaptureMask(AZ::Debug::ProfileCategoryPrimitiveType mask) override;
+        bool IsEnabled() override;
+        AZ::Debug::ProfileCategoryPrimitiveType GetCaptureMask() override;
+        AZ::Debug::ProfileCategoryPrimitiveType GetDefaultCaptureMask() override;
         tm_api* GetApiInstance() override;
 
         //////////////////////////////////////////////////////////////////////////
@@ -69,6 +72,7 @@ namespace RADTelemetry
         void Disable();
         void Initialize();
         bool IsInitialized() const;
+        static AZ::Debug::ProfileCategoryPrimitiveType GetDefaultCaptureMaskInternal();
 
         //////////////////////////////////////////////////////////////////////////
         // Data members
@@ -85,7 +89,8 @@ namespace RADTelemetry
 
         const char* m_address = "127.0.0.1";
         char* m_buffer = nullptr;
-        AZ::u32 m_captureMask = 0;
+        AZ::Debug::ProfileCategoryPrimitiveType m_captureMask = GetDefaultCaptureMaskInternal();
+
         AZ::u16 m_port = 4719;
         bool m_running = false;
         bool m_initialized = false;

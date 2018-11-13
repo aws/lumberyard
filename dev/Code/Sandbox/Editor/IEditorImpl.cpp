@@ -410,22 +410,31 @@ void CEditorImpl::UnloadPlugins(bool shuttingDown/* = false*/)
     QCoreApplication::sendPostedEvents(Q_NULLPTR, QEvent::DeferredDelete);
 
     GetPluginManager()->ReleaseAllPlugins();
+
+#ifdef DEPRECATED_QML_SUPPORT
     m_QtApplication->UninitializeQML(); // destroy QML first since it will hang onto memory inside the DLLs
+#endif // #ifdef DEPRECATED_QML_SUPPORT
+
     GetPluginManager()->UnloadAllPlugins();
 
     if (!shuttingDown)
     {
+#ifdef DEPRECATED_QML_SUPPORT
         // since we mean to continue, so need to bring QML back up again in case someone needs it.
         m_QtApplication->InitializeQML();
+#endif // #ifdef DEPRECATED_QML_SUPPORT
     }
 }
 
 void CEditorImpl::LoadPlugins()
 {
     CryAutoLock<CryMutex> lock(m_pluginMutex);
+
+#ifdef DEPRECATED_QML_SUPPORT
     // plugins require QML, so make sure its present:
 
     m_QtApplication->InitializeQML();
+#endif // #ifdef DEPRECATED_QML_SUPPORT
 
     static const char* editor_plugins_folder = "EditorPlugins";
 
@@ -455,6 +464,7 @@ void CEditorImpl::LoadPlugins()
     InitMetrics();
 }
 
+#ifdef DEPRECATED_QML_SUPPORT
 QQmlEngine* CEditorImpl::GetQMLEngine() const
 {
     if (!m_QtApplication)
@@ -472,6 +482,7 @@ QQmlEngine* CEditorImpl::GetQMLEngine() const
 
     return pEngine;
 }
+#endif // #ifdef DEPRECATED_QML_SUPPORT
 
 CEditorImpl::~CEditorImpl()
 {
@@ -1390,10 +1401,14 @@ CViewManager* CEditorImpl::GetViewManager()
 
 CViewport* CEditorImpl::GetActiveView()
 {
-    CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
-    if (viewPane)
+    MainWindow* mainWindow = MainWindow::instance();
+    if (mainWindow)
     {
-        return qobject_cast<QtViewport*>(viewPane->GetViewport());
+        CLayoutViewPane* viewPane = mainWindow->GetActiveView();
+        if (viewPane)
+        {
+            return qobject_cast<QtViewport*>(viewPane->GetViewport());
+        }
     }
     return nullptr;
 }
@@ -1812,7 +1827,9 @@ void CEditorImpl::InitMetrics()
 
     AWSNativeSDKInit::InitializationManager::InitAwsApi();
     const bool metricsInitAwsApi = false;
-    LyMetrics_Initialize("Editor.exe", 2, metricsInitAwsApi, projectId.data(), statusFilePath);
+
+    // LY_METRICS_BUILD_TIME is defined by the build system
+    LyMetrics_Initialize("Editor.exe", 2, metricsInitAwsApi, projectId.data(), statusFilePath, LY_METRICS_BUILD_TIME);
 }
 
 void CEditorImpl::DetectVersion()
@@ -2516,7 +2533,7 @@ void CEditorImpl::OnStartPlayInEditor()
 
 void CEditorImpl::InitializeCrashLog()
 {
-    LyMetrics_InitializeCurrentProcessStatus(m_crashLogFileName);
+    LyMetrics_InitializeCurrentProcessStatus(m_crashLogFileName, LY_METRICS_BUILD_TIME);
 
 #if defined(WIN32) || defined(WIN64)
     if (::IsDebuggerPresent())

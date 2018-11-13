@@ -31,6 +31,7 @@
 #include <QMenu>
 #include <QDesktopWidget>
 #include <QtGui/private/qhighdpiscaling_p.h>
+#include <QVector>
 
 // Constant for the button layout margins when drawing in simple mode (in pixels)
 static const int g_simpleBarButtonMarginsInPixels = 1;
@@ -114,9 +115,23 @@ namespace AzQtComponents
         window()->showMinimized();
     }
 
-    bool TitleBar::hasButton(DockBarButton::WindowDecorationButton button) const
+    bool TitleBar::hasButton(DockBarButton::WindowDecorationButton buttonType) const
     {
-        return m_buttons.contains(button);
+        return m_buttons.contains(buttonType);
+    }
+
+    bool TitleBar::buttonIsEnabled(DockBarButton::WindowDecorationButton buttonType) const
+    {
+        if (hasButton(buttonType))
+        {
+            DockBarButton* button = findButton(buttonType);
+            if (button)
+            {
+                return button->isEnabled();
+            }
+        }
+
+        return false;
     }
 
     void TitleBar::handleMoveRequest()
@@ -208,6 +223,38 @@ namespace AzQtComponents
             // The application icon will also be drawn for the main editor window
             m_dockBar->DrawSegment(painter, rect(), buttonsX, m_tearEnabled,
                 m_drawSideBorders, m_dockBar->GetColors(!m_forceInactive && window()->isActiveWindow()), title());
+        }
+    }
+
+    DockBarButton* TitleBar::findButton(DockBarButton::WindowDecorationButton buttonType) const
+    {
+        QList<DockBarButton*> buttons = findChildren<DockBarButton*>();
+        for (DockBarButton* button : buttons)
+        {
+            if (button->buttonType() == buttonType)
+            {
+                return button;
+            }
+        }
+
+        return nullptr;
+    }
+
+    void TitleBar::disableButton(DockBarButton::WindowDecorationButton buttonType)
+    {
+        DockBarButton* button = findButton(buttonType);
+        if (button)
+        {
+            button->setEnabled(false);
+        }
+    }
+
+    void TitleBar::enableButton(DockBarButton::WindowDecorationButton buttonType)
+    {
+        DockBarButton* button = findButton(buttonType);
+        if (button)
+        {
+            button->setEnabled(true);
         }
     }
 
@@ -375,13 +422,13 @@ namespace AzQtComponents
             return;
         }
 
-        m_restoreMenuAction->setEnabled(hasButton(DockBarButton::MaximizeButton) && isMaximized());
+        m_restoreMenuAction->setEnabled(buttonIsEnabled(DockBarButton::MaximizeButton) && isMaximized());
         m_moveMenuAction->setEnabled(!isMaximized());
         const bool isFixedSize = topLevelWidget->minimumSize() == topLevelWidget->maximumSize();
         m_sizeMenuAction->setEnabled(!isFixedSize && !isMaximized());
-        m_minimizeMenuAction->setEnabled(hasButton(DockBarButton::MinimizeButton));
-        m_maximizeMenuAction->setEnabled(hasButton(DockBarButton::MaximizeButton) && !isMaximized());
-        m_closeMenuAction->setEnabled(hasButton(DockBarButton::CloseButton));
+        m_minimizeMenuAction->setEnabled(buttonIsEnabled(DockBarButton::MinimizeButton));
+        m_maximizeMenuAction->setEnabled(buttonIsEnabled(DockBarButton::MaximizeButton) && !isMaximized());
+        m_closeMenuAction->setEnabled(buttonIsEnabled(DockBarButton::CloseButton));
 
     }
 
@@ -824,8 +871,26 @@ namespace AzQtComponents
         return window() && window()->isMaximized();
     }
 
+    static QVector<DockBarButton::WindowDecorationButton> findDisabledButtons(QWidget* widget)
+    {
+        QVector<DockBarButton::WindowDecorationButton> disabledButtons;
+        QList<DockBarButton*> buttons = widget->findChildren<DockBarButton*>();
+        for (DockBarButton* dockBarButton : buttons)
+        {
+            if (!dockBarButton->isEnabled())
+            {
+                disabledButtons.push_back(dockBarButton->buttonType());
+            }
+        }
+
+        return disabledButtons;
+    }
+
     void TitleBar::setupButtons()
     {
+        // Before we do anything else, figure out if any existing buttons were disabled.
+        QVector<DockBarButton::WindowDecorationButton> disabledButtons = findDisabledButtons(this);
+
         qDeleteAll(findChildren<QWidget*>());
 
         delete layout();
@@ -860,6 +925,11 @@ namespace AzQtComponents
                 DockBarButton* button = new DockBarButton(buttonType, this, isDarkStyle);
                 QObject::connect(button, &DockBarButton::buttonPressed, this, &TitleBar::handleButtonClicked);
                 w = button;
+
+                if (disabledButtons.contains(buttonType))
+                {
+                    button->setEnabled(false);
+                }
             }
 
             if (!m_firstButton)

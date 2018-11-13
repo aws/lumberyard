@@ -14,10 +14,11 @@
 #include "PropertyRowNumber.h"
 
 #define REGISTER_NUMBER_ROW(TypeName, postfix) \
-	typedef PropertyRowNumber<TypeName> PropertyRow##postfix; \
-	typedef Serialization::RangeDecorator<TypeName> RangeDecorator##postfix; \
-	REGISTER_IN_FACTORY(PropertyRowFactory, Serialization::TypeID::get<RangeDecorator##postfix>().name(), PropertyRow##postfix, []{ return new PropertyRow##postfix; }); \
-	SERIALIZATION_CLASS_NAME(PropertyRow, PropertyRow##postfix, "PropertyRow" #postfix, #TypeName);
+    typedef PropertyRowNumber<TypeName> PropertyRow##postfix; \
+    typedef Serialization::RangeDecorator<TypeName> RangeDecorator##postfix; \
+    PropertyRow* TypeName##postfixFactory() { return new PropertyRow##postfix; }; \
+    REGISTER_IN_FACTORY(PropertyRowFactory, Serialization::TypeID::get<RangeDecorator##postfix>().name(), PropertyRow##postfix, TypeName##postfixFactory); \
+    SERIALIZATION_CLASS_NAME(PropertyRow, PropertyRow##postfix, "PropertyRow" #postfix, #TypeName);
 
 REGISTER_NUMBER_ROW(float, Float)
 REGISTER_NUMBER_ROW(double , Double)

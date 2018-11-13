@@ -19,7 +19,6 @@ namespace StarterGameGem
     class StarterGameGemRequests
         : public AZ::EBusTraits
     {
-
     public:
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;

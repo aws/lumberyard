@@ -23,6 +23,8 @@
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxBlendShapeImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxBoneImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxColorStreamImporter.h>
+#include <SceneAPI/FbxSceneBuilder/Importers/FbxTangentStreamImporter.h>
+#include <SceneAPI/FbxSceneBuilder/Importers/FbxBitangentStreamImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxMaterialImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxMeshImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxSkinImporter.h>
@@ -72,6 +74,8 @@ extern "C" AZ_DLL_EXPORT void Reflect(AZ::SerializeContext* /*context*/)
         g_componentDescriptors.push_back(FbxSkinWeightsImporter::CreateDescriptor());
         g_componentDescriptors.push_back(FbxTransformImporter::CreateDescriptor());
         g_componentDescriptors.push_back(FbxUvMapImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxTangentStreamImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxBitangentStreamImporter::CreateDescriptor());
         
         for (AZ::ComponentDescriptor* descriptor : g_componentDescriptors)
         {

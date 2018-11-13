@@ -1959,6 +1959,11 @@ CTexture* CD3D9Renderer::FX_GetCurrentRenderTarget(int target)
     return m_RTStack[target][gcpRendD3D->m_nRTStackLevel[target]].m_pTex;
 }
 
+D3DSurface* CD3D9Renderer::FX_GetCurrentRenderTargetSurface(int target) const
+{
+    return m_RTStack[target][gcpRendD3D->m_nRTStackLevel[target]].m_pTarget;
+}
+
 void CD3D9Renderer::FX_SetColorDontCareActions(int const nTarget,
     bool const loadDontCare,
     bool const storeDontCare)
@@ -2931,12 +2936,11 @@ void CD3D9Renderer::FX_DrawBatchesSkinned(CShader* pSh, SShaderPass* pPass, SSki
         rRP.m_FlagsShader_RT |= (g_HWSR_MaskBit[HWSR_SKINNING_DUAL_QUAT]);
     }
 
-
-    CHWShader_D3D* pCurHS, * pCurDS;
-    bool bTessEnabled = FX_SetTessellationShaders(pCurHS, pCurDS, pPass);
-
     bool bRes = pCurPS->mfSetPS(HWSF_SETTEXTURES);
     bRes &= pCurVS->mfSetVS(0);
+
+    CHWShader_D3D* pCurHS, *pCurDS;
+    bool bTessEnabled = FX_SetTessellationShaders(pCurHS, pCurDS, pPass);
 
     if (pCurGS)
     {
@@ -3263,15 +3267,13 @@ void CD3D9Renderer::FX_DrawBatches(CShader* pSh, SShaderPass* pPass)
             CHWShader_D3D::mfBindGS(NULL, NULL);
         }
 
-
-        CHWShader_D3D* pCurHS, * pCurDS;
-        bool bTessEnabled = FX_SetTessellationShaders(pCurHS, pCurDS, pPass);
-
-
         CHWShader_D3D* pCurVS = (CHWShader_D3D*)pPass->m_VShader;
         CHWShader_D3D* pCurPS = (CHWShader_D3D*)pPass->m_PShader;
         bRes &= pCurPS->mfSetPS(HWSF_SETTEXTURES);
         bRes &= pCurVS->mfSetVS(HWSF_SETTEXTURES);
+
+        CHWShader_D3D* pCurHS, *pCurDS;
+        bool bTessEnabled = FX_SetTessellationShaders(pCurHS, pCurDS, pPass);
 
         if (bRes)
         {
@@ -4523,8 +4525,12 @@ void CD3D9Renderer::FX_FlushShader_General()
             }
         }
 #endif
-
-        MultiLayerAlphaBlendPass::GetInstance().ConfigureShaderFlags(rRP.m_FlagsShader_RT);
+        // If the object is transparent and if the object has the UAV bound.
+        bool multilayerUAVBound = (rRP.m_ObjFlags & FOB_AFTER_WATER) != 0;
+        if (rRP.m_pShaderResources && rRP.m_pShaderResources->IsTransparent() && multilayerUAVBound)
+        {
+            MultiLayerAlphaBlendPass::GetInstance().ConfigureShaderFlags(rRP.m_FlagsShader_RT);
+        }
 
         if (!rd->FX_SetResourcesState())
         {
@@ -4773,9 +4779,6 @@ void CD3D9Renderer::FX_FlushShader_ShadowGen()
     }
 #endif
 
-    //per-object bias for Shadow Generation
-    rd->m_cEF.m_TempVecs[1][0] = 0.0f;
-
     if (!rd->FX_SetResourcesState())
     {
         return;
@@ -4917,7 +4920,13 @@ void CD3D9Renderer::FX_FlushShader_ZPass()
             rRP.m_ForceStateOr |=   GS_STENCIL;
 
             uint32 nStencilRef = CRenderer::CV_r_VisAreaClipLightsPerPixel ? 0 : (rd->m_RP.m_RIs[0][0]->nStencRef | BIT_STENCIL_INSIDE_CLIPVOLUME);
-            nStencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) || CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0);
+            
+            // Here we check if an object can receive decals.
+            bool bObjectAcceptsDecals = !(rRP.m_pCurObject->m_NoDecalReceiver);
+            if (bObjectAcceptsDecals)
+            {
+                nStencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) || CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0);
+            }
             const int32 stencilState = STENC_FUNC(FSS_STENCFUNC_ALWAYS) | STENCOP_FAIL(FSS_STENCOP_KEEP) | STENCOP_ZFAIL(FSS_STENCOP_KEEP) | STENCOP_PASS(FSS_STENCOP_REPLACE);
             rd->FX_SetStencilState(stencilState, nStencilRef, 0xFF, 0xFF);
         }
@@ -5139,12 +5148,12 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
 
     if (pRT->m_nIDInPool >= 0)
     {
-        assert((int)CTexture::s_CustomRT_2D.Num() > pRT->m_nIDInPool);
-        if ((int)CTexture::s_CustomRT_2D.Num() <= pRT->m_nIDInPool)
+        assert((int)CTexture::s_CustomRT_2D->Num() > pRT->m_nIDInPool);
+        if ((int)CTexture::s_CustomRT_2D->Num() <= pRT->m_nIDInPool)
         {
             return false;
         }
-        pEnvTex = &CTexture::s_CustomRT_2D[pRT->m_nIDInPool];
+        pEnvTex = &(*CTexture::s_CustomRT_2D)[pRT->m_nIDInPool];
 
         if (nWidth == -1)
         {

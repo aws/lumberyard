@@ -23,13 +23,11 @@ using namespace AZStd;
 using namespace UnitTestInternal;
 
 #define AZ_TEST_VALIDATE_EMPTY_TREE(_Tree_) \
-    EXPECT_TRUE(_Tree_.validate());      \
     EXPECT_EQ(0, _Tree_.size());     \
     EXPECT_TRUE(_Tree_.empty());         \
     EXPECT_TRUE(_Tree_.begin() == _Tree_.end());
 
 #define AZ_TEST_VALIDATE_TREE(_Tree_, _NumElements)                                                    \
-    EXPECT_TRUE(_Tree_.validate());                                                                 \
     EXPECT_EQ(_NumElements, _Tree_.size());                                                     \
     EXPECT_TRUE((_Tree_.size() > 0) ? !_Tree_.empty() : _Tree_.empty());                              \
     EXPECT_TRUE((_NumElements > 0) ? _Tree_.begin() != _Tree_.end() : _Tree_.begin() == _Tree_.end()); \

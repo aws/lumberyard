@@ -554,7 +554,6 @@ HRESULT CDeviceManager::CreateBuffer(
     , D3DBuffer** ppBuff)
 {
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_RENDERER);
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "CreateBuffer");
     HRESULT hr = S_OK;
 
 # ifndef _RELEASE

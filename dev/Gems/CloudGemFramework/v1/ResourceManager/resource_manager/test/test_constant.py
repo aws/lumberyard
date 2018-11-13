@@ -20,6 +20,9 @@ GAME_NAME = "TestGame"
 RESOURCE_GROUP_NAME = "TestResourceGroup1"
 TEST_PROFILE = 'CloudCanvasTest'
 
+# Directories
+DIR_GEMS = "Gems"
+
 # Context attributes
 ATTR_PROJECT_STACK_NAME = "ProjectStackName"
 ATTR_TEMP_DIR = "TempDir"
@@ -36,6 +39,8 @@ ATTR_PC_CACHE_DIR = "PcCacheDir"
 ATTR_GAME_NAME = "GameName"
 ATTR_USERS = "Users"
 ATTR_ALTERNATE_CONTEXTS = "AlternateContexts"
+ATTR_DEPLOYMENT_NAME = "DeploymentStackName"
+ATTR_RESOURCE_GROUP_NAME = "ResourceGroupName"
 
 # local project setting schema items
 SET = 'Set'

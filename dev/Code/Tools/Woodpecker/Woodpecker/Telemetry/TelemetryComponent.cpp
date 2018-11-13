@@ -42,7 +42,7 @@ namespace Telemetry
 
     void TelemetryComponent::Initialize(const char* applicationName, AZ::u32 processInterval, bool doAPIInitShutdown)
     {
-        LyMetrics_Initialize(applicationName, processInterval, doAPIInitShutdown, nullptr, nullptr);
+        LyMetrics_Initialize(applicationName, processInterval, doAPIInitShutdown, nullptr, nullptr, LY_METRICS_BUILD_TIME);
     }
 
     void TelemetryComponent::LogEvent(const TelemetryEvent& telemetryEvent)

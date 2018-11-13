@@ -53,6 +53,14 @@ void AWSProfileModel::SetDefaultProfile(const QString& profileName)
     QVariantMap args;
     args["set"] = profileName;
 
+    int previousDefaultProfileRow = FindRow(AWSProfileColumn::Default, true);
+    int newDefaultProfileRow = FindRow(AWSProfileColumn::Name, profileName);
+    if (newDefaultProfileRow != previousDefaultProfileRow)
+    {
+        setData(index(previousDefaultProfileRow, AWSProfileColumn::Default), false);
+        setData(index(newDefaultProfileRow, AWSProfileColumn::Default), true);
+    }
+
     // TODO: add error handling
     ExecuteAsync(ResourceManager()->AllocateRequestId(), "default-profile", args);
 

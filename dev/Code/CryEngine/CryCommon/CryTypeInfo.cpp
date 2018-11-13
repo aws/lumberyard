@@ -1380,5 +1380,5 @@ cstr CEnumDef::ToName(TValue value) const
     return 0;
 }
 
-DynArray<CEnumDef::SElem>* CEnumDef::SInit::s_pElems = 0;
+LegacyDynArray<CEnumDef::SElem>* CEnumDef::SInit::s_pElems = 0;
 

@@ -28,9 +28,10 @@ public:
 
     void Update();
 
-private:
     CRConServerListener();
     ~CRConServerListener();
+
+private:
 
     void OnStartResult(bool started, EResultDesc desc);
 
@@ -46,7 +47,7 @@ private:
     typedef std::map<uint32, string> TCommandsMap;
     TCommandsMap m_commands;
 
-    static CRConServerListener s_singleton;
+    static StaticInstance<CRConServerListener> s_singleton;
     static IRemoteControlServer* s_rcon_server;
 };
 

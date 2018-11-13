@@ -22,6 +22,9 @@
             "x-cloud-gem-framework-interface-implementation": {
                 "description": "Enables X-Gem Communication between Cloud Gem Metric & Cloud Gem Load Test",
                 "interface": "CloudGemMetric_LoadTest_1_0_0"
+            },
+            "x-amazon-cloud-canvas-client-generation": {
+                "no-client": true
             }
         },
         "/service/status": {
@@ -38,6 +41,9 @@
                             "$ref": "#/definitions/ServiceStatus"
                         }
                     }
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                     "function": "GetServiceStatus"
                 }
             }
         },
@@ -58,6 +64,7 @@
                     "function": "get"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "GetContextData"
                 }
             }
@@ -100,7 +107,8 @@
                     "function": "get_settings"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
-                    "function": "GetContextData"
+                    "no-client": true,
+                    "function": "GetContextSettings"
                 }
             },
             "post": {
@@ -128,6 +136,7 @@
                     "function": "update_settings"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "UpdateContextData"
                 }
             }
@@ -149,6 +158,7 @@
                     "function": "get_partition"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "GetPartitionData"
                 }
             },
@@ -177,6 +187,7 @@
                     "function": "update_custom_partition"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "UpdatePartitionData"
                 }
             }
@@ -198,6 +209,7 @@
                     "function": "get_predefined_partition"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "GetPartitionData"
                 }
             }
@@ -219,6 +231,7 @@
                     "function": "get_custom_partition"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "GetCustomPartitionData"
                 }
             }
@@ -240,6 +253,7 @@
                     "function": "get_filter"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "GetFilterData"
                 }
             },
@@ -268,6 +282,7 @@
                     "function": "update_filter"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "UpdateFilterData"
                 }
             }
@@ -285,6 +300,7 @@
                     "function": "consume"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "StartSQSConsumer"
                 }
             }
@@ -302,6 +318,7 @@
                     "function": "run_crawler"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "StartGlueCrawler"
                 }
             }
@@ -327,6 +344,7 @@
                     "function": "get_crawler_status"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "GlueCrawlerStatus"
                 }
             }
@@ -344,6 +362,7 @@
                     "function": "consume"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "StartAmoebaConsumer"
                 }
             }
@@ -416,6 +435,7 @@
                     "function": "get_priority"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "GetPriorityData"
                 }
             },
@@ -444,6 +464,7 @@
                     "function": "update_priority"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "UpdatePriorityData"
                 }
             }
@@ -474,6 +495,7 @@
                     "function": "query"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "AthenaQueryId"
                 }
             }
@@ -502,6 +524,7 @@
                     "function": "query_results"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "AthenaQueryResult"
                 }
             }
@@ -523,7 +546,8 @@
                     "function": "consumer_save_duration"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
-                    "function": "SaveDurationData"
+                    "no-client": true,
+                    "function": "GetDurationData"
                 }
             }
         },
@@ -544,6 +568,7 @@
                     "function": "consumer_messages_processed"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "ConsumerMessagesProcessed"
                 }
             }
@@ -565,6 +590,7 @@
                     "function": "consumer_bytes_processed"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "ConsumerBytesProcessed"
                 }
             }
@@ -586,6 +612,7 @@
                     "function": "consumer_rows_added"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "ConsumerRowsAdded"
                 }
             }
@@ -607,6 +634,7 @@
                     "function": "consumer_sqs_delete_duration"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "ConsumerSQSDeleteDuration"
                 }
             }
@@ -637,7 +665,7 @@
                         "required": true
                     },
                     {
-                        "description": "The CloudWatch metric dimension name value logical id to use.  Example. 'Amoeba1'",
+                        "description": "The CloudWatch metric dimension name value logical id to use.  Example. 'Amoeba'",
                         "name": "dimension_value",
                         "in": "query",
                         "type": "string",
@@ -676,6 +704,7 @@
                     "function": "cloudwatch_metric"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "CloudWatchQuery"
                 }
             }
@@ -697,6 +726,7 @@
                     "function": "duplication_rate"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "AthenaQueryDuplicationRate"
                 }
             }
@@ -718,6 +748,7 @@
                     "function": "events"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "AthenaQueryEvents"
                 }
             }
@@ -739,6 +770,7 @@
                     "function": "platforms"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "AthenaQueryEvents"
                 }
             }
@@ -760,6 +792,7 @@
                     "function": "avg_save_duration"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "SaveDurationData"
                 }
             }
@@ -781,6 +814,7 @@
                     "function": "avg_delete_duration"
                 },
                 "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true,
                     "function": "DeleteDurationData"
                 }
             }
@@ -816,6 +850,9 @@
                 "x-amazon-cloud-canvas-lambda-dispatch": {
                     "module": "dashboard",
                     "function": "post"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             },
             "get": {
@@ -840,6 +877,9 @@
                 "x-amazon-cloud-canvas-lambda-dispatch": {
                     "module": "dashboard",
                     "function": "get"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             }
         },
@@ -867,6 +907,9 @@
                 "x-amazon-cloud-canvas-lambda-dispatch": {
                     "module": "heatmap",
                     "function": "post"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             },
             "get": {
@@ -882,6 +925,9 @@
                 "x-amazon-cloud-canvas-lambda-dispatch": {
                     "module": "heatmap",
                     "function": "list"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             }
         },
@@ -916,6 +962,9 @@
                 "x-amazon-cloud-canvas-lambda-dispatch": {
                     "module": "heatmap",
                     "function": "put"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             },
             "get": {
@@ -940,6 +989,9 @@
                 "x-amazon-cloud-canvas-lambda-dispatch": {
                     "module": "heatmap",
                     "function": "get"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             },
             "delete": {
@@ -964,6 +1016,9 @@
                 "x-amazon-cloud-canvas-lambda-dispatch": {
                     "module": "heatmap",
                     "function": "delete"
+                },
+                "x-amazon-cloud-canvas-client-generation": {
+                    "no-client": true                
                 }
             }
         }
@@ -982,11 +1037,15 @@
             }
         },
         "FilterData": {
-            "type": "array",
+            "type": "object",
             "description": "The filter definition is used to filter out the client metrics.  Example. Case 1: [{ 'event': 'shotFired', 'attributes': [], 'type': 'all' }]. In this case all 'shotFired' events would be filtered out.  Case 2: [{ 'event': 'shotFired', 'attributes': ['gun'], 'type': 'attribute' }].  In this case only attributes called 'gun' on event 'shotFired' will be filtered out.  Case 3: [{ 'event': 'shotFired', 'attributes': ['gun'], 'type': 'all' }]. In this case all events with a attribute 'gun' will be dropped.",
             "properties": {
                 "filters": {
-                    "$ref": "#/definitions/Filter"
+                    "description": "The attributes to filter on.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Filter"
+                    }
                 }
             },
             "required": [
@@ -1005,11 +1064,15 @@
                     "description": "The attributes to filter on.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/FilterAttributeItem"
+                        "$ref": "#/definitions/StringItem"
                     }
                 },
                 "type": {
                     "description": "The type of filering to apply. ['all'|'attribute']",
+                    "type": "string"
+                },                
+                "platform":{
+                    "description": "The platform to apply the filter against.",
                     "type": "string"
                 }
             },
@@ -1020,33 +1083,19 @@
             ]
         },
         "PriorityData": {
-            "type": "array",
+            "type": "object",
             "description": "The priorities definition is used to prioritize which client metrics get stored when local disk space capacity exceeds the priority_only_threshold. Example: [{'event': 'purchase', 'precedence': 0}], In this example 'purchase' events will be given the highest priority.  The lower the precedence number the higher the priority it has.",
             "properties": {
                 "priorities": {
-                    "$ref": "#/definitions/Priority"
+                    "description": "The priorities to use.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/StringItem"
+                    }
                 }
             },
             "required": [
                 "priorities"
-            ]
-        },
-        "Priority": {
-            "description": "The priorities definition is used to prioritize which client metrics get stored when local disk space capacity exceeds the priority_only_threshold. Example: [{'event': 'purchase', 'precedence': 0}], In this example 'purchase' events will be given the highest priority.  The lower the precedence number the higher the priority it has.",
-            "type": "object",
-            "properties": {
-                "event": {
-                    "description": "The event name to be filtered on.",
-                    "type": "string"
-                },
-                "precedence": {
-                    "description": "The precedence number.  The lower the number the better",
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "event",
-                "precedence"
             ]
         },
         "DataPoint": {
@@ -1075,7 +1124,7 @@
         "QueryItem": {
             "type": "string"
         },
-        "FilterAttributeItem": {
+        "StringItem": {
             "type": "string"
         },
         "ListItem": {
@@ -1146,7 +1195,7 @@
                 "priorities": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/Priority"
+                        "$ref": "#/definitions/StringItem"
                     }
                 }
             }

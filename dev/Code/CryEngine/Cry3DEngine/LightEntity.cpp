@@ -254,6 +254,12 @@ void CLightEntity::UpdateGSMLightSourceShadowFrustum(const SRenderingPassInfo& p
             nCachedLodCount = nMaxLodCount - nDynamicLodCount;
         }
     }
+    else
+    {
+        // If a light is not the SUN, then we don't take e_GsmLodsNum 
+        // into account and decide we will have one lod.
+        nDynamicLodCount = 1;
+    }
 
     // update dynamic and static frustums
     float fDistFromView = 0;
@@ -1612,6 +1618,7 @@ void CLightEntity::Render(const SRendParams& rParams, const SRenderingPassInfo& 
 #if defined(FEATURE_SVO_GI)
     if (gEnv->pConsole->GetCVar("e_svoTI_Active") && 
         gEnv->pConsole->GetCVar("e_svoTI_Active")->GetIVal() && 
+        gEnv->pConsole->GetCVar("e_GI")->GetIVal() &&
         !GetVoxelGIMode())
     {
         return;

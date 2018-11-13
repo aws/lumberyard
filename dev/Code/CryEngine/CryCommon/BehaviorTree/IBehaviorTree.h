@@ -720,8 +720,6 @@ namespace BehaviorTree
 
         virtual INodePtr Create() override
         {
-            MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Modular Behavior Tree Node Factory: %s", m_typeName);
-
             assert(m_nodeFactory != NULL);
 
             void* const pointer = m_nodeFactory->AllocateNodeMemory(sizeof(NodeType));

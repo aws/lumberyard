@@ -137,7 +137,7 @@ protected:
     AZStd::vector<AZStd::unique_ptr<AssetBuilder::ExternalModuleAssetBuilderInfo>> m_assetBuilderInfoList;
 
     //! Currently loading builder
-    AssetBuilder::ExternalModuleAssetBuilderInfo* m_currentAssetBuilder;
+    AssetBuilder::ExternalModuleAssetBuilderInfo* m_currentAssetBuilder = nullptr;
     
     //! Thread for running a job, so we don't block the network thread while doing work
     AZStd::thread_desc m_jobThreadDesc;

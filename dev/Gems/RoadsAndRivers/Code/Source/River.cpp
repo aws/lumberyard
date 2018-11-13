@@ -445,7 +445,7 @@ namespace RoadsAndRivers
         for (const auto& node : m_renderNodes)
         {
             auto renderingNode = node.GetRenderNode();
-            renderingNode->SetRndFlags(0);
+            renderingNode->SetRndFlags(ERF_COMPONENT_ENTITY);
             renderingNode->SetViewDistanceMultiplier(m_viewDistanceMultiplier);
             renderingNode->SetMinSpec(static_cast<int>(m_minSpec));
             renderingNode->SetFogDensity(m_waterFogDensity);
@@ -532,10 +532,7 @@ namespace RoadsAndRivers
             sector.GetRenderNode()->SetStreamSpeed(m_waterStreamSpeed);
         }
 
-        if (m_physicalize)
-        {
-            BindWithPhysics();
-        }
+        BindWithPhysics();
     }
 
     void River::BindWithPhysics()
@@ -543,31 +540,36 @@ namespace RoadsAndRivers
         auto& geometrySectors = GetGeometrySectors();
         if (!m_renderNodes.empty())
         {
+            // Remove any existing physics representation
             const auto& firstNode = m_renderNodes.front();
             firstNode.GetRenderNode()->Dephysicalize();
 
-            auto numRiverSegments = geometrySectors.size();
-            AZStd::vector<AZ::Vector3> outline;
-            outline.reserve(numRiverSegments * 2 + 2);
-
-            for (const auto& riverSegment : geometrySectors)
+            // If we should be physicalized, build a new physics representation
+            if (m_physicalize)
             {
-                outline.push_back(riverSegment.points[1]);
+                auto numRiverSegments = geometrySectors.size();
+                AZStd::vector<AZ::Vector3> outline;
+                outline.reserve(numRiverSegments * 2 + 2);
+
+                for (const auto& riverSegment : geometrySectors)
+                {
+                    outline.push_back(riverSegment.points[1]);
+                }
+
+                outline.push_back(geometrySectors.back().points[3]);
+                outline.push_back(geometrySectors.back().points[2]);
+
+                for (int i = numRiverSegments - 1; i >= 0; --i)
+                {
+                    outline.push_back(geometrySectors[i].points[0]);
+                }
+
+                AZ::Transform transform = AZ::Transform::CreateIdentity();
+                AZ::TransformBus::EventResult(transform, m_entityId, &AZ::TransformBus::Events::GetWorldTM);
+
+                firstNode.GetRenderNode()->SetRiverPhysicsArea(outline, transform, true);
+                firstNode.GetRenderNode()->Physicalize();
             }
-
-            outline.push_back(geometrySectors.back().points[3]);
-            outline.push_back(geometrySectors.back().points[2]);
-
-            for (int i = numRiverSegments - 1; i >= 0; --i)
-            {
-                outline.push_back(geometrySectors[i].points[0]);
-            }
-
-            AZ::Transform transform = AZ::Transform::CreateIdentity();
-            AZ::TransformBus::EventResult(transform, m_entityId, &AZ::TransformBus::Events::GetWorldTM);
-
-            firstNode.GetRenderNode()->SetRiverPhysicsArea(outline, transform, true);
-            firstNode.GetRenderNode()->Physicalize();
         }
     }
 

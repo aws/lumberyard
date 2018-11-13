@@ -1024,7 +1024,7 @@ GridSession::RemoveMember(const MemberID& id)
         if (member->GetId() == id)
         {
             // Removing member from voice chat
-            EBUS_EVENT_ID(m_gridMate, VoiceChatServiceBus, RegisterMember, member);
+            EBUS_EVENT_ID(m_gridMate, VoiceChatServiceBus, UnregisterMember, member);
 
             // The only ones that can get a remove member call
             // without having lost that connection are the non-hosts.
@@ -2545,48 +2545,75 @@ SessionService::Update()
 //=========================================================================
 // ReleaseGridSearch
 //=========================================================================
-void
-SessionService::AddGridSeach(GridSearch* search)
+void SessionService::AddGridSeach(GridSearch* search)
 {
-    if(search != nullptr)
+    if (search != nullptr)
     {
-        AZ_Assert(AZStd::find(m_activeSearches.begin(), m_activeSearches.end(), search) == m_activeSearches.end(), "This search %p is already in the active searches list!", search);
-        AZ_Assert(AZStd::find(m_completedSearches.begin(), m_completedSearches.end(), search) == m_completedSearches.end(), "This search %p is already in the complete searches list!", search);
-
-        if (search->IsDone())
+        if( AZStd::find(m_activeSearches.begin(), m_activeSearches.end(), search) != m_activeSearches.end() )
         {
-            m_completedSearches.push_back(search);
+            AZ_Error("SessionService", false, "This search %p is already in the active searches list!", search);
+        }
+        else if( AZStd::find(m_completedSearches.begin(), m_completedSearches.end(), search) != m_completedSearches.end() )
+        {
+            AZ_Error("SessionService", false, "This search %p is already in the complete searches list!", search);
         }
         else
         {
-            m_activeSearches.push_back(search);
-        }
+            if (search->IsDone())
+            {
+                m_completedSearches.push_back(search);
+            }
+            else
+            {
+                m_activeSearches.push_back(search);
+            }
 
-        EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnGridSearchStart, search);
+            EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnGridSearchStart, search);
+        }
     }
 }
 
 //=========================================================================
 // ReleaseGridSearch
 //=========================================================================
-void
-SessionService::ReleaseGridSearch(GridSearch* search)
+void SessionService::ReleaseGridSearch(GridSearch* search)
 {
-    if(search != nullptr)
+    if (search != nullptr)
     {
-        EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnGridSearchRelease, search);
+        bool released = false;
 
         if (search->IsDone() && !m_completedSearches.empty())
         {
             SearchArrayType::iterator it = AZStd::find(m_completedSearches.begin(), m_completedSearches.end(), search);
-            AZ_Assert(it != m_completedSearches.end(), "Completed search %p was NOT found in the complete list!", search);
-            m_completedSearches.erase(it);
+
+            if (it != m_completedSearches.end() )
+            {
+                m_completedSearches.erase(it);
+                released = true;
+            }
+            else
+            {
+                AZ_Error("SessionService", false, "Completed search %p was NOT found in the complete list!", search);
+            }
         }
         else if (!m_activeSearches.empty())
         {
             SearchArrayType::iterator it = AZStd::find(m_activeSearches.begin(), m_activeSearches.end(), search);
-            AZ_Assert(it != m_activeSearches.end(), "Active search %p was NOT found in the active list!", search);
-            m_activeSearches.erase(it);
+
+            if( it != m_activeSearches.end() )
+            {
+                m_activeSearches.erase(it);
+                released = true;
+            }
+            else
+            {
+                AZ_Error("SessionService", false, "Active search %p was NOT found in the active list!", search);
+            }
+        }
+
+        if (released)
+        {
+            EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnGridSearchRelease, search);
         }
 
         delete search;
@@ -2598,20 +2625,31 @@ SessionService::ReleaseGridSearch(GridSearch* search)
 //=========================================================================
 void SessionService::AddSession(GridSession* session)
 {
-    AZ_Assert(AZStd::find(m_sessions.begin(), m_sessions.end(), session) == m_sessions.end(), "Session %p has already been added!", session);
-    m_sessions.push_back(session);
+    if(session != nullptr)
+    {
+        if( AZStd::find(m_sessions.begin(), m_sessions.end(), session) == m_sessions.end() )
+        {
+            m_sessions.push_back(session);
+        }
+        else
+        {
+            AZ_Error("SessionService", false, "Session %p has already been added!", session);
+        }
+    }
 }
 
 //=========================================================================
 // RemoveSession
 //=========================================================================
-void
-SessionService::RemoveSession(GridSession* session)
+void SessionService::RemoveSession(GridSession* session)
 {
-    SessionArrayType::iterator it = AZStd::find(m_sessions.begin(), m_sessions.end(), session);
-    if (it != m_sessions.end())
+    if (session != nullptr)
     {
-        m_sessions.erase(it);
+        SessionArrayType::iterator it = AZStd::find(m_sessions.begin(), m_sessions.end(), session);
+        if (it != m_sessions.end())
+        {
+            m_sessions.erase(it);
+        }
     }
 }
 
@@ -2649,7 +2687,7 @@ void GridSessionHandshake::OnInitiate(ConnectionID id, WriteBuffer& wb)
     wb.Write(m_version);
 
     if (!m_userData.empty())
-    {
+    {   
         wb.WriteRaw(m_userData.data(), m_userData.size());
     }
 }

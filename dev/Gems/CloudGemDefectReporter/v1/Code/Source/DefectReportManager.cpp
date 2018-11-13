@@ -20,6 +20,9 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Serialization/Utils.h>
 
+#include <aws/core/utils/crypto/Cipher.h>
+#include <aws/core/utils/crypto/Factories.h>
+
 namespace CloudGemDefectReporter
 {
     ReportWrapper::ReportWrapper(const DefectReport& report) :
@@ -97,18 +100,60 @@ namespace CloudGemDefectReporter
 
     void ReportWrapper::AddCustomField(const AZStd::string& key, const AZStd::string& value)
     {
-        // if annotation exists, update it
-        auto foundIter = AZStd::find_if(m_metrics.begin(), m_metrics.end(), [key](const MetricDesc& metric) { return metric.m_key == key; });
+        // Compound types are not supported in CGP and need to be entered as text at the moment
+        // Check special characters here to verify the string type
+        const AZStd::string& newCustomFieldValue = (value.find('{') == AZStd::string::npos && value.find('[') == AZStd::string::npos) ? ("\"" + value + "\"") : value;
+
+        auto foundIter = AZStd::find_if(m_metrics.begin(), m_metrics.end(), [](const MetricDesc& metric) { return metric.m_key == "custom_fields"; });
         if (foundIter == m_metrics.end())
         {
-            MetricDesc typeMetric;
-            typeMetric.m_key = key;
-            typeMetric.m_data = value;
-            m_metrics.push_back(typeMetric);
+            MetricDesc customFieldsMetric;
+            customFieldsMetric.m_key = "custom_fields";
+            customFieldsMetric.m_data = "{\"" + key + "\":" + newCustomFieldValue + "}";
+            m_metrics.push_back(customFieldsMetric);
         }
         else
         {
-            foundIter->m_data = value;
+            AZStd::string customFieldsData = foundIter->m_data;
+            AZStd::vector<AZStd::string> customFieldSections;
+            if (customFieldsData.length() > 2)
+            {
+                customFieldSections = DefectReportManager::SplitString(customFieldsData.substr(1, customFieldsData.length() - 2), ";");
+            }
+
+            // Generate the updated custom fields metrics
+            AZStd::string newCustomFieldsData = "{";
+            bool fieldExists = false;
+            for (const AZStd::string& customFieldSection : customFieldSections)
+            {
+                AZStd::string customFieldKey;
+                AZStd::string customFieldValue;
+                DefectReportManager::RetrieveCustomFieldKeyAndValue(customFieldSection, customFieldKey, customFieldValue);
+
+                if (customFieldKey.empty())
+                {
+                    continue;
+                }
+
+                // Update the custom field value if exists
+                if (customFieldKey == key)
+                {
+                    customFieldValue = newCustomFieldValue;
+                    fieldExists = true;
+                }
+
+                newCustomFieldsData += "\"" + customFieldKey + "\":" + customFieldValue + ";";
+            }
+
+            if (!fieldExists)
+            {
+                newCustomFieldsData += "\"" + key + "\":" + newCustomFieldValue + ";";
+            }
+
+            newCustomFieldsData = newCustomFieldsData.substr(0, newCustomFieldsData.length() - 1);
+            newCustomFieldsData += "}";
+
+            foundIter->m_data = newCustomFieldsData;
         }
     }
 
@@ -224,7 +269,38 @@ namespace CloudGemDefectReporter
         auto reportIter = m_reports.find(reportID);
         if (reportIter != m_reports.end())
         {
-            return reportIter->second;
+            DefectReport::MetricsList existingMetricsList = reportIter->second.GetMetrics();
+            auto foundIter = AZStd::find_if(existingMetricsList.begin(), existingMetricsList.end(), [](const MetricDesc& metric) { return metric.m_key == "custom_fields"; });
+
+            if (foundIter == existingMetricsList.end())
+            {
+                return reportIter->second;
+            }
+
+            // Parse the custom fields and add them as separate key/value pairs 
+            AZStd::string customFieldsData = foundIter->m_data;
+            existingMetricsList.erase(foundIter);
+
+            AZStd::vector<AZStd::string> customFieldSections = SplitString(customFieldsData.substr(1, customFieldsData.length() - 2), ";");
+
+            for (const AZStd::string& customFieldSection : customFieldSections)
+            {
+                AZStd::string customFieldKey;
+                AZStd::string customFieldValue;
+                RetrieveCustomFieldKeyAndValue(customFieldSection, customFieldKey, customFieldValue);
+
+                if (customFieldKey.empty())
+                {
+                    continue;
+                }
+
+                MetricDesc customFieldMetric;
+                customFieldMetric.m_key = customFieldKey;
+                customFieldMetric.m_data = customFieldValue;
+                existingMetricsList.push_back(customFieldMetric);
+            }
+
+            return DefectReport(reportID, existingMetricsList, reportIter->second.GetAttachments());
         }
         else
         {
@@ -233,7 +309,37 @@ namespace CloudGemDefectReporter
         }
     }
 
+    AZStd::vector<AZStd::string> DefectReportManager::SplitString(const AZStd::string& input, const AZStd::string& delimiter)
+    {
+        AZStd::vector<AZStd::string> sections;
 
+        AZStd::string tmpInput = input;
+        AZStd::size_t pos = tmpInput.find(delimiter);
+        while (pos != AZStd::string::npos)
+        {
+            sections.emplace_back(tmpInput.substr(0, pos));
+            tmpInput = tmpInput.substr(pos + 1);
+            pos = tmpInput.find(";");
+        }
+        sections.emplace_back(tmpInput);
+
+        return sections;
+    }
+
+    void DefectReportManager::RetrieveCustomFieldKeyAndValue(const AZStd::string& customFieldSection, AZStd::string& key, AZStd::string& value)
+    {
+        AZStd::size_t colonPos = customFieldSection.find(":");
+        if (colonPos != AZStd::string::npos && colonPos > 2)
+        {
+            key = customFieldSection.substr(1, colonPos - 2);
+            value = customFieldSection.substr(colonPos + 1);
+        }
+        else
+        {
+            AZ_Warning("DefectReportManager", false, "DefectReportManager: Invalid custom field data: %s", customFieldSection);
+        }
+        
+    }
 
     void DefectReportManager::UpdateReport(const DefectReport& report)
     {
@@ -350,6 +456,15 @@ namespace CloudGemDefectReporter
         RemoveBackedUpReports();
     }
 
+    void DefectReportManager::DeleteAttachment(const AZStd::string& path)
+    {
+        auto fileBase = AZ::IO::FileIOBase::GetDirectInstance();
+        if (fileBase)
+        {
+            fileBase->Remove(path.c_str());
+        }
+    }
+
     // This class is what's actually serialized as it will contain only data needed to restore the DefectReportManager
     // to a state that it can be used. It's just a snapshot of all the complete reports when BackupCompletedReports
     // is invoked. The DefectReportManager contains lots of extra info that's not needed to load the complete reports.
@@ -381,7 +496,7 @@ namespace CloudGemDefectReporter
     {
         if (m_backupFileName.empty())
         {
-            AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+            AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetDirectInstance();
             if (fileIO)
             {
                 const char* aliasLoc = fileIO->GetAlias(BACKUP_FILE_LOCTION_ALIAS);
@@ -415,7 +530,7 @@ namespace CloudGemDefectReporter
         AZStd::string filePath = GetBackupFileName();
         if (filePath.empty())
         {
-            AZ_Warning("DefectReportManager", false, "DefectReportManager: File system unavailble so report backup skipped");
+            AZ_Warning("DefectReportManager", false, "DefectReportManager: File system unavailable so report backup skipped");
             return;
         }
 
@@ -434,7 +549,7 @@ namespace CloudGemDefectReporter
             }
 
             AZStd::string backupPath(filePath + ".restore");
-            auto fileBase = AZ::IO::FileIOBase::GetInstance();
+            auto fileBase = AZ::IO::FileIOBase::GetDirectInstance();
             if (fileBase)
             {
                 // make a backup of the backup, just in case the serialized files gets messed up
@@ -444,12 +559,36 @@ namespace CloudGemDefectReporter
                 RemoveBackedUpReports();
             }
 
-
-            if (!AZ::Utils::SaveObjectToFile(filePath, AZ::DataStream::StreamType::ST_XML, &serializeData))
             {
-                AZ_Warning("DefectReportManager", false, "DefectReportManager: Unable to back up reports");
-                return;
-            }
+                AZStd::vector<AZ::u8> dstData;
+                AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> dstByteStream(&dstData);
+
+                if (!AZ::Utils::SaveObjectToStream(dstByteStream, AZ::DataStream::StreamType::ST_XML, &serializeData))
+                {
+                    AZ_Warning("DefectReportManager", false, "DefectReportManager: Failed to serialize defect reports to xml");
+                    return;
+                }
+
+                AZ::IO::HandleType fileHandle;
+                if (!fileBase->Open(filePath.c_str(), AZ::IO::OpenMode::ModeWrite, fileHandle))
+                {
+                    AZ_Warning("DefectReportManager", false, "DefectReportManager: Failed to open defect reports backup file");
+                    return;
+                }
+
+                Aws::Utils::CryptoBuffer key((const unsigned char*)&m_backupFileEncryptionKey[0], m_backupFileEncryptionKey.size());
+                Aws::Utils::CryptoBuffer iv((const unsigned char*)&m_backupFileEncryptionIV[0], m_backupFileEncryptionIV.size());
+                Aws::Utils::ByteBuffer dstByteBuffer(&dstData[0], dstData.size());
+
+                auto cipher = Aws::Utils::Crypto::CreateAES_CBCImplementation(key, iv);
+                auto encryptResult = cipher->EncryptBuffer(dstByteBuffer);
+                auto finalEncryptedBuffer = cipher->FinalizeEncryption();
+
+                fileBase->Write(fileHandle, &encryptResult[0], encryptResult.GetLength());
+                fileBase->Write(fileHandle, &finalEncryptedBuffer[0], finalEncryptedBuffer.GetLength());
+
+                fileBase->Close(fileHandle);
+            }            
 
             // if all went well, delete the restored file
             if (fileBase)
@@ -468,7 +607,7 @@ namespace CloudGemDefectReporter
             return;
         }
 
-        auto fileBase = AZ::IO::FileIOBase::GetInstance();
+        auto fileBase = AZ::IO::FileIOBase::GetDirectInstance();
         if (fileBase)
         {
             if (!fileBase->Exists(filePath.c_str()))
@@ -484,11 +623,44 @@ namespace CloudGemDefectReporter
         }
 
         DefectReportSerializeData serializeData;
-
-        if (!AZ::Utils::LoadObjectFromFileInPlace(filePath, serializeData))
         {
-            AZ_Warning("DefectReportManager", false, "DefectReportManager: Unable to load backed up report");
-            return;
+            AZ::IO::HandleType fileHandle;
+            AZ::u64 fileSize = 0;
+            if (!fileBase->Open(filePath.c_str(), AZ::IO::OpenMode::ModeRead, fileHandle) ||
+                !fileBase->Size(fileHandle, fileSize))
+            {
+                AZ_Warning("DefectReportManager", false, "DefectReportManager: Failed to open defect reports backup file");
+                return;
+            }
+
+            AZStd::vector<AZ::u8> dstData;
+            dstData.resize(fileSize);
+
+            fileBase->Read(fileHandle, &dstData[0], fileSize);
+
+            Aws::Utils::CryptoBuffer key((const unsigned char*)&m_backupFileEncryptionKey[0], m_backupFileEncryptionKey.size());
+            Aws::Utils::CryptoBuffer iv((const unsigned char*)&m_backupFileEncryptionIV[0], m_backupFileEncryptionIV.size());
+            Aws::Utils::ByteBuffer dstByteBuffer(&dstData[0], dstData.size());
+
+            auto cipher = Aws::Utils::Crypto::CreateAES_CBCImplementation(key, iv);
+            auto part1 = cipher->DecryptBuffer(dstByteBuffer);
+            auto part2 = cipher->FinalizeDecryption();
+            Aws::Utils::CryptoBuffer finalDecryptionResult({ &part1, &part2 });
+
+            dstData.resize(finalDecryptionResult.GetLength());
+            for (int i = 0; i < finalDecryptionResult.GetLength(); i++) {
+                dstData[i] = finalDecryptionResult[i];
+            }
+
+            fileBase->Close(fileHandle);
+            
+            AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> dstByteStream(&dstData);
+
+            if (!AZ::Utils::LoadObjectFromStreamInPlace(dstByteStream, serializeData))
+            {
+                AZ_Warning("DefectReportManager", false, "DefectReportManager: Unable to load backed up report");
+                return;
+            }
         }
 
         m_reports.clear();
@@ -510,11 +682,11 @@ namespace CloudGemDefectReporter
         AZStd::string filePath = GetBackupFileName();
         if (filePath.empty())
         {
-            AZ_Warning("DefectReportManager", false, "DefectReportManager: File system unavailble so unable to remove any existing report backup file");
+            AZ_Warning("DefectReportManager", false, "DefectReportManager: File system unavailable so unable to remove any existing report backup file");
             return;
         }
 
-        auto fileBase = AZ::IO::FileIOBase::GetInstance();
+        auto fileBase = AZ::IO::FileIOBase::GetDirectInstance();
         if (fileBase)
         {
             fileBase->Remove(filePath.c_str());

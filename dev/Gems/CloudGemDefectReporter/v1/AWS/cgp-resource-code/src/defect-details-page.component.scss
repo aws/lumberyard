@@ -22,3 +22,17 @@
 .download-link:hover {
     cursor: pointer;
 }
+
+.jira-issue-number {
+    color: $primary-color;
+    cursor: pointer;
+}
+
+.create-jira-issue-window-container {
+    height: 500px;
+    overflow: auto;
+}
+
+.add-item {
+    cursor: pointer;
+}

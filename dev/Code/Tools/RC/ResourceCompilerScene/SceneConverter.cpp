@@ -49,11 +49,6 @@ namespace AZ
             return new SceneCompiler(m_config, m_appRoot.c_str());
         }
 
-        bool SceneConverter::SupportsMultithreading() const
-        {
-            return false;
-        }
-
         const char* SceneConverter::GetExt(int index) const
         {
             if (index < m_extensions.size())

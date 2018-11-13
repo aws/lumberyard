@@ -70,7 +70,6 @@ public:
 
     virtual void Init(const ConvertorInitContext& context);
     virtual ICompiler* CreateCompiler();
-    virtual bool SupportsMultithreading() const;
     virtual const char* GetExt(int index) const;
 
 private:

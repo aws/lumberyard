@@ -441,65 +441,57 @@ case _D3D11FilterID:                                                            
         return true;
     }
 
-    bool InitializeSamplerState(const D3D11_SAMPLER_DESC& kDesc, id<MTLSamplerState>& kState, CDevice* pDevice)
+    bool UpdateMtlSamplerDescriptor(const D3D11_SAMPLER_DESC& kDesc, MTLSamplerDescriptor* desc)
     {
-        MTLSamplerDescriptor* desc = [[MTLSamplerDescriptor alloc] init];
-
+        MTLSamplerAddressMode addressMode;
+        
+        if (!DX11ToMetalTextureAddressMode(kDesc.AddressU, addressMode))
         {
-            MTLSamplerAddressMode addressMode;
-
-            if (!DX11ToMetalTextureAddressMode(kDesc.AddressU, addressMode))
-            {
-                [desc release];
-                return false;
-            }
-            desc.sAddressMode = addressMode;
-
-            if (!DX11ToMetalTextureAddressMode(kDesc.AddressV, addressMode))
-            {
-                [desc release];
-                return false;
-            }
-            desc.tAddressMode = addressMode;
-
-            if (!DX11ToMetalTextureAddressMode(kDesc.AddressW, addressMode))
-            {
-                [desc release];
-                return false;
-            }
-            desc.rAddressMode = addressMode;
+            return false;
         }
-
+        desc.sAddressMode = addressMode;
+        
+        if (!DX11ToMetalTextureAddressMode(kDesc.AddressV, addressMode))
+        {
+            return false;
+        }
+        desc.tAddressMode = addressMode;
+        
+        if (!DX11ToMetalTextureAddressMode(kDesc.AddressW, addressMode))
+        {
+            return false;
+        }
+        desc.rAddressMode = addressMode;
+        
         if (kDesc.MipLODBias)
         {
             DXGL_WARNING("Metal sampler: MipLODBias is not supported.");
         }
-
+        
         desc.maxAnisotropy = kDesc.MaxAnisotropy;
         desc.lodMinClamp = kDesc.MinLOD;
         desc.lodMaxClamp = kDesc.MaxLOD;
-
+        
         MTLSamplerMinMagFilter minFilter;
         MTLSamplerMinMagFilter maxFilter;
         MTLSamplerMipFilter mipFilter;
         bool bAnizotropic;
-
+        
         if (!DX11ToMetalFilterMode(kDesc.Filter, minFilter, maxFilter, mipFilter, bAnizotropic))
         {
             DXGL_WARNING("Metal sampler: filter mode is not supported.");
-            [desc release];
             return false;
         }
-
+        
         if (!bAnizotropic)
         {
             desc.maxAnisotropy = 1;
         }
-
+        
         desc.minFilter = minFilter;
         desc.magFilter = maxFilter;
         desc.mipFilter = mipFilter;
-
+        
         //D3D11_COMPARISON_FUNC ComparisonFunc;
         DXMETAL_TODO("Consider getting rid of the comparison samplers for Metal on the engine side.");
         //  Igor: Motivation: Metal supports comparison sampler states but they must be declared in the
@@ -510,12 +502,27 @@ case _D3D11FilterID:                                                            
         //  At the moment we still allow to create the sampler object (which can't be configured to be
         //  comparison one) because the engine expects to have one. This might lead to confusion but at the
         //  moment it seems to be the best solution.
-
-        id<MTLDevice> mtlDevice = pDevice->GetMetalDevice();
-        kState = [mtlDevice newSamplerStateWithDescriptor:desc];
-        [desc release];
-
+        
         return true;
     }
-    //  Confetti End: Igor Lobanchikov
+    
+    bool InitializeSamplerState(const D3D11_SAMPLER_DESC& kDesc, id<MTLSamplerState>& kState,
+                                MTLSamplerDescriptor* mtlSamplerDesc, CDevice* pDevice)
+    {
+        bool result = UpdateMtlSamplerDescriptor(kDesc, mtlSamplerDesc);
+        if(result)
+        {
+            kState = [pDevice->GetMetalDevice() newSamplerStateWithDescriptor:mtlSamplerDesc];
+        }
+        return result;
+    }
+    
+    void SetLodMinClamp(id<MTLSamplerState>& mtlSamplerState, MTLSamplerDescriptor* mtlSamplerDesc, const float lodMinClamp, CDevice* pDevice)
+    {
+        //once mtlSamplerState is created the behavior of a sampler state object is fixed and cannot be changed.
+        //Hence we create a new object that has the updated samplerdescriptor.
+        mtlSamplerDesc.lodMinClamp = lodMinClamp;
+        mtlSamplerState = [pDevice->GetMetalDevice() newSamplerStateWithDescriptor:mtlSamplerDesc];
+    }
+
 }

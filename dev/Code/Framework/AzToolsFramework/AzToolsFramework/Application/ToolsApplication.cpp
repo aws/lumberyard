@@ -57,6 +57,9 @@
 #include <AzToolsFramework/Entity/EditorEntityModelComponent.h>
 #include <AzToolsFramework/Slice/SliceDependencyBrowserComponent.h>
 #include <AzToolsFramework/UI/LegacyFramework/MainWindowSavedState.h>
+#include <AzToolsFramework/Thumbnails/ThumbnailerComponent.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
+#include <AzToolsFramework/MaterialBrowser/MaterialBrowserComponent.h>
 
 #include <QtWidgets/QMessageBox>
 #include <QDir>
@@ -65,10 +68,11 @@
 #include <QJsonObject>
 #include <QMap>
 // Not possible to use AZCore's operator new overrides until we address the overall problems
-// with allocators. CryMemoryManager overrides new, so doing so here requires disabling theirs.
-// Fortunately that's simple, but CryEngine makes heavy use of static-init time allocation, which
-// is a no-no for AZ allocators. For now we'll stick with CryEngine's allocator.
-//#include <AzToolsFramework/newoverride.inl>
+// with allocators, or more likely convert AzToolsFramework to a DLL and restrict overloading to
+// within the DLL. Since this is currently linked as a lib, overriding new and delete would require
+// us to hunt down all static allocs in Sandbox and Qt code.
+// For now we'll stick with the CRT new/delete in tools.
+//#include <AzCore/Memory/NewAndDelete.inl>
 
 namespace AzToolsFramework
 {
@@ -384,6 +388,9 @@ namespace AzToolsFramework
         RegisterComponentDescriptor(PerforceComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::SevenZipComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::SliceDependencyBrowserComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::Thumbnailer::ThumbnailerComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::AssetBrowser::AssetBrowserComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::MaterialBrowser::MaterialBrowserComponent::CreateDescriptor());
     }
 
     AZ::ComponentTypeList ToolsApplication::GetRequiredSystemComponents() const
@@ -518,9 +525,6 @@ namespace AzToolsFramework
 
     void ToolsApplication::PreExportEntity(AZ::Entity& source, AZ::Entity& target)
     {
-        AZ_Assert(source.GetState() == AZ::Entity::ES_ACTIVE, "Source entity must be active.");
-        AZ_Assert(target.GetState() != AZ::Entity::ES_ACTIVE, "Target entity must not be active.");
-
         AZ::SerializeContext* serializeContext = nullptr;
         EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
         AZ_Assert(serializeContext, "No serialization context found");
@@ -540,7 +544,7 @@ namespace AzToolsFramework
                 asEditorComponent->BuildGameEntity(&target);
 
                 // Applying same Id persistence trick as we do in the slice compiler. Once we're off levels,
-                // this code all goes away and everything runs through the slice copiler.
+                // this code all goes away and everything runs through the slice compiler.
                 if (target.GetComponents().size() > oldComponentCount)
                 {
                     AZ::Component* newComponent = target.GetComponents().back();
@@ -561,9 +565,6 @@ namespace AzToolsFramework
 
     void ToolsApplication::PostExportEntity(AZ::Entity& source, AZ::Entity& target)
     {
-        AZ_Assert(source.GetState() == AZ::Entity::ES_ACTIVE, "Source entity must be active.");
-        AZ_Assert(target.GetState() != AZ::Entity::ES_ACTIVE, "Target entity must not be active.");
-
         const AZ::Entity::ComponentArrayType& editorComponents = source.GetComponents();
 
         for (AZ::Component* component : editorComponents)
@@ -594,7 +595,7 @@ namespace AzToolsFramework
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         AZ_Assert(entityId.IsValid(), "Invalid entity Id being marked as selected.");
 
-        auto foundIter = AZStd::find(m_selectedEntities.begin(), m_selectedEntities.end(), entityId);
+        EntityIdList::iterator foundIter = AZStd::find(m_selectedEntities.begin(), m_selectedEntities.end(), entityId);
         if (foundIter == m_selectedEntities.end())
         {
             EBUS_EVENT(ToolsApplicationEvents::Bus, BeforeEntitySelectionChanged);
@@ -603,7 +604,8 @@ namespace AzToolsFramework
 
             EBUS_EVENT_ID(entityId, EntitySelectionEvents::Bus, OnSelected);
 
-            EBUS_EVENT(ToolsApplicationEvents::Bus, AfterEntitySelectionChanged);
+            const AzToolsFramework::EntityIdList newlySelectedEntities = { entityId };
+            ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::AfterEntitySelectionChanged, newlySelectedEntities, AzToolsFramework::EntityIdList());
         }
     }
 
@@ -618,7 +620,8 @@ namespace AzToolsFramework
             m_selectedEntities.erase(foundIter);
 
             EBUS_EVENT_ID(entityId, EntitySelectionEvents::Bus, OnDeselected);
-            EBUS_EVENT(ToolsApplicationEvents::Bus, AfterEntitySelectionChanged);
+            AzToolsFramework::EntityIdList newlyDeselectedEntities = { entityId };
+            ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::AfterEntitySelectionChanged, AzToolsFramework::EntityIdList(), newlyDeselectedEntities);
         }
     }
 
@@ -717,7 +720,7 @@ namespace AzToolsFramework
                 EBUS_EVENT_ID(id, EntitySelectionEvents::Bus, OnDeselected);
             }
 
-            EBUS_EVENT(ToolsApplicationEvents::Bus, AfterEntitySelectionChanged);
+            ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::AfterEntitySelectionChanged, newlySelectedIds, newlyDeselectedIds);
         }
     }
 
@@ -1350,74 +1353,42 @@ namespace AzToolsFramework
         entity->Activate();
     }
 
-    AZ::Outcome<AZStd::string, AZStd::string> ToolsApplication::ResolveToolPath(const char* currentExecutablePath, const char* toolApplicationName) const
+    AZ::Outcome<AZStd::string, AZStd::string> ToolsApplication::ResolveConfigToolsPath(const char* toolApplicationName) const
     {
-#if defined (AZ_PLATFORM_WINDOWS)
-        static const char* toolSubFolder = "/Tools/LmbrSetup/Win";
-#elif defined(AZ_PLATFORM_APPLE)
-        static const char* toolSubFolder = "/Tools/LmbrSetup/Mac";
-#else
-#error Unsupported Platform for tools
-#endif
-        AZStd::string engineToolsSubfolderBase(toolSubFolder);
+        if (!GetExecutableFolder() || !GetEngineRoot())
+        {
+            return AZ::Failure(AZStd::string("Cannot use ToolsApplicationRequets::ResolveConfigToolsPath until the component application has finished starting up."));
+        }
 
-        // There are two (or four) possible places where the project configurator can exist.
-        // We will search through the possibilities in order to find a match
         AZStd::vector<AZStd::string> toolTargetSearchPaths;
 
-        // 1. The current executable's path
-        AZStd::string appDirPath;
-        AZStd::string curSubFolder;
-
-        // If we want to disregard whatever the current executable's path is
-        if (currentExecutablePath)
+        // Add the current executable's folder to search paths
         {
-            appDirPath = AZStd::string(currentExecutablePath);
-
-            // Consider the current executable's folder as a search path
             AZStd::string localAppPath;
-            if (AzFramework::StringFunc::Path::ConstructFull(appDirPath.c_str(), toolApplicationName, localAppPath, true))
+            if (AzFramework::StringFunc::Path::ConstructFull(GetExecutableFolder(), toolApplicationName, localAppPath, true))
             {
                 toolTargetSearchPaths.push_back(localAppPath);
             }
+        }
 
-            // Walk up the current folder to the base (root) folder if possible
-            AZStd::string::size_type lastSeperatorIndex = appDirPath.rfind('/');
+        // Add the engine root's Tools/LmbrSetup folder to search paths
+        {
 #if defined (AZ_PLATFORM_WINDOWS)
-            if (lastSeperatorIndex == AZStd::string::npos)
-            {
-                lastSeperatorIndex = appDirPath.rfind('\\');
-            }
+            static const char* toolSubFolder = "Tools/LmbrSetup/Win";
+#elif defined(AZ_PLATFORM_APPLE)
+            static const char* toolSubFolder = "Tools/LmbrSetup/Mac";
+#else
+#error Unsupported Platform for tools
 #endif
-            if (lastSeperatorIndex != AZStd::string::npos)
-            {
-                // Consider the current base (root) folder to contain the tools/lmbrsetup subfolder
-                AZStd::string parentPath = appDirPath.substr(0, lastSeperatorIndex);
-                curSubFolder = appDirPath.substr(lastSeperatorIndex + 1);
-                AZStd::string localToolAppPath;
-                if (AzFramework::StringFunc::Path::ConstructFull(parentPath.c_str(), toolSubFolder, toolApplicationName, localToolAppPath, true))
-                {
-                    toolTargetSearchPaths.push_back(localToolAppPath);
-                }
-            }
-        }
 
-        // Next priority is to look the the engine root's tools/lmbrsetup folder, but only if a current subfolder was determined
-        {
             AZStd::string engineToolsAppPath;
-            if (AzFramework::StringFunc::Path::ConstructFull(m_engineConfigImpl->GetEngineRoot(), toolSubFolder, toolApplicationName, engineToolsAppPath, true))
+            AZStd::string setupToolsFolder;
+            if (AzFramework::StringFunc::Path::Join(GetEngineRoot(), toolSubFolder, setupToolsFolder))
             {
-                toolTargetSearchPaths.push_back(engineToolsAppPath);
-            }
-        }
-
-        // Next priority is to look at the engine's local build subfolder, but only if a current subfolder was determined
-        if (curSubFolder.length() > 0)
-        {
-            AZStd::string engineBuildAppPath;
-            if (AzFramework::StringFunc::Path::ConstructFull(m_engineConfigImpl->GetEngineRoot(), curSubFolder.c_str(), toolApplicationName, engineBuildAppPath, true))
-            {
-                toolTargetSearchPaths.push_back(engineBuildAppPath);
+                if (AzFramework::StringFunc::Path::ConstructFull(setupToolsFolder.c_str(), toolApplicationName, engineToolsAppPath, true))
+                {
+                    toolTargetSearchPaths.push_back(engineToolsAppPath);
+                }
             }
         }
 

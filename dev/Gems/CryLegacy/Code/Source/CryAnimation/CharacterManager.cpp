@@ -152,10 +152,7 @@ CharacterManager::~CharacterManager()
 void CharacterManager::PreloadLevelModels()
 {
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Preload Characters");
-
-    //bool bCdfCacheExist = GetISystem()->GetIResourceManager()->LoadLevelCachePak( CDF_LEVEL_CACHE_PAK,"" ); // Keep it open untill level end.
-
+    
     PreloadModelsCHR();
 
     PreloadModelsCGA();
@@ -184,8 +181,7 @@ void CharacterManager::PreloadLevelModels()
 void CharacterManager::PreloadModelsCHR()
 {
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Preload CHR");
-
+    
     CryLog("===== Preloading Characters ====");
 
     CTimeValue startTime = gEnv->pTimer->GetAsyncTime();
@@ -294,8 +290,7 @@ void CharacterManager::PreloadModelsCHR()
 void CharacterManager::PreloadModelsCGA()
 {
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Preload CGA");
-
+    
     CryLog("===== Preloading CGAs ====");
 
     CTimeValue startTime = gEnv->pTimer->GetAsyncTime();
@@ -377,8 +372,7 @@ void CharacterManager::PreloadModelsCGA()
 void CharacterManager::PreloadModelsCDF()
 {
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Preload CDF");
-
+    
     CryLog("===== Preloading CDFs ====");
 
     CTimeValue startTime = gEnv->pTimer->GetAsyncTime();
@@ -424,7 +418,6 @@ void CharacterManager::PreloadModelsCDF()
 // or returns an existing object.
 ICharacterInstance* CharacterManager::CreateInstance(const char* szFilePath, uint32 nLoadingFlags)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Characters");
     if (szFilePath == 0)
     {
         return (NULL);  // to prevent a crash in the frequent case the designers will mess
@@ -558,7 +551,6 @@ _smart_ptr<ISkin> CharacterManager::LoadModelSKINAutoRef(const char* szFilePath,
 
 ISkin* CharacterManager::LoadModelSKINUnsafeManualRef(const char* szFilePath, uint32 nLoadingFlags)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Characters");
     if (szFilePath == 0)
     {
         return 0;       //to prevent a crash in the frequent case the designers will mess bad filenames
@@ -588,7 +580,6 @@ ISkin* CharacterManager::LoadModelSKINUnsafeManualRef(const char* szFilePath, ui
 
 IDefaultSkeleton* CharacterManager::LoadModelSKELUnsafeManualRef(const char* szFilePath, uint32 nLoadingFlags)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Characters");
     if (szFilePath == 0)
     {
         return 0;       //to prevent a crash in the frequent case the designers will mess bad filenames
@@ -899,24 +890,8 @@ _smart_ptr<CSkin> CharacterManager::FetchModelSKINAutoRef(const char* szFilePath
     return nullptr;  //some error
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 bool CharacterManager::LoadAndLockResources(const char* szFilePath, uint32 nLoadingFlags)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Characters");
     if (szFilePath == 0)
     {
         return false;
@@ -1123,14 +1098,7 @@ ICharacterInstance* CharacterManager::CreateCGAInstance(const char* strPath, uin
     LOADING_TIME_PROFILE_SECTION(g_pISystem);
 
     uint64 membegin = 0;
-    if (Console::GetInst().ca_MemoryUsageLog)
-    {
-        //char tmp[4096];
-        CryModuleMemoryInfo info;
-        CryGetMemoryInfoForModule(&info);
-        membegin = info.allocated - info.freed;
-    }
-
+    
     _smart_ptr<CDefaultSkeleton> pDefaultSkeleton = CheckIfModelSKELLoadedAutoRef(strPath, nLoadingFlags);
     
     if (pDefaultSkeleton == 0)
@@ -1150,16 +1118,6 @@ ICharacterInstance* CharacterManager::CreateCGAInstance(const char* strPath, uin
 
 
     pCryCharInstance->m_SkeletonPose.UpdateBBox(1);
-
-    if (Console::GetInst().ca_MemoryUsageLog)
-    {
-        CryModuleMemoryInfo info;
-        CryGetMemoryInfoForModule(&info);
-        g_pILog->UpdateLoadingScreen("InitCGAInstance %s. Memstat %i", strPath, (int)(info.allocated - info.freed));
-        g_AnimStatisticsInfo.m_iInstancesSizes +=  info.allocated - info.freed  - membegin;
-        g_pILog->UpdateLoadingScreen("Instances Memstat %i", g_AnimStatisticsInfo.GetInstancesSize());
-        //      STLALLOCATOR_CLEANUP;
-    }
 
     return pCryCharInstance;
 }
@@ -1825,20 +1783,6 @@ void CharacterManager::GetMemoryUsage(class ICrySizer* pSizer) const
     }
 
     GetCharacterInstancesSize(pSizer);
-
-#ifndef AZ_MONOLITHIC_BUILD // Only when compiling as dynamic library
-    {
-        //SIZER_COMPONENT_NAME(pSizer,"Strings");
-        //pSizer->AddObject( (this+1),string::_usedMemory(0) );
-    }
-    {
-        SIZER_COMPONENT_NAME(pSizer, "STL Allocator Waste");
-        CryModuleMemoryInfo meminfo;
-        ZeroStruct(meminfo);
-        CryGetMemoryInfoForModule(&meminfo);
-        pSizer->AddObject((this + 2), (uint32)meminfo.STL_wasted);
-    }
-#endif // AZ_MONOLITHIC_BUILD
 
     {
         SIZER_SUBCOMPONENT_NAME(pSizer, "Animation Context");
@@ -3421,11 +3365,8 @@ CharacterDefinition* CharacterManager::LoadCDFFromXML(XmlNodeRef root, const cha
 {
     LOADING_TIME_PROFILE_SECTION(g_pISystem);
 
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_CDF, EMemStatContextFlags::MSF_Instance, "%s", pathname);
-
     CRY_DEFINE_ASSET_SCOPE("CDF", pathname);
-
-
+    
     CharacterDefinition* def = new CharacterDefinition();
     def->m_strFilePath = pathname;
 
@@ -3498,14 +3439,6 @@ ICharacterInstance* CharacterManager::LoadCharacterDefinition(const AZStd::strin
     uint32 nLogWarnings = (nLoadingFlags & CA_DisableLogWarnings) == 0;
 
     CCharInstance* pCharInstance = NULL;
-
-    //  __sgi_alloc::get_wasted_in_blocks();
-    if (Console::GetInst().ca_MemoryUsageLog)
-    {
-        CryModuleMemoryInfo info;
-        CryGetMemoryInfoForModule(&info);
-        g_pILog->UpdateLoadingScreen("CDF %s. Start. Memstat %i", pathname.c_str(), (int)(info.allocated - info.freed));
-    }
 
     CharacterDefinition* characterDefinition = nullptr;
     UniqueManualEvent uniqueEvent = SafeGetOrLoadCDF(pathname, characterDefinition);
@@ -3587,13 +3520,6 @@ ICharacterInstance* CharacterManager::LoadCharacterDefinition(const AZStd::strin
 #endif
     }
 
-    if (Console::GetInst().ca_MemoryUsageLog)
-    {
-        CryModuleMemoryInfo info;
-        CryGetMemoryInfoForModule(&info);
-        g_pILog->UpdateLoadingScreen("CDF. Finish. Memstat %i", (int)(info.allocated - info.freed));
-    }
-    
     // Copy over pending references
     if (uniqueEvent.HasControl())
     {
@@ -4144,7 +4070,7 @@ void CharacterManager::SyncAllAnimations()
 
     if (Console::GetInst().ca_MemoryDefragEnabled)
     {
-        g_controllerHeap.Update();
+        g_controllerHeap->Update();
     }
 
     if (gEnv && gEnv->pEntitySystem)
@@ -5512,7 +5438,7 @@ void CharacterManager::ReloadSkeletonCHRPARAMS(const AZStd::string& assetPath, C
 
     if (Console::GetInst().ca_MemoryDefragEnabled)
     {
-        g_controllerHeap.Update();
+        g_controllerHeap->Update();
     }
 
     if (gEnv && gEnv->pEntitySystem)

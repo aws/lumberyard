@@ -42,7 +42,7 @@ def _create_option_widget(waf_ctx, category_name, option_name, value, default_de
             return UiOption_RadioButtonList(waf_ctx, category_name, option_name, value, default_description, default_value, hint_list, hint_value_list, hint_desc_list, target_content_area, fn_on_value_changed)       
     elif value == 'False' or value == 'True':
         return UiOption_CheckBox(waf_ctx, category_name, option_name, value, default_description, default_value, target_content_area, fn_on_value_changed)
-    elif value.isdigit():
+    elif value and value.isdigit():
         return UiOption_SpinBox(waf_ctx, category_name, option_name, value, default_description, default_value, target_content_area, fn_on_value_changed)
     else:
         return UiOption_EntryBox(waf_ctx, category_name, option_name, value, default_description, default_value, target_content_area, fn_on_value_changed)  

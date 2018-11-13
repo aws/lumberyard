@@ -301,6 +301,7 @@ private:
     // CVARs
     int m_cvarLocalizationDebug;
     int m_cvarLocalizationEncode;   //Encode/Compress translated text to save memory
+    int m_cvarLocalizationTest;
 
     //The localizations that are available for this SKU. Used for determining what to show on a language select screen or whether to show one at all
     TLocalizationBitfield m_availableLocalizations;

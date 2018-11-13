@@ -17,8 +17,8 @@
 
 #include "AISoundManagerSystemComponent.h"
 #include "PersistentDataSystemComponent.h"
-#include "VisualiseAIStatesSystemComponent.h"
-#include "VisualisePathSystemComponent.h"
+#include "VisualizeAIStatesSystemComponent.h"
+#include "VisualizePathSystemComponent.h"
 
 #include "AudioMultiListenerComponent.h"
 #include "CameraSettingsComponent.h"
@@ -33,7 +33,7 @@
 #include "PlayFromHereComponent.h"
 #include "StarterGameNavigationComponent.h"
 #include "StatComponent.h"
-#include "VisualiseRangeComponent.h"
+#include "VisualizeRangeComponent.h"
 #include "WaypointSettingsComponent.h"
 #include "WaypointsComponent.h"
 #include "EMFXFootstepComponent.h"
@@ -48,84 +48,82 @@
 
 namespace StarterGameGem
 {
+    StarterGameGemModule::StarterGameGemModule()
+        : CryHooksModule()
+    {
+        // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
+        m_descriptors.insert(m_descriptors.end(), {
+                StarterGameGemSystemComponent::CreateDescriptor(),
 
-	StarterGameGemModule::StarterGameGemModule()
-		: CryHooksModule()
-	{
-		// Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
-		m_descriptors.insert(m_descriptors.end(), {
-			StarterGameGemSystemComponent::CreateDescriptor(),
+                AISoundManagerSystemComponent::CreateDescriptor(),
+                PersistentDataSystemComponent::CreateDescriptor(),
+                StarterGameNavigationComponent::CreateDescriptor(),
+                VisualizeAIStatesSystemComponent::CreateDescriptor(),
+                VisualizePathSystemComponent::CreateDescriptor(),
 
-            AISoundManagerSystemComponent::CreateDescriptor(),
-            PersistentDataSystemComponent::CreateDescriptor(),
-            StarterGameNavigationComponent::CreateDescriptor(),
-            VisualiseAIStatesSystemComponent::CreateDescriptor(),
-            VisualisePathSystemComponent::CreateDescriptor(),
-
-            AudioMultiListenerComponent::CreateDescriptor(),
-            CameraSettingsComponent::CreateDescriptor(),
-            ConsoleVarListenerComponent::CreateDescriptor(),
-            CutscenePlayerComponent::CreateDescriptor(),
-            DebugManagerComponent::CreateDescriptor(),
-            DecalSelectorComponent::CreateDescriptor(),
-            LineRendererComponent::CreateDescriptor(),
-            ParticleManagerComponent::CreateDescriptor(),
-            PersistentDataSystemComparitorComponent::CreateDescriptor(),
-            PersistentDataSystemManipulatorComponent::CreateDescriptor(),
-            PlayFromHereComponent::CreateDescriptor(),
-			StatComponent::CreateDescriptor(),
-            VisualiseRangeComponent::CreateDescriptor(),
-            WaypointSettingsComponent::CreateDescriptor(),
-            WaypointsComponent::CreateDescriptor(),
-			EMFXFootstepComponent::CreateDescriptor(),
-
-#ifdef STARTER_GAME_EDITOR
-			EditorWaypointsComponent::CreateDescriptor(),
-
-			PlayFromHereEditorSystemComponent::CreateDescriptor(),
-#endif
-        });
-	}
-
-	void StarterGameGemModule::OnSystemEvent(ESystemEvent e, UINT_PTR wparam, UINT_PTR lparam)
-	{
-		switch(e)
-		{
-			case ESYSTEM_EVENT_GAME_POST_INIT:
-				PostSystemInit();
-				break;
-
-			case ESYSTEM_EVENT_FULL_SHUTDOWN:
-			case ESYSTEM_EVENT_FAST_SHUTDOWN:
-				Shutdown();
-				break;
-		}
-	}
-
-	void StarterGameGemModule::PostSystemInit()
-	{
-		StarterGameCVars::GetInstance();
-	}
-
-	void StarterGameGemModule::Shutdown()
-	{
-		StarterGameCVars::DeregisterCVars();
-	}
-
-	AZ::ComponentTypeList StarterGameGemModule::GetRequiredSystemComponents() const
-	{
-		return AZ::ComponentTypeList{
-			azrtti_typeid<StarterGameGemSystemComponent>(),
-
-            azrtti_typeid<AISoundManagerSystemComponent>(),
-            azrtti_typeid<PersistentDataSystemComponent>(),
-            azrtti_typeid<VisualiseAIStatesSystemComponent>(),
-            azrtti_typeid<VisualisePathSystemComponent>(),
+                AudioMultiListenerComponent::CreateDescriptor(),
+                CameraSettingsComponent::CreateDescriptor(),
+                ConsoleVarListenerComponent::CreateDescriptor(),
+                CutscenePlayerComponent::CreateDescriptor(),
+                DebugManagerComponent::CreateDescriptor(),
+                DecalSelectorComponent::CreateDescriptor(),
+                LineRendererComponent::CreateDescriptor(),
+                ParticleManagerComponent::CreateDescriptor(),
+                PersistentDataSystemComparitorComponent::CreateDescriptor(),
+                PersistentDataSystemManipulatorComponent::CreateDescriptor(),
+                PlayFromHereComponent::CreateDescriptor(),
+                StatComponent::CreateDescriptor(),
+                VisualizeRangeComponent::CreateDescriptor(),
+                WaypointSettingsComponent::CreateDescriptor(),
+                WaypointsComponent::CreateDescriptor(),
+                EMFXFootstepComponent::CreateDescriptor(),
 
 #ifdef STARTER_GAME_EDITOR
-            azrtti_typeid<PlayFromHereEditorSystemComponent>(),
-#endif
-		};
-	}
+                EditorWaypointsComponent::CreateDescriptor(),
 
+                PlayFromHereEditorSystemComponent::CreateDescriptor(),
+#endif
+            });
+    }
+
+    void StarterGameGemModule::OnSystemEvent(ESystemEvent e, UINT_PTR wparam, UINT_PTR lparam)
+    {
+        switch (e)
+        {
+        case ESYSTEM_EVENT_GAME_POST_INIT:
+            PostSystemInit();
+            break;
+
+        case ESYSTEM_EVENT_FULL_SHUTDOWN:
+        case ESYSTEM_EVENT_FAST_SHUTDOWN:
+            Shutdown();
+            break;
+        }
+    }
+
+    void StarterGameGemModule::PostSystemInit()
+    {
+        StarterGameCVars::GetInstance();
+    }
+
+    void StarterGameGemModule::Shutdown()
+    {
+        StarterGameCVars::DeregisterCVars();
+    }
+
+    AZ::ComponentTypeList StarterGameGemModule::GetRequiredSystemComponents() const
+    {
+        return AZ::ComponentTypeList{
+                   azrtti_typeid<StarterGameGemSystemComponent>(),
+
+                   azrtti_typeid<AISoundManagerSystemComponent>(),
+                   azrtti_typeid<PersistentDataSystemComponent>(),
+                   azrtti_typeid<VisualizeAIStatesSystemComponent>(),
+                   azrtti_typeid<VisualizePathSystemComponent>(),
+
+#ifdef STARTER_GAME_EDITOR
+                   azrtti_typeid<PlayFromHereEditorSystemComponent>(),
+#endif
+        };
+    }
 }

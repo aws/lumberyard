@@ -18,7 +18,7 @@
 #include <IActorSystem.h>
 
 
-CAIFaceManager::TExprState CAIFaceManager::s_Expressions[EE_Count + 1];
+StaticInstance<CAIFaceManager::TExprState> CAIFaceManager::s_Expressions[EE_Count + 1];
 //
 //------------------------------------------------------------------------------
 //

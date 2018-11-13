@@ -13,7 +13,7 @@
     </ng-container>
 </div>
 
-<ng-container *ngIf="aws.context.project.isInitialized">
+<ng-container>
     <!-- Show all the thumbnails of the gems -->
     <div class="thumbnails-container gem-container" *ngIf="!(gems.currentGem)">
         <ng-container [ngSwitch]="gems.currentGems.length === 0 && !isDeploymentLoading() && !gems.isLoading">

@@ -18,6 +18,7 @@
 
 #include <Cinematics/Movie.h>
 #include <Cinematics/AnimSplineTrack.h>
+#include <Maestro/Types/AssetBlends.h>
 #include <Maestro/Types/AssetBlendKey.h>
 #include <Cinematics/AssetBlendTrack.h>
 #include <Cinematics/CompoundSplineTrack.h>

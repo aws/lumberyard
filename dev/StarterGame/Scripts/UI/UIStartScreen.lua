@@ -18,6 +18,8 @@ local uistartscreen =
 function uistartscreen:OnActivate()
 	-- IMPORTANT: The 'canvas ID' is different to 'self.entityId'.
 	self.canvasEntityId = UiCanvasManagerBus.Broadcast.LoadCanvas("UI/Canvases/uiStartScreen.uicanvas");
+	self.playerHUDCanvasEntityId = UiCanvasRefBus.Event.GetCanvas(self.entityId);
+
 	--Debug.Log("uistartscreen:OnActivate - " .. tostring(self.canvasEntityId));
 	
 	-- Listen for action strings broadcast by the canvas.
@@ -74,7 +76,7 @@ function uistartscreen:OnTick(deltaTime, timePoint)
 		--Debug.Log("uistartscreen:OnTick - disable controls");
 		self:SetControls("PlayerCharacter", self.Properties.EnableControlsEvent, 0);
 		self:SetControls("PlayerCamera", self.Properties.EnableControlsEvent, 0);
-	
+		self:EnablePlayerHUD(false);	
 		-- Disable the tick bus because we don't care about updating anymore.
 		self.tickHandler:Disconnect();
 		self.tickHandler = nil;
@@ -99,6 +101,10 @@ function uistartscreen:SetControls(tag, event, enabled)
 
 end
 
+function uistartscreen:EnablePlayerHUD(enabled)
+	UiCanvasBus.Event.SetEnabled(self.playerHUDCanvasEntityId, enabled);
+end
+
 function uistartscreen:OnAction(entityId, actionName)
 
 	if (actionName == "StartGame") then
@@ -114,7 +120,7 @@ function uistartscreen:OnAction(entityId, actionName)
 		-- Enable the player controls.
 		self:SetControls("PlayerCharacter", self.Properties.EnableControlsEvent, 1);
 		self:SetControls("PlayerCamera", self.Properties.EnableControlsEvent, 1);
-		
+		self:EnablePlayerHUD(true);
 		if (self.tickHandler ~= nil) then
 			self.tickHandler:Disconnect();
 			self.tickHandler = nil;

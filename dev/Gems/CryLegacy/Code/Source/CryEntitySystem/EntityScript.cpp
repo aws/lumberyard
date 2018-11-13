@@ -240,8 +240,6 @@ bool CEntityScript::LoadScript(bool bForceReload)
         return true;
     }
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Entity Scripts");
-
     Clear();
 
     if (!m_pScriptSystem->ExecuteFile(m_sScriptFilename, true, bForceReload))

@@ -417,7 +417,6 @@ static inline size_t CullInstanceList(
     SMMRMInstanceContext& context, SMMRMVisibleChunk* visChunks,
     const Vec3& origin, const Vec3& rotationOrigin, float zRotation)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     size_t numSamplesVisible = 0u;
     const float maxViewDistSq = context.maxViewDistSq;
     const float lodRatioSq = context.lodRatioSq;
@@ -3531,7 +3530,6 @@ static void MergeInstanceList(SMMRMInstanceContext& context)
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
 
     using namespace NVMath;
-    MEMORY_SCOPE_CHECK_HEAP();
     SMMRMGeometry* geom = context.geom;
     SMMRMUpdateContext* update = context.update;
     SMMRMSpineVtxBase* spines = context.use_spines ? context.spines : NULL;
@@ -4274,7 +4272,6 @@ static void MergeInstanceList(SMMRMInstanceContext& context)
 
 static inline void MergeInstanceListDeform(SMMRMInstanceContext& context)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     SMMRMGeometry* geom = context.geom;
     SMMRMUpdateContext* update = context.update;
     SMMRMDeformVertex* deform_vertices = context.deform;
@@ -4504,7 +4501,6 @@ static inline void MergeInstanceListDeform(SMMRMInstanceContext& context)
 ////////////////////////////////////////////////////////////////////////////////
 void SMMRMGroupHeader::CullInstances(CCamera* cam, Vec3* origin, Vec3* rotationOrigin, float zRotation, int flags)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     MMRM_PROFILE_FUNCTION(gEnv->pSystem, PROFILE_3DENGINE);
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
 
@@ -4561,7 +4557,6 @@ void SMMRMUpdateContext::MergeInstanceMeshesSpines(
     , int flags)
 {
     AZ_TRACE_METHOD();
-    MEMORY_SCOPE_CHECK_HEAP();
     SMMRMUpdateContext* update = this;
     const SMMRMGroupHeader* header = update->group;
     size_t j = 0;
@@ -4626,7 +4621,6 @@ void SMMRMUpdateContext::MergeInstanceMeshesDeform(
     AZ_TRACE_METHOD();
     mmrm_printf("deform begin\n");
 
-    MEMORY_SCOPE_CHECK_HEAP();
     FUNCTION_PROFILER_LEGACYONLY(gEnv->pSystem, PROFILE_3DENGINE);
 
     SMMRMUpdateContext* update = this;

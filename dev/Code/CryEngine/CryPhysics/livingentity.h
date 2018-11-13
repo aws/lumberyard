@@ -187,7 +187,26 @@ public:
     void Step_HandleWasFlying(Vec3& vel, int& bFlying, const Vec3& axis, const int bGroundContact);
     void Step_HandleLivingEntity();
 
-    Vec3 m_vel, m_velRequested, m_gravity, m_nslope;
+    Vec3 m_vel;
+    Vec3 m_velRequested;
+    
+    // Get current gravity, which could be cached from the world or area, or could be custom.
+    Vec3 GetGravity() const;
+private:
+    // If true, simulate using m_customGravity rather than m_areaGravity.
+    // NOTE: Avoid accessing this directly.  Use GetGravity() instead.
+    bool m_useCustomGravity;
+
+    // Gravity cached from world or current physics area.
+    // NOTE: Avoid accessing this directly.  Use GetGravity() instead.
+    Vec3 m_areaGravity;
+    
+    // Custom gravity, which takes precedence over m_gravityArea if m_useCustomGravity is true.
+    // NOTE: Avoid accessing this directly.  Use GetGravity() instead.
+    Vec3 m_customGravity;
+
+public:
+    Vec3 m_nslope;
     float m_dtRequested;
     float m_kInertia, m_kInertiaAccel, m_kAirControl, m_kAirResistance, m_hCyl, m_hEye, m_hPivot;
     Vec3 m_size;

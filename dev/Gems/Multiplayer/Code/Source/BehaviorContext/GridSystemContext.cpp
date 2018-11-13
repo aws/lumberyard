@@ -306,13 +306,13 @@ namespace Multiplayer
                 behaviorContext->Class<GridMate::ServiceType>("GridServiceType")
                     ->Enum<(int)GridMate::ST_LAN>("LAN")
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, TOOLS_SUPPORT_XENIA)
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, TOOLS_SUPPORT_PROVO)
 #endif
 #endif
                     ;

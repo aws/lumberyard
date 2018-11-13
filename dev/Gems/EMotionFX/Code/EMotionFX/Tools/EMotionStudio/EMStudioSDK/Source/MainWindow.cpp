@@ -165,11 +165,35 @@ namespace EMStudio
         const char* GetFileType() const override        { return "workspace"; }
     };
 
+    class UndoMenuCallback
+        : public MCore::CommandManagerCallback
+    {
+    public:
+        UndoMenuCallback(MainWindow* mainWindow)
+            : m_mainWindow(mainWindow)
+        {}
+        ~UndoMenuCallback() = default;
+
+        void OnRemoveCommand(uint32 historyIndex) override          { m_mainWindow->UpdateUndoRedo(); }
+        void OnSetCurrentCommand(uint32 index) override             { m_mainWindow->UpdateUndoRedo(); }
+        void OnAddCommandToHistory(uint32 historyIndex, MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine) override { m_mainWindow->UpdateUndoRedo(); }
+
+        void OnPreExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine) override {}
+        void OnPostExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine, bool wasSuccess, const AZStd::string& outResult) override {}
+        void OnPreExecuteCommandGroup(MCore::CommandGroup* group, bool undo) override {}
+        void OnPostExecuteCommandGroup(MCore::CommandGroup* group, bool wasSuccess) override {}
+        void OnShowErrorReport(const AZStd::vector<AZStd::string>& errors) override {}
+
+    private:
+        MainWindow* m_mainWindow;
+    };
+
 
     MainWindow::MainWindow(QWidget* parent, Qt::WindowFlags flags)
         : QMainWindow(parent, flags)
         , m_prevSelectedActor(nullptr)
         , m_prevSelectedActorInstance(nullptr)
+        , m_undoMenuCallback(nullptr)
     {
         mLoadingOptions                 = false;
         mAutosaveTimer                  = nullptr;
@@ -255,6 +279,11 @@ namespace EMStudio
         delete mUnselectCallback;
         delete m_clearSelectionCallback;
         delete mSaveWorkspaceCallback;
+
+        if (m_undoMenuCallback)
+        {
+            EMStudio::GetCommandManager()->RemoveCallback(m_undoMenuCallback);
+        }
     }
 
     void MainWindow::Reflect(AZ::ReflectContext* context)
@@ -343,12 +372,22 @@ namespace EMStudio
 
         // edit menu
         menu = menuBar->addMenu(tr("&Edit"));
-        QAction* undoAction = mUndoAction = menu->addAction(tr("Undo"), this, SLOT(OnUndo()), QKeySequence::Undo);
-        undoAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/Undo.png"));
-        QAction* redoAction = mRedoAction = menu->addAction(tr("Redo"), this, SLOT(OnRedo()), QKeySequence::Redo);
-        redoAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/Redo.png"));
-        mUndoAction->setDisabled(true);
-        mRedoAction->setDisabled(true);
+        m_undoAction = menu->addAction(
+            MysticQt::GetMysticQt()->FindIcon("Images/Menu/Undo.png"),
+            tr("Undo"),
+            this,
+            &MainWindow::OnUndo,
+            QKeySequence::Undo
+        );
+        m_redoAction = menu->addAction(
+            MysticQt::GetMysticQt()->FindIcon("Images/Menu/Redo.png"),
+            tr("Redo"),
+            this,
+            &MainWindow::OnRedo,
+            QKeySequence::Redo
+        );
+        m_undoAction->setDisabled(true);
+        m_redoAction->setDisabled(true);
         menu->addSeparator();
         QAction* preferencesAction = menu->addAction(tr("&Preferences"), this, SLOT(OnPreferences()));
         preferencesAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/Preferences.png"));
@@ -409,6 +448,9 @@ namespace EMStudio
         mShortcutManager->RegisterKeyboardShortcut("AnimGraph", layoutGroupName, Qt::Key_1, false, true, false);
         mShortcutManager->RegisterKeyboardShortcut("Animation", layoutGroupName, Qt::Key_2, false, true, false);
         mShortcutManager->RegisterKeyboardShortcut("Character", layoutGroupName, Qt::Key_3, false, true, false);
+
+        m_undoMenuCallback = new UndoMenuCallback(this);
+        EMStudio::GetCommandManager()->RegisterCallback(m_undoMenuCallback);
 
         // create and register the command callbacks
         mImportActorCallback = new CommandImportActorCallback(false);
@@ -1981,21 +2023,21 @@ namespace EMStudio
         // check the undo status
         if (GetCommandManager()->GetNumHistoryItems() > 0 && GetCommandManager()->GetHistoryIndex() >= 0)
         {
-            mUndoAction->setEnabled(true);
+            m_undoAction->setEnabled(true);
         }
         else
         {
-            mUndoAction->setEnabled(false);
+            m_undoAction->setEnabled(false);
         }
 
         // check the redo status
         if (GetCommandManager()->GetNumHistoryItems() > 0 && GetCommandManager()->GetHistoryIndex() < (int32)GetCommandManager()->GetNumHistoryItems() - 1)
         {
-            mRedoAction->setEnabled(true);
+            m_redoAction->setEnabled(true);
         }
         else
         {
-            mRedoAction->setEnabled(false);
+            m_redoAction->setEnabled(false);
         }
     }
 
@@ -2003,8 +2045,8 @@ namespace EMStudio
     // disable undo/redo
     void MainWindow::DisableUndoRedo()
     {
-        mUndoAction->setEnabled(false);
-        mRedoAction->setEnabled(false);
+        m_undoAction->setEnabled(false);
+        m_redoAction->setEnabled(false);
     }
 
 

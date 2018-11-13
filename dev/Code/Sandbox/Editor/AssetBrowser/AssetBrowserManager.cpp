@@ -25,23 +25,6 @@
 
 static CAssetBrowserManager* s_pInstance = 0;
 
-namespace AssetBrowser
-{
-    // details at http://www.cse.yorku.ca/~oz/hash.html
-    unsigned int HashStringSbdm(const char* pStr)
-    {
-        unsigned long hash = 0;
-        int c;
-
-        while (c = *pStr++)
-        {
-            hash = c + (hash << 6) + (hash << 16) - hash;
-        }
-
-        return hash;
-    }
-}
-
 CAssetBrowserManager* CAssetBrowserManager::Instance()
 {
     if (!s_pInstance)
@@ -122,7 +105,7 @@ bool CAssetBrowserManager::LoadCache()
 void CAssetBrowserManager::CreateThumbsFolderPath()
 {
     AZStd::string strUserFolder;
-    AzFramework::StringFunc::Path::ConstructFull(Path::GetUserSandboxFolder().toUtf8().data(), AssetBrowser::kThumbnailsRoot, strUserFolder);
+    AzFramework::StringFunc::Path::ConstructFull(Path::GetUserSandboxFolder().toUtf8().data(), AssetBrowserCommon::kThumbnailsRoot, strUserFolder);
 
     // create the thumbs folder
     AZ::IO::FileIOBase::GetInstance()->CreatePath(strUserFolder.c_str());
@@ -1108,6 +1091,20 @@ bool CAssetBrowserManager::GetAutocompleteDescription(const QString& partDesc, Q
     fullDescription = NULL;
 
     return bGot;
+}
+
+unsigned int CAssetBrowserManager::HashStringSbdm(const char* pStr)
+{
+    // details at http://www.cse.yorku.ca/~oz/hash.html
+    unsigned long hash = 0;
+    int c;
+
+    while (c = *pStr++)
+    {
+        hash = c + (hash << 6) + (hash << 16) - hash;
+    }
+
+    return hash;
 }
 
 void CAssetBrowserManager::SetAssetDescription(const QString& relpath, const QString& description)

@@ -733,8 +733,6 @@ void CThreadTaskManager::SetThreadName(threadID dwThreadId, const char* sThreadN
     }
 #endif
 
-    int old(CryGetIMemoryManager()->LocalSwitchToGlobalHeap());
-
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION THREADTASK_CPP_SECTION_2
 #include AZ_RESTRICTED_FILE(ThreadTask_cpp, AZ_RESTRICTED_PLATFORM)
@@ -745,8 +743,6 @@ void CThreadTaskManager::SetThreadName(threadID dwThreadId, const char* sThreadN
         m_threadNames[dwThreadId] = sThreadName;
         m_threadNameLock.Unlock();
     }
-
-    CryGetIMemoryManager()->LocalSwitchToHeap(old);
 }
 
 //////////////////////////////////////////////////////////////////////////

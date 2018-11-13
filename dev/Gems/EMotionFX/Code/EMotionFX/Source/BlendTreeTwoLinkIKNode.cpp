@@ -511,6 +511,7 @@ namespace EMotionFX
         MCore::Quaternion deltaRot(axis, deltaAngle);
         globalTransformA.mRotation = deltaRot * globalTransformA.mRotation;
         outTransformPose.SetGlobalTransformInclusive(nodeIndexA, globalTransformA);
+        outTransformPose.UpdateLocalTransform(nodeIndexA);
 
         //globalTransformA = outTransformPose.GetGlobalTransformIncludingActorInstanceTransform(nodeIndexA);
         globalTransformB = outTransformPose.GetGlobalTransformInclusive(nodeIndexB);
@@ -550,7 +551,7 @@ namespace EMotionFX
         globalTransformB.mRotation = deltaRot * globalTransformB.mRotation;
         globalTransformB.mPosition = midPos;
         outTransformPose.SetGlobalTransformInclusive(nodeIndexB, globalTransformB);
-        //outTransformPose.UpdateLocalTransform( nodeIndexB );
+        outTransformPose.UpdateLocalTransform(nodeIndexB);
 
         // update the rotation of node C
         if (m_rotationEnabled)

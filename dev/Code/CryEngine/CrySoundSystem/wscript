@@ -28,15 +28,13 @@ def build(bld):
         use                = ['AzCore', 'AzFramework'],
         includes           = ['Common'],
         export_includes    = ['.'],
+        defines            = ['USE_CRY_NEW_AND_DELETE'],
 
 
         # Platform Specific
         win_defines        = ['CRYSOUND_EXPORTS'],
 
-       
-       
-
-       
+        restricted_script   = 'update_restricted_parameters',
 
         # Testing
         test_all_file_list = ['crysoundsystem_test.waf_files'],

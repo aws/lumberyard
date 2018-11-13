@@ -23,57 +23,55 @@
 
 namespace AZ
 {
-	class ReflectContext;
+    class ReflectContext;
 }
 
 namespace StarterGameGem
 {
+    /*!
+    * VisualizeRangeComponentRequests
+    * Messages serviced by the VisualizeRangeComponent
+    */
+    class VisualizeRangeComponentRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        virtual ~VisualizeRangeComponentRequests() {}
 
-	/*!
-	* VisualiseRangeComponentRequests
-	* Messages serviced by the VisualiseRangeComponent
-	*/
-	class VisualiseRangeComponentRequests
-		: public AZ::ComponentBus
-	{
-	public:
-		virtual ~VisualiseRangeComponentRequests() {}
+        //! Sets the information for the sight range.
+        virtual void SetSightRange(float aggroRange, float sightRange) = 0;
+        //! Sets the information for the suspicion range.
+        virtual void SetSuspicionRange(float range, float fov, float rearRange) = 0;
+    };
 
-		//! Sets the information for the sight range.
-		virtual void SetSightRange(float aggroRange, float sightRange) = 0;
-		//! Sets the information for the suspicion range.
-		virtual void SetSuspicionRange(float range, float fov, float rearRange) = 0;
-
-	};
-
-	using VisualiseRangeComponentRequestsBus = AZ::EBus<VisualiseRangeComponentRequests>;
+    using VisualizeRangeComponentRequestsBus = AZ::EBus<VisualizeRangeComponentRequests>;
 
 
-	class VisualiseRangeComponent
-		: public AZ::Component
-		, private AZ::TickBus::Handler
+    class VisualizeRangeComponent
+        : public AZ::Component
+        , private AZ::TickBus::Handler
         , private AZ::TransformNotificationBus::Handler
-		, private VisualiseRangeComponentRequestsBus::Handler
-	{
-	public:
-		AZ_COMPONENT(VisualiseRangeComponent, "{3D76625F-1D2E-43C1-95A9-D385189F4CFE}");
+        , private VisualizeRangeComponentRequestsBus::Handler
+    {
+    public:
+        AZ_COMPONENT(VisualizeRangeComponent, "{3D76625F-1D2E-43C1-95A9-D385189F4CFE}");
 
-		~VisualiseRangeComponent() override = default;
+        ~VisualizeRangeComponent() override = default;
 
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::Component interface implementation
-		void Init() override;
-		void Activate() override;
-		void Deactivate() override;
-		//////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::Component interface implementation
+        void Init() override;
+        void Activate() override;
+        void Deactivate() override;
+        //////////////////////////////////////////////////////////////////////////
 
-		// Required Reflect function.
-		static void Reflect(AZ::ReflectContext* context);
+        // Required Reflect function.
+        static void Reflect(AZ::ReflectContext* context);
 
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::TickBus interface implementation
-		void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
-		//////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::TickBus interface implementation
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////////////
         // Transform notification bus handler
@@ -81,27 +79,25 @@ namespace StarterGameGem
         void OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/) override;
         //////////////////////////////////////////////////////////////////////////////////
 
-		//////////////////////////////////////////////////////////////////////////
-		// VisualiseRangeComponentRequestsBus::Handler
-		void SetSightRange(float aggroRange, float sightRange) override;
-		void SetSuspicionRange(float range, float fov, float rearRange) override;
+        //////////////////////////////////////////////////////////////////////////
+        // VisualizeRangeComponentRequestsBus::Handler
+        void SetSightRange(float aggroRange, float sightRange) override;
+        void SetSuspicionRange(float range, float fov, float rearRange) override;
 
-	protected:
+    protected:
         //! Stores the transform of the entity
         AZ::Transform m_currentEntityTransform;
 
-	private:
-		// For suspicion.
-		float m_suspicionRange;
-		float m_suspicionFoV;
-		float m_suspicionRearRange;
-		AZ::Vector4 m_colourSuspicion;
+    private:
+        // For suspicion.
+        float m_suspicionRange;
+        float m_suspicionFoV;
+        float m_suspicionRearRange;
+        AZ::Vector4 m_colourSuspicion;
 
-		// For combat.
-		float m_rangeSight;
-		float m_rangeAggro;
-		AZ::Vector4 m_colourCombat;
-
-	};
-
+        // For combat.
+        float m_rangeSight;
+        float m_rangeAggro;
+        AZ::Vector4 m_colourCombat;
+    };
 } // namespace StarterGameGem

@@ -1729,47 +1729,14 @@ void CEngineStats::CollectProfileStatistics()
 
 /*static*/ bool QueryModuleMemoryInfo(SCryEngineStatsModuleInfo& moduleInfo, int index)
 {
-    HMODULE hModule = GetModuleHandle(moduleInfo.name);
-    if (!hModule)
-    {
-        return false;
-    }
-
-    typedef void (* PFN_MODULEMEMORY)(CryModuleMemoryInfo*);
-    PFN_MODULEMEMORY fpCryModuleGetAllocatedMemory = (PFN_MODULEMEMORY)::GetProcAddress(hModule, "CryModuleGetMemoryInfo");
-    if (!fpCryModuleGetAllocatedMemory)
-    {
-        return false;
-    }
-
-    PEHeader_DLL pe_header;
-    PEHeader_DLL* header = &pe_header;
-
-    const IMAGE_DOS_HEADER* dos_head = (IMAGE_DOS_HEADER*)hModule;
-    if (dos_head->e_magic != IMAGE_DOS_SIGNATURE)
-    {
-        // Wrong pointer, not to PE header.
-        return false;
-    }
-    header = (PEHeader_DLL*)(const void*)((char*)dos_head + dos_head->e_lfanew);
-    moduleInfo.moduleStaticSize = header->opt_head.SizeOfInitializedData + header->opt_head.SizeOfUninitializedData + header->opt_head.SizeOfCode + header->opt_head.SizeOfHeaders;
-    moduleInfo.SizeOfCode = header->opt_head.SizeOfCode;
-    moduleInfo.SizeOfInitializedData = header->opt_head.SizeOfInitializedData;
-    moduleInfo.SizeOfUninitializedData = header->opt_head.SizeOfUninitializedData;
-
-    fpCryModuleGetAllocatedMemory(&moduleInfo.memInfo);
-
-    moduleInfo.usedInModule = (int)(moduleInfo.memInfo.allocated - moduleInfo.memInfo.freed);
-    return true;
+    return false;
 }
 
 #else //Another platform
 
 /*static */ bool QueryModuleMemoryInfo(SCryEngineStatsModuleInfo& moduleInfo, int index)
 {
-    CryModuleGetMemoryInfo(&moduleInfo.memInfo);
-    moduleInfo.usedInModule = (int)(moduleInfo.memInfo.allocated - moduleInfo.memInfo.freed);
-    return true;
+    return false;
 }
 
 #endif

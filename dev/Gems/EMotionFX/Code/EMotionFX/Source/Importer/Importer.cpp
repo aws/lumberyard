@@ -41,7 +41,6 @@
 #include "../AnimGraph.h"
 #include "../AnimGraphManager.h"
 #include "../AnimGraphNode.h"
-//#include "../AnimGraphStateMachine.h"
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 
@@ -1128,6 +1127,7 @@ namespace EMotionFX
         RegisterChunkProcessor(aznew ChunkProcessorActorNodeGroups());
         RegisterChunkProcessor(aznew ChunkProcessorActorNodes());
         RegisterChunkProcessor(aznew ChunkProcessorActorProgMorphTargets());
+        RegisterChunkProcessor(aznew ChunkProcessorActorProgMorphTargets2());
         RegisterChunkProcessor(aznew ChunkProcessorActorMaterialInfo());
         RegisterChunkProcessor(aznew ChunkProcessorActorNodeMotionSources());
         RegisterChunkProcessor(aznew ChunkProcessorActorAttachmentNodes());
@@ -1275,9 +1275,14 @@ namespace EMotionFX
         // if we want to skip loading tangents, disable loading the tangent data layer
         if (settings->mLoadTangents == false && settings->mLoadMeshes)
         {
-            if (settings->mLayerIDsToIgnore.Contains(Mesh::ATTRIB_TANGENTS) == false)
+            if (!settings->mLayerIDsToIgnore.Contains(Mesh::ATTRIB_TANGENTS))
             {
                 settings->mLayerIDsToIgnore.Add(Mesh::ATTRIB_TANGENTS);
+            }
+
+            if (!settings->mLayerIDsToIgnore.Contains(Mesh::ATTRIB_BITANGENTS))
+            {
+                settings->mLayerIDsToIgnore.Add(Mesh::ATTRIB_BITANGENTS);
             }
         }
 
@@ -1321,6 +1326,8 @@ namespace EMotionFX
             return "Normals";
         case Mesh::ATTRIB_TANGENTS:
             return "Tangents";
+        case Mesh::ATTRIB_BITANGENTS:
+            return "Bitangents";
         case Mesh::ATTRIB_UVCOORDS:
             return "UV Coordinates";
         case Mesh::ATTRIB_COLORS32:
@@ -1409,21 +1416,16 @@ namespace EMotionFX
         break;
 
 
-        // tangents (Vector4)
+        // bitangents (Vector3)
         case Mesh::ATTRIB_BITANGENTS:
         {
-            AZ::Vector4* data = static_cast<AZ::Vector4*>(layer->GetOriginalData());
+            AZ::PackedVector3f* data = (AZ::PackedVector3f*)layer->GetOriginalData();
             const uint32 numAttribs = layer->GetNumAttributes();
             for (uint32 i = 0; i < numAttribs; ++i)
             {
-                AZ::PackedVector3f tangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
-                MCore::Endian::ConvertVector3(&tangent, sourceEndianType);      // convert the endian of the Vector3 part
-                data[i].SetX(tangent.GetX());
-                data[i].SetY(tangent.GetY());
-                data[i].SetZ(tangent.GetZ());
-                float dataW = data[i].GetW();
-                MCore::Endian::ConvertFloat(&dataW, sourceEndianType);      // convert endian of the w component
-                data[i].SetW(dataW);
+                AZ::PackedVector3f bitangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
+                MCore::Endian::ConvertVector3(&bitangent, sourceEndianType);      // convert the endian of the Vector3 part
+                data[i] = bitangent;
             }
             return true;
         }
@@ -1544,7 +1546,9 @@ namespace EMotionFX
             if (animGraph)
             {
                 animGraph->SetFileName(filename.c_str());
+                animGraph->RemoveInvalidConnections();
             }
+            
             return animGraph;
         }
 
@@ -1617,6 +1621,8 @@ namespace EMotionFX
                 MCore::LogInfo("  + Loading successfully finished");
             }
         }
+
+        result->RemoveInvalidConnections();
 
         // return the result
         return result;

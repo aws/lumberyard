@@ -23,5 +23,5 @@ def build(bld):
         platforms      = ['win'],
         configurations = ['debug', 'debug_test', 'profile', 'profile_test'],
         use            = ['AzGameFramework'],
-        defines        = ['_LAUNCHER']
+        defines        = ['_LAUNCHER', 'USE_CRY_NEW_AND_DELETE']
     )

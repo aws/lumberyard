@@ -26,7 +26,6 @@ namespace MCore
     class IDGenerator;
     class StringIdPool;
     class AttributeFactory;
-    class AttributePool;
     class JobList;
     class JobManager;
     class JobList;
@@ -122,12 +121,6 @@ namespace MCore
         MCORE_INLINE AttributeFactory& GetAttributeFactory()            { return *mAttributeFactory; }
 
         /**
-         * Get the attribute pool.
-         * @result A reference to the attribute pool, which is used to prevent large number of small allocations when creating many attributes.
-         */
-        MCORE_INLINE AttributePool& GetAttributePool()                  { return *mAttributePool; }
-
-        /**
          * Get the memory tracker.
          * @result A reference to the memory tracker, which can be used to track memory allocations and usage.
          */
@@ -154,7 +147,6 @@ namespace MCore
         IDGenerator*            mIDGenerator;       /**< The ID generator. */
         StringIdPool*           mStringIdPool; /**< The string based ID generator. */
         AttributeFactory*       mAttributeFactory;  /**< The attribute factory. */
-        AttributePool*          mAttributePool;     /**< The attribute pooling system. */
         JobManager*             mJobManager;        /**< The multithread job manager. */
         MemoryTracker*          mMemoryTracker;     /**< The memory tracker. */
         Mutex*                  mMemoryMutex;
@@ -214,7 +206,6 @@ namespace MCore
     MCORE_INLINE IDGenerator& GetIDGenerator()                 { return GetMCore().GetIDGenerator(); }
     MCORE_INLINE StringIdPool& GetStringIdPool()               { return GetMCore().GetStringIdPool(); }
     MCORE_INLINE AttributeFactory& GetAttributeFactory()       { return GetMCore().GetAttributeFactory(); }
-    MCORE_INLINE AttributePool& GetAttributePool()             { return GetMCore().GetAttributePool(); }
     MCORE_INLINE JobManager& GetJobManager()                   { return GetMCore().GetJobManager(); }
     MCORE_INLINE MemoryTracker& GetMemoryTracker()             { return GetMCore().GetMemoryTracker(); }
 } // namespace MCore

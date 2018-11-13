@@ -858,7 +858,7 @@ namespace UnitTest
                     if (!(numUpdates % 100) && serverCarrier->GetNumConnections() == 1)
                     {
                         TrafficControl::Statistics stats;
-                        serverCarrier->QueryStatistics(serverCarrier->GetConnectionId(0), nullptr, &stats);
+                        serverCarrier->QueryStatistics(serverCarrier->DebugGetConnectionId(0), nullptr, &stats);
                         AZ_TracePrintf("GridMate", "  Server -> Client: rtt=%.0f msec, packetLoss=%.0f%%\n", stats.m_rtt, stats.m_packetLoss  * 100.f);
                     }
 
@@ -958,7 +958,7 @@ namespace UnitTest
                     {
                         for (unsigned int iConn = 0; iConn < carriers[iCarrier]->GetNumConnections(); ++iConn)
                         {
-                            ConnectionID connId = carriers[iCarrier]->GetConnectionId(iConn);
+                            ConnectionID connId = carriers[iCarrier]->DebugGetConnectionId(iConn);
                             for (unsigned char iChannel = 0; iChannel < 3; ++iChannel)
                             {
                                 char buf[kMaxPacketSize];
@@ -1005,7 +1005,6 @@ namespace UnitTest
 GM_TEST_SUITE(CarrierStreamSuite)
     GM_TEST(Integ_CarrierStreamBasicTest)
     GM_TEST(Integ_CarrierStreamTest)
-    GM_TEST(Integ_CarrierStreamDisconnectDetectionTest)
     GM_TEST(Integ_CarrierStreamAsyncHandshakeTest)
     GM_TEST(Integ_CarrierStreamMultiChannelTest)
 GM_TEST_SUITE_END()

@@ -56,7 +56,8 @@ namespace CloudGemDefectReporter
             , OnNewReportTriggered
             , OnNewReportReady
             , OnReportsUpdated
-            , OnDefectReportPostStatus
+            , OnDefectReportPostStart
+            , OnDefectReportPostStep
             , OnDefectReportPostError
             , OnClientConfigurationAvailable
             , OnSubmittingReport
@@ -84,9 +85,14 @@ namespace CloudGemDefectReporter
             Call(FN_OnReportsUpdated, totalAvailableReports, totalPending);
         }
 
-        void OnDefectReportPostStatus(int currentReport, int totalReports) override
+        void OnDefectReportPostStart(int numberOfSteps)
         {
-            Call(FN_OnDefectReportPostStatus, currentReport, totalReports);
+            Call(FN_OnDefectReportPostStart, numberOfSteps);
+        }
+
+        void OnDefectReportPostStep()
+        {
+            Call(FN_OnDefectReportPostStep);
         }
 
         void OnDefectReportPostError(const AZStd::string& error) override
@@ -213,6 +219,7 @@ namespace CloudGemDefectReporter
         DefectReport::Reflect(context);
         DefectReportManager::ReflectDataStructures(context);
 
+        ServiceAPI::ObjectFieldProperty::Reflect(context);
         ServiceAPI::CustomField::Reflect(context);
         ServiceAPI::ClientConfiguration::Reflect(context);
         
@@ -430,7 +437,16 @@ namespace CloudGemDefectReporter
         CloudGemDefectReporterUINotificationBus::QueueBroadcast(&CloudGemDefectReporterUINotificationBus::Events::OnReportsUpdated, availableReports, pendingReports);
     }
 
-    void CloudGemDefectReporterSystemComponent::BackupCompletedReports()
+    void CloudGemDefectReporterSystemComponent::AttachmentUploadComplete(AZStd::string attachmentPath, bool autoDelete)
+    {
+        // auto delete attachments can't be deleted until they are sent to the service
+        if (autoDelete == true)
+        {
+            m_reportManager.DeleteAttachment(attachmentPath);
+        }
+    }
+
+        void CloudGemDefectReporterSystemComponent::BackupCompletedReports()
     {
         m_reportManager.BackupCompletedReports();
     }
@@ -524,7 +540,7 @@ namespace CloudGemDefectReporter
 
         AttachmentDesc attachmentDesc;
         attachmentDesc.m_name = "screenshot";
-        attachmentDesc.m_autoDelete = false;
+        attachmentDesc.m_autoDelete = true;
         attachmentDesc.m_type = "image/jpeg";
         attachmentDesc.m_extension = "jpg";
 

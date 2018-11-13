@@ -77,7 +77,7 @@ private:
 
 private:
     static CVolumeShadowCreator* ms_pVolShadowCreator;
-    static VolumeObjectSet ms_volumeObjects;
+    static StaticInstance<VolumeObjectSet> ms_volumeObjects;
 
     static ICVar* ms_CV_volobj_stats;
     static int e_volobj_stats;

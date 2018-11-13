@@ -70,7 +70,9 @@
             "Rules/SkeletonProxyRule.h",
             "Rules/SkeletonProxyRule.cpp",
             "Rules/SkinMeshAdvancedRule.h",
-            "Rules/SkinMeshAdvancedRule.cpp"
+            "Rules/SkinMeshAdvancedRule.cpp",
+            "Rules/TangentsRule.h",
+            "Rules/TangentsRule.cpp"
         ],
         "GraphData":
         [
@@ -80,6 +82,10 @@
             "GraphData/MeshVertexColorData.cpp",
             "GraphData/MeshVertexUVData.h",
             "GraphData/MeshVertexUVData.cpp",
+            "GraphData/MeshVertexTangentData.h",
+            "GraphData/MeshVertexTangentData.cpp",
+            "GraphData/MeshVertexBitangentData.h",
+            "GraphData/MeshVertexBitangentData.cpp",
             "GraphData/MaterialData.h",
             "GraphData/MaterialData.cpp",
             "GraphData/TransformData.h",

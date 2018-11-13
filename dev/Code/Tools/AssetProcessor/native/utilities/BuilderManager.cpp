@@ -228,7 +228,7 @@ namespace AssetProcessor
         processLaunchInfo.m_processExecutableString = fullExePath;
         processLaunchInfo.m_commandlineParameters = AZStd::string::format("\"%s\" %s", fullExePath, params.c_str());
         processLaunchInfo.m_showWindow = false;
-        processLaunchInfo.m_processPriority = AzToolsFramework::ProcessPriority::PROCESSPRIORITY_BELOWNORMAL;
+        processLaunchInfo.m_processPriority = AzToolsFramework::ProcessPriority::PROCESSPRIORITY_IDLE;
 
         AZ_TracePrintf(AssetProcessor::DebugChannel, "Executing AssetBuilder with parameters: %s\n", processLaunchInfo.m_commandlineParameters.c_str());
 

@@ -67,6 +67,7 @@ namespace EMStudio
     class NativeEventFilter;
     class NodeSelectionWindow;
     class PreferencesWindow;
+    class UndoMenuCallback;
 
     // the main window
     class EMSTUDIO_API MainWindow
@@ -149,8 +150,8 @@ namespace EMStudio
 
         QMenu*                  mCreateWindowMenu;
         QMenu*                  mLayoutsMenu;
-        QAction*                mUndoAction;
-        QAction*                mRedoAction;
+        QAction*                m_undoAction;
+        QAction*                m_redoAction;
 
         // keyboard shortcut manager
         MysticQt::KeyboardShortcutManager* mShortcutManager;
@@ -203,6 +204,8 @@ namespace EMStudio
 
         void OnOptionChanged(const AZStd::string& optionChanged) override;
         void OnUnitTypeOptionChanged();
+
+        UndoMenuCallback*                       m_undoMenuCallback;
 
         // declare the callbacks
         MCORE_DEFINECOMMANDCALLBACK(CommandImportActorCallback);

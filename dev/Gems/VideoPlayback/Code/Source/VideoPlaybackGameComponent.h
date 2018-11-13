@@ -27,6 +27,8 @@
 #include <Include/VideoPlayback/VideoPlaybackBus.h>
 #include "Decoder.h"
 
+#if AZ_VIDEOPLAYBACK_GEM_TRAIT_ENABLE_DECODER
+
 namespace AZ 
 {
     namespace VideoPlayback
@@ -94,3 +96,5 @@ namespace AZ
         };
     } // namespace VideoPlayback
 }//namespace AZ
+
+#endif

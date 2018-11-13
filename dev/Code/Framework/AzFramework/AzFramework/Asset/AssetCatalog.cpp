@@ -268,7 +268,7 @@ namespace AzFramework
 
         if (itr != m_registry->m_assetDependencies.end())
         {
-            AZStd::vector<ProductDependency> assetDependencyList = itr->second;
+            AZStd::vector<ProductDependency>& assetDependencyList = itr->second;
 
             for (const ProductDependency& dependency : assetDependencyList)
             {

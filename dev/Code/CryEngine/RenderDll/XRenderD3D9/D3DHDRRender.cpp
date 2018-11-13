@@ -1940,7 +1940,7 @@ void CHDRPostProcess::End()
 
     PostProcessUtils().SetFillModeSolid(false);
 
-    // (re-set back-buffer): due to lazy RT updates/setting there's strong possibility we run into problems on x360 when we try to resolve from edram with no RT set // ACCEPTED_USE
+    // (re-set back-buffer): if the platform does lazy RT updates/setting there's strong possibility we run into problems when we try to resolve with no RT set
     gcpRendD3D->FX_SetActiveRenderTargets();
 }
 
@@ -1955,7 +1955,7 @@ void CHDRPostProcess::Render()
     {
         CRY_ASSERT(gcpRendD3D->FX_GetCurrentRenderTarget(0) == CTexture::s_ptexHDRTarget);
 
-        gcpRendD3D->FX_SetActiveRenderTargets(); // Called explicitly to work around RT stack problems on 360
+        gcpRendD3D->FX_SetActiveRenderTargets(); // Called explicitly to work around RT stack problems on deprecated platform
         gcpRendD3D->RT_UnbindTMUs();// Avoid d3d error due to potential rtv still bound as shader input.
         gcpRendD3D->FX_PopRenderTarget(0);
         gcpRendD3D->EF_ClearTargetsLater(0);

@@ -460,8 +460,7 @@ void CFrameProfileSystem::Reset()
 void CFrameProfileSystem::AddFrameProfiler(CFrameProfiler* pProfiler)
 {
     CryAutoCriticalSection lock(m_profilersLock);
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
+    
     assert(pProfiler);
     if (!pProfiler)
     {
@@ -515,8 +514,6 @@ void CFrameProfileSystem::SProfilerThreads::Reset(ISystem* pSystem)
     m_aThreadStacks[0].pProfilerSection = 0;
     if (!m_pReservedProfilers)
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
-
         // Allocate reserved profilers;
         for (int i = 0; i < nMAX_THREADED_PROFILERS; i++)
         {
@@ -1556,8 +1553,6 @@ void CFrameProfileSystem::SetSubsystemFilter(const char* szFilterName)
 //////////////////////////////////////////////////////////////////////////
 void CFrameProfileSystem::AddPeaksListener(IFrameProfilePeakCallback* pPeakCallback)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     // Only add one time.
     stl::push_back_unique(m_peakCallbacks, pPeakCallback);
 }
@@ -1658,8 +1653,6 @@ bool CFrameProfileSystem::OnInputChannelEventFiltered(const AzFramework::InputCh
 //////////////////////////////////////////////////////////////////////////
 void CFrameProfileSystem::UpdateInputSystemStatus()
 {
-    ScopedSwitchToGlobalHeap globalHeap;
-
     // Disconnect from receiving input events
     AzFramework::InputChannelEventListener::Disconnect();
 

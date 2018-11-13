@@ -16,7 +16,7 @@ import * as environment from 'app/shared/class/index';
 export class NavComponent {
     projectName = "Cloud Canvas Project";
     nav = {
-        "deploymentName": "",
+        "deploymentName": "No Deployment",
         "projectName": this.aws.context.configBucket,
         "deployments": [],
         "username": ""
@@ -25,7 +25,7 @@ export class NavComponent {
 
     public constructor(private aws: AwsService, private urlService: UrlService, private lymetrics: LyMetricService,
         private toastr: ToastsManager, vcr: ViewContainerRef, private router: Router, private gems: GemService) {
-        this.toastr.setRootViewContainerRef(vcr);        
+        this.toastr.setRootViewContainerRef(vcr);
         // Listen for the active deployment and the name when the nav is loaded.
         if (this.aws.context.project.activeDeployment) {
             this.setContext();
@@ -57,7 +57,7 @@ export class NavComponent {
             })
         }
     }
-        
+
     public onDeploymentClick(deployment: Deployment) {
         this.gems.isLoading = true;
         this.aws.context.project.activeDeployment = <AwsDeployment>deployment;

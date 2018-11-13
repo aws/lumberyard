@@ -482,7 +482,7 @@ void CAIRadialOccypancy::DebugDraw(const Vec3& center, ColorB color)
 // CAIRadialOcclusionRaycast
 //====================================================================
 bool    CAIRadialOcclusionRaycast::m_physListenerInit = false;
-std::vector<CAIRadialOcclusionRaycast*> CAIRadialOcclusionRaycast::m_physListeners;
+StaticInstance<std::vector<CAIRadialOcclusionRaycast*>> CAIRadialOcclusionRaycast::m_physListeners;
 
 //====================================================================
 // InitPhysCallback

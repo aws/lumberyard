@@ -57,7 +57,7 @@ SShaderItem CShaderMan::s_DefaultShaderItem;
 
 CCryNameTSCRC CShaderMan::s_cNameHEAD;
 
-TArray<CShaderResources*> CShader::s_ShaderResources_known(0, 2600);  // Based on BatteryPark
+TArray<CShaderResources*> CShader::s_ShaderResources_known;  // Based on BatteryPark
 TArray <CLightStyle*> CLightStyle::s_LStyles;
 
 SResourceContainer* CShaderMan::s_pContainer;  // List/Map of objects for shaders resource class
@@ -2281,10 +2281,10 @@ SEnvTexture* SHRenderTarget::GetEnv2D()
     SEnvTexture* pEnvTex = NULL;
     if (m_nIDInPool >= 0)
     {
-        assert(m_nIDInPool < (int)CTexture::s_CustomRT_2D.Num());
-        if (m_nIDInPool < (int)CTexture::s_CustomRT_2D.Num())
+        assert(m_nIDInPool < (int)CTexture::s_CustomRT_2D->Num());
+        if (m_nIDInPool < (int)CTexture::s_CustomRT_2D->Num())
         {
-            pEnvTex = &CTexture::s_CustomRT_2D[m_nIDInPool];
+            pEnvTex = &(*CTexture::s_CustomRT_2D)[m_nIDInPool];
         }
     }
     else
@@ -2399,7 +2399,7 @@ void CShaderResources::CreateModifiers(SInputShaderResources* pInRes)
                 m_ResFlags |= MTL_FLAG_NOTINSTANCED;
             }
 
-        pInTex->UpdateForCreate();
+        pInTex->UpdateForCreate(slotIdx);
         if (pInTex->m_Ext.m_nUpdateFlags & HWMD_TEXCOORD_FLAG_MASK)
         {
             SEfTexModificator* pDstMod = new SEfTexModificator;
@@ -2428,7 +2428,26 @@ void CShaderResources::CreateModifiers(SInputShaderResources* pInRes)
     }
 }
 
-void SEfResTexture::UpdateForCreate()
+int32 GetTextCoordGenObjLinearFlag(int textSlot)
+{
+    switch (static_cast<EEfResTextures>(textSlot))
+    {
+    case EFTT_DIFFUSE:
+        return HWMD_TEXCOORD_GEN_OBJECT_LINEAR_DIFFUSE;
+    case  EFTT_DETAIL_OVERLAY:
+        return HWMD_TEXCOORD_GEN_OBJECT_LINEAR_DETAIL;
+    case EFTT_DECAL_OVERLAY:
+        return HWMD_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE_MULT;
+    case EFTT_EMITTANCE:
+        return HWMD_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE;
+    case EFTT_CUSTOM:
+        return HWMD_TEXCOORD_GEN_OBJECT_LINEAR_CUSTOM;
+    default:
+        return 0;
+    }
+}
+
+void SEfResTexture::UpdateForCreate(int textSlot)
 {
     FUNCTION_PROFILER_RENDER_FLAT
 
@@ -2447,7 +2466,7 @@ void SEfResTexture::UpdateForCreate()
         assert(pEnv);
         if (pEnv && pEnv->m_pTex)
         {
-            m_Ext.m_nUpdateFlags |= HWMD_TEXCOORD_PROJ | HWMD_TEXCOORD_GEN_OBJECT_LINEAR;
+            m_Ext.m_nUpdateFlags |= HWMD_TEXCOORD_PROJ | GetTextCoordGenObjLinearFlag(textSlot);
         }
     }
 
@@ -2469,10 +2488,8 @@ void SEfResTexture::UpdateForCreate()
         switch (pMod->m_eTGType)
         {
         case ETG_World:
-            m_Ext.m_nUpdateFlags |= HWMD_TEXCOORD_GEN_OBJECT_LINEAR;
-            break;
         case ETG_Camera:
-            m_Ext.m_nUpdateFlags |= HWMD_TEXCOORD_GEN_OBJECT_LINEAR;
+            m_Ext.m_nUpdateFlags |= GetTextCoordGenObjLinearFlag(textSlot);
             break;
         }
     }
@@ -2542,7 +2559,7 @@ void SEfResTexture::UpdateWithModifier(int nTSlot)
         {
             pMod->m_TexGenMatrix = Matrix44A(rd->m_RP.m_pCurObject->m_II.m_Matrix).GetTransposed() * pEnv->m_Matrix;
             pMod->m_TexGenMatrix = pMod->m_TexGenMatrix.GetTransposed();
-            m_Ext.m_nUpdateFlags |= HWMD_TEXCOORD_PROJ | HWMD_TEXCOORD_GEN_OBJECT_LINEAR;
+            m_Ext.m_nUpdateFlags |= HWMD_TEXCOORD_PROJ | GetTextCoordGenObjLinearFlag(nTSlot);
         }
     }
 
@@ -2816,7 +2833,7 @@ void SEfResTexture::UpdateWithModifier(int nTSlot)
         {
         case ETG_World:
         {
-            m_Ext.m_nUpdateFlags |= HWMD_TEXCOORD_GEN_OBJECT_LINEAR;
+            m_Ext.m_nUpdateFlags |= GetTextCoordGenObjLinearFlag(nTSlot);
             for (int i = 0; i < 4; i++)
             {
                 memset(&Pl, 0, sizeof(Pl));
@@ -2841,7 +2858,7 @@ void SEfResTexture::UpdateWithModifier(int nTSlot)
         break;
         case ETG_Camera:
         {
-            m_Ext.m_nUpdateFlags |= HWMD_TEXCOORD_GEN_OBJECT_LINEAR;
+            m_Ext.m_nUpdateFlags |= GetTextCoordGenObjLinearFlag(nTSlot);
             for (int i = 0; i < 4; i++)
             {
                 memset(&Pl, 0, sizeof(Pl));

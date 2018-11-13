@@ -331,16 +331,25 @@ namespace SliceBuilder
 
                 // Pre-sort prior to exporting so it isn't required at instantiation time.
                 const AZ::Entity::DependencySortResult sortResult = exportEntity->EvaluateDependencies();
-                if (AZ::Entity::DSR_OK != sortResult)
+                if (AZ::Entity::DependencySortResult::Success != sortResult)
                 {
                     const char* sortResultError = "";
                     switch (sortResult)
                     {
-                    case AZ::Entity::DSR_CYCLIC_DEPENDENCY:
+                    case AZ::Entity::DependencySortResult::HasCyclicDependency:
                         sortResultError = "Cyclic dependency found";
                         break;
-                    case AZ::Entity::DSR_MISSING_REQUIRED:
+                    case AZ::Entity::DependencySortResult::MissingRequiredService:
                         sortResultError = "Required services missing";
+                        break;
+                    case AZ::Entity::DependencySortResult::HasIncompatibleServices:
+                        sortResultError = "Incompatible services found";
+                        break;
+                    case AZ::Entity::DependencySortResult::DescriptorNotRegistered:
+                        sortResultError = "Component descriptor not registered";
+                        break;
+                    default:
+                        sortResultError = "Unknown error occurred";
                         break;
                     }
 

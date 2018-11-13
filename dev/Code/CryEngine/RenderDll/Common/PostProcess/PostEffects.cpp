@@ -20,9 +20,9 @@
 
 #include "../../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
-std::vector< CWaterRipples::SWaterHit > CWaterRipples::s_pWaterHits[RT_COMMAND_BUF_COUNT];
-std::vector< CWaterRipples::SWaterHit > CWaterRipples::s_pWaterHitsMGPU;
-std::vector< CWaterRipples::SWaterHitRecord > CWaterRipples::m_DebugWaterHits;
+AZStd::vector< CWaterRipples::SWaterHit, AZ::StdLegacyAllocator > CWaterRipples::s_pWaterHits[RT_COMMAND_BUF_COUNT];
+AZStd::vector< CWaterRipples::SWaterHit, AZ::StdLegacyAllocator > CWaterRipples::s_pWaterHitsMGPU;
+AZStd::vector< CWaterRipples::SWaterHitRecord, AZ::StdLegacyAllocator > CWaterRipples::m_DebugWaterHits;
 Vec3 CWaterRipples::s_CameraPos = Vec3(ZERO);
 Vec2 CWaterRipples::s_SimOrigin = Vec2(ZERO);
 int CWaterRipples::s_nUpdateMask;
@@ -806,8 +806,11 @@ bool ScreenFader::Preprocess()
                 SetEffectParamFromVisitor( group, groupParamVisitor, "ScreenFader_TextureName", m_fadeTextureParam );
                 pass->m_fadeTexture = static_cast<CParamTexture*>(m_fadeTextureParam)->GetParamTexture();
 
-                // Since we are manually holding onto a CTexture pointer, make sure we increment the ref count
-                pass->m_fadeTexture->AddRef(); 
+                if (pass->m_fadeTexture)
+                {
+                    // Since we are manually holding onto a CTexture pointer, make sure we increment the ref count
+                    pass->m_fadeTexture->AddRef();
+                }
                 
                 SetEffectParamFromVisitor( group, groupParamVisitor, "ScreenFader_FadeOutTime", m_fadeOutTime );
                 pass->m_fadeOutTime = m_fadeOutTime->GetParam();
@@ -818,10 +821,6 @@ bool ScreenFader::Preprocess()
 
                 m_screenPasses.push_back( pass );
                 newScreenPassAdded = true;
-            }
-            else
-            {
-                AZ_Warning("Rendering", false, "Attempting to fade out a ScreenFader that is not currently active: %s", group->GetName() );
             }
         }
     }

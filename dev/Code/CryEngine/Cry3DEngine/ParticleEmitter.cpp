@@ -584,14 +584,21 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
             }
             if (pContainer == pParentContainer)
             {
-                // Add new container
-                if (void* pMem = pNext ? m_Containers.insert_new(pNext) : m_Containers.push_back_new())
+                if (pNext)
                 {
-                    pContainer = new(pMem) CParticleContainer(pParentContainer, this, pEffect, _startLod, _endLod);
+                    // Destroy it properly before reusing it as the new container
+                    pNext->Reset();
+                    pNext->~CParticleContainer();
+                    pContainer = pNext;
                 }
                 else
                 {
-                    return;
+                    // Add new container
+                    pContainer = static_cast<CParticleContainer*>(m_Containers.push_back_new());
+                }
+                if (pContainer)
+                {
+                    new(pContainer) CParticleContainer(pParentContainer, this, pEffect, _startLod, _endLod);
                 }
             }
         }

@@ -21,7 +21,11 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
+
+#ifdef DEPRECATED_QML_SUPPORT
 #include <QQmlEngine>
+#endif
+
 #include <QDebug>
 #include "../Plugins/EditorUI_QT/UIFactory.h"
 #include <AzQtComponents/Components/LumberyardStylesheet.h>
@@ -42,10 +46,6 @@
 #include <AzCore/UserSettings/UserSettings.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/SystemFile.h>
-#include <AzCore/Component/Entity.h>
-#include <AzToolsFramework/Thumbnails/ThumbnailerComponent.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
-#include <AzToolsFramework/MaterialBrowser/MaterialBrowserComponent.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #   include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
@@ -60,11 +60,15 @@ enum
     UninitializedFrequency = 9999,
 };
 
+#ifdef DEPRECATED_QML_SUPPORT
+
 // QML imports that go in the editor folder (relative to the project root)
 #define QML_IMPORT_USER_LIB_PATH "Editor/UI/qml"
 
 // QML Imports that are part of Qt (relative to the executable)
 #define QML_IMPORT_SYSTEM_LIB_PATH "qtlibs/qml"
+
+#endif // #ifdef DEPRECATED_QML_SUPPORT
 
 Q_LOGGING_CATEGORY(InputDebugging, "lumberyard.editor.input")
 
@@ -206,7 +210,6 @@ namespace Editor
         , m_inWinEventFilter(false)
         , m_stylesheet(new AzQtComponents::LumberyardStylesheet(this))
         , m_idleTimer(new QTimer(this))
-        , m_qtEntity(nullptr)
     {
         m_idleTimer->setInterval(UninitializedFrequency);
 
@@ -237,7 +240,10 @@ namespace Editor
 
         // install hooks and filters last and revoke them first
         InstallFilters();
+
+#ifdef DEPRECATED_QML_SUPPORT
         InitializeQML();
+#endif // #ifdef DEPRECATED_QML_SUPPORT
 
         // install this filter. It will be a parent of the application and cleaned up when it is cleaned up automically
         auto globalEventFilter = new GlobalEventFilter(this);
@@ -245,24 +251,6 @@ namespace Editor
 
         //Setup reusable dialogs
         UIFactory::Initialize();
-
-        InitQtEntity();
-    }
-
-    void EditorQtApplication::InitQtEntity()
-    {
-        AzToolsFramework::Thumbnailer::ThumbnailerComponent::CreateDescriptor();
-        AzToolsFramework::AssetBrowser::AssetBrowserComponent::CreateDescriptor();
-        AzToolsFramework::MaterialBrowser::MaterialBrowserComponent::CreateDescriptor();
-
-        m_qtEntity.reset(aznew AZ::Entity());
-
-        m_qtEntity->AddComponent(aznew AzToolsFramework::Thumbnailer::ThumbnailerComponent());
-        m_qtEntity->AddComponent(aznew AzToolsFramework::AssetBrowser::AssetBrowserComponent());
-        m_qtEntity->AddComponent(aznew AzToolsFramework::MaterialBrowser::MaterialBrowserComponent());
-
-        m_qtEntity->Init();
-        m_qtEntity->Activate();
     }
 
     void EditorQtApplication::LoadSettings() 
@@ -326,12 +314,18 @@ namespace Editor
 
     EditorQtApplication::~EditorQtApplication()
     {
-        GetIEditor()->UnregisterNotifyListener(this);
+        if (GetIEditor())
+        {
+            GetIEditor()->UnregisterNotifyListener(this);
+        }
 
         //Clean reusable dialogs
         UIFactory::Deinitialize();
 
+#ifdef DEPRECATED_QML_SUPPORT
         UninitializeQML();
+#endif // #ifdef DEPRECATED_QML_SUPPORT
+
         UninstallFilters();
 
         UninstallEditorTranslators();
@@ -356,6 +350,7 @@ namespace Editor
 
     bool EditorQtApplication::notify(QObject* receiver, QEvent* ev)
     {
+        /*
         QEvent::Type evType = ev->type();
         if (evType == QEvent::MouseButtonPress ||
                 evType == QEvent::KeyPress ||
@@ -387,6 +382,7 @@ namespace Editor
 
             return processed;
         }
+        */
 
         return QApplication::notify(receiver, ev);
     }
@@ -518,6 +514,7 @@ namespace Editor
         m_stylesheet->Refresh(this);
     }
 
+#ifdef DEPRECATED_QML_SUPPORT
     void EditorQtApplication::InitializeQML()
     {
         if (!m_qmlEngine)
@@ -550,6 +547,7 @@ namespace Editor
             m_qmlEngine = nullptr;
         }
     }
+#endif // #ifdef DEPRECATED_QML_SUPPORT
 
     void EditorQtApplication::setIsMovingOrResizing(bool isMovingOrResizing)
     {
@@ -576,10 +574,12 @@ namespace Editor
         return m_stylesheet->GetColorByName(name);
     }
 
+#ifdef DEPRECATED_QML_SUPPORT
     QQmlEngine* EditorQtApplication::GetQMLEngine() const
     {
         return m_qmlEngine;
     }
+#endif // #ifdef DEPRECATED_QML_SUPPORT
 
     EditorQtApplication* EditorQtApplication::instance()
     {

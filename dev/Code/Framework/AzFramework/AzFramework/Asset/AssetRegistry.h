@@ -38,8 +38,8 @@ namespace AzFramework
         void RegisterLegacyAssetMapping(const AZ::Data::AssetId& legacyId, const AZ::Data::AssetId& newId);
         void UnregisterLegacyAssetMapping(const AZ::Data::AssetId& legacyId);
 
-        void SetAssetDependencies(AZ::Data::AssetId id, const AZStd::vector<AZ::Data::ProductDependency>& dependencies);
-        void RegisterAssetDependency(AZ::Data::AssetId id, const AZ::Data::ProductDependency& dependency);
+        void SetAssetDependencies(const AZ::Data::AssetId& id, const AZStd::vector<AZ::Data::ProductDependency>& dependencies);
+        void RegisterAssetDependency(const AZ::Data::AssetId& id, const AZ::Data::ProductDependency& dependency);
 
         //! LEGACY - do not use in new code unless interfacing with legacy systems.  
         //! All new systems should be referring to assets by ID/Type only and should not need to look up by path/

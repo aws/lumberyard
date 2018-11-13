@@ -70,7 +70,7 @@
 //
 //--------------------------------------------------------------------------
 
-template <typename K, typename T = std::less<K>, typename A = std::allocator<K> >
+template <typename K, typename T = AZStd::less<K>, typename A = AZ::StdLegacyAllocator >
 class VectorSet
     : private T             // Empty base optimization
 {
@@ -79,7 +79,7 @@ public:
     typedef A allocator_type;
     typedef T key_compare;
     typedef T value_compare;
-    typedef std::vector<key_type, allocator_type> container_type;
+    typedef AZStd::vector<key_type, allocator_type> container_type;
     typedef typename container_type::iterator iterator;
     typedef typename container_type::const_iterator const_iterator;
     typedef typename container_type::reverse_iterator reverse_iterator;

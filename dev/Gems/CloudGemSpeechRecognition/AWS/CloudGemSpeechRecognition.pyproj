@@ -1,0 +1,106 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{44013907-2574-45a7-adcd-c34cd3b08585}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile />
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="common-code\LexCommon\lex.py" />
+    <Compile Include="common-code\LexCommon\lex_file_util.py" />
+    <Compile Include="common-code\LexCommon\lex_fixture.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_bot.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_botdesc.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_botstatus.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_bot_alias.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_bot_version.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_bot_versions.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_buildbot.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_builtinintent.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_intent.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_intentdependency.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_intent_version.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_intent_versions.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_listbotaliases.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_listbots.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_listbuiltinintents.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_listbuiltinslottypes.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_listcustomintents.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_listcustomslottypes.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_numbots.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_publishbot.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_slottype.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_slottype_version.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\admin_slottype_versions.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\service_postaudio.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\service_posttext.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\service_status.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\__init__.py" />
+    <Compile Include="project-code\lambda-code\LexResourceType\resource_types\Custom_Lambda_Permission.py" />
+    <Compile Include="project-code\lambda-code\LexResourceType\resource_types\Custom_Lex.py" />
+    <Compile Include="project-code\lambda-code\LexResourceType\resource_types\__init__.py" />
+    <Compile Include="test\test_integration.py" />
+    <Compile Include="test\__init__.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="cgp-resource-code\dist\cloudgemspeechrecognition.js" />
+    <Content Include="cgp-resource-code\src\api-handler.class.js" />
+    <Content Include="cgp-resource-code\src\bot.js" />
+    <Content Include="cgp-resource-code\src\cloudgemlex.js" />
+    <Content Include="cgp-resource-code\src\cloudgemlex.module.js" />
+    <Content Include="cgp-resource-code\src\cloudgemspeechrecognition.js" />
+    <Content Include="cgp-resource-code\src\cloudgemspeechrecognition.module.js" />
+    <Content Include="cgp-resource-code\src\edit-intent.component.css" />
+    <Content Include="cgp-resource-code\src\edit-intent.component.html" />
+    <Content Include="cgp-resource-code\src\edit-intent.component.js" />
+    <Content Include="cgp-resource-code\src\edit-slot-type.component.css" />
+    <Content Include="cgp-resource-code\src\edit-slot-type.component.html" />
+    <Content Include="cgp-resource-code\src\edit-slot-type.component.js" />
+    <Content Include="cgp-resource-code\src\index.component.css" />
+    <Content Include="cgp-resource-code\src\index.component.html" />
+    <Content Include="cgp-resource-code\src\index.component.js" />
+    <Content Include="cgp-resource-code\src\index.js" />
+    <Content Include="cgp-resource-code\src\intent.js" />
+    <Content Include="cgp-resource-code\src\model.class.js" />
+    <Content Include="cgp-resource-code\src\prompt-configuration.component.css" />
+    <Content Include="cgp-resource-code\src\prompt-configuration.component.html" />
+    <Content Include="cgp-resource-code\src\prompt-configuration.component.js" />
+    <Content Include="cgp-resource-code\src\prompt.component.css" />
+    <Content Include="cgp-resource-code\src\prompt.component.html" />
+    <Content Include="cgp-resource-code\src\prompt.component.js" />
+    <Content Include="cgp-resource-code\src\slottype.js" />
+    <Content Include="cgp-resource-code\src\thumbnail.component.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="cgp-resource-code\" />
+    <Folder Include="cgp-resource-code\dist" />
+    <Folder Include="cgp-resource-code\src" />
+    <Folder Include="common-code\" />
+    <Folder Include="common-code\LexCommon" />
+    <Folder Include="lambda-code\" />
+    <Folder Include="lambda-code\ServiceLambda\" />
+    <Folder Include="lambda-code\ServiceLambda\api" />
+    <Folder Include="project-code\" />
+    <Folder Include="project-code\lambda-code\" />
+    <Folder Include="project-code\lambda-code\LexResourceType\" />
+    <Folder Include="project-code\lambda-code\LexResourceType\resource_types" />
+    <Folder Include="test" />
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>

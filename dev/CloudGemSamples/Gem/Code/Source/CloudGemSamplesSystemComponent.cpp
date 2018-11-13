@@ -23,7 +23,7 @@ namespace LYGame
                 ec->Class<CloudGemSamplesSystemComponent>("CloudGemSamples", "[Description of functionality provided by this System Component]")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         // ->Attribute(AZ::Edit::Attributes::Category, "") Set a category
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System"))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ;
             }
@@ -32,17 +32,19 @@ namespace LYGame
 
     void CloudGemSamplesSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("CloudGemSamplesService"));
+        provided.push_back(AZ_CRC("CloudGemSamplesService", 0x5ef46e07));
+        provided.push_back(AZ_CRC("LegacyEditorGameRequests", 0x2be64eb2));
     }
 
     void CloudGemSamplesSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("CloudGemSamplesService"));
+        incompatible.push_back(AZ_CRC("CloudGemSamplesService", 0x5ef46e07));
+        incompatible.push_back(AZ_CRC("LegacyEditorGameRequests", 0x2be64eb2));
     }
 
     void CloudGemSamplesSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
-        required.push_back(AZ_CRC("CryLegacyService"));
+        required.push_back(AZ_CRC("CryLegacyService", 0xdfa3b326));
     }
 
     void CloudGemSamplesSystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)

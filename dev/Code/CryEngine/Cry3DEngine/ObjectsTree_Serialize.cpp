@@ -259,6 +259,11 @@ int COctreeNode::SaveObjects(CMemoryBlock* pMemBlock, std::vector<IStatObj*>* pS
                 continue;
             }
 
+            if ((pRenderNode->GetRndFlags() & ERF_COMPONENT_ENTITY) != 0)
+            {
+                continue;
+            }
+
             nBlockSize += GetSingleObjectSize(pObj, pExportInfo);
         }
     }
@@ -280,6 +285,11 @@ int COctreeNode::SaveObjects(CMemoryBlock* pMemBlock, std::vector<IStatObj*>* pS
             EERType eType = pRenderNode->GetRenderNodeType();
 
             if (!(nObjTypeMask & (1 << eType)))
+            {
+                continue;
+            }
+
+            if ((pRenderNode->GetRndFlags() & ERF_COMPONENT_ENTITY) != 0)
             {
                 continue;
             }
@@ -644,8 +654,6 @@ void COctreeNode::LoadSingleObject(byte*& pPtr, std::vector<IStatObj*>* pStatObj
     // For these structures, our Endian swapping is built in to the member copy.
     if (eType == eERType_Brush)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Terrain, 0, "Brush object");
-
         SBrushChunk* pChunk = StepData<SBrushChunk>(pPtr, eEndian);
 
         if (!CheckRenderFlagsMinSpec(pChunk->m_dwRndFlags))
@@ -699,8 +707,6 @@ void COctreeNode::LoadSingleObject(byte*& pPtr, std::vector<IStatObj*>* pStatObj
     }
     else if (eType == eERType_Vegetation && nChunkVersion == OCTREENODE_CHUNK_VERSION_OLD)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Terrain, 0, "Vegetation object");
-
         SVegetationChunkOld* pChunk = StepData<SVegetationChunkOld>(pPtr, eEndian);
 
         if (!CheckRenderFlagsMinSpec(GetObjManager()->GetListStaticTypes()[nSID][pChunk->m_nObjectTypeIndex].m_dwRndFlags))
@@ -735,8 +741,6 @@ void COctreeNode::LoadSingleObject(byte*& pPtr, std::vector<IStatObj*>* pStatObj
     }
     else if (eType == eERType_Vegetation)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Terrain, 0, "Vegetation object");
-
         SVegetationChunk* pChunk = StepData<SVegetationChunk>(pPtr, eEndian);
 
         if (!CheckRenderFlagsMinSpec(GetObjManager()->GetListStaticTypes()[nSID][pChunk->m_nObjectTypeIndex].m_dwRndFlags))
@@ -773,7 +777,6 @@ void COctreeNode::LoadSingleObject(byte*& pPtr, std::vector<IStatObj*>* pStatObj
     }
     else if (eType == eERType_MergedMesh)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Terrain, 0, "Merged Mesh Object");
         SMergedMeshChunk* pChunk = StepData<SMergedMeshChunk>(pPtr, eEndian);
         CMergedMeshRenderNode* pObj = m_pMergedMeshesManager->GetNode((pChunk->m_Extents.max + pChunk->m_Extents.min) * 0.5f);
         LoadCommonData(pChunk, pObj, pLayerVisibility);

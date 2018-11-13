@@ -16,7 +16,6 @@
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
 #define AZTEST_H_SECTION_1 1
-#define AZTEST_H_SECTION_2 2
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -31,11 +30,6 @@
 // used. It's required, however, by googletest, so for test builds, un-hack the strdup removal.
 #   undef strdup
 #endif // AZTEST_H_TRAITS_UNDEF_STRDUP
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION AZTEST_H_SECTION_2
-#include AZ_RESTRICTED_FILE(AzTest_h, AZ_RESTRICTED_PLATFORM)
-#endif
 
 #pragma warning( push )
 #pragma warning(disable: 4800)  // 'int' : forcing value to bool 'true' or 'false' (performance warning)

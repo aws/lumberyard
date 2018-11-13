@@ -341,8 +341,13 @@ struct STextureLoadData
     {
         if (m_pData)
         {
-            free(m_pData);
+            CryModuleFree(m_pData);
         }
+    }
+
+    static void* AllocateData(size_t dataSize)
+    {
+        return CryModuleMalloc(dataSize);
     }
 };
 struct ITextureLoadHandler

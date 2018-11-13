@@ -13,7 +13,10 @@
 
 #define CRY_STATIC_LINK
 
-//#define NEW_OVERRIDEN
+#if defined(AZ_MONOLITHIC_BUILD)
+#define USE_CRY_NEW_AND_DELETE
+#endif
+
 #define _LAUNCHER
 
 #include "resource.h"
@@ -190,6 +193,7 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
 
         // Execute autoexec.cfg to load the initial level
         gEnv->pConsole->ExecuteString("exec autoexec.cfg");
+        gEnv->pSystem->ExecuteCommandLine(false);
 
         // Run the main loop
         LumberyardLauncher::RunMainLoop(gameApp);
@@ -345,19 +349,17 @@ extern "C"
 #endif
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    // we need pass the full command line, including the filename
-    // lpCmdLine does not contain the filename.
-#if CAPTURE_REPLAY_LOG
-#ifndef AZ_MONOLITHIC_BUILD
-    CryLoadLibrary("CrySystem.dll");
-#endif // AZ_MONOLITHIC_BUILD
-    CryGetIMemReplay()->StartOnCommandLine(lpCmdLine);
-#endif // CAPTURE_REPLAY_LOG
-
     char szExeFileName[AZ_MAX_PATH_LEN];
     InitRootDir(szExeFileName, AZ_MAX_PATH_LEN);
     int nRes = 0;
     AzGameFramework::GameApplication gameApp;
+
+    AZ_Assert(!AZ::AllocatorInstance<AZ::OSAllocator>::IsReady(), "Expected allocator to not be initialized, hunt down the static that is initializing it");
+    AZ::AllocatorInstance<AZ::OSAllocator>::Create();
+    AZ_Assert(!AZ::AllocatorInstance<AZ::LegacyAllocator>::IsReady(), "Expected allocator to not be initialized, hunt down the static that is initializing it");
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+    AZ_Assert(!AZ::AllocatorInstance<CryStringAllocator>::IsReady(), "Expected allocator to not be initialized, hunt down the static that is initializing it");
+    AZ::AllocatorInstance<CryStringAllocator>::Create();
 
     {
         CEngineConfig engineCfg;
@@ -393,6 +395,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
             MessageBox(0, msg, "File not found", MB_OK | MB_DEFAULT_DESKTOP_ONLY | MB_ICONERROR);
             return 1;
         }
+    
+        //[DFLY][lehmille@] - Prevent allocator from growing in small chunks
+        // Pre-create our system allocator and configure it to ask for larger chunks from the OS
+        // Creating this here to be consistent with other platforms
+        AZ::SystemAllocator::Descriptor sysHeapDesc;
+        sysHeapDesc.m_heap.m_systemChunkSize = 64 * 1024 * 1024;
+        AZ::AllocatorInstance<AZ::SystemAllocator>::Create(sysHeapDesc);
+        //[DFLY][lehmille@] - end
 
         AzGameFramework::GameApplication::StartupParameters gameAppParams;
 #ifdef AZ_MONOLITHIC_BUILD
@@ -450,6 +460,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         }
     }
 #endif // AZ_MONOLITHIC_BUILD
+
+    AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
 
     return nRes;
 }

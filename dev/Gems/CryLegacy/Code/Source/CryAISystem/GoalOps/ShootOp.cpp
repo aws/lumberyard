@@ -54,7 +54,7 @@ namespace
         fireMode.Add("BurstOnce",        FIREMODE_BURST_ONCE);
     }
 
-    ShootOpDictionary g_shootOpDictionary;
+    StaticInstance<ShootOpDictionary> g_shootOpDictionary;
 }
 
 
@@ -75,11 +75,11 @@ ShootOp::ShootOp(const XmlNodeRef& node)
     , m_fireMode(FIREMODE_OFF)
     , m_stance(STANCE_NULL)
 {
-    g_shootOpDictionary.shootAt.Get(node, "at", m_shootAt, true);
-    g_shootOpDictionary.fireMode.Get(node, "fireMode", m_fireMode, true);
+    g_shootOpDictionary->shootAt.Get(node, "at", m_shootAt, true);
+    g_shootOpDictionary->fireMode.Get(node, "fireMode", m_fireMode, true);
     node->getAttr("position", m_position);
     node->getAttr("duration", m_duration);
-    s_xml.GetStance(node, "stance", m_stance);
+    s_xml->GetStance(node, "stance", m_stance);
 }
 
 ShootOp::ShootOp(const ShootOp& rhs)

@@ -27,7 +27,7 @@ def main(event, lambdacontext):
         import lambda_fifo_message_consumer as consumer
         
     prefix = util.get_stack_name_from_arn(stack_id)
-    sqs = Sqs(context, prefix)  
+    sqs = Sqs(context, "{0}_".format(prefix))
     awslambda = Lambda(context)
     
     if sqs.is_all_under_load:        
@@ -62,14 +62,22 @@ def initialize_s3_kms():
             kms.create_key_alias(key_id, c.KMS_KEY_ID)
 
 
-def cli(context, args):    
+def cli(context, args):
+    from resource_manager_common import constant
+    credentials = context.aws.load_credentials()
+    
     resources = util.get_resources(context)
+    os.environ[c.ENV_SHARED_BUCKET] = context.config.configuration_bucket_name
     os.environ[c.ENV_S3_STORAGE] = resources[c.RES_S3_STORAGE]      
     os.environ[c.ENV_DB_TABLE_CONTEXT] = resources[c.RES_DB_TABLE_CONTEXT]              
     os.environ[c.ENV_VERBOSE] = str(args.verbose) if args.verbose else ""
     os.environ[c.ENV_SERVICE_ROLE] = resources[c.RES_SERVICE_ROLE]
     os.environ[c.ENV_REGION] = context.config.project_region
     os.environ[c.ENV_DEPLOYMENT_STACK_ARN] = resources[c.ENV_STACK_ID]
+    os.environ[c.ENV_EVENT_EMITTER] = resources[c.RES_EVENT_EMITTER]
+    os.environ[c.IS_LOCALLY_RUN] = "True"
+    os.environ["AWS_ACCESS_KEY"] = args.aws_access_key if args.aws_access_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.ACCESS_KEY_OPTION)
+    os.environ["AWS_SECRET_KEY"] = args.aws_secret_key if args.aws_secret_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.SECRET_KEY_OPTION)
     main({c.ENV_STACK_ID:resources[c.ENV_STACK_ID]}, type('obj', (object,), {}))
 
 

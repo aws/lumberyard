@@ -26,7 +26,9 @@
 #include <native/connection/connectionManager.h>
 #include <native/utilities/ByteArrayStream.h>
 #include <native/AssetManager/AssetRequestHandler.h>
+#include <native/FileProcessor/FileProcessor.h>
 #include <native/utilities/CommunicatorTracePrinter.h>
+#include <native/FileProcessor/FileProcessor.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
@@ -38,7 +40,6 @@
 #include <QCoreApplication>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzCore/std/string/string.h>
-#include <QMessageBox>
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AzToolsFramework/Process/ProcessWatcher.h>
@@ -84,11 +85,6 @@ namespace BatchApplicationManagerPrivate
     }
 }
 #endif  //#if defined(AZ_PLATFORM_WINDOWS) && defined(BATCH_MODE)
-
-#ifdef UNIT_TEST
-#include "native/connection/connectionManager.h"
-#include "native/utilities/UnitTests.h"
-#endif
 
 BatchApplicationManager::BatchApplicationManager(int* argc, char*** argv, QObject* parent)
     : ApplicationManager(argc, argv, parent)
@@ -221,6 +217,13 @@ void BatchApplicationManager::InitAssetScanner()
         m_assetProcessorManager, SLOT(OnAssetScannerStatusChange(AssetProcessor::AssetScanningStatus)));
     QObject::connect(m_assetScanner, SIGNAL(FileOfInterestFound(QString)),
         m_assetProcessorManager, SLOT(AssessModifiedFile(QString)));
+
+    QObject::connect(m_assetScanner, &AssetProcessor::AssetScanner::AssetScanningStatusChanged,
+        m_fileProcessor.get(), &AssetProcessor::FileProcessor::OnAssetScannerStatusChange);
+    QObject::connect(m_assetScanner, &AssetProcessor::AssetScanner::FileOfInterestFound,
+        m_fileProcessor.get(), &AssetProcessor::FileProcessor::FileOfInterestFound);
+    QObject::connect(m_assetScanner, &AssetProcessor::AssetScanner::FolderOfInterestFound,
+        m_fileProcessor.get(), &AssetProcessor::FileProcessor::FileOfInterestFound);
 }
 
 void BatchApplicationManager::DestroyAssetScanner()
@@ -272,6 +275,11 @@ void BatchApplicationManager::InitFileMonitor()
             m_assetProcessorManager, &AssetProcessor::AssetProcessorManager::AssessModifiedFile);
         QObject::connect(newFolderWatch, &FolderWatchCallbackEx::fileRemoved,
             m_assetProcessorManager, &AssetProcessor::AssetProcessorManager::AssessDeletedFile);
+
+        QObject::connect(newFolderWatch, &FolderWatchCallbackEx::fileAdded,
+            m_fileProcessor.get(), &AssetProcessor::FileProcessor::AssessAddedFile);
+        QObject::connect(newFolderWatch, &FolderWatchCallbackEx::fileRemoved,
+            m_fileProcessor.get(), &AssetProcessor::FileProcessor::AssessDeletedFile);
 
         m_folderWatches.push_back(AZStd::unique_ptr<FolderWatchCallbackEx>(newFolderWatch));
         m_watchHandles.push_back(m_fileWatcher.AddFolderWatch(newFolderWatch));
@@ -568,6 +576,7 @@ void BatchApplicationManager::Destroy()
     m_assetRequestHandler = nullptr;
 
     ShutdownBuilderManager();
+    ShutDownFileProcessor();
 
     DestroyConnectionManager();
 
@@ -581,33 +590,6 @@ void BatchApplicationManager::Destroy()
 
 bool BatchApplicationManager::Run()
 {
-    QStringList args = QCoreApplication::arguments();
-#ifdef UNIT_TEST
-    for (QString arg : args)
-    {
-        bool runTests = false;
-
-        if (arg.startsWith("/unittest", Qt::CaseInsensitive))
-        {
-            runTests = true;
-        }
-
-        // Use the AZ testing framework unit tests instead if enabled
-#if !defined(AZ_TESTS_ENABLED)
-        else if (arg.startsWith("--unittest", Qt::CaseInsensitive))
-        {
-            runTests = true;
-            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "the --unittest command line parameter has been deprecated.  please use /unittest[=TestName,TestName,TestName...] instead.");
-        }
-#endif
-        if (runTests)
-        {
-            // Before running the unit tests we are disconnecting from the AssetBuilderInfo bus as we will be making a dummy handler in the unit test
-            AssetProcessor::AssetBuilderInfoBus::Handler::BusDisconnect();
-            return RunUnitTests();
-        }
-    }
-#endif
     bool showErrorMessageOnRegistryProblem = false;
     RegistryCheckInstructions registryCheckInstructions = CheckForRegistryProblems(nullptr, showErrorMessageOnRegistryProblem);
     if (registryCheckInstructions != RegistryCheckInstructions::Continue)
@@ -696,42 +678,6 @@ void BatchApplicationManager::CheckForIdle()
     }
 }
 
-#ifdef UNIT_TEST
-bool BatchApplicationManager::RunUnitTests()
-{
-    if (!ApplicationManager::Activate())
-    {
-        return false;
-    }
-    AssetProcessor::PlatformConfiguration config;
-    ConnectionManager connectionManager(&config);
-    RegisterObjectForQuit(&connectionManager);
-    UnitTestWorker unitTestWorker;
-    int testResult = 1;
-    QObject::connect(&unitTestWorker, &UnitTestWorker::UnitTestCompleted, this, [&](int result)
-        {
-            testResult = result;
-            QuitRequested();
-        });
-
-    m_duringStartup = false;
-    unitTestWorker.Process();
-
-    qApp->exec();
-
-    if (!testResult)
-    {
-        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "All Unit Tests passed.\n");
-    }
-    else
-    {
-        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "WARNING: Unit Tests Failed.\n");
-    }
-    return !testResult ? true : false;
-}
-
-#endif
-
 void BatchApplicationManager::InitBuilderManager()
 {
     AZ_Assert(m_connectionManager != nullptr, "ConnectionManager must be started before the builder manager");
@@ -764,6 +710,22 @@ void BatchApplicationManager::ShutDownAssetDatabase()
     AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Handler::BusDisconnect();
     delete m_assetDatabaseConnection;
     m_assetDatabaseConnection = nullptr;
+}
+
+void BatchApplicationManager::InitFileProcessor() 
+{
+    AssetProcessor::ThreadController<AssetProcessor::FileProcessor>* fileProcessorHelper = new AssetProcessor::ThreadController<AssetProcessor::FileProcessor>();
+
+    addRunningThread(fileProcessorHelper);
+    m_fileProcessor.reset(fileProcessorHelper->initialize([this, &fileProcessorHelper]()
+    {
+        return new AssetProcessor::FileProcessor(m_platformConfiguration);
+    }));
+}
+
+void BatchApplicationManager::ShutDownFileProcessor()
+{
+    m_fileProcessor.reset();
 }
 
 AzToolsFramework::AssetDatabase::AssetDatabaseConnection* BatchApplicationManager::GetAssetDatabaseConnection() const
@@ -842,6 +804,8 @@ bool BatchApplicationManager::Activate()
 
     InitAssetProcessorManager();
     AssetBuilderSDK::InitializeSerializationContext();
+    
+    InitFileProcessor();
 
     InitAssetCatalog();
     InitFileMonitor();
@@ -858,7 +822,7 @@ bool BatchApplicationManager::Activate()
     // inserting in the front so that the application server is notified first
     // and we stop listening for new incoming connections during shutdown
     RegisterObjectForQuit(m_applicationServer, true);
-
+    RegisterObjectForQuit(m_fileProcessor.get());
     RegisterObjectForQuit(m_connectionManager);
     RegisterObjectForQuit(m_assetProcessorManager);
     RegisterObjectForQuit(m_rcController);

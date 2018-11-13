@@ -372,15 +372,32 @@ namespace AZ {
                 return TRUE;
             }
             
-            // the sym path is by default just '.' which isn't even technically the folder that the exe is in.
             // if no override has been set by someone calling SetSymbolPath (which completely overrides this)
-            // then at the very least, add paths that contain known modules.
+            // then at the very least, add paths to current folder, current executable folder and known modules.
             if (!m_szSymPath)
             {
-                AZ::Debug::SymbolStorageDynamicallyLoadedModules& loadedModules = AZ::Debug::GetRegisteredLoadedModules();
                 g_reservedScratchSpace1[0] = 0;
-                azstrcpy(g_reservedScratchSpace1, g_scratchSpaceSize, ".;");
+                char* finalPosition = g_reservedScratchSpace1;
 
+                // Add the current execution path and the current process path
+                DWORD pathLen = GetModuleFileNameA(nullptr, g_reservedScratchSpace1, AZ_ARRAY_SIZE(g_reservedScratchSpace1));
+                if (pathLen > 0)
+                {
+                    char* exeDirEnd = g_reservedScratchSpace1 + pathLen;
+                    AZStd::replace(g_reservedScratchSpace1, exeDirEnd, '\\', '/');
+                    
+                    // g_reservedScratchSpace1 currently contains full path to EXE. Modify to end the string after the last '/'
+                    finalPosition = strrchr(g_reservedScratchSpace1, '/');
+                    if (finalPosition)
+                    {
+                        *finalPosition = 0;
+                    }
+                }
+
+                // Add the current folder
+                azstrcat(g_reservedScratchSpace1, AZ_ARRAY_SIZE(g_reservedScratchSpace1), ";.");
+
+                AZ::Debug::SymbolStorageDynamicallyLoadedModules& loadedModules = AZ::Debug::GetRegisteredLoadedModules();
                 for (int j = 0; j < loadedModules.m_size; ++j)
                 {
                     AZ::Debug::DynamicallyLoadedModuleInfo& module = loadedModules.m_modules[j];

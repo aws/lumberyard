@@ -440,7 +440,7 @@ namespace UnitTest
             {
                 return CheckAllAreTrue(
                     VerifyAddedValidComponents<AddedValidComponentTypes...>::OnOutcomeForEntity(outcome, entity),
-                    VerifyAddedPendingComponents<AndAddedPendingComponents...>::OnOutcomeForEntity(outcome, entity)
+                    VerifyAddedPendingComponents<AddedPendingComponentTypes...>::OnOutcomeForEntity(outcome, entity)
                 );
             }
 
@@ -451,8 +451,8 @@ namespace UnitTest
                 {
                     return CheckAllAreTrue(
                             VerifyAddedValidComponents<AddedValidComponentTypes...>::OnOutcomeForEntity(outcome, entity),
-                            VerifyAddedPendingComponents<AdditionalValidatedComponentTypes...>::OnOutcomeForEntity(outcome, entity),
-                            VerifyAdditionalValidatedComponents<AdditionalValidatedComponentTypes...>::OnOutcomeForEntity(outcome, entity);
+                            VerifyAddedPendingComponents<AddedPendingComponentTypes...>::OnOutcomeForEntity(outcome, entity),
+                            VerifyAdditionalValidatedComponents<AdditionalValidatedComponentTypes...>::OnOutcomeForEntity(outcome, entity)
                     );
                 }
             };
@@ -1094,7 +1094,7 @@ namespace UnitTest
         Entity* FindEntity(const EntityId&) override { return nullptr; }
         SerializeContext* GetSerializeContext() override { return m_serializeContext.get(); }
         BehaviorContext*  GetBehaviorContext() override { return nullptr; }
-        const char* GetExecutableFolder() override { return nullptr; }
+        const char* GetExecutableFolder() const override { return nullptr; }
         const char* GetAppRoot() override { return nullptr; }
         Debug::DrillerManager* GetDrillerManager() override { return nullptr; }
         void EnumerateEntities(const EntityCallback& /*callback*/) override {}
@@ -1221,16 +1221,17 @@ namespace UnitTest
             RegisterComponentDescriptor(VisibleComponent::CreateDescriptor());
             RegisterComponentDescriptor(HiddenComponent::CreateDescriptor());
             RegisterComponentDescriptor(AzToolsFramework::Components::EditorPendingCompositionComponent::CreateDescriptor());
+            RegisterComponentDescriptor(AzToolsFramework::Components::EditorEntityActionComponent::CreateDescriptor());
 
             m_fakeSystemEntity.reset(aznew Entity());
-            m_fakeSystemEntity.get()->AddComponent(aznew AzToolsFramework::Components::EditorEntityActionComponent());
-            m_fakeSystemEntity.get()->Init();
-            m_fakeSystemEntity.get()->Activate();
+            m_fakeSystemEntity->CreateComponent<AzToolsFramework::Components::EditorEntityActionComponent>();
+            m_fakeSystemEntity->Init();
+            m_fakeSystemEntity->Activate();
         }
 
         void TearDown() override
         {
-            m_fakeSystemEntity.get()->Deactivate();
+            m_fakeSystemEntity->Deactivate();
             m_fakeSystemEntity.reset();
             MockApplicationFixture::TearDown();
         }
@@ -1357,5 +1358,67 @@ namespace UnitTest
             EXPECT_EQ(newEntity.FindComponent(azrtti_typeid<VisibleComponent>()), conflictingVisibleComponent);
 
         }
+    }
+
+    TEST_F(EntityTest_Scrubbing, InactiveEntityWithInvalidComponents_AreValidatedByPendingComponents)
+    {
+        // This test takes an entity with known invalid component setup that has not been activated
+        // Adds pending components which will satisfy the invalid component setup
+        // And expects scrub entities to succeed in this case.
+        // Note - this is an edge case when deserializing a module entity or system entity from the app descriptor
+        RegisterComponentDescriptor(LeatherBootsComponent::CreateDescriptor());
+        RegisterComponentDescriptor(WoolSocksComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::Components::GenericComponentWrapper::CreateDescriptor());
+
+        AZ::Entity* testEntity = aznew AZ::Entity("Test Scrubbing Entity");
+        testEntity->CreateComponent<AzToolsFramework::Components::EditorPendingCompositionComponent>();
+        testEntity->Init();  // init to kick off the pending composition request bus, but don't activate because we have invalid components
+
+        EntityList entities;
+        entities.push_back(testEntity);
+
+        // Manually add boots component that requires the socks component, to simulate this being read out of app descriptor
+        testEntity->CreateComponent<AzToolsFramework::Components::GenericComponentWrapper>(aznew LeatherBootsComponent());
+        EntityCompositionRequests::ScrubEntitiesOutcome scrubResults = AZ::Failure<AZStd::string>("Didn't get called");
+        EntityCompositionRequestBus::BroadcastResult(scrubResults, &EntityCompositionRequestBus::Events::ScrubEntities, entities);
+        ASSERT_TRUE(scrubResults.IsSuccess());
+
+        // If component is invalidated by scrubbing, it should now be in the pending set
+        AZ::Entity::ComponentArrayType pendingComponents;
+        AzToolsFramework::EditorPendingCompositionRequestBus::Event(testEntity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents, pendingComponents);
+        ASSERT_EQ(pendingComponents.size(), 1);
+
+        // the boots component should be flagged as invalid, since our entity was not activated
+        EntityCompositionRequests::ScrubEntityResults& resultForTestEntity = scrubResults.GetValue()[entities[0]->GetId()];
+        ASSERT_EQ(resultForTestEntity.m_invalidatedComponents.size(), 1);
+
+        // Don't actually want to keep the component in the pending set, so that we can validate the initial problem, so add it back onto the entity
+        pendingComponents.clear();
+        AZ::Component* invalidComponent = resultForTestEntity.m_invalidatedComponents[0];
+        AzToolsFramework::EditorPendingCompositionRequestBus::Event(testEntity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::RemovePendingComponent, invalidComponent);
+        AzToolsFramework::EditorPendingCompositionRequestBus::Event(testEntity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents, pendingComponents);
+        ASSERT_TRUE(pendingComponents.empty());
+        delete invalidComponent;
+
+        // now add a socks component to the pending set which will fulfill the boots' dependency
+        testEntity->CreateComponent<AzToolsFramework::Components::GenericComponentWrapper>(aznew LeatherBootsComponent());
+        AzToolsFramework::EditorPendingCompositionRequestBus::Event(testEntity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::AddPendingComponent, aznew WoolSocksComponent());
+
+        pendingComponents.clear();
+        AzToolsFramework::EditorPendingCompositionRequestBus::Event(testEntity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents, pendingComponents);
+        ASSERT_EQ(pendingComponents.size(), 1);
+
+        scrubResults = AZ::Failure<AZStd::string>("Didn't get called");
+        EntityCompositionRequestBus::BroadcastResult(scrubResults, &EntityCompositionRequestBus::Events::ScrubEntities, entities);
+        ASSERT_TRUE(scrubResults.IsSuccess());
+
+        resultForTestEntity = scrubResults.GetValue()[entities[0]->GetId()];
+        ASSERT_TRUE(resultForTestEntity.m_invalidatedComponents.empty());
+
+        // this should now succeed because the wool socks component is on the entity
+        testEntity->Activate();
+        ASSERT_EQ(testEntity->GetState(), Entity::State::ES_ACTIVE);
+
+        delete testEntity;
     }
 } // namespace UnitTest

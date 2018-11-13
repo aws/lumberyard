@@ -136,12 +136,7 @@ def update_priority(request, data = None):
 
     if c.KEY_PRIORITIES not in data:
         raise errors.ClientError("The '{}' key is not present in the data '{}'.".format(c.KEY_PRIORITIES, data))
-
-    for priority in data[c.KEY_PRIORITIES]:
-        if 'event' not in priority:
-            raise errors.ClientError("The priority '{}' is missing the attribute 'event'.".format(priority))      
-        if 'precedence' not in priority:
-            raise errors.ClientError("The priority '{}' is missing the attribute 'attributes'.".format(priority))             
+                 
     update_context(request, data)
     return data
 
@@ -172,9 +167,13 @@ def update_context(request, data = None):
 def cli(context, args):
     #this import is only available when you execute via cli
     import util
+    from resource_manager_common import constant
+    credentials = context.aws.load_credentials()
+
     resources = util.get_resources(context)        
     os.environ[c.ENV_DB_TABLE_CONTEXT] = resources[c.RES_DB_TABLE_CONTEXT]   
     os.environ[c.ENV_REGION] = context.config.project_region
-    
+    os.environ["AWS_ACCESS_KEY"] = args.aws_access_key if args.aws_access_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.ACCESS_KEY_OPTION)
+    os.environ["AWS_SECRET_KEY"] = args.aws_secret_key if args.aws_secret_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.SECRET_KEY_OPTION)
     print eval(args.function)( type('obj', (object,), {c.ENV_STACK_ID: resources[c.ENV_STACK_ID]}))
 

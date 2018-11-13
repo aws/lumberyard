@@ -253,8 +253,6 @@ namespace NRemoteCompiler
 
     void CShaderSrv::Init()
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
-
         static RemoteProxyState proxyState;
         m_remoteState = &proxyState;
 
@@ -529,7 +527,10 @@ namespace NRemoteCompiler
                 0x100 |  // Invert clip space position Y
                 0x200 |  // Convert clip sapce position Z
                 0x400 |  // Avoid resource bindings and locations
-                0x8000;  // Do not add GLSL version macro
+                0x800 |  // Do not use an array for temporary registers
+                0x8000 | // Do not add GLSL version macro
+                0x10000| // Avoid shader image load store extension
+                0x20000; // Declare dynamically indexed constant buffers as an array of floats
 
             EShaderLanguage shaderLanguage = GetShaderLanguage();
             switch (shaderLanguage)
@@ -565,8 +566,10 @@ namespace NRemoteCompiler
                 0x1 |    // Each constant buffer will have its own uniform block
                 0x100 |  // Declare inputs and outputs with their semantic name appended
                 0x200 |  // Combine texture/sampler pairs used together into samplers named "texturename_X_samplername"
-                0x400;   // Attribute and uniform explicit location qualifiers are disabled (even if the language version supports that)
-            
+                0x400 |  // Attribute and uniform explicit location qualifiers are disabled (even if the language version supports that)
+                0x800 |  // Global uniforms are not stored in a struct
+                0x2000;  // Do not use an array for temporary registers
+
             #if defined(AZ_PLATFORM_APPLE_OSX)
                 translateFlags |= 0x1000; // Declare dynamically indexed constant buffers as an array of floats
             #endif

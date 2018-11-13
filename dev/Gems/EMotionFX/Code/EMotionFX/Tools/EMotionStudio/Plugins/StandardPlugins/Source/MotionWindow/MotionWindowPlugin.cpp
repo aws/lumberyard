@@ -546,7 +546,15 @@ namespace EMStudio
         for (size_t i = 0; i < numMotionInstances; ++i)
         {
             EMotionFX::MotionInstance* motionInstance = motionInstances[i];
-            motionInstance->InitFromPlayBackInfo(*(motionInstance->GetMotion()->GetDefaultPlayBackInfo()), false);
+            EMotionFX::Motion* motion = motionInstance->GetMotion();
+            EMotionFX::PlayBackInfo* defaultPlaybackInfo = motion->GetDefaultPlayBackInfo();
+            if (!defaultPlaybackInfo)
+            {
+                // Need to make sure we always have a default playback info.
+                motion->CreateDefaultPlayBackInfo();
+                defaultPlaybackInfo = motion->GetDefaultPlayBackInfo();
+            }
+            motionInstance->InitFromPlayBackInfo(*defaultPlaybackInfo, false);
 
             // security check for motion mirroring, disable motion mirroring in case the node
             EMotionFX::ActorInstance* actorInstance = motionInstance->GetActorInstance();

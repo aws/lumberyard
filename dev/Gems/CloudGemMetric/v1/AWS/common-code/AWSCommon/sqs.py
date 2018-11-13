@@ -1,5 +1,5 @@
 import retry
-import boto3
+import boto3_util
 import metric_constant as c
 import math
 import uuid
@@ -38,40 +38,52 @@ def message_attributes(sensitivity_type, compression_mode, payload_type):
 
 class Sqs(object):
 
-    def __init__(self, context, queue_prefix):        
+    def __init__(self, context, queue_prefix, type="fifo"):        
         self.__context = context        
         self.__is_all_under_load = False
-        self.__client = boto3.client('sqs',region_name=os.environ[c.ENV_REGION], api_version='2012-11-05')
+        self.__type = type
+        self.__client = boto3_util.client('sqs', api_version='2012-11-05')
         self.__queue_prefix = queue_prefix            
         self.__queue_url = context[c.KEY_SQS_QUEUE_URL] if c.KEY_SQS_QUEUE_URL in context and context[c.KEY_SQS_QUEUE_URL] else None
-        self.__max_message_size = c.MAXIMUM_MESSAGE_SIZE_IN_BYTES  
+        self.__max_message_size = c.MAXIMUM_MESSAGE_SIZE_IN_BYTES
+        self.__queue_urls = []
         print "Queue prefix", queue_prefix   
 
     @property
     def queue_url(self):
+        if self.__queue_url is None:
+            self.set_queue_url(True)
         return self.__queue_url
+
+    @property
+    def queue_urls(self):
+        if len(self.__queue_urls) == 0:
+            self.set_queue_url(True)
+        return self.__queue_urls
 
     @property
     def is_all_under_load(self):
         if self.__queue_url is None:
             self.set_queue_url(True)
         return self.__is_all_under_load
-            
+
+    @property
+    def number_of_queues(self):
+        return len(self.queue_urls)
 
     def drop(self, receiptid, body, attempts):
         print "Dropping message after {} attempts that had a message body of \n{}".format(attempts, body)
         self.__context[c.KEY_THREAD_POOL].add(retry.try_with_backoff, self.__context, self.__client.delete_message, QueueUrl=self.__queue_url, ReceiptHandle=receiptid)
 
-    def delete_message_batch(self, metrics):
+    def delete_message_batch(self, metrics, queue_url = None):
         start = time.time()      
-        msgs_to_delete = set(self.__context[c.KEY_SUCCEEDED_MSG_IDS])  
-        print "Total number of messages to delete are {}".format(len(msgs_to_delete))
+        msgs_to_delete = set(metrics)          
         threadpool = self.__context[c.KEY_THREAD_POOL]        
-        url = self.__queue_url    
-        msgs_to_delete = util.split(msgs_to_delete, 10, self.__delete_wrapper)
+        url = queue_url or self.__queue_url
+        msgs_to_delete = util.split(msgs_to_delete, 10, self.__delete_wrapper)        
         for msg_set in msgs_to_delete:            
             threadpool.add(retry.try_with_backoff, self.__context, self.__client.delete_message_batch, QueueUrl=url, Entries=msg_set)
-        threadpool.wait()    
+        threadpool.wait()            
         return int(time.time() - start)
 
     def __delete_wrapper(self, item):
@@ -82,10 +94,10 @@ class Sqs(object):
             })
 
 
-    def read_queue(self):    
+    def read_queue(self, url = None):    
         timeout = self.__context[c.KEY_MAX_LAMBDA_TIME] + 30
         response = retry.try_with_backoff(self.__context, self.__client.receive_message, \
-                            QueueUrl=self.__queue_url, \
+                            QueueUrl= url or self.__queue_url, \
                             AttributeNames=['ApproximateReceiveCount'], \
                             MessageAttributeNames=['All'], \
                             MaxNumberOfMessages=10, \
@@ -101,16 +113,24 @@ class Sqs(object):
             queue_url = self.__queue_url 
         return retry.try_with_backoff(self.__context, self.__client.get_queue_attributes, QueueUrl=queue_url,AttributeNames=['ApproximateNumberOfMessagesNotVisible', 'ApproximateNumberOfMessages'])
 
-    def send_message(self, sensitivity_type, data, compression_mode, payload_type):      
+    def send_message(self, data, sensitivity_type, compression_mode, payload_type):      
         params = self.__create_message(sensitivity_type, data, compression_mode, payload_type)
-        params[c.SQS_PARAM_QUEUE_URL] = self.__queue_url     
+        params[c.SQS_PARAM_QUEUE_URL] = self.queue_url     
         response=retry.try_with_backoff(self.__context, self.__client.send_message, **params)
-        return response    
+        return response  
 
+    def send_generic_message(self, data):              
+        params = dict({})                                   
+        params[c.SQS_PARAM_DELAY_SECONDS]= 0        
+        params[c.SQS_PARAM_QUEUE_URL] = self.queue_url   
+        params["MessageBody"]= data          
+        response=retry.try_with_backoff(self.__context, self.__client.send_message, **params)
+        return response   
+    
     #the entire batch is limited to 256KB, send_message is better
     def send_message_batch(self, sensitivity_type, data, compression_mode, payload_type):           
         params = dict({})     
-        params[c.SQS_PARAM_QUEUE_URL] = self.__queue_url  
+        params[c.SQS_PARAM_QUEUE_URL] = self.queue_url  
         params["Entries"] = []
         for message in data:    
             batch_item = self.__create_message(sensitivity_type, message, compression_mode, payload_type)
@@ -129,12 +149,17 @@ class Sqs(object):
         return response['QueueUrls']
 
     def set_queue_url(self, lowest_load_queue):
-        queues = self.get_queues()
+        if len(self.__queue_urls) == 0:
+            queues = self.get_queues()
+        else:
+            queues = self.__queue_urls
+
         message_count = sys.maxint if lowest_load_queue else 0
         idx_to_use = 0
         is_all_under_load = True        
-        idx = 0                
-        for queue_url in queues:            
+        idx = 0          
+        self.__number_of_queues = len(queues)
+        for queue_url in queues:                        
             response = self.get_queue_attributes(queue_url)            
             messages_to_process = int(response['Attributes']['ApproximateNumberOfMessages'])
             inflight_messages = int(response['Attributes']['ApproximateNumberOfMessagesNotVisible']) 
@@ -148,27 +173,36 @@ class Sqs(object):
                 if messages_to_process > message_count and inflight_messages < self.__context[c.KEY_FIFO_GROWTH_TRIGGER]:
                     message_count = messages_to_process
                     idx_to_use = idx
-            print ("Queue '{}' has {} in-flight messages and has {} messages to process.").format(queue_url, inflight_messages, messages_to_process)          
+            util.debug_print(("Queue '{}' has {} in-flight messages and has {} messages to process.").format(queue_url, inflight_messages, messages_to_process))       
             
             is_all_under_load &= (inflight_messages > self.__context[c.KEY_FIFO_GROWTH_TRIGGER])
             idx+=1                
         
         self.__is_all_under_load = is_all_under_load
-        
+        self.__queue_urls = queues 
         self.__queue_url = queues[idx_to_use]
     
-    def add_fifo_queue(self, prefix):
+    def add_fifo_queue(self, prefix, timeout=600):
         range_length = 80 - len(prefix) - 6         
         key = ''.join(random.choice('0123456789ABCDEFGHIJKLMNOPQRSTUVWXZY') for i in range(range_length))               
-        name = "{}{}{}.fifo".format(prefix, c.FILENAME_SEP, key)        
-        print "Adding new SQS FIFO queue named '{}'".format(name)         
-        response = self.__client.create_queue(
-            QueueName=name,
-            Attributes={
-                'FifoQueue': 'true',
-                'VisibilityTimeout': '300'
-            }            
-        )
+        
+        name = "{}{}{}".format(prefix, c.FILENAME_SEP, key) 
+
+        if self.__type == 'fifo': 
+            name = "{}.fifo".format(name)
+
+        print "Adding new SQS queue named '{}'".format(name)  
+        params = {
+            "QueueName": name,
+            "Attributes": {
+                "VisibilityTimeout": str(timeout)
+            }
+        }
+
+        if self.__type == 'fifo':
+            params["Attributes"]["FifoQueue"] = 'true'
+
+        response = self.__client.create_queue(**params)
         return name
 
     def get_max_message_size(self):
@@ -188,7 +222,7 @@ class Sqs(object):
         params = dict({})     
         params[c.SQS_PARAM_MESSAGE_GROUP_ID]= uuid.uuid1().hex          
         params[c.SQS_PARAM_MESSAGE_DEPULICATIONID]= uuid.uuid1().hex
-        params[c.SQS_PARAM_DELAY_SECONDS]= 0
+        params[c.SQS_PARAM_DELAY_SECONDS]= 0            
         params[c.SQS_PARAM_MESSAGE_ATTRIBUTES]= message_attributes(sensitivity_type.identifier, compression_mode.identifier, payload_type.identifier)
         
         compression_mode.add_message_payload(params, data) 

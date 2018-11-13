@@ -73,7 +73,12 @@ namespace EMotionFX
                     ->Event("AttachToEntity", &ActorComponentRequestBus::Events::AttachToEntity)
                     ->Event("DetachFromEntity", &ActorComponentRequestBus::Events::DetachFromEntity)
                     ->Event("DebugDrawRoot", &ActorComponentRequestBus::Events::DebugDrawRoot)
+                    ->Event("GetRenderCharacter", &ActorComponentRequestBus::Events::GetRenderCharacter)
+                    ->Event("SetRenderCharacter", &ActorComponentRequestBus::Events::SetRenderCharacter)
+                    ->VirtualProperty("RenderCharacter", "GetRenderCharacter", "SetRenderCharacter")
                 ;
+
+                behaviorContext->Class<ActorComponent>()->RequestBus("ActorComponentRequestBus");
 
                 behaviorContext->EBus<ActorComponentNotificationBus>("ActorComponentNotificationBus")
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::List)
@@ -192,6 +197,25 @@ namespace EMotionFX
         void ActorComponent::DebugDrawRoot(bool enable)
         {
             m_debugDrawRoot = enable;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        bool ActorComponent::GetRenderCharacter() const
+        {
+            return m_configuration.m_renderCharacter;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        void ActorComponent::SetRenderCharacter(bool enable)
+        {
+            if (m_configuration.m_renderCharacter != enable)
+            {
+                m_configuration.m_renderCharacter = enable;
+                if (m_renderNode)
+                {
+                    m_renderNode->Hide(!m_configuration.m_renderCharacter);
+                }
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -390,6 +414,10 @@ namespace EMotionFX
             }
         }
 
+        int ActorComponent::GetTickOrder()
+        {
+            return AZ::TICK_PRE_RENDER;
+        }
 
         //////////////////////////////////////////////////////////////////////////
         void ActorComponent::OnActorInstanceCreated(EMotionFX::ActorInstance* actorInstance)

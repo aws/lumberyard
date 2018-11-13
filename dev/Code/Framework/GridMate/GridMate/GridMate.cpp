@@ -202,12 +202,6 @@ GridMateImpl::GridMateImpl(const GridMateDesc& desc)
 
     m_storageService = nullptr;
     m_isCustomStorageService = false;
-
-    AZ_TracePrintf("GridMate", "\n");
-    AZ_TracePrintf("GridMate", "================================================\n");
-    AZ_TracePrintf("GridMate", "= GridMate initialized: Version %02d.%02d.%04d     =\n", GM_BUILD_VERSION / 100, GM_BUILD_VERSION % 100, GM_BUILD_NUMBER);
-    AZ_TracePrintf("GridMate", "= Build on: %14s %11s         =\n", GM_BUILD_DATE, GM_BUILD_TIME);
-    AZ_TracePrintf("GridMate", "================================================\n\n");
 }
 
 //=========================================================================
@@ -240,12 +234,6 @@ GridMateImpl::~GridMateImpl()
             delete registeredService.m_service;
         }
     }
-
-    AZ_TracePrintf("GridMate", "\n");
-    AZ_TracePrintf("GridMate", "================================================\n");
-    AZ_TracePrintf("GridMate", "= GridMate destroyed: Version %02d.%02d.%04d       =\n", GM_BUILD_VERSION / 100, GM_BUILD_VERSION % 100, GM_BUILD_NUMBER);
-    AZ_TracePrintf("GridMate", "= Build on: %14s %11s         =\n", GM_BUILD_DATE, GM_BUILD_TIME);
-    AZ_TracePrintf("GridMate", "================================================\n\n");
 }
 
 void GridMateImpl::RegisterService(GridMateServiceId id, GridMateService* service, bool delegateOwnership)

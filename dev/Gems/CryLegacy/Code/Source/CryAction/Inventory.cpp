@@ -85,8 +85,6 @@ bool CInventory::GetEntityPoolSignature(TSerialize signature)
 //------------------------------------------------------------------------
 void CInventory::FullSerialize(TSerialize ser)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Inventory serialization");
-
     IEntityPoolManager* pMgr = gEnv->pEntitySystem->GetIEntityPoolManager();
 
     if (pMgr && !gEnv->pSystem->IsSerializingFile())

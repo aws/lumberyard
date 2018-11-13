@@ -22,6 +22,8 @@
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <LyShine/Bus/UiEditorChangeNotificationBus.h>
 
+#include <IFont.h>
+
 class AssetTreeEntry;
 
 class EditorWindow
@@ -30,6 +32,7 @@ class EditorWindow
     , public UiEditorDLLBus::Handler
     , public UiEditorChangeNotificationBus::Handler
     , public AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler
+    , public FontNotificationBus::Handler
 {
     Q_OBJECT
 
@@ -75,6 +78,10 @@ public: // member functions
     void EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) override;
     void EntryRemoved(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) override;
     // ~AssetBrowserModelNotificationBus
+
+    // FontNotifications
+    void OnFontsReloaded() override;
+    // ~FontNotifications
 
     AZ::EntityId GetCanvas();
 

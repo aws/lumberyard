@@ -22,23 +22,20 @@
 
 namespace AZ
 {
-	class ReflectContext;
+    class ReflectContext;
 }
 
 namespace StarterGameGem
 {
-
-
-	/*!
-	* ParticleManagerComponentRequests
-	* Messages serviced by the ParticleManagerComponent
-	*/
-	class ParticleManagerComponentRequests
-		: public AZ::ComponentBus
-	{
-
-	public:
-		virtual ~ParticleManagerComponentRequests() {}
+    /*!
+    * ParticleManagerComponentRequests
+    * Messages serviced by the ParticleManagerComponent
+    */
+    class ParticleManagerComponentRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        virtual ~ParticleManagerComponentRequests() {}
 
         struct ParticleSpawnerParams
         {
@@ -53,47 +50,43 @@ namespace StarterGameGem
             AZ::Vector3 m_impulse = AZ::Vector3::CreateZero();
         };
 
-		//! Spawns a particle.
+        //! Spawns a particle.
         virtual void SpawnParticle(const ParticleSpawnerParams& params) = 0;
 
         virtual void SpawnDecal(const DecalSelectorComponentRequests::DecalSpawnerParams& params) = 0;
 
         virtual bool AcceptsDecals(const DecalSelectorComponentRequests::DecalSpawnerParams& params) = 0;
+    };
 
-	};
-
-	using ParticleManagerComponentRequestsBus = AZ::EBus<ParticleManagerComponentRequests>;
+    using ParticleManagerComponentRequestsBus = AZ::EBus<ParticleManagerComponentRequests>;
 
 
-	class ParticleManagerComponent
-		: public AZ::Component
-		, private ParticleManagerComponentRequestsBus::Handler
-	{
-	public:
-		AZ_COMPONENT(ParticleManagerComponent, "{35991A4D-69E8-4520-85DB-E8866225CAAE}");
+    class ParticleManagerComponent
+        : public AZ::Component
+        , private ParticleManagerComponentRequestsBus::Handler
+    {
+    public:
+        AZ_COMPONENT(ParticleManagerComponent, "{35991A4D-69E8-4520-85DB-E8866225CAAE}");
 
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::Component interface implementation
-		void Init() override;
-		void Activate() override;
-		void Deactivate() override;
-		//////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::Component interface implementation
+        void Init() override;
+        void Activate() override;
+        void Deactivate() override;
+        //////////////////////////////////////////////////////////////////////////
 
-		// Required Reflect function.
-		static void Reflect(AZ::ReflectContext* context);
+        // Required Reflect function.
+        static void Reflect(AZ::ReflectContext* context);
 
-		//////////////////////////////////////////////////////////////////////////
-		// ParticleManagerComponentRequestsBus::Handler
-		void SpawnParticle(const ParticleSpawnerParams& params) override;
+        //////////////////////////////////////////////////////////////////////////
+        // ParticleManagerComponentRequestsBus::Handler
+        void SpawnParticle(const ParticleSpawnerParams& params) override;
 
         void SpawnDecal(const DecalSelectorComponentRequests::DecalSpawnerParams& params) override;
 
         bool AcceptsDecals(const DecalSelectorComponentRequests::DecalSpawnerParams& params) override;
         //////////////////////////////////////////////////////////////////////////
 
-	private:
-
-
-	};
-
+    private:
+    };
 } // namespace StarterGameGem

@@ -18,6 +18,10 @@
 #include "LensFlareLibrary.h"
 #include "LensFlareUtil.h"
 
+#include <AzCore/base.h>
+#include <AzCore/XML/rapidxml.h>
+#include <AzCore/std/string/wildcard.h>
+
 //////////////////////////////////////////////////////////////////////////
 // CLensFlareManager implementation.
 //////////////////////////////////////////////////////////////////////////
@@ -26,11 +30,13 @@ CLensFlareManager::CLensFlareManager()
 {
     m_bUniqNameMap = true;
     m_pLevelLibrary = (CBaseLibrary*)AddLibrary("Level", true);
+    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
 CLensFlareManager::~CLensFlareManager()
 {
+    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -169,4 +175,56 @@ IDataBaseLibrary* CLensFlareManager::LoadLibrary(const QString& filename, bool b
     pLib->SetFilename(filename);
 
     return pLib;
+}
+
+
+bool CLensFlareManager::IsLensFlareLibraryXML(const char* fileSourceFilePath)
+{
+    if ((!fileSourceFilePath) || (!AZStd::wildcard_match("*.xml", fileSourceFilePath)))
+    {
+        return false;
+    }
+
+    using namespace AZ::IO;
+
+    bool isLensFlareLibrary = false;
+
+    // we are forced to read the asset to discover its type since "xml" was the chosen extension.
+    SystemFile::SizeType fileSize = SystemFile::Length(fileSourceFilePath);
+    if (fileSize > 0)
+    {
+        AZStd::vector<char> buffer(fileSize + 1);
+        buffer[fileSize] = 0;
+        if (!AZ::IO::SystemFile::Read(fileSourceFilePath, buffer.data(), fileSize))
+        {
+            return false;
+        }
+
+        AZ::rapidxml::xml_document<char>* xmlDoc = azcreate(AZ::rapidxml::xml_document<char>, (), AZ::SystemAllocator, "LensFlareLibrary Temp XML Reader");
+        if (xmlDoc->parse<AZ::rapidxml::parse_no_data_nodes>(buffer.data()))
+        {
+            AZ::rapidxml::xml_node<char>* xmlRootNode = xmlDoc->first_node();
+            if (xmlRootNode)
+            {
+                if (azstricmp(xmlRootNode->name(), "LensFlareLibrary") == 0)
+                {
+                    isLensFlareLibrary = true;
+                }
+            }
+        }
+
+        azdestroy(xmlDoc, AZ::SystemAllocator, AZ::rapidxml::xml_document<char>);
+    }
+
+    return isLensFlareLibrary;
+}
+
+
+AzToolsFramework::AssetBrowser::SourceFileDetails CLensFlareManager::GetSourceFileDetails(const char* fullSourceFileName)
+{
+    if (IsLensFlareLibraryXML(fullSourceFileName))
+    {
+        return AzToolsFramework::AssetBrowser::SourceFileDetails("Editor/Icons/AssetBrowser/LensFlare_16.png");
+    }
+    return AzToolsFramework::AssetBrowser::SourceFileDetails();
 }

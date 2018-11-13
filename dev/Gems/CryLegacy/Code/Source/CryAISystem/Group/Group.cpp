@@ -18,7 +18,7 @@
 #include "ObjectContainer.h"
 #include "PipeUser.h"
 
-Group::TargetInfos Group::s_targetInfos;
+StaticInstance<Group::TargetInfos> Group::s_targetInfos;
 
 Group::Group()
     : m_targetThreat(AITHREAT_NONE)

@@ -41,7 +41,6 @@ public:
 
     // IConvertor methods.
     virtual ICompiler* CreateCompiler();
-    virtual bool SupportsMultithreading() const { return false; }
     virtual const char* GetExt(int index) const;
 
 private:

@@ -460,8 +460,8 @@ void CHeightmap::Resize(int iWidth, int iHeight, int unitSize, bool bCleanOld, b
             {
                 bNoReentrant = true;
                 // This will reload the level with the new terrain size.
-                GetIEditor()->GetDocument()->Hold("_tmpResize");
-                GetIEditor()->GetDocument()->Fetch("_tmpResize", false, true);
+                GetIEditor()->GetDocument()->Hold("$tmp_resize"); // conform to the "$tmp[0-9]*_" temp file convention
+                GetIEditor()->GetDocument()->Fetch("$tmp_resize", false, true);
                 bNoReentrant = false;
             }
         }

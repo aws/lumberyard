@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYSYSTEM_ZIPENCRYPT_H
-#define CRYINCLUDE_CRYSYSTEM_ZIPENCRYPT_H
 #pragma once
 
 
@@ -20,15 +18,7 @@
 #include "ZipDirStructures.h"
 
 
-#ifdef INCLUDE_LIBTOMCRYPT
-    #define USE_LTM
-    #define LTM_DESC
-    #include <tomcrypt.h>
-    #undef byte // tomcrypt defines a byte macro which conflicts with out byte data type
-    #define STREAM_CIPHER_NAME "twofish"
-extern prng_state g_yarrow_prng_state;
-extern rsa_key g_rsa_key_public_for_sign;
-#endif //INCLUDE_LIBTOMCRYPT
+#include "CryTomcrypt.h"
 
 
 namespace ZipEncrypt
@@ -58,4 +48,3 @@ namespace ZipEncrypt
 #endif  //INCLUDE_LIBTOMCRYPT
 }
 
-#endif // CRYINCLUDE_CRYSYSTEM_ZIPENCRYPT_H

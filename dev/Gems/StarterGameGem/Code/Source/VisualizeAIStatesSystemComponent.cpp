@@ -11,7 +11,7 @@
 */
 
 #include "StarterGameGem_precompiled.h"
-#include "VisualiseAIStatesSystemComponent.h"
+#include "VisualizeAIStatesSystemComponent.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -63,24 +63,24 @@ namespace StarterGameGem
         ~AIStatesHolder() = default;
     };
 
-	VisualiseAIStatesSystemComponent* g_vaissc_instance = nullptr;
+	VisualizeAIStatesSystemComponent* g_vaissc_instance = nullptr;
 
-	VisualiseAIStatesSystemComponent* VisualiseAIStatesSystemComponent::GetInstance()
+	VisualizeAIStatesSystemComponent* VisualizeAIStatesSystemComponent::GetInstance()
 	{
 		return g_vaissc_instance;
 	}
 
-	void VisualiseAIStatesSystemComponent::Reflect(AZ::ReflectContext* context)
+	void VisualizeAIStatesSystemComponent::Reflect(AZ::ReflectContext* context)
 	{
 		if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
 		{
-			serializeContext->Class<VisualiseAIStatesSystemComponent, AZ::Component>()
+			serializeContext->Class<VisualizeAIStatesSystemComponent, AZ::Component>()
 				->Version(1)
 			;
 
 			if (AZ::EditContext* editContext = serializeContext->GetEditContext())
 			{
-				editContext->Class<VisualiseAIStatesSystemComponent>("Visualise A.I. States System", "Renders visualisations to indicate each A.I. state")
+				editContext->Class<VisualizeAIStatesSystemComponent>("Visualize A.I. States System", "Renders visualisations to indicate each A.I. state")
 					->ClassElement(AZ::Edit::ClassElements::EditorData, "")
 						->Attribute(AZ::Edit::Attributes::Category, "Game")
 						->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
@@ -101,30 +101,30 @@ namespace StarterGameGem
                 ->Constant("Tracking", BehaviorConstant(AIStates::AI_Tracking))
                 ;
 
-			behaviorContext->EBus<VisualiseAIStatesSystemRequestBus>("VisualiseAIStatesSystemRequestBus")
-                ->Event("SetAIState", &VisualiseAIStatesSystemRequestBus::Events::SetAIState)
-                ->Event("ClearAIState", &VisualiseAIStatesSystemRequestBus::Events::ClearAIState)
+			behaviorContext->EBus<VisualizeAIStatesSystemRequestBus>("VisualizeAIStatesSystemRequestBus")
+                ->Event("SetAIState", &VisualizeAIStatesSystemRequestBus::Events::SetAIState)
+                ->Event("ClearAIState", &VisualizeAIStatesSystemRequestBus::Events::ClearAIState)
 				;
 		}
 	}
 
-	void VisualiseAIStatesSystemComponent::Activate()
+	void VisualizeAIStatesSystemComponent::Activate()
 	{
-		VisualiseAIStatesSystemRequestBus::Handler::BusConnect();
+		VisualizeAIStatesSystemRequestBus::Handler::BusConnect();
 		AZ::TickBus::Handler::BusConnect();
 
         g_vaissc_instance = this;
 	}
 
-	void VisualiseAIStatesSystemComponent::Deactivate()
+	void VisualizeAIStatesSystemComponent::Deactivate()
 	{
-		VisualiseAIStatesSystemRequestBus::Handler::BusDisconnect();
+		VisualizeAIStatesSystemRequestBus::Handler::BusDisconnect();
 		//AZ::TickBus::Handler::BusDisconnect();
 
         g_vaissc_instance = nullptr;
 	}
 
-	void VisualiseAIStatesSystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+	void VisualizeAIStatesSystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
 	{
 		IRenderAuxGeom* renderAuxGeom = gEnv->pRenderer->GetIRenderAuxGeom();
 		SAuxGeomRenderFlags flags;
@@ -151,7 +151,7 @@ namespace StarterGameGem
 		}
 	}
 
-    void VisualiseAIStatesSystemComponent::SetAIState(const AZ::EntityId& entityId, int state)
+    void VisualizeAIStatesSystemComponent::SetAIState(const AZ::EntityId& entityId, int state)
     {
         // Clamp the state so we can correctly colour it.
         if (state >= AIStates::AI_Count || state < AIStates::AI_Unknown)
@@ -173,7 +173,7 @@ namespace StarterGameGem
         }
     }
 
-    void VisualiseAIStatesSystemComponent::ClearAIState(const AZ::EntityId& entityId)
+    void VisualizeAIStatesSystemComponent::ClearAIState(const AZ::EntityId& entityId)
     {
         for (AZStd::list<AIState>::iterator it = m_states.begin(); it != m_states.end(); ++it)
         {
@@ -185,7 +185,7 @@ namespace StarterGameGem
         }
     }
 
-    VisualiseAIStatesSystemComponent::AIState* const VisualiseAIStatesSystemComponent::FindState(const AZ::EntityId& entityId)
+    VisualizeAIStatesSystemComponent::AIState* const VisualizeAIStatesSystemComponent::FindState(const AZ::EntityId& entityId)
     {
         AZStd::list<AIState>::iterator it;
         for (it = m_states.begin(); it != m_states.end(); ++it)

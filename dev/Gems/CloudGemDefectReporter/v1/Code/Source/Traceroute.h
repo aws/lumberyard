@@ -14,6 +14,6 @@ namespace CloudGemDefectReporter
         int GetTimeoutMilliseconds() const { return m_timeoutMilliSeconds; };
 
     private:
-        int m_timeoutMilliSeconds{1000 * 90}; // defaults to 1.5 minute
+        int m_timeoutMilliSeconds{1000 * 240}; // defaults to 4 minute
     };
 }

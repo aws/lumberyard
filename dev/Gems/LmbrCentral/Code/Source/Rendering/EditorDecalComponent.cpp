@@ -287,6 +287,7 @@ namespace LmbrCentral
         SDecalProperties decalProperties = m_configuration.GetDecalProperties(transform);
         m_decalRenderNode->SetDecalProperties(decalProperties);
 
+        m_renderFlags |= ERF_COMPONENT_ENTITY;
         m_decalRenderNode->SetRndFlags(m_renderFlags);
         m_decalRenderNode->SetMatrix(AZTransformToLYTransform(transform));
         m_decalRenderNode->SetMinSpec(static_cast<int>(decalProperties.m_minSpec));

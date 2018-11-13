@@ -56,7 +56,7 @@ namespace AzToolsFramework
             }
         }
 
-        void EditorSelectionAccentSystemComponent::AfterEntitySelectionChanged()
+        void EditorSelectionAccentSystemComponent::AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList&, const AzToolsFramework::EntityIdList&)
         {
             if (!m_isAccentRefreshQueued)
             {

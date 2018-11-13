@@ -68,7 +68,7 @@ namespace UnitTest
             ComponentApplication app;
             ComponentApplication::Descriptor desc;
             desc.m_useExistingAllocator = true;
-            app.Create(desc);
+            AZ::Entity* systemEntity = app.Create(desc);
 
             Data::AssetManager::Instance().RegisterHandler(aznew SliceAssetHandler(app.GetSerializeContext()), AZ::AzTypeInfo<AZ::SliceAsset>::Uuid());
 
@@ -111,6 +111,7 @@ namespace UnitTest
             context.GetRootSlice()->GetEntities(entities);
             AZ_TEST_ASSERT(entities.size() == 1);
 
+            delete systemEntity;
             app.Destroy();
         }
 

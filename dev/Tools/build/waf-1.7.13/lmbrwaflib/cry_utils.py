@@ -119,10 +119,10 @@ def append_to_unique_list(unique_list,x):
 #############################################################################
 # Utility method to perform remove duplicates from a list while preserving the order (ie not using sets)
 @conf
-def clean_duplicates_in_list(list,debug_list_name):
+def clean_duplicates_in_list(input_list,debug_list_name):
     clean_list = []
     distinct_set = set()
-    for item in list:
+    for item in input_list:
         if item not in distinct_set:
             clean_list.append(item)
             distinct_set.add(item)
@@ -400,6 +400,27 @@ def get_output_folders(self, platform, configuration, ctx=None, target=None):
         else:
             # For relative path, prefix binary output folder with game project folder
             output_nodes.append(self.path.make_node(path))
+
+    return output_nodes
+
+@conf
+def get_standard_host_output_folders(self):
+    '''
+    Get a list of the standard output folders for the native host platform
+    '''
+    host = Utils.unversioned_sys_platform()
+    if host == 'win32':
+        host = 'win'
+
+    output_nodes = []
+    launch_node = self.launch_node()
+
+    host_targets = self.get_platform_alias(host)
+    if host_targets:
+        for target in host_targets:
+            output_folder = get_output_folder_name(self, target, 'profile')
+            node = launch_node.make_node(output_folder)
+            output_nodes.append(node)
 
     return output_nodes
 

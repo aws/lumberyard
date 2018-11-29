@@ -25,12 +25,12 @@
 namespace Serialization {
     class IArchive;
 
-    struct LessStrCmp
-        : std::binary_function<const char*, const char*, bool>
+    struct EqualStrCmp
+        : AZStd::binary_function<const char*, const char*, bool>
     {
         bool operator()(const char* l, const char* r) const
         {
-            return strcmp(l, r) < 0;
+            return strcmp(l, r) == 0;
         }
     };
 
@@ -85,9 +85,9 @@ namespace Serialization {
         StringListStatic names_;
         StringListStatic labels_;
 
-        typedef AZStd::unordered_map<const char*, int, AZStd::hash<const char*>, AZStd::equal_to<const char*>, AZ::StdLegacyAllocator> NameToValue;
+        typedef AZStd::unordered_map<const char*, int, AZStd::hash<const char*>, EqualStrCmp, AZ::StdLegacyAllocator> NameToValue;
         NameToValue nameToValue_;
-        typedef AZStd::unordered_map<const char*, int, AZStd::hash<const char*>, AZStd::equal_to<const char*>, AZ::StdLegacyAllocator> LabelToValue;
+        typedef AZStd::unordered_map<const char*, int, AZStd::hash<const char*>, EqualStrCmp, AZ::StdLegacyAllocator> LabelToValue;
         LabelToValue labelToValue_;
         typedef AZStd::unordered_map<int, int, AZStd::hash<int>, AZStd::equal_to<int>, AZ::StdLegacyAllocator> ValueToIndex;
         ValueToIndex valueToIndex_;

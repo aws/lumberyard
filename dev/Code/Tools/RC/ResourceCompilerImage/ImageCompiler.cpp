@@ -449,6 +449,8 @@ static string AutoselectPreset(const ConvertContext& CC, const uint32 width, con
     const char* const defaultPow2Alpha  = "AlbedoWithGenericAlpha";
     const char* const defaultNonpow2    = "ReferenceImage";
     const char* const defaultHeight     = "Displacement";
+    const char* const defaultTerrain   = "Terrain_Albedo";
+    const char* const defaultHighpassed   = "Terrain_Albedo_HighPassed";
 
     const string fileName = CC.config->GetAsString("overwritefilename", CC.sourceFileNameOnly, CC.sourceFileNameOnly);
 
@@ -478,6 +480,14 @@ static string AutoselectPreset(const ConvertContext& CC, const uint32 width, con
     else if (SuffixUtil::HasSuffix(fileName.c_str(), '_', "displ"))
     {
         presetName = defaultHeight;
+    }
+    else if (SuffixUtil::HasSuffix(fileName.c_str(), '_', "diffT"))
+    {
+        presetName = defaultTerrain;
+    }
+    else if (SuffixUtil::HasSuffix(fileName.c_str(), '_', "diffTHP"))
+    {
+        presetName = defaultHighpassed;
     }
     else if (SuffixUtil::HasSuffix(fileName.c_str(), '_', "cm") || (StringHelpers::EndsWithIgnoreCase(CC.sourceFileNameOnly, ".hdr")))
     {

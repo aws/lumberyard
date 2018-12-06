@@ -456,6 +456,29 @@ void CNULLRenderAuxGeom::DrawTriangles(const Vec3* v, uint32 numPoints, const vt
 #endif
 }
 
+void CNULLRenderAuxGeom::DrawAABB(const AABB& aabb, bool bSolid, const ColorB& col, const EBoundingBoxDrawStyle& bbDrawStyle)
+{
+#ifdef ENABLE_WGL_DEBUG_RENDERER
+    // Bottom quad
+    DrawLine(Vec3(aabb.min.x, aabb.min.y, aabb.min.z), col, Vec3(aabb.max.x, aabb.min.y, aabb.min.z), col);
+    DrawLine(Vec3(aabb.min.x, aabb.min.y, aabb.min.z), col, Vec3(aabb.min.x, aabb.max.y, aabb.min.z), col);
+    DrawLine(Vec3(aabb.max.x, aabb.max.y, aabb.min.z), col, Vec3(aabb.max.x, aabb.min.y, aabb.min.z), col);
+    DrawLine(Vec3(aabb.max.x, aabb.max.y, aabb.min.z), col, Vec3(aabb.min.x, aabb.max.y, aabb.min.z), col);
+
+    // Top quad
+    DrawLine(Vec3(aabb.min.x, aabb.min.y, aabb.max.z), col, Vec3(aabb.max.x, aabb.min.y, aabb.max.z), col);
+    DrawLine(Vec3(aabb.min.x, aabb.min.y, aabb.max.z), col, Vec3(aabb.min.x, aabb.max.y, aabb.max.z), col);
+    DrawLine(Vec3(aabb.max.x, aabb.max.y, aabb.max.z), col, Vec3(aabb.max.x, aabb.min.y, aabb.max.z), col);
+    DrawLine(Vec3(aabb.max.x, aabb.max.y, aabb.max.z), col, Vec3(aabb.min.x, aabb.max.y, aabb.max.z), col);
+
+    // Vertical edges
+    DrawLine(Vec3(aabb.min.x, aabb.min.y, aabb.min.z), col, Vec3(aabb.min.x, aabb.min.y, aabb.max.z), col);
+    DrawLine(Vec3(aabb.max.x, aabb.min.y, aabb.min.z), col, Vec3(aabb.max.x, aabb.min.y, aabb.max.z), col);
+    DrawLine(Vec3(aabb.min.x, aabb.max.y, aabb.min.z), col, Vec3(aabb.min.x, aabb.max.y, aabb.max.z), col);
+    DrawLine(Vec3(aabb.max.x, aabb.max.y, aabb.min.z), col, Vec3(aabb.max.x, aabb.max.y, aabb.max.z), col);
+#endif
+}
+
 void CNULLRenderAuxGeom::DrawSphere(const Vec3& pos, float radius, const ColorB& col, bool drawShaded)
 {
 #ifdef ENABLE_WGL_DEBUG_RENDERER

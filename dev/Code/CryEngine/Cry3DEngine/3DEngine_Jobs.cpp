@@ -289,7 +289,7 @@ void C3DEngine::RenderRenderNode_ShadowPass(IShadowCaster* pShadowCaster, const 
         rParams.fDistance = sqrt_tpl(Distance::Point_AABBSq(vCamPos, objBox)) * passInfo.GetZoomFactor();
         rParams.lodValue = pRenderNode->ComputeLod(wantedLod, passInfo);
         rParams.rendItemSorter = rendItemSorter.GetValue();
-
+        rParams.pRenderNode = pRenderNode;
         pRenderNode->Render(rParams, passInfo);
     }
     break;

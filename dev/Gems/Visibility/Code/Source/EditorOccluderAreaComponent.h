@@ -16,6 +16,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/Manipulators/EditorVertexSelection.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <LegacyEntityConversion/LegacyEntityConversionBus.h>
 #include <OccluderAreaComponentBus.h>
 #include "OccluderAreaComponent.h"
@@ -47,6 +48,7 @@ namespace Visibility
         , private OccluderAreaRequestBus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
+        , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
         , public AZ::TransformNotificationBus::Handler
     {
         friend class OccluderAreaConverter;
@@ -75,6 +77,8 @@ namespace Visibility
 
         // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
+        AZ::Aabb GetEditorSelectionBounds() override;
 
         /// Update the object runtime after changes to the Configuration.
         /// Called by the default RequestBus SetXXX implementations,

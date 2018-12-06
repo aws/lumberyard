@@ -15,6 +15,7 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/Manipulators/EditorVertexSelection.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
@@ -53,6 +54,7 @@ namespace Visibility
         , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
         , private AzToolsFramework::EditorEntityInfoNotificationBus::Handler
+        , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
         , public AZ::TransformNotificationBus::Handler
     {
         friend class VisAreaConverter;
@@ -76,6 +78,8 @@ namespace Visibility
 
         // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
+        AZ::Aabb GetEditorSelectionBounds() override;
 
         /// Apply the component's settings to the underlying vis area
         void UpdateVisArea();

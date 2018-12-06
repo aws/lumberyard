@@ -168,6 +168,7 @@ namespace Visibility
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
         EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
 
         //Call OnTransformChanged manually to cache current transform since it won't be called
         //automatically for us when the level starts up.
@@ -187,6 +188,7 @@ namespace Visibility
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
         PortalRequestBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect(GetEntityId());
         Base::Deactivate();
     }
 
@@ -467,6 +469,18 @@ namespace Visibility
         m_vertexSelection.Create(GetEntityId(), managerId,
             AzToolsFramework::TranslationManipulator::Dimensions::Three,
             AzToolsFramework::ConfigureTranslationManipulatorAppearance3d);
+    }
+
+    AZ::Aabb EditorPortalComponent::GetEditorSelectionBounds()
+    {
+        AZ::Aabb bbox = AZ::Aabb::CreateNull();
+        for (auto vertex : m_config.m_vertices)
+        {
+            bbox.AddPoint(vertex);
+        }
+        bbox.AddPoint(bbox.GetMax() + AZ::Vector3(0.0f, 0.0f, m_config.m_height));
+        bbox.ApplyTransform(GetWorldTM());
+        return bbox;
     }
 
     AZ::LegacyConversion::LegacyConversionResult PortalConverter::ConvertEntity(CBaseObject* entityToConvert)

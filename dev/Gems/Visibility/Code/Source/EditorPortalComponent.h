@@ -14,6 +14,7 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 #include <AzToolsFramework/Manipulators/EditorVertexSelection.h>
@@ -50,6 +51,7 @@ namespace Visibility
         , private PortalRequestBus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
+        , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
         , public AZ::TransformNotificationBus::Handler
     {
         friend class PortalConverter;
@@ -99,6 +101,8 @@ namespace Visibility
 
         // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
+        AZ::Aabb GetEditorSelectionBounds() override;
 
         /// Update the object runtime after changes to the Configuration.
         /// Called by the default RequestBus SetXXX implementations,

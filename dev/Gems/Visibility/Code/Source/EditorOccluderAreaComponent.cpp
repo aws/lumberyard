@@ -168,6 +168,7 @@ namespace Visibility
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
         EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
 
         UpdateObject();
     }
@@ -180,6 +181,7 @@ namespace Visibility
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
         OccluderAreaRequestBus::Handler::BusDisconnect(GetEntityId());
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect(GetEntityId());
         Base::Deactivate();
     }
 
@@ -293,6 +295,17 @@ namespace Visibility
         {
             UpdateObject();
         };
+    }
+
+    AZ::Aabb EditorOccluderAreaComponent::GetEditorSelectionBounds()
+    {
+        AZ::Aabb bbox = AZ::Aabb::CreateNull();
+        for (auto vertex : m_config.m_vertices)
+        {
+            bbox.AddPoint(vertex);
+        }
+        bbox.ApplyTransform(GetWorldTM());
+        return bbox;
     }
 
     AZ::LegacyConversion::LegacyConversionResult OccluderAreaConverter::ConvertEntity(CBaseObject* entityToConvert)

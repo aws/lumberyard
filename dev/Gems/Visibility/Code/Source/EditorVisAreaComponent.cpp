@@ -196,6 +196,7 @@ namespace Visibility
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorEntityInfoNotificationBus::Handler::BusConnect();
         EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
 
         //Apply callbacks to VertexContainer directly
         auto containerChanged = [this]()
@@ -258,7 +259,7 @@ namespace Visibility
         AzToolsFramework::EditorEntityInfoNotificationBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
         VisAreaComponentRequestBus::Handler::BusDisconnect(GetEntityId());
-
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect(GetEntityId());
         Base::Deactivate();
     }
 
@@ -442,6 +443,18 @@ namespace Visibility
         m_vertexSelection.Create(GetEntityId(), managerId,
             AzToolsFramework::TranslationManipulator::Dimensions::Three,
             AzToolsFramework::ConfigureTranslationManipulatorAppearance3d);
+    }
+
+    AZ::Aabb EditorVisAreaComponent::GetEditorSelectionBounds()
+    {
+        AZ::Aabb bbox = AZ::Aabb::CreateNull();
+        for (auto vertex : m_config.m_vertexContainer.GetVertices())
+        {
+            bbox.AddPoint(vertex);
+        }
+        bbox.AddPoint(bbox.GetMax() + AZ::Vector3(0.0f, 0.0f, m_config.m_Height));
+        bbox.ApplyTransform(GetWorldTM());
+        return bbox;
     }
 
     AZ::LegacyConversion::LegacyConversionResult VisAreaConverter::ConvertEntity(CBaseObject* entityToConvert)

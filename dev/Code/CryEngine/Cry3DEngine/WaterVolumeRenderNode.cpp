@@ -1366,7 +1366,7 @@ int OnWaterUpdate(const EventPhysAreaChange* pEvent)
         pe_status_area sa;
         sa.bUniformOnly = true;
         MARK_UNUSED sa.ctr;
-        if (pWVRN->GetPhysics() != pEvent->pEntity || !pEvent->pEntity->GetStatus(&sa))
+        if (pWVRN->GetPhysArea() != pEvent->pEntity || !pEvent->pEntity->GetStatus(&sa))
         {
             return 1;
         }

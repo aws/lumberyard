@@ -122,7 +122,9 @@ namespace CharacterTool
             {
                 debugFlags |= 3;
             }
+#if BLENDSPACE_VISUALIZATION
             characterManager->RenderBlendSpace(*context.passInfo, character, characterScale, debugFlags);
+#endif
         }
         else
         {
@@ -139,11 +141,13 @@ namespace CharacterTool
     void BlendSpacePreview::IdleUpdate()
     {
         ICharacterManager* characterManager = GetIEditor()->GetSystem()->GetIAnimationSystem();
+#if BLENDSPACE_VISUALIZATION
         const char* loadedCharacterFilename = m_document->LoadedCharacterFilename();
         if (loadedCharacterFilename[0] != '\0' && !characterManager->HasDebugInstancesCreated(loadedCharacterFilename))
         {
             characterManager->CreateDebugInstances(loadedCharacterFilename);
         }
+#endif
 
         m_viewport->Update();
     }

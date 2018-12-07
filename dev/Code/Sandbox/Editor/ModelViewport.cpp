@@ -427,7 +427,9 @@ void CModelViewport::ReleaseObject()
     if (GetCharacterBase())
     {
         m_pCharacterBase = 0;
+#if BLENDSPACE_VISUALIZATION
         m_pAnimationSystem->DeleteDebugInstances();
+#endif
     }
 
     if (m_weaponModel)

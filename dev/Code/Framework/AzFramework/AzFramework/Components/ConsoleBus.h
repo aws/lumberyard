@@ -43,6 +43,9 @@ namespace AzFramework
 
         virtual void ResetCVarsToDefaults() = 0;
 
+        virtual int GetIntCVar(const char* name) = 0;
+        virtual float GetFloatCVar(const char* name) = 0;
+
         static void Reflect(AZ::ReflectContext* context);
     };
 

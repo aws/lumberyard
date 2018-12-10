@@ -249,6 +249,9 @@ public:
     void SetProcessingGroup(bool isGroup) { m_bIsProcessingGroup = isGroup; }
     bool GetIsProcessingGroup(void) const { return m_bIsProcessingGroup; }
 
+    virtual int GetIntCVar(const char* name);
+    virtual float GetFloatCVar(const char* name);
+
 protected: // ----------------------------------------------------------------------------------------
     void DrawBuffer(int nScrollPos, const char* szEffect);
 

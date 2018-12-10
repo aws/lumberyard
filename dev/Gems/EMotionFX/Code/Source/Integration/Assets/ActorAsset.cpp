@@ -284,13 +284,24 @@ namespace EMotionFX
 
             pD->m_uniqueObjectId = reinterpret_cast<uintptr_t>(this);
 
+            if (m_isRenderNearest)
+            {
+                rParams.dwFObjFlags |= FOB_NEAREST;
+                pObj->m_ObjFlags |= FOB_NEAREST;
+                rParams.nAfterWater = 1;
+            }
+            else
+            {
+                rParams.dwFObjFlags &= ~FOB_NEAREST;
+                pObj->m_ObjFlags &= ~FOB_NEAREST;
+            }
+
             rParams.pMatrix = &m_renderTransform;
 
             pObj->m_II.m_Matrix = *rParams.pMatrix;
             pObj->m_nClipVolumeStencilRef = rParams.nClipVolumeStencilRef;
             pObj->m_nTextureID = rParams.nTextureID;
             rParams.dwFObjFlags |= rParams.dwFObjFlags;
-            rParams.dwFObjFlags &= ~FOB_NEAREST;
             pObj->m_nMaterialLayers = rParams.nMaterialLayersBlend;
             pD->m_nHUDSilhouetteParams = rParams.nHUDSilhouettesParams;
             pD->m_nCustomData = rParams.nCustomData;
@@ -680,6 +691,14 @@ namespace EMotionFX
             {
                 renderMesh->UnlockStream(VSF_QTANGENTS);
             }
+        }
+
+        void ActorRenderNode::SetRenderNearest(bool isRenderNearest)
+        {
+            m_isRenderNearest = isRenderNearest;
+
+            // FL[FD-1234] FP geometry shadows are visible from FP view: remove when properly supported by data flow.
+            SetRndFlags(ERF_CASTSHADOWMAPS | ERF_HAS_CASTSHADOWMAPS, !m_isRenderNearest);
         }
 
         ActorAsset::ActorAsset()

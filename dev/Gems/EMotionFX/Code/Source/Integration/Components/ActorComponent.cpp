@@ -219,6 +219,16 @@ namespace EMotionFX
         }
 
         //////////////////////////////////////////////////////////////////////////
+        void ActorComponent::SetRenderNearest()
+        {
+            m_renderNearest = true;
+            if (m_renderNode)
+            {
+                m_renderNode->SetRenderNearest(true);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
         void ActorComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
         {
             OnAssetReady(asset);

@@ -419,6 +419,8 @@ public:
     virtual IHWMouseCursor* GetIHWMouseCursor() { return NULL; }
 #endif
 
+    virtual void DebugCull(void * colorData, int width, int height, int bytesperpixel) {};
+
 private:
     CNULLRenderAuxGeom* m_pNULLRenderAuxGeom;
     IColorGradingController* m_pNULLColorGradingController;

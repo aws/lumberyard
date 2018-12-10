@@ -82,6 +82,9 @@ namespace NAsyncCull
 
     extern const NVMath::vec4 MaskNot3;
 
+
+    int UpdateCullDebugData(const float* __restrict pVMemZ, uint32 x, float* colorData, int numElem);
+
     template<uint32 SIZEX, uint32 SIZEY>
     class CCullRenderer
     {
@@ -1512,6 +1515,10 @@ namespace NAsyncCull
             float fTopOffSet = 35.0f;
             float fSideOffSet = 35.0f;
 
+            const int n32BitChannels = 4;
+            float* colorData = new float[SIZEY*SIZEX*n32BitChannels];
+            int numElem = 0;
+
             // draw z-buffer after reprojection (unknown parts are red)
             fTopOffSet += 200.0f;
             for (uint32 y = 0; y < SIZEY; y += 1)
@@ -1547,12 +1554,13 @@ namespace NAsyncCull
                     ColorB Color2(ValueColor2, ValueColor2 * 16, ValueColor2 * 256, 222);
                     ColorB Color3(ValueColor3, ValueColor3 * 16, ValueColor3 * 256, 222);
 
-                    NAsyncCull::Debug::Draw2DBox(fX0, fY, 3.0f, 3.0f, Color0, fScreenHeight, fScreenWidth, pRenderer->GetIRenderAuxGeom());
-                    NAsyncCull::Debug::Draw2DBox(fX1, fY, 3.0f, 3.0f, Color1, fScreenHeight, fScreenWidth, pRenderer->GetIRenderAuxGeom());
-                    NAsyncCull::Debug::Draw2DBox(fX2, fY, 3.0f, 3.0f, Color2, fScreenHeight, fScreenWidth, pRenderer->GetIRenderAuxGeom());
-                    NAsyncCull::Debug::Draw2DBox(fX3, fY, 3.0f, 3.0f, Color3, fScreenHeight, fScreenWidth, pRenderer->GetIRenderAuxGeom());
+                    numElem = UpdateCullDebugData(pVMemZ, x, colorData, numElem);
+
                 }
             }
+
+            pRenderer->DebugCull(colorData, SIZEX, SIZEY, n32BitChannels);
+            delete[] colorData;
 #endif
         }
 

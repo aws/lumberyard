@@ -760,13 +760,14 @@ namespace NAsyncCull
                 __debugbreak(); // unknown culler job type
             }
         }
-
+#if !defined(_RELEASE)
         if (GetCVars()->e_CoverageBufferDebug)
         {
             float fGreen[4] = {0, 1, 0, 1};
             gEnv->pRenderer->Draw2dLabel(16.0f, 32.0f, 1.6f, fGreen, false, AZStd::string::format("Octree Nodes Culled %i, Octree Nodes Visible %i",octreeNodesCulled, octreeNodesVisible).c_str());
             gEnv->pRenderer->Draw2dLabel(16.0f, 64.0f, 1.6f, fGreen, false, AZStd::string::format("Terrain Nodes Culled %i, Terrain Nodes Visible %i",terrainNodesCulled, terrainNodesVisible).c_str());
         }
+#endif
 
         GetObjManager()->RemoveCullJobProducer();
     }

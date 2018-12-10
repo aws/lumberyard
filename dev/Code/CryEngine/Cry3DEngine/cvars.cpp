@@ -44,6 +44,26 @@ void OnCGFStreamingChange(ICVar* pArgs)
     }
 }
 
+#ifndef _RELEASE
+void OnCoverageBufferDebugChange(ICVar* pArgs)
+{
+    if (pArgs->GetIVal() != 0)
+    {
+        gEnv->pConsole->ExecuteString("r_ShowDynTexturesFilter $DebugCull");
+        gEnv->pConsole->ExecuteString("r_ShowDynTextures 1");
+        gEnv->pConsole->ExecuteString("r_ShowDynTexturesMaxCount 4");
+        Cry3DEngineBase::GetCVars()->e_CoverageBufferDebug = 1;
+    }
+    else
+    {
+        gEnv->pConsole->ExecuteString("r_ShowDynTexturesFilter *");
+        gEnv->pConsole->ExecuteString("r_ShowDynTextures 0");
+        gEnv->pConsole->ExecuteString("r_ShowDynTexturesMaxCount 32");
+        Cry3DEngineBase::GetCVars()->e_CoverageBufferDebug = 0;
+    }
+}
+#endif // _RELEASE
+
 void OnPerCharacterShadowsChange(ICVar* pArgs)
 {
     Cry3DEngineBase::Get3DEngine()->ObjectsTreeMarkAsUncompiled(NULL);
@@ -534,8 +554,10 @@ void CVars::Init()
             "Terrain lod ratio for mesh rendered into cbuffer");
     */REGISTER_CVAR(e_CoverageBufferVersion, 2, VF_NULL,
         "1 Vladimir's, 2MichaelK's");
-    DefineConstIntCVar(e_CoverageBufferDebug, 0, VF_CHEAT,
-        "Display content of main camera coverage buffer");
+#ifndef _RELEASE
+    REGISTER_CVAR_CB(e_CoverageBufferDebug, 0, VF_CHEAT,
+        "Display content of main camera coverage buffer", OnCoverageBufferDebugChange);
+#endif
     DefineConstIntCVar(e_CoverageBufferDebugFreeze, 0, VF_CHEAT,
         "Freezes view matrix/-frustum ");
     DefineConstIntCVar(e_CoverageBufferDrawOccluders, 0, VF_CHEAT,

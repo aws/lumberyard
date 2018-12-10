@@ -833,6 +833,8 @@ public:
     virtual bool FlushRTCommands(bool bWait, bool bImmediatelly, bool bForce);
     virtual bool ForceFlushRTCommands();
 
+    virtual void DebugCull(void * colorData, int width, int height, int bytesperpixel) override = 0;
+
     virtual int GetOcclusionBuffer(uint16* pOutOcclBuffer, Matrix44* pmCamBuffer) = 0;
     virtual void WaitForParticleBuffer(threadID nThreadId) = 0;
 

@@ -857,6 +857,8 @@ public:
 #endif
     bool IsDeviceContextValid() { return m_DeviceContext != nullptr; }
 
+    virtual void DebugCull(void * colorData, int width, int height, int bytesperpixel) override;
+
     /////////////////////////////////////////////////////////////////////////////
     // Debug Functions to check that the D3D DeviceContext is only accessed
     // by its owning thread

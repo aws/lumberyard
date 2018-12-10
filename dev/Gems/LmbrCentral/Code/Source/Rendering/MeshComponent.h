@@ -143,6 +143,8 @@ namespace LmbrCentral
         void SetVisible(bool isVisible);
         bool GetVisible();
 
+        void SetRenderNearest(bool isRenderNearest) { m_isRenderNearest = isRenderNearest; }
+
         static void Reflect(AZ::ReflectContext* context);
 
         static float GetDefaultMaxViewDist();
@@ -279,6 +281,9 @@ namespace LmbrCentral
 
         //! Tracks if the object was moved so we can notify the renderer.
         bool m_objectMoved;
+
+        //! Defines if mesh is to be rendered in camera space
+        bool m_isRenderNearest = false;
     };
 
 
@@ -312,6 +317,7 @@ namespace LmbrCentral
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_meshRenderNode.GetMeshAsset(); }
         void SetVisibility(bool newVisibility) override;
         bool GetVisibility() override;
+        void SetRenderNearest() override;
         ///////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

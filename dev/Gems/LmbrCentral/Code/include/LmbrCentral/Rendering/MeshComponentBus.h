@@ -59,6 +59,12 @@ namespace LmbrCentral
         * Sets the current visibility of the mesh
         */
         virtual void SetVisibility(bool isVisible) {}
+
+        /**
+          Sets mesh to be rendered in camera space
+        */
+        virtual void SetRenderNearest() {};
+
     };
 
     using MeshComponentRequestBus = AZ::EBus<MeshComponentRequests>;

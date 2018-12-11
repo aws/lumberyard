@@ -236,8 +236,8 @@ namespace EMotionFX
             // history for skinning data, needed for motion blur
             struct
             {
-                SSkinningData* pSkinningData;
-                int nFrameID;
+                SSkinningData* pSkinningData{ nullptr };
+                int nFrameID{ 0 };
             } m_arrSkinningRendererData[3];  // triple buffered for motion blur
 
             // If our actor has dynamic skin, we need each actor instance to have its own render mesh so we can send separate

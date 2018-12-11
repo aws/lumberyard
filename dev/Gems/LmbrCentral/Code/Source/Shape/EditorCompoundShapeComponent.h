@@ -19,7 +19,10 @@ namespace LmbrCentral
 {
     class EditorCompoundShapeComponent
         : public EditorBaseShapeComponent
-        , private CompoundShapeComponentRequestsBus::Handler
+		, private ShapeComponentRequestsBus::Handler
+		, private ShapeComponentNotificationsBus::MultiHandler
+		, private CompoundShapeComponentRequestsBus::Handler
+		, public AZ::EntityBus::MultiHandler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorCompoundShapeComponent, "{837AA0DF-9C14-4311-8410-E7983E1F4B8D}", EditorBaseShapeComponent);
@@ -32,8 +35,26 @@ namespace LmbrCentral
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
+		// ShapeComponent::Handler implementation
+		AZ::Crc32 GetShapeType() override
+		{
+			return AZ::Crc32("Compound");
+		}
+
+		AZ::Aabb GetEncompassingAabb() override;
+		bool IsPointInside(const AZ::Vector3& point) override;
+		float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
+		bool IntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+
         // EditorComponentSelectionNotificationsBus::Handler
         AZ::u32 GetBoundingBoxDisplayType() override { return AzToolsFramework::EditorComponentSelectionRequests::NoBoundingBox; }
+
+		// EntityEvents
+		void OnEntityActivated(const AZ::EntityId&) override;
+		void OnEntityDeactivated(const AZ::EntityId&) override;
+
+		// ShapeComponentNotificationsBus::MultiHandler
+		void OnShapeChanged(ShapeComponentNotifications::ShapeChangeReasons) override;
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
@@ -42,6 +63,7 @@ namespace LmbrCentral
         }
 
         AZ::u32 ConfigurationChanged();
+		void RefreshChildrenBusConnexions();
 
     private:
         // CompoundShapeComponentRequestsBus::Handler
@@ -53,5 +75,6 @@ namespace LmbrCentral
         bool HasShapeComponentReferencingEntityId(const AZ::EntityId& entityId) override;
 
         CompoundShapeConfiguration m_configuration; ///< Stores configuration for this component.
+		int m_currentlyActiveChildren = 0; ///< Number of compound shape children shape entities that are currently active.
     };
 } // namespace LmbrCentral

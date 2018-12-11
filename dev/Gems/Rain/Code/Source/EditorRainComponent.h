@@ -40,6 +40,7 @@ namespace Rain
         : public AzToolsFramework::Components::EditorComponentBase
         , public AZ::TransformNotificationBus::Handler
         , public AzFramework::EntityDebugDisplayEventBus::Handler
+        , public AZ::TickBus::Handler
     {
     public:
         friend class RainConverter;
@@ -63,6 +64,9 @@ namespace Rain
         // EntityDebugDisplayEventBus
         void DisplayEntity(bool& handled) override;
 
+        // TickBus
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time);
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("RainService"));
@@ -85,6 +89,7 @@ namespace Rain
 
         //Unreflected Data
         AZ::Vector3 m_currentWorldPos;
+        AZ::Transform m_currentWorldTransform;
     };
 
     class RainConverter : public AZ::LegacyConversion::LegacyConversionEventBus::Handler

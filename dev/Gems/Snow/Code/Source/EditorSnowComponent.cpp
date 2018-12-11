@@ -175,7 +175,7 @@ namespace Snow
     void EditorSnowComponent::UpdateSnow()
     {
         //If the snow component is disabled, set the snow amount to 0
-        if (!m_enabled || gEnv->IsEditor() && !gEnv->IsEditorSimulationMode() && !gEnv->IsEditorGameMode())
+        if (!m_enabled)
         {
             TurnOffSnow();
             return;

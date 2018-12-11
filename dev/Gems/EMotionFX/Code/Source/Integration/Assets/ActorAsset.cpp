@@ -287,13 +287,11 @@ namespace EMotionFX
             if (m_isRenderNearest)
             {
                 rParams.dwFObjFlags |= FOB_NEAREST;
-                pObj->m_ObjFlags |= FOB_NEAREST;
                 rParams.nAfterWater = 1;
             }
             else
             {
                 rParams.dwFObjFlags &= ~FOB_NEAREST;
-                pObj->m_ObjFlags &= ~FOB_NEAREST;
             }
 
             rParams.pMatrix = &m_renderTransform;
@@ -301,7 +299,7 @@ namespace EMotionFX
             pObj->m_II.m_Matrix = *rParams.pMatrix;
             pObj->m_nClipVolumeStencilRef = rParams.nClipVolumeStencilRef;
             pObj->m_nTextureID = rParams.nTextureID;
-            rParams.dwFObjFlags |= rParams.dwFObjFlags;
+            pObj->m_ObjFlags |= rParams.dwFObjFlags;
             pObj->m_nMaterialLayers = rParams.nMaterialLayersBlend;
             pD->m_nHUDSilhouetteParams = rParams.nHUDSilhouettesParams;
             pD->m_nCustomData = rParams.nCustomData;

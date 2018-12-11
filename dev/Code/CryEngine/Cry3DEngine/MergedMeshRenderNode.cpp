@@ -903,15 +903,13 @@ static SMergedMeshGlobals s_mmrm_globals _ALIGN(128);
 
 template<typename T>
 static inline void resize_list(T*& list, size_t nsize, size_t align)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     list = (T*) CryModuleReallocAlign(list, (nsize * sizeof(T) + (align - 1)) & ~(align - 1), align);
 }
 
 template<typename T>
 static inline void pool_resize_list(T*& list, size_t nsize, size_t align)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     AUTO_LOCK(s_MergedMeshPoolLock);
 
     if (nsize == 0)
@@ -1383,7 +1381,6 @@ void CGeometryManager::Initialize()
 
 bool CGeometryManager::ExtractDeformLOD(SMMRMGeometry* geometry, IStatObj* host, size_t nLod)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     strided_pointer<Vec3> vtx;
     strided_pointer<ColorB> colour;
     vtx_idx* indices;
@@ -1648,7 +1645,6 @@ bool CGeometryManager::PrepareLOD(SMMRMGeometry* geometry, IStatObj* host, size_
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
 
-    MEMORY_SCOPE_CHECK_HEAP();
     IRenderMesh* renderMesh = NULL;
     strided_pointer<Vec2> uv;
     strided_pointer<SPipTangents> tangs;
@@ -1990,7 +1986,6 @@ bool CGeometryManager::PrepareLOD(SMMRMGeometry* geometry, IStatObj* host, size_
     {
         delete[] weights;
     }
-    MEMORY_CHECK_HEAP();
     return true;
 }
 
@@ -2254,12 +2249,11 @@ bool CGeometryManager::SyncPreparationStep()
     return success;
 }
 
-CGeometryManager s_GeomManager;
+StaticInstance<CGeometryManager> s_GeomManager;
 
 // This a definition of the callback function that is called when variable change.
 static void UpdateRatios(ICVar* pVar)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     CMergedMeshesManager* pManager = ((C3DEngine*)(gEnv->p3DEngine))->m_pMergedMeshesManager;
     if (!pVar || !pManager)
     {
@@ -2276,9 +2270,8 @@ static void UpdateRatios(ICVar* pVar)
 }
 
 SMMRMGroupHeader::~SMMRMGroupHeader()
-{
-    MEMORY_SCOPE_CHECK_HEAP();
-    s_GeomManager.ReleaseGeometry(procGeom);
+{    
+    s_GeomManager->ReleaseGeometry(procGeom);
     if (instances)
     {
         pool_free(instances);
@@ -2321,16 +2314,14 @@ CMergedMeshRenderNode::CMergedMeshRenderNode()
 }
 
 CMergedMeshRenderNode::~CMergedMeshRenderNode()
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     Clear();
     Get3DEngine()->FreeRenderNodeState(this);
     m_pMergedMeshesManager->RemoveMergedMesh(this);
 }
 
 void CMergedMeshRenderNode::Clear()
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     for (size_t i = 0; i < m_nGroups; ++i)
     {
         if (m_groups[i].procGeom)
@@ -2386,8 +2377,7 @@ void CMergedMeshRenderNode::Clear()
 
 bool CMergedMeshRenderNode::PrepareRenderMesh(RENDERMESH_UPDATE_TYPE type)
 {
-    // Make sure that all preparation jobs have completed until then.
-    MEMORY_SCOPE_CHECK_HEAP();
+    // Make sure that all preparation jobs have completed until then.    
     std::vector<size_t> groups(m_nGroups);
     std::vector<SMMRM>& meshes = m_renderMeshes[type];
     std::iota(groups.begin(), groups.end(), 0);
@@ -2528,8 +2518,7 @@ bool CMergedMeshRenderNode::Setup(
     const AABB& aabb
     , const AABB& visAbb
     , const PodArray<SProcVegSample>* samples)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     m_internalAABB = aabb;
     m_visibleAABB = visAbb;
     m_pos = (aabb.max + aabb.min) * 0.5f;
@@ -2545,8 +2534,7 @@ bool CMergedMeshRenderNode::Setup(
 }
 
 bool CMergedMeshRenderNode::AddGroup(uint32 statInstGroupId, uint32 numSamples)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     if (Cry3DEngineBase::GetCVars()->e_MergedMeshes == 0)
     {
         return false;
@@ -2558,7 +2546,7 @@ bool CMergedMeshRenderNode::AddGroup(uint32 statInstGroupId, uint32 numSamples)
         SMMRMGroupHeader* header = NULL;
         resize_list(m_groups, m_nGroups + 1, 128);
         header = new (&m_groups[m_nGroups++])SMMRMGroupHeader;
-        header->procGeom = s_GeomManager.GetGeometry(statInstGroupId, 0);
+        header->procGeom = s_GeomManager->GetGeometry(statInstGroupId, 0);
 
         header->instGroupId = statInstGroupId;
         header->numSamples = min(numSamples - ic, MMRM_MAX_SAMPLES_PER_BATCH);
@@ -2581,8 +2569,7 @@ bool CMergedMeshRenderNode::AddGroup(uint32 statInstGroupId, uint32 numSamples)
 }
 
 IRenderNode* CMergedMeshRenderNode::AddInstance(const SProcVegSample& sample)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     assert ((gEnv->IsDynamicMergedMeshGenerationEnable()));
 
     SMMRMGroupHeader* header = NULL;
@@ -2604,7 +2591,7 @@ IRenderNode* CMergedMeshRenderNode::AddInstance(const SProcVegSample& sample)
     const Vec3 origin  = m_pos - extents;
     size_t headerIndex = (size_t)-1;
 
-    SMMRMGeometry* procGeom = s_GeomManager.GetGeometry(sample.InstGroupId, 0);
+    SMMRMGeometry* procGeom = s_GeomManager->GetGeometry(sample.InstGroupId, 0);
 
     Cry3DEngineBase::m_pMergedMeshesManager->m_nodeCullJobExecutor.WaitForCompletion();
     for (size_t i = 0; i < m_nGroups; ++i)
@@ -2624,12 +2611,12 @@ IRenderNode* CMergedMeshRenderNode::AddInstance(const SProcVegSample& sample)
     {
         resize_list(m_groups, m_nGroups + 1, 128);
         header = new (&m_groups[headerIndex = m_nGroups++])SMMRMGroupHeader;
-        header->procGeom = s_GeomManager.GetGeometry(sample.InstGroupId, 0);
+        header->procGeom = procGeom;
         header->instGroupId = sample.InstGroupId;
     }
     else
     {
-        s_GeomManager.ReleaseGeometry(procGeom);
+        s_GeomManager->ReleaseGeometry(procGeom);
     }
 
     if (header->numSamples + 1 >= header->numSamplesAlloc)
@@ -2683,8 +2670,7 @@ IRenderNode* CMergedMeshRenderNode::AddInstance(const SProcVegSample& sample)
 }
 
 size_t CMergedMeshRenderNode::RemoveInstance(size_t headerIndex, size_t instanceIndex)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     assert (headerIndex < m_nGroups);
 
     SMMRMGroupHeader* header = &m_groups[headerIndex];
@@ -2739,8 +2725,7 @@ void CMergedMeshRenderNode::SampleWind()
 }
 
 bool CMergedMeshRenderNode::DeleteRenderMesh(RENDERMESH_UPDATE_TYPE type, bool block, bool zap)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     {
         AZ_PROFILE_SCOPE_STALL(AZ::Debug::ProfileCategory::ThreeDEngine, "CMergedMeshRenderNode::DeleteRenderMesh:SyncAllJobs");
         while (!SyncAllJobs())
@@ -2784,7 +2769,7 @@ bool CMergedMeshRenderNode::DeleteRenderMesh(RENDERMESH_UPDATE_TYPE type, bool b
 void CMergedMeshRenderNode::CreateRenderMesh(RENDERMESH_UPDATE_TYPE type, const SRenderingPassInfo& passInfo)
 {
     AZ_TRACE_METHOD();
-    MEMORY_SCOPE_CHECK_HEAP();
+    
     const int use_spines = GetCVars()->e_MergedMeshesUseSpines;
     std::vector<SMMRM>& renderMeshes = m_renderMeshes[type];
     const size_t num_rms = renderMeshes.size();
@@ -2811,8 +2796,7 @@ void CMergedMeshRenderNode::CreateRenderMesh(RENDERMESH_UPDATE_TYPE type, const 
     // For all registered groups, build the update contexts
     // and grab required vertex and index counts
     for (size_t i = 0, j = 0; i < m_nGroups; ++i)
-    {
-        MEMORY_SCOPE_CHECK_HEAP();
+    {        
         SMMRMGroupHeader* group = &m_groups[i];
         IF (group->numSamples == 0 || group->specMismatch || ((int)type != (int)group->is_dynamic), 0)
         {
@@ -2873,22 +2857,28 @@ for (size_t j = 0; j < num_rms; ++j)
 // For all registered groups, build the update contexts
 // and grab required vertex and index counts
 for (size_t i = 0, j = 0; i < m_nGroups; ++i)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+    {
     SMMRMGroupHeader* group = & m_groups[i];
     IF (group->numSamples == 0 || group->specMismatch || ((int)type != (int)group->is_dynamic) || num_vi[i] == 0, 0)
     {
         continue;
     }
-    SMMRM* mesh = & renderMeshes[groups_mesh[i]];
-    SMMRMUpdateContext& update = mesh->updates[num_updates[groups_mesh[i]]++];
-    update.group = group;
-    update.chunks.resize(group->numVisbleChunks);
-    for (size_t k = 0; k < group->numVisbleChunks; ++k)
+    size_t groupMeshIdx = groups_mesh[i];
+    AZ_Assert(groupMeshIdx < num_rms, "Group mesh index ended up in an invalid state.");
+    SMMRM* mesh = &renderMeshes[groupMeshIdx];
+    AZ_Assert(num_updates[groupMeshIdx] < mesh->updates.size(), "num_updates ended up in an invalid state.");
+    if ((groupMeshIdx < num_rms) && (num_updates[groupMeshIdx] < mesh->updates.size()))
     {
-        mesh->indices  += (update.chunks[k].icnt = group->visibleChunks[k].indices);
-        mesh->vertices += (update.chunks[k].vcnt = group->visibleChunks[k].vertices);
-        update.chunks[k].matId = group->visibleChunks[k].matId;
+        SMMRMUpdateContext& update = mesh->updates[num_updates[groupMeshIdx]];
+        num_updates[groupMeshIdx]++;
+        update.group = group;
+        update.chunks.resize(group->numVisbleChunks);
+        for (size_t k = 0; k < group->numVisbleChunks; ++k)
+        {
+            mesh->indices += (update.chunks[k].icnt = group->visibleChunks[k].indices);
+            mesh->vertices += (update.chunks[k].vcnt = group->visibleChunks[k].vertices);
+            update.chunks[k].matId = group->visibleChunks[k].matId;
+        }
     }
 }
 
@@ -2901,8 +2891,7 @@ if (GetCVars()->e_MergedMeshesDebug)
 
 // Loop over the rendermeshes and dispatch the update passes
 for (size_t i = 0, nrm = renderMeshes.size(); i < nrm; ++i)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+    {
     SMMRM* mesh = & renderMeshes[i];
     if (mesh->updates.empty() || mesh->vertices == 0 || mesh->indices == 0)
     {
@@ -3084,8 +3073,7 @@ m_LastUpdateFrame = passInfo.GetMainFrameID();
 }
 
 void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, const SRenderingPassInfo& passInfo)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     Vec3 extents, origin;
     uint32 frameId;
 
@@ -3404,8 +3392,7 @@ void CMergedMeshRenderNode::RenderRenderMesh(
 }
 
 bool CMergedMeshRenderNode::PostRender(const SRenderingPassInfo& passInfo)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     FUNCTION_PROFILER_3DENGINE;
 
     const uint32 frameId = passInfo.GetMainFrameID();
@@ -4301,8 +4288,7 @@ CMergedMeshInstanceProxy::CMergedMeshInstanceProxy(
 }
 
 CMergedMeshInstanceProxy::~CMergedMeshInstanceProxy()
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     if (m_host && m_host->RemoveInstance(m_headerIndex, m_sampleIndex) == 0)
     {
         m_host->ReleaseNode();
@@ -4334,7 +4320,7 @@ CMergedMeshesManager::~CMergedMeshesManager()
 
 void CMergedMeshesManager::Init()
 {
-    s_GeomManager.Initialize();
+    s_GeomManager->Initialize();
     if (ICVar* pVar = gEnv->pConsole->GetCVar("e_MergedMeshesLodRatio"))
     {
         pVar->SetOnChangeCallback(UpdateRatios);
@@ -4347,7 +4333,6 @@ void CMergedMeshesManager::Init()
     if (!s_MergedMeshPool)
     {
         AUTO_LOCK(s_MergedMeshPoolLock);
-        ScopedSwitchToGlobalHeap heaper;
         size_t memsize = (Cry3DEngineBase::GetCVars()->e_MergedMeshesPool + 4096)* 1024; // include 2mb buffer size for overhead and large peaks
         if (memsize && (s_MergedMeshPool = gEnv->pSystem->GetIMemoryManager()->CreateGeneralExpandingMemoryHeap(
                                 memsize, 0, "MERGEDMESH_POOL")) == NULL)
@@ -4363,8 +4348,7 @@ void CMergedMeshesManager::Init()
     gEnv->pPhysicalWorld->AddEventClient(EventPhysPostStep::id, CMergedMeshesManager::OnPhysPostStep, 0, 1.0f);
 }
 void CMergedMeshesManager::Shutdown()
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     if (ICVar* pVar = gEnv->pConsole->GetCVar("e_MergedMeshesLodRatio"))
     {
         pVar->SetOnChangeCallback(NULL);
@@ -4388,7 +4372,7 @@ void CMergedMeshesManager::Shutdown()
             }
         }
     }
-    s_GeomManager.Shutdown();
+    s_GeomManager->Shutdown();
     stl::free_container(m_ActiveNodes);
     stl::free_container(m_VisibleNodes);
     stl::free_container(m_Projectiles);
@@ -4710,7 +4694,7 @@ size_t CMergedMeshesManager::QueryDensity(const Vec3& pos, ISurfaceType*(& surfa
 
 bool CMergedMeshesManager::GetUsedMeshes(DynArray<string>& meshNames)
 {
-    s_GeomManager.GetUsedMeshes(meshNames);
+    s_GeomManager->GetUsedMeshes(meshNames);
     return true;
 }
 
@@ -4756,14 +4740,13 @@ bool CMergedMeshesManager::SyncPreparationStep()
 {
     if (m_MeshListPresent)
     {
-        return s_GeomManager.SyncPreparationStep();
+        return s_GeomManager->SyncPreparationStep();
     }
     return true;
 }
 
 IRenderNode* CMergedMeshesManager::AddInstance(const SProcVegSample& sample)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     float fExtents = c_MergedMeshesExtent;
     const float fExtentsRec = 1.0f / c_MergedMeshesExtent;
     const Vec3& vPos = sample.pos;
@@ -4837,8 +4820,7 @@ CMergedMeshRenderNode* CMergedMeshesManager::GetNode(const Vec3& vPos)
 }
 
 void CMergedMeshesManager::RemoveMergedMesh(CMergedMeshRenderNode* node)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     const float fExtentsRec = 1.0f / c_MergedMeshesExtent;
     const Vec3& vPos = node->m_pos;
 
@@ -5155,7 +5137,7 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
     m_CurrentSizeInVramDynamic = sumVramSizeDynamic;
     m_CurrentSizeInVramInstanced = sumVramSizeInstanced;
     m_CurrentSizeInMainMem = metaSize;
-    m_GeomSizeInMainMem = s_GeomManager.Size();
+    m_GeomSizeInMainMem = s_GeomManager->Size();
     m_VisibleInstances = visibleInstances;
     m_nActiveNodes = (uint32)m_ActiveNodes.size();
     m_InstanceCount = nActiveInstances;
@@ -5409,7 +5391,7 @@ void CDeformableNode::ClearSimulationData()
 void CDeformableNode::CreateInstanceData(SDeformableData* pData, IStatObj* pStatObj)
 {
     SMMRMGroupHeader* header = & pData->m_mmrmHeader;
-    header->procGeom = s_GeomManager.GetGeometry(pStatObj, 0);
+    header->procGeom = s_GeomManager->GetGeometry(pStatObj, 0);
     header->physConfig.Update(header->procGeom);
     header->instGroupId = 0;
     header->maxViewDistance = 0;

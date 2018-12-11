@@ -559,7 +559,7 @@ int ImportableResourcesWidget::GetHeight(QTableView* table)
 {
     //Get the height of the table
     int height = table->horizontalHeader()->width() +
-        table->frameWidth() * 2 +
+        table->sizeHint().height() +
         table->verticalHeader()->length();
     return height;
 }

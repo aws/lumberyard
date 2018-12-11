@@ -79,7 +79,9 @@ namespace CloudGemDefectReporter
     }
 
     void DxDiagCollectingComponent::OnCollectDefectReporterData(int reportID)
-    {
+    {  
+        // only upload dxdiag when on windows platform 
+#if defined(AZ_PLATFORM_WINDOWS)
         int handlerId = CloudGemDefectReporter::INVALID_ID;
         CloudGemDefectReporterRequestBus::BroadcastResult(handlerId, &CloudGemDefectReporterRequestBus::Events::GetHandlerID, reportID);
 
@@ -130,6 +132,7 @@ namespace CloudGemDefectReporter
         }, true, jobContext);
 
         job->Start();
+#endif        
     }
 
     const char* DxDiagCollectingComponent::GetDxDiagFileDir() const

@@ -99,12 +99,16 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
         self.event['RequestType'] = 'Create'
 
         expected_data = {
+          'CCSettings': {'TestSettingKey1': 'TestSettingValue1', 'TestSettingKey2': 'TestSettingValue2'},
           'ConfigurationBucket': 'TestBucket',
           'ConfigurationKey': 'TestOutputKey',
           'Runtime': 'TestRuntime',
           'Role': 'TestRole',
           'RoleName': 'TestRoleName',
           'ComposedLambdaConfiguration': {
+              'Environment': {
+                  'Variables': {'TestSettingKey1': 'TestSettingValue1', 'TestSettingKey2': 'TestSettingValue2'}
+              },
               'Code': {
                   'S3Bucket': 'TestBucket',
                   'S3Key': 'TestOutputKey'
@@ -193,12 +197,16 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
         self.event['PhysicalResourceId'] = 'TestStack-TestLogicalResourceId'
 
         expected_data = {
+          'CCSettings': {'TestSettingKey1': 'TestSettingValue1', 'TestSettingKey2': 'TestSettingValue2'},
           'ConfigurationBucket': 'TestBucket',
           'ConfigurationKey': 'TestKey/lambda-function-code.zip',
           'Runtime': 'TestRuntime',
           'Role': 'TestRole',
           'RoleName': 'TestRoleName',
           'ComposedLambdaConfiguration': {
+              'Environment': {
+                  'Variables': {'TestSettingKey1': 'TestSettingValue1', 'TestSettingKey2': 'TestSettingValue2'}
+              },
               'Code': {
                   'S3Bucket': 'TestBucket',
                   'S3Key': 'TestKey/lambda-function-code.zip'
@@ -273,41 +281,6 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
             {},
             self.event['ResourceProperties']['FunctionName'])
 
-
-    def test_inject_settings(self):
-
-        with mock.patch.object(boto3, 'client') as mock_boto3_client:
-
-            zip_content = StringIO.StringIO()
-            zip_file = zipfile.ZipFile(zip_content, 'w')
-            zip_file.close()
-
-            mock_body = mock.MagicMock()
-            mock_body.read = mock.MagicMock(return_value=zip_content.getvalue())
-
-            mock_s3_client = mock_boto3_client.return_value
-            mock_s3_client.get_object = mock.MagicMock(return_value={'Body': mock_body})
-            mock_s3_client.put_object = mock.MagicMock()
-
-            reload(LambdaConfigurationResourceHandler) # so it uses mocked methods
-
-            settings = self.event['ResourceProperties']['Settings']
-            runtime = self.event['ResourceProperties']['Runtime']
-            bucket = self.event['ResourceProperties']['ConfigurationBucket']
-            input_key = self.event['ResourceProperties']['ConfigurationKey']
-            function_name = self.event['ResourceProperties']['FunctionName']
-
-            mock_injector = mock.MagicMock()
-            LambdaConfigurationResourceHandler._SETTINGS_INJECTORS[runtime] = mock_injector
-
-            output_key = LambdaConfigurationResourceHandler._inject_settings(settings, runtime, bucket, input_key, function_name)
-
-            mock_boto3_client.assert_called_with('s3')
-            mock_s3_client.get_object.assert_called_once_with(Bucket=bucket, Key=input_key)
-            mock_injector.assert_called_once_with(AnyZipFileObject(), settings)
-            mock_s3_client.put_object.assert_called_once_with(Bucket='TestBucket', Key=output_key, Body=AnyValidZipFileContent())
-
-
     def test_inject_settings_python(self):
 
         expected_settings = self.event['ResourceProperties']['Settings']
@@ -320,7 +293,6 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
         with zip_file.open(expected_zip_name, 'r') as zip_content_file:
             actual_settings = json.load(zip_content_file)
             self.assertEquals(expected_settings, actual_settings)
-
 
     def test_get_settings_injector(self):
 
@@ -407,12 +379,62 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
 
         LambdaConfigurationResourceHandler._add_service_settings(stack, service_directory, service, service_settings, permitted_arns)
 
-        service_directory.get_interface_services.assert_called_once_with(stack.deployment.deployment_name, service.InterfaceId)
+        service_directory.get_interface_services.assert_not_called()
 
+        # If the interface is not from CloudGemFramework it should not be added here
+        # Non-project interface references live in the lambda environment variables
+        self.assertEquals(service_settings, {})
+
+    @mock.patch('LambdaConfigurationResourceHandler._add_permitted_arns')
+    def test_add_cgf_service_setting(self, mock_add_permitted_arns):
+        interface = {
+            'InterfaceId': 'CloudGemFramework_test_1_0_0',
+            'InterfaceUrl': 'test-interface-url',
+            'InterfaceSwagger': 'test-interface-swagger'
+        }
+
+        event = {
+            'ResourceProperties': {
+                'ConfigurationBucket': 'TestBucket',
+                'ConfigurationKey': 'TestInputKey',
+                'FunctionName': 'TestFunction',
+                'Runtime': 'TestRuntime',
+                'Settings': {
+                    'TestSettingKey1': 'TestSettingValue1',
+                    'TestSettingKey2': 'TestSettingValue2'
+                },
+                'Services': [
+                    {
+                        "InterfaceId": "CloudGemFramework_test_1_0_0",
+                        "Optional": True
+                    },
+                    {
+                        "InterfaceId": "Gem_TestInterface2_1_0_0",
+                        "Optional": True
+                    }
+                ]
+            },
+            'StackId': 'arn:aws:cloudformation:TestRegion:TestAccount:stack/TestStack/TestUUID',
+            'LogicalResourceId': 'TestLogicalResourceId'
+        }
+
+        stack = mock.MagicMock(name = 'stack')
+        service_directory = mock.MagicMock(name = 'ServiceDirectory')
+        service_directory.get_interface_services.return_value = [interface]
+
+        props = properties.load(event, LambdaConfigurationResourceHandler.PROPERTIES_SCHEMA)
+        services =  props.Services
+        service = services[0]
+
+        service_settings = {}
+
+        permitted_arns = []
+
+        LambdaConfigurationResourceHandler._add_service_settings(stack, service_directory, service, service_settings, permitted_arns)
+
+        # For CloudGemFramework_* interfaces this should be called and service_settings should be populated
+        service_directory.get_interface_services.assert_called_once()
         self.assertEquals(service_settings[service.InterfaceId], interface)
-
-        mock_add_permitted_arns.assert_called_once_with(stack, interface, permitted_arns)
-
 
     @mock.patch('LambdaConfigurationResourceHandler._parse_interface_url')
     def test_add_permitted_arns(self, mock_parse_interface_url):

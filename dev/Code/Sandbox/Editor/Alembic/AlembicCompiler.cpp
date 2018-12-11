@@ -137,7 +137,7 @@ void CAlembicCompiler::AddSourceFileOpeners(const char* fullSourceFileName, cons
     {
         auto alembicCallback = [this](const char* fullSourceFileNameInCall, const AZ::Uuid& sourceUUIDInCall)
         {
-            const SourceAssetBrowserEntry* fullDetails = SourceAssetBrowserEntry::GetSourceByAssetId(sourceUUIDInCall);
+            const SourceAssetBrowserEntry* fullDetails = SourceAssetBrowserEntry::GetSourceByUuid(sourceUUIDInCall);
             if (fullDetails)
             {
                 CompileAlembic(fullDetails->GetRelativePath().c_str());

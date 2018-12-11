@@ -3,7 +3,7 @@
 
     "Metadata": {
         "CloudCanvas": {
-            "Id": "$Revision: #1 $"
+            "Id": "$Revision: #2 $"
         }
     },
 
@@ -33,7 +33,7 @@
         "PlayerAccessTokenExchange": {
             "Type": "String",
             "Description": "ARN for the lambda that the login cognito-identity pool needs access to."
-        },       
+        },
 
         "ProjectStack": {
             "Type": "String",
@@ -55,8 +55,8 @@
             "Description": "The ARN of the deployment stack."
         }
 
-    },    
-  
+    },
+
     "Resources": {
 
         "DeploymentAccess": {
@@ -87,7 +87,8 @@
                             ],
                             "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" }, "/project-settings.json" ]] },
-                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" }, "/project-settings/*" ]] }
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" }, "/project-settings/*" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" }, "/dstack*" ]] }
                             ]
                         },
                         {
@@ -108,7 +109,7 @@
                             "Action": [
                                 "lambda:InvokeFunction"
                             ],
-                            "Resource": [ 
+                            "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "ProjectStack" }, "-AH-*" ]] }
                             ]
                         }
@@ -116,7 +117,7 @@
                 }
             }
         },
-        
+
         "DeploymentAdmin": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -149,7 +150,7 @@
                 }
             }
         },
-        
+
         "DeploymentAdminRestrictions": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
@@ -172,7 +173,7 @@
                 }
             }
         },
-        
+
         "DeploymentOwnerAccess": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
@@ -301,7 +302,7 @@
                             "Action": [
                                 "lambda:InvokeFunction"
                             ],
-                            "Resource": [ 
+                            "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "ProjectStack" }, "-AH-*" ]] }
                             ]
                         },
@@ -334,7 +335,7 @@
                 }
             }
         },
-        
+
         "DeploymentOwner": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -366,7 +367,7 @@
                 }
             }
         },
-        
+
         "Helper": {
             "Type": "Custom::Helper",
             "Properties": {
@@ -377,7 +378,7 @@
                 "ServiceToken": { "Ref": "ProjectResourceHandler" }
             }
         },
-        
+
         "Player": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -449,8 +450,8 @@
                     ]
                 }
             }
-        },		
-		"Server": {
+        },
+        "Server": {
             "Type": "AWS::IAM::Role",
             "Properties": {
                 "Path": { "Fn::Join": [ "", [ "/", { "Ref": "ProjectStack" }, "/", { "Ref": "DeploymentName" }, "/" ]] },
@@ -484,17 +485,6 @@
                 }
             }
         },
-
-        "AccessControl": {
-            "Type": "Custom::AccessControl",
-            "Properties": {
-                "ServiceToken": { "Ref": "ProjectResourceHandler" },
-                "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
-                "ConfigurationKey": { "Ref": "ConfigurationKey" }
-            },
-            "DependsOn": [ "Player", "Server", "DeploymentOwner", "DeploymentAdmin", "AuthenticatedPlayer" ]
-        },
-
         "PlayerLoginRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -528,7 +518,7 @@
                     }
                 ]
             }
-        },       
+        },
 
         "PlayerLoginIdentityPool": {
             "Type": "Custom::CognitoIdentityPool",

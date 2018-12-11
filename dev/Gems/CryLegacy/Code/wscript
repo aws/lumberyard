@@ -1,4 +1,14 @@
-
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
 
 def build(bld):
 
@@ -22,8 +32,9 @@ def build(bld):
         use             = ['AzCore']
     )
 
-    bld.DefineGem(
+    kw = dict(
         # Add custom build options here
+        defines             = ['USE_CRY_NEW_AND_DELETE'],
         includes            = [bld.Path('Code/CryEngine/CryAction'),
                                bld.Path('Gems/CryLegacy/Code/Source/CryAction'),
                                bld.Path('Gems/CryLegacy/Code/Source/CryAISystem'),
@@ -39,9 +50,23 @@ def build(bld):
         darwin_lib          = ['curl'],
         appletv_framework   = ['security'],
 
-        win_file_list       = [
-                              ],
+        restricted_script   = 'update_restricted_parameters',
+
+        win_file_list       = [ ],
 
         # Testing
         test_all_uselib     = ['AWS_CPP_SDK_GAMELIFT', 'AWS_CPP_SDK_CORE']
     )
+    for p in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p)] = [
+            'Source/CryAction/{0}/cryaction_{0}.waf_files'.format(p),
+            'Source/CryAISystem/{0}/cryaisystem_{0}.waf_files'.format(p),
+            'Source/CryAnimation/{0}/cryanimation_{0}.waf_files'.format(p),
+            'Source/CryScriptSystem/ScriptBindings/{0}/cryscriptsystem_{0}.waf_files'.format(p),
+            'Source/Input/{0}/crylegacy_{0}.waf_files'.format(p),
+        ]
+        kw['win_file_list'] += [
+            'Source/CryAction/{0}/cryaction_tools_{0}.waf_files'.format(p),
+            'Source/Input/{0}/crylegacy_tools_{0}.waf_files'.format(p)
+        ]
+    bld.DefineGem(**kw)

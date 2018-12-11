@@ -54,6 +54,12 @@
 
 #include <stdio.h>
 #include <AzCore/PlatformDef.h>
+#include <AzCore/Module/Environment.h>
+
+#define INJECT_ENVIRONMENT_FUNCTION "InjectEnvironment"
+#define DETACH_ENVIRONMENT_FUNCTION "DetachEnvironment"
+using InjectEnvironmentFunction = void(*)(void*);
+using DetachEnvironmentFunction = void(*)();
 
 #if defined(AZ_RESTRICTED_PLATFORM)
     #include AZ_RESTRICTED_FILE(CryLibrary_h, AZ_RESTRICTED_PLATFORM)
@@ -62,9 +68,42 @@
         #define WIN32_LEAN_AND_MEAN
     #endif
     #include <CryWindows.h>
-    #define CryLoadLibrary(libName) ::LoadLibraryA(libName)
+
+    static HMODULE CryLoadLibrary(const char* libName)
+    {
+        HMODULE module = ::LoadLibraryA(libName);
+        if (module != NULL)
+        {
+            // We need to inject the environment first thing so that allocators are available immediately
+            InjectEnvironmentFunction injectEnv = reinterpret_cast<InjectEnvironmentFunction>(::GetProcAddress(module, INJECT_ENVIRONMENT_FUNCTION));
+            if (injectEnv)
+            {
+                auto env = AZ::Environment::GetInstance();
+                injectEnv(env);
+            }
+        }
+
+        return module;
+    }
+
+    // Cry code seems to have used void* as their abstraction for HMODULE across
+    // platforms.
+    static bool CryFreeLibrary(void* lib)
+    {
+        if (lib != NULL)
+        {
+            DetachEnvironmentFunction detachEnv = reinterpret_cast<DetachEnvironmentFunction>(::GetProcAddress((HMODULE)lib, DETACH_ENVIRONMENT_FUNCTION));
+            if (detachEnv)
+            {
+                detachEnv();
+            }
+            return ::FreeLibrary((HMODULE)lib) != FALSE;
+        }
+        return false;
+    }
+
     #define CRYLIBRARY_H_TRAIT_USE_WINDOWS_DLL 1
-#elif defined(LINUX) || defined(AZ_PLATFORM_APPLE)
+#elif ((defined(LINUX) || defined(AZ_PLATFORM_APPLE)))
     #include <dlfcn.h>
     #include <stdlib.h>
     #include <libgen.h>
@@ -82,7 +121,6 @@
 #endif
 
     #define CryGetProcAddress(libHandle, procName) ::dlsym(libHandle, procName)
-        #define CryFreeLibrary(libHandle)  (::dlclose(libHandle) == 0)
     #define HMODULE void*
 static const char* gEnvName("MODULE_PATH");
 
@@ -96,19 +134,24 @@ static void SetModulePath(const char* pModulePath)
     setenv(gEnvName, pModulePath ? pModulePath : "", true);
 }
 
+// bInModulePath is only ever set to false in RC, because rc needs to load dlls from a $PATH that
+// it has modified to include ..
 static HMODULE CryLoadLibrary(const char* libName, bool bLazy = false, bool bInModulePath = true)
 {
-    char path[_MAX_PATH] = { 0 };
+    const char* libPath = nullptr;
+    char pathBuffer[MAX_PATH] = {0};
+    
+    libPath = libName;
 
 #if !defined(AZ_PLATFORM_ANDROID)
     if (bInModulePath)
     {
+        char exePath[MAX_PATH + 1] = { 0 };
         const char* modulePath = GetModulePath();
         if (!modulePath)
         {
             modulePath = ".";
             #if defined(LINUX)
-                char exePath[MAX_PATH + 1] = { 0 };
                 int len = readlink("/proc/self/exe", exePath, MAX_PATH);
                 if (len != -1)
                 {
@@ -117,7 +160,6 @@ static HMODULE CryLoadLibrary(const char* libName, bool bLazy = false, bool bInM
                 }
             #elif defined(AZ_PLATFORM_APPLE)
                 uint32_t bufsize = MAX_PATH;
-                char exePath[MAX_PATH + 1] = { 0 };
                 if (_NSGetExecutablePath(exePath, &bufsize) == 0)
                 {
                     exePath[bufsize] = 0;
@@ -125,19 +167,44 @@ static HMODULE CryLoadLibrary(const char* libName, bool bLazy = false, bool bInM
                 }
             #endif
         }
-        sprintf_s(path, "%s/%s", modulePath, libName);
-        libName = path;
+        sprintf_s(pathBuffer, "%s/%s", modulePath, libName);
+        libPath = pathBuffer;
     }
 #endif
 
-    HMODULE retVal;
-#if defined(LINUX) && !defined(ANDROID)
-    retVal = ::dlopen(libName, (bLazy ? RTLD_LAZY : RTLD_NOW) | RTLD_DEEPBIND);
-#else
-    retVal = ::dlopen(libName, bLazy ? RTLD_LAZY : RTLD_NOW);
-#endif
-    AZ_Warning("LMBR", retVal, "Can't load library [%s]: %s", libName, dlerror());
-    return retVal;
+    HMODULE module;
+    #if defined(LINUX) && !defined(ANDROID)
+        module = ::dlopen(libPath, (bLazy ? RTLD_LAZY : RTLD_NOW) | RTLD_DEEPBIND);
+    #else
+        module = ::dlopen(libPath, bLazy ? RTLD_LAZY : RTLD_NOW);
+    #endif
+    AZ_Warning("LMBR", module, "Can't load library [%s]: %s", libName, dlerror());
+
+    if (module)
+    {
+        // We need to inject the environment first thing so that allocators are available immediately
+        InjectEnvironmentFunction injectEnv = reinterpret_cast<InjectEnvironmentFunction>(CryGetProcAddress(module, INJECT_ENVIRONMENT_FUNCTION));
+        if (injectEnv)
+        {
+            injectEnv(AZ::Environment::GetInstance());
+        }
+    }
+
+    return module;
+}
+
+static bool CryFreeLibrary(void* lib)
+{
+    if (lib)
+    {
+        DetachEnvironmentFunction detachEnv = reinterpret_cast<DetachEnvironmentFunction>(CryGetProcAddress(lib, DETACH_ENVIRONMENT_FUNCTION));
+        if (detachEnv)
+        {
+            detachEnv();
+        }
+        return (::dlclose(lib) == 0);
+    }
+    return false;
 }
 #endif
 
@@ -146,7 +213,6 @@ static HMODULE CryLoadLibrary(const char* libName, bool bLazy = false, bool bInM
 #define CrySharedLibraryPrefix ""
 #define CrySharedLibraryExtension ".dll"
 #define CryGetProcAddress(libHandle, procName) ::GetProcAddress((HMODULE)(libHandle), procName)
-#define CryFreeLibrary(libHandle) ::FreeLibrary((HMODULE)(libHandle))
 #elif !defined(CrySharedLibrarySupported)
 #define CrySharedLibrarySupported false
 #define CrySharedLibraryPrefix ""

@@ -76,7 +76,7 @@ CFlowData::~CFlowData()
         gEnv->pScriptSystem->ReleaseFunc(m_getFlowgraphForwardingEntity);
     }
     SAFE_DELETE_ARRAY(m_pInputData);
-    SAFE_DELETE_ARRAY(m_pOutputFirstEdge);
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().DeAllocate(m_pOutputFirstEdge);
 }
 
 CFlowData::CFlowData(const CFlowData& rhs)
@@ -101,7 +101,7 @@ CFlowData::CFlowData(const CFlowData& rhs)
     m_nOutputs = rhs.m_nOutputs;
 
     m_pInputData = new TFlowInputData[m_nInputs];
-    m_pOutputFirstEdge = new int[m_nOutputs];
+    m_pOutputFirstEdge = static_cast<int*>(AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().Allocate(sizeof(int) * m_nOutputs, 0, 0, "AZ::LegacyAllocator"));
 
     for (int i = 0; i < m_nInputs; ++i)
     {
@@ -128,7 +128,6 @@ void CFlowData::DoGetConfiguration(SFlowNodeConfig& config) const
     m_pImpl->GetConfiguration(config);
 
     {
-        ScopedSwitchToGlobalHeap globalHeap;
         static SInputPortConfig* inputs = new SInputPortConfig[MAX_INPUT_PORTS];
         SInputPortConfig* pInput = inputs;
 
@@ -361,8 +360,8 @@ bool CFlowData::SerializeXML(IFlowNode::SActivationInfo* pActInfo, const XmlNode
                         ;
                     }
                 }
-                SAFE_DELETE_ARRAY(m_pOutputFirstEdge);
-                m_pOutputFirstEdge = new int[m_nOutputs];
+                AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().DeAllocate(m_pOutputFirstEdge);
+                m_pOutputFirstEdge = static_cast<int*>(AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().Allocate(sizeof(int) * m_nOutputs, 0, 0, "AZ::LegacyAllocator"));
             }
         }
 
@@ -441,7 +440,6 @@ bool CFlowData::SerializeXML(IFlowNode::SActivationInfo* pActInfo, const XmlNode
 
 void CFlowData::Serialize(IFlowNode::SActivationInfo* pActInfo, TSerialize ser)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Flowgraph serialization");
     SFlowNodeConfig config;
     DoGetConfiguration(config);
 
@@ -538,9 +536,9 @@ void CFlowData::GetConfiguration(SFlowNodeConfig& config)
 
     if (m_nOutputs != numOutputs)
     {
-        SAFE_DELETE_ARRAY(m_pOutputFirstEdge);
+        AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().DeAllocate(m_pOutputFirstEdge);
         m_nOutputs = numOutputs;
-        m_pOutputFirstEdge = new int[m_nOutputs];
+        m_pOutputFirstEdge = static_cast<int*>(AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().Allocate(sizeof(int) * m_nOutputs, 0, 0, "AZ::LegacyAllocator"));
     }
 }
 

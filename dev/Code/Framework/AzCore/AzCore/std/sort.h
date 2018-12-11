@@ -69,7 +69,7 @@ namespace AZStd
 
             AZ_FORCE_INLINE ~TemporaryBuffer()
             {
-                if (m_numConstructed > 0)
+                if (m_numConstructed > 0 && !AZStd::has_trivial_destructor<T>::value)
                 {
                     iterator first = begin();
                     iterator last  = first + m_numConstructed;
@@ -88,6 +88,12 @@ namespace AZStd
                 AZ_Assert(newSize <= m_capacity, "TemporaryBuffer::copy - new size is bigger than the buffer capacity!");
                 if (newSize > m_size)
                 {
+                    if (!AZStd::has_trivial_constructor<T>::value)
+                    {
+                        iterator bufferFirst = begin() + m_numConstructed;
+                        iterator bufferLast = begin() + newSize;
+                        Internal::construct<iterator>::range(bufferFirst, bufferLast);
+                    }
                     m_numConstructed = newSize;
                 }
 
@@ -100,6 +106,12 @@ namespace AZStd
                 AZ_Assert(newSize <= m_capacity, "TemporaryBuffer::set_size - new size is bigger than the buffer capacity!");
                 if (newSize > m_size)
                 {
+                    if (!AZStd::has_trivial_constructor<T>::value)
+                    {
+                        iterator bufferFirst = begin() + m_numConstructed;
+                        iterator bufferLast = begin() + newSize;
+                        Internal::construct<iterator>::range(bufferFirst, bufferLast);
+                    }
                     m_numConstructed = newSize;
                 }
 
@@ -798,8 +810,17 @@ namespace AZStd
         if (first != last)
         {
             typename iterator_traits<BidirectionalIterator>::difference_type count = AZStd::distance(first, last);
-            Internal::TemporaryBuffer<typename iterator_traits<BidirectionalIterator>::value_type, Allocator> buffer((count + 1) / 2, alloc);
-            Internal::stable_sort_recursive(first, last, count, buffer, AZStd::less< typename iterator_traits< BidirectionalIterator >::value_type >());
+            if (count <= AZSTD_MAX_INSERTION_SORT_SIZE)
+            {
+                // This is the same check as done in Internal::stable_sort_recursive, but do it here as well to avoid allocating a temporary buffer
+                // if there's only one pass and it won't be used.
+                AZStd::insertion_sort(first, last);
+            }
+            else
+            {
+                Internal::TemporaryBuffer<typename iterator_traits<BidirectionalIterator>::value_type, Allocator> buffer((count + 1) / 2, alloc);
+                Internal::stable_sort_recursive(first, last, count, buffer, AZStd::less< typename iterator_traits< BidirectionalIterator >::value_type >());
+            }
         }
     }
 
@@ -809,8 +830,17 @@ namespace AZStd
         if (first != last)
         {
             typename iterator_traits<BidirectionalIterator>::difference_type count = AZStd::distance(first, last);
-            Internal::TemporaryBuffer<typename iterator_traits<BidirectionalIterator>::value_type, Allocator> buffer((count + 1) / 2, alloc);
-            Internal::stable_sort_recursive(first, last, count, buffer, comp);
+            if (count <= AZSTD_MAX_INSERTION_SORT_SIZE)
+            {
+                // This is the same check as done in Internal::stable_sort_recursive, but do it here as well to avoid allocating a temporary buffer
+                // if there's only one pass and it won't be used.
+                AZStd::insertion_sort(first, last, comp);
+            }
+            else
+            {
+                Internal::TemporaryBuffer<typename iterator_traits<BidirectionalIterator>::value_type, Allocator> buffer((count + 1) / 2, alloc);
+                Internal::stable_sort_recursive(first, last, count, buffer, comp);
+            }
         }
     }
     //////////////////////////////////////////////////////////////////////////

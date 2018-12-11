@@ -71,7 +71,7 @@ namespace ServiceAPI {
         AZ_CLASS_ALLOCATOR({{ item.name }}, AZ::SystemAllocator, 0)
 
         {% for prop in item.props %}
-        {{ prop.type }} {{prop.name}};
+        {{ prop.type }} {{prop.name}}{{prop.init}};
         {% endfor %}
 
         bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);

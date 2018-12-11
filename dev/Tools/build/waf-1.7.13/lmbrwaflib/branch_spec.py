@@ -19,6 +19,7 @@ from waflib import Context, Utils, Logs, Errors
 from cry_utils import append_to_unique_list, split_comma_delimited_string
 
 from waf_branch_spec import BINTEMP_FOLDER
+from waf_branch_spec import CACHE_FOLDER
 
 from waf_branch_spec import PLATFORMS
 from waf_branch_spec import CONFIGURATIONS
@@ -162,6 +163,11 @@ VS_PLATFORM_TO_WAF_PLATFORM_PREFIX_AND_TOOL_SET_DICT = _waf_platform_dict_to_vs_
 @conf
 def get_bintemp_folder_node(self):
     return self.root.make_node(Context.launch_dir).make_node(BINTEMP_FOLDER)
+
+#############################################################################
+@conf
+def get_cache_folder_node(self):
+    return self.root.make_node(Context.launch_dir).make_node(CACHE_FOLDER)
 
 #############################################################################
 @conf

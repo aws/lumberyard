@@ -55,13 +55,14 @@ namespace Maestro
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////
-    void SequenceAgent::CacheAllVirtualPropertiesFromBehaviorContext(AZ::Entity* entity)
+    void SequenceAgent::CacheAllVirtualPropertiesFromBehaviorContext()
     {
         AZ::BehaviorContext* behaviorContext = nullptr;
         EBUS_EVENT_RESULT(behaviorContext, AZ::ComponentApplicationBus, GetBehaviorContext);
+        
+        AZ::Entity::ComponentArrayType entityComponents;
+        GetEntityComponents(entityComponents);
 
-        // Loop through all components on this entity and register all that have BehaviorContext virtual properties
-        const AZ::Entity::ComponentArrayType& entityComponents = entity->GetComponents();
         m_addressToBehaviorVirtualPropertiesMap.clear();
 
         for (AZ::Component* component : entityComponents)
@@ -202,11 +203,11 @@ namespace Maestro
                 findIter->second->m_setter->m_event->Invoke(entityId, u32value);
                 changed = true;
             }
-            else if (propertyTypeId == AZ::AzTypeInfo<AZ::Data::AssetBlends<AZ::Data::AssetData>>::Uuid())
+            else if (propertyTypeId == AZ::AzTypeInfo<AZ::Data::AssetId>::Uuid())
             {
-                AZ::Data::AssetBlends<AZ::Data::AssetData> assetBlendValue;
-                value.GetValue(assetBlendValue);
-                findIter->second->m_setter->m_event->Invoke(entityId, assetBlendValue);
+                AZ::Data::AssetId assetIdValue;
+                value.GetValue(assetIdValue);
+                findIter->second->m_setter->m_event->Invoke(entityId, assetIdValue);
                 changed = true;
             }
             else
@@ -265,11 +266,11 @@ namespace Maestro
                 findIter->second->m_getter->m_event->InvokeResult(u32Value, entityId);
                 returnValue.SetValue(u32Value);
             }
-            else if (propertyTypeId == AZ::AzTypeInfo<AZ::Data::AssetBlends<AZ::Data::AssetData>>::Uuid())
+            else if (propertyTypeId == AZ::AzTypeInfo<AZ::Data::AssetId>::Uuid())
             {
-                AZ::Data::AssetBlends<AZ::Data::AssetData> assetBlendValue;
-                findIter->second->m_getter->m_event->InvokeResult(assetBlendValue, entityId);
-                returnValue.SetValue(assetBlendValue);
+                AZ::Data::AssetId assetIdValue;
+                findIter->second->m_getter->m_event->InvokeResult(assetIdValue, entityId);
+                returnValue.SetValue(assetIdValue);
             }
             else
             {

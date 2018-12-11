@@ -20,19 +20,20 @@ class CImageCompiler;
 #include "RelativeMouseInput.h"                     // CRelativeMouseInput
 #include "UIBumpmapPanel.h"                             // CUIBumpmapPanel
 #include "UIMIPControlPanel.h"                      // CUIMIPControlPanel
-#include "Monitor.h"
 #include "ImageProperties.h"
 #include "TinyDocument.h"
 
 #include <QDialog>
+#include <QMutex>
+#include <QScopedPointer>
+
+class QThread;
 
 namespace Ui
 {
     class ImageUserDialog;
     class ChooseResolutionDialog;
 };
-
-class FunctionThread;
 
 #define DEFAULT_SCALE64 64
 
@@ -72,8 +73,7 @@ struct SPreviewData
 };
 
 class CImageUserDialog
-    : public Monitor
-    , public TinyDocument<float>::Listener
+    : public TinyDocument<float>::Listener
     , public TinyDocument<bool>::Listener
 {
 public:
@@ -151,14 +151,16 @@ private: // --------------------------------------------------------------------
     CRelativeMouseInput   m_RelMouse;             //!< for relative mouse movement
     bool                  m_bDialogIsUpdating;    //!<
 
-    FunctionThread*       m_hWindowThread;
-
     // Maps filename suffices to a set of presets. Guaranteed to contain
     // the empty suffix mapping to the set of all presets.
     std::map<string, std::set<string> > m_FilteredPresets;
     // The list of presets to show in order of preference (default is parse-order)
-    std::list<string> m_FileOrderedPresets;
-    bool m_bShowAllPresets;
+    std::list<string>     m_FileOrderedPresets;
+    bool                  m_bShowAllPresets;
+
+    QMutex                m_lock;
+    bool                  m_dialogFinished = false;
+    QScopedPointer<QThread> m_actionProcessingThread;
 
 private: // ---------------------------------------------------------------------------------------
     //!
@@ -192,8 +194,9 @@ private: // --------------------------------------------------------------------
     void UpdateBumpStrength();
     void UpdateBumpBlur();
 
-    static unsigned int ThreadStart_Static(void* pThis);
-    DWORD ThreadStart();
+    void InitDialog();
+    void ShowDialog();
+    void ProcessActions();
 
 public:
     void TriggerUpdatePreview(bool bFull);
@@ -208,18 +211,20 @@ public:
     virtual void OnTinyDocumentChanged(TinyDocument<bool>* pDocument);
 
     void ZoomPreviewUpdateCheck();
+
+    friend class ProcessActionsThread;
 };
 
 class MainThreadExecutor : public QObject
 {
     Q_OBJECT
 public:
-    static void execute(AZStd::function<void()> f);
+    static void execute(AZStd::function<void()> f, bool blocking = true);
 
 private:
     MainThreadExecutor();
 
-    Q_INVOKABLE void executeInternal(void* f);
+    Q_INVOKABLE void executeInternal(AZStd::function<void()> function);
 };
 
 class EventFilter : public QObject

@@ -420,9 +420,9 @@ private:
     AZ::EntityId m_ContextEntityId;
 
     static uint32 s_blendChannelCRCs[MANN_NUMBER_BLEND_CHANNELS];
-    static TActionControllerList s_actionControllers;
-    static CActionController::TActionList s_actionList;
-    static CActionController::TActionList s_tickedActions;
+    static StaticInstance<TActionControllerList> s_actionControllers;
+    static StaticInstance<CActionController::TActionList> s_actionList;
+    static StaticInstance<CActionController::TActionList> s_tickedActions;
 
     static bool s_registeredCVars;
 #ifndef _RELEASE

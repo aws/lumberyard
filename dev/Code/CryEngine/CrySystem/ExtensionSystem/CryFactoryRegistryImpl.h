@@ -23,7 +23,7 @@
 #include <CryExtension/Impl/ICryFactoryRegistryImpl.h>
 #include <CryExtension/ICryFactory.h>
 
-#include <vector>
+#include <AzCore/std/containers/vector.h>
 
 
 class CCryFactoryRegistryImpl
@@ -44,6 +44,8 @@ public:
 
 public:
     static CCryFactoryRegistryImpl& Access();
+    CCryFactoryRegistryImpl();
+    ~CCryFactoryRegistryImpl();
 
 private:
     struct FactoryByCName
@@ -110,14 +112,8 @@ private:
     typedef Callbacks::const_iterator CallbacksConstIt;
 
 private:
-    CCryFactoryRegistryImpl();
-    ~CCryFactoryRegistryImpl();
-
     bool GetInsertionPos(ICryFactory* pFactory, FactoriesByCNameIt& itPosForCName, FactoriesByCIDIt& itPosForCID);
     void UnregisterFactoryInternal(ICryFactory* const pFactory);
-
-private:
-    static CCryFactoryRegistryImpl s_registry;
 
 private:
     mutable CryReadModifyLock m_guard;

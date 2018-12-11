@@ -1,9 +1,13 @@
 {
     "Version" : "1.0.0",
-    "Comment" : "This file for users to add any capabilities and SDKs wanted.",
-    "CodeFolderName" : "Code",
-    "ToolsFolderName" : "Tools",
+    "Comment" : "This file for users to add any custom capabilities and SDKs necessary, and customize default settings such as Code, Tools, or Bin directories.",
+    "CustomCodeFolderName" : null,
+    "CustomToolsFolderName" : null,
+    "CustomeEditorFileName" : null,
     "RememberEngineRootFolder" : false,
+    "AdditionalBinFolders" :
+    [
+    ],
     "Capabilities" :
     [
     ],

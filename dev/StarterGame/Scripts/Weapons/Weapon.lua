@@ -83,9 +83,11 @@ function weapon:OnActivate(parent, entityId, properties)
 	self.UseRifleForwardForAiming = false;
 	self.maxJitterAngle = Math.DegToRad(self.Properties.MaxJitterAngle);
 end
+
 function weapon:GetWeaponForward()
 	return TransformBus.Event.GetWorldTM(self.entityId):GetColumn(self.WeaponForwardColumn);
 end
+
 function weapon:OnDeactivate()
 	self.activateHandler:Disconnect();
 	self.activateHandler = nil;

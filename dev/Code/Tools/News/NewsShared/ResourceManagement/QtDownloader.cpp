@@ -45,8 +45,11 @@ QtDownloader::QtDownloader()
     };
 
     auto queueDownloadHandler = [this](int downloadId, QString url) {
-        QNetworkReply* reply = m_networkManager->get(QNetworkRequest(QUrl(url)));
-        m_downloads.insert(reply, downloadId);
+        if (m_networkManager)
+        {
+            QNetworkReply* reply = m_networkManager->get(QNetworkRequest(QUrl(url)));
+            m_downloads.insert(reply, downloadId);
+        }
     };
 
     auto createNetworkManagerHandler = [this] {
@@ -74,8 +77,9 @@ QtDownloader::QtDownloader()
 
     // create/delete the QNetworkAccessManager in our thread, to ensure that any slowdowns caused by
     // having to create network connectors / load drivers are done in our non-ui thread.
-    connect(m_thread, &QThread::started, this, createNetworkManagerHandler, Qt::QueuedConnection);
-    connect(m_thread, &QThread::finished, this, deleteNetworkManagerHandler, Qt::QueuedConnection);
+    // make sure that these connections are direct so that network requests can't predate the network engine itself
+    connect(m_thread, &QThread::started, this, createNetworkManagerHandler, Qt::DirectConnection);
+    connect(m_thread, &QThread::finished, this, deleteNetworkManagerHandler, Qt::DirectConnection);
 
     m_thread->start();
 }

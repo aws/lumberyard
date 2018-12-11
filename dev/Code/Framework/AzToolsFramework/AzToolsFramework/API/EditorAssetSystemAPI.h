@@ -43,6 +43,10 @@ namespace AzToolsFramework
 
             using MutexType = AZStd::recursive_mutex;
 
+            // don't lock this bus during dispatch - its mainly just a forwarder of socket-based network requests
+            // so when one thread is asking for status of an asset, its okay for another thread to do the same.
+            static const bool LocklessDispatch = true; 
+
             virtual ~AssetSystemRequest() = default;
 
             //! Retrieve the absolute folder path to the current game's source assets (the ones that go into source control)
@@ -62,9 +66,6 @@ namespace AzToolsFramework
             /// or when the source is in a different folder or in a different location (such as inside gems)
             virtual bool GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullSourcePath) = 0;
 
-            //! Send out queued events
-            virtual void UpdateQueuedEvents() = 0;
-            
             //! retrieve an Az::Data::AssetInfo class for the given assetId.  this may map to source too in which case rootFilePath will be non-empty.
             virtual bool GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath) = 0;
 

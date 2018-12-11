@@ -762,8 +762,6 @@ void CComponentScript::Serialize(TSerialize ser)
 
     if (ser.GetSerializationTarget() != eST_Network)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Script component serialization");
-
         if (NeedSerialize())
         {
             if (ser.BeginOptionalGroup("ComponentScript", true))

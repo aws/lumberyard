@@ -109,6 +109,7 @@ namespace LmbrCentral
         bool GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const override;
         float GetFirstLodDistance() const override { return m_lodDistance; }
         EERType GetRenderNodeType() override;
+        bool CanExecuteRenderAsJob() override;
         const char* GetName() const override;
         const char* GetEntityClassName() const override;
         Vec3 GetPos(bool bWorldOnly = true) const override;

@@ -45,6 +45,9 @@ namespace AZ
                 void SetMergeMeshes(bool value);
                 bool MergeMeshes() const override;
 
+                void SetUseCustomNormals(bool value);
+                bool UseCustomNormals() const override;
+
                 void SetVertexColorStreamName(const AZStd::string& name);
                 void SetVertexColorStreamName(AZStd::string&& name);
                 const AZStd::string& GetVertexColorStreamName() const override;
@@ -56,6 +59,7 @@ namespace AZ
                 AZStd::string m_vertexColorStreamName;
                 bool m_use32bitVertices;
                 bool m_mergeMeshes;
+                bool m_useCustomNormals;
             };
         } // SceneData
     } // SceneAPI

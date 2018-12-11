@@ -2038,6 +2038,8 @@ float CBaseObject::GetCameraVisRatio(const CCamera& camera)
 //////////////////////////////////////////////////////////////////////////
 int CBaseObject::MouseCreateCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     if (event == eMouseMove || event == eMouseLDown)
     {
         Vec3 pos;

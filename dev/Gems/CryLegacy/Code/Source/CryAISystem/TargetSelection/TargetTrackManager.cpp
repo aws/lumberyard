@@ -355,7 +355,6 @@ void CTargetTrackManager::Reset(IAISystem::EResetReason reason)
 
     case IAISystem::RESET_UNLOAD_LEVEL:
     {
-        MEMSTAT_LABEL_SCOPED("CTargetTrackManager::Reset(Unload)");
         DeleteAgents();
 
         std::for_each(m_TargetTrackPool.begin(), m_TargetTrackPool.end(), stl::container_object_deleter());

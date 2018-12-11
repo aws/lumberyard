@@ -67,6 +67,7 @@ namespace EMotionFX
                             ->Attribute(AZ::Edit::Attributes::ViewportIcon, ":/EMotionFX/AnimGraphComponent.png")
                             ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-animgraph.html")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &EditorAnimGraphComponent::m_motionSetAsset,
                             "Motion set asset", "EMotion FX motion set asset to be loaded for this actor.")
                             ->Attribute("EditButton", "Gems/EMotionFX/Assets/Editor/Images/Icons/EMFX_icon_32x32")
@@ -294,16 +295,15 @@ namespace EMotionFX
                 const MotionSetAsset* data = m_motionSetAsset.GetAs<MotionSetAsset>();
                 if (data)
                 {
+                    const EMotionFX::MotionSet* rootMotionSet = data->m_emfxMotionSet.get();
                     if (m_activeMotionSetName.empty())
                     {
                         // if motion set name is empty, grab the root
-                        const EMotionFX::MotionSet* motionSet = data->m_emfxMotionSet.get();
-                        m_activeMotionSetName = motionSet->GetName();
+                        m_activeMotionSetName = rootMotionSet->GetName();
                     }
                     else
                     {
-                        EMotionFX::MotionSet* rootMotionSet = data->m_emfxMotionSet.get();
-                        const EMotionFX::MotionSet* motionSet = rootMotionSet->RecursiveFindMotionSetByName(m_activeMotionSetName);
+                        const EMotionFX::MotionSet* motionSet = rootMotionSet->RecursiveFindMotionSetByName(m_activeMotionSetName, /*isOwnedByRuntime = */true);
                         if (!motionSet)
                         {
                             m_activeMotionSetName = rootMotionSet->GetName();

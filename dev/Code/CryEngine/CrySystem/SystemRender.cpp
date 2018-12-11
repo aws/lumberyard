@@ -263,9 +263,6 @@ void CSystem::RenderEnd(bool bRenderStats, bool bMainWindow)
 
         if (bMainWindow)    // we don't do this in UI Editor window for example
         {
-            // keep debug allocations out of level heap
-            ScopedSwitchToGlobalHeap globalHeap;
-
 #if !defined (_RELEASE)
             // Flush render data and swap buffers.
             m_env.pRenderer->RenderDebug(bRenderStats);
@@ -565,8 +562,6 @@ void CSystem::DisplayErrorMessage(const char* acMessage,
     const float* pfColor,
     bool bHardError)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     SErrorMessage message;
     message.m_Message = acMessage;
     if (pfColor)

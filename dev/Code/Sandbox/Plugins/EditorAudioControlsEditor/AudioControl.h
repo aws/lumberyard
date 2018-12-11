@@ -20,7 +20,7 @@
 
 namespace AudioControls
 {
-    extern const string g_sDefaultGroup;
+    extern const char* g_sDefaultGroup;
 
     class CATLControlsModel;
 

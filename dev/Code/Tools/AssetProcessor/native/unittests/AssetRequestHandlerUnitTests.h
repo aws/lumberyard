@@ -9,9 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef ASSETPROCESSOR_ASSETREQUESTHANDLERUNITTESTS_H
-#define ASSETPROCESSOR_ASSETREQUESTHANDLERUNITTESTS_H
-
+#pragma once
 #include "UnitTestRunner.h"
 
 namespace AssetProcessor
@@ -25,5 +23,3 @@ namespace AssetProcessor
         virtual void StartTest() override;
     };
 }
-
-#endif // ASSETPROCESSOR_ASSETREQUESTHANDLERUNITTESTS_H

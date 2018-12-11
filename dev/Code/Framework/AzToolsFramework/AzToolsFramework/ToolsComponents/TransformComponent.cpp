@@ -137,6 +137,18 @@ namespace AzToolsFramework
                     classElement.AddElementWithData(context, "InterpolateRotation", AZ::InterpolationMode::NoInterpolation);
                 }
 
+                // note the == on the following line.  Do not add to this block.  If you add an "InterpolateScale" back in, then
+                // consider erasing this block.  The version was bumped from 8 to 9 to ensure this code runs.
+                // if you add the field back in, then increment the version number again.
+                if (classElement.GetVersion() == 8)
+                {
+                    // a field was temporarily added to this specific version, then was removed.
+                    // However, some data may have been exported with this field present, so 
+                    // remove it if its found, but only in this version which the change was present in, so that
+                    // future re-additions of it won't remove it (as long as they bump the version number.)
+                    classElement.RemoveElementByName(AZ_CRC("InterpolateScale", 0x9d00b831));
+                }
+
                 return true;
             }
         } // namespace Internal
@@ -1120,7 +1132,7 @@ namespace AzToolsFramework
                     Field("Sync Enabled", &TransformComponent::m_netSyncEnabled)->
                     Field("InterpolatePosition", &TransformComponent::m_interpolatePosition)->
                     Field("InterpolateRotation", &TransformComponent::m_interpolateRotation)->
-                    Version(8, &Internal::TransformComponentDataConverter);
+                    Version(9, &Internal::TransformComponentDataConverter);
 
                 if (AZ::EditContext* ptrEdit = serializeContext->GetEditContext())
                 {

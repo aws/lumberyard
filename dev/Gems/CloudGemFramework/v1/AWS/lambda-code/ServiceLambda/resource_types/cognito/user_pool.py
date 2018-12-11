@@ -12,6 +12,7 @@
 
 import boto3
 from resource_manager_common import stack_info
+from cgf_utils import custom_resource_utils
 
 def get_idp_client():
     if not hasattr(get_idp_client, 'idp_client'):
@@ -23,7 +24,7 @@ def get_user_pool(user_pool_id):
     if not user_pool_id or user_pool_id.find('_') < 0:
         # The ID is missing or invalid.
         return None
-    return get_idp_client().describe_user_pool(UserPoolId=user_pool_id)
+    return get_idp_client().describe_user_pool(UserPoolId=custom_resource_utils.get_embedded_physical_id(user_pool_id))
 
 # Looks up a client id using the pool id and client name.
 def get_client_id(user_pool_id, client_app_name):
@@ -37,7 +38,10 @@ def get_client_apps(user_pool_id):
     response = get_idp_client().list_user_pool_clients(UserPoolId=user_pool_id, MaxResults=60)
     client_apps = response.get('UserPoolClients', [])
     while 'NextToken' in response:
-        response = get_idp_client().list_user_pool_clients(UserPoolId=user_pool_id, MaxResults=60, NextToken=response['NextToken'])
+        response = get_idp_client().list_user_pool_clients(
+            UserPoolId=custom_resource_utils.get_embedded_physical_id(user_pool_id),
+            MaxResults=60,
+            NextToken=response['NextToken'])
         client_apps.extend(response.get('UserPoolClients', []))
     return client_apps
 

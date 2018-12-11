@@ -142,6 +142,7 @@ CTrackViewDialog::CTrackViewDialog(QWidget* pParent /*=NULL*/)
 
     m_lazyInitDone = false;
     m_bEditLock = false;
+    m_newSequenceLock = false;
 
     m_pNodeForTracksToolBar = NULL;
 
@@ -489,10 +490,6 @@ void CTrackViewDialog::InitToolbar()
             qaction->setChecked(i == 1.);
             ag->addAction(qaction);
         }
-        buttonMenu->addSeparator();
-        qaction = buttonMenu->addAction("Sequence Camera");
-        connect(qaction, &QAction::triggered, this, &CTrackViewDialog::OnPlayToggleCamera);
-        ag->addAction(qaction);
     }
     m_playToolBar->addWidget(toolButton);
 
@@ -785,7 +782,7 @@ void CTrackViewDialog::UpdateActions()
         m_actions[ID_VIEW_TICKINFRAMES]->setChecked(false);
     }
 
-    m_actions[ID_TV_DEL_SEQUENCE]->setEnabled(m_bEditLock ? false : true);
+    m_actions[ID_TV_DEL_SEQUENCE]->setEnabled(m_bEditLock ? false : true);    
 
     CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
     if (pSequence)
@@ -902,8 +899,8 @@ void CTrackViewDialog::UpdateActions()
         }    
     }
     m_actions[ID_TOOLS_BATCH_RENDER]->setEnabled((GetIEditor()->GetMovieSystem()->GetNumSequences() > 0) ? true : false);
-    m_actions[ID_TV_ADD_SEQUENCE]->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady());
-    m_actions[ID_TV_SEQUENCE_NEW]->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady());    
+    m_actions[ID_TV_ADD_SEQUENCE]->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady() && !m_newSequenceLock);
+    m_actions[ID_TV_SEQUENCE_NEW]->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady() && !m_newSequenceLock);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -971,6 +968,11 @@ void CTrackViewDialog::Update()
     else
     {
         m_activeCamStatic->setText("Active Camera");
+    }
+
+    if (m_wndNodesCtrl)
+    {
+        m_wndNodesCtrl->Update();
     }
 }
 
@@ -1496,15 +1498,6 @@ void CTrackViewDialog::OnPlaySetScale()
     }
 }
 
-void CTrackViewDialog::OnPlayToggleCamera()
-{
-    CViewport* pRendView = GetIEditor()->GetViewManager()->GetViewport(ET_ViewportCamera);
-    if (pRendView)
-    {
-        pRendView->ToggleCameraObject();
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDialog::OnStop()
 {
@@ -1567,7 +1560,13 @@ void CTrackViewDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnBeginNewScene:
     case eNotify_OnBeginLoad:
     case eNotify_OnBeginSceneSave:
+        m_bIgnoreUpdates = true;
+        break;
     case eNotify_OnBeginGameMode:
+        SetEditLock(true);
+        m_newSequenceLock = true;
+        m_sequencesComboBox->setEnabled(false);
+        UpdateActions();
         m_bIgnoreUpdates = true;
         break;
     case eNotify_OnEndNewScene:
@@ -1576,8 +1575,14 @@ void CTrackViewDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
         ReloadSequences();
         break;
     case eNotify_OnEndSceneSave:
+        m_bIgnoreUpdates = false;
+        break;
     case eNotify_OnEndGameMode:
         m_bIgnoreUpdates = false;
+        SetEditLock(false);
+        m_newSequenceLock = false;
+        m_sequencesComboBox->setEnabled(true);
+        UpdateActions();
         break;
     case eNotify_OnMissionChange:
         if (!m_bIgnoreUpdates)
@@ -1599,11 +1604,13 @@ void CTrackViewDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
         break;
     case eNotify_OnBeginSimulationMode:
         SetEditLock(true);
+        m_newSequenceLock = true;
         m_sequencesComboBox->setEnabled(false);
         UpdateActions();
         break;
     case eNotify_OnEndSimulationMode:
         SetEditLock(false);
+        m_newSequenceLock = false;
         m_sequencesComboBox->setEnabled(true);
         UpdateActions();
         break;
@@ -2108,6 +2115,12 @@ void CTrackViewDialog::UpdateTracksToolBar()
                 if (nodeType == AnimNodeType::Component)
                 {
                     paramType = animatableProperties[i].paramType;
+
+                    // Skip over any hidden params
+                    if (animatableProperties[i].flags & IAnimNode::ESupportedParamFlags::eSupportedParamFlags_Hidden)
+                    {
+                        continue;
+                    }
                 }
                 else
                 {
@@ -2121,7 +2134,7 @@ void CTrackViewDialog::UpdateTracksToolBar()
                 }
 
                 CTrackViewTrack* pTrack = pAnimNode->GetTrackForParameter(paramType);
-                if (pTrack && (!pAnimNode->GetParamFlags(paramType) & IAnimNode::eSupportedParamFlags_MultipleTracks))
+                if (pTrack && !(pAnimNode->GetParamFlags(paramType) & IAnimNode::eSupportedParamFlags_MultipleTracks))
                 {
                     continue;
                 }

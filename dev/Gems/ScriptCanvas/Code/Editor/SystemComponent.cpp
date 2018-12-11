@@ -17,6 +17,7 @@
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/EBus/Results.h>
 #include <AzCore/UserSettings/UserSettingsProvider.h>
+#include <AzCore/std/string/wildcard.h>
 
 #include <AzFramework/Entity/EntityContextBus.h>
 
@@ -126,7 +127,7 @@ namespace ScriptCanvasEditor
         m_propertyHandlers.emplace_back(RegisterGenericComboBoxHandler<AZ::Crc32>());
         SystemRequestBus::Handler::BusConnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
-
+        AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
         m_documentContext.Activate();
     }
 
@@ -145,6 +146,7 @@ namespace ScriptCanvasEditor
     {
         m_documentContext.Deactivate();
 
+        AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
         SystemRequestBus::Handler::BusDisconnect();
 
@@ -265,6 +267,17 @@ namespace ScriptCanvasEditor
                 }
             }
         }
+    }
+
+    AzToolsFramework::AssetBrowser::SourceFileDetails SystemComponent::GetSourceFileDetails(const char* fullSourceFileName)
+    {
+        if (AZStd::wildcard_match("*.scriptcanvas", fullSourceFileName))
+        {
+            return AzToolsFramework::AssetBrowser::SourceFileDetails("Editor/Icons/AssetBrowser/ScriptCanvas_16.png");
+        }
+
+        // not one of our types.
+        return AzToolsFramework::AssetBrowser::SourceFileDetails();
     }
 
     void SystemComponent::PopulateEditorCreatableTypes()

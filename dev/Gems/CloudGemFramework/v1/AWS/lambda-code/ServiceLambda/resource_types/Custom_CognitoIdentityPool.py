@@ -16,6 +16,7 @@ import boto3
 import botocore
 import json
 from cgf_utils import aws_utils
+from cgf_utils import custom_resource_utils
 from resource_manager_common import constant
 from resource_types.cognito import identity_pool
 from resource_manager_common import stack_info
@@ -49,7 +50,7 @@ def handler(event, context):
     identity_pool_name = stack_name+props.IdentityPoolName
     identity_pool_name = identity_pool_name.replace('-', ' ')
     identity_client = identity_pool.get_identity_client()
-    identity_pool_id = event.get('PhysicalResourceId')
+    identity_pool_id = custom_resource_utils.get_embedded_physical_id(event.get('PhysicalResourceId'))
     found_pool = identity_pool.get_identity_pool(identity_pool_id)
 
     request_type = event['RequestType']

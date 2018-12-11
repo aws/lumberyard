@@ -86,11 +86,12 @@ template<>
 inline void TAnimTrack<IMannequinKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<IMannequinKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<IMannequinKey>::m_flags)
         ->Field("Range", &TAnimTrack<IMannequinKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<IMannequinKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<IMannequinKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<IMannequinKey>::m_keys)
+        ->Field("Id", &TAnimTrack<IMannequinKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////

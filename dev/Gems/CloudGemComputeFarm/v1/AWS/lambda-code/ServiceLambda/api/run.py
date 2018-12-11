@@ -3,18 +3,13 @@ from __future__ import print_function
 import boto3
 import datetime
 import json
-
-from botocore.exceptions import ClientError
-
 import CloudCanvas
-
 import errors
 import service
-
-from cgf_utils import aws_utils
-
 import fleet
-
+from cgf_utils import aws_utils
+from cgf_utils import custom_resource_utils
+from botocore.exceptions import ClientError
 # import errors
 #
 # raise errors.ClientError(message) - results in HTTP 400 response with message
@@ -23,14 +18,14 @@ import fleet
 #
 # Any other exception results in HTTP 500 with a generic internal service error message.
 
-workflow = CloudCanvas.get_setting('Workflow')
+workflow = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('Workflow'))
 workflow_domain_name = workflow + '-domain'
 workflow_type_name = workflow + '-workflow-type'
 
 swf_client = boto3.client('swf', region_name=aws_utils.current_region)
 dynamo_client = boto3.client('dynamodb')
 
-kvs_table = CloudCanvas.get_setting('KVS')
+kvs_table = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('KVS'))
 active_workflow_key = 'active_workflow'
 
     

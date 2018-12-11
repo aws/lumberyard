@@ -83,11 +83,12 @@ template<>
 inline void TAnimTrack<ILookAtKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<ILookAtKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<ILookAtKey>::m_flags)
         ->Field("Range", &TAnimTrack<ILookAtKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<ILookAtKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<ILookAtKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<ILookAtKey>::m_keys)
+        ->Field("Id", &TAnimTrack<ILookAtKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////

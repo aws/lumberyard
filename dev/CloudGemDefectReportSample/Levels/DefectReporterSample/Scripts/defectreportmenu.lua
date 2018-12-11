@@ -3,8 +3,13 @@ defectreportmenu =
     Properties =
     {
         RecordDefectEvent = "report_defect",
-        OpenDefectUIEvent = "open_defect_report_ui"
+        OpenDefectUIEvent = "open_defect_report_ui",
+        CustomFieldTypes = {"CustomCheckBoxField", "CustomRadioButtonField", "CustomTextField", "CustomObjectField"}
     },
+
+    postTotalSteps = 0,
+    postCurrentStep = 0,
+    progressDesc = ""
 }
 
 function defectreportmenu:OnActivate()
@@ -49,15 +54,16 @@ function defectreportmenu:ShowDialog()
         -- Let's load the canvas
         self.canvasEntityId = UiCanvasManagerBus.Broadcast.LoadCanvas("Levels/DefectReporterSample/UI/DefectReporterMenu.uicanvas")
 
-        local welcomeMessage = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "WelcomeMessage")
-
-        self.textInput = UiElementBus.Event.FindChildByName(welcomeMessage, "Text Input")
+        self.textInput = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "ErrorMessageInput")
         UiTextInputBus.Event.SetMaxStringLength(self.textInput, self.maxAnswerChars)
 
         self.screenShot = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "ScreenShot")
 
         self.submitButton = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "SubmitReportButton")
         self.submitButtonText = UiElementBus.Event.FindChildByName(self.submitButton, "Text")
+
+        self.submitSingleButton = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "SubmitSingleReportButton")
+        self.submitSingleButtonText = UiElementBus.Event.FindChildByName(self.submitSingleButton, "Text")
 
         self.cancelButton = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "CancelButton")
 
@@ -76,16 +82,10 @@ function defectreportmenu:ShowDialog()
         -- Listen for action strings broadcast by the canvas
         self.buttonHandler = UiCanvasNotificationBus.Connect(self, self.canvasEntityId)
 
-        self.CustomCheckBoxField = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "CustomCheckBoxField")
-        self.CustomRadioButtonField = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "CustomRadioButtonField")
-        self.CustomTextField = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "CustomTextField")
         self.CustomEmptyField = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "CustomEmptyField")
+        self.customField = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "CustomField")
 
-        UiElementBus.Event.SetIsEnabled(self.CustomCheckBoxField, false)
-        UiElementBus.Event.SetIsEnabled(self.CustomRadioButtonField, false)
-        UiElementBus.Event.SetIsEnabled(self.CustomTextField, false)
 
-        
         self.Configuration = {}
         self.curCustomFieldIndex = 0
         self.maxCustomFieldIndex = 0
@@ -137,6 +137,8 @@ function defectreportmenu:OnAction(entityId, actionName)
         self:OnCancelPressed()
     elseif actionName == "Submit" then
         self:Submit()
+    elseif actionName == "SubmitSingle" then
+        self:SubmitSingle()
     elseif actionName == "Ok" then
         self.messages = {}
         self.reachSoftCap = false
@@ -160,16 +162,11 @@ function defectreportmenu:OnAction(entityId, actionName)
     elseif actionName == "AnnotationChange" then
         self:UpdateCharCounter()
     elseif actionName == "NewReports" then
-        UiCanvasBus.Event.SetEnabled(self.newReportPopup, false)
         CloudGemDefectReporterRequestBus.Broadcast.TriggerUserReportEditing()
     elseif actionName == "EndEditAnnotation" then
         self:RecordAnnotation()
-    elseif actionName == "CustomCheckBoxFieldChange" then
-        self:RecordCustomCheckBoxField()
-    elseif actionName == "CustomRadioButtonFieldChange" then
-        self:RecordCustomRadioButtonField()
-    elseif actionName == "EndEditCustomTextField" then
-        self:RecordCustomTextField()
+    elseif actionName == "OnCustomFieldChange" then
+        self:OnCustomFieldChange()
     end
 end
 
@@ -233,13 +230,42 @@ function defectreportmenu:Submit()
     self.reportIDs = nil
 end
 
+function defectreportmenu:SubmitSingle()
+    CloudGemDefectReporterFPSDropReportingRequestBus.Broadcast.Enable(false)
+
+    local tempIDs = {}
+    for i = 1, #self.reportIDs do
+        tempIDs[i] = self.reportIDs[i]
+    end
+
+    self.reportIDs:clear()
+    self.reportIDs:push_back(tempIDs[self.curReportIndex])
+
+    CloudGemDefectReporterRequestBus.Broadcast.PostReports(self.reportIDs)
+    CloudGemDefectReporterRequestBus.Broadcast.IsSubmittingReport(true)
+
+    self.reportIDs:clear()
+    for i = 1, #tempIDs do
+        if i ~= self.curReportIndex then
+            self.reportIDs:push_back(tempIDs[i])
+        end
+    end
+
+    self.maxReportIndex = #self.reportIDs
+    if self.curReportIndex > self.maxReportIndex then
+        self.curReportIndex = self.curReportIndex - 1
+    end
+
+    self:DisplayCurrentReportDesc()
+    self:UpdateReportIndex()
+
+    if self.maxReportIndex == 0 then
+        UiCanvasBus.Event.SetEnabled(self.canvasEntityId, false)
+    end
+end
+
 function defectreportmenu:UpdateReportIndex()
     if self.reportIndexText ~= nil then
-        if self.maxReportIndex > 1 then
-            UiTextBus.Event.SetText(self.submitButtonText, "Submit All")
-        else
-            UiTextBus.Event.SetText(self.submitButtonText, "Submit")
-        end
         local countStr = tostring(self.curReportIndex) .. "/" .. tostring(self.maxReportIndex)
         UiTextBus.Event.SetText(self.reportIndexText, countStr)
     end
@@ -258,7 +284,7 @@ function defectreportmenu:DisplayCurrentReportDesc()
                 for count = 1, numMetrics do
                     local textElement = UiElementBus.Event.GetChild(self.metricsList, count - 1)
                     local key = self.curDefectReport.metrics[count].key
-                    local originalValue = self.curDefectReport.metrics[count].data                    
+                    local originalValue = self.curDefectReport.metrics[count].data
                     -- truncate to 100 characters to not blow out text UI
                     local value = string.sub(originalValue, 0, 100)
                     -- get rid of linefeeds as they screw up the display
@@ -298,62 +324,90 @@ function defectreportmenu:DisplayCurrentReportDesc()
     end
 end
 
-function defectreportmenu:UpdateCurrentCustomField()
-    -- hide the previous custom field
-    if self.currentFieldEntityID ~= nil then
-        UiElementBus.Event.SetIsEnabled(self.currentFieldEntityID, false)
+function defectreportmenu:getCurrentCustomField(customFieldSchema, parent)
+    local numCustomFieldTypes = #self.Properties.CustomFieldTypes
+    local customFieldMapping = {}
+    for optionCount = 1, numCustomFieldTypes do
+        local customFieldName = self.Properties.CustomFieldTypes[optionCount]
+        local customField = UiElementBus.Event.FindChildByName(parent, customFieldName)
+        customFieldMapping[customFieldName] = customField
+        UiElementBus.Event.SetIsEnabled(customField, false)
     end
 
-    --set the current entity ID according to the type of the custom field
-    local type = self.Configuration["clientConfiguration"][self.curCustomFieldIndex]["type"]
-    if type == "predefined" and self.Configuration["clientConfiguration"][self.curCustomFieldIndex]["multipleSelect"] then
-        self.currentFieldEntityID = self.CustomCheckBoxField
-    elseif type == "predefined" and self.Configuration["clientConfiguration"][self.curCustomFieldIndex]["multipleSelect"] == false then
-        self.currentFieldEntityID = self.CustomRadioButtonField
+    local type = customFieldSchema["type"]
+    local respose = nil
+    if type == "predefined" and customFieldSchema["multipleSelect"] then
+        respose = customFieldMapping["CustomCheckBoxField"]
+    elseif type == "predefined" and not customFieldSchema["multipleSelect"] then
+        respose = customFieldMapping["CustomRadioButtonField"]
     elseif type == "text" then
-        self.currentFieldEntityID =self.CustomTextField
+        respose = customFieldMapping["CustomTextField"]
+    elseif type == "object" then
+        respose = customFieldMapping["CustomObjectField"]
     end
 
-    UiElementBus.Event.SetIsEnabled(self.currentFieldEntityID, true)
-
-    local headerText = UiElementBus.Event.FindChildByName(self.currentFieldEntityID, "Header")
-    UiTextBus.Event.SetText(headerText, "Custom Field: "..tostring(self.Configuration["clientConfiguration"][self.curCustomFieldIndex]["title"])) 
+    if respose~= nil then
+        UiElementBus.Event.SetIsEnabled(respose, true)
+    end
+    return respose
 end
 
-function defectreportmenu:DisplayCurrentCustomFieldDesc()
-    local currentField = self.Configuration["clientConfiguration"][self.curCustomFieldIndex]
-    local currentCustomFieldValue = self.FieldValues[self.curReportIndex][currentField["title"]]
+function defectreportmenu:DisplayCurrentCustomFieldDesc(parent, customFieldSchema, fieldValue, isObjectProperty)
+    local headerText = UiElementBus.Event.FindChildByName(parent, "Header")
+    UiTextBus.Event.SetText(headerText, customFieldSchema['title'])
 
-    if currentField["type"] ~= "text" then
-        local numOptions = #currentField["predefines"]
+    local customField = self:getCurrentCustomField(customFieldSchema, parent)
+    if not isObjectProperty and customFieldSchema["type"] ~= "text" then
+        customField = UiElementBus.Event.FindChildByName(customField, 'Mask')
+    end
+
+    local fieldValueExists = fieldValue ~= nil
+
+    if customFieldSchema["type"] == "predefined" then
+        local options = #customFieldSchema["predefines"]
         -- Here we use a dynamic layout so retrieve it
-        local maskEntityId = UiElementBus.Event.FindChildByName(self.currentFieldEntityID, 'Mask')
-        local contentEntityId = UiElementBus.Event.FindChildByName(maskEntityId, 'Content')
+        local contentEntityId = UiElementBus.Event.FindChildByName(customField, 'Content')
         -- Set the number of checkboxes/radio buttons that we want
-        UiDynamicLayoutBus.Event.SetNumChildElements(contentEntityId, numOptions)
-
-        for optionCount = 1, numOptions do
+        UiDynamicLayoutBus.Event.SetNumChildElements(contentEntityId, options)
+        for optionCount = 1, options do
             -- Set the text of each option
-            local childElement = UiElementBus.Event.GetChild(contentEntityId, optionCount-1)
-            local childText = UiElementBus.Event.FindChildByName(childElement, "Text")
-            UiTextBus.Event.SetText(childText, currentField["predefines"][optionCount])
-
-            local isChecked = currentCustomFieldValue ~= nil
-            if currentField["type"] == "predefined" and currentField["multipleSelect"] then
-                isChecked = isChecked and self.util.HasValue(self.util.UnserializeStringToArray(currentCustomFieldValue), currentField["predefines"][optionCount])
+            local childElement = UiElementBus.Event.GetChild(contentEntityId, optionCount - 1)
+            local childElementText = UiElementBus.Event.FindChildByName(childElement, "Text")
+            UiTextBus.Event.SetText(childElementText, customFieldSchema["predefines"][optionCount])
+            if customFieldSchema["type"] == "predefined" and customFieldSchema["multipleSelect"] then
+                isChecked = fieldValueExists and self.util.HasValue(self.util.ConvertStringToArray(fieldValue), customFieldSchema["predefines"][optionCount])
                 UiCheckboxBus.Event.SetState(childElement, isChecked)
-            elseif currentField["type"] == "predefined" and currentField["multipleSelect"] == false then
-                isSelected = isChecked and currentField["predefines"][optionCount] == currentCustomFieldValue
+            elseif customFieldSchema["type"] == "predefined" and customFieldSchema["multipleSelect"] == false then
+                isSelected = fieldValueExists and customFieldSchema["predefines"][optionCount] == fieldValue
                 local radioButtonGroup = UiRadioButtonBus.Event.GetGroup(childElement)
                 UiRadioButtonGroupBus.Event.SetState(radioButtonGroup, childElement, isSelected)
             end
         end
-    else
-        local textInputElement = UiElementBus.Event.FindChildByName(self.currentFieldEntityID, "Text Input")
-        local content = currentCustomFieldValue ~= nil and tostring(currentCustomFieldValue) or ""
-        UiTextInputBus.Event.SetText(textInputElement, content)
-        UiTextInputBus.Event.SetMaxStringLength(textInputElement, currentField["maxChars"])
-    end    
+    elseif customFieldSchema["type"] == "text" then
+        if not fieldValueExists then
+            fieldValue = ""
+        end
+
+        local textInputElement = UiElementBus.Event.FindChildByName(customField, "Text Input")
+        UiTextInputBus.Event.SetText(textInputElement, fieldValue)
+        UiTextInputBus.Event.SetMaxStringLength(textInputElement, customFieldSchema["maxChars"])
+    elseif customFieldSchema["type"] == "object" then
+        local propertyValue = {}
+        if fieldValueExists then
+            propertyValue = self.util.DeserializeString(fieldValue, customFieldSchema)
+        end
+        local numOptions = #customFieldSchema["properties"]
+        -- Here we use a dynamic layout so retrieve it
+        local contentEntityId = UiElementBus.Event.FindChildByName(customField, 'Content')
+        -- Set the number of checkboxes/radio buttons that we want
+        UiDynamicLayoutBus.Event.SetNumChildElements(contentEntityId, numOptions)
+        for optionCount = 1, numOptions do
+            -- Set the text of each option
+            local propertyField = UiElementBus.Event.GetChild(contentEntityId, optionCount - 1)
+            local propertyFieldSchema = customFieldSchema["properties"][optionCount]
+            self:DisplayCurrentCustomFieldDesc(propertyField, propertyFieldSchema, propertyValue[propertyFieldSchema['title']], true)
+        end
+    end
 end
 
 function defectreportmenu:OnOpenDefectReportEditorUI()
@@ -372,13 +426,6 @@ function defectreportmenu:OnReportsUpdated(numReportsAvailable, reportsProcessin
 
     local showPopup = true
 
-    -- don't show popup if main dialog already open
-    if self.canvasEntityId ~= nil then
-        if UiCanvasBus.Event.GetEnabled(self.canvasEntityId) then
-            showPopup = false
-        end
-    end
-
     if numReportsAvailable == 0 and reportsProcessing == 0 then
         showPopup = false
     end
@@ -393,7 +440,7 @@ function defectreportmenu:OnReportsUpdated(numReportsAvailable, reportsProcessin
     end
 
     if self.newReportPopupText ~= nil then
-        local popupText = tostring(numReportsAvailable) .. " Defect\nReports Available"
+        local popupText = tostring(numReportsAvailable) .. " Defect\nReports Available" .. "\n" .. self.progressDesc
         UiTextBus.Event.SetText(self.newReportPopupText, popupText)
     end
 
@@ -408,14 +455,41 @@ function defectreportmenu:OnReportsUpdated(numReportsAvailable, reportsProcessin
     end
 end
 
-function defectreportmenu:OnDefectReportPostStatus(currentReport, totalReports)
-    if currentReport == totalReports then
-        local message = "Your report was sent successfully thank you for your help."
+function defectreportmenu:UpdateProgressDesc()
+    if self.postTotalSteps > 0 and self.postCurrentStep >= 0 then
+        local percent = math.min(100, math.floor(self.postCurrentStep / self.postTotalSteps * 100))
+        self.progressDesc = "Uploading " .. tostring(percent) .. "%"
+    else
+        self.progressDesc = ""
+    end
+end
+
+function defectreportmenu:OnDefectReportPostStart(totalSteps)
+    self.postTotalSteps = totalSteps
+    self.postCurrentStep = 0
+    self:UpdateProgressDesc()
+end
+
+function defectreportmenu:ClearProgress()
+    self.postTotalSteps = 0
+    self.postCurrentStep = 0
+    self.progressDesc = ""
+end
+
+function defectreportmenu:OnDefectReportPostStep()
+    self.postCurrentStep = self.postCurrentStep + 1
+    self:UpdateProgressDesc()
+
+    if self.postCurrentStep >= self.postTotalSteps and self.postTotalSteps > 0 then
+        self:ClearProgress()
+        local message = "Your report was sent successfully"
         self:UpdateMessages(message)
     end
 end
 
+
 function defectreportmenu:OnDefectReportPostError(errorMsg)
+    self:ClearProgress()
     local message = "Error submitting report: "..tostring(errorMsg)
     self:UpdateMessages(message)
 end
@@ -472,8 +546,9 @@ end
 function defectreportmenu:OnNextCustomFieldPressed()
     if self.curCustomFieldIndex < self.maxCustomFieldIndex then
         self.curCustomFieldIndex = self.curCustomFieldIndex + 1
-        self:UpdateCurrentCustomField()
-        self:DisplayCurrentCustomFieldDesc()
+        local currentFieldSchema = self.Configuration["clientConfiguration"][self.curCustomFieldIndex]
+        local currentFieldValue = self:GetCurrentFieldValue(currentFieldSchema)
+        self:DisplayCurrentCustomFieldDesc(self.customField, currentFieldSchema, currentFieldValue, false)
     end
 end
 
@@ -488,9 +563,18 @@ end
 function defectreportmenu:OnPrevCustomFieldPressed()
     if self.curCustomFieldIndex > 1 then
         self.curCustomFieldIndex = self.curCustomFieldIndex - 1
-        self:UpdateCurrentCustomField()
-        self:DisplayCurrentCustomFieldDesc()
+        local currentFieldSchema = self.Configuration["clientConfiguration"][self.curCustomFieldIndex]
+        local currentFieldValue = self:GetCurrentFieldValue(currentFieldSchema)
+        self:DisplayCurrentCustomFieldDesc(self.customField, currentFieldSchema, currentFieldValue, false)
     end
+end
+
+function defectreportmenu:GetCurrentFieldValue(customFieldSchema)
+    if self.FieldValues[self.curReportIndex][customFieldSchema["title"]] == nil and customFieldSchema['defaultValue'] ~= nil then
+        self.FieldValues[self.curReportIndex][customFieldSchema["title"]] = customFieldSchema['defaultValue']
+        CloudGemDefectReporterRequestBus.Broadcast.AddCustomField(self.reportIDs[self.curReportIndex], customFieldSchema["title"], customFieldSchema['defaultValue'])
+    end
+    return self.FieldValues[self.curReportIndex][customFieldSchema["title"]]
 end
 
 function defectreportmenu:OnDeletePressed()
@@ -515,7 +599,7 @@ function defectreportmenu:RefreshAvailableIDs()
         self.curReportIndex = 1
         self:UpdateReportIndex()
         self:DisplayCurrentReportDesc()
-        end
+    end
 end
 
 function defectreportmenu:RecordAnnotation()
@@ -530,61 +614,89 @@ function defectreportmenu:UpdateAnnotationEditBox(message)
     UiTextInputBus.Event.SetText(self.textInput, message)
 end
 
-function defectreportmenu:RecordCustomCheckBoxField()
-    local maskEntityId = UiElementBus.Event.FindChildByName(self.CustomCheckBoxField, 'Mask')
-    local contentEntityId = UiElementBus.Event.FindChildByName(maskEntityId, 'Content')
-    local numChilds = UiElementBus.Event.GetNumChildElements(contentEntityId)
+function defectreportmenu:OnCustomFieldChange()
+    local currentCustomFieldSchema = self.Configuration["clientConfiguration"][self.curCustomFieldIndex]
+    local currentCustomField = self:getCurrentCustomField(currentCustomFieldSchema, self.customField)
 
-    local currentCustomField = self.Configuration["clientConfiguration"][self.curCustomFieldIndex]
+    if currentCustomFieldSchema['type'] ~= "text" then
+        currentCustomField = UiElementBus.Event.FindChildByName(currentCustomField, 'Mask')
+    end
+
+    local value = self:GetCustomFieldValue(currentCustomField, currentCustomFieldSchema)
+    if currentCustomFieldSchema['type'] == "predefined" and currentCustomFieldSchema["multipleSelect"] then
+        value = self.util.convertArrayToString(value)
+    end
+
+    self.FieldValues[self.curReportIndex][currentCustomFieldSchema["title"]] = value
+    CloudGemDefectReporterRequestBus.Broadcast.AddCustomField(self.reportIDs[self.curReportIndex], currentCustomFieldSchema["title"], value)
+end
+
+function defectreportmenu:GetCustomFieldValue(currentCustomField, currentCustomFieldSchema)
+    local value = ""
+    if currentCustomFieldSchema['type'] == "predefined" and not currentCustomFieldSchema["multipleSelect"] then
+        value = self:GetRadioButtonFieldSelection(currentCustomField, currentCustomFieldSchema)
+    elseif currentCustomFieldSchema['type'] == "predefined" and currentCustomFieldSchema["multipleSelect"] then
+        value = self:GetCheckBoxFieldSelections(currentCustomField, currentCustomFieldSchema)
+    elseif currentCustomFieldSchema['type'] == "text" then
+        value = self:GetTextFieldContent(currentCustomField)
+    elseif currentCustomFieldSchema['type'] == "object" then
+        value = self:GetObjectFieldContent(currentCustomField, currentCustomFieldSchema)
+    end
+    return value
+end
+
+function defectreportmenu:GetRadioButtonFieldSelection(radioButtonField, radioButtonFieldSchema)
+    local content = UiElementBus.Event.FindChildByName(radioButtonField, 'Content')
+    local numChilds = UiElementBus.Event.GetNumChildElements(content)
+    for childIndex = 1, numChilds do
+        local radioButton = UiElementBus.Event.GetChild(content, childIndex - 1)
+        -- If that radio button is checked
+        if UiRadioButtonBus.Event.GetState(radioButton) == true then
+            return radioButtonFieldSchema["predefines"][childIndex]
+        end
+    end
+
+    return ""
+end
+
+function defectreportmenu:GetCheckBoxFieldSelections(checkBoxField, checkBoxFieldSchema)
+    local content = UiElementBus.Event.FindChildByName(checkBoxField, 'Content')
+    local numChilds = UiElementBus.Event.GetNumChildElements(content)
 
     local selections = {}
     for childIndex = 1, numChilds do
-        local checkBox = UiElementBus.Event.GetChild(contentEntityId, childIndex-1)
+        local checkBox = UiElementBus.Event.GetChild(content, childIndex-1)
         -- If that checkbox is checked
         if UiCheckboxBus.Event.GetState(checkBox) == true then
-            selections[#selections + 1] = "\""..self.Configuration["clientConfiguration"][self.curCustomFieldIndex]["predefines"][childIndex].."\""
+            selections[#selections + 1] = "\""..checkBoxFieldSchema["predefines"][childIndex].."\""
         end
     end
-    local serializedArray = "["..table.concat(selections, ",").."]"
-    self.FieldValues[self.curReportIndex][currentCustomField["title"]] = serializedArray
 
-    CloudGemDefectReporterRequestBus.Broadcast.AddCustomField(self.reportIDs[self.curReportIndex], currentCustomField["title"], serializedArray)
+    return selections
 end
 
-function defectreportmenu:RecordCustomRadioButtonField()
-    local maskEntityId = UiElementBus.Event.FindChildByName(self.CustomRadioButtonField, 'Mask')
-    local contentEntityId = UiElementBus.Event.FindChildByName(maskEntityId, 'Content')
+function defectreportmenu:GetTextFieldContent(textField)
+    local textInput = UiElementBus.Event.FindChildByName(textField, "Text Input")
+    local text = UiTextInputBus.Event.GetText(textInput)
+    return text
+end
+
+
+function defectreportmenu:GetObjectFieldContent(objectField, objectFieldSchema)
+    local contentEntityId = UiElementBus.Event.FindChildByName(objectField, 'Content')
     local numChilds = UiElementBus.Event.GetNumChildElements(contentEntityId)
 
-    local currentCustomField = self.Configuration["clientConfiguration"][self.curCustomFieldIndex]
-
-    local selection = ""
+    local value = {}
     for childIndex = 1, numChilds do
-        local radioButton = UiElementBus.Event.GetChild(contentEntityId, childIndex - 1)
-        -- If that radio button is checked 
-        if UiRadioButtonBus.Event.GetState(radioButton) == true then
-            selection = currentCustomField["predefines"][childIndex]
-            break
+        local childField = UiElementBus.Event.GetChild(contentEntityId, childIndex - 1)
+        local propertyFieldSchema = objectFieldSchema['properties'][childIndex]
+        local propertyField = self:getCurrentCustomField(propertyFieldSchema, childField)
+        local propertyValue = self:GetCustomFieldValue(propertyField, propertyFieldSchema)
+        if #propertyValue ~= 0 then
+            value[propertyFieldSchema['title']] = propertyValue
         end
     end
-
-    self.FieldValues[self.curReportIndex][currentCustomField["title"]] = selection
-
-    CloudGemDefectReporterRequestBus.Broadcast.AddCustomField(self.reportIDs[self.curReportIndex], currentCustomField["title"], selection)
-end
-
-function defectreportmenu:RecordCustomTextField()
-    local textInputElement = UiElementBus.Event.FindChildByName(self.CustomTextField, "Text Input")
-    local inputText = UiTextInputBus.Event.GetText(textInputElement)
-    if #inputText == 0 then
-        inputText = ""
-    end
-
-    local currentCustomField = self.Configuration["clientConfiguration"][self.curCustomFieldIndex]
-
-    self.FieldValues[self.curReportIndex][currentCustomField["title"]] = inputText
-
-    CloudGemDefectReporterRequestBus.Broadcast.AddCustomField(self.reportIDs[self.curReportIndex], currentCustomField["title"], inputText)
+    return self.util.converTableToString(value)
 end
 
 return defectreportmenu

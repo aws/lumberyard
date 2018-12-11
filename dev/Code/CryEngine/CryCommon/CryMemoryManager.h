@@ -12,23 +12,13 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 // Description : Defines functions for CryEngine custom memory manager.
-//               See also CryMemoryManager_impl h  it must be included only once per module
-//               CryMemoryManager_impl h is included by platform_impl h
-
 
 #pragma once
-
-#if !defined(_RELEASE)
-// Enable this to check for heap corruption on windows systems by walking the
-// crt.
-#define MEMORY_ENABLE_DEBUG_HEAP 0
-#endif
 
 // Section dictionary
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define CRYMEMORYMANAGER_H_SECTION_TRAITS 1
 #define CRYMEMORYMANAGER_H_SECTION_ALLOCPOLICY 2
-#define CRYMEMORYMANAGER_H_SECTION_THROW 3
 #endif
 
 // Traits
@@ -49,53 +39,6 @@
 #define CRYMEMORYMANAGER_H_TRAIT_USE_CRTCHECKMEMORY 1
 #endif
 #endif
-
-// Throw
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_H_SECTION_THROW
-#include AZ_RESTRICTED_FILE(CryMemoryManager_h, AZ_RESTRICTED_PLATFORM)
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-#define CRYMM_THROW throw()
-#endif
-
-#if !defined(RELEASE)
-#define CRYMM_THROW_BAD_ALLOC throw(std::bad_alloc)
-#else
-#define CRYMM_THROW_BAD_ALLOC throw()
-#endif
-
-// Scope based heap checker macro
-#if (defined(WIN32) || defined(WIN64)) && MEMORY_ENABLE_DEBUG_HEAP
-# include <crtdbg.h>
-# define MEMORY_CHECK_HEAP() do { if (!_CrtCheckMemory()) {__debugbreak(); } \
-} while (0);
-struct _HeapChecker
-{
-    _HeapChecker() { MEMORY_CHECK_HEAP(); }
-    ~_HeapChecker() { MEMORY_CHECK_HEAP(); }
-};
-# define MEMORY_SCOPE_CHECK_HEAP_NAME_EVAL(x, y) x ## y
-# define MEMORY_SCOPE_CHECK_HEAP_NAME MEMORY_SCOPE_CHECK_HEAP_NAME_EVAL(__heap_checker__, __LINE__)
-# define MEMORY_SCOPE_CHECK_HEAP() _HeapChecker MMRM_SCOPE_CHECK_HEAP_NAME
-#endif
-
-#if !defined(MEMORY_CHECK_HEAP)
-# define MEMORY_CHECK_HEAP() void(NULL)
-#endif
-#if !defined(MEMORY_SCOPE_CHECK_HEAP)
-# define MEMORY_SCOPE_CHECK_HEAP() void(NULL)
-#endif
-
-//////////////////////////////////////////////////////////////////////////
-// Define this if you want to use slow debug memory manager in any config.
-//////////////////////////////////////////////////////////////////////////
-//#define DEBUG_MEMORY_MANAGER
-//////////////////////////////////////////////////////////////////////////
-
-// That mean we use node_allocator for all small allocations
 
 #include "platform.h"
 
@@ -131,16 +74,12 @@ struct _HeapChecker
     #endif
 
 #ifdef __cplusplus
-//////////////////////////////////////////////////////////////////////////
-#ifdef DEBUG_MEMORY_MANAGER
-    #ifdef _DEBUG
-        #define _DEBUG_MODE
-    #endif
-#endif //DEBUG_MEMORY_MANAGER
 
 #if defined(_DEBUG) && CRYMEMORYMANAGER_H_TRAIT_INCLUDE_CRTDBG_H
     #include <crtdbg.h>
 #endif //_DEBUG
+
+#include "LegacyAllocator.h"
 
 namespace CryMemory
 {
@@ -154,14 +93,21 @@ namespace CryMemory
         return true;
     #endif
     }
+
+    inline void* AllocPages(size_t size)
+    {
+        const size_t alignment = AZ_PAGE_SIZE;
+        void* ret = AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().Allocate(size, alignment, 0, "AllocPages", __FILE__, __LINE__);
+        return ret;
+    }
+
+    inline void FreePages(void* p, size_t size)
+    {
+        const size_t alignment = AZ_PAGE_SIZE;
+        AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().DeAllocate(p, size, alignment);
+    }
 }
 
-#ifdef DEBUG_MEMORY_MANAGER
-// Restore debug mode define
-    #ifndef _DEBUG_MODE
-        #undef _DEBUG
-    #endif //_DEBUG_MODE
-#endif //DEBUG_MEMORY_MANAGER
 //////////////////////////////////////////////////////////////////////////
 
 #endif //__cplusplus
@@ -216,31 +162,6 @@ struct IMemoryManager
 
     virtual bool GetProcessMemInfo(SProcessMemInfo& minfo) = 0;
 
-    // Description:
-    //   Used to add memory block size allocated directly from the crt or OS to the memory manager statistics.
-    virtual void FakeAllocation(long size) = 0;
-
-    // Initialise the level heap.
-    virtual void InitialiseLevelHeap() = 0;
-
-    // Switch the default heap to the level heap.
-    virtual void SwitchToLevelHeap() = 0;
-
-    // Switch the default heap to the global heap.
-    virtual void SwitchToGlobalHeap() = 0;
-
-    // Enable the global heap for this thread only. Returns previous heap selection, which must be passed to LocalSwitchToHeap.
-    virtual int LocalSwitchToGlobalHeap() = 0;
-
-    // Enable the level heap for this thread only. Returns previous heap selection, which must be passed to LocalSwitchToHeap.
-    virtual int LocalSwitchToLevelHeap() = 0;
-
-    // Switch to a specific heap for this thread only. Usually used to undo a previous LocalSwitchToGlobalHeap
-    virtual void LocalSwitchToHeap(int heap) = 0;
-
-    // Fetch the violation status of the level heap
-    virtual bool GetLevelHeapViolationState(bool& usingLevelHeap, size_t& numAllocs, size_t& allocSize) = 0;
-
     //////////////////////////////////////////////////////////////////////////
     // Heap Tracing API
     virtual HeapHandle TraceDefineHeap(const char* heapName, size_t size, const void* pBase) = 0;
@@ -251,9 +172,6 @@ struct IMemoryManager
     virtual void TraceHeapSetLabel(const char* sLabel) = 0;
     //////////////////////////////////////////////////////////////////////////
 
-    // Retrieve access to the MemReplay implementation class.
-    virtual struct IMemReplay* GetIMemReplay() = 0;
-
     // Create an instance of ICustomMemoryHeap
     virtual ICustomMemoryHeap* const CreateCustomMemoryHeapInstance(EAllocPolicy const eAllocPolicy) = 0;
     virtual IGeneralMemoryHeap* CreateGeneralExpandingMemoryHeap(size_t upperLimit, size_t reserveSize, const char* sUsage) = 0;
@@ -263,27 +181,10 @@ struct IMemoryManager
     virtual IPageMappingHeap* CreatePageMappingHeap(size_t addressSpace, const char* sName) = 0;
 
     virtual IDefragAllocator* CreateDefragAllocator() = 0;
-
-    virtual void* AllocPages(size_t size) = 0;
-    virtual void FreePages(void* p, size_t size) = 0;
 };
-
 
 // Global function implemented in CryMemoryManager_impl.h
 IMemoryManager* CryGetIMemoryManager();
-
-class STraceHeapAllocatorAutoColor
-{
-public:
-    explicit STraceHeapAllocatorAutoColor(uint32 color) { m_color = CryGetIMemoryManager()->TraceHeapGetColor(); CryGetIMemoryManager()->TraceHeapSetColor(color); }
-    ~STraceHeapAllocatorAutoColor() { CryGetIMemoryManager()->TraceHeapSetColor(m_color); };
-protected:
-    uint32 m_color;
-    STraceHeapAllocatorAutoColor() {};
-};
-
-#define TRACEHEAP_AUTOCOLOR(color) STraceHeapAllocatorAutoColor _auto_color_(color);
-
 
 // Summary:
 //      Structure filled by call to CryModuleGetMemoryInfo().
@@ -320,31 +221,21 @@ extern "C" {
 #endif //__cplusplus
 
 
-CRYMEMORYMANAGER_API void* CryMalloc(size_t size, size_t& allocated, size_t alignment);
-CRYMEMORYMANAGER_API void* CryRealloc(void* memblock, size_t size, size_t& allocated, size_t& oldsize, size_t alignment);
-CRYMEMORYMANAGER_API size_t CryFree(void* p, size_t alignment);
-CRYMEMORYMANAGER_API size_t CryGetMemSize(void* p, size_t size);
-CRYMEMORYMANAGER_API int  CryStats(char* buf);
-CRYMEMORYMANAGER_API void CryFlushAll();
-CRYMEMORYMANAGER_API void CryCleanup();
-CRYMEMORYMANAGER_API int  CryGetUsedHeapSize();
-CRYMEMORYMANAGER_API int  CryGetWastedHeapSize();
-CRYMEMORYMANAGER_API void* CrySystemCrtMalloc(size_t size);
-CRYMEMORYMANAGER_API void* CrySystemCrtRealloc(void* p, size_t size);
-CRYMEMORYMANAGER_API size_t CrySystemCrtFree(void* p);
-CRYMEMORYMANAGER_API size_t CrySystemCrtSize(void* p);
-CRYMEMORYMANAGER_API size_t CrySystemCrtGetUsedSpace();
+void* CryMalloc(size_t size, size_t& allocated, size_t alignment);
+void* CryRealloc(void* memblock, size_t size, size_t& allocated, size_t& oldsize, size_t alignment);
+size_t CryFree(void* p, size_t alignment);
+size_t CryGetMemSize(void* p, size_t size);
+int  CryStats(char* buf);
+void CryFlushAll();
+void CryCleanup();
+int  CryGetUsedHeapSize();
+int  CryGetWastedHeapSize();
+size_t CrySystemCrtGetUsedSpace();
 CRYMEMORYMANAGER_API void CryGetIMemoryManagerInterface(void** pIMemoryManager);
-
-// This function is local in every module
-/*CRYMEMORYMANAGER_API*/
-void CryGetMemoryInfoForModule(CryModuleMemoryInfo* pInfo);
 
 #ifdef __cplusplus
 }
 #endif //__cplusplus
-
-
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -352,7 +243,7 @@ void CryGetMemoryInfoForModule(CryModuleMemoryInfo* pInfo);
 // Cry Memory Manager accessible in all build modes.
 //////////////////////////////////////////////////////////////////////////
 #if !defined(USING_CRY_MEMORY_MANAGER)
-    #define USING_CRY_MEMORY_MANAGER
+#define USING_CRY_MEMORY_MANAGER
 #endif
 
 #ifndef AZ_MONOLITHIC_BUILD
@@ -361,210 +252,9 @@ void CryGetMemoryInfoForModule(CryModuleMemoryInfo* pInfo);
 #define CRY_MEM_USAGE_API
 #endif // AZ_MONOLITHIC_BUILD
 
-#include "CryMemReplay.h"
-
-#if CAPTURE_REPLAY_LOG
-#define CRYMM_INLINE inline
-#else
 #define CRYMM_INLINE ILINE
-#endif
 
-#if defined(NOT_USE_CRY_MEMORY_MANAGER)
-CRYMM_INLINE void* CryModuleMalloc(size_t size)
-{
-    MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-    void* ptr = malloc(size);
-    MEMREPLAY_SCOPE_ALLOC(ptr, size, 0);
-    return ptr;
-}
-
-CRYMM_INLINE void* CryModuleRealloc(void* memblock, size_t size)
-{
-    MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-    void* ret = realloc(memblock, size);
-    MEMREPLAY_SCOPE_REALLOC(memblock, ret, size, 0);
-    return ret;
-}
-
-CRYMM_INLINE void  CryModuleFree(void* memblock)
-{
-    MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-    free(memblock);
-    MEMREPLAY_SCOPE_FREE(memblock);
-}
-
-CRYMM_INLINE void  CryModuleMemalignFree(void* memblock)
-{
-    MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-    free(memblock);
-    MEMREPLAY_SCOPE_FREE(memblock);
-}
-
-CRYMM_INLINE void* CryModuleReallocAlign(void* memblock, size_t size, size_t alignment)
-{
-    MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-    void* ret = realloc(memblock, size);
-    MEMREPLAY_SCOPE_REALLOC(memblock, ret, size, alignment);
-    return ret;
-}
-
-CRYMM_INLINE void* CryModuleMemalign(size_t size, size_t alignment)
-{
-    MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-            #if defined(__GNUC__) && !defined(APPLE)
-    void* ret = memalign(alignment, size);
-            #else
-    void* ret = malloc(size);
-            #endif
-    MEMREPLAY_SCOPE_ALLOC(ret, size, alignment);
-    return ret;
-}
-
-#else //NOT_USE_CRY_MEMORY_MANAGER
-
-/////////////////////////////////////////////////////////////////////////
-// Extern declarations,used by overrided new and delete operators.
-//////////////////////////////////////////////////////////////////////////
-extern "C"
-{
-void* CryModuleMalloc(size_t size) throw();
-void* CryModuleRealloc(void* memblock, size_t size) throw();
-void  CryModuleFree(void* ptr) throw();
-void* CryModuleMemalign(size_t size, size_t alignment) throw();
-void* CryModuleReallocAlign(void* memblock, size_t size, size_t alignment) throw();
-void  CryModuleMemalignFree(void*) throw();
-void* CryModuleCalloc(size_t a, size_t b) throw();
-}
-
-CRYMM_INLINE void* CryModuleCRTMalloc(size_t s)
-{
-    MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CrtMalloc);
-    void* ret = CryModuleMalloc(s);
-    MEMREPLAY_SCOPE_ALLOC(ret, s, 0);
-    return ret;
-}
-
-CRYMM_INLINE void* CryModuleCRTRealloc(void* p, size_t s)
-{
-    MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CrtMalloc);
-    void* ret = CryModuleRealloc(p, s);
-    MEMREPLAY_SCOPE_REALLOC(p, ret, s, 0);
-    return ret;
-}
-
-CRYMM_INLINE void CryModuleCRTFree(void* p)
-{
-    MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CrtMalloc);
-    CryModuleFree(p);
-    MEMREPLAY_SCOPE_FREE(p);
-}
-
-#define malloc   CryModuleCRTMalloc
-#define realloc  CryModuleCRTRealloc
-#define free     CryModuleCRTFree
-    #define calloc  CryModuleCalloc
-
-#endif //NOT_USE_CRY_MEMORY_MANAGER
-
-CRY_MEM_USAGE_API void CryModuleGetMemoryInfo(CryModuleMemoryInfo* pMemInfo);
-
-// Need for our allocator to avoid deadlock in cleanup
-void*  CryCrtMalloc(size_t size);
-size_t CryCrtFree(void* p);
-// wrapper for _msize on PC
-size_t CryCrtSize(void* p);
-
-#if !defined(NOT_USE_CRY_MEMORY_MANAGER)
-#include "CryMemoryAllocator.h"
-#endif
-
-//////////////////////////////////////////////////////////////////////////
-class ScopedSwitchToGlobalHeap
-{
-#if USE_LEVEL_HEAP
-public:
-    ILINE ScopedSwitchToGlobalHeap()
-        : m_old(CryGetIMemoryManager()->LocalSwitchToGlobalHeap())
-    {
-    }
-
-    ILINE ~ScopedSwitchToGlobalHeap()
-    {
-        CryGetIMemoryManager()->LocalSwitchToHeap(m_old);
-    }
-
-private:
-    ScopedSwitchToGlobalHeap(const ScopedSwitchToGlobalHeap&);
-    ScopedSwitchToGlobalHeap& operator = (const ScopedSwitchToGlobalHeap&);
-
-private:
-    int m_old;
-#else
-public:
-    ILINE ScopedSwitchToGlobalHeap() {}
-#endif
-};
-
-class CondScopedSwitchToGlobalHeap
-{
-#if USE_LEVEL_HEAP
-public:
-    ILINE CondScopedSwitchToGlobalHeap(bool cond)
-        : m_old(0)
-        , m_cond(cond)
-    {
-        IF (cond, 0)
-        {
-            m_old = CryGetIMemoryManager()->LocalSwitchToGlobalHeap();
-        }
-    }
-
-    ILINE ~CondScopedSwitchToGlobalHeap()
-    {
-        IF (m_cond, 0)
-        {
-            CryGetIMemoryManager()->LocalSwitchToHeap(m_old);
-        }
-    }
-
-private:
-    CondScopedSwitchToGlobalHeap(const CondScopedSwitchToGlobalHeap&);
-    CondScopedSwitchToGlobalHeap& operator = (const CondScopedSwitchToGlobalHeap&);
-
-private:
-    int m_old;
-    bool m_cond;
-#else
-public:
-    ILINE CondScopedSwitchToGlobalHeap(bool) {}
-#endif
-};
-
-class ScopedSwitchToLevelHeap
-{
-#if USE_LEVEL_HEAP
-public:
-    ILINE ScopedSwitchToLevelHeap()
-        : m_old(CryGetIMemoryManager()->LocalSwitchToLevelHeap())
-    {
-    }
-
-    ILINE ~ScopedSwitchToLevelHeap()
-    {
-        CryGetIMemoryManager()->LocalSwitchToHeap(m_old);
-    }
-
-private:
-    ScopedSwitchToLevelHeap(const ScopedSwitchToLevelHeap&);
-    ScopedSwitchToLevelHeap& operator = (const ScopedSwitchToLevelHeap&);
-
-private:
-    int m_old;
-#else
-public:
-    ILINE ScopedSwitchToLevelHeap() {}
-#endif
-};
+#include "CryLegacyAllocator.h"
 
 // These utility functions should be used for allocating objects with specific alignment requirements on the heap.
 // Note: On MSVC before 2013, only zero and one argument are supported, because C++11 support is not complete.

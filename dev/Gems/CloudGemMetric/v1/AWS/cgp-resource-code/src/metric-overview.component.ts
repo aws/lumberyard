@@ -99,21 +99,13 @@ export class MetricOverviewComponent implements OnInit, OnDestroy{
         this.metricGraphs.push(new MetricGraph("Consumer Lambda Duration", "Date", "Milliseconds", ["Consumer Invocations"], [this._apiHandler.getCloudWatchMetrics("Lambda", "Duration", "FunctionName", "FIFOConsumer", "Average", 300, 8)], [this.parseMetricsData], "ngx-charts-line-chart", [], ["Average"], undefined, undefined, 300000));
         this.metricGraphs.push(new MetricGraph("Consumer Lambda Errors", "Date", "Errors", ["Consumer Errors"], [this._apiHandler.getCloudWatchMetrics("Lambda", "Errors", "FunctionName", "FIFOConsumer", "Sum", 300, 8)], [this.parseMetricsData], "ngx-charts-line-chart", [], ["Sum"], undefined, undefined, 300000));
         this.metricGraphs.push(new MetricGraph("Amoeba Lambda Invocations", "Date", "Invocations",
-            ["Amoeba1", "Amoeba2", "Amoeba3", "Amoeba4", "Amoeba5"], [
-                this._apiHandler.getCloudWatchMetrics("Lambda", "Invocations", "FunctionName", "Amoeba1", "SampleCount", 1200, 8),
-                this._apiHandler.getCloudWatchMetrics("Lambda", "Invocations", "FunctionName", "Amoeba2", "SampleCount", 1200, 8),
-                this._apiHandler.getCloudWatchMetrics("Lambda", "Invocations", "FunctionName", "Amoeba3", "SampleCount", 1200, 8),
-                this._apiHandler.getCloudWatchMetrics("Lambda", "Invocations", "FunctionName", "Amoeba4", "SampleCount", 1200, 8),
-                this._apiHandler.getCloudWatchMetrics("Lambda", "Invocations", "FunctionName", "Amoeba5", "SampleCount", 1200, 8)
-            ], [this.parseMetricsData, this.parseMetricsData, this.parseMetricsData, this.parseMetricsData, this.parseMetricsData], "ngx-charts-line-chart", [], ["SampleCount", "SampleCount", "SampleCount", "SampleCount", "SampleCount"], this.colorScheme, undefined, 300000));
+            ["Amoeba"], [
+                this._apiHandler.getCloudWatchMetrics("Lambda", "Invocations", "FunctionName", "Amoeba", "SampleCount", 1200, 8)                
+            ], [this.parseMetricsData], "ngx-charts-line-chart", [], ["SampleCount"], this.colorScheme, undefined, 300000));
         this.metricGraphs.push(new MetricGraph("Ameoba Errors", "Date", "Errors",
-            ["Amoeba1", "Amoeba2", "Amoeba3", "Amoeba4", "Amoeba5"], [
-                this._apiHandler.getCloudWatchMetrics("Lambda", "Errors", "FunctionName", "Amoeba1", "Sum", 1200, 8),
-                this._apiHandler.getCloudWatchMetrics("Lambda", "Errors", "FunctionName", "Amoeba2", "Sum", 1200, 8),
-                this._apiHandler.getCloudWatchMetrics("Lambda", "Errors", "FunctionName", "Amoeba3", "Sum", 1200, 8),
-                this._apiHandler.getCloudWatchMetrics("Lambda", "Errors", "FunctionName", "Amoeba4", "Sum", 1200, 8),
-                this._apiHandler.getCloudWatchMetrics("Lambda", "Errors", "FunctionName", "Amoeba5", "Sum", 1200, 8)
-            ], [this.parseMetricsData, this.parseMetricsData, this.parseMetricsData, this.parseMetricsData, this.parseMetricsData], "ngx-charts-line-chart", [], ["Sum", "Sum", "Sum", "Sum", "Sum"], this.colorScheme, undefined, 300000));        
+            ["Amoeba"], [
+                this._apiHandler.getCloudWatchMetrics("Lambda", "Errors", "FunctionName", "Amoeba", "Sum", 1200, 8),                
+            ], [this.parseMetricsData], "ngx-charts-line-chart", [], ["Sum"], this.colorScheme, undefined, 300000));        
         
     }
     

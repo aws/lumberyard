@@ -19,9 +19,11 @@
 #include "TrackViewUndo.h"
 #include "Controls/ReflectedPropertyControl/ReflectedPropertyCtrl.h"
 #include <Maestro/Types/SequenceType.h>
+#include <Maestro/Types/AnimValueType.h>
 
 #include <ISplines.h>
 #include <QVBoxLayout>
+#include <QMessageBox>
 #include <TrackView/ui_TrackViewTrackPropsDlg.h>
 
 //////////////////////////////////////////////////////////////////////////
@@ -82,7 +84,8 @@ void CTrackViewKeyUIControls::OnInternalVariableChangeLegacy(IVariable* pVar)
 //////////////////////////////////////////////////////////////////////////
 CTrackViewKeyPropertiesDlg::CTrackViewKeyPropertiesDlg(QWidget* hParentWnd)
     : QWidget(hParentWnd)
-    , m_pLastTrackSelected(NULL)
+    , m_pLastTrackSelected(nullptr)
+    , m_sequence(nullptr)
 {
     QVBoxLayout* l = new QVBoxLayout();
     l->setMargin(0);
@@ -126,6 +129,12 @@ CTrackViewKeyPropertiesDlg::CTrackViewKeyPropertiesDlg(QWidget* hParentWnd)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyPropertiesDlg::OnVarChange(IVariable* pVar)
 {
+    // If it was a motion that just changed, we need to rebuild the controls
+    // so the min/max on the sliders update correctly.
+    if (m_sequence && pVar->GetDataType() == IVariable::DT_MOTION)
+    {
+        OnKeySelectionChanged(m_sequence);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -190,6 +199,8 @@ void CTrackViewKeyPropertiesDlg::OnKeysChanged(CTrackViewSequence* pSequence)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* sequence)
 {
+    m_sequence = sequence;
+
     if (nullptr == sequence)
     {
         m_wndProps->ClearSelection();
@@ -208,6 +219,11 @@ void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* seque
             && selectedKeys.GetKeyCount() == 1
             && selectedKeys.GetKey(0).GetTrack() == m_pLastTrackSelected;
 
+    // Every Key in an Asset Blend track can have different min/max values on the float sliders
+    // because it's based on the duration of the motion that is set. So don't try to 
+    // reuse the controls when the selection changes, otherwise the tooltips may be wrong.
+    bool reuseControls = bSelectChangedInSameTrack && m_pLastTrackSelected && (m_pLastTrackSelected->GetValueType() != AnimValueType::AssetBlend);
+
     if (selectedKeys.GetKeyCount() == 1)
     {
         m_pLastTrackSelected = selectedKeys.GetKey(0).GetTrack();
@@ -217,7 +233,7 @@ void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* seque
         m_pLastTrackSelected = nullptr;
     }
 
-    if (bSelectChangedInSameTrack)
+    if (reuseControls)
     {
         m_wndProps->ClearSelection();
     }
@@ -241,7 +257,7 @@ void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* seque
         {
             if (m_keyControls[i]->SupportTrackType(paramType, trackType, valueType))
             {
-                if (!bSelectChangedInSameTrack)
+                if (!reuseControls)
                 {
                     AddVars(m_keyControls[i]);
                 }
@@ -264,7 +280,7 @@ void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* seque
         m_wndTrackProps->setEnabled(false);
     }
 
-    if (bSelectChangedInSameTrack)
+    if (reuseControls)
     {
         ReloadValues();
     }
@@ -305,7 +321,7 @@ CTrackViewTrackPropsDlg::CTrackViewTrackPropsDlg(QWidget* parent /* = 0 */)
     , ui(new Ui::CTrackViewTrackPropsDlg)
 {
     ui->setupUi(this);
-    connect(ui->TIME, SIGNAL(valueChanged(double)), this, SLOT(OnUpdateTime()));
+    connect(ui->TIME, SIGNAL(editingFinished()), this, SLOT(OnUpdateTime()));
 }
 
 CTrackViewTrackPropsDlg::~CTrackViewTrackPropsDlg()
@@ -369,7 +385,7 @@ void CTrackViewTrackPropsDlg::OnUpdateTime()
     if (nullptr != track)
     {
         CTrackViewSequence* sequence = track->GetSequence();
-        if (nullptr != sequence) 
+        if (nullptr != sequence && !AZ::IsClose(m_keyHandle.GetTime(), time, AZ::g_fltEps))
         {
             bool isDuringUndo = false;
             AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
@@ -378,53 +394,57 @@ void CTrackViewTrackPropsDlg::OnUpdateTime()
             {
                 CUndo undo("Change key time");
                 CUndo::Record(new CUndoTrackObject(m_keyHandle.GetTrack()));
-
                 m_keyHandle.SetTime(time);
-                CTrackViewKeyHandle newKey = m_keyHandle.GetTrack()->GetKeyByTime(time);
-                if (newKey != m_keyHandle)
-                {
-                    SetCurrKey(newKey);
-                }
             }
             else if (isDuringUndo)
             {
                 m_keyHandle.SetTime(time);
-                CTrackViewKeyHandle newKey = m_keyHandle.GetTrack()->GetKeyByTime(time);
-                if (newKey != m_keyHandle)
-                {
-                    SetCurrKey(newKey);
-                }
             }
             else
             {
                 // Let the AZ Undo system manage the nodes on the sequence entity
                 AzToolsFramework::ScopedUndoBatch undoBatch("Change key time");
 
-                m_keyHandle.SetTime(time);
-                CTrackViewKeyHandle newKey = m_keyHandle.GetTrack()->GetKeyByTime(time);
-                if (newKey != m_keyHandle)
+                CTrackViewKeyHandle existingKey = track->GetKeyByTime(time);
+
+                // If there is an existing key at this time, remove it so the 
+                // new key at this time is the only one here.
+                if (existingKey.IsValid())
                 {
-                    SetCurrKey(newKey);
+                    // Save the old time before we set the new time so we
+                    // can reselect the m_keyHandle after the Delete. 
+                    float currentTime = m_keyHandle.GetTime();
+
+                    // There is a bug in QT where editingFinished will get fired a second time if we show a QMessageBox
+                    // so work around it by blocking signal before we do it.
+                    ui->TIME->blockSignals(true);
+
+                    QString msgBody = "There is an existing key at the specified time. If you continue, the existing key will be removed.";
+                    if (QMessageBox::warning(this, "Overwrite Existing Key?", msgBody, QMessageBox::Cancel | QMessageBox::Yes) == QMessageBox::Cancel)
+                    {
+                        // Restore the old value and return.
+                        ui->TIME->setValue(currentTime);
+                        ui->TIME->blockSignals(false);
+                        return;
+                    }
+                    else
+                    {
+                        ui->TIME->blockSignals(false);
+                    }
+
+                    // Delete the key that is able to get replaced. This will
+                    // cause a sort and may cause m_keyHandle to become invalid.
+                    existingKey.Delete();
+
+                    // Reselect the key handle by time.
+                    m_keyHandle = track->GetKeyByTime(currentTime);
                 }
+
+                m_keyHandle.SetTime(time);
 
                 undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
             }
         }
-    }
-}
-
-void CTrackViewTrackPropsDlg::SetCurrKey(CTrackViewKeyHandle& keyHandle)
-{
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
-
-    if (keyHandle.IsValid())
-    {
-        CUndo undo("Select key");
-        CUndo::Record(new CUndoAnimKeySelection(pSequence));
-
-        m_keyHandle.Select(false);
-        m_keyHandle = keyHandle;
-        m_keyHandle.Select(true);
     }
 }
 

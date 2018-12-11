@@ -34,7 +34,7 @@ def build(bld):
                                        'SZIP',
                                        'ZLIB'],
         includes                    = [ '.',
-                                        bld.ThirdPartyPath('mikkelsen'),
+                                        bld.ThirdPartyPath('mikkt'),
                                         bld.Path('Code/Tools'),
                                         bld.Path('Code/Tools/RC/ResourceCompiler'),
                                         bld.Path('Code/Tools/CryCommonTools')],

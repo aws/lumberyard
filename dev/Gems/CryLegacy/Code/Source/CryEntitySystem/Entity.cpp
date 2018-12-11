@@ -591,8 +591,6 @@ bool CEntity::SendEvent(SEntityEvent& event)
 //////////////////////////////////////////////////////////////////////////
 bool CEntity::Init(SEntitySpawnParams& params)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Entity, 0, "Init: %s", params.sName ? params.sName : "(noname)");
-
     // Initialize all currently existing components.
     // Allow component destroy/create since CGameObject creates IGameObjectExtensions during its InitComponent().
     bool initSuccessAll = true;
@@ -1525,8 +1523,6 @@ bool CEntity::DeregisterComponent(IComponentPtr pComponent)
 //////////////////////////////////////////////////////////////////////////
 void CEntity::Serialize(TSerialize ser, int nFlags)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Entity serialization");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "%s", GetClass() ? GetClass()->GetName() : "<UNKNOWN>");
     if (nFlags & ENTITY_SERIALIZE_POSITION)
     {
         ser.Value("position", m_vPos, 'wrld');

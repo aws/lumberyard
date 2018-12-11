@@ -39,11 +39,6 @@ namespace Ui
     class AssetBrowserDialog;
 }
 
-namespace AssetBrowser
-{
-    const UINT kMaxDatabaseCount = 100;
-};
-
 template<typename T>
 class CWidgetWrapper;
 

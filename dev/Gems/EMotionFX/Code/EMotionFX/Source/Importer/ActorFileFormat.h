@@ -334,6 +334,22 @@ namespace EMotionFX
             // uint32[ mNumVertices ]            (vertex numbers)
         };
 
+       // morph target deformation data (including bitangents)
+        struct Actor_MorphTargetMeshDeltas2
+        {
+            uint32  mNodeIndex;
+            float   mMinValue;      // minimum range value for x y and z components of the compressed position vectors
+            float   mMaxValue;      // maximum range value for x y and z components of the compressed position vectors
+            uint32  mNumVertices;   // the number of deltas
+
+            // followed by:
+            // File16BitVector3[ mNumVertices ]  (delta position values)
+            // File8BitVector3[ mNumVertices ]   (delta normal values)
+            // File8BitVector3[ mNumVertices ]   (delta tangent values)
+            // File8BitVector3[ mNumVertices ]   (delta bitangent values)
+            // uint32[ mNumVertices ]            (vertex numbers)
+        };
+
 
         // a  morph target transformation
         struct Actor_MorphTargetTransform

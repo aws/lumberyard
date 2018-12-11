@@ -350,6 +350,7 @@
 		<tooltip path="Visibility.Camera_Distance_Offset" title="Camera Distance Offset" content="Offset the emitter away from the camera"/>
 		<tooltip path="Visibility.Sort_Offset" title="Sort Offset" content="Offset distance used for sorting"/>
 		<tooltip path="Visibility.Sort_Bounds_Scale" title="Sort Bounds Scale" content="Specify point in emitter for sorting; 1 = bounds nearest, 0 = origin, -1 = bounds farthest"/>
+        <tooltip path="Visibility.Dynamic_Culling" title="Dynamic Culling" content="Force enable Dynamic Culling. This disables culling of particle simulation to get accurate bounds for render culling."/>
 		<tooltip path="Visibility.Draw_Near" title="Draw Near" content="Render particle in near space (weapon)"/>
 		<tooltip path="Visibility.Draw_On_Top" title="Draw On Top" content="Render particle on top of everything (no depth test)"/>
 		<tooltip path="Visibility.Visible_Indoors" title="Visible Indoors" content="Whether visible indoors / outdoors / both"/>

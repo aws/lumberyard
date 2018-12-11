@@ -21,7 +21,7 @@
 //////////////////////////////////////////////////////////////////////////
 // Old Pipeline Pass
 
-CMotionBlur::ObjectMap CMotionBlur::m_Objects[3];
+AZStd::unique_ptr<CMotionBlur::ObjectMap> CMotionBlur::m_Objects[3];
 CThreadSafeRendererContainer<CMotionBlur::ObjectMap::value_type> CMotionBlur::m_FillData[RT_COMMAND_BUF_COUNT];
 
 void CMotionBlur::GetPrevObjToWorldMat(CRenderObject* renderObject, Matrix44A& worldMatrix)
@@ -35,8 +35,8 @@ void CMotionBlur::GetPrevObjToWorldMat(CRenderObject* renderObject, Matrix44A& w
         const AZ::u32 frameId = gRenDev->GetFrameID(false);
         const AZ::u32 objectIndex = (frameId - 1) % 3;
 
-        auto it = m_Objects[objectIndex].find(objectId);
-        if (it != m_Objects[objectIndex].end())
+        auto it = m_Objects[objectIndex]->find(objectId);
+        if (it != m_Objects[objectIndex]->end())
         {
             worldMatrix = it->second.m_worldMatrix;
             return;
@@ -53,7 +53,7 @@ void CMotionBlur::OnBeginFrame()
     const AZ::u32 frameId = gRenDev->GetFrameID(false);
     const AZ::u32 objectIndex = frameId % 3;
 
-    m_Objects[objectIndex].erase_if([frameId](const VectorMap<uintptr_t, MotionBlurObjectParameters >::value_type& object)
+    m_Objects[objectIndex]->erase_if([frameId](const VectorMap<uintptr_t, MotionBlurObjectParameters >::value_type& object)
     {
         const AZ::u32 discardThreshold = 60;
         return (frameId - object.second.m_updateFrameId) > discardThreshold;
@@ -72,7 +72,7 @@ void CMotionBlur::InsertNewElements()
     const AZ::u32 nObjFrameWriteID = (nFrameID - 1) % 3;
 
     m_FillData[nThreadID].CoalesceMemory();
-    m_Objects[nObjFrameWriteID].insert(&m_FillData[nThreadID][0], &m_FillData[nThreadID][0] + m_FillData[nThreadID].size());
+    m_Objects[nObjFrameWriteID]->insert(&m_FillData[nThreadID][0], &m_FillData[nThreadID][0] + m_FillData[nThreadID].size());
     m_FillData[nThreadID].resize(0);
 }
 
@@ -83,9 +83,15 @@ void CMotionBlur::FreeData()
         m_FillData[i].clear();
     }
 
-    for (size_t i = 0; i < sizeof(m_Objects) / sizeof(m_Objects[0]); ++i)
+    for (size_t i = 0; i < 3; ++i)
     {
-        stl::reconstruct(m_Objects[i]);
+        // m_Objects is a static object that is initialized in CMotionBlur::CMotionBlur, which is not guaranteed to be called by an application.
+        // CMotionBlur::FreeData is a static cleanup function that is called regardless if CMotionBlur was created or not, so check to verify
+        // we have valid data in m_Objects before trying to destruct the containers.
+        if (m_Objects[i].get())
+        {
+            stl::reconstruct((*m_Objects[i]));
+        }
     }
 }
 

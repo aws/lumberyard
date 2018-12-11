@@ -86,6 +86,8 @@ public:
         return m_assetDatabases;
     }
 
+    static unsigned int HashStringSbdm(const char* pStr);
+
     IAssetItemDatabase* GetDatabaseByName(const char* pName);
 
     void EnqueueAssetForThumbLoad(IAssetItem* pAsset);
@@ -111,10 +113,5 @@ private:
     bool m_bLevelLoading;
     uint32 m_cachedAssetCount;
 };
-
-namespace AssetBrowser
-{
-    unsigned int HashStringSbdm(const char* pStr);
-}
 
 #endif // CRYINCLUDE_EDITOR_ASSET_BROWSER_ASSETBROWSERMANAGER_H

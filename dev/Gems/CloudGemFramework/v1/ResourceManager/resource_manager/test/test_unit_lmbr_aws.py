@@ -56,7 +56,7 @@ import lmbr_aws_test_support
 class UnitTest_CloudGemFramework_ResourceManager(lmbr_aws_test_support.lmbr_aws_TestCase):
 
     def setUp(self):        
-        self.prepare_test_envionment("test_unit_lmbr_aws")
+        self.prepare_test_environment("test_unit_lmbr_aws")
         
     def test_unit_lmbr_aws_end_to_end(self):
         self.run_all_tests()

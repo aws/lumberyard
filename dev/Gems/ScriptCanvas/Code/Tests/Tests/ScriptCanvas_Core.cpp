@@ -30,8 +30,7 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 {
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
 
-    AddNodeWithRemoveSlot::Reflect(m_serializeContext);
-    AddNodeWithRemoveSlot::Reflect(m_behaviorContext);
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, AddNodeWithRemoveSlot::CreateDescriptor());
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -135,20 +134,14 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 
     graphEntity.reset();
 
-    m_serializeContext->EnableRemoveReflection();
-    m_behaviorContext->EnableRemoveReflection();
-    AddNodeWithRemoveSlot::Reflect(m_serializeContext);
-    AddNodeWithRemoveSlot::Reflect(m_behaviorContext);
-    m_serializeContext->DisableRemoveReflection();
-    m_behaviorContext->DisableRemoveReflection();
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, AddNodeWithRemoveSlot::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, AddRemoveSlotNotifications)
 {
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
 
-    AddNodeWithRemoveSlot::Reflect(m_serializeContext);
-    AddNodeWithRemoveSlot::Reflect(m_behaviorContext);
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, AddNodeWithRemoveSlot::CreateDescriptor());
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -179,20 +172,14 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlotNotifications)
 
     numberAddEntity.reset();
 
-    m_serializeContext->EnableRemoveReflection();
-    m_behaviorContext->EnableRemoveReflection();
-    AddNodeWithRemoveSlot::Reflect(m_serializeContext);
-    AddNodeWithRemoveSlot::Reflect(m_behaviorContext);
-    m_serializeContext->DisableRemoveReflection();
-    m_behaviorContext->DisableRemoveReflection();
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, AddNodeWithRemoveSlot::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, InsertSlot)
 {
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
 
-    InsertSlotConcatNode::Reflect(m_serializeContext);
-    InsertSlotConcatNode::Reflect(m_behaviorContext);
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, InsertSlotConcatNode::CreateDescriptor());
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -254,12 +241,7 @@ TEST_F(ScriptCanvasTestFixture, InsertSlot)
 
     graphEntity.reset();
 
-    m_serializeContext->EnableRemoveReflection();
-    m_behaviorContext->EnableRemoveReflection();
-    InsertSlotConcatNode::Reflect(m_serializeContext);
-    InsertSlotConcatNode::Reflect(m_behaviorContext);
-    m_serializeContext->DisableRemoveReflection();
-    m_behaviorContext->DisableRemoveReflection();
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, InsertSlotConcatNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, NativeProperties)
@@ -1286,8 +1268,7 @@ TEST_F(ScriptCanvasTestFixture, Contracts)
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
 
-    ContractNode::Reflect(m_serializeContext);
-    ContractNode::Reflect(m_behaviorContext);
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ContractNode::CreateDescriptor());
 
     //////////////////////////////////////////////////////////////////////////
     // Make the graph.
@@ -1348,12 +1329,7 @@ TEST_F(ScriptCanvasTestFixture, Contracts)
     graph->GetEntity()->Deactivate();
     delete graph->GetEntity();
 
-    m_serializeContext->EnableRemoveReflection();
-    m_behaviorContext->EnableRemoveReflection();
-    ContractNode::Reflect(m_serializeContext);
-    ContractNode::Reflect(m_behaviorContext);
-    m_serializeContext->DisableRemoveReflection();
-    m_behaviorContext->DisableRemoveReflection();
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ContractNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, Error)
@@ -1363,10 +1339,8 @@ TEST_F(ScriptCanvasTestFixture, Error)
 
     ScriptUnitTestEventHandler::Reflect(m_serializeContext);
     ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    UnitTestErrorNode::Reflect(m_serializeContext);
-    UnitTestErrorNode::Reflect(m_behaviorContext);
-    InfiniteLoopNode::Reflect(m_serializeContext);
-    InfiniteLoopNode::Reflect(m_behaviorContext);
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, InfiniteLoopNode::CreateDescriptor());
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1417,12 +1391,11 @@ TEST_F(ScriptCanvasTestFixture, Error)
     m_behaviorContext->EnableRemoveReflection();
     ScriptUnitTestEventHandler::Reflect(m_serializeContext);
     ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    UnitTestErrorNode::Reflect(m_serializeContext);
-    UnitTestErrorNode::Reflect(m_behaviorContext);
-    InfiniteLoopNode::Reflect(m_serializeContext);
-    InfiniteLoopNode::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
+
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, InfiniteLoopNode::CreateDescriptor());
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, ErrorHandled)
@@ -1432,8 +1405,7 @@ TEST_F(ScriptCanvasTestFixture, ErrorHandled)
 
     ScriptUnitTestEventHandler::Reflect(m_serializeContext);
     ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    UnitTestErrorNode::Reflect(m_serializeContext);
-    UnitTestErrorNode::Reflect(m_behaviorContext);
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1493,10 +1465,10 @@ TEST_F(ScriptCanvasTestFixture, ErrorHandled)
     m_behaviorContext->EnableRemoveReflection();
     ScriptUnitTestEventHandler::Reflect(m_serializeContext);
     ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    UnitTestErrorNode::Reflect(m_serializeContext);
-    UnitTestErrorNode::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
+
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, ErrorNode)
@@ -1506,8 +1478,7 @@ TEST_F(ScriptCanvasTestFixture, ErrorNode)
 
     ScriptUnitTestEventHandler::Reflect(m_serializeContext);
     ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    UnitTestErrorNode::Reflect(m_serializeContext);
-    UnitTestErrorNode::Reflect(m_behaviorContext);
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1568,10 +1539,10 @@ TEST_F(ScriptCanvasTestFixture, ErrorNode)
     m_behaviorContext->EnableRemoveReflection();
     ScriptUnitTestEventHandler::Reflect(m_serializeContext);
     ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    UnitTestErrorNode::Reflect(m_serializeContext);
-    UnitTestErrorNode::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
+
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 
 }
 
@@ -1582,9 +1553,7 @@ TEST_F(ScriptCanvasTestFixture, ErrorNodeHandled)
 
     ScriptUnitTestEventHandler::Reflect(m_serializeContext);
     ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    UnitTestErrorNode::Reflect(m_serializeContext);
-    UnitTestErrorNode::Reflect(m_behaviorContext);
-
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1641,11 +1610,10 @@ TEST_F(ScriptCanvasTestFixture, ErrorNodeHandled)
     m_behaviorContext->EnableRemoveReflection();
     ScriptUnitTestEventHandler::Reflect(m_serializeContext);
     ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    UnitTestErrorNode::Reflect(m_serializeContext);
-    UnitTestErrorNode::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
 
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, InfiniteLoopDetected)
@@ -1653,10 +1621,9 @@ TEST_F(ScriptCanvasTestFixture, InfiniteLoopDetected)
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
 
-    InfiniteLoopNode::Reflect(m_serializeContext);
-    InfiniteLoopNode::Reflect(m_behaviorContext);
     ScriptUnitTestEventHandler::Reflect(m_serializeContext);
     ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, InfiniteLoopNode::CreateDescriptor());
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1718,12 +1685,12 @@ TEST_F(ScriptCanvasTestFixture, InfiniteLoopDetected)
 
     m_serializeContext->EnableRemoveReflection();
     m_behaviorContext->EnableRemoveReflection();
-    InfiniteLoopNode::Reflect(m_serializeContext);
-    InfiniteLoopNode::Reflect(m_behaviorContext);
     ScriptUnitTestEventHandler::Reflect(m_serializeContext);
     ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
+
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, InfiniteLoopNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, BinaryOperationTest)

@@ -97,8 +97,8 @@ public:
 
     //-----------------------------------------------------------------------------
     //!
-    std::vector<CAnimNode::SParamInfo> m_nodeParams;
-    std::vector< _smart_ptr<CControlParamBase> > m_controlParams;
+    StaticInstance<std::vector<CAnimNode::SParamInfo>> m_nodeParams;
+    StaticInstance<std::vector< _smart_ptr<CControlParamBase> >> m_controlParams;
 };
 
 //-----------------------------------------------------------------------------
@@ -134,7 +134,7 @@ void CFXNodeDescription::TControlParam<Vec4>::GetDefault(Vec4& val) const
 }
 
 //-----------------------------------------------------------------------------
-CAnimPostFXNode::FxNodeDescriptionMap CAnimPostFXNode::s_fxNodeDescriptions;
+StaticInstance<CAnimPostFXNode::FxNodeDescriptionMap> CAnimPostFXNode::s_fxNodeDescriptions;
 bool CAnimPostFXNode::s_initialized = false;
 
 

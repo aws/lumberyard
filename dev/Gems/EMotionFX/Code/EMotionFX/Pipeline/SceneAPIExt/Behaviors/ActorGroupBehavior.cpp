@@ -27,6 +27,7 @@
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneData/Rules/MaterialRule.h>
+#include <SceneAPI/SceneData/Rules/TangentsRule.h>
 
 #include <SceneAPIExt/Groups/ActorGroup.h>
 #include <SceneAPIExt/Behaviors/ActorGroupBehavior.h>
@@ -126,7 +127,12 @@ namespace EMotionFX
                             modifiers.push_back(Rule::MorphTargetRule::TYPEINFO_Uuid());
                         }
                     }
+                    if (existingRules.find(AZ::SceneAPI::SceneData::TangentsRule::TYPEINFO_Uuid()) == existingRules.end())
+                    {
+                        modifiers.push_back(AZ::SceneAPI::SceneData::TangentsRule::TYPEINFO_Uuid());
+                    }
                 }
+
             }
 
             void ActorGroupBehavior::InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target)
@@ -157,6 +163,11 @@ namespace EMotionFX
                 if (!rules.ContainsRuleOfType<Rule::CoordinateSystemRule>())
                 {
                     rules.AddRule(AZStd::make_shared<Rule::CoordinateSystemRule>());
+                }
+
+                if (!rules.ContainsRuleOfType<AZ::SceneAPI::SceneData::TangentsRule>())
+                {
+                    rules.AddRule(AZStd::make_shared<AZ::SceneAPI::SceneData::TangentsRule>());
                 }
             }
 

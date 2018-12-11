@@ -359,7 +359,7 @@ void CPuppet::UpdateTargetZone(CWeakRef<CAIObject> refTarget)
     }
 }
 
-std::vector<Vec3> CPuppet::s_projectedPoints(16);
+StaticInstance<std::vector<Vec3>> CPuppet::s_projectedPoints(16);
 
 //====================================================================
 // UpdateTargetTracking
@@ -721,7 +721,7 @@ void CPuppet::HandleBurstFireInit()
         m_targetSeenTime = std::max(0.0f, m_targetSeenTime - (cry_random(1, 3)) / 10.0f);
     }
 
-    /* Márcio: does not work for Burst fire weapons - does not seem to have any benefits anyways
+    /* Marcio: does not work for Burst fire weapons - does not seem to have any benefits anyways
         IAIActorProxy *pProxy = GetProxy();
         if (pProxy)
             pProxy->GetAndResetShotBulletCount();

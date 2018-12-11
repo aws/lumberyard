@@ -328,18 +328,8 @@ void CAnimatedCharacter::InitVars()
 
 bool CAnimatedCharacter::Init(IGameObject* pGameObject)
 {
-#ifdef ANIMCHAR_MEM_DEBUG
-    CCryAction::GetCryAction()->DumpMemInfo("CAnimatedCharacter::Init %p start", pGameObject);
-#endif
-
     SetGameObject(pGameObject);
-
     LoadAnimationGraph(pGameObject);
-
-#ifdef ANIMCHAR_MEM_DEBUG
-    CCryAction::GetCryAction()->DumpMemInfo("CAnimatedCharacter::Init %p end", pGameObject);
-#endif
-
     return true;
 }
 
@@ -360,10 +350,6 @@ void CAnimatedCharacter::PostInit(IGameObject* pGameObject)
 
 bool CAnimatedCharacter::ReloadExtension(IGameObject* pGameObject, const SEntitySpawnParams& params)
 {
-#ifdef ANIMCHAR_MEM_DEBUG
-    CCryAction::GetCryAction()->DumpMemInfo("CAnimatedCharacter::ReloadExtension %p start", pGameObject);
-#endif
-
     AC::RegisterEvents(*this, *pGameObject);
     ResetGameObject();
     ResetInertiaCache();
@@ -377,10 +363,6 @@ bool CAnimatedCharacter::ReloadExtension(IGameObject* pGameObject, const SEntity
 
     // Load the new animation graph in
     LoadAnimationGraph(pGameObject);
-
-#ifdef ANIMCHAR_MEM_DEBUG
-    CCryAction::GetCryAction()->DumpMemInfo("CAnimatedCharacter::ReloadExtension %p end", pGameObject);
-#endif
 
     m_pComponentPrepareCharForUpdate->ClearQueuedRotation();
 
@@ -462,8 +444,6 @@ bool CAnimatedCharacter::GetEntityPoolSignature(TSerialize signature)
 
 void CAnimatedCharacter::FullSerialize(TSerialize ser)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Animated character serialization");
-
 #define SerializeMember(member)     ser.Value(#member, member)
 #define SerializeMemberType(type, member)       { type temp = member; ser.Value(#member, temp); if (isReading) {member = temp; } \
 }

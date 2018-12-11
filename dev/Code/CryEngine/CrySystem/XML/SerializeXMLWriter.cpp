@@ -163,8 +163,6 @@ void CSerializeXMLWriterImpl::ScriptValue(XmlNodeRef addTo, const char* tag, con
 
 void CSerializeXMLWriterImpl::BeginGroup(const char* szName)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "XML");
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "BeginGroup");
     if (strchr(szName, ' ') != 0)
     {
         assert(0 && "Spaces in group name not supported");
@@ -192,8 +190,6 @@ bool CSerializeXMLWriterImpl::BeginOptionalGroup(const char* szName, bool condit
 
 XmlNodeRef CSerializeXMLWriterImpl::CreateNodeNamed(const char* name)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "XML");
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "CreateNodeNamed");
     XmlNodeRef newNode = CurNode()->createNode(name);
     return newNode;
 }

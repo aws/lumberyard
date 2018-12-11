@@ -101,13 +101,6 @@ namespace minigui
 #define AZ_LEGACY_CRYSYSTEM_TRAIT_HASAFFINITYMASK 1
 #endif
 
-#if defined(ANDROID)
-#define AZ_LEGACY_CRYSYSTEM_TRAIT_SIZET_MEM 1
-#endif
-#if defined(WIN32) || defined(WIN64)
-#define AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MSIZE 1
-#endif
-
 #if defined(LINUX) || defined(APPLE)
 #define AZ_LEGACY_CRYSYSTEM_TRAIT_CRYPAK_POSIX 1
 #endif
@@ -570,7 +563,7 @@ public:
     void    SetIVisualLog(IVisualLog* pVisualLog) { m_env.pVisualLog = pVisualLog; }
     void        DetectGameFolderAccessRights();
 
-    virtual void ExecuteCommandLine();
+    virtual void ExecuteCommandLine(bool deferred=true);
 
     virtual void GetUpdateStats(SSystemUpdateStats& stats);
 
@@ -663,8 +656,6 @@ public:
     virtual ESystemConfigSpec GetMaxConfigSpec() const;
     virtual ESystemConfigPlatform GetConfigPlatform() const;
     virtual void SetConfigPlatform(const ESystemConfigPlatform platform);
-    virtual AZStd::unordered_map<AZStd::string, CVarInfo>* GetGraphicsSettingsMap() const;
-    virtual void SetGraphicsSettingsMap(AZStd::unordered_map<AZStd::string, CVarInfo>* map);
     //////////////////////////////////////////////////////////////////////////
 
     virtual int SetThreadState(ESubsystem subsys, bool bActive);
@@ -1129,8 +1120,6 @@ private: // ------------------------------------------------------
     ESystemConfigSpec m_nMaxConfigSpec;
     ESystemConfigPlatform m_ConfigPlatform;
 
-    AZStd::unordered_map<AZStd::string, CVarInfo>* m_GraphicsSettingsMap;
-
     std::unique_ptr<CServerThrottle> m_pServerThrottle;
 
     CProfilingSystem m_ProfilingSystem;
@@ -1145,6 +1134,8 @@ private: // ------------------------------------------------------
     uint64 m_nUpdateCounter;
 
     int sys_ProfileLevelLoading, sys_ProfileLevelLoadingDump;
+
+    bool m_executedCommandLine = false;
 
 public:
     //! Pointer to the download manager

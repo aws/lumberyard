@@ -32,6 +32,8 @@
 
 #include "IPostRenderer.h"
 
+#include <Maestro/Bus/EditorSequenceBus.h>
+
 //////////////////////////////////////////////////////////////////////////
 // Movie Callback.
 //////////////////////////////////////////////////////////////////////////
@@ -243,6 +245,9 @@ void CAnimationContext::SetSequence(CTrackViewSequence* pSequence, bool bForce, 
         m_pSequence->UnBindFromEditorObjects();
     }
     m_pSequence = pSequence;
+    
+    // Notify a new sequence was just selected.
+    Maestro::EditorSequenceNotificationBus::Broadcast(&Maestro::EditorSequenceNotificationBus::Events::OnSequenceSelected, m_pSequence ? m_pSequence->GetSequenceComponentEntityId() : AZ::EntityId());
 
     if (m_pSequence)
     {
@@ -800,9 +805,6 @@ void CAnimationContext::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnEndLoad:
         SetRecordingInternal(m_bSavedRecordingState);
         break;
-
-    case eNotify_CameraChanged:
-        ForceAnimation();
     }
 }
 

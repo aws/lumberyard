@@ -40,7 +40,7 @@ namespace AzToolsFramework
 
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
 
-        AZ::Outcome<AZStd::string, AZStd::string> ResolveToolPath(const char* currentExecutablePath, const char* toolApplicationName) const override;
+        AZ::Outcome<AZStd::string, AZStd::string> ResolveConfigToolsPath(const char* toolApplicationName) const override;
 
         //////////////////////////////////////////////////////////////////////////
         // AzFramework::Application
@@ -83,6 +83,7 @@ namespace AzToolsFramework
         void CheckoutPressed() override;
         SourceControlFileInfo GetSceneSourceControlInfo() override;
 
+        bool AreAnyEntitiesSelected() override { return !m_selectedEntities.empty(); }
         const EntityIdList& GetSelectedEntities() override { return m_selectedEntities; }
         const EntityIdList& GetHighlightedEntities() override { return m_highlightedEntities; }
         void SetSelectedEntities(const EntityIdList& selectedEntities) override;

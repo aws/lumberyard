@@ -35,7 +35,20 @@ namespace LmbrCentral
         {
             AZ::RenderNotificationsBus::Handler::BusConnect();
         }
-        ~MaterialHandle()
+
+        MaterialHandle(const MaterialHandle& handle)
+            : m_material(handle.m_material)
+        {
+            AZ::RenderNotificationsBus::Handler::BusConnect();
+        }
+
+        MaterialHandle& operator=(const MaterialHandle& rhs)
+        {
+            m_material = rhs.m_material;
+            return *this;
+        }
+
+        ~MaterialHandle() override
         {
             AZ::RenderNotificationsBus::Handler::BusDisconnect();
         }

@@ -102,11 +102,12 @@ template<>
 inline void TAnimTrack<IBoolKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<IBoolKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<IBoolKey>::m_flags)
         ->Field("Range", &TAnimTrack<IBoolKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<IBoolKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<IBoolKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<IBoolKey>::m_keys)
+        ->Field("Id", &TAnimTrack<IBoolKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////

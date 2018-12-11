@@ -417,6 +417,9 @@ namespace AZ
         template <class Iterator>
         struct CallstackEntryIterator;
 
+        template <class ReverseIterator>
+        struct CallstackEntryReverseIterator;
+
         /**
          * Contains data about EBusTraits.
          */
@@ -544,7 +547,7 @@ namespace AZ
         using DispatchLockGuard = typename AZStd::Utils::if_c<BusTraits::LocklessDispatch || AZStd::is_same<MutexType, NullMutex>::value, Internal::NullLockGuard<MutexType>, AZStd::lock_guard<MutexType>>::type;
 
         using CallstackForwardIterator = CallstackEntryIterator<typename EBNode::iterator>; 
-        using CallstackReverseIterator = CallstackEntryIterator<typename EBNode::reverse_iterator>;
+        using CallstackReverseIterator = CallstackEntryReverseIterator<typename EBNode::reverse_iterator>;
 
         /**
          * Specifies whether the %EBus supports an event queue.
@@ -825,24 +828,45 @@ namespace AZ
         struct CallstackEntryIterator 
             : public CallstackEntryBasic
         {
-            CallstackEntryIterator(EBNode& container, Iterator it, const BusIdType* busId);
+            CallstackEntryIterator(EBNode& container, Iterator it, const BusIdType* busId)
+                : CallstackEntryBasic(busId)
+                , m_container(container)
+                , m_iterator(it)
+            {}
 
-            void OnRemoveHandler(InterfaceType* handler) override;
+            void OnRemoveHandler(InterfaceType* handler) override
+            {
+                if (m_iterator != m_container.end() && handler == *m_iterator) // If we are removing what the current iterator is pointing to, move to the next element.
+                {
+                    ++m_iterator;
+                }
+            }
 
             EBNode& m_container;
             Iterator m_iterator;
         };
 
-        template <class Iterator>
-        struct CallstackEntryIterator<AZStd::reverse_iterator<Iterator>> 
+        template <class ReverseIterator>
+        struct CallstackEntryReverseIterator
             : public CallstackEntryBasic
         {
-            CallstackEntryIterator(EBNode& container, AZStd::reverse_iterator<Iterator> it, const BusIdType* busId);
-            
-            void OnRemoveHandler(InterfaceType* handler) override;
-            
+            CallstackEntryReverseIterator(EBNode& container, ReverseIterator it, const BusIdType* busId)
+                : CallstackEntryBasic(busId)
+                , m_container(container)
+                , m_iterator(it)
+            {}
+
+            void OnRemoveHandler(InterfaceType* handler) override
+            {
+                // First check that m_iterator is valid before dereferencing it.
+                if (m_iterator != m_container.rend() && handler == *m_iterator) // If we are removing what the current iterator is pointing to, move to the next element.
+                {
+                    ++m_iterator;
+                }
+            }
+
             EBNode& m_container;
-            AZStd::reverse_iterator<Iterator> m_iterator;
+            ReverseIterator m_iterator;
         };
 
         struct RouterCallstackEntry
@@ -1419,53 +1443,6 @@ namespace AZ
         if (context->s_callstack->m_prevCall == nullptr && context->m_buses.IsKeepIteratorsStable())
         {
             context->m_buses.AllowUnstableIterators();
-        }
-    }
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    EBus<Interface, Traits>::CallstackEntryIterator<Iterator>::CallstackEntryIterator(EBNode& container, Iterator it, const BusIdType* busId)
-        : CallstackEntryBasic(busId)
-        , m_container(container)
-        , m_iterator(it)
-    {
-    }
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    void EBus<Interface, Traits>::CallstackEntryIterator<Iterator>::OnRemoveHandler(InterfaceType* handler)
-    {
-        if (m_iterator != m_container.end() && handler == *m_iterator) // If we are removing what the current iterator is pointing to, move to the next element.
-        {
-            ++m_iterator;
-        }
-    }
-
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    EBus<Interface, Traits>::CallstackEntryIterator<AZStd::reverse_iterator<Iterator>>::CallstackEntryIterator(EBNode& container, AZStd::reverse_iterator<Iterator> it, const BusIdType* busId)
-        : CallstackEntryBasic(busId)
-        , m_container(container)
-        , m_iterator(it)
-    {
-    }
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    void EBus<Interface, Traits>::CallstackEntryIterator<AZStd::reverse_iterator<Iterator>>::OnRemoveHandler(InterfaceType* handler)
-    {
-        // First check that m_iterator is valid before dereferencing it.
-        if (m_iterator.base() != m_container.end() && handler == *m_iterator.base()) // If we are removing what the current iterator is pointing to, move to the next element.
-        {
-            // Reverse iterator points to the element after the one we are pointing to.
-            // For example, *m_iterator does ( *(--m_interator.base()) to the counter that we need to move 
-            // to the right in the container. This is a reverse iterator, so moving to the right is subtraction.
-            --m_iterator;
         }
     }
 

@@ -22,7 +22,7 @@
 namespace
 {
     bool s_nodeParamsInitialized = false;
-    std::vector<CAnimNode::SParamInfo> s_nodeParams;
+    StaticInstance<std::vector<CAnimNode::SParamInfo>> s_nodeParams;
 
     void AddSupportedParam(const char* sName, AnimParamType paramId, AnimValueType valueType)
     {

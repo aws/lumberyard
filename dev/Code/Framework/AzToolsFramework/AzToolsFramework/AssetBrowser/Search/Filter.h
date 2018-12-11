@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntry.h>
 
 #include <QObject>
 #include <QString>

@@ -18,8 +18,8 @@ namespace Metastream
 {
     class DataCache
     {
-
     public:
+        DataCache() {}
         void AddToCache(const std::string & tableName, const std::string & key, const char *value);
         void AddToCache(const std::string & tableName, const std::string & key, bool value);
         void AddToCache(const std::string & tableName, const std::string & key, const Vec3 &value);

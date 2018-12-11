@@ -116,9 +116,12 @@ namespace CloudGemWebCommunicator
         void SetConnectionStatus(ConnectionStatus newStatus);
         bool IsConnected() const;
  
+        static AZStd::string GetUserOrStorage(const AZStd::string& filePath);
         static AZStd::string GetCAPath();
         static AZStd::string GetDeviceCertPath();
         static AZStd::string GetKeyPath();
+        static bool CopyToUserStorage(const AZStd::string& filePath, const AZStd::string& userPath);
+
         AZStd::string GetEndpoint() const;
         int GetEndpointPort() const;
         AZStd::string GetClientId();

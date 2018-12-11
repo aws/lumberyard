@@ -49,9 +49,11 @@ namespace EMStudio
 {
     AttributesWindow::AttributesWindow(AnimGraphPlugin* plugin, QWidget* parent)
         : QWidget(parent)
+        , m_attributeWidget(nullptr)
         , m_objectEditor(nullptr)
     {
         mPlugin                 = plugin;
+        m_animGraphEditor       = nullptr;
         mMainWidget             = nullptr;
         mObject                 = nullptr;
         mPasteConditionsWindow  = nullptr;
@@ -64,6 +66,27 @@ namespace EMStudio
 
         mMainLayout->addWidget(mScrollArea);
         mScrollArea->setWidgetResizable(true);
+
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!serializeContext)
+        {
+            AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+            return;
+        }
+
+        mMainWidget = new QWidget();
+
+        m_animGraphEditor = new EMotionFX::AnimGraphEditor(nullptr, serializeContext, mMainWidget);
+
+        QVBoxLayout* verticalLayout = new QVBoxLayout(mMainWidget);
+        mMainWidget->setLayout(verticalLayout);
+        verticalLayout->setAlignment(Qt::AlignTop);
+        verticalLayout->setMargin(0);
+        verticalLayout->setSpacing(0);
+        verticalLayout->addWidget(m_animGraphEditor);
+
+        mScrollArea->setWidget(mMainWidget);
 
         InitForAnimGraphObject(nullptr);
     }
@@ -97,10 +120,13 @@ namespace EMStudio
     void AttributesWindow::InitForAnimGraphObject(EMotionFX::AnimGraphObject* object)
     {
         // delete the existing property browser
-        mMainWidget->deleteLater();
-        mMainWidget = nullptr;
+        if (m_attributeWidget)
+        {
+            m_attributeWidget->hide();
+            m_attributeWidget->deleteLater();
+            m_attributeWidget = nullptr;
+        }
         mScrollArea->setVisible(false);
-        mScrollArea->setWidget(nullptr);
         mObject = object;
 
         AZ::SerializeContext* serializeContext = nullptr;
@@ -112,19 +138,12 @@ namespace EMStudio
         }
 
         // create the new property parent window
-        mMainWidget = mPlugin->GetGraphNodeFactory()->CreateAttributeWidget(azrtti_typeid(object));
-        if (mMainWidget == nullptr) // if there is no custom attribute widget, generate one
+        m_attributeWidget = mPlugin->GetGraphNodeFactory()->CreateAttributeWidget(azrtti_typeid(object));
+        if (!m_attributeWidget) // if there is no custom attribute widget, generate one
         {
-            mMainWidget = new QWidget();
-            mMainWidget->setVisible(false);
+            m_attributeWidget = new QWidget();
 
-            QVBoxLayout* verticalLayout = new QVBoxLayout();
-            mMainWidget->setLayout(verticalLayout);
-            verticalLayout->setAlignment(Qt::AlignTop);
-            verticalLayout->setMargin(0);
-            verticalLayout->setSpacing(0);
-
-            QVBoxLayout* verticalCardsLayout = new QVBoxLayout();
+            QVBoxLayout* verticalCardsLayout = new QVBoxLayout(m_attributeWidget);
             verticalCardsLayout->setAlignment(Qt::AlignTop);
             verticalCardsLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
             verticalCardsLayout->setMargin(0);
@@ -132,13 +151,12 @@ namespace EMStudio
             // Align the layout spacing with the entity inspector.
             verticalCardsLayout->setSpacing(13);
 
-
             if (object)
             {
-                // 1. Create anim graph card.
+                // 1. Set the new anim graph on the AnimGraph editor.
                 EMotionFX::AnimGraph* animGraph = object->GetAnimGraph();
-                EMotionFX::AnimGraphEditor* animGraphEditor = new EMotionFX::AnimGraphEditor(animGraph, serializeContext, mMainWidget);
-                verticalLayout->addWidget(animGraphEditor);
+                m_animGraphEditor->SetAnimGraph(animGraph);
+                m_animGraphEditor->setVisible(true);
 
                 // 2. Create object card
                 m_objectEditor = new EMotionFX::ObjectEditor(serializeContext, this);
@@ -160,38 +178,15 @@ namespace EMStudio
             }
             else
             {
-                // In case we're not inspecting a anim graph object, only create the anim graph card.
+                // In case we're not inspecting a anim graph object, only set the anim graph.
                 EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-                if (animGraph)
-                {
-                    EMotionFX::AnimGraphEditor* animGraphEditor = new EMotionFX::AnimGraphEditor(animGraph, serializeContext, mMainWidget);
-                    verticalLayout->addWidget(animGraphEditor);
-                }
+                m_animGraphEditor->SetAnimGraph(animGraph);
+                m_animGraphEditor->setVisible(animGraph);
             }
-
-            verticalLayout->addLayout(verticalCardsLayout);
         }
+        static_cast<QVBoxLayout*>(mMainWidget->layout())->addWidget(m_attributeWidget);
 
-        mScrollArea->setWidget(mMainWidget);
-
-        mMainWidget->setVisible(true);
-        mScrollArea->show();
-    }
-
-
-    AzQtComponents::Card* AttributesWindow::CreateAnimGraphCard(AZ::SerializeContext* serializeContext, EMotionFX::AnimGraph* animGraph)
-    {
-        EMotionFX::AnimGraphEditor* animGraphEditor = new EMotionFX::AnimGraphEditor(animGraph, serializeContext, mMainWidget);
-
-        AzQtComponents::Card* animGraphCard = new AzQtComponents::Card(this);
-        animGraphCard->setTitle("Anim Graph");
-        animGraphCard->setContentWidget(animGraphEditor);
-        animGraphCard->setExpanded(true);
-
-        AzQtComponents::CardHeader* cardHeader = animGraphCard->header();
-        cardHeader->setHasContextMenu(false);
-
-        return animGraphCard;
+        mScrollArea->setVisible(true);
     }
 
 

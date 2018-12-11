@@ -1,0 +1,73 @@
+{
+    "Resources": {
+        "EnvironmentVariableWriterResourceTypes": {
+            "Type": "Custom::ResourceTypes",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "LambdaConfiguration": {
+                    "Fn::GetAtt": [
+                        "EnvironmentVariableWriterResourceTypesConfiguration",
+                        "ComposedLambdaConfiguration"
+                    ]
+                },
+                "LambdaTimeout": 30,
+                "Definitions": {
+                    "Custom::EnvironmentVariableWriter": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "Custom_EnvironmentVariableWriter.handler",
+                            "PolicyStatement": [
+                                {
+                                    "Sid": "LambdaFunctionConfigurationPermissions",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "lambda:GetFunctionConfiguration",
+                                        "lambda:UpdateFunctionConfiguration"
+                                    ],
+                                    "Resource": [
+                                        { "Fn::Sub": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*" }
+                                    ]
+                                },
+                                {
+                                    "Sid": "CloudformationPermissions",
+                                    "Action": [
+                                        "cloudformation:DescribeStacks",
+                                        "cloudformation:ListStackResources"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        { "Fn::Sub": "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*" }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "EnvironmentVariableWriterResourceTypesConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "Configuration"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "EnvironmentVariableWriterResourceTypes",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        }
+    }
+}

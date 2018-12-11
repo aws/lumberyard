@@ -28,9 +28,12 @@ namespace Maestro
         // it accounts for the GenericComponentWrapper component
         virtual const AZ::Uuid& GetComponentTypeUuid(const AZ::Component& component) const = 0;
 
+        // Get all of the components available on the current entity.
+        virtual void GetEntityComponents(AZ::Entity::ComponentArrayType& entityComponents) const = 0;
+
         // this is called on Activate() - it traverses all components on the given entity and fills in m_addressToBehaviorVirtualPropertiesMap
         // with all virtual properties on EBuses it finds. Calling it clears out any previously mapped virtualProperties
-        void CacheAllVirtualPropertiesFromBehaviorContext(AZ::Entity* entity);
+        void CacheAllVirtualPropertiesFromBehaviorContext();
 
         AZ::Uuid GetVirtualPropertyTypeId(const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatedAddress) const;
 

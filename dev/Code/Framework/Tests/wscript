@@ -22,7 +22,7 @@ def build(bld):
         target              = 'FrameworkTests',
         vs_filter           = 'AZ Framework/TestSuites',
         file_list           = 'frameworktests.waf_files',
-        platforms           = ['win'],
+        platforms           = ['win', 'darwin'],
         configurations      = ['test_all'],
         use                 = ['AzTest', 'AzToolsFramework'],
         uselib              = [ 'QT5CORE',

@@ -49,7 +49,7 @@ namespace AzToolsFramework
 
             ////////////////////////////////////////////////////////////////////////
             void BeforeEntitySelectionChanged() override {};
-            void AfterEntitySelectionChanged() override;
+            void AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList&, const AzToolsFramework::EntityIdList&) override;
 
             void BeforeEntityHighlightingChanged() override {};
             void AfterEntityHighlightingChanged() override;

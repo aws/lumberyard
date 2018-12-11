@@ -1,4 +1,0 @@
-LIBRARY	ResourceCompilerScene
-EXPORTS
-	InitializeAzEnvironment			@1
-	BeforeUnloadDLL				@2

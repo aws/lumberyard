@@ -15,10 +15,10 @@ import botocore
 import CloudCanvas
 import hashlib
 import json
-import os
 
-from botocore.client import Config
 from botocore.exceptions import ClientError
+
+import text_to_speech_s3
 
 BUCKET = {'ttscache': None, 'packagedvoicelines': None}
 TTSCACHE = 'ttscache'
@@ -134,7 +134,7 @@ def get_voice(tts_info, from_cgp = False):
 
 
 def enable_runtime_capabilities(enable):
-    s3 = boto3.client('s3')
+    s3 = text_to_speech_s3.get_s3_client()
     if enable and key_exists(RUNTIME_CAPABILITIES_FLAG_KEY, TTSCACHE):
         s3.delete_object(Bucket=CloudCanvas.get_setting(TTSCACHE), Key=RUNTIME_CAPABILITIES_FLAG_KEY)
     elif not enable and not key_exists(RUNTIME_CAPABILITIES_FLAG_KEY, TTSCACHE):
@@ -146,7 +146,7 @@ def runtime_capabilities_enabled():
 
 
 def enable_cache_runtime_generated_files(enable):
-    s3 = boto3.client('s3')
+    s3 = text_to_speech_s3.get_s3_client()
     if enable and not cache_runtime_generated_files():
         s3.delete_object(Bucket=CloudCanvas.get_setting(TTSCACHE), Key=RUNTIME_CACHING_FLAG_KEY)
     elif not enable and cache_runtime_generated_files():
@@ -174,7 +174,7 @@ def generate_presigned_url(key):
     '''
     Returns a presigned url for the given key in ttscache bucket
     '''
-    s3_client = __get_s3_client()
+    s3_client = text_to_speech_s3.get_s3_client()
 
     if cache_runtime_generated_files():
         return s3_client.generate_presigned_url('get_object',
@@ -210,17 +210,7 @@ def get_custom_mappings():
     file_key = 'import_custom_mappings.json'
     custom_mappings = {}
     if key_exists(file_key, TTSCACHE):
-        client = boto3.client('s3')
+        client = text_to_speech_s3.get_s3_client()
         response = client.get_object(Bucket=CloudCanvas.get_setting(TTSCACHE), Key=file_key)
         custom_mappings = json.loads(response["Body"].read())
     return custom_mappings
-
-def __get_s3_client():
-    current_region = os.environ.get('AWS_REGION')
-    if not current_region:
-        raise RuntimeError('AWS region is empty')
-
-    configuration = Config(signature_version='s3v4', s3={
-                           "addressing_style": "path"})
-    s3_client = boto3.client('s3', region_name=current_region, config=configuration)
-    return s3_client

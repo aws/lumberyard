@@ -137,6 +137,17 @@ namespace LmbrCentral
         SplineComponentRequestBus::EventResult(m_spline, m_entityId, &SplineComponentRequests::GetSpline);
     }
 
+    AZ::SplinePtr TubeShape::GetSpline()
+    {
+        if (!m_spline)
+        {
+            SplineComponentRequestBus::EventResult(m_spline, m_entityId, &SplineComponentRequests::GetSpline);
+            AZ_Assert(m_spline, "A TubeShape must have a Spline to work");
+        }
+
+        return m_spline;
+    }
+
     AZ::Aabb TubeShape::GetEncompassingAabb()
     {
         if (m_spline == nullptr)

@@ -20,6 +20,10 @@
                     "Url"
                 ]
             }
+        },
+        "JiraIntegrationEnabled": {
+            "Description": "Indicate whether the Jira integration is enabled or not",
+            "Value": "disabled"
         }
     },
     "Parameters": {
@@ -192,7 +196,8 @@
                         {
                             "AbstractRole": "ServiceLambda",
                             "Action": [
-                                "s3:PutObject"
+                                "s3:PutObject",
+                                "s3:GetObject"
                             ],
                             "ResourceSuffix": "/*"
                         },
@@ -208,6 +213,25 @@
                         }
                     ]
                 }
+            },
+            "Type": "AWS::S3::Bucket"
+        },
+        "ClientConfiguration": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "s3:PutObject",
+                                "s3:GetObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
             },
             "Type": "AWS::S3::Bucket"
         },
@@ -339,6 +363,14 @@
                         "Role"
                     ]
                 },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "SanitizationLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
                         "SanitizationLambdaConfiguration",
@@ -422,6 +454,15 @@
                             ],
                             "Action": [
                                 "s3:PutObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": [
+                                "ServiceLambda"
+                            ],
+                            "Action": [
+                                "s3:GetObject"
                             ],
                             "ResourceSuffix": "/*"
                         }
@@ -518,6 +559,14 @@
                         "Role"
                     ]
                 },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
                         "ServiceLambdaConfiguration",
@@ -548,34 +597,27 @@
                     "AttachmentBucket": {
                         "Ref": "AttachmentBucket"
                     },
-                    "RecentSearches": {
-                        "Ref": "RecentSearches"
+                    "SanitizedBucket": {
+                        "Ref": "SanitizedBucket"
                     },
                     "ClientConfiguration": {
                         "Ref": "ClientConfiguration"
+                    },
+                    "RecentSearches": {
+                        "Ref": "RecentSearches"
                     }
                 }
             },
             "Type": "Custom::LambdaConfiguration"
         },
-        "ClientConfiguration": {
-            "Metadata": {
-                "CloudCanvas": {
-                    "Permissions": [
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": [
-                                "s3:PutObject",
-                                "s3:GetObject"
-                            ],
-                            "ResourceSuffix": "/*"
-                        }
-                    ]
+        "SharedConfigurationBucket": {
+            "Type": "Custom::SharedConfigurationBucket",
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
                 }
             },
-            "Properties": {
-            },
-            "Type": "AWS::S3::Bucket"
+            "DependsOn": [ "ServiceLambda" ]
         }
     }
 }

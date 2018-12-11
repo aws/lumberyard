@@ -53,7 +53,7 @@ public:
 
 private:
     typedef std::map<string, CLightAnimWrapper*> LightAnimWrapperCache;
-    static LightAnimWrapperCache ms_lightAnimWrapperCache;
+    static StaticInstance<LightAnimWrapperCache> ms_lightAnimWrapperCache;
     static AZStd::intrusive_ptr<IAnimSequence> ms_pLightAnimSet;
 
 private:
@@ -146,6 +146,7 @@ public:
     void StartCapture(const ICaptureKey& key, int frame);
     void EndCapture();
     void ControlCapture();
+    bool IsCapturing() const;
 
     bool IsPlaying(IAnimSequence* seq) const;
 

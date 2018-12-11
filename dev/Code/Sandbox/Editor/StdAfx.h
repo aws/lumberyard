@@ -42,24 +42,15 @@
 #define _SCL_SECURE_NO_WARNINGS
 #endif
 
-#ifdef APPLE
+// It is vital that at least some Qt header is pulled in to this header, so that
+// QT_VERSION is defined and the editor gets the correct set of overloads in the
+// IXML interface. This also disambiguates the GUID/REFGUID situation in Guid.h
 #include <QUuid>
-#endif
 
 #define RWI_NAME_TAG "RayWorldIntersection(Editor)"
 #define PWI_NAME_TAG "PrimitiveWorldIntersection(Editor)"
 
 #define _CRT_RAND_S
-
-#ifndef NOT_USE_CRY_MEMORY_MANAGER
-// do not let QListData::realloc use QListData::CryModuleCRTRealloc
-#ifdef realloc
-#undef realloc
-#include <QList>
-#define realloc CryModuleCRTRealloc
-#endif
-#include <QList>
-#endif
 
 #include <platform.h>
 

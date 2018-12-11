@@ -80,13 +80,16 @@ namespace AzToolsFramework
                 });
             }
 
+            AssetSystemBus::AllowFunctionQueuing(true);
             AssetSystemRequestBus::Handler::BusConnect();
             AssetSystemJobRequestBus::Handler::BusConnect();
             AzToolsFramework::ToolsAssetSystemBus::Handler::BusConnect();
+            AZ::SystemTickBus::Handler::BusConnect();
         }
 
         void AssetSystemComponent::Deactivate()
         {
+            AZ::SystemTickBus::Handler::BusDisconnect();
             AzToolsFramework::ToolsAssetSystemBus::Handler::BusDisconnect();
             AssetSystemJobRequestBus::Handler::BusDisconnect();
             AssetSystemRequestBus::Handler::BusDisconnect();
@@ -98,6 +101,7 @@ namespace AzToolsFramework
                 socketConn->RemoveMessageHandler(AZ_CRC("AssetProcessorManager::SourceFileNotification", 0x8bfc4d1c), m_cbHandle);
             }
 
+            AssetSystemBus::AllowFunctionQueuing(false);
             AssetSystemBus::ClearQueuedEvents();
         }
 
@@ -224,7 +228,7 @@ namespace AzToolsFramework
             return "";
         }
 
-        void AssetSystemComponent::UpdateQueuedEvents()
+        void AssetSystemComponent::OnSystemTick()
         {
             AssetSystemBus::ExecuteQueuedEvents();
         }
@@ -289,7 +293,7 @@ namespace AzToolsFramework
 
             if (!SendRequest(request, response))
             {
-                AZ_Error("Editor", false, "Failed to send GetSourceInfoBySourceUUID request for uuid: ", sourceUuid.ToString<AZ::OSString>().c_str());
+                AZ_Error("Editor", false, "Failed to send GetSourceInfoBySourceUUID request for uuid: %s", sourceUuid.ToString<AZ::OSString>().c_str());
                 return false;
             }
 

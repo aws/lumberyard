@@ -380,6 +380,9 @@ void android_main(android_app* appState)
 
     // setup the android environment
     AZ::AllocatorInstance<AZ::OSAllocator>::Create();
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+    AZ::AllocatorInstance<CryStringAllocator>::Create();
+
     {
         AZ::Android::AndroidEnv::Descriptor descriptor;
 
@@ -438,7 +441,8 @@ void android_main(android_app* appState)
     const char* searchPaths[] = { assetsPath };
     CEngineConfig engineCfg(searchPaths, 1);
     const char* gameName = engineCfg.m_gameDLL.c_str();
-
+    engineCfg.m_gameFolder.MakeLower();
+    
     // Game Application (AzGameFramework)
     AzGameFramework::GameApplication gameApp;
     AzGameFramework::GameApplication::StartupParameters gameAppParams;
@@ -458,6 +462,8 @@ void android_main(android_app* appState)
         char descriptorRelativePath[AZ_MAX_PATH_LEN] = { 0 };
         AzGameFramework::GameApplication::GetGameDescriptorPath(descriptorRelativePath, engineCfg.m_gameFolder);
 
+        AZStd::to_lower(descriptorRelativePath, descriptorRelativePath + strlen(descriptorRelativePath));
+ 
         char descriptorFullPath[AZ_MAX_PATH_LEN] = { 0 };
         azsnprintf(descriptorFullPath, AZ_MAX_PATH_LEN, "%s%s%s", assetsPath, pathSep, descriptorRelativePath);
 
@@ -614,5 +620,8 @@ void android_main(android_app* appState)
     gameApp.Stop();
 
     AZ::Android::AndroidEnv::Destroy();
+    AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
 }
 

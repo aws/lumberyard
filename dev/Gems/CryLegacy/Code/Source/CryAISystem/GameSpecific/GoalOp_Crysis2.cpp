@@ -258,8 +258,8 @@ COPCrysis2AdjustAim::COPCrysis2AdjustAim(bool useLastOpAsBackup, bool allowProne
 //
 //-------------------------------------------------------------------------------------------------------------
 COPCrysis2AdjustAim::COPCrysis2AdjustAim(const XmlNodeRef& node)
-    : m_useLastOpAsBackup(s_xml.GetBool(node, "useLastOpResultAsBackup"))
-    , m_allowProne(s_xml.GetBool(node, "allowProne"))
+    : m_useLastOpAsBackup(s_xml->GetBool(node, "useLastOpResultAsBackup"))
+    , m_allowProne(s_xml->GetBool(node, "allowProne"))
     , m_timeoutRandomness(0.0f)
     , m_timeoutMs(0)
     , m_bestPostureID(-1)
@@ -619,7 +619,7 @@ COPCrysis2Peek::COPCrysis2Peek(bool useLastOpAsBackup, float timeout)
 //
 //-------------------------------------------------------------------------------------------------------------
 COPCrysis2Peek::COPCrysis2Peek(const XmlNodeRef& node)
-    : m_useLastOpAsBackup(s_xml.GetBool(node, "useLastOpResultAsBackup"))
+    : m_useLastOpAsBackup(s_xml->GetBool(node, "useLastOpResultAsBackup"))
     , m_timeoutRandomness(0.0f)
     , m_timeoutMs(0)
     , m_bestPostureID(-1)
@@ -917,11 +917,11 @@ COPCrysis2Hide::COPCrysis2Hide(EAIRegister location, bool exact)
 
 COPCrysis2Hide::COPCrysis2Hide(const XmlNodeRef& node)
     : m_location(AI_REG_NONE)
-    , m_exact(s_xml.GetBool(node, "exact", true))
+    , m_exact(s_xml->GetBool(node, "exact", true))
     , m_pPathfinder(0)
     , m_pTracer(0)
 {
-    s_xml.GetRegister(node, "register", m_location, CGoalOpXMLReader::MANDATORY);
+    s_xml->GetRegister(node, "register", m_location, CGoalOpXMLReader::MANDATORY);
 }
 
 COPCrysis2Hide::COPCrysis2Hide(const COPCrysis2Hide& rhs)
@@ -1368,14 +1368,14 @@ COPCrysis2Communicate::COPCrysis2Communicate(const XmlNodeRef& node)
     : m_expirity(0.f)
     , m_target(AI_REG_NONE)
 {
-    const char* szName = s_xml.GetMandatoryString(node, "name");
+    const char* szName = s_xml->GetMandatoryString(node, "name");
     CCommunicationManager* pCommunicationManager = gAIEnv.pCommunicationManager;
     m_commID = pCommunicationManager->GetCommunicationID(szName);
     m_channelID = pCommunicationManager->GetChannelID(szName);
 
-    m_ordering = s_xml.GetBool(node, "ordered") ? SCommunicationRequest::Ordered : SCommunicationRequest::Unordered;
-    s_xml.GetMandatory(node, "expiry", m_expirity);
-    s_xml.GetRegister(node, "register", m_target);
+    m_ordering = s_xml->GetBool(node, "ordered") ? SCommunicationRequest::Ordered : SCommunicationRequest::Unordered;
+    s_xml->GetMandatory(node, "expiry", m_expirity);
+    s_xml->GetRegister(node, "register", m_target);
 }
 
 COPCrysis2Communicate::~COPCrysis2Communicate()
@@ -1452,16 +1452,16 @@ COPCrysis2StickPath::COPCrysis2StickPath(const XmlNodeRef& node)
     , m_fMinStickDistSq(0.0f)
     , m_fMaxStickDistSq(0.0f)
     , m_bFinishInRange(false)
-    , m_bCanReverse(s_xml.GetBool(node, "canReverse", true))
+    , m_bCanReverse(s_xml->GetBool(node, "canReverse", true))
 {
     float fMaxStickDist = 0.0f;
-    s_xml.GetMandatory(node, "maxStickDist", fMaxStickDist);
+    s_xml->GetMandatory(node, "maxStickDist", fMaxStickDist);
     m_fMaxStickDistSq = sqr(fMaxStickDist);
 
-    float fMinStickDist = s_xml.Get(node, "minStickDist", 0.0f);
+    float fMinStickDist = s_xml->Get(node, "minStickDist", 0.0f);
     m_fMinStickDistSq = sqr(fMinStickDist);
 
-    m_bFinishInRange = s_xml.GetMandatoryBool(node, "finishInRange");
+    m_bFinishInRange = s_xml->GetMandatoryBool(node, "finishInRange");
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1857,8 +1857,8 @@ COPAcquirePosition::COPAcquirePosition(const XmlNodeRef& node)
     , m_State(C2AP_INIT)
     , m_SubState(C2APCS_GATHERSPANS)
 {
-    s_xml.GetRegister(node, "register", m_target);
-    s_xml.GetRegister(node, "output", m_output);
+    s_xml->GetRegister(node, "register", m_target);
+    s_xml->GetRegister(node, "output", m_output);
 }
 
 COPAcquirePosition::~COPAcquirePosition()
@@ -2073,7 +2073,7 @@ void COPAcquirePosition::ExecuteDry(CPipeUser* pPipeUser)
 }
 
 
-COPCrysis2Fly::SolverAllocator COPCrysis2Fly::m_Solvers;
+StaticInstance<COPCrysis2Fly::SolverAllocator> COPCrysis2Fly::m_Solvers;
 
 COPCrysis2Fly::COPCrysis2Fly()
     : m_State(C2F_INVALID)
@@ -2115,7 +2115,7 @@ COPCrysis2Fly::COPCrysis2Fly(const XmlNodeRef& node)
     , m_currentSpeed(50.0f)
     , m_Timeout(0.0f)
 {
-    s_xml.GetRegister(node, "register", m_target);
+    s_xml->GetRegister(node, "register", m_target);
     node->getAttr("lookahead", m_lookAheadDist);
 }
 
@@ -3073,7 +3073,7 @@ COPCrysis2ChaseTarget::COPCrysis2ChaseTarget(const XmlNodeRef& node)
     , m_distanceMax(0.0f)
 
 {
-    s_xml.GetRegister(node, "register", m_target);
+    s_xml->GetRegister(node, "register", m_target);
     node->getAttr("lookahead", m_lookAheadDist);
 
     m_visCheckRayID[0] = 0;
@@ -3843,7 +3843,7 @@ COPCrysis2FlightFireWeapons::COPCrysis2FlightFireWeapons(const XmlNodeRef& node)
     node->getAttr("secondaryAngle", m_Rotation);
     node->getAttr("minFireTime", m_minTime);
     node->getAttr("maxFireTime", m_maxTime);
-    s_xml.GetRegister(node, "register", m_target);
+    s_xml->GetRegister(node, "register", m_target);
 }
 
 COPCrysis2FlightFireWeapons::COPCrysis2FlightFireWeapons(EAIRegister reg, float minTime, float maxTime, bool primary, uint32 secondary)
@@ -4367,8 +4367,8 @@ COPCrysis2Hover::COPCrysis2Hover(const XmlNodeRef& node)
     , m_target(AI_REG_NONE)
     , m_Continous(false)
 {
-    s_xml.GetRegister(node, "register", m_target);
-    m_Continous = s_xml.GetBool(node, "continousUpdate");
+    s_xml->GetRegister(node, "register", m_target);
+    m_Continous = s_xml->GetBool(node, "continousUpdate");
 }
 
 COPCrysis2Hover::~COPCrysis2Hover()

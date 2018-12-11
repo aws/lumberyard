@@ -20,6 +20,7 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 
 namespace ScriptCanvasEditor
 {
@@ -27,6 +28,7 @@ namespace ScriptCanvasEditor
         : public AZ::Component
         , private SystemRequestBus::Handler
         , private AzToolsFramework::EditorEvents::Bus::Handler
+        , private AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(SystemComponent, "{1DE7A120-4371-4009-82B5-8140CB1D7B31}");
@@ -60,7 +62,12 @@ namespace ScriptCanvasEditor
         void PopulateEditorGlobalContextMenu(QMenu* menu, const AZ::Vector2& point, int flags) override;
         void NotifyRegisterViews() override;
         ////////////////////////////////////////////////////////////////////////
-
+        
+        ////////////////////////////////////////////////////////////////////////
+        //  AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus overrides
+        AzToolsFramework::AssetBrowser::SourceFileDetails GetSourceFileDetails(const char* fullSourceFileName) override;
+        ////////////////////////////////////////////////////////////////////////
+        
     private:
         SystemComponent(const SystemComponent&) = delete;
 

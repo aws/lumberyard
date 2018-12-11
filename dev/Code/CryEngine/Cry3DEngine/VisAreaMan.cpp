@@ -949,9 +949,36 @@ bool CVisAreaManager::DeleteVisArea(CVisArea* pVisArea)
 //THIS SHOULD ONLY BE CALLED BY THE EDITOR
 void CVisAreaManager::UpdateVisArea(CVisArea* pArea, const Vec3* pPoints, int nCount, const char* szName, const SVisAreaInfo& info)
 { // on first update there will be nothing to delete, area will be added into list only in this function
-    m_lstPortals.Delete(pArea);
-    m_lstVisAreas.Delete(pArea);
-    m_lstOcclAreas.Delete(pArea);
+    
+    // If pArea is in these lists, then remove it.
+    const VisAreaGUID& areaGUID = pArea->GetGUID();
+    for (int i = 0; i < m_lstVisAreas.Count(); ++i)
+    {
+        CVisArea* pAreaInList = m_lstVisAreas[i];
+        if (areaGUID == pAreaInList->GetGUID())
+        {
+            m_lstVisAreas.Delete(i);
+            --i;
+        }
+    }
+    for (int i = 0; i < m_lstPortals.Count(); ++i)
+    {
+        CVisArea* pPortalInList = m_lstPortals[i];
+        if (areaGUID == pPortalInList->GetGUID())
+        {
+            m_lstPortals.Delete(i);
+            --i;
+        }
+    }
+    for (int i = 0; i < m_lstOcclAreas.Count(); ++i)
+    {
+        CVisArea* pOccAreaInList = m_lstOcclAreas[i];
+        if (areaGUID == pOccAreaInList->GetGUID())
+        {
+            m_lstOcclAreas.Delete(i);
+            --i;
+        }
+    }
 
     SGenericColdData* pColdData = pArea->GetColdData();
     if (pColdData != NULL)

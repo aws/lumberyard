@@ -46,6 +46,21 @@ BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserve
 }
 #endif
 
+extern "C" DLL_EXPORT void InjectEnvironment(void* env)
+{
+    static bool injected = false;
+    if (!injected)
+    {
+        AZ::Environment::Attach(reinterpret_cast<AZ::EnvironmentInstance>(env));
+        injected = true;
+    }
+}
+
+extern "C" DLL_EXPORT void DetachEnvironment()
+{
+    AZ::Environment::Detach();
+}
+
 extern "C" DLL_EXPORT ICryXML * __stdcall GetICryXML()
 {
     if (!s_pCryXML)

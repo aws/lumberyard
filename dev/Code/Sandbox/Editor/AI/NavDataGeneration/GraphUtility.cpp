@@ -465,7 +465,7 @@ void CGraph::TriangulateOutline(const string& areaName, ListNodeIds& nodesList, 
     //Vec3r vCut2 = *crItr;
 
     ObstacleData  obst;
-    GraphNode tmpNode(IAISystem::NAV_TRIANGULAR, Vec3r(ZERO), 0);
+    GraphNode_Triangular node(IAISystem::NAV_TRIANGULAR, Vec3r(ZERO), 0);
     ObstacleIndexList originalOutline;
 
     originalOutline.insert(originalOutline.begin(), outline.begin(), outline.end());
@@ -507,20 +507,20 @@ void CGraph::TriangulateOutline(const string& areaName, ListNodeIds& nodesList, 
                 ++vItr2;
             }
 
-            tmpNode.GetTriangularNavData()->vertices.clear();
+            node.GetTriangularNavData()->vertices.clear();
             //          obst.vPos = *curItr;
-            tmpNode.GetTriangularNavData()->vertices.push_back(*curItr);
+            node.GetTriangularNavData()->vertices.push_back(*curItr);
             //          obst.vPos = *vItr1;
-            tmpNode.GetTriangularNavData()->vertices.push_back(*vItr1);
+            node.GetTriangularNavData()->vertices.push_back(*vItr1);
             //          obst.vPos = *vItr2;
-            tmpNode.GetTriangularNavData()->vertices.push_back(*vItr2);
+            node.GetTriangularNavData()->vertices.push_back(*vItr2);
 
             notGood = false;
-            if (tmpNode.GetTriangularNavData()->IsAntiClockwise(pVertexList) != orientation)
+            if (node.GetTriangularNavData()->IsAntiClockwise(pVertexList) != orientation)
             {
                 notGood = true;
             }
-            tmpNode.GetTriangularNavData()->MakeAntiClockwise(pVertexList);
+            node.GetTriangularNavData()->MakeAntiClockwise(pVertexList);
 
             // check if enithing inside the curremt triangle
             for (ObstacleIndexList::iterator   tmpItr = originalOutline.begin(); tmpItr != originalOutline.end() && !notGood; tmpItr++)
@@ -532,7 +532,7 @@ void CGraph::TriangulateOutline(const string& areaName, ListNodeIds& nodesList, 
                     continue;
                 }
                 //              else if(PointInTriangle(*tmpItr, &tmpNode))
-                else if (PointInTriangle(m_pNavigation->GetVertexList().GetVertex(*tmpItr).vPos, &tmpNode))
+                else if (PointInTriangle(m_pNavigation->GetVertexList().GetVertex(*tmpItr).vPos, &node))
                 {
                     notGood = true;
                 }
@@ -543,12 +543,12 @@ void CGraph::TriangulateOutline(const string& areaName, ListNodeIds& nodesList, 
                 continue;
             }
 
-            real  dVal = tmpNode.GetTriangularNavData()->GetDegeneracyValue(pVertexList);
+            real  dVal = node.GetTriangularNavData()->GetDegeneracyValue(pVertexList);
 
             if (dVal > candidateDegeneracy) // better candidate
             {
                 candidateDegeneracy = dVal;
-                candidateNode->GetTriangularNavData()->vertices = tmpNode.GetTriangularNavData()->vertices;
+                candidateNode->GetTriangularNavData()->vertices = node.GetTriangularNavData()->vertices;
                 candidateRemove = vItr1;
             }
         }

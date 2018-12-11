@@ -32,7 +32,7 @@ namespace AssetViewer
     const int kOverlayTextLeftMargin = 10;
 };
 
-namespace AssetBrowser
+namespace AssetBrowserCommon
 {
     extern const char* kThumbnailsRoot;
 }

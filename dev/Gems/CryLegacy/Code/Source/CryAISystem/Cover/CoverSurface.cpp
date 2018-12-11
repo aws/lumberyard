@@ -628,7 +628,7 @@ bool CoverSurface::GenerateCoverPath(float distanceToCover, CoverPath* path, boo
     return true;
 }
 
-CoverSurface::Points CoverSurface::s_simplifiedPoints;
+StaticInstance<CoverSurface::Points> CoverSurface::s_simplifiedPoints;
 
 void CoverSurface::SimplifyCoverPath(Points& points) const
 {

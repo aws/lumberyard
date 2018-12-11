@@ -1,5 +1,5 @@
 import retry
-import boto3
+import boto3_util
 import metric_constant as c
 import time
 import os
@@ -12,7 +12,7 @@ class CloudWatch(object):
 
     def __init__(self, context={}):        
         self.__context = context        
-        self.__client = boto3.client('cloudwatch',region_name=os.environ[c.ENV_REGION], api_version='2010-08-01') 
+        self.__client = boto3_util.client('cloudwatch', api_version='2010-08-01')
         self.__avg_save_duration = None;    
         self.__avg_delete_duration = None;
         self.__sum_save_duration = None;    

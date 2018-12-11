@@ -71,7 +71,7 @@ namespace AZ
 
             static void PrintCallstack(const char* window, unsigned int suppressCount = 0, void* nativeContext = 0);
 
-            /// PEXCEPTION_POINTERS on Windows/X360, always NULL on other platforms // ACCEPTED_USE
+            /// PEXCEPTION_POINTERS on Windows, always NULL on other platforms
             static void* GetNativeExceptionInfo();
         };
     }
@@ -84,20 +84,20 @@ namespace AZ
 * The syntax allows printf style formatting for the message, e.g DBG_Error("System | MyWindow", true/false, "message %d", ...).
 * Asserts are always sent to the "System" window, since they cannot be ignored.
 *
-* The four different types of macro should be used depending on the situation:
+* The four different types of macro to use, depending on the situation:
 *    - Asserts should be used for critical errors, where the program cannot continue. They print the message together
-*      with file and line number, and a call stack if available. They then break program execution.
+*      with the file and line number. They then break program execution.
 *    - Errors should be used where something is clearly wrong, but the program can continue safely. They print the message
-*      together with file and line number. Depending on platform they will notify the user that
+*      together with the file and line number. Depending on platform they will notify the user that
 *      an error has occurred, e.g. with a message box or an on-screen message.
-*    - Warnings should be used when something could be wrong. They print the message together with file and line number, but
+*    - Warnings should be used when something could be wrong. They print the message together with the file and line number, and
 *      take no other action.
 *    - Printfs are purely informational. They print the message unadorned.
 *    - Traces which have "Once" at the end will display the message only once for the life of the application instance.
 *
-* \note In the future we can change the macros to #define AZ_Assert(expression,format,...) this is supported by all compilers except
-* Metroweirks. They require at least one parameter for "...".
-* \note AZCore implements the AZStd::Deafult_Assert so if you want to customize it user the Tracer Listerners...
+* \note In the future we can change the macros to #define AZ_Assert(expression, format, ...) this is supported by all compilers except
+* Metrowerks. They require at least one parameter for "...".
+* \note AZCore implements the AZStd::Default_Assert so if you want to customize it, use the Trace Listeners...
 */
     #define AZ_Assert(expression, ...)                           if (!(expression)) { \
         AZ::Debug::Trace::Instance().Assert(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, /*format,*/ __VA_ARGS__); }

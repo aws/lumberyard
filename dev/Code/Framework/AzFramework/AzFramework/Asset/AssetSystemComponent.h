@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/Network/SocketConnection.h>
@@ -30,6 +31,7 @@ namespace AzFramework
         class AssetSystemComponent
             : public AZ::Component
             , private AssetSystemRequestBus::Handler
+            , private AZ::SystemTickBus::Handler
         {
         public:
             AZ_COMPONENT(AssetSystemComponent, "{42C58BBF-0C15-4DF9-9351-4639B36F122A}")
@@ -42,6 +44,11 @@ namespace AzFramework
             void Init() override;
             void Activate() override;
             void Deactivate() override;
+            //////////////////////////////////////////////////////////////////////////
+
+            //////////////////////////////////////////////////////////////////////////
+            // SystemTickBus overrides
+            void OnSystemTick() override;
             //////////////////////////////////////////////////////////////////////////
 
             static void Reflect(AZ::ReflectContext* context);
@@ -66,7 +73,6 @@ namespace AzFramework
             bool Disconnect() override;
             AssetStatus CompileAssetSync(const AZStd::string& assetPath) override;
             AssetStatus GetAssetStatus(const AZStd::string& assetPath) override;
-            void UpdateQueuedEvents() override;
             void ShowAssetProcessor() override;
             float GetAssetProcessorPingTimeMilliseconds() override;
             void SetAssetProcessorPort(AZ::u16 port) override;

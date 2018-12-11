@@ -604,7 +604,7 @@ public:
     virtual QModelIndex DeploymentListIndex() const = 0;
     virtual QModelIndex ProjectStackIndex() const = 0;
 
-    virtual void AddResourceGroup(const QString& resourceGroupName, bool includeExampleResources, AsyncOperationCallback callback) = 0;
+    virtual void CreateCloudGem(const QString& name, const QString& initialContent, AsyncOperationCallback callback) = 0;
     virtual void DisableResourceGroup(const QString& resourceGroupName, AsyncOperationCallback callback) = 0;
     virtual void EnableResourceGroup(const QString& resourceGroupName, AsyncOperationCallback callback) = 0;
 

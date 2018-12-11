@@ -186,6 +186,8 @@ protected:
 
     void DrawAccent(DisplayContext& dc);
 
+    void ValidateMeshStatObject();
+
     //! Whether we have have a valid icon path in \ref m_icon
     bool m_hasIcon;
 

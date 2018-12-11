@@ -75,7 +75,6 @@ namespace EMotionFX
     }
 
 
-
     void MorphTargetStandard::BuildWorkMesh(Mesh* mesh, MCore::Array< MCore::Array<uint32> >& output)
     {
         // resize the array
@@ -111,7 +110,6 @@ namespace EMotionFX
             {
                 // find if the pose node also exists in the actor where we apply this to
                 Node* targetNode  = targetSkeleton->GetNode(i);
-                //this code is assuming no duplicate node names.
                 Node* neutralNode = neutralSkeleton->FindNodeByID(targetNode->GetID());
 
                 // skip this node if it doesn't exist in the actor we apply this to
@@ -134,28 +132,29 @@ namespace EMotionFX
                 const uint32 numNeutralVerts = neutralMesh->GetNumVertices();
                 const uint32 numTargetVerts  = targetMesh->GetNumVertices();
 
-                // if the number of original vertices is not equal to the number of current vertices, we can't use this mesh
                 if (neutralMesh->GetNumOrgVertices() != targetMesh->GetNumOrgVertices())
                 {
-                    MCore::LogWarning("EMotionFX::MorphTargetStandard::InitFromPose() - Number of original vertices from base mesh (%d org verts) differs from morph target num org vertices (%d verts)", neutralMesh->GetNumOrgVertices(), targetMesh->GetNumOrgVertices());
+                    //AZ_Assert(false, "The number of source original vertices (%d) and target original vertices (%d) are different, cannot build a morph target for this mesh (name = '%s').", neutralMesh->GetNumOrgVertices(), targetMesh->GetNumOrgVertices(), targetNode->GetName());
                     continue;
                 }
 
                 if (numNeutralVerts != numTargetVerts)
-                {
-                    MCore::LogInfo("EMotionFX::MorphTargetStandard::InitFromPose() - Number of vertices of base mesh (%d verts) is different from the number of morph target vertices (%d verts). This can lead to some visual shading errors.", numNeutralVerts, numTargetVerts);
+                {               
+                    //AZ_Assert(false, "The number of source vertices (%d) and target vertices (%d) are different, cannot build a morph target for this mesh (name = '%s').", numNeutralVerts, numTargetVerts, targetNode->GetName());
+                    continue;
                 }
-
 
                 // check if the mesh has differences
                 uint32 numDifferent = 0;
-                const AZ::PackedVector3f*   neutralPositions = (AZ::PackedVector3f*)neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
-                const AZ::PackedVector3f*   neutralNormals   = (AZ::PackedVector3f*)neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS);
-                const uint32*               neutralOrgVerts  = (uint32*)neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_ORGVTXNUMBERS);
-                const AZ::Vector4*          neutralTangents  = static_cast<AZ::Vector4*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS));
-                const AZ::PackedVector3f*   targetPositions  = (AZ::PackedVector3f*)targetMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
-                const AZ::PackedVector3f*   targetNormals    = (AZ::PackedVector3f*)targetMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS);
-                const AZ::Vector4*          targetTangents   = (AZ::Vector4*)targetMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS);
+                const AZ::PackedVector3f*   neutralPositions = static_cast<const AZ::PackedVector3f*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS));
+                const AZ::PackedVector3f*   neutralNormals   = static_cast<const AZ::PackedVector3f*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS));
+                const AZ::u32*              neutralOrgVerts  = static_cast<const AZ::u32*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
+                const AZ::Vector4*          neutralTangents  = static_cast<const AZ::Vector4*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS));
+                const AZ::PackedVector3f*   neutralBitangents= static_cast<const AZ::PackedVector3f*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS));
+                const AZ::PackedVector3f*   targetPositions  = static_cast<const AZ::PackedVector3f*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS));
+                const AZ::PackedVector3f*   targetNormals    = static_cast<const AZ::PackedVector3f*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS));
+                const AZ::Vector4*          targetTangents   = static_cast<const AZ::Vector4*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS));
+                const AZ::PackedVector3f*   targetBitangents = static_cast<const AZ::PackedVector3f*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS));
 
                 //--------------------------------------------------
 
@@ -222,6 +221,7 @@ namespace EMotionFX
 
                 // check if we have tangents
                 const bool hasTangents = ((neutralTangents) && (targetTangents));
+                const bool hasBitangents = ((neutralBitangents) && (targetBitangents));
 
                 // create the deformation data
                 DeformData* deformData = DeformData::Create(neutralNode->GetNodeIndex(), numDifferent);
@@ -235,10 +235,10 @@ namespace EMotionFX
                     const uint32 orgVertex = neutralOrgVerts[v];
 
                     // calculate the delta vector between the two positions
-                    const AZ::Vector3 deltaVec = AZ::Vector3(targetPositions[ morphVerts[orgVertex][0] ]) - AZ::Vector3(neutralPositions[v]);
+                    const AZ::Vector3 deltaVec = AZ::Vector3(targetPositions[morphVerts[orgVertex][0]]) - AZ::Vector3(neutralPositions[v]);
 
                     // check if the vertex positions are different, so if there are mesh changes
-                    if (MCore::SafeLength(deltaVec) > /*0.0001f*/ epsilon)
+                    if (MCore::SafeLength(deltaVec) > epsilon)
                     {
                         uint32 duplicateIndex = 0;
                         uint32 targetIndex = 0;
@@ -252,23 +252,33 @@ namespace EMotionFX
                         // get the target vertex index
                         targetIndex = morphVerts[orgVertex][duplicateIndex];
 
-                        // calculate the delta normal tangent
-                        AZ::Vector3 deltaNormal  = AZ::Vector3(targetNormals[targetIndex]) - AZ::Vector3(neutralNormals[v]);
                         AZ::Vector3 deltaTangent(0.0f, 0.0f, 0.0f);
                         if (hasTangents)
                         {
-                            deltaTangent.SetX(targetTangents[targetIndex].GetX() - neutralTangents[v].GetX());
-                            deltaTangent.SetY(targetTangents[targetIndex].GetY() - neutralTangents[v].GetY());
-                            deltaTangent.SetZ(targetTangents[targetIndex].GetZ() - neutralTangents[v].GetZ());
+                            const AZ::Vector3 neutralTangent = neutralTangents[v].GetAsVector3().GetNormalizedSafeExact();
+                            const AZ::Vector3 targetTangent  = targetTangents[v].GetAsVector3().GetNormalizedSafeExact();
+                            deltaTangent = targetTangent - neutralTangent;
+                        }
+
+                        AZ::Vector3 deltaBitangent(0.0f, 0.0f, 0.0f);
+                        if (hasBitangents)
+                        {
+                            const AZ::Vector3 neutralBitangent = AZ::Vector3(neutralBitangents[v]).GetNormalizedSafeExact();
+                            const AZ::Vector3 targetBitangent  = AZ::Vector3(targetBitangents[v]).GetNormalizedSafeExact();
+                            deltaBitangent = targetBitangent - neutralBitangent;
                         }
 
                         // setup the deform data for this vertex
-                        deformData->mDeltas[curVertex].mVertexNr = v;
+                        const AZ::Vector3 neutralNormal = AZ::Vector3(neutralNormals[v]).GetNormalizedSafeExact();
+                        const AZ::Vector3 targetNormal  = AZ::Vector3(targetNormals[v]).GetNormalizedSafeExact();
+                        const AZ::Vector3 deltaNormal   = targetNormal - neutralNormal;
                         deformData->mDeltas[curVertex].mPosition.FromVector3(deltaVec, minValue, maxValue);
                         deformData->mDeltas[curVertex].mNormal.FromVector3(deltaNormal, -2.0f, 2.0f);
-                        deformData->mDeltas[curVertex].mTangent.FromVector3(deltaTangent, -1.0f, 1.0f);
+                        deformData->mDeltas[curVertex].mTangent.FromVector3(deltaTangent, -2.0f, 2.0f);
+                        deformData->mDeltas[curVertex].mBitangent.FromVector3(deltaBitangent, -2.0f, 2.0f);
+                        deformData->mDeltas[curVertex].mVertexNr = v;
                         curVertex++;
-                    } // deltaVec.Length() > 0.0001f
+                    }
                 }
 
                 //LogInfo("Mesh deform data for node '%s' contains %d vertices", neutralNode->GetName(), numDifferent);
@@ -357,8 +367,8 @@ namespace EMotionFX
                 const Transform& neutralTransform   = neutralBindPose.GetLocalTransform(neutralNodeIndex);
                 const Transform& targetTransform    = targetBindPose.GetLocalTransform(targetNodeIndex);
 
-                AZ::Vector3      neutralPos         = neutralTransform.mPosition;
-                AZ::Vector3      targetPos          = targetTransform.mPosition;
+                AZ::Vector3         neutralPos      = neutralTransform.mPosition;
+                AZ::Vector3         targetPos       = targetTransform.mPosition;
                 MCore::Quaternion   neutralRot      = neutralTransform.mRotation;
                 MCore::Quaternion   targetRot       = targetTransform.mRotation;
 
@@ -423,261 +433,6 @@ namespace EMotionFX
         }
     }
 
-    /*
-    // initialize the morph target from a given actor pose
-    void MorphTargetStandard::InitFromPose(const bool captureTransforms, const bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, bool delPoseFromMem)
-    {
-        MCORE_ASSERT(neutralPose);
-        MCORE_ASSERT(targetPose);
-
-        // filter all changed meshes
-        if (captureMeshDeforms)
-        {
-            const uint32 numPoseNodes = targetPose->GetNumNodes();
-            for (uint32 i=0; i<numPoseNodes; ++i)
-            {
-                // find if the pose node also exists in the actor where we apply this to
-                Node* targetNode  = targetPose->GetNode(i);
-                Node* neutralNode = neutralPose->FindNodeByID( targetNode->GetID() );
-
-                // skip this node if it doesn't exist in the actor we apply this to
-                if (neutralNode == nullptr)
-                    continue;
-
-                // get the meshes
-                Mesh* neutralMesh = neutralNode->GetMesh(0).GetPointer();
-                Mesh* targetMesh  = targetNode->GetMesh(0).GetPointer();
-
-                // if one of the nodes has no mesh, we can skip this node
-                if (neutralMesh==nullptr || targetMesh==nullptr)
-                    continue;
-
-                // both nodes have a mesh, lets check if they have the same number of vertices as well
-                const uint32 numNeutralVerts = neutralMesh->GetNumVertices();
-                const uint32 numTargetVerts  = targetMesh->GetNumVertices();
-
-                // if the number of original vertices is not equal to the number of current vertices, we can't use this mesh
-                if (numNeutralVerts != numTargetVerts)
-                {
-                    //LogInfo("**** not equal number of vertices (neutral=%d    morphtarget=%d)", numNeutralVerts, numTargetVerts);
-                    //LogInfo("orgN=%d   orgT=%d", neutralMesh->GetNumOrgVertices(), targetMesh->GetNumOrgVertices());
-                    continue;
-                }
-
-                // check if the mesh has differences
-                uint32 numDifferent = 0;
-                const Vector3* neutralPositions = (Vector3*)neutralMesh->FindOriginalVertexData( Mesh::ATTRIB_POSITIONS );
-                const Vector3* neutralNormals   = (Vector3*)neutralMesh->FindOriginalVertexData( Mesh::ATTRIB_NORMALS );
-                const Vector3* neutralTangents  = (Vector3*)neutralMesh->FindOriginalVertexData( Mesh::ATTRIB_TANGENTS );
-                const Vector3* targetPositions  = (Vector3*)targetMesh->FindOriginalVertexData( Mesh::ATTRIB_POSITIONS );
-                const Vector3* targetNormals    = (Vector3*)targetMesh->FindOriginalVertexData( Mesh::ATTRIB_NORMALS );
-                const Vector3* targetTangents   = (Vector3*)targetMesh->FindOriginalVertexData( Mesh::ATTRIB_TANGENTS );
-
-                AABB box;
-                uint32 v;
-                for (v=0; v<numNeutralVerts; ++v)
-                {
-                    // calculate the delta vector between the two positions
-                    const Vector3 deltaVec = targetPositions[v] - neutralPositions[v];
-
-                    // check if the vertex positions are different, so if there are mesh changes
-                    if (deltaVec.Length() > 0.0001f)
-                    {
-                        box.Encapsulate( deltaVec );
-                        numDifferent++;
-                    }
-                }
-
-                // go to the next node and mesh if there is no difference
-                if (numDifferent == 0)
-                    continue;
-
-                // calculate the minimum value of the box
-                float minValue = box.GetMin().x;
-                minValue = MCore::Min<float>(minValue, box.GetMin().y);
-                minValue = MCore::Min<float>(minValue, box.GetMin().z);
-
-                // calculate the minimum value of the box
-                float maxValue = box.GetMax().x;
-                maxValue = MCore::Max<float>(maxValue, box.GetMax().y);
-                maxValue = MCore::Max<float>(maxValue, box.GetMax().z);
-
-                // make sure the values won't be too small
-                if (maxValue - minValue < 1.0f)
-                {
-                    if (minValue < 0.0f && minValue > -1.0f)
-                        minValue = -1.0f;
-
-                    if (maxValue > 0.0f && maxValue < 1.0f)
-                        maxValue = 1.0f;
-                }
-
-                const bool hasTangents = ((neutralTangents!=nullptr) && (targetTangents));
-
-                // create the deformation data
-                DeformData* deformData = new DeformData(neutralNode->GetNodeIndex(), numDifferent);
-                deformData->mMinValue = minValue;
-                deformData->mMaxValue = maxValue;
-
-                uint32 curVertex = 0;
-                for (v=0; v<numNeutralVerts; ++v)
-                {
-                    // calculate the delta vector between the two positions
-                    Vector3 deltaVec = targetPositions[v] - neutralPositions[v];
-
-                    // check if the vertex positions are different, so if there are mesh changes
-                    if (deltaVec.Length() > 0.0001f)
-                    {
-                        Vector3 deltaNormal  = targetNormals[v] - neutralNormals[v];
-                        Vector3 deltaTangent(0.0f, 0.0f, 0.0f);
-
-                        if (hasTangents)
-                            deltaTangent = targetTangents[v] - neutralTangents[v];
-
-                        deformData->mDeltas[curVertex].mVertexNr = v;
-                        deformData->mDeltas[curVertex].mPosition.FromVector3(deltaVec, minValue, maxValue);
-                        deformData->mDeltas[curVertex].mNormal.FromVector3(deltaNormal, -1.0f, 1.0f);
-                        deformData->mDeltas[curVertex].mTangent.FromVector3(deltaTangent, -1.0f, 1.0f);
-
-                        curVertex++;
-                    }
-                }
-
-                //LogInfo("Mesh deform data for node '%s' contains %d vertices", neutralNode->GetName(), numDifferent);
-
-                // add the deform data
-                mDeformDatas.Add( deformData );
-
-                //-------------------------------
-                // create the mesh deformer
-                MCore::Pointer<MeshDeformerStack>& stack = neutralNode->GetMeshDeformerStack(0);
-
-                // create the stack if it doesn't yet exist
-                if (stack.GetPointer() == nullptr)
-                {
-                    stack = MCore::Pointer<MeshDeformerStack>( new MeshDeformerStack(neutralMesh) );
-                    neutralNode->SetMeshDeformerStack(stack, 0);
-                }
-
-                // try to see if there is already some  morph deformer
-                MorphMeshDeformer* deformer = nullptr;
-                MeshDeformerStack* stackPtr = stack.GetPointer();
-                deformer = (MorphMeshDeformer*)stackPtr->FindDeformerByType( MorphMeshDeformer::TYPE_ID );
-                if (deformer == nullptr)    // there isn't one, so create and add one
-                {
-                    deformer = new MorphMeshDeformer( neutralMesh );
-                    stack->InsertDeformer(0, deformer);
-                }
-
-                // add the deform pass to the mesh deformer
-                MorphMeshDeformer::DeformPass deformPass;
-                deformPass.mDeformDataNr = mDeformDatas.GetLength() - 1;
-                deformPass.mMorphTarget  = this;
-                deformer->AddDeformPass( deformPass );
-
-                //-------------------------------
-
-                // make sure we end up with the same number of different vertices, otherwise the two loops
-                // have different detection on if a vertex has changed or not
-                MCORE_ASSERT(curVertex == numDifferent);
-            }
-        }
-
-        //--------------------------------------------------------------------------------------------------
-
-        if (captureTransforms)
-        {
-            // get a bone list, if we also captured meshes, because in that case we want
-            // to disable capturing transforms for the bones since the deforms already have been captured
-            // by the mesh capture
-            //Array<Node*> boneList;
-            //if (mCaptureMeshDeforms)
-                //pose->ExtractBoneList(0, &boneList);
-
-            TransformData* neutralData = neutralPose->GetTransformData();
-            TransformData* targetData  = targetPose->GetTransformData();
-
-            // check for transformation changes
-            const uint32 numPoseNodes = targetPose->GetNumNodes();
-            for (uint32 i=0; i<numPoseNodes; ++i)
-            {
-                // get a node id (both nodes will have the same id since they represent their names)
-                const uint32 nodeID = targetPose->GetNode(i)->GetID();
-
-                // try to find the node with the same name inside the neutral pose actor
-                Node* neutralNode = neutralPose->FindNodeByID( nodeID );
-                if (neutralNode == nullptr)
-                    continue;
-
-                // get the node indices of both nodes
-                const uint32 neutralNodeIndex = neutralNode->GetNodeIndex();
-                const uint32 targetNodeIndex  = targetPose->GetNode(i)->GetNodeIndex();
-
-                // skip bones in the bone list
-                //if (mCaptureMeshDeforms)
-                    //if (boneList.Contains( nodeA ))
-                        //continue;
-
-                MCore::Vector3      neutralPos      = neutralData->GetOrgPos( neutralNodeIndex );
-                MCore::Vector3      targetPos       = targetData->GetOrgPos ( targetNodeIndex );
-                MCore::Quaternion   neutralRot      = neutralData->GetOrgRot( neutralNodeIndex);
-                MCore::Quaternion   targetRot       = targetData->GetOrgRot ( targetNodeIndex);
-
-                EMFX_SCALECODE
-                (
-                    MCore::Vector3      neutralScale    = neutralData->GetOrgScale( neutralNodeIndex );
-                    MCore::Vector3      targetScale     = targetData->GetOrgScale ( targetNodeIndex );
-                    MCore::Quaternion   neutralScaleRot = neutralData->GetOrgScaleRot( neutralNodeIndex);
-                    MCore::Quaternion   targetScaleRot  = targetData->GetOrgScaleRot ( targetNodeIndex);
-                )
-
-                // check if the position changed
-                bool changed = (Compare<Vector3>::CheckIfIsClose(neutralPos, targetPos, 0.0001f) == false);
-
-                // check if the rotation changed
-                if (changed == false)
-                    changed = (Compare<MCore::Quaternion>::CheckIfIsClose(neutralRot, targetRot, 0.0001f) == false);
-
-                EMFX_SCALECODE
-                (
-                    // check if the scale changed
-                    if (changed == false)
-                        changed = (Compare<Vector3>::CheckIfIsClose(neutralScale, targetScale, 0.0001f) == false);
-
-                    // check if the scale rotation changed
-                    if (changed == false)
-                        changed = (Compare<MCore::Quaternion>::CheckIfIsClose(neutralScaleRot, targetScaleRot, 0.0001f) == false);
-                )
-
-                // if this node changed transformation
-                if (changed)
-                {
-                    // create a transform object form the node in the pose
-                    Transformation transform;
-                    transform.mPosition     = targetPos - neutralPos;
-                    transform.mRotation     = targetRot;
-
-                    EMFX_SCALECODE
-                    (
-                        transform.mScaleRotation= targetScaleRot;
-                        transform.mScale        = targetScale - neutralScale;
-                    )
-
-                    transform.mNodeIndex    = neutralNodeIndex;
-
-                    // add the new transform
-                    AddTransformation( transform );
-                }
-            }
-
-            //LogInfo("Num transforms = %d", mTransforms.GetLength());
-        }
-
-        // delete the target pose actor when wanted
-        if (delPoseFromMem)
-            delete targetPose;
-    }
-    */
 
     // apply the relative transformation to the specified node
     // store the result in the position, rotation and scale parameters

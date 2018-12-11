@@ -40,10 +40,17 @@ class LambdaSettingsModule(object):
             self.__settings = self.__load_settings()
         return self.__settings
 
-    def get_setting(self, setting_name):
+    def get_setting(self, setting_name, check_id = True):
         if setting_name in os.environ:
             print "Using the override for setting {} found in the lambda environment variables".format(setting_name)
-            return os.environ[setting_name]
+            if not check_id:
+                return os.environ[setting_name]
+            settingVal = os.environ[setting_name]
+            try:
+                jsonSetting = json.loads(settingVal)
+                return jsonSetting.get('id', settingVal)
+            except:
+                return settingVal
         return self.settings.DATA.get(setting_name, None)
 
     def get_service_url(self, service_name):

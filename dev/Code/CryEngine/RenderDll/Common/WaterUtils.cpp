@@ -631,7 +631,6 @@ protected:
 
 void CWater::Create(float fA, float fWorldSizeX, float fWorldSizeY)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Water Sim");
     Release();
     m_pWaterSim = CryAlignedNew<CWaterSim>(); //::GetInstance();
     m_pWaterSim->Create(fA, fWorldSizeX, fWorldSizeY);

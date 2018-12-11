@@ -90,8 +90,8 @@ namespace Physics
     void PhysXTestEnvironment::TeardownEnvironment()
     {
         AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
-        m_transformComponentDescriptor.release();
-        m_serializeContext.release();
+        m_transformComponentDescriptor.reset();
+        m_serializeContext.reset();
         delete m_application;
         PhysicsTestEnvironment::TeardownEnvironment();
     }
@@ -139,7 +139,6 @@ namespace Physics
         entity->Deactivate();
 
         entity->CreateComponent(AZ::Uuid::CreateString("{C53C7C88-7131-4EEB-A602-A7DF5B47898E}")); // PhysXColliderComponent
-        entity->CreateComponent(AZ::Uuid::CreateString("{D4E52A70-BDE1-4819-BD3C-93AB3F4F3BE3}")); // PhysXRigidBodyComponent
         PhysX::PhysXRigidBodyConfiguration rigidBodyConfig;
         rigidBodyConfig.m_motionType = motionType;
         entity->CreateComponent<PhysX::PhysXRigidBodyComponent>(rigidBodyConfig);

@@ -97,6 +97,14 @@ namespace AZ
         ComponentId GetId() const       { return m_id; }
 
         /**
+        * Returns the type ID
+        * Can be overridden for components that wrap other components, to provide a punch through
+        * to the wrapped component's ID.
+        * @return The type ID of the component.
+        */
+        virtual const TypeId& GetUnderlyingComponentType() const { return RTTI_GetType(); }
+
+        /**
          * Sets the component ID.
          * This function is for internal use only.
          * @param id The ID to assign to the component.

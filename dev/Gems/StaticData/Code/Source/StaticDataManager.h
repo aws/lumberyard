@@ -66,6 +66,8 @@ namespace CloudCanvas
             ReturnStr GetStrValue(const char* tagName, const char* structName, const char* fieldName, bool& wasSuccess) override;
             ReturnDouble GetDoubleValue(const char* tagName, const char* structName, const char* fieldName, bool& wasSuccess) override;
 
+            size_t GetNumElements(const char* tagName) override;
+
             bool ReloadTagType(const char* tagName) override;
             void LoadRelativeFile(const char* relativeFile) override;
 

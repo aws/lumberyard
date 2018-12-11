@@ -18,7 +18,6 @@
         "CryAudioImplWwise",
         "LyIdentity_shared",
         "LyIdentity_static",
-        "CryRenderNULL",
         "CryRenderGL",
         "CryRenderD3D11",
         "CryRenderD3D12",

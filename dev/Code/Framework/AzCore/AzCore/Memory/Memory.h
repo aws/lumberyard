@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_MEMORY_H
-#define AZCORE_MEMORY_H 1
+#pragma once
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/AllocatorBase.h>
@@ -21,6 +20,11 @@
 
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/Module/Environment.h>
+
+// Declarations of new overloads, definitions are in NewAndDelete.inl, or you can link your own versions
+// AZ::Internal::AllocatorDummy is merely to differentiate our overloads from any other operator new signatures
+void* operator new(std::size_t, const AZ::Internal::AllocatorDummy*);
+void* operator new[](std::size_t, const AZ::Internal::AllocatorDummy*);
 
 /**
  * AZ Memory allocation supports all best know allocation schemes. Even though we highly recommend using the
@@ -79,10 +83,40 @@
 #endif
 
 /**
- * azmalloc is equivalent to malloc(...). It should be used with corresponding azfree call.
+ * azmalloc is equivalent to ::malloc(...). It should be used with corresponding azfree call.
  * macro signature: azmalloc(size_t byteSize, size_t alignment = DefaultAlignment, AllocatorType = AZ::SystemAllocator, const char* name = "Default Name", int flags = 0)
  */
 #define azmalloc(...)       AZ_MACRO_SPECIALIZE(azmalloc_, AZ_VA_NUM_ARGS(__VA_ARGS__), (__VA_ARGS__))
+
+/// azcalloc(size)
+#define azcalloc_1(_1)                  ::memset(azmalloc_1(_1), 0, _1)
+/// azcalloc(size, alignment)
+#define azcalloc_2(_1, _2)              ::memset(azmalloc_2(_1, _2), 0, _1);
+/// azcalloc(size, alignment, Allocator)
+#define azcalloc_3(_1, _2, _3)          ::memset(azmalloc_3(_1, _2, _3), 0, _1);
+/// azcalloc(size, alignment, allocationName)
+#define azcalloc_4(_1, _2, _3, _4)      ::memset(azmalloc_4(_1, _2, _3, _4), 0, _1);
+/// azcalloc(size, alignment, allocationName, flags)
+#define azcalloc_5(_1, _2, _3, _4, _5)  ::memset(azmalloc_5(_1, _2, _3, _4, _5), 0, _1);
+
+/**
+* azcalloc is equivalent to ::memset(azmalloc(...), 0, size);
+* macro signature: azcalloc(size, alignment = DefaultAlignment, AllocatorType = AZ::SystemAllocator, const char* name = "Default Name", int flags = 0)
+*/
+#define azcalloc(...)       AZ_MACRO_SPECIALIZE(azcalloc_, AZ_VA_NUM_ARGS(__VA_ARGS__), (__VA_ARGS__))
+
+/// azrealloc(ptr, size)
+#define azrealloc_2(_1, _2)             AZ::AllocatorInstance<AZ::SystemAllocator>::Get().ReAllocate(_1, _2, 0)
+/// azrealloc(ptr, size, alignment)
+#define azrealloc_3(_1, _2, _3)         AZ::AllocatorInstance<AZ::SystemAllocator>::Get().ReAllocate(_1, _2, _3)
+/// azrealloc(ptr, size, alignment, Allocator)
+#define azrealloc_4(_1, _2, _3, _4)     AZ::AllocatorInstance<_4>::Get().ReAllocate(_1, _2, _3)
+
+/**
+ * azrealloc is equivalent to ::realloc(...)
+ * macro signature: azrealloc(void* ptr, size_t size, size_t alignment = DefaultAlignment, AllocatorType = AZ::SystemAllocator)
+ */
+#define azrealloc(...)      AZ_MACRO_SPECIALIZE(azrealloc_, AZ_VA_NUM_ARGS(__VA_ARGS__), (__VA_ARGS__))
 
 /**
  * azcreate is customized aznew function call. aznew can be used anywhere where we use new, while azcreate has a function call signature.
@@ -102,7 +136,7 @@
 #define azfree_4(_1, _2, _3, _4)    do { if (_1) { AZ::AllocatorInstance< _2 >::Get().DeAllocate(_1, _3, _4); } }            while (0)
 
 /**
- * azfree is equivalent to free(...). Is should be used with corresponding azmalloc call.
+ * azfree is equivalent to ::free(...). Is should be used with corresponding azmalloc call.
  * macro signature: azfree(Pointer* ptr, AllocatorType = AZ::SystemAllocator, size_t byteSize = Unknown, size_t alignment = DefaultAlignment);
  * \note Providing allocation size (byteSize) and alignment is optional, but recommended when possible. It will generate faster code.
  */
@@ -352,15 +386,10 @@ namespace AZ {
 namespace AZ
 {
     /**
-     * We use the memory managers in very weird tools environments, when allocators are created during initialization. This is why
-     * we can't use the above version that uses an instance. Ideally such code should be avoided, but as of today many tools include
-     * engine libs, in such cases fixing the issue becomes really hard. Especially since the engine libs override operator new.
-     * So as of today we use a POD buffer for the allocator storage and create it on first request. This should BE considered TEMP solution and
-     * we should attempt to remove this this implementation and use the one above ASAP.
-     * IsReady function is specially made so it's "safe" to call it even before the Allocator is constructed. Again this is hack and a temp solution.
-     * As of today the known offenders are MFC static lib that calls new.
+     * Standard allocator singleton, using Environment storage. Specialize this for your
+     * allocator if you need to control storage or lifetime
      */
-    template<class Allocator>
+    template <class Allocator>
     class AllocatorInstance
     {
     public:
@@ -370,8 +399,15 @@ namespace AZ
         {
             if (!s_allocator)
             {
-                s_allocator = Environment::FindVariable<Allocator>(AzTypeInfo<Allocator>::Name());
-                AZ_Assert(s_allocator, "Allocator '%s' NOT ready for use! Call Create first!", AzTypeInfo<Allocator>::Name());
+                // Assert here before attempting to resolve. Otherwise a module-local
+                // environment will be created which will result in a much more difficult to
+                // locate problem
+                AZ_Assert(AZ::Environment::IsReady(), "Environment has not been attached yet, allocator cannot be created/resolved");
+                if (AZ::Environment::IsReady())
+                {
+                    s_allocator = Environment::FindVariable<Allocator>(AzTypeInfo<Allocator>::Name());
+                    AZ_Assert(s_allocator, "Allocator '%s' NOT ready for use! Call Create first!", AzTypeInfo<Allocator>::Name());
+                }
             }
             return *s_allocator;
         }
@@ -411,11 +447,11 @@ namespace AZ
         }
         AZ_FORCE_INLINE static bool IsReady()
         {
-            if (!s_allocator) // if not there check the environment
+            if (!s_allocator && Environment::IsReady()) // if not there check the environment (if available)
             {
                 s_allocator = Environment::FindVariable<Allocator>(AzTypeInfo<Allocator>::Name());
             }
-            return s_allocator && s_allocator->IsReady();
+            return s_allocator && s_allocator.IsConstructed();
         }
     private:
         static EnvironmentVariable<Allocator> s_allocator;
@@ -424,12 +460,86 @@ namespace AZ
     template<class Allocator>
     EnvironmentVariable<Allocator> AllocatorInstance<Allocator>::s_allocator;
 
+    // Schema which acts as a pass through to another allocator. This allows for allocators
+    // which exist purely to categorize/track memory separately, piggy backing on the
+    // structure of another allocator
+    template <class ParentAllocator>
+    class ChildAllocatorSchema
+        : public IAllocatorAllocate
+    {
+    public:
+        // No descriptor is necessary, as the parent allocator is expected to already
+        // be created and configured
+        struct Descriptor {};
+        using Parent = ParentAllocator;
+
+        ChildAllocatorSchema(const Descriptor&) {}
+
+        //---------------------------------------------------------------------
+        // IAllocatorAllocate
+        //---------------------------------------------------------------------
+        pointer_type Allocate(size_type byteSize, size_type alignment, int flags = 0, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0) override
+        {
+            return AZ::AllocatorInstance<Parent>::Get().Allocate(byteSize, alignment, flags, name, fileName, lineNum, suppressStackRecord);
+        }
+
+        void DeAllocate(pointer_type ptr, size_type byteSize = 0, size_type alignment = 0) override
+        {
+            AZ::AllocatorInstance<Parent>::Get().DeAllocate(ptr, byteSize, alignment);
+        }
+
+        size_type Resize(pointer_type ptr, size_type newSize) override
+        {
+            return AZ::AllocatorInstance<Parent>::Get().Resize(ptr, newSize);
+        }
+
+        pointer_type ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment) override
+        {
+            return AZ::AllocatorInstance<Parent>::Get().ReAllocate(ptr, newSize, newAlignment);
+        }
+
+        size_type AllocationSize(pointer_type ptr) override
+        {
+            return AZ::AllocatorInstance<Parent>::Get().AllocationSize(ptr);
+        }
+
+        void GarbageCollect() override
+        {
+            AZ::AllocatorInstance<Parent>::Get().GarbageCollect();
+        }
+
+        size_type NumAllocatedBytes() const override
+        {
+            return AZ::AllocatorInstance<Parent>::Get().NumAllocatedBytes();
+        }
+
+        size_type Capacity() const override
+        {
+            return AZ::AllocatorInstance<Parent>::Get().Capacity();
+        }
+
+        size_type GetMaxAllocationSize() const override
+        {
+            return AZ::AllocatorInstance<Parent>::Get().GetMaxAllocationSize();
+        }
+
+        size_type               GetUnAllocatedMemory(bool isPrint = false) const override
+        {
+            return AZ::AllocatorInstance<Parent>::Get().GetUnAllocatedMemory(isPrint);
+        }
+
+        virtual IAllocatorAllocate*     GetSubAllocator()
+        {
+            return AZ::AllocatorInstance<Parent>::Get().GetSubAllocator();
+        }
+    };
+
     /**
     * Generic wrapper for binding allocator to an AZStd one.
     * \note AZStd allocators are one of the few differences from STD/STL.
     * It's very tedious to write a wrapper for STD too.
     */
-    template<class Allocator>
+    template <class Allocator>
     class AZStdAlloc
     {
     public:
@@ -474,9 +584,9 @@ namespace AZ
         size_type                   get_max_size() const        { return AllocatorInstance<Allocator>::Get().GetMaxAllocationSize(); }
         size_type                   get_allocated_size() const  { return AllocatorInstance<Allocator>::Get().NumAllocatedBytes(); }
 
-        AZ_FORCE_INLINE bool is_lock_free()                     { return false; }
-        AZ_FORCE_INLINE bool is_stale_read_allowed()            { return false; }
-        AZ_FORCE_INLINE bool is_delayed_recycling()             { return false; }
+        AZ_FORCE_INLINE bool is_lock_free()                     { return AllocatorInstance<Allocator>::Get().is_lock_free(); }
+        AZ_FORCE_INLINE bool is_stale_read_allowed()            { return AllocatorInstance<Allocator>::Get().is_stale_read_allowed(); }
+        AZ_FORCE_INLINE bool is_delayed_recycling()             { return AllocatorInstance<Allocator>::Get().is_delayed_recycling(); }
     private:
         const char* m_name;
     };
@@ -544,15 +654,18 @@ namespace AZ
     AZ_HAS_MEMBER(AZClassAllocator, AZ_CLASS_ALLOCATOR_DECLARED, void, ())
 
     // {@ Global New/Delete Operators
-    void* OperatorNew(std::size_t size, const char* fileName, int lineNum);
+    void* OperatorNew(std::size_t size, const char* fileName, int lineNum, const char* name = nullptr);
     void* OperatorNew(std::size_t byteSize);
     void OperatorDelete(void* ptr);
 
-    void* OperatorNewArray(std::size_t size, const char* fileName, int lineNum);
+    void* OperatorNewArray(std::size_t size, const char* fileName, int lineNum, const char* name = nullptr);
     void* OperatorNewArray(std::size_t byteSize);
     void OperatorDeleteArray(void* ptr);
     // @}
 }
+
+#define AZ_PAGE_SIZE AZ_TRAIT_OS_DEFAULT_PAGE_SIZE
+#define AZ_DEFAULT_ALIGNMENT (sizeof(void*))
 
 // define unlimited allocator limits (scaled to real number when we check if there is enough memory to allocate)
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
@@ -566,9 +679,4 @@ namespace AZ
 #else
 #   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)10 * 1024 * 1024)
 #endif
-
-#endif // AZCORE_MEMORY_H
-#pragma once
-
-
 

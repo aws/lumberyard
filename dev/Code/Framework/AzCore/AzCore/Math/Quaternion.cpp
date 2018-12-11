@@ -117,7 +117,14 @@ namespace AZ
 
         return Quaternion::CreateFromVector3AndValue(c * rs, 0.5f * s);
     }
-
+    
+    const Quaternion Quaternion::NLerp(const Quaternion& dest, const VectorFloat& t) const
+    {
+        Quaternion result = Lerp(dest, t);
+        result.Normalize();
+        return result;
+    }
+    
     const Quaternion
     Quaternion::Slerp(const Quaternion& dest, float t) const
     {

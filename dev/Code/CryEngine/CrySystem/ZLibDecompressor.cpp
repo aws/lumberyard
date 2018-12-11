@@ -127,7 +127,7 @@ voidpf CZLibInflateStream::ZAlloc(voidpf pInOpaque, uInt inItems, uInt inSize)
 
     const unsigned int size = inItems * inSize;
 
-    int* pPtr = (int*)malloc(sizeof(int) + size);
+    int* pPtr = (int*)CryModuleMalloc(sizeof(int) + size);
 
     if (pPtr)
     {
@@ -153,7 +153,7 @@ void CZLibInflateStream::ZFree(voidpf pInOpaque, voidpf pInAddress)
     {
         CZLibInflateStream* pStr = reinterpret_cast<CZLibInflateStream*>(pInOpaque);
         pStr->m_zSize -= pPtr[-1];
-        free(pPtr - 1);
+        CryModuleFree(pPtr - 1);
     }
 }
 

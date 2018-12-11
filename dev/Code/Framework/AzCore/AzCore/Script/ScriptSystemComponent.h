@@ -165,7 +165,7 @@ namespace AZ
         // Used to avoid cascading reloads
         bool m_isReloadQueued = false;
         // Used to store scripts needing reloading
-        AZStd::unordered_set<Data::AssetId> m_assetsAlreadyReloaded;
+        AZStd::unordered_set<Data::AssetId> m_queuedReloads;
         // Used for being alerted when a require()'d script has finished reloading
         void OnAssetReloaded(Data::Asset<Data::AssetData> asset) override;
 

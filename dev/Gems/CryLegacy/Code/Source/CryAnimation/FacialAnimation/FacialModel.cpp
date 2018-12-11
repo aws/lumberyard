@@ -225,10 +225,10 @@ void CFacialModel::FillInfoMapFromFaceState(CFacialDisplaceInfo& info, CFaceStat
     const bool blendBones = (blendBoneRotations > 0.0f);
 
     const size_t infoDisplaceInfoMapSize = info.GetCount();
-    s_boneInfoBlending.Initialize(infoDisplaceInfoMapSize);
+    s_boneInfoBlending->Initialize(infoDisplaceInfoMapSize);
     if (blendBones)
     {
-        s_boneInfoBlending.CopyUsed(info);
+        s_boneInfoBlending->CopyUsed(info);
     }
     else
     {
@@ -263,11 +263,11 @@ void CFacialModel::FillInfoMapFromFaceState(CFacialDisplaceInfo& info, CFaceStat
                     const int32 boneID = ApplyBoneEffector(pInstance, pEffector, fWeight, qt);
                     if (boneID >= 0)
                     {
-                        QuatT boneInfo = s_boneInfoBlending.GetDisplaceInfo(boneID);
+                        QuatT boneInfo = s_boneInfoBlending->GetDisplaceInfo(boneID);
                         {
                             boneInfo.q = boneInfo.q * qt.q;
                             boneInfo.t += qt.t;
-                            s_boneInfoBlending.SetDisplaceInfo(boneID, boneInfo);
+                            s_boneInfoBlending->SetDisplaceInfo(boneID, boneInfo);
                         }
                     }
                 }
@@ -292,10 +292,10 @@ void CFacialModel::FillInfoMapFromFaceState(CFacialDisplaceInfo& info, CFaceStat
         const float blendWeight = (1.f - blendBoneRotations);
         for (size_t i = 0; i < infoDisplaceInfoMapSize; ++i)
         {
-            const bool isUsed = s_boneInfoBlending.IsUsed(i);
+            const bool isUsed = s_boneInfoBlending->IsUsed(i);
             if (isUsed)
             {
-                const QuatT& blendBoneInfo = s_boneInfoBlending.GetDisplaceInfo(i);
+                const QuatT& blendBoneInfo = s_boneInfoBlending->GetDisplaceInfo(i);
                 QuatT boneInfo = info.GetDisplaceInfo(i);
 
                 boneInfo.SetNLerp(boneInfo, blendBoneInfo, blendWeight);
@@ -574,6 +574,6 @@ void CFacialModel::ClearResources()
     stl::free_container(s_boneInfoBlending);
 }
 
-CFacialDisplaceInfo CFacialModel::s_boneInfoBlending;
+StaticInstance<CFacialDisplaceInfo> CFacialModel::s_boneInfoBlending;
 
 

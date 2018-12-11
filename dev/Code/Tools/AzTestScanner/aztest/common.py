@@ -10,7 +10,9 @@
 #
 from datetime import datetime
 import os
+import subprocess
 import sys
+import time
 from aztest.errors import InvalidUseError
 from collections import namedtuple
 
@@ -110,3 +112,24 @@ def to_list(obj):
             yield x
     else:
         yield obj
+
+
+def subprocess_with_timeout(command, timeout_sec, delay=1.0):
+    """
+    Runs a command in a subprocess and times out if the subprocess exceeds timeout_sec in execution time
+    :param command: command to be run
+    :param timeout_sec: total timeout length, in seconds
+    :param delay: delay between checks for timeout
+    :return:
+    """
+    deadline = time.time() + timeout_sec
+
+    task = subprocess.Popen(command)
+
+    while task.poll() is None:
+        if time.time() > deadline:
+            task.terminate()
+            raise SubprocessTimeoutException("Subprocess timed out after {} seconds.".format(timeout_sec))
+        time.sleep(delay)
+
+    return task.returncode

@@ -17,13 +17,10 @@
 
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/std/containers/stack.h>
-#include <aws/core/utils/json/JsonSerializer.h>
-#include <aws/core/utils/Array.h>
+#include <AzCore/JSON/rapidjson.h>
+#include <AzCore/JSON/document.h>
+#include <AzCore/std/containers/vector.h>
 
-namespace AZ
-{
-    AZ_TYPE_INFO_SPECIALIZE(Aws::Utils::Json::JsonValue, "{D09ED3D7-6669-4BD9-A24A-0C3B6F05A9B1}");
-}
 
 namespace CloudGemAWSScriptBehaviors
 {
@@ -33,11 +30,11 @@ namespace CloudGemAWSScriptBehaviors
         AWSBEHAVIOR_DEFINITION(AWSBehaviorJSON, "{06050250-21BF-4E6F-9AA6-D9F356914384}")
     
     private:
-        Aws::Utils::Json::JsonValue m_topLevelObject;
-        Aws::Utils::Json::JsonValue m_currentValue;
-        AZStd::stack<Aws::Utils::Json::JsonValue> m_prevValues;
-        Aws::Utils::Array<Aws::Utils::Json::JsonValue> m_currentArray;
-        size_t m_currentArrayIndex;
+        rapidjson::Document m_topLevelObject;
+        rapidjson::Value* m_currentValue{ nullptr };
+        AZStd::stack<rapidjson::Value*> m_prevValues;
+        AZStd::vector<rapidjson::Value*> m_currentArray;
+        size_t m_currentArrayIndex{ 0 };
         
         ///////////////////////////////////////////////////////////////////////
         // Full object operations

@@ -36,7 +36,7 @@ namespace AzGameFramework
         static void GetGameDescriptorPath(char(&outConfigFilename)[AZ_MAX_PATH_LEN], const char* gameName)
         {
             azstrcpy(outConfigFilename, AZ_MAX_PATH_LEN, gameName);
-            azstrcat(outConfigFilename, AZ_MAX_PATH_LEN, "/config/game.xml");
+            azstrcat(outConfigFilename, AZ_MAX_PATH_LEN, "/Config/Game.xml");
             AZStd::to_lower(outConfigFilename, outConfigFilename + strlen(outConfigFilename));
         }
 

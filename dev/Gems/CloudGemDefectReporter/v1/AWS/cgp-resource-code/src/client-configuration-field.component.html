@@ -1,0 +1,42 @@
+﻿<div class="field-preview col-11" [ngClass]="isObjectProperty ? 'object-property' : 'custom-field'">
+    <span class="float-right">
+        <i *ngIf="field.type === 'object'" (click)="addNewProperty.emit()" class="fa fa-plus-circle action" data-toggle="tooltip" data-placement="top" title="Add new property"></i>
+        <i (click)="showModifyField.emit()" class="fa fa-cog action" data-toggle="tooltip" data-placement="top" title="Edit"></i>
+        <i (click)="showDeleteField.emit()" class="fa fa-trash-o action" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+    </span>
+    <div class="questino-title">
+        {{field.title}}
+    </div>
+
+    <div class="fields" *ngIf="field['type'] === 'predefined'">
+        <ng-container *ngIf="field['multipleSelect'] === true">
+            <div class="radio-btn-label" *ngFor="let predefine of field['predefines']; let i = index">
+                <input id="{{fieldIdPrefix}}_{{field.title}}_option_{{i}}" type="checkbox" [(ngModel)]="field['defaultValue'][i]"/>
+                <label class="l-checkbox" for="{{fieldIdPrefix}}_{{field.title}}_option_{{i}}">
+                    {{predefine}}
+                </label>
+            </div>
+        </ng-container>
+        <ng-container *ngIf="field['multipleSelect'] === false">
+            <div class="radio-btn-container">
+                <div *ngFor="let predefine of field['predefines']; let i = index">
+                    <label class="radio-btn-label">
+                        <input class="form-control" type="radio" [(ngModel)]="field['defaultValue']" [value]="predefine" name="{{fieldIdPrefix}}_{{field.title}}_{{predefine}}_option_{{i}}"/>
+                        <span></span> {{predefine}}
+                    </label>
+                </div>
+            </div>
+        </ng-container>
+    </div>
+
+    <div class="fields" *ngIf="field.type === 'text'">
+        <div>
+            <textarea class="field-textarea-preview col-11" [(ngModel)]="field['defaultValue']" [maxLength]="field.maxChars"></textarea>
+            <div class="question-textarea-chars-label">
+                {{field['defaultValue'].length}}/{{field.maxChars}}
+            </div>
+        </div>
+    </div>
+
+    <ng-content></ng-content>
+</div>

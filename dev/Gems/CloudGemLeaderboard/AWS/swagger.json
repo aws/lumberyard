@@ -381,11 +381,11 @@
                 "scores": {
                     "$ref": "#/definitions/ScoreList"
                 },
-                "current_page": { 
+                "current_page": {
                     "description": "The current page number to view.",
                     "type": "integer"
                 },
-                "total_pages": { 
+                "total_pages": {
                     "description": "The total number of pages within the leaderboard stat table.",
                     "type": "integer"
                 }

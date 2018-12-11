@@ -2323,10 +2323,6 @@ LUA_API const Node* lua_getDummyNode()
                             }
                             else
                             {
-                                if (value.m_value == nullptr)
-                                {
-                                    AllocateTempStorage(value, userData->behaviorClass, *tempAllocator);
-                                }
                                 value.m_value = valueAddress;
                             }
 
@@ -3600,6 +3596,9 @@ LUA_API const Node* lua_getDummyNode()
                     {
                         m_luaAllocator = AZStd::make_unique<Internal::LuaSystemAllocator>();
                         Internal::LuaSystemAllocator::Descriptor desc;
+                        //[DFLY][lehmille@] - Prevent allocator from growing in small chunks
+                        desc.m_heap.m_systemChunkSize = 1024 * 1024;
+                        //[DFLY][lehmille@] - end
                         m_luaAllocator->Create(desc);
                         allocator = m_luaAllocator.get();
                     }

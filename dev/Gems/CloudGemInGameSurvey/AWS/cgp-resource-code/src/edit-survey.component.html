@@ -215,21 +215,29 @@
                     <label class="col-form-label col-3" for="min">
                         Minimum Value
                     </label>
-                    <input class="form-control col-8" id="min" type="number" [formControl]="scaleQuestionForm.controls['min']"
+                    <input class="form-control col-8" id="min" [formControl]="scaleQuestionForm.controls['min']"
                            [ngClass]="{'form-control-danger': isFormFieldNotValid(scaleQuestionForm, 'min')}" />
 
                     <span class="col-3"></span>
                     <div *ngIf="isFormFieldRequiredEmpty(scaleQuestionForm, 'min')" class="form-control-feedback col-8">Minimum Value cannot be emtpy</div>
+                    <div *ngIf="!isFormFieldRequiredEmpty(scaleQuestionForm, 'min') &&
+                         isFormFieldNotNonNegativeNum(scaleQuestionForm, 'min')" class="form-control-feedback col-8">
+                        Invalid number
+                    </div>
                 </div>
                 <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(scaleQuestionForm, 'max')}">
                     <label class="col-form-label col-3"  for="max">
                         Maximum Value
                     </label>
-                    <input class="form-control col-8" id="max" type="number" [formControl]="scaleQuestionForm.controls['max']"
+                    <input class="form-control col-8" id="max" [formControl]="scaleQuestionForm.controls['max']"
                            [ngClass]="{'form-control-danger': isFormFieldNotValid(scaleQuestionForm, 'max')}" />
 
                     <span class="col-3"></span>
                     <div *ngIf="isFormFieldRequiredEmpty(scaleQuestionForm, 'max')" class="form-control-feedback col-8">Maximum Value cannot be emtpy</div>
+                    <div *ngIf="!isFormFieldRequiredEmpty(scaleQuestionForm, 'max') &&
+                         isFormFieldNotNonNegativeNum(scaleQuestionForm, 'max')" class="form-control-feedback col-8">
+                        Invalid number
+                    </div>
                 </div>
                 <div class="form-group row">
                     <label class="col-form-label col-3"  for="minLabel">

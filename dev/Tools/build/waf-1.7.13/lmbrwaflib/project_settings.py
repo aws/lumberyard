@@ -655,14 +655,13 @@ def get_project_settings_map(ctx):
         Logs.warn('projects.json file is deprecated.  Please follow the migration step listed in the release notes.')
 
     projects_settings = {}
-    projects_settings_node_list = ctx.engine_node.ant_glob('*/{}'.format(PROJECT_SETTINGS_FILE))
 
-    # If we are an external project, search for project paths in the external project path as well
-    if os.path.normcase(ctx.path.abspath()) != os.path.normcase(ctx.engine_path):
-        external_settings_node_list = ctx.path.ant_glob('*/{}'.format(PROJECT_SETTINGS_FILE))
-        for external_settings_node in external_settings_node_list:
-            if external_settings_node not in projects_settings_node_list:
-                projects_settings_node_list.append(external_settings_node)
+    if os.path.normcase(ctx.path.abspath()) == os.path.normcase(ctx.engine_path):
+        # If we are an internal project, search for project paths in the engine root
+        projects_settings_node_list = ctx.engine_node.ant_glob('*/{}'.format(PROJECT_SETTINGS_FILE))
+    else:
+        # If we are an external project, search for project paths in the external project path
+        projects_settings_node_list = ctx.path.ant_glob('*/{}'.format(PROJECT_SETTINGS_FILE))
 
     # Build update the map of project settings from the globbing for the project.json file
     for project_settings_node in projects_settings_node_list:

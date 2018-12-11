@@ -33,6 +33,7 @@
 // CVAR names
 const char c_sys_localization_debug[] = "sys_localization_debug";
 const char c_sys_localization_encode[] = "sys_localization_encode";
+const char c_sys_localization_test[] = "sys_localization_test";
 
 enum ELocalizedXmlColumns
 {
@@ -207,6 +208,7 @@ void CLocalizedStringsManager::LocalizationDumpLoadedInfo(IConsoleCmdArgs* pArgs
 CLocalizedStringsManager::CLocalizedStringsManager(ISystem* pSystem)
     : m_cvarLocalizationDebug(0)
     , m_cvarLocalizationEncode(1)
+    , m_cvarLocalizationTest(0)
     , m_availableLocalizations(0)
 {
     m_pSystem = pSystem;
@@ -237,6 +239,14 @@ CLocalizedStringsManager::CLocalizedStringsManager(ISystem* pSystem)
         "0: No encoding, store as wide strings\n"
         "1: Huffman encode translated text, saves approx 30% with a small runtime performance cost\n"
         "Default is 1.");
+
+    REGISTER_CVAR2(c_sys_localization_test, &m_cvarLocalizationTest, m_cvarLocalizationTest, VF_CHEAT,
+        "Toggles test mode for localization.  Provides mechanism to render localization token instead of text as a way to check which text are localized.\n"
+        "Usage: sys_localization_test [0..2]\n"
+        "0: No test mode, regular token translation\n"
+        "1: Use token name rather than translation\n"
+        "2: Use language name rather than translation\n"
+        "Default is 0 (off).");
 
     REGISTER_COMMAND("LocalizationDumpLoadedInfo", LocalizationDumpLoadedInfo, VF_NULL, "Dump out into about the loaded localization files");
 #endif //#if !defined(_RELEASE)
@@ -821,9 +831,6 @@ bool CLocalizedStringsManager::LoadExcelXmlSpreadsheet(const char* sFileName, bo
 bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, uint8 nTagID, bool bReload)
 {
     LOADING_TIME_PROFILE_SECTION_ARGS(sFileName)
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Localization XMLs");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Localization XML (%s)", sFileName);
-
     if (!m_pLanguage)
     {
         return false;
@@ -849,7 +856,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
 
     XmlNodeRef root;
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "LoadXmlFromFile");
         root = m_pSystem->LoadXmlFromFile(sFileName);
         if (!root)
         {
@@ -874,7 +880,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
     if (m_cvarLocalizationEncode == 1)
     {
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Add Encoder");
             for (iEncoder = 0; iEncoder < m_pLanguage->m_vEncoders.size(); iEncoder++)
             {
                 if (m_pLanguage->m_vEncoders[iEncoder] == NULL)
@@ -896,7 +901,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
     }
 
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "pXmlTableReader->Begin");
         if (!pXmlTableReader->Begin(root))
         {
             CryLog("Loading Localization File %s failed! The file is in an unsupported format.", sFileName);
@@ -908,18 +912,15 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
     int rowCount = pXmlTableReader->GetEstimatedRowCount();
     {
         AutoLock lock(m_cs);    //Make sure to lock, as this is a modifying operation
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "m_vLocalizedStrings reserve");
         m_pLanguage->m_vLocalizedStrings.reserve(m_pLanguage->m_vLocalizedStrings.size() + rowCount);
     }
     {
         AutoLock lock(m_cs);    //Make sure to lock, as this is a modifying operation
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "m_keysMap reserve");
         //VectorMap only, not applicable to std::map
         m_pLanguage->m_keysMap.reserve(m_pLanguage->m_keysMap.size() + rowCount);
     }
 
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "m_loadedTables.insert");
         pairFileName sNewFile;
         sNewFile.first = sFileName;
         sNewFile.second.bDataStripping = false; // this is off for now
@@ -954,7 +955,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
     {
         int nRowIndex = -1;
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "pXmlTableReader->ReadRow");
             if (!pXmlTableReader->ReadRow(nRowIndex))
             {
                 break;
@@ -963,7 +963,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
 
         if (bFirstRow)
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "ParseFirstLine");
             bFirstRow = false;
             ParseFirstLine(pXmlTableReader, nCellIndexToType, SoundMoodIndex, EventParameterIndex);
             // Skip first row, it contains description only.
@@ -1022,7 +1021,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
             CConstCharArray cell;
 
             {
-                MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "pXmlTableReader->ReadCell");
                 if (!pXmlTableReader->ReadCell(nCellIndex, cell.ptr, cell.count))
                 {
                     break;
@@ -1090,7 +1088,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
                 sTmp.assign(cell.ptr, cell.count);
                 fEventParameterValue = (float)atof(sTmp.c_str());
                 {
-                    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "EventParameterValues map insert");
                     EventParameterValues[nCellIndex] = fEventParameterValue;
                 }
                 ++nItems;
@@ -1099,7 +1096,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
                 sTmp.assign(cell.ptr, cell.count);
                 fSoundMoodValue = (float)atof(sTmp.c_str());
                 {
-                    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "SoundMoodValues map insert");
                     SoundMoodValues[nCellIndex] = fSoundMoodValue;
                 }
                 ++nItems;
@@ -1272,7 +1268,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
         }
 
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "CopyLowercase");
             CopyLowercase(szLowerCaseEvent, sizeof(szLowerCaseEvent), sSoundEvent.ptr, sSoundEvent.count);
             CopyLowercase(szLowerCaseKey, sizeof(szLowerCaseKey), sKeyString.ptr, sKeyString.count);
         }
@@ -1293,7 +1288,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
 
         SLocalizedStringEntry* pEntry;
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "New SLocalizedStringEntry");
             pEntry = new SLocalizedStringEntry;
             pEntry->flags = 0;
         }
@@ -1313,35 +1307,30 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
 
             if (!sActorLine.empty())
             {
-                MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "pEntry->sOriginalActorLine");
                 sTmp.assign(sActorLine.ptr, sActorLine.count);
                 ReplaceEndOfLine(sTmp);
                 pEntry->pEditorExtension->sOriginalActorLine.assign(sTmp.c_str());
             }
             if (!sTranslatedActorLine.empty())
             {
-                MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "pEntry->sUtf8TranslatedActorLine");
                 sTmp.assign(sTranslatedActorLine.ptr, sTranslatedActorLine.count);
                 ReplaceEndOfLine(sTmp);
                 pEntry->pEditorExtension->sUtf8TranslatedActorLine.append(sTmp.c_str());
             }
             if (bUseSubtitle && !sSubtitleText.empty())
             {
-                MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "pEntry->sOriginalText");
                 sTmp.assign(sSubtitleText.ptr, sSubtitleText.count);
                 ReplaceEndOfLine(sTmp);
                 pEntry->pEditorExtension->sOriginalText.assign(sTmp.c_str());
             }
             // only use the translated character name
             {
-                MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "pEntry->sOriginalCharacterName");
                 pEntry->pEditorExtension->sOriginalCharacterName.assign(sCharacterName.ptr, sCharacterName.count);
             }
         }
 
         if (bUseSubtitle && !sTranslatedText.empty())
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "pEntry->sUtf8TranslatedText");
             sTmp.assign(sTranslatedText.ptr, sTranslatedText.count);
             ReplaceEndOfLine(sTmp);
             if (m_cvarLocalizationEncode == 1)
@@ -1372,7 +1361,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
             }
             else
             {
-                MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "pEntry->sPrototypeSoundEvent");
                 pEntry->sPrototypeSoundEvent = szLowerCaseEvent;
                 m_prototypeEvents.insert(pEntry->sPrototypeSoundEvent);
             }
@@ -1386,7 +1374,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
             sTmp.replace(" ", "_");
             string tmp;
             {
-                MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Allocating tmp for pEntry->sCharacterName");
                 tmp = sTmp.c_str();
             }
             CharacterNameSet::iterator it = m_characterNameSet.find(tmp);
@@ -1396,14 +1383,8 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
             }
             else
             {
-                {
-                    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Assigning pEntry->sCharacterName");
-                    pEntry->sCharacterName = tmp;
-                }
-                {
-                    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "m_characterNameSet.insert(pEntry->sCharacterName)");
-                    m_characterNameSet.insert(pEntry->sCharacterName);
-                }
+                pEntry->sCharacterName = tmp;
+                m_characterNameSet.insert(pEntry->sCharacterName);
             }
         }
 
@@ -1411,7 +1392,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
 
         // SoundMood Entries
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "pEntry->SoundMoods");
             pEntry->SoundMoods.resize(SoundMoodValues.size());
             if (SoundMoodValues.size() > 0)
             {
@@ -1428,7 +1408,6 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
 
         // EventParameter Entries
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "pEntry->EventParameters");
             pEntry->EventParameters.resize(EventParameterValues.size());
             if (EventParameterValues.size() > 0)
             {
@@ -1478,21 +1457,14 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
         //if (nSourceSize)
         //  int zResult = Compress(pDest, nDestLen, pEntry->swTranslatedText.c_str(), nSourceSize);
 
-        {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "AddLocalizedString");
-            AddLocalizedString(m_pLanguage, pEntry, keyCRC);
-        }
+        AddLocalizedString(m_pLanguage, pEntry, keyCRC);
     }
 
     if (m_cvarLocalizationEncode == 1)
     {
+        pEncoder->Finalize();
+        
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Finalizing encoder");
-            pEncoder->Finalize();
-        }
-
-        {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Compressing Strings (Alloc Storage)");
             uint8 compressionBuffer[COMPRESSION_FIXED_BUFFER_LENGTH];
             //uint8 decompressionBuffer[COMPRESSION_FIXED_BUFFER_LENGTH];
             size_t uncompressedTotal = 0, compressedTotal = 0;
@@ -1548,16 +1520,10 @@ void CLocalizedStringsManager::ReloadData()
 //////////////////////////////////////////////////////////////////////////
 void CLocalizedStringsManager::AddLocalizedString(SLanguage* pLanguage, SLocalizedStringEntry* pEntry, const uint32 keyCRC32)
 {
-    {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "m_vLocalizedStrings push back");
-        pLanguage->m_vLocalizedStrings.push_back(pEntry);
-    }
+    pLanguage->m_vLocalizedStrings.push_back(pEntry);
     int nId = (int)pLanguage->m_vLocalizedStrings.size() - 1;
-    {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Language Key Map Entry");
-        pLanguage->m_keysMap[keyCRC32] = pEntry;
-    }
-
+    pLanguage->m_keysMap[keyCRC32] = pEntry;
+    
     if (m_cvarLocalizationDebug >= 2)
     {
         CryLog("<Localization> Add new string <%u> with ID %d to <%s>", keyCRC32, nId, pLanguage->sLanguage.c_str());
@@ -1773,13 +1739,27 @@ bool CLocalizedStringsManager::LocalizeLabel(const char* sLabel, string& outLoca
     // Label sign.
     if (sLabel[0] == '@')
     {
-        uint32 labelCRC32 = CCrc32::ComputeLowercase(sLabel + 1);
+        uint32 labelCRC32 = CCrc32::ComputeLowercase(sLabel + 1);   // skip @ character.
         {
             AutoLock lock(m_cs);    //Lock here, to prevent strings etc being modified underneath this lookup
-            SLocalizedStringEntry* entry = stl::find_in_map(m_pLanguage->m_keysMap, labelCRC32, NULL);   // skip @ character.
+            SLocalizedStringEntry* entry = stl::find_in_map(m_pLanguage->m_keysMap, labelCRC32, NULL);
 
             if (entry != NULL)
             {
+                switch (m_cvarLocalizationTest)
+                {
+                case 0:  // Ignore the cvar, continue localization as expected
+                    break;
+                case 1:  // Display the label without localizing.  Ex: @ui_hello
+                    outLocalString = sLabel;
+                    return true;
+                case 2: // Change the text to be current language setting.  Ex: @english
+                    outLocalString.Format("@%s", m_pLanguage->sLanguage.c_str());
+                    return true;
+                default:
+                    break;
+                }
+                
                 string translatedText = entry->GetTranslatedText(m_pLanguage);
                 if ((bEnglish || translatedText.empty()) && entry->pEditorExtension != NULL)
                 {

@@ -16,12 +16,15 @@
 #pragma once
 
 #include "BaseLibraryManager.h"
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 
 class IOpticsElementBase;
 class CLensFlareEditor;
 
 class CRYEDIT_API CLensFlareManager
     : public CBaseLibraryManager
+    , private AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
+
 {
 public:
     CLensFlareManager();
@@ -35,6 +38,8 @@ public:
     QString GetLibsPath();
     IDataBaseLibrary* LoadLibrary(const QString& filename, bool bReload = false);
 
+    static bool IsLensFlareLibraryXML(const char* fullFilePath);
+
 private:
     CBaseLibraryItem* MakeNewItem();
     CBaseLibrary* MakeNewLibrary();
@@ -42,6 +47,14 @@ private:
     //! Root node where this library will be saved.
     QString GetRootNodeName();
     QString m_libsPath;
+    
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
+    AzToolsFramework::AssetBrowser::SourceFileDetails GetSourceFileDetails(const char* fullSourceFileName) override;
+    virtual AZ::s32 GetPriority() const override { return 1; } // get our priority in before others.
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 };
 
 #endif // CRYINCLUDE_EDITOR_LENSFLAREEDITOR_LENSFLAREMANAGER_H

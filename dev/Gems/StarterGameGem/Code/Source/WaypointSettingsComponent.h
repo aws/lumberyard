@@ -24,12 +24,11 @@
 
 namespace AZ
 {
-	class ReflectContext;
+    class ReflectContext;
 }
 
 namespace StarterGameGem
 {
-
     enum WaypointEventType
     {
         WET_Wait,
@@ -40,14 +39,14 @@ namespace StarterGameGem
     };
 
 
-	/*!
-	* WaypointSettingsComponentRequests
-	* Messages serviced by the WaypointSettingsComponent
-	*/
-	class WaypointSettingsComponentRequests
-		: public AZ::ComponentBus
-	{
-	public:
+    /*!
+    * WaypointSettingsComponentRequests
+    * Messages serviced by the WaypointSettingsComponent
+    */
+    class WaypointSettingsComponentRequests
+        : public AZ::ComponentBus
+    {
+    public:
         class WaypointEventSettings
         {
         public:
@@ -90,53 +89,52 @@ namespace StarterGameGem
             //////////////////////////////////////////////////////
         };
 
-		virtual ~WaypointSettingsComponentRequests() {}
+        virtual ~WaypointSettingsComponentRequests() {}
 
-		//! If true, the A.I. should perform actions upon arrival.
-		virtual bool HasEvents() = 0;
+        //! If true, the A.I. should perform actions upon arrival.
+        virtual bool HasEvents() = 0;
         //! Get the next event.
         virtual WaypointSettingsComponentRequests::WaypointEventSettings GetNextEvent(const AZ::EntityId& entityId) = 0;
-
-	};
+    };
 
     typedef AZStd::vector<WaypointSettingsComponentRequests::WaypointEventSettings> VecOfEventSettings;
-	using WaypointSettingsComponentRequestsBus = AZ::EBus<WaypointSettingsComponentRequests>;
+    using WaypointSettingsComponentRequestsBus = AZ::EBus<WaypointSettingsComponentRequests>;
 
 
-	class WaypointSettingsComponent
-		: public AZ::Component
-		, private WaypointSettingsComponentRequestsBus::Handler
-	{
-	public:
-		AZ_COMPONENT(WaypointSettingsComponent, "{B47180B1-BB23-4676-9AF2-60DD99C6E901}");
+    class WaypointSettingsComponent
+        : public AZ::Component
+        , private WaypointSettingsComponentRequestsBus::Handler
+    {
+    public:
+        AZ_COMPONENT(WaypointSettingsComponent, "{B47180B1-BB23-4676-9AF2-60DD99C6E901}");
 
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::Component interface implementation
-		//void Init() override;
-		void Activate() override;
-		void Deactivate() override;
-		//////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::Component interface implementation
+        //void Init() override;
+        void Activate() override;
+        void Deactivate() override;
+        //////////////////////////////////////////////////////////////////////////
 
-		// Required Reflect function.
-		static void Reflect(AZ::ReflectContext* context);
+        // Required Reflect function.
+        static void Reflect(AZ::ReflectContext* context);
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("WaypointSettingsComponent"));
+            provided.push_back(AZ_CRC("WaypointSettingsComponent", 0x1616b453));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("WaypointSettingsComponent"));
+            incompatible.push_back(AZ_CRC("WaypointSettingsComponent", 0x1616b453));
         }
 
-		//////////////////////////////////////////////////////////////////////////
-		// WaypointSettingsComponentRequestsBus::Handler
-		bool HasEvents() override;
+        //////////////////////////////////////////////////////////////////////////
+        // WaypointSettingsComponentRequestsBus::Handler
+        bool HasEvents() override;
         WaypointSettingsComponentRequests::WaypointEventSettings GetNextEvent(const AZ::EntityId& entityId) override;
         //////////////////////////////////////////////////////////////////////////
 
-	private:
+    private:
         struct EntityProgress
         {
             EntityProgress(const AZ::EntityId& id)
@@ -155,7 +153,5 @@ namespace StarterGameGem
         VecOfEventSettings m_eventsOnArrival;
 
         VecOfProgress m_progress;
-
-	};
-
+    };
 } // namespace StarterGameGem

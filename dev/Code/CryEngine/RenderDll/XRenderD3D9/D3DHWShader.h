@@ -32,6 +32,9 @@
 
 #define INST_PARAM_SIZE sizeof(Vec4)
 
+#define MAX_PF_TEXTURES     (32)
+#define MAX_PF_SAMPLERS     (4)
+
 #if defined(_CPU_SSE)
 typedef __m128 VECTOR_TYPE;
 #define VECTOR_CONST(x, y, z, w)  { x, y, z, w }   //{ w, z, y, x }
@@ -165,7 +168,7 @@ class CGParamManager
     friend class CHWShader_D3D;
     //friend struct CHWShader_D3D::SHWSInstance;
 
-    static std::vector<uint32, stl::STLGlobalAllocator<uint32> > s_FreeGroups;
+    static AZStd::vector<uint32, AZ::StdLegacyAllocator> s_FreeGroups;
 
 public:
     static void Init();
@@ -175,7 +178,7 @@ public:
     static int GetParametersGroup(SParamsGroup& Gr, int nId);
     static bool FreeParametersGroup(int nID);
 
-    static std::vector<SCGParamsGroup> s_Groups;
+    static AZStd::vector<SCGParamsGroup, AZ::StdLegacyAllocator> s_Groups;
     static DynArray<SCGParamPool> s_Pools;
 };
 
@@ -307,7 +310,7 @@ struct SShaderAsyncInfo
     string m_RequestLine;
     string m_shaderList;
     //CShaderThread *m_pThread;
-    std::vector<SCGBind> m_InstBindVars;
+    AZStd::vector<SCGBind, AZ::StdLegacyAllocator> m_InstBindVars;
     byte m_bPending;
     bool m_bPendedFlush;
     bool m_bPendedSamplers;
@@ -452,7 +455,7 @@ class CHWShader_D3D
     SShaderDevCache* m_pDevCache;
 
 #if !defined(_RELEASE)
-    static std::set<uint32_t> s_ErrorsLogged; // CRC32 of message, risk of collision acceptable
+    static AZStd::unordered_set<uint32_t, AZStd::hash<uint32_t>, AZStd::equal_to<uint32_t>, AZ::StdLegacyAllocator> s_ErrorsLogged; // CRC32 of message, risk of collision acceptable
 #endif
 
 #if !defined(CONSOLE)
@@ -648,6 +651,9 @@ class CHWShader_D3D
     typedef std::vector<SHWSInstance*> InstContainer;
     typedef InstContainer::iterator InstContainerIt;
 
+    using SCGTextures = AZStd::fixed_vector<SCGTexture, MAX_PF_TEXTURES>;
+    using SCGSamplers = AZStd::fixed_vector<STexSamplerRT, MAX_PF_SAMPLERS>;
+
     typedef std::multimap<uint64, uint32> THWInstanceLookupMap;
 
     THWInstanceLookupMap m_LookupMap;
@@ -692,13 +698,12 @@ public:
 #endif
         mfConstruct();
     }
-    static void InitialiseContainers();
+    
     static void mfInit();
     void mfConstruct()
     {
         if (s_bInitShaders)
         {
-            InitialiseContainers();
             s_bInitShaders = false;
         }
 
@@ -766,7 +771,7 @@ public:
 
     ED3DShError mfIsValid_Int(SHWSInstance*& pInst, bool bFinalise);
 
-    //ILINE most common outcome (avoid LHS on link register 360)
+    //ILINE most common outcome
     ILINE ED3DShError mfIsValid(SHWSInstance*& pInst, bool bFinalise)
     {
         if (pInst->m_Handle.m_pShader)
@@ -1155,8 +1160,8 @@ public:
     static int s_nDevicePSDataSize;
     static int s_nDeviceVSDataSize;
 
-    static std::vector<SCGTexture> s_PF_Textures;       // Per frame textures (shared between all)
-    static std::vector<STexSamplerRT> s_PF_Samplers;    // Per-frame samplers (shared between all)
+    static SCGTextures s_PF_Textures;   // Per frame textures (shared between all)
+    static SCGSamplers s_PF_Samplers;   // Per-frame samplers (shared between all)
 
     friend struct SShaderTechniqueStat;
 };
@@ -1171,4 +1176,4 @@ struct SShaderTechniqueStat
     CHWShader_D3D::SHWSInstance* pPSInst;
 };
 
-extern std::vector<SShaderTechniqueStat> g_SelectedTechs;
+extern AZStd::vector<SShaderTechniqueStat, AZ::StdLegacyAllocator> g_SelectedTechs;

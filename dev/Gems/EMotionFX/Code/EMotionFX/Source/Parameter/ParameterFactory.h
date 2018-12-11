@@ -25,15 +25,14 @@ namespace EMotionFX
 {
     class Parameter;
 
-
     class ParameterFactory
     {
     public:
         static void ReflectParameterTypes(AZ::ReflectContext* context);
 
+        static AZStd::vector<AZ::TypeId> GetValueParameterTypes();
         static AZStd::vector<AZ::TypeId> GetParameterTypes();
 
         static Parameter* Create(const AZ::TypeId& type);
     };
-
-}   
+}

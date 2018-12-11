@@ -3,6 +3,8 @@
 #define CRYINCLUDE_CRYCOMMON_ICOMPONENTFACTORY_H
 #pragma once
 
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+
 #include <list>
 
 class IComponent;
@@ -84,6 +86,9 @@ protected:
 	CreateFactoryFunction m_createFactoryFunction;
 
 	static std::list<const ComponentFactoryCreationNode*>& GetMutableGlobalList();
+	static ComponentFactoryCreationNode* sm_head;
+    static size_t sm_size;
+	ComponentFactoryCreationNode* m_next;
 };
 
 
@@ -115,20 +120,48 @@ public:
 
 inline ComponentFactoryCreationNode::ComponentFactoryCreationNode(CreateFactoryFunction createFunction)
 	: m_createFactoryFunction(createFunction)
+    , m_next(sm_head)
 {
 	// insert self in this module's list of nodes
-	GetMutableGlobalList().push_back(this);
+    sm_head = this;
+    ++sm_size;
 }
 
 inline ComponentFactoryCreationNode::~ComponentFactoryCreationNode()
 {
-	// remove self from this module's list of nodes
-	GetMutableGlobalList().remove(this);
+    ComponentFactoryCreationNode* node = sm_head;
+    if (sm_head == this)
+    {
+        --sm_size;
+        sm_head = sm_head->m_next;
+        return;
+    }
+    node = sm_head->m_next;
+    ComponentFactoryCreationNode* last = sm_head;
+    while (node != nullptr)
+    {
+        if (node == this)
+        {
+            --sm_size;
+            last->m_next = node->m_next;
+            return;
+        }
+    }
 }
 
 inline std::list<const ComponentFactoryCreationNode*>& ComponentFactoryCreationNode::GetMutableGlobalList()
 {
 	static std::list<const ComponentFactoryCreationNode*> globalList;
+    if (globalList.size() != sm_size)
+    {
+        globalList.clear();
+        ComponentFactoryCreationNode* node = sm_head;
+        while (node)
+        {
+            globalList.push_back(node);
+            node = node->m_next;
+        }
+    }
 	return globalList;
 }
 

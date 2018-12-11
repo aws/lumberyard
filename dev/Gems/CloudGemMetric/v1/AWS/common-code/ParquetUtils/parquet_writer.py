@@ -9,6 +9,7 @@ import time
 import traceback
 import s3fs
 import pandas as pd
+import numpy as np
 import util
 import time
 import metric_schema as schema
@@ -18,20 +19,36 @@ import uuid
 import os
 import gzip
 import json
+import boto3
+import math
+import sys
+import datetime
+import gc
+from s3 import S3
+from aws_lambda import Lambda
+from keyparts import KeyParts
+from datetime import date, timedelta
 
 s3fsmap = {
     sensitivity.SENSITIVITY_TYPE.ENCRYPT.lower(): s3fs.S3FileSystem(config_kwargs={'signature_version': 's3v4'}, s3_additional_kwargs={'ServerSideEncryption': 'AES256'}),
     sensitivity.SENSITIVITY_TYPE.NONE.lower(): s3fs.S3FileSystem(),
 }
 
-def write(bucket, key, data, sep, object_encoding):   
+def write(bucket, key, data, sep, object_encoding, append=False):   
     if data.empty:        
         raise RuntimeError( "[{}]An attempt to write an empty dataset has occurred.  The request dataset was: {}".format(error.Error.empty_dataframe(), data))    
     sensitivity_type = KeyParts(key, sep).sensitivity_level.lower()   
     s3 = s3fsmap[sensitivity_type]    
     s3_open = s3.open    
+    size_before_dup_drop = len(data)
+    data.drop_duplicates(inplace=True)        
+    size_after_dup_drop = len(data)        
+    if size_before_dup_drop - size_after_dup_drop > 0:
+        print "{} duplicates have been dropped".format(size_before_dup_drop - size_after_dup_drop) 
+    util.debug_print("Using object encoding {}".format(object_encoding))
     path='{}{}'.format(bucket,key)          
-    pwrite(path, data, open_with=s3_open, compression='GZIP', append=False, has_nulls=True, object_encoding=object_encoding)        
+    pwrite(path, data, open_with=s3_open, compression='GZIP', append=append, has_nulls=True, object_encoding=object_encoding)        
+    return path
     
 def append(bucket, key1, key2, s3, output_filename):  
     s3_open = s3.open
@@ -46,24 +63,28 @@ def append(bucket, key1, key2, s3, output_filename):
     pwrite('{}{}'.format(bucket,output_filename), data, open_with=s3_open, compression='GZIP', append=False, has_nulls=True)    
 
 def save(context, metric_sets, partition, schema_hash):
-    util.debug_print("\t{}:".format(partition))    
+    util.debug_print("\t{}:".format(partition))
+    paths = []
     for schema_hash, dict  in metric_sets[partition].iteritems():  
-        if util.time_remaining(context) <= (context[c.CW_ATTR_DELETE_DURATION] + 20):                            
+        if util.time_remaining(context) <= (context[c.CW_ATTR_DELETE_DURATION] + 20):
             break
         columns = dict[c.KEY_SET_COLUMNS]        
         if len(dict[c.KEY_SET]) == 0:
             continue
         values = dict[c.KEY_SET].values()
-        set = pd.DataFrame(values, columns=columns)     
+        set = pd.DataFrame(values, columns=columns)    
+        
         util.debug_print("\t\t{}:".format(schema_hash))
-        path = create_file_path(partition, schema_hash, context[c.KEY_SEPERATOR_PARTITION])      
+        path = create_file_path(partition, schema_hash, context[c.KEY_SEPERATOR_PARTITION])              
+        paths.append(path)
         util.debug_print("Writing to path '{}' with set:\n {}".format(path, set))                
         elapsed = 0        
         try:            
-            util.debug_print("Writing to partition '{}'".format(partition))       
-                    
-            write(context[c.KEY_METRIC_BUCKET], path, set, context[c.KEY_SEPERATOR_PARTITION],schema.object_encoding(columns))
-            context[c.KEY_SUCCEEDED_MSG_IDS] += dict[c.KEY_MSG_IDS] 
+            util.debug_print("Writing to partition '{}'".format(partition))                           
+            write(context[c.KEY_METRIC_BUCKET], path, set, context[c.KEY_SEPERATOR_PARTITION],schema.object_encoding(columns))            
+            handoff_event_to_emitter(context, context[c.KEY_METRIC_BUCKET], path, set)
+            context[c.KEY_SUCCEEDED_MSG_IDS] += dict[c.KEY_MSG_IDS]
+            util.debug_print("Save complete to path '{}'".format(path))            
         except Exception as e:                        
             print "[{}]An error occured writing to path '{}'.\nSet: {}\nError: \n{}".format(context[c.KEY_REQUEST_ID],path, set, traceback.format_exc())            
             raise e
@@ -73,7 +94,50 @@ def save(context, metric_sets, partition, schema_hash):
                 context[c.KEY_AGGREGATOR].info[c.INFO_TOTAL_ROWS] = 0
             context[c.KEY_AGGREGATOR].info[c.INFO_TOTAL_ROWS] += number_of_rows            
             del set
+            del values
             del columns
+            gc.collect()
+    try:   
+        util.debug_print("Adding amoeba message to SQS queue '{}'".format(context[c.KEY_SQS_AMOEBA].queue_url))        
+        context[c.KEY_SQS_AMOEBA].send_generic_message(json.dumps({ "paths": paths }))
+    except Exception as e:                        
+        print "[{}]An error occured writing messages to the Amoeba SQS queue. \nError: \n{}".format(context[c.KEY_REQUEST_ID], traceback.format_exc())            
+        raise e
+
+def handoff_event_to_emitter(context, bucket, key, events):   
+    bucket = os.environ["ProjectConfigurationBucket"]
+    lmdclient = Lambda(context)
+    s3client = S3(context, bucket)    
+    
+    parts = KeyParts(key, context[c.KEY_SEPERATOR_PARTITION]) 
+    key = "deployment/share/emitted_event_payloads/{}/{}/{}/{}".format( parts.source, parts.event, parts.datetime, parts.filename.replace(parts.extension, 'json'))
+    
+    payload = {
+                    'emitted': {
+                        'key': key,
+                        'bucket': bucket,
+                        'type': parts.event,
+                        'source': parts.source,
+                        'buildid': parts.buildid,
+                        'filename': parts.filename.replace(parts.extension, 'json'),
+                        'datetime': parts.datetime,
+                        'datetimeformat': util.partition_date_format(),
+                        'sensitivitylevel': parts.sensitivity_level
+                    }
+            }    
+    
+    #create a temporary file for the event emitter to read
+    expires = datetime.datetime.utcnow() + datetime.timedelta(minutes=30)
+    s3client.put_object(
+        key,
+        events.to_json(orient='records'),
+        expires           
+    )    
+
+    resp = lmdclient.invoke(
+        os.environ[c.ENV_EVENT_EMITTER],
+        payload        
+    )
 
 def write_geo_files(context, args):
     resources = util.get_resources(context)    
@@ -102,8 +166,7 @@ def write_geo_files(context, args):
     for path in geo_data_files:
         parts = path.split(".")
         path_with_filename = parts[0]
-        #if "/" in parts[0]:
-        #    filename = parts[0].split("/")
+
         extension = parts[1]
         if len(parts) == 3:
             extension = parts[2]
@@ -139,15 +202,7 @@ def write_file(content, bucket, path, s3, path_with_filename, extension):
                 print path, "--->", target
                 with s3.open(target, 'wb') as f:
                     f.write(data)                
-        #json_content = data.getvalue()
-        #print json_content
-        #with open("./normalized_openstreetmap_countries.json", 'w') as file:
-        #    file.write(json_content)
-        #df = json_normalize(obj)
-        #"{}/{}.{}".format(bucket,path,"parquet")
-        #df.write_csv("")
-        #pwrite("{}/{}.{}".format(bucket,path,"parquet"), df, open_with=s3.open, compression='GZIP', append=False, has_nulls=True)  
-
+       
     elif extension == "gz":
         with s3.open("{}/{}.json".format(bucket, path_with_filename), 'wb') as f:
             f.write(content)

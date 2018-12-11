@@ -1620,11 +1620,7 @@ struct CPhysicalEntitySerializer
 #if defined(AZ_RESTRICTED_PLATFORM)
 #include AZ_RESTRICTED_FILE(worldump_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
-            if (pent->m_nPartsAlloc != 1)
-            {
-                size_t sz = sizeof(geom) * pent->m_nParts;
-                MEMSTAT_USAGE(pent->m_parts, sz);
-            }
+            
             ctx.PushState();
             ctx.pobj = pent->m_parts + i;
             pent->m_parts[i].pPlaceholder = 0;
@@ -2115,7 +2111,6 @@ struct CArticulatedEntitySerializer
                     pent->m_infos[j].scale = pent->m_parts[j].scale;
                 }
             }
-            MEMSTAT_USAGE(pent->m_infos, sizeof(ae_part_info) * pent->m_nParts);
             ctx.pobj = pent->m_infos + i;
             (ctx.pSerializer = pPartInfoSerializer)->Serialize(ctx);
         }

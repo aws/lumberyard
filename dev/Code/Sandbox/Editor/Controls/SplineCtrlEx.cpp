@@ -1940,9 +1940,16 @@ void AbstractSplineWidget::StopTracking()
     }
     else if (m_pCurrentUndo && (m_cMousePos == m_cMouseDownPos))
     {
-        if (m_editMode == SelectMode && m_pCurrentUndo->IsSelectionChanged())
+        if (m_editMode == SelectMode)
         {
-            GetIEditor()->AcceptUndo("Key Selection");
+            if (m_pCurrentUndo->IsSelectionChanged())
+            {
+                GetIEditor()->AcceptUndo("Key Selection");
+            }
+            else
+            {
+                GetIEditor()->CancelUndo();
+            }
         }
         else if ((m_editMode == TrackingMode))
         {

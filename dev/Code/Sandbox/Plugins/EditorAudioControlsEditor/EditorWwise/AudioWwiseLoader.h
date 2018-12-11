@@ -39,12 +39,12 @@ namespace AudioControls
         void ExtractControlsFromXML(XmlNodeRef root, EWwiseControlTypes type, const string& controlTag, const string& controlNameAttribute);
 
     private:
-        static const string ms_sGameParametersFolder;
-        static const string ms_sGameStatesPath;
-        static const string ms_sSwitchesFolder;
-        static const string ms_sEventsFolder;
-        static const string ms_sEnvironmentsFolder;
-        static const string ms_sSoundBanksPath;
+        static const char* ms_sGameParametersFolder;
+        static const char* ms_sGameStatesPath;
+        static const char* ms_sSwitchesFolder;
+        static const char* ms_sEventsFolder;
+        static const char* ms_sEnvironmentsFolder;
+        static const char* ms_sSoundBanksPath;
 
         string m_sLocalizationFolder;
 

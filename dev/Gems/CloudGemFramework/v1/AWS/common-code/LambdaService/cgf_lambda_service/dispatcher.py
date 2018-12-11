@@ -115,6 +115,11 @@ def dispatch(event, context):
 
     result = function(request, **parameters)
 
+    try:
+        result["CloudCanvas_request_id"] = aws_request_id
+    except:
+        print('Failed to add request id to request result')
+
     filtered_result = __apply_logging_filter(function, result)
     print('returning result {}'.format(filtered_result))
 

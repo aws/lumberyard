@@ -3,10 +3,10 @@ from __future__ import print_function
 import boto3
 import datetime
 import json
-
 import CloudCanvas
-
 import service
+
+from cgf_utils import custom_resource_utils
 
 # import errors
 #
@@ -16,7 +16,7 @@ import service
 #
 # Any other exception results in HTTP 500 with a generic internal service error message.
 
-log_db = CloudCanvas.get_setting('LogDB')
+log_db = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('LogDB'))
 dynamo_client = boto3.client('dynamodb')
 
 buffer_time = 5

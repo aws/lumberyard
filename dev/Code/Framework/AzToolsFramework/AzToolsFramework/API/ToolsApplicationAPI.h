@@ -83,9 +83,10 @@ namespace AzToolsFramework
 
         /*!
          * Fired after committing a change in entity selection set.
+         * \param EntityIdList the list of newly selected entity Ids
+         * \param EntityIdList the list of newly deselected entity Ids
          */
-        virtual void AfterEntitySelectionChanged() {}
-
+        virtual void AfterEntitySelectionChanged(const EntityIdList& /*newlySelectedEntities*/, const EntityIdList& /*newlyDeselectedEntities*/) {}
 
         /*!
         * Fired before committing a change in entity highlighting set.
@@ -301,6 +302,11 @@ namespace AzToolsFramework
         virtual SourceControlFileInfo GetSceneSourceControlInfo() = 0;
 
         /*!
+         * Returns true if any entities are selected, false if no entities are selected.
+         */
+        virtual bool AreAnyEntitiesSelected() = 0;
+
+        /*!
          * Retrieves the set of selected entities.
          * \return a list of entity Ids.
          */
@@ -474,9 +480,20 @@ namespace AzToolsFramework
         virtual void CreateAndAddEntityFromComponentTags(const AZStd::vector<AZ::Crc32>& requiredTags, const char* entityName) = 0;
 
         /**
-        * TEMP
+        * Attempts to resolve a path to an executable using these known locations:
+        *   1) The current executable's folder
+        *   2) The Tools/LmbrSetup folder
         */
-        virtual AZ::Outcome<AZStd::string, AZStd::string> ResolveToolPath(const char* currentExecutablePath, const char* toolApplicationName) const = 0;
+        virtual AZ::Outcome<AZStd::string, AZStd::string> ResolveConfigToolsPath(const char* toolApplicationName) const = 0;
+
+        /**
+        * @deprecated
+        */
+        AZ::Outcome<AZStd::string, AZStd::string> AZ_DEPRECATED(ResolveToolPath(const char* currentExecutablePath, const char* toolApplicationName) const, "ToolsApplicationRequests::ResolveToolPath is deprecated. Please use ToolsApplicationRequests::ResolveConfigToolsPath")
+        {
+            AZ_UNUSED(currentExecutablePath);
+            return ResolveConfigToolsPath(toolApplicationName);
+        };
     };
 
     using ToolsApplicationRequestBus = AZ::EBus<ToolsApplicationRequests>;

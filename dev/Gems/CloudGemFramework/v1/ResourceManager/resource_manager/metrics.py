@@ -194,3 +194,14 @@ class MetricsContext(object):
 
     def add_attribute(self, key, value):
         self.__attributes.append((key, value))
+
+    def create_new_event_id(self, event_name):
+        if self.__dll is None:
+            return -1
+        return self._create_event(event_name)
+
+    def add_metric_to_event_by_id(self, metricId, attributeName, attributeValue):
+        self._add_metric(metricId, attributeName, ctypes.c_double(attributeValue))
+
+    def submit_event_by_id(self, metricId):
+        self._submit_event(metricId)

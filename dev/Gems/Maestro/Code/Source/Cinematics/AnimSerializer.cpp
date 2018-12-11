@@ -36,7 +36,9 @@ void AnimSerializer::ReflectAnimTypes(AZ::SerializeContext* context)
 
     context->Class<AZ::IAssetBlendKey, ITimeRangeKey>()
         ->Field("AssetId", &AZ::IAssetBlendKey::m_assetId)
-        ->Field("Description", &AZ::IAssetBlendKey::m_description);
+        ->Field("Description", &AZ::IAssetBlendKey::m_description)
+        ->Field("BlendInTime", &AZ::IAssetBlendKey::m_blendInTime)
+        ->Field("BlendOutTime", &AZ::IAssetBlendKey::m_blendOutTime);
 
     context->Class<IBoolKey, IKey>();
 

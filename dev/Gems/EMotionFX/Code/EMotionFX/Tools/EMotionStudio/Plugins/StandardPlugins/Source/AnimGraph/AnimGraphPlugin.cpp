@@ -591,7 +591,7 @@ namespace EMStudio
         if (EMotionFX::GetEMotionFX().GetRecorder()
             && EMotionFX::GetEMotionFX().GetRecorder()->GetIsRecording())
         {
-            EMotionFX::GetEMotionFX().GetRecorder()->StopRecording();
+            EMotionFX::GetEMotionFX().GetRecorder()->Clear();
         }
 
         EMStudio::DockWidgetPlugin::OnMainWindowClosed();

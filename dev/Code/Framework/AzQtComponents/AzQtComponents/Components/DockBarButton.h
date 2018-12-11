@@ -40,6 +40,8 @@ namespace AzQtComponents
 
         explicit DockBarButton(DockBarButton::WindowDecorationButton buttonType, QWidget* parent = nullptr, bool darkStyle = false);
 
+        DockBarButton::WindowDecorationButton buttonType() const { return m_buttonType; }
+
         /*
         * Expose the button type using a QT property so that test automation can read it
         */

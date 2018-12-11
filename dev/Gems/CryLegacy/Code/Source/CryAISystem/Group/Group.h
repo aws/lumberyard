@@ -32,7 +32,7 @@ public:
     Group(const GroupID& groupID);
     ~Group();
 
-    static void ClearStaticData() { stl::free_container(s_targetInfos); }
+    static void ClearStaticData() { stl::free_container(*s_targetInfos); }
 
     typedef VectorSet<tAIObjectID> Members;
     const Members& GetMembers() const;
@@ -87,7 +87,7 @@ private:
     };
 
     typedef std::vector<TargetInfo> TargetInfos;
-    static TargetInfos s_targetInfos;
+    static StaticInstance<TargetInfos> s_targetInfos;
 
     CCountedRef<CAIObject> m_target;
     EAITargetThreat m_targetThreat;

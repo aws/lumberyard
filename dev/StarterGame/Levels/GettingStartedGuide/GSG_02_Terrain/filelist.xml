@@ -1,6 +1,6 @@
 <download name="GSG_02_Terrain" type="Map">
  <index src="filelist.xml" dest="filelist.xml"/>
  <files>
-  <file src="level.pak" dest="level.pak" size="394451" md5="9e9dd4b0c1a4434936607b815ae57f8b"/>
+  <file src="level.pak" dest="level.pak" size="403062" md5="3bac1b59165014789b6b1d449d3757a0"/>
  </files>
 </download>

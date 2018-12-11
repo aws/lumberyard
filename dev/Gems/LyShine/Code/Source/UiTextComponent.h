@@ -51,7 +51,7 @@ class UiTextComponent
     , public UiAnimateEntityBus::Handler
     , public UiTransformChangeNotificationBus::Handler
     , public UiLayoutCellDefaultBus::Handler
-    , public LanguageChangeNotificationBus::Handler
+    , public FontNotificationBus::Handler
 {
 public: //types
 
@@ -200,9 +200,9 @@ public: // member functions
     float GetExtraHeightRatio() override;
     // ~UiLayoutCellDefaultInterface
 
-    // LanguageChangeNotification
-    void LanguageChanged() override;
-    // ~LanguageChangeNotification
+    // FontNotifications
+    void OnFontsReloaded() override;
+    // ~FontNotifications
 
 #if defined(LYSHINE_INTERNAL_UNIT_TEST)
     static void UnitTest(CLyShine* lyshine);

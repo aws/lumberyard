@@ -195,6 +195,20 @@ namespace AzFramework
             classElement.AddElementWithData(context, "IsStatic", false);
         }
 
+        // note the == on the following line.  Do not add to this block.  If you add an "InterpolateScale" back in, then
+        // consider erasing this block.
+        // The version was bumped from 3 to 4 to ensure this code runs.
+        // if you add the field back in, then increment the version number again.
+        if (classElement.GetVersion() == 3)
+        {
+            // a field was temporarily added to this specific version, then was removed.
+            // However, some data may have been exported with this field present, so 
+            // remove it if its found, but only in this version which the change was present in, so that
+            // future re-additions of it won't remove it (as long as they bump the version number.)
+            classElement.RemoveElementByName(AZ_CRC("InterpolateScale", 0x9d00b831));
+        }
+        
+
         return true;
     }
 
@@ -1227,7 +1241,7 @@ namespace AzFramework
         if (serializeContext)
         {
             serializeContext->Class<TransformComponent, AZ::Component, NetBindable>()
-                ->Version(3, &TransformComponentVersionConverter)
+                ->Version(4, &TransformComponentVersionConverter)
                 ->Field("Parent", &TransformComponent::m_parentId)
                 ->Field("Transform", &TransformComponent::m_worldTM)
                 ->Field("LocalTransform", &TransformComponent::m_localTM)

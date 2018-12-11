@@ -12,9 +12,11 @@
 
 #include <AzCore/Script/ScriptTimePoint.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserEntryCache.h>
-
+#include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/RootAssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/SourceAssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/ProductAssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntryCache.h>
 
 #include <QMimeData>
 
@@ -252,14 +254,18 @@ namespace AzToolsFramework
                 // we have to also invalidate our parent all the way up the chain.
                 // since in this model, the children's data is actually relevant to the filtering of a parent
                 // since a parent "matches" the filter if its children do.
-                while (parent)
+                if ((m_rootEntry) && (!m_rootEntry->IsInitialUpdate()))
                 {
-                    QModelIndex parentIndex;
-                    if (GetEntryIndex(parent, parentIndex))
+                    // this is only necessary if its not the initial refresh.
+                    while (parent)
                     {
-                        Q_EMIT dataChanged(parentIndex, parentIndex);
+                        QModelIndex parentIndex;
+                        if (GetEntryIndex(parent, parentIndex))
+                        {
+                            Q_EMIT dataChanged(parentIndex, parentIndex);
+                        }
+                        parent = parent->GetParent();
                     }
-                    parent = parent->GetParent();
                 }
             }
         }
@@ -287,7 +293,6 @@ namespace AzToolsFramework
         void AssetBrowserModel::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*time*/) 
         {
             // if any entries changed since last tick, notify the views
-            
             if (EntryCache* cache = EntryCache::GetInstance())
             {
                 if (!cache->m_dirtyThumbnailsSet.empty())

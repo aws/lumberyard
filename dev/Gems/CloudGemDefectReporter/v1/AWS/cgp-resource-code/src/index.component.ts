@@ -25,7 +25,10 @@ export class CloudGemDefectReporterIndexComponent extends AbstractCloudGemIndexC
     private showingPage: Pages;
     private showingDefect: Object;
 
+    private isJiraIntegrationEnabled: boolean;
+
     @ViewChild('DefectListPage') defectListPage;
+    @ViewChild('facetgenerator') facetgenerator;
   
     constructor(private http: Http, private aws: AwsService, private definition: DefinitionService, private metric: LyMetricService) {
         super();
@@ -34,6 +37,7 @@ export class CloudGemDefectReporterIndexComponent extends AbstractCloudGemIndexC
     ngOnInit() {                    
         let metric_service = this.definition.getService("CloudGemMetric");
         this._metricApiHandler = new metric_service.constructor(metric_service.serviceUrl, this.http, this.aws, this.metric, this.context.identifier);
+        this.isJiraIntegrationEnabled = this.context.JiraIntegrationEnabled === 'disabled' ? false : true;
         this.showingPage = Pages.DefectList;
     }
 
@@ -63,10 +67,18 @@ export class CloudGemDefectReporterIndexComponent extends AbstractCloudGemIndexC
         this.showingDefect = {};
 
         if (this.defectListPage.tabIndex === 0) {
-            this.defectListPage.datatable.updateFilteredRows();
+            this.defectListPage.defectListOverviewTab.datatable.updateFilteredRows();
         }
         else {
             this.defectListPage.bookmarktable.updateFilteredRows();
         }
-    }      
+    }
+
+    /**
+    * Switch to the Jira Integration tab
+    **/
+    public updateJiraMappings(): void {
+        this.showingPage = Pages.DefectList;
+        this.defectListPage.updateJiraMappings();
+    }     
 }

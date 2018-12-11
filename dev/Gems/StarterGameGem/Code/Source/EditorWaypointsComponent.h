@@ -19,17 +19,16 @@
 
 namespace AZ
 {
-	class ReflectContext;
+    class ReflectContext;
 }
 
 namespace StarterGameGem
 {
-
-	class EditorWaypointsComponent
+    class EditorWaypointsComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , private AzFramework::EntityDebugDisplayEventBus::Handler
-	{
-	public:
+    {
+    public:
         AZ_EDITOR_COMPONENT(EditorWaypointsComponent, "{C15A4DA3-7CDE-48B2-935C-E8F5EC93E045}", AzToolsFramework::Components::EditorComponentBase);
 
         ~EditorWaypointsComponent() override = default;
@@ -50,22 +49,20 @@ namespace StarterGameGem
         //////////////////////////////////////////////////////////////////////////
 
     protected:
-		// Required Reflect function.
-		static void Reflect(AZ::ReflectContext* context);
+        // Required Reflect function.
+        static void Reflect(AZ::ReflectContext* context);
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("WaypointsService"));
+            provided.push_back(AZ_CRC("WaypointsService", 0x863c80b2));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("WaypointsService"));
+            incompatible.push_back(AZ_CRC("WaypointsService", 0x863c80b2));
         }
 
-	private:
+    private:
         WaypointsConfiguration m_config;
-
-	};
-
+    };
 } // namespace StarterGameGem

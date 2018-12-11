@@ -1173,7 +1173,6 @@ void CStatObj::MergeSubObjectsRenderMeshes(bool bFromStreaming, CStatObj* pLod0,
         return;
     }
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Merged StatObj");
     FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 

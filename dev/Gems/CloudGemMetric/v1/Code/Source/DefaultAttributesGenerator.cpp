@@ -49,8 +49,6 @@ namespace CloudGemMetric
         std::string timezone = ss.str();
         if (timezone.size() >= 4)
         {
-            m_hasTimezoneInfo = true;
-              
             m_timezoneSign = timezone[0];
             m_timezoneHour = std::atoi(timezone.substr(1, 2).c_str());
             m_timezoneMinute = std::atoi(timezone.substr(3, 2).c_str());
@@ -80,12 +78,9 @@ namespace CloudGemMetric
 
     void DefaultAttributesGenerator::AddTimezoneAttributes(MetricsAggregator& metrics)
     {
-        if (m_hasTimezoneInfo)
-        {
-            metrics.AddAttribute(MetricsAttribute("tzs", m_timezoneSign));
-            metrics.AddAttribute(MetricsAttribute("tzh", m_timezoneHour));
-            metrics.AddAttribute(MetricsAttribute("tzm", m_timezoneMinute));
-        }
+        metrics.AddAttribute(MetricsAttribute("tzs", m_timezoneSign));
+        metrics.AddAttribute(MetricsAttribute("tzh", m_timezoneHour));
+        metrics.AddAttribute(MetricsAttribute("tzm", m_timezoneMinute));
     }
 
     void DefaultAttributesGenerator::AddLocaleAttributes(MetricsAggregator& metrics)

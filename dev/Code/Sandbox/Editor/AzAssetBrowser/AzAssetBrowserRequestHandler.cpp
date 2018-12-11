@@ -266,6 +266,7 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
     AZStd::string fullFileDirectory;
     AZStd::string fullFilePath;
     AZStd::string fileName;
+    AZStd::string extension;
 
     switch (entry->GetEntryType())
     {
@@ -285,32 +286,97 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
         fullFilePath = entry->GetFullPath();
         fullFileDirectory = fullFilePath.substr(0, fullFilePath.find_last_of(AZ_CORRECT_DATABASE_SEPARATOR));
         fileName = entry->GetName();
+        AzFramework::StringFunc::Path::GetExtension(fullFilePath.c_str(), extension);
 
         // Add the "Open" menu item.
-        // Note that source file openers are allowed to "veto" the showing of the "Open" menu if its 100% known that they aren't openable!
+        // Note that source file openers are allowed to "veto" the showing of the "Open" menu if it is 100% known that they aren't openable!
         // for example, custom data formats that are made by Lumberyard that can not have a program associated in the operating system to view them.
-        // If the only opener that can open that file has no m_opener, then its not openable.
+        // If the only opener that can open that file has no m_opener, then it is not openable.
         SourceFileOpenerList openers;
         AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowserInteractionNotificationBus::Events::AddSourceFileOpeners, fullFilePath.c_str(), sourceID, openers);
-        bool foundNonNullOpener = false;
+        bool validOpenersFound = false;
+        bool vetoOpenerFound = false;
         for (const SourceFileOpenerDetails& openerDetails : openers)
         {
-            // bind that function to the current loop element.
-            if (openerDetails.m_opener) // only VALID openers with an actual callback.
+            if (openerDetails.m_opener) 
             {
-                foundNonNullOpener = true;
-                break;
+                // we found a valid opener (non-null).  This means that the system is saying that it knows how to internally
+                // edit this source file and has a custom editor for it.
+                validOpenersFound = true;
+            }
+            else
+            {
+                // if we get here it means someone intentionally registered a callback with a null function pointer
+                // the API treats this as a 'veto' opener - meaning that the system wants us NOT to allow the operating system
+                // to open this source file as a default fallback.
+                vetoOpenerFound = true;
             }
         }
 
-        if (openers.empty() || foundNonNullOpener)
+        if (validOpenersFound)
         {
-            // if we get here either NOBODY has an opener for this kind of asset, or there is at least one opener that is not vetoing the ability to open it.
-            menu->addAction(QObject::tr("Open"), menu, [sourceID]()
+            // if we get here then there is an opener installed for this kind of asset
+            // and it is not null, meaning that it is not vetoing our ability to open the file.
+            for (const SourceFileOpenerDetails& openerDetails : openers)
             {
-                bool someoneHandledIt = false;
-                AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, sourceID, someoneHandledIt);
+                // bind that function to the current loop element.
+                if (openerDetails.m_opener) // only VALID openers with an actual callback.
+                {
+                    menu->addAction(openerDetails.m_iconToUse, QObject::tr(openerDetails.m_displayText.c_str()), [sourceID, fullFilePath, openerDetails]()
+                    {
+                        openerDetails.m_opener(fullFilePath.c_str(), sourceID);
+                    });
+                }
+            }
+        }
+        
+        // we always add the default "open with your operating system" unless a veto opener is found
+        if (!vetoOpenerFound)
+        {
+            // if we found no valid openers and no veto openers then just allow it to be opened with the operating system itself.
+            menu->addAction(QObject::tr("Open with associated application..."), [this, fullFilePath]()
+            {
+                OpenWithOS(fullFilePath);
             });
+        }
+
+        // slice source files need to react by adding additional menu items, regardless of status of compile or presence of products.
+        if (AzFramework::StringFunc::Equal(extension.c_str(), ".slice", false))
+        {
+            // For slices, we provide the option to toggle the dynamic flag.
+            QString sliceOptions[] = { QObject::tr("Set Dynamic Slice"), QObject::tr("Unset Dynamic Slice") };
+            AZ::Entity* sliceEntity = AZ::Utils::LoadObjectFromFile<AZ::Entity>(fullFilePath, nullptr,
+                AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading));
+            AZ::SliceComponent* sliceAsset = sliceEntity ? sliceEntity->FindComponent<AZ::SliceComponent>() : nullptr;
+            if (sliceAsset)
+            {
+                if (sliceAsset->IsDynamic())
+                {
+                    menu->addAction(sliceOptions[1], [sliceEntity, fullFilePath]()
+                    {
+                        /*Unset dynamic slice*/
+                        AZ::SliceComponent* sliceAsset = sliceEntity->FindComponent<AZ::SliceComponent>();
+                        AZ_Assert(sliceAsset, "SliceComponent no longer present on component.");
+                        sliceAsset->SetIsDynamic(false);
+                        ResaveSlice(sliceEntity, fullFilePath);
+                    });
+                }
+                else
+                {
+                    menu->addAction(sliceOptions[0], [sliceEntity, fullFilePath]()
+                    {
+                        /*Set dynamic slice*/
+                        AZ::SliceComponent* sliceAsset = sliceEntity->FindComponent<AZ::SliceComponent>();
+                        AZ_Assert(sliceAsset, "SliceComponent no longer present on component.");
+                        sliceAsset->SetIsDynamic(true);
+                        ResaveSlice(sliceEntity, fullFilePath);
+                    });
+                }
+            }
+            else
+            {
+                delete sliceEntity;
+            }
         }
 
         AZStd::vector<const ProductAssetBrowserEntry*> products;
@@ -323,51 +389,7 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
             }
             return;
         }
-        auto productEntry = products[0];
-
-        AZ::SerializeContext* serializeContext = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
-        const AZ::SerializeContext::ClassData* assetClassData = serializeContext->FindClassData(productEntry->GetAssetType());
-        AZ_Assert(serializeContext, "Failed to retrieve serialize context.");
-
-        // For slices, we provide the option to toggle the dynamic flag.
-        QString sliceOptions[] = { QObject::tr("Set Dynamic Slice"), QObject::tr("Unset Dynamic Slice") };
-        if (productEntry->GetAssetType() == AZ::AzTypeInfo<AZ::SliceAsset>::Uuid())
-        {
-            AZ::Entity* sliceEntity = AZ::Utils::LoadObjectFromFile<AZ::Entity>(fullFilePath, nullptr,
-                    AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading));
-            AZ::SliceComponent* sliceAsset = sliceEntity ? sliceEntity->FindComponent<AZ::SliceComponent>() : nullptr;
-            if (sliceAsset)
-            {
-                if (sliceAsset->IsDynamic())
-                {
-                    menu->addAction(sliceOptions[1], [sliceEntity, fullFilePath]()
-                        {
-                            /*Unset dynamic slice*/
-                            AZ::SliceComponent* sliceAsset = sliceEntity->FindComponent<AZ::SliceComponent>();
-                            AZ_Assert(sliceAsset, "SliceComponent no longer present on component.");
-                            sliceAsset->SetIsDynamic(false);
-                            ResaveSlice(sliceEntity, fullFilePath);
-                        });
-                }
-                else
-                {
-                    menu->addAction(sliceOptions[0], [sliceEntity, fullFilePath]()
-                        {
-                            /*Set dynamic slice*/
-                            AZ::SliceComponent* sliceAsset = sliceEntity->FindComponent<AZ::SliceComponent>();
-                            AZ_Assert(sliceAsset, "SliceComponent no longer present on component.");
-                            sliceAsset->SetIsDynamic(true);
-                            ResaveSlice(sliceEntity, fullFilePath);
-                        });
-                }
-            }
-            else
-            {
-                delete sliceEntity;
-            }
-        }
-
+      
         CFileUtil::PopulateQMenu(caller, menu, fileName.c_str(), fullFileDirectory.c_str());
     }
     break;
@@ -392,7 +414,7 @@ void AzAssetBrowserRequestHandler::ResaveSlice(AZ::Entity* sliceEntity, const AZ
     if (AZ::IO::CreateTempFileName(fullFilePath.c_str(), tmpFileName))
     {
         AZ::IO::FileIOStream fileStream(tmpFileName.c_str(), AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeBinary);
-       
+
         if (fileStream.IsOpen())
         {
             tmpFilesaved = AZ::Utils::SaveObjectToStream<AZ::Entity>(fileStream, AZ::DataStream::ST_XML, sliceEntity);
@@ -426,7 +448,7 @@ void AzAssetBrowserRequestHandler::ResaveSlice(AZ::Entity* sliceEntity, const AZ
         QWidget* mainWindow = nullptr;
         AzToolsFramework::EditorRequests::Bus::BroadcastResult(mainWindow, &AzToolsFramework::EditorRequests::GetMainWindow);
         QMessageBox::warning(mainWindow, QObject::tr("Unable to Modify Slice"),
-            QObject::tr("Unable to Modify Slice (%1). Cannot create a temporary file for writing data in the same folder.").arg(fullFilePath.c_str()), 
+            QObject::tr("Unable to Modify Slice (%1). Cannot create a temporary file for writing data in the same folder.").arg(fullFilePath.c_str()),
             QMessageBox::Ok, QMessageBox::Ok);
     }
 }
@@ -531,7 +553,12 @@ void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFi
     using namespace AzToolsFramework;
 
     //Get asset group to support a variety of file extensions
-    const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* fullDetails = AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry::GetSourceByAssetId(sourceUUID);
+    const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* fullDetails =
+        AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry::GetSourceByUuid(sourceUUID);
+    if (!fullDetails)
+    {
+        return;
+    }
     QString assetGroup;
     AZ::AssetTypeInfoBus::EventResult(assetGroup, fullDetails->GetPrimaryAssetType(), &AZ::AssetTypeInfo::GetGroup);
 
@@ -543,7 +570,7 @@ void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFi
             {
                 "Lumberyard_LUA_Editor",
                 "Open in Lumberyard LUA Editor...",
-                QIcon(":/PropertyEditor/Resources/edit-asset.png"),
+                QIcon(),
                 [](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
                 {
                     // we know how to handle LUA files (open with the lua Editor.
@@ -551,30 +578,78 @@ void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFi
                 }
             });
     }
-    else if (AZStd::wildcard_match("*.slice", fullSourceFileName))
-    {
-        // we don't allow you to "open" regular slices, so add a nullptr to indicate
-        // that we have taken care of this, don't show menus or anything.  This will be ignored if there are other openers.
-        openers.push_back({"Lumberyard_Slice", "", QIcon(), nullptr });
-    }
 #if defined(AZ_PLATFORM_WINDOWS)
     else if (assetGroup.compare("Texture", Qt::CaseInsensitive) == 0)
     {
-        //Open the texture in RC editor
-        openers.push_back(
+        // Open the texture in RC editor
+        // note that as a special case, DDS files cannot be "opened" with RC editor as they are just copied as-is into the cache.
+        if (!AZStd::wildcard_match("*.dds", fullSourceFileName))
         {
-            "Lumberyard_Resource_Compiler",
-            "Open in Resource Compiler...",
-            QIcon(":/PropertyEditor/Resources/edit-asset.png"),
-            [](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
+            openers.push_back(
             {
-                gEnv->pResourceCompilerHelper->CallResourceCompiler(fullSourceFileNameInCallback, "/userdialog", NULL, false, IResourceCompilerHelper::eRcExePath_currentFolder, true, false, L".");
-            }
-        });
+                "Lumberyard_Resource_Compiler",
+                "Open in Resource Compiler...",
+                QIcon(),
+            [](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
+                {
+                    gEnv->pResourceCompilerHelper->CallResourceCompiler(fullSourceFileNameInCallback, "/userdialog", NULL, false, IResourceCompilerHelper::eRcExePath_currentFolder, true, false, L".");
+                }
+            });
+        }
     }
 #endif //  AZ_PLATFORM_WINDOWS
 
+    if (!openers.empty())
+    {
+        return; // we found one
+    }
+    
+    // if we still havent found one, check to see if it is a default "generic" serializable asset
+    // and open the asset editor if so. Check whether the Generic Asset handler handles this kind of asset.
+    // to do so we need the actual type of that asset, which requires an asset type, not a source type.
+    AZ::Data::AssetManager& manager = AZ::Data::AssetManager::Instance();
 
+    // find a product type to query against.
+    AZStd::vector<const AssetBrowser::ProductAssetBrowserEntry*> candidates;
+    fullDetails->GetChildrenRecursively<AssetBrowser::ProductAssetBrowserEntry>(candidates);
+
+    // find the first one that is handled by something:
+    for (const AssetBrowser::ProductAssetBrowserEntry* productEntry : candidates)
+    {
+        // is there a Generic Asset Handler for it?
+        AZ::Data::AssetType productAssetType = productEntry->GetAssetType();
+        if ((productAssetType == AZ::Data::s_invalidAssetType) || (!productEntry->GetAssetId().IsValid()))
+        {
+            continue;
+        }
+
+        if (const AZ::Data::AssetHandler* assetHandler = manager.GetHandler(productAssetType))
+        {
+            if (!azrtti_istypeof<AzFramework::GenericAssetHandlerBase*>(assetHandler))
+            {
+                // it is not the generic asset handler.
+                continue;
+            }
+            
+            // yes, it is the generic asset handler, so install an opener that sends it to the Asset Editor.
+
+            AZ::Data::AssetId assetId = productEntry->GetAssetId();
+            AZ::Data::AssetType assetType = productEntry->GetAssetType();
+
+            openers.push_back(
+            {
+                "Open_In_Asset_Editor",
+                "Open in Asset Editor...",
+                QIcon(),
+                [assetId, assetType](const char* /*fullSourceFileNameInCallback*/, const AZ::Uuid& /*sourceUUID*/)
+            {
+                AZ::Data::Asset<AZ::Data::AssetData> asset = AZ::Data::AssetManager::Instance().GetAsset(assetId, assetType, false);
+                AzToolsFramework::AssetEditor::AssetEditorRequestsBus::Broadcast(&AzToolsFramework::AssetEditor::AssetEditorRequests::OpenAssetEditor, asset);
+            }
+            });
+            break; // no need to proceed further
+        }
+    }
 }
 
 void AzAssetBrowserRequestHandler::OpenAssetInAssociatedEditor(const AZ::Data::AssetId& assetId, bool& alreadyHandled)
@@ -585,7 +660,7 @@ void AzAssetBrowserRequestHandler::OpenAssetInAssociatedEditor(const AZ::Data::A
         // a higher priority listener has already taken this request.
         return;
     }
-    const SourceAssetBrowserEntry* source = SourceAssetBrowserEntry::GetSourceByAssetId(assetId.m_guid);
+    const SourceAssetBrowserEntry* source = SourceAssetBrowserEntry::GetSourceByUuid(assetId.m_guid);
     if (!source)
     {
         return;
@@ -658,72 +733,17 @@ void AzAssetBrowserRequestHandler::OpenAssetInAssociatedEditor(const AZ::Data::A
         return; // an opener handled this, no need to proceed further.
     }
 
-    // nobody accepted it, we will try default logic here.
-    // default logic is to see if its serializable via edit context, and open the asset editor if so.
-    // if not, we try the operating systems file associations.
-    // lets find out whether the Generic Asset handler handles this kind of asset.
-    // to do so we need the actual type of that asset.
-    AZ::Data::AssetManager& manager = AZ::Data::AssetManager::Instance();
+    // if we get here, nothing handled it, so try the operating system.
+    alreadyHandled = OpenWithOS(fullEntryPath);
+}
 
-    // find a product type to query against.
-    AZStd::vector<const ProductAssetBrowserEntry*> candidates;
-
-    // is the given assetId actually valid?
-    ProductAssetBrowserEntry* productFound = ProductAssetBrowserEntry::GetProductByAssetId(assetId);
-    if (productFound)
+bool AzAssetBrowserRequestHandler::OpenWithOS(const AZStd::string& fullEntryPath)
+{
+    bool openedSuccessfully = QDesktopServices::openUrl(QUrl::fromLocalFile(QString::fromUtf8(fullEntryPath.c_str())));
+    if (!openedSuccessfully)
     {
-        // if we started with a product selected, we already know which one we care about.
-        candidates.push_back(productFound);
-    }
-    else
-    {
-        // the product is not valid, so just use all of the children.
-        source->GetChildrenRecursively<ProductAssetBrowserEntry>(candidates);
+        AZ_Printf("Asset Browser", "Unable to open '%s' using the operating system.  There might be no editor associated with this kind of file.\n", fullEntryPath.c_str());
     }
 
-    bool foundHandler = false;
-    // find the first one that is handled by something:
-    for (const ProductAssetBrowserEntry* productEntry : candidates)
-    {
-        // is there a Generic Asset Handler for it?
-        AZ::Data::AssetType productAssetType = productEntry->GetAssetType();
-        if ((productAssetType == AZ::Data::s_invalidAssetType) || (!productEntry->GetAssetId().IsValid()))
-        {
-            continue;
-        }
-
-        if (const AZ::Data::AssetHandler* assetHandler = manager.GetHandler(productAssetType))
-        {
-            if (!azrtti_istypeof<AzFramework::GenericAssetHandlerBase*>(assetHandler))
-            {
-                // its not the generic asset handler.
-                continue;
-            }
-            // yes, and its the generic asset handler:
-            AZ::SerializeContext* serializeContext = nullptr;
-
-            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-            if (serializeContext)
-            {
-                AZ::Data::Asset<AZ::Data::AssetData> asset = AZ::Data::AssetManager::Instance().GetAsset(productEntry->GetAssetId(), productEntry->GetAssetType(), false);
-                AzToolsFramework::AssetEditor::AssetEditorRequestsBus::Broadcast(&AzToolsFramework::AssetEditor::AssetEditorRequests::OpenAssetEditor, asset);
-            }
-
-            foundHandler = true;
-            break;
-        }
-    }
-
-    if (!foundHandler)
-    {
-        // no generic asset handler for it.
-        // try the system OS.
-        bool openedSuccessfully = QDesktopServices::openUrl(QUrl::fromLocalFile(QString::fromUtf8(fullEntryPath.c_str())));
-        if (!openedSuccessfully)
-        {
-            AZ_Printf("Asset Browser", "Unable to open '%s' using the operating system.  There might be no editor associated with this kind of file.\n", fullEntryPath.c_str());
-            alreadyHandled = true;
-            return;
-        }
-    }
+    return openedSuccessfully;
 }

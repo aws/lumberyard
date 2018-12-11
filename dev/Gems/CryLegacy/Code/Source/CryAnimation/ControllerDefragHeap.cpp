@@ -101,9 +101,6 @@ CControllerDefragHdl CControllerDefragHeap::AllocPinned(size_t sz, IControllerRe
             if (IncreaseRange(apr.offs, apr.usableSize))
             {
                 ret = CControllerDefragHdl(apr.hdl);
-
-                MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-                MEMREPLAY_SCOPE_ALLOC(m_pBaseAddress + apr.offs, apr.usableSize, MinAlignment);
             }
             else
             {
@@ -112,26 +109,12 @@ CControllerDefragHdl CControllerDefragHeap::AllocPinned(size_t sz, IControllerRe
         }
         else if (AllowGPHFallback)
         {
-            MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-
             ret = CControllerDefragHdl(FixedAlloc(sz, true));
-
-            if (ret.IsValid())
-            {
-                MEMREPLAY_SCOPE_ALLOC(ret.AsFixed(), UsableSize(ret), MinAlignment);
-            }
         }
     }
     else
     {
-        MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-
         ret = CControllerDefragHdl(FixedAlloc(sz, false));
-
-        if (ret.IsValid())
-        {
-            MEMREPLAY_SCOPE_ALLOC(ret.AsFixed(), UsableSize(ret), MinAlignment);
-        }
     }
 
     return ret;
@@ -142,11 +125,6 @@ void CControllerDefragHeap::Free(CControllerDefragHdl hdl)
     if (!hdl.IsFixed())
     {
         UINT_PTR offs = m_pAllocator->Pin(hdl.AsHdl());
-
-        {
-            MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-            MEMREPLAY_SCOPE_FREE(m_pBaseAddress + offs);
-        }
 
         assert(hdl.IsValid());
 
@@ -159,11 +137,7 @@ void CControllerDefragHeap::Free(CControllerDefragHdl hdl)
     }
     else
     {
-        MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-
         FixedFree(hdl.AsFixed());
-
-        MEMREPLAY_SCOPE_FREE(hdl.AsFixed());
     }
 }
 
@@ -248,9 +222,6 @@ void CControllerDefragHeap::Relocate(uint32 userMoveId, void* pContext, UINT_PTR
         {
             rbc->Relocate(pNewBase, pOldBase);
         }
-
-        MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
-        MEMREPLAY_SCOPE_REALLOC(m_pBaseAddress + oldOffset, m_pBaseAddress + newOffset, size, MinAlignment);
 
         cp.relocateFrameId = m_tickId;
         cp.relocated = true;
@@ -340,7 +311,7 @@ void* CControllerDefragHeap::FixedAlloc(size_t sz, bool bFromGPH)
         }
     }
 
-    FixedHdr* p = (FixedHdr*)CryGetIMemoryManager()->AllocPages(sz + sizeof(FixedHdr));
+    FixedHdr* p = (FixedHdr*)CryMemory::AllocPages(sz + sizeof(FixedHdr));
     if (p)
     {
         CryInterlockedAdd(&m_nBytesInFixedAllocs, (int)sz);
@@ -367,7 +338,7 @@ void CControllerDefragHeap::FixedFree(void* p)
     }
     else
     {
-        CryGetIMemoryManager()->FreePages(fh, (size_t)fh->size);
+        CryMemory::FreePages(fh, (size_t)fh->size);
     }
 }
 

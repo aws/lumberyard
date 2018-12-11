@@ -154,7 +154,7 @@ namespace CloudGemTextToSpeech
         AZStd::string GetAliasedUserCachePath(const AZStd::string& hash) const;
 
         void ConvertTextToSpeech(const AZStd::string& voice, const AZStd::string& text, const AZStd::string& speechMarks);
-        AZStd::string FindCachedVoiceFileExtension(const AZStd::string& dir, const AZStd::string& hash) const;
+        bool MainCacheFilesExist(const AZStd::string & hash, const AZStd::string & speechMarks, AZStd::string& voiceFile);
 
         class TTSConversionJob : public AZ::Job
         {

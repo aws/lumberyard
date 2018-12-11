@@ -24,7 +24,11 @@ import string
 import random
 import contextlib
 import mock
+import test_integration_shared_resource as shared_resource_manager
+import threading
+import time
 from distutils import dir_util
+from test_integration_shared_resource import SharedResourceManager
 from tempfile import mkdtemp, gettempdir
 from contextlib import contextmanager
 from time import time, sleep
@@ -42,7 +46,7 @@ from resource_manager.gem import GemContext
 
 # Cloud Gem Framework imports
 from cgf_utils.version_utils import Version
-from cgf_utils import aws_utils
+from cgf_utils import aws_utils, custom_resource_utils
 import cgf_service_client
 from resource_manager_common import stack_info
 import cgf_service_client
@@ -50,18 +54,28 @@ import cgf_service_client
 # resource manager test imports
 import test_constant
 import junction_safe
+import time
+import datetime
+import threading
 
 REGION='us-east-1'
 
 UNIQUE_NAME_CHARACTERS = string.ascii_uppercase + string.digits
 UNIQUE_NAME_CHARACTER_COUNT = 7
+TEST_PREFIX = test_constant.TEST_NAME_PREFIX
 
-def unique_name(prefix):
-    return prefix + ''.join(random.SystemRandom().choice(UNIQUE_NAME_CHARACTERS) for _ in range(UNIQUE_NAME_CHARACTER_COUNT))
+def create(**enums):
+    return type('Enum', (), enums)
+
+def unique_name(prefix=TEST_PREFIX, suffix=""):
+    return prefix + ''.join(random.SystemRandom().choice(UNIQUE_NAME_CHARACTERS) for _ in range(UNIQUE_NAME_CHARACTER_COUNT)) + suffix
 
 def _del_rw(action, name, exc):
-    os.chmod(name, stat.S_IWRITE)
-    os.remove(name)
+    try:
+        os.chmod(name, stat.S_IWRITE)
+        os.remove(name)
+    except:
+        pass
 
 class Credentials(object):
 
@@ -77,8 +91,34 @@ class Credentials(object):
     def secret_key(self):
         return self.__secret_key
 
-class lmbr_aws_TestCase(unittest.TestCase):
+class ResourceTransition():
+    def __init__(self, id, transition, bypass=None, condition=None, post_alwaysrun=None):
+        self.__id = id
+        self.__transition = transition
+        self.__bypass = bypass
+        self.__condition = condition
+        self.__alwaysrun = post_alwaysrun
 
+    @property
+    def id(self):
+        return self.__id
+
+    def execute(self, context):        
+        if self.__condition is None:
+            self.__transition(context)
+        else:            
+            if self.__condition(context):
+                self.__transition(context)
+            elif self.__bypass:
+                self.__bypass(context)
+
+        if self.__alwaysrun:            
+            self.__alwaysrun(context)        
+
+RESOURCE_TYPE = create(PROJECT_STACK="PROJECT_STK", DEPLOYMENT_STACK="DEPLOYMENT_STK")
+
+class lmbr_aws_TestCase(unittest.TestCase):
+    
     context = {}
 
     @classmethod
@@ -89,6 +129,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
             'AWS::IAM::Role': self.verify_iam_role,
             'AWS::IAM::ManagedPolicy': self.verify_iam_managed_policy
         }
+        
         if os.environ.get('NO_TEST_PROFILE', None):
             self.session = boto3.Session(region_name=REGION)
         else:
@@ -103,23 +144,242 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.aws_iam = self.session.client('iam')
         self.stack_info_manager = stack_info.StackInfoManager(self.session)
 
-    def __init__(self, *args, **kwargs):
-        super(lmbr_aws_TestCase, self).__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):                              
+        super(lmbr_aws_TestCase, self).__init__(*args, **kwargs)        
         self.stack_resource_descriptions = {}
-        self.stack_descriptions = {}
+        self.stack_descriptions = {}                
+        self.deployment_name_override = None
+        self.resource_group_name_override = None
         resource_manager.stack.STACK_UPDATE_DELAY_TIME = 20
 
         # assumes this file is ...\dev\Gems\CloudGemFramework\v?\ResoureManager\resource_manager\test\lmbr_aws_test_support.py
         # we want ...\dev
         self.__real_root_dir = os.path.abspath(os.path.join(__file__, '..', '..', '..', '..', '..', '..', '..'))
+        self.shared_resource_manager = SharedResourceManager()
+        self.__project_resource_transitions = create(
+            create=ResourceTransition(1, lambda context: (
+                                            #allow a 20s window for all sub processes to register for shared resources
+                                            time.sleep(20),
+                                            self.shared_resource_manager.sync_registered_gems(self.context["GameDir"], self.enable_real_gem),
+                                            self.lmbr_aws('project', 'create', '--stack-name', unique_name(suffix="-hyptest"),
+                                                                '--confirm-aws-usage',
+                                                                '--confirm-security-change',
+                                                                '--region', REGION),
+                                            self.shared_resource_manager.update_context_attribute(context,
+                                                                                                  test_constant.ATTR_LOCAL_PROJECT_SETTINGS_FILE_PATH,
+                                                                                                  self.context[test_constant.ATTR_LOCAL_PROJECT_SETTINGS_FILE_PATH]),
+                                            self.shared_resource_manager.update_context_attribute(context,
+                                                                                                  SharedResourceManager.PROJECT_CONTEXT_STATE_NAME,
+                                                                                                  1),
+                                            self.shared_resource_manager.update_context_attribute(context,
+                                                                                                  SharedResourceManager.PROJECT_CREATOR,
+                                                                                                  self.context[test_constant.ATTR_TEMP_DIR]
+                                                                                                  ),
+                                            self.shared_resource_manager.update_context_attribute(context,
+                                                                                                  SharedResourceManager.PROJECT_CREATOR_PATH,
+                                                                                                  self.context[test_constant.ATTR_CONTEXT_FILE_PATH]
+                                                                                                  )
+                                            ),
+                                          post_alwaysrun=lambda context: (
+                                            self.shared_resource_manager.sync_project_settings_file(context,
+                                                                                                  context[test_constant.ATTR_LOCAL_PROJECT_SETTINGS_FILE_PATH],
+                                                                                                  self.context[test_constant.ATTR_LOCAL_PROJECT_SETTINGS_FILE_PATH]),                                            
+                                            self.lmbr_aws('mappings', 'update', ignore_failure=True)
+                                            ),
+                                          condition=lambda context: (
+                                            self.is_stack_missing(context, self.has_project_stack)
+                                           )
+                                      ),
+            update=ResourceTransition(2, lambda context: (
+                                            self.shared_resource_manager.sync_registered_gems(self.context["GameDir"], self.enable_real_gem),                                            
+                                            self.lmbr_aws('project', 'update', '--confirm-aws-usage', '--confirm-security-change', '--confirm-resource-deletion'),                                            
+                                            self.shared_resource_manager.update_context_attribute(context,
+                                                                                                  SharedResourceManager.PROJECT_CONTEXT_STATE_NAME,
+                                                                                                  2),
+                                            self.shared_resource_manager.update_context_attribute(context,
+                                                                                                  SharedResourceManager.LAST_MODIFIED_BY,
+                                                                                                  self.context
+                                                                                                  )
+                                        ),
+                                        post_alwaysrun=lambda context: (
+                                            time.sleep(30),
+                                            self.lmbr_aws('mappings', 'update', ignore_failure=True)                                                    
+                                        ),
+                                    ),
+            delete=ResourceTransition(3, lambda context: (
+                                                     self.delete_all_deployments(),                                                     
+                                                     self.lmbr_aws('project', 'delete', '--confirm-resource-deletion'),
+                                                     self.shared_resource_manager.remove_json_file_attribute_with_lock(
+                                                         SharedResourceManager.FILE_SHARED_RESOURCES_CONTEXT,
+                                                         SharedResourceManager.CONTEXT_REGISTERED_GEM),
+                                                     self.shared_resource_manager.remove_json_file_attribute_with_lock(
+                                                         SharedResourceManager.FILE_SHARED_RESOURCES_CONTEXT,
+                                                         SharedResourceManager.CONTEXT_REGISTERED_ATTR),
+                                                     self.shared_resource_manager.remove_json_file_attribute(
+                                                         context,
+                                                         SharedResourceManager.PROJECT_LOCK_FILE_NAME,
+                                                         test_constant.ATTR_LOCAL_PROJECT_SETTINGS_FILE_PATH),
+                                                     self.shared_resource_manager.remove_json_file_attribute(
+                                                         context,
+                                                         SharedResourceManager.PROJECT_LOCK_FILE_NAME,
+                                                         SharedResourceManager.PROJECT_CONTEXT_STATE_NAME),
+                                                    self.shared_resource_manager.update_context_attribute(context,
+                                                                                                  SharedResourceManager.LAST_MODIFIED_BY,
+                                                                                                  self.context
+                                                                                                  )
+                                                ),
+                                                post_alwaysrun=lambda context: (
+                                                     self.shared_resource_manager.remove_project_settings_file(
+                                                         self.LOCAL_PROJECT_SETTINGS_FILE_PATH
+                                                         )                                                     
+                                                ),
+                                                condition=lambda context: (
+                                                    self.run_func_only_if_last_test()
+                                                )
+                                           )
+        )
+        self.__deployment_resource_transitions = create(
+            create=ResourceTransition(1, lambda context: (
+                                              self.shared_resource_manager.sync_registered_gems(self.context["GameDir"], self.enable_real_gem),
+                                              #creating a new deployment stack requires we lock the project stack since the configuration will be updated                                              
+                                              self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME,
+                                                                '--confirm-aws-usage',
+                                                                '--confirm-security-change'),
+                                              self.shared_resource_manager.update_context_attribute(context, SharedResourceManager.DEPLOYMENT_CONTEXT_STATE_NAME, 1),
+                                              self.shared_resource_manager.update_context_attribute(context,
+                                                                                                  SharedResourceManager.LAST_MODIFIED_BY,
+                                                                                                  self.context
+                                                                                                  ),                
+                                           ),
+                                          post_alwaysrun=lambda context: (
+                                            time.sleep(30),                                            
+                                            self.lmbr_aws('mappings', 'update', '-d', self.TEST_DEPLOYMENT_NAME, ignore_failure=True)
+                                          ),
+                                          condition=lambda context: (
+                                            self.is_stack_missing(context, self.has_deployment_stack)
+                                          ),
+                                          bypass=lambda context: (                                                    
+                                            self.lmbr_aws('deployment', 'default', '--set', self.TEST_DEPLOYMENT_NAME, ignore_failure=True)
+                                          )
+                                      ),
+            update=ResourceTransition(2, lambda context: (
+                                            self.shared_resource_manager.sync_registered_gems(self.context["GameDir"], self.enable_real_gem),                                            
+                                            self.lmbr_aws('deployment', 'update', '--confirm-aws-usage', '--confirm-security-change', '--confirm-resource-deletion', '-d', self.TEST_DEPLOYMENT_NAME),
+                                            self.shared_resource_manager.update_context_attribute(context,
+                                                                                                  SharedResourceManager.DEPLOYMENT_CONTEXT_STATE_NAME,
+                                                                                                    2),
+                                                self.shared_resource_manager.update_context_attribute(context,
+                                                                                                  SharedResourceManager.LAST_MODIFIED_BY,
+                                                                                                  self.context)
+                                            ),
+                                         post_alwaysrun=lambda context: (        
+                                            time.sleep(30),                                                                                                
+                                            self.lmbr_aws('mappings', 'update', '-d', self.TEST_DEPLOYMENT_NAME, ignore_failure=True)
+                                          ),
+                                         bypass=lambda context: (                                                    
+                                            self.lmbr_aws('deployment', 'default', '--set', self.TEST_DEPLOYMENT_NAME, ignore_failure=True)
+                                          )
+                                        ),
+            delete=ResourceTransition(3, lambda context: (
+                                            #deleting the deployment stack requires we lock the project stack since the configuration will be updated
+                                            self.lmbr_aws('deployment', 'delete', '--deployment', self.TEST_DEPLOYMENT_NAME,
+                                            '--confirm-resource-deletion'),
+                                            self.shared_resource_manager.update_context_attribute(context,
+                                                                                                    SharedResourceManager.LAST_MODIFIED_BY,
+                                                                                                    self.context
+                                            )),
+                                            condition= lambda context: (self.run_func_only_if_last_test() and self.has_deployment_stack()),
+                                            post_alwaysrun=lambda context:(
+                                                self.shared_resource_manager.update_context_attribute(context,
+                                                                                                    SharedResourceManager.DEPLOYMENT_CONTEXT_STATE_NAME,3),
+                                                self.shared_resource_manager.remove_json_file_attribute(context,
+                                                                                                    SharedResourceManager.DEPLOYMENT_LOCK_FILE_NAME,
+                                                                                                    SharedResourceManager.DEPLOYMENT_CONTEXT_STATE_NAME)
+                                        )
+        ))
 
+    def delete_all_deployments(self):        
+        project_settings = self.load_cloud_project_settings()        
+        if "deployment" in project_settings:
+            threads = []
+            deployments = project_settings["deployment"]
+            print "Deployments to delete:", deployments.keys()
+            for deployment_name in deployments.keys():                
+                if deployment_name != "*":
+                    t = threading.Thread(target=self.lmbr_aws, args=('deployment', 'delete', '--deployment', deployment_name,
+                                            '--confirm-resource-deletion'), kwargs={"ignore_failure": True})
+                    t.start()
+                    threads.append(t)
+            #wait for all of the deployments to delete
+            for t in threads:
+                t.join(timeout=3600)
+                time.sleep(10)
+                project_settings = self.load_cloud_project_settings()
+        
+            print "Deployments remaining after the deletion:", deployments.keys()
+            if len(deployments.keys()) > 1:
+                print "deployments remaining", deployments.keys()
+                #seems a deployment was added to the project when the other deployments were being deleted.
+                self.delete_all_deployments()
+                    
 
-    def prepare_test_envionment(self, temp_file_suffix, game_name = test_constant.GAME_NAME, alternate_context_names = []):        
+    def has_project_stack(self):
+        return bool(self.get_project_stack_arn())
+
+    def has_deployment_stack(self):
+        return bool(self.get_deployment_stack_arn(self.TEST_DEPLOYMENT_NAME))
+
+    def run_func_only_if_last_test(self):
+        registered_gems = self.shared_resource_manager.get_attribute(
+            SharedResourceManager.FILE_SHARED_RESOURCES_CONTEXT,
+            SharedResourceManager.CONTEXT_REGISTERED_ATTR,
+            None)
+
+        return registered_gems is not None and len(registered_gems) < 1
+
+    def is_stack_missing(self, context, func):        
+        if test_constant.ATTR_LOCAL_PROJECT_SETTINGS_FILE_PATH in context:            
+            self.shared_resource_manager.sync_project_settings_file(context,
+                                                                context[
+                                                                    test_constant.ATTR_LOCAL_PROJECT_SETTINGS_FILE_PATH],
+                                                                self.context[
+                                                                    test_constant.ATTR_LOCAL_PROJECT_SETTINGS_FILE_PATH])        
+        response = not func()        
+        return response
+
+    @property
+    def project_transitions(self):
+        return self.__project_resource_transitions
+
+    @property
+    def deployment_transitions(self):
+        return self.__deployment_resource_transitions
+
+    def lock_and_run_lmbr_aws_shared_project_command(self, *args, **kwargs):
+        self.shared_resource_manager.lock_file_and_execute(SharedResourceManager.PROJECT_LOCK_FILE_NAME, lambda c: self.lmbr_aws(*args, **kwargs))
+
+    def lock_and_run_lmbr_aws_shared_deployment_command(self, *args, **kwargs):
+        self.shared_resource_manager.lock_file_and_execute(SharedResourceManager.DEPLOYMENT_LOCK_FILE_NAME, lambda c: self.lmbr_aws(*args, **kwargs))
+
+    def register_for_shared_resources(self):
+        self.shared_resource_manager.register_for_shared_resource(self.context[test_constant.ATTR_TEMP_DIR])        
+
+    def unregister_for_shared_resources(self):
+        self.shared_resource_manager.unregister_for_shared_resource(self.context[test_constant.ATTR_TEMP_DIR])
+
+    def wait_for_project(self, transition):
+        self.shared_resource_manager.lock_file_and_execute(SharedResourceManager.PROJECT_LOCK_FILE_NAME, transition.execute)
+
+    def wait_for_deployment(self, transition):
+        self.shared_resource_manager.lock_file_and_execute(SharedResourceManager.DEPLOYMENT_LOCK_FILE_NAME, transition.execute)
+
+    def prepare_test_environment(self, temp_file_suffix, game_name = test_constant.GAME_NAME, alternate_context_names = []):
         root_temp_dir = gettempdir()
         last_run_root_dir = self.REAL_ROOT_DIR.replace(':', '_').replace('\\', '_')
         last_run_temp_file_path = os.path.join(root_temp_dir, test_constant.TEST_CONTEXT_FILE.format(temp_file_suffix, last_run_root_dir))
         print '\nAttempting to load the test state from file \'{}\'\n'.format(last_run_temp_file_path)
         context = resource_manager.util.load_json(last_run_temp_file_path, {})
+        
         if test_constant.ATTR_TEMP_DIR not in context:
 
             context[test_constant.ATTR_CONTEXT_FILE_PATH] = last_run_temp_file_path
@@ -138,7 +398,11 @@ class lmbr_aws_TestCase(unittest.TestCase):
             resource_manager.util.save_json(last_run_temp_file_path, context)            
             print '\n\nNo test state file found. Created temporary directory: {}\n'.format(context[test_constant.ATTR_TEMP_DIR])
         else:            
-            print '\n\nTest state file found. Resused temporary directory: {}\n'.format(context[test_constant.ATTR_TEMP_DIR])
+            print '\n\nTest state file found. Resused temporary directory: {}\n'.format(context[test_constant.ATTR_TEMP_DIR])            
+            if test_constant.ATTR_DEPLOYMENT_NAME in context:
+                self.deployment_name_override = context[test_constant.ATTR_DEPLOYMENT_NAME]
+            if test_constant.ATTR_RESOURCE_GROUP_NAME in context:
+                self.resource_group_name_override = context[test_constant.ATTR_RESOURCE_GROUP_NAME]
        
         print('Using context\n{}'.format(json.dumps(context, indent=4, sort_keys=True)))
         self.context = context
@@ -146,9 +410,9 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.context_stack = [] # see push_context and pop_context
         self.root_context = self.context # so the root context can get saved after push_context
 
-    def __prepare_test_directory(self, game_name):
 
-        temp_dir = mkdtemp()     
+    def __prepare_test_directory(self, game_name):
+        temp_dir = mkdtemp()
         game_dir = os.path.join(temp_dir, game_name)
         aws_dir = os.path.join(game_dir, resource_manager_common.constant.PROJECT_AWS_DIRECTORY_NAME)
         pc_cache_dir = os.path.join(temp_dir, 'Cache', game_name, 'pc', game_name) # yes, two game_name directories!?!
@@ -189,11 +453,11 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
         # make it so lmbr_aws can call itself (used to generate client code when creating cloud gems)
         self.__make_file(temp_dir, 'lmbr_aws.cmd', '@CALL {}\lmbr_aws.cmd %*'.format(self.REAL_ROOT_DIR))
-
+        
         return { 
             test_constant.ATTR_GAME_NAME: game_name,
             test_constant.ATTR_ROOT_DIR: temp_dir,
-            test_constant.ATTR_TEMP_DIR: temp_dir, 
+            test_constant.ATTR_TEMP_DIR: temp_dir,
             test_constant.ATTR_PROJECT_STACK_NAME: unique_name(test_constant.TEST_NAME_PREFIX),
             test_constant.ATTR_GAME_DIR: game_dir,
             test_constant.ATTR_AWS_DIR: aws_dir,
@@ -231,14 +495,18 @@ class lmbr_aws_TestCase(unittest.TestCase):
             file.write(file_content)
 
 
-    def __make_gem_link(self, temp_dir, gem_name):
-        temp_gems_dir_path = os.path.join(temp_dir, 'Gems')
+    def __make_gem_link(self, temp_dir, gem_name, ignore_existing=False, path=None):
+        temp_gems_dir_path = os.path.join(temp_dir, test_constant.DIR_GEMS)
         if not os.path.exists(temp_gems_dir_path):
             os.makedirs(temp_gems_dir_path)
-        target_path = os.path.join(self.REAL_ROOT_DIR, 'Gems', gem_name)
-        link_path = os.path.join(temp_dir, 'Gems', gem_name)
+        target_path = path if path else os.path.join(self.REAL_ROOT_DIR, test_constant.DIR_GEMS, gem_name) 
+        link_path = os.path.join(temp_dir, test_constant.DIR_GEMS, gem_name)
         print 'Linking {} to {}.'.format(target_path, link_path)
-        junction_safe.mklink(target_path, link_path)
+        try:
+            junction_safe.mklink(target_path, link_path)
+        except RuntimeError as e:
+            if not ignore_existing:
+                raise e
 
 
     @contextlib.contextmanager
@@ -277,8 +545,8 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
         context_file_path = self.root_context[test_constant.ATTR_CONTEXT_FILE_PATH]
 
-        if ok:  
-                  
+        return 
+        if ok:                    
             if os.path.isfile(context_file_path):
                 print 'Deleting temporary file ' + context_file_path
                 os.remove(context_file_path)
@@ -308,15 +576,25 @@ class lmbr_aws_TestCase(unittest.TestCase):
     
     @property
     def TEST_PROJECT_STACK_NAME(self):
+        arn = self.get_project_stack_arn()
+        if arn:
+            project_id = self.get_stack_name_from_arn(arn)
+            return project_id
         return self.context[test_constant.ATTR_PROJECT_STACK_NAME]
 
     @property
     def TEST_DEPLOYMENT_NAME(self):
-        return test_constant.DEPLOYMENT_NAME
+        return self.deployment_name_override if self.deployment_name_override else test_constant.DEPLOYMENT_NAME
+
+    def set_deployment_name(self, value):
+        self.deployment_name_override = value               
 
     @property
     def TEST_RESOURCE_GROUP_NAME(self):
-        return test_constant.RESOURCE_GROUP_NAME
+        return self.resource_group_name_override if self.resource_group_name_override else test_constant.RESOURCE_GROUP_NAME
+    
+    def set_resource_group_name(self, value):
+        self.resource_group_name_override = value        
 
     @property
     def GAME_DIR(self):
@@ -353,6 +631,11 @@ class lmbr_aws_TestCase(unittest.TestCase):
             framework_gem = json.load(file)
         return Version(framework_gem['Version'])
 
+    def save_context_to_disk(self):
+        self.context[test_constant.ATTR_DEPLOYMENT_NAME] = self.TEST_DEPLOYMENT_NAME
+        self.context[test_constant.ATTR_RESOURCE_GROUP_NAME] = self.TEST_RESOURCE_GROUP_NAME
+        resource_manager.util.save_json(self.context[test_constant.ATTR_CONTEXT_FILE_PATH], self.context)            
+
     def run(self, result=None):
         self.currentResult = result # remember result for use in tearDown
         unittest.TestCase.run(self, result) # call superclass run method
@@ -383,7 +666,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
     def runtest(self, func):
         if not self.context:
-            raise RuntimeError('prepare_test_envionment has not been caled.')
+            raise RuntimeError('prepare_test_environment has not been called.')
         func_meta = func.func_code
         func_name = func_meta.co_name
         if self.isrunnable(func_name, self.context):
@@ -409,7 +692,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
                 "GemListFormatVersion": 2
             }
 
-        gems_list = gems_file_object.setdefault('Gems', [])
+        gems_list = gems_file_object.setdefault(test_constant.DIR_GEMS, [])
 
         found = False
         for gem_object in gems_list:
@@ -452,13 +735,13 @@ class lmbr_aws_TestCase(unittest.TestCase):
         else:
             gems_file_object = {}
 
-        gems_list = gems_file_object.setdefault('Gems', [])
+        gems_list = gems_file_object.setdefault(test_constant.DIR_GEMS, [])
 
         if not gem_path:
             if gem_version_directory_name:
-                gem_path = os.path.join(self.REAL_ROOT_DIR, 'Gems', gem_name, gem_version_directory_name)
+                gem_path = os.path.join(self.REAL_ROOT_DIR, test_constant.DIR_GEMS, gem_name, gem_version_directory_name)
             else:
-                gem_path = os.path.join(self.REAL_ROOT_DIR, 'Gems', gem_name)
+                gem_path = os.path.join(self.REAL_ROOT_DIR, test_constant.DIR_GEMS, gem_name)
 
         for gem_object in gems_list:
             if gem_object.get('Path') == gem_path:
@@ -481,23 +764,51 @@ class lmbr_aws_TestCase(unittest.TestCase):
         if not os.path.exists(dest_path):
             os.mkdir(dest_path)
         shutil.copyfile(src_file_path, dst_file_path)
-            
 
-    def enable_real_gem(self, gem_name, version_subdirectory = None):
-        self.__enable_real_gem(self.ROOT_DIR, self.GAME_NAME, gem_name, version_subdirectory)
+    def enable_shared_gem(self, gem_name, version_subdirectory=None, ignore_existing_symlinks=True, path=None):
+        if path and version_subdirectory:
+            path = os.path.join(path, version_subdirectory)
+
+        self.__add_gem_to_shared_resources(gem_name, version_subdirectory, path)
+        self.enable_real_gem(gem_name, version_subdirectory, ignore_existing_symlinks, path)
+
+    def enable_real_gem(self, gem_name, version_subdirectory = None, ignore_existing_symlinks=True, path=None):
+        self.__enable_real_gem(self.ROOT_DIR, self.GAME_NAME, gem_name, version_subdirectory, ignore_existing_symlinks, path)
 
 
-    def __enable_real_gem(self, temp_dir, game_name, gem_name, version_subdirectory = None):
-        self.__make_gem_link(temp_dir, gem_name)
-        self.__add_to_gems_file(temp_dir, game_name, self.__get_relative_gem_path(gem_name, version_subdirectory))
-        
+    def __enable_real_gem(self, temp_dir, game_name, gem_name, version_subdirectory = None, ignore_existing_symlinks=False, path=None):
+        if path:
+            rel_path = path
+        else:
+            rel_path = self.__get_relative_gem_path(gem_name, version_subdirectory)
+        self.__make_gem_link(temp_dir, gem_name, ignore_existing_symlinks, rel_path if path else None)
+        self.__add_to_gems_file(temp_dir, game_name, rel_path)
+
+        #Ensure the gem resources are available by checking the symlink exists.  We verify this by checking the existence of the gem.json file.
+        end = datetime.datetime.utcnow() + datetime.timedelta(minutes=1)
+        while datetime.datetime.utcnow() <= end:
+            print datetime.datetime.utcnow(), end
+            if os.path.isfile(os.path.join(rel_path, "gem.json")):
+                break
+            time.sleep(2)
+
+    def __add_gem_to_shared_resources(self, gem_name, version_subdirectory, path=None):
+        self.shared_resource_manager.update_shared_resource_context_attr(
+            SharedResourceManager.CONTEXT_REGISTERED_GEM,
+            lambda value: (
+               self.shared_resource_manager.append_shared_gem(gem_name, version_subdirectory, value, path)
+            )
+        )
 
     def disable_real_gem(self, gem_name, version_subdirectory = None):
         self.__remove_from_gems_file(self.__get_relative_gem_path(gem_name, version_subdirectory))
 
 
     def __get_relative_gem_path(self, gem_name, version_subdirectory):
-        relative_gem_path = 'Gems/' + gem_name
+        path_prefix = 'Gems/'
+        relative_gem_path = gem_name
+        if path_prefix not in relative_gem_path:
+            relative_gem_path = 'Gems/' + gem_name
         if version_subdirectory:
             relative_gem_path += '/' + version_subdirectory
         return relative_gem_path
@@ -552,7 +863,8 @@ class lmbr_aws_TestCase(unittest.TestCase):
             sys.argv.extend(self.lmbr_aws_credentials_args)
 
         display = 'lmbr_aws'
-        for arg in sys.argv[1:]:
+
+        for arg in sys.argv[1:]:            
             display = display + ' ' + arg
         print '\n\n{}\n'.format(display)
 
@@ -575,14 +887,37 @@ class lmbr_aws_TestCase(unittest.TestCase):
         if os.path.exists(self.LOCAL_PROJECT_SETTINGS_FILE_PATH):
             with open(self.LOCAL_PROJECT_SETTINGS_FILE_PATH, 'r') as f:
                 setting = json.load(f)
-                return setting[setting[test_constant.DEFAULT][test_constant.SET]]
+                if test_constant.DEFAULT not in setting:
+                    return {}
+                attr = setting[test_constant.DEFAULT][test_constant.SET]
+                if attr not in setting:
+                    return {}
+                return setting[attr]
         else:
             return {}
 
     def load_cloud_project_settings(self):
         project_stack_arn = self.get_project_stack_arn()
+        if not project_stack_arn:
+            return {}
         config_bucket_id = self.get_stack_resource_physical_id(project_stack_arn, 'Configuration')
-        return json.load(self.aws_s3.get_object(Bucket=config_bucket_id, Key="project-settings.json")["Body"]) if config_bucket_id else {}
+        res = self.aws_s3.list_objects_v2(Bucket=config_bucket_id, Prefix="dstack")
+        
+        cloud_deployments = res.get('Contents', {})
+        deployments = {
+            "deployment":{}
+        }
+        entries = deployments["deployment"]
+        for deployment in cloud_deployments:
+            name = deployment['Key']
+            prefix, group, deployment_name, ext = name.split('.')                            
+            if group == "ReleaseDeployment" or group == "DefaultDeployment":
+                deployments[group] = self.aws_s3.get_object(Bucket=config_bucket_id, Key=name)["Body"].read()
+            else:
+                definition = json.load(self.aws_s3.get_object(Bucket=config_bucket_id, Key=name)["Body"]) 
+                entries[deployment_name] = definition                          
+        
+        return deployments
 
     def refresh_stack_description(self, arn):
         self.stack_descriptions[arn] = self.aws_cloudformation.describe_stacks(StackName=arn)['Stacks'][0]
@@ -606,12 +941,13 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.stack_resource_descriptions[arn] = self.aws_cloudformation.describe_stack_resources(StackName=arn)
 
     def get_stack_resource(self, stack_arn, logical_resource_id):    
-        describe_stack_resources_result = self.stack_resource_descriptions.get(stack_arn, None)
-        if describe_stack_resources_result is None:
-            describe_stack_resources_result = self.aws_cloudformation.describe_stack_resources(StackName=stack_arn)
+        describe_stack_resources_result = self.stack_resource_descriptions.get(stack_arn, None)        
+        if describe_stack_resources_result is None:            
+            describe_stack_resources_result = self.aws_cloudformation.describe_stack_resources(StackName=stack_arn)            
             self.stack_resource_descriptions[stack_arn] = describe_stack_resources_result
-        for resource in describe_stack_resources_result['StackResources']:
-            if resource['LogicalResourceId'] == logical_resource_id:
+        
+        for resource in describe_stack_resources_result['StackResources']:            
+            if resource['LogicalResourceId'] == logical_resource_id:                
                 return resource
         self.fail('Resource {} not found in stack {}'.format(logical_resource_id, stack_arn))
 
@@ -663,12 +999,12 @@ class lmbr_aws_TestCase(unittest.TestCase):
         settings = self.load_local_project_settings()
         return settings.get('ProjectStackId') if settings else None
 
-    def get_resource_group_stack_arn(self, deployment_name, resource_group_name):
-        deployment_stack_arn = self.get_deployment_stack_arn(deployment_name)
+    def get_resource_group_stack_arn(self, deployment_name, resource_group_name):        
+        deployment_stack_arn = self.get_deployment_stack_arn(deployment_name)        
         return self.get_stack_resource_arn(deployment_stack_arn, resource_group_name)
 
     def get_deployment_stack_arn(self, deployment_name):
-        deployment = self.get_deployment_settings(deployment_name)        
+        deployment = self.get_deployment_settings(deployment_name)
         return deployment['DeploymentStackId'] if 'DeploymentStackId' in deployment else None
 
     def get_deployment_access_stack_arn(self, deployment_name):
@@ -676,12 +1012,14 @@ class lmbr_aws_TestCase(unittest.TestCase):
         return deployment['DeploymentAccessStackId'] if 'DeploymentAccessStackId' in deployment else None
 
     def get_deployment_settings(self, deployment_name):
-        settings = self.load_cloud_project_settings()
+        settings = self.load_cloud_project_settings()        
+
         if not settings:
             return {}
-        deployments = settings['deployment']
+        
+        deployments = settings['deployment']        
         if not deployments or deployment_name not in deployments:
-            return {}        
+            return {}
         return deployments[deployment_name]
 
     def verify_s3_object_does_not_exist(self, bucket, key):
@@ -705,21 +1043,21 @@ class lmbr_aws_TestCase(unittest.TestCase):
             self.fail("head_object(Bucket='{}', Key='{}') -> ContentLength is 0".format(bucket, key))
 
 
-    def verify_stack(self, context, stack_arn, spec):        
+    def verify_stack(self, context, stack_arn, spec, exact=True):        
         verified = False
         if 'StackStatus' in spec:
-            res = self.aws_cloudformation.describe_stacks(StackName = stack_arn)
-            self.assertEqual(res['Stacks'][0]['StackStatus'], spec['StackStatus'], 'Stack Status {} when expected {} for stack with context {}'.format(res['Stacks'][0]['StackStatus'], spec['StackStatus'], stack_arn, context))
+            res = self.aws_cloudformation.describe_stacks(StackName = stack_arn)            
+            self.assertEqual(res['Stacks'][0]['StackStatus'], spec['StackStatus'], 'Stack Status {} when expected {} for stack with context {}.'.format(res['Stacks'][0]['StackStatus'], spec['StackStatus'], stack_arn, context))
             verified = True
 
         if 'StackResources' in spec:
-            self.verify_stack_resources(context, stack_arn, spec['StackResources'])
+            self.verify_stack_resources(context, stack_arn, spec['StackResources'], exact)
             verified = True
 
         self.assertTrue(verified)
 
 
-    def verify_stack_resources(self, context, stack_arn, expected_resources):
+    def verify_stack_resources(self, context, stack_arn, expected_resources, exact=True):
 
         res = self.aws_cloudformation.describe_stack_resources(StackName = stack_arn)
         stack_resources = res['StackResources']
@@ -729,7 +1067,11 @@ class lmbr_aws_TestCase(unittest.TestCase):
         for stack_resource in stack_resources:
 
             expected_resource = expected_resources.get(stack_resource['LogicalResourceId'], None)
-            self.assertIsNotNone(expected_resource, 'Unexpected Resource {} in Stack {}'.format(stack_resource, stack_arn))
+            if exact:
+                self.assertIsNotNone(expected_resource, 'Unexpected Resource {} in Stack {}'.format(stack_resource, stack_arn))
+            else:
+                continue
+
             resources_seen.append(stack_resource['LogicalResourceId'])
 
             self.assertEquals(expected_resource['ResourceType'], stack_resource['ResourceType'],
@@ -745,7 +1087,8 @@ class lmbr_aws_TestCase(unittest.TestCase):
             if handler is not None:
                 handler(self, context + ' resource ' + stack_resource['LogicalResourceId'], stack_resource, expected_resource)
 
-        self.assertEquals(sorted(resources_seen), sorted(expected_resources.keys()), 'Missing resources in stack {}. \nSeen: {}\nExpected: {}'.format(stack_arn, sorted(resources_seen), sorted(expected_resources.keys())))
+        if exact:
+            self.assertEquals(sorted(resources_seen), sorted(expected_resources.keys()), 'The examined stack \'{}\' has additional resources outside the expected ones. \nSeen: {}\nExpected: {}'.format(stack_arn, sorted(resources_seen), sorted(expected_resources.keys())))
 
     def expand_resource_references(self, permissions, stack_resources):
         for permission in permissions:
@@ -940,7 +1283,6 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
             mapping = mappings.get(logical_id, None)
             self.assertIsNotNone(mapping, "Missing mapping " + logical_id)
-
             logical_id_parts = logical_id.split('.')
             resource_group_name = logical_id_parts[0]
             logical_resource_id = logical_id_parts[1]
@@ -972,17 +1314,17 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
         self.assertIn('PlayerAccessIdentityPool', mappings)
         self.assertEquals(mappings['PlayerAccessIdentityPool']['ResourceType'], 'Custom::CognitoIdentityPool', 'for mapping PlayerAccessIdentityPool')
-        physical_resource_id = self.get_stack_resource_physical_id(self.get_deployment_access_stack_arn(deployment_name), 'PlayerAccessIdentityPool')
+        physical_resource_id = custom_resource_utils.get_embedded_physical_id(self.get_stack_resource_physical_id(self.get_deployment_access_stack_arn(deployment_name), 'PlayerAccessIdentityPool'))        
         self.assertEquals(mappings['PlayerAccessIdentityPool']['PhysicalResourceId'], physical_resource_id, 'for mapping PlayerAccessIdentityPool')
 
         self.assertIn('PlayerLoginIdentityPool', mappings)
         self.assertEquals(mappings['PlayerLoginIdentityPool']['ResourceType'], 'Custom::CognitoIdentityPool', 'for mapping PlayerLoginIdentityPool')
-        physical_resource_id = self.get_stack_resource_physical_id(self.get_deployment_access_stack_arn(deployment_name), 'PlayerLoginIdentityPool')
+        physical_resource_id = custom_resource_utils.get_embedded_physical_id(self.get_stack_resource_physical_id(self.get_deployment_access_stack_arn(deployment_name), 'PlayerLoginIdentityPool'))        
         self.assertEquals(mappings['PlayerLoginIdentityPool']['PhysicalResourceId'], physical_resource_id, 'for mapping PlayerLoginIdentityPool')
 
         self.assertIn('PlayerAccessTokenExchange', mappings)
         self.assertEquals(mappings['PlayerAccessTokenExchange']['ResourceType'], 'AWS::Lambda::Function', 'for mapping PlayerAccessTokenExchange')
-        physical_resource_id = self.get_stack_resource_physical_id(self.get_project_stack_arn(), 'PlayerAccessTokenExchange')
+        physical_resource_id = custom_resource_utils.get_embedded_physical_id(self.get_stack_resource_physical_id(self.get_project_stack_arn(), 'PlayerAccessTokenExchange'))        
         self.assertEquals(mappings['PlayerAccessTokenExchange']['PhysicalResourceId'], physical_resource_id, 'for mapping PlayerAccessTokenExchange')
 
         for logical_id in mappings.keys():
@@ -1253,7 +1595,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
             yield _mock
 
 
-    def get_service_client(self, assumed_role = None, use_aws_auth = True, stack_id = None):
+    def get_service_client(self, assumed_role = None, use_aws_auth = True, stack_id = None, access_stack_id=None):
         '''Gets a service client for a stack's service api.
 
         Arguments:
@@ -1279,7 +1621,10 @@ class lmbr_aws_TestCase(unittest.TestCase):
             if assumed_role.startswith('Project'):
                 role_arn = self.get_stack_resource_arn(self.get_project_stack_arn(), assumed_role)
             else:
-                role_arn = self.get_stack_resource_arn(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), assumed_role)
+                if access_stack_id:
+                    role_arn = self.get_stack_resource_arn(access_stack_id, assumed_role)
+                else:
+                    role_arn = self.get_stack_resource_arn(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), assumed_role)
         else:
             role_arn = None
 
@@ -1343,4 +1688,5 @@ GAME_XML_CONTENT = '''<ObjectStream version="1">
 	</Class>
 </ObjectStream>
 '''
+
 

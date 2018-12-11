@@ -498,7 +498,7 @@ void PyGameSubMaterial::UpdateSubMaterial()
 
             for (int j = 0; j < shdResources.m_ShaderParams.size(); j++)
             {
-                if (QString::compare(pVar->GetName(), shdResources.m_ShaderParams[j].m_Name) == 0)
+                if (QString::compare(pVar->GetName(), shdResources.m_ShaderParams[j].m_Name.c_str()) == 0)
                 {
                     pParam = &shdResources.m_ShaderParams[j];
 
@@ -2428,7 +2428,7 @@ namespace PyScript
         {
             modules[i].initFunc();  // RegisterFunctionsForModule() called here
             string importStatement;
-            importStatement.Format("import %s", modules[i].name.c_str());
+            importStatement.Format("import %s", modules[i].name);
             PyRun_SimpleString(importStatement.c_str());
         }
     }

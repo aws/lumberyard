@@ -98,11 +98,12 @@ template<>
 inline void TAnimTrack<ICaptureKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<ICaptureKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<ICaptureKey>::m_flags)
         ->Field("Range", &TAnimTrack<ICaptureKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<ICaptureKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<ICaptureKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<ICaptureKey>::m_keys)
+        ->Field("Id", &TAnimTrack<ICaptureKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////

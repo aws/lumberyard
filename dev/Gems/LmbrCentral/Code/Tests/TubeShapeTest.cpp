@@ -49,7 +49,10 @@ namespace UnitTest
 
         void TearDown() override
         {
-            m_serializeContext.reset();
+            m_transformComponentDescriptor.reset();
+            m_tubeShapeComponentDescriptor.reset();
+            m_splineComponentDescriptor.reset();
+            m_serializeContext.reset(); 
             AllocatorsFixture::TearDown();
         }
     };

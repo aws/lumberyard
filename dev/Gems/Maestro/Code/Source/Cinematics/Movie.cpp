@@ -84,19 +84,19 @@ static SMovieSequenceAutoComplete s_movieSequenceAutoComplete;
 // Serialization for anim nodes & param types
 #define REGISTER_NODE_TYPE(name) assert(g_animNodeEnumToStringMap.find(AnimNodeType::name) == g_animNodeEnumToStringMap.end()); \
     g_animNodeEnumToStringMap[AnimNodeType::name] = STRINGIFY(name);                                                            \
-    g_animNodeStringToEnumMap[STRINGIFY(name)] = AnimNodeType::name;
+    g_animNodeStringToEnumMap[string(STRINGIFY(name))] = AnimNodeType::name;
 
 #define REGISTER_PARAM_TYPE(name) assert(g_animParamEnumToStringMap.find(AnimParamType::name) == g_animParamEnumToStringMap.end()); \
     g_animParamEnumToStringMap[AnimParamType::name] = STRINGIFY(name);                                                              \
-    g_animParamStringToEnumMap[STRINGIFY(name)] = AnimParamType::name;
+    g_animParamStringToEnumMap[string(STRINGIFY(name))] = AnimParamType::name;
 
 namespace
 {
     AZStd::unordered_map<AnimNodeType, string> g_animNodeEnumToStringMap;
-    std::map<string, AnimNodeType, stl::less_stricmp<string> > g_animNodeStringToEnumMap;
+    StaticInstance<std::map<string, AnimNodeType, stl::less_stricmp<string> >> g_animNodeStringToEnumMap;
 
     AZStd::unordered_map<AnimParamType, string> g_animParamEnumToStringMap;
-    std::map<string, AnimParamType, stl::less_stricmp<string> > g_animParamStringToEnumMap;
+    StaticInstance<std::map<string, AnimParamType, stl::less_stricmp<string> >> g_animParamStringToEnumMap;
 
     // If you get an assert in this function, it means two node types have the same enum value.
     void RegisterNodeTypes()
@@ -1765,6 +1765,12 @@ void CMovieSystem::ControlCapture()
 }
 
 //////////////////////////////////////////////////////////////////////////
+bool CMovieSystem::IsCapturing() const
+{
+    return m_cvar_capture_frames ? m_cvar_capture_frames->GetIVal() != 0 : false;
+}
+
+//////////////////////////////////////////////////////////////////////////
 int CMovieSystem::GetEntityNodeParamCount() const
 {
     return CAnimEntityNode::GetParamCountStatic();
@@ -2027,7 +2033,7 @@ ILightAnimWrapper* CMovieSystem::CreateLightAnimWrapper(const char* name) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-CLightAnimWrapper::LightAnimWrapperCache CLightAnimWrapper::ms_lightAnimWrapperCache;
+StaticInstance<CLightAnimWrapper::LightAnimWrapperCache> CLightAnimWrapper::ms_lightAnimWrapperCache;
 AZStd::intrusive_ptr<IAnimSequence> CLightAnimWrapper::ms_pLightAnimSet;
 
 //////////////////////////////////////////////////////////////////////////
@@ -2083,7 +2089,7 @@ void CLightAnimWrapper::ReconstructCache()
     }
 #endif
 
-    stl::reconstruct(ms_lightAnimWrapperCache);
+    ms_lightAnimWrapperCache.clear();
     SetLightAnimSet(0);
 }
 

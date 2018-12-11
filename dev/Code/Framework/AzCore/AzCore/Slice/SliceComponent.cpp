@@ -612,10 +612,15 @@ namespace AZ
             instance->m_dataFlags.ClearEntityDataFlags(entityId);
 
             auto entityToBaseIt = instance->m_entityIdToBaseCache.find(entityId);
-            AZ_Assert(entityToBaseIt != instance->m_entityIdToBaseCache.end(), "Reverse lookup cache is inconsistent, please check it's logic!");
-            instance->m_baseToNewEntityIdMap.erase(entityToBaseIt->second);
-            instance->m_entityIdToBaseCache.erase(entityToBaseIt);
-            return true;
+            bool entityToBaseExists = entityToBaseIt != instance->m_entityIdToBaseCache.end();
+            AZ_Assert(entityToBaseExists, "Reverse lookup cache is inconsistent, please check it's logic!");
+
+            if (entityToBaseExists)
+            {
+                instance->m_baseToNewEntityIdMap.erase(entityToBaseIt->second);
+                instance->m_entityIdToBaseCache.erase(entityToBaseIt);
+                return true;
+            }
         }
 
         return false;

@@ -749,8 +749,6 @@ bool CPlayerProfileManager::SaveProfile(const char* userId, IPlayerProfileManage
 
     result = ePOR_Success;
 
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     // notify game systems that the profile is about to be saved
     const int listenerSize = m_listeners.size();
     for (int i = 0; i < listenerSize; i++)
@@ -804,9 +802,7 @@ bool CPlayerProfileManager::SaveInactiveProfile(const char* userId, const char* 
     }
 
     result = ePOR_Success;
-
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
+    
     // notify game systems that the profile is about to be saved
     const int listenerSize = m_listeners.size();
     for (int i = 0; i < listenerSize; i++)

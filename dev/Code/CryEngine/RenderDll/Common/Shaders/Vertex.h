@@ -168,8 +168,8 @@ namespace AZ
             {
                 m_vertexAttributes = attributes;
                 m_enum = eVF_Unknown;
-                PadFormatForBufferAlignment();
-                CalculateStride();
+                UpdateStride();
+                PadFormatForBufferAlignment();           
                 GenerateName();
                 GenerateCrc();
             }
@@ -344,8 +344,8 @@ namespace AZ
                     AZ_Assert(false, "Invalid vertex format");
                     m_enum = eVF_Unknown;
                 }
-                PadFormatForBufferAlignment();
-                CalculateStride();
+                UpdateStride();
+                PadFormatForBufferAlignment();               
                 GenerateName();
                 GenerateCrc();
             }
@@ -506,7 +506,7 @@ namespace AZ
             }
         private:
             //! Calculates the sum of the size in bytes of all attributes that make up this format
-            void CalculateStride()
+            void UpdateStride()
             {
                 m_stride = 0;
                 for (Attribute attribute : m_vertexAttributes)
@@ -543,6 +543,9 @@ namespace AZ
                 default:
                     break;
                 }
+
+                //re-calculate and update the stride
+                UpdateStride();
             }
 
             void GenerateName(void)

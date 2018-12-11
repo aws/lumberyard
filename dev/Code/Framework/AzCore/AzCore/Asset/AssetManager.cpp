@@ -521,7 +521,6 @@ namespace AZ
             AZ_Error("AssetDatabase", handler != nullptr, "Attempting to register a null asset handler!");
             if (handler)
             {
-                AZStd::lock_guard<AZStd::recursive_mutex> l(m_handlerMutex);
                 if (m_handlers.insert(AZStd::make_pair(assetType, handler)).second)
                 {
                     handler->m_nHandledTypes++;
@@ -550,7 +549,6 @@ namespace AZ
             if (handler)
             {
                 AZ_Error("AssetDatabase", handler->m_nActiveAssets == 0, "Asset handler '%s' is being removed but there are still %d active assets being handled by it!", handler->RTTI_GetTypeName(), (int)handler->m_nActiveAssets);
-                AZStd::lock_guard<AZStd::recursive_mutex> l(m_handlerMutex);
                 for (AssetHandlerMap::iterator it = m_handlers.begin(); it != m_handlers.end(); /*++it*/)
                 {
                     if (it->second == handler)
@@ -710,7 +708,6 @@ namespace AZ
                     }
 
                     {
-                        AZStd::lock_guard<AZStd::recursive_mutex> handlerLock(m_handlerMutex);
 
                     // find the asset type handler
                     AssetHandlerMap::iterator handlerIt = m_handlers.find(assetInfo.m_assetType);
@@ -829,7 +826,6 @@ namespace AZ
             AssetMap::iterator it = m_assets.find(assetId);
             if (it == m_assets.end())
             {
-                AZStd::lock_guard<AZStd::recursive_mutex> handlerLock(m_handlerMutex);
                 // find the asset type handler
                 AssetHandlerMap::iterator handlerIt = m_handlers.find(assetType);
                 AZ_Error("AssetDatabase", handlerIt != m_handlers.end(), "No handler was registered for this asset [type:0x%x id:%s]!", assetType, assetId.ToString<AZ::OSString>().c_str());
@@ -866,34 +862,43 @@ namespace AZ
         void AssetManager::ReleaseAsset(AssetData* asset)
         {
             AZ_Assert(asset, "Cannot release NULL AssetPtr!");
-
-            AZStd::lock_guard<AZStd::recursive_mutex> asset_lock(m_assetMutex);
-
-            // need to check the count again in here in case
-            // someone was trying to get the asset on another thread
-            // Set it to -1 so only this thread will attempt to clean up the cache and delete the asset
-            int expectedRefCount = 0;
-            if (asset->m_useCount.compare_exchange_strong(expectedRefCount, -1))
+            AssetId assetId;
+            bool isInDatabase = false; // We do support assets that are not registered in the asset manager (with the same ID too).
+            bool destroyAsset = false;
+            AssetType assetType = AZ::Uuid::CreateNull();
             {
-                AssetId assetId = asset->GetId();
-                AssetType assetType = asset->GetType();
-                bool isInDatabase = false; // We do support assets that are not registered in the asset manager (with the same ID too).
+                AZStd::lock_guard<AZStd::recursive_mutex> asset_lock(m_assetMutex);
 
-                if (asset->IsRegisterReadonlyAndShareable())
+                // need to check the count again in here in case
+                // someone was trying to get the asset on another thread
+                // Set it to -1 so only this thread will attempt to clean up the cache and delete the asset
+                int expectedRefCount = 0;
+                if (asset->m_useCount.compare_exchange_strong(expectedRefCount, -1))
                 {
-                    AssetMap::iterator it = m_assets.find(assetId);
-                    if (it != m_assets.end())
+                    destroyAsset = true;
+                    assetId = asset->GetId();
+                    assetType = asset->GetType();
+
+                    if (asset->IsRegisterReadonlyAndShareable())
                     {
-                        if (asset == it->second)
+                        AssetMap::iterator it = m_assets.find(assetId);
+                        if (it != m_assets.end())
                         {
-                            isInDatabase = true;
-                            m_assets.erase(it);
+                            if (asset == it->second)
+                            {
+                                isInDatabase = true;
+                                m_assets.erase(it);
+                            }
                         }
                     }
                 }
+            }
 
+            // We have to separate the code which was removing the asset from the m_asset map while being locked, but then actually destroy the asset
+            // while the lock is not held since destroying the asset while holding the lock can cause a deadlock.
+            if(destroyAsset)
+            {
                 // find the asset type handler
-                AZStd::lock_guard<AZStd::recursive_mutex> handlerLock(m_handlerMutex);
                 AssetHandlerMap::iterator handlerIt = m_handlers.find(assetType);
                 AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:0x%x id:%s]!", assetType.ToString<AZ::OSString>().c_str(), assetId.ToString<AZ::OSString>().c_str());
                 AssetHandler* handler = handlerIt->second;
@@ -917,7 +922,6 @@ namespace AZ
         {
             AssetHandler* handler;
             {
-                AZStd::lock_guard<AZStd::recursive_mutex> handlerLock(m_handlerMutex);
                 // find the asset type handler
                 AssetHandlerMap::iterator handlerIt = m_handlers.find(asset.GetType());
                 AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!", asset.GetType().ToString<AZ::OSString>().c_str(), asset.GetId().ToString<AZ::OSString>().c_str());
@@ -968,7 +972,6 @@ namespace AZ
 
             // Resolve the asset handler and allocate new data for the reload.
             {
-                AZStd::lock_guard<AZStd::recursive_mutex> handlerLock(m_handlerMutex);
                 AssetHandlerMap::iterator handlerIt = m_handlers.find(currentAssetData->GetType());
                 AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:0x%x id:%s]!",
                     currentAssetData->GetType().ToString<AZ::OSString>().c_str(), currentAssetData->GetId().ToString<AZ::OSString>().c_str());
@@ -1022,7 +1025,6 @@ namespace AZ
 
                 // Resolve the asset handler and account for the new asset instance.
                 {
-                    AZStd::lock_guard<AZStd::recursive_mutex> handlerLock(m_handlerMutex);
                     AssetHandlerMap::iterator handlerIt = m_handlers.find(newData->GetType());
                     AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:0x%x id:%s]!",
                         newData->GetType().ToString<AZ::OSString>().c_str(), newData->GetId().ToString<AZ::OSString>().c_str());

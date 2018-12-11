@@ -1,0 +1,3 @@
+[console_scripts]
+jirashell = jira.jirashell:main
+

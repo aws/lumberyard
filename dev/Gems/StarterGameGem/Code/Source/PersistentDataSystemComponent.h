@@ -26,116 +26,114 @@
 
 namespace StarterGameGem
 {
+    /*!
+    * Requests for the physics system
+    */
+    class PersistentDataSystemRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        ////////////////////////////////////////////////////////////////////////
+        // EBusTraits
+        // singleton pattern
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        ////////////////////////////////////////////////////////////////////////
 
+        virtual ~PersistentDataSystemRequests() = default;
 
-	/*!
-	* Requests for the physics system
-	*/
-	class PersistentDataSystemRequests
-		: public AZ::EBusTraits
-	{
-	public:
-		////////////////////////////////////////////////////////////////////////
-		// EBusTraits
-		// singleton pattern
-		static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-		static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
-		////////////////////////////////////////////////////////////////////////
+        virtual bool HasData(const AZStd::string& name) = 0;
+        virtual bool SetData(const AZStd::string& name, const AZStd::any& value, const bool addIfNotExist = false) = 0;
+        virtual AZStd::any GetData(const AZStd::string& name) = 0;
+        virtual void RemoveData(const AZStd::string& name) = 0;
+        // when this callback gets called, the data with it will be the new value
+        virtual void RegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) = 0;
+        virtual void UnRegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) = 0;
 
-		virtual ~PersistentDataSystemRequests() = default;
+        virtual void ClearAllData() = 0;
+    };
 
-		virtual bool HasData(const AZStd::string& name) = 0;
-		virtual bool SetData(const AZStd::string& name, const AZStd::any& value, const bool addIfNotExist = false) = 0;
-		virtual AZStd::any GetData(const AZStd::string& name) = 0;
-		virtual void RemoveData(const AZStd::string& name) = 0;
-		// when this callback gets called, the data with it will be the new value
-		virtual void RegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) = 0;
-		virtual void UnRegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) = 0;
+    using PersistentDataSystemRequestBus = AZ::EBus<PersistentDataSystemRequests>;
 
-		virtual void ClearAllData() = 0;
-	};
-
-	using PersistentDataSystemRequestBus = AZ::EBus<PersistentDataSystemRequests>;
-
-	/*!
-	 * System component which listens for IPhysicalWorld events,
-	 * filters for events that involve AZ::Entities,
-	 * and broadcasts these events on the EntityPhysicsEventBus.
-	 */
-	class PersistentDataSystemComponent
+    /*!
+     * System component which listens for IPhysicalWorld events,
+     * filters for events that involve AZ::Entities,
+     * and broadcasts these events on the EntityPhysicsEventBus.
+     */
+    class PersistentDataSystemComponent
         : public AZ::Component
 #ifdef STARTER_GAME_EDITOR
         , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
 #endif
-		, public PersistentDataSystemRequestBus::Handler
-		, private AZ::TickBus::Handler
-	{
-	public:
-		AZ_COMPONENT(PersistentDataSystemComponent, "{A2087EFC-9F55-4603-B40B-6A368C102E66}");
+        , public PersistentDataSystemRequestBus::Handler
+        , private AZ::TickBus::Handler
+    {
+    public:
+        AZ_COMPONENT(PersistentDataSystemComponent, "{A2087EFC-9F55-4603-B40B-6A368C102E66}");
 
-		static void Reflect(AZ::ReflectContext* context);
+        static void Reflect(AZ::ReflectContext* context);
 
-		static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
-		{
-			provided.push_back(AZ_CRC("PersistentDataSystemService"));
-		}
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC("PersistentDataSystemService"));
+        }
 
-		static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
-		{
-			incompatible.push_back(AZ_CRC("PersistentDataSystemService"));
-		}
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+        {
+            incompatible.push_back(AZ_CRC("PersistentDataSystemService"));
+        }
 
-		~PersistentDataSystemComponent() override {}
+        ~PersistentDataSystemComponent() override {}
 
-		static PersistentDataSystemComponent* GetInstance();
+        static PersistentDataSystemComponent* GetInstance();
 
 
-		enum class ParentActivationTransformMode : AZ::u32
-		{
-			MaintainOriginalRelativeTransform,  ///< Child will snap to originally-configured parent-relative transform when parent is activated.
-			MaintainCurrentWorldTransform,      ///< Child will still follow parent, but will maintain its current world transform when parent is activated.
-		};
-		ParentActivationTransformMode           m_parentActivationTransformMode;
+        enum class ParentActivationTransformMode : AZ::u32
+        {
+            MaintainOriginalRelativeTransform,  ///< Child will snap to originally-configured parent-relative transform when parent is activated.
+            MaintainCurrentWorldTransform,      ///< Child will still follow parent, but will maintain its current world transform when parent is activated.
+        };
+        ParentActivationTransformMode           m_parentActivationTransformMode;
 
-		enum class eComparison : AZ::u32
-		{
-			Equal,
-			GreaterThan,
-			GreaterThanOrEqual,
-			LessThan,
-			LessThanOrEqual,
-		};
+        enum class eComparison : AZ::u32
+        {
+            Equal,
+            GreaterThan,
+            GreaterThanOrEqual,
+            LessThan,
+            LessThanOrEqual,
+        };
 
-		enum class eBasicDataTypes : AZ::u32
-		{
-			Number,
-			String,
-			Bool,
-			Other,
+        enum class eBasicDataTypes : AZ::u32
+        {
+            Number,
+            String,
+            Bool,
+            Other,
 
-			Empty,
-		};
+            Empty,
+        };
 
-		enum class eDataManipulationTypes : AZ::u32
-		{
-			AddOnly,
-			SetOnly,
-			AddOrSet,
+        enum class eDataManipulationTypes : AZ::u32
+        {
+            AddOnly,
+            SetOnly,
+            AddOrSet,
 
-			Toggle, // valid only for bools
+            Toggle, // valid only for bools
 
-			Increment, // valid only for numbers
+            Increment, // valid only for numbers
 
-			Append, // valid only for strings
-			Prepend, // valid only for strings
-			// possible other string operations to be added later
-		};
+            Append, // valid only for strings
+            Prepend, // valid only for strings
+            // possible other string operations to be added later
+        };
 
-		static eBasicDataTypes GetBasicType(const AZStd::any& value);
-		// ture if passes test, otherwise false, including type missmatch
-		bool Compare(const AZStd::string& name, const AZStd::any& value, const eComparison compareType);
-		// returns tru if operation could be performed
-		bool Manipulate(const AZStd::string& name, const AZStd::any& value, const eDataManipulationTypes manipulationType);
+        static eBasicDataTypes GetBasicType(const AZStd::any& value);
+        // ture if passes test, otherwise false, including type missmatch
+        bool Compare(const AZStd::string& name, const AZStd::any& value, const eComparison compareType);
+        // returns tru if operation could be performed
+        bool Manipulate(const AZStd::string& name, const AZStd::any& value, const eDataManipulationTypes manipulationType);
 
 #ifdef STARTER_GAME_EDITOR
         //////////////////////////////////////////////////////////////////////////
@@ -145,67 +143,67 @@ namespace StarterGameGem
         //////////////////////////////////////////////////////////////////////////
 #endif
 
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::TickBus interface implementation
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::TickBus interface implementation
         void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
         //////////////////////////////////////////////////////////////////////////
 
-		////////////////////////////////////////////////////////////////////////
-		// PersistentDataSystemRequests
-		bool HasData(const AZStd::string& name) override;
-		bool SetData(const AZStd::string& name, const AZStd::any& value, const bool addIfNotExist = false) override;
-		AZStd::any GetData(const AZStd::string& name) override;
-		void RemoveData(const AZStd::string& name) override;
-		// when this callback gets called, the data with it will be the new value
-		void RegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) override;
-		void UnRegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) override;
-		void ClearAllData() override;
-		////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////
+        // PersistentDataSystemRequests
+        bool HasData(const AZStd::string& name) override;
+        bool SetData(const AZStd::string& name, const AZStd::any& value, const bool addIfNotExist = false) override;
+        AZStd::any GetData(const AZStd::string& name) override;
+        void RemoveData(const AZStd::string& name) override;
+        // when this callback gets called, the data with it will be the new value
+        void RegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) override;
+        void UnRegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) override;
+        void ClearAllData() override;
+        ////////////////////////////////////////////////////////////////////////
 
 
-		void PrintOut(const bool toScreen, const bool toConsole, const bool printCallbacks, const char* filter) const ;
+        void PrintOut(const bool toScreen, const bool toConsole, const bool printCallbacks, const char* filter) const;
 
-	private:
-		////////////////////////////////////////////////////////////////////////
-		// AZ::Component
-		void Activate() override;
-		void Deactivate() override;
-		////////////////////////////////////////////////////////////////////////
+    private:
+        ////////////////////////////////////////////////////////////////////////
+        // AZ::Component
+        void Activate() override;
+        void Deactivate() override;
+        ////////////////////////////////////////////////////////////////////////
 
-		// my things here 
+        // my things here
 
-		class cDataSet
-		{
-		public:
-			cDataSet(const AZStd::string& name, const AZStd::any& value)
-				: m_name(name)
-				, m_value(value)
-			{}
+        class cDataSet
+        {
+        public:
+            cDataSet(const AZStd::string& name, const AZStd::any& value)
+                : m_name(name)
+                , m_value(value)
+            {}
 
-			~cDataSet() = default;
+            ~cDataSet() = default;
 
-			void SetValue(const AZStd::any& value);
-			const AZStd::any& GetValue() const { return m_value; }
-			const AZStd::string& GetName() const { return m_name; }
+            void SetValue(const AZStd::any& value);
+            const AZStd::any& GetValue() const { return m_value; }
+            const AZStd::string& GetName() const { return m_name; }
 
-			void RegisterCallback(const AZ::GameplayNotificationId& messageID);
-			void UnRegisterCallback(const AZ::GameplayNotificationId& messageID);
+            void RegisterCallback(const AZ::GameplayNotificationId& messageID);
+            void UnRegisterCallback(const AZ::GameplayNotificationId& messageID);
 
-			AZStd::string Print(const bool printCallbacks) const;
+            AZStd::string Print(const bool printCallbacks) const;
 
-		private:
-			const AZStd::string m_name;
-			AZStd::any m_value;
-			AZStd::list<AZ::GameplayNotificationId> m_callbacks;
+        private:
+            const AZStd::string m_name;
+            AZStd::any m_value;
+            AZStd::list<AZ::GameplayNotificationId> m_callbacks;
 
 
-			bool AlreadyHaveCallback(const AZ::GameplayNotificationId& messageID, AZStd::list<AZ::GameplayNotificationId>::iterator& currentCallback);
-		};
+            bool AlreadyHaveCallback(const AZ::GameplayNotificationId& messageID, AZStd::list<AZ::GameplayNotificationId>::iterator& currentCallback);
+        };
 
-		AZStd::list<cDataSet> m_Datas;
+        AZStd::list<cDataSet> m_Datas;
 
-		bool FindData(const AZStd::string& name, AZStd::list<cDataSet>::iterator& currentData);
-		void AddData(const AZStd::string& name, const AZStd::any& value);
-		//bool RemoveData(const AZStd::string& name, AZStd::list<cDataSet>::iterator& currentData) const ;
-	};
+        bool FindData(const AZStd::string& name, AZStd::list<cDataSet>::iterator& currentData);
+        void AddData(const AZStd::string& name, const AZStd::any& value);
+        //bool RemoveData(const AZStd::string& name, AZStd::list<cDataSet>::iterator& currentData) const ;
+    };
 } // namespace LmbrCentral

@@ -35,8 +35,8 @@ using namespace PathUtil;
 
 namespace AudioControls
 {
-    const string CAudioControlsWriter::ms_sLevelsFolder = "levels";
-    const string CAudioControlsWriter::ms_sLibraryExtension = ".xml";
+    const char* CAudioControlsWriter::ms_sLevelsFolder = "levels";
+    const char* CAudioControlsWriter::ms_sLibraryExtension = ".xml";
 
     //-------------------------------------------------------------------------------------------//
     string TypeToTag(EACEControlType eType)
@@ -124,7 +124,7 @@ namespace AudioControls
                 else
                 {
                     // with scope, inside level folder
-                    sLibraryPath = controlsPath + ms_sLevelsFolder + GetSlash() + sScope + GetSlash() + sLibraryName + ms_sLibraryExtension;
+                    sLibraryPath = controlsPath + string(ms_sLevelsFolder) + GetSlash() + sScope + GetSlash() + sLibraryName + ms_sLibraryExtension;
                 }
 
                 // should be able to change this back to GamePathToFullPath once a path normalization bug has been fixed:

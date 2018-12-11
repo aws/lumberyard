@@ -466,7 +466,7 @@ UiInteractableStateFont::UiInteractableStateFont()
     : m_fontFamily(nullptr)
     , m_fontEffectIndex(0)
 {
-    SetFontPathname("default-ui");
+    InitCommon("default-ui");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -475,12 +475,21 @@ UiInteractableStateFont::UiInteractableStateFont(AZ::EntityId target, const AZSt
     , m_fontFamily(nullptr)
     , m_fontEffectIndex(fontEffectIndex)
 {
-    SetFontPathname(pathname);
+    InitCommon(pathname);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiInteractableStateFont::InitCommon(const AZStd::string& fontPathname)
+{
+    SetFontPathname(fontPathname);
+
+    FontNotificationBus::Handler::BusConnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiInteractableStateFont::~UiInteractableStateFont()
 {
+    FontNotificationBus::Handler::BusDisconnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -512,6 +521,29 @@ void UiInteractableStateFont::SetInteractableEntity(AZ::EntityId interactableEnt
     if (!m_targetEntity.IsValid())
     {
         m_targetEntity = m_interactableEntity;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiInteractableStateFont::OnFontsReloaded()
+{
+    // All old font pointers have been deleted and the old font family pointers have been removed from the CryFont list.
+    // New fonts and font family objects have been created and added to the CryFont list.
+    // However, the old font family objects are still around because we have a shared pointer to them.
+    // Clear the font family shared pointers since they should no longer be used (their fonts have been deleted).
+    // When the last one is cleared, the font family's custom deleter will be called and the object will be deleted.
+    // This is OK because the custom deleter doesn't do anything if the font family is not in the CryFont's list (which it isn't)
+    m_fontFamily = nullptr;
+
+    SetFontPathname(m_fontFilename.GetAssetPath());
+
+    // It's possible that the font failed to load. If it did, try to load and use the default font but leave the
+    // assigned font path the same
+    if (!m_fontFamily)
+    {
+        AZStd::string assignedFontFilepath = m_fontFilename.GetAssetPath();
+        SetFontPathname("");
+        m_fontFilename.SetAssetPath(assignedFontFilepath.c_str());
     }
 }
 
@@ -558,6 +590,7 @@ void UiInteractableStateFont::SetFontPathname(const AZStd::string& pathname)
             if (m_fontEffectIndex >= numEffects)
             {
                 m_fontEffectIndex = 0;
+                AZ_Warning("UiInteractableState", false, "Font effect index is out of range for changed font, resetting index to 0");
             }
         }
     }

@@ -383,7 +383,6 @@ namespace
         // Create the staging buffers if supported && enabled
         bool CreateResources()
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             if (!m_resources.m_staging_buffers[StagingResources::WRITE] && gRenDev->m_DevMan.CreateBuffer(
                 s_PoolConfig.m_pool_bank_size
                 , 1
@@ -400,7 +399,6 @@ namespace
 
         bool FreeResources()
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             for (size_t i = 0; i < 2; ++i)
             {
                 UnsetStreamSources(m_resources.m_staging_buffers[i]);
@@ -417,7 +415,6 @@ namespace
 
         void* BeginRead(D3DBuffer* buffer, size_t size, size_t offset)
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             AZRHI_ASSERT(buffer && size && offset);
             AZRHI_ASSERT(size <= s_PoolConfig.m_pool_bank_size);
             AZRHI_VERIFY(m_resources.m_staged_open[StagingResources::READ] == 0);
@@ -458,7 +455,6 @@ namespace
 
         void* BeginWrite(D3DBuffer* buffer, size_t size, size_t offset)
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             AZRHI_ASSERT(buffer && size);
             AZRHI_ASSERT(size <= s_PoolConfig.m_pool_bank_size);
 
@@ -494,7 +490,6 @@ namespace
 
         void EndReadWrite()
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             D3D11_BOX contents;
             EndRead();
             if (m_resources.m_staged_open[StagingResources::WRITE])
@@ -605,7 +600,6 @@ namespace
 
         void* BeginWrite(D3DBuffer* buffer, size_t size, size_t offset)
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             AZRHI_ASSERT(buffer && size);
             AZRHI_ASSERT(size <= s_PoolConfig.m_pool_bank_size);
 
@@ -629,7 +623,6 @@ namespace
 
         void EndReadWrite()
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             Super::EndRead();
 
             D3D11_BOX contents;
@@ -721,7 +714,6 @@ error:
 
         void* BeginWrite(D3DBuffer* buffer, size_t size, size_t offset)
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             AZRHI_ASSERT(buffer && size);
             D3D11_MAPPED_SUBRESOURCE mapped_resource;
             D3D11_MAP map = D3D11_MAP_WRITE_NO_OVERWRITE;
@@ -930,7 +922,6 @@ error:
 
         bool Initialize(IDefragAllocatorPolicy* policy, bool bestFit)
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             if (m_defrag_allocator = CryGetIMemoryManager()->CreateDefragAllocator())
             {
                 IDefragAllocator::Policy pol;
@@ -945,7 +936,6 @@ error:
 
         bool Shutdown()
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             SAFE_RELEASE(m_defrag_allocator);
             return m_defrag_allocator == NULL;
         }
@@ -961,7 +951,6 @@ error:
         item_handle_t Allocate(size_t size, BufferPoolItem*& item)
         {
             FUNCTION_PROFILER(gEnv->pSystem, PROFILE_RENDERER);
-            MEMORY_SCOPE_CHECK_HEAP();
             AZRHI_VERIFY(size);
             IDefragAllocator::Hdl hdl = m_defrag_allocator->Allocate(size, NULL);
             if (hdl == IDefragAllocator::InvalidHdl)
@@ -982,7 +971,7 @@ error:
         void Free(BufferPoolItem* item)
         {
             FUNCTION_PROFILER(gEnv->pSystem, PROFILE_RENDERER);
-            MEMORY_SCOPE_CHECK_HEAP();
+            
             IF (item->m_defrag_handle != IDefragAllocator::InvalidHdl, 1)
             {
                 m_defrag_allocator->Free(item->m_defrag_handle);
@@ -1677,7 +1666,6 @@ namespace
         // allocating a new bank if all previously created banks are full
         item_handle_t Allocate(size_t size)
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             D3DBuffer* buffer = NULL;
             BufferPoolItem* item = NULL;
             BufferPoolBank* bank = NULL;
@@ -2243,7 +2231,6 @@ retry:
         void* BeginRead(BufferPoolItem* item) { return NULL; }
         void* BeginWrite(BufferPoolItem* item)
         {
-            MEMORY_SCOPE_CHECK_HEAP();
             D3DBuffer* buffer = m_backing_buffer.m_buffer;
             size_t size = item->m_size;
             D3D11_MAPPED_SUBRESOURCE mapped_resource;
@@ -2888,13 +2875,11 @@ CDeviceBufferManager::~CDeviceBufferManager()
 
 void CDeviceBufferManager::LockDevMan()
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     PoolManager::GetInstance().m_lock.Lock();
 }
 
 void CDeviceBufferManager::UnlockDevMan()
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     PoolManager::GetInstance().m_lock.Unlock();
 }
 
@@ -2903,7 +2888,6 @@ bool CDeviceBufferManager::Init()
     PoolManager& poolManager = PoolManager::GetInstance();
 
     LOADING_TIME_PROFILE_SECTION;
-    MEMORY_SCOPE_CHECK_HEAP();
     SREC_AUTO_LOCK(poolManager.m_lock);
     if (poolManager.m_initialized == true)
     {
@@ -2928,7 +2912,6 @@ bool CDeviceBufferManager::Shutdown()
 {
     PoolManager& poolManager = PoolManager::GetInstance();
 
-    MEMORY_SCOPE_CHECK_HEAP();
     SREC_AUTO_LOCK(poolManager.m_lock);
     if (poolManager.m_initialized == false)
     {
@@ -2950,7 +2933,6 @@ void CDeviceBufferManager::Sync(uint32 frameId)
     PoolManager& poolManager = PoolManager::GetInstance();
 
     FUNCTION_PROFILER_RENDERER;
-    MEMORY_SCOPE_CHECK_HEAP();
     SREC_AUTO_LOCK(poolManager.m_lock);
 
     for (int i = 0; i < PoolConfig::POOL_FRAME_QUERY_COUNT; ++i)
@@ -2981,7 +2963,7 @@ void CDeviceBufferManager::ReleaseEmptyBanks(uint32 frameId)
     PoolManager& poolManager = PoolManager::GetInstance();
 
     FUNCTION_PROFILER_RENDERER;
-    MEMORY_SCOPE_CHECK_HEAP();
+    
     SREC_AUTO_LOCK(poolManager.m_lock);
 
     for (size_t i = 0; i < BBT_MAX; ++i)
@@ -3014,7 +2996,7 @@ void CDeviceBufferManager::Update(uint32 frameId, bool called_during_loading)
 
     FUNCTION_PROFILER_RENDERER;
     LOADING_TIME_PROFILE_SECTION;
-    MEMORY_SCOPE_CHECK_HEAP();
+    
     SREC_AUTO_LOCK(poolManager.m_lock);
 
 # if ENABLE_STATOSCOPE
@@ -3112,7 +3094,6 @@ buffer_handle_t CDeviceBufferManager::Create_Locked(
 {
     PoolManager& poolManager = PoolManager::GetInstance();
 
-    MEMORY_SCOPE_CHECK_HEAP();
     AZRHI_ASSERT((type >= BBT_VERTEX_BUFFER && type < BBT_MAX));
     AZRHI_ASSERT((usage >= BU_IMMUTABLE && usage < BU_MAX));
     AZRHI_ASSERT(poolManager.m_pools[type][usage] != NULL);
@@ -3167,7 +3148,7 @@ void CDeviceBufferManager::Destroy_Locked(buffer_handle_t handle)
 {
     FUNCTION_PROFILER_LEGACYONLY(gEnv->pSystem, PROFILE_RENDERER);
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::RendererDetailed);
-    MEMORY_SCOPE_CHECK_HEAP();
+    
     AZRHI_ASSERT(handle != 0);
     BufferPoolItem& item = *reinterpret_cast<BufferPoolItem*>(handle);
     item.m_pool->Free(&item);
@@ -3191,7 +3172,7 @@ void* CDeviceBufferManager::BeginRead_Locked(buffer_handle_t handle)
     STATOSCOPE_TIMER(PoolManager::GetInstance().m_sdata[0].m_io_time);
     STATOSCOPE_IO_READ(Size(handle));
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_RENDERER);
-    MEMORY_SCOPE_CHECK_HEAP();
+    
     AZRHI_ASSERT(handle != 0);
     BufferPoolItem& item = *reinterpret_cast<BufferPoolItem*>(handle);
     return item.m_pool->BeginRead(&item);
@@ -3223,7 +3204,7 @@ void* CDeviceBufferManager::BeginWrite_Locked(buffer_handle_t handle)
     STATOSCOPE_IO_WRITTEN(Size(handle));
     FUNCTION_PROFILER_LEGACYONLY(gEnv->pSystem, PROFILE_RENDERER);
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::RendererDetailed);
-    MEMORY_SCOPE_CHECK_HEAP();
+    
     AZRHI_ASSERT(handle != 0);
     BufferPoolItem& item = *reinterpret_cast<BufferPoolItem*>(handle);
     return item.m_pool->BeginWrite(&item);
@@ -3244,7 +3225,7 @@ void CDeviceBufferManager::EndReadWrite_Locked(buffer_handle_t handle)
     STATOSCOPE_IO_WRITTEN(Size(handle));
     FUNCTION_PROFILER_LEGACYONLY(gEnv->pSystem, PROFILE_RENDERER);
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::RendererDetailed);
-    MEMORY_SCOPE_CHECK_HEAP();
+    
     AZRHI_ASSERT(handle != 0);
     BufferPoolItem& item = *reinterpret_cast<BufferPoolItem*>(handle);
     item.m_pool->EndReadWrite(&item, true);
@@ -3266,7 +3247,7 @@ bool CDeviceBufferManager::UpdateBuffer_Locked(
     STATOSCOPE_IO_WRITTEN(Size(handle));
     FUNCTION_PROFILER_LEGACYONLY(gEnv->pSystem, PROFILE_RENDERER);
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::RendererDetailed);
-    MEMORY_SCOPE_CHECK_HEAP();
+    
     AZRHI_ASSERT(handle != 0);
     BufferPoolItem& item = *reinterpret_cast<BufferPoolItem*>(handle);
     item.m_pool->Write(&item, src, size);
@@ -3284,7 +3265,7 @@ bool CDeviceBufferManager::UpdateBuffer
 }
 D3DBuffer* CDeviceBufferManager::GetD3D(buffer_handle_t handle, size_t* offset)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
+    
     AZRHI_ASSERT(handle != 0);
     BufferPoolItem& item = *reinterpret_cast<BufferPoolItem*>(handle);
     *offset = item.m_offset;
@@ -3323,17 +3304,14 @@ SStatoscopeData& GetStatoscopeData(uint32 nIndex)
 // Use with care, can be removed at any point!
 void CDeviceBufferManager::ReleaseVBuffer(CVertexBuffer* pVB)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     SAFE_DELETE(pVB);
 }
 void CDeviceBufferManager::ReleaseIBuffer(CIndexBuffer* pIB)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     SAFE_DELETE(pIB);
 }
 CVertexBuffer* CDeviceBufferManager::CreateVBuffer(size_t nVerts, const AZ::Vertex::Format& vertexFormat, const char* szName, BUFFER_USAGE usage)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     CVertexBuffer* pVB = new CVertexBuffer(NULL, vertexFormat);
     pVB->m_nVerts = nVerts;
     pVB->m_VS.m_BufferHdl = Create(BBT_VERTEX_BUFFER, usage, nVerts * vertexFormat.GetStride());
@@ -3343,7 +3321,6 @@ CVertexBuffer* CDeviceBufferManager::CreateVBuffer(size_t nVerts, const AZ::Vert
 
 CIndexBuffer* CDeviceBufferManager::CreateIBuffer(size_t nInds, const char* szNam, BUFFER_USAGE usage)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     CIndexBuffer* pIB = new CIndexBuffer(NULL);
     pIB->m_nInds = nInds;
     pIB->m_VS.m_BufferHdl = Create(BBT_INDEX_BUFFER, usage, nInds * sizeof(uint16));
@@ -3352,14 +3329,12 @@ CIndexBuffer* CDeviceBufferManager::CreateIBuffer(size_t nInds, const char* szNa
 
 bool CDeviceBufferManager::UpdateVBuffer(CVertexBuffer* pVB, void* pVerts, size_t nVerts)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     AZRHI_ASSERT(pVB->m_VS.m_BufferHdl != ~0u);
     return UpdateBuffer(pVB->m_VS.m_BufferHdl, pVerts, nVerts * pVB->m_vertexFormat.GetStride());
 }
 
 bool CDeviceBufferManager::UpdateIBuffer(CIndexBuffer* pIB, void* pInds, size_t nInds)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     AZRHI_ASSERT(pIB->m_VS.m_BufferHdl != ~0u);
     return UpdateBuffer(pIB->m_VS.m_BufferHdl, pInds, nInds * sizeof(uint16));
 }
@@ -3517,7 +3492,6 @@ namespace AzRHI
 
 CVertexBuffer::~CVertexBuffer()
 {
-    MEMORY_SCOPE_CHECK_HEAP();
     if (m_VS.m_BufferHdl != ~0u)
     {
         if (gRenDev)
@@ -3529,8 +3503,7 @@ CVertexBuffer::~CVertexBuffer()
 }
 
 CIndexBuffer::~CIndexBuffer()
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     if (m_VS.m_BufferHdl != ~0u)
     {
         if (gRenDev)
@@ -3543,7 +3516,7 @@ CIndexBuffer::~CIndexBuffer()
 
 WrappedDX11Buffer::WrappedDX11Buffer(const WrappedDX11Buffer& src)
 {
-    MEMORY_SCOPE_CHECK_HEAP();
+    
     m_pBuffer = src.m_pBuffer;
     if (m_pBuffer)
     {
@@ -3570,8 +3543,7 @@ WrappedDX11Buffer::WrappedDX11Buffer(const WrappedDX11Buffer& src)
 }
 
 WrappedDX11Buffer& WrappedDX11Buffer::operator=(const WrappedDX11Buffer& rhs)
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     ID3D11Buffer* pOldBuffer = m_pBuffer;
 
     m_pBuffer = rhs.m_pBuffer;
@@ -3618,8 +3590,7 @@ WrappedDX11Buffer::~WrappedDX11Buffer()
 }
 
 void WrappedDX11Buffer::Release()
-{
-    MEMORY_SCOPE_CHECK_HEAP();
+{    
     for (uint32_t i = 0; i < MAX_VIEW_COUNT; ++i)
     {
         SAFE_RELEASE(m_pSRV[i]);
@@ -3696,7 +3667,11 @@ void WrappedDX11Buffer::Create(uint32 numElements, uint32 elementSize, DXGI_FORM
 
 void WrappedDX11Buffer::UpdateBufferContent(void* pData, size_t nSize)
 {
-    assert(m_pBuffer);
+    if (!m_pBuffer || !pData || nSize == 0)
+    {
+        return;
+    }
+
     assert(m_flags & DX11BUF_DYNAMIC);
 
     m_currentBuffer = (m_currentBuffer + 1) % MAX_VIEW_COUNT;

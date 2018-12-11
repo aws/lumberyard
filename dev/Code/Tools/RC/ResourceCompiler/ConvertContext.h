@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_TOOLS_RC_RESOURCECOMPILER_CONVERTCONTEXT_H
-#define CRYINCLUDE_TOOLS_RC_RESOURCECOMPILER_CONVERTCONTEXT_H
 #pragma once
 
 #include "PathHelpers.h"
@@ -34,7 +32,6 @@ struct IConvertContext
     virtual void SetRC(IResourceCompiler* pRC) = 0;
     virtual void SetMultiplatformConfig(IMultiplatformConfig* pMultiConfig) = 0;
     virtual void SetPlatformIndex(int platformIndex) = 0;
-    virtual void SetThreads(int threads) = 0;
     virtual void SetForceRecompiling(bool bForceRecompiling) = 0;
 
     virtual void CopyTo(IConvertContext* context) = 0;
@@ -80,10 +77,6 @@ struct ConvertContext
         this->platform = platformIndex;
         multiConfig->setActivePlatform(platformIndex);
     }
-    virtual void SetThreads(int threads)
-    {
-        this->threads = threads;
-    }
     virtual void SetForceRecompiling(bool bForceRecompiling)
     {
         this->bForceRecompiling = bForceRecompiling;
@@ -97,7 +90,6 @@ struct ConvertContext
         context->SetOutputFolder(outputFolder);
         context->SetRC(pRC);
         context->SetMultiplatformConfig(multiConfig);
-        context->SetThreads(threads);
         context->SetForceRecompiling(bForceRecompiling);
     }
     //////////////////////////////////////////////////////////////////////////
@@ -133,9 +125,6 @@ public:
     // Platform's config.
     const IConfig* config;
 
-    // Number of threads.
-    int threads;
-
     // true if compiler is requested to skip up-to-date checks
     bool bForceRecompiling;
 
@@ -144,4 +133,3 @@ private:
     string outputFolder;
 };
 
-#endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILER_CONVERTCONTEXT_H

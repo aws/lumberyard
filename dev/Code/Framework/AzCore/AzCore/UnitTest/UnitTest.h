@@ -243,7 +243,9 @@ namespace UnitTest
     };
 
     // a utility class that you can derive from or contain, which redirects asserts 
-    // and errors to the below macros (processAssert, etc) 
+    // and errors to the below macros (processAssert, etc)
+    // If TraceDrillerHook or TraceBusRedirector have been started in your unit tests, 
+    //  use AZ_TEST_START_ASSERTTEST and AZ_TEST_STOP_ASSERTTEST(numExpectedAsserts) macros to perform assert and error checking
     class TraceBusRedirector
         :public AZ::Debug::TraceMessageBus::Handler
     {

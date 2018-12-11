@@ -72,7 +72,7 @@ protected:
 private:
     int         m_argc;
     char**      m_argv;
-    UnitTestUtils::ScopedDir m_scopeDir;
+    AZStd::unique_ptr<UnitTestUtils::ScopedDir> m_scopeDir;
 
     AZStd::unique_ptr<QCoreApplication> m_qApp;
     QMetaObject::Connection m_idleConnection;

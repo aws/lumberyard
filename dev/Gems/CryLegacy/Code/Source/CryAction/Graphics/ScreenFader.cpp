@@ -312,9 +312,20 @@ public:
     virtual void OnLevelEnd(const char* nextLevel) {}
     virtual void OnActionEvent(const SActionEvent& event)
     {
-        if (event.m_event == eAE_unloadLevel)
+        switch (event.m_event)
         {
+        case eAE_loadLevel:
+            // Ensure all faders are created so they will be available on the ScreenFaderRequestBus
+            for (int i = 0; i < NUM_FADERS; ++i)
+            {
+                GetHUDFader(i);
+            }
+            break;
+        case eAE_unloadLevel:
             OnHUDToBeDestroyed();
+            break;
+        default:
+            break;
         }
     }
     // ~IGameFrameworkListener

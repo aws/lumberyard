@@ -78,7 +78,7 @@ static SParamDB sParams[] =
     SParamDB(PARAM(PB_TempMatr2, ECGP_Matr_PB_Temp4_2), PD_INDEXED),
     SParamDB(PARAM(PB_TempMatr3, ECGP_Matr_PB_Temp4_3), PD_INDEXED),
     SParamDB(PARAM(PI_TexMatrix, ECGP_Matr_PI_TexMatrix), 0, sParseTexMatrix),  // used for reflections (water) matrix
-    SParamDB(PARAM(PI_TCGMatrix, ECGP_Matr_PI_TCGMatrix), 0),
+    SParamDB(PARAM(PI_TCGMatrix, ECGP_Matr_PI_TCGMatrix), PD_INDEXED),
     SParamDB(PARAM(PB_DLightsInfo, ECGP_PB_DLightsInfo), 0),
 
     SParamDB(PARAM(PM_DiffuseColor, ECGP_PM_DiffuseColor), 0),
@@ -698,7 +698,7 @@ bool SShaderParam::GetValue(const char* szName, DynArrayRef<SShaderParam>* Param
             continue;
         }
 
-        if (!azstricmp(sp->m_Name, szName))
+        if (sp->m_Name == szName)
         {
             bRes = true;
             switch (sp->m_Type)

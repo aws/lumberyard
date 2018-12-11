@@ -130,6 +130,16 @@ namespace AzToolsFramework
             }
         }
 
+        const AZ::TypeId& GenericComponentWrapper::GetUnderlyingComponentType() const
+        {
+            if (m_template)
+            {
+                return m_template->RTTI_GetType();
+            }
+
+            return RTTI_GetType();
+        }
+
         void GenericComponentWrapper::BuildGameEntity(AZ::Entity* gameEntity)
         {
             if (m_template)
@@ -301,13 +311,6 @@ namespace AzToolsFramework
 
     const AZ::Uuid& GetUnderlyingComponentType(const AZ::Component& component)
     {
-        if (const auto* componentWrapper = azdynamic_cast<const Components::GenericComponentWrapper*>(&component))
-        {
-            if (AZ::Component* underlyingComponent = componentWrapper->GetTemplate())
-            {
-                return azrtti_typeid(underlyingComponent);
-            }
-        }
-        return azrtti_typeid(&component);
+        return component.GetUnderlyingComponentType();
     }
 } // namespace AzToolsFramework

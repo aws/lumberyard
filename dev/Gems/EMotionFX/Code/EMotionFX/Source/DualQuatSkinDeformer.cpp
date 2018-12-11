@@ -78,46 +78,6 @@ namespace EMotionFX
     }
 
 
-    /*
-    Quaternion Matrix2Quat(const Matrix& mat)
-    {
-        Quaternion res;
-        float fTrace = MMAT(mat,0,0)+MMAT(mat,1,1)+MMAT(mat,2,2);
-        float fRoot;
-
-        if (fTrace > 0.0)
-        {
-            // |w| > 1/2, may as well choose w > 1/2
-            fRoot = Math::Sqrt(fTrace + 1.0f);  // 2w
-            res.w = 0.5f*fRoot;
-            fRoot = 0.5f/fRoot;  // 1/(4w)
-            res.x = (MMAT(mat,1,2)-MMAT(mat,2,1))*fRoot;
-            res.y = (MMAT(mat,2,0)-MMAT(mat,0,2))*fRoot;
-            res.z = (MMAT(mat,0,1)-MMAT(mat,1,0))*fRoot;
-        }
-        else
-        {
-            // |w| <= 1/2
-            static uint32 s_iNext[3] = { 1, 2, 0 };
-            uint32 i = 0;
-            if (MMAT(mat,1,1) > MMAT(mat,0,0))  i = 1;
-            if (MMAT(mat,2,2) > MMAT(mat,i,i))  i = 2;
-            size_t j = s_iNext[i];
-            size_t k = s_iNext[j];
-
-            fRoot = Math::Sqrt(MMAT(mat,i,i)-MMAT(mat,j,j)-MMAT(mat,k,k) + 1.0f);
-            float* apkQuat[3] = { &res.x, &res.y, &res.z };
-            *apkQuat[i] = 0.5f*fRoot;
-            fRoot = 0.5f/fRoot;
-            res.w = (MMAT(mat,j,k)-MMAT(mat,k,j))*fRoot;
-            *apkQuat[j] = (MMAT(mat,i,j)+MMAT(mat,j,i))*fRoot;
-            *apkQuat[k] = (MMAT(mat,i,k)+MMAT(mat,k,i))*fRoot;
-        }
-
-        return res;
-    }
-    */
-
     // the main method where all calculations are done
     void DualQuatSkinDeformer::Update(ActorInstance* actorInstance, Node* node, float timeDelta)
     {
@@ -130,12 +90,13 @@ namespace EMotionFX
         MCore::Matrix   invNodeTM           = globalMatrices[ node->GetNodeIndex() ];
         invNodeTM.Inverse();
 
-        AZ::Vector3  newPos, newNormal, newTangent;
-        AZ::Vector3  vtxPos, normal, tangent;
-        AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS);
-        AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mMesh->FindVertexData(Mesh::ATTRIB_NORMALS);
+        AZ::Vector3  newPos, newNormal, newTangent, newBitangent;
+        AZ::Vector3  vtxPos, normal, tangent, bitangent;
+        AZ::PackedVector3f* positions   = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS));
+        AZ::PackedVector3f* normals     = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_NORMALS));
         AZ::Vector4*        tangents    = static_cast<AZ::Vector4*>(mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS));
-        uint32*             orgVerts    = (uint32* )mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS);
+        AZ::PackedVector3f* bitangents  = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_BITANGENTS));
+        AZ::u32*            orgVerts    = static_cast<AZ::u32*>(mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
 
         // precalc the skinning matrices
         MCore::Matrix mat;
@@ -154,8 +115,93 @@ namespace EMotionFX
         SkinningInfoVertexAttributeLayer* layer = (SkinningInfoVertexAttributeLayer*)mMesh->FindSharedVertexAttributeLayer(SkinningInfoVertexAttributeLayer::TYPE_ID);
         MCORE_ASSERT(layer);
 
-        // if there are tangents and binormals to skin
-        if (tangents)
+        // if there are tangents and bitangents to skin
+        if (tangents && bitangents)
+        {
+            const uint32 numVertices = mMesh->GetNumVertices();
+            uint32 v = 0;
+            uint32 orgVertex;
+
+            SkinInfluence*  influence;
+            BoneInfo*       boneInfo;
+            float           weight;
+            for (v = 0; v < numVertices; ++v)
+            {
+                // get the original vertex number
+                orgVertex = *(orgVerts++);
+
+                // reset the skinned position
+                newPos = AZ::Vector3::CreateZero();
+                newNormal = AZ::Vector3::CreateZero();
+                newTangent = AZ::Vector3::CreateZero();
+                newBitangent = AZ::Vector3::CreateZero();
+
+                const float tangentW = tangents->GetW();
+                vtxPos.Set  (positions->GetX(),  positions->GetY(),   positions->GetZ());
+                normal.Set  (normals->GetX(),    normals->GetY(),     normals->GetZ());
+                tangent.Set (tangents->GetX(),   tangents->GetY(),    tangents->GetZ());
+                bitangent.Set(bitangents->GetX(), bitangents->GetY(), bitangents->GetZ());
+
+                // process the skin influences for this vertex
+                const uint32 numInfluences = layer->GetNumInfluences(orgVertex);
+                if (numInfluences > 0)
+                {
+                    // get the pivot quat, used for the dot product check
+                    const MCore::DualQuaternion& pivotQuat = mBones[ layer->GetInfluence(orgVertex, 0)->GetBoneNr() ].mDualQuat;
+
+                    // our skinning dual quaternion
+                    MCore::DualQuaternion skinQuat(MCore::Quaternion(0, 0, 0, 0), MCore::Quaternion(0, 0, 0, 0));
+
+                    MCore::Matrix scaleMatrix;
+                    MCore::MemSet(scaleMatrix.m16, 0, sizeof(float) * 16);
+                    for (uint32 i = 0; i < numInfluences; ++i)
+                    {
+                        // get the influence
+                        influence   = layer->GetInfluence(orgVertex, i);
+                        boneInfo    = &mBones[ influence->GetBoneNr() ];
+                        weight      = influence->GetWeight();
+
+                        // check if we need to invert the dual quat
+                        MCore::DualQuaternion& influenceQuat = mBones[ influence->GetBoneNr() ].mDualQuat;
+                        if (influenceQuat.mReal.Dot(pivotQuat.mReal) < 0.0f)
+                        {
+                            influenceQuat *= -1.0f;
+                        }
+
+                        // weighted sum
+                        skinQuat += influenceQuat * weight;
+                    }
+
+                    // normalize the dual quaternion
+                    skinQuat.Normalize();
+
+                    // perform skinning
+                    newPos      = skinQuat.TransformPoint(vtxPos);
+                    newNormal   = skinQuat.TransformVector(normal);
+                    newTangent  = skinQuat.TransformVector(tangent);
+                    newBitangent= skinQuat.TransformVector(bitangent);
+                }
+                else
+                {
+                    // perform the skinning
+                    newPos      = vtxPos;
+                    newNormal   = normal;
+                    newTangent  = tangent;
+                    newBitangent= bitangent;
+                }
+
+                // output the skinned values
+                positions->Set  (newPos.GetX(),      newPos.GetY(),       newPos.GetZ());
+                positions++;
+                normals->Set    (newNormal.GetX(),   newNormal.GetY(),    newNormal.GetZ());
+                normals++;
+                tangents->Set   (newTangent.GetX(),  newTangent.GetY(),   newTangent.GetZ(), tangentW);
+                tangents++;
+                bitangents->Set (newBitangent.GetX(), newBitangent.GetY(), newBitangent.GetZ());
+                bitangents++;
+            }
+        }
+        else if (tangents && !bitangents) // tangents but no bitangents
         {
             const uint32 numVertices = mMesh->GetNumVertices();
             uint32 v = 0;
@@ -234,7 +280,7 @@ namespace EMotionFX
                 tangents++;
             }
         }
-        else // there are no tangents and binormals to skin
+        else // there are no tangents and bitangents to skin
         {
             const uint32 numVertices = mMesh->GetNumVertices();
             uint32 v = 0;
@@ -253,8 +299,8 @@ namespace EMotionFX
                 newPos = AZ::Vector3::CreateZero();
                 newNormal = AZ::Vector3::CreateZero();
 
-                vtxPos.Set  (positions->GetX(),  positions->GetY(),   positions->GetZ());
-                normal.Set  (normals->GetX(),    normals->GetY(),     normals->GetZ());
+                vtxPos.Set(positions->GetX(), positions->GetY(), positions->GetZ());
+                normal.Set(normals->GetX(), normals->GetY(), normals->GetZ());
 
                 // process the skin influences for this vertex
                 const uint32 numInfluences = layer->GetNumInfluences(orgVertex);

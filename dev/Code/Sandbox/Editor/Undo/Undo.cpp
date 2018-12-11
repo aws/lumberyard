@@ -545,6 +545,8 @@ void CUndoManager::SuperCancel()
         return;
     }
 
+    AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper metricsHelper;
+
     assert(m_superUndo != 0);
 
     if (m_bRecording)

@@ -133,6 +133,10 @@ namespace AZ
 
             virtual int             GetNumDrillers() const  = 0;
             virtual Driller*        GetDriller(int index) = 0;
+
+        private:
+            // If the manager created the allocator, it should destroy it when it gets destroyed
+            bool m_ownsOSAllocator = false;
         };
     }
 }

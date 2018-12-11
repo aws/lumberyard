@@ -91,7 +91,7 @@ public:
     bool ShadowLightPasses(const SRenderLight& light, const int nLightID);
     void DrawDecalVolume(const SDeferredDecal& rDecal, Matrix44A& mDecalLightProj, ECull volumeCull);
     void DrawLightVolume(EShapeMeshType meshType, const Matrix44& mVolumeToWorld, const Vec4& vSphereAdjust = Vec4(ZERO));
-    void LightPass(const SRenderLight* const __restrict pDL, bool bForceStencilDisable = false);
+    void LightPass(const SRenderLight* const __restrict pDL, bool bForceStencilDisable = false, bool ignoreShadowCasting =  false);
     void DeferredCubemaps(const TArray<SRenderLight>& rCubemaps, const uint32 nStartIndex = 0);
     void DeferredCubemapPass(const SRenderLight* const __restrict pDL);
     void ScreenSpaceReflectionPass();
@@ -446,7 +446,7 @@ private:
 
     friend class CTiledShading;
 
-    static CPowerOf2BlockPacker m_blockPack;
+    static StaticInstance<CPowerOf2BlockPacker> m_blockPack;
     static TArray<SShadowAllocData> m_shadowPoolAlloc;
 
 public:

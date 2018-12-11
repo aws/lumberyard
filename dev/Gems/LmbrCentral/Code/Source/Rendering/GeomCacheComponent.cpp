@@ -546,6 +546,7 @@ namespace LmbrCentral
             rendFlags |= ERF_CASTSHADOWMAPS;
         }
 
+        rendFlags |= ERF_COMPONENT_ENTITY;
         m_geomCacheRenderNode->SetRndFlags(rendFlags);
 
         //Re-register to update flags

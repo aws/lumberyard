@@ -32,7 +32,7 @@ namespace Camera
     {
     public:
         AZ_COMPONENT(CameraRigComponent, "{286BF97A-1B4A-4EE1-944F-C13B2396227B}");
-        virtual ~CameraRigComponent() = default;
+        ~CameraRigComponent() override;
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);

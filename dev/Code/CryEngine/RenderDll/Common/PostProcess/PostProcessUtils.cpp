@@ -402,8 +402,6 @@ void SPostEffectsUtils::SetTexture(CTexture* pTex, int nStage, int nFilter, int 
 
 bool SPostEffectsUtils::CreateRenderTarget(const char* szTexName, CTexture*& pTex, int nWidth, int nHeight, const ColorF& cClear, bool bUseAlpha, bool bMipMaps, ETEX_Format eTF, int nCustomID, int nFlags)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Texture, 0, "PostEffects CreateRenderTarget: %s", szTexName);
-
     // check if parameters are valid
     if (!nWidth || !nHeight)
     {

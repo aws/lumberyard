@@ -9,16 +9,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-import importlib
 import boto3
 import CloudCanvas
 import service
 import errors
 import json
 from botocore.exceptions import ClientError
-
+import cgf_lambda_settings
+import cgf_service_client
 from datetime import datetime
 
+def __do_communicator_updates():
+    # Set to false if updates should not be sent at all, even if the web communicator is enabled
+    return True
+    
 def _get_content_bucket():
     if not hasattr(_get_content_bucket,'content_bucket'):
         content_bucket_name = CloudCanvas.get_setting('StagingBucket')   
@@ -63,7 +67,6 @@ def list_all_content(request):
         resultData.append(item_data)
         
     while table_data.get('LastEvaluatedKey'):
-        tableinfo = dynamoresource.Table(staging_table_name)  
         table_data = tableinfo.scan(ExclusiveStartKey=table_data.get('LastEvaluatedKey'))
 
         this_result = {}
@@ -201,6 +204,28 @@ def describe_content(request, file_name):
         raise errors.ClientError('No data for ' + file_name)   
         
     return { 'PortalFileInfo' : item_data}
+
+
+def __send_communicator_broadcast(message):
+    if not __do_communicator_updates():
+        return
+        
+    interface_url = cgf_lambda_settings.get_service_url("CloudGemWebCommunicator_sendmessage_1_0_0")
+    if not interface_url:
+        print 'Messaging interface not found'
+        return
+        
+    client = cgf_service_client.for_url(interface_url, verbose=True, session=boto3._get_default_session())
+    result = client.navigate('broadcast').POST({"channel": "CloudGemDynamicContent", "message": message})
+    print 'Got send result {}'.format(result)
+
+def __send_data_updated(pak_name, status):
+    data = {}
+    data['update'] = 'FILE_STATUS_CHANGED'
+    data['pak_name'] = pak_name
+    data['status'] = status
+    
+    __send_communicator_broadcast(json.dumps(data))
     
 @service.api 
 def set_file_statuses(request, request_content = None):
@@ -253,6 +278,7 @@ def set_file_statuses(request, request_content = None):
         
         resultData.append(returned_item)
         
+        __send_data_updated(fileName, new_status)
     
     return { 'PortalFileInfoList' : resultData}
     

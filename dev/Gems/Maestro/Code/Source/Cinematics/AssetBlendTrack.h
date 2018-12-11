@@ -13,6 +13,7 @@
 
 #include "IMovieSystem.h"
 #include "AnimTrack.h"
+#include <Maestro/Types/AssetBlends.h>
 
 /** CAssetBlendTrack contains entity keys, when time reach event key, it fires script event or start animation etc...
 */
@@ -40,7 +41,9 @@ public:
     float GetKeyDuration(int key) const;
 
     AnimValueType GetValueType() override;
-    void GetValue(float time, AZ::Data::AssetBlends<AZ::Data::AssetData>& value) override;
+    void GetValue(float time, Maestro::AssetBlends<AZ::Data::AssetData>& value) override;
+
+    void SetDefaultValue(const Maestro::AssetBlends<AZ::Data::AssetData>& defaultValue);
 
     float GetEndTime() const;
 
@@ -49,5 +52,6 @@ public:
 private:
 
     // Internal transient state, not serialized.
-    AZ::Data::AssetBlends<AZ::Data::AssetData> m_assetBlend;
+    Maestro::AssetBlends<AZ::Data::AssetData> m_assetBlend;
+    Maestro::AssetBlends<AZ::Data::AssetData> m_defaultValue;
 };

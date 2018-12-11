@@ -4,29 +4,34 @@
         "Root":
         [
             "main.cpp",
-            "stdafx.cpp",
-            "stdafx.h"
+            "DeploymentTool_precompiled.cpp",
+            "DeploymentTool_precompiled.h"
         ]
     },
     "auto":
     {
         "Root":
         [
-            "AndroidDeploymentUtil.h",
-            "AndroidDeploymentUtil.cpp",
-            "CommandLauncher.h",
-            "ConfigFileContainer.cpp",
-            "ConfigFileContainer.h",
             "BootstrapConfigContainer.cpp",
             "BootstrapConfigContainer.h",
+            "ConfigFileContainer.cpp",
+            "ConfigFileContainer.h",
             "DeploymentConfig.h",
             "DeploymentTool.qrc",
             "DeploymentToolWindow.cpp",
             "DeploymentToolWindow.h",
             "DeploymentToolWindow.ui",
-            "DeploymentUtil.h",
-            "DeploymentUtil.cpp",
-            "IDeploymentTool.h",
+            "DeployNotificationsBus.h",
+            "DeployNotificationsQBridge.cpp",
+            "DeployNotificationsQBridge.h",
+            "DeployWorker_android.cpp",
+            "DeployWorker_android.h",
+            "DeployWorkerBase.cpp",
+            "DeployWorkerBase.h",
+            "NetworkUtils.cpp",
+            "NetworkUtils.h",
+            "RemoteLog.cpp",
+            "RemoteLog.h",
             "SystemConfigContainer.cpp",
             "SystemConfigContainer.h"
         ]

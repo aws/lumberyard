@@ -45,8 +45,10 @@ template<class S>
 struct SplineElem
 {
     UnitFloat8  t;
-    S                       v;
-    int                 flags;
+    S           v;
+    SAngle      d;
+    SAngle      s;
+    int         flags;
 
     STRUCT_INFO
 };
@@ -55,6 +57,8 @@ struct SplineElem
 STRUCT_INFO_T_BEGIN(SplineElem, class, S)
 VAR_INFO(t)
 VAR_INFO(v)
+VAR_INFO(d)
+VAR_INFO(s)
 VAR_INFO(flags)
 STRUCT_INFO_T_END(SplineElem, class, S)
 
@@ -70,7 +74,21 @@ string TCurve<S>::ToString(FToString flags) const
             str += ";";
         }
         key_type k = key(i);
-        SplineElem<TMod> elem = { k.time, k.value, k.flags };
+        SplineElem<TMod> elem;
+        elem.t = k.time;
+        elem.v = k.value;
+        elem.flags = k.flags;
+
+        // We only serialize tangent data for point-curves (as oposed to Color or Vec3 curves).
+        // Point-curves (such as OptSpline<float>), use a Point struct that saves tangent data
+        // as a floating-point value. Checking either in/out tangents for a floating-point type is the 
+        // indicator that we are handling a point-curve.
+        if(aztypeid_cmp(aztypeid(T), aztypeid(float)))
+        {
+            // Given compiler template behavior, we must forcefully cast to get float values.
+            elem.d = SAngle(*reinterpret_cast<float*>(&k.dd));
+            elem.s = SAngle(*reinterpret_cast<float*>(&k.ds));
+        }
         str += ::TypeInfo(&elem).ToString(&elem, flags);
     }
     return str;
@@ -114,6 +132,8 @@ bool TCurve<S>::FromString(cstr str_in, FFromString flags)
         key.time = elem.t;
         key.value = elem.v;
         key.flags = elem.flags;
+        key.dd = T(elem.d);
+        key.ds = T(elem.s);
 
         source.insert_key(key);
     }
@@ -194,7 +214,7 @@ struct TCurve<S>::CCustomInfo
 const CTypeInfo& CSurfaceTypeIndex::TypeInfo() const
 {
     struct SurfaceEnums
-        : DynArray<CEnumInfo<uint16>::SElem>
+        : LegacyDynArray<CEnumInfo<uint16>::SElem>
     {
         // Enumerate game surface types.
         SurfaceEnums()

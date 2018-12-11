@@ -18,7 +18,7 @@
 #include "Vector.h"
 #include "Color.h"
 #include "StringConversions.h"
-
+#include <MCore/Source/AttributeAllocator.h>
 
 namespace MCore
 {
@@ -29,6 +29,8 @@ namespace MCore
     class MCORE_API AttributeColor
         : public Attribute
     {
+        AZ_CLASS_ALLOCATOR(AttributeColor, AttributeAllocator, 0)
+
         friend class AttributeFactory;
     public:
         enum
@@ -48,7 +50,6 @@ namespace MCore
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeColor::Create(mValue); }
-        Attribute* CreateInstance(void* destMemory) override        { return new(destMemory) AttributeColor(); }
         const char* GetTypeString() const override                  { return "AttributeColor"; }
         bool InitFrom(const Attribute* other) override
         {

@@ -181,6 +181,7 @@ protected: // data
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiInteractableStateFont
     : public UiInteractableStateAction
+    , public FontNotificationBus::Handler
 {
 public: // types
     using FontEffectComboBoxVec = AZStd::vector < AZStd::pair<unsigned int, AZStd::string> >;
@@ -200,6 +201,10 @@ public: // member functions
     AZ::EntityId GetTargetEntity() override { return m_targetEntity; }
     // ~UiInteractableStateAction
 
+    // FontNotifications
+    void OnFontsReloaded() override;
+    // ~FontNotifications
+
     const AZStd::string&  GetFontPathname() { return m_fontFilename.GetAssetPath(); }
     void SetFontPathname(const AZStd::string& pathname);
 
@@ -215,6 +220,10 @@ public: // member functions
 
 public: // static member functions
     static void Reflect(AZ::ReflectContext* context);
+
+protected: // member functions
+
+    void InitCommon(const AZStd::string& fontPathname);
 
 protected: // data
     AZ::EntityId m_targetEntity;

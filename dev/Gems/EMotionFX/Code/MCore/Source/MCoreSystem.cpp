@@ -18,11 +18,11 @@
 #include "IDGenerator.h"
 #include "StringIdPool.h"
 #include "AttributeFactory.h"
-#include "AttributePool.h"
 #include "MultiThreadManager.h"
 #include "JobManager.h"
 #include "MemoryTracker.h"
 #include "FileSystem.h"
+#include <MCore/Source/AttributeAllocator.h>
 
 
 namespace MCore
@@ -43,6 +43,8 @@ namespace MCore
     // static main init method
     bool Initializer::Init(InitSettings* settings)
     {
+        AZ::AllocatorInstance<AttributeAllocator>::Create();
+
         // use the defaults if a nullptr is specified
         InitSettings defaultSettings;
         InitSettings* realSettings = (settings) ? settings : &defaultSettings;
@@ -87,6 +89,8 @@ namespace MCore
         freeFunction(gMCore.Get());
 
         gMCore.Reset();
+
+        AZ::AllocatorInstance<AttributeAllocator>::Destroy();
     }
 
     //-----------------------------------------------------------------
@@ -174,7 +178,6 @@ namespace MCore
         mIDGenerator        = new IDGenerator();
         mStringIdPool  = new StringIdPool();
         mAttributeFactory   = new AttributeFactory();
-        mAttributePool      = new AttributePool();
         mJobManager         = JobManager::Create(settings.mNumThreads);
         mMemTempBufferSize  = 256 * 1024;
         mMemTempBuffer      = Allocate(mMemTempBufferSize, MCORE_MEMCATEGORY_SYSTEM);// 256 kb
@@ -219,10 +222,6 @@ namespace MCore
         // delete the attribute factory
         delete mAttributeFactory;
         mAttributeFactory = nullptr;
-
-        // delete the attribute pool
-        delete mAttributePool;
-        mAttributePool = nullptr;
 
         // Clear the memory of the file system secure save path.
         FileSystem::mSecureSavePath.clear();

@@ -18,6 +18,7 @@
 
 #include "AnimNode.h"
 #include "CharacterTrackAnimator.h"
+#include <Maestro/Bus/EditorSequenceAgentComponentBus.h>
 
 /**
  * CAnimComponentNode
@@ -28,6 +29,7 @@
 
 class CAnimComponentNode
     : public CAnimNode
+    , public Maestro::EditorSequenceAgentComponentNotificationBus::Handler
 {
 public:
     AZ_CLASS_ALLOCATOR(CAnimComponentNode, AZ::SystemAllocator, 0);
@@ -79,12 +81,17 @@ public:
     Vec3 GetScale() override;
 
     ICharacterInstance* GetCharacterInstance() override;
+    void Activate(bool bActivate) override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
     // Override CreateTrack to handle trackMultipliers for Component Tracks
     IAnimTrack* CreateTrack(const CAnimParamType& paramType) override;
     bool RemoveTrack(IAnimTrack* pTrack) override;
+
+    //////////////////////////////////////////////////////////////////////////
+    // EditorSequenceAgentComponentNotificationBus::Handler Interface
+    void OnSequenceAgentConnected() override;
 
     void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
 
@@ -150,6 +157,9 @@ private:
     int SetKeysForChangedFloatTrackValue(IAnimTrack* track, int keyIdx, float time);
     int SetKeysForChangedVector3TrackValue(IAnimTrack* track, int keyIdx, float time, bool applyTrackMultiplier = true, float isChangedTolerance = AZ::g_simdTolerance);
     int SetKeysForChangedQuaternionTrackValue(IAnimTrack* track, int keyIdx, float time);
+
+    // Helper function to set individual properties on Simple Motion Component from an AssetBlend Track.
+    void AnimateAssetBlendSubProperties(const Maestro::AssetBlends<AZ::Data::AssetData>& assetBlendValue);
 
     class BehaviorPropertyInfo
     {

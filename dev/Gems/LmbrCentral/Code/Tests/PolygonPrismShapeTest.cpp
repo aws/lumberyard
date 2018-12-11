@@ -47,6 +47,8 @@ namespace UnitTest
 
         void TearDown() override
         {
+            m_transformComponentDescriptor.reset();
+            m_polygonPrismShapeComponentDescriptor.reset();
             m_serializeContext.reset();
             AllocatorsFixture::TearDown();
         }

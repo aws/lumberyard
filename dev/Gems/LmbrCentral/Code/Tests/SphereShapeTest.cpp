@@ -44,6 +44,14 @@ namespace UnitTest
             m_sphereShapeComponentDescriptor.reset(SphereShapeComponent::CreateDescriptor());
             m_sphereShapeComponentDescriptor->Reflect(&(*m_serializeContext));
         }
+
+        void TearDown() override
+        {
+            m_transformShapeComponentDescriptor.reset();
+            m_sphereShapeComponentDescriptor.reset();
+            m_serializeContext.reset();
+            AllocatorsFixture::TearDown();
+        }
     };
 
     void CreateSphere(const Transform& transform, const float radius, Entity& entity)

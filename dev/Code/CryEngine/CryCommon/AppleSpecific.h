@@ -364,6 +364,7 @@ enum
 
 #define VK_OEM_COMMA    0xBC   // ',' any country
 #define VK_OEM_PERIOD   0xBE   // '.' any country
+#define VK_OEM_3        0xC0   // '`~' for US
 #define VK_OEM_4        0xDB  //  '[{' for US
 #define VK_OEM_6        0xDD  //  ']}' for US
 

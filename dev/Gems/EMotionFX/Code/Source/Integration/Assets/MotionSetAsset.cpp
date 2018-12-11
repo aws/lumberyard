@@ -153,7 +153,6 @@ namespace EMotionFX
             }
             else
             {
-                AZ_Warning("EMotionFX", false, "Failed to retrieve asset source path with alias '@devassets@'. Cannot set absolute filename for '%s'", assetFilename.c_str());
                 assetData->m_emfxMotionSet->SetFilename(assetFilename.c_str());
             }
 
@@ -215,5 +214,11 @@ namespace EMotionFX
         {
             return "EMotion FX Motion Set";
         }
+        //////////////////////////////////////////////////////////////////////////
+        const char* MotionSetAssetHandler::GetBrowserIcon() const
+        {
+            return "Editor/Images/AssetBrowser/MotionSet_16.png";
+        }
+
     } // namespace Integration
 } // namespace EMotionFX

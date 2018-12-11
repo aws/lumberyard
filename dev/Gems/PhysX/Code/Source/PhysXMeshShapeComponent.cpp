@@ -34,6 +34,7 @@ namespace PhysX
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "PhysX")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-physx-mesh-shape.html")
                     ->DataElement(0, &PhysXMeshShapeComponent::m_meshColliderAsset, "PxMesh", "PhysX Mesh Collider asset")
                 ;
             }

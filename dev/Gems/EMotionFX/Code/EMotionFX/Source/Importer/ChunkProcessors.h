@@ -331,6 +331,7 @@ namespace EMotionFX
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorNodes,                FileFormat::ACTOR_CHUNK_NODES,                1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorMaterialInfo,         FileFormat::ACTOR_CHUNK_MATERIALINFO,         1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorProgMorphTargets,     FileFormat::ACTOR_CHUNK_STDPMORPHTARGETS,     1)
+    EMFX_CHUNKPROCESSOR(ChunkProcessorActorProgMorphTargets2,    FileFormat::ACTOR_CHUNK_STDPMORPHTARGETS,     2)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorNodeMotionSources,    FileFormat::ACTOR_CHUNK_NODEMOTIONSOURCES,    1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorAttachmentNodes,      FileFormat::ACTOR_CHUNK_ATTACHMENTNODES,      1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorMaterialAttributeSet, FileFormat::ACTOR_CHUNK_MATERIALATTRIBUTESET, 1)

@@ -111,7 +111,7 @@ namespace AssetProcessor
         AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder4"), "subfolder4", "subfolder4",    "",       false,   false, platforms, -6), config, dbConn); // subfolder 4 overrides subfolder3
         AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder3"), "subfolder3", "subfolder3",    "",       false,   false, platforms, -5), config, dbConn); // subfolder 3 overrides subfolder2
         AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder2"), "subfolder2", "subfolder2",    "",       false,   true,  platforms, -2), config, dbConn); // subfolder 2 overrides subfolder1
-        AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1",    "",       false,   true,  platforms, -1), config, dbConn); // subfolder1 overrides root
+        AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1",    "editor",       false,   true,  platforms, -1), config, dbConn); // subfolder1 overrides root
         AddScanFolder(ScanFolderInfo(tempPath.absolutePath(),         "temp",       "tempfolder",    "",       true,    false, platforms,  0), config, dbConn); // add the root
 
         config.AddMetaDataType("exportsettings", QString());
@@ -504,7 +504,8 @@ namespace AssetProcessor
         AZStd::string assetAFileFilter = "*.source";
         AZStd::string subfolder1AbsolutePath = tempPath.absoluteFilePath("subfolder1").toStdString().c_str();
         AZStd::string assetASourceRelPath = "assetA.source";
-        AZStd::string assetAProductRelPath = "assetA.product";
+        AZStd::string assetASourceDatabasePath = "editor/assetA.source";
+        AZStd::string assetAProductRelPath = "editor/assetA.product";
 
         AZStd::string assetAFullPath;
         AzFramework::StringFunc::Path::Join(subfolder1AbsolutePath.c_str(), assetASourceRelPath.c_str(), assetAFullPath);
@@ -552,7 +553,7 @@ namespace AssetProcessor
             return result;
         };
 
-        auto getSourceInfoBySourcePath = [](bool expectedResult, AZStd::string sourcePath, AZ::Uuid expectedUuid, AZStd::string expectedRelPath, AZStd::string expectedRootPath) -> bool
+        auto getSourceInfoBySourcePath = [](bool expectedResult, AZStd::string sourcePath, AZ::Uuid expectedUuid, AZStd::string expectedRelPath, AZStd::string expectedRootPath, AZ::Data::AssetType expectedType = AZ::Data::s_invalidAssetType) -> bool
         {
             bool result = false;
             AssetInfo assetInfo;
@@ -567,10 +568,11 @@ namespace AssetProcessor
             if (expectedResult)
             {
                 return (assetInfo.m_assetId == expectedUuid)
-                    && (assetInfo.m_assetType == AZ::Data::s_invalidAssetType) // sources do not have types.
+                    && (assetInfo.m_assetType == expectedType)
                     && (assetInfo.m_relativePath == expectedRelPath)
                     && (assetInfo.m_sizeBytes == 15)
-                    && (rootPath == expectedRootPath);
+                    && (rootPath == expectedRootPath)
+                    ;
             }
 
             return true;
@@ -582,7 +584,7 @@ namespace AssetProcessor
 
         // Add asset to database
         AZ::s64 jobId;
-        UNIT_TEST_EXPECT_TRUE(AddSourceAndJob("subfolder1", assetASourceRelPath.c_str(), dbConn.get(), jobId, assetA.m_guid));
+        UNIT_TEST_EXPECT_TRUE(AddSourceAndJob("subfolder1", assetASourceDatabasePath.c_str(), dbConn.get(), jobId, assetA.m_guid));
         ProductDatabaseEntry newProductEntry(jobId, 0, assetAProductRelPath.c_str(), assetAType);
         dbConn->SetProduct(newProductEntry);
 
@@ -619,14 +621,15 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetAFullPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str()));
 
         // Register as source type
+        // note that once this call has been made, ALL REQUESTS for this type of asset should always include an appropriate type (non zero)
         ToolsAssetSystemBus::Broadcast(&ToolsAssetSystemRequests::RegisterSourceAssetType, assetAType, assetAFileFilter.c_str());
 
         //Test 4: Asset in queue, registered as source asset
         UNIT_TEST_EXPECT_TRUE(getAssetInfoByIdPair(true, assetASourceRelPath, subfolder1AbsolutePath));
 
         // these calls are identical to the two above, but should continue to work even though we have registered the asset type as a source asset type.
-        UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetASourceRelPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str()));
-        UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetAFullPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str()));
+        UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetASourceRelPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str(), assetAType));
+        UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetAFullPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str(), assetAType));
 
         // Remove from queue
         assetCatalog.OnSourceFinished(assetA.m_guid, assetALegacyUuid);
@@ -640,8 +643,8 @@ namespace AssetProcessor
 
         // at this point the details about the asset in question is no longer in memory, only the database.  However, these calls should continue find the
         // information, because the system is supposed check both the database AND the in-memory queue in the to find the info being requested.
-        UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetASourceRelPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str()));
-        UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetAFullPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str()));
+        UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetASourceRelPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str(), assetAType));
+        UNIT_TEST_EXPECT_TRUE(getSourceInfoBySourcePath(true, assetAFullPath.c_str(), assetA.m_guid, assetASourceRelPath.c_str(), subfolder1AbsolutePath.c_str(), assetAType));
 
         Q_EMIT UnitTestPassed();
     }

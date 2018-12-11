@@ -100,10 +100,10 @@ namespace UnitTest
             desc.m_allocatorDesc.m_allocationRecords = true;
 #endif
             AZ::SystemAllocator::Descriptor sysAllocDesc;
-            sysAllocDesc.m_heap.m_numMemoryBlocks = 1;
-            sysAllocDesc.m_heap.m_memoryBlocksByteSize[0] = memorySize;
+            sysAllocDesc.m_heap.m_numFixedMemoryBlocks = 1;
+            sysAllocDesc.m_heap.m_fixedMemoryBlocksByteSize[0] = memorySize;
             m_allocatorBuffer = azmalloc(memorySize, sysAllocDesc.m_heap.m_memoryBlockAlignment, AZ::OSAllocator);
-            sysAllocDesc.m_heap.m_memoryBlocks[0] = m_allocatorBuffer;
+            sysAllocDesc.m_heap.m_fixedMemoryBlocks[0] = m_allocatorBuffer;
             AZ::AllocatorInstance<AZ::SystemAllocator>::Create(sysAllocDesc);
             desc.m_allocatorDesc.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
 

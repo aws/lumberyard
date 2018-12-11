@@ -17,6 +17,9 @@
 
 #if defined(ENABLE_LOADING_PROFILER)
 
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/containers/unordered_map.h>
+
 class CBootProfilerRecord;
 class CBootProfilerSession;
 
@@ -47,7 +50,7 @@ protected:
 
 private:
     CBootProfilerSession* m_pCurrentSession;
-    typedef std::map<string, CBootProfilerSession*> TSessionMap;
+    typedef AZStd::unordered_map<AZStd::string, CBootProfilerSession*> TSessionMap;
     TSessionMap m_sessions;
 
     static int                      CV_sys_bp_frames;

@@ -29,7 +29,7 @@ public:
     // Arguments:
     //   dwLogHeight - e.g. specify 5 for 32, keep is small like ~ 5 or 6, don't use pixel size
     //   dwLogHeight - e.g. specify 5 for 32, keep is small like ~ 5 or 6, don't use pixel size
-    CPowerOf2BlockPacker(const uint32 dwLogWidth, const uint32 dwLogHeight);
+    CPowerOf2BlockPacker(const uint32 dwLogWidth = 0, const uint32 dwLogHeight = 0);
 
     ~CPowerOf2BlockPacker();
 

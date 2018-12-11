@@ -14,12 +14,14 @@
 #include <AzAssetBrowser/ui_AzAssetBrowserWindow.h>
 
 #include <Editor/AzAssetBrowser/AzAssetBrowserWindow.h>
+#include <Editor/AzAssetBrowser/AzAssetBrowserRequestHandler.h>
 #include <Editor/AzAssetBrowser/Preview/PreviewWidget.h>
 
 #include <AzToolsFramework/AssetBrowser/Views/AssetBrowserTreeView.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/Search/SearchParametersWidget.h>
 
 AzAssetBrowserWindow::AzAssetBrowserWindow(QWidget* parent)
@@ -102,21 +104,29 @@ void AzAssetBrowserWindow::DoubleClickedItem(const QModelIndex& element)
     for (const AssetBrowserEntry* entry : selectedAssets)
     {
         AZ::Data::AssetId assetIdToOpen;
+        AZStd::string fullFilePath;
 
         if (const ProductAssetBrowserEntry* productEntry = azrtti_cast<const ProductAssetBrowserEntry*>(entry))
         {
             assetIdToOpen = productEntry->GetAssetId();
+            fullFilePath = entry->GetFullPath();
         }
         else if (const SourceAssetBrowserEntry* sourceEntry = azrtti_cast<const SourceAssetBrowserEntry*>(entry))
         {
             // manufacture an empty AssetID with the source's UUID
             assetIdToOpen = AZ::Data::AssetId(sourceEntry->GetSourceUuid(), 0);
+            fullFilePath = entry->GetFullPath();
         }
         
+        bool handledBySomeone = false;
         if (assetIdToOpen.IsValid())
         {
-            bool handledBySomeone = false;
             AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, assetIdToOpen, handledBySomeone);
+        }
+
+        if (!handledBySomeone && !fullFilePath.empty())
+        {
+            AzAssetBrowserRequestHandler::OpenWithOS(fullFilePath);
         }
     }
 

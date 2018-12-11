@@ -941,57 +941,53 @@ namespace UnitTest
     {
         ComponentApplication app;
 
-        // open a driller output file stream
-        char testFileName[AZ_MAX_PATH_LEN];
-        MakePathFromTestFolder(testFileName, AZ_MAX_PATH_LEN, "drillapptest.dat");
-        DrillerOutputFileStream fs;
-        fs.Open(testFileName, IO::SystemFile::SF_OPEN_CREATE | IO::SystemFile::SF_OPEN_WRITE_ONLY);
-
-        // create a list of driller we what to drill
-        DrillerManager::DrillerListType drillersToDrill;
-        DrillerManager::DrillerInfo di;
-        di.id = AZ_CRC("TraceMessagesDriller", 0xa61d1b00);
-        drillersToDrill.push_back(di);
-        di.id = AZ_CRC("StreamerDriller", 0x2f27ed88);
-        drillersToDrill.push_back(di);
-        di.id = AZ_CRC("MemoryDriller", 0x1b31269d);
-        drillersToDrill.push_back(di);
-
         //////////////////////////////////////////////////////////////////////////
         // Create application environment code driven
         ComponentApplication::Descriptor appDesc;
         appDesc.m_memoryBlocksByteSize = 10 * 1024 * 1024;
         Entity* systemEntity = app.Create(appDesc);
-    
+
         systemEntity->CreateComponent<MemoryComponent>();
         systemEntity->CreateComponent<StreamerComponent>(); // note that this component is what registers the streamer driller
 
         systemEntity->Init();
         systemEntity->Activate();
 
-        AZ_TEST_ASSERT(app.GetDrillerManager() != NULL);
-        DrillerSession* drillerSession = app.GetDrillerManager()->Start(fs, drillersToDrill);
-        AZ_TEST_ASSERT(drillerSession != NULL);
-
-
-        const int numOfFrames = 10000;
-        void* memory = NULL;
-        for (int i = 0; i < numOfFrames; ++i)
         {
-            //AZ_TracePrintf("MyDrillWindow","Test"); too much stuff in the output
-            memory = azmalloc(rand() % 2048 + 1);
-            azfree(memory);
-            app.Tick();
-        }
+            // open a driller output file stream
+            char testFileName[AZ_MAX_PATH_LEN];
+            MakePathFromTestFolder(testFileName, AZ_MAX_PATH_LEN, "drillapptest.dat");
+            DrillerOutputFileStream fs;
+            fs.Open(testFileName, IO::SystemFile::SF_OPEN_CREATE | IO::SystemFile::SF_OPEN_WRITE_ONLY);
 
-        app.GetDrillerManager()->Stop(drillerSession); // stop session manually
+            // create a list of driller we what to drill
+            DrillerManager::DrillerListType drillersToDrill;
+            DrillerManager::DrillerInfo di;
+            di.id = AZ_CRC("TraceMessagesDriller", 0xa61d1b00);
+            drillersToDrill.push_back(di);
+            di.id = AZ_CRC("StreamerDriller", 0x2f27ed88);
+            drillersToDrill.push_back(di);
+            di.id = AZ_CRC("MemoryDriller", 0x1b31269d);
+            drillersToDrill.push_back(di);
+
+            ASSERT_NE(nullptr, app.GetDrillerManager());
+            DrillerSession* drillerSession = app.GetDrillerManager()->Start(fs, drillersToDrill);
+            ASSERT_NE(nullptr, drillerSession);
+
+            const int numOfFrames = 10000;
+            void* memory = NULL;
+            for (int i = 0; i < numOfFrames; ++i)
+            {
+                memory = azmalloc(rand() % 2048 + 1);
+                azfree(memory);
+                app.Tick();
+            }
+
+            app.GetDrillerManager()->Stop(drillerSession); // stop session manually
+            fs.Close(); // close the file with driller info
+        }
 
         app.Destroy();
         //////////////////////////////////////////////////////////////////////////
-
-        // close the file with driller info
-        fs.Close();
-
-        // TODO: Open the file and check that we have some valid drilling data
     }
 }

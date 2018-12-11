@@ -31,7 +31,6 @@ void CNULLRenderer::EF_Init()
     //==================================================
     // Init RenderObjects
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_D3D, 0, "Renderer RenderObjects");
         m_RP.m_nNumObjectsInPool = 384; // magic number set by Cry.  The regular pipe uses a constant set to 1024
 
         if (m_RP.m_ObjectsPool != nullptr)
@@ -66,7 +65,7 @@ void CNULLRenderer::EF_Init()
     }
     // Init identity RenderObject
     SAFE_DELETE(m_RP.m_pIdendityRenderObject);
-    m_RP.m_pIdendityRenderObject = new CRenderObject();
+    m_RP.m_pIdendityRenderObject = aznew CRenderObject();
     m_RP.m_pIdendityRenderObject->Init();
     m_RP.m_pIdendityRenderObject->m_II.m_AmbColor = Col_White;
     m_RP.m_pIdendityRenderObject->m_II.m_Matrix.SetIdentity();

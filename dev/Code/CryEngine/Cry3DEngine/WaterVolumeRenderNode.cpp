@@ -651,13 +651,13 @@ void CWaterVolumeRenderNode::CreateRiver(uint64 volumeID, const Vec3* pVertices,
         m_waterSurfaceVertices[i].xyz = MapVertexToFogPlane(m_waterSurfaceVertices[i].xyz, fogPlane);
 
         // generate texture coordinates
-        float d0(planes[0].DistFromPlane(m_waterSurfaceVertices[i].xyz));
-        float d1(planes[1].DistFromPlane(m_waterSurfaceVertices[i].xyz));
-        float d2(planes[2].DistFromPlane(m_waterSurfaceVertices[i].xyz));
-        float d3(planes[3].DistFromPlane(m_waterSurfaceVertices[i].xyz));
-        float t(fabsf(d0 + d1) < FLT_EPSILON ? 0.0f : d0 / (d0 + d1));
+        float d0(fabsf(planes[0].DistFromPlane(m_waterSurfaceVertices[i].xyz)));
+        float d1(fabsf(planes[1].DistFromPlane(m_waterSurfaceVertices[i].xyz)));
+        float d2(fabsf(planes[2].DistFromPlane(m_waterSurfaceVertices[i].xyz)));
+        float d3(fabsf(planes[3].DistFromPlane(m_waterSurfaceVertices[i].xyz)));
+        float t(fabsf(d0 + d1) < FLT_EPSILON ? 0.0f : clamp_tpl(d0 / (d0 + d1), 0.0f, 1.0f));
 
-        Vec2 st = Vec2((1 - t) * fabsf(uTexCoordBegin) + t * fabsf(uTexCoordEnd), fabsf(d2 + d3) < FLT_EPSILON ? 0.0f : d2 / (d2 + d3));
+        Vec2 st = Vec2((1 - t) * fabsf(uTexCoordBegin) + t * fabsf(uTexCoordEnd), fabsf(d2 + d3) < FLT_EPSILON ? 0.0f : clamp_tpl(d2 / (d2 + d3), 0.0f, 1.0f));
         st[0] *= surfUVScale.x;
         st[1] *= surfUVScale.y;
 
@@ -1105,7 +1105,8 @@ void CWaterVolumeRenderNode::Render_JobEntry(const SRendParams& rParam, const SR
         SShaderItem& shaderItem(m_pMaterial->GetShaderItem(0));
 
         // add to renderer
-        GetRenderer()->EF_AddEf(m_pSurfaceRE[fillThreadID], shaderItem, pROSurf, passInfo, EFSLIST_WATER, 1, rendItemSorter);
+        // Render water refractive surface between beforeWater / afterWater objects.
+        GetRenderer()->EF_AddEf(m_pSurfaceRE[fillThreadID], shaderItem, pROSurf, passInfo, EFSLIST_REFRACTIVE_SURFACE, 0, rendItemSorter);
     }
 }
 

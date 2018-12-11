@@ -1,3 +1,5 @@
+@import "../../../styles/variables";
+
 .dropdown-menu {
     max-height: 400px;
     z-index: 100;
@@ -29,13 +31,27 @@
     padding-top: 15px;
 }
 
-.status-selector{
+.column-selector, .status-selector, .bulk-actions-selector{
     margin-left: 0;
 }
 
-.column-checkbox-area, .read-status-radio-button-area {
+.bulk-action:hover{
+    color: $white;
+    background-color: $primary-color;
+}
+.bulk-action{
+    padding: 5px 10px 5px 10px;
+    margin-bottom: 0px;
+}
+
+.column-checkbox-area {
     max-height: 200px;
     overflow-y: auto;
+}
+
+.read-status-radio-button-area, .bulk-actions-area {
+    max-height: 200px;
+    margin-bottom: 0px;
 }
 
 .ngx-datatable.material {
@@ -46,11 +62,24 @@
    cursor: pointer;
 }
 
-::ng-deep .page-count {
-    display:none;
-}
-
-.read-status {
+.selector-option {
     font-family: "AmazonEmber-Light";
     font-size: 14px;
+}
+
+.row-selector{
+    margin-bottom: 20px;
+}
+
+.group-options {
+    padding-left: 0px;
+}
+
+.create-jira-issue-window-container {
+    height: 500px;
+    overflow: auto;
+}
+
+.full-column-toggle-operation-button {
+    margin-right: 10px;
 }

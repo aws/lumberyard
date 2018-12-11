@@ -1,13 +1,11 @@
-from s3crawler import Crawler
 from dynamodb import DynamoDb
-from thread_pool import ThreadPool
-from threading import Thread
 from aws_lambda import Lambda
 from cgf_utils import custom_resource_response
 from StringIO import StringIO
 from athena import Athena, Query
-from glue import Glue
 from datetime import date, timedelta
+from sqs import Sqs
+from thread_pool import ThreadPool
 import os
 import metric_constant as c
 import util  
@@ -15,61 +13,117 @@ import random
 import math
 import datetime
 import metric_schema
+import time
+import json
+import sys
 
 def launch(event, lambdacontext):
-    print "Start"
-    hours_delta = 36
+    util.debug_print("Start Amoeba Launcher")    
     context = dict({})                 
+    context[c.KEY_START_TIME] = time.time() 
     context[c.KEY_LAMBDA_FUNCTION] = lambdacontext.function_name if hasattr(lambdacontext, 'function_name') else None   
-    context[c.KEY_REQUEST_ID] = lambdacontext.aws_request_id if hasattr(lambdacontext, 'aws_request_id') else None
-    global threadpool
-    global is_lambda 
-    threadpool = ThreadPool(context, 8)         
-    is_lambda = context[c.KEY_REQUEST_ID] is not None    
-    available_amoeba_lambdas = []
-    available_amoeba_lambdas.append(c.ENV_AMOEBA_1)
-    available_amoeba_lambdas.append(c.ENV_AMOEBA_2)
-    available_amoeba_lambdas.append(c.ENV_AMOEBA_3)
-    available_amoeba_lambdas.append(c.ENV_AMOEBA_4)
-    available_amoeba_lambdas.append(c.ENV_AMOEBA_5)
-    db = DynamoDb(context)  
-    crawler = Crawler(context, os.environ[c.ENV_S3_STORAGE])    
-    glue = Glue()
-    
-    events = glue.get_events()
-    #TODO: adjust the amoeba tree depth so that we have fully utilized all available amoebas; len(available_amoeba_lambdas) * 1000
-    #since the number of leaf nodes for the metric partitions can quickly get very large we use a 5 lambda pool to ensure we don't hit the 1000 invocation limit.
-    
-    start = datetime.datetime.utcnow() - datetime.timedelta(hours=hours_delta)
-    now = datetime.datetime.utcnow()    
+    context[c.KEY_REQUEST_ID] = lambdacontext.aws_request_id if hasattr(lambdacontext, 'aws_request_id') else None        
+    prefix = util.get_stack_name_from_arn(os.environ[c.ENV_DEPLOYMENT_STACK_ARN])    
+    prefix = "{0}{1}".format(prefix, c.KEY_SQS_AMOEBA_SUFFIX)
+    db = DynamoDb(context)
+    sqs = Sqs(context, prefix, "sqs")
+    sqs.set_queue_url(lowest_load_queue=False)    
+
+    if sqs.is_all_under_load:        
+        sqs.add_fifo_queue(prefix)   
         
-    for type in events:        
-        dt = start
-        while dt <= now:                                                          
-            prefix = metric_schema.s3_key_format().format(context[c.KEY_SEPERATOR_PARTITION], dt.year, dt.month, dt.day, dt.hour, type, dt.strftime(util.partition_date_format()))    
-            threadpool.add(crawler.crawl, prefix, available_amoeba_lambdas, invoke_lambda)                 
-            dt += timedelta(hours=1)
+    elapsed = util.elapsed(context) 
+    timeout = context[c.KEY_MAX_LAMBDA_TIME] * c.RATIO_OF_MAX_LAMBDA_TIME
+    map = {}
+    queues_checked = 0
+    number_of_queues = sqs.number_of_queues
+    sqs_delete_tokens = {}    
+    while elapsed < timeout and queues_checked < number_of_queues:    
+        messages = sqs.read_queue()  
+        length = len(messages)
+        if sqs.queue_url not in sqs_delete_tokens:
+            sqs_delete_tokens[sqs.queue_url] = []
+
+        if length > 0:            
+            for x in range(0, length):
+                message = messages[x]   
+                body = json.loads(message["Body"])
+                paths = body["paths"]
+                msg_token = "{}{}{}".format(message['MessageId'], context[c.KEY_SEPERATOR_CSV], message['ReceiptHandle'])
+                sqs_delete_tokens[sqs.queue_url].append(msg_token)
+                for i in range(0, len(paths)):
+                    path = paths[i]
+                    parts = path.split(context[c.KEY_SEPERATOR_PARTITION])
+                    filename = parts.pop()
+                    directory = context[c.KEY_SEPERATOR_PARTITION].join(parts)
+                    if directory not in map:
+                        map[directory] = {
+                            "paths": [],
+                            "size": 0
+                        }
+                    #lambda payload limit for Event invocation type  131072
+                    sizeof = len(path) + map[directory]["size"]
+                    is_invoked =  map[directory].get("invoked", False)
+                    if sizeof >= c.MAXIMUM_ASYNC_PAYLOAD_SIZE and not is_invoked:
+                        invoke_lambda(context, directory, map[directory]["paths"] )   
+                        map[directory] = {
+                            "paths": [],
+                            "size": 0,
+                            "invoked": True
+                        }
+                    else:
+                        map[directory]["paths"].append(path) 
+                        map[directory]["size"] = sizeof   
+                        
+        else:
+            queues_checked += 1
+            sqs.set_queue_url(lowest_load_queue=False)    
     
-    threadpool.wait()    
+        elapsed = util.elapsed(context)         
+
+    #Invoke a amoeba generator for each S3 leaf node
+    for directory, settings in map.iteritems(): 
+        is_invoked = settings.get("invoked", False)
+        #Amoeba's are not designed to have multiple amoebas working against one directory
+        #If the Amoeba has already been invoked due to payload size then we requeue the remaining paths
+        if is_invoked:
+            sqs.send_generic_message(json.dumps({ "paths": settings["paths"] }))
+        else:
+            invoke_lambda(context, directory, settings["paths"])    
+        
+    context[c.KEY_THREAD_POOL] = ThreadPool(context, 8) 
+    #Delete SQS messages that have been processed
+    for key, value in sqs_delete_tokens.iteritems():        
+        sqs.delete_message_batch(value, key)
+
     return custom_resource_response.success_response({"StatusCode": 200}, "*")
 
-def invoke_lambda(context, root, name):    
-    payload = { "root": root,
-                "context": context }    
-    if is_lambda:                        
+def invoke_lambda(context, directory, files):    
+    payload = { "directory": directory,
+                "files": files,
+                "context": context }   
+    
+    if context[c.KEY_REQUEST_ID]:           
         awslambda = Lambda()        
-        util.debug_print("Invoking lambda {} with path '{}'".format(name, root))
-        awslambda.invoke(os.environ[name],payload)            
-    else:                        
-        import amoeba_generator
-        threadpool.add(amoeba_generator.ingest, payload, dict({}))    
+        util.debug_print("Invoking lambda {} with path '{}'".format(c.ENV_AMOEBA, files))
+        response = awslambda.invoke(os.environ[c.ENV_AMOEBA],payload)              
+        util.debug_print("Status Code: {} Response Payload: {}".format(response['StatusCode'], response['Payload'].read().decode('utf-8')))
+    else:                
+        import amoeba_generator        
+        amoeba_generator.ingest(payload, dict({}))    
 
-def cli(context, args):    
+def cli(context, args):
+    from resource_manager_common import constant
+    credentials = context.aws.load_credentials()
+
     resources = util.get_resources(context)
     os.environ[c.ENV_S3_STORAGE] = resources[c.RES_S3_STORAGE]      
     os.environ[c.ENV_DB_TABLE_CONTEXT] = resources[c.RES_DB_TABLE_CONTEXT]              
     os.environ[c.ENV_VERBOSE] = str(args.verbose) if args.verbose else ""
     os.environ[c.ENV_REGION] = context.config.project_region
+    os.environ[c.ENV_AMOEBA] = resources[c.RES_AMOEBA]   
     os.environ[c.IS_LOCALLY_RUN] = "True"
     os.environ[c.ENV_DEPLOYMENT_STACK_ARN] = resources[c.ENV_STACK_ID]
-    launch({}, dict({'aws_request_id':123}))    
+    os.environ["AWS_ACCESS_KEY"] = args.aws_access_key if args.aws_access_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.ACCESS_KEY_OPTION)
+    os.environ["AWS_SECRET_KEY"] = args.aws_secret_key if args.aws_secret_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.SECRET_KEY_OPTION)
+    launch({}, type('obj', (object,), {}))    

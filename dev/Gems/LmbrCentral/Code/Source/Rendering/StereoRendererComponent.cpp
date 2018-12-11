@@ -17,13 +17,12 @@
 
 #include "StereoRendererComponent.h"
 
-using namespace AZ;
 
 namespace LmbrCentral
 {
-    void StereoRendererComponent::Reflect(ReflectContext* context)
+    void StereoRendererComponent::Reflect(AZ::ReflectContext* context)
     {
-        SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
             serializeContext->Class<StereoRendererComponent, AZ::Component>()
@@ -33,9 +32,9 @@ namespace LmbrCentral
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
         if (behaviorContext)
         {
-            behaviorContext->EBus<StereoRendererRequestBus>("StereoRendererRequestBus")
+            behaviorContext->EBus<AZ::StereoRendererRequestBus>("StereoRendererRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
-                ->Event("IsRenderingToHMD", &StereoRendererRequestBus::Events::IsRenderingToHMD);
+                ->Event("IsRenderingToHMD", &AZ::StereoRendererRequestBus::Events::IsRenderingToHMD);
         }
     }
 }

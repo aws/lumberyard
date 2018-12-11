@@ -21,7 +21,7 @@
 #include <ScriptHelpers.h>
 
 
-// TODO(márcio): Exterminate this file
+// TODO(marcio): Exterminate this file
 
 
 CScriptBind_AI::CScriptBind_AI(ISystem* pSystem)

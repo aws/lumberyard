@@ -279,7 +279,6 @@ inline CHashSpace<T, TraitsT>::CHashSpace(const Vec3& cellSize, int buckets, con
     , m_buckets(buckets)
     , m_totalNumObjects(0)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Navigation, 0, "HashSpace");
     m_cells.resize(m_buckets);
 }
 
@@ -290,7 +289,6 @@ inline CHashSpace<T, TraitsT>::CHashSpace(const Vec3& cellSize, int buckets)
     , m_buckets(buckets)
     , m_totalNumObjects(0)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Navigation, 0, "HashSpace");
     m_cells.resize(m_buckets);
 }
 
@@ -501,8 +499,6 @@ bool CHashSpace<T, TraitsT>::GetObjectWithinRadius(const Vec3& pos, float radius
 template<typename T, typename TraitsT>
 bool CHashSpace<T, TraitsT>::ReadFromFile(CCryFile& file)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Navigation, 0, "HashSpace");
-
     Clear(false);
     int version = 1;
     file.Write(&version, sizeof(version));

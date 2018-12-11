@@ -61,7 +61,8 @@ namespace AzQtComponents
         void handleClose();
         void handleMaximize();
         void handleMinimize();
-        bool hasButton(DockBarButton::WindowDecorationButton) const;
+        bool hasButton(DockBarButton::WindowDecorationButton buttonType) const;
+        bool buttonIsEnabled(DockBarButton::WindowDecorationButton buttonType) const;
         void handleMoveRequest();
         void handleSizeRequest();
 
@@ -89,6 +90,9 @@ namespace AzQtComponents
         * Expose the title using a QT property so that test automation can read it
         */
         Q_PROPERTY(QString title READ title)
+
+        void disableButton(DockBarButton::WindowDecorationButton buttonType);
+        void enableButton(DockBarButton::WindowDecorationButton buttonType);
 
     Q_SIGNALS:
         void undockAction();
@@ -125,6 +129,7 @@ namespace AzQtComponents
         bool isDraggingWindow() const;
         void resizeWindow(const QPoint& globalPos);
         void dragWindow(const QPoint& globalPos);
+        DockBarButton* findButton(DockBarButton::WindowDecorationButton buttonType) const;
 
         DockBar* m_dockBar;
         QWidget* m_firstButton = nullptr;

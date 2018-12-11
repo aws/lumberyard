@@ -89,7 +89,7 @@ public:
     {
         for (NameMap::iterator it = m_nameMap.begin(); it != m_nameMap.end(); ++it)
         {
-            free(it->second);
+            CryModuleFree(it->second);
         }
     }
 
@@ -109,7 +109,7 @@ public:
             // Create a new entry.
             unsigned int nLen = strlen(str);
             unsigned int allocLen = sizeof(SNameEntry) + (nLen + 1) * sizeof(char);
-            pEntry = (SNameEntry*)malloc(allocLen);
+            pEntry = (SNameEntry*)CryModuleMalloc(allocLen);
             assert(pEntry != NULL);
             pEntry->nTag = SNameEntry::TAG;
             pEntry->nRefCount = 0;
@@ -130,7 +130,7 @@ public:
     {
         assert(pEntry);
         m_nameMap.erase(pEntry->GetStr());
-        free(pEntry);
+        CryModuleFree(pEntry);
     }
     virtual int GetMemoryUsage()
     {

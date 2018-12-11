@@ -952,11 +952,11 @@ struct SRenderPipeline
 #if !defined(_RELEASE)
     //===================================================================
     // Drawcall count debug view - per Node - r_stats 6
-    std::map< struct IRenderNode*, IRenderer::SDrawCallCountInfo > m_pRNDrawCallsInfoPerNode[RT_COMMAND_BUF_COUNT];
+    IRenderer::RNDrawcallsMapNode m_pRNDrawCallsInfoPerNode[RT_COMMAND_BUF_COUNT];
 
     //===================================================================
     // Drawcall count debug view - per mesh - perf hud renderBatchStats
-    std::map< struct IRenderMesh*, IRenderer::SDrawCallCountInfo > m_pRNDrawCallsInfoPerMesh[RT_COMMAND_BUF_COUNT];
+    IRenderer::RNDrawcallsMapMesh m_pRNDrawCallsInfoPerMesh[RT_COMMAND_BUF_COUNT];
 #endif
 
     //================================================================

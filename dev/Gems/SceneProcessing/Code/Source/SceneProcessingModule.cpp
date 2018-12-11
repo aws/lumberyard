@@ -18,6 +18,8 @@
 #include <Config/Components/SceneProcessingConfigSystemComponent.h>
 #include <Config/Components/SoftNameBehavior.h>
 #include <Config/Widgets/GraphTypeSelector.h>
+#include <Exporting/Components/TangentGenerateComponent.h>
+#include <Exporting/Components/TangentPreExportComponent.h>
 
 namespace AZ
 {
@@ -45,7 +47,9 @@ namespace AZ
                     SceneProcessingConfig::SceneProcessingConfigSystemComponent::CreateDescriptor(),
                     SceneProcessingConfig::SoftNameBehavior::CreateDescriptor(),
                     SceneBuilder::BuilderPluginComponent::CreateDescriptor(),
-                    SceneBuilder::SceneSerializationHandler::CreateDescriptor()
+                    SceneBuilder::SceneSerializationHandler::CreateDescriptor(),
+                    AZ::SceneExportingComponents::TangentPreExportComponent::CreateDescriptor(),
+                    AZ::SceneExportingComponents::TangentGenerateComponent::CreateDescriptor()
                 });
 
                 SceneProcessingConfig::GraphTypeSelector::Register();

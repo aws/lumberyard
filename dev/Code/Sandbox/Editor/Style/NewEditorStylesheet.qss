@@ -219,22 +219,6 @@ StatusBarItem[clickable="true"]:hover
 	background-color: @ToolButtonHoverBackgroundColor
 }
 
-AzToolsFramework--AssetBrowser--SearchWidget QLineEdit
-{
-    selection-background-color: rgb(233, 99, 0);
-    background: #6e7071;
-    background-image: url(:/AssetBrowser/Resources/search.png);
-    background-repeat: no-repeat;
-    background-position: left;
-    padding: 2 2 2 24;
-    color: rgb(255, 255, 255);
-}
-
-AzToolsFramework--AssetBrowser--SearchWidget QPushButton#m_buttonClearFilter
-{
-    border: none; 
-    background: #6e7071;
-}
 
 /* ============================================================= */
 /* Styles applied through programmatically-set QT properties      */
@@ -2398,4 +2382,57 @@ AzQtComponents--SpinBox::down-button:hovered[hovered=true],
 AzQtComponents--DoubleSpinBox::down-button:hovered[hovered=true]
 {
     image: url(:/stylesheet/img/UI20/spinbox-down-arrow.png);
+}
+
+/** 
+* These are down here so that they override the generic "widget" specs above
+*/
+
+AzToolsFramework--AssetBrowser--SearchWidget QLineEdit
+{
+    selection-background-color: rgb(233, 99, 0);
+    background: #6e7071;
+    background-image: url(:/AssetBrowser/Resources/search.png);
+    background-repeat: no-repeat;
+    background-position: left;
+    padding: 2 2 2 24;
+    color: rgb(255, 255, 255);
+}
+
+AzToolsFramework--AssetBrowser--SearchWidget QPushButton#m_buttonClearFilter
+{
+    border: none; 
+    background: #6e7071;
+}
+
+
+AzToolsFramework--AssetBrowser--AssetBrowserTreeView
+{
+    font-family: "Amazon Ember";
+    font-size: 12px;
+    color: #FFFFFF;
+    show-decoration-selected:0;  /* this prevents the carets from being rendered with an extra square of highlight around them */
+}
+
+AzToolsFramework--AssetBrowser--AssetBrowserTreeView::item
+{
+    padding: 4px;
+}
+
+AzToolsFramework--AssetBrowser--AssetBrowserTreeView:disabled
+{
+    color: #999999;
+    selection-color: #999999;
+}
+
+AzToolsFramework--AssetBrowser--AssetBrowserTreeView::branch:has-children:!has-siblings:closed,
+AzToolsFramework--AssetBrowser--AssetBrowserTreeView::branch:closed:has-children:has-siblings {
+        border-image: none;
+        image: url("EDITOR:Icons/AssetBrowser/CaretClosed_16.png");
+}
+
+AzToolsFramework--AssetBrowser--AssetBrowserTreeView::branch:open:has-children:!has-siblings,
+AzToolsFramework--AssetBrowser--AssetBrowserTreeView::branch:open:has-children:has-siblings  {
+        border-image: none;
+        image: url("EDITOR:Icons/AssetBrowser/CaretOpen_16.png");
 }

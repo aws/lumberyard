@@ -74,7 +74,7 @@ def build(bld):
         test_all_file_list  = ['editor_core_test.waf_files'],
     )
 
-    bld.CryEditorLib(
+    kw = dict(
         # Settings
         target                              = 'EditorLib',
         vs_filter                           = 'Sandbox',
@@ -82,8 +82,7 @@ def build(bld):
         pch                                 = 'StdAfx.cpp',
         file_list                           = 'editor_lib.waf_files',
         darwin_file_list                    = 'editor_lib_darwin.waf_files',
-        win_file_list                       = [
-                                              ],
+        win_file_list                       = [ ],
         platforms                           = ['win', 'darwin'],
         configurations                      = ['debug', 'debug_test', 'profile', 'profile_test'],
         includes                            = ['.',
@@ -178,6 +177,11 @@ def build(bld):
         # Testing
         test_all_file_list  = ['editor_lib_test.waf_files'],
     )
+    
+    for p in bld.env['RESTRICTED_PLATFORMS']:
+        kw['win_file_list'].append('{0}/editor_lib_{0}.waf_files'.format(p))
+
+    bld.CryEditorLib(**kw)
 
     tsk_gen = bld.CryEditor(
         # Settings
@@ -289,3 +293,4 @@ def build(bld):
     if tsk_gen != None:
         # Copy Resource.h for Ribbon UI
         tsk_gen.create_task('copy_outputs', tsk_gen.path.make_node('Resource.h'), bld.srcnode.make_node('Editor/UI/Resource.h') )
+

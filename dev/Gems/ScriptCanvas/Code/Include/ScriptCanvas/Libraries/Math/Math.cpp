@@ -41,6 +41,15 @@ namespace ScriptCanvas
 
         static RandomDetails* s_RandomDetails = nullptr;
 
+        void DeleteRandomDetails()
+        {
+            if (s_RandomDetails)
+            {
+                delete s_RandomDetails;
+                s_RandomDetails = nullptr;
+            }
+        }
+
         std::mt19937& GetRandomEngine()
         {
             if (s_RandomDetails == nullptr)

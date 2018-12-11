@@ -83,7 +83,5 @@ namespace StarterGameGem
 
         typedef AZStd::vector<AudioEvent> VecOfAudioEvents;
         VecOfAudioEvents m_events;
-
     };
-
 } // namespace StarterGameGem

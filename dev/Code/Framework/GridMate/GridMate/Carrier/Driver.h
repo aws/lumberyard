@@ -66,6 +66,7 @@ namespace GridMate
             EC_RECEIVE,
 
             EC_PLATFORM = 1000, ///< use codes above 1000 for platform specific error codes
+            EC_BUFFER_TOOLARGE = 1001
         };
 
         /**
@@ -78,9 +79,14 @@ namespace GridMate
             BSD_AF_UNSPEC,
         };
 
+        Driver() :
+            m_canSend(true)
+        {}
         virtual ~Driver() {}
 
-        virtual void        Update()        {}
+        virtual void Update() {}
+        virtual void ProcessIncoming() {}
+        virtual void ProcessOutgoing() {}
 
         /// \todo Add QoS support
 
@@ -154,8 +160,15 @@ namespace GridMate
          */
         virtual AZStd::intrusive_ptr<DriverAddress> CreateDriverAddress(const string& address) = 0;
 
+        /**
+         * Returns true if the driver can accept new data (ex, has buffer space).
+         */
+        virtual bool CanSend() const { return m_canSend; }
+
     protected:
         virtual void             DestroyDriverAddress(DriverAddress* address) = 0;
+
+        bool                    m_canSend;      ///< Can the driver accept more data
     };
 
     /**

@@ -97,6 +97,12 @@
             "Version": "0.1.0"
         },
         {
+            "Path": "Gems/NativeUI",
+            "Uuid": "d2a325d80a0445dbb64b22f7d2f20960",
+            "Version": "0.1.0",
+            "_comment": "NativeUI"
+        },
+        {
             "Path": "Gems/ScriptCanvasDiagnosticLibrary",
             "Uuid": "d969b997bb7f4342ba0b3eedc378025d",
             "Version": "0.1.0",

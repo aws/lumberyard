@@ -15,7 +15,6 @@
 
 
 #include "StdAfx.h"
-#include "BucketAllocatorImpl.h"
 #include "CryCrc32.h"
 #include "../RenderCapabilities.h"
 #include <AzCore/std/string/string.h>
@@ -179,7 +178,11 @@ void CParserBin::Init()
     fxTokenKey("%_LT_2_TYPE", eT__LT_2_TYPE);
     fxTokenKey("%_LT_3_TYPE", eT__LT_3_TYPE);
     fxTokenKey("%_TT_TEXCOORD_MATRIX", eT__TT_TEXCOORD_MATRIX);
-    fxTokenKey("%_TT_TEXCOORD_GEN_OBJECT_LINEAR", eT__TT_TEXCOORD_GEN_OBJECT_LINEAR);
+    fxTokenKey("%_TT_TEXCOORD_GEN_OBJECT_LINEAR_DIFFUSE", eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DIFFUSE);
+    fxTokenKey("%_TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE", eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE);
+    fxTokenKey("%_TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE_MULT", eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE_MULT);
+    fxTokenKey("%_TT_TEXCOORD_GEN_OBJECT_LINEAR_DETAIL", eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DETAIL);
+    fxTokenKey("%_TT_TEXCOORD_GEN_OBJECT_LINEAR_CUSTOM", eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_CUSTOM);
     fxTokenKey("%_TT_TEXCOORD_PROJ", eT__TT_TEXCOORD_PROJ);
     fxTokenKey("%_VT_TYPE", eT__VT_TYPE);
     fxTokenKey("%_VT_TYPE_MODIF", eT__VT_TYPE_MODIF);
@@ -846,6 +849,10 @@ void CParserBin::SetupForGL4()
 //       This means ShaderCacheGen.exe cannot be used in windows or mac to generate GLES3 shaders.
 void CParserBin::SetupForGLES3()
 {
+    //  Confetti BEGIN: Igor Lobanchikov
+    static std::string g_generatedShaderPath;
+    //  Confetti End: Igor Lobanchikov
+
     // Shader Cache folders to be generated for release builds for Android GLES3 at the moment:
     //   GLES3_0
     //   GLES3_0\FIXED_POINT

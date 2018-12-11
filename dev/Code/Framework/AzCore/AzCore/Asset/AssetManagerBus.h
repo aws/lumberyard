@@ -40,7 +40,7 @@ namespace AZ
 
         struct ProductDependency
         {
-            AZ_TYPE_INFO(ProductDependency, "{5b9a8f1c-407a-4d2b-88f4-a79584684cc4}");
+            AZ_TYPE_INFO(ProductDependency, "{5B9A8F1C-407A-4D2B-88F4-A79584684CC4}");
 
             ProductDependency() = default;
             ProductDependency(const AZ::Data::AssetId& assetId, AZStd::bitset<64> flags) : m_assetId(assetId), m_flags(flags) {}

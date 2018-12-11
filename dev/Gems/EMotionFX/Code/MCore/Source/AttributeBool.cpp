@@ -13,10 +13,12 @@
 #include "AttributeFloat.h"
 #include "AttributeInt32.h"
 #include "AttributeBool.h"
-
+#include <MCore/Source/AttributeAllocator.h>
 
 namespace MCore
 {
+    AZ_CLASS_ALLOCATOR_IMPL(AttributeBool, AttributeAllocator, 0)
+
     bool AttributeBool::InitFrom(const Attribute* other)
     {
         switch (other->GetType())

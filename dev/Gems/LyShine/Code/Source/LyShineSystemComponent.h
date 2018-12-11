@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Memory/AllocatorScope.h>
 
 #include <LmbrCentral/Rendering/MaterialAsset.h>
 
@@ -25,11 +26,16 @@
 
 namespace LyShine
 {
+    // LyShine depends on the LegacyAllocator and CryStringAllocator. This will be managed
+    // by the LyShineSystemComponent
+    using LyShineAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
+
     class LyShineSystemComponent
         : public AZ::Component
         , protected LyShineRequestBus::Handler
         , protected UiSystemBus::Handler
         , protected UiSystemToolsBus::Handler
+        , protected LyShineAllocatorScope
     {
     public:
         AZ_COMPONENT(LyShineSystemComponent, lyShineSystemComponentUuid);

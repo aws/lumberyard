@@ -55,6 +55,7 @@ FILE_ALIAS_3P_PREFIX = "3P:"
 NON_BUILD_COMMANDS = [
     'generate_uber_files',
     'generate_module_def_files',
+    'generate_module_dependency_files',
     'generate_game_project',
     'msvs',
     'eclipse',
@@ -110,6 +111,7 @@ LMBR_WAFLIB_MODULES = [
 
         'generate_uber_files',          # Load support for Uber Files
         'generate_module_def_files',    # Load support for Module Definition Files
+        'generate_module_dependency_files',  # Load support for Module Dependency Files (Used by ly_integration_toolkit_utils.py)
 
         # Visual Studio support
         'msvs_override_handling:win32',
@@ -755,7 +757,7 @@ def setup_game_projects(bld):
     if bld.env['CONFIGURATION'] == 'project_generator' or not bld.spec_disable_games():
         # If this bld command is to generate the use maps, then recurse all of the game projects, otherwise
         # only recurse the enabled game project
-        game_project_list = bld.game_projects() if bld.cmd == 'generate_module_def_files' \
+        game_project_list = bld.game_projects() if bld.cmd in ('generate_module_def_files', 'generate_module_dependency_files') \
             else bld.get_enabled_game_project_list()
         for project in game_project_list:
 

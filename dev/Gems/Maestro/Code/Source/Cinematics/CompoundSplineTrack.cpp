@@ -102,6 +102,7 @@ bool CCompoundSplineTrack::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bL
             xmlNode->getAttr("CustomColor", abgr);
             m_customColor = ColorB(abgr);
         }
+        xmlNode->getAttr("Id", m_id);
     }
     else
     {
@@ -112,6 +113,7 @@ bool CCompoundSplineTrack::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bL
         {
             xmlNode->setAttr("CustomColor", m_customColor.pack_abgr8888());
         }
+        xmlNode->setAttr("Id", m_id);
     }
 #endif
 
@@ -590,15 +592,28 @@ bool CCompoundSplineTrack::GetExpanded() const
 }
  
 //////////////////////////////////////////////////////////////////////////
+unsigned int CCompoundSplineTrack::GetId() const
+{
+    return m_id;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCompoundSplineTrack::SetId(unsigned int id)
+{
+    m_id = id;
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CCompoundSplineTrack::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<CCompoundSplineTrack>()
-        ->Version(2)
+        ->Version(3)
         ->Field("Flags", &CCompoundSplineTrack::m_flags)
         ->Field("ParamType", &CCompoundSplineTrack::m_nParamType)
         ->Field("NumSubTracks", &CCompoundSplineTrack::m_nDimensions)
         ->Field("SubTracks", &CCompoundSplineTrack::m_subTracks)
         ->Field("SubTrackNames", &CCompoundSplineTrack::m_subTrackNames)
         ->Field("ValueType", &CCompoundSplineTrack::m_valueType)
-        ->Field("Expanded", &CCompoundSplineTrack::m_expanded);    
+        ->Field("Expanded", &CCompoundSplineTrack::m_expanded)
+        ->Field("Id", &CCompoundSplineTrack::m_id);
 }

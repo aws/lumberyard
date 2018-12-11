@@ -139,4 +139,20 @@ namespace AzFramework
 
         ASSERT_TRUE(resultToken == expectedToken);
     }
+    
+    TEST_F(StringFuncTest, GetDrive_UseSameStringForInOut_Success)
+    {
+#if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        AZStd::string input = "F:\\test\\to\\get\\drive\\";
+        AZStd::string expectedDriveResult = "F:";
+#else
+        AZStd::string input = "/test/to/get/drive/";
+        AZStd::string expectedDriveResult = "";
+#endif //AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+
+        bool result = AzFramework::StringFunc::Path::GetDrive(input.c_str(), input);
+
+        ASSERT_TRUE(result);
+        ASSERT_EQ(input, expectedDriveResult);
+    }
 }

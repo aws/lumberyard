@@ -17,6 +17,8 @@
 
 #include "PostProcessUtils.h"
 
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+
 struct MotionBlurObjectParameters
 {
     MotionBlurObjectParameters()
@@ -41,6 +43,7 @@ struct MotionBlurObjectParameters
 class CMotionBlur
     : public CPostEffect
 {
+    typedef VectorMap<uintptr_t, MotionBlurObjectParameters > ObjectMap;
 public:
     CMotionBlur()
     {
@@ -54,6 +57,11 @@ public:
         AddParamFloatNoTransition("FilterRadialBlurring_ScreenPosY", m_pRadBlurScreenPosY, 0.5f);
         AddParamFloatNoTransition("FilterRadialBlurring_Radius", m_pRadBlurRadius, 1.0f);
         AddParamVec4("Global_DirectionalBlur_Vec", m_pDirectionalBlurVec, Vec4(0, 0, 0, 0));
+
+        for (int idx = 0; idx < AZ_ARRAY_SIZE(m_Objects); ++idx)
+        {
+            m_Objects[idx] = AZStd::make_unique<ObjectMap>();
+        }
     }
 
     virtual ~CMotionBlur()
@@ -63,9 +71,9 @@ public:
 
     void Release()
     {
-        m_Objects[0].clear();
-        m_Objects[1].clear();
-        m_Objects[2].clear();
+        m_Objects[0]->clear();
+        m_Objects[1]->clear();
+        m_Objects[2]->clear();
     }
 
     void Reset(bool bOnSpecChange = false)
@@ -100,8 +108,7 @@ private:
     CEffectParam* m_pRadBlurAmount, * m_pRadBlurScreenPosX, * m_pRadBlurScreenPosY, * m_pRadBlurRadius;
     CEffectParam* m_pDirectionalBlurVec;
 
-    typedef VectorMap<uintptr_t, MotionBlurObjectParameters > ObjectMap;
-    static VectorMap<uintptr_t, MotionBlurObjectParameters> m_Objects[3]; // triple buffering: t0: being written, t-1: current render frame, t-2: previous render frame
+    static AZStd::unique_ptr<ObjectMap> m_Objects[3]; // triple buffering: t0: being written, t-1: current render frame, t-2: previous render frame
     static TSRC_ALIGN CThreadSafeRendererContainer<ObjectMap::value_type> m_FillData[RT_COMMAND_BUF_COUNT];
 };
 
@@ -841,9 +848,9 @@ private:
     float m_fSimGridSize;
     float m_fSimGridSnapRange;
 
-    static std::vector< SWaterHit > s_pWaterHits[RT_COMMAND_BUF_COUNT];
-    static std::vector< SWaterHit > s_pWaterHitsMGPU;
-    static std::vector<SWaterHitRecord> m_DebugWaterHits;
+    static AZStd::vector< CWaterRipples::SWaterHit, AZ::StdLegacyAllocator > s_pWaterHits[RT_COMMAND_BUF_COUNT];
+    static AZStd::vector< CWaterRipples::SWaterHit, AZ::StdLegacyAllocator > s_pWaterHitsMGPU;
+    static AZStd::vector< CWaterRipples::SWaterHitRecord, AZ::StdLegacyAllocator > m_DebugWaterHits;
     static Vec3 s_CameraPos;
     static Vec2 s_SimOrigin;
 

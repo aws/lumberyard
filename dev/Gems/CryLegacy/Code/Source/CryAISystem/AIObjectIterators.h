@@ -57,9 +57,7 @@ struct SAIObjectMapIter
 
     virtual void Release()
     {
-        // (MATT) Call my own destructor before I push to the pool - avoids tripping up the STLP debugging {2008/12/04})
-        this->~SAIObjectMapIter();
-        pool.push_back(this);
+        delete this;
     }
 
     // (MATT) (was) Update the pointer from the current iterator if it's valid.
@@ -74,22 +72,12 @@ struct SAIObjectMapIter
 
     static SAIObjectMapIter* Allocate(Iter first, Iter end)
     {
-        if (pool.empty())
-        {
-            return new SAIObjectMapIter(first, end);
-        }
-        else
-        {
-            SAIObjectMapIter* res = pool.back();
-            pool.pop_back();
-            return new(res) SAIObjectMapIter(first, end);
-        }
+        return new SAIObjectMapIter(first, end);
     }
 
     IAIObject*  m_ai;
     Iter    m_it;
     Iter    m_end;
-    static AZStd::vector<SAIObjectMapIter*> pool;
 };
 
 
@@ -111,23 +99,12 @@ struct SAIObjectMapIterOfType
 
     virtual void Release()
     {
-        // (MATT) Call my own destructor before I push to the pool - avoids tripping up the STLP debugging {2008/12/04})
-        this->~SAIObjectMapIterOfType();
-        pool.push_back(this);
+        delete this;
     }
 
     static SAIObjectMapIterOfType* Allocate(short n, Iter first, Iter end)
     {
-        if (pool.empty())
-        {
-            return new SAIObjectMapIterOfType(n, first, end);
-        }
-        else
-        {
-            SAIObjectMapIterOfType* res = pool.back();
-            pool.pop_back();
-            return new(res) SAIObjectMapIterOfType(n, first, end);
-        }
+        return new SAIObjectMapIterOfType(n, first, end);
     }
 
     virtual void    Next()
@@ -148,7 +125,6 @@ struct SAIObjectMapIterOfType
     }
 
     short   m_n;
-    static AZStd::vector<SAIObjectMapIterOfType*> pool;
 };
 
 
@@ -178,23 +154,12 @@ struct SAIObjectMapIterOfTypeInRange
 
     virtual void Release()
     {
-        // (MATT) Call my own destructor before I push to the pool - avoids tripping up the STLP debugging {2008/12/04})
-        this->~SAIObjectMapIterOfTypeInRange();
-        pool.push_back(this);
+        delete this;
     }
 
     static SAIObjectMapIterOfTypeInRange* Allocate(short n, Iter first, Iter end, const Vec3& center, float rad, bool check2D)
     {
-        if (pool.empty())
-        {
-            return new SAIObjectMapIterOfTypeInRange(n, first, end, center, rad, check2D);
-        }
-        else
-        {
-            SAIObjectMapIterOfTypeInRange* res = pool.back();
-            pool.pop_back();
-            return new(res) SAIObjectMapIterOfTypeInRange(n, first, end, center, rad, check2D);
-        }
+        return new SAIObjectMapIterOfTypeInRange(n, first, end, center, rad, check2D);
     }
 
     virtual void    Next()
@@ -236,7 +201,6 @@ struct SAIObjectMapIterOfTypeInRange
     Vec3    m_center;
     float   m_rad;
     bool    m_check2D;
-    static AZStd::vector<SAIObjectMapIterOfTypeInRange*> pool;
 };
 
 
@@ -256,8 +220,7 @@ struct SAIObjectMapIterInRange
     using SAIObjectMapIter<T>::m_ai;
     using SAIObjectMapIter<T>::m_it;
     using SAIObjectMapIter<T>::m_end;
-
-
+    
     SAIObjectMapIterInRange(Iter first, Iter end, const Vec3& center, float rad, bool check2D)
         : m_center(center)
         , m_rad(rad)
@@ -266,23 +229,12 @@ struct SAIObjectMapIterInRange
 
     virtual void Release()
     {
-        // (MATT) Call my own destructor before I push to the pool - avoids tripping up the STLP debugging {2008/12/04})
-        this->~SAIObjectMapIterInRange();
-        pool.push_back(this);
+        delete this;
     }
 
     static SAIObjectMapIterInRange* Allocate(Iter first, Iter end, const Vec3& center, float rad, bool check2D)
     {
-        if (pool.empty())
-        {
-            return new SAIObjectMapIterInRange(first, end, center, rad, check2D);
-        }
-        else
-        {
-            SAIObjectMapIterInRange* res = pool.back();
-            pool.pop_back();
-            return new(res) SAIObjectMapIterInRange(first, end, center, rad, check2D);
-        }
+        return new SAIObjectMapIterInRange(first, end, center, rad, check2D);
     }
 
     virtual void    Next()
@@ -316,7 +268,6 @@ struct SAIObjectMapIterInRange
     Vec3    m_center;
     float   m_rad;
     bool    m_check2D;
-    static AZStd::vector<SAIObjectMapIterInRange*> pool;
 };
 
 
@@ -342,23 +293,12 @@ struct SAIObjectMapIterInShape
 
     virtual void Release()
     {
-        // (MATT) Call my own destructor before I push to the pool - avoids tripping up the STLP debugging {2008/12/04})
-        this->~SAIObjectMapIterInShape();
-        pool.push_back(this);
+        delete this;
     }
 
     static SAIObjectMapIterInShape* Allocate(Iter first, Iter end, const SShape& shape, bool checkHeight)
     {
-        if (pool.empty())
-        {
-            return new SAIObjectMapIterInShape(first, end, shape, checkHeight);
-        }
-        else
-        {
-            SAIObjectMapIterInShape* res = pool.back();
-            pool.pop_back();
-            return new(res) SAIObjectMapIterInShape(first, end, shape, checkHeight);
-        }
+        return new SAIObjectMapIterInShape(first, end, shape, checkHeight);
     }
 
     virtual void    Next()
@@ -381,7 +321,6 @@ struct SAIObjectMapIterInShape
 
     const SShape& m_shape;
     bool    m_checkHeight;
-    static AZStd::vector<SAIObjectMapIterInShape*> pool;
 };
 
 //====================================================================
@@ -399,7 +338,6 @@ struct SAIObjectMapIterOfTypeInShape
     using SAIObjectMapIter<T>::m_it;
     using SAIObjectMapIter<T>::m_end;
 
-
     SAIObjectMapIterOfTypeInShape(short n, Iter first, Iter end, const SShape& shape, bool checkHeight)
         : m_n(n)
         , m_shape(shape)
@@ -408,23 +346,12 @@ struct SAIObjectMapIterOfTypeInShape
 
     virtual void Release()
     {
-        // (MATT) Call my own destructor before I push to the pool - avoids tripping up the STLP debugging {2008/12/04})
-        this->~SAIObjectMapIterOfTypeInShape();
-        pool.push_back(this);
+        delete this;
     }
 
     static SAIObjectMapIterOfTypeInShape* Allocate(short n, Iter first, Iter end, const SShape& shape, bool checkHeight)
     {
-        if (pool.empty())
-        {
-            return new SAIObjectMapIterOfTypeInShape(n, first, end, shape, checkHeight);
-        }
-        else
-        {
-            SAIObjectMapIterOfTypeInShape* res = pool.back();
-            pool.pop_back();
-            return new(res) SAIObjectMapIterOfTypeInShape(n, first, end, shape, checkHeight);
-        }
+        return new SAIObjectMapIterOfTypeInShape(n, first, end, shape, checkHeight);
     }
 
     virtual void    Next()
@@ -455,7 +382,6 @@ struct SAIObjectMapIterOfTypeInShape
     short   m_n;
     const SShape& m_shape;
     bool    m_checkHeight;
-    static AZStd::vector<SAIObjectMapIterOfTypeInShape*> pool;
 };
 
 

@@ -16,6 +16,8 @@
 #include "Objects/ObjectLayerManager.h"
 #include "Viewport.h"
 
+#include <AzCore/Component/TickBus.h>
+
 #include "IEditor.h"
 #include "BaseLibrary.h"
 #include "BaseLibraryItem.h"
@@ -598,6 +600,11 @@ CLayersListBox::~CLayersListBox()
     m_timer.stop();
     m_shutdownThread = true;
     m_workerSemaphore.release();
+    while (m_threadWorkerBusy)
+    {
+        // edge case, where the thread was caught in the middle of an op, and may be waiting for tickbus to deliver responses.
+        AZ::TickBus::ExecuteQueuedEvents();
+    }
     m_workerThread.join();
 }
 
@@ -1302,6 +1309,7 @@ void CLayersListBox::ToggleLayerStates(int layerIndex, LayerToggleFlag toggleFla
 
 void CLayersListBox::ThreadWorker()
 {
+    m_threadWorkerBusy = true;
     while (1)
     {
         m_workerSemaphore.acquire();
@@ -1328,6 +1336,7 @@ void CLayersListBox::ThreadWorker()
             m_layerResultQueue.push(LayerAttribResult(request.layerName, attrib));
         }
     }
+    m_threadWorkerBusy = false;
 }
 
 int CLayersListBox::GetCount() const

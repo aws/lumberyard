@@ -67,14 +67,14 @@ def run_crawler(request):
 @service.api
 def get_crawler_status(request, name):
     glue_crawler = Glue()    
-    response = glue_crawler.get_crawler(name)    
+    response = glue_crawler.get_crawler(name.replace('-', '_'))    
     return custom_resource_response.success_response({ "State": response['Crawler']['State']}, "*")
 
 @service.api
-def query(request, sql):    
+def query(request, sql, sync=False):    
     sql = sql["sql"]
-    query = Query(os.environ[c.ENV_DEPLOYMENT_STACK_ARN])         
-    return query.execute(sql, sync=False)
+    query = Query(os.environ[c.ENV_DEPLOYMENT_STACK_ARN])
+    return query.execute(sql, sync = sync)
 
 @service.api
 def query_results(request, id):        
@@ -114,14 +114,20 @@ def convert_to_dataset(data):
 def cli(context, args):
     #this import is only available when you execute via cli
     import util
+    from resource_manager_common import constant
+    credentials = context.aws.load_credentials()
+
     resources = util.get_resources(context)        
     os.environ[c.ENV_DB_TABLE_CONTEXT] = resources[c.RES_DB_TABLE_CONTEXT]   
     os.environ[c.ENV_LAMBDA_CONSUMER] = resources[c.RES_LAMBDA_FIFOCONSUMER]   
     os.environ[c.ENV_LAMBDA_PRODUCER] = resources[c.RES_LAMBDA_FIFOPRODUCER]   
-    os.environ[c.ENV_AMOEBA_1] = resources[c.RES_AMOEBA_1]   
+    os.environ[c.ENV_AMOEBA] = resources[c.RES_AMOEBA]   
     os.environ[c.ENV_VERBOSE] = str(args.verbose) if args.verbose else ""
     os.environ[c.ENV_REGION] = context.config.project_region
     os.environ[c.ENV_S3_STORAGE] = resources[c.RES_S3_STORAGE]  
+    os.environ[c.ENV_DEPLOYMENT_STACK_ARN] = resources[c.ENV_STACK_ID]
     os.environ["AWS_LAMBDA_FUNCTION_NAME"] = os.environ[c.ENV_LAMBDA_PRODUCER]
+    os.environ["AWS_ACCESS_KEY"] = args.aws_access_key if args.aws_access_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.ACCESS_KEY_OPTION)
+    os.environ["AWS_SECRET_KEY"] = args.aws_secret_key if args.aws_secret_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.SECRET_KEY_OPTION)
     
-    print query( type('obj', (object,), {c.ENV_STACK_ID: resources[c.ENV_STACK_ID]}), {"sql":args.sql})
+    print query( type('obj', (object,), {c.ENV_STACK_ID: resources[c.ENV_STACK_ID]}), {"sql":args.sql}, sync=True)

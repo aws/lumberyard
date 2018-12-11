@@ -25,6 +25,7 @@
 #include <smartptr.h>
 
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/EBus/EBus.h>
 
 struct ISystem;
 class ICrySizer;
@@ -102,6 +103,9 @@ struct ICryFont
     //!
     //! Mainly used to reload font family resources for the new language.
     virtual void OnLanguageChanged() = 0;
+    
+    //! \brief Reload all fonts
+    virtual void ReloadAllFonts() = 0;
 
     // </interfuscator:shuffle>
 };
@@ -312,5 +316,20 @@ struct IFFont_RenderProxy
     virtual void RenderCallback(float x, float y, float z, const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx) = 0;
     // </interfuscator:shuffle>
 };
+
+//////////////////////////////////////////////////////////////////////////
+//! Simple bus that notifies listeners of font changes
+class FontNotifications
+    : public AZ::EBusTraits
+{
+public:
+    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+
+    virtual ~FontNotifications() = default;
+
+    virtual void OnFontsReloaded() = 0;
+};
+
+using FontNotificationBus = AZ::EBus<FontNotifications>;
 
 #endif // CRYINCLUDE_CRYCOMMON_IFONT_H

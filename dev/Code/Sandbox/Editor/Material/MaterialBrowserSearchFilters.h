@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
+#include <QHash>
 
 class MaterialBrowserFilterModel;
 
@@ -35,4 +36,27 @@ private:
     bool TextMatchesFilter(const QString &text) const;
     QString m_filterString = "";
     const MaterialBrowserFilterModel* m_filterModel = nullptr;
+};
+
+class LevelMaterialSearchFilter
+    : public AzToolsFramework::AssetBrowser::AssetBrowserEntryFilter
+{
+    Q_OBJECT
+public:
+    LevelMaterialSearchFilter(const MaterialBrowserFilterModel* filterModel);
+    ~LevelMaterialSearchFilter() override = default;
+
+    void ShowOnlyLevelMaterials(bool onlyLevel) { m_onlyShowLevelMaterials = onlyLevel; }
+
+    void CacheLoadedMaterials();
+
+protected:
+    QString GetNameInternal() const override;
+    bool MatchInternal(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) const override;
+
+private:
+    bool m_onlyShowLevelMaterials = false;
+    const MaterialBrowserFilterModel* m_filterModel = nullptr;
+    using MaterialMap = QHash<QString, _smart_ptr<IMaterial> >;
+    MaterialMap m_localMap;
 };

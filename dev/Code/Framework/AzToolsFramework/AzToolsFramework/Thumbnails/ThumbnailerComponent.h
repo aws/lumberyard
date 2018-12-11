@@ -45,6 +45,8 @@ namespace AzToolsFramework
             void RegisterThumbnailProvider(SharedThumbnailProvider provider, const char* contextName) override;
             SharedThumbnail GetThumbnail(SharedThumbnailKey thumbnailKey, const char* contextName) override;
 
+            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+
         private:
             AZStd::unordered_map<AZStd::string, AZStd::shared_ptr<ThumbnailContext>> m_thumbnails;
         };

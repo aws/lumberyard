@@ -15,6 +15,7 @@
 #include <Thumbnails/Example/ui_ThumbnailsSampleWidget.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/Thumbnails/ThumbnailWidget.h>
 #include <AzToolsFramework/Thumbnails/ProductThumbnail.h>
 

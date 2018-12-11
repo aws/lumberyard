@@ -76,6 +76,29 @@ public:
         }
     }
 
+    bool IsSortMarkerKey(unsigned int key) const override
+    {
+        AZ_Assert(key < m_keys.size(), "key index is out of range");
+        if (m_keys[key].flags & AKEY_SORT_MARKER)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    void SetSortMarkerKey(unsigned int key, bool enabled) override
+    {
+        AZ_Assert(key < m_keys.size(), "key index is out of range");
+        if (enabled)
+        {
+            m_keys[key].flags |= AKEY_SORT_MARKER;
+        }
+        else
+        {
+            m_keys[key].flags &= ~AKEY_SORT_MARKER;
+        }
+    }
+
     //! Return number of keys in track.
     virtual int GetNumKeys() const { return m_keys.size(); };
 
@@ -143,7 +166,7 @@ public:
     virtual void GetValue(float time, Vec4& value, bool applyMultiplier = false) { assert(0); };
     virtual void GetValue(float time, Quat& value) { assert(0); };
     virtual void GetValue(float time, bool& value) { assert(0); };
-    virtual void GetValue(float time, AZ::Data::AssetBlends<AZ::Data::AssetData>& value) { assert(0); }
+    virtual void GetValue(float time, Maestro::AssetBlends<AZ::Data::AssetData>& value) { assert(0); }
 
     //////////////////////////////////////////////////////////////////////////
     // Set track value at specified time.
@@ -154,7 +177,7 @@ public:
     virtual void SetValue(float time, const Vec4& value, bool bDefault = false, bool applyMultiplier = false) { assert(0); };
     virtual void SetValue(float time, const Quat& value, bool bDefault = false) { assert(0); };
     virtual void SetValue(float time, const bool& value, bool bDefault = false) { assert(0); };
-    virtual void SetValue(float time, const AZ::Data::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) { assert(0); }
+    virtual void SetValue(float time, const Maestro::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) { assert(0); }
 
     virtual void OffsetKeyPosition(const Vec3& value) { assert(0); };
     virtual void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM) { assert(0); };
@@ -216,6 +239,16 @@ public:
         return false;
     }
 
+    unsigned int GetId() const override
+    {
+        return m_id;
+    }
+
+    void SetId(unsigned int id) override
+    {
+        m_id = id;
+    }
+
     static void Reflect(AZ::SerializeContext* serializeContext) {}
 
 protected:
@@ -251,6 +284,8 @@ protected:
     IAnimNode* m_node;
 
     float m_trackMultiplier;
+
+    unsigned int m_id = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -406,6 +441,8 @@ inline bool TAnimTrack<KeyType>::Serialize(XmlNodeRef& xmlNode, bool bLoading, b
             SerializeKey(m_keys[i], keyNode, bLoading);
         }
 
+        xmlNode->getAttr("Id", m_id);
+
         if ((!num) && (!bLoadEmptyTracks))
         {
             return false;
@@ -433,6 +470,8 @@ inline bool TAnimTrack<KeyType>::Serialize(XmlNodeRef& xmlNode, bool bLoading, b
 
             SerializeKey(m_keys[i], keyNode, bLoading);
         }
+
+        xmlNode->setAttr("Id", m_id);
     }
     return true;
 }

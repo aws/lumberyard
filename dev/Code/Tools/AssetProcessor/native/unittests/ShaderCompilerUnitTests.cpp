@@ -77,8 +77,8 @@ int ShaderCompilerUnitTest::UnitTestPriority() const
 
 void ShaderCompilerUnitTest::UnitTestForGoodShaderCompiler()
 {
-    fprintf(stdout, "  ... Starting test of 'good' shader compiler...\n");
-    connect(&m_shaderCompilerManager, &ShaderCompilerManager::sendResponse, this, &ShaderCompilerUnitTest::VerifyPayloadForGoodShaderCompiler);
+    AZ_TracePrintf("ShaderCompilerUnitTest", "  ... Starting test of 'good' shader compiler...\n");
+    m_shaderCompilerManager.m_sendResponseCallbackFn = AZStd::bind(&ShaderCompilerUnitTest::VerifyPayloadForGoodShaderCompiler, this , AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, AZStd::placeholders::_4);
     m_server.Init("127.0.0.1", 12348);
     m_server.setServerStatus(UnitTestShaderCompilerServer::GoodServer);
     m_connectionManager->SendMessageToService(m_connectionId, AssetUtilities::ComputeCRC32Lowercase("ShaderCompilerProxyRequest"), 0, m_testPayload);
@@ -86,24 +86,24 @@ void ShaderCompilerUnitTest::UnitTestForGoodShaderCompiler()
 
 void ShaderCompilerUnitTest::UnitTestForFirstBadShaderCompiler()
 {
-    fprintf(stdout, "  ... Starting test of 'bad' shader compiler... (Incomplete Payload)\n");
-    connect(&m_shaderCompilerManager, &ShaderCompilerManager::sendResponse, this, &ShaderCompilerUnitTest::VerifyPayloadForFirstBadShaderCompiler);
+    AZ_TracePrintf("ShaderCompilerUnitTest", "  ... Starting test of 'bad' shader compiler... (Incomplete Payload)\n");
+    m_shaderCompilerManager.m_sendResponseCallbackFn = AZStd::bind(&ShaderCompilerUnitTest::VerifyPayloadForFirstBadShaderCompiler, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, AZStd::placeholders::_4);
     m_server.setServerStatus(UnitTestShaderCompilerServer::BadServer_SendsIncompletePayload);
     m_connectionManager->SendMessageToService(m_connectionId, AssetUtilities::ComputeCRC32Lowercase("ShaderCompilerProxyRequest"), 0, m_testPayload);
 }
 
 void ShaderCompilerUnitTest::UnitTestForSecondBadShaderCompiler()
 {
-    fprintf(stdout, "  ... Starting test of 'bad' shader compiler... (Payload followed by disconnection)\n");
-    connect(&m_shaderCompilerManager, &ShaderCompilerManager::sendResponse, this, &ShaderCompilerUnitTest::VerifyPayloadForSecondBadShaderCompiler);
+    AZ_TracePrintf("ShaderCompilerUnitTest", "  ... Starting test of 'bad' shader compiler... (Payload followed by disconnection)\n");
+    m_shaderCompilerManager.m_sendResponseCallbackFn = AZStd::bind(&ShaderCompilerUnitTest::VerifyPayloadForSecondBadShaderCompiler, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, AZStd::placeholders::_4);
     m_server.setServerStatus(UnitTestShaderCompilerServer::BadServer_ReadsPayloadAndDisconnect);
     m_connectionManager->SendMessageToService(m_connectionId, AssetUtilities::ComputeCRC32Lowercase("ShaderCompilerProxyRequest"), 0, m_testPayload);
 }
 
 void ShaderCompilerUnitTest::UnitTestForThirdBadShaderCompiler()
 {
-    fprintf(stdout, "  ... Starting test of 'bad' shader compiler... (Connect but disconnect without data)\n");
-    connect(&m_shaderCompilerManager, &ShaderCompilerManager::sendResponse, this, &ShaderCompilerUnitTest::VerifyPayloadForThirdBadShaderCompiler);
+    AZ_TracePrintf("ShaderCompilerUnitTest", "  ... Starting test of 'bad' shader compiler... (Connect but disconnect without data)\n");
+    m_shaderCompilerManager.m_sendResponseCallbackFn = AZStd::bind(&ShaderCompilerUnitTest::VerifyPayloadForThirdBadShaderCompiler, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, AZStd::placeholders::_4);
     m_server.setServerStatus(UnitTestShaderCompilerServer::BadServer_DisconnectAfterConnect);
     m_server.startServer();
     m_connectionManager->SendMessageToService(m_connectionId, AssetUtilities::ComputeCRC32Lowercase("ShaderCompilerProxyRequest"), 0, m_testPayload);
@@ -114,7 +114,7 @@ void ShaderCompilerUnitTest::VerifyPayloadForGoodShaderCompiler(unsigned int con
     (void) connId;
     (void) type;
     (void) serial;
-    disconnect(&m_shaderCompilerManager, &ShaderCompilerManager::sendResponse, this, &ShaderCompilerUnitTest::VerifyPayloadForGoodShaderCompiler);
+    m_shaderCompilerManager.m_sendResponseCallbackFn = nullptr;
 
     unsigned int messageSize;
     quint8 status;
@@ -139,7 +139,7 @@ void ShaderCompilerUnitTest::VerifyPayloadForFirstBadShaderCompiler(unsigned int
     (void) connId;
     (void) type;
     (void) serial;
-    disconnect(&m_shaderCompilerManager, &ShaderCompilerManager::sendResponse, this, &ShaderCompilerUnitTest::VerifyPayloadForFirstBadShaderCompiler);
+    m_shaderCompilerManager.m_sendResponseCallbackFn = nullptr;
     QString error = "Remote IP is taking too long to respond: 127.0.0.1";
     if ((payload.size() != 4) || (QString::compare(m_lastShaderCompilerErrorMessage, error, Qt::CaseSensitive) != 0))
     {
@@ -155,7 +155,7 @@ void ShaderCompilerUnitTest::VerifyPayloadForSecondBadShaderCompiler(unsigned in
     (void) connId;
     (void) type;
     (void) serial;
-    disconnect(&m_shaderCompilerManager, &ShaderCompilerManager::sendResponse, this, &ShaderCompilerUnitTest::VerifyPayloadForSecondBadShaderCompiler);
+    m_shaderCompilerManager.m_sendResponseCallbackFn = nullptr;
     QString error = "Remote IP is taking too long to respond: 127.0.0.1";
     if ((payload.size() != 4) || (QString::compare(m_lastShaderCompilerErrorMessage, error, Qt::CaseSensitive) != 0))
     {
@@ -171,7 +171,7 @@ void ShaderCompilerUnitTest::VerifyPayloadForThirdBadShaderCompiler(unsigned int
     (void) connId;
     (void) type;
     (void) serial;
-    disconnect(&m_shaderCompilerManager, &ShaderCompilerManager::sendResponse, this, &ShaderCompilerUnitTest::VerifyPayloadForThirdBadShaderCompiler);
+    m_shaderCompilerManager.m_sendResponseCallbackFn = nullptr;
     QString error = "Remote IP is taking too long to respond: 127.0.0.1";
     if ((payload.size() != 4) || (QString::compare(m_lastShaderCompilerErrorMessage, error, Qt::CaseSensitive) != 0))
     {

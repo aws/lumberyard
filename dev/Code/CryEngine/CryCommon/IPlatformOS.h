@@ -381,8 +381,8 @@ struct IPlatformOS
 
             struct SStorageMounted
             {
-                bool m_bPhysicalMedia;          // true if (360) saving to a physical device - HDD or MU or USB
-                bool m_bOnlyUpdateMediaState;   // true to not attempt user change (360)
+                bool m_bPhysicalMedia;          // true if saving to a physical device on deprecated platform
+                bool m_bOnlyUpdateMediaState;   // true to not attempt user change on deprecated platform
             } m_storageMounted;
 
             struct SStorageRemoved
@@ -590,7 +590,7 @@ struct IPlatformOS
     virtual bool            UserDoSignIn(unsigned int numUsersRequested = 1, unsigned int controllerIndex = 0) = 0;
 
     // UserSignOut
-    //   Sign out a user. This is required for 360 when returning to the splash screen where you can
+    //   Sign out a user. This is required for deprecated platform when returning to the splash screen where you can
     //   press Start to initiate sign in with any controller.
     //   Param controllerIndex the controller used to sign out
     virtual void            UserSignOut(unsigned int user) = 0;
@@ -646,7 +646,7 @@ struct IPlatformOS
     //   Looks for DLC and mounts the drive so that the files can be read
     // Arguments:
     //   callback       -  The class which will receive the DLC mounted events
-    //   user               -  The user index used for 360
+    //   user           -  user index for deprecated platform
     //   keyData        -  The license key used to load the data
     virtual void MountDLCContent(IDLCListener* pCallback, unsigned int user, const uint8 keyData[16]) = 0;
 

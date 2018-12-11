@@ -23,6 +23,8 @@
 #include <AzCore/Component/Entity.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <Maestro/Types/AnimParamType.h>
+#include <AzToolsFramework/ToolsComponents/EditorDisabledCompositionBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorPendingCompositionComponent.h>
 
 namespace Maestro
 {
@@ -61,21 +63,60 @@ namespace Maestro
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    void EditorSequenceAgentComponent::GetEntityComponents(AZ::Entity::ComponentArrayType& entityComponents) const
+    {
+        AZ::Entity* entity = GetEntity();
+        AZ_Assert(entity, "Expected valid entity.");
+        if (entity)
+        {
+            // Add all enabled components
+            const AZ::Entity::ComponentArrayType& enabledComponents = entity->GetComponents();
+            for (AZ::Component* component : enabledComponents)
+            {
+                entityComponents.push_back(component);
+            }
+
+            // Add all disabled components
+            AZ::Entity::ComponentArrayType disabledComponents;
+            AzToolsFramework::EditorDisabledCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorDisabledCompositionRequests::GetDisabledComponents, disabledComponents);
+
+            for (AZ::Component* component : disabledComponents)
+            {
+                entityComponents.push_back(component);
+            }
+
+            // Add all pending components
+            AZ::Entity::ComponentArrayType pendingComponents;
+            AzToolsFramework::EditorPendingCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents, pendingComponents);
+            for (AZ::Component* component : pendingComponents)
+            {
+                entityComponents.push_back(component);
+            }
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void EditorSequenceAgentComponent::Activate()
     {
         // cache pointers and animatable addresses for animation
         //
-        CacheAllVirtualPropertiesFromBehaviorContext(GetEntity());
+        CacheAllVirtualPropertiesFromBehaviorContext();
 
         ConnectAllSequences();
 
         EditorComponentBase::Activate();
+
+        // Notify the sequence agent was just connected to the sequence.
+        Maestro::EditorSequenceAgentComponentNotificationBus::Event(
+            GetEntityId(),
+            &Maestro::EditorSequenceAgentComponentNotificationBus::Events::OnSequenceAgentConnected
+        );
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void EditorSequenceAgentComponent::Deactivate()
     {
-        // invalidate all cached pointers and addresss
+        // invalidate all cached pointers and address
         m_addressToBehaviorVirtualPropertiesMap.clear();
 
         DisconnectAllSequences();
@@ -180,25 +221,30 @@ namespace Maestro
                 IAnimNode::SParamInfo paramInfo;
 
                 // by default set up paramType as an AnimParamType::ByString with the name as the Virtual Property name
-                paramInfo.paramType = propertyIter->first.GetVirtualPropertyName().c_str();
+                paramInfo.paramType = propertyIter->first.GetVirtualPropertyName();
 
                 // check for paramType specialization attributes on the getter method of the virtual property. if found, reset
                 // to the eAnimParamType enum - this leaves the paramType name unchanged but changes the type.
                 for (int i = virtualProperty->m_getter->m_attributes.size(); --i >= 0;)
                 {
-                    if (virtualProperty->m_getter->m_attributes[i].first == AZ::Crc32("Position"))
+                    if (virtualProperty->m_getter->m_attributes[i].first == AZ::Edit::Attributes::PropertyPosition)
                     {
                         paramInfo.paramType = AnimParamType::Position;
                         break;
                     }
-                    else if (virtualProperty->m_getter->m_attributes[i].first == AZ::Crc32("Rotation"))
+                    else if (virtualProperty->m_getter->m_attributes[i].first == AZ::Edit::Attributes::PropertyRotation)
                     {
                         paramInfo.paramType = AnimParamType::Rotation;
                         break;
                     }
-                    else if (virtualProperty->m_getter->m_attributes[i].first == AZ::Crc32("Scale"))
+                    else if (virtualProperty->m_getter->m_attributes[i].first == AZ::Edit::Attributes::PropertyScale)
                     {
                         paramInfo.paramType = AnimParamType::Scale;
+                        break;
+                    }
+                    else if (virtualProperty->m_getter->m_attributes[i].first == AZ::Edit::Attributes::PropertyHidden)
+                    {
+                        paramInfo.flags = static_cast<IAnimNode::ESupportedParamFlags>(paramInfo.flags | IAnimNode::eSupportedParamFlags_Hidden);
                         break;
                     }
                 }

@@ -29,6 +29,7 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     import producer
     subparser = metric_subparsers.add_parser('send-test-metrics', help='Simulate producing metrics')
     subparser.add_argument('--sensitivity-type', required=False, default=None, help='Use S3 native AES256 encryption for the events generated. Options: sensitive | insensitive ')    
+    subparser.add_argument('--compression-type', required=False, default=None, help='Used to defined whether metric payloads should be compressed.  Enabling will reduce performance. Options: nocompression | compress ')    
     subparser.add_argument('--threads', type=int, required=False, default=1, help='Number of threads to send metrics with.')    
     subparser.add_argument('--iterations-per-thread', type=int, required=False, default=1, help='Number of iterations per thread')    
     subparser.add_argument('--events-per-iteration', type=int, required=False, default=1, help='Number of events to send per iteration per thread')    
@@ -40,7 +41,7 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     subparser.set_defaults(func=producer.cli)
     
     import amoeba_launcher
-    subparser = metric_subparsers.add_parser('combine-s3-files', help='Combine S3 files into a single S3 file.')
+    subparser = metric_subparsers.add_parser('combine-s3-files', help='Combine S3 files into a single S3 file to improve Athena query response times.  By default this runs in AWS every 20 minutes.')
     add_common_args(subparser)
     subparser.set_defaults(func=amoeba_launcher.cli)
 
@@ -50,34 +51,28 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     add_common_args(subparser)
     subparser.set_defaults(func=graph.cli)
 
-    import context
-    subparser = metric_subparsers.add_parser('context', help='Run the context service APIs.')    
-    subparser.add_argument('--function', required=True, default='get', help='The context api function to execute.  Options are: get, update_context, get_predefined_partition, get_partition, update_partition, get_filter, update_filter, get_priority, update_priority')    
-    add_common_args(subparser)
-    subparser.set_defaults(func=context.cli)
-
     import parquet_reader
-    subparser = metric_subparsers.add_parser('open', help='Open a local .parquet type file.')
+    subparser = metric_subparsers.add_parser('open', help='Open a local or remote S3 .parquet type file.')
     subparser.add_argument('--file-path', required=False, default=None, help='The local file absolute path')        
     subparser.add_argument('--s3-key', required=False, default=None, help='The S3 key to open.  Example: /insensitive/cloudgemmetric')    
     add_common_args(subparser)
     subparser.set_defaults(func=parquet_reader.debug_file)
 
     import query_athena
-    subparser = metric_subparsers.add_parser('query', help='Query Athena')
+    subparser = metric_subparsers.add_parser('query', help='Query Amazon Athena.')
     subparser.add_argument('--sql', required=True, help='Execute a SQL query against the AWS Athena engine.')    
     add_common_args(subparser)
     subparser.set_defaults(func=query_athena.cli)
 
     import Custom_Glue
-    subparser = metric_subparsers.add_parser('glue-setup', help='Execute a glue setup command')
+    subparser = metric_subparsers.add_parser('glue-setup', help='Run an AWS Glue setup command.')
     subparser.add_argument('--function', required=False, default='handler', help='The context api function to execute.  Options are: handle, start_crawler, stop_crawler')        
     subparser.add_argument('--event-type', required=True, default='UPDATE', help='UPDATE | CREATE | DELETE')        
     add_common_args(subparser)
     subparser.set_defaults(func=Custom_Glue.cli)
 
     import glue_crawler
-    subparser = metric_subparsers.add_parser('glue-crawler', help='Execute a glue command')    
+    subparser = metric_subparsers.add_parser('glue-crawler', help='Run an AWS Glue command.')    
     add_common_args(subparser)
     subparser.set_defaults(func=glue_crawler.cli)
 
@@ -104,6 +99,7 @@ def add_modules():
     sys.path.append('./Gems/CloudGemMetric/v1/AWS/python/windows/Lib')
     sys.path.append('./Gems/CloudGemMetric/v1/AWS/lambda-code/LambdaConsumerLauncher')
     sys.path.append('./Gems/CloudGemMetric/v1/AWS/lambda-code/AmoebaLauncher')
+    sys.path.append('./Gems/CloudGemMetric/v1/AWS/lambda-code/Amoeba')
     sys.path.append('./Gems/CloudGemMetric/v1/AWS/lambda-function-code')
     sys.path.append('./Gems/CloudGemMetric/v1/AWS/project-code/lambda-code/CustomResource/resource_types')
     sys.path.append('./Gems/CloudGemFramework/v1/AWS/common-code/Utils')

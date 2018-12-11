@@ -64,11 +64,12 @@ template<>
 inline void TAnimTrack<ISoundKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<ISoundKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<ISoundKey>::m_flags)
         ->Field("Range", &TAnimTrack<ISoundKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<ISoundKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<ISoundKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<ISoundKey>::m_keys)
+        ->Field("Id", &TAnimTrack<ISoundKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -10,9 +10,6 @@
             </button>
             </div>
         <div *ngSwitchCase="true">
-            <button (click)="list()" class="btn l-primary add-leaderboard-button">
-                < Back to All Leaderboards
-            </button>
             <search class="float-right" 
             searchInputPlaceholder="Search Leaderboard" 
             (searchUpdated)="playerSearchUpdated($event)"> </search>
@@ -30,7 +27,7 @@
                             <th > MODE </th>
                             <th class="number-column"> MINIMUM ALLOWABLE VALUE </th>
                             <th class="number-column"> MAXIMUM ALLOWABLE VALUE </th>                                                        
-                            <th class="number-column"> RESEVOIR SAMPLE SIZE </th>
+                            <th class="number-column"> RESERVOIR SAMPLE SIZE </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -51,7 +48,6 @@
                 </table>
             </div>
         </div>
-        <pre>{{leaderboard | json | devonly}}</pre>
     </div>
     <!-- Template for viewing individual leaderboard -->
     <div *ngIf="mode == leaderboardModes.Show" class="show-players-container">
@@ -189,7 +185,7 @@
             </div>    
             <div class="form-group row" [class.has-danger]="currentLeaderboard.validation && currentLeaderboard.validation.sample_size.valid == false">
                 <label class="col-5 col-form-label affix ">Reservoir Sample Size <i class="fa fa-question-circle-o" placement="right"
-                    ngbTooltip="The leaderboard sample resevoir size. The recommended range is between 200 to 1000. Example: 300"></i></label>
+                    ngbTooltip="The leaderboard sample reservoir size. The recommended range is between 200 to 1000. Example: 300"></i></label>
                 <div class="col-7 form-control-danger">
                     <input class="form-control full-width" [(ngModel)]="currentLeaderboard.sample_size" name="currentLeaderboard.sample_size" type="text" />
                     <div *ngIf="currentLeaderboard.validation && currentLeaderboard.validation.sample_size.valid == false" class="form-control-feedback">{{currentLeaderboard.validation.sample_size.message}}</div>

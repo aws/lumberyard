@@ -1672,6 +1672,7 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Handler<UiCanvasNotificationBusBehaviorHandler>();
 
         behaviorContext->EBus<UiAnimationBus>("UiAnimationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("StartSequence", &UiAnimationBus::Events::StartSequence)
             ->Event("StopSequence", &UiAnimationBus::Events::StopSequence)
             ->Event("AbortSequence", &UiAnimationBus::Events::AbortSequence)
@@ -2197,7 +2198,7 @@ bool UiCanvasComponent::HandlePrimaryPress(AZ::Vector2 point)
         }
     }
 
-    if (interactableEntity.IsValid() && !IsInteractableActiveOrPressed(interactableEntity))
+    if (interactableEntity.IsValid())
     {
         // if there is an interactable at that point and it can handle pressed events then
         // it becomes the currently pressed interactable for the canvas

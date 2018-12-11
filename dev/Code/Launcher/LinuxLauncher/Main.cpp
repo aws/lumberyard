@@ -38,6 +38,7 @@
 
 #include <ParseEngineConfig.h>
 
+#include <AzCore/std/string/string_view.h>
 #include <AzGameFramework/Application/GameApplication.h>
 #include <AzCore/Debug/StackTracer.h>
 
@@ -154,7 +155,14 @@ static void LoadLauncherConfig(void)
         exit(EXIT_FAILURE);
     }
 
-    strncat(conf_filename, LINUX_LAUNCHER_CONF, strlen(LINUX_LAUNCHER_CONF));
+    // ensure that the dir ends in a /
+    int cwdLen = strlen(conf_filename);
+    if (conf_filename[cwdLen-1] != '/')
+    {
+        azstrncat(conf_filename, MAX_PATH, "/", 1);
+    }
+
+    azstrncat(conf_filename, MAX_PATH, LINUX_LAUNCHER_CONF, strlen(LINUX_LAUNCHER_CONF));
 
     conf_filename[sizeof conf_filename - 1] = 0;
     FILE* fp = fopen(conf_filename, "r");
@@ -300,12 +308,6 @@ int RunGame(const char* commandLine)
         printf("Failed to load CrySystem: %s", dlerror());
         exit(1);
     }
-#endif
-
-    // We need pass the full command line, including the filename
-    // lpCmdLine does not contain the filename.
-#if CAPTURE_REPLAY_LOG
-    CryGetIMemReplay()->StartOnCommandLine(commandLine);
 #endif
 
     // If there are no handlers for the editor game bus, attempt to load the legacy gamedll instead
@@ -463,18 +465,27 @@ void AttachGDB(const char* program)
 //-------------------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
-
-#if defined(_DEBUG)
     // If the first command line option is -debug, then we'll attach GDB.
     for (int i = 1; i < argc; ++i)
     {
+#if defined(_DEBUG)
         if (!strcmp(argv[i], "-debug"))
         {
             AttachGDB(argv[0]);
             break;
         }
-    }
 #endif
+        if (!strcmp(argv[i], "-wait"))
+        {
+            while(!AZ::Debug::Trace::IsDebuggerPresent())
+            {
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(50));
+            }
+        }
+    }
+
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+    AZ::AllocatorInstance<CryStringAllocator>::Create();
 
     LoadLauncherConfig();
 
@@ -564,6 +575,9 @@ int main(int argc, char** argv)
     assert(q - cmdLine == cmdLength);
 
     int result = RunGame(cmdLine);
+
+    AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
 
     return result;
 }

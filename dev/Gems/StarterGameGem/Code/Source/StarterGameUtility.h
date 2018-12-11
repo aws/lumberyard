@@ -22,27 +22,26 @@
 
 namespace AZ
 {
-	class ReflectContext;
+    class ReflectContext;
 }
 
 namespace StarterGameGem
 {
-	struct GotShotParams
-	{
-		AZ_TYPE_INFO(GotShotParams, "{BC1EA56B-4099-41E7-BCE3-2163BBE26D04}");
-		AZ_CLASS_ALLOCATOR(GotShotParams, AZ::SystemAllocator, 0);
+    struct GotShotParams
+    {
+        AZ_TYPE_INFO(GotShotParams, "{BC1EA56B-4099-41E7-BCE3-2163BBE26D04}");
+        AZ_CLASS_ALLOCATOR(GotShotParams, AZ::SystemAllocator, 0);
 
-		GotShotParams()
-			: m_damage(0.0f)
-			, m_immediatelyRagdoll(false)
-		{}
+        GotShotParams()
+            : m_damage(0.0f)
+            , m_immediatelyRagdoll(false)
+        {}
 
-		float m_damage;
-		AZ::Vector3 m_direction;
-		AZ::EntityId m_assailant;
-		bool m_immediatelyRagdoll;
-
-	};
+        float m_damage;
+        AZ::Vector3 m_direction;
+        AZ::EntityId m_assailant;
+        bool m_immediatelyRagdoll;
+    };
 
     struct InteractParams
     {
@@ -84,16 +83,16 @@ namespace StarterGameGem
         AZ::EntityId m_lookAt;
     };
 
-	/*!
-	* Wrapper for utility functions exposed to Lua for StarterGame.
-	*/
-	class StarterGameUtility
-	{
-	public:
-		AZ_TYPE_INFO(StarterGameUtility, "{E8AD1E8A-A67D-44EB-8A08-B6881FD72F2F}");
-		AZ_CLASS_ALLOCATOR(StarterGameUtility, AZ::SystemAllocator, 0);
+    /*!
+    * Wrapper for utility functions exposed to Lua for StarterGame.
+    */
+    class StarterGameUtility
+    {
+    public:
+        AZ_TYPE_INFO(StarterGameUtility, "{E8AD1E8A-A67D-44EB-8A08-B6881FD72F2F}");
+        AZ_CLASS_ALLOCATOR(StarterGameUtility, AZ::SystemAllocator, 0);
 
-		static void Reflect(AZ::ReflectContext* reflection);
+        static void Reflect(AZ::ReflectContext* reflection);
 
         static bool IsGameStarted();
         static void RestartLevel(const bool& fade);
@@ -103,14 +102,12 @@ namespace StarterGameGem
         static AzFramework::PhysicsComponentNotifications::Collision CreatePseudoCollisionEvent(const AZ::EntityId& entity, const AZ::Vector3& position, const AZ::Vector3& normal, const AZ::Vector3& direction);
 
         static int GetSurfaceFromRayCast(const AZ::Vector3& pos, const AZ::Vector3& direction);
-		static AZStd::sys_time_t GetTimeNowMicroSecond();
+        static AZStd::sys_time_t GetTimeNowMicroSecond();
 
         static AZ::Uuid GetUuid(const AZStd::string& className);
-		static bool IsLegacyCharacter(const AZ::EntityId& entityId);
+        static bool IsLegacyCharacter(const AZ::EntityId& entityId);
 
     private:
         static unsigned int EntFromEntityTypes(AZ::u32 types);
-
-	};
-
+    };
 } // namespace StarterGameGem

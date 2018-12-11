@@ -975,6 +975,10 @@ class GemManager(object):
         # enabled for
         for spec_name in specs_to_include:
 
+            # If the spec has requested to disable games, don't add gems
+            if self.ctx.spec_disable_games(spec_name):
+                continue
+
             # Get the defined game project per spec and only add gems from game projects
             # to specs that have them defined
             game_projects = self.ctx.spec_game_projects(spec_name)

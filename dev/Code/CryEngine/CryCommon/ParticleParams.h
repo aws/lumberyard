@@ -32,6 +32,7 @@ BASIC_TYPE_INFO(CCryName)
 #define PARTICLE_PARAMS_DEFAULT_BLUR_STRENGTH 20.f
 #define PARTICLE_PARAMS_WIDTH_TO_HALF_WIDTH 0.5f
 #define PARTICLE_PARAMS_MAX_COUNT_CPU 20000 
+#define PARTICLE_PARAMS_MAX_MAINTAIN_DENSITY 10000 
 #define PARTICLE_PARAMS_MAX_COUNT_GPU 1048576 
 
 ///////////////////////////////////////////////////////////////////////
@@ -171,7 +172,8 @@ typedef TRangedType<float, 0, 4>          Unit4Float;
 typedef TRangedType<float, -180, 180> SAngle;
 typedef TRangedType<float, 0, 180>        UHalfAngle;
 typedef TRangedType<float, 0, 360>        UFullAngle;
-
+typedef TRangedType<float, 0, PARTICLE_PARAMS_MAX_MAINTAIN_DENSITY> UFloatMaintainDensity;
+   
 typedef TSmall<bool>                                TSmallBool;
 typedef TSmall<bool, uint8, 0, 1>          TSmallBoolTrue;
 typedef TSmall<uint, uint8, 1>                PosInt8;
@@ -1128,6 +1130,11 @@ struct TVarEPParamRandLerp
         return m_bRandomLerpAge;
     }
 
+    ILINE const S& GetSecondValue() const
+    {
+        return m_Color;
+    }
+
     AUTO_STRUCT_INFO
 protected:
     S m_Color;
@@ -1235,7 +1242,7 @@ struct ParticleParams
     TVarEParam<UFloat> fCount;                      // Number of particles alive at once
     TVarEParam<UFloat> fBeamCount;                  // Number of Beams alive at once
     struct SMaintainDensity
-        : UFloat
+        : UFloatMaintainDensity
     {
         UFloat fReduceLifeTime;                         //
         UFloat fReduceAlpha;                                // <SoftMax=1> Reduce alpha inversely to count increase.
@@ -1737,6 +1744,7 @@ struct ParticleParams
     UFloat fCameraFadeFarStrength;                  // Strength of the camera distance fade at the far end
     SFloat fSortOffset;                                     // <SoftMin=-1> <SoftMax=1> Offset distance used for sorting
     SFloat fSortBoundsScale;                            // <SoftMin=-1> <SoftMax=1> Choose emitter point for sorting; 1 = bounds nearest, 0 = origin, -1 = bounds farthest
+    TSmallBool bDynamicCulling;                     // Force enable Dynamic Culling. This disables culling of particle simulation to get accurate bounds for render culling.
     TSmallBool bDrawNear;                                   // Render particle in near space (weapon)
     TSmallBool bDrawOnTop;                              // Render particle on top of everything (no depth test)
     ETrinary tVisibleIndoors;                           // Whether visible indoors / outdoors / both

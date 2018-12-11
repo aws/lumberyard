@@ -82,21 +82,6 @@ def path_to_parts(path, sep):
        
     return partition, schema, partial
 
-
-project_name = None
-deployment_name = None
-resource_group_name = None
-
-def __set_stack_attributes(stack_arn, use_cache=True):
-    global project_name, deployment_name, resource_group_name
-    if not use_cache or project_name is None or deployment_name is None or resource_group_name is None:
-        stack_manager = stack_info.StackInfoManager()
-        stack = stack_manager.get_stack_info(stack_arn)
-        deployment_name = stack.deployment.deployment_name
-        project_name = stack.deployment.parent_stack.project_name
-        resource_group_name = c.RES_GEM_NAME
-    return project_name, deployment_name, resource_group_name
-
 def get_project_name(stack_arn, use_cache=True):
     proj, deployment, rg_name = __set_stack_attributes(stack_arn, use_cache)
     return proj
@@ -111,20 +96,17 @@ def get_stack_name_from_arn(stack_arn, use_cache=True):
 
 
 def get_resources(context):
-    default_deployment = context.config.user_default_deployment
+    default_deployment = context.config.user_default_deployment if context.config.user_default_deployment else context.config.project_default_deployment
     deployment_arn = context.config.get_deployment_stack_id(default_deployment)
     gem_resource_group = context.stack.describe_resources(deployment_arn, recursive=True)          
     resources = dict({})           
     resources[c.ENV_STACK_ID] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_S3_STORAGE)]['StackId']
     resources[c.RES_DB_TABLE_CONTEXT] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_DB_TABLE_CONTEXT)]['PhysicalResourceId']       
-    resources[c.RES_S3_STORAGE] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_S3_STORAGE)]['PhysicalResourceId']   
+    resources[c.RES_S3_STORAGE] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_S3_STORAGE)]['PhysicalResourceId']
+    resources[c.RES_EVENT_EMITTER] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_EVENT_EMITTER)]['PhysicalResourceId']   
     resources[c.RES_LAMBDA_FIFOCONSUMER] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_LAMBDA_FIFOCONSUMER)]['PhysicalResourceId']   
     resources[c.RES_LAMBDA_FIFOPRODUCER] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_LAMBDA_FIFOPRODUCER)]['PhysicalResourceId']       
-    resources[c.RES_AMOEBA_1] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_AMOEBA_1)]['PhysicalResourceId']       
-    resources[c.RES_AMOEBA_2] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_AMOEBA_2)]['PhysicalResourceId']       
-    resources[c.RES_AMOEBA_3] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_AMOEBA_3)]['PhysicalResourceId']       
-    resources[c.RES_AMOEBA_4] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_AMOEBA_4)]['PhysicalResourceId']       
-    resources[c.RES_AMOEBA_5] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_AMOEBA_5)]['PhysicalResourceId']       
+    resources[c.RES_AMOEBA] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_AMOEBA)]['PhysicalResourceId']           
     resources[c.RES_SERVICE_ROLE] = gem_resource_group['{}.{}'.format(c.RES_GEM_NAME, c.RES_SERVICE_ROLE)]['PhysicalResourceId']       
 
     return resources
@@ -137,14 +119,23 @@ def get_cloudwatch_namespace(arn):
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+def print_local(message):
+    print message
 
-def debug_print(message):        
-    if c.ENV_VERBOSE in os.environ and os.environ[c.ENV_VERBOSE] == "True":        
-        if c.IS_LOCALLY_RUN in os.environ and os.environ[c.IS_LOCALLY_RUN] == "True":
-            print message
-        else:
-            logger.info(message)
+def print_logger(message):
+    logger.info(message)
 
+def print_none(message):
+    return
+
+is_verbose = c.ENV_VERBOSE in os.environ and os.environ[c.ENV_VERBOSE] == "True"
+is_local = "AWS_LAMBDA_LOG_STREAM_NAME" not in os.environ
+debug_print = print_none
+if is_verbose:
+    if is_local:
+        debug_print = print_local
+    else:        
+        debug_print = print_logger
 
 def split(list, size, func=None):
     sets = []
@@ -181,6 +172,25 @@ def print_dict(dict):
 
 
 def print_obj(obj):
-   for attr in dir(obj):
+    for attr in dir(obj):
        if hasattr( obj, attr ):
            print( "obj.%s = %s" % (attr, getattr(obj, attr)))
+
+def get_path_without_leading_seperator(key):
+    if key and key.startswith('/'):
+        return key[1:]
+    return key
+
+project_name = None
+deployment_name = None
+resource_group_name = None
+
+def __set_stack_attributes(stack_arn, use_cache=True):
+    global project_name, deployment_name, resource_group_name
+    if not (use_cache and project_name and deployment_name and resource_group_name):
+        stack_manager = stack_info.StackInfoManager()
+        stack = stack_manager.get_stack_info(stack_arn)
+        deployment_name = stack.deployment.deployment_name
+        project_name = stack.deployment.parent_stack.project_name
+        resource_group_name = c.RES_GEM_NAME
+    return project_name, deployment_name, resource_group_name

@@ -9,6 +9,7 @@
   "modules": [
     "AzCore",
     "AzCoreTests",
+    "AzToolsFrameworkTests",
     "AzFramework",
     "AzTest",
     "AzTestRunner",

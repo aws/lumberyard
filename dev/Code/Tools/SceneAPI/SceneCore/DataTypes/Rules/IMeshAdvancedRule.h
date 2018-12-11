@@ -33,6 +33,7 @@ namespace AZ
 
                 virtual bool Use32bitVertices() const = 0;
                 virtual bool MergeMeshes() const = 0;
+                virtual bool UseCustomNormals() const = 0;
                 virtual const AZStd::string& GetVertexColorStreamName() const = 0;
                 // Returns whether or not the vertex color stream was explicitly disabled by the user.
                 //      This does guarantee a valid vertex color stream name if false.

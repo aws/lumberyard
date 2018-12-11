@@ -12,43 +12,74 @@
 
 #pragma once
 
-#include "stdafx.h"
+#include <AzCore/std/string/string.h>
 
-enum class PlatformOptions
+#include <RemoteConsoleCore.h>
+
+
+enum class PlatformOptions : unsigned char
 {
-    Android,
+    Android_ARMv7,
+    Android_ARMv8,
     iOS,
-    XBoxOne, // ACCEPTED_USE
-    PS4 // ACCEPTED_USE
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+        PublicName,
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
+        AZ_EXPAND_FOR_RESTRICTED_PLATFORM
+#else
+        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#endif
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
+#endif
+
+    Invalid
 };
 
 struct DeploymentConfig
 {
-    DeploymentConfig() 
-        : m_assetProcessorRemoteIpAddress("127.0.0.1")
-        , m_assetProcessorRemoteIpPort("45643")
-        , m_shaderCompilerIP("127.0.0.1")
+    DeploymentConfig()
+        : m_projectName()
+        , m_buildConfiguration("profile")
+
+        , m_deviceId()
+        , m_deviceIpAddress("127.0.0.1")
+
+        , m_assetProcessorIpAddress("127.0.0.1")
+        , m_assetProcessorPort("45643")
+
+        , m_shaderCompilerIpAddress("127.0.0.1")
         , m_shaderCompilerPort("61453")
-        , m_buildConfiguration("Profile")
-        , m_platformOptions(PlatformOptions::Android)
+
+        , m_deviceRemoteLogPort(AZStd::string::format("%d", defaultRemoteConsolePort))
+        , m_hostRemoteLogPort(static_cast<AZ::u16>(defaultRemoteConsolePort))
+
+        , m_platformOption(PlatformOptions::Android_ARMv7)
         , m_buildGame(false)
         , m_useVFS(false)
-        , m_shaderCompilerAP(false)
-        , m_installExecutable(true)
-        , m_cleanDeviceBeforeInstall(false)
-    { }
+        , m_shaderCompilerUseAP(false)
+        , m_cleanDevice(false)
+    {
+    }
 
-    AZStd::string m_buildPath;
-    AZStd::string m_assetProcessorRemoteIpAddress;
-    AZStd::string m_assetProcessorRemoteIpPort;
-    AZStd::string m_shaderCompilerIP;
-    AZStd::string m_shaderCompilerPort;
     AZStd::string m_projectName;
     AZStd::string m_buildConfiguration;
-    PlatformOptions m_platformOptions;
+
+    AZStd::string m_deviceId;
+    AZStd::string m_deviceIpAddress;
+
+    AZStd::string m_assetProcessorIpAddress;
+    AZStd::string m_assetProcessorPort;
+
+    AZStd::string m_shaderCompilerIpAddress;
+    AZStd::string m_shaderCompilerPort;
+
+    AZStd::string m_deviceRemoteLogPort; // used to set the log_RemoteConsolePort in system*.cfg
+    AZ::u16 m_hostRemoteLogPort; // used specifically when port forwarding connections to localhost to avoid collisions with local instances of LY
+
+    PlatformOptions m_platformOption;
     bool m_buildGame;
     bool m_useVFS;
-    bool m_shaderCompilerAP;
-    bool m_installExecutable;
-    bool m_cleanDeviceBeforeInstall;
+    bool m_shaderCompilerUseAP;
+    bool m_cleanDevice;
 };

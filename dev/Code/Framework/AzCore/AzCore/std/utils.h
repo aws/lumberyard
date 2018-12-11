@@ -35,6 +35,8 @@
     #include <AzCore/std/typetraits/has_trivial_assign.h>
 #endif
 
+#include <memory>
+
 namespace AZStd
 {
     //////////////////////////////////////////////////////////////////////////
@@ -70,6 +72,41 @@ namespace AZStd
     }
 
 #endif //AZ_HAS_RVALUE_REFS
+
+    template <class T>
+    struct default_delete
+    {
+        template <class U, 
+            class = typename enable_if<is_convertible<U*, T*>::value, void>::type>
+        void operator()(U* ptr) const
+        {
+            delete ptr;
+        }
+    };
+
+    template <class T>
+    struct default_delete<T[]>
+    {
+        template<class U,
+            class = typename enable_if<is_convertible<U(*)[], T(*)[]>::value, void>::type>
+        default_delete(const default_delete<U[]>&)
+        {
+        }
+
+        template<class U,
+            class = typename enable_if<is_convertible<U(*)[], T(*)[]>::value, void>::type>
+        void operator()(U *ptr) const
+        {
+            delete[] ptr;
+        }
+    };
+
+    template <class T>
+    struct no_delete
+    {
+        template <class U>
+        void operator()(U*) const {}
+    };
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////

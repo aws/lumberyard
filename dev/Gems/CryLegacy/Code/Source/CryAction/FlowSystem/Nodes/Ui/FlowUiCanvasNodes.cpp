@@ -19,17 +19,17 @@
 
 namespace
 {
-    const string g_canvasLoadNodePath = "UI:Canvas:Load";
-    const string g_canvasUnloadNodePath = "UI:Canvas:Unload";
-    const string g_canvasFindLoadedNodePath = "UI:Canvas:FindLoaded";
-    const string g_canvasActionListenerNodePath = "UI:Canvas:ActionListener";
+    const char* g_canvasLoadNodePath = "UI:Canvas:Load";
+    const char* g_canvasUnloadNodePath = "UI:Canvas:Unload";
+    const char* g_canvasFindLoadedNodePath = "UI:Canvas:FindLoaded";
+    const char* g_canvasActionListenerNodePath = "UI:Canvas:ActionListener";
 
-    const string g_entCanvasLoadIntoEntityNodePath = "UIe:Canvas:LoadIntoEntity";
-    const string g_entCanvasUnloadFromEntityNodePath = "UIe:Canvas:UnloadFromEntity";
-    const string g_entCanvasActionListenerNodePath = "UIe:Canvas:ActionListener";
+    const char* g_entCanvasLoadIntoEntityNodePath = "UIe:Canvas:LoadIntoEntity";
+    const char* g_entCanvasUnloadFromEntityNodePath = "UIe:Canvas:UnloadFromEntity";
+    const char* g_entCanvasActionListenerNodePath = "UIe:Canvas:ActionListener";
 
-    const string g_entCanvasSetCanvasRefOnEntityNodePath = "UIe:Canvas:SetCanvasRefOnEntity";
-    const string g_canvasCanvasEntityListenerNodePath = "UIe:Canvas:CanvasEntityListener";
+    const char* g_entCanvasSetCanvasRefOnEntityNodePath = "UIe:Canvas:SetCanvasRefOnEntity";
+    const char* g_canvasCanvasEntityListenerNodePath = "UIe:Canvas:CanvasEntityListener";
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -346,7 +346,7 @@ public:
             AZ::EntityId canvasEntityId = gEnv->pLyShine->LoadCanvas(canvasName);
             if (!canvasEntityId.IsValid())
             {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't load UI canvas with path: %s\n", g_canvasLoadNodePath.c_str(), canvasName.c_str());
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't load UI canvas with path: %s\n", g_canvasLoadNodePath, canvasName.c_str());
                 return;
             }
 
@@ -444,7 +444,7 @@ public:
             }
             else
             {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI canvas with ID: %d\n", g_canvasUnloadNodePath.c_str(), canvasID);
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find UI canvas with ID: %d\n", g_canvasUnloadNodePath, canvasID);
             }
         }
     }
@@ -522,7 +522,7 @@ public:
             AZ::EntityId canvasEntityId = gEnv->pLyShine->FindLoadedCanvasByPathName(canvasName);
             if (!canvasEntityId.IsValid())
             {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find loaded UI canvas with path: %s\n", g_canvasLoadNodePath.c_str(), canvasName.c_str());
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find loaded UI canvas with path: %s\n", g_canvasLoadNodePath, canvasName.c_str());
                 ActivateOutput(activationInfo, OutputPortFound, false);
                 return;
             }
@@ -880,7 +880,7 @@ public:
             if (flowEntityType == FlowEntityType::Legacy)
             {
                 IEntity* entity = activationInfo->pEntity;
-                AZ_Assert(entity, "FlowGraph: %s Node: couldn't find entity\n", g_entCanvasLoadIntoEntityNodePath.c_str());
+                AZ_Assert(entity, "FlowGraph: %s Node: couldn't find entity\n", g_entCanvasLoadIntoEntityNodePath);
                 if (entity)
                 {
                     canvasEntityId = ProcessCanvasLoadForLegacyEntity(entity);
@@ -896,14 +896,14 @@ public:
             {
                 CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                     "FlowGraph: %s Node: entity not assigned\n",
-                    g_entCanvasLoadIntoEntityNodePath.c_str());
+                    g_entCanvasLoadIntoEntityNodePath);
             }
             else
             {
-                AZ_Assert(false, "FlowGraph: %s Node: invalid flowEntityType\n", g_entCanvasLoadIntoEntityNodePath.c_str());
+                AZ_Assert(false, "FlowGraph: %s Node: invalid flowEntityType\n", g_entCanvasLoadIntoEntityNodePath);
             }
 
-            // if we succesfully loaded a canvas then set the disabled flag if required and activate the output port
+            // if we successfully loaded a canvas then set the disabled flag if required and activate the output port
             if (canvasEntityId.IsValid())
             {
                 bool disabled = GetPortBool(activationInfo, InputPortDisabled);
@@ -943,7 +943,7 @@ public:
                     {
                         CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                             "FlowGraph: %s Node: CanvasPath property of assigned UiCanvasRefEntity is empty\n",
-                            g_entCanvasLoadIntoEntityNodePath.c_str());
+                            g_entCanvasLoadIntoEntityNodePath);
                         return canvasEntityId;
                     }
                     else
@@ -962,7 +962,7 @@ public:
                         {
                             CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                                 "FlowGraph: %s Node: couldn't load UI canvas with path: %s\n",
-                                g_entCanvasLoadIntoEntityNodePath.c_str(), canvasPathname.c_str());
+                                g_entCanvasLoadIntoEntityNodePath, canvasPathname.c_str());
                             return canvasEntityId;
                         }
                     }
@@ -973,7 +973,7 @@ public:
         {
             CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                 "FlowGraph: %s Node: assigned entity needs to be a UiCanvasRefEntity\n",
-                g_entCanvasLoadIntoEntityNodePath.c_str());
+                g_entCanvasLoadIntoEntityNodePath);
         }
 
         return canvasEntityId;
@@ -987,7 +987,7 @@ public:
         {
             CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                 "FlowGraph: %s Node: assigned component entity needs to have a UiCanvasAssetRef component\n",
-                g_entCanvasLoadIntoEntityNodePath.c_str());
+                g_entCanvasLoadIntoEntityNodePath);
         }
         else
         {
@@ -999,7 +999,7 @@ public:
 
                 CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                     "FlowGraph: %s Node: couldn't load UI canvas with path: %s\n",
-                    g_entCanvasLoadIntoEntityNodePath.c_str(), canvasPathname.c_str());
+                    g_entCanvasLoadIntoEntityNodePath, canvasPathname.c_str());
             }
         }
 
@@ -1077,7 +1077,7 @@ public:
                 {
                     CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                         "FlowGraph: %s Node: assigned component entity needs to have a UiCanvasRef component\n",
-                        g_entCanvasUnloadFromEntityNodePath.c_str());
+                        g_entCanvasUnloadFromEntityNodePath);
                     return;
                 }
 
@@ -1193,7 +1193,7 @@ public:
                 {
                     CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                         "FlowGraph: %s Node: assigned component entity needs to have a UiCanvasProxyRef component\n",
-                        g_entCanvasSetCanvasRefOnEntityNodePath.c_str());
+                        g_entCanvasSetCanvasRefOnEntityNodePath);
                     return;
                 }
 
@@ -1207,7 +1207,7 @@ public:
                     {
                         CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                             "FlowGraph: %s Node: assigned component entity needs to have a UiCanvasRef component\n",
-                            g_canvasCanvasEntityListenerNodePath.c_str());
+                            g_canvasCanvasEntityListenerNodePath);
                         return;
                     }
                 }
@@ -1226,7 +1226,7 @@ public:
             {
                 CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                     "FlowGraph: %s Node: assigned entity must be a component entity\n",
-                    g_entCanvasSetCanvasRefOnEntityNodePath.c_str());
+                    g_entCanvasSetCanvasRefOnEntityNodePath);
             }
         }
     }
@@ -1327,7 +1327,7 @@ public:
                 {
                     CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                         "FlowGraph: %s Node: assigned component entity needs to have a UiCanvasRef component\n",
-                        g_canvasCanvasEntityListenerNodePath.c_str());
+                        g_canvasCanvasEntityListenerNodePath);
                     return;
                 }
 
@@ -1341,7 +1341,7 @@ public:
             {
                 CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
                     "FlowGraph: %s Node: assigned entity must be a component entity\n",
-                    g_canvasCanvasEntityListenerNodePath.c_str());
+                    g_canvasCanvasEntityListenerNodePath);
             }
         }
     }

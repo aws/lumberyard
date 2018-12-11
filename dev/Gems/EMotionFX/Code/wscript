@@ -37,7 +37,7 @@ def build(bld):
     ]
 
     # Library containing all editor & runtime common EmotionFX animation gem code, and links into both the runtime and editor modules.
-    bld.CryEngineStaticLibrary(
+    kw = dict(
         target                      = 'EMotionFXStaticLib',
         platforms                   = ['all'],
         configurations              = ['all'],
@@ -59,8 +59,7 @@ def build(bld):
         export_includes             = ['./Include', "./"],
         disable_pch                 = True,
         pch                         = '',
-       
-       
+
         profile_defines             = list(development_defines),
         profile_dedicated_defines   = list(development_defines),
         debug_defines               = list(development_defines) + list(debug_defines),
@@ -69,6 +68,11 @@ def build(bld):
         release_dedicated_defines   = list(shipping_defines),
         test_all_defines            = list(development_defines)
     )
+    
+    for p in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p)] = ['MCore/Source/{0}/mcore_{0}.waf_files'.format(p)]
+
+    bld.CryEngineStaticLibrary(**kw)
 
     # Main Gem - Has dependency on EMotionFXStaticLib gem shared library.
     bld.DefineGem(

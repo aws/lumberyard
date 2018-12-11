@@ -165,6 +165,14 @@
                         "Role"
                     ]
                 }, 
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
                         "ServiceLambdaConfiguration", 

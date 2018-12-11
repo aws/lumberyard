@@ -237,7 +237,7 @@ namespace AZ
         m_isStarted = false;
         m_isSystemAllocatorOwner = false;
         m_isOSAllocatorOwner = false;
-        m_memoryBlock = nullptr;
+        m_fixedMemoryBlock = nullptr;
         m_osAllocator = nullptr;
         m_currentTime = AZStd::chrono::system_clock::time_point::max();
         m_drillerManager = nullptr;
@@ -297,8 +297,9 @@ namespace AZ
 
         AZ::SystemAllocator::Descriptor desc;
 
-        // Create temporary system allocator
-        bool isExistingSystemAllocator = AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady();
+        // Create temporary system allocator to initialize the serialization context, after that the SystemAllocator
+        // will be created by CreateSystemAllocator
+        const bool isExistingSystemAllocator = AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady();
 
         if (!isExistingSystemAllocator)
         {
@@ -307,9 +308,9 @@ namespace AZ
                 TemporaryBlockSize = 10 *  1024 * 1024
             };
 
-            desc.m_heap.m_numMemoryBlocks = 1;
-            desc.m_heap.m_memoryBlocksByteSize[0] = TemporaryBlockSize;
-            desc.m_heap.m_memoryBlocks[0] = m_osAllocator->Allocate(desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
+            desc.m_heap.m_numFixedMemoryBlocks = 1;
+            desc.m_heap.m_fixedMemoryBlocksByteSize[0] = TemporaryBlockSize;
+            desc.m_heap.m_fixedMemoryBlocks[0] = m_osAllocator->Allocate(desc.m_heap.m_fixedMemoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
             AZ::AllocatorInstance<AZ::SystemAllocator>::Create(desc);
         }
 
@@ -324,7 +325,7 @@ namespace AZ
         if (!isExistingSystemAllocator)
         {
             AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-            m_osAllocator->DeAllocate(desc.m_heap.m_memoryBlocks[0], desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
+            m_osAllocator->DeAllocate(desc.m_heap.m_fixedMemoryBlocks[0], desc.m_heap.m_fixedMemoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
         }
 
         CreateCommon();
@@ -534,11 +535,11 @@ namespace AZ
         {
             AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
 
-            if (m_memoryBlock != nullptr)
+            if (m_fixedMemoryBlock)
             {
-                m_osAllocator->DeAllocate(m_memoryBlock);
+                m_osAllocator->DeAllocate(m_fixedMemoryBlock);
             }
-            m_memoryBlock = nullptr;
+            m_fixedMemoryBlock = nullptr;
             m_isSystemAllocatorOwner = false;
         }
 
@@ -578,7 +579,6 @@ namespace AZ
             AZ::SystemAllocator::Descriptor desc;
             desc.m_heap.m_pageSize = m_descriptor.m_pageSize;
             desc.m_heap.m_poolPageSize = m_descriptor.m_poolPageSize;
-            desc.m_heap.m_numMemoryBlocks = 1;
             if (m_descriptor.m_grabAllMemory)
             {
                 // grab all available memory
@@ -588,23 +588,21 @@ namespace AZ
                 AZ_Warning("Memory", false, "This platform is not supported for grabAllMemory flag! Provide a valid allocation size and set the m_grabAllMemory flag to false! Using default max memory size %llu!", availableOS);
                 AZ_Assert(availableOS > 0, "OS doesn't have any memory available!");
                 // compute total memory to grab
-                desc.m_heap.m_memoryBlocksByteSize[0] = static_cast<size_t>(availableOS - reservedOS - reservedDbg);
+                desc.m_heap.m_fixedMemoryBlocksByteSize[0] = static_cast<size_t>(availableOS - reservedOS - reservedDbg);
                 // memory block MUST be a multiple of pages
-                desc.m_heap.m_memoryBlocksByteSize[0] = AZ::SizeAlignDown(desc.m_heap.m_memoryBlocksByteSize[0], m_descriptor.m_pageSize);
+                desc.m_heap.m_fixedMemoryBlocksByteSize[0] = AZ::SizeAlignDown(desc.m_heap.m_fixedMemoryBlocksByteSize[0], m_descriptor.m_pageSize);
             }
             else
             {
-                desc.m_heap.m_memoryBlocksByteSize[0] = static_cast<size_t>(m_descriptor.m_memoryBlocksByteSize);
+                desc.m_heap.m_fixedMemoryBlocksByteSize[0] = static_cast<size_t>(m_descriptor.m_memoryBlocksByteSize);
             }
 
+            if (desc.m_heap.m_fixedMemoryBlocksByteSize[0] > 0) // 0 means one demand memory which we support
             {
-                if (desc.m_heap.m_memoryBlocksByteSize[0] > 0) // 0 means one demand memory which we support
-                {
-                    m_memoryBlock = m_osAllocator->Allocate(desc.m_heap.m_memoryBlocksByteSize[0], m_descriptor.m_memoryBlockAlignment);
-                }
+                m_fixedMemoryBlock = m_osAllocator->Allocate(desc.m_heap.m_fixedMemoryBlocksByteSize[0], m_descriptor.m_memoryBlockAlignment);
+                desc.m_heap.m_fixedMemoryBlocks[0] = m_fixedMemoryBlock;
+                desc.m_heap.m_numFixedMemoryBlocks = 1;
             }
-
-            desc.m_heap.m_memoryBlocks[0] = m_memoryBlock;
             desc.m_allocationRecords = m_descriptor.m_allocationRecords;
             desc.m_stackRecordLevels = aznumeric_caster(m_descriptor.m_stackRecordLevels);
             AZ::AllocatorInstance<AZ::SystemAllocator>::Create(desc);
@@ -1012,16 +1010,7 @@ namespace AZ
 
         // exeDirectory currently contains full path to EXE.
         // Modify to end the string after the last '/'
-
-        // Iterate until finding last '/'
-        char* finalSlash = nullptr;
-        for (char* c = exeDirectory; c < exeDirEnd; ++c)
-        {
-            if (*c == '/')
-            {
-                finalSlash = c;
-            }
-        }
+        char* finalSlash = strrchr(exeDirectory, '/');
 
         // If no slashes found, path invalid.
         if (finalSlash)

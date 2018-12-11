@@ -356,6 +356,26 @@ local teleporter =
 				-- Fade the screen.
 				GameplayNotificationBus.Event.OnEventBegin(sm.UserData.durationEventId, self.timeRemaining);
 				GameplayNotificationBus.Event.OnEventBegin(sm.UserData.showEventId, true);
+				-- Orientate the player.
+				-- In theory, I could just use the player's location and the destination's
+				-- direction but I want to make sure that the direction is valid (i.e. not zero
+				-- length).
+				local playerTM = TransformBus.Event.GetWorldTM(sm.UserData.teleportee);
+				local newDir = TransformBus.Event.GetWorldTM(sm.UserData.Properties.Destination.Direction):GetTranslation() - playerTM:GetTranslation();
+				newDir.z = 0.0;
+				if (newDir:GetLengthSq() < 0.01) then
+					newDir = Vector3(0.0, 1.0, 0.0);
+				else
+					newDir:Normalize();
+				end
+				TransformBus.Event.SetWorldTM(sm.UserData.teleportee, MathUtils.CreateLookAt(playerTM:GetTranslation(), playerTM:GetTranslation() + newDir, AxisType.YPositive));
+				
+				-- Also reset the camera's orientation so it has time to perform any collision
+				-- detection resolutions.
+				local playerCam = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCamera"));
+				local resetEvent = GameplayNotificationId(playerCam, "ResetOrientationEvent", "float");
+				GameplayNotificationBus.Event.OnEventBegin(resetEvent, true);	-- payload is irrelevant
+
 			end,
 			
 			OnExit = function(self, sm)
@@ -385,26 +405,6 @@ local teleporter =
 				-- Trigger the particles.
 				local eventId = GameplayNotificationId(sm.UserData.Properties.States.TeleportingIn.Particles.Location, sm.UserData.Properties.States.TeleportingIn.Particles.Event, "float");
 				GameplayNotificationBus.Event.OnEventBegin(eventId, 0);
-				
-				-- Orientate the player.
-				-- In theory, I could just use the player's location and the destination's
-				-- direction but I want to make sure that the direction is valid (i.e. not zero
-				-- length).
-				local playerTM = TransformBus.Event.GetWorldTM(sm.UserData.teleportee);
-				local newDir = TransformBus.Event.GetWorldTM(sm.UserData.Properties.Destination.Direction):GetTranslation() - playerTM:GetTranslation();
-				newDir.z = 0.0;
-				if (newDir:GetLengthSq() < 0.01) then
-					newDir = Vector3(0.0, 1.0, 0.0);
-				else
-					newDir:Normalize();
-				end
-				TransformBus.Event.SetWorldTM(sm.UserData.teleportee, MathUtils.CreateLookAt(playerTM:GetTranslation(), playerTM:GetTranslation() + newDir, AxisType.YPositive));
-				
-				-- Also reset the camera's orientation so it has time to perform any collision
-				-- detection resolutions.
-				local playerCam = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCamera"));
-				local resetEvent = GameplayNotificationId(playerCam, "ResetOrientationEvent", "float");
-				GameplayNotificationBus.Event.OnEventBegin(resetEvent, true);	-- payload is irrelevant
 			end,
 			
 			OnExit = function(self, sm)
@@ -603,7 +603,7 @@ function teleporter:DuplicateCameraProps(srcCam, destCam)
 	local fov		= CameraRequestBus.Event.GetFov(srcCam);
 	CameraRequestBus.Event.SetFarClipDistance(destCam, farClip);
 	CameraRequestBus.Event.SetNearClipDistance(destCam, nearClip);
-	CameraRequestBus.Event.SetFov(destCam, fov);
+	CameraRequestBus.Event.SetFovDegrees(destCam, fov);
 end
 
 function teleporter:OnEventBegin(value)

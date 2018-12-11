@@ -17,6 +17,8 @@
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
+#include <AzToolsFramework/AssetBrowser/Entries/SourceAssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/ProductAssetBrowserEntry.h>
 #include <AzToolsFramework/Thumbnails/SourceControlThumbnail.h>
 #include <AzToolsFramework/Thumbnails/ThumbnailerBus.h>
 
@@ -124,67 +126,6 @@ namespace AzToolsFramework
                 return;
             }
             SelectProduct(QModelIndex(), assetID);
-        }
-
-        void AssetBrowserTreeView::drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const
-        {
-            QTreeView::drawBranches(painter, rect, index);
-
-            auto role_data = index.data(AssetBrowserModel::Roles::EntryRole);
-            if (role_data.canConvert<const AssetBrowserEntry*>())
-            {
-                auto entry = qvariant_cast<const AssetBrowserEntry*>(role_data);
-                if (azrtti_istypeof<const ProductAssetBrowserEntry*>(entry))
-                {
-                    painter->save();
-                    painter->setRenderHint(QPainter::RenderHint::Antialiasing, false);
-
-                    // Model index used to walk up the tree to get information about ancestors
-                    // for determining where to draw branch lines and when to draw connecting lines
-                    // between parents and uncles.
-                    QModelIndex ancestorIndex = index.parent();
-
-                    // Compute the depth of the current entity in the hierarchy to determine where to draw the branch lines
-                    int depth = 1;
-                    while (ancestorIndex.isValid())
-                    {
-                        ancestorIndex = ancestorIndex.parent();
-                        ++depth;
-                    }
-
-                    QColor whiteColor(255, 255, 255);
-
-                    QPen pen;
-                    pen.setColor(whiteColor);
-                    pen.setWidthF(2.5f);
-                    painter->setPen(pen);
-
-                    style()->standardPalette().background();
-
-                    QRect entryRect = visualRect(index);
-
-                    int totalIndent = indentation() * (depth - 1) - (indentation() / 2);
-
-                    int x = totalIndent;
-                    int midY = entryRect.y() + (entryRect.height() / 2);
-
-                    // draw horizontal line
-                    painter->drawLine(x, midY, x + (indentation()), midY);
-
-                    // number of children the parent has
-                    int rowCount = m_assetBrowserSortFilterProxyModel->rowCount(index.parent());
-                    // is it last child of the parent
-                    bool isLast = (rowCount == (index.row() + 1));
-
-                    int y1 = entryRect.y();
-                    // if item is last draw vertical line to the center of the item, else to the whole height of the item to connect with item below
-                    int y2 = isLast ? (midY) : (entryRect.y() + entryRect.height());
-                    // draw vertical line
-                    painter->drawLine(x, y1, x, y2);
-
-                    painter->restore();
-                }
-            }
         }
 
         void AssetBrowserTreeView::startDrag(Qt::DropActions supportedActions)

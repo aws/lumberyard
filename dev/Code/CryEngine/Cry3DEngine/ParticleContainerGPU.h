@@ -23,7 +23,7 @@ public:
     CParticleContainerGPU();
     ~CParticleContainerGPU();
 
-    void Initialize(CParticleContainer* parent);
+    void Initialize(CParticleContainer* particleContainer);
     void Render(SRendParams const& rParam, SPartRenderParams const& PRParams, const SRenderingPassInfo& passInfo);
     void OnContainerUpdateLife();
     void SetLodBlendAlpha(float blendAlpha);
@@ -32,6 +32,9 @@ public:
     void Prime(float equilibriumAge);
 
 protected:
-    SImpl_GPUParticleContainer* m_impl;
+    void CreateImplementation();
+    void DestroyImplementation();
+
+    SImpl_GPUParticleContainer* m_impl = nullptr;
     char m_implBuffer[128];
 };

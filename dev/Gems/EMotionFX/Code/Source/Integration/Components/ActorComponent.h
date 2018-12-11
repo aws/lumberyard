@@ -95,6 +95,8 @@ namespace EMotionFX
             void AttachToEntity(AZ::EntityId targetEntityId, AttachmentType attachmentType) override;
             void DetachFromEntity() override;
             void DebugDrawRoot(bool enable) override;
+            bool GetRenderCharacter() const override;
+            void SetRenderCharacter(bool enable) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
@@ -123,8 +125,9 @@ namespace EMotionFX
                 incompatible.push_back(AZ_CRC("MeshService", 0x71d8a455));
             }
 
-            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& /*dependent*/)
+            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
             {
+                dependent.push_back(AZ_CRC("PhysicsService", 0xa7350d22));
             }
 
             static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -151,6 +154,7 @@ namespace EMotionFX
 
             // AZ::TickBus::Handler
             void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+            int GetTickOrder() override;
 
             void CheckActorCreation();
             void DestroyActor();

@@ -29,10 +29,8 @@ def build(bld):
 
         win_file_list     = ['nativeui_win.waf_files'],
 
-       
-       
-
         # empty implementation for unsupported platforms
-       
-        linux_file_list   = ['nativeui_none.waf_files']
+        linux_file_list   = ['nativeui_none.waf_files'],
+
+        restricted_script   = 'update_restricted_parameters',
     )

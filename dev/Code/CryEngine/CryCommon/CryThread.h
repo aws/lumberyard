@@ -20,6 +20,7 @@
 // Include basic multithread primitives.
 #include "MultiThread.h"
 #include "BitFiddling.h"
+#include <AzCore/std/string/string.h>
 //////////////////////////////////////////////////////////////////////////
 // Lock types:
 //
@@ -202,7 +203,7 @@ struct CryThreadInfo
     //
     // You may set this name directly or through the SetName() method of
     // CrySimpleThread (or derived class).
-    string m_Name;
+    AZStd::string m_Name;
 
 
     // A thread identification number.

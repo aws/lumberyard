@@ -31,7 +31,6 @@ public:
     virtual void Release();
     virtual void DeInit() {}
     virtual ICompiler* CreateCompiler();
-    virtual bool SupportsMultithreading() const;
     virtual const char* GetExt(int index) const;
 
 private:

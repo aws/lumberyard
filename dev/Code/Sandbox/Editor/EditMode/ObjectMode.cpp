@@ -352,6 +352,8 @@ bool CObjectMode::OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 
 //////////////////////////////////////////////////////////////////////////
 bool CObjectMode::OnLButtonDown(CViewport* view, int nFlags, const QPoint& point)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     if (m_bMoveByFaceNormManipShown)
     {
         HideMoveByFaceNormGizmo();
@@ -1019,6 +1021,8 @@ void CObjectMode::MoveSelectionToPos(CViewport* view, Vec3& pos, bool align, con
 //////////////////////////////////////////////////////////////////////////
 bool CObjectMode::OnMouseMove(CViewport* view, int nFlags, const QPoint& point)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     if (GetIEditor()->IsInGameMode() || GetIEditor()->IsInSimulationMode())
     {
         // Ignore while in game.
@@ -1033,8 +1037,6 @@ bool CObjectMode::OnMouseMove(CViewport* view, int nFlags, const QPoint& point)
     }
     m_prevMousePos = point;
     SetObjectCursor(view, 0);
-
-    Vec3 pos = view->SnapToGrid(view->ViewToWorld(point));
 
     // get world/local coordinate system setting.
     int coordSys = GetIEditor()->GetReferenceCoordSys();

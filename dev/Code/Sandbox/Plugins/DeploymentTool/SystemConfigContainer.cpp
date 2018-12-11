@@ -9,68 +9,81 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "DeploymentTool_precompiled.h"
 #include "SystemConfigContainer.h"
-#include "DeploymentConfig.h"
 
-const char* SystemConfigContainer::s_shaderCompilerIPKey = "r_ShaderCompilerServer";
-const char* SystemConfigContainer::s_shaderCompilerPortKey = "r_ShaderCompilerPort";
-const char* SystemConfigContainer::s_assetProcessorShaderCompilerKey = "r_AssetProcessorShaderCompiler";
+#include <AzFramework/StringFunc/StringFunc.h>
+
+#include "DeploymentConfig.h"
+#include "DeployNotificationsBus.h"
+#include "NetworkUtils.h"
+
+
+namespace
+{
+    const char* shaderCompilerIPKey = "r_ShaderCompilerServer";
+    const char* shaderCompilerPortKey = "r_ShaderCompilerPort";
+
+    const char* assetProcessorShaderCompilerKey = "r_AssetProcessorShaderCompiler";
+
+    const char* remoteConsoleAllowedAddressesKey = "log_RemoteConsoleAllowedAddresses";
+    const char* remoteConsolePortKey = "log_RemoteConsolePort";
+}
+
 
 SystemConfigContainer::SystemConfigContainer(const char* systemConfigFileName)
-    : ConfigFileContainer(systemConfigFileName)
+    : ConfigFileContainer(systemConfigFileName ? systemConfigFileName : "")
 {
 }
 
-StringOutcome SystemConfigContainer::UpdateWithDeploymentOptions(const DeploymentConfig& deploymentConfig)
+StringOutcome SystemConfigContainer::ApplyConfiguration(const DeploymentConfig& deploymentConfig)
 {
-    SetUseAssetProcessorShaderCompiler(deploymentConfig.m_shaderCompilerAP);
-    SetShaderCompilerIP(deploymentConfig.m_shaderCompilerIP);
-    SetShaderCompilerPort(deploymentConfig.m_shaderCompilerPort);
-    return WriteContents();
+    SetString(shaderCompilerIPKey, deploymentConfig.m_shaderCompilerIpAddress);
+    SetString(shaderCompilerPortKey, deploymentConfig.m_shaderCompilerPort);
+
+    SetBool(assetProcessorShaderCompilerKey, deploymentConfig.m_shaderCompilerUseAP);
+
+    AZStd::vector<AZStd::string> localIpAddrs;
+    if (!DeployTool::GetAllHostIPAddrs(localIpAddrs))
+    {
+        DEPLOY_LOG_WARN("[WARN] Failed to get the host computer's local IP addresses.  The remote log connection may not work correctly.");
+    }
+
+    AZStd::string allowedAddresses = GetString(remoteConsoleAllowedAddressesKey, true);
+
+    AZStd::vector<AZStd::string> allowedIpAddrs;
+    AzFramework::StringFunc::Tokenize(allowedAddresses.c_str(), allowedIpAddrs, ',');
+
+    for (const auto& localAddr : localIpAddrs)
+    {
+        const auto& iterator = AZStd::find(allowedIpAddrs.begin(), allowedIpAddrs.end(), localAddr);
+        if (iterator == allowedIpAddrs.end())
+        {
+            if (!allowedAddresses.empty())
+            {
+                allowedAddresses.append(",");
+            }
+            allowedAddresses.append(localAddr);
+        }
+    }
+
+    SetString(remoteConsoleAllowedAddressesKey, allowedAddresses);
+    SetString(remoteConsolePortKey, deploymentConfig.m_deviceRemoteLogPort);
+
+    return Write();
 }
 
 AZStd::string SystemConfigContainer::GetShaderCompilerIP() const
 {
-    return GetString(s_shaderCompilerIPKey);
+    return GetString(shaderCompilerIPKey);
 }
 
 AZStd::string SystemConfigContainer::GetShaderCompilerPort() const
 {
-    return GetString(s_shaderCompilerPortKey);
+    return GetString(shaderCompilerPortKey);
 }
 
 bool SystemConfigContainer::GetUseAssetProcessorShaderCompiler() const
 {
-    return GetBool(s_assetProcessorShaderCompilerKey);
-}
-
-AZStd::string SystemConfigContainer::GetShaderCompilerIPIncludeComments() const
-{
-    return GetStringIncludingComments(s_shaderCompilerIPKey);
-}
-
-AZStd::string SystemConfigContainer::GetShaderCompilerPortIncludeComments() const
-{
-    return GetStringIncludingComments(s_shaderCompilerPortKey);
-}
-
-bool SystemConfigContainer::GetUseAssetProcessorShaderCompilerIncludeComments() const
-{
-    return GetBoolIncludingComments(s_assetProcessorShaderCompilerKey);
-}
-
-void SystemConfigContainer::SetShaderCompilerIP(const AZStd::string& newIP)
-{
-    SetString(s_shaderCompilerIPKey, newIP);
-}
-
-void SystemConfigContainer::SetShaderCompilerPort(const AZStd::string& newPort)
-{
-    SetString(s_shaderCompilerPortKey, newPort);
-}
-
-void SystemConfigContainer::SetUseAssetProcessorShaderCompiler(bool useAssetProcessor)
-{
-    SetBool(s_assetProcessorShaderCompilerKey, useAssetProcessor);
+    return GetBool(assetProcessorShaderCompilerKey);
 }

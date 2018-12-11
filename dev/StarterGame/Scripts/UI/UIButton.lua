@@ -407,8 +407,7 @@ function UIButton:GetButtonFromAction(action)
 				(action == StarterGameUIUtility.ActionType_AAModePrev) ) then
 			return StarterGameUIUtility.ButtonType_Text;
 		end
-	elseif( (Platform.Current == Platform.PS4) or		-- ACCEPTED_USE
-			(Platform.Current == Platform.PS3) ) then	-- ACCEPTED_USE
+	elseif( Platform.Current == Platform.Provo ) then
 		if ((action == StarterGameUIUtility.ActionType_Start) or
 			(action == StarterGameUIUtility.ActionType_NavLeft) or
 			(action == StarterGameUIUtility.ActionType_NavRight) or
@@ -434,8 +433,7 @@ function UIButton:GetButtonFromAction(action)
 		elseif (action == StarterGameUIUtility.ActionType_AAModePrev ) then
 			return StarterGameUIUtility.ButtonType_DUp;			
 		end		
-	elseif( (Platform.Current == Platform.Xbox360) or		-- ACCEPTED_USE
-			(Platform.Current == Platform.XboxOne) ) then	-- ACCEPTED_USE
+	elseif( Platform.Current == Platform.Xenia ) then
 		if ((action == StarterGameUIUtility.ActionType_Start) or
 			(action == StarterGameUIUtility.ActionType_NavLeft) or
 			(action == StarterGameUIUtility.ActionType_NavRight) or
@@ -488,16 +486,16 @@ function UIButton:GetTextFromAction(action)
 				(action == StarterGameUIUtility.ActionType_Use) ) then
 			return "E";
 		elseif (action == StarterGameUIUtility.ActionType_TimeOfDayNext ) then
-			return "<";
+			return "&lt;"; -- <
 		elseif (action == StarterGameUIUtility.ActionType_TimeOfDayPrev ) then
-			return "?";
+			return "&#63;"; -- ?
 		elseif (action == StarterGameUIUtility.ActionType_AAModeNext ) then
-			return ">";
+			return "&gt;"; -- >
 		elseif (action == StarterGameUIUtility.ActionType_AAModePrev ) then
-			return "?";	
+			return "&#63;";	 -- ?
 		end
 	else
-		return "?";	
+		return "&#63;";	-- ?
 	end
 	
 end

@@ -117,7 +117,7 @@ private:
     void ReadPolygonsForAreaSolid(CCryFile& file, int numberOfPolygons, bool bObstruction);
 
 private:
-    static std::vector<Vec3> s_tmpWorldPoints;
+    static StaticInstance<std::vector<Vec3>> s_tmpWorldPoints;
 
 private:
     //////////////////////////////////////////////////////////////////////////

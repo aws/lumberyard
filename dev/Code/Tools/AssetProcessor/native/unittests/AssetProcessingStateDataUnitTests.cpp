@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef UNIT_TEST
 #include "AssetProcessingStateDataUnitTests.h"
 #include <AzCore/std/string/string.h>
 #include <QTemporaryDir>
@@ -1303,33 +1302,41 @@ void AssetProcessingStateDataUnitTest::AssetProcessingStateDataTest()
     using namespace AssetProcessingStateDataUnitTestInternal;
     using namespace AzToolsFramework::AssetDatabase;
 
-    ProductDatabaseEntryContainer products;
-    QTemporaryDir tempDir;
-    QDir dirPath(tempDir.path());
+    QDir dirPath;
 
-    bool testsFailed = false;
-    connect(this, &UnitTestRun::UnitTestFailed, this, [&testsFailed]()
+    // intentional scope to contain QTemporaryDir since it cleans up on destruction!
+    { 
+        QTemporaryDir tempDir;
+        ProductDatabaseEntryContainer products;
+        dirPath = QDir(tempDir.path());
+
+        bool testsFailed = false;
+        connect(this, &UnitTestRun::UnitTestFailed, this, [&testsFailed]()
         {
             testsFailed = true;
         }, Qt::DirectConnection);
 
-    // now test the SQLite version of the database on its own.
-    {
-        FakeDatabaseLocationListener listener(dirPath.filePath("statedatabase.sqlite").toUtf8().constData(), "displayString");
-        AssetProcessor::AssetDatabaseConnection connection;
-
-        ExistenceTest(&connection);
-        if (testsFailed)
+        // now test the SQLite version of the database on its own.
         {
-            return;
-        }
+            FakeDatabaseLocationListener listener(dirPath.filePath("statedatabase.sqlite").toUtf8().constData(), "displayString");
+            AssetProcessor::AssetDatabaseConnection connection;
 
-        DataTest(&connection);
-        if (testsFailed)
-        {
-            return;
+            ExistenceTest(&connection);
+            if (testsFailed)
+            {
+                return;
+            }
+
+            DataTest(&connection);
+            if (testsFailed)
+            {
+                return;
+            }
         }
     }
+    // scope ending for the QTempDir
+    // if this fails it means someone left a handle to the database open.
+    UNIT_TEST_EXPECT_FALSE(dirPath.exists());
 
     Q_EMIT UnitTestPassed();
 }
@@ -1342,5 +1349,3 @@ void AssetProcessingStateDataUnitTest::StartTest()
 REGISTER_UNIT_TEST(AssetProcessingStateDataUnitTest)
 
 #include <native/unittests/AssetProcessingStateDataUnitTests.moc>
-
-#endif //UNIT_TEST

@@ -61,6 +61,27 @@ private:
     MainWindow* const m_mainWindow;
 };
 
+class ActionManager;
+
+// If the action handler puts up a modal dialog, the event queue will be pumped
+// and double clicks on menu items will go through, in some cases.
+// This class can be used to guard against that.
+class ActionManagerExecutionGuard
+{
+public:
+    ActionManagerExecutionGuard(ActionManager* actionManager, QAction* action);
+    ActionManagerExecutionGuard(ActionManager* actionManager, int actionId);
+    ~ActionManagerExecutionGuard();
+
+    // Only execute the action of this returns true
+    bool CanExecute() const { return m_canExecute; }
+
+private:
+    QPointer<ActionManager> m_actionManager;
+    int m_actionId;
+    bool m_canExecute;
+};
+
 class ActionManager
     : public QObject
 {
@@ -85,9 +106,18 @@ public:
         template <typename Func1, typename Func2>
         ActionWrapper& Connect(Func1 signal, Func2 slot)
         {
-            QObject::connect(m_action, signal, m_action, [slot]()
+            // The ActionWrapper class is stack based usually so
+            // the lambda below can't use the this pointer.
+            // As a result, wrap the actionManager and the action in
+            // a QPointer, and capture them in the lambda
+            QPointer<ActionManager> actionManager = m_actionManager;
+            QPointer<QAction> action = m_action;
+
+            QObject::connect(m_action, signal, m_action, [action, actionManager, slot]()
                 {
-                    if (!GetIEditor()->IsInGameMode())
+                    ActionManagerExecutionGuard guard(actionManager.data(), action.data());
+
+                    if (!GetIEditor()->IsInGameMode() && guard.CanExecute())
                     {
                         slot();
                     }
@@ -98,9 +128,18 @@ public:
         template <typename Func1, typename Object, typename Func2>
         ActionWrapper& Connect(Func1 signal, Object* context, const Func2 slot, Qt::ConnectionType type = Qt::AutoConnection)
         {
-            QObject::connect(m_action, signal, context, [context, slot]()
+            // The ActionWrapper class is stack based usually so
+            // the lambda below can't use the this pointer.
+            // As a result, wrap the actionManager and the action in
+            // a QPointer, and capture them in the lambda
+            QPointer<ActionManager> actionManager = m_actionManager;
+            QPointer<QAction> action = m_action;
+
+            QObject::connect(m_action, signal, context, [action, actionManager, context, slot]()
                 {
-                    if (!GetIEditor()->IsInGameMode())
+                    ActionManagerExecutionGuard guard(actionManager.data(), action.data());
+
+                    if (!GetIEditor()->IsInGameMode() && guard.CanExecute())
                     {
                         (context->*slot)();
                     }
@@ -282,6 +321,12 @@ public:
     void SendMetricsEvent(int id);
     bool eventFilter(QObject* watched, QEvent* event);
 
+    // returns false if the action was already inserted, indicating that the action should not be processed again
+    bool InsertActionExecuting(int id);
+
+    // returns true if the action was inserted with InsertActionExecuting previously
+    bool RemoveActionExecuting(int id);
+
 Q_SIGNALS:
     void SendMetricsSignal(const char* viewPaneName, const char* openLocation);
 
@@ -316,6 +361,10 @@ private:
 
     // Update the registered view pane Ids when the registered view pane list is modified
     void RebuildRegisteredViewPaneIds();
+
+    // Guard against recursive actions being triggered by double clicks on menu items
+    // while modal dialogs are in the process of popping up
+    QSet<int> m_executingIds;
 };
 
 class DynamicMenu

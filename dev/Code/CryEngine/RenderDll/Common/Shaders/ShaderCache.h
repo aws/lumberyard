@@ -357,7 +357,8 @@ struct SEmptyCombination
     uint32 nMDV;
     class CHWShader* pShader;
 
-    static std::vector<SEmptyCombination> s_Combinations;
+    using Combinations = AZStd::vector<SEmptyCombination, AZ::StdLegacyAllocator>;
+    static Combinations s_Combinations;
 };
 
 //==========================================================================================================================

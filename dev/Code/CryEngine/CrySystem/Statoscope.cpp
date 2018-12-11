@@ -838,6 +838,11 @@ struct SPerCGFGPUProfilersDG
 struct SParticleProfilersDG
     : public IStatoscopeDataGroup
 {
+    SParticleProfilersDG()
+        : m_particleInfos()
+    {
+    }
+
     void AddParticleInfo(const SParticleInfo& pi)
     {
         if (IsEnabled())
@@ -930,6 +935,11 @@ struct SPhysEntityProfilersDG
 struct SFrameProfilersDG
     : public IStatoscopeDataGroup
 {
+    SFrameProfilersDG()
+        : m_frameProfilerRecords()
+    {
+    }
+
     virtual SDescription GetDescription() const
     {
         return SDescription('r', "frame profilers", "['/Threads/$' (int count) (float selfTimeInMS) (float peak)]");
@@ -1602,7 +1612,6 @@ void CStatoscope::UnregisterDataGroup(IStatoscopeDataGroup* pDG)
 void CStatoscope::Tick()
 {
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_SYSTEM);
-    ScopedSwitchToGlobalHeap useGlobalHeap;
 
     if (m_pStatoscopeEnabledCVar->GetIVal() != 0)
     {
@@ -1656,8 +1665,6 @@ void CStatoscope::SetCurrentProfilerRecords(const std::vector<CFrameProfiler*>* 
 {
     if (m_pFrameProfilers)
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
-
         // we want to avoid reallocation of m_perfStatDumpProfilers
         // even if numProfilers is quite large (in the thousands), it'll only be tens of KB
         uint32 numProfilers = profilers->size();
@@ -2242,8 +2249,6 @@ void CStatoscope::OutputLoadedModuleInformation(CDataWriter* pDataWriter)
 
 void CStatoscope::StoreCallstack(const char* tag, void** callstackAddresses, uint32 callstackLength)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     if (m_pCallstacks && m_pCallstacks->IsEnabled())
     {
         CryMT::vector<SCallstack>::AutoLock lock(m_pCallstacks->m_callstacks.get_lock());
@@ -2262,7 +2267,6 @@ void CStatoscope::AddUserMarker(const char* path, const char* name)
 
     if (m_pUserMarkers && m_pUserMarkers->IsEnabled())
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
         m_pUserMarkers->m_userMarkers.push_back(SUserMarker(path, name));
     }
 }
@@ -2283,7 +2287,6 @@ void CStatoscope::AddUserMarkerFmt(const char* path, const char* fmt, ...)
         msg[sizeof(msg) - 1] = '\0';
         va_end(args);
 
-        ScopedSwitchToGlobalHeap useGlobalHeap;
         m_pUserMarkers->m_userMarkers.push_back(SUserMarker(path, msg));
     }
 }
@@ -2372,8 +2375,7 @@ void CStatoscope::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lp
                 mapName = "unknown_map";
             }
             else
-            {
-                ScopedSwitchToGlobalHeap globalHeap;
+            {                
                 m_currentMap = mapName;
             }
 

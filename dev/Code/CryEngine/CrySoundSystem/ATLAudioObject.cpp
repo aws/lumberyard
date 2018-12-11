@@ -484,6 +484,7 @@ namespace Audio
         , m_rRefCounter(rRefCounter)
         , m_fCurrListenerDist(0.0f)
         , m_eObstOcclCalcType(eAOOCT_NONE)
+        , m_pendingRaysReleased(false)
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         , m_vRayDebugInfos(s_maxObstructionRays)
@@ -636,6 +637,12 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CATLAudioObject::CPropagationProcessor::ReportRayProcessed(const size_t nRayID)
     {
+        // make the function to be more tolerant of results when we've released the pending rays.
+        if (m_pendingRaysReleased)
+        {
+            return;
+        }
+
         AZ_Assert(m_nRemainingRays > 0, "ReportRayProcessed - There are no more remaining rays!"); // make sure there are rays remaining
         AZ_Assert((0 <= nRayID) && (nRayID <= m_nTotalRays), "ReportRayProcessed - The passed RayID is invalid!"); // check RayID validity
 
@@ -660,6 +667,7 @@ namespace Audio
         {
             m_nRemainingRays = 0;
             --m_rRefCounter;
+            m_pendingRaysReleased = true;
         }
     }
 

@@ -22,6 +22,7 @@ import json
 import base64
 
 from cgf_utils.version_utils import Version
+from cgf_utils import custom_resource_utils
 
 from resource_manager.uploader import Uploader
 from resource_manager.errors import HandledError
@@ -32,6 +33,7 @@ AWS_S3_BUCKET_NAME = 'CloudGemPortal'
 BUCKET_ROOT_DIRECTORY_NAME = 'www'
 BOOTSTRAP_VARIABLE_NAME = "var bootstrap ="
 BOOTSTRAP_REGEX_PATTERN = '<script>\s*var bootstrap\s*=\s*([\s\S}]*?)<\/script>'
+DOMAIN_REGEX_PATTERN = "var domain = ''"
 
 
 def before_resource_group_updated(hook, resource_group_uploader, **kwargs):
@@ -76,18 +78,18 @@ def write_bootstrap(context, customer_cognito_id, expiration=constant.PROJECT_CG
         
     if not project_resources.has_key(constant.PROJECT_CGP_RESOURCE_NAME):
         raise HandledError(
-            'You can not open the Cloud Gem Portal without having the Cloud Gem Portal gem installed in your project.')
+            'You can not open the Cloud Gem Portal without having the Cloud Gem Framework gem installed in your project.')
 
     cgp_s3_resource = project_resources[constant.PROJECT_CGP_RESOURCE_NAME]
     stack_id = cgp_s3_resource['StackId']
     bucket_id = cgp_s3_resource['PhysicalResourceId']
     region = resource_manager.util.get_region_from_arn(stack_id)
-    s3_client = context.aws.session.client('s3',region, config=Config(signature_version='s3v4'))
+    s3_client = context.aws.session.client('s3',region, config=Config(region_name=region,signature_version='s3v4', s3={'addressing_style': 'virtual'}))
     user_pool_resource = project_resources[constant.PROJECT_RESOURCE_NAME_USER_POOL]
     identity_pool_resource = project_resources[constant.PROJECT_RESOURCE_NAME_IDENTITY_POOL]
     project_handler = project_resources[constant.PROJECT_RESOURCE_HANDLER_NAME]['PhysicalResourceId']
     project_config_bucket_id = context.config.configuration_bucket_name
-    
+
     if 'CloudGemPortalApp' not in user_pool_resource['UserPoolClients']:
         credentials = context.aws.load_credentials()
         access_key = credentials.get(constant.DEFAULT_SECTION_NAME, constant.ACCESS_KEY_OPTION)
@@ -96,8 +98,8 @@ def write_bootstrap(context, customer_cognito_id, expiration=constant.PROJECT_CG
                 has the policy \'AmazonCognitoReadOnly\' attached and a project stack has been created (Lumberyard -> AWS -> Resource Manager).'
                 .format(constant.PROJECT_RESOURCE_NAME_USER_POOL, context.config.user_default_profile, access_key))
     client_id = user_pool_resource['UserPoolClients']['CloudGemPortalApp']['ClientId']
-    user_pool_id = user_pool_resource['PhysicalResourceId']
-    identity_pool_id = identity_pool_resource['PhysicalResourceId']
+    user_pool_id = custom_resource_utils.get_embedded_physical_id(user_pool_resource['PhysicalResourceId'])
+    identity_pool_id = custom_resource_utils.get_embedded_physical_id(identity_pool_resource['PhysicalResourceId'])
 
     # create an administrator account if one is not present
     is_new_user, username, password = create_portal_administrator(context)
@@ -120,6 +122,8 @@ def write_bootstrap(context, customer_cognito_id, expiration=constant.PROJECT_CG
     content = get_index(s3_client, bucket_id)
     content = content.replace(get_bootstrap(s3_client, bucket_id),
                               '<script>{}{}</script>'.format(BOOTSTRAP_VARIABLE_NAME, json.dumps(cgp_bootstrap_config)))
+    content = content.replace(get_domain_variable(content),
+                              'var domain = \'{}\''.format(get_domain(get_index_url(s3_client, bucket_id, constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS))))
     result = None
     try:
         # TODO: write to an unique name and configure bucket to auto delete these objects after 1 hour
@@ -171,12 +175,19 @@ def get_bootstrap(s3_client, bucket_id):
     match = re.search(BOOTSTRAP_REGEX_PATTERN, content, re.M | re.I)
     return match.group()
 
+def get_domain_variable(content):        
+    match = re.search(DOMAIN_REGEX_PATTERN, content, re.M | re.I)
+    return match.group()
+
+def get_domain(presigned_url):      
+    parts = presigned_url.split('/')    
+    return parts[2]
 
 def create_portal_administrator(context):
     resource = context.config.project_resources[constant.PROJECT_RESOURCE_NAME_USER_POOL]
     stackid = resource['StackId']
     region = resource_manager.util.get_region_from_arn(stackid)
-    user_pool_id = resource['PhysicalResourceId']
+    user_pool_id = custom_resource_utils.get_embedded_physical_id(resource['PhysicalResourceId'])
     client = context.aws.client('cognito-idp', region=region)
     administrator_name = 'administrator'
     is_new_user = False
@@ -221,8 +232,8 @@ def create_portal_administrator(context):
             credentials = context.aws.load_credentials()
             access_key = credentials.get(constant.DEFAULT_SECTION_NAME, constant.ACCESS_KEY_OPTION)
             raise HandledError(
-                "Failed to create the administrator account.  Have your administrator run this option or verify the user account '{}' with access key '{}' has the policies ['cognito-idp:AdminCreateUser', 'cognito-idp:AdminAddUserToGroup'].".format(
-                    context.config.user_default_profile, access_key), e)
+                "Failed to create the administrator account with username '{}' and password '{}'.  Have your administrator verify the user account '{}' with access key '{}' has the policies ['cognito-idp:AdminCreateUser', 'cognito-idp:AdminAddUserToGroup'].".format(
+                    administrator_name, password, context.config.user_default_profile, access_key), e)
 
     return is_new_user, administrator_name, password
 
@@ -233,7 +244,7 @@ def updateUserPoolEmailMessage(context, url, project_config_bucket_id):
     resource = context.config.project_resources[constant.PROJECT_RESOURCE_NAME_USER_POOL]
     stackid = resource['StackId']
     region = resource_manager.util.get_region_from_arn(stackid)
-    user_pool_id = resource['PhysicalResourceId']
+    user_pool_id = custom_resource_utils.get_embedded_physical_id(resource['PhysicalResourceId'])
     client = context.aws.client('cognito-idp', region=region)
 
     email_invite_subject = "Your Amazon Lumberyard Cloud Gem Portal temporary password"
@@ -281,13 +292,13 @@ def before_framework_version_updated(hook, from_version, to_version, **kwargs):
     '''Called by the framework before updating the project's framework version.'''
 
     if from_version < V_1_1_1:
-        hook.context.resource_groups.before_update_framework_version_to_1_1_1(from_version)
+        hook.context.resource_group_controller.before_update_framework_version_to_1_1_1(from_version)
 
     if from_version < V_1_1_2:        
-        hook.context.resource_groups.before_update_framework_version_to_1_1_2(from_version)
+        hook.context.resource_group_controller.before_update_framework_version_to_1_1_2(from_version)
 
     if from_version < V_1_1_3:        
-        hook.context.resource_groups.before_update_framework_version_to_1_1_3(from_version)
+        hook.context.resource_group_controller.before_update_framework_version_to_1_1_3(from_version)
     # Repeat this pattern to add more upgrade processing:
     #
     # if from_version < VERSION_CHANGE_WAS_INTRODUCED:

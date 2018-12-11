@@ -22,6 +22,7 @@
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneCore/Utilities/FileUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
+#include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
 
 namespace AZ
 {
@@ -31,8 +32,11 @@ namespace AZ
         {
             CExportInfoCGF* exportInfo = content.GetExportInfo();
 
+            bool useCustomNormalDefault = true;
+            AZ::SceneAPI::Events::AssetImportRequestBus::Broadcast(&AZ::SceneAPI::Events::AssetImportRequestBus::Events::AreCustomNormalsUsed, useCustomNormalDefault);
+
             exportInfo->bMergeAllNodes = true;
-            exportInfo->bUseCustomNormals = false;
+            exportInfo->bUseCustomNormals = useCustomNormalDefault;  // This will be overritten by StaticMeshAdvancedRule (if teh rule exists) when calling ContainerSettingsExporter::ProcessContext
             exportInfo->bCompiledCGF = false;
             exportInfo->bHavePhysicsProxy = false;
             exportInfo->bHaveAutoLods = false;

@@ -19,7 +19,6 @@
 
 namespace StarterGameGem
 {
-    
     class ConsoleVarListenerComponentNotifications
         : public AZ::ComponentBus
     {
@@ -49,7 +48,6 @@ namespace StarterGameGem
         * @param value The new value of the console variable.
         */
         virtual void OnAfterConsoleVarChanged(AZStd::string name, AZStd::any value) {};
-
     };
 
     using ConsoleVarListenerComponentNotificationBus = AZ::EBus<ConsoleVarListenerComponentNotifications>;
@@ -93,7 +91,5 @@ namespace StarterGameGem
 
         bool m_all;
         AZStd::vector<AZStd::string> m_consoleVars;
-
     };
-
 }

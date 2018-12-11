@@ -1575,9 +1575,10 @@ inline void HammersleySequence(uint32 sampleIndex, uint32 sampleCount, float32* 
 
 void ImportanceSampleGGX(float* vXi, float roughness, float* vNormal, float* vOut)
 {
+    float roughnessSquared = roughness * roughness;
     float32 phi = 2 * CP_PI * vXi[0];
-    float32 cosTheta = sqrtf((1 - vXi[1]) / ( 1 + (roughness * roughness - 1) * vXi[1]));
-    float32 sinTheta = sqrtf(1 - cosTheta * cosTheta);
+    float32 cosTheta = sqrtf((1 - vXi[1]) / ( 1 + ((roughnessSquared * roughnessSquared) - 1) * vXi[1]));
+    float32 sinTheta = sqrtf(1 - (cosTheta * cosTheta));
 
     float32 vH[3];
     vH[0] = sinTheta * cosf(phi);
@@ -1601,7 +1602,7 @@ void ImportanceSampleGGX(float* vXi, float roughness, float* vNormal, float* vOu
     vOut[2] = vTangentX[2] * vH[0] + vTangentY[2] * vH[1] + vNormal[2] * vH[2];
 }
 
-
+// The algorithm below seems to be derived from this paper http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
 void CCubeMapProcessor::FilterCubeSurfacesGGX(CImageSurface *a_SrcCubeMap, CImageSurface *a_DstCubeMap, int32 a_SampleCount, float32 a_Roughness,
       int32 a_FaceIdxStart, int32 a_FaceIdxEnd, int32 a_ThreadIdx)
 {
@@ -1762,7 +1763,7 @@ void CCubeMapProcessor::FilterCubeMapMipChain(float32 a_BaseFilterAngle, float32
         float32 smoothness = VM_MAX(1.0f - (float)(i + 1) / (float)(numUsableMips - 1), 0.0f);
 
         // Convert smoothness to roughness (needs to match shader code)
-        float roughness = (1.0f - smoothness) * (1.0f - smoothness);
+        float roughness = VM_MAX((1.0f - smoothness) * (1.0f - smoothness), 0.001);
 
         FilterCubeSurfacesGGX(srcCubeImage, m_OutputSurface[i+1], a_SampleCountGGX, roughness,
           0,  //start at face 0 

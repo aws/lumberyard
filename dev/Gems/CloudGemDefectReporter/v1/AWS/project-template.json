@@ -39,14 +39,49 @@
                                         "s3:PutBucketNotification",
                                         "s3:GetBucketNotification"
                                     ],
-                                    "Resource": [ 
-                                        { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Fn::GetAtt": [ "Helper", "LowerCaseStackName" ] }, "-*" ] ] }
-                                     ]
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    { "Fn::GetAtt": [ "Helper", "LowerCaseStackName" ] },
+                                                    "-*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
                                 }
                             ]
                         },
                         "PermissionMetadata": {
-                            "RestrictActions": []
+                            "RestrictActions": [ ]
+                        }
+                    },
+                    "Custom::SharedConfigurationBucket": {
+                        "ArnFormat": "arn:aws:s3:::",
+                        "HandlerFunction": {
+                            "Function": "Custom_PatchS3Notifications.empty_handler"
+                        },
+                        "PermissionMetadata": {
+                            "DefaultRoleMappings": [
+                                {
+                                    "AbstractRole": "ServiceLambda",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "ResourceSuffix": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                { "Ref": "Configuration" },
+                                                "/deployment/share",
+                                                "/emitted_event_payloads/*"
+                                            ]
+                                        ]
+                                    }
+                                }
+                            ]
                         }
                     }
                 }

@@ -97,15 +97,20 @@ namespace ScriptCanvasEditor
     {
         using namespace AzToolsFramework;
         using namespace AzToolsFramework::AssetBrowser;
-        if (const SourceAssetBrowserEntry* source = SourceAssetBrowserEntry::GetSourceByAssetId(sourceUuid))  // get the full details of the source file based on its UUID.
+        if (const SourceAssetBrowserEntry* source = SourceAssetBrowserEntry::GetSourceByUuid(sourceUuid))  // get the full details of the source file based on its UUID.
         {
             if (!HandlesSource(source))
             {
                 return;
             }
         }
+        else
+        {
+            // has no UUID / Not a source file.
+            return;
+        }
         // You can push back any number of "Openers" - choose a unique identifier, and icon, and then a lambda which will be activated if the user chooses to open it with your opener:
-        openers.push_back({ "ScriptCanvas_Editor_Asset_Edit", "Script Canvas Editor...", QIcon(ScriptCanvasAssetHandler().GetBrowserIcon()),
+        openers.push_back({ "ScriptCanvas_Editor_Asset_Edit", "Script Canvas Editor...", QIcon(),
             [](const char*, const AZ::Uuid& scSourceUuid)
         {
             AzToolsFramework::OpenViewPane(LyViewPane::ScriptCanvas);

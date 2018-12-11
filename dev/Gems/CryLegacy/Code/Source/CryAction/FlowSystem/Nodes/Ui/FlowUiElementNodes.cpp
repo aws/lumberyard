@@ -15,14 +15,14 @@
 
 namespace
 {
-    const string g_elementGetChildAtIndexNodePath = "UI:Element:GetChildAtIndex";
-    const string g_elementGetIndexOfChildNodePath = "UI:Element:GetIndexOfChild";
-    const string g_elementGetParentNodePath = "UI:Element:GetParent";
+    const char* g_elementGetChildAtIndexNodePath = "UI:Element:GetChildAtIndex";
+    const char* g_elementGetIndexOfChildNodePath = "UI:Element:GetIndexOfChild";
+    const char* g_elementGetParentNodePath = "UI:Element:GetParent";
 
-    const string g_entElementGetChildAtIndexNodePath = "UIe:Element:GetChildAtIndex";
-    const string g_entElementGetIndexOfChildNodePath = "UIe:Element:GetIndexOfChild";
-    const string g_entElementGetParentNodePath = "UIe:Element:GetParent";
-    const string g_entElementGetChildByNameNodePath = "UIe:Element:GetChildByName";
+    const char* g_entElementGetChildAtIndexNodePath = "UIe:Element:GetChildAtIndex";
+    const char* g_entElementGetIndexOfChildNodePath = "UIe:Element:GetIndexOfChild";
+    const char* g_entElementGetParentNodePath = "UIe:Element:GetParent";
+    const char* g_entElementGetChildByNameNodePath = "UIe:Element:GetChildByName";
 }
 
 #define FLOW_UI_ELEMENT_NODE_COMMON_INPUT_PORT_CONFIGS \
@@ -701,7 +701,7 @@ public:
             }
             else
             {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find child with name: %s\n", g_entElementGetChildByNameNodePath.c_str(), childElementName.c_str());
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "FlowGraph: %s Node: couldn't find child with name: %s\n", g_entElementGetChildByNameNodePath, childElementName.c_str());
             }
         }
     }

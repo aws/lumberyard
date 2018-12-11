@@ -35,7 +35,7 @@
 #include <QTextStream>
 #include <QVariant>
 
-namespace AssetBrowser
+namespace AssetTextureItemInternal
 {
     const float kTexturePreviewZoomSpeedDamper = 2000.0f;
     const int   kMouseWheelDeltaStep = (WHEEL_DELTA == 0 ? 1 : WHEEL_DELTA);
@@ -447,10 +447,10 @@ void CAssetTextureItem::PreviewRender(
     int aMouseDeltaX, int aMouseDeltaY,
     int aMouseWheelDelta, UINT aKeyFlags)
 {
-    float zoomDelta = 0.1f * (float)aMouseWheelDelta / AssetBrowser::kMouseWheelDeltaStep;
+    float zoomDelta = 0.1f * (float)aMouseWheelDelta / AssetTextureItemInternal::kMouseWheelDeltaStep;
 
     m_previewRenderZoom += zoomDelta;
-    m_previewRenderZoom = CLAMP(m_previewRenderZoom, AssetBrowser::kTexturePreviewMinZoom, AssetBrowser::kTexturePreviewMaxZoom);
+    m_previewRenderZoom = CLAMP(m_previewRenderZoom, AssetTextureItemInternal::kTexturePreviewMinZoom, AssetTextureItemInternal::kTexturePreviewMaxZoom);
 
     if (aMouseWheelDelta < 0)
     {
@@ -469,7 +469,7 @@ void CAssetTextureItem::PreviewRender(
         assert(m_previewRenderZoom != 0.0f);
         zoomPtx = ((float)aMouseX - m_previewOffset.x()) / m_previewRenderZoom;
         zoomPty = ((float)aMouseY - m_previewOffset.y()) / m_previewRenderZoom;
-        m_previewRenderZoom += (float)aMouseWheelDelta / AssetBrowser::kTexturePreviewZoomSpeedDamper;
+        m_previewRenderZoom += (float)aMouseWheelDelta / AssetTextureItemInternal::kTexturePreviewZoomSpeedDamper;
 
         QPoint newZoomCenter((float)(zoomPtx * m_previewRenderZoom + m_previewOffset.x()),
             (float)(zoomPty * m_previewRenderZoom + m_previewOffset.y()));
@@ -500,7 +500,7 @@ bool CAssetTextureItem::Render(QWidget* hRenderWindow, const QRect& r, bool bCac
     {
         QPainter painter(hRenderWindow);
 
-        QBrush brush(ScaleColor(m_previewBackColor, AssetBrowser::kTexturePreviewGridScaleBackColor), Qt::DiagCrossPattern);
+        QBrush brush(ScaleColor(m_previewBackColor, AssetTextureItemInternal::kTexturePreviewGridScaleBackColor), Qt::DiagCrossPattern);
         painter.fillRect(r, m_previewBackColor);
         painter.fillRect(r, brush);
 
@@ -548,7 +548,7 @@ bool CAssetTextureItem::Render(QWidget* hRenderWindow, const QRect& r, bool bCac
 
         QRect rc = r;
 
-        rc.adjust(AssetBrowser::kTexturePreviewInfoTextMargin, AssetBrowser::kTexturePreviewInfoTextMargin, AssetBrowser::kTexturePreviewInfoTextMargin, AssetBrowser::kTexturePreviewInfoTextMargin);
+        rc.adjust(AssetTextureItemInternal::kTexturePreviewInfoTextMargin, AssetTextureItemInternal::kTexturePreviewInfoTextMargin, AssetTextureItemInternal::kTexturePreviewInfoTextMargin, AssetTextureItemInternal::kTexturePreviewInfoTextMargin);
 
         painter.setPen(QColor(0, 0, 0));
         rc.translate(1, 1);
@@ -626,15 +626,15 @@ void CAssetTextureItem::DrawTextOnReportImage(QPaintDevice* pd) const
 
 QWidget* CAssetTextureItem::GetCustomPreviewPanelHeader(QWidget* pParentWnd)
 {
-    if (AssetBrowser::s_texturePreviewDlg == nullptr)
+    if (AssetTextureItemInternal::s_texturePreviewDlg == nullptr)
     {
-        AssetBrowser::s_texturePreviewDlg = new CAssetBrowserPreviewTextureDlg(pParentWnd);
+        AssetTextureItemInternal::s_texturePreviewDlg = new CAssetBrowserPreviewTextureDlg(pParentWnd);
     }
-    AssetBrowser::s_texturePreviewDlg->m_pTexture = this;
+    AssetTextureItemInternal::s_texturePreviewDlg->m_pTexture = this;
 
-    AssetBrowser::s_texturePreviewDlg->Init();
+    AssetTextureItemInternal::s_texturePreviewDlg->Init();
 
-    return AssetBrowser::s_texturePreviewDlg;
+    return AssetTextureItemInternal::s_texturePreviewDlg;
 }
 
 void CAssetTextureItem::ToXML(XmlNodeRef& node) const

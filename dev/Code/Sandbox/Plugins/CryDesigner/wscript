@@ -43,12 +43,13 @@ def build(bld):
         includes        = [ '.',
                             '..'],
 
-        clang_enable_rtti = True,
+        clang_enable_rtti 	= True,
 
-        darwin_x64_lib  = ['python2.7'],
-        win_x64_clang_cxxflags = ['-fexceptions', #BOOSTPYTHON
+        darwin_x64_lib  	= ['python2.7'],
+        win_x64_clang_cxxflags 	= ['-fexceptions', #BOOSTPYTHON
                                   '-Wno-inconsistent-dllimport', #BOOSTPYTHON
                                   '-Wno-deprecated-register'], #BOOSTPYTHON
+	darwin_cxxflags 	= ['-Wno-deprecated-register'],
 
         # Testing
         test_all_file_list = ['crydesigner_test.waf_files'],

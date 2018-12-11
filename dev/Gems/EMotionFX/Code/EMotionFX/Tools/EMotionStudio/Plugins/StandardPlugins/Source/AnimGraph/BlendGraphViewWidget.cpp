@@ -671,25 +671,17 @@ namespace EMStudio
                     QString itemName = "<Unsaved Animgraph>";
                     if (animGraph->GetFileNameString().size() > 0)
                     {
+                        // convert full absolute paths to friendlier relative paths + folder they're found in.
+                        // GetSourceInfoBySourcePath works on relative paths and absolute paths and doesn't need to wait for
+                        // cached products to exist in order to function, so it is orders of magnitude faster than asking about product files.
                         itemName = QString::fromUtf8(animGraph->GetFileName());
                         bool success = false;
-
-                        AZStd::string relativeProductPath;
-                        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(success, &AzToolsFramework::AssetSystemRequestBus::Events::GetRelativeProductPathFromFullSourceOrProductPath, animGraph->GetFileName(), relativeProductPath);
+                        AZStd::string watchFolder;
+                        AZ::Data::AssetInfo assetInfo;
+                        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(success, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, animGraph->GetFileName(), assetInfo, watchFolder);
                         if (success)
                         {
-                            AZStd::string fullSourcePath;
-                            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(success, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, relativeProductPath, fullSourcePath);
-                            if (success)
-                            {
-                                AZStd::string watchFolder;
-                                AZ::Data::AssetInfo assetInfo;
-                                AzToolsFramework::AssetSystemRequestBus::BroadcastResult(success, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, fullSourcePath.c_str(), assetInfo, watchFolder);
-                                if (success)
-                                {
-                                    itemName = QString::fromUtf8(assetInfo.m_relativePath.c_str());
-                                }
-                            }
+                            itemName = QString::fromUtf8(assetInfo.m_relativePath.c_str());
                         }
                     }
                     QAction* openItem = mOpenMenu->addAction(itemName);
@@ -997,7 +989,7 @@ namespace EMStudio
         if (numActorInstances > 0)
         {
             // create the command group
-            MCore::CommandGroup commandGroup("Create a anim graph");
+            MCore::CommandGroup commandGroup("Create an anim graph");
 
             // add the create anim graph command
             commandGroup.AddCommandString("CreateAnimGraph");

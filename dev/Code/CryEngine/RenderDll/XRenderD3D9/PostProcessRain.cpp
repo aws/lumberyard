@@ -17,6 +17,8 @@
 #include "D3DPostProcess.h"
 #include "../Common/Textures/TextureManager.h"
 
+#include <AzCore/std/algorithm.h>
+
 #pragma warning(disable: 4244)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -153,10 +155,10 @@ void CRainDrops::UpdateParticles(int iRTWidth, int iRTHeight)
 
         // add gravity
         pCurr->m_pPos.y += m_pVelocityProj.y * cry_random(-0.2f, 1.0f);
-        pCurr->m_pPos.y += fCurrFrameTime * fGravity * std::min(pCurr->m_fWeight, 0.5f * pCurr->m_fSize);
+        pCurr->m_pPos.y += fCurrFrameTime * fGravity * AZStd::GetMin(pCurr->m_fWeight, 0.5f * pCurr->m_fSize);
         // random horizontal movement and size + camera horizontal velocity
         pCurr->m_pPos.x += m_pVelocityProj.x * cry_random(-0.2f, 1.0f);
-        pCurr->m_pPos.x += fCurrFrameTime * std::min(pCurr->m_fWeight, 0.25f * pCurr->m_fSize) * fGravity * cry_random(-1.0f, 1.0f);
+        pCurr->m_pPos.x += fCurrFrameTime * AZStd::GetMin(pCurr->m_fWeight, 0.25f * pCurr->m_fSize) * fGravity * cry_random(-1.0f, 1.0f);
 
         // Increase/decrease weight randomly
         pCurr->m_fWeight = clamp_tpl<float>(pCurr->m_fWeight + fCurrFrameTime * pCurr->m_fWeightVar * cry_random(-4.0f, 4.0f), 0.0f, 1.0f);
@@ -645,7 +647,7 @@ void CSceneRain::Render()
 
     gRenDev->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE0];
 
-    // HACK (re-set back-buffer): due to lazy RT updates/setting there's strong possibility we run into problems on x360 when we try to resolve from edram with no RT set // ACCEPTED_USE
+    // (re-set back-buffer): if the platform does lazy RT updates/setting there's strong possibility we run into problems when we try to resolve with no RT set
     gcpRendD3D->FX_SetActiveRenderTargets();
 }
 

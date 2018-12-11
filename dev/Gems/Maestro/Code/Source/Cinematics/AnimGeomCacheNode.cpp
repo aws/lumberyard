@@ -25,7 +25,7 @@
 namespace AnimGeomCacheNode
 {
     bool s_geomCacheNodeParamsInitialized = false;
-    std::vector<CAnimNode::SParamInfo> s_geomCacheNodeParams;
+    StaticInstance<std::vector<CAnimNode::SParamInfo>> s_geomCacheNodeParams;
 
     void AddSupportedParams(const char* sName, AnimParamType paramType, AnimValueType valueType)
     {

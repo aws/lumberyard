@@ -52,13 +52,13 @@ function surveymenu:OnActivate()
 	util.SetMouseCursorVisible(true)
 	
 	self.notificationHandler = CloudGemInGameSurveyNotificationBus.Connect(self, self.entityId)
-	local emptyString = ""
-	CloudGemInGameSurveyRequestBus.Event.GetActiveSurvey_metadata(self.entityId, 10, emptyString, emptyString, nil)
+
 end
 
 function surveymenu:OnTick(deltaTime,timePoint)
-	
-
+	local emptyString = ""
+	CloudGemInGameSurveyRequestBus.Event.GetActiveSurvey_metadata(self.entityId, 10, emptyString, emptyString, nil)
+	self.tickBusHandler:Disconnect();
 end
 
 function surveymenu:OnDeactivate()

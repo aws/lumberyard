@@ -31,7 +31,6 @@
 #include "CompileTimeAssert.h"
 
 #include <AzCore/IO/SystemFile.h>
-#include <AzCore/std/any.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
@@ -206,9 +205,6 @@ enum ESystemUpdateFlags
     ESYSUPDATE_UPDATE_VIEW_ONLY = 0x0040
 };
 
-static const int NUM_SPEC_LEVELS = 4;
-static const int NUM_PLATFORMS = 8;
-
 // Description:
 //   Configuration specification, depends on user selected machine specification.
 enum ESystemConfigSpec
@@ -220,33 +216,6 @@ enum ESystemConfigSpec
     CONFIG_VERYHIGH_SPEC = 4,
 
     END_CONFIG_SPEC_ENUM, // MUST BE LSAT VALUE. USED FOR ERROR CHECKING.
-};
-
-// Description:
-//   Status of cvar for a specifc platform and spec level
-//   editedValue - current setting within Graphics Settings Dialog box
-//   overwrittenValue - original setting from platform config file (set to originalValue if not found)
-//   originalValue - original settings from sys_spec config file index
-
-struct CVarFileStatus
-{
-    AZStd::any editedValue;
-    AZStd::any overwrittenValue;
-    AZStd::any originalValue;
-    CVarFileStatus(AZStd::any edit, AZStd::any over, AZStd::any orig) : editedValue(edit), overwrittenValue(over), originalValue(orig) {}
-};
-
-// Description:
-//   Status of specific cvar for Editor mapping
-//   type - CVAR_INT / CVAR_FLOAT / CVAR_STRING
-//   cvarGroup - source of cvar (sys_spec_particles, sys_spec_physics, etc.) or "miscellaneous" if only specified in platform config file
-//   fileVals = CVarFileStatus for each spec level of a specific platform
-
-struct CVarInfo
-{
-    int type;
-    AZStd::string cvarGroup;
-    AZStd::vector<CVarFileStatus> fileVals;
 };
 
 // Description:
@@ -444,19 +413,19 @@ enum ESystemEvent
 
     // Summary:
     //   Called before switching to level memory heap
-    ESYSTEM_EVENT_SWITCHING_TO_LEVEL_HEAP,
+    ESYSTEM_EVENT_SWITCHING_TO_LEVEL_HEAP_DEPRECATED,
 
     // Summary:
     //   Called after switching to level memory heap
-    ESYSTEM_EVENT_SWITCHED_TO_LEVEL_HEAP,
+    ESYSTEM_EVENT_SWITCHED_TO_LEVEL_HEAP_DEPRECATED,
 
     // Summary:
     //   Called before switching to global memory heap
-    ESYSTEM_EVENT_SWITCHING_TO_GLOBAL_HEAP,
+    ESYSTEM_EVENT_SWITCHING_TO_GLOBAL_HEAP_DEPRECATED,
 
     // Summary:
     //   Called after switching to global memory heap
-    ESYSTEM_EVENT_SWITCHED_TO_GLOBAL_HEAP,
+    ESYSTEM_EVENT_SWITCHED_TO_GLOBAL_HEAP_DEPRECATED,
 
     // Description:
     //   Sent after precaching of the streaming system has been done
@@ -872,7 +841,7 @@ struct SSystemInitParams
 
     bool UseAssetCache() const
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX) || defined(AZ_PLATFORM_LINUX)
         char checkPath[AZ_MAX_PATH_LEN] = { 0 };
         azsnprintf(checkPath, AZ_MAX_PATH_LEN, "%s/engine.json", rootPathCache);
         return AZ::IO::SystemFile::Exists(checkPath);
@@ -973,7 +942,7 @@ struct SSystemGlobalEnvironment
     IEntitySystem*             pEntitySystem;
     IConsole*                  pConsole;
     Telemetry::ITelemetrySystem* pTelemetrySystem;
-    ISystem*                   pSystem;
+    ISystem*                   pSystem = nullptr;
     ICharacterManager*         pCharacterManager;
     IAISystem*                 pAISystem;
     ILog*                      pLog;
@@ -1636,14 +1605,6 @@ struct ISystem
     //             if false changes only server config spec (as known on the client).
     virtual void SetConfigSpec(ESystemConfigSpec spec, ESystemConfigPlatform platform, bool bClient) = 0;
 
-    // Summary:
-    //   Return pointer to the Editor map for the Graphics Settings Dialog
-    virtual AZStd::unordered_map<AZStd::string, CVarInfo>* GetGraphicsSettingsMap() const = 0;
-
-    // Summary:
-    //   Sets pointer to the Editor map for the Graphics Settings Dialog
-    virtual void SetGraphicsSettingsMap(AZStd::unordered_map<AZStd::string, CVarInfo>* editorMap) = 0;
-
     //////////////////////////////////////////////////////////////////////////
 
     // Summary:
@@ -1777,7 +1738,7 @@ struct ISystem
     //   Should be after init game.
     // Example:
     //   +g_gametype ASSAULT +map "testy"
-    virtual void ExecuteCommandLine() = 0;
+    virtual void ExecuteCommandLine(bool deferred=true) = 0;
 
     // Description:
     //  GetSystemUpdate stats (all systems update without except console)
@@ -2013,12 +1974,17 @@ extern SC_API SSystemGlobalEnvironment* gEnv;
 //   Gets the system interface.
 inline ISystem* GetISystem()
 {
-    static ISystem* s_system = gEnv ? gEnv->pSystem : nullptr;
-    if (!s_system)
+    // Some unit tests temporarily install and then uninstall ISystem* mocks.
+    // It is generally okay for runtime and tool systems which call this function to cache the returned pointer, 
+    // because their lifetime is usually shorter than the lifetime of the ISystem* implementation.
+    // It is NOT safe for this function to cache it as a static itself, though, as the static it would cache
+    // it inside may outlive the the actual instance implementing ISystem* when unit tests are torn down and then restarted.
+    ISystem* systemInterface = gEnv ? gEnv->pSystem : nullptr;
+    if (!systemInterface)
     {
-        CrySystemRequestBus::BroadcastResult(s_system, &CrySystemRequests::GetCrySystem);
+        CrySystemRequestBus::BroadcastResult(systemInterface, &CrySystemRequests::GetCrySystem);
     }
-    return s_system;
+    return systemInterface;
 };
 
 inline ISystemScheduler* GetISystemScheduler(void)

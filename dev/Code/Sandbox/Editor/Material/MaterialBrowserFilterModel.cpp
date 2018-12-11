@@ -22,6 +22,7 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 
 #include <QPainter>
 
@@ -65,12 +66,20 @@ AZ::Data::AssetId GetMaterialProductAssetIdFromAssetBrowserEntry(const AzToolsFr
         AZStd::vector<const ProductAssetBrowserEntry*> products;
         assetEntry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
 
-        EBusFindAssetTypeByName materialAssetTypeResult("Material");
-        AZ::AssetTypeInfoBus::BroadcastResult(materialAssetTypeResult, &AZ::AssetTypeInfo::GetAssetType);
+        // Cache the material asset type because this function is called for every submaterial when searching.
+        // AssetType is a POD struct so it should be fine to leave it as a static that gets destroyed during library unload/program termination.
+        static AZ::Data::AssetType materialAssetType = AZ::Data::AssetType::CreateNull();
+        if (materialAssetType.IsNull())
+        {
+            EBusFindAssetTypeByName materialAssetTypeResult("Material");
+            AZ::AssetTypeInfoBus::BroadcastResult(materialAssetTypeResult, &AZ::AssetTypeInfo::GetAssetType);
+            AZ_Assert(materialAssetTypeResult.Found(), "Could not find asset type for material asset");
+            materialAssetType = materialAssetTypeResult.GetAssetType();
+        }
 
         for (const auto* product : products)
         {
-            if (product->GetAssetType() == materialAssetTypeResult.GetAssetType())
+            if (product->GetAssetType() == materialAssetType)
             {
                 return product->GetAssetId();
             }
@@ -113,7 +122,9 @@ MaterialBrowserFilterModel::MaterialBrowserFilterModel(QObject* parent)
     assetTypeFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::Down); //this will make sure folders that contain materials are displayed
     m_assetTypeFilter = FilterConstType(assetTypeFilter);
 
+    // Create search filters. SetSearchFilter stores these filters so that they are deleted when this object is deleted.
     m_subMaterialSearchFilter = new SubMaterialSearchFilter(this);
+    m_levelMaterialSearchFilter = new LevelMaterialSearchFilter(this);
 
     InitializeRecordUpdateJob();
 }
@@ -313,16 +324,21 @@ bool MaterialBrowserFilterModel::TryGetFilterModelIndexRecursive(QModelIndex& fi
     // Walk through the filter model to find the product entry with the corresponding assetId
     for (int r = 0; r < model->rowCount(parent); ++r)
     {
-        // Set the filter model index for the current entry
-        filterModelIndex = model->index(r, 0, parent);
+        QModelIndex index = model->index(r, 0, parent);
+        QModelIndex modelIndex = model->mapToSource(index);
 
-        QModelIndex modelIndex = model->mapToSource(filterModelIndex);
-        AssetBrowserEntry* assetEntry = static_cast<AssetBrowserEntry*>(modelIndex.internalPointer());
-
-        // Check to see if the current entry is the one we're looking for
-        if (assetEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Source ||
-            assetEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Product)
+        if (model->hasChildren(index))
         {
+            if (TryGetFilterModelIndexRecursive(filterModelIndex, assetId, model, index))
+            {
+                return true;
+            }
+        }
+        else
+        {
+            // Check to see if the current entry is the one we're looking for
+            AssetBrowserEntry* assetEntry = static_cast<AssetBrowserEntry*>(modelIndex.internalPointer());
+
             AZStd::vector<const ProductAssetBrowserEntry*> products;
             assetEntry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
 
@@ -330,15 +346,9 @@ bool MaterialBrowserFilterModel::TryGetFilterModelIndexRecursive(QModelIndex& fi
             {
                 if (assetId == product->GetAssetId())
                 {
+                    filterModelIndex = index;
                     return true;
                 }
-            }
-        }
-        else if (model->hasChildren(filterModelIndex))
-        {
-            if (TryGetFilterModelIndexRecursive(filterModelIndex, assetId, model, filterModelIndex))
-            {
-                return true;
             }
         }
     }
@@ -365,6 +375,7 @@ void MaterialBrowserFilterModel::EntryAdded(const AzToolsFramework::AssetBrowser
                     record.SetAssetBrowserData(assetBrowserData);
                     record.m_material = GetIEditor()->GetMaterialManager()->LoadMaterialWithFullSourcePath(record.GetRelativeFilePath().c_str(), record.GetFullSourcePath().c_str());
                     SetRecord(record);
+                    MaterialBrowserWidgetBus::Broadcast(&MaterialBrowserWidgetEvents::MaterialAddFinished);
                 }, true, m_jobContext);
 
         // Start the job immediately
@@ -486,11 +497,32 @@ void MaterialBrowserFilterModel::SetSearchFilter(const AzToolsFramework::AssetBr
     isMaterialAndMatchesSearchFilter->AddFilter(FilterConstType(nameFilter));
     isMaterialAndMatchesSearchFilter->AddFilter(FilterConstType(m_assetTypeFilter));
     isMaterialAndMatchesSearchFilter->AddFilter(FilterConstType(noProductsFilter));
+    isMaterialAndMatchesSearchFilter->AddFilter(FilterConstType(m_levelMaterialSearchFilter));
     // Make sure any folder contains the matching result is included
     isMaterialAndMatchesSearchFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::Down);
 
     // Set the filter for the MaterialBrowserFilterModel
     SetFilter(FilterConstType(isMaterialAndMatchesSearchFilter));
+}
+
+void MaterialBrowserFilterModel::ShowOnlyLevelMaterials(bool levelOnly, bool invalidateFilterNow)
+{
+    m_levelMaterialSearchFilter->ShowOnlyLevelMaterials(levelOnly);
+    if (levelOnly)
+    {
+        m_levelMaterialSearchFilter->CacheLoadedMaterials();
+    }
+
+    if (invalidateFilterNow)
+    {
+        // we need to invalid the filter immediately, for example this is used when we are changing level, otherwise
+        // the current filter is used when getting file paths for all of the materials as part of StartRecordUpdateJobs.
+        invalidateFilter();
+    }
+    else
+    {
+        filterUpdatedSlot();
+    }
 }
 
 void MaterialBrowserFilterModel::SearchFilterUpdated()

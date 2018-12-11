@@ -232,11 +232,11 @@ namespace AZ
                         Vector3 meshVertexNormal;
                         sourceMesh->GetPolygonVertexNormal(fbxPolygonIndex, vertexIndex, meshVertexNormal);
 
-                        //position
+                        // position
                         sceneSystem.SwapVec3ForUpAxis(meshVertexPosition);
                         sceneSystem.ConvertUnit(meshVertexPosition);
 
-                        //normal
+                        // normal
                         sceneSystem.SwapVec3ForUpAxis(meshVertexNormal);
                         meshVertexNormal.Normalize();
 

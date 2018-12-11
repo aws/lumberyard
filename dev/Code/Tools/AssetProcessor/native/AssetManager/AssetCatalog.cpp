@@ -442,10 +442,6 @@ namespace AssetProcessor
         return true;
     }
 
-    void AssetCatalog::UpdateQueuedEvents()
-    {
-    }
-
     bool AssetCatalog::GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath)
     {
         assetInfo.m_assetId.SetInvalid();
@@ -527,7 +523,11 @@ namespace AssetProcessor
             return false;
         }
 
-        // Check the database first
+        // now that we have a database path, we can at least return something.
+        // but source info also includes UUID, which we need to hit the database for (or the in-memory map).
+
+        // Check the database first for the UUID now that we have the "database name" (which includes output prefix)
+
         {
             AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
             AzToolsFramework::AssetDatabase::SourceDatabaseEntryContainer returnedSources;
@@ -545,10 +545,34 @@ namespace AssetProcessor
                         // since we are returning the UUID of a source file, as opposed to the full assetId of a product file produced by that source file,
                         // the subId part of the assetId will always be set to zero.
                         assetInfo.m_assetId = AZ::Data::AssetId(entry.m_sourceGuid, 0);
-                        assetInfo.m_relativePath = entry.m_sourceName;
+
+                        // the Scan Folder may have an output prefix, so we must remove it from the relpath.
+                        // this involves deleting the output prefix and the first slash ('editor/') which is why
+                        // we remove the length of outputPrefix and one extra character.
+                        if (!scanEntry.m_outputPrefix.empty())
+                        {
+                            assetInfo.m_relativePath = entry.m_sourceName.substr(static_cast<int>(scanEntry.m_outputPrefix.size()) + 1);
+                        }
+                        else
+                        {
+                            assetInfo.m_relativePath = entry.m_sourceName;
+                        }
                         AZStd::string absolutePath;
                         AzFramework::StringFunc::Path::Join(scanEntry.m_scanFolder.c_str(), assetInfo.m_relativePath.c_str(), absolutePath);
                         assetInfo.m_sizeBytes = AZ::IO::SystemFile::Length(absolutePath.c_str());
+
+                        assetInfo.m_assetType = AZ::Uuid::CreateNull(); // most source files don't have a type!
+
+                        // Go through the list of source assets and see if this asset's file path matches any of the filters
+                        for (const auto& pair : m_sourceAssetTypeFilters)
+                        {
+                            if (AZStd::wildcard_match(pair.first, assetInfo.m_relativePath))
+                            {
+                                assetInfo.m_assetType = pair.second;
+                                break;
+                            }
+                        }
+
                         return true;
                     }
                 }
@@ -861,8 +885,20 @@ namespace AssetProcessor
                 AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry scanEntry;
                 if (m_db->GetScanFolderByScanFolderID(entry.m_scanFolderPK, scanEntry))
                 {
+                    // the Scan Folder may have an output prefix, so we must remove it from the relpath.
+                    // this involves deleting the output prefix and the first slash ('editor/') which is why
+                    // we remove the length of outputPrefix and one extra character.
+                    if (!scanEntry.m_outputPrefix.empty())
+                    {
+                        relativePath = entry.m_sourceName.substr(static_cast<int>(scanEntry.m_outputPrefix.size()) + 1);
+                    }
+                    else
+                    {
+                        relativePath = entry.m_sourceName;
+                    }
+
                     watchFolder = scanEntry.m_scanFolder;
-                    relativePath = entry.m_sourceName;
+                    
 
                     return true;
                 }
@@ -1012,12 +1048,40 @@ namespace AssetProcessor
                     const SourceInfo& sourceInfo = foundSource->second;
 
                     watchFolder = sourceInfo.m_watchFolder.toStdString().c_str();
-                    assetInfo.m_relativePath = sourceInfo.m_sourceName.toStdString().c_str();
+
+                    AZStd::string sourceNameStr(sourceInfo.m_sourceName.toStdString().c_str());
+                    
+                    // the Scan Folder may have an output prefix, so we must remove it from the relpath.
+                    // this involves deleting the output prefix and the first slash ('editor/') which is why
+                    // we remove the length of outputPrefix and one extra character.
+                    const AssetProcessor::ScanFolderInfo* info = m_platformConfig->GetScanFolderByPath(watchFolder.c_str());
+                    if ((info)&&(!info->GetOutputPrefix().isEmpty()))
+                    {
+                        assetInfo.m_relativePath = sourceNameStr.substr(static_cast<int>(info->GetOutputPrefix().length()) + 1);
+                    }
+                    else
+                    {
+                        assetInfo.m_relativePath.swap(sourceNameStr);
+                    }
+
                     assetInfo.m_assetId = foundSource->first;
 
                     AZStd::string sourceFileFullPath;
                     AzFramework::StringFunc::Path::Join(watchFolder.c_str(), assetInfo.m_relativePath.c_str(), sourceFileFullPath);
                     assetInfo.m_sizeBytes = AZ::IO::SystemFile::Length(sourceFileFullPath.c_str());
+                    
+                    assetInfo.m_assetType = AZ::Uuid::CreateNull(); // most source files don't have a type!
+
+                    // Go through the list of source assets and see if this asset's file path matches any of the filters
+                    for (const auto& pair : m_sourceAssetTypeFilters)
+                    {
+                        if (AZStd::wildcard_match(pair.first, assetInfo.m_relativePath))
+                        {
+                            assetInfo.m_assetType = pair.second;
+                            break;
+                        }
+                    }
+
                     return true;
                 }
             }

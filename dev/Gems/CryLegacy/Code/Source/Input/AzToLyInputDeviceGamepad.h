@@ -29,10 +29,10 @@ protected:
 #if defined(AZ_RESTRICTED_PLATFORM)
 #include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_h, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
-#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_h, TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
+#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_h, TOOLS_SUPPORT_XENIA)
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
-#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_h, TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
+#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_h, TOOLS_SUPPORT_PROVO)
 #endif
 #endif

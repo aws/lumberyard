@@ -34,19 +34,19 @@
 // Serialization for anim nodes & param types
 #define REGISTER_NODE_TYPE(name) assert(g_animNodeEnumToStringMap.find(eUiAnimNodeType_ ## name) == g_animNodeEnumToStringMap.end()); \
     g_animNodeEnumToStringMap[eUiAnimNodeType_ ## name] = STRINGIFY(name);                                                            \
-    g_animNodeStringToEnumMap[STRINGIFY(name)] = eUiAnimNodeType_ ## name;
+    g_animNodeStringToEnumMap[string(STRINGIFY(name))] = eUiAnimNodeType_ ## name;
 
 #define REGISTER_PARAM_TYPE(name) assert(g_animParamEnumToStringMap.find(eUiAnimParamType_ ## name) == g_animParamEnumToStringMap.end()); \
     g_animParamEnumToStringMap[eUiAnimParamType_ ## name] = STRINGIFY(name);                                                              \
-    g_animParamStringToEnumMap[STRINGIFY(name)] = eUiAnimParamType_ ## name;
+    g_animParamStringToEnumMap[string(STRINGIFY(name))] = eUiAnimParamType_ ## name;
 
 namespace
 {
     AZStd::unordered_map<int, string> g_animNodeEnumToStringMap;
-    std::map<string, EUiAnimNodeType, stl::less_stricmp<string> > g_animNodeStringToEnumMap;
+    StaticInstance<std::map<string, EUiAnimNodeType, stl::less_stricmp<string> >> g_animNodeStringToEnumMap;
 
     AZStd::unordered_map<int, string> g_animParamEnumToStringMap;
-    std::map<string, EUiAnimParamType, stl::less_stricmp<string> > g_animParamStringToEnumMap;
+    StaticInstance<std::map<string, EUiAnimParamType, stl::less_stricmp<string> >> g_animParamStringToEnumMap;
 
     // If you get an assert in this function, it means two node types have the same enum value.
     void RegisterNodeTypes()

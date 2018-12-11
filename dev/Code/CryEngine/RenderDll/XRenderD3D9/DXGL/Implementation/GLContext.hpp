@@ -647,9 +647,7 @@ namespace NCryOpenGL
         void CallTraceFlush();
 #endif
 
-#if !DXGL_SUPPORT_COPY_IMAGE
-        const CResourceName& GetCopyPixelBuffer() { return m_kCopyPixelBuffer; }
-#endif
+        const CResourceName& GetCopyPixelBuffer() { AZ_Assert(m_kCopyPixelBuffer.IsValid(), "Invalid copy pixel buffer.");  return m_kCopyPixelBuffer; }
 
         //  Confetti BEGIN: Igor Lobanchikov
         inline void NamedBufferDataFast(CResourceName kBufferName, GLsizeiptr iSize, const void* pData, GLenum eUsage);
@@ -821,9 +819,7 @@ namespace NCryOpenGL
         STraceFile m_kCallTrace;
 #endif
 
-#if !DXGL_SUPPORT_COPY_IMAGE
         CResourceName m_kCopyPixelBuffer;
-#endif
         SPipelineCompilationBuffer m_kPipelineCompilationBuffer;
 
         // Hash maps of persistent frame buffers, pipelines and sampler unit maps that can be re-used every time

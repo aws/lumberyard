@@ -438,7 +438,10 @@ namespace CloudGemFramework
                 start = 0;
             }
             AZStd::string snippet = stream.GetContent().substr(start, length);
-            snippet.insert(offset, " <--- ");
+            if (offset >= 0 && offset <= snippet.size())
+            {
+                snippet.insert(offset, " <--- ");
+            }
 
             msg += snippet;
 

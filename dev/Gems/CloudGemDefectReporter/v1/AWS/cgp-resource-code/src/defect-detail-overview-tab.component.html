@@ -1,0 +1,87 @@
+﻿<button class="btn l-primary" (click)="onShowDefectListPage()">
+    < Back to Defect List
+</button>
+<span *ngIf="isJiraIntegrationEnabled">
+    <span [ngSwitch]="defect.jira_status && defect.jira_status !== 'pending'">
+        <span *ngSwitchCase="true">
+            <button class="btn btn-outline-primary float-right report-operation" (click)="viewJiraIssue()">
+                View Jira Issue
+            </button>
+        </span>
+        <span *ngSwitchCase="false">
+            <button class="btn btn-outline-primary float-right report-operation" (click)="createJiraTicketModal()">
+                <i class="fa fa-share" aria-hidden="true">
+                    <span>Create Jira Issue</span>
+                </i>
+            </button>
+        </span>
+    </span>
+</span>
+<button class="btn btn-outline-primary float-right report-operation" (click)="changeReportStatus()">
+    {{getReportStatus()}}
+</button>
+<button class="btn btn-outline-primary float-right report-operation" (click)="changeBookmarkStatus()">
+    {{getBookmarkStatus()}}
+</button>
+<button class="btn btn-outline-primary float-right report-operation" (click)="addCommentModal()">
+    Add Comment
+</button>
+
+<div [ngSwitch]="isLoading">
+    <div *ngSwitchCase="true">
+        <loading-spinner></loading-spinner>
+    </div>
+    <div *ngSwitchCase="false">
+        <div class="detail-information">
+            <report-information [context]="context" [reportInformation]="defect" [configurationMappings]="configurationMappings" (deleteComment)="deleteComment($event)" (editComment)="editCommentModal($event)" (viewJiraIssue)="viewJiraIssue()"></report-information>
+        </div>
+        <div class="detail-information">
+            <player-information [playerInformation]="defect" [configurationMappings]="configurationMappings"></player-information>
+            <system-information [systemInformation]="defect" [configurationMappings]="configurationMappings"></system-information>
+        </div>
+    </div>
+</div>
+
+<!-- Add comment and edit comment modal -->
+<modal *ngIf="mode == Modes.AddComment || mode == Modes.EditComment"
+       [title]="mode == Modes.AddComment ? 'Add Comment' : 'Edit Comment'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Add'"
+       (modalSubmitted)="mode == Modes.AddComment ? addComment() : updateComment()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <form>
+            <div class="form-group row">
+                <label class="col-3 col-form-label affix">Comment</label>
+                <div class="col-9">
+                    <textarea class="form-control" name="comment" [(ngModel)]="currentComment.content" cols="100" rows="6"></textarea>
+                </div>
+            </div>
+        </form>
+    </div>
+</modal>
+
+<!-- CreateJiraTicket modal -->
+<modal *ngIf="mode == Modes.CreateJiraTicket"
+       [title]="'Create Jira Ticket'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Submit'"
+       (modalSubmitted)="createJiraIssue()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body create-jira-issue-window-container">
+        <create-jira-issue-window #CreateJiraIssueWindow
+            [defectReporterApiHandler]="defectReporterApiHandler"
+            [(defectReport)]="currentReport"   
+            (defectChange)="updateReportsToSubmitList($event)"                     
+            [groupMode]="false"
+            (updateJiraMappings)="updateJiraIntegrationSettings()"
+            (validationFailed)="closeCreateJiraIssueWindow()">
+        </create-jira-issue-window>
+    </div>
+</modal>

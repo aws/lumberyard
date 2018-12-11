@@ -27,6 +27,9 @@ namespace CloudCanvas
         ROOTCA_USER_FILE_NOT_FOUND = 0,
         ROOTCA_FOUND_FILE_SUCCESS = 1,
     };
+
+    const char logRequestsEnvVar[] = "CCLogRequestsVar";
+
     // AWS API initialization is now the responsibility of the CloudCanvasCommon
     // Gem. 
     class AwsApiInitRequests

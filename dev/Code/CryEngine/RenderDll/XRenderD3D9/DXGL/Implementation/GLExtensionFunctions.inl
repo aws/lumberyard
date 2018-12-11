@@ -142,3 +142,7 @@ EXTENSION_FUNC(glProgramUniformMatrix3x4fv, glProgramUniformMatrix3x4fvEXT, void
 #undef glProgramUniformMatrix4x3fv
 EXTENSION_FUNC(glProgramUniformMatrix4x3fv, glProgramUniformMatrix4x3fvEXT, void, GLuint, GLint, GLsizei, GLboolean, const GLfloat*)
 #define glProgramUniformMatrix4x3fv DXGL_EXT_FUNCPTR(glProgramUniformMatrix4x3fv)
+#undef glCopyImageSubData
+EXTENSION_FUNC(glCopyImageSubData, glCopyImageSubDataEXT, void, GLuint, GLenum, GLint, GLint, GLint, GLint, GLuint, GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei)
+#define glCopyImageSubData DXGL_EXT_FUNCPTR(glCopyImageSubData)
+

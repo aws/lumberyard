@@ -92,6 +92,9 @@ namespace AZ
                 virtual ProcessingResult UpdateManifest(Containers::Scene& scene, ManifestAction action,
                     RequestingApplication requester);
 
+                // Get scene processing project setting: UseCustomNormal 
+                virtual void AreCustomNormalsUsed(bool & value);
+
                 //! Utility function to load an asset and manifest from file by using the EBus functions above.
                 //! @param assetFilePath The absolute path to the source file (not the manifest).
                 //! @param sourceGuid The guid assigned to the source file (not the manifest).

@@ -66,10 +66,10 @@ COPTrace::COPTrace(bool bExactFollow, float fEndAccuracy, bool bForceReturnParti
 
 COPTrace::COPTrace(const XmlNodeRef& node)
     : m_bBlock_ExecuteTrace_untilFullUpdateThenReset(false)
-    , m_bExactFollow(s_xml.GetBool(node, "exactFollow"))
+    , m_bExactFollow(s_xml->GetBool(node, "exactFollow"))
     , m_fEndAccuracy(0.f)
-    , m_bForceReturnPartialPath(s_xml.GetBool(node, "forceReturnPartialPath"))
-    , m_stopOnAnimationStart(s_xml.GetBool(node, "stopOnAnimationStart"))
+    , m_bForceReturnPartialPath(s_xml->GetBool(node, "forceReturnPartialPath"))
+    , m_stopOnAnimationStart(s_xml->GetBool(node, "stopOnAnimationStart"))
     , m_Maneuver(eMV_None)
     , m_ManeuverDir(eMVD_Clockwise)
     , m_eTraceEndMode(eTEM_FixedDistance)

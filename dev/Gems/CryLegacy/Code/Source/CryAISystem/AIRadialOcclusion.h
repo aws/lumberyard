@@ -207,7 +207,7 @@ private:
     static const int MAX_QUERIES = 100;
     static SSampleRayQuery  m_queries[MAX_QUERIES];
     static bool m_physListenerInit;
-    static std::vector<CAIRadialOcclusionRaycast*>  m_physListeners;
+    static StaticInstance<std::vector<CAIRadialOcclusionRaycast*>>  m_physListeners;
     static int m_idGen;
 
     static int m_activeCount;

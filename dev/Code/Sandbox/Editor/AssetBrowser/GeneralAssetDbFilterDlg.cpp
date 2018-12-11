@@ -23,7 +23,7 @@
 #include <QListWidgetItem>
 
 #include <AssetBrowser/ui_GeneralAssetDbFilterDlg.h>
-namespace AssetBrowser
+namespace GeneralAssetDbFilterDlgInternal
 {
     const char* kFilterPresetsFilename = "@engroot@/Editor/AssetBrowserFilterPresets.xml";
 };
@@ -228,12 +228,12 @@ bool CGeneralAssetDbFilterDlg::LoadFilterPresetsTo(TPresetNamePresetMap& rOutFil
         rOutFilters.clear();
     }
 
-    if (!CFileUtil::FileExists(QString(AssetBrowser::kFilterPresetsFilename)))
+    if (!CFileUtil::FileExists(QString(GeneralAssetDbFilterDlgInternal::kFilterPresetsFilename)))
     {
         return false;
     }
 
-    XmlNodeRef xmlRoot = GetISystem()->LoadXmlFromFile(AssetBrowser::kFilterPresetsFilename);
+    XmlNodeRef xmlRoot = GetISystem()->LoadXmlFromFile(GeneralAssetDbFilterDlgInternal::kFilterPresetsFilename);
     XmlString xmlStr;
     QStringList strings;
     QString strTemp;
@@ -324,7 +324,7 @@ bool CGeneralAssetDbFilterDlg::SaveFilterPresetsFrom(TPresetNamePresetMap& rFilt
         xmlRoot->addChild(xmlFilterPreset);
     }
 
-    bool bResult = xmlRoot->saveToFile(AssetBrowser::kFilterPresetsFilename);
+    bool bResult = xmlRoot->saveToFile(GeneralAssetDbFilterDlgInternal::kFilterPresetsFilename);
 
     return bResult;
 }

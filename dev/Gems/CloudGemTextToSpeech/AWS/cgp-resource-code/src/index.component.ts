@@ -1154,6 +1154,13 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
     }
 
     private updateSpeechLine(speech): void {
+        if (speech.line.includes("&") || speech.line.includes("<"))
+        {
+            this.toastr.error("The speech '" + this.speechBeforeChange.line + "' was not updated. Special characters including \"&\" and \"<\" are not allowed");
+            this.cancel(speech);
+            return;
+        }
+
         if (!speech.isUploaded) {
             this.sortDir = "";
             this.addSpeechEntry(speech, "Create");

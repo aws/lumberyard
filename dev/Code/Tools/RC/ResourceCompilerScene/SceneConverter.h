@@ -32,7 +32,6 @@ namespace AZ
             void Init(const ConvertorInitContext& context) override;
 
             ICompiler* CreateCompiler() override;
-            bool SupportsMultithreading() const override;
             const char* GetExt(int index) const override;
 
         private:

@@ -249,7 +249,6 @@ def build(bld):
     if 'build' in bld.cmd:
         bld.env.store(os.path.join(bld.cache_dir, 'last_build_cache.py'))
 
-
 def package(pkg):
     pkg.options.project_spec = pkg.options.project_spec.strip()  # remove spaces
     pkg.calculate_engine_path()
@@ -266,10 +265,6 @@ def package(pkg):
     pkg.setup_game_projects()
 
     recurse_subfolders(pkg)
-
-
-def package_darwin_x64(pkg):
-    package(pkg)
 
 
 def deploy(ctx):

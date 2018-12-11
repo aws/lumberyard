@@ -1,15 +1,12 @@
 <div [ngSwitch]="loading">
-    
     <div *ngSwitchCase="true">
         <loading-spinner></loading-spinner>
     </div>
-
     <div *ngSwitchCase="false">
         <div *ngIf="isDataAvailable(rows)" class="table-header">
-            <label class="reports-counter">{{filteredRows.length}} Results</label>
             <!-- Column Selector -->
             <div ngbDropdown  placement="bottom-right">
-                <button class="btn btn-outline-primary btn-columns" ngbDropdownToggle>
+                <button class="btn btn-outline-primary btn-columns column-selector" ngbDropdownToggle>
                     <span>
                         Columns
                         <i class="fa fa-caret-down" aria-hidden="true"></i>
@@ -30,10 +27,10 @@
                                     <input
                                         type="checkbox"
                                         class="l-checkbox"
-                                        [id]="col.name"
+                                        [id]="tableName + col.name"
                                         (click)="toggle(col)"
                                         [checked]="isSelected(col)" />
-                                    <label [attr.for]="col.name">{{col.name}}</label>
+                                    <label [attr.for]="tableName + col.name">{{col.name}}</label>
                                 </div>
                             </li>
                         </ul>
@@ -41,9 +38,9 @@
 
                     <!-- Full Column Toggle Operation Buttons -->
                     <div class="btn-group">
-                        <button type="button" class="btn btn-outline-primary btn-select" (click)="selectAllColumns()">Select All</button>
-                        <button type="button" class="btn btn-outline-primary btn-select" (click)="clearSelections()">Select None</button>
-                    </div>                    
+                        <button type="button" class="btn btn-outline-primary btn-select full-column-toggle-operation-button" (click)="selectAllColumns()">Select All</button>
+                        <button type="button" class="btn btn-outline-primary btn-select full-column-toggle-operation-button" (click)="clearSelections()">Select None</button>
+                    </div>
                 </div>
             </div>
             <!-- Read Status Selector -->
@@ -61,21 +58,27 @@
                         <ul class="read-status-radio-button-area">
                             <li>
                                 <div class="read-status-radio-button">
-                                    <label class="radio-btn-label read-status">
-                                        <input type="radio" value="read" [(ngModel)]="readStatusOption" (ngModelChange)="updateFilteredRows()" name="read-status" />
+                                    <label class="radio-btn-label selector-option">
+                                        <input type="radio" value="read" [(ngModel)]="readStatusOption" (ngModelChange)="updateFilteredRows()" [name]="tableName + 'read-status'" />
                                         <span></span> Read
                                     </label>
                                 </div>
                                 <div class="read-status-radio-button">
-                                    <label class="radio-btn-label read-status">
-                                        <input type="radio" value="unread" [(ngModel)]="readStatusOption" (ngModelChange)="updateFilteredRows()" name="read-status" />
+                                    <label class="radio-btn-label selector-option">
+                                        <input type="radio" value="unread" [(ngModel)]="readStatusOption" (ngModelChange)="updateFilteredRows()" [name]="tableName + 'read-status'" />
                                         <span></span> Unread
                                     </label>
                                 </div>
                                 <div class="read-status-radio-button">
-                                    <label class="radio-btn-label read-status">
-                                        <input type="radio" value="" [(ngModel)]="readStatusOption" (ngModelChange)="updateFilteredRows()" name="read-status" />
+                                    <label class="radio-btn-label selector-option">
+                                        <input type="radio" value="" [(ngModel)]="readStatusOption" (ngModelChange)="updateFilteredRows()" [name]="tableName + 'read-status'" />
                                         <span></span> All
+                                    </label>
+                                </div>
+                                <div *ngIf="isJiraIntegrationEnabled" class="read-status-radio-button">
+                                    <label class="radio-btn-label selector-option">
+                                        <input type="radio" value="nojira" [(ngModel)]="readStatusOption" (ngModelChange)="updateFilteredRows()" [name]="tableName + 'read-status'" />
+                                        <span></span> No Jira
                                     </label>
                                 </div>
                             </li>
@@ -83,8 +86,26 @@
                     </div>
                 </div>
             </div>
+            <!-- Bulk Actions Selector -->
+            <div *ngIf="isJiraIntegrationEnabled" ngbDropdown placement="bottom-right">
+                <button #BulkActionsButton [disabled]="selectedRows.length === 0" class="btn btn-outline-primary btn-columns bulk-actions-selector" ngbDropdownToggle>
+                    <span>
+                        Bulk Actions
+                        <i class="fa fa-caret-down" aria-hidden="true"></i>
+                    </span>
+                </button>
+                <div class="dropdown-menu" ngbDropdownMenu (click)="$event.stopPropagation()">
+                    <!-- Bulk Actions Toggle Area -->
+                    <div>
+                        <ul class="bulk-actions-area">
+                            <li class="bulk-action selector-option" (click)="createJiraTicketsModal()">
+                                Create Jira Issue(s)
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
-
         <div>
             <ngx-datatable
                 class="material"
@@ -102,17 +123,70 @@
                 [loadingIndicator]="loadingSort"
                 [scrollbarH]="true"
                 (sort)="onSort($event)"
-                (activate)="onRowActivation($event)">   
-                <ngx-datatable-column name="" [sortable]="false" prop="bookmark">
+                (activate)="onRowActivation($event)">
+
+                <ngx-datatable-column *ngIf="!bookmark" name="" [sortable]="false" prop="selected" width="50" maxWidth="50">
+                    <ng-template let-row="row" ngx-datatable-cell-template>
+                        <input type="checkbox" [id]="row.universal_unique_identifier" [name]="row.universal_unique_identifier" [(ngModel)]="row.selected" (ngModelChange)="updateSelectedRows(row)"/>
+                        <label class="l-checkbox row-selector" [attr.for]="row.universal_unique_identifier">
+                        </label>
+                    </ng-template>
+                </ngx-datatable-column>
+                <ngx-datatable-column name="" [sortable]="false" prop="bookmark" width="40" maxWidth="40">
                     <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
-                        <i *ngIf="value === 0" class="fa fa-bookmark-o"></i>
-                        <i *ngIf="value !== 0" class="fa fa-bookmark"></i>
+                        <i *ngIf="value === 0" class="fa fa-bookmark-o" data-toggle="tooltip" data-placement="top" title="Not Bookmarked"></i>
+                        <i *ngIf="value !== 0" class="fa fa-bookmark" data-toggle="tooltip" data-placement="top" title="Bookmarked"></i>
+                    </ng-template>
+                </ngx-datatable-column>
+                <ngx-datatable-column name="" [sortable]="false" prop="jira_status" width="40" maxWidth="40">
+                    <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+                        <i *ngIf="value !== 'pending'" class="fa fa-ravelry" data-toggle="tooltip" data-placement="top" title="Jira ticket filed."></i>
                     </ng-template>
                 </ngx-datatable-column>
                 <ng-container *ngIf="isDataAvailable(filteredRows)">
-                    <ngx-datatable-column *ngFor="let column of columns" [name]="column['name']" [sortable]="column['sortable']" [prop]="column['prop']"></ngx-datatable-column>
+                    <ngx-datatable-column *ngFor="let column of columns" [name]="column.name" [sortable]="column.sortable" [prop]="column.prop"></ngx-datatable-column>
                 </ng-container>
             </ngx-datatable>
         </div>
     </div>
 </div>
+
+<!-- CreateJiraTickets modal -->
+<modal *ngIf="mode == Modes.CreateJiraTickets"
+       [title]="'Create Jira Ticket(s)'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="(selectedReportIndex === (reportsToSubmit.length - 1) || group) ? 'Create' : 'Next'"
+       (modalSubmitted)="(selectedReportIndex === (reportsToSubmit.length - 1) || group) ? submitCreationRequest() : updateSelectedReportIndex()">
+    <div class="modal-body create-jira-issue-window-container">
+        <div *ngIf="reportsToSubmit.length > 1" class="form-group row">
+            <ng-template #tooltipContent>Grouped defect reports will generate all the Jira issues using one Jira mapping.<br>Individual reports will generate an issue for each defect report using its own Jira mapping.</ng-template>
+            <label class="col-3">
+                Report Grouping
+                <i class="fa fa-question-circle-o" aria-hidden="true" placement="bottom" [ngbTooltip]="tooltipContent"></i>
+            </label>
+            <div class="col-9 group-options">
+                <label class="radio-btn-label">
+                    <input type="radio" [value]="true" name="report-grouping" [(ngModel)]="group" />
+                    <span></span> Group -  Use one Jira mapping for all defect reports
+                </label>
+                <label class="radio-btn-label">
+                    <input type="radio" [value]="false" name="report-grouping" [(ngModel)]="group" />
+                    <span></span> Individual - Generate a unique Jira issue for each defect report
+                </label>
+            </div>
+        </div>
+        <div *ngIf="fillingError" class="alert alert-danger">{{fillingError}}</div>
+        <create-jira-issue-window #CreateJiraIssueWindow
+            [defectReporterApiHandler]="defectReporterApiHandler"
+            [(defectReport)]="currentReport"
+            [(defectGroupMapping)]="currentGroupMapping"
+            (defectChange)="updateReportsToSubmitList($event)"
+            [groupMode]="group"
+            (updateJiraMappings)="updateJiraIntegrationSettings()"
+            (validationFailed)="closeCreateJiraIssueWindow()">
+        </create-jira-issue-window>
+    </div>
+</modal>

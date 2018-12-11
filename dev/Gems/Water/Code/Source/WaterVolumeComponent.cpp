@@ -468,6 +468,7 @@ namespace Water
                     rendFlags &= ~ERF_HIDDEN;
                 }
 
+                rendFlags |= ERF_COMPONENT_ENTITY;
                 m_waterRenderNode->SetRndFlags(rendFlags);
             }
         }
@@ -599,6 +600,7 @@ namespace Water
         physicalAreaParams.waveSim.waveSpeed = m_waveSpeed;
         physicalAreaParams.waveSim.dampingCenter = m_waveDampening;
         physicalAreaParams.waveSim.timeStep = m_waveTimestep;
+        physicalAreaParams.waveSim.simDepth = m_waveDepthCellSize;
         physicalAreaParams.waveSim.heightLimit = m_waveHeightLimit;
         physicalAreaParams.waveSim.minVel = m_waveSleepThreshold;
         physicalAreaParams.waveSim.resistance = m_waveForce;

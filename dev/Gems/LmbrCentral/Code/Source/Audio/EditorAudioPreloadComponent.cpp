@@ -47,8 +47,7 @@ namespace LmbrCentral
                         //->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioPreload.png")
                         //->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/AudioPreload.png")
 
-                        // Docs todo:
-                        //->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-audio-preload.html")
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-audio-preload.html")
 
                     ->DataElement("AudioControl", &EditorAudioPreloadComponent::m_defaultPreload, "Preload Name", "The default ATL Preload control to use")
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorAudioPreloadComponent::m_loadType, "Load Type", "Automatically when the component activates/deactivates, or Manually at user's request")

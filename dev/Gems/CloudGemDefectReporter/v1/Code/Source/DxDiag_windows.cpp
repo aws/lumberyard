@@ -80,7 +80,11 @@ namespace CloudGemDefectReporter
         fileIO->Close(fileHandle);
 
         // remove temp file
-        fileIO->Remove(resolvedTempFilePath);
+        AZ::IO::FileIOBase* newFileIO = AZ::IO::FileIOBase::GetDirectInstance();
+        if (newFileIO)
+        {
+            newFileIO->Remove(resolvedTempFilePath);
+        }
 
         return output;
     }

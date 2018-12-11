@@ -313,7 +313,7 @@ namespace EMStudio
             QTimer::singleShot(0, this, [this, requiredHeight]() { OnRequiredHeightChanged(requiredHeight); });
         }
     }
-    
+
     // paint the relative graph
     void TrackDataWidget::PaintRelativeGraph(QPainter& painter, const QRect& rect, const EMotionFX::Recorder::ActorInstanceData* actorInstanceData)
     {
@@ -327,7 +327,7 @@ namespace EMStudio
         painter.setRenderHint(QPainter::Antialiasing, true);
 
         // get the history items shortcut
-        const MCore::Array<EMotionFX::Recorder::NodeHistoryItem*>&  historyItems = actorInstanceData->mNodeHistoryItems;
+        const MCore::Array<EMotionFX::Recorder::NodeHistoryItem*>& historyItems = actorInstanceData->mNodeHistoryItems;
         int32 windowWidth = geometry().width();
 
         const bool useNodeColors = mPlugin->mTrackHeaderWidget->mNodeTypeColorsCheckBox->isChecked();
@@ -389,6 +389,7 @@ namespace EMStudio
             if (widthInPixels > 0)
             {
                 EMotionFX::KeyTrackLinearDynamic<float, float>* keyTrack = &curItem->mGlobalWeights; // init on global weights
+
                 if (graphContentsCode == 1)
                 {
                     keyTrack = &curItem->mLocalWeights;
@@ -497,7 +498,7 @@ namespace EMStudio
 
         // get the history items shortcut
         const MCore::Array<EMotionFX::Recorder::EventHistoryItem*>& historyItems = actorInstanceData->mEventHistoryItems;
-        
+
         QRect clipRect = rect;
         clipRect.setRight(mPlugin->TimeToPixel(animationLength));
         painter.setClipRect(clipRect);
@@ -2418,7 +2419,7 @@ namespace EMStudio
             //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
             connect(action, SIGNAL(triggered()), mPlugin, SLOT(OnShowNodeHistoryNodeInGraph()));
         }
-        
+
         // show the menu at the given position
         menu.exec(event->globalPos());
     }
@@ -2493,7 +2494,7 @@ namespace EMStudio
                 AZStd::string path;
                 AzFramework::StringFunc::Path::GetFolderPath(motion->GetFileNameString().c_str(), path);
                 EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&path);
-                
+
                 outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Motion Path:&nbsp;</b></p></td>");
                 outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", path.c_str());
 

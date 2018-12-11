@@ -516,16 +516,15 @@ namespace SVOGI
                     outOpacity.b = static_cast<AZ::u8>(SATURATEB(float((outCount * AZ::VectorFloat(outOpacity.b) + opacities.GetX()) * invDivisor * scale)));
 
                     //Sure.  Legacy concept. 
-                    bool bTerrainTrisDetected;
+                    bool bTerrainTrisDetected = false;
                     ITerrain* pTerrain = gEnv->p3DEngine->GetITerrain();
-                    AZ::Vector3 vH = m_brickOrigin;
-                    if (vH.GetZ() > (pTerrain->GetZ(static_cast<int32_t>(vH.GetX()), static_cast<int32_t>(vH.GetY())) + 1.5f))
+                    if (pTerrain)
                     {
-                        bTerrainTrisDetected = false;
-                    }
-                    else
-                    {
-                        bTerrainTrisDetected = true;
+                        AZ::Vector3 vH = m_brickOrigin;
+                        if (vH.GetZ() <= (pTerrain->GetZ(static_cast<int32_t>(vH.GetX()), static_cast<int32_t>(vH.GetY())) + 1.5f))
+                        {
+                            bTerrainTrisDetected = true;
+                        }
                     }
 
                     outOpacity.a = bTerrainTrisDetected ? 0 : 1; // reserved for opacity of dynamic voxels or [0 = triangle is missing in RSM]
@@ -959,6 +958,16 @@ namespace SVOGI
 
     void Brick::ExtractTerrainTriangles()
     {
+        if (!gEnv->p3DEngine->GetShowTerrainSurface())
+        {
+            return;
+        }
+        ITerrain* pTerrain = gEnv->p3DEngine->GetITerrain();
+        if (!pTerrain)
+        {
+            return;
+        }
+
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Renderer);
         SuperMesh superMesh;
         PodArray<SRayHitTriangle> arrTris;
@@ -967,131 +976,127 @@ namespace SVOGI
         worldBrickAabb.SetMax(m_brickAabb.GetMax() + m_brickOrigin);
 
         // add terrain
-        if (gEnv->p3DEngine->GetShowTerrainSurface())
+        AZ::s32 nWorldSize = gEnv->p3DEngine->GetTerrainSize();
+        AZ::s32 S = gEnv->p3DEngine->GetHeightMapUnitSize();
+
+        AZ::s32 nHalfStep = S / 2;
+
+        SRayHitTriangle ht;
+        memset(&ht, 0, sizeof(ht));
+        ht.c[0] = ht.c[1] = ht.c[2] = Col_White;
+        ht.nOpacity = 255;
+        ht.nHitObjType = HIT_OBJ_TYPE_TERRAIN;
+        Plane pl;
+
+        AZ::s32 I = 0, X = 0, Y = 0;
+
+        superMesh.Clear();
+
+        for (AZ::s32 x = (AZ::s32)worldBrickAabb.GetMin().GetX(); x < (AZ::s32)worldBrickAabb.GetMax().GetX(); x += S)
         {
-            ITerrain* pTerrain = gEnv->p3DEngine->GetITerrain();
-            AZ::s32 nWorldSize = gEnv->p3DEngine->GetTerrainSize();
-            AZ::s32 S = gEnv->p3DEngine->GetHeightMapUnitSize();
-
-            AZ::s32 nHalfStep = S / 2;
-
-            SRayHitTriangle ht;
-            memset(&ht, 0, sizeof(ht));
-            ht.c[0] = ht.c[1] = ht.c[2] = Col_White;
-            ht.nOpacity = 255;
-            ht.nHitObjType = HIT_OBJ_TYPE_TERRAIN;
-            Plane pl;
-
-            AZ::s32 I = 0, X = 0, Y = 0;
-
-            superMesh.Clear();
-
-            for (AZ::s32 x = (AZ::s32)worldBrickAabb.GetMin().GetX(); x < (AZ::s32)worldBrickAabb.GetMax().GetX(); x += S)
+            for (AZ::s32 y = (AZ::s32)worldBrickAabb.GetMin().GetY(); y < (AZ::s32)worldBrickAabb.GetMax().GetY(); y += S)
             {
-                for (AZ::s32 y = (AZ::s32)worldBrickAabb.GetMin().GetY(); y < (AZ::s32)worldBrickAabb.GetMax().GetY(); y += S)
+                if (!pTerrain->IsHole(x + nHalfStep, y + nHalfStep))
                 {
-                    if (!pTerrain->IsHole(x + nHalfStep, y + nHalfStep))
+                    // prevent surface interpolation over long edge
+                    bool bFlipTris = false;
+                    AZ::s32 nType10 = pTerrain->GetSurfaceWeight(x + S, y).PrimaryId();
+                    AZ::s32 nType01 = pTerrain->GetSurfaceWeight(x, y + S).PrimaryId();
+                    if (nType10 != nType01)
                     {
-                        // prevent surface interpolation over long edge
-                        bool bFlipTris = false;
-                        AZ::s32 nType10 = pTerrain->GetSurfaceWeight(x + S, y).PrimaryId();
-                        AZ::s32 nType01 = pTerrain->GetSurfaceWeight(x, y + S).PrimaryId();
-                        if (nType10 != nType01)
+                        AZ::s32 nType00 = pTerrain->GetSurfaceWeight(x, y).PrimaryId();
+                        AZ::s32 nType11 = pTerrain->GetSurfaceWeight(x + S, y + S).PrimaryId();
+                        if ((nType10 == nType00 && nType10 == nType11) || (nType01 == nType00 && nType01 == nType11))
                         {
-                            AZ::s32 nType00 = pTerrain->GetSurfaceWeight(x, y).PrimaryId();
-                            AZ::s32 nType11 = pTerrain->GetSurfaceWeight(x + S, y + S).PrimaryId();
-                            if ((nType10 == nType00 && nType10 == nType11) || (nType01 == nType00 && nType01 == nType11))
-                            {
-                                bFlipTris = true;
-                            }
+                            bFlipTris = true;
+                        }
+                    }
+
+                    if (bFlipTris)
+                    {
+                        I = 0;
+                        X = x + S, Y = y + 0;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
+                        X = x + S, Y = y + S;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
+                        X = x + 0, Y = y + 0;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
+
+                        if (TerrainTriBoundsCheck(ht, worldBrickAabb))
+                        {
+                            ht.nTriArea = SATURATEB(AZ::s32(SVO_CPU_VOXELIZATION_AREA_SCALE * 0.5f * (ht.v[1] - ht.v[0]).Cross(ht.v[2] - ht.v[0]).GetLength()));
+                            pl.SetPlane(ht.v[0], ht.v[1], ht.v[2]);
+                            ht.n = pl.n;
+                            superMesh.AddSuperTriangle(ht);
                         }
 
-                        if (bFlipTris)
+                        I = 0;
+                        X = x + 0, Y = y + 0;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
+                        X = x + S, Y = y + S;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
+                        X = x + 0, Y = y + S;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
+
+                        if (TerrainTriBoundsCheck(ht, worldBrickAabb))
                         {
-                            I = 0;
-                            X = x + S, Y = y + 0;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
-                            X = x + S, Y = y + S;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
-                            X = x + 0, Y = y + 0;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
-
-                            if (TerrainTriBoundsCheck(ht, worldBrickAabb))
-                            {
-                                ht.nTriArea = SATURATEB(AZ::s32(SVO_CPU_VOXELIZATION_AREA_SCALE * 0.5f * (ht.v[1] - ht.v[0]).Cross(ht.v[2] - ht.v[0]).GetLength()));
-                                pl.SetPlane(ht.v[0], ht.v[1], ht.v[2]);
-                                ht.n = pl.n;
-                                superMesh.AddSuperTriangle(ht);
-                            }
-
-                            I = 0;
-                            X = x + 0, Y = y + 0;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
-                            X = x + S, Y = y + S;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
-                            X = x + 0, Y = y + S;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
-
-                            if (TerrainTriBoundsCheck(ht, worldBrickAabb))
-                            {
-                                ht.nTriArea = SATURATEB(AZ::s32(SVO_CPU_VOXELIZATION_AREA_SCALE * 0.5f * (ht.v[1] - ht.v[0]).Cross(ht.v[2] - ht.v[0]).GetLength()));
-                                pl.SetPlane(ht.v[0], ht.v[1], ht.v[2]);
-                                ht.n = pl.n;
-                                superMesh.AddSuperTriangle(ht);
-                            }
+                            ht.nTriArea = SATURATEB(AZ::s32(SVO_CPU_VOXELIZATION_AREA_SCALE * 0.5f * (ht.v[1] - ht.v[0]).Cross(ht.v[2] - ht.v[0]).GetLength()));
+                            pl.SetPlane(ht.v[0], ht.v[1], ht.v[2]);
+                            ht.n = pl.n;
+                            superMesh.AddSuperTriangle(ht);
                         }
-                        else
+                    }
+                    else
+                    {
+                        I = 0;
+                        X = x + 0, Y = y + 0;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
+                        X = x + S, Y = y + 0;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
+                        X = x + 0, Y = y + S;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
+
+                        if (TerrainTriBoundsCheck(ht, worldBrickAabb))
                         {
-                            I = 0;
-                            X = x + 0, Y = y + 0;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
-                            X = x + S, Y = y + 0;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
-                            X = x + 0, Y = y + S;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
+                            ht.nTriArea = SATURATEB(AZ::s32(SVO_CPU_VOXELIZATION_AREA_SCALE * 0.5f * (ht.v[1] - ht.v[0]).Cross(ht.v[2] - ht.v[0]).GetLength()));
+                            pl.SetPlane(ht.v[0], ht.v[1], ht.v[2]);
+                            ht.n = pl.n;
+                            superMesh.AddSuperTriangle(ht);
+                        }
 
-                            if (TerrainTriBoundsCheck(ht, worldBrickAabb))
-                            {
-                                ht.nTriArea = SATURATEB(AZ::s32(SVO_CPU_VOXELIZATION_AREA_SCALE * 0.5f * (ht.v[1] - ht.v[0]).Cross(ht.v[2] - ht.v[0]).GetLength()));
-                                pl.SetPlane(ht.v[0], ht.v[1], ht.v[2]);
-                                ht.n = pl.n;
-                                superMesh.AddSuperTriangle(ht);
-                            }
+                        I = 0;
+                        X = x + S, Y = y + 0;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
+                        X = x + S, Y = y + S;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
+                        X = x + 0, Y = y + S;
+                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        I++;
 
-                            I = 0;
-                            X = x + S, Y = y + 0;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
-                            X = x + S, Y = y + S;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
-                            X = x + 0, Y = y + S;
-                            ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
-                            I++;
-
-                            if (TerrainTriBoundsCheck(ht, worldBrickAabb))
-                            {
-                                ht.nTriArea = SATURATEB(AZ::s32(SVO_CPU_VOXELIZATION_AREA_SCALE * 0.5f * (ht.v[1] - ht.v[0]).Cross(ht.v[2] - ht.v[0]).GetLength()));
-                                pl.SetPlane(ht.v[0], ht.v[1], ht.v[2]);
-                                ht.n = pl.n;
-                                superMesh.AddSuperTriangle(ht);
-                            }
+                        if (TerrainTriBoundsCheck(ht, worldBrickAabb))
+                        {
+                            ht.nTriArea = SATURATEB(AZ::s32(SVO_CPU_VOXELIZATION_AREA_SCALE * 0.5f * (ht.v[1] - ht.v[0]).Cross(ht.v[2] - ht.v[0]).GetLength()));
+                            pl.SetPlane(ht.v[0], ht.v[1], ht.v[2]);
+                            ht.n = pl.n;
+                            superMesh.AddSuperTriangle(ht);
                         }
                     }
                 }
             }
-
-            AddSuperMesh(superMesh, SVO_CPU_VOXELIZATION_OFFSET_TERRAIN);
         }
+
+        AddSuperMesh(superMesh, SVO_CPU_VOXELIZATION_OFFSET_TERRAIN);
     }
 
     void Brick::ExtractVisAreaTriangles()

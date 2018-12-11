@@ -36,7 +36,7 @@ namespace LegacyGameInterface
             {
                 ec->Class<LegacyGameInterfaceSystemComponent>("LegacyGameInterface", "[Description of functionality provided by this System Component]")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System"))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ;
             }
@@ -45,12 +45,14 @@ namespace LegacyGameInterface
 
     void LegacyGameInterfaceSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("LegacyGameInterfaceService"));
+        provided.push_back(AZ_CRC("LegacyGameInterfaceService", 0xd725fcfc));
+        provided.push_back(AZ_CRC("LegacyEditorGameRequests", 0x2be64eb2));
     }
 
     void LegacyGameInterfaceSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("LegacyGameInterfaceService"));
+        incompatible.push_back(AZ_CRC("LegacyGameInterfaceService", 0xd725fcfc));
+        incompatible.push_back(AZ_CRC("LegacyEditorGameRequests", 0x2be64eb2));
     }
 
     void LegacyGameInterfaceSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)

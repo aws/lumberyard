@@ -115,8 +115,7 @@ namespace EMStudio
         void OnGroupCollapsed(QTreeWidgetItem* item);
         void OnGroupExpanded(QTreeWidgetItem* item);
 
-        void OnRenameGroup();
-        void OnAddGroupButton();
+        void OnAddGroup();
         void OnGroupParameterSelected();
 
         void OnMoveParameterUp();
@@ -173,6 +172,7 @@ namespace EMStudio
 
         // toolbar buttons
         QPushButton*                    mAddButton;
+        static int                      m_contextMenuWidth;
         QPushButton*                    mRemoveButton;
         QPushButton*                    mClearButton;
 

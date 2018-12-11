@@ -180,7 +180,7 @@ void CRenderPipelineProfiler::BeginSection(const char* name, uint32 eProfileLabe
 
     section.recLevel = m_stack.size() + 1;
     section.numDIPs = gcpRendD3D->GetCurrentNumberOfDrawCalls();
-    section.numPolys = gcpRendD3D->RT_GetPolyCount();
+    section.numPolys = gcpRendD3D->GetPolyCount();
     section.startTimeCPU = gEnv->pTimer->GetAsyncTime();
     section.gpuTimer.Start(name);
 
@@ -209,7 +209,7 @@ void CRenderPipelineProfiler::EndSection(const char* name)
         RPProfilerSection& section = sectionsFrame.m_sections[m_stack.back()];
 
         section.numDIPs = gcpRendD3D->GetCurrentNumberOfDrawCalls() - section.numDIPs;
-        section.numPolys = gcpRendD3D->RT_GetPolyCount() - section.numPolys;
+        section.numPolys = gcpRendD3D->GetPolyCount() - section.numPolys;
         section.endTimeCPU = gEnv->pTimer->GetAsyncTime();
         section.gpuTimer.Stop();
         if (strncmp(section.name, name, 30) != 0)

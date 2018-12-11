@@ -627,6 +627,8 @@ namespace EMStudio
             return;
         }
 
+        GetMainWindow()->DisableUndoRedo();
+
         mAllowContextMenu = true;
 
         // get the mouse position, calculate the global mouse position and update the relevant data
@@ -884,7 +886,12 @@ namespace EMStudio
                     if (mControlPressed)
                     {
                         mActiveGraph->UnselectAllNodes(true);
-                        node->SetIsSelected(true);
+
+                        if (node)
+                        {
+                            node->SetIsSelected(true);
+                        }
+
                         OnSelectionChanged();
                     }
                 }
@@ -908,6 +915,8 @@ namespace EMStudio
         {
             return;
         }
+
+        GetMainWindow()->UpdateUndoRedo();
 
         // update modifiers
         mAltPressed     = event->modifiers() & Qt::AltModifier;
@@ -1179,6 +1188,8 @@ namespace EMStudio
         {
             return;
         }
+
+        GetMainWindow()->DisableUndoRedo();
 
         // get the mouse position, calculate the global mouse position and update the relevant data
         QPoint mousePos     = event->pos();

@@ -54,7 +54,7 @@ SetObstacleRefs CGraph::static_AllocatedObstacles;
 
 const float GraphNode::fInvalidCost = 999999.0f;
 
-std::vector<const GraphNode*> g_DebugGraphNodesToDraw;
+StaticInstance<std::vector<const GraphNode*>> g_DebugGraphNodesToDraw;
 
 //====================================================================
 // ValidateNode
@@ -325,7 +325,7 @@ void CGraph::Connect(unsigned oneNodeIndex, unsigned twoNodeIndex,
         return;
     }
 
-    extern std::vector<const GraphNode*> g_DebugGraphNodesToDraw;
+    extern StaticInstance<std::vector<const GraphNode*>> g_DebugGraphNodesToDraw;
     g_DebugGraphNodesToDraw.clear();
 
     // handle case where they're already connected
@@ -697,7 +697,7 @@ void CGraph::Disconnect(unsigned nodeIndex, bool bDelete)
         return;
     }
 
-    extern std::vector<const GraphNode*> g_DebugGraphNodesToDraw;
+    extern StaticInstance<std::vector<const GraphNode*>> g_DebugGraphNodesToDraw;
     g_DebugGraphNodesToDraw.clear();
 
     // if the node we are disconnecting is the current node, move the current

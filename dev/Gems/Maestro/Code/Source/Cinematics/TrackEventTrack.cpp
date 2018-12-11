@@ -163,11 +163,12 @@ template<>
 inline void TAnimTrack<IEventKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<IEventKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<IEventKey>::m_flags)
         ->Field("Range", &TAnimTrack<IEventKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<IEventKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<IEventKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<IEventKey>::m_keys)
+        ->Field("Id", &TAnimTrack<IEventKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////

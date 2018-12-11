@@ -17,6 +17,7 @@
 #include "TrackViewSequence.h"
 #include <Maestro/Types/AnimNodeType.h>
 #include <Maestro/Bus/EditorSequenceComponentBus.h>
+#include <AzCore/std/sort.h>
 
 ////////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyConstHandle::GetKey(IKey* pKey) const
@@ -69,9 +70,35 @@ bool CTrackViewKeyHandle::IsSelected() const
 ////////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyHandle::SetTime(float time, bool notifyListeners)
 {
-    assert(m_bIsValid);
+    AZ_Assert(m_bIsValid, "Expected a valid key handle.");
 
+    // Flag the current key, because the key handle may become invalid
+    // after the time is set and it is potentially sorted into a different
+    // index.    
+    m_pTrack->SetSortMarkerKey(m_keyIndex, true);
+
+    // set the new time, this may cause a sort that reorders the keys, making
+    // m_keyIndex incorrect.
     m_pTrack->SetKeyTime(m_keyIndex, time, notifyListeners);
+
+    // If the key at this index changed because of the key sort by time.
+    // We need to search through the keys now and find the marker.
+    if (!m_pTrack->IsSortMarkerKey(m_keyIndex))
+    {
+        CTrackViewKeyBundle allKeys = m_pTrack->GetAllKeys();
+        for (int x = 0; x < allKeys.GetKeyCount(); x++)
+        {
+            unsigned int curIndex = allKeys.GetKey(x).GetIndex();
+            if (m_pTrack->IsSortMarkerKey(curIndex))
+            {
+                m_keyIndex = curIndex;
+                break;
+            }
+        }
+    }
+
+    // clear the sort marker
+    m_pTrack->SetSortMarkerKey(m_keyIndex, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -107,12 +134,12 @@ const char* CTrackViewKeyHandle::GetDescription() const
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void CTrackViewKeyHandle::Offset(float offset)
+void CTrackViewKeyHandle::Offset(float offset, bool notifyListeners)
 {
-    assert(m_bIsValid);
+    AZ_Assert(m_bIsValid, "Expected key handle to be in a valid state.");
 
     float newTime = m_pTrack->GetKeyTime(m_keyIndex) + offset;
-    m_pTrack->SetKeyTime(m_keyIndex, newTime);
+    m_pTrack->SetKeyTime(m_keyIndex, newTime, notifyListeners);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -251,6 +278,12 @@ void CTrackViewKeyBundle::SelectKeys(const bool bSelected)
     {
         GetKey(i).Select(bSelected);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////
+void CTrackViewKeyBundle::SortKeysByTime()
+{
+    AZStd::sort(m_keys.begin(), m_keys.end(), CompareByTime);
 }
 
 //////////////////////////////////////////////////////////////////////////

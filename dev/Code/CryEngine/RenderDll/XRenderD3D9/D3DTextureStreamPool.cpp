@@ -144,8 +144,6 @@ STexPool* CTextureStreamPoolMgr::GetPool(int nWidth, int nHeight, int nMips, int
 
 STexPoolItem* CTextureStreamPoolMgr::GetPoolItem(int nWidth, int nHeight, int nMips, int nArraySize, ETEX_Format eTF, bool bIsSRGB, ETEX_Type eTT, bool bShouldBeCreated, const char* sName, STextureInfo* pTI, bool bCanCreate, bool bWaitForIdle)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Texture, 0, "Stream pool item %ix%ix%i", nWidth, nHeight, nMips);
-
     D3DFormat d3dFmt = CTexture::DeviceFormatFromTexFormat(eTF);
     if (bIsSRGB)
     {

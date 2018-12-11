@@ -261,7 +261,6 @@ CShaderResources* CShaderResources::Clone() const
         return CShader::s_ShaderResources_known[1];
     }
     pSR->m_Id = CShader::s_ShaderResources_known.Num();
-    ScopedSwitchToGlobalHeap globalHeap;
     CShader::s_ShaderResources_known.AddElem(pSR);
 
     return pSR;
@@ -526,8 +525,8 @@ namespace
                     outParameters.push_back(parameter);
                     parameter->m_OffsetStageSetter = shaderClass;
                     parameter->m_StagesUsage = ((0x1 << shaderClass) & 0xff);
-                    minSlotOffset = std::min(minSlotOffset, static_cast<AZ::s32>(parameter->m_Register[shaderClass]));
-                    maxSlotOffset = std::max(maxSlotOffset, static_cast<AZ::s32>(parameter->m_Register[shaderClass] + parameter->m_RegisterCount));
+                    minSlotOffset = AZStd::GetMin(minSlotOffset, static_cast<AZ::s32>(parameter->m_Register[shaderClass]));
+                    maxSlotOffset = AZStd::GetMax(maxSlotOffset, static_cast<AZ::s32>(parameter->m_Register[shaderClass] + parameter->m_RegisterCount));
                 }
             }
         }
@@ -604,7 +603,7 @@ void CShaderResources::Rebuild(IShader* abstractShader, AzRHI::ConstantBufferUsa
                     for (AZ::u32 j = 0; j < publicParameters.size(); j++)
                     {
                         SShaderParam& outParameter = publicParameters[j];
-                        if (!strcmp(outParameter.m_Name, tweakable.m_Name))
+                        if (outParameter.m_Name == tweakable.m_Name)
                         {
                             tweakable.CopyType(outParameter);
                             outParameter.CopyValueNoString(tweakable); // there should not be 'string' values set to shader

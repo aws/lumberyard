@@ -515,6 +515,14 @@ void CTerrain::GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, M
     matrix33 = matrix33.CreateOrientation(vDir, -vTerrainNormal, 0);
 }
 
+void CTerrain::GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials)
+{
+    TraverseTree([&materials](CTerrainNode* node)
+    {
+        node->GetMaterials(materials);
+    });
+}
+
 void CTerrain::GetMemoryUsage(class ICrySizer* pSizer) const
 {
     pSizer->AddObject(this, sizeof(*this));

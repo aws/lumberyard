@@ -28,7 +28,7 @@
 
 // bump this value up if you want to invalidate shader cache (e.g. changed some code or .ext file)
 // #### VIP NOTE ####: DON'T USE MORE THAN ONE DECIMAL PLACE!!!! else it doesn't work...
-#define FX_CACHE_VER       9.8f
+#define FX_CACHE_VER       9.9f
 #define FX_SER_CACHE_VER   1.0f  // Shader serialization version (FX_CACHE_VER + FX_SER_CACHE_VER)
 
 // Maximum 1 digit here
@@ -276,7 +276,7 @@ struct STokenD
     unsigned Size() { return sizeof(STokenD) /*+ sizeofVector(Offsets)*/ + SToken.capacity(); }
     void GetMemoryUsage(ICrySizer* pSizer) const { pSizer->AddObject(SToken); }
 };
-typedef std::vector<STokenD> FXShaderToken;
+typedef AZStd::vector<STokenD, AZ::StdLegacyAllocator> FXShaderToken;
 typedef FXShaderToken::iterator FXShaderTokenItor;
 
 struct SFXStruct
@@ -516,12 +516,12 @@ struct SCompressedData
     }
 };
 
-typedef std::map<int, struct SD3DShader*> FXDeviceShader;
+typedef AZStd::unordered_map<int, struct SD3DShader*, AZStd::hash<int>, AZStd::equal_to<int>, AZ::StdLegacyAllocator> FXDeviceShader;
 typedef FXDeviceShader::iterator FXDeviceShaderItor;
 
-typedef std::map<int, SCompressedData> FXCompressedShader;
+typedef AZStd::unordered_map<int, SCompressedData, AZStd::hash<int>, AZStd::equal_to<int>, AZ::StdLegacyAllocator> FXCompressedShader;
 typedef FXCompressedShader::iterator FXCompressedShaderItor;
-typedef std::map<CCryNameTSCRC, int> FXCompressedShaderRemap;
+typedef AZStd::unordered_map<CCryNameTSCRC, int, AZStd::hash<CCryNameTSCRC>, AZStd::equal_to<CCryNameTSCRC>, AZ::StdLegacyAllocator> FXCompressedShaderRemap;
 typedef FXCompressedShaderRemap::iterator FXCompressedShaderRemapItor;
 struct SHWActivatedShader
 {
@@ -533,7 +533,7 @@ struct SHWActivatedShader
     int Size();
     void GetMemoryUsage(ICrySizer* pSizer) const;
 };
-typedef std::map<CCryNameTSCRC, SHWActivatedShader*> FXCompressedShaders;
+typedef AZStd::unordered_map<CCryNameTSCRC, SHWActivatedShader*, AZStd::hash<CCryNameTSCRC>, AZStd::equal_to<CCryNameTSCRC>, AZ::StdLegacyAllocator> FXCompressedShaders;
 typedef FXCompressedShaders::iterator FXCompressedShadersItor;
 
 #define CACHE_READONLY 0
@@ -558,13 +558,13 @@ struct SOptimiseStats
     }
 };
 
-typedef std::map<CCryNameR, SShaderCache*> FXShaderCache;
+typedef AZStd::unordered_map<CCryNameR, SShaderCache*, AZStd::hash<CCryNameR>, AZStd::equal_to<CCryNameR>, AZ::StdLegacyAllocator> FXShaderCache;
 typedef FXShaderCache::iterator FXShaderCacheItor;
 
-typedef std::map<CCryNameR, SShaderDevCache*> FXShaderDevCache;
+typedef AZStd::unordered_map<CCryNameR, SShaderDevCache*, AZStd::hash<CCryNameR>, AZStd::equal_to<CCryNameR>, AZ::StdLegacyAllocator> FXShaderDevCache;
 typedef FXShaderDevCache::iterator FXShaderDevCacheItor;
 
-typedef std::map<string, uint32> FXShaderCacheNames;
+typedef AZStd::unordered_map<string, uint32, AZStd::hash<string>, AZStd::equal_to<string>, AZ::StdLegacyAllocator> FXShaderCacheNames;
 typedef FXShaderCacheNames::iterator FXShaderCacheNamesItor;
 
 
@@ -700,7 +700,12 @@ extern uint64 g_HWSR_MaskBit[HWSR_MAX];
 // Texture transform flag
 #define HWMD_TEXCOORD_MATRIX                        0x100
 // Object linear texgen flag
-#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR 0x1000
+#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR_DIFFUSE         0x1000
+#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE       0x2000
+#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE_MULT  0x4000
+#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR_DETAIL          0x8000
+#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR_CUSTOM          0x10000
+
 
 #define HWMD_TEXCOORD_FLAG_MASK    (0xfffff000 | 0xf00)
 
@@ -1198,17 +1203,17 @@ struct SShaderTechnique
     }
     void UpdatePreprocessFlags(CShader* pSH);
 
-    void* operator new(size_t Size) { void* ptr = malloc(Size); memset(ptr, 0, Size); return ptr; }
+    void* operator new(size_t Size) { void* ptr = CryModuleMalloc(Size); memset(ptr, 0, Size); return ptr; }
     void* operator new(size_t Size, const std::nothrow_t& nothrow)
     {
-        void* ptr = malloc(Size);
+        void* ptr = CryModuleMalloc(Size);
         if (ptr)
         {
             memset(ptr, 0, Size);
         }
         return ptr;
     }
-    void operator delete(void* Ptr) { free(Ptr); }
+    void operator delete(void* Ptr) { CryModuleFree(Ptr); }
 };
 
 //===============================================================================
@@ -1460,17 +1465,17 @@ public:
     }
 
     virtual void GetMemoryUsage(ICrySizer* Sizer) const;
-    void* operator new(size_t Size) { void* ptr = malloc(Size); memset(ptr, 0, Size); return ptr; }
+    void* operator new(size_t Size) { void* ptr = CryModuleMalloc(Size); memset(ptr, 0, Size); return ptr; }
     void* operator new(size_t Size, const std::nothrow_t& nothrow)
     {
-        void* ptr = malloc(Size);
+        void* ptr = CryModuleMalloc(Size);
         if (ptr)
         {
             memset(ptr, 0, Size);
         }
         return ptr;
     }
-    void operator delete(void* Ptr) { free(Ptr); }
+    void operator delete(void* Ptr) { CryModuleFree(Ptr); }
 
     static CCryNameTSCRC mfGetClassName()
     {

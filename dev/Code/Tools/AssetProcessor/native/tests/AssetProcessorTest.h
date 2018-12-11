@@ -14,7 +14,8 @@
 #include <AzTest/AzTest.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include "native/unittests/UnitTestRunner.h" // for the assert absorber.
+#include <native/utilities/assetUtils.h>
+#include <native/unittests/UnitTestRunner.h> // for the assert absorber.
 
 namespace AssetProcessor
 {
@@ -29,9 +30,14 @@ namespace AssetProcessor
 
         void SetUp() override
         {
+            if (!AZ::AllocatorInstance<AZ::OSAllocator>::IsReady())
+            {
+                m_ownsOSAllocator = true;
+                AZ::AllocatorInstance<AZ::OSAllocator>::Create();
+            }
             if (!AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
             {
-                m_ownsAllocator = true;
+                m_ownsSysAllocator = true;
                 AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
             }
             m_errorAbsorber = new UnitTestUtils::AssertAbsorber();
@@ -39,16 +45,24 @@ namespace AssetProcessor
 
         void TearDown() override
         {
+            AssetUtilities::ResetAssetRoot();
+            
+
             delete m_errorAbsorber;
             m_errorAbsorber = nullptr;
-            if (m_ownsAllocator)
+            if (m_ownsSysAllocator)
             {
                 AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-                m_ownsAllocator = false;
+                m_ownsSysAllocator = false;
+            }
+            if (m_ownsOSAllocator)
+            {
+                AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
+                m_ownsOSAllocator = false;
             }
         }
-        bool m_ownsAllocator = false;
-        
+        bool m_ownsOSAllocator = false;
+        bool m_ownsSysAllocator = false;
     };
 }
 

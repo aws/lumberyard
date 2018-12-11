@@ -121,11 +121,6 @@ ICompiler* CImageConvertor::CreateCompiler()
     return new CImageCompiler(m_presetAliases);
 }
 
-bool CImageConvertor::SupportsMultithreading() const
-{
-    return true;
-}
-
 const char* CImageConvertor::GetExt(int index) const
 {
     if (index == 0)

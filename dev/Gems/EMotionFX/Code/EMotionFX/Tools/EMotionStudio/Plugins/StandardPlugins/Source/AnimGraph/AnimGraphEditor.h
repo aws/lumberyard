@@ -43,6 +43,9 @@ namespace EMotionFX
         // AnimGraphEditorRequests
         EMotionFX::MotionSet* GetSelectedMotionSet() override;
 
+        AnimGraph* GetAnimGraph() const { return m_animGraph; }
+        void SetAnimGraph(AnimGraph* animGraph);
+
         // AnimGraphEditorNotifications
         void UpdateMotionSetComboBox() override;
 
@@ -52,6 +55,7 @@ namespace EMotionFX
     private:
         AZ::Outcome<uint32> GetMotionSetIndex(int comboBoxIndex) const;
 
+        AnimGraph* m_animGraph;
         AzToolsFramework::ReflectedPropertyEditor*  m_propertyEditor;
         static const int                            m_propertyLabelWidth;
         QComboBox*                                  m_motionSetComboBox;

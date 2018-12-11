@@ -15,6 +15,9 @@
 #include <AzCore/base.h>
 #include <AzCore/std/base.h>
 #include <AzCore/std/typetraits/integral_constant.h>
+#include <AzCore/std/typetraits/aligned_storage.h>
+#include <AzCore/std/typetraits/alignment_of.h>
+#include <AzCore/Debug/Profiler.h>
 
 namespace AZ
 {
@@ -111,6 +114,127 @@ namespace AZ
     namespace Internal  {
         struct AllocatorDummy{};
     }
+
+    template <class Schema, class DescriptorType=typename Schema::Descriptor>
+    class AllocatorBase
+        : public IAllocator
+    {
+    public:
+        using Descriptor = DescriptorType;
+
+        AllocatorBase(const char* name, const char* desc)
+            : m_schema(nullptr)
+            , m_name(name)
+            , m_desc(desc)
+        {
+        }
+
+        virtual ~AllocatorBase()
+        {
+            if (m_schema)
+            {
+                m_schema->~Schema();
+            }
+            m_schema = nullptr;
+        }
+
+        bool Create(const Descriptor& desc = Descriptor())
+        {
+            m_schema = new (&m_schemaStorage) Schema(desc);
+            OnCreated();
+            return m_schema != nullptr;
+        }
+
+        void Destroy()
+        {
+            OnDestroy();
+            m_schema->~Schema();
+            m_schema = nullptr;
+        }
+
+        //---------------------------------------------------------------------
+        // IAllocator
+        //---------------------------------------------------------------------
+        const char* GetName() const override
+        {
+            return m_name;
+        }
+
+        const char* GetDescription() const override
+        {
+            return m_desc;
+        }
+
+        //---------------------------------------------------------------------
+        // IAllocatorAllocate
+        //---------------------------------------------------------------------
+        pointer_type Allocate(size_type byteSize, size_type alignment, int flags = 0, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0) override
+        {
+            pointer_type ptr = m_schema->Allocate(byteSize, alignment, flags, name, fileName, lineNum, suppressStackRecord);
+            AZ_PROFILE_MEMORY_ALLOC_EX(AZ::Debug::ProfileCategory::MemoryReserved, fileName, lineNum, ptr, byteSize, name ? name : GetName());
+            return ptr;
+        }
+
+        void DeAllocate(pointer_type ptr, size_type byteSize = 0, size_type alignment = 0) override
+        {
+            AZ_PROFILE_MEMORY_FREE(AZ::Debug::ProfileCategory::MemoryReserved, ptr);
+            m_schema->DeAllocate(ptr, byteSize, alignment);
+        }
+
+        size_type Resize(pointer_type ptr, size_type newSize) override
+        {
+            return m_schema->Resize(ptr, newSize);
+        }
+
+        pointer_type ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment) override
+        {
+            AZ_PROFILE_MEMORY_FREE(AZ::Debug::ProfileCategory::MemoryReserved, ptr);
+            pointer_type newPtr = m_schema->ReAllocate(ptr, newSize, newAlignment);
+            AZ_PROFILE_MEMORY_ALLOC(AZ::Debug::ProfileCategory::MemoryReserved, newPtr, newSize, GetName());
+            return newPtr;
+        }
+                
+        size_type AllocationSize(pointer_type ptr) override
+        {
+            return m_schema->AllocationSize(ptr);
+        }
+        
+        void GarbageCollect() override
+        {
+            m_schema->GarbageCollect();
+        }
+
+        size_type NumAllocatedBytes() const override
+        {
+            return m_schema->NumAllocatedBytes();
+        }
+
+        size_type Capacity() const override
+        {
+            return m_schema->Capacity();
+        }
+        
+        size_type GetMaxAllocationSize() const override
+        { 
+            return m_schema->GetMaxAllocationSize();
+        }
+
+        size_type               GetUnAllocatedMemory(bool isPrint = false) const override
+        { 
+            return m_schema->GetUnAllocatedMemory(isPrint);
+        }
+        
+        virtual IAllocatorAllocate*     GetSubAllocator()
+        {
+            return m_schema->GetSubAllocator();
+        }
+
+    protected:
+        Schema* m_schema;
+        const char* m_name;
+        const char* m_desc;
+        typename AZStd::aligned_storage<sizeof(Schema), AZStd::alignment_of<Schema>::value>::type m_schemaStorage;
+    };
 }
 
 #endif // AZCORE_ALLOCATOR_BASE_H

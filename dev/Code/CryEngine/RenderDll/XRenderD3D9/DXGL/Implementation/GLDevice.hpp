@@ -49,6 +49,8 @@ namespace NCryOpenGL
         eF_MultiBind,
         eF_DebugOutput,
         eF_DualSourceBlending,
+        eF_IndependentBlending,
+		eF_CopyImage,
         eF_NUM // Must be last one
     };
 
@@ -83,10 +85,8 @@ namespace NCryOpenGL
         // The supported usage for each GI format (union of D3D11_FORMAT_SUPPORT flags)
         uint32 m_auFormatSupport[eGIF_NUM];
 
-#if DXGL_SUPPORT_COPY_IMAGE
         // Some drivers implementation of glCopyImageSubData does not work on cube map faces as specified by the standard
         bool m_bCopyImageWorksOnCubeMapFaces;
-#endif        
     };
 
     struct SVersion
@@ -327,6 +327,8 @@ namespace NCryOpenGL
 
         typedef AZStd::map<HWND, std::pair<uint32, uint32>> WindowSizeList;
         static WindowSizeList m_windowSizes;
+
+        uint64 m_texturesStreamingFunctorId;
     };
 
     bool FeatureLevelToFeatureSpec(SFeatureSpec& kContextSpec, D3D_FEATURE_LEVEL eFeatureLevel, NCryOpenGL::SAdapter* pGLAdapter);

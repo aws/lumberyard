@@ -25,6 +25,8 @@
 //          C) All invalid data has been discarded
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0 // Disabled: SEH exception with code 0xc0000005 thrown in the test body.
+
 namespace PL_UT_HELPER
 {
     CharacterManager* g_dummyCharacterManager;
@@ -785,7 +787,6 @@ TEST(CryAnimationParamLoaderTest, TestAnimationListAdd)
     }
 }
 
-#if 0 // Disabled: SEH exception with code 0xc0000005 thrown in the test body.
 TEST(CryAnimationParamLoaderFeatureTest, TestWrite)
 {
     EXPECT_TRUE(PL_UT_HELPER::g_dummyCharacterManager->GetParamLoader().WriteXML(PL_UT_HELPER::test1Path));
@@ -1081,7 +1082,7 @@ TEST(CryAnimationParamLoaderFeatureTest, TestAnimationListConsistency)
         EXPECT_TRUE(animList1->GetAnimation(i)->m_type == animList2->GetAnimation(i)->m_type);
     }
 }
-#endif // Disabled due to: SEH exception with code 0xc0000005 thrown in the test body.
+
 
 TEST(CryAnimationParamLoaderFeatureTest, TestChrParamsDelete)
 {
@@ -1089,3 +1090,5 @@ TEST(CryAnimationParamLoaderFeatureTest, TestChrParamsDelete)
     bool deleteFailed = PL_UT_HELPER::g_dummyCharacterManager->GetParamLoader().IsChrParamsParsed(PL_UT_HELPER::subPath);
     EXPECT_TRUE(!deleteFailed);
 }
+
+#endif // Disabled due to: SEH exception with code 0xc0000005 thrown in the test body.

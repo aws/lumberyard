@@ -102,6 +102,12 @@ namespace AZ
                 return ProcessingResult::Ignored;
             }
 
+            void AssetImportRequest::AreCustomNormalsUsed(bool &value)
+            {
+                // Leave the SceneProcessingConfigSystemComponent do the job
+                AZ_UNUSED(value);
+            }
+
             AZStd::shared_ptr<Containers::Scene> AssetImportRequest::LoadSceneFromVerifiedPath(const AZStd::string& assetFilePath, const Uuid& sourceGuid,
                 RequestingApplication requester)
             {

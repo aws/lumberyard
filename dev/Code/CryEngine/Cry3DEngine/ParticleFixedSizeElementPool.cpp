@@ -46,7 +46,6 @@ ParticleObjectPool::~ParticleObjectPool()
     CryInterlockedFlushSList(m_freeList256Bytes);
     CryInterlockedFlushSList(m_freeList512Bytes);
 
-    ScopedSwitchToGlobalHeap globalHeap;
     CryModuleMemalignFree(m_poolMemory);
 }
 
@@ -54,9 +53,6 @@ ParticleObjectPool::~ParticleObjectPool()
 void ParticleObjectPool::Init(size_t bytesToAllocate)
 {
     m_poolCapacity = Align(bytesToAllocate, 4 * 1024);
-
-    ScopedSwitchToGlobalHeap globalHeap;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Particles Pool");
 
     // allocate memory block to use as pool
     if (m_poolMemory)

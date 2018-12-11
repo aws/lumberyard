@@ -200,6 +200,9 @@ namespace AzToolsFramework
         // so that we know what elements to re-expand and contract
         SetNameLabel(actualName.c_str());
 
+        // Reset tooltip description. If source node is valid then the description will be set when refreshing its attributes.
+        SetDescription("");
+
         m_forbidExpansion = false;
         m_containerEditable = false;
         m_isMultiSizeContainer = false;
@@ -989,13 +992,11 @@ namespace AzToolsFramework
         }
     }
 
-    void PropertyRowWidget::SetExpanded(bool expanded, bool fromUserInteraction /*= false*/)
+    void PropertyRowWidget::SetExpanded(bool expanded)
     {
         m_expanded = expanded;
 
         UpdateDropDownArrow();
-
-        emit onExpandedOrContracted(m_sourceNode, m_expanded, fromUserInteraction);
     }
 
     AZ::u32 PropertyRowWidget::GetIdentifier() const
@@ -1367,7 +1368,8 @@ namespace AzToolsFramework
             PropertyRowWidget* widget = expandWidgets.back();
             expandWidgets.pop_back();
 
-            widget->SetExpanded(expand, true);
+            widget->SetExpanded(expand);
+            emit onUserExpandedOrContracted(m_sourceNode, m_expanded);
 
             if (includeDescendents)
             {

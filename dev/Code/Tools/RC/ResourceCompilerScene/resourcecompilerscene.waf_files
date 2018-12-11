@@ -4,7 +4,6 @@
         "Root":
         [
             "stdafx.h",
-            "ResourceCompilerScenePlugin.def",
             "ResourceCompilerScene.cpp",
             "TraceDrillerHook.h",
             "TraceDrillerHook.cpp",

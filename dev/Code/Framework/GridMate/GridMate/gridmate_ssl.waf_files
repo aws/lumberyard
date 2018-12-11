@@ -3,6 +3,8 @@
     {
         "Carrier":
         [
+            "Carrier/OpenSSLThreadSafetyHook.cpp",
+            "Carrier/OpenSSLThreadSafetyHook.h",
             "Carrier/SecureSocketDriver.cpp",
             "Carrier/SecureSocketDriver.h",
             "Carrier/StreamSecureSocketDriver.cpp",

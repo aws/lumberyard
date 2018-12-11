@@ -24,7 +24,7 @@ def build(bld):
     USE = ['EditorUI_QT','EditorCommon','EditorCore','AzToolsFramework']
     USE = USE + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity'])
 
-    COMMON_DEFINES = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'NOT_USE_CRY_MEMORY_MANAGER', 'AZCORE_ENABLE_MEMORY_TRACKING', 'ENABLE_EXTENDED_MATH_SUPPORT=0']
+    COMMON_DEFINES = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'AZCORE_ENABLE_MEMORY_TRACKING', 'ENABLE_EXTENDED_MATH_SUPPORT=0']
 
     CODEGEN_FILE_LIST = [
             'Include/ScriptCanvas/Internal/Nodes/StringFormatted.h',

@@ -29,20 +29,44 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
     OTHER_CONTEXT = 'OtherContext'
 
     def setUp(self):    
-        self.prepare_test_envionment(type(self).__name__, alternate_context_names=[self.OTHER_CONTEXT])
-
+        self.prepare_test_environment(type(self).__name__, alternate_context_names=[self.OTHER_CONTEXT])
         
     def test_security_end_to_end(self):
         self.run_all_tests()
 
 
     def __100_create_other_project(self):
-
         # We verify that access granted to a target project does not allow access 
         # to the "other" project.
 
         with self.alternate_context(self.OTHER_CONTEXT):
+            if not self.has_project_stack():
+                self.lmbr_aws(
+                    'project', 'create', 
+                    '--stack-name', self.TEST_PROJECT_STACK_NAME, 
+                    '--confirm-aws-usage',
+                    '--confirm-security-change', 
+                    '--region', lmbr_aws_test_support.REGION
+                )
 
+            self.lmbr_aws(
+                'cloud-gem', 'create',
+                '--gem', self.TEST_RESOURCE_GROUP_NAME, 
+                '--initial-content', 'api-lambda-dynamodb',
+                '--enable','--no-sln-change',
+                ignore_failure=True
+            )
+            if not self.has_deployment_stack():
+                self.lmbr_aws(
+                    'deployment', 'create', 
+                    '--deployment', self.TEST_DEPLOYMENT_NAME, 
+                    '--confirm-aws-usage', 
+                    '--confirm-security-change'
+                )
+        
+
+    def __120_create_project_stack(self):
+        if not self.has_project_stack():
             self.lmbr_aws(
                 'project', 'create', 
                 '--stack-name', self.TEST_PROJECT_STACK_NAME, 
@@ -50,30 +74,6 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
                 '--confirm-security-change', 
                 '--region', lmbr_aws_test_support.REGION
             )
-
-            self.lmbr_aws(
-                'cloud-gem', 'create',
-                '--gem', self.TEST_RESOURCE_GROUP_NAME, 
-                '--initial-content', 'api-lambda-dynamodb',
-                '--enable'
-            )
-
-            self.lmbr_aws(
-                'deployment', 'create', 
-                '--deployment', self.TEST_DEPLOYMENT_NAME, 
-                '--confirm-aws-usage', 
-                '--confirm-security-change'
-            )
-        
-
-    def __120_create_project_stack(self):
-        self.lmbr_aws(
-            'project', 'create', 
-            '--stack-name', self.TEST_PROJECT_STACK_NAME, 
-            '--confirm-aws-usage',
-            '--confirm-security-change', 
-            '--region', lmbr_aws_test_support.REGION
-        )
 
 
     def __130_verify_project_stack_permission(self):
@@ -231,7 +231,8 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             'cloud-gem', 'create',
             '--gem', self.TEST_RESOURCE_GROUP_NAME, 
             '--initial-content', 'api-lambda-dynamodb',
-            '--enable'
+            '--enable','--no-sln-change',
+            ignore_failure=True
         )
 
 
@@ -499,7 +500,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             deployment_role='DeploymentAdmin'
         )
         self.assertIn(self.TEST_RESOURCE_GROUP_NAME, self.lmbr_aws_stdout)
-        self.assertIn('UPDATE_COMPLETE', self.lmbr_aws_stdout)
+        self.assertIn('_COMPLETE', self.lmbr_aws_stdout)
 
 
     def __300_list_resource_groups_for_deployment_using_project_admin_role(self):
@@ -509,7 +510,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             deployment_role='DeploymentAdmin'
         )
         self.assertIn(self.TEST_RESOURCE_GROUP_NAME, self.lmbr_aws_stdout)
-        self.assertIn('UPDATE_COMPLETE', self.lmbr_aws_stdout)
+        self.assertIn('_COMPLETE', self.lmbr_aws_stdout)
 
 
     def __310_list_resources_using_deployment_admin_role(self):

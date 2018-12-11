@@ -24,8 +24,8 @@
 #include "LightEntity.h"
 #include "MTPseudoRandom.h"
 
-CProcVegetPoolMan* CTerrainNode::m_pProcObjPoolMan = NULL;
-SProcObjChunkPool* CTerrainNode::m_pProcObjChunkPool = NULL;
+CProcVegetPoolMan* CTerrainNode::s_pProcObjPoolMan = NULL;
+SProcObjChunkPool* CTerrainNode::s_pProcObjChunkPool = NULL;
 
 void CTerrainNode::PropagateChangesToRoot()
 {
@@ -390,7 +390,7 @@ void CTerrainNode::RemoveProcObjects(bool bRecursive)
         if (m_pProcObjPoolPtr)
         {
             m_pProcObjPoolPtr->ReleaseAllObjects();
-            m_pProcObjPoolMan->ReleaseObject(m_pProcObjPoolPtr);
+            s_pProcObjPoolMan->ReleaseObject(m_pProcObjPoolPtr);
             m_pProcObjPoolPtr = NULL;
         }
 
@@ -691,7 +691,7 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
                         }
                         if (!m_pProcObjPoolPtr)
                         {
-                            m_pProcObjPoolPtr = m_pProcObjPoolMan->GetObject();
+                            m_pProcObjPoolPtr = s_pProcObjPoolMan->GetObject();
                         }
 
                         CVegetation* pEnt = m_pProcObjPoolPtr->AllocateProcObject();

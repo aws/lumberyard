@@ -772,7 +772,7 @@ void CViewSystem::ClearAllViews()
     {
         SAFE_RELEASE(it->second);
     }
-    stl::free_container(m_views);
+    m_views.clear();
     m_preSequenceViewId = 0;
     m_activeViewId = 0;
 }

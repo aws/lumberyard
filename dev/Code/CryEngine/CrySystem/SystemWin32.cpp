@@ -241,57 +241,6 @@ void CSystem::CollectMemInfo(SCryEngineStatsGlobalMemInfo& m_stats)
 void CSystem::CollectMemStats (ICrySizer* pSizer, MemStatsPurposeEnum nPurpose, std::vector<SmallModuleInfo>* pStats)
 {
     std::vector<SmallModuleInfo> stats;
-#ifdef WIN32
-    //////////////////////////////////////////////////////////////////////////
-    AZStd::vector<AZStd::string> szModules = GetModuleNames();
-    const int numModules = szModules.size();
-
-    for (int i = 0; i < numModules; i++)
-    {
-        const char* szModule = szModules[i].c_str();
-        HMODULE hModule = GetModuleHandle(szModule);
-        if (!hModule)
-        {
-            continue;
-        }
-
-        //totalStatic += me.modBaseSize;
-        typedef void (* PFN_MODULEMEMORY)(CryModuleMemoryInfo*);
-        PFN_MODULEMEMORY fpCryModuleGetAllocatedMemory = (PFN_MODULEMEMORY)::GetProcAddress(hModule, "CryModuleGetMemoryInfo");
-        if (!fpCryModuleGetAllocatedMemory)
-        {
-            continue;
-        }
-
-        PEHeader_DLL pe_header;
-        PEHeader_DLL* header = &pe_header;
-
-        const IMAGE_DOS_HEADER* dos_head = (IMAGE_DOS_HEADER*)hModule;
-        if (dos_head->e_magic != IMAGE_DOS_SIGNATURE)
-        {
-            // Wrong pointer, not to PE header.
-            continue;
-        }
-        header = (PEHeader_DLL*)(const void*)((char*)dos_head + dos_head->e_lfanew);
-        //#endif
-
-        SmallModuleInfo moduleInfo;
-        moduleInfo.name = szModule;
-        fpCryModuleGetAllocatedMemory(&moduleInfo.memInfo);
-
-        if (nMSP_ForCrashLog == nPurpose)
-        {
-            int usedInModule = moduleInfo.memInfo.allocated - moduleInfo.memInfo.freed;
-            int numAllocations = moduleInfo.memInfo.num_allocations;
-            CryLogAlways("%s Used in module:%d Allocations:%d", szModule, usedInModule, numAllocations);
-        }
-        else
-        {
-            stats.push_back(moduleInfo);
-        }
-    }
-#endif
-
     if (pStats)
     {
         pStats->assign(stats.begin(), stats.end());
@@ -312,20 +261,6 @@ void CSystem::CollectMemStats (ICrySizer* pSizer, MemStatsPurposeEnum nPurpose, 
                 //if (info)
                 //pSizer->AddObject(info, info->memInfo.allocated - info->memInfo.requested );
             }
-
-#ifndef AZ_MONOLITHIC_BUILD // Only when compiling as dynamic library
-            {
-                //SIZER_COMPONENT_NAME(pSizer,"Strings");
-                //pSizer->AddObject( (this+1),string::_usedMemory(0) );
-            }
-            {
-                SIZER_COMPONENT_NAME(pSizer, "STL Allocator Waste");
-                CryModuleMemoryInfo meminfo;
-                ZeroStruct(meminfo);
-                CryGetMemoryInfoForModule(&meminfo);
-                pSizer->AddObject((this + 2), meminfo.STL_wasted);
-            }
-#endif // AZ_MONOLITHIC_BUILD
 
             {
                 SIZER_COMPONENT_NAME(pSizer, "VFS");

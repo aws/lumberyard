@@ -334,8 +334,6 @@ IUiAnimTrack* CUiAnimNode::CreateTrack(const CUiAnimParamType& paramType)
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimNode::SerializeUiAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Animation, 0, "CUiAnimNode");
-
     if (bLoading)
     {
         // Delete all tracks.
@@ -351,8 +349,6 @@ void CUiAnimNode::SerializeUiAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoa
         {
             XmlNodeRef trackNode = xmlNode->getChild(i);
             paramType.Serialize(GetUiAnimationSystem(), trackNode, bLoading, paramTypeVersion);
-
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Animation, 0, UiAnimationSystem::GetParamTypeName(paramType));
 
             int curveType = eUiAnimCurveType_Unknown;
             trackNode->getAttr("Type", curveType);

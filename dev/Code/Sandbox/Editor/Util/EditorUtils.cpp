@@ -262,7 +262,7 @@ namespace EditorUtils
 
     bool AzWarningAbsorber::OnPreWarning(const char* window, const char*, int, const char*, const char*)
     {
-        if (m_window == window)
+        if ((window)&&(m_window == window))
         {
             return true;
         }

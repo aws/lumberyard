@@ -62,10 +62,6 @@ class ProblemList(object):
 def handler(event, context):
     '''Entry point for the Custom::AccessControl resource handler.'''
     
-    props = properties.load(event, {
-        'ConfigurationBucket': properties.String(), # Currently not used
-        'ConfigurationKey': properties.String()})   # Depend on unique upload id in key to force Cloud Formation to call handler
-
     # Validate RequestType
     request_type = event['RequestType']
     if request_type not in ['Create', 'Update', 'Delete']:
@@ -89,7 +85,8 @@ def handler(event, context):
     if stack.stack_type == stack.STACK_TYPE_RESOURCE_GROUP:
         were_changes = _apply_resource_group_access_control(request_type, stack, problems)
     elif stack.stack_type == stack.STACK_TYPE_DEPLOYMENT_ACCESS:
-        were_changes = _apply_deployment_access_control(request_type, stack, problems)
+        were_changes = _apply_deployment_access_control(
+            request_type, stack, event['ResourceProperties']['Gem'], problems)
     elif stack.stack_type == stack.STACK_TYPE_PROJECT:
         were_changes = _apply_project_access_control(request_type, stack, problems)
     else:
@@ -150,7 +147,7 @@ def _apply_resource_group_access_control(request_type, resource_group, problems)
     return were_changes
     
 
-def _apply_deployment_access_control(request_type, deployment_access, problems):
+def _apply_deployment_access_control(request_type, deployment_access, resource_group_name, problems):
     '''Performs the processing necessary when the Custom::AccessControl resource is in a deployment access stack.
 
     Args:
@@ -163,23 +160,23 @@ def _apply_deployment_access_control(request_type, deployment_access, problems):
 
     '''
     
-    print 'Applying access control {} for deployment access stack {}.'.format(request_type, deployment_access.stack_name)
-
     # Get abstract to concrete role mappings for the target stack
     role_mappings = _get_explicit_role_mappings(deployment_access, problems)
 
     # Get the permissions desired by each of the resource group's resources.
-    permissions_by_policy_name = {}
+    permissions = None
+    policy_name = ""
     for resource_group in deployment_access.deployment.resource_groups:
+        if resource_group.resource_group_name != resource_group_name:
+            continue
         policy_name = _get_resource_group_policy_name(resource_group)
-        permissions_by_policy_name[policy_name] = _get_permissions(resource_group, problems)
+        permissions = _get_permissions(resource_group, problems)
 
     # If there were no problems collecting the metadata, update the roles in the target stack as needed
     were_changes = False
-    if not problems:
-        for policy_name, permissions in permissions_by_policy_name.iteritems():
-            if _update_roles(request_type, policy_name, permissions, role_mappings):
-                were_changes = True
+    if not problems and policy_name and permissions is not None:
+        if _update_roles(request_type, policy_name, permissions, role_mappings):
+            were_changes = True
 
     return were_changes
     

@@ -27,7 +27,10 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
+
+#if !defined(BATCH_MODE)
 #include <AzToolsFramework/UI/Logging/LogPanel_Panel.h>
+#endif
 
 #include "native/utilities/assetUtils.h"
 #include "native/utilities/ApplicationManagerAPI.h"
@@ -44,18 +47,22 @@
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 
-#include <QMessageBox>
 #include <QSettings>
+
+#if !defined(BATCH_MODE)
+#include <QMessageBox>
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
+#endif
 
 #include <string.h> // for base  strcpy
 #include <AzFramework/Asset/AssetCatalogComponent.h>
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogComponent.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <LyShine/UiAssetTypes.h>
 
 namespace AssetProcessor
@@ -158,6 +165,7 @@ void AssetProcessorAZApplication::RegisterCoreComponents()
 
     RegisterComponentDescriptor(AssetProcessor::ToolsAssetCatalogComponent::CreateDescriptor());
     RegisterComponentDescriptor(AzToolsFramework::Components::GenericComponentUnwrapper::CreateDescriptor());
+    RegisterComponentDescriptor(AzToolsFramework::AssetBrowser::AssetBrowserComponent::CreateDescriptor());
 }
 
 void AssetProcessorAZApplication::ResolveModulePath(AZ::OSString& modulePath)
@@ -551,10 +559,12 @@ bool ApplicationManager::StartAZFramework(QString appRootOverride)
     //Registering all the Components
     m_frameworkApp.RegisterComponentDescriptor(AzFramework::LogComponent::CreateDescriptor());
  
+#if !defined(BATCH_MODE)
     AZ::SerializeContext* context;
     EBUS_EVENT_RESULT(context, AZ::ComponentApplicationBus, GetSerializeContext);
     AZ_Assert(context, "No serialize context");
     AzToolsFramework::LogPanel::BaseLogPanel::Reflect(context);
+#endif
     
     // the log folder currently goes in the bin folder:
     AZStd::string fullBinFolder;
@@ -866,7 +876,7 @@ ApplicationManager::RegistryCheckInstructions ApplicationManager::CheckForRegist
                 "4) Delete the key for %1\n"
                 "5) %2"
             ).arg(compatibilityRegistryGroupName, windowsFriendlyRegPath);
-
+#if !defined(BATCH_MODE)
             if (showPopupMessage)
             {
                 warningText = warningText.arg(tr("Click the Restart button"));
@@ -907,6 +917,7 @@ ApplicationManager::RegistryCheckInstructions ApplicationManager::CheckForRegist
                 }
             }
             else
+#endif // BATCH MODE
             {
                 warningText = warningText.arg(tr("Restart the Asset Processor"));
                 QByteArray warningUtf8 = warningText.toUtf8();

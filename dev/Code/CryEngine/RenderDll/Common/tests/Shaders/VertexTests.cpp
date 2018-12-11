@@ -413,3 +413,25 @@ TEST_P(VertexFormatTest, D3DVertexDeclarations_MatchesLegacy)
 // Instantiate tests
 // Start with 1 to skip eVF_Unknown
 INSTANTIATE_TEST_CASE_P(EVertexFormatValues, VertexFormatTest, ::testing::Range<int>(1, eVF_Max));
+
+
+//Tests to check 4 byte alignment padding
+class VertexFormat4ByteAlignedTest
+    : public ::testing::TestWithParam < int >
+{
+};
+
+TEST_P(VertexFormat4ByteAlignedTest, GetStride_4ByteAligned)
+{
+    const AZ::Vertex::Format g_PaddingTestCaseFormats[] =
+    {
+        { AZ::Vertex::Format({ AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_1) }) },
+        { AZ::Vertex::Format({ AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_2) }) },
+        { AZ::Vertex::Format({ AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_1), AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_2) }) }
+    };
+
+    AZ::Vertex::Format format = g_PaddingTestCaseFormats[GetParam()];
+    ASSERT_EQ(format.GetStride() % AZ::Vertex::VERTEX_BUFFER_ALIGNMENT, 0);
+}
+
+INSTANTIATE_TEST_CASE_P(EVertexFormatStride4ByteAligned, VertexFormat4ByteAlignedTest, ::testing::Range<int>(0, 3));

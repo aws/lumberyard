@@ -62,7 +62,6 @@ namespace stl
                 return allocator;
             }
 
-            ScopedSwitchToGlobalHeap useGlobalHeap;
             allocator = new AllocatorType(S, A, FHeap().FreeWhenEmpty(FreeWhenEmpty));
             return allocator;
         }

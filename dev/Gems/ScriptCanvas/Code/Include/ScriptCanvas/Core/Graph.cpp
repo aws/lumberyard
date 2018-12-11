@@ -58,9 +58,7 @@ namespace ScriptCanvas
     {
         Data::PropertyMetadata::Reflect(context);
         Data::Type::Reflect(context);
-        Connection::Reflect(context);
         Node::Reflect(context);
-        PureData::Reflect(context);
         Nodes::UnaryOperator::Reflect(context);
         Nodes::UnaryExpression::Reflect(context);
         Nodes::BinaryOperator::Reflect(context);

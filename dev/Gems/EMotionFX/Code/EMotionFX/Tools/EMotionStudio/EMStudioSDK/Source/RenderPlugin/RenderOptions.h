@@ -60,8 +60,8 @@ namespace EMStudio
         static const char* s_vertexNormalsColorOptionName;
         static const char* s_faceNormalsColorOptionName;
         static const char* s_tangentsColorOptionName;
-        static const char* s_mirroredBinormalsColorOptionName;
-        static const char* s_binormalsColorOptionName;
+        static const char* s_mirroredBitangentsColorOptionName;
+        static const char* s_bitangentsColorOptionName;
         static const char* s_nodeAABBColorOptionName;
         static const char* s_staticAABBColorOptionName;
         static const char* s_meshAABBColorOptionName;
@@ -178,11 +178,11 @@ namespace EMStudio
         AZ::Color GetTangentsColor() const { return m_tangentsColor; }
         void SetTangentsColor(const AZ::Color& tangentsColor);
 
-        AZ::Color GetMirroredBinormalsColor() const { return m_mirroredBinormalsColor; }
-        void SetMirroredBinormalsColor(const AZ::Color& mirroredBinormalsColor);
+        AZ::Color GetMirroredBitangentsColor() const { return m_mirroredBitangentsColor; }
+        void SetMirroredBitangentsColor(const AZ::Color& mirroredBitangentsColor);
 
-        AZ::Color GetBinormalsColor() const { return m_binormalsColor; }
-        void SetBinormalsColor(const AZ::Color& binormalsColor);
+        AZ::Color GetBitangentsColor() const { return m_bitangentsColor; }
+        void SetBitangentsColor(const AZ::Color& bitangentsColor);
 
         AZ::Color GetNodeAABBColor() const { return m_nodeAABBColor; }
         void SetNodeAABBColor(const AZ::Color& nodeAABBColor);
@@ -264,8 +264,8 @@ namespace EMStudio
         void OnVertexNormalsColorChangedCallback() const;
         void OnFaceNormalsColorChangedCallback() const;
         void OnTangentsColorChangedCallback() const;
-        void OnMirroredBinormalsColorChangedCallback() const;
-        void OnBinormalsColorChangedCallback() const;
+        void OnMirroredBitangentsColorChangedCallback() const;
+        void OnBitangentsColorChangedCallback() const;
         void OnNodeAABBColorChangedCallback() const;
         void OnStaticAABBColorChangedCallback() const;
         void OnMeshAABBColorChangedCallback() const;
@@ -316,8 +316,8 @@ namespace EMStudio
         AZ::Color        m_vertexNormalsColor;
         AZ::Color        m_faceNormalsColor;
         AZ::Color        m_tangentsColor;
-        AZ::Color        m_mirroredBinormalsColor;
-        AZ::Color        m_binormalsColor;
+        AZ::Color        m_mirroredBitangentsColor;
+        AZ::Color        m_bitangentsColor;
         AZ::Color        m_nodeAABBColor;
         AZ::Color        m_staticAABBColor;
         AZ::Color        m_meshAABBColor;

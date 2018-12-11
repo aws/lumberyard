@@ -2688,8 +2688,6 @@ size_t NavigationSystem::GetTriangleInfo(const NavigationMeshID meshID, const AA
 
 bool NavigationSystem::ReadFromFile(const char* fileName, bool bAfterExporting)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Navigation Meshes (Read File)");
-
     bool fileLoaded = false;
 
     m_pEditorBackgroundUpdate->Pause(true);

@@ -59,7 +59,6 @@ namespace AzToolsFramework
             void selectionChangedSignal(const QItemSelection& selected, const QItemSelection& deselected);
 
         protected:
-            void drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const override;
             void startDrag(Qt::DropActions supportedActions) override;
 
         protected Q_SLOTS:

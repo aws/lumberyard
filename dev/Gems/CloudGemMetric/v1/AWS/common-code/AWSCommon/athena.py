@@ -1,5 +1,4 @@
 import retry
-import boto3
 import metric_constant as c
 import math
 import uuid
@@ -12,6 +11,7 @@ import util
 import sensitivity
 import retry
 import enum_type
+import boto3_util
 from s3 import S3
 from StringIO import StringIO
 
@@ -21,7 +21,7 @@ class Athena(object):
 
     def __init__(self, db_name, context = {}):        
         self.__context = context                        
-        self.__client = boto3.client('athena',region_name=os.environ[c.ENV_REGION], api_version='2017-05-18')        
+        self.__client = boto3_util.client('athena', api_version='2017-05-18')
         self.__db_name = db_name
         self.__bucket = os.environ[c.ENV_S3_STORAGE]
         self.__s3 = S3(bucket=self.__bucket)

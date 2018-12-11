@@ -23,7 +23,7 @@
 
 namespace
 {
-    CBootProfiler gProfilerInstance;
+    StaticInstance<CBootProfiler, AZStd::no_destruct<CBootProfiler>> gProfilerInstance;
     enum
     {
         eMAX_THREADS_TO_PROFILE = 32,
@@ -59,7 +59,8 @@ public:
     LARGE_INTEGER m_freq;
 
     CBootProfilerRecord* m_pParent;
-    std::vector<CBootProfilerRecord*> m_Childs;
+    typedef AZStd::vector<CBootProfilerRecord*> ChildVector;
+    ChildVector m_Childs;
 
     CryFixedStringT<256> m_args;
 
@@ -81,7 +82,7 @@ public:
         // childs are allocated via pool as well, the destructors of each child
         // is called explicitly, for the purpose of freeing memory occupied by
         // m_Child vector. Otherwise there will be a memory leak.
-        std::vector<CBootProfilerRecord*>::iterator it = m_Childs.begin();
+        ChildVector::iterator it = m_Childs.begin();
         while (it != m_Childs.end())
         {
             (*it)->~CBootProfilerRecord();

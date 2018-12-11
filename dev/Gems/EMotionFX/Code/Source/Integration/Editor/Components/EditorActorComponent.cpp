@@ -16,6 +16,7 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
@@ -70,6 +71,7 @@ namespace EMotionFX
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, ":/EMotionFX/ActorComponent.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-actor.html")
                         ->DataElement(0, &EditorActorComponent::m_actorAsset,
                         "Actor asset", "Assigned actor asset")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnAssetSelected)
@@ -119,6 +121,12 @@ namespace EMotionFX
                         ->Attribute(AZ::Edit::Attributes::ButtonText, &EditorActorComponent::AttachmentJointButtonText)
                     ;
                 }
+            }
+
+            AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
+            if (behaviorContext)
+            {
+                behaviorContext->Class<EditorActorComponent>()->RequestBus("ActorComponentRequestBus");
             }
         }
 
@@ -174,6 +182,22 @@ namespace EMotionFX
             AZ::Data::AssetBus::Handler::BusDisconnect();
 
             DestroyActorInstance();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        bool EditorActorComponent::GetRenderCharacter() const
+        {
+            return m_renderCharacter;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        void EditorActorComponent::SetRenderCharacter(bool enable)
+        {
+            if (m_renderCharacter != enable)
+            {
+                m_renderCharacter = enable;
+                OnEntityVisibilityChanged(m_renderCharacter);
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -404,6 +428,14 @@ namespace EMotionFX
             {
                 OnAssetReady(asset);
             }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        void EditorActorComponent::OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset)
+        {
+            // Escalate the job if the asset failed.
+            AZ::Outcome<AzToolsFramework::AssetSystem::JobInfoContainer> jobOutcome = AZ::Failure();
+            AzToolsFramework::AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AzToolsFramework::AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, asset.GetId(), true);
         }
 
         //////////////////////////////////////////////////////////////////////////

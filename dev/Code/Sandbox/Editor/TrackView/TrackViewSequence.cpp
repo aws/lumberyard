@@ -180,6 +180,27 @@ void CTrackViewSequence::OnEntityComponentPropertyChanged(AZ::ComponentId change
 }
 
 //////////////////////////////////////////////////////////////////////////
+CTrackViewTrack* CTrackViewSequence::FindTrackById(unsigned int trackId)
+{
+    CTrackViewTrack* result = nullptr;
+    CTrackViewTrackBundle allTracks = GetAllTracks();
+    
+    int allTracksCount = allTracks.GetCount();
+    for (int trackIndex = 0; trackIndex < allTracksCount; trackIndex++)
+    {
+        CTrackViewTrack* track = allTracks.GetTrack(trackIndex);
+        AZ_Assert(track, "Expected valid track.");
+        if (track->GetId() == trackId)
+        {
+            result = track;
+            break;
+        }
+    }
+
+    return result;
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::ConnectToBusesForRecording(const AZ::EntityId& entityId, bool enableConnection)
 {
     // we connect to PropertyEditorEntityChangeNotificationBus for all other changes
@@ -429,6 +450,8 @@ void CTrackViewSequence::OnNodeChanged(CTrackViewNode* pNode, ITrackViewSequence
         // Deselect the node before deleting to give listeners a chance to update things like UI state.
         if (type == ITrackViewSequenceListener::eNodeChangeType_Removed)
         {
+            CTrackViewSequenceNotificationContext context(this);
+
             // Make sure to deselect any keys
             CTrackViewKeyBundle keys = pNode->GetAllKeys();
             for (int key = 0; key < keys.GetKeyCount(); key++)
@@ -441,10 +464,10 @@ void CTrackViewSequence::OnNodeChanged(CTrackViewNode* pNode, ITrackViewSequence
                 }
             }
 
-            // Flush the key selection notifications.
-            if (m_bKeySelectionChanged)
+            // Cancel notification if nothing changed.
+            if (!m_bKeySelectionChanged)
             {
-                SubmitPendingNotifcations(true);
+                context.Cancel();
             }
             
             // deselect the node
@@ -595,6 +618,17 @@ void CTrackViewSequence::QueueNotifications()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CTrackViewSequence::DequeueNotifications()
+{
+    AZ_Assert(m_selectionRecursionLevel > 0, "QueueNotifications should be called before DequeueNotifications()");
+    --m_selectionRecursionLevel;
+    if (m_selectionRecursionLevel == 0)
+    {
+        m_bQueueNotifications = false;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::SubmitPendingNotifcations(bool force)
 {
     if (force)
@@ -667,15 +701,15 @@ void CTrackViewSequence::OnSequenceAdded(CTrackViewSequence* addedSequence)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::DeleteSelectedNodes()
 {
-    assert(CUndo::IsRecording());
-
-    CTrackViewSequenceNotificationContext context(this);
-
     if (IsSelected())
     {
         GetIEditor()->GetSequenceManager()->DeleteSequence(this);
         return;
     }
+
+    // Don't notify in the above IsSelected() case,
+    // because 'this' will become deleted and invalid.
+    CTrackViewSequenceNotificationContext context(this);
 
     CTrackViewAnimNodeBundle selectedNodes = GetSelectedAnimNodes();
     const unsigned int numSelectedNodes = selectedNodes.GetCount();
@@ -992,7 +1026,8 @@ bool CTrackViewSequence::SetName(const char* pName)
     m_pAnimSequence->SetName(pName);
     MarkAsModified();
 
-    if (CUndo::IsRecording())
+    // Non-Legacy sequences are handled by AZ Undo
+    if (CUndo::IsRecording() && GetSequenceType() == SequenceType::Legacy)
     {
         CUndo::Record(new CUndoAnimNodeRename(this, oldName));
     }
@@ -1397,8 +1432,9 @@ Range CTrackViewSequence::GetTimeRange() const
 
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::SetFlags(IAnimSequence::EAnimSequenceFlags flags)
-{
-    if (CUndo::IsRecording())
+{    
+    // Non-Legacy sequences are handled by AZ Undo
+    if (CUndo::IsRecording() && GetSequenceType() == SequenceType::Legacy)
     {
         // Store old sequence settings
         CUndo::Record(new CUndoSequenceSettings(this));
@@ -1435,11 +1471,21 @@ void CTrackViewSequence::OffsetSelectedKeys(const float timeOffset)
 
     CTrackViewKeyBundle selectedKeys = GetSelectedKeys();
 
+    // Set notifyListeners to false and wait until all keys 
+    // have been updated, otherwise the indexes in CTrackViewKeyHandle
+    // may become invalid after sorted with a new time.
+    bool notifyListeners = false;
+
     const CTrackViewTrack* pTrack = nullptr;
     for (int k = 0; k < (int)selectedKeys.GetKeyCount(); ++k)
     {
         CTrackViewKeyHandle skey = selectedKeys.GetKey(k);
-        skey.Offset(timeOffset);
+        skey.Offset(timeOffset, notifyListeners);
+    }
+
+    if (selectedKeys.GetKeyCount() > 0)
+    {
+        OnKeysChanged();
     }
 }
 

@@ -69,7 +69,7 @@ namespace Maestro
         class AnimatedVector3Value;
         class AnimatedBoolValue;
         class AnimatedQuaternionValue;
-        class AnimatedAssetBlendValue;
+        class AnimatedAssetIdValue;
 
         class AnimatedValue
         {
@@ -105,9 +105,9 @@ namespace Maestro
             {
                 u32Value = GetU32Value();
             }
-            void GetValue(AZ::Data::AssetBlends<AZ::Data::AssetData>& assetBlendValue) const
+            void GetValue(AZ::Data::AssetId& assetIdValue) const
             {
-                assetBlendValue = GetAssetBlendValue();
+                assetIdValue = GetAssetIdValue();
             }
 
             // same as above but returning the value
@@ -117,7 +117,7 @@ namespace Maestro
             virtual bool        GetBoolValue() const = 0;
             virtual AZ::s32     GetS32Value() const = 0;
             virtual AZ::u32     GetU32Value() const = 0;
-            virtual const AZ::Data::AssetBlends<AZ::Data::AssetData>& GetAssetBlendValue() const = 0;
+            virtual const AZ::Data::AssetId& GetAssetIdValue() const = 0;
 
             // Set the value to the given arg. Returns true if the arg is the 'native' type of the concrete animated value
             virtual bool SetValue(const AZ::Vector3& vector3Value) = 0;
@@ -126,13 +126,13 @@ namespace Maestro
             virtual bool SetValue(bool boolValue) = 0;
             virtual bool SetValue(AZ::s32 s32Value) = 0;
             virtual bool SetValue(AZ::u32 u32Value) = 0;
-            virtual bool SetValue(const AZ::Data::AssetBlends<AZ::Data::AssetData>& assetBlendValue) = 0;
+            virtual bool SetValue(const AZ::Data::AssetId& assetIdValue) = 0;
 
             virtual bool IsClose(const AnimatedFloatValue& rhs, float tolerance = AZ::g_simdTolerance) const = 0;
             virtual bool IsClose(const AnimatedVector3Value& rhs, float tolerance = AZ::g_simdTolerance) const = 0;
             virtual bool IsClose(const AnimatedQuaternionValue& rhs, float tolerance = AZ::g_simdTolerance) const = 0;
             virtual bool IsClose(const AnimatedBoolValue& rhs, float tolerance = AZ::g_simdTolerance) const = 0;
-            virtual bool IsClose(const AnimatedAssetBlendValue& rhs, float tolerance = AZ::g_simdTolerance) const = 0;
+            virtual bool IsClose(const AnimatedAssetIdValue& rhs, float tolerance = AZ::g_simdTolerance) const = 0;
 
         protected:
             AnimatedValue() {}     // protected constructor as the interface should never be constructed directly - it's an abstract class
@@ -176,11 +176,11 @@ namespace Maestro
             {
                 return static_cast<AZ::u32>(m_value);
             }
-            const AZ::Data::AssetBlends<AZ::Data::AssetData>& GetAssetBlendValue() const override
+            const AZ::Data::AssetId& GetAssetIdValue() const override
             {
                 AZ_Assert(0, "Not expected to be used.");
-                static auto defaultAssetBlend = AZ::Data::AssetBlends<AZ::Data::AssetData>();
-                return defaultAssetBlend;
+                static AZ::Data::AssetId assetId;
+                return assetId;
             }
 
             bool SetValue(const AZ::Vector3& vector3Value) override
@@ -213,9 +213,9 @@ namespace Maestro
                 m_value = static_cast<float>(u32Value);
                 return false;
             }
-            bool SetValue(const AZ::Data::AssetBlends<AZ::Data::AssetData>& assetBlendValue) override
+            bool SetValue(const AZ::Data::AssetId& assetIdValue) override
             {
-                AZ_UNUSED(assetBlendValue);
+                AZ_UNUSED(assetIdValue);
                 return true;
             }
 
@@ -235,7 +235,7 @@ namespace Maestro
             {
                 return rhs.GetBoolValue() == (!AZ::IsClose(m_value, .0f, tolerance));
             }
-            bool IsClose(const AnimatedAssetBlendValue& rhs, float tolerance = AZ::g_simdTolerance) const override
+            bool IsClose(const AnimatedAssetIdValue& rhs, float tolerance = AZ::g_simdTolerance) const override
             {
                 AZ_Assert(0, "Shouldnt be used.");
                 AZ_UNUSED(rhs);
@@ -286,11 +286,11 @@ namespace Maestro
             {
                 return static_cast<AZ::u32>(m_value.GetX());
             }
-            const AZ::Data::AssetBlends<AZ::Data::AssetData>& GetAssetBlendValue() const override
+            const AZ::Data::AssetId& GetAssetIdValue() const override
             {
                 AZ_Assert(0, "Not expected to be used.");
-                static auto defaultAssetBlend = AZ::Data::AssetBlends<AZ::Data::AssetData>();
-                return defaultAssetBlend;
+                static AZ::Data::AssetId assetId;
+                return assetId;
             }
 
             bool SetValue(const AZ::Vector3& vector3Value) override
@@ -323,9 +323,9 @@ namespace Maestro
                 m_value.Set(static_cast<float>(u32Value));
                 return false;
             }
-            bool SetValue(const AZ::Data::AssetBlends<AZ::Data::AssetData>& assetBlendValue) override
+            bool SetValue(const AZ::Data::AssetId& assetIdValue) override
             {
-                AZ_UNUSED(assetBlendValue);
+                AZ_UNUSED(assetIdValue);
                 return true;
             }
 
@@ -345,9 +345,9 @@ namespace Maestro
             {
                 return rhs.GetBoolValue() == (!m_value.IsClose(AZ::Vector3::CreateZero(), tolerance));
             }
-            bool IsClose(const AnimatedAssetBlendValue& rhs, float tolerance = AZ::g_simdTolerance) const override
+            bool IsClose(const AnimatedAssetIdValue& rhs, float tolerance = AZ::g_simdTolerance) const override
             {
-                AZ_Assert(0, "Shouldnt be used.");
+                AZ_Assert(0, "Shouldn't be used.");
                 AZ_UNUSED(rhs);
                 AZ_UNUSED(tolerance);
                 return false;
@@ -397,11 +397,11 @@ namespace Maestro
             {
                 return static_cast<AZ::u32>(m_value.GetLength());
             }
-            const AZ::Data::AssetBlends<AZ::Data::AssetData>& GetAssetBlendValue() const override
+            const AZ::Data::AssetId& GetAssetIdValue() const override
             {
                 AZ_Assert(0, "Not expected to be used.");
-                static auto defaultAssetBlend = AZ::Data::AssetBlends<AZ::Data::AssetData>();
-                return defaultAssetBlend;
+                static AZ::Data::AssetId assetId;
+                return assetId;
             }
 
             bool SetValue(const AZ::Vector3& vector3Value) override
@@ -435,9 +435,9 @@ namespace Maestro
                 m_value.Set(static_cast<float>(u32Value));
                 return false;
             }
-            bool SetValue(const AZ::Data::AssetBlends<AZ::Data::AssetData>& assetBlendValue) override
+            bool SetValue(const AZ::Data::AssetId& assetIdValue) override
             {
-                AZ_UNUSED(assetBlendValue);
+                AZ_UNUSED(assetIdValue);
                 return true;
             }
 
@@ -457,9 +457,9 @@ namespace Maestro
             {
                 return rhs.GetBoolValue() == (!m_value.IsZero(tolerance));
             }
-            bool IsClose(const AnimatedAssetBlendValue& rhs, float tolerance = AZ::g_simdTolerance) const override
+            bool IsClose(const AnimatedAssetIdValue& rhs, float tolerance = AZ::g_simdTolerance) const override
             {
-                AZ_Assert(0, "Shouldnt be used.");
+                AZ_Assert(0, "Shouldn't be used.");
                 AZ_UNUSED(rhs);
                 AZ_UNUSED(tolerance);
                 return false;
@@ -507,11 +507,11 @@ namespace Maestro
             {
                 return m_value ? 1 : 0;
             }
-            const AZ::Data::AssetBlends<AZ::Data::AssetData>& GetAssetBlendValue() const override
+            const AZ::Data::AssetId& GetAssetIdValue() const override
             {
                 AZ_Assert(0, "Not expected to be used.");
-                static auto defaultAssetBlend = AZ::Data::AssetBlends<AZ::Data::AssetData>();
-                return defaultAssetBlend;
+                static AZ::Data::AssetId assetId;
+                return assetId;
             }
 
             bool SetValue(const AZ::Vector3& vector3Value) override
@@ -544,9 +544,9 @@ namespace Maestro
                 m_value = u32Value != 0;
                 return false;
             }
-            bool SetValue(const AZ::Data::AssetBlends<AZ::Data::AssetData>& assetBlendValue) override
+            bool SetValue(const AZ::Data::AssetId& assetIdValue) override
             {
-                AZ_UNUSED(assetBlendValue);
+                AZ_UNUSED(assetIdValue);
                 return true;
             }
 
@@ -567,31 +567,30 @@ namespace Maestro
                 (void)tolerance;                    // avoid compiler warning for unused variable
                 return m_value == rhs.m_value;
             }
-            bool IsClose(const AnimatedAssetBlendValue& rhs, float tolerance = AZ::g_simdTolerance) const override
+            bool IsClose(const AnimatedAssetIdValue& rhs, float tolerance = AZ::g_simdTolerance) const override
             {
-                AZ_Assert(0, "Shouldnt be used.");
+                AZ_Assert(0, "Shouldn't be used.");
                 AZ_UNUSED(rhs);
                 AZ_UNUSED(tolerance);
                 return false;
             }
 
-
         private:
             bool m_value;
         };
 
-        class AnimatedAssetBlendValue
+        class AnimatedAssetIdValue
             : public AnimatedValue
         {
         public:
-            AZ_TYPE_INFO(AnimatedAssetBlendValue, "{5FF422AD-20E7-4109-A2EA-4AACE8213860}");
+            AZ_TYPE_INFO(AnimatedAssetIdValue, "{BA8AFA84-44C7-4358-AB35-775AF2B8A109}");
 
-            AnimatedAssetBlendValue(const AZ::Data::AssetBlends<AZ::Data::AssetData>& value) { m_value = value; }
-            ~AnimatedAssetBlendValue() {}
+            AnimatedAssetIdValue() { m_value.SetInvalid(); }
+            AnimatedAssetIdValue(const AZ::Data::AssetId& value) { m_value = value; }
 
             const AZ::Uuid& GetTypeId() const override
             {
-                return AZ::AzTypeInfo<AnimatedAssetBlendValue>::Uuid();
+                return AZ::AzTypeInfo<AZ::Data::AssetId>::Uuid();
             }
 
             AZ::Vector3 GetVector3Value() const override
@@ -618,7 +617,7 @@ namespace Maestro
             {
                 return 0;
             }
-            const AZ::Data::AssetBlends<AZ::Data::AssetData>& GetAssetBlendValue() const override
+            const AZ::Data::AssetId& GetAssetIdValue() const override
             {
                 return m_value;
             }
@@ -653,9 +652,9 @@ namespace Maestro
                 AZ_UNUSED(u32Value);
                 return false;
             }
-            bool SetValue(const AZ::Data::AssetBlends<AZ::Data::AssetData>& assetBlendValue) override
+            bool SetValue(const AZ::Data::AssetId& assetIdValue) override
             {
-                m_value = assetBlendValue;
+                m_value = assetIdValue;
                 return true;
             }
 
@@ -679,15 +678,14 @@ namespace Maestro
                 AZ_UNUSED(tolerance);
                 return false;
             }
-            bool IsClose(const AnimatedAssetBlendValue& rhs, float tolerance = AZ::g_simdTolerance) const override
+            bool IsClose(const AnimatedAssetIdValue& rhs, float tolerance = AZ::g_simdTolerance) const override
             {
-                return m_value.IsClose(rhs.m_value, tolerance);
+                return m_value == rhs.m_value;
             }
 
         private:
-            AZ::Data::AssetBlends<AZ::Data::AssetData> m_value;
-        };        
-
+            AZ::Data::AssetId m_value;
+        };
 
         //////////////////////////////////////////////////////////////////////////
         // EBusTraits overrides - application is a singleton
@@ -716,8 +714,8 @@ namespace Maestro
         virtual AZ::Uuid GetAnimatedAddressTypeId(const AZ::EntityId& enityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) = 0;
 
         /**
-         * Track View will expect some components (those using AZ::Data::AssetBlends as a virtual property) to supply a GetAssetDuration event
-         * so Track View can query the duration of an asset (like a motion) without having any knowledge of that that asset is.
+         * Track View will expect some components to supply a GetAssetDuration event so Track View can query the duration of an asset (like a motion)
+         * without having any knowledge of that that asset is.
          */
         virtual void GetAssetDuration(AnimatedValue& returnValue, const AZ::EntityId& animatedEntityId, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId) = 0;
 
@@ -823,6 +821,11 @@ namespace Maestro
         * @param paramValue The Event Key's Value parameter as a string
         */
         virtual void OnTrackEventTriggered(const char* eventName, const char* eventValue) { (void)eventName;  (void)eventValue; }
+        /**
+        * Called when a Sequence changes camera during playback in Track View.
+        * @param cameraEntityId entityId of the new camera.
+        */
+        virtual void OnCameraChanged(const AZ::EntityId& oldCameraEntityId, const AZ::EntityId& newCameraEntityId) {}
     };
 
     using SequenceComponentNotificationBus = AZ::EBus<SequenceComponentNotification>;

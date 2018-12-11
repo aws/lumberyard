@@ -68,6 +68,14 @@
                         "Role"
                     ]
                 },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "AWSBehaviorLambdaExampleConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
                         "AWSBehaviorLambdaExampleConfiguration",

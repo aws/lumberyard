@@ -19,7 +19,7 @@ import os.path
 def build(bld):
     bld.recurse('Tests')
 
-    bld.CryEngineStaticLibrary(
+    kw = dict(
         # Settings
         target          = 'GridMate',
         vs_filter       = 'Network',
@@ -40,11 +40,10 @@ def build(bld):
         # Platform Specific
         win_features                = ['crcfix'],
 
-       
-       
-
-       
+        restricted_script = 'update_restricted_parameters',
 
         darwin_enable_rtti          = True,
-
     )
+    for p in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p)] = ['GridMate/{0}/gridmate_{0}.waf_files'.format(p)]
+    bld.CryEngineStaticLibrary(**kw)

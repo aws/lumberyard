@@ -56,7 +56,7 @@ namespace AssetProcessor
     
     public:
         AssetCatalog(QObject* parent, AssetProcessor::PlatformConfiguration* platformConfiguration);
-        ~AssetCatalog();
+        virtual ~AssetCatalog();
 
     Q_SIGNALS:
         // outgoing message to the network
@@ -74,7 +74,7 @@ namespace AssetProcessor
         void OnSourceFinished(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid);
         void AsyncAssetCatalogStatusRequest();
         
-    private:
+    protected:
 
         //////////////////////////////////////////////////////////////////////////
         // AssetRegistryRequestBus::Handler overrides
@@ -89,7 +89,6 @@ namespace AssetProcessor
         const char* GetAbsoluteDevRootFolderPath() override;
         bool GetRelativeProductPathFromFullSourceOrProductPath(const AZStd::string& fullPath, AZStd::string& relativeProductPath) override;
         bool GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullSourcePath) override;
-        void UpdateQueuedEvents() override;
         bool GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath) override;
         bool GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override;
         bool GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override;

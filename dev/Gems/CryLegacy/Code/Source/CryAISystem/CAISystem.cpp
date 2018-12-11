@@ -114,63 +114,6 @@ static const char* sCodeCoverageContextFile = "ccContext.txt";
         (*listenerIt)->call;                                               \
     }
 
-template<>
-AZStd::vector < SAIObjectMapIter <CWeakRef>* > SAIObjectMapIter <CWeakRef>::pool = AZStd::vector<SAIObjectMapIter <CWeakRef>*>();
-template<>
-AZStd::vector < SAIObjectMapIterOfType <CWeakRef>* > SAIObjectMapIterOfType <CWeakRef>::pool = AZStd::vector<SAIObjectMapIterOfType <CWeakRef>*>();
-template<>
-AZStd::vector < SAIObjectMapIterInRange <CWeakRef>* > SAIObjectMapIterInRange <CWeakRef>::pool = AZStd::vector<SAIObjectMapIterInRange <CWeakRef>*>();
-template<>
-AZStd::vector < SAIObjectMapIterOfTypeInRange <CWeakRef>* > SAIObjectMapIterOfTypeInRange <CWeakRef>::pool = AZStd::vector<SAIObjectMapIterOfTypeInRange <CWeakRef>*>();
-template<>
-AZStd::vector < SAIObjectMapIterInShape <CWeakRef>* > SAIObjectMapIterInShape <CWeakRef>::pool = AZStd::vector<SAIObjectMapIterInShape <CWeakRef>*>();
-template<>
-AZStd::vector < SAIObjectMapIterOfTypeInShape <CWeakRef>* > SAIObjectMapIterOfTypeInShape <CWeakRef>::pool = AZStd::vector<SAIObjectMapIterOfTypeInShape <CWeakRef>*>();
-template<>
-AZStd::vector < SAIObjectMapIter <CCountedRef>* > SAIObjectMapIter <CCountedRef>::pool = AZStd::vector<SAIObjectMapIter <CCountedRef>*>();
-template<>
-AZStd::vector < SAIObjectMapIterOfType <CCountedRef>* > SAIObjectMapIterOfType <CCountedRef>::pool = AZStd::vector<SAIObjectMapIterOfType <CCountedRef>*>();
-template<>
-AZStd::vector < SAIObjectMapIterInRange <CCountedRef>* > SAIObjectMapIterInRange <CCountedRef>::pool = AZStd::vector<SAIObjectMapIterInRange <CCountedRef>*>();
-template<>
-AZStd::vector < SAIObjectMapIterOfTypeInRange <CCountedRef>* > SAIObjectMapIterOfTypeInRange <CCountedRef>::pool = AZStd::vector<SAIObjectMapIterOfTypeInRange <CCountedRef>*>();
-template<>
-AZStd::vector < SAIObjectMapIterInShape <CCountedRef>* > SAIObjectMapIterInShape <CCountedRef>::pool = AZStd::vector<SAIObjectMapIterInShape <CCountedRef>*>();
-template<>
-AZStd::vector < SAIObjectMapIterOfTypeInShape <CCountedRef>* > SAIObjectMapIterOfTypeInShape <CCountedRef>::pool = AZStd::vector<SAIObjectMapIterOfTypeInShape <CCountedRef>*>();
-
-//===================================================================
-// ClearAIObjectIteratorPools
-//===================================================================
-void ClearAIObjectIteratorPools()
-{
-    // (MATT) Iterators now have their destructors called before they enter the pool - so we only need to free the memory here {2008/12/04}
-    std::for_each(SAIObjectMapIter<CWeakRef>::pool.begin(), SAIObjectMapIter<CWeakRef>::pool.end(), DeleteAIObjectMapIter<CWeakRef>);
-    std::for_each(SAIObjectMapIterOfType<CWeakRef>::pool.begin(), SAIObjectMapIterOfType<CWeakRef>::pool.end(), DeleteAIObjectMapIter<CWeakRef>);
-    std::for_each(SAIObjectMapIterInRange<CWeakRef>::pool.begin(), SAIObjectMapIterInRange<CWeakRef>::pool.end(), DeleteAIObjectMapIter<CWeakRef>);
-    std::for_each(SAIObjectMapIterOfTypeInRange<CWeakRef>::pool.begin(), SAIObjectMapIterOfTypeInRange<CWeakRef>::pool.end(), DeleteAIObjectMapIter<CWeakRef>);
-    std::for_each(SAIObjectMapIterInShape<CWeakRef>::pool.begin(), SAIObjectMapIterInShape<CWeakRef>::pool.end(), DeleteAIObjectMapIter<CWeakRef>);
-    std::for_each(SAIObjectMapIterOfTypeInShape<CWeakRef>::pool.begin(), SAIObjectMapIterOfTypeInShape<CWeakRef>::pool.end(), DeleteAIObjectMapIter<CWeakRef>);
-    std::for_each(SAIObjectMapIter<CCountedRef>::pool.begin(), SAIObjectMapIter<CCountedRef>::pool.end(), DeleteAIObjectMapIter<CCountedRef>);
-    std::for_each(SAIObjectMapIterOfType<CCountedRef>::pool.begin(), SAIObjectMapIterOfType<CCountedRef>::pool.end(), DeleteAIObjectMapIter<CCountedRef>);
-    std::for_each(SAIObjectMapIterInRange<CCountedRef>::pool.begin(), SAIObjectMapIterInRange<CCountedRef>::pool.end(), DeleteAIObjectMapIter<CCountedRef>);
-    std::for_each(SAIObjectMapIterOfTypeInRange<CCountedRef>::pool.begin(), SAIObjectMapIterOfTypeInRange<CCountedRef>::pool.end(), DeleteAIObjectMapIter<CCountedRef>);
-    std::for_each(SAIObjectMapIterInShape<CCountedRef>::pool.begin(), SAIObjectMapIterInShape<CCountedRef>::pool.end(), DeleteAIObjectMapIter<CCountedRef>);
-    std::for_each(SAIObjectMapIterOfTypeInShape<CCountedRef>::pool.begin(), SAIObjectMapIterOfTypeInShape<CCountedRef>::pool.end(), DeleteAIObjectMapIter<CCountedRef>);
-    stl::free_container(SAIObjectMapIter<CWeakRef>::pool);
-    stl::free_container(SAIObjectMapIterOfType<CWeakRef>::pool);
-    stl::free_container(SAIObjectMapIterInRange<CWeakRef>::pool);
-    stl::free_container(SAIObjectMapIterOfTypeInRange<CWeakRef>::pool);
-    stl::free_container(SAIObjectMapIterInShape<CWeakRef>::pool);
-    stl::free_container(SAIObjectMapIterOfTypeInShape<CWeakRef>::pool);
-    stl::free_container(SAIObjectMapIter<CCountedRef>::pool);
-    stl::free_container(SAIObjectMapIterOfType<CCountedRef>::pool);
-    stl::free_container(SAIObjectMapIterInRange<CCountedRef>::pool);
-    stl::free_container(SAIObjectMapIterOfTypeInRange<CCountedRef>::pool);
-    stl::free_container(SAIObjectMapIterInShape<CCountedRef>::pool);
-    stl::free_container(SAIObjectMapIterOfTypeInShape<CCountedRef>::pool);
-}
-
 void RemoveNonActors(CAISystem::AIActorSet& actorSet)
 {
     for (CAISystem::AIActorSet::iterator it = actorSet.begin(); it != actorSet.end(); )
@@ -1769,8 +1712,6 @@ bool CAISystem::SameFormation(const CPuppet* pHuman, const CAIVehicle* pVehicle)
 //-----------------------------------------------------------------------------------------------------------
 void CAISystem::Reset(IAISystem::EResetReason reason)
 {
-    MEMSTAT_LABEL("CAISystem::Reset");
-
     // Faction Map needs to reset and be present even when AISystem is disabled (i.e. multiplayer)
     {
         switch (reason)
@@ -1814,15 +1755,11 @@ void CAISystem::Reset(IAISystem::EResetReason reason)
         }
     }
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "AI Reset");
     LOADING_TIME_PROFILE_SECTION;
 
     switch (reason)
     {
     case RESET_LOAD_LEVEL:
-#if CAPTURE_REPLAY_LOG
-        CryGetIMemReplay()->AddLabelFmt("AILoad");
-#endif
         if (!gAIEnv.pTacticalPointSystem)
         {
             gAIEnv.pTacticalPointSystem = new CTacticalPointSystem();
@@ -1965,7 +1902,6 @@ void CAISystem::Reset(IAISystem::EResetReason reason)
             gAIEnv.pCollisionAvoidanceSystem->Reset(true);
 
             CleanupAICollision();
-            ClearAIObjectIteratorPools();
 
             CPathObstacles::ResetOfStaticData();
             AISignalExtraData::CleanupPool();
@@ -1985,8 +1921,6 @@ void CAISystem::Reset(IAISystem::EResetReason reason)
             gAIEnv.pMovementSystem->Reset();
 
             m_bInitialized = false;
-
-            MEMSTAT_LABEL("AIUnload");
         }
         return;
     }
@@ -2197,7 +2131,6 @@ void CAISystem::Reset(IAISystem::EResetReason reason)
         gAIEnv.pGroupManager->Reset(objectResetType);
     }
 
-    ClearAIObjectIteratorPools();
     if (m_pNavigation)
     {
         m_pNavigation->Reset(reason);
@@ -2481,7 +2414,6 @@ IAIGroup* CAISystem::GetIAIGroup(int nGroupID)
 //====================================================================
 void CAISystem::ReadAreasFromFile(const char* fileNameAreas)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Navigation, 0, "Areas (%s)", fileNameAreas);
     LOADING_TIME_PROFILE_SECTION
 
     CCryBufferedFileReader file;
@@ -2560,8 +2492,6 @@ void CAISystem::ReadAreasFromFile(const char* fileNameAreas)
 void CAISystem::LoadNavigationData(const char* szLevel, const char* szMission,
     const bool bRequiredQuickLoading /* = false */, const bool bAfterExporting /* = false */)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Navigation, 0, "AI Navigation");
-
     LOADING_TIME_PROFILE_SECTION(GetISystem());
 
     if (!IsEnabled())
@@ -2598,7 +2528,6 @@ void CAISystem::LoadNavigationData(const char* szLevel, const char* szMission,
 
 void CAISystem::LoadCover(const char* szLevel, const char* szMission)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Navigation, 0, "Cover system");
     LOADING_TIME_PROFILE_SECTION(GetISystem());
     gAIEnv.pCoverSystem->Clear();
 
@@ -5416,8 +5345,6 @@ void CAISystem::SerializeObjectIDs(TSerialize ser)
 //====================================================================
 void CAISystem::Serialize(TSerialize ser)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "AI serialization");
-
     DebugOutputObjects("Start of serialize");
 
     if (ser.IsReading())

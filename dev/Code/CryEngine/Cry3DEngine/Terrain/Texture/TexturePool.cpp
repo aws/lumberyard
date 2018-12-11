@@ -119,8 +119,6 @@ bool TexturePool::Exists() const
 
 void TexturePool::Create(uint32 dimension, ETEX_Format format)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Texture, 0, "TexturePool");
-
     if (m_Format != format || m_Dimension != dimension)
     {
         Reset();

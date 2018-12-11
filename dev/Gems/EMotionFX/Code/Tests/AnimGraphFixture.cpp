@@ -55,6 +55,7 @@ namespace EMotionFX
             m_actorInstance = ActorInstance::Create(m_actor);
             m_animGraphInstance = AnimGraphInstance::Create(m_animGraph, m_actorInstance, m_motionSet);
             m_actorInstance->SetAnimGraphInstance(m_animGraphInstance);
+            m_animGraphInstance->IncreaseReferenceCount(); // Two owners now, the test and the actor instance
             m_animGraphInstance->UpdateUniqueData();
         }
     }

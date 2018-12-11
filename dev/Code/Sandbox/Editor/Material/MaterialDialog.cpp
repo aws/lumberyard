@@ -874,9 +874,28 @@ void CMaterialUI::GetTextureResources(SInputShaderResources& sr, int tex, int pr
     {
         // Remove the texture if the path was cleared in the UI
         sr.m_TexturesResourcesMap.erase(tex);
+
+        // If the normal map/second normal map has been cleared in the UI, 
+        // we must also clear the smoothness/second smoothness since smoothness lives in the alpha of the normal
+        if (tex == EFTT_NORMALS)
+        {
+            sr.m_TexturesResourcesMap.erase(EFTT_SMOOTHNESS);
+        }
+
+        // EFTT_CUSTOM_SECONDARY is the 2nd normal
+        if (tex == EFTT_CUSTOM_SECONDARY)
+        {
+            sr.m_TexturesResourcesMap.erase(EFTT_SECOND_SMOOTHNESS);
+        }
         return;
     }
     texFilename = Path::ToUnixPath(texFilename);
+
+    if (texFilename.size() > AZ_MAX_PATH_LEN)
+    {
+        AZ_Error("Material Editor", false, "Texture path exceeds the maximium allowable length of %d.", AZ_MAX_PATH_LEN);
+        return;
+    }
 
     // The following line will insert the slot if did not exist.
     SEfResTexture*      pTextureRes = &(sr.m_TexturesResourcesMap[tex]);
@@ -1475,13 +1494,13 @@ void CMaterialDialog::InitToolbar(UINT nToolbarResID)
     m_pickAction = m_toolbar->addAction(pickIcon, tr("Pick Material from Object"), this, SLOT(OnPickMtl()));
     m_pickAction->setCheckable(true);
     QAction* sepAction = m_toolbar->addSeparator();
-    QComboBox* cb = new QComboBox(this);
-    cb->addItem(tr("All Materials"));
-    cb->addItem(tr("Used In Level"));
-    cb->setMinimumWidth(150);
-    QAction* cbAction = m_toolbar->addWidget(cb);
-    cb->setCurrentIndex(0);
-    connect(cb, SIGNAL(currentIndexChanged(int)), this, SLOT(OnChangedBrowserListType(int)));
+    m_filterTypeSelection = new QComboBox(this);
+    m_filterTypeSelection->addItem(tr("All Materials"));
+    m_filterTypeSelection->addItem(tr("Used In Level"));
+    m_filterTypeSelection->setMinimumWidth(150);
+    QAction* cbAction = m_toolbar->addWidget(m_filterTypeSelection);
+    m_filterTypeSelection->setCurrentIndex(0);
+    connect(m_filterTypeSelection, SIGNAL(currentIndexChanged(int)), this, SLOT(OnChangedBrowserListType(int)));
     m_toolbar->addSeparator();
     QIcon addIcon;
     addIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_add_normal.png" }, QIcon::Normal);
@@ -2152,6 +2171,7 @@ void CMaterialDialog::UpdatePreview()
 //////////////////////////////////////////////////////////////////////////
 void CMaterialDialog::OnChangedBrowserListType(int sel)
 {
+    m_wndMtlBrowser->ShowOnlyLevelMaterials(sel == 1);
     m_pMatManager->SetCurrentMaterial(0);
     UpdateActions();
 }
@@ -2202,9 +2222,16 @@ void CMaterialDialog::OnDataBaseItemEvent(IDataBaseItem* pItem, EDataBaseItemEve
 // If an object is selected or de-selected, update the available actions in the Material Editor toolbar
 void CMaterialDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
 {
-    if (event == eNotify_OnSelectionChange)
+    switch (event)
     {
+    case eNotify_OnSelectionChange:
         UpdateActions();
+        break;
+    case eNotify_OnCloseScene:
+    case eNotify_OnEndNewScene:
+    case eNotify_OnEndSceneOpen:
+        m_filterTypeSelection->setCurrentIndex(0);
+        break;
     }
 }
 

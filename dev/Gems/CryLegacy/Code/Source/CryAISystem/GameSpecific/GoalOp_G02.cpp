@@ -724,12 +724,12 @@ COPSeekCover::COPSeekCover(bool uncover, float radius, float minRadius, int iter
 }
 
 COPSeekCover::COPSeekCover(const XmlNodeRef& node)
-    : m_uncover(!s_xml.GetBool(node, "hide", true))
+    : m_uncover(!s_xml->GetBool(node, "hide", true))
     , m_radius(0.0f)
     , m_minRadius(0.0f)
     , m_iterations(3)
-    , m_useLastOpAsBackup(s_xml.GetBool(node, "useLastOpAsBackup", true))
-    , m_towardsLastOpResult(s_xml.GetBool(node, "towardsLastOpResult", true))
+    , m_useLastOpAsBackup(s_xml->GetBool(node, "useLastOpAsBackup", true))
+    , m_towardsLastOpResult(s_xml->GetBool(node, "towardsLastOpResult", true))
     , m_endAccuracy(0.f)
     , m_notMovingTimeMs(0)
     , m_pTraceDirective(0)
@@ -740,7 +740,7 @@ COPSeekCover::COPSeekCover(const XmlNodeRef& node)
     , m_right(ZERO)
     , m_target(ZERO)
 {
-    s_xml.GetMandatory(node, "radius", m_radius);
+    s_xml->GetMandatory(node, "radius", m_radius);
     node->getAttr("iterations", m_iterations);
     node->getAttr("minRadius", m_minRadius);
 

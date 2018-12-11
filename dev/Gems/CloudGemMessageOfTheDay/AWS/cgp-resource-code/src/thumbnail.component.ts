@@ -20,7 +20,7 @@ import { LyMetricService } from 'app/shared/service/index';
 })
 export class MessageOfTheDayThumbnailComponent extends AbstractCloudGemThumbnailComponent {
     @Input() context: any
-    @Input() displayName: string = "Message of the day";
+    @Input() displayName: string = "Message of the Day";
     @Input() srcIcon: string = "https://m.media-amazon.com/images/G/01/cloudcanvas/images/message_of_the_day_optimized._V518452894_.png"
               
     public state: TackableStatus = new TackableStatus();

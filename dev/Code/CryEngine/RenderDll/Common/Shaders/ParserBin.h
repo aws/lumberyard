@@ -563,7 +563,11 @@ enum EToken
     eT__LT_3_TYPE,
     eT__TT_TEXCOORD_MATRIX,
     eT__TT_TEXCOORD_PROJ,
-    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR,
+    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DIFFUSE,
+    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE,
+    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE_MULT,
+    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DETAIL,
+    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_CUSTOM,
     eT__VT_TYPE,
     eT__VT_TYPE_MODIF,
     eT__VT_BEND,
@@ -750,7 +754,7 @@ struct SMacroBinFX
 
 class CParserBin;
 
-typedef std::map<uint32, SMacroBinFX> FXMacroBin;
+typedef AZStd::unordered_map<uint32, SMacroBinFX, AZStd::hash<uint32>, AZStd::equal_to<uint32>, AZ::StdLegacyAllocator> FXMacroBin;
 typedef FXMacroBin::iterator FXMacroBinItor;
 
 struct SParserFrame

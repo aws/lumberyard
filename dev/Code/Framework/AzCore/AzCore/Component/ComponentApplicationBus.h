@@ -188,7 +188,7 @@ namespace AZ
          * Gets the path to the directory that contains the application's executable.
          * @return A pointer to the name of the path that contains the application's executable.
          */
-        virtual const char*             GetExecutableFolder() = 0;
+        virtual const char*             GetExecutableFolder() const = 0;
         /**
          * Returns a pointer to the driller manager, if driller is enabled.
          * The driller manager manages all active driller sessions and driller factories.

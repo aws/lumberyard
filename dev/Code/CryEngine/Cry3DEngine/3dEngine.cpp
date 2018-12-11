@@ -523,8 +523,6 @@ bool C3DEngine::Init()
     AZ_Assert(tempPoolSize != 0, "Temp pool size should not be 0.");
 
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "3Engine Temp Pool");
-
         if (!CTemporaryPool::Initialize(tempPoolSize))
         {
             AZ_Assert(false, "Could not initialize initialize temporary pool for 3D Engine startup.");
@@ -1921,17 +1919,43 @@ IPhysMaterialEnumerator* C3DEngine::GetPhysMaterialEnumerator()
 
 float C3DEngine::GetDistanceToSectorWithWater()
 {
-    // If there's no terrain or no ocean, return an arbitrarily large number.
-    if (!m_pTerrain || !m_pTerrain->GetRootNode() || (OceanToggle::IsActive() && !OceanRequest::OceanIsEnabled()))
+    const Vec3 camPosition = GetRenderingCamera().GetPosition();
+    const float minDistance = 0.1f;
+    const bool oceanActive = OceanToggle::IsActive();
+    const bool oceanEnabled = OceanRequest::OceanIsEnabled();
+    float distance = minDistance;
+
+    if (oceanActive && !oceanEnabled)
     {
-        return std::numeric_limits<float>::infinity();
+        distance = std::numeric_limits<float>::infinity();
+    }
+    else if (!m_pTerrain || !m_pTerrain->GetRootNode())
+    {
+        // if there is no terrain, or it is invalid, check if we still have an ocean
+        if (oceanActive && oceanEnabled)
+        {
+            distance = camPosition.z - OceanRequest::GetOceanLevel();
+        }
+        else
+        {
+            distance = std::numeric_limits<float>::infinity();
+        }
+    }
+    else
+    {
+        // if the camera is over terrain, try to use the terrain's stored distance to water
+        bool bCameraInTerrainBounds = Overlap::Point_AABB2D(camPosition, m_pTerrain->GetRootNode()->GetBBoxVirtual());
+        if (bCameraInTerrainBounds && (m_pTerrain->GetDistanceToSectorWithWater() > minDistance))
+        {
+            distance = m_pTerrain->GetDistanceToSectorWithWater();
+        }
+        else
+        {
+            distance = camPosition.z - (oceanActive ? OceanRequest::GetOceanLevel() : GetWaterLevel());
+        }
     }
 
-    Vec3 camPostion = GetRenderingCamera().GetPosition();
-    bool bCameraInTerrainBounds = Overlap::Point_AABB2D(camPostion, m_pTerrain->GetRootNode()->GetBBoxVirtual());
-
-    return (bCameraInTerrainBounds && (m_pTerrain && m_pTerrain->GetDistanceToSectorWithWater() > 0.1f))
-           ? m_pTerrain->GetDistanceToSectorWithWater() : max(camPostion.z - OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetWaterLevel(), 0.1f);
+    return max(distance, minDistance);
 }
 
 Vec3 C3DEngine::GetSunColor() const
@@ -2208,7 +2232,16 @@ void C3DEngine::ActivatePortal(const Vec3& vPos, bool bActivate, const char* szE
 
 bool C3DEngine::SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, int nSID)
 {
-    assert(nSID >= 0 && nSID < m_pObjManager->GetListStaticTypes().Count());
+    if (m_pObjManager->GetListStaticTypes().Count() == 0)
+    {
+        AZ_Warning("C3DEngine", false, "Trying to set a Stat instance without an initialized Object manager.  This might be caused by using the vegetation system without terrain.");
+        return false;
+    }
+    if ((nSID < 0) || (nSID >= m_pObjManager->GetListStaticTypes().Count()))
+    {
+        AZ_Assert(false, "Invalid StatInst ID: %d (should be > 0 and < %d)", nSID, m_pObjManager->GetListStaticTypes().Count());
+        return false;
+    }
 
     m_fRefreshSceneDataCVarsSumm = -100;
 
@@ -2369,20 +2402,6 @@ void C3DEngine::UpdateStatInstGroups()
 
 void C3DEngine::GetMemoryUsage(class ICrySizer* pSizer) const
 {
-#if !defined(AZ_MONOLITHIC_BUILD) // Only when compiling as dynamic library
-    //  {
-    //SIZER_COMPONENT_NAME(pSizer,"Strings");
-    //pSizer->AddObject( (this+1),string::_usedMemory(0) );
-    //  }
-    {
-        SIZER_COMPONENT_NAME(pSizer, "STL Allocator Waste");
-        CryModuleMemoryInfo meminfo;
-        ZeroStruct(meminfo);
-        CryGetMemoryInfoForModule(&meminfo);
-        pSizer->AddObject((this + 2), (size_t)meminfo.STL_wasted);
-    }
-#endif
-
     pSizer->AddObject(this, sizeof(*this) + (GetCVars()->e_StreamCgfDebug ? 100 * 1024 * 1024 : 0));
     pSizer->AddObject(m_pCVars);
 

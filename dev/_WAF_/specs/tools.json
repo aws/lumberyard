@@ -4,7 +4,7 @@
     "comment"               : "This is meant to only compile tools on Windows and Mac.",
     "disable_game_projects" : true,
     "platforms" : ["win","darwin"],
-    "configurations" : ["debug","profile"],
+    "configurations" : ["debug", "debug_test", "profile", "profile_test"],
 
     "modules" :
     [
@@ -19,7 +19,6 @@
         "Lyzard",
         "lmbr",
         "LyzardSDK",
-        "LyzardHelloWorld",
         "LyzardEngines",
         "LyzardGems",
         "LyzardProjects",
@@ -38,8 +37,6 @@
         "LyMetricsProducer_static",
         "LyMetricsProducer_python",
         "LyMetricsConsumer",
-        "LyInstallerMetrics",
-        "SetupAssistant",
-        "SetupAssistantBatch"
+        "LyInstallerMetrics"
     ]
 }

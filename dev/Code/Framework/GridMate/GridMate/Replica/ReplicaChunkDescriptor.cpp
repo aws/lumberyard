@@ -215,9 +215,14 @@ namespace GridMate
     //-----------------------------------------------------------------------------
     ReplicaChunkDescriptorTable::~ReplicaChunkDescriptorTable()
     {
-        while (!m_moduleDescriptorTable.empty())
+        // This cannot currently be shut down on some platforms, as this static is shutdown after
+        // all allocators (and in this case, specifically the OSAllocator) are gone
+        if (AZ::AllocatorInstance<AZ::OSAllocator>::IsReady())
         {
-            UnregisterReplicaChunkDescriptor(m_moduleDescriptorTable.back().m_chunkTypeId);
+            while (!m_moduleDescriptorTable.empty())
+            {
+                UnregisterReplicaChunkDescriptor(m_moduleDescriptorTable.back().m_chunkTypeId);
+            }
         }
     }
     //-----------------------------------------------------------------------------
@@ -240,10 +245,9 @@ namespace GridMate
             DescriptorInfo* descInfo = &*itModuleTable;
             if (chunkTypeId == descInfo->m_chunkTypeId)
             {
-                descInfo->m_descriptor->~ReplicaChunkDescriptor();
-                AZ_OS_FREE(descInfo->m_descriptor);
+                azdestroy(descInfo->m_descriptor, AZ::OSAllocator);
                 m_moduleDescriptorTable.erase(itModuleTable);
-                AZ_OS_FREE(descInfo);
+                delete descInfo;
                 if (UnregisterReplicaChunkDescriptorFromGlobalTable(chunkTypeId))
                 {
                     return true;
@@ -258,12 +262,12 @@ namespace GridMate
     //-----------------------------------------------------------------------------
     void ReplicaChunkDescriptorTable::AddReplicaChunkDescriptor(ReplicaChunkClassId chunkTypeId, ReplicaChunkDescriptor* descriptor)
     {
-        DescriptorInfo* localDescInfo = new(AZ_OS_MALLOC(sizeof(DescriptorInfo), AZStd::alignment_of<DescriptorInfo>::value))DescriptorInfo();
+        DescriptorInfo* localDescInfo = aznew DescriptorInfo();
         localDescInfo->m_chunkTypeId = chunkTypeId;
         localDescInfo->m_descriptor = descriptor;
         m_moduleDescriptorTable.push_back(*localDescInfo);
 
-        DescriptorInfo* globalDescInfo = new(AZ_OS_MALLOC(sizeof(DescriptorInfo), AZStd::alignment_of<DescriptorInfo>::value))DescriptorInfo();
+        DescriptorInfo* globalDescInfo = aznew DescriptorInfo();
         globalDescInfo->m_chunkTypeId = chunkTypeId;
         globalDescInfo->m_descriptor = descriptor;
         m_globalDescriptorTable->push_back(*globalDescInfo);
@@ -277,7 +281,7 @@ namespace GridMate
             if (descInfo->m_chunkTypeId == chunkTypeId)
             {
                 m_globalDescriptorTable->erase(itGlobalTable);
-                AZ_OS_FREE(descInfo);
+                delete descInfo;
                 return true;
             }
         }

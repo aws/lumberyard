@@ -37,6 +37,7 @@
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzCore/std/string/conversions.h>
+#include <AzCore/std/algorithm.h>
 
 //#define DEFENCE_CVAR_HASH_LOGGING
 
@@ -721,8 +722,6 @@ bool CXConsole::CVarNameLess(const std::pair<const char*, ICVar*>& lhs, const st
 //////////////////////////////////////////////////////////////////////////
 void CXConsole::LoadConfigVar(const char* sVariable, const char* sValue)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     ICVar* pCVar = GetCVar(sVariable);
     if (pCVar)
     {
@@ -826,31 +825,18 @@ ICVar* CXConsole::RegisterCVarGroup(const char* szName, const char* szFileName)
     }
 
     ICVar* pCVar = stl::find_in_map(m_mapVariables, szName, NULL);
-    AZStd::unordered_map<AZStd::string, CVarInfo>* map = gEnv->pSystem->GetGraphicsSettingsMap();
-    if (pCVar && !map)
+    if (pCVar)
     {
-        assert(0);          // groups should be only registered once
+        AZ_Error("System", false, "CVar groups should only be registered once");
         return pCVar;
     }
 
     CXConsoleVariableCVarGroup* pCVarGroup = new CXConsoleVariableCVarGroup(this, szName, szFileName, VF_COPYNAME);
 
-    // Register cvar if not opening graphics settings dialog box
-    if (!map)
-    {
-        pCVar = pCVarGroup;
+    pCVar = pCVarGroup;
 
-        RegisterVar(pCVar, CXConsoleVariableCVarGroup::OnCVarChangeFunc);
-    }
-    /*
-        // log to file - useful during development - might not be required for final shipping
-        {
-            string sInfo = pCVarGroup->GetDetailedInfo();
+    RegisterVar(pCVar, CXConsoleVariableCVarGroup::OnCVarChangeFunc);
 
-            gEnv->pLog->LogToFile("CVarGroup %s",sInfo.c_str());
-            gEnv->pLog->LogToFile(" ");
-        }
-    */
     return pCVar;
 }
 
@@ -1609,8 +1595,6 @@ const char* CXConsole::GetHistoryElement(const bool bUpOrDown)
 //////////////////////////////////////////////////////////////////////////
 void CXConsole::Draw()
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     //ShowConsole(true);
     if (!m_pSystem || !m_nTempScrollMax)
     {
@@ -1719,19 +1703,44 @@ void CXConsole::DrawBuffer(int nScrollPos, const char* szEffect)
 {
     if (m_pFont && m_pRenderer)
     {
+        // The scroll position is in pixels for a 800x600 screen so we scale it to the current resolution.
+        Vec2 referenceSize(800.0f, 600.0f);
+        const float fontSizeIn800x600 = 14;
+        const float maxYPos = nScrollPos * (m_pRenderer->GetHeight() / referenceSize.y);
+        // We also scale the font from the original 800x600 size
+        float fontSize = fontSizeIn800x600 * (m_pRenderer->GetWidth() / referenceSize.x);
+        const float fontAspectRatio = 0.75f;
+        float minFontSize = 10.f;
+        float maxFontSize = 50.f;
+        ICVar* minFontCVar = GetCVar("r_minConsoleFontSize");
+        if (minFontCVar)
+        {
+            minFontSize = minFontCVar->GetFVal();
+        }
+
+        ICVar* maxFontCVar = GetCVar("r_maxConsoleFontSize");
+        if (maxFontCVar)
+        {
+            maxFontSize = maxFontCVar->GetFVal();
+        }
+
+        // Limit max font size in case minFontSize > maxFontSize
+        maxFontSize = AZStd::max(minFontSize, maxFontSize);
+        fontSize = AZStd::min(AZStd::max(fontSize, minFontSize), maxFontSize);
+
         STextDrawContext ctx;
         //ctx.Reset();
         ctx.SetEffect(m_pFont->GetEffectId(szEffect));
         ctx.SetProportional(false);
         ctx.SetCharWidthScale(0.5f);
-        ctx.SetSize(Vec2(14, 14));
+        ctx.SetSize(Vec2(fontSize, fontAspectRatio * fontSize));
         ctx.SetColor(ColorF(1, 1, 1, 1));
         ctx.SetFlags(eDrawText_CenterV | eDrawText_2D);
 
         float csize = 0.8f * ctx.GetCharHeight();
-        ctx.SetSizeIn800x600(true);
+        ctx.SetSizeIn800x600(false);
 
-        float yPos = nScrollPos - csize - 3.0f;
+        float yPos = maxYPos - csize - 3.0f;
         float xPos = LINE_BORDER;
 
         float fCharWidth = (ctx.GetCharWidth() * ctx.GetCharWidthScale());
@@ -2265,8 +2274,7 @@ void CXConsole::ExecuteString(const char* command, const bool bSilentMode, const
         m_deferredExecution = oldDeferredExecution;
     }
     else
-    {
-        ScopedSwitchToGlobalHeap globalHeap;
+    {        
         m_deferredCommands.push_back(SDeferredCommand(str.c_str(), bSilentMode));
     }
 }
@@ -2292,8 +2300,6 @@ void CXConsole::ResetCVarsToDefaults()
 
 void CXConsole::SplitCommands(const char* line, std::list<string>& split)
 {
-    ScopedSwitchToGlobalHeap globalHeap;
-
     const char* start = line;
     string working;
 
@@ -2378,8 +2384,6 @@ void CXConsole::ExecuteStringInternal(const char* command, const bool bFromConso
         string::size_type nPos;
 
         {
-            ScopedSwitchToGlobalHeap globalHeap;
-
             sTemp = lineCommands.front();
             sCommand = lineCommands.front();
             sLineCommand = sCommand;
@@ -2432,8 +2436,7 @@ void CXConsole::ExecuteStringInternal(const char* command, const bool bFromConso
                     m_blockCounter++;
                 }
 
-                {
-                    ScopedSwitchToGlobalHeap globalHeap;
+                {   
                     sTemp = sLineCommand;
                 }
                 ExecuteCommand((itrCmd->second), sTemp);
@@ -2583,8 +2586,6 @@ void CXConsole::ExecuteCommand(CConsoleCommand& cmd, string& str, bool bIgnoreDe
     size_t t;
 
     {
-        ScopedSwitchToGlobalHeap globalHeap;
-
         t = 1;
 
         const char* start = str.c_str();
@@ -2650,8 +2651,6 @@ void CXConsole::ExecuteCommand(CConsoleCommand& cmd, string& str, bool bIgnoreDe
 
     string buf;
     {
-        ScopedSwitchToGlobalHeap globalHeap;
-
         // only do this for commands with script implementation
         for (;; )
         {
@@ -2787,8 +2786,6 @@ void CXConsole::ResetAutoCompletion()
 //////////////////////////////////////////////////////////////////////////
 const char* CXConsole::ProcessCompletion(const char* szInputBuffer)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     m_sInputBuffer = szInputBuffer;
 
     int offset = (szInputBuffer[0] == '\\' ? 1 : 0);        // legacy support
@@ -3133,10 +3130,7 @@ void CXConsole::PostLine(const char* lineOfText, size_t len)
     string line;
 
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
-
         line = string(lineOfText, len);
-
         m_dqConsoleBuffer.push_back(line);
     }
 
@@ -3230,9 +3224,6 @@ void CXConsole::SetLoadingImage(const char* szFilename)
 void CXConsole::AddOutputPrintSink(IOutputPrintSink* inpSink)
 {
     assert(inpSink);
-
-    ScopedSwitchToGlobalHeap globalHeap;
-
     m_OutputSinks.push_back(inpSink);
 }
 
@@ -3270,8 +3261,6 @@ void CXConsole::AddLinePlus(const char* inputStr)
     string str, tmpStr;
 
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
-
         if (!m_dqConsoleBuffer.size())
         {
             return;
@@ -3324,8 +3313,6 @@ void CXConsole::AddLinePlus(const char* inputStr)
 //////////////////////////////////////////////////////////////////////////
 void CXConsole::AddInputUTF8(const AZStd::string& textUTF8)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     // Ignore control characters like backspace and tab
     AZStd::string textUTF8ToInsert;
     for (int i = 0; i < textUTF8.length(); ++i)
@@ -3418,8 +3405,6 @@ void CXConsole::RemoveInputChar(bool bBackSpace)
 //////////////////////////////////////////////////////////////////////////
 void CXConsole::AddCommandToHistory(const char* szCommand)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     assert(szCommand);
 
     m_nHistoryPos = -1;

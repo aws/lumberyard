@@ -84,7 +84,6 @@ namespace LiveCreate
         bool bDisableAI;
         bool bDisableScripts;
         bool bSkipCinematics;
-        bool bMemReplay;
         bool bAutoConnect;
         bool bResumePhysicsOnDisconnect;
         bool bAutoWakeUpPhysicalObjects;

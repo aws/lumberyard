@@ -33,6 +33,7 @@ import zipfile
 import boto3
 
 import resource_manager.aws
+from resource_manager_common import constant
 
 REPLACE_ME = '-REPLACE-ME-'
 
@@ -500,7 +501,7 @@ def upload_project_stack(stack_name, project_directory_path, snapshot_directory_
 
     parameters = get_json_file_content(os.path.join(snapshot_project_stack_directory_path, SNAPSHOT_STACK_PARAMETERS_FILE_NAME))
 
-    template_object_name = get_parameter_value(parameters, 'ConfigurationKey') + '/project-template.json'
+    template_object_name = "{}/{}".format(get_parameter_value(parameters, 'ConfigurationKey'), constant.PROJECT_TEMPLATE_FILENAME)
 
     res = cf.update_stack(
         StackName = stack_name,

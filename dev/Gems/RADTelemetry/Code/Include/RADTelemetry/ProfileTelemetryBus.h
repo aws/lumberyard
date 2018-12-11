@@ -15,6 +15,7 @@
 #ifdef AZ_PROFILE_TELEMETRY
 
 #include <AzCore/base.h>
+#include <AzCore/Debug/Profiler.h>
 #include <AzCore/EBus/EBus.h>
 
 struct tm_api;
@@ -34,7 +35,13 @@ namespace RADTelemetry
 
         virtual void SetAddress(const char* address, AZ::u16 port) = 0;
 
-        virtual void SetCaptureMask(AZ::u32 mask) = 0;
+        virtual void SetCaptureMask(AZ::Debug::ProfileCategoryPrimitiveType mask) = 0;
+
+        virtual bool IsEnabled() = 0;
+
+        virtual AZ::Debug::ProfileCategoryPrimitiveType GetCaptureMask() = 0;
+
+        virtual AZ::Debug::ProfileCategoryPrimitiveType GetDefaultCaptureMask() = 0;
 
         virtual tm_api* GetApiInstance() = 0;
     };

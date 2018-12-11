@@ -35,14 +35,14 @@ namespace StarterGameGem
     // overwrites the 'CharacterPhysics's velocity values.
     // This function finds all the physics objects pertaining to an entity and returns the largest
     // velocity (as that's likely the most significant).
-    bool StarterGameEntityUtility::GetEntitysVelocity(const AZ::EntityId& entityId, AZ::Vector3& velocity)
+    bool StarterGameEntityUtility::GetEntitysVelocityLegacy(const AZ::EntityId& entityId, AZ::Vector3& velocity)
     {
         IPhysicalEntityIt* iter = gEnv->pPhysicalWorld->GetEntitiesIterator();
         IPhysicalEntity* pent;
         PhysicsVars* pVars = gEnv->pPhysicalWorld->GetPhysVars();
 
         bool found = false;
-        for (iter->MoveFirst(); pent = iter->Next(); )
+        for (iter->MoveFirst(); pent = iter->Next();)
         {
             AZ::EntityId entId = static_cast<AZ::EntityId>(pent->GetForeignData(PHYS_FOREIGN_ID_COMPONENT_ENTITY));
             if (entId == entityId)
@@ -54,13 +54,20 @@ namespace StarterGameGem
                 // Use the newly found velocity if it's larger.
                 AZ::Vector3 vel = LYVec3ToAZVec3(living.vel);
                 if (vel.GetLengthSq() > velocity.GetLengthSq())
+                {
                     velocity = vel;
+                }
 
                 found = true;
             }
         }
 
         return found;
+    }
+    // EMFX doesn't support the ragdoll component so we can just retrieve the velocity from the PhysicsComponentRequestBus
+    void StarterGameEntityUtility::GetEntitysVelocity(const AZ::EntityId& entityId, AZ::Vector3& velocity)
+    {
+        AzFramework::PhysicsComponentRequestBus::EventResult(velocity, entityId, &AzFramework::PhysicsComponentRequestBus::Events::GetVelocity);
     }
 
     AZ::EntityId StarterGameEntityUtility::GetParentEntity(const AZ::EntityId& entityId)
@@ -133,15 +140,15 @@ namespace StarterGameGem
         return res;
     }
 
-	void StarterGameEntityUtility::SetCharacterHalfHeight(const AZ::EntityId& entityId, float halfHeight)
-	{
-		pe_player_dimensions playerDims;
-		LmbrCentral::CryPhysicsComponentRequestBus::Event(entityId, &LmbrCentral::CryPhysicsComponentRequestBus::Events::GetPhysicsParameters, playerDims);
-		auto groundOffset = playerDims.heightCollider - playerDims.sizeCollider.z;
-		playerDims.heightCollider = halfHeight + groundOffset;
-		playerDims.sizeCollider.Set(playerDims.sizeCollider.x, playerDims.sizeCollider.y, halfHeight);
-		LmbrCentral::CryPhysicsComponentRequestBus::Event(entityId, &LmbrCentral::CryPhysicsComponentRequestBus::Events::SetPhysicsParameters, playerDims);
-	}
+    void StarterGameEntityUtility::SetCharacterHalfHeight(const AZ::EntityId& entityId, float halfHeight)
+    {
+        pe_player_dimensions playerDims;
+        LmbrCentral::CryPhysicsComponentRequestBus::Event(entityId, &LmbrCentral::CryPhysicsComponentRequestBus::Events::GetPhysicsParameters, playerDims);
+        auto groundOffset = playerDims.heightCollider - playerDims.sizeCollider.z;
+        playerDims.heightCollider = halfHeight + groundOffset;
+        playerDims.sizeCollider.Set(playerDims.sizeCollider.x, playerDims.sizeCollider.y, halfHeight);
+        LmbrCentral::CryPhysicsComponentRequestBus::Event(entityId, &LmbrCentral::CryPhysicsComponentRequestBus::Events::SetPhysicsParameters, playerDims);
+    }
 
     void StarterGameEntityUtility::Reflect(AZ::ReflectContext* reflection)
     {
@@ -150,6 +157,7 @@ namespace StarterGameGem
         {
             behaviorContext->Class<StarterGameEntityUtility>("StarterGameEntityUtility")
                 ->Method("GetEntitysVelocity", &GetEntitysVelocity)
+                ->Method("GetEntitysVelocityLegacy", &GetEntitysVelocityLegacy)
                 ->Method("GetParentEntity", &GetParentEntity)
                 ->Method("GetEntityName", &GetEntityName)
                 ->Method("EntityHasTag", &EntityHasTag)
@@ -158,7 +166,5 @@ namespace StarterGameGem
                 ->Method("SetCharacterHalfHeight", &SetCharacterHalfHeight)
             ;
         }
-
     }
-
 }

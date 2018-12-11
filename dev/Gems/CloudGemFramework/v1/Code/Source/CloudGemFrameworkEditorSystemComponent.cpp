@@ -82,12 +82,14 @@ namespace CloudGemFramework
 
     void CloudGemFrameworkEditorSystemComponent::Activate()
     {
+        CrySystemEventBus::Handler::BusConnect();
         CloudCanvas::CloudCanvasEditorRequestBus::Handler::BusConnect();
     }
 
     void CloudGemFrameworkEditorSystemComponent::Deactivate()
     {
         CloudCanvas::CloudCanvasEditorRequestBus::Handler::BusDisconnect();
+        CrySystemEventBus::Handler::BusDisconnect();
     }
 
     CloudCanvas::AWSClientCredentials CloudGemFrameworkEditorSystemComponent::GetCredentials()
@@ -105,5 +107,19 @@ namespace CloudGemFramework
         EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, ResetPlayerIdentity);
         // Return true to indicate it's been handled so if we're a game client we don't need to take action
         return true;
+    }
+
+    static void ConsoleCommandToggleRequestLogging(IConsoleCmdArgs* pCmdArgs)
+    {
+        static AZ::EnvironmentVariable<bool> envVar = AZ::Environment::FindVariable<bool>(CloudCanvas::logRequestsEnvVar);
+
+        envVar.Set(!envVar.Get());
+        AZ_Printf("CloudCanvas", "LogRequests set to %d", envVar.Get());
+    }
+
+    void CloudGemFrameworkEditorSystemComponent::OnCrySystemInitialized(ISystem& system, const SSystemInitParams&)
+    {
+        static AZ::EnvironmentVariable<bool> envVar = AZ::Environment::CreateVariable<bool>(CloudCanvas::logRequestsEnvVar, false);
+        system.GetIConsole()->AddCommand("cclogrequests", ConsoleCommandToggleRequestLogging);
     }
 }

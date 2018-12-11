@@ -627,18 +627,28 @@ namespace EMStudio
 
     void MotionSetManagementWindow::SelectItemsById(uint32 motionSetId)
     {
+        bool selectionChanged = false;
+        disconnect(mMotionSetsTree, &QTreeWidget::itemSelectionChanged, this, &MotionSetManagementWindow::OnSelectionChanged);
         QTreeWidgetItemIterator it(mMotionSetsTree);
-        while (*it) 
+        while (*it)
         {
             if ((*it)->data(0, Qt::UserRole).toUInt() == motionSetId)
             {
+                if (!(*it)->isSelected())
+                {
+                    selectionChanged = true;
+                }
                 (*it)->setSelected(true);
                 break;
             }
             ++it;
         }
+        connect(mMotionSetsTree, &QTreeWidget::itemSelectionChanged, this, &MotionSetManagementWindow::OnSelectionChanged);
+        if (selectionChanged)
+        {
+            OnSelectionChanged(); 
+        }
     }
-
 
     void MotionSetManagementWindow::GetSelectedMotionSets(AZStd::vector<EMotionFX::MotionSet*>& outSelectedMotionSets) const
     {

@@ -12,6 +12,7 @@
 #pragma once
 
 #include <QDialog>
+#include <QButtonGroup>
 
 namespace Ui {
     class NetPromoterScoreDialog;
@@ -49,5 +50,6 @@ private:
     int m_ratingInterval = 0;
     bool m_isConfirmed = false;
     int m_prevRatingScore;
-    AZStd::vector<QPushButton*> m_buttonGroup;   
+    AZStd::vector<QPushButton*> m_recommendButtons;
+    QButtonGroup m_productiveButtonGroup;
 };

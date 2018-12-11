@@ -40,8 +40,13 @@ namespace StarterGameGem
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serialize->Class<EMFXFootstepComponent, AZ::Component>()
-                ->Version(0)
-                ;
+                ->Version(1)
+                ->Field("Left Foot Event Name", &EMFXFootstepComponent::m_leftFootEventName)
+                ->Field("Right Foot Event Name", &EMFXFootstepComponent::m_rightFootEventName)
+                ->Field("Left Foot Bone Name", &EMFXFootstepComponent::m_leftFootBoneName)
+                ->Field("Right Foot Bone Name", &EMFXFootstepComponent::m_rightFootBoneName)
+                ->Field("Default FXLib", &EMFXFootstepComponent::m_defaultFXLib)
+            ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
@@ -50,98 +55,92 @@ namespace StarterGameGem
                     ->Attribute(AZ::Edit::Attributes::Category, "Game")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                    ;
+                    ->DataElement("Left Foot Event Name", &EMFXFootstepComponent::m_leftFootEventName, "Left Foot Event", "Name of the left foot motion event")
+                    ->DataElement("Right Foot Event Name", &EMFXFootstepComponent::m_rightFootEventName, "Right Foot Event", "Name of the right foot motion event")
+                    ->DataElement("Left Foot Bone Name", &EMFXFootstepComponent::m_leftFootBoneName, "Left Foot Bone", "Name of the left foot bone")
+                    ->DataElement("Right Foot Bone Name", &EMFXFootstepComponent::m_rightFootBoneName, "Right Foot Bone", "Name of the right foot bone")
+                    ->DataElement("Default FXLib", &EMFXFootstepComponent::m_defaultFXLib, "Default FX Lib", "The name of the default FX Lib to use")
+                ;
             }
         }
     }
 
-    void EMFXFootstepComponent::Init()
+    void EMFXFootstepComponent::OnFootstepEvent(const AZStd::string_view eventName, const AZStd::string_view fxLib)
     {
-    }
+        if (eventName.empty())
+        {
+            return;
+        }
 
-	void EMFXFootstepComponent::OnFootstepEvent(const char* inEventName, const char* inBoneName, const char* inFxLibName)
-	{
-		bool footstepEvent = inEventName && _stricmp(inEventName, "footstep") == 0;
-		if (!footstepEvent)
-		{
-			return;
-		}
+        IMaterialEffects* pMaterialEffects = gEnv->pMaterialEffects;
+        if (!pMaterialEffects)
+        {
+            return;
+        }
 
-		bool physEnabled = false;
-		AzFramework::PhysicsComponentRequestBus::EventResult(physEnabled, GetEntityId(), &AzFramework::PhysicsComponentRequestBus::Events::IsPhysicsEnabled);
-		if (!physEnabled)
-		{
-			return;
-		}
+        // Physics is necessary to get the surface the character is standing on
+        // NOTE: PhysX not currently supported
+        bool physEnabled = false;
+        AzFramework::PhysicsComponentRequestBus::EventResult(physEnabled, GetEntityId(), &AzFramework::PhysicsComponentRequestBus::Events::IsPhysicsEnabled);
+        if (!physEnabled)
+        {
+            return;
+        }
 
-		IMaterialEffects* pMaterialEffects = gEnv->pMaterialEffects;
-		if (!pMaterialEffects)
-		{
-			return;
-		}
+        // get the bone name based on the event name e.g. LeftFoot, RightFoot
+        AZStd::string_view boneName;
+        if (azstricmp(eventName.data(), m_leftFootEventName.c_str()) == 0)
+        {
+            boneName = m_leftFootBoneName;
+        }
+        else if (azstricmp(eventName.data(), m_rightFootEventName.c_str()) == 0)
+        {
+            boneName = m_rightFootBoneName;
+        }
+        else
+        {
+            return;
+        }
 
-		// get the character instance
-		ICharacterInstance* character = nullptr;
-		LmbrCentral::SkinnedMeshComponentRequestBus::EventResult(character, GetEntityId(), &LmbrCentral::SkinnedMeshComponentRequestBus::Events::GetCharacterInstance);
+        AZ::Transform entityTransform;
+        AZ::TransformBus::EventResult(entityTransform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
 
-		float relativeSpeed = 0.f;
+        AZ::s32 jointIndex = -1;
+        LmbrCentral::SkeletalHierarchyRequestBus::EventResult(jointIndex, GetEntityId(), &LmbrCentral::SkeletalHierarchyRequestBus::Events::GetJointIndexByName, boneName.data());
+        Vec3 jointOffset(ZERO);
+        if (jointIndex >= 0)
+        {
+            AZ::Transform characterRelativeTransform;
+            LmbrCentral::SkeletalHierarchyRequestBus::EventResult(characterRelativeTransform, GetEntityId(), &LmbrCentral::SkeletalHierarchyRequestBus::Events::GetJointTransformCharacterRelative, jointIndex);
+            jointOffset = AZVec3ToLYVec3(characterRelativeTransform.GetPosition());
+        }
+        Matrix34 tm = AZTransformToLYTransform(entityTransform);
+        tm.OrthonormalizeFast();
+        Ang3 angles = Ang3::GetAnglesXYZ(tm);
 
-		QuatT jointTransform(IDENTITY);
-		if (character)
-		{
-			const float speedScaleFactor = 0.142f;
-			relativeSpeed = character->GetISkeletonAnim()->GetCurrentVelocity().GetLength() * speedScaleFactor;
-			if (inBoneName[0])
-			{
-				uint32 boneID = character->GetIDefaultSkeleton().GetJointIDByName(inBoneName);
-				jointTransform = character->GetISkeletonPose()->GetAbsJointByID(boneID);
-			}
-		}
+        // Setup FX params
+        SMFXRunTimeEffectParams params;
+        params.angle = angles.z + (gf_PI * 0.5f);
+        params.pos = params.decalPos = tm * jointOffset;
 
-		// @TODO use this entity's existing audio trigger?
-		// params.audioComponentEntityId = m_pEntity->GetId();
-		AZ::Transform entityTransform;
-		AZ::TransformBus::EventResult(entityTransform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-		Matrix34 tm = AZTransformToLYTransform(entityTransform);
-		tm.OrthonormalizeFast();
-		Ang3 angles = Ang3::GetAnglesXYZ(tm);
+        TMFXEffectId effectId = InvalidEffectId;
 
-		// Setup FX params
-		SMFXRunTimeEffectParams params;
-		params.angle = angles.z + (gf_PI * 0.5f);
-		params.pos = params.decalPos = tm * jointTransform.t;
-		params.audioComponentOffset = tm.GetInverted().TransformVector(params.pos - tm.GetTranslation());
+        const float feetWaterLevel = gEnv->p3DEngine->GetWaterLevel(&params.pos);
+        const float deepWaterLevel = 1.0;
+        const float depth = feetWaterLevel - params.pos.z;
 
-		TMFXEffectId effectId = InvalidEffectId;
-		AZStd::string fxLibName = "footstep";
+        const AZStd::string_view fxLibName = fxLib.empty() ? AZStd::string_view(m_defaultFXLib) : fxLib;
 
-		const float feetWaterLevel = gEnv->p3DEngine->GetWaterLevel(&params.pos);
-		const float deepWaterLevel = 1.0;
-		const float depth = feetWaterLevel - params.pos.z;
+        if (feetWaterLevel != WATER_LEVEL_UNKNOWN && depth >= 0.0f)
+        {
+            const AZStd::string_view effectName = depth > deepWaterLevel ? "water_deep" : "water_shallow";
+            const float hitScale = 1.f;
+            const float hitStrength = 0.f;
 
-		if (inFxLibName[0])
-		{
-			fxLibName = inFxLibName;
-		}
+            // Plug water hits directly into water sim
+            gEnv->pRenderer->EF_AddWaterSimHit(tm.GetTranslation(), hitScale, hitStrength);
 
-		if (feetWaterLevel != WATER_LEVEL_UNKNOWN && depth >= 0.0f)
-		{
-			AZStd::string effectName = "default";
-
-			// Plug water hits directly into water sim
-			gEnv->pRenderer->EF_AddWaterSimHit(tm.GetTranslation(), 1.0f, relativeSpeed * 2.f);
-
-			// trigger water splashes from here
-			if (depth > deepWaterLevel)
-			{
-				effectName = "water_deep";
-			}
-			else
-			{
-				effectName = "water_shallow";
-			}
-
-			effectId = pMaterialEffects->GetEffectIdByName(fxLibName.c_str(), effectName.c_str());
+            effectId = pMaterialEffects->GetEffectIdByName(fxLibName.data(), effectName.data());
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION EMFXFOOTSTEPCOMPONENT_CPP_SECTION_1
@@ -150,51 +149,54 @@ namespace StarterGameGem
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
-			if (effectId == InvalidEffectId)
-			{
-				gEnv->pSystem->Warning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, VALIDATOR_FLAG_AUDIO, 0, "Failed to find material for footstep sounds in FXLib %s, Effect: %s", fxLibName.c_str(), effectName);
-			}
+            if (effectId == InvalidEffectId)
+            {
+                gEnv->pSystem->Warning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, VALIDATOR_FLAG_AUDIO, 0, "Failed to find material for footstep sounds in FXLib %s, Effect: %s", fxLibName, effectName);
+            }
 #endif
-		}
-		else
-		{
-			// get the ground material idx
-			pe_status_living livingStatus;
-			livingStatus.groundSlope.Set(0.f, 0.f, 1.f);
-			LmbrCentral::CryPhysicsComponentRequestBus::Event(GetEntityId(), &LmbrCentral::CryPhysicsComponentRequestBus::Events::GetPhysicsStatus, livingStatus);
-			effectId = pMaterialEffects->GetEffectId(fxLibName.c_str(), livingStatus.groundSurfaceIdx);
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION EMFXFOOTSTEPCOMPONENT_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(EMFXFootstepComponent_cpp, AZ_RESTRICTED_PLATFORM)
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-			if (effectId == InvalidEffectId)
-			{
-				gEnv->pSystem->Warning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, VALIDATOR_FLAG_AUDIO, 0, "Failed to find material for footstep sounds in FXLib %s, SurfaceIdx: %d", fxLibName.c_str(), livingStatus.groundSurfaceIdx);
-			}
-#endif
-		}
+        }
+        else
+        {
+            // get the ground material idx
+            pe_status_living livingStatus;
+            livingStatus.groundSlope.Set(0.f, 0.f, 1.f);
+            LmbrCentral::CryPhysicsComponentRequestBus::Event(GetEntityId(), &LmbrCentral::CryPhysicsComponentRequestBus::Events::GetPhysicsStatus, livingStatus);
+            if (livingStatus.groundSurfaceIdx >= 0)
+            {
+                // Don't attempt to play footsteps when the physics system doesn't detect a ground surface.
+                effectId = pMaterialEffects->GetEffectId(fxLibName.data(), livingStatus.groundSurfaceIdx);
+    #if defined(AZ_RESTRICTED_PLATFORM)
+    #define AZ_RESTRICTED_SECTION EMFXFOOTSTEPCOMPONENT_CPP_SECTION_2
+    #include AZ_RESTRICTED_FILE(EMFXFootstepComponent_cpp, AZ_RESTRICTED_PLATFORM)
+    #endif
+    #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+    #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+    #else
+                if (effectId == InvalidEffectId)
+                {
+                    gEnv->pSystem->Warning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, VALIDATOR_FLAG_AUDIO, 0, "Failed to find material for footstep sounds in FXLib %s, SurfaceIdx: %d", fxLibName, livingStatus.groundSurfaceIdx);
+                }
+    #endif
+            }
+        }
 
-		if (effectId != InvalidEffectId)
-		{
-			pMaterialEffects->ExecuteEffect(effectId, params);
-		}
+        if (effectId != InvalidEffectId)
+        {
+            pMaterialEffects->ExecuteEffect(effectId, params);
+        }
+    }
 
-	}
-
-	void EMFXFootstepComponent::OnMotionEvent(EMotionFX::Integration::MotionEvent motionEvent)
-	{
-		OnFootstepEvent(motionEvent.m_eventTypeName, "", motionEvent.m_parameter);
-	}
-	void EMFXFootstepComponent::Activate()
+    void EMFXFootstepComponent::OnMotionEvent(EMotionFX::Integration::MotionEvent motionEvent)
     {
-		EMotionFX::Integration::ActorNotificationBus::Handler::BusConnect(GetEntityId());
-	}
+        OnFootstepEvent(motionEvent.m_eventTypeName, motionEvent.m_parameter);
+    }
+    void EMFXFootstepComponent::Activate()
+    {
+        EMotionFX::Integration::ActorNotificationBus::Handler::BusConnect(GetEntityId());
+    }
 
     void EMFXFootstepComponent::Deactivate()
     {
-		EMotionFX::Integration::ActorNotificationBus::Handler::BusDisconnect();
-	}
+        EMotionFX::Integration::ActorNotificationBus::Handler::BusDisconnect();
+    }
 }

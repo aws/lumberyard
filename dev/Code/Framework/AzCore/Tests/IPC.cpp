@@ -128,7 +128,8 @@ namespace UnitTest
 
         auto threadFunc = [sharedMemKey]()
         {
-            AZ::SharedMemory* sharedMem = new (azmalloc(sizeof(AZ::SharedMemory))) AZ::SharedMemory();
+            void* memBuffer = azmalloc(sizeof(AZ::SharedMemory));
+            AZ::SharedMemory* sharedMem = new (memBuffer) AZ::SharedMemory();
             AZ::SharedMemory::CreateResult result = sharedMem->Create(sharedMemKey, sizeof(AZStd::thread_id), true);
             EXPECT_TRUE(result == AZ::SharedMemory::CreatedNew || result == AZ::SharedMemory::CreatedExisting);
             bool mapped = sharedMem->Map();
@@ -158,7 +159,8 @@ namespace UnitTest
             bool unmapped = sharedMem->UnMap();
             EXPECT_TRUE(unmapped);
 
-            delete sharedMem;
+            sharedMem->~SharedMemory();
+            azfree(memBuffer);
         };
 
         AZStd::thread threads[8];

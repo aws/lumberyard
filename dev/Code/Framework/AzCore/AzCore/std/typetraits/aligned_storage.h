@@ -15,6 +15,7 @@
 #include <AzCore/std/typetraits/config.h>
 #include <AzCore/std/typetraits/is_pod.h>
 #include <AzCore/std/typetraits/bool_trait_def.h>
+#include <AzCore/std/typetraits/alignment_of.h>
 
 namespace AZStd
 {
@@ -153,6 +154,12 @@ namespace AZStd
     struct is_pod< Internal::aligned_storage<Size, Alignment> >
         : public true_type {};
 #endif
+
+    template <size_t Size, size_t Alignment>
+    using aligned_storage_t = typename aligned_storage<Size, Alignment>::type;
+
+    template <typename T, size_t Alignment = AZStd::alignment_of<T>::value>
+    using aligned_storage_for_t = aligned_storage_t<sizeof(T), Alignment>;
 }
 
 #endif // AZSTD_ALIGNED_STORAGE_INCLUDED

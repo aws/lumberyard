@@ -121,9 +121,9 @@ void UiMaskComponent::SetupBeforeRenderingComponents(Pass pass)
 
     if (m_childMaskElement.IsValid() && pass == Pass::First)
     {
-        // There is a child mask element. Remember whether it is enabled since we disable it during normal rendering
+        // There is a child mask element. Remember whether its rendering is enabled since we disable it during normal rendering
         // of the child elements.
-        EBUS_EVENT_ID_RESULT(m_priorChildMaskElementIsEnabled, m_childMaskElement, UiElementBus, IsEnabled);
+        EBUS_EVENT_ID_RESULT(m_priorChildMaskElementIsRenderEnabled, m_childMaskElement, UiElementBus, IsRenderEnabled);
     }
 }
 
@@ -143,17 +143,17 @@ void UiMaskComponent::SetupAfterRenderingComponents(Pass pass)
         // But we have a child mask element, which is an additional entity that gets rendered into the
         // stencil buffer.
 
-        // if the child mask element was disabled then we don't want to render it as part of the mask
+        // if the child mask element's render was disabled then we don't want to render it as part of the mask
         // This allows the game to programatically enable and disable parts of the mask
-        if (m_priorChildMaskElementIsEnabled)
+        if (m_priorChildMaskElementIsRenderEnabled)
         {
             // enable the rendering of the child mask element
-            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, SetIsEnabled, true);
+            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, SetIsRenderEnabled, true);
 
             // Render the child mask element, this can render a whole hierarchy into the stencil buffer
             // as part of the mask.
             IUiRenderer::Get()->SetIsRenderingToMask(true);
-            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, RenderElement, false, false);
+            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, RenderElement, true, false);
             IUiRenderer::Get()->SetIsRenderingToMask(false);
         }
     }
@@ -208,13 +208,13 @@ void UiMaskComponent::SetupAfterRenderingComponents(Pass pass)
         {
             // disable the rendering of the child mask with the other children
             // There will always be a second pass if there is a child mask element
-            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, SetIsEnabled, false);
+            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, SetIsRenderEnabled, false);
         }
         else
         {
             // re-enable the rendering of the child mask (if it was enabled before we changed it)
             // This allows the game code to turn the child mask element on and off if so desired.
-            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, SetIsEnabled, m_priorChildMaskElementIsEnabled);
+            EBUS_EVENT_ID(m_childMaskElement, UiElementBus, SetIsRenderEnabled, m_priorChildMaskElementIsRenderEnabled);
         }
     }
 }

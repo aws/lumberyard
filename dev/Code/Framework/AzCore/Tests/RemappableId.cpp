@@ -30,6 +30,7 @@ namespace UnitTest
     public:
         RemappableIdTest()
             : AllocatorsFixture(15, false)
+            , m_systemEntity(nullptr)
         {
             AllocatorsFixture::SetUp();
             m_serializeContext.reset(aznew AZ::SerializeContext());
@@ -55,15 +56,17 @@ namespace UnitTest
         {
             ComponentApplication::Descriptor desc;
             desc.m_useExistingAllocator = true;
-            m_app.Create(desc);
+            m_systemEntity = m_app.Create(desc);
         }
 
         void TearDown() override
         {
+            delete m_systemEntity;
             m_app.Destroy();
         }
 
         ComponentApplication m_app;
+        AZ::Entity* m_systemEntity;
         AZStd::unique_ptr<SerializeContext> m_serializeContext;
 
         struct RemapIdData
@@ -275,6 +278,7 @@ namespace UnitTest
     public:
         ParentElementPointerNotificationIdRemapTest()
             : AllocatorsFixture(15, false)
+            , m_systemEntity(nullptr)
         {
             AllocatorsFixture::SetUp();
             m_serializeContext.reset(aznew AZ::SerializeContext());
@@ -300,15 +304,17 @@ namespace UnitTest
         {
             ComponentApplication::Descriptor desc;
             desc.m_useExistingAllocator = true;
-            m_app.Create(desc);
+            m_systemEntity = m_app.Create(desc);
         }
 
         void TearDown() override
         {
+            delete m_systemEntity;
             m_app.Destroy();
         }
 
         ComponentApplication m_app;
+        AZ::Entity* m_systemEntity;
         AZStd::unique_ptr<SerializeContext> m_serializeContext;
 
         struct ParentEntityContainer

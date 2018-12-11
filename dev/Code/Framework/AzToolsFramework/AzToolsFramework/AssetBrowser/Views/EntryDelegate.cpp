@@ -10,7 +10,8 @@
 *
 */
 
-#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/SourceAssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/Thumbnails/ThumbnailerBus.h>
 #include <AzToolsFramework/AssetBrowser/Views/EntryDelegate.h>
@@ -22,8 +23,8 @@ namespace AzToolsFramework
 {
     namespace AssetBrowser
     {
-        const int EntryDelegate::SPACING_PIXELS = 5;
-        const int EntryDelegate::MARGIN_PIXELS = 2;
+        const int ENTRY_SPACING_LEFT_PIXELS = 8;
+        const int ENTRY_ICON_MARGIN_LEFT_PIXELS = 2;
 
         EntryDelegate::EntryDelegate(QWidget* parent)
             : QStyledItemDelegate(parent)
@@ -48,32 +49,57 @@ namespace AzToolsFramework
             auto data = index.data(AssetBrowserModel::Roles::EntryRole);
             if (data.canConvert<const AssetBrowserEntry*>())
             {
-                if (option.state & QStyle::State_Selected)
+                bool isEnabled = option.state & QStyle::State_Enabled;
+                bool isSelected = option.state & QStyle::State_Selected;
+
+                QStyle* style = option.widget ? option.widget->style() : QApplication::style();
+
+                if (isSelected)
                 {
                     painter->fillRect(option.rect, option.palette.highlight());
                 }
 
                 auto entry = qvariant_cast<const AssetBrowserEntry*>(data);
 
-                int x = option.rect.x();
-                int y = option.rect.y();
+                // Draw main entry thumbnail.
+                QRect remainingRect(option.rect);
+                remainingRect.adjust(ENTRY_ICON_MARGIN_LEFT_PIXELS, 0, 0, 0); // bump it rightwards to give some margin to the icon.
 
-                // Draw source control icon
-                if (m_showSourceControl)
+                QSize iconSize(m_iconSize, m_iconSize);
+                // Note that the thumbnail might actually be smaller than the row if theres a lot of padding or font size
+                // so it needs to center vertically with padding in that case:
+                QPoint iconTopLeft(remainingRect.x(), remainingRect.y() + (remainingRect.height() / 2) - (m_iconSize / 2));
+
+                auto sourceEntry = azrtti_cast<const SourceAssetBrowserEntry*>(entry);
+
+                int thumbX = DrawThumbnail(painter, iconTopLeft, iconSize, entry->GetThumbnailKey());
+
+                QPalette actualPalette(option.palette);
+
+                if (sourceEntry)
                 {
-                    auto sourceEntry = azrtti_cast<const SourceAssetBrowserEntry*>(entry);
-                    if (sourceEntry)
+                    if (m_showSourceControl)
                     {
-                        DrawThumbnail(painter, QPoint(x - m_iconSize / 2, y + m_iconSize / 2), QSize(m_iconSize, m_iconSize) / 2, sourceEntry->GetSourceControlThumbnailKey());
+                        DrawThumbnail(painter, iconTopLeft, iconSize, sourceEntry->GetSourceControlThumbnailKey());
+                    }
+                    // sources with no children should be greyed out.
+                    if (sourceEntry->GetChildCount() == 0)
+                    {
+                        isEnabled = false; // draw in disabled style.
+                        actualPalette.setCurrentColorGroup(QPalette::Disabled);
                     }
                 }
-                
-                // Draw main entry thumbnail
-                x += DrawThumbnail(painter, QPoint(x, y), QSize(m_iconSize, m_iconSize), entry->GetThumbnailKey());
-                x += SPACING_PIXELS;
 
-                // Draw entry name
-                DrawText(painter, QPoint(x, y), option.rect.x() + option.rect.width() - m_iconSize - SPACING_PIXELS - MARGIN_PIXELS, entry->GetDisplayName().c_str());
+                remainingRect.adjust(thumbX, 0, 0, 0); // bump it to the right by the size of the thumbnail
+                remainingRect.adjust(ENTRY_SPACING_LEFT_PIXELS, 0, 0, 0); // bump it to the right by the spacing.
+
+                style->drawItemText(painter,
+                    remainingRect,
+                    option.displayAlignment,
+                    actualPalette,
+                    isEnabled,
+                    QString::fromUtf8(entry->GetDisplayName().c_str()),
+                    isSelected ? QPalette::HighlightedText : QPalette::Text);
             }
         }
 
@@ -99,17 +125,6 @@ namespace AzToolsFramework
             QPixmap pixmap = thumbnail->GetPixmap();
             painter->drawPixmap(point.x(), point.y(), size.width(), size.height(), pixmap);
             return m_iconSize;
-        }
-
-        int EntryDelegate::DrawText(QPainter* painter, const QPoint& point, int maxX, const char* text) const
-        {
-            QFontMetrics fm = painter->fontMetrics();
-            int width = qMin(fm.width(text), maxX - point.x());
-            QRect textRect(point.x(), point.y(), width, m_iconSize);
-            QTextOption textOption;
-            textOption.setWrapMode(QTextOption::NoWrap);
-            painter->drawText(textRect, text, textOption);
-            return width;
         }
     } // namespace Thumbnailer
 } // namespace AzToolsFramework

@@ -25,5 +25,6 @@ namespace CommandSystem
 public:
     static const char* s_RecorderClearCmdName;
     bool m_wasRecording;
+    bool m_wasInPlayMode;
     MCORE_DEFINECOMMAND_END
 } // namespace CommandSystem

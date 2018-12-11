@@ -12,9 +12,13 @@
 #pragma once
 
 #include <AzTest/AzTest.h>
+#include <AzCore/Memory/AllocationRecords.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzFramework/Application/Application.h>
+#ifdef LMBR_CENTRAL_EDITOR
+#include "LmbrCentralEditor.h"
+#endif
 
 /**
  * Fixture class for tests that require a module to have been reflected.
@@ -27,9 +31,10 @@ template<class ApplicationT, class ModuleT>
 class ModuleReflectionTest
     : public ::testing::Test
 {
-protected:
+public:
     static ApplicationT* GetApplication() { return s_application.get(); }
 
+protected:
     static void SetUpTestCase();
     static void TearDownTestCase();
 
@@ -48,6 +53,7 @@ private:
     };
 
     static AZStd::unique_ptr<InternalApplication> s_application;
+    static AZ::Entity* s_systemEntity;
 };
 
 /**
@@ -64,8 +70,6 @@ class LoadReflectedObjectTest
     typedef ModuleReflectionTest<ApplicationT, ModuleT> BaseType;
 
 protected:
-    using BaseType::GetApplication;
-
     void SetUp() override;
     void TearDown() override;
 
@@ -73,6 +77,46 @@ protected:
 
     AZStd::unique_ptr<ObjectT> m_object;
 };
+
+#ifdef LMBR_CENTRAL_EDITOR
+/**
+*  Creates, registers a dummy transform component for Editor Component Tests
+*  Manages an entity for the editor component
+*/
+template<class ComponentT>
+class LoadEditorComponentTest
+    : public LoadReflectedObjectTest<AZ::ComponentApplication, LmbrCentral::LmbrCentralEditorModule, ComponentT>
+{
+public:
+    using LoadReflectedObjectTestBase = LoadReflectedObjectTest<AZ::ComponentApplication, LmbrCentral::LmbrCentralEditorModule, ComponentT>;
+
+    void SetUp() override;
+    void TearDown() override;
+
+protected:
+    // simply fulfills the transform component dependency on editor components
+    class DummyTransformComponent
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(DummyTransformComponent, "{971C64A3-C9FB-4ADB-B122-BC579A889CD4}", AZ::Component);
+        void Activate() override {};
+        void Deactivate() override {};
+    protected:
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC("TransformService", 0x8ee22c50));
+        }
+
+        static void Reflect(AZ::ReflectContext* reflection)
+        {
+            AZ_UNUSED(reflection);
+        }
+    };
+
+    AZStd::unique_ptr<AZ::Entity> m_entity;
+};
+#endif
 
 template<class ApplicationT, class ModuleT>
 void ModuleReflectionTest<ApplicationT, ModuleT>::SetUpTestCase()
@@ -82,7 +126,9 @@ void ModuleReflectionTest<ApplicationT, ModuleT>::SetUpTestCase()
     s_application.reset(new ModuleReflectionTest::InternalApplication);
 
     AZ::ComponentApplication::Descriptor appDescriptor;
+    appDescriptor.m_allocationRecords = true;
     appDescriptor.m_useExistingAllocator = true;
+    appDescriptor.m_recordingMode = AZ::Debug::AllocationRecords::RECORD_FULL;
 
     AZ::ComponentApplication::StartupParameters appStartup;
 
@@ -103,15 +149,15 @@ void ModuleReflectionTest<ApplicationT, ModuleT>::SetUpTestCase()
     }
 
     // Create() starts the application and returns the system entity.
-    AZ::Entity* systemEntity = s_application->Create(appDescriptor, appStartup);
-
-    // Nothing owns the system entity, and we don't need one, so delete it.
-    delete systemEntity;
+    s_systemEntity = s_application->Create(appDescriptor, appStartup);
 }
 
 template<class ApplicationT, class ModuleT>
 void ModuleReflectionTest<ApplicationT, ModuleT>::TearDownTestCase()
 {
+    s_application->GetSerializeContext()->DestroyEditContext();
+    delete s_systemEntity;
+    s_systemEntity = nullptr;
     s_application->Destroy();
     s_application.reset();
 
@@ -120,6 +166,9 @@ void ModuleReflectionTest<ApplicationT, ModuleT>::TearDownTestCase()
 
 template<class ApplicationT, class ModuleT>
 AZStd::unique_ptr<typename ModuleReflectionTest<ApplicationT, ModuleT>::InternalApplication> ModuleReflectionTest<ApplicationT, ModuleT>::s_application;
+
+template<class ApplicationT, class ModuleT>
+AZ::Entity* ModuleReflectionTest<ApplicationT, ModuleT>::s_systemEntity = nullptr;
 
 template<class ApplicationT, class ModuleT, class ObjectT>
 void LoadReflectedObjectTest<ApplicationT, ModuleT, ObjectT>::SetUp()
@@ -140,3 +189,36 @@ void LoadReflectedObjectTest<ApplicationT, ModuleT, ObjectT>::TearDown()
 {
     m_object.reset();
 }
+
+#ifdef LMBR_CENTRAL_EDITOR
+template<class ComponentT>
+void LoadEditorComponentTest<ComponentT>::SetUp()
+{
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, DummyTransformComponent::CreateDescriptor());
+
+    m_entity = AZStd::make_unique<AZ::Entity>("LoadEditorComponentTestEntity");
+    m_entity->Init();
+
+    LoadReflectedObjectTestBase::SetUp();
+    m_entity->AddComponent(aznew DummyTransformComponent());
+    if (m_object)
+    {
+        m_entity->AddComponent(m_object.get());
+    }
+    m_entity->Activate();
+}
+
+template<class ComponentT>
+void LoadEditorComponentTest<ComponentT>::TearDown()
+{
+    m_entity->Deactivate();
+    if (m_object)
+    {
+        m_entity->RemoveComponent(m_object.get());
+    }
+    LoadReflectedObjectTestBase::TearDown();
+    m_entity.reset();
+
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, DummyTransformComponent::CreateDescriptor());
+}
+#endif

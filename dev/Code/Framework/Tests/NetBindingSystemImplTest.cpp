@@ -13,7 +13,7 @@
 #include <Tests/TestTypes.h>
 
 #include <AzCore/Component/ComponentApplication.h>
-#include <AzFramework/Network/NetBindingSystemComponent.h>
+#include <AzFramework/Network/NetBindingSystemImpl.h>
 #include <AzFramework/Network/NetBindable.h>
 
 #include <AzCore/Asset/AssetManagerComponent.h>
@@ -63,7 +63,7 @@ namespace UnitTest
         const EntityId k_fakeEntityId_Two = EntityId(9002);
         const ReplicaId k_repId_Two = 1002;
 
-        AZStd::unique_ptr<Entity> m_system;
+        AZStd::unique_ptr<NetBindingSystemImpl> m_netBindingImpl;
         AZStd::unique_ptr<MockComponentApplication> m_componentApplication;
         AZStd::unique_ptr<SerializeContext> m_applicationContext;
 
@@ -127,9 +127,6 @@ namespace UnitTest
             ON_CALL(*m_gameEntityMock, GetGameEntityContextId())
                 .WillByDefault(Return(EntityContextId::CreateRandom()));
 
-            m_system = AZStd::make_unique<Entity>();
-            m_system->CreateComponent<NetBindingSystemComponent>();
-
             ReplicaChunkDescriptorTable::Get().RegisterChunkType<MockNetBindingSystemContextData>();
             m_contextChunkMock.reset(CreateReplicaChunk<NiceMock<MockNetBindingSystemContextData>>());
 
@@ -156,8 +153,8 @@ namespace UnitTest
             ON_CALL(*m_contextChunkMock, OnReplicaActivate(_))
                 .WillByDefault(Invoke(m_contextChunkMock.get(), &MockNetBindingSystemContextData::Base_OnReplicaActivate));
 
-            m_system->Init();
-            m_system->Activate();
+            m_netBindingImpl = AZStd::make_unique<AzFramework::NetBindingSystemImpl>();
+            m_netBindingImpl->Init();
 
             m_contextChunkMock->OnReplicaActivate(ReplicaContext(nullptr, TimeContext()));
 
@@ -173,9 +170,8 @@ namespace UnitTest
             m_contextChunkMock.reset();
 
             m_fakeAsset.reset();
-
-            m_system->Deactivate();
-            m_system.reset();
+            m_netBindingImpl->Shutdown();
+            m_netBindingImpl.reset();
 
             ReplicaChunkDescriptorTable::Get().UnregisterReplicaChunkDescriptor(ReplicaChunkClassId(MockNetBindingSystemContextData::GetChunkName()));
 

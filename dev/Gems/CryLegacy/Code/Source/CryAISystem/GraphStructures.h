@@ -447,10 +447,10 @@ private:
 
     Vec3  pos;
     /// The pool of free IDs - populated when nodes are deleted
-    static std::vector<unsigned int> freeIDs;
+    static StaticInstance<std::vector<unsigned int>> freeIDs;
     /// The highest ID currently in use (0 is invalid), so maxID+1 is a valid unique ID
 #ifdef DEBUG_GRAPHNODE_IDS
-    static std::vector<unsigned int> usedIds;
+    static StaticInstance<std::vector<unsigned int>> usedIds;
 #endif
 
     static unsigned int maxID;

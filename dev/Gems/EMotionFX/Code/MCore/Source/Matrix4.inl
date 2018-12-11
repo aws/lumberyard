@@ -246,6 +246,48 @@ MCORE_INLINE void Matrix::Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNo
 	);
 }
 
+// skin a position, normal, and tangent and bitangent
+MCORE_INLINE void Matrix::Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNormal, const AZ::Vector4* inTangent, const AZ::Vector3* inBitangent, AZ::Vector3* outPos, AZ::Vector3* outNormal, AZ::Vector4* outTangent, AZ::Vector3* outBitangent, float weight)
+{
+    const float mat00 = TMAT(0, 0);
+    const float mat10 = TMAT(1, 0);
+    const float mat20 = TMAT(2, 0);
+    const float mat30 = TMAT(3, 0);
+    const float mat01 = TMAT(0, 1);
+    const float mat11 = TMAT(1, 1);
+    const float mat21 = TMAT(2, 1);
+    const float mat31 = TMAT(3, 1);
+    const float mat02 = TMAT(0, 2);
+    const float mat12 = TMAT(1, 2);
+    const float mat22 = TMAT(2, 2);
+    const float mat32 = TMAT(3, 2);
+
+	outPos->Set(
+		outPos->GetX() + (inPos->GetX() * mat00 + inPos->GetY() * mat10 + inPos->GetZ() * mat20 + mat30) * weight,
+		outPos->GetY() + (inPos->GetX() * mat01 + inPos->GetY() * mat11 + inPos->GetZ() * mat21 + mat31) * weight,
+		outPos->GetZ() + (inPos->GetX() * mat02 + inPos->GetY() * mat12 + inPos->GetZ() * mat22 + mat32) * weight
+	);
+
+	outNormal->Set(
+		outNormal->GetX() + (inNormal->GetX() * mat00 + inNormal->GetY() * mat10 + inNormal->GetZ() * mat20) * weight,
+		outNormal->GetY() + (inNormal->GetX() * mat01 + inNormal->GetY() * mat11 + inNormal->GetZ() * mat21) * weight,
+		outNormal->GetZ() + (inNormal->GetX() * mat02 + inNormal->GetY() * mat12 + inNormal->GetZ() * mat22) * weight
+	);
+
+	outTangent->Set(
+		outTangent->GetX() + (inTangent->GetX() * mat00 + inTangent->GetY() * mat10 + inTangent->GetZ() * mat20) * weight,
+		outTangent->GetY() + (inTangent->GetX() * mat01 + inTangent->GetY() * mat11 + inTangent->GetZ() * mat21) * weight,
+		outTangent->GetZ() + (inTangent->GetX() * mat02 + inTangent->GetY() * mat12 + inTangent->GetZ() * mat22) * weight,
+		inTangent->GetW()
+	);
+
+	outBitangent->Set(
+		outBitangent->GetX() + (inBitangent->GetX() * mat00 + inBitangent->GetY() * mat10 + inBitangent->GetZ() * mat20) * weight,
+		outBitangent->GetY() + (inBitangent->GetX() * mat01 + inBitangent->GetY() * mat11 + inBitangent->GetZ() * mat21) * weight,
+		outBitangent->GetZ() + (inBitangent->GetX() * mat02 + inBitangent->GetY() * mat12 + inBitangent->GetZ() * mat22) * weight
+	);
+}
+
 
 // skin a normal
 MCORE_INLINE void Matrix::Skin3x3(const AZ::Vector3& in, AZ::Vector3& out, float weight)

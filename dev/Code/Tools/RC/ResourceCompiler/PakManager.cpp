@@ -26,6 +26,7 @@
 #include "CryCrc32.h"
 #include "ZipEncryptor.h"
 #include "ThreadUtils.h"
+#include <AzCore/std/algorithm.h>
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -67,15 +68,9 @@ IPakSystem* PakManager::GetPakSystem()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void PakManager::SetMaxThreads(int maxThreads)
+unsigned PakManager::GetMaxThreads() const
 {
-    m_maxThreads = maxThreads;
-}
-
-//////////////////////////////////////////////////////////////////////////
-int PakManager::GetMaxThreads() const
-{
-    return m_maxThreads;
+    return AZStd::GetMax<unsigned>(1, AZStd::thread::hardware_concurrency() / 2);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -596,10 +591,9 @@ PakManager::ECallResult PakManager::CreatePakFile(
                 ZipSizeSplitter sizeSplitter(filenameCount, nMaxZipSize ? min(nMaxZipSize, INT_MAX) : INT_MAX);
 
                 RCLog("Adding files into %s...", pakFilenameToWrite.c_str());
-                const int threadCount = GetMaxThreads() == 1 ? 0 : GetMaxThreads();
                 pPakFile->zip->UpdateMultipleFiles(&realFilenamePtrs[0], &filenameInZipPtrs[0], filenameCount,
                     zipCompressionLevel, zipEncrypt && zipEncryptContent, nMaxZipSize, nMinSrcSize, nMaxSrcSize,
-                    threadCount, &errorReporter, bSplitOnSizeOverflow ? &sizeSplitter : nullptr);
+                    GetMaxThreads(), &errorReporter, bSplitOnSizeOverflow ? &sizeSplitter : nullptr);
 
                 // divide files in case it has overflown the maximum allowed file-size
                 if (bSplitOnSizeOverflow)

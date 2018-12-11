@@ -2,7 +2,7 @@
 import { Http } from '@angular/http';
 import { AwsService } from "app/aws/aws.service";
 import { Measurable, TackableStatus } from 'app/view/game/module/cloudgems/class/index';
-import { Observable } from 'rxjs/rx';
+import { Observable } from 'rxjs/Observable';
 import { LyMetricService } from 'app/shared/service/index';
 
 /**

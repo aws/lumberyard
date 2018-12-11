@@ -308,9 +308,6 @@
             "BitmapDilation.h",
             "BoostHelpers.h",
             "branchmask.h",
-            "BucketAllocator.h",
-            "BucketAllocatorImpl.h",
-            "BucketAllocatorPolicy.h",
             "CGFContent.h",
             "CGFContent_info.h",
             "CoherentValue.h",
@@ -334,8 +331,7 @@
             "CryListenerSet.h",
             "CryMemoryAllocator.h",
             "CryMemoryManager.h",
-            "CryMemReplay.h",
-            "CryMemReplayTrackedPtr.h",
+            "CryLegacyAllocator.h",
             "CryName.h",
             "CryParticleSpawnInfo.h",
             "CryPath.h",
@@ -370,6 +366,7 @@
             "InterpolationHelpers.h",
             "IntersectionTestQueue.h",
             "LineStreamBuffer.h",
+            "LegacyAllocator.h",
             "MetaUtils.h",
             "MiniQueue.h",
             "MTPseudoRandom.h",
@@ -536,7 +533,6 @@
             "CryThreadImpl_pthreads.h",
             "CryThreadImpl_windows.h",
             "CryWindows.h",
-            "LevelHeap.h",
             "Linux32Specific.h",
             "Linux64Specific.h",
             "Linux_Win32Wrapper.h",
@@ -769,6 +765,7 @@
         "Maestro/Bus":
         [
             "Maestro/Bus/EditorSequenceAgentComponentBus.h",
+            "Maestro/Bus/EditorSequenceBus.h",
             "Maestro/Bus/EditorSequenceComponentBus.h",
             "Maestro/Bus/SequenceComponentBus.h",
             "Maestro/Bus/SequenceAgentComponentBus.h"
@@ -781,6 +778,7 @@
             "Maestro/Types/AnimValue.h",
             "Maestro/Types/AnimValueType.h",
             "Maestro/Types/AssetBlendKey.h",
+            "Maestro/Types/AssetBlends.h",
             "Maestro/Types/SequenceType.h"
         ],
 

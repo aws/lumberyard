@@ -64,8 +64,7 @@ class AsyncNode
     , protected AZ::TickBus::Handler
 {
 public:
-    AZ_CLASS_ALLOCATOR(AsyncNode, AZ::SystemAllocator, 0);
-    AZ_RTTI(AsyncNode, "{0A7FF6C6-878B-42EC-A8BB-4D29C4039853}", ScriptCanvas::Node);
+    AZ_COMPONENT(AsyncNode, "{0A7FF6C6-878B-42EC-A8BB-4D29C4039853}", ScriptCanvas::Node);
 
     bool IsEntryPoint() const { return true; }
 
@@ -149,8 +148,7 @@ TEST_F(AsyncScriptCanvasTestFixture, Asynchronous_Behaviors)
 
     using namespace ScriptCanvas;
 
-    AsyncNode::Reflect(m_serializeContext);
-    AsyncNode::Reflect(m_behaviorContext);
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, AsyncNode::CreateDescriptor());
 
     // Make the graph.
     Graph* graph = nullptr;
@@ -162,9 +160,6 @@ TEST_F(AsyncScriptCanvasTestFixture, Asynchronous_Behaviors)
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
     const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
-
-    AZ::Entity* startEntity{ aznew AZ::Entity };
-    startEntity->Init();
 
     AZ::EntityId startNodeId;
     Nodes::Core::Start* startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, startNodeId);
@@ -189,6 +184,8 @@ TEST_F(AsyncScriptCanvasTestFixture, Asynchronous_Behaviors)
 
     graphEntity->Deactivate();
     delete graphEntity;
+
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, AsyncNode::CreateDescriptor());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -215,8 +212,7 @@ class AsyncFibonacciComputeNode
     : public AsyncNode
 {
 public:
-    AZ_CLASS_ALLOCATOR(AsyncFibonacciComputeNode, AZ::SystemAllocator, 0);
-    AZ_RTTI(AsyncFibonacciComputeNode, "{B198F52D-708C-414B-BB90-DFF0462D7F03}", AsyncNode);
+    AZ_COMPONENT(AsyncFibonacciComputeNode, "{B198F52D-708C-414B-BB90-DFF0462D7F03}", AsyncNode);
 
     AsyncFibonacciComputeNode()
         : AsyncNode()
@@ -289,8 +285,7 @@ TEST_F(AsyncScriptCanvasTestFixture, ComputeFibonacciAsyncGraphTest)
 
     using namespace ScriptCanvas;
 
-    AsyncFibonacciComputeNode::Reflect(m_serializeContext);
-    AsyncFibonacciComputeNode::Reflect(m_behaviorContext);
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, AsyncFibonacciComputeNode::CreateDescriptor());
 
     // Make the graph.
     Graph* graph = nullptr;
@@ -323,6 +318,8 @@ TEST_F(AsyncScriptCanvasTestFixture, ComputeFibonacciAsyncGraphTest)
 
     graphEntity->Deactivate();
     delete graphEntity;
+
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, AsyncFibonacciComputeNode::CreateDescriptor());
 }
 
 #endif // AZ_COMPILER_MSVC >= 1900

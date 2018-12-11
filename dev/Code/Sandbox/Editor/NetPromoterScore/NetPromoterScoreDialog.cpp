@@ -38,21 +38,21 @@ NetPromoterScoreDialog::NetPromoterScoreDialog(QWidget* pParent /*= nullptr*/)
 
     QSignalMapper* signalMapper = new QSignalMapper(this);
 
-    m_buttonGroup.push_back(m_ui->ButtonZero);
-    m_buttonGroup.push_back(m_ui->ButtonOne);
-    m_buttonGroup.push_back(m_ui->ButtonTwo);
-    m_buttonGroup.push_back(m_ui->ButtonThree);
-    m_buttonGroup.push_back(m_ui->ButtonFour);
-    m_buttonGroup.push_back(m_ui->ButtonFive);
-    m_buttonGroup.push_back(m_ui->ButtonSix);
-    m_buttonGroup.push_back(m_ui->ButtonSeven);
-    m_buttonGroup.push_back(m_ui->ButtonEight);
-    m_buttonGroup.push_back(m_ui->ButtonNine);
-    m_buttonGroup.push_back(m_ui->ButtonTen);
+    m_recommendButtons.push_back(m_ui->ButtonZero);
+    m_recommendButtons.push_back(m_ui->ButtonOne);
+    m_recommendButtons.push_back(m_ui->ButtonTwo);
+    m_recommendButtons.push_back(m_ui->ButtonThree);
+    m_recommendButtons.push_back(m_ui->ButtonFour);
+    m_recommendButtons.push_back(m_ui->ButtonFive);
+    m_recommendButtons.push_back(m_ui->ButtonSix);
+    m_recommendButtons.push_back(m_ui->ButtonSeven);
+    m_recommendButtons.push_back(m_ui->ButtonEight);
+    m_recommendButtons.push_back(m_ui->ButtonNine);
+    m_recommendButtons.push_back(m_ui->ButtonTen);
 
-    for (int i = 0; i < m_buttonGroup.size(); ++i)
+    for (int i = 0; i < m_recommendButtons.size(); ++i)
     {
-        signalMapper->setMapping(m_buttonGroup.at(i), i);
+        signalMapper->setMapping(m_recommendButtons.at(i), i);
 
         // The use of signal and slot Macros used to be the only way to make connections, before Qt 5.
         // The signal and slot mechanism is part of the C++ extensions that are provided by Qt
@@ -63,15 +63,38 @@ NetPromoterScoreDialog::NetPromoterScoreDialog(QWidget* pParent /*= nullptr*/)
         // In addition, by using the address of a function, you can refer to any class function,
         // not just those in the section marked slots.
         // This case we connect the QPushButton's signal to the QSignalMapper's map() signal, and this is an exception
-        connect(m_buttonGroup.at(i), SIGNAL(clicked()), signalMapper, SLOT(map()));
+        connect(m_recommendButtons.at(i), SIGNAL(clicked()), signalMapper, SLOT(map()));
 
-        m_buttonGroup.at(i)->installEventFilter(this);
+        m_recommendButtons.at(i)->installEventFilter(this);
     }
 
     connect(signalMapper, SIGNAL(mapped(int)), this, SLOT(SetRatingScore(int)));
 
+    // set up the productivity rating radio buttons
+    auto setConfirmed = [this]() 
+    { 
+        // allow the submit button to be pressed
+        m_isConfirmed = true; 
+        UpdateSubmitButtonState();
+    };
+    auto setupProductivityButton = [&](QRadioButton* theButton) 
+    { 
+        // group the radio buttons to be auto-exclusive and enable the submit button when clicked
+        m_productiveButtonGroup.addButton(theButton);
+        QObject::connect(theButton, &QRadioButton::clicked, this, setConfirmed);
+    };
+
+    setupProductivityButton(m_ui->PriorVersion);
+    setupProductivityButton(m_ui->StronglyDisagree);
+    setupProductivityButton(m_ui->Disagree);
+    setupProductivityButton(m_ui->Neutral);
+    setupProductivityButton(m_ui->Agree);
+    setupProductivityButton(m_ui->StronglyAgree);
+
     connect(m_ui->ButtonSubmit, &QPushButton::clicked, this, &NetPromoterScoreDialog::accept);
     connect(m_ui->ButtonClose, &QPushButton::clicked, this, &NetPromoterScoreDialog::reject);
+
+    m_ui->stackedWidget->setCurrentIndex(0);
 }
 
 NetPromoterScoreDialog::~NetPromoterScoreDialog()
@@ -91,13 +114,13 @@ bool NetPromoterScoreDialog::eventFilter(QObject* obj, QEvent* ev)
 
             if (m_isConfirmed)
             {
-                UpdateRatingState(buttonNumber + 1, m_buttonGroup.size(), ratingButtonLeave);
+                UpdateRatingState(buttonNumber + 1, m_recommendButtons.size(), ratingButtonLeave);
             }
 
             break;
 
         case QEvent::HoverLeave:
-            UpdateRatingState(0, m_buttonGroup.size(), ratingButtonLeave);
+            UpdateRatingState(0, m_recommendButtons.size(), ratingButtonLeave);
 
             if (m_isConfirmed)
             {
@@ -134,29 +157,55 @@ void NetPromoterScoreDialog::accept()
 {
     if (m_ui->ButtonSubmit->isEnabled())
     {
-        QString comment = m_ui->CommentBox->toPlainText();
-        int textLength = comment.length();
-
-        // trim the comments to 10000 characters
-        if (textLength > maxCharacters)
+        if (m_ui->stackedWidget->currentIndex() == 0)
         {
-            comment.resize(maxCharacters);
+            // submitting from first page, advance to the productivity page
+            m_ui->stackedWidget->setCurrentIndex(1);
+            m_ui->ButtonSubmit->setEnabled(false);
         }
+        else
+        {
+            // submitting from second page
+            QString comment = m_ui->CommentBox->toPlainText();
+            int textLength = comment.length();
 
-        // Send MetricsEvent
-        LyMetrics_SendRating(m_ratingScore, m_ratingInterval, comment.toUtf8());
+            // trim the comments to 10000 characters
+            if (textLength > maxCharacters)
+            {
+                comment.resize(maxCharacters);
+            }
 
-        Q_EMIT UserInteractionCompleted();
-        QDialog::accept();
+            int productiveScore = -1;
+            QList<QAbstractButton*> orderedButtons = m_productiveButtonGroup.buttons();
+            for (int buttonIndex = 0, numButtons = orderedButtons.size(); buttonIndex < numButtons; ++buttonIndex)
+            {
+                QAbstractButton* currButton = orderedButtons[buttonIndex];
+                if (currButton->isChecked())
+                {
+                    productiveScore = buttonIndex;
+                    break;
+                }
+            }
+
+            // Send MetricsEvent
+            LyMetrics_SendRating(m_ratingScore, m_ratingInterval, productiveScore, comment.toUtf8());
+
+            Q_EMIT UserInteractionCompleted();
+            QDialog::accept();
+        }
     }
 }
 
 void NetPromoterScoreDialog::reject()
 {
+    // if we're still on the first page, the ratings score hasn't been accepted and should not be used
+    if (m_ui->stackedWidget->currentIndex() == 0)
+    {
+        m_ratingScore = -1;
+    }
+
     // Send Metrics Event
-    m_ratingScore = -1;
-   
-    LyMetrics_SendRating(m_ratingScore, m_ratingInterval, nullptr);
+    LyMetrics_SendRating(m_ratingScore, m_ratingInterval, -1, nullptr);
 
     Q_EMIT UserInteractionCompleted();
     QDialog::reject();
@@ -168,22 +217,24 @@ void NetPromoterScoreDialog::SetMessage()
     QVersionNumber version = QVersionNumber::fromString(METRICS_VERSION);
     QString versionNumber = QString::number(version.majorVersion()) + "." + QString::number(version.minorVersion());
 
-    if (m_ratingInterval <= 5)
+    if (strcmp(METRICS_VERSION, "0.0.0.0") == 0)
     {
-        if (strcmp(METRICS_VERSION, "0.0.0.0") == 0)
+        m_ui->ProductivityPrompt->setText(tr("Lastly, do you agree this Lumberyard has helped you to be more productive than the last version you used?"));
+        if (m_ratingInterval <= 5)
         {
             m_ui->Message->setText(tr("Before you go, tell us how likely is it that you would recommend Lumberyard to a friend or colleague?"));
         }
         else
         {
-            m_ui->Message->setText(tr("Before you go, tell us how likely is it that you would recommend Lumberyard v%1 to a friend or colleague?").arg(versionNumber));
+            m_ui->Message->setText(tr("Now that you've used Lumberyard a while longer, how likely is it that you would recommend Lumberyard to a friend or colleague?"));
         }
     }
     else
     {
-        if (strcmp(METRICS_VERSION, "0.0.0.0") == 0)
+        m_ui->ProductivityPrompt->setText(tr("Lastly, do you agree Lumberyard v%1 has helped you to be more productive than the last version you used?").arg(versionNumber));
+        if (m_ratingInterval <= 5)
         {
-            m_ui->Message->setText(tr("Now that you've used Lumberyard a while longer, how likely is it that you would recommend Lumberyard to a friend or colleague?"));
+            m_ui->Message->setText(tr("Before you go, tell us how likely is it that you would recommend Lumberyard v%1 to a friend or colleague?").arg(versionNumber));
         }
         else
         {
@@ -196,9 +247,9 @@ void NetPromoterScoreDialog::UpdateRatingState(int start, int end, const char* s
 {
     for (int i = start; i < end; ++i)
     {
-        m_buttonGroup.at(i)->setProperty("class", state);
-        m_buttonGroup.at(i)->style()->unpolish(m_buttonGroup.at(i));
-        m_buttonGroup.at(i)->style()->polish(m_buttonGroup.at(i));
+        m_recommendButtons.at(i)->setProperty("class", state);
+        m_recommendButtons.at(i)->style()->unpolish(m_recommendButtons.at(i));
+        m_recommendButtons.at(i)->style()->polish(m_recommendButtons.at(i));
     }
 }
 

@@ -230,7 +230,7 @@ namespace AZ {
         }
 
         Output(g_dbgSystemWnd, "\n==================================================================\n");
-        azsnprintf(header, g_maxMessageLength, "Trace::Assert\n %s(%d): '%s'\n", fileName, line, funcName);
+        azsnprintf(header, g_maxMessageLength, "Trace::Assert\n %s(%d): (%tu) '%s'\n", fileName, line, (uintptr_t)(AZStd::this_thread::get_id().m_id), funcName);
         Output(g_dbgSystemWnd, header);
         azstrcat(message, g_maxMessageLength, "\n");
         Output(g_dbgSystemWnd, message);

@@ -508,14 +508,13 @@ void MaterialHelpers::SetXmlFromTextures( SInputShaderResources& pShaderResource
 
     for (auto& iter : *(pShaderResources.GetTexturesResourceMap()) )
     {
-        uint16                  texId = iter.first;
-        const SEfResTexture*    pTextureRes = &(iter.second);
-        if (!pTextureRes->m_Name.empty())
+        EEfResTextures texId = static_cast<EEfResTextures>(iter.first);
+        const SEfResTexture* pTextureRes = &(iter.second);
+        if (pTextureRes && !pTextureRes->m_Name.empty() && IsAdjustableTexSlot(texId))
         {
             XmlNodeRef texNode = texturesNode->newChild("Texture");
 
-            //    texNode->setAttr("TexID",texId);
-            texNode->setAttr("Map", MaterialHelpers::LookupTexName( (EEfResTextures) texId));
+            texNode->setAttr("Map", MaterialHelpers::LookupTexName(texId));
             texNode->setAttr("File", pTextureRes->m_Name.c_str());
 
             if (pTextureRes->m_Filter != defaultTextureResource.m_Filter)
@@ -709,7 +708,7 @@ void MaterialHelpers::SetShaderParamsFromXml(SInputShaderResources& pShaderResou
         {
             SShaderParam* pParam = &pShaderResources.m_ShaderParams[j];
 
-            if (strcmp(pParam->m_Name, key) == 0)
+            if (pParam->m_Name == key)
             {
                 bFound = true;
 
@@ -772,7 +771,7 @@ void MaterialHelpers::SetShaderParamsFromXml(SInputShaderResources& pShaderResou
             assert(val && key);
 
             SShaderParam Param;
-            cry_strcpy(Param.m_Name, key);
+            Param.m_Name = key;
             Param.m_Value.m_Color[0] = Param.m_Value.m_Color[1] = Param.m_Value.m_Color[2] = Param.m_Value.m_Color[3] = 0;
 
             int res = azsscanf(val, "%f,%f,%f,%f", &Param.m_Value.m_Color[0], &Param.m_Value.m_Color[1], &Param.m_Value.m_Color[2], &Param.m_Value.m_Color[3]);
@@ -792,22 +791,22 @@ void MaterialHelpers::SetXmlFromShaderParams(const SInputShaderResources& pShade
         switch (pParam->m_Type)
         {
         case eType_BYTE:
-            node->setAttr(pParam->m_Name, (int)pParam->m_Value.m_Byte);
+            node->setAttr(pParam->m_Name.c_str(), (int)pParam->m_Value.m_Byte);
             break;
         case eType_SHORT:
-            node->setAttr(pParam->m_Name, (int)pParam->m_Value.m_Short);
+            node->setAttr(pParam->m_Name.c_str(), (int)pParam->m_Value.m_Short);
             break;
         case eType_INT:
-            node->setAttr(pParam->m_Name, (int)pParam->m_Value.m_Int);
+            node->setAttr(pParam->m_Name.c_str(), (int)pParam->m_Value.m_Int);
             break;
         case eType_FLOAT:
-            node->setAttr(pParam->m_Name, (float)pParam->m_Value.m_Float);
+            node->setAttr(pParam->m_Name.c_str(), (float)pParam->m_Value.m_Float);
             break;
         case eType_FCOLOR:
-            node->setAttr(pParam->m_Name, Vec3(pParam->m_Value.m_Color[0], pParam->m_Value.m_Color[1], pParam->m_Value.m_Color[2]));
+            node->setAttr(pParam->m_Name.c_str(), Vec3(pParam->m_Value.m_Color[0], pParam->m_Value.m_Color[1], pParam->m_Value.m_Color[2]));
             break;
         case eType_VECTOR:
-            node->setAttr(pParam->m_Name, Vec3(pParam->m_Value.m_Vector[0], pParam->m_Value.m_Vector[1], pParam->m_Value.m_Vector[2]));
+            node->setAttr(pParam->m_Name.c_str(), Vec3(pParam->m_Value.m_Vector[0], pParam->m_Value.m_Vector[1], pParam->m_Value.m_Vector[2]));
             break;
         default:
             break;

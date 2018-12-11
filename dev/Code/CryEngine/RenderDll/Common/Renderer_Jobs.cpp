@@ -580,7 +580,7 @@ CRenderObject* CRenderer::EF_GetObject_Temp(int nThreadID)
 
     if (*ppObj == NULL)
     {
-        *ppObj = new CRenderObject;
+        *ppObj = aznew CRenderObject();
     }
     pObj = *ppObj;
 
@@ -752,7 +752,7 @@ struct CShaderPublicParams
     {
         for (int32 i = 0; i < m_shaderParams.size(); i++)
         {
-            if (!_stricmp(pszName, m_shaderParams[i].m_Name))
+            if (pszName == m_shaderParams[i].m_Name)
             {
                 return &m_shaderParams[i];
             }
@@ -765,7 +765,7 @@ struct CShaderPublicParams
     {
         for (int32 i = 0; i < m_shaderParams.size(); i++)
         {
-            if (!_stricmp(pszName, m_shaderParams[i].m_Name))
+            if (pszName == m_shaderParams[i].m_Name)
             {
                 return &m_shaderParams[i];
             }
@@ -818,7 +818,7 @@ struct CShaderPublicParams
     {
         for (int32 i = 0; i < m_shaderParams.size(); i++)
         {
-            if (!_stricmp(pszName, m_shaderParams[i].m_Name))
+            if (pszName == m_shaderParams[i].m_Name)
             {
                 m_shaderParams.erase(i);
             }
@@ -842,7 +842,7 @@ struct CShaderPublicParams
 
         for (i = 0; i < m_shaderParams.size(); i++)
         {
-            if (!_stricmp(pszName, m_shaderParams[i].m_Name))
+            if (pszName == m_shaderParams[i].m_Name)
             {
                 break;
             }
@@ -851,7 +851,7 @@ struct CShaderPublicParams
         if (i == m_shaderParams.size())
         {
             SShaderParam pr;
-            cry_strcpy(pr.m_Name, pszName);
+            pr.m_Name = pszName;
             pr.m_Type = nType;
             pr.m_eSemantic = eSemantic;
             m_shaderParams.push_back(pr);
@@ -947,13 +947,18 @@ void CMotionBlur::SetupObject(CRenderObject* renderObject, const SRenderingPassI
         const AZ::u32 currentFrameId = passInfo.GetMainFrameID();
         const uintptr_t objectId = renderObjectData ? renderObjectData->m_uniqueObjectId : 0;
         const AZ::u32 bufferIndex = (currentFrameId) % 3;
-        auto currentIt = m_Objects[bufferIndex].find(objectId);
-        if (currentIt != m_Objects[bufferIndex].end())
+        if (!m_Objects[bufferIndex])
+        {
+            return;
+        }
+
+        auto currentIt = m_Objects[bufferIndex]->find(objectId);
+        if (currentIt != m_Objects[bufferIndex]->end())
         {
             const AZ::u32 lastBufferIndex = (currentFrameId - 1) % 3;
 
-            auto historyIt = m_Objects[lastBufferIndex].find(objectId);
-            if (historyIt != m_Objects[lastBufferIndex].end())
+            auto historyIt = m_Objects[lastBufferIndex]->find(objectId);
+            if (historyIt != m_Objects[lastBufferIndex]->end())
             {
                 MotionBlurObjectParameters* currentParameters = &currentIt->second;
                 MotionBlurObjectParameters* historyParameters = &historyIt->second;

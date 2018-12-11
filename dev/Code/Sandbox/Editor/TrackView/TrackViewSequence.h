@@ -298,6 +298,8 @@ public:
     void OnEntityComponentPropertyChanged(AZ::ComponentId /*changedComponentId*/) override;
     /////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    CTrackViewTrack* FindTrackById(unsigned int trackId);
+
     // Helper function to find a sequence by entity id
     static CTrackViewSequence* LookUpSequenceByEntityId(const AZ::EntityId& sequenceId);
 
@@ -308,6 +310,8 @@ private:
     // Only when the counter reaches 0 again SubmitPendingListenerNotifcations
     // will submit the notifications
     void QueueNotifications();
+    // Used to cancel a previously queued notification.
+    void DequeueNotifications();
     void SubmitPendingNotifcations(bool force = false);
 
     /////////////////////////////////////////////////////////////////////////
@@ -375,6 +379,15 @@ public:
         {
             m_pSequence->SubmitPendingNotifcations();
         }
+    }
+
+    void Cancel()
+    {
+        if (m_pSequence)
+        {
+            m_pSequence->DequeueNotifications();
+        }        
+        m_pSequence = nullptr;
     }
 
 private:

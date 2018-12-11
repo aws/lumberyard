@@ -635,7 +635,7 @@ void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const Az
         // [indentation by depth] [icon] [slice name] [# overrides]
         if (!quickPushMenu)
         {
-            quickPushMenu = new QMenu();
+            quickPushMenu = new QMenu(menu);
         }
 
         QWidgetAction* widgetAction = new QWidgetAction(quickPushMenu);

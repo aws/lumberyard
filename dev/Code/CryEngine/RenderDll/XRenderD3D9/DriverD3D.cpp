@@ -69,6 +69,7 @@
 #if defined(WIN32) && !defined(OPENGL)
     #pragma warning(push)
     #pragma warning(disable:4819)   // Invalid character not in default code page
+    #pragma warning(disable:4828)
     #include <nvapi.h>                // NVAPI
     #pragma warning(pop)
 #endif
@@ -250,8 +251,7 @@ CCryNameTSCRC CHWShader::s_sClassNamePS = CCryNameTSCRC("CHWShader_PS");
 
 CCryNameTSCRC CShader::s_sClassName = CCryNameTSCRC("CShader");
 
-
-CD3D9Renderer gcpRendD3D;
+StaticInstance<CD3D9Renderer> gcpRendD3D;
 
 int CD3D9Renderer::CV_d3d11_CBUpdateStats;
 ICVar* CD3D9Renderer::CV_d3d11_forcedFeatureLevel;
@@ -735,7 +735,7 @@ void CD3D9Renderer::ChangeViewport(unsigned int x, unsigned int y, unsigned int 
         m_CurrContext->m_pCurrentBackBufferIndex = GetCurrentBackBufferIndex(m_CurrContext->m_pSwapChain);
         m_CurrContext->m_pBackBuffer = m_CurrContext->m_pBackBuffers[m_CurrContext->m_pCurrentBackBufferIndex];
         m_pBackBuffer = m_CurrContext->m_pBackBuffer;
-        m_pBackBuffers = m_CurrContext->m_pBackBuffers;
+        m_pBackBuffers = decltype(m_pBackBuffers)(m_CurrContext->m_pBackBuffers.data(), m_CurrContext->m_pBackBuffers.data() + m_CurrContext->m_pBackBuffers.size());
         m_pCurrentBackBufferIndex = m_CurrContext->m_pCurrentBackBufferIndex;
         FX_SetRenderTarget(0, m_CurrContext->m_pBackBuffer, &m_DepthBufferOrig);
     }
@@ -1626,8 +1626,6 @@ void CD3D9Renderer::RT_BeginFrame()
             OnD3D11PostCreateDevice(m_devInfo.Device());
 
             ChangeViewport(0, 0, width, height, true);
-
-            GetS3DRend().OnResolutionChanged();
         }
     }
 #endif
@@ -2405,10 +2403,11 @@ void CD3D9Renderer::DebugDrawStats1()
     Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Shadow-gen: %d (%d polys, %.3fms)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_nDIPs[EFSLIST_SHADOW_GEN], m_RP.m_PS[m_RP.m_nProcessThreadID].m_nPolygons[EFSLIST_SHADOW_GEN], m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_SHADOW_GEN] * 1000.0f);
     Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Shadow-pass: %d (%d polys)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_nDIPs[EFSLIST_SHADOW_PASS], m_RP.m_PS[m_RP.m_nProcessThreadID].m_nPolygons[EFSLIST_SHADOW_PASS]);
     Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Water: %d (%d polys, %.3fms)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_nDIPs[EFSLIST_WATER], m_RP.m_PS[m_RP.m_nProcessThreadID].m_nPolygons[EFSLIST_WATER], m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_WATER_VOLUMES] * 1000.0f);
-    Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Imposters: %d (Updates: %d)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumCloudImpostersDraw, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumCloudImpostersUpdates);
+    Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Refractive Surface: %d (%d polys, %.3fms)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_nDIPs[EFSLIST_REFRACTIVE_SURFACE], m_RP.m_PS[m_RP.m_nProcessThreadID].m_nPolygons[EFSLIST_REFRACTIVE_SURFACE], m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_REFRACTIVE_SURFACE] * 1000.0f);
+	Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Imposters: %d (Updates: %d)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumCloudImpostersDraw, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumCloudImpostersUpdates);
     Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Sprites: %d (%d dips, %d updates, %d altases, %d cells, %d polys)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSprites, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSpriteDIPS, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSpriteUpdates, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSpriteAltasesUsed, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSpriteCellsUsed, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSpritePolys /*, m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPsSprites*1000.0f*/);
 
-    Draw2dLabel(nX - 5, nY + 20, 1.4f, &col.r, false, "Total: %d (%d polys)", GetCurrentNumberOfDrawCalls(), RT_GetPolyCount());
+    Draw2dLabel(nX - 5, nY + 20, 1.4f, &col.r, false, "Total: %d (%d polys)", GetCurrentNumberOfDrawCalls(), GetPolyCount());
 
     col = Col_Yellow;
     nX -= 5;
@@ -3176,6 +3175,12 @@ void CD3D9Renderer::DebugPerfBars(int nX, int nY)
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Water volumes: %.3fms", fTimeDIP[EFSLIST_WATER_VOLUMES] * 1000.0f);
     CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIP[EFSLIST_WATER_VOLUMES] / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
+    nY += nYst;
+
+    fTimeDIP[EFSLIST_REFRACTIVE_SURFACE] = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_REFRACTIVE_SURFACE] + fTimeDIP[EFSLIST_REFRACTIVE_SURFACE] * fSmooth) / (fSmooth + 1.0f);
+    Draw2dLabel(nX, nY, fFSize, &col.r, false, "Refractive Surfaces: %.3fms", fTimeDIP[EFSLIST_REFRACTIVE_SURFACE] * 1000.0f);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
+    DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIP[EFSLIST_REFRACTIVE_SURFACE] / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIP[EFSLIST_TRANSP] = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_TRANSP] + fTimeDIP[EFSLIST_TRANSP] * fSmooth) / (fSmooth + 1.0f);
@@ -5049,7 +5054,6 @@ bool CD3D9Renderer::SetRenderTarget(int nHandle, SDepthTexture* pDepthSurf)
 
 SDepthTexture* CD3D9Renderer::CreateDepthSurface(int nWidth, int nHeight)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
     SDepthTexture* pDepthTexture = new SDepthTexture;
     pDepthTexture->nWidth = nWidth;
     pDepthTexture->nHeight = nHeight;
@@ -7414,16 +7418,6 @@ void CD3D9Renderer::GetMemoryUsage(ICrySizer* Sizer)
     }
 
     uint32 i, j;
-
-#ifndef AZ_MONOLITHIC_BUILD // Only when compiling as dynamic library
-    {
-        SIZER_COMPONENT_NAME(Sizer, "STL Allocator Waste");
-        CryModuleMemoryInfo meminfo;
-        ZeroStruct(meminfo);
-        CryGetMemoryInfoForModule(&meminfo);
-        Sizer->AddObject((this + 2), meminfo.STL_wasted);
-    }
-#endif
 
     //SIZER_COMPONENT_NAME(Sizer, "GLRenderer");
     {

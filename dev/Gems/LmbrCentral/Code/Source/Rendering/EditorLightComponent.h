@@ -22,6 +22,7 @@
 #include <AzFramework/Asset/AssetCatalogBus.h>
 
 #include <LmbrCentral/Rendering/EditorLightComponentBus.h>
+#include <LmbrCentral/Rendering/EditorCameraCorrectionBus.h>
 
 #include "LightComponent.h"
 
@@ -71,6 +72,7 @@ namespace LmbrCentral
         , private RenderNodeRequestBus::Handler
         , private AzFramework::AssetCatalogEventBus::Handler
         , private AZ::TransformNotificationBus::Handler
+        , private EditorCameraCorrectionRequestBus::Handler
     {
     private:
         using Base = AzToolsFramework::Components::EditorComponentBase;
@@ -111,6 +113,10 @@ namespace LmbrCentral
         const LightConfiguration& GetConfiguration() const override;
         AZ::Crc32 OnCubemapAssetChanged();
         AZ::Crc32 OnCustomizedCubemapChanged();
+
+        // EditorCameraCorrectionRequestBus interface implementation
+        // Light is aligned along the the x-axis so add a transform correction to align along the y-axis.
+        AZ::Matrix3x3 GetTransformCorrection() override { return AZ::Matrix3x3::CreateRotationZ(-AZ::Constants::HalfPi); }
 
         ///////////////////////////////////////////
         // LightComponentEditorRequestBus Modifiers

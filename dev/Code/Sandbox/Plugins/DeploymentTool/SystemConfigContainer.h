@@ -16,36 +16,21 @@
 
 struct DeploymentConfig;
 
-class SystemConfigContainer : private ConfigFileContainer
+class SystemConfigContainer
+    : public ConfigFileContainer
 {
 public:
     SystemConfigContainer(const char* systemConfigFileName);
     ~SystemConfigContainer() = default;
 
-    SystemConfigContainer(const SystemConfigContainer& rhs) = delete;
-    SystemConfigContainer& operator=(const SystemConfigContainer& rhs) = delete;
-    SystemConfigContainer& operator=(SystemConfigContainer&& rhs) = delete;
-
-    using ConfigFileContainer::ReadContents;
-    using ConfigFileContainer::WriteContents;
-
-    StringOutcome UpdateWithDeploymentOptions(const DeploymentConfig& deploymentConfig);
+    StringOutcome ApplyConfiguration(const DeploymentConfig& deploymentConfig) override;
 
     AZStd::string GetShaderCompilerIP() const;
     AZStd::string GetShaderCompilerPort() const;
     bool GetUseAssetProcessorShaderCompiler() const;
 
-    AZStd::string GetShaderCompilerIPIncludeComments() const;
-    AZStd::string GetShaderCompilerPortIncludeComments() const;
-    bool GetUseAssetProcessorShaderCompilerIncludeComments() const;
-
-    void SetShaderCompilerIP(const AZStd::string& newIP);
-    void SetShaderCompilerPort(const AZStd::string& newPort);
-    void SetUseAssetProcessorShaderCompiler(bool useAssetProcessor);
 
 private:
-    static const char* s_shaderCompilerIPKey;
-    static const char* s_shaderCompilerPortKey;
-    static const char* s_assetProcessorShaderCompilerKey;
+    AZ_DISABLE_COPY_MOVE(SystemConfigContainer);
 };
 

@@ -52,9 +52,22 @@ namespace EMotionFX
             , m_worldBoundingBox(AABB::RESET)
             , m_entityId(entityId)
             , m_isRegisteredWithRenderer(false)
+            , m_renderNodeLifetime(new int)
         {
             SetActorAsset(asset);
             memset(m_arrSkinningRendererData, 0, sizeof(m_arrSkinningRendererData));
+
+            AZStd::shared_ptr<int>& renderNodeLifetime = m_renderNodeLifetime;
+            AZStd::function<void()> finalizeOnMainThread = [this, renderNodeLifetime]()
+            {
+                // RenderMesh creation must be performed on the main thread,
+                // as required by the renderer.
+                if (renderNodeLifetime.use_count() != 1)
+                {
+                    BuildRenderMeshPerLOD();
+                }
+            };
+            AZ::SystemTickBus::QueueFunction(finalizeOnMainThread);
 
             if (m_entityId.IsValid())
             {
@@ -134,7 +147,7 @@ namespace EMotionFX
         {
             if (!m_isRegisteredWithRenderer && gEnv && gEnv->p3DEngine)
             {
-                SetRndFlags(ERF_CASTSHADOWMAPS | ERF_HAS_CASTSHADOWMAPS, true);
+                SetRndFlags(ERF_CASTSHADOWMAPS | ERF_HAS_CASTSHADOWMAPS | ERF_COMPONENT_ENTITY, true);
 
                 UpdateWorldBoundingBox();
 
@@ -242,35 +255,28 @@ namespace EMotionFX
                 return;
             }
 
-            if (data->GetNumLODs() == 0)
+            if (data->GetNumLODs() == 0 || m_renderMeshesPerLOD.empty())
             {
-                return;
+                return; // not ready for rendering
             }
 
             AZ::u32 useLodIndex = 0; // \todo - choose LOD
 
             SRendParams rParams(inRenderParams);
-
             rParams.fAlpha = 1.f;
-
             IMaterial* previousMaterial = rParams.pMaterial;
             const int previousObjectFlags = rParams.dwFObjFlags;
-
             rParams.dwFObjFlags |= FOB_DYNAMIC_OBJECT;
-
             rParams.pMatrix = &m_renderTransform;
-
             rParams.lodValue = rParams.lodValue.LodA();
 
             CRenderObject* pObj = gEnv->pRenderer->EF_GetObject_Temp(passInfo.ThreadID());
-
             pObj->m_fSort = rParams.fCustomSortOffset;
             pObj->m_fAlpha = rParams.fAlpha;
             pObj->m_fDistance = rParams.fDistance;
             pObj->m_II.m_AmbColor = rParams.AmbientColor;
 
             SRenderObjData* pD = gEnv->pRenderer->EF_GetObjData(pObj, true, passInfo.ThreadID());
-
             if (rParams.pShaderParams && rParams.pShaderParams->size() > 0)
             {
                 pD->SetShaderParams(rParams.pShaderParams);
@@ -283,19 +289,13 @@ namespace EMotionFX
             pObj->m_II.m_Matrix = *rParams.pMatrix;
             pObj->m_nClipVolumeStencilRef = rParams.nClipVolumeStencilRef;
             pObj->m_nTextureID = rParams.nTextureID;
-
             rParams.dwFObjFlags |= rParams.dwFObjFlags;
             rParams.dwFObjFlags &= ~FOB_NEAREST;
-
             pObj->m_nMaterialLayers = rParams.nMaterialLayersBlend;
-
             pD->m_nHUDSilhouetteParams = rParams.nHUDSilhouettesParams;
-
             pD->m_nCustomData = rParams.nCustomData;
             pD->m_nCustomFlags = rParams.nCustomFlags;
-
             pObj->m_DissolveRef = rParams.nDissolveRef;
-
             pObj->m_nSort = fastround_positive(rParams.fDistance * 2.0f);
 
             if (SSkinningData* skinningData = GetSkinningData())
@@ -312,6 +312,11 @@ namespace EMotionFX
             ActorAsset::MeshLOD* meshLOD = data->GetMeshLOD(useLodIndex);
             if (meshLOD)
             {
+                if (meshLOD->m_hasDynamicMeshes)
+                {
+                    m_actorInstance->UpdateMorphMeshDeformers(0.0f);
+                }
+
                 IMaterial* pMaterial = rParams.pMaterial;
 
                 // Grab material for this LOD.
@@ -327,14 +332,21 @@ namespace EMotionFX
                     pMaterial = gEnv->p3DEngine->GetMaterialManager()->GetDefaultMaterial();
                 }
 
-                IRenderMesh* renderMesh = meshLOD->m_renderMesh;
-                if (meshLOD->m_IsDynamic && MorphTargetWeightsWereUpdated(useLodIndex))
+                const bool morphsUpdated = MorphTargetWeightsWereUpdated(useLodIndex);
+                const size_t numPrimitives = meshLOD->m_primitives.size();
+                for (size_t prim = 0; prim < numPrimitives; ++prim)
                 {
-                    UpdateDynamicSkin(useLodIndex);
-                }
-                if (renderMesh)
-                {
-                    renderMesh->Render(rParams, pObj, pMaterial, passInfo);
+                    const ActorAsset::Primitive& primitive = meshLOD->m_primitives[prim];
+                    if (primitive.m_isDynamic && morphsUpdated)
+                    {
+                        UpdateDynamicSkin(useLodIndex, prim);
+                    }
+
+                    IRenderMesh* renderMesh = m_renderMeshesPerLOD[useLodIndex][prim];
+                    if (renderMesh)
+                    {
+                        renderMesh->Render(rParams, pObj, pMaterial, passInfo);
+                    }
                 }
             }
 
@@ -548,7 +560,7 @@ namespace EMotionFX
                         differentMorpthTargets = true;
                         m_lastMorphTargetWeights.resize(numTargets);
                     }
-                    
+
                     for (uint32 i = 0; i < numTargets; ++i)
                     {
                         // get the morph target
@@ -579,7 +591,8 @@ namespace EMotionFX
             return differentMorpthTargets;
         }
 
-        void ActorRenderNode::UpdateDynamicSkin(AZ::u32 lodIndex)
+
+        void ActorRenderNode::UpdateDynamicSkin(size_t lodIndex, size_t primitiveIndex)
         {
             ActorAsset::MeshLOD* meshLOD = m_actorAsset.Get()->GetMeshLOD(lodIndex);
             if (!meshLOD)
@@ -587,7 +600,8 @@ namespace EMotionFX
                 return;
             }
 
-            _smart_ptr<IRenderMesh>& renderMesh = meshLOD->m_renderMesh;
+            const ActorAsset::Primitive& primitive = meshLOD->m_primitives[primitiveIndex];
+            _smart_ptr<IRenderMesh>& renderMesh = m_renderMeshesPerLOD[lodIndex][primitiveIndex];
 
             IRenderMesh::ThreadAccessLock lockRenderMesh(renderMesh);
 
@@ -604,95 +618,62 @@ namespace EMotionFX
             ActorAsset* assetData = m_actorAsset.Get();
             AZ_Assert(assetData, "Invalid asset data");
 
-            m_actorInstance->UpdateMorphMeshDeformers(0.0f);
+            const EMotionFX::SubMesh*   subMesh = primitive.m_subMesh;
+            const EMotionFX::Mesh*      mesh = subMesh->GetParentMesh();
+            const AZ::PackedVector3f*   sourcePositions = static_cast<AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+            const AZ::PackedVector3f*   sourceNormals   = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));  // TODO: this shouldn't use the original data, this is a bug, but left here on purpose to hide an issue.
+            const AZ::PackedVector3f*   sourceBitangents = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_BITANGENTS));   // Due to time constraints we will fix this later.
+            const AZ::Vector4*          sourceTangents  = static_cast<AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
 
-            EMotionFX::Actor* actor = assetData->GetActor().get();
-            const uint32 numNodes = actor->GetNumNodes();
-            const uint32 numLODs = actor->GetNumLODLevels();
-            EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
-
-            uint32 destVertexIndex = 0;
-
-            for (uint32 n = 0; n < numNodes; ++n)
+            if (!destTangents)
             {
-                const EMotionFX::Node* node = skeleton->GetNode(n);
-                EMotionFX::Mesh* mesh = actor->GetMesh(lodIndex, n);
-
-                if (!mesh || mesh->GetIsCollisionMesh())
-                {
-                    continue;
-                }
-
-                const EMotionFX::Mesh::EMeshType meshType = mesh->ClassifyMeshType(0, actor, node->GetNodeIndex(), false, 4, 255);
-                if (meshType == EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED)
-                {
-                    // Skin doesn't need to be updated, however, we need to compute the
-                    // meshFirstVertexId to get the right offset when we process the dynamic case
-                    const uint32 numSubMeshes = mesh->GetNumSubMeshes();
-                    for (uint32 subMeshIndex = 0; subMeshIndex < numSubMeshes; ++subMeshIndex)
-                    {
-                        const EMotionFX::SubMesh* subMesh = mesh->GetSubMesh(subMeshIndex);
-                        destVertexIndex += subMesh->GetNumVertices();
-                    }
-                    continue;
-                }
-                else if (meshType == EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED)
-                {
-                    const AZ::PackedVector3f* sourcePositions = static_cast<AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
-                    const AZ::PackedVector3f* sourceNormals = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
-                    const AZ::Vector4* sourceTangents = static_cast<AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
-
-                    const uint32 numSubMeshes = mesh->GetNumSubMeshes();
-                    for (uint32 subMeshIndex = 0; subMeshIndex < numSubMeshes; ++subMeshIndex)
-                    {
-                        const EMotionFX::SubMesh* subMesh = mesh->GetSubMesh(subMeshIndex);
-
-                        const uint32 numVertices = subMesh->GetNumVertices();
-                        for (uint32 i = 0; i < numVertices; ++i)
-                        {
-                            const AZ::PackedVector3f& sourcePosition = sourcePositions[subMesh->GetStartVertex() + i];
-                            destVertices[destVertexIndex + i] = Vec3(sourcePosition.GetX(), sourcePosition.GetY(), sourcePosition.GetZ());
-                        }
-                        for (uint32 i = 0; i < numVertices; ++i)
-                        {
-                            const AZ::PackedVector3f& sourceNormal = sourceNormals[subMesh->GetStartVertex() + i];
-                            destNormals[destVertexIndex + i] = Vec3(sourceNormal.GetX(), sourceNormal.GetY(), sourceNormal.GetZ());
-                        }
-                        if (sourceTangents)
-                        {
-                            if (!destTangents)
-                            {
-                                destTangents.data = reinterpret_cast<SPipQTangents*>(renderMesh->GetQTangentPtr(destTangents.iStride, FSL_SYSTEM_UPDATE));
-                            }
-                            AZ_Assert(static_cast<bool>(destTangents), "Expected a destination tangent buffer");
-
-                            // We only need to update the tangents if they are in the mesh, otherwise they will be 0 or not
-                            // be present at the destination
-                            for (uint32 i = 0; i < numVertices; ++i)
-                            {
-                                const AZ::Vector4& sourceTangent = sourceTangents[subMesh->GetStartVertex() + i];
-                                const AZ::Vector3 sourceNormal(sourceNormals[subMesh->GetStartVertex() + i]);
-                                const AZ::Vector3 bitangent = AZ::Vector3(sourceTangent.GetX(), sourceTangent.GetY(), sourceTangent.GetZ()).Cross(sourceNormal) * sourceTangent.GetW();
-
-                                SMeshTangents meshTangent(
-                                    Vec3(sourceTangent.GetX(), sourceTangent.GetY(), sourceTangent.GetZ()),
-                                    Vec3(bitangent.GetX(), bitangent.GetY(), bitangent.GetZ()),
-                                    Vec3(sourceNormal.GetX(), sourceNormal.GetY(), sourceNormal.GetZ()));
-
-                                Quat q = MeshTangentFrameToQTangent(meshTangent);
-
-                                destTangents[destVertexIndex + i] = SPipQTangents(
-                                        Vec4sf(
-                                            PackingSNorm::tPackF2B(q.v.x),
-                                            PackingSNorm::tPackF2B(q.v.y),
-                                            PackingSNorm::tPackF2B(q.v.z),
-                                            PackingSNorm::tPackF2B(q.w)));
-                            }
-                        }
-                        destVertexIndex += numVertices;
-                    }
-                }
+                destTangents.data = reinterpret_cast<SPipQTangents*>(renderMesh->GetQTangentPtr(destTangents.iStride, FSL_SYSTEM_UPDATE));
             }
+            AZ_Assert(static_cast<bool>(destTangents), "Expected a destination tangent buffer");
+
+            const AZ::u32 startVertex = subMesh->GetStartVertex();
+            const size_t numSubMeshVertices = subMesh->GetNumVertices();
+            for (size_t i = 0; i < numSubMeshVertices; ++i)
+            {
+                const AZ::u32 vertexIndex = startVertex + i;
+
+                const AZ::PackedVector3f& sourcePosition = sourcePositions[vertexIndex];
+                destVertices[i] = Vec3(sourcePosition.GetX(), sourcePosition.GetY(), sourcePosition.GetZ());
+
+                const AZ::PackedVector3f& sourceNormal = sourceNormals[vertexIndex];
+                destNormals[i] = Vec3(sourceNormal.GetX(), sourceNormal.GetY(), sourceNormal.GetZ());
+
+                if (sourceTangents)
+                {
+                    // We only need to update the tangents if they are in the mesh, otherwise they will be 0 or not
+                    // be present at the destination
+                    const AZ::Vector4& sourceTangent = sourceTangents[vertexIndex];
+                    const AZ::Vector3 sourceNormalV3(sourceNormals[vertexIndex]);
+
+                    AZ::Vector3 bitangent;
+                    if (sourceBitangents)
+                    {
+                        bitangent = AZ::Vector3(sourceBitangents[vertexIndex]);
+                    }
+                    else
+                    {
+                        bitangent = sourceNormalV3.Cross(sourceTangent.GetAsVector3()) * sourceTangent.GetW();
+                    }
+
+                    const SMeshTangents meshTangent(
+                        Vec3(sourceTangent.GetX(), sourceTangent.GetY(), sourceTangent.GetZ()),
+                        Vec3(bitangent.GetX(), bitangent.GetY(), bitangent.GetZ()),
+                        Vec3(sourceNormalV3.GetX(), sourceNormalV3.GetY(), sourceNormalV3.GetZ()));
+
+                    const Quat q = MeshTangentFrameToQTangent(meshTangent);
+                    destTangents[i] = SPipQTangents(
+                            Vec4sf(
+                                PackingSNorm::tPackF2B(q.v.x),
+                                PackingSNorm::tPackF2B(q.v.y),
+                                PackingSNorm::tPackF2B(q.v.z),
+                                PackingSNorm::tPackF2B(q.w)));
+                } // if (sourceTangents)
+            } // for all vertices
 
             renderMesh->UnlockStream(VSF_GENERAL);
             if (destTangents)
@@ -726,13 +707,12 @@ namespace EMotionFX
             AZ_Assert(assetData, "Invalid asset data");
 
             EMotionFX::Actor* actor = assetData->m_emfxActor.get();
+            EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
             const uint32 numNodes = actor->GetNumNodes();
             const uint32 numLODs = actor->GetNumLODLevels();
-
             const uint32 maxInfluences = AZ_ARRAY_SIZE(((SMeshBoneMapping_uint16*)nullptr)->boneIds);
 
-            EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
-
+            assetData->m_meshLODs.clear();
             assetData->m_meshLODs.reserve(numLODs);
 
             //
@@ -743,137 +723,140 @@ namespace EMotionFX
                 assetData->m_meshLODs.push_back(ActorAsset::MeshLOD());
                 ActorAsset::MeshLOD& lod = assetData->m_meshLODs.back();
 
-                lod.m_mesh = new CMesh();
-                AZ_Assert(lod.m_vertexBoneMappings.empty(), "Expected empty vertex bone mappings");
-
                 // Get the amount of vertices and indices
                 // Get the meshes to process
-                uint32 verticesCount = 0;
-                uint32 indicesCount = 0;
                 bool hasUVs = false;
+                bool hasUVs2 = false;
                 bool hasTangents = false;
-                AZStd::vector<EMotionFX::Mesh*> meshesToProcess;
+                bool hasBitangents = false;
 
+                // Find the number of submeshes in the full actor.
+                // This will be the number of primitives.
+                size_t numPrimitives = 0;
                 for (uint32 n = 0; n < numNodes; ++n)
                 {
-                    const EMotionFX::Node* node = skeleton->GetNode(n);
                     EMotionFX::Mesh* mesh = actor->GetMesh(lodIndex, n);
-
                     if (!mesh || mesh->GetIsCollisionMesh())
                     {
                         continue;
                     }
 
-                    const EMotionFX::Mesh::EMeshType meshType = mesh->ClassifyMeshType(0, actor, node->GetNodeIndex(), false, 4, 255);
+                    numPrimitives += mesh->GetNumSubMeshes();
+                }
 
-                    lod.m_IsDynamic |= (meshType == EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED);
+                lod.m_primitives.resize(numPrimitives);
 
-                    // For each sub-mesh within each mesh, we want to create a separate sub-piece.
-                    const uint32 numSubMeshes = mesh->GetNumSubMeshes();
-                    for (uint32 subMeshIndex = 0; subMeshIndex < numSubMeshes; ++subMeshIndex)
+                bool hasDynamicMeshes = false;
+
+                size_t primitiveIndex = 0;
+                for (uint32 n = 0; n < numNodes; ++n)
+                {
+                    EMotionFX::Mesh* mesh = actor->GetMesh(lodIndex, n);
+                    if (!mesh || mesh->GetIsCollisionMesh())
                     {
-                        const EMotionFX::SubMesh* subMesh = mesh->GetSubMesh(subMeshIndex);
-                        indicesCount += subMesh->GetNumIndices();
-                        verticesCount += subMesh->GetNumVertices();
-
-                        hasUVs |= (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0) != nullptr);
-                        hasTangents |= (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS) != nullptr);
+                        continue;
                     }
 
-                    meshesToProcess.push_back(mesh);
-                }
+                    const EMotionFX::Node* node = skeleton->GetNode(n);
+                    const EMotionFX::Mesh::EMeshType meshType = mesh->ClassifyMeshType(lodIndex, actor, node->GetNodeIndex(), false, 4, 255);
 
-                // Destination initialization. We are going to put all meshes and submeshes for one lod
-                // into one destination mesh
-                lod.m_vertexBoneMappings.resize(verticesCount);
-                lod.m_mesh->SetIndexCount(indicesCount);
-                lod.m_mesh->SetVertexCount(verticesCount);
-                // Positions and normals are reallocated by the SetVertexCount
-                //lod.m_mesh->ReallocStream(CMesh::POSITIONS, 0, verticesCount);
-                //lod.m_mesh->ReallocStream(CMesh::NORMALS, 0, verticesCount);
-                if (hasTangents)
-                {
-                    lod.m_mesh->ReallocStream(CMesh::TANGENTS, 0, verticesCount);
-                }
-                if (hasUVs)
-                {
-                    lod.m_mesh->ReallocStream(CMesh::TEXCOORDS, 0, verticesCount);
-                }
-                lod.m_mesh->m_pBoneMapping = lod.m_vertexBoneMappings.data();
+                    hasUVs  = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0) != nullptr);
+                    hasUVs2 = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 1) != nullptr);
+                    hasTangents = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS) != nullptr);
 
-                // Pointers to the destination
-                vtx_idx* targetIndices = lod.m_mesh->GetStreamPtr<vtx_idx>(CMesh::INDICES);
-                Vec3* destVertices = lod.m_mesh->GetStreamPtr<Vec3>(CMesh::POSITIONS);
-                Vec3* destNormals = lod.m_mesh->GetStreamPtr<Vec3>(CMesh::NORMALS);
-                SMeshTexCoord* destTexCoords = lod.m_mesh->GetStreamPtr<SMeshTexCoord>(CMesh::TEXCOORDS);
-                SMeshTangents* destTangents = lod.m_mesh->GetStreamPtr<SMeshTangents>(CMesh::TANGENTS);
-                SMeshBoneMapping_uint16* destBoneMapping = lod.m_vertexBoneMappings.data();
-
-                // Since we will put all the vertex/indices for all meshes/submeshes in the same array, we need to keep an
-                // offset to convert indices from submesh-local to global in the lod. To do this we are going to keep the
-                // index id and vertex id for the mesh and count the indices/vertices for submeshes.
-                uint32 meshFirstIndexId = 0;
-                uint32 meshFirstVertexId = 0;
-
-                for (EMotionFX::Mesh* mesh : meshesToProcess)
-                {
-                    // Pointers to the source
-                    const AZ::PackedVector3f* sourcePositions = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
-                    const AZ::PackedVector3f* sourceNormals = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
-                    const AZ::u32* sourceOriginalVertex = static_cast<AZ::u32*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS));
-                    const AZ::Vector4* sourceTangents = static_cast<AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
-                    const AZ::Vector2* sourceUVs = static_cast<AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));
+                    const AZ::PackedVector3f*   sourcePositions     = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+                    const AZ::PackedVector3f*   sourceNormals       = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
+                    const AZ::u32*              sourceOriginalVertex = static_cast<AZ::u32*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS));
+                    const AZ::Vector4*          sourceTangents      = static_cast<AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
+                    const AZ::PackedVector3f*   sourceBitangents    = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_BITANGENTS));
+                    const AZ::Vector2*          sourceUVs           = static_cast<AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));
+                    const AZ::Vector2*          sourceUVs2          = static_cast<AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 1));
                     EMotionFX::SkinningInfoVertexAttributeLayer* sourceSkinningInfo = static_cast<EMotionFX::SkinningInfoVertexAttributeLayer*>(mesh->FindSharedVertexAttributeLayer(EMotionFX::SkinningInfoVertexAttributeLayer::TYPE_ID));
-
-                    uint32 meshIndicesCount = 0;
-                    uint32 meshVerticesCount = 0;
 
                     // For each sub-mesh within each mesh, we want to create a separate sub-piece.
                     const uint32 numSubMeshes = mesh->GetNumSubMeshes();
                     for (uint32 subMeshIndex = 0; subMeshIndex < numSubMeshes; ++subMeshIndex)
                     {
-                        const EMotionFX::SubMesh* subMesh = mesh->GetSubMesh(subMeshIndex);
+                        EMotionFX::SubMesh* subMesh = mesh->GetSubMesh(subMeshIndex);
 
-                        lod.m_mesh->m_subsets.push_back();
-                        SMeshSubset& subset = lod.m_mesh->m_subsets.back();
-                        subset.nFirstIndexId = meshFirstIndexId + meshIndicesCount;
-                        subset.nNumIndices = subMesh->GetNumIndices();
-                        subset.nFirstVertId = meshFirstVertexId + meshVerticesCount;
-                        subset.nNumVerts = subMesh->GetNumVertices();
-                        subset.nMatID = subMesh->GetMaterial();
-                        subset.fTexelDensity = 0.f;
+                        AZ_Assert(primitiveIndex < numPrimitives, "Unexpected primitive index");
+
+                        ActorAsset::Primitive& primitive = lod.m_primitives[primitiveIndex++];
+                        primitive.m_mesh = new CMesh();
+                        primitive.m_isDynamic = (meshType == EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED);
+                        primitive.m_subMesh = subMesh;
+
+                        if (primitive.m_isDynamic)
+                        {
+                            hasDynamicMeshes = true;
+                        }
+
+                        // Destination initialization. We are going to put all meshes and submeshes for one lod
+                        // into one destination mesh
+                        primitive.m_vertexBoneMappings.resize(subMesh->GetNumVertices());
+                        primitive.m_mesh->SetIndexCount(subMesh->GetNumIndices());
+                        primitive.m_mesh->SetVertexCount(subMesh->GetNumVertices());
+
+                        // Positions and normals are reallocated by the SetVertexCount
+                        if (hasTangents)
+                        {
+                            primitive.m_mesh->ReallocStream(CMesh::TANGENTS, 0, subMesh->GetNumVertices());
+                        }
+                        if (hasUVs)
+                        {
+                            primitive.m_mesh->ReallocStream(CMesh::TEXCOORDS, 0, subMesh->GetNumVertices());
+                        }
+                        if (hasUVs2)
+                        {
+                            primitive.m_mesh->ReallocStream(CMesh::TEXCOORDS, 1, subMesh->GetNumVertices());
+                        }
+
+                        primitive.m_mesh->m_pBoneMapping = primitive.m_vertexBoneMappings.data();
+
+                        // Pointers to the destination
+                        vtx_idx* targetIndices = primitive.m_mesh->GetStreamPtr<vtx_idx>(CMesh::INDICES);
+                        Vec3* destVertices = primitive.m_mesh->GetStreamPtr<Vec3>(CMesh::POSITIONS);
+                        Vec3* destNormals = primitive.m_mesh->GetStreamPtr<Vec3>(CMesh::NORMALS);
+                        SMeshTexCoord* destTexCoords = primitive.m_mesh->GetStreamPtr<SMeshTexCoord>(CMesh::TEXCOORDS);
+                        SMeshTexCoord* destTexCoords2 = primitive.m_mesh->GetStreamPtr<SMeshTexCoord>(CMesh::TEXCOORDS, 1);
+                        SMeshTangents* destTangents = primitive.m_mesh->GetStreamPtr<SMeshTangents>(CMesh::TANGENTS);
+                        SMeshBoneMapping_uint16* destBoneMapping = primitive.m_vertexBoneMappings.data();
+
+                        primitive.m_mesh->m_subsets.push_back();
+                        SMeshSubset& subset     = primitive.m_mesh->m_subsets.back();
+                        subset.nFirstIndexId    = 0;
+                        subset.nNumIndices      = subMesh->GetNumIndices();
+                        subset.nFirstVertId     = 0;
+                        subset.nNumVerts        = subMesh->GetNumVertices();
+                        subset.nMatID           = subMesh->GetMaterial();
+                        subset.fTexelDensity    = 0.0f;
                         subset.nPhysicalizeType = -1;
 
-                        // Process indices
+                        const uint32* subMeshIndices = subMesh->GetIndices();
+                        const uint32 numSubMeshIndices = subMesh->GetNumIndices();
+                        const uint32 subMeshStartVertex = subMesh->GetStartVertex();
+                        for (uint32 index = 0; index < numSubMeshIndices; ++index)
                         {
-                            const uint32* subMeshIndices = subMesh->GetIndices();
-                            for (uint32 indexIndex = 0; indexIndex < subMesh->GetNumIndices(); ++indexIndex)
-                            {
-                                // here we convert the index since in EMFX the indices are per mesh and in ly/cry we
-                                // put all the meshes of the node into one mesh. To get the index relative to the
-                                // ly/cry mesh we need to add the vertex id of the current mesh
-                                *targetIndices = subMeshIndices[indexIndex] + meshFirstVertexId;
-                                ++targetIndices;
-                            }
-                            meshIndicesCount += subMesh->GetNumIndices();
+                            targetIndices[index] = subMeshIndices[index] - subMeshStartVertex;
                         }
 
                         // Process vertices
-                        const uint32 untilVertex = subMesh->GetStartVertex() + subMesh->GetNumVertices();
-                        for (uint32 vertexIndex = subMesh->GetStartVertex(); vertexIndex < untilVertex; ++vertexIndex)
+                        const uint32 numSubMeshVertices = subMesh->GetNumVertices();
+                        const AZ::PackedVector3f* subMeshPositions = &sourcePositions[subMesh->GetStartVertex()];
+                        for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
                         {
-                            const AZ::PackedVector3f& sourcePosition = sourcePositions[vertexIndex];
+                            const AZ::PackedVector3f& sourcePosition = subMeshPositions[vertexIndex];
                             destVertices->x = sourcePosition.GetX();
                             destVertices->y = sourcePosition.GetY();
                             destVertices->z = sourcePosition.GetZ();
                             ++destVertices;
                         }
-                        meshVerticesCount += subMesh->GetNumVertices();
 
                         // Process normals
-                        for (uint32 vertexIndex = subMesh->GetStartVertex(); vertexIndex < untilVertex; ++vertexIndex)
+                        const AZ::PackedVector3f* subMeshNormals = &sourceNormals[subMesh->GetStartVertex()];
+                        for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
                         {
-                            const AZ::PackedVector3f& sourceNormal = sourceNormals[vertexIndex];
+                            const AZ::PackedVector3f& sourceNormal = subMeshNormals[vertexIndex];
                             destNormals->x = sourceNormal.GetX();
                             destNormals->y = sourceNormal.GetY();
                             destNormals->z = sourceNormal.GetZ();
@@ -881,23 +864,48 @@ namespace EMotionFX
                         }
 
                         // Process UVs (TextCoords)
+                        // First UV set.
                         if (hasUVs)
                         {
                             if (sourceUVs)
                             {
-                                for (uint32 vertexIndex = subMesh->GetStartVertex(); vertexIndex < untilVertex; ++vertexIndex)
+                                const AZ::Vector2* subMeshUVs = &sourceUVs[subMeshStartVertex];
+                                for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
                                 {
-                                    const AZ::Vector2& uv = sourceUVs[vertexIndex];
+                                    const AZ::Vector2& uv = subMeshUVs[vertexIndex];
                                     *destTexCoords = SMeshTexCoord(uv.GetX(), uv.GetY());
                                     ++destTexCoords;
                                 }
                             }
                             else
                             {
-                                for (uint32 vertexIndex = subMesh->GetStartVertex(); vertexIndex < untilVertex; ++vertexIndex)
+                                for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
                                 {
-                                    *destTexCoords = SMeshTexCoord(0.f, 0.f);
+                                    *destTexCoords = SMeshTexCoord(0.0f, 0.0f);
                                     ++destTexCoords;
+                                }
+                            }
+                        }
+
+                        // Second UV set.
+                        if (hasUVs2)
+                        {
+                            if (sourceUVs2)
+                            {
+                                const AZ::Vector2* subMeshUVs = &sourceUVs2[subMeshStartVertex];
+                                for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
+                                {
+                                    const AZ::Vector2& uv2 = subMeshUVs[vertexIndex];
+                                    *destTexCoords2 = SMeshTexCoord(uv2.GetX(), uv2.GetY());
+                                    ++destTexCoords2;
+                                }
+                            }
+                            else
+                            {
+                                for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
+                                {
+                                    *destTexCoords2 = SMeshTexCoord(0.0f, 0.0f);
+                                    ++destTexCoords2;
                                 }
                             }
                         }
@@ -907,12 +915,21 @@ namespace EMotionFX
                         {
                             if (sourceTangents)
                             {
-                                for (uint32 vertexIndex = subMesh->GetStartVertex(); vertexIndex < untilVertex; ++vertexIndex)
+                                const AZ::Vector4* subMeshTangents = &sourceTangents[subMeshStartVertex];
+                                for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
                                 {
-                                    const AZ::Vector4& sourceTangent = sourceTangents[vertexIndex];
-                                    const AZ::Vector3 sourceNormal(sourceNormals[vertexIndex]);
-                                    const AZ::Vector3 bitangent = (AZ::Vector3(sourceTangent.GetX(), sourceTangent.GetY(), sourceTangent.GetZ())
-                                        .Cross(sourceNormal) * sourceTangent.GetW()).GetNormalizedExact();
+                                    const AZ::Vector4& sourceTangent = subMeshTangents[vertexIndex];
+                                    const AZ::Vector3 sourceNormal(subMeshNormals[vertexIndex]);
+
+                                    AZ::Vector3 bitangent;
+                                    if (sourceBitangents)
+                                    {
+                                        bitangent = AZ::Vector3(sourceBitangents[vertexIndex + subMeshStartVertex]);
+                                    }
+                                    else
+                                    {
+                                        bitangent = sourceNormal.Cross(sourceTangent.GetAsVector3()) * sourceTangent.GetW();
+                                    }
 
                                     *destTangents = SMeshTangents(
                                             Vec3(sourceTangent.GetX(), sourceTangent.GetY(), sourceTangent.GetZ()),
@@ -923,7 +940,7 @@ namespace EMotionFX
                             }
                             else
                             {
-                                for (uint32 vertexIndex = subMesh->GetStartVertex(); vertexIndex < untilVertex; ++vertexIndex)
+                                for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
                                 {
                                     *destTangents = SMeshTangents();
                                     ++destTangents;
@@ -933,25 +950,22 @@ namespace EMotionFX
 
                         // Process AABB
                         AABB localAabb(AABB::RESET);
-                        for (uint32 vertexIndex = subMesh->GetStartVertex(); vertexIndex < untilVertex; ++vertexIndex)
+                        for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
                         {
-                            const AZ::PackedVector3f& sourcePosition = sourcePositions[vertexIndex];
+                            const AZ::PackedVector3f& sourcePosition = subMeshPositions[vertexIndex];
                             localAabb.Add(Vec3(sourcePosition.GetX(), sourcePosition.GetY(), sourcePosition.GetZ()));
                         }
-
                         subset.fRadius = localAabb.GetRadius();
                         subset.vCenter = localAabb.GetCenter();
-
-                        lod.m_mesh->m_bbox.Add(localAabb.min);
-                        lod.m_mesh->m_bbox.Add(localAabb.max);
+                        primitive.m_mesh->m_bbox.Add(localAabb.min);
+                        primitive.m_mesh->m_bbox.Add(localAabb.max);
 
                         // Process Skinning info
                         if (sourceSkinningInfo)
                         {
-                            for (uint32 vertexIndex = subMesh->GetStartVertex(); vertexIndex < untilVertex; ++vertexIndex)
+                            for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
                             {
-                                const AZ::u32 originalVertex = sourceOriginalVertex[vertexIndex];
-
+                                const AZ::u32 originalVertex = sourceOriginalVertex[vertexIndex + subMesh->GetStartVertex()];
                                 const AZ::u32 influenceCount = AZ::GetMin<AZ::u32>(maxInfluences, sourceSkinningInfo->GetNumInfluences(originalVertex));
                                 AZ::u32 influenceIndex = 0;
                                 int weightError = 255;
@@ -960,7 +974,7 @@ namespace EMotionFX
                                 {
                                     EMotionFX::SkinInfluence* influence = sourceSkinningInfo->GetInfluence(originalVertex, influenceIndex);
                                     destBoneMapping->boneIds[influenceIndex] = influence->GetNodeNr();
-                                    destBoneMapping->weights[influenceIndex] = static_cast<AZ::u8>(AZ::GetClamp<float>(influence->GetWeight() * 255.f, 0.f, 255.f));
+                                    destBoneMapping->weights[influenceIndex] = static_cast<AZ::u8>(AZ::GetClamp<float>(influence->GetWeight() * 255.0f, 0.0f, 255.0f));
                                     weightError -= destBoneMapping->weights[influenceIndex];
                                 }
 
@@ -975,31 +989,24 @@ namespace EMotionFX
                                 ++destBoneMapping;
                             }
                         }
-                    }  // subMeshes
 
-                    meshFirstIndexId += meshIndicesCount;
-                    meshFirstVertexId += meshVerticesCount;
-                }
+                        // Legacy index buffer fix.
+                        primitive.m_mesh->m_subsets[0].FixRanges(primitive.m_mesh->m_pIndices);
 
-                //////////////////////////////////////////////////////////////////////////
-                // Hacks lifted from legacy character code.
-                uint32 numMeshSubsets = lod.m_mesh->m_subsets.size();
-                for (uint32 i = 0; i < numMeshSubsets; i++)
-                {
-                    lod.m_mesh->m_subsets[i].FixRanges(lod.m_mesh->m_pIndices);
-                }
+                        // Convert tangent frame from matrix to quaternion based.
+                        // Without this, materials do NOT render correctly on skinned characters.
+                        if (primitive.m_mesh->m_pTangents && !primitive.m_mesh->m_pQTangents)
+                        {
+                            primitive.m_mesh->m_pQTangents = (SMeshQTangents*)primitive.m_mesh->m_pTangents;
+                            MeshTangentsFrameToQTangents(
+                                primitive.m_mesh->m_pTangents, sizeof(primitive.m_mesh->m_pTangents[0]), primitive.m_mesh->GetVertexCount(),
+                                primitive.m_mesh->m_pQTangents, sizeof(primitive.m_mesh->m_pQTangents[0]));
+                        }
+                    }   // for all submeshes
+                } // for all meshes
 
-                // Convert tangent frame from matrix to quaternion based.
-                // Without this, materials do NOT render correctly on skinned characters.
-                if (lod.m_mesh->m_pTangents && !lod.m_mesh->m_pQTangents)
-                {
-                    lod.m_mesh->m_pQTangents = (SMeshQTangents*)lod.m_mesh->m_pTangents;
-                    MeshTangentsFrameToQTangents(
-                        lod.m_mesh->m_pTangents, sizeof(lod.m_mesh->m_pTangents[0]), lod.m_mesh->GetVertexCount(),
-                        lod.m_mesh->m_pQTangents, sizeof(lod.m_mesh->m_pQTangents[0]));
-                }
-                //////////////////////////////////////////////////////////////////////////
-            }
+                lod.m_hasDynamicMeshes = hasDynamicMeshes;
+            } // for all lods
 
             return true;
         }
@@ -1028,27 +1035,71 @@ namespace EMotionFX
             EMotionFX::Actor* actor = assetData->m_emfxActor.get();
             const AZ::u32 numLODs = actor->GetNumLODLevels();
 
-            //
-            // Process materials all LODs from the EMotionFX actor data.
-            //
+            // Process all LODs from the EMotionFX actor data.
             for (AZ::u32 lodIndex = 0; lodIndex < numLODs; ++lodIndex)
             {
                 ActorAsset::MeshLOD& lod = assetData->m_meshLODs[lodIndex];
 
-                // Create and initialize render mesh.
-                lod.m_renderMesh = gEnv->pRenderer->CreateRenderMesh("EMotion FX Actor", assetPath.c_str(), nullptr, eRMT_Dynamic);
-                const AZ::u32 renderMeshFlags = FSM_ENABLE_NORMALSTREAM | FSM_VERTEX_VELOCITY;
-                lod.m_renderMesh->SetMesh(*lod.m_mesh, 0, renderMeshFlags, false);
+                for (ActorAsset::Primitive& primitive : lod.m_primitives)
+                {
+                    // Create and initialize render mesh.
+                    primitive.m_renderMesh = gEnv->pRenderer->CreateRenderMesh("EMotion FX Actor", assetPath.c_str(), nullptr, eRMT_Dynamic);
 
-                // Free temporary load objects & buffers.
-                delete lod.m_mesh;
-                lod.m_mesh = nullptr;
-                lod.m_vertexBoneMappings.resize(0);
+                    const AZ::u32 renderMeshFlags = FSM_ENABLE_NORMALSTREAM | FSM_VERTEX_VELOCITY;
+                    primitive.m_renderMesh->SetMesh(*primitive.m_mesh, 0, renderMeshFlags, false);
+
+                    // Free temporary load objects & buffers.
+                    primitive.m_vertexBoneMappings.resize(0);
+                }
 
                 // It's now safe to use this LOD.
                 lod.m_isReady = true;
             }
         }
+
+
+        void ActorRenderNode::BuildRenderMeshPerLOD()
+        {
+            // Populate m_renderMeshesPerLOD. If the mesh is not dynamic, we reuse the render mesh from the actor. If the
+            // mesh is dynamic, we create a copy of the actor's render mesh since this actor instance will be modifying it.
+            ActorAsset* data = m_actorAsset.Get();
+            if (data)
+            {
+                AZStd::string assetPath;
+                EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, m_actorAsset.GetId());
+
+                const size_t lodCount = data->GetNumLODs();
+                m_renderMeshesPerLOD.resize(lodCount);
+                for (size_t i = 0; i < lodCount; ++i)
+                {
+                    ActorAsset::MeshLOD* meshLOD = data->GetMeshLOD(i);
+                    if (meshLOD)
+                    {
+                        const size_t numPrims = meshLOD->m_primitives.size();
+                        m_renderMeshesPerLOD[i].resize(numPrims);
+                        for (size_t primIndex = 0; primIndex < numPrims; ++primIndex)
+                        {
+                            ActorAsset::Primitive& primitive = meshLOD->m_primitives[primIndex];
+                            if (!primitive.m_isDynamic)
+                            {
+                                // Reuse the same render mesh
+                                m_renderMeshesPerLOD[i][primIndex] = primitive.m_renderMesh;
+                            }
+                            else
+                            {
+                                // Create a copy since each actor instance can be deforming differently and we need to send
+                                // different meshes to cry to render
+                                _smart_ptr<IRenderMesh>& clonedMesh = m_renderMeshesPerLOD[i][primIndex];
+                                clonedMesh = gEnv->pRenderer->CreateRenderMesh("EMotion FX Actor", assetPath.c_str(), nullptr, eRMT_Dynamic);
+                                const AZ::u32 renderMeshFlags = FSM_ENABLE_NORMALSTREAM | FSM_VERTEX_VELOCITY;
+                                clonedMesh->SetMesh(*primitive.m_mesh, 0, renderMeshFlags, false);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
 
         bool ActorAssetHandler::OnInitAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
         {
@@ -1102,6 +1153,11 @@ namespace EMotionFX
         const char* ActorAssetHandler::GetAssetTypeDisplayName() const
         {
             return "EMotion FX Actor";
+        }
+
+        const char* ActorAssetHandler::GetBrowserIcon() const
+        {
+            return "Editor/Images/AssetBrowser/Actor_16.png";
         }
     } //namespace Integration
 } // namespace EMotionFX

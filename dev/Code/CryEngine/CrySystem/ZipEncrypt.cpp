@@ -20,13 +20,7 @@
 #include "ZipDirStructures.h"
 #include <IGame.h>
 
-
-//////////////////////////////////////////////////////////////////////////
 #ifdef INCLUDE_LIBTOMCRYPT
-
-prng_state g_yarrow_prng_state;
-// Main public RSA key used for verifying Cry Pak comments
-rsa_key g_rsa_key_public_for_sign;
 
 #define mp_count_bits(a)             ltc_mp.count_bits(a)
 #define mp_unsigned_bin_size(a)      ltc_mp.unsigned_size(a)

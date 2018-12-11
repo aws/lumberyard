@@ -186,6 +186,8 @@ public:
     virtual Vec3 GetTerrainSurfaceNormal(Vec3 vPos, float fRange);
     virtual void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33);
 
+    void GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials) override;
+
     virtual bool IsHole(Meter x, Meter y) const;
     virtual bool IsMeshQuadFlipped(const Meter x, const Meter y, const Meter nUnitSize) const;
 

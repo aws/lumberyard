@@ -146,17 +146,15 @@ bool CShaderMan::mfReloadAllShaders(int nFlags, uint32 nFlagsHW)
     m_Bin.InvalidateCache();
     CHWShader::mfFlushPendedShadersWait(-1);
     
-    // Ensure all shaders are unbound before forcing a reload of all shaders
-    gRenDev->RT_UnbindResources();
-
 #ifndef NULL_RENDERER
-
+    // Ensure all shaders are unbound before forcing a reload of all shaders
+    gRenDev->m_pRT->RC_UnbindResources();
     if (!gRenDev->IsShaderCacheGenMode())
     {
         gRenDev->m_pRT->RC_ResetToDefault();
-        gRenDev->FlushRTCommands(true, true, true);
     }
-
+    gRenDev->FlushRTCommands(true, true, true);
+    
     CDebugAllowFileAccess ignoreInvalidFileAccess;
 
     // Check include changing
@@ -811,8 +809,6 @@ bool CShaderMan::mfUpdateTechnik (SShaderItem& SI, CCryNameTSCRC& Name)
 
 SShaderItem CShaderMan::mfShaderItemForName (const char* nameEf, bool bShare, int flags, SInputShaderResources* Res, uint64 nMaskGen)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Shader, 0, "ShaderItem (%s)", nameEf);
-
     SShaderItem SI;
 
     CShaderResources* pResource = NULL;
@@ -1084,8 +1080,6 @@ void CShaderMan::CreateShaderMaskGenString(const CShader* pSH, stack_string& fla
 
 void CShaderMan::RT_ParseShader(CShader* pSH, uint64 nMaskGen, uint32 flags, CShaderResources* pRes)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "ParseShader");
-
     CDebugAllowFileAccess ignoreInvalidFileAccess;
 
     bool bSuccess = false;

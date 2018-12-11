@@ -97,6 +97,33 @@ namespace ScriptCanvas
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(GetColumn, "Math/Transform", "{B1B515E8-BAEC-4E82-8966-E91485385BCB}", "returns the column specified by the index, [0,3]", "Source", "Column");
 
+        template<int t_Index>
+        AZ_INLINE void DefaultScale(Node& node) { Node::SetDefaultValuesByIndex<t_Index>::_(node, Data::One()); }
+
+        AZ_INLINE Vector3Type GetRight(const TransformType& source, NumberType scale)
+        {
+            Vector3Type vector = source.GetBasisX();
+            vector.SetLength(aznumeric_cast<float>(scale));
+            return vector;
+        }
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetRight, DefaultScale<1>, "Math/Transform", "{65811752-711F-4566-869E-5AEF53206342}", "returns the right direction vector from the specified transform scaled by a given value (Lumberyard uses Z up, right handed)", "Source", "Scale");
+
+        AZ_INLINE Vector3Type GetForward(const TransformType& source, NumberType scale)
+        {
+            Vector3Type vector = source.GetBasisY();
+            vector.SetLength(aznumeric_cast<float>(scale));
+            return vector;
+        }
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetForward, DefaultScale<1>, "Math/Transform", "{3602a047-9f12-46d4-9648-8f53770c8130}", "returns the forward direction vector from the specified transform scaled by a given value (Lumberyard uses Z up, right handed)", "Source", "Scale");
+
+        AZ_INLINE Vector3Type GetUp(const TransformType& source, NumberType scale)
+        {
+            Vector3Type vector = source.GetBasisZ();
+            vector.SetLength(aznumeric_cast<float>(scale));
+            return vector;
+        }
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetUp, DefaultScale<1>, "Math/Transform", "{F10F52D2-E6F2-4E39-84D5-B4A561F186D3}", "returns the up direction vector from the specified transform scaled by a given value (Lumberyard uses Z up, right handed)", "Source", "Scale");
+
         AZ_INLINE std::tuple<Vector3Type, Vector3Type, Vector3Type, Vector3Type> GetColumns(const TransformType& source)
         {
             Vector3Type c0, c1, c2, c3;
@@ -298,6 +325,9 @@ namespace ScriptCanvas
             , GetRowNode
             , GetRowsNode
             , GetTranslationNode
+            , GetUpNode
+            , GetRightNode
+            , GetForwardNode
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
             , InvertOrthogonalNode

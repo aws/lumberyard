@@ -258,7 +258,7 @@ namespace EMotionFX
         MotionEntry* FindMotionEntryById(const AZStd::string& motionId) const;
         MotionEntry* RecursiveFindMotionEntryById(const AZStd::string& motionId) const;
         Motion* RecursiveFindMotionById(const AZStd::string& motionId, bool loadOnDemand = true) const;
-        MotionSet* RecursiveFindMotionSetByName(const AZStd::string& motionSetName, bool isOwnedByRuntime = false);
+        MotionSet* RecursiveFindMotionSetByName(const AZStd::string& motionSetName, bool isOwnedByRuntime = false) const;
 
         /**
          * Set a new motion id for the given motion entry.

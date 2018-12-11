@@ -171,7 +171,7 @@ protected:
     void OnEntityCompositionChanged(const AzToolsFramework::EntityIdList& entityIds) override;
 
     void OnEntityInitialized(const AZ::EntityId& entityId) override;
-    void AfterEntitySelectionChanged() override;
+    void AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList&, const AzToolsFramework::EntityIdList&) override;
 
     //! AzToolsFramework::EditorEntityInfoNotificationBus::Handler
     //! Get notifications when the EditorEntityInfo changes so we can update our model

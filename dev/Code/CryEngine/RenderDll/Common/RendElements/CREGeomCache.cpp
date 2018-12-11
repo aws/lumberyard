@@ -24,8 +24,7 @@
 #include "../Renderer.h"
 #include "../Common/PostProcess/PostEffects.h"
 
-std::vector<CREGeomCache*> CREGeomCache::ms_updateList[2];
-CryCriticalSection CREGeomCache::ms_updateListCS[2];
+StaticInstance<CREGeomCache::UpdateList> CREGeomCache::sm_updateList[2];
 
 CREGeomCache::CREGeomCache()
  : m_geomCacheVertexFormat(eVF_P3F_C4B_T2F)
@@ -41,11 +40,11 @@ CREGeomCache::CREGeomCache()
 
 CREGeomCache::~CREGeomCache()
 {
-    CryAutoLock<CryCriticalSection> lock1(ms_updateListCS[0]);
-    CryAutoLock<CryCriticalSection> lock2(ms_updateListCS[1]);
+    CryAutoLock<CryCriticalSection> lock1(sm_updateList[0]->m_mutex);
+    CryAutoLock<CryCriticalSection> lock2(sm_updateList[1]->m_mutex);
 
-    stl::find_and_erase(ms_updateList[0], this);
-    stl::find_and_erase(ms_updateList[1], this);
+    stl::find_and_erase(sm_updateList[0]->m_geoms, this);
+    stl::find_and_erase(sm_updateList[1]->m_geoms, this);
 }
 
 void CREGeomCache::InitializeRenderElement(const uint numMeshes, _smart_ptr<IRenderMesh>* pMeshes, uint16 materialId)
@@ -155,10 +154,11 @@ void CREGeomCache::UpdateModified()
     FUNCTION_PROFILER_RENDER_FLAT
 
     const int threadId = gRenDev->m_RP.m_nProcessThreadID;
-    CryAutoLock<CryCriticalSection> lock(ms_updateListCS[threadId]);
+    AZ_Assert(threadId >= 0 && threadId <= 2, "Container is not expecting this index");
+    CryAutoLock<CryCriticalSection> lock(sm_updateList[threadId]->m_mutex);
 
-    for (std::vector<CREGeomCache*>::iterator iter = ms_updateList[threadId].begin();
-         iter != ms_updateList[threadId].end(); iter = ms_updateList[threadId].erase(iter))
+    for (auto iter = sm_updateList[threadId]->m_geoms.begin();
+         iter != sm_updateList[threadId]->m_geoms.end(); iter = sm_updateList[threadId]->m_geoms.erase(iter))
     {
         CREGeomCache* pRenderElement = *iter;
         pRenderElement->Update(0, false);
@@ -170,8 +170,8 @@ bool CREGeomCache::mfUpdate(int Flags, bool bTessellation)
     const bool bRet = Update(Flags, bTessellation);
 
     const int threadId = gRenDev->m_RP.m_nProcessThreadID;
-    CryAutoLock<CryCriticalSection> lock(ms_updateListCS[threadId]);
-    stl::find_and_erase(ms_updateList[threadId], this);
+    CryAutoLock<CryCriticalSection> lock(sm_updateList[threadId]->m_mutex);
+    stl::find_and_erase(sm_updateList[threadId]->m_geoms, this);
 
     m_Flags &= ~FCEF_DIRTY;
     return bRet;
@@ -181,13 +181,13 @@ volatile int* CREGeomCache::SetAsyncUpdateState(int& threadId)
 {
     FUNCTION_PROFILER_RENDER_FLAT
 
-        ASSERT_IS_MAIN_THREAD(gRenDev->m_pRT);
+    ASSERT_IS_MAIN_THREAD(gRenDev->m_pRT);
     threadId = gRenDev->m_RP.m_nFillThreadID;
 
     m_bUpdateFrame[threadId] = false;
 
-    CryAutoLock<CryCriticalSection> lock(ms_updateListCS[threadId]);
-    stl::push_back_unique(ms_updateList[threadId], this);
+    CryAutoLock<CryCriticalSection> lock(sm_updateList[threadId]->m_mutex);
+    stl::push_back_unique(sm_updateList[threadId]->m_geoms, this);
 
     CryInterlockedIncrement(&m_transformUpdateState[threadId]);
     return &m_transformUpdateState[threadId];
@@ -197,7 +197,7 @@ DynArray<CREGeomCache::SMeshRenderData>* CREGeomCache::GetMeshFillDataPtr()
 {
     FUNCTION_PROFILER_RENDER_FLAT
 
-        assert(gEnv->IsEditor() || !gRenDev->m_pRT->IsRenderThread(true));
+    assert(gEnv->IsEditor() || !gRenDev->m_pRT->IsRenderThread(true));
     const int threadId = gRenDev->m_RP.m_nFillThreadID;
     return &m_meshFillData[threadId];
 }
@@ -206,7 +206,7 @@ DynArray<CREGeomCache::SMeshRenderData>* CREGeomCache::GetRenderDataPtr()
 {
     FUNCTION_PROFILER_RENDER_FLAT
 
-        assert(gEnv->IsEditor() || !gRenDev->m_pRT->IsRenderThread(true));
+    assert(gEnv->IsEditor() || !gRenDev->m_pRT->IsRenderThread(true));
     return &m_meshRenderData;
 }
 

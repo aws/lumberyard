@@ -3,7 +3,6 @@
     {
         "Include/Config":
         [
-            
             "Include/Config/SceneProcessingConfigBus.h"
         ],
         "Source":
@@ -16,6 +15,18 @@
             "Source/Config/Components/SceneProcessingConfigSystemComponent.cpp",
             "Source/Config/Components/SoftNameBehavior.h",
             "Source/Config/Components/SoftNameBehavior.cpp"
+        ],
+        "Source/Exporting/Components":
+        [
+            "Source/Exporting/Components/TangentGenerateComponent.h",
+            "Source/Exporting/Components/TangentGenerateComponent.cpp",
+            "Source/Exporting/Components/TangentPreExportComponent.h",
+            "Source/Exporting/Components/TangentPreExportComponent.cpp"
+        ],
+        "Source/Exporting/Components/TangentGenerators":
+        [
+            "Source/Exporting/Components/TangentGenerators/MikkTGenerator.h",
+            "Source/Exporting/Components/TangentGenerators/MikkTGenerator.cpp"
         ],
         "Source/Config/SettingsObjects":
         [

@@ -90,12 +90,12 @@ public:
         TDatas::iterator elm = m_Data.find(guid);
         if (elm != m_Data.end())
         {
-            free((*elm).second.second);
+            CryModuleFree((*elm).second.second);
         }
 
         if (pData)
         {
-            void* Blob = malloc(DataSize);
+            void* Blob = CryModuleMalloc(DataSize);
             m_Data[guid] = std::make_pair(DataSize, Blob);
             memcpy(Blob, pData, DataSize);
         }

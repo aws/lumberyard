@@ -53,7 +53,7 @@ public:
     void Update();
     void ProcessScene(int sceneFlags, const SRenderingPassInfo& passInfo);
     void ReleaseBuffers();
-    void OnResolutionChanged();
+    void OnResolutionChanged() override;
     void CalculateBackbufferResolution(int eyeWidth, int eyeHeight, int& backbufferWidth, int& backbufferHeight);
 
     void CopyToStereo(int channel);

@@ -23,12 +23,12 @@
 
 // the array of transformed vertices (where 0,0,0 is the hit point, and 0,0,1 is the direction of the bullet)
 // in other words, it's the Vertices in Bullet Coordinate System
-std::vector<Vec3> g_arrVerticesBS;
+StaticInstance<std::vector<Vec3>> g_arrVerticesBS;
 // the mapping from the character vertices (in the external indexation) to the decal vertices
 // -1 means the vertex has not yet been mapped
 // It is always true that an element is >= -1 and < m_arrDecalVertices.size()
-std::vector<int32> g_arrDecalVertexMapping;
-std::vector<int32> g_arrDecalFaceMapping;
+StaticInstance<std::vector<int32>> g_arrDecalVertexMapping;
+StaticInstance<std::vector<int32>> g_arrDecalFaceMapping;
 
 
 

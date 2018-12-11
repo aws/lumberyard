@@ -52,8 +52,8 @@ namespace EMotionFX
         friend class MeshBuilderSubMesh;
 
     public:
-        static MeshBuilder* Create(uint32 nodeNumber, uint32 numOrgVerts, uint32 maxBonesPerSubMesh, uint32 maxSubMeshVertices, bool isCollisionMesh);
-        static MeshBuilder* Create(uint32 nodeNumber, uint32 numOrgVerts, bool isCollisionMesh);
+        static MeshBuilder* Create(uint32 nodeNumber, uint32 numOrgVerts, uint32 maxBonesPerSubMesh, uint32 maxSubMeshVertices, bool isCollisionMesh, bool optimizeDuplicates=true);
+        static MeshBuilder* Create(uint32 nodeNumber, uint32 numOrgVerts, bool isCollisionMesh, bool optimizeDuplicates=true);
 
         // add a layer, all added layers will be deleted automatically by the destructor of this class
         void AddLayer(MeshBuilderVertexAttributeLayer* layer);
@@ -131,6 +131,7 @@ namespace EMotionFX
         uint32                              mMaxSubMeshVertices;
         uint32                              mNumOrgVerts;
         bool                                mIsCollisionMesh;
+        bool                                m_optimizeDuplicates;
 
         MeshBuilderVertexLookup FindMatchingDuplicate(uint32 orgVertexNr);
         MeshBuilderVertexLookup AddVertex(uint32 orgVertexNr);
@@ -139,7 +140,7 @@ namespace EMotionFX
         void ExtractBonesForPolygon(const MCore::Array<uint32>& orgVertexNumbers, MCore::Array<uint32>* outPolyBoneList) const;
         void AddPolygon(const MCore::Array<MeshBuilderVertexLookup>& indices, const MCore::Array<uint32>& orgVertexNumbers, uint32 materialNr);
 
-        MeshBuilder(uint32 nodeNumber, uint32 numOrgVerts, uint32 maxBonesPerSubMesh, uint32 maxSubMeshVertices, bool isCollisionMesh);
+        MeshBuilder(uint32 nodeNumber, uint32 numOrgVerts, uint32 maxBonesPerSubMesh, uint32 maxSubMeshVertices, bool isCollisionMesh, bool optimizeDuplicates=true);
         ~MeshBuilder();
     };
 } // namespace MeshExporter

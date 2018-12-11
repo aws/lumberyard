@@ -166,6 +166,8 @@ namespace LyShine
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     void LyShineSystemComponent::Activate()
     {
+        LyShineAllocatorScope::ActivateAllocators();
+
         LyShineRequestBus::Handler::BusConnect();
         UiSystemBus::Handler::BusConnect();
         UiSystemToolsBus::Handler::BusConnect();
@@ -209,6 +211,8 @@ namespace LyShine
         UiSystemBus::Handler::BusDisconnect();
         UiSystemToolsBus::Handler::BusDisconnect();
         LyShineRequestBus::Handler::BusDisconnect();
+
+        LyShineAllocatorScope::DeactivateAllocators();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////

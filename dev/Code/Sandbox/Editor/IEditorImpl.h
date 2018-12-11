@@ -391,7 +391,10 @@ public:
 
     virtual bool ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location) override;
 
+#ifdef DEPRECATED_QML_SUPPORT
     virtual QQmlEngine* GetQMLEngine() const;
+#endif // #ifdef DEPRECATED_QML_SUPPORT
+
     void UnloadPlugins(bool shuttingDown = false) override;
     void LoadPlugins() override;
 

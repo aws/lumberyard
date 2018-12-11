@@ -117,8 +117,6 @@ bool COpticsManager::Load(const char* fullFlareName, int& nOutIndex, bool forceR
         return false;
     }
 
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "%s", fullFlareName);
-
     string opticsLibName = strFullFlareName.substr(nPos + 1, restLength);
     m_SearchedOpticsSet.insert(fullFlareName);
 

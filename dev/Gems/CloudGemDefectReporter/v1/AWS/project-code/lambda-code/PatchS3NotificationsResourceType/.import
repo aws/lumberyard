@@ -2,5 +2,6 @@ CloudGemFramework.LambdaService
 CloudGemFramework.LambdaSettings
 CloudGemFramework.ResourceManagerCommon
 CloudGemFramework.Utils
+CloudGemFramework.ServiceClient_Python
 CloudGemDefectReporter.AWS
 CloudGemDefectReporter.Constant

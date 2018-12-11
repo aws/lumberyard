@@ -241,6 +241,7 @@ public:
 
     uint32 GetDccMaterialHash() const { return m_dccMaterialHash; }
     void SetDccMaterialHash(AZ::u32 hash) { m_dccMaterialHash = hash; }
+    void SetShaderItem(const SShaderItem& shaderItem);
 
 private:
     void UpdateMatInfo();

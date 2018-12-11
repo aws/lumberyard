@@ -134,6 +134,32 @@ export class FleetManagementComponent {
         this.mode = FleetMode.CreateLaunchConfig;
     }
 
+    public canSubmitModal(): boolean {
+        let result = true;
+
+        if (this.mode == FleetMode.CreateLaunchConfig) {
+            result = this.launchConfigurationName != "" && this.imageId != "" && this.instanceType != "";
+        }
+        else if (this.mode == FleetMode.CreateFleet) {
+            let instanceNum = this.newFleet.instanceNum;
+            result = this.newFleet.autoScalingGroupName != "" && Number.isInteger(instanceNum) && instanceNum >= 0;
+        }
+
+        return result;
+    }
+
+    public canSaveChanges(): boolean {
+        let result = false;
+        let fleet = this.currentFleet;
+
+        if (fleet) {
+            let instanceNum = fleet.instanceNum;
+            result = Number.isInteger(instanceNum) && instanceNum >= 0;
+        }
+
+        return result;
+    }
+
     /**
      * Delete the existing auto scaling group and launch configuration if exist. Then create a new launch configuration
     **/

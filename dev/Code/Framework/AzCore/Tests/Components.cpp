@@ -14,6 +14,7 @@
 #include "FileIOBaseTestTypes.h"
 
 #include <AzCore/Math/Crc.h>
+#include <AzCore/Math/Sfmt.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/TickBus.h>
@@ -32,6 +33,10 @@
 #include <AzCore/Memory/AllocationRecords.h>
 
 #include <AzCore/std/parallel/containers/concurrent_unordered_set.h>
+
+#if defined(HAVE_BENCHMARK)
+#include <benchmark/benchmark.h>
+#endif
 
 using namespace AZ;
 using namespace AZ::Debug;
@@ -329,6 +334,7 @@ namespace UnitTest
         AZ_TEST_ASSERT(comp1->GetEntity() == nullptr);
         AZ_TEST_ASSERT(comp1->GetId() == InvalidComponentId);
 
+        delete comp1;
         delete entity;
         descriptor.BusDisconnect(); // disconnect from the descriptor bus (so the app doesn't try to clean us up)
     }
@@ -444,6 +450,23 @@ namespace UnitTest
     };
     //////////////////////////////////////////////////////////////////////////
 
+
+    //////////////////////////////////////////////////////////////////////////
+    // Component E2 - provides ServiceE but has no dependencies
+    class ComponentE2
+        : public Component
+    {
+    public:
+        AZ_COMPONENT(ComponentE2, "{33FE383C-92E0-48A4-A89A-91283DFC714A}", Component);
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceE", 0x87e65438)); }
+        static void Reflect(ReflectContext* /*reflection*/) {}
+    };
+    //////////////////////////////////////////////////////////////////////////
+
     //////////////////////////////////////////////////////////////////////////
     // Component F
     class ComponentF
@@ -461,146 +484,564 @@ namespace UnitTest
     };
     //////////////////////////////////////////////////////////////////////////
 
-    TEST_F(Components, Dependency)
+    //////////////////////////////////////////////////////////////////////////
+    // Component G - has cyclic dependency with H
+    class ComponentG
+        : public Component
     {
-        ComponentADescriptor* descriptorComponentA = aznew ComponentADescriptor;
-        ComponentB::DescriptorType* descriptorComponentB = aznew ComponentB::DescriptorType;
-        ComponentC::DescriptorType* descriptorComponentC = aznew ComponentC::DescriptorType;
-        ComponentD::DescriptorType* descriptorComponentD = aznew ComponentD::DescriptorType;
-        ComponentE::DescriptorType* descriptorComponentE = aznew ComponentE::DescriptorType;
-        ComponentF::DescriptorType* descriptorComponentF = aznew ComponentF::DescriptorType;
-        (void)descriptorComponentB;
-        (void)descriptorComponentC;
-        (void)descriptorComponentD;
-        (void)descriptorComponentE;
-        (void)descriptorComponentF;
+    public:
+        AZ_COMPONENT(ComponentG, "{1CF8894A-CFE4-42FE-8127-63416DF734E1}");
 
-        ComponentApplication componentApp;
-        ComponentApplication::Descriptor desc;
-        desc.m_useExistingAllocator = true;
-        ComponentApplication::StartupParameters startupParams;
-        startupParams.m_allocator = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
-        Entity* systemEntity = componentApp.Create(desc, startupParams);
-        AZ_TEST_ASSERT(systemEntity);
-        systemEntity->Init();
+        void Activate() override {}
+        void Deactivate() override {}
 
-        Entity* entity = aznew Entity("My Entity");
-        AZ_TEST_ASSERT(entity->GetState() == Entity::ES_CONSTRUCTED);
+        static void GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceG")); }
+        static void GetRequiredServices(ComponentDescriptor::DependencyArrayType& required) { required.push_back(AZ_CRC("ServiceH")); }
+        static void Reflect(ReflectContext* /*reflection*/) {}
+    };
+    //////////////////////////////////////////////////////////////////////////
 
-        ComponentB* componentB = aznew ComponentB;
+    //////////////////////////////////////////////////////////////////////////
+    // Component H - has cyclic dependency with G
+    class ComponentH
+        : public Component
+    {
+    public:
+        AZ_COMPONENT(ComponentH, "{2FCF9245-B579-45D1-950B-A6779CA16F66}");
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceH")); }
+        static void GetRequiredServices(ComponentDescriptor::DependencyArrayType& required) { required.push_back(AZ_CRC("ServiceG")); }
+        static void Reflect(ReflectContext* /*reflection*/) {}
+    };
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Component I - incompatible with other components providing the same service
+    class ComponentI
+        : public Component
+    {
+    public:
+        AZ_COMPONENT(ComponentI, "{5B509DB8-5D8A-4141-8701-4244E2F99025}");
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceI")); }
+        static void GetIncompatibleServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceI")); }
+        static void Reflect(ReflectContext* /*reflection*/) {}
+    };
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Component J - "accidentally" provides same service twice
+    class ComponentJ
+        : public Component
+    {
+    public:
+        AZ_COMPONENT(ComponentJ, "{67D56E5D-AB39-4BC3-AB1B-5B1F622E2A7F}");
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceJ")); provided.push_back(AZ_CRC("ServiceJ")); }
+        static void Reflect(ReflectContext* /*reflection*/) {}
+    };
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Component K - depends on component that declared its provided service twice
+    class ComponentK
+        : public Component
+    {
+    public:
+        AZ_COMPONENT(ComponentK, "{9FEB506A-03BD-485B-A5D5-133B34E290F5}");
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceK")); }
+        static void GetDependentServices(ComponentDescriptor::DependencyArrayType& dependent) { dependent.push_back(AZ_CRC("ServiceJ")); }
+        static void Reflect(ReflectContext* /*reflection*/) {}
+    };
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Component L - "accidentally" depends on same service twice
+    class ComponentL
+        : public Component
+    {
+    public:
+        AZ_COMPONENT(ComponentL, "{17A80803-C0F1-4595-A29D-AAD81D69B82E}");
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceL")); }
+        static void GetDependentServices(ComponentDescriptor::DependencyArrayType& dependent) { dependent.push_back(AZ_CRC("ServiceA")); dependent.push_back(AZ_CRC("ServiceA")); }
+        static void Reflect(ReflectContext* /*reflection*/) {}
+    };
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Component M - "accidentally" depends on and requires the same service
+    class ComponentM
+        : public Component
+    {
+    public:
+        AZ_COMPONENT(ComponentM, "{74A118BC-2049-4C90-82B1-094934BD86F7}");
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceM")); }
+        static void GetDependentServices(ComponentDescriptor::DependencyArrayType& dependent) { dependent.push_back(AZ_CRC("ServiceA")); }
+        static void GetRequiredServices(ComponentDescriptor::DependencyArrayType& dependent) { dependent.push_back(AZ_CRC("ServiceA")); }
+        static void Reflect(ReflectContext* /*reflection*/) {}
+    };
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Component N - "accidentally" lists an incompatibility twice
+    class ComponentN
+        : public Component
+    {
+    public:
+        AZ_COMPONENT(ComponentN, "{B1026620-ED77-4897-B3EF-D03D4DDAF84B}");
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceN")); }
+        static void GetIncompatibleServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceA")); provided.push_back(AZ_CRC("ServiceA")); }
+        static void Reflect(ReflectContext* /*reflection*/) {}
+    };
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // Component O - "accidentally" lists its own service twice in incompatibility list
+    class ComponentO
+        : public Component
+    {
+    public:
+        AZ_COMPONENT(ComponentO, "{14916FA3-8A74-4974-AED9-43CB222C6883}");
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceO")); }
+        static void GetIncompatibleServices(ComponentDescriptor::DependencyArrayType& provided) { provided.push_back(AZ_CRC("ServiceO")); provided.push_back(AZ_CRC("ServiceO")); }
+        static void Reflect(ReflectContext* /*reflection*/) {}
+    };
+    //////////////////////////////////////////////////////////////////////////
+
+    class ComponentDependency
+        : public Components
+    {
+    protected:
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            // component descriptors are cleaned up when application shuts down
+            m_descriptorComponentA = aznew ComponentADescriptor;
+            aznew ComponentB::DescriptorType;
+            aznew ComponentC::DescriptorType;
+            aznew ComponentD::DescriptorType;
+            aznew ComponentE::DescriptorType;
+            aznew ComponentE2::DescriptorType;
+            aznew ComponentF::DescriptorType;
+            aznew ComponentG::DescriptorType;
+            aznew ComponentH::DescriptorType;
+            aznew ComponentI::DescriptorType;
+            aznew ComponentJ::DescriptorType;
+            aznew ComponentK::DescriptorType;
+            aznew ComponentL::DescriptorType;
+            aznew ComponentM::DescriptorType;
+            aznew ComponentN::DescriptorType;
+            aznew ComponentO::DescriptorType;
+
+            m_componentApp = aznew ComponentApplication();
+
+            ComponentApplication::Descriptor desc;
+            desc.m_useExistingAllocator = true;
+
+            ComponentApplication::StartupParameters startupParams;
+            startupParams.m_allocator = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
+
+            Entity* systemEntity = m_componentApp->Create(desc, startupParams);
+            systemEntity->Init();
+
+            m_entity = aznew Entity();
+        }
+
+        void TearDown() override
+        {
+            delete m_entity;
+            delete m_componentApp;
+
+            AllocatorsFixture::TearDown();
+        }
+
+        void CreateComponents_ABCDE()
+        {
+            m_entity->CreateComponent<ComponentA>();
+            m_entity->CreateComponent<ComponentB>();
+            m_entity->CreateComponent<ComponentC>();
+            m_entity->CreateComponent<ComponentD>();
+            m_entity->CreateComponent<ComponentE>();
+        }
+
+        ComponentADescriptor* m_descriptorComponentA;
+        ComponentApplication* m_componentApp;
+
+        Entity *m_entity; // an entity to mess with in each test
+    };
+
+    TEST_F(ComponentDependency, FixtureSanityCheck)
+    {
+    }
+
+    TEST_F(ComponentDependency, IsComponentReadyToAdd_ExaminesRequiredServices)
+    {
         ComponentC* componentC = aznew ComponentC;
-        ComponentF* componentF = aznew ComponentF;
 
         ComponentDescriptor::DependencyArrayType requiredServices;
+        EXPECT_FALSE(m_entity->IsComponentReadyToAdd(componentC, &requiredServices)); // we require B component to be added
+        ASSERT_EQ(1, requiredServices.size());
 
-        // Add components and check IsReadyToAddFunction
-        entity->CreateComponent<ComponentA>();
-        AZ_TEST_ASSERT(entity->IsComponentReadyToAdd(componentC, &requiredServices) == false); // we require B component to be added
-        AZ_TEST_ASSERT(requiredServices.size() == 1);
-        AZ_TEST_ASSERT(requiredServices[0] == AZ_CRC("ServiceB", 0x1982c19b));
-        entity->AddComponent(componentB);
-        AZ_TEST_ASSERT(entity->IsComponentReadyToAdd(componentC) == true); // we require B component to be added
-        entity->AddComponent(componentC);
-        entity->CreateComponent<ComponentD>();
-        entity->CreateComponent<ComponentE>();
-        // Check compatibility
-        Entity::ComponentArrayType incompaibleComponents;
-        AZ_TEST_ASSERT(entity->IsComponentReadyToAdd(componentF, nullptr, &incompaibleComponents) == false);
-        AZ_TEST_ASSERT(incompaibleComponents.size() == 2);
-        AZ_TEST_ASSERT(AZ::RttiIsTypeOf<ComponentA>(incompaibleComponents[0]));
-        AZ_TEST_ASSERT(AZ::RttiIsTypeOf<ComponentB>(incompaibleComponents[1]));
+        Crc32 requiredService = requiredServices[0];
+        EXPECT_EQ(Crc32("ServiceB"), requiredService);
 
+        m_entity->CreateComponent<ComponentB>();
+        EXPECT_TRUE(m_entity->IsComponentReadyToAdd(componentC)); // we require B component to be added
 
-        {
-            const Entity::ComponentArrayType& components = entity->GetComponents();
-            AZ_TEST_ASSERT(components[0]->RTTI_IsTypeOf(AzTypeInfo<ComponentA>::Uuid()));
-            AZ_TEST_ASSERT(components[1]->RTTI_IsTypeOf(AzTypeInfo<ComponentB>::Uuid()));
-            AZ_TEST_ASSERT(components[2]->RTTI_IsTypeOf(AzTypeInfo<ComponentC>::Uuid()));
-            AZ_TEST_ASSERT(components[3]->RTTI_IsTypeOf(AzTypeInfo<ComponentD>::Uuid()));
-            AZ_TEST_ASSERT(components[4]->RTTI_IsTypeOf(AzTypeInfo<ComponentE>::Uuid()));
-        }
-
-        entity->Init(); // Init should not change the component order
-
-        {
-            const Entity::ComponentArrayType& components = entity->GetComponents();
-            AZ_TEST_ASSERT(components[0]->RTTI_IsTypeOf(AzTypeInfo<ComponentA>::Uuid()));
-            AZ_TEST_ASSERT(components[1]->RTTI_IsTypeOf(AzTypeInfo<ComponentB>::Uuid()));
-            AZ_TEST_ASSERT(components[2]->RTTI_IsTypeOf(AzTypeInfo<ComponentC>::Uuid()));
-            AZ_TEST_ASSERT(components[3]->RTTI_IsTypeOf(AzTypeInfo<ComponentD>::Uuid()));
-            AZ_TEST_ASSERT(components[4]->RTTI_IsTypeOf(AzTypeInfo<ComponentE>::Uuid()));
-        }
-
-        entity->Activate(); // here components will be sorted based on order
-
-        {
-            const Entity::ComponentArrayType& components = entity->GetComponents();
-            AZ_TEST_ASSERT(components[0]->RTTI_IsTypeOf(AzTypeInfo<ComponentA>::Uuid()) || components[0]->RTTI_IsTypeOf(AzTypeInfo<ComponentD>::Uuid()));
-            AZ_TEST_ASSERT(components[1]->RTTI_IsTypeOf(AzTypeInfo<ComponentD>::Uuid()) || components[1]->RTTI_IsTypeOf(AzTypeInfo<ComponentA>::Uuid()));
-            AZ_TEST_ASSERT(components[2]->RTTI_IsTypeOf(AzTypeInfo<ComponentE>::Uuid()));
-            AZ_TEST_ASSERT(components[3]->RTTI_IsTypeOf(AzTypeInfo<ComponentB>::Uuid()));
-            AZ_TEST_ASSERT(components[4]->RTTI_IsTypeOf(AzTypeInfo<ComponentC>::Uuid()));
-        }
-
-        entity->Deactivate();
-
-        {
-            const Entity::ComponentArrayType& components = entity->GetComponents();
-            AZ_TEST_ASSERT(components[0]->RTTI_IsTypeOf(AzTypeInfo<ComponentA>::Uuid()) || components[0]->RTTI_IsTypeOf(AzTypeInfo<ComponentD>::Uuid()));
-            AZ_TEST_ASSERT(components[1]->RTTI_IsTypeOf(AzTypeInfo<ComponentD>::Uuid()) || components[1]->RTTI_IsTypeOf(AzTypeInfo<ComponentA>::Uuid()));
-            AZ_TEST_ASSERT(components[2]->RTTI_IsTypeOf(AzTypeInfo<ComponentE>::Uuid()));
-            AZ_TEST_ASSERT(components[3]->RTTI_IsTypeOf(AzTypeInfo<ComponentB>::Uuid()));
-            AZ_TEST_ASSERT(components[4]->RTTI_IsTypeOf(AzTypeInfo<ComponentC>::Uuid()));
-        }
-
-        descriptorComponentA->m_isDependent = true; // now A should depend on D (but only after we notify the entity of the change)
-
-        entity->Activate();
-
-        {
-            // order should be unchanged (because we cache the dependency)
-            const Entity::ComponentArrayType& components = entity->GetComponents();
-            AZ_TEST_ASSERT(components[0]->RTTI_IsTypeOf(AzTypeInfo<ComponentA>::Uuid()) || components[0]->RTTI_IsTypeOf(AzTypeInfo<ComponentD>::Uuid()));
-            AZ_TEST_ASSERT(components[1]->RTTI_IsTypeOf(AzTypeInfo<ComponentD>::Uuid()) || components[1]->RTTI_IsTypeOf(AzTypeInfo<ComponentA>::Uuid()));
-            AZ_TEST_ASSERT(components[2]->RTTI_IsTypeOf(AzTypeInfo<ComponentE>::Uuid()));
-            AZ_TEST_ASSERT(components[3]->RTTI_IsTypeOf(AzTypeInfo<ComponentB>::Uuid()));
-            AZ_TEST_ASSERT(components[4]->RTTI_IsTypeOf(AzTypeInfo<ComponentC>::Uuid()));
-        }
-
-        entity->Deactivate();
-
-        entity->InvalidateDependencies();
-
-        entity->Activate();
-
-        {
-            // check the new order
-            const Entity::ComponentArrayType& components = entity->GetComponents();
-            AZ_TEST_ASSERT(components[0]->RTTI_IsTypeOf(AzTypeInfo<ComponentD>::Uuid()));
-            AZ_TEST_ASSERT(components[1]->RTTI_IsTypeOf(AzTypeInfo<ComponentA>::Uuid()));
-            AZ_TEST_ASSERT(components[2]->RTTI_IsTypeOf(AzTypeInfo<ComponentE>::Uuid()));
-            AZ_TEST_ASSERT(components[3]->RTTI_IsTypeOf(AzTypeInfo<ComponentB>::Uuid()));
-            AZ_TEST_ASSERT(components[4]->RTTI_IsTypeOf(AzTypeInfo<ComponentC>::Uuid()));
-        }
-
-        entity->Deactivate();
-
-        Entity::ComponentArrayType dependentComponents;
-        AZ_TEST_ASSERT(entity->IsComponentReadyToRemove(componentB, &dependentComponents) == false); // component C requires us
-        AZ_TEST_ASSERT(dependentComponents.size() == 1);
-        AZ_TEST_ASSERT(dependentComponents[0] == componentC);
-        entity->RemoveComponent(componentC);
-        AZ_TEST_ASSERT(entity->IsComponentReadyToRemove(componentB) == true); // we should be ready for remove
-        entity->RemoveComponent(componentB);
-
-        delete componentB;
         delete componentC;
+    }
+
+    TEST_F(ComponentDependency, IsComponentReadyToAdd_ExaminesIncompatibleServices)
+    {
+        ComponentA* componentA = m_entity->CreateComponent<ComponentA>();
+        ComponentB* componentB = m_entity->CreateComponent<ComponentB>(); // B incompatible with F
+
+        ComponentF* componentF = aznew ComponentF(); // F incompatible with A
+
+        Entity::ComponentArrayType incompatible;
+        EXPECT_FALSE(m_entity->IsComponentReadyToAdd(componentF, nullptr, &incompatible));
+        EXPECT_EQ(2, incompatible.size());
+
+        bool incompatibleWithComponentA = AZStd::find(incompatible.begin(), incompatible.end(), componentA) != incompatible.end();
+        bool incompatibleWithComponentB = AZStd::find(incompatible.begin(), incompatible.end(), componentB) != incompatible.end();
+        EXPECT_TRUE(incompatibleWithComponentA);
+        EXPECT_TRUE(incompatibleWithComponentB);
+
         delete componentF;
+    }
 
-        delete entity;
+    TEST_F(ComponentDependency, Init_DoesNotChangeComponentOrder)
+    {
+        Entity::ComponentArrayType originalOrder = m_entity->GetComponents();
 
-        // Example of manually deleted descriptor, the rest we leave for the app to clean up.
-        delete descriptorComponentB;
+        m_entity->Init(); // Init should not change the component order
+
+        EXPECT_EQ(originalOrder, m_entity->GetComponents());
+    }
+
+    TEST_F(ComponentDependency, Activate_SortsComponentsCorrectly)
+    {
+        CreateComponents_ABCDE();
+        m_entity->Init();
+        m_entity->Activate(); // here components will be sorted based on order
+
+        const Entity::ComponentArrayType& components = m_entity->GetComponents();
+        EXPECT_TRUE(components[0]->RTTI_IsTypeOf(AzTypeInfo<ComponentA>::Uuid()));
+        EXPECT_TRUE(components[1]->RTTI_IsTypeOf(AzTypeInfo<ComponentD>::Uuid()));
+        EXPECT_TRUE(components[2]->RTTI_IsTypeOf(AzTypeInfo<ComponentE>::Uuid()));
+        EXPECT_TRUE(components[3]->RTTI_IsTypeOf(AzTypeInfo<ComponentB>::Uuid()));
+        EXPECT_TRUE(components[4]->RTTI_IsTypeOf(AzTypeInfo<ComponentC>::Uuid()));
+    }
+
+    TEST_F(ComponentDependency, Deactivate_DoesNotChangeComponentOrder)
+    {
+        CreateComponents_ABCDE();
+        m_entity->Init();
+        m_entity->Activate();
+
+        Entity::ComponentArrayType orderAfterActivate = m_entity->GetComponents();
+
+        m_entity->Deactivate();
+
+        EXPECT_EQ(orderAfterActivate, m_entity->GetComponents());
+    }
+
+    TEST_F(ComponentDependency, CachedDependency_PreventsComponentSort)
+    {
+        CreateComponents_ABCDE();
+        m_entity->Init();
+        m_entity->Activate();
+        m_entity->Deactivate();
+
+        Entity::ComponentArrayType originalSortedOrder = m_entity->GetComponents();
+
+        m_descriptorComponentA->m_isDependent = true; // now A should depend on D (but only after we notify the entity of the change)
+
+        m_entity->Activate();
+
+        // order should be unchanged (because we cache the dependency)
+        EXPECT_EQ(originalSortedOrder, m_entity->GetComponents());
+    }
+
+    TEST_F(ComponentDependency, InvalidatingDependency_CausesComponentSort)
+    {
+        CreateComponents_ABCDE();
+        m_entity->Init();
+        m_entity->Activate();
+        m_entity->Deactivate();
+
+        m_descriptorComponentA->m_isDependent = true; // now A should depend on D
+        m_entity->InvalidateDependencies();
+
+        m_entity->Activate();
+
+        // check the new order
+        const Entity::ComponentArrayType& components = m_entity->GetComponents();
+        EXPECT_TRUE(components[0]->RTTI_IsTypeOf(AzTypeInfo<ComponentD>::Uuid()));
+        EXPECT_TRUE(components[1]->RTTI_IsTypeOf(AzTypeInfo<ComponentA>::Uuid()));
+        EXPECT_TRUE(components[2]->RTTI_IsTypeOf(AzTypeInfo<ComponentE>::Uuid()));
+        EXPECT_TRUE(components[3]->RTTI_IsTypeOf(AzTypeInfo<ComponentB>::Uuid()));
+        EXPECT_TRUE(components[4]->RTTI_IsTypeOf(AzTypeInfo<ComponentC>::Uuid()));
+    }
+
+    TEST_F(ComponentDependency, IsComponentReadyToRemove_ExaminesRequiredServices)
+    {
+        ComponentB* componentB = m_entity->CreateComponent<ComponentB>();
+        ComponentC* componentC = m_entity->CreateComponent<ComponentC>();
+
+        Entity::ComponentArrayType requiredComponents;
+        EXPECT_FALSE(m_entity->IsComponentReadyToRemove(componentB, &requiredComponents)); // component C requires us
+        ASSERT_EQ(1, requiredComponents.size());
+
+        Component* requiredComponent = requiredComponents[0];
+        EXPECT_EQ(componentC, requiredComponent);
+
+        m_entity->RemoveComponent(componentC);
+        delete componentC;
+        
+        EXPECT_TRUE(m_entity->IsComponentReadyToRemove(componentB)); // we should be ready for remove
+    }
+
+    // there was once a bug where, if multiple different component types provided the same service,
+    // those components didn't necessarily sort before components that depended on that service
+    TEST_F(ComponentDependency, DependingOnSameServiceFromTwoDifferentComponents_PutsServiceProvidersFirst)
+    {
+        m_entity->CreateComponent<ComponentD>(); // no dependencies
+        Component* e2 = m_entity->CreateComponent<ComponentE2>(); // no dependencies
+        Component* e = m_entity->CreateComponent<ComponentE>(); // depends on ServiceD
+        Component* b = m_entity->CreateComponent<ComponentB>(); // depends on ServiceE (provided by E and E2)
+
+        EXPECT_EQ(Entity::DependencySortResult::Success, m_entity->EvaluateDependencies());
+
+        const AZStd::vector<Component*>& components = m_entity->GetComponents();
+        auto locationB = AZStd::find(components.begin(), components.end(), b);
+        auto locationE = AZStd::find(components.begin(), components.end(), e);
+        auto locationE2 = AZStd::find(components.begin(), components.end(), e2);
+
+        EXPECT_LT(locationE, locationB);
+        EXPECT_LT(locationE2, locationB);
+    }
+
+    // there was once a bug where we didn't check requirements if there was only 1 component
+    TEST_F(ComponentDependency, OneComponentRequiringService_FailsDueToMissingRequirements)
+    {
+        m_entity->CreateComponent<ComponentG>(); // requires ServiceH
+
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_EQ(Entity::DependencySortResult::MissingRequiredService, m_entity->EvaluateDependencies());
+        AZ_TEST_STOP_ASSERTTEST(1);
+    }
+
+    // there was once a bug where we didn't check requirements of components that provided no services
+    TEST_F(ComponentDependency, RequiringServiceWithoutProvidingService_FailsDueToMissingRequirements)
+    {
+        m_entity->CreateComponent<ComponentC>(); // requires ServiceB
+        m_entity->CreateComponent<ComponentC>(); // requires ServiceB
+
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_EQ(Entity::DependencySortResult::MissingRequiredService, m_entity->EvaluateDependencies());
+        AZ_TEST_STOP_ASSERTTEST(1);
+
+        // there was also once a bug where failed sorts would result in components vanishing
+        EXPECT_EQ(2, m_entity->GetComponents().size());
+    }
+
+    TEST_F(ComponentDependency, ComponentIncompatibleWithServiceItProvides_IsOkByItself)
+    {
+        m_entity->CreateComponent<ComponentI>(); // incompatible with ServiceI
+
+        EXPECT_EQ(Entity::DependencySortResult::Success, m_entity->EvaluateDependencies());
+    }
+
+    TEST_F(ComponentDependency, TwoInstancesOfComponentIncompatibleWithServiceItProvides_AreIncompatible)
+    {
+        m_entity->CreateComponent<ComponentI>(); // incompatible with ServiceI
+        m_entity->CreateComponent<ComponentI>(); // incompatible with ServiceI
+
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_EQ(Entity::DependencySortResult::HasIncompatibleServices, m_entity->EvaluateDependencies());
+        AZ_TEST_STOP_ASSERTTEST(1);
+    }
+
+    // there was once a bug where failures due to cyclic dependencies would result in components vanishing
+    TEST_F(ComponentDependency, FailureDueToCyclicDependencies_LeavesComponentsInPlace)
+    {
+        m_entity->CreateComponent<ComponentG>(); // requires ServiceH
+        m_entity->CreateComponent<ComponentH>(); // requires ServiceG
+
+        EXPECT_EQ(Entity::DependencySortResult::HasCyclicDependency, m_entity->EvaluateDependencies());
+
+        // there was also once a bug where failed sorts would result in components vanishing
+        EXPECT_EQ(2, m_entity->GetComponents().size());
+    }
+
+    TEST_F(ComponentDependency, StableSort_GetsSameResultsEveryTime)
+    {
+        // put a bunch of components on the entity
+        CreateComponents_ABCDE();
+        CreateComponents_ABCDE();
+        CreateComponents_ABCDE();
+
+        // set Component IDs (using seeded random) so we get same results each time this test runs
+        u32 randSeed[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+        Sfmt randGen(randSeed, AZ_ARRAY_SIZE(randSeed));
+        AZStd::unordered_map<Component*, ComponentId> componentIds;
+
+        for (Component* component : m_entity->GetComponents())
+        {
+            ComponentId id = randGen.Rand64();
+            componentIds[component] = id;
+            component->SetId(id);
+        }
+
+        // perform initial sort
+        EXPECT_EQ(Entity::DependencySortResult::Success, m_entity->EvaluateDependencies());
+
+        const AZStd::vector<Component*> originalSortedOrder = m_entity->GetComponents();
+
+        // try shuffling the components a bunch of times
+        // we should always get the same sorted results
+        for (int iteration = 0; iteration < 50; ++iteration)
+        {
+            AZStd::vector<Component*> componentsToShuffle = m_entity->GetComponents();
+
+            // remove all components from entity
+            for (Component* component : componentsToShuffle)
+            {
+                m_entity->RemoveComponent(component);
+            }
+
+            // shuffle components
+            for (int i = 0; i < 200; ++i)
+            {
+                size_t swapA = randGen.Rand64() % componentsToShuffle.size();
+                size_t swapB = randGen.Rand64() % componentsToShuffle.size();
+                AZStd::swap(componentsToShuffle[swapA], componentsToShuffle[swapB]);
+            }
+
+            // put components back on entity
+            for (Component* component : componentsToShuffle)
+            {
+                m_entity->AddComponent(component);
+
+                // removing components resets their ID
+                // set it back to previous value so sort results are the same
+                component->SetId(componentIds[component]);
+            }
+
+            EXPECT_EQ(Entity::DependencySortResult::Success, m_entity->EvaluateDependencies());
+            const AZStd::vector<Component*>& sorted = m_entity->GetComponents();
+            EXPECT_EQ(originalSortedOrder, sorted);
+
+            if (HasFailure())
+            {
+                break;
+            }
+        };
+    }
+
+    // Check that invalid user input, in the form of services accidentally listed multiple times,
+    // is handled appropriately and doesn't result in infinite loops.
+
+    TEST_F(ComponentDependency, ComponentAccidentallyProvidingSameServiceTwice_IsOk)
+    {
+        m_entity->CreateComponent<ComponentJ>(); // provides ServiceJ twice
+
+        EXPECT_EQ(Entity::DependencySortResult::Success, m_entity->EvaluateDependencies());
+    }
+
+    TEST_F(ComponentDependency, DependingOnComponentWhichAccidentallyProvidesSameServiceTwice_IsOk)
+    {
+        m_entity->CreateComponent<ComponentJ>(); // provides ServiceJ twice
+        m_entity->CreateComponent<ComponentK>(); // depends on ServiceJ
+
+        EXPECT_EQ(Entity::DependencySortResult::Success, m_entity->EvaluateDependencies());
+        EXPECT_EQ(azrtti_typeid<ComponentJ>(), azrtti_typeid(m_entity->GetComponents()[0]));
+        EXPECT_EQ(azrtti_typeid<ComponentK>(), azrtti_typeid(m_entity->GetComponents()[1]));
+    }
+
+    TEST_F(ComponentDependency, ComponentAccidentallyDependingOnSameServiceTwice_IsOk)
+    {
+        m_entity->CreateComponent<ComponentL>(); // depends on ServiceA twice
+        m_entity->CreateComponent<ComponentA>();
+
+        EXPECT_EQ(Entity::DependencySortResult::Success, m_entity->EvaluateDependencies());
+        EXPECT_EQ(azrtti_typeid<ComponentA>(), azrtti_typeid(m_entity->GetComponents()[0]));
+        EXPECT_EQ(azrtti_typeid<ComponentL>(), azrtti_typeid(m_entity->GetComponents()[1]));
+    }
+
+    TEST_F(ComponentDependency, ComponentAccidentallyDependingAndRequiringSameService_IsOk)
+    {
+        m_entity->CreateComponent<ComponentM>(); // depends on ServiceA and requires Service A
+        m_entity->CreateComponent<ComponentA>();
+
+        EXPECT_EQ(Entity::DependencySortResult::Success, m_entity->EvaluateDependencies());
+        EXPECT_EQ(azrtti_typeid<ComponentA>(), azrtti_typeid(m_entity->GetComponents()[0]));
+        EXPECT_EQ(azrtti_typeid<ComponentM>(), azrtti_typeid(m_entity->GetComponents()[1]));
+    }
+
+    TEST_F(ComponentDependency, ComponentAccidentallyListsIncompatibleServiceTwice_IsOkByItself)
+    {
+        m_entity->CreateComponent<ComponentN>(); // incompatible with ServiceA twice
+
+        EXPECT_EQ(Entity::DependencySortResult::Success, m_entity->EvaluateDependencies());
+    }
+
+    TEST_F(ComponentDependency, ComponentAccidentallyListsIncompatibleServiceTwice_IncompatibilityStillDetected)
+    {
+        m_entity->CreateComponent<ComponentN>(); // incompatible with ServiceA twice
+        m_entity->CreateComponent<ComponentA>();
+
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_EQ(Entity::DependencySortResult::HasIncompatibleServices, m_entity->EvaluateDependencies());
+        AZ_TEST_STOP_ASSERTTEST(1);
+    }
+
+    TEST_F(ComponentDependency, ComponentAccidentallyListingIncompatibilityWithSelfTwice_IsOkByItself)
+    {
+        m_entity->CreateComponent<ComponentO>(); // incompatible with ServiceO twice
+
+        EXPECT_EQ(Entity::DependencySortResult::Success, m_entity->EvaluateDependencies());
+    }
+
+    TEST_F(ComponentDependency, TwoInstancesOfComponentAccidentallyListingIncompatibilityWithSelfTwice_AreIncompatible)
+    {
+        m_entity->CreateComponent<ComponentO>(); // incompatible with ServiceO twice
+        m_entity->CreateComponent<ComponentO>(); // incompatible with ServiceO twice
+
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_EQ(Entity::DependencySortResult::HasIncompatibleServices, m_entity->EvaluateDependencies());
+        AZ_TEST_STOP_ASSERTTEST(1);
     }
 
     /**
@@ -1139,8 +1580,8 @@ namespace UnitTest
     class ConfigurableComponent : public Component
     {
     public:
-        AZ_RTTI(ConfigurableComponent, "{E3103830-70F3-47AE-8F22-EF09BF3D57E9}", Component);
-        AZ_CLASS_ALLOCATOR(ConfigurableComponent, SystemAllocator, 0);
+        AZ_COMPONENT(ConfigurableComponent, "{E3103830-70F3-47AE-8F22-EF09BF3D57E9}");
+        static void Reflect(ReflectContext*) {}
 
         int m_intVal = 0;
 
@@ -1169,7 +1610,42 @@ namespace UnitTest
         }
     };
 
-    TEST_F(Components, SetConfiguration_Succeeds)
+    class UnconfigurableComponent : public Component
+    {
+    public:
+        AZ_COMPONENT(UnconfigurableComponent, "{772E3AA6-67AC-4655-B6C4-70BC45BAFD35}");
+        static void Reflect(ReflectContext*) {}
+
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+
+
+    // fixture for testing ComponentConfig stuff
+    class ComponentConfiguration
+       : public Components
+    {
+    public:
+        void SetUp() override
+        {
+            Components::SetUp();
+
+            m_descriptors.emplace_back(ConfigurableComponent::CreateDescriptor());
+            m_descriptors.emplace_back(UnconfigurableComponent::CreateDescriptor());
+        }
+
+        void TearDown() override
+        {
+            m_descriptors.clear();
+            m_descriptors.set_capacity(0);
+
+            Components::TearDown();
+        }
+
+        AZStd::vector<AZStd::unique_ptr<ComponentDescriptor>> m_descriptors;
+    };
+
+    TEST_F(ComponentConfiguration, SetConfiguration_Succeeds)
     {
         ConfigurableComponentConfig config;
         config.m_intVal = 5;
@@ -1180,7 +1656,7 @@ namespace UnitTest
         EXPECT_EQ(component.m_intVal, 5);
     }
 
-    TEST_F(Components, SetConfigurationOnActiveEntity_DoesNothing)
+    TEST_F(ComponentConfiguration, SetConfigurationOnActiveEntity_DoesNothing)
     {
         ConfigurableComponentConfig config;
         config.m_intVal = 5;
@@ -1189,12 +1665,13 @@ namespace UnitTest
         auto component = entity.CreateComponent<ConfigurableComponent>();
         entity.Init();
         entity.Activate();
+        EXPECT_EQ(Entity::ES_ACTIVE, entity.GetState());
 
         EXPECT_FALSE(component->SetConfiguration(config));
         EXPECT_NE(component->m_intVal, 5);
     }
 
-    TEST_F(Components, SetWrongKindOfConfiguration_DoesNothing)
+    TEST_F(ComponentConfiguration, SetWrongKindOfConfiguration_DoesNothing)
     {
         ComponentConfig config; // base config type
 
@@ -1205,7 +1682,7 @@ namespace UnitTest
         EXPECT_EQ(component.m_intVal, 19);
     }
 
-    TEST_F(Components, GetConfiguration_Succeeds)
+    TEST_F(ComponentConfiguration, GetConfiguration_Succeeds)
     {
         ConfigurableComponent component;
         component.m_intVal = 9;
@@ -1216,16 +1693,7 @@ namespace UnitTest
         EXPECT_EQ(component.m_intVal, 9);
     }
 
-    class UnconfigurableComponent : public Component
-    {
-    public:
-        AZ_RTTI(UnconfigurableComponent, "{772E3AA6-67AC-4655-B6C4-70BC45BAFD35}", Component);
-
-        void Activate() override {}
-        void Deactivate() override {}
-    };
-
-    TEST_F(Components, SetConfigurationOnUnconfigurableComponent_Fails)
+    TEST_F(ComponentConfiguration, SetConfigurationOnUnconfigurableComponent_Fails)
     {
         UnconfigurableComponent component;
         ConfigurableComponentConfig config;
@@ -1233,13 +1701,15 @@ namespace UnitTest
         EXPECT_FALSE(component.SetConfiguration(config));
     }
 
-    TEST_F(Components, GetConfigurationOnUnconfigurableComponent_Fails)
+    TEST_F(ComponentConfiguration, GetConfigurationOnUnconfigurableComponent_Fails)
     {
         UnconfigurableComponent component;
         ConfigurableComponentConfig config;
 
         EXPECT_FALSE(component.GetConfiguration(config));
     }
+
+    //=========================================================================
 
     TEST_F(Components, GenerateNewIdsAndFixRefsExistingMapTest)
     {
@@ -1487,4 +1957,64 @@ namespace UnitTest
         EXPECT_EQ(config.m_numHeads, component.m_config.m_numHeads);
         EXPECT_EQ(config.m_numArmsPerHead, component.m_config.m_numArmsPerHead);
     }
-}
+} // namespace UnitTest
+
+#if defined(HAVE_BENCHMARK)
+namespace Benchmark
+{
+    static void BM_ComponentDependencySort(::benchmark::State& state)
+    {
+        // descriptors are cleaned up when ComponentApplication shuts down
+        aznew UnitTest::ComponentADescriptor;
+        aznew UnitTest::ComponentB::DescriptorType;
+        aznew UnitTest::ComponentC::DescriptorType;
+        aznew UnitTest::ComponentD::DescriptorType;
+        aznew UnitTest::ComponentE::DescriptorType;
+        aznew UnitTest::ComponentE2::DescriptorType;
+
+        ComponentApplication componentApp;
+
+        ComponentApplication::Descriptor desc;
+        desc.m_useExistingAllocator = true;
+
+        ComponentApplication::StartupParameters startupParams;
+        startupParams.m_allocator = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
+
+        Entity* systemEntity = componentApp.Create(desc, startupParams);
+        systemEntity->Init();
+
+        while(state.KeepRunning())
+        {
+            // create components to sort
+            state.PauseTiming();
+            AZStd::vector<Component*> components;
+            AZ_Assert((state.range(0) % 6) == 0, "Multiple of 6 required");
+            while ((int)components.size() < state.range(0))
+            {
+                components.push_back(aznew UnitTest::ComponentA());
+                components.push_back(aznew UnitTest::ComponentB());
+                components.push_back(aznew UnitTest::ComponentC());
+                components.push_back(aznew UnitTest::ComponentD());
+                components.push_back(aznew UnitTest::ComponentE());
+                components.push_back(aznew UnitTest::ComponentE2());
+            }
+            state.ResumeTiming();
+
+            // do sort
+            Entity::DependencySortResult result = Entity::DependencySort(components);
+
+            // cleanup
+            state.PauseTiming();
+            AZ_Assert(result == Entity::DependencySortResult::Success, "Sort failed");
+            for (Component* component : components)
+            {
+                delete component;
+            }
+            state.ResumeTiming();
+        }
+    }
+
+    BENCHMARK(BM_ComponentDependencySort)->Arg(6)->Arg(60);
+
+} // Benchmark
+#endif // HAVE_BENCHMARK

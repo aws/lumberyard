@@ -1,6 +1,6 @@
 <download name="GSG_05_Ai" type="Map">
  <index src="filelist.xml" dest="filelist.xml"/>
  <files>
-  <file src="level.pak" dest="level.pak" size="409568" md5="1e3d38d4072e1e2530381cf6030fe4d5"/>
+  <file src="level.pak" dest="level.pak" size="417938" md5="4a625f8fe65884673cfeca22b3a998dc"/>
  </files>
 </download>

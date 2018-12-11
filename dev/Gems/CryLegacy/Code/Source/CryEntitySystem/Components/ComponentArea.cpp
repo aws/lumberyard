@@ -16,7 +16,7 @@
 #include "Entity.h"
 #include "ISerialize.h"
 
-std::vector<Vec3> CComponentArea::s_tmpWorldPoints;
+StaticInstance<std::vector<Vec3>> CComponentArea::s_tmpWorldPoints;
 
 DECLARE_DEFAULT_COMPONENT_FACTORY(CComponentArea, IComponentArea)
 

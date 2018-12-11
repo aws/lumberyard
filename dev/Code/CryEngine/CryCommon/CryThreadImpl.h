@@ -36,7 +36,6 @@
 
 void CryThreadSetName(threadID dwThreadId, const char* sThreadName)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
     if (gEnv && gEnv->pSystem && gEnv->pSystem->GetIThreadTaskManager())
     {
         gEnv->pSystem->GetIThreadTaskManager()->SetThreadName(dwThreadId, sThreadName);

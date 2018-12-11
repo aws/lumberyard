@@ -906,6 +906,7 @@ namespace GridMate
         {
             if (itConn->second->GetConnectionState() == ConnectionState::DISCONNECTED)
             {
+                delete itConn->second;
                 itConn = m_connections.erase(itConn);
             }
             else

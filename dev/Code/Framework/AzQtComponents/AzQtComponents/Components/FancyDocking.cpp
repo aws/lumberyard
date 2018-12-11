@@ -367,6 +367,22 @@ namespace AzQtComponents
         // Remove this floating dock widget from our z-ordered list of dock widget names
         m_orderedFloatingDockWidgetNames.removeAll(floatingDockWidgetName);
 
+        // If a top level window has the dock widget we're about to destroy as transient parent,
+        // update its transient parent to that of the dock widget, so that z-ordering is maintained.
+        if (const QWindow* dockWidgetWindow = floatingDockWidget->windowHandle())
+        {
+            for (QWidget* widget : QApplication::topLevelWidgets())
+            {
+                if (QWindow* window = widget->windowHandle())
+                {
+                    if (window->transientParent() == dockWidgetWindow)
+                    {
+                        window->setTransientParent(dockWidgetWindow->transientParent());
+                    }
+                }
+            }
+        }
+
         // Lastly, delete our empty floating dock widget container, which will
         // also delete the floating main window since it is a child.
         floatingDockWidget->deleteLater();

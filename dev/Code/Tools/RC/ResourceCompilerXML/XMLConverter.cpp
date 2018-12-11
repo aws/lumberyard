@@ -700,8 +700,3 @@ ICompiler* XMLConverter::CreateCompiler()
 {
     return new XMLCompiler(m_pCryXML, m_filter, m_tableFilemasks, m_nameConvertor);
 }
-
-bool XMLConverter::SupportsMultithreading() const
-{
-    return true;
-}

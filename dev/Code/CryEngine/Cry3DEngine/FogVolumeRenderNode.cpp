@@ -24,8 +24,8 @@
 
 
 AABB CFogVolumeRenderNode::s_tracableFogVolumeArea(Vec3(0, 0, 0), Vec3(0, 0, 0));
-CFogVolumeRenderNode::CachedFogVolumes CFogVolumeRenderNode::s_cachedFogVolumes;
-CFogVolumeRenderNode::GlobalFogVolumeMap CFogVolumeRenderNode::s_globalFogVolumeMap;
+StaticInstance<CFogVolumeRenderNode::CachedFogVolumes> CFogVolumeRenderNode::s_cachedFogVolumes;
+StaticInstance<CFogVolumeRenderNode::GlobalFogVolumeMap> CFogVolumeRenderNode::s_globalFogVolumeMap;
 bool CFogVolumeRenderNode::s_forceTraceableAreaUpdate(false);
 
 void CFogVolumeRenderNode::StaticReset()

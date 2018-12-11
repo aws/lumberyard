@@ -35,7 +35,7 @@
 namespace
 {
     bool s_nodeParamsInitialized = false;
-    std::vector<CAnimNode::SParamInfo> s_nodeParams;
+    StaticInstance<std::vector<CAnimNode::SParamInfo>> s_nodeParams;
 
     void AddSupportedParam(const char* sName, AnimParamType paramId, AnimValueType valueType)
     {
@@ -129,7 +129,7 @@ void CAnimMaterialNode::UpdateDynamicParamsInternal()
     for (int i = 0; i < shaderParams.size(); ++i)
     {
         SShaderParam& shaderParam = shaderParams[i];
-        m_nameToDynamicShaderParam[ shaderParams[i].m_Name ] = i;
+        m_nameToDynamicShaderParam[ shaderParams[i].m_Name.c_str() ] = i;
 
         CAnimNode::SParamInfo paramInfo;
 
@@ -153,7 +153,7 @@ void CAnimMaterialNode::UpdateDynamicParamsInternal()
             continue;
         }
 
-        paramInfo.name = shaderParam.m_Name;
+        paramInfo.name = shaderParam.m_Name.c_str();
         paramInfo.paramType = shaderParam.m_Name;
         paramInfo.flags = IAnimNode::ESupportedParamFlags(0);
 

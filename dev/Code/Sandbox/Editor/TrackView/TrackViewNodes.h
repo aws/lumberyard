@@ -114,6 +114,8 @@ public:
     QIcon GetIconForTrack(const CTrackViewTrack* pTrack);
     void ShowNextResult();
 
+    void Update();
+
 protected:
     void paintEvent(QPaintEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;

@@ -465,7 +465,7 @@ namespace LmbrCentral
     }
 
     //=========================================================================
-    void SpawnerComponent::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)
+    void SpawnerComponent::OnSliceInstantiationFailedOrCanceled(const AZ::Data::AssetId& sliceAssetId, bool canceled)
     {
         const AzFramework::SliceInstantiationTicket ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
 
@@ -474,14 +474,17 @@ namespace LmbrCentral
         // clean it up
         DestroySpawnedSlice(ticket);
 
-        // error msg
-        if (sliceAssetId == m_sliceAsset.GetId())
+        if (!canceled)
         {
-            AZ_Error("SpawnerComponent", false, "Slice %s failed to instantiate", m_sliceAsset.ToString<AZStd::string>().c_str());
-        }
-        else
-        {
-            AZ_Error("SpawnerComponent", false, "Slice [id:'%s'] failed to instantiate", sliceAssetId.ToString<AZStd::string>().c_str());
+            // error msg
+            if (sliceAssetId == m_sliceAsset.GetId())
+            {
+                AZ_Error("SpawnerComponent", false, "Slice %s failed to instantiate", m_sliceAsset.ToString<AZStd::string>().c_str());
+            }
+            else
+            {
+                AZ_Error("SpawnerComponent", false, "Slice [id:'%s'] failed to instantiate", sliceAssetId.ToString<AZStd::string>().c_str());
+            }
         }
     }
 

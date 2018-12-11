@@ -12,11 +12,9 @@
 
 #include <GridMate/Replica/Interest/ProximityInterestHandler.h>
 
-#include <GridMate/Replica/ReplicaChunk.h>
 #include <GridMate/Replica/Replica.h>
 #include <GridMate/Replica/ReplicaFunctions.h>
 #include <GridMate/Replica/ReplicaMgr.h>
-#include <GridMate/Replica/RemoteProcedureCall.h>
 
 #include <GridMate/Replica/Interest/InterestManager.h>
 #include <GridMate/Replica/Interest/BvDynamicTree.h>
@@ -26,109 +24,77 @@
 
 namespace GridMate
 {
-    class ProximityInterestChunk
-        : public ReplicaChunk
+
+    void ProximityInterestChunk::OnReplicaActivate(const ReplicaContext& rc)
     {
-    public:
-        GM_CLASS_ALLOCATOR(ProximityInterestChunk);
+        m_interestHandler = static_cast<ProximityInterestHandler*>(rc.m_rm->GetUserContext(AZ_CRC("ProximityInterestHandler", 0x3a90b3e4)));
+        AZ_Warning("GridMate", m_interestHandler, "No proximity interest handler in the user context");
 
-        // ReplicaChunk
-        typedef AZStd::intrusive_ptr<ProximityInterestChunk> Ptr;
-        bool IsReplicaMigratable() override { return false; }
-        static const char* GetChunkName() { return "ProximityInterestChunk"; }
-        bool IsBroadcast() override { return true; }
-        ///////////////////////////////////////////////////////////////////////////
-
-
-        ProximityInterestChunk()
-            : AddRuleRpc("AddRule")
-              , RemoveRuleRpc("RemoveRule")
-              , UpdateRuleRpc("UpdateRule")
-              , AddRuleForPeerRpc("AddRuleForPeerRpc")
-              , m_interestHandler(nullptr)
+        if (m_interestHandler)
         {
+            m_interestHandler->OnNewRulesChunk(this, rc.m_peer);
+        }
+    }
+
+    void ProximityInterestChunk::OnReplicaDeactivate(const ReplicaContext& rc)
+    {
+        if (rc.m_peer && m_interestHandler)
+        {
+            m_interestHandler->OnDeleteRulesChunk(this, rc.m_peer);
+        }
+    }
+
+    bool ProximityInterestChunk::AddRuleFn(RuleNetworkId netId, AZ::Aabb bbox, const RpcContext& ctx)
+    {
+        if (IsProxy())
+        {
+            auto rulePtr = m_interestHandler->CreateRule(ctx.m_sourcePeer);
+            rulePtr->Set(bbox);
+            m_rules.insert(AZStd::make_pair(netId, rulePtr));
         }
 
-        void OnReplicaActivate(const ReplicaContext& rc) override
-        {
-            m_interestHandler = static_cast<ProximityInterestHandler*>(rc.m_rm->GetUserContext(AZ_CRC("ProximityInterestHandler", 0x3a90b3e4)));
-            AZ_Warning("GridMate", m_interestHandler, "No proximity interest handler in the user context");
+        return true;
+    }
 
-            if (m_interestHandler)
+    bool ProximityInterestChunk::RemoveRuleFn(RuleNetworkId netId, const RpcContext&)
+    {
+        if (IsProxy())
+        {
+            m_rules.erase(netId);
+        }
+
+        return true;
+    }
+
+    bool ProximityInterestChunk::UpdateRuleFn(RuleNetworkId netId, AZ::Aabb bbox, const RpcContext&)
+    {
+        if (IsProxy())
+        {
+            auto it = m_rules.find(netId);
+            if (it != m_rules.end())
             {
-                m_interestHandler->OnNewRulesChunk(this, rc.m_peer);
+                it->second->Set(bbox);
             }
         }
 
-        void OnReplicaDeactivate(const ReplicaContext& rc) override
-        {
-            if (rc.m_peer && m_interestHandler)
-            {
-                m_interestHandler->OnDeleteRulesChunk(this, rc.m_peer);
-            }
-        }
+        return true;
+    }
 
-        bool AddRuleFn(RuleNetworkId netId, AZ::Aabb bbox, const RpcContext& ctx)
+    bool ProximityInterestChunk::AddRuleForPeerFn(RuleNetworkId netId, PeerId peerId, AZ::Aabb bbox, const RpcContext&)
+    {
+        ProximityInterestChunk* peerChunk = m_interestHandler->FindRulesChunkByPeerId(peerId);
+        if (peerChunk)
         {
-            if (IsProxy())
+            auto it = peerChunk->m_rules.find(netId);
+            if (it == peerChunk->m_rules.end())
             {
-                auto rulePtr = m_interestHandler->CreateRule(ctx.m_sourcePeer);
+                auto rulePtr = m_interestHandler->CreateRule(peerId);
+                peerChunk->m_rules.insert(AZStd::make_pair(netId, rulePtr));
                 rulePtr->Set(bbox);
-                m_rules.insert(AZStd::make_pair(netId, rulePtr));
             }
-
-            return true;
         }
-
-        bool RemoveRuleFn(RuleNetworkId netId, const RpcContext&)
-        {
-            if (IsProxy())
-            {
-                m_rules.erase(netId);
-            }
-
-            return true;
-        }
-
-        bool UpdateRuleFn(RuleNetworkId netId, AZ::Aabb bbox, const RpcContext&)
-        {
-            if (IsProxy())
-            {
-                auto it = m_rules.find(netId);
-                if (it != m_rules.end())
-                {
-                    it->second->Set(bbox);
-                }
-            }
-
-            return true;
-        }
-
-        bool AddRuleForPeerFn(RuleNetworkId netId, PeerId peerId, AZ::Aabb bbox, const RpcContext&)
-        {
-            ProximityInterestChunk* peerChunk = m_interestHandler->FindRulesChunkByPeerId(peerId);
-            if (peerChunk)
-            {
-                auto it = peerChunk->m_rules.find(netId);
-                if (it == peerChunk->m_rules.end())
-                {
-                    auto rulePtr = m_interestHandler->CreateRule(peerId);
-                    peerChunk->m_rules.insert(AZStd::make_pair(netId, rulePtr));
-                    rulePtr->Set(bbox);
-                }
-            }
-            return false;
-        }
-
-        Rpc<RpcArg<RuleNetworkId>, RpcArg<AZ::Aabb>>::BindInterface<ProximityInterestChunk, &ProximityInterestChunk::AddRuleFn> AddRuleRpc;
-        Rpc<RpcArg<RuleNetworkId>>::BindInterface<ProximityInterestChunk, &ProximityInterestChunk::RemoveRuleFn> RemoveRuleRpc;
-        Rpc<RpcArg<RuleNetworkId>, RpcArg<AZ::Aabb>>::BindInterface<ProximityInterestChunk, &ProximityInterestChunk::UpdateRuleFn> UpdateRuleRpc;
-
-        Rpc<RpcArg<RuleNetworkId>, RpcArg<PeerId>, RpcArg<AZ::Aabb>>::BindInterface<ProximityInterestChunk, &ProximityInterestChunk::AddRuleForPeerFn> AddRuleForPeerRpc;
-
-        unordered_map<RuleNetworkId, ProximityInterestRule::Ptr> m_rules;
-        ProximityInterestHandler* m_interestHandler;
-    };
+        return false;
+    }
     ///////////////////////////////////////////////////////////////////////////
 
 
@@ -185,11 +151,6 @@ namespace GridMate
         , m_lastRuleNetId(0)
         , m_rulesReplica(nullptr)
     {
-        if (!ReplicaChunkDescriptorTable::Get().FindReplicaChunkDescriptor(ReplicaChunkClassId(ProximityInterestChunk::GetChunkName())))
-        {
-            ReplicaChunkDescriptorTable::Get().RegisterChunkType<ProximityInterestChunk>();
-        }
-
         m_attributeWorld = AZStd::make_unique<SpatialIndex>();
         AZ_Assert(m_attributeWorld, "Out of memory");
     }

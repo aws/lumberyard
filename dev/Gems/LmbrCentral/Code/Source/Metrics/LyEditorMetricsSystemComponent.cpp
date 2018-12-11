@@ -182,6 +182,22 @@ namespace LyEditorMetrics
             return;
         }
 
+        switch (event)
+        {
+            case eNotify_OnBeginGameMode:
+                // stop listening to entity related events while in game mode
+                AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusDisconnect();
+                break;
+
+            case eNotify_OnEndGameMode:
+                // start listening to entity related events while in game mode again
+                AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusConnect();
+                break;
+
+            default:
+                break;
+        }
+
         const char* eventMetricName = MetricsEventData::GetMetricNameForEvent(event);
         if (eventMetricName)
         {
@@ -390,7 +406,8 @@ namespace LyEditorMetrics
 
     void LyEditorMetricsSystemComponent::EndSelectionChange()
     {
-        AfterEntitySelectionChanged();
+        const AzToolsFramework::EntityIdList emptyList = AzToolsFramework::EntityIdList();
+        AfterEntitySelectionChanged(emptyList, emptyList);
     }
 
     void LyEditorMetricsSystemComponent::BeforeEntitySelectionChanged()
@@ -398,7 +415,7 @@ namespace LyEditorMetrics
         m_batchingSelectionStackSize++;
     }
 
-    void LyEditorMetricsSystemComponent::AfterEntitySelectionChanged()
+    void LyEditorMetricsSystemComponent::AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList&, const AzToolsFramework::EntityIdList&)
     {
         assert(m_batchingSelectionStackSize > 0);
 
@@ -422,7 +439,8 @@ namespace LyEditorMetrics
 
     void LyEditorMetricsSystemComponent::AfterUndoRedo()
     {
-        AfterEntitySelectionChanged();
+        const AzToolsFramework::EntityIdList emptyList = AzToolsFramework::EntityIdList();
+        AfterEntitySelectionChanged(emptyList, emptyList);
     }
 
     void LyEditorMetricsSystemComponent::InitializeLegacyEntityList()

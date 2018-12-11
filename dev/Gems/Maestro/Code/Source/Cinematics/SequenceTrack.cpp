@@ -119,11 +119,12 @@ template<>
 inline void TAnimTrack<ISequenceKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<ISequenceKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<ISequenceKey>::m_flags)
         ->Field("Range", &TAnimTrack<ISequenceKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<ISequenceKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<ISequenceKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<ISequenceKey>::m_keys)
+        ->Field("Id", &TAnimTrack<ISequenceKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////

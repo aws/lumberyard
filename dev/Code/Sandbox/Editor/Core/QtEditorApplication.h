@@ -16,7 +16,6 @@
 #include <QColor>
 #include <QMap>
 #include <QTranslator>
-#include <QScopedPointer>
 #include <QSet>
 #include "IEventLoopHook.h"
 #include <unordered_map>
@@ -28,12 +27,11 @@
 class QFileInfo;
 typedef QList<QFileInfo> QFileInfoList;
 class QByteArray;
-class QQmlEngine;
 
-namespace AZ
-{
-    class Entity;
-}
+#ifdef DEPRECATED_QML_SUPPORT
+class QQmlEngine;
+#endif
+
 
 namespace AzQtComponents
 {
@@ -88,7 +86,9 @@ namespace Editor
         void OnEditorNotifyEvent(EEditorNotifyEvent event) override;
 
         // get the QML engine, if available.
+#ifdef DEPRECATED_QML_SUPPORT
         QQmlEngine* GetQMLEngine() const;
+#endif
 
         const QColor& GetColorByName(const QString& colorName);
 
@@ -103,8 +103,11 @@ namespace Editor
 #endif
 
     public Q_SLOTS:
+
+#ifdef DEPRECATED_QML_SUPPORT
         void InitializeQML();
         void UninitializeQML();
+#endif
 
         void setIsMovingOrResizing(bool isMovingOrResizing);
 
@@ -126,12 +129,14 @@ namespace Editor
         void InstallFilters();
         void UninstallFilters();
         void maybeProcessIdle();
-        void InitQtEntity();
 
         AzQtComponents::LumberyardStylesheet* m_stylesheet;
 
         bool m_inWinEventFilter = false;
+
+#ifdef DEPRECATED_QML_SUPPORT
         QQmlEngine* m_qmlEngine = nullptr;
+#endif
 
         // Translators
         void InstallEditorTranslators();
@@ -151,7 +156,5 @@ namespace Editor
         QSet<int> m_pressedKeys;
 
         bool m_activatedLocalUserSettings = false;
-
-        QScopedPointer<AZ::Entity> m_qtEntity;
     };
 } // namespace editor

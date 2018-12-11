@@ -21,10 +21,14 @@ import util
 from botocore.exceptions import ClientError
 from boto3.session import Session
 
+from cgf_utils import aws_utils
+from cgf_utils import custom_resource_utils
+from cgf_utils import lambda_utils
 from errors import HandledError
 from util import Args, load_template
 from uploader import ProjectUploader
 from resource_manager_common import constant
+from resource_manager_common import resource_type_info
 from copy import deepcopy
 import security
 import time
@@ -258,7 +262,8 @@ def __zip_individual_lambda_code_folders(context, uploader):
         uploaded_folders.append(function_name)
         aggregated_directories = None
         source_gem_name = description.get("Metadata", {}).get("CloudGemFramework", {}).get("Source", None)
-        uploader.zip_and_upload_lambda_function_code(function_name, source_gem = context.gem.get_by_name(source_gem_name))
+        uploader.upload_lambda_function_code(function_name, function_runtime=description["Properties"]["Runtime"], source_gem=context.gem.get_by_name(
+            source_gem_name))
     
     # There's some untagling needed to allow uploading ProjectResourceHandler without a LambdaConfiguration
     # We should generally avoid adding any more functions like this to the project stack and eventually do away with it.
@@ -272,7 +277,8 @@ def __zip_individual_lambda_code_folders(context, uploader):
         
         if name == "ProjectResourceHandler":
             aggregated_directories = __get_plugin_project_code_paths(context)
-        uploader.zip_and_upload_lambda_function_code(name, aggregated_directories = aggregated_directories)
+        uploader.upload_lambda_function_code(
+            name, function_runtime=description["Properties"]["Runtime"], aggregated_directories=aggregated_directories)
 
 
 def __get_plugin_project_code_paths(context):
@@ -319,7 +325,10 @@ def __get_pending_resource_status(context, deleting=False):
         if not description["Type"] == "AWS::Lambda::Function":
             continue
 
-        code_path, imported_paths, multi_imports = ProjectUploader.get_lambda_function_code_paths(context, name)
+        function_runtime = lambda_utils.get_function_runtime(name, description, resources)
+
+        code_path, imported_paths, multi_imports = ProjectUploader.get_lambda_function_code_paths(
+            context, name, function_runtime)
 
         lambda_function_content_paths.append(code_path)
         lambda_function_content_paths.extend(imported_paths)
@@ -342,7 +351,6 @@ def __get_pending_resource_status(context, deleting=False):
             'Custom::ServiceApi': service_api_content_paths
         }
     )
-
 
 
 def delete_stack(context, args):
@@ -370,6 +378,8 @@ def delete_stack(context, args):
 
         context.stack.delete(context.config.project_stack_id, pending_resource_status = pending_resource_status)
 
+        __delete_custom_resource_lambdas(context, args)
+
         for retained_bucket_name, retained_bucket_id in zip(retained_bucket_names, retained_bucket_ids):
             if retained_bucket_id:
 
@@ -394,6 +404,91 @@ def delete_stack(context, args):
         context.view.clearing_project_stack_id(context.config.project_stack_id)
 
     context.config.clear_project_stack_id()
+
+
+def __delete_custom_resource_lambdas(context, args):
+    context.view.deleting_custom_resource_lambdas()
+    stack_id = context.config.project_stack_id
+    project_name = util.get_stack_name_from_arn(stack_id)
+    region = util.get_region_from_arn(stack_id)
+    lambda_client = context.aws.client('lambda', region=region)
+    iam_client = context.aws.client('iam')
+    delete_functions = []
+    delete_roles = []
+    prefixes = ["{}-{}-".format(project_name, prefix) for prefix in resource_type_info.LAMBDA_TAGS]
+
+    # Iterate through all lambda functions and generate a list that begin with any of the prefixes associated with
+    # custom resource handlers
+    for response in lambda_client.get_paginator('list_functions').paginate():
+        for entry in response['Functions']:
+            function_name = entry['FunctionName']
+            if any(function_name.startswith(prefix) for prefix in prefixes):
+                delete_functions.append(function_name)
+                delete_roles.append(aws_utils.get_role_name_from_role_arn(entry['Role']))
+
+    # Delete the functions and roles related to custom resource handlers
+    for function_name, role_name in zip(delete_functions, delete_roles):
+        lambda_client.delete_function(FunctionName=function_name)
+        iam_client.delete_role_policy(RoleName=role_name, PolicyName="Default")
+        iam_client.delete_role(RoleName=role_name)
+
+    context.view.deleting_lambdas_completed(len(delete_functions))
+
+
+def clean_custom_resource_handlers(context, args):
+    if context.config.project_stack_id is None:
+        raise HandledError("Project stack does not exist.")
+
+    context.view.deleting_custom_resource_lambdas()
+    lambda_client = context.aws.client('lambda', region=util.get_region_from_arn(context.config.project_stack_id))
+    project_info = context.stack_info.manager.get_stack_info(context.config.project_stack_id)
+    resource_types_used_versions = {}
+    delete_count = 0
+
+    def add_resource_versions(stack_info):
+        for resource_info in stack_info.resources:
+            if resource_info.type.startswith("Custom::"):
+                info = custom_resource_utils.get_custom_resource_info(resource_info.physical_id)
+                if info.create_version:
+                    resource_types_used_versions.setdefault(resource_info.type, set()).add(info.create_version)
+                    metadata_version = resource_info.get_cloud_canvas_metadata(
+                        custom_resource_utils.METADATA_VERSION_TAG)
+                    if metadata_version:
+                        resource_types_used_versions[resource_info.type].add(metadata_version)
+
+    # Add the resources from the project stack, the deployment stacks, and all the resource groups
+    add_resource_versions(project_info)
+
+    for deployment_info in project_info.deployments:
+        add_resource_versions(deployment_info)
+
+        for resource_group_info in deployment_info.resource_groups:
+            add_resource_versions(resource_group_info)
+
+    # Iterate over the custom resource types
+    for resource_type_name, resource_type_info in project_info.resource_definitions.iteritems():
+        if resource_type_info.handler_function:
+            # Obtain a list of all versions of the function
+            lambda_function_name = resource_type_info.get_custom_resource_lambda_function_name()
+            versions = []
+
+            for result in aws_utils.paginate(
+                    lambda_client.list_versions_by_function, {'FunctionName': lambda_function_name}):
+                versions.extend([entry['Version'] for entry in result['Versions']])
+
+            # Walk through all versions older than the current version, and delete them if they are not in use
+            assert(len(versions) >= 2)
+            assert(versions[0] == "$LATEST")
+            assert(int(versions[-1]) == max([int(x) for x in versions[1:]]))  # Last entry should be greatest version
+            in_use_versions = resource_types_used_versions.get(resource_type_name, set())
+
+            for version in versions[1:-1]:
+                if version not in in_use_versions:
+                    context.view.deleting_lambda(lambda_function_name, version)
+                    lambda_client.delete_function(FunctionName=lambda_function_name, Qualifier=version)
+                    delete_count += 1
+
+    context.view.deleting_lambdas_completed(delete_count)
 
 
 def deprecated_list_resources(context, args):

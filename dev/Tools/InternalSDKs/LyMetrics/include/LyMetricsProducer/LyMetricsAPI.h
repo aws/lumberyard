@@ -57,7 +57,7 @@ extern "C"
 // Library lifecycle management - TODO: bother with thread safety?
 // doAPIInitShutdown should be true unless you are handling AWSNativeSDK InitAPI (Earlier) and ShutdownAPI (Later) elsewhere
 
-LY_METRICS_PRODUCER_API bool LyMetrics_Initialize(const char* applicationName, uint32_t processIntervalInSeconds, bool doAPIInitShutdown, const char* projectId, const char* statusFilePath);
+LY_METRICS_PRODUCER_API bool LyMetrics_Initialize(const char* applicationName, uint32_t processIntervalInSeconds, bool doAPIInitShutdown, const char* projectId, const char* statusFilePath, int releaseBuildTime);
 LY_METRICS_PRODUCER_API void LyMetrics_Shutdown();
 
 // Metrics event API - threadsafe
@@ -69,7 +69,7 @@ LY_METRICS_PRODUCER_API bool LyMetrics_AddMetric(LyMetricIdType eventId, const c
 LY_METRICS_PRODUCER_API bool LyMetrics_SubmitEvent(LyMetricIdType eventId);
 LY_METRICS_PRODUCER_API bool LyMetrics_CancelEvent(LyMetricIdType eventId);
 
-LY_METRICS_PRODUCER_API bool LyMetrics_SendRating(int numberOfStars, int ratingInterval, const char* comment);
+LY_METRICS_PRODUCER_API bool LyMetrics_SendRating(int numberOfStars, int ratingInterval, int productiveRating, const char* comment);
 
 // Creates and submits a metric event immediately.
 // Metric event can be built from optional attributes and metrics.
@@ -89,6 +89,6 @@ LY_METRICS_PRODUCER_API void LyMetrics_OnOptOutStatusChange(bool optOutStatus);
 
 // Metrics editor status APIs - threadsafe
 // LyMetrics_Initialize must be called before LyMetrics_InitializeCurrentProcessStatus
-LY_METRICS_PRODUCER_API bool LyMetrics_InitializeCurrentProcessStatus(const char* statusFilePath);
+LY_METRICS_PRODUCER_API bool LyMetrics_InitializeCurrentProcessStatus(const char* statusFilePath, int releaseBuildTime);
 LY_METRICS_PRODUCER_API bool LyMetrics_UpdateCurrentProcessStatus(enum EEditorSessionStatus status);
 }

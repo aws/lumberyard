@@ -82,6 +82,11 @@ namespace Water
 
     WaterOceanComponentData::~WaterOceanComponentData()
     {
+        // Ensure that we're disconnected from the bus on destruction.  We can end up still connected here
+        // if a WaterOceanComponent has been created with a copy of connected WaterOceanComponentData.
+        // The new copy doesn't get an Activate or a Deactivate call, but will be connected.
+        AZ::OceanEnvironmentBus::Handler::BusDisconnect();
+
         m_enabled = false;
     }
 

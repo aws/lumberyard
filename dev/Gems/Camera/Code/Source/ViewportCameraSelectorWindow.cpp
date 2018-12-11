@@ -19,7 +19,10 @@
 #include <AzCore/Component/EntityBus.h>
 #include <IEditor.h>
 #include <qmetatype.h>
+#include <QScopedValueRollback>
 #include <ViewManager.h>
+#include <Maestro/Bus/EditorSequenceBus.h>
+#include <Maestro/Bus/SequenceComponentBus.h>
 
 namespace Qt
 {
@@ -41,10 +44,12 @@ namespace Camera
     // Each item in the list holds the camera's entityId and name
     struct CameraListItem
         : public AZ::EntityBus::Handler
+        , public Maestro::SequenceComponentNotificationBus::Handler
     {
     public:
         CameraListItem(const AZ::EntityId& cameraId)
             : m_cameraId(cameraId)
+            , m_sequenceId(AZ::EntityId())
         {
             if (cameraId.IsValid())
             {
@@ -56,7 +61,35 @@ namespace Camera
                 m_cameraName = "Editor camera";
             }
         }
+
+        // Used for a virtual camera that is really whatever camera is being
+        // used for a Track View Sequence.
+        CameraListItem(const char* cameraName, const AZ::EntityId& sequenceId)
+            : m_cameraName(cameraName)
+            , m_sequenceId(sequenceId)
+        {
+            Maestro::SequenceComponentNotificationBus::Handler::BusConnect(sequenceId);
+        }
+
+        ~CameraListItem()
+        {
+            Maestro::SequenceComponentNotificationBus::Handler::BusDisconnect();
+
+            if (m_cameraId.IsValid())
+            {
+                AZ::EntityBus::Handler::BusDisconnect(m_cameraId);
+            }
+        }
+
         void OnEntityNameChanged(const AZStd::string& name) override { m_cameraName = name; }
+
+        //////////////////////////////////////////////////////////////////////////
+        /// Maestro::SequenceComponentNotificationBus::Handler
+        void OnCameraChanged(const AZ::EntityId& oldCameraEntityId, const AZ::EntityId& newCameraEntityId) override
+        {
+            AZ_UNUSED(oldCameraEntityId);
+            m_cameraId = newCameraEntityId;
+        }
 
         bool operator<(const CameraListItem& rhs)
         {
@@ -65,24 +98,33 @@ namespace Camera
 
         AZ::EntityId m_cameraId;
         AZStd::string m_cameraName;
+        AZ::EntityId m_sequenceId;
     };
 
     // holds a list of camera items
     struct CameraListModel
         : public QAbstractListModel
         , public CameraNotificationBus::Handler
+        , public Maestro::EditorSequenceNotificationBus::Handler
     {
     public:
+
+        static const char* m_sequenceCameraName;
+
         CameraListModel(QObject* myParent)
             : QAbstractListModel(myParent)
         {
             m_cameraItems.push_back(AZ::EntityId());
             CameraNotificationBus::Handler::BusConnect();
+            Maestro::EditorSequenceNotificationBus::Handler::BusConnect();
         }
         ~CameraListModel()
         {
             // set the view entity id back to Invalid, thus enabling the editor camera
             EditorCameraRequests::Bus::Broadcast(&EditorCameraRequests::SetViewFromEntityPerspective, AZ::EntityId());
+
+            Maestro::EditorSequenceNotificationBus::Handler::BusDisconnect();
+            CameraNotificationBus::Handler::BusDisconnect();
         }
         int rowCount(const QModelIndex& parent = QModelIndex()) const override
         {
@@ -124,6 +166,42 @@ namespace Camera
             endRemoveRows();
         }
 
+        //////////////////////////////////////////////////////////////////////////
+        /// Maestro::EditorSequenceNotificationBus::Handler
+        void OnSequenceSelected(const AZ::EntityId& sequenceEntityId) override
+        {
+            // Add or Remove the Sequence Camera option if a valid
+            // sequence is selected in Track View.
+
+            // Check to see if the Sequence Camera option is already present
+            bool found = false;
+            int index = 0;
+            for (const CameraListItem& cameraItem : m_cameraItems)
+            {
+                if (cameraItem.m_cameraName == m_sequenceCameraName)
+                {
+                    found = true;
+                    break;
+                }
+                ++index;
+            }
+
+            // If it is present, but no sequence is selected, removed it.
+            if (found && !sequenceEntityId.IsValid())
+            {
+                beginRemoveRows(QModelIndex(), index, index + 1);
+                m_cameraItems.erase(m_cameraItems.begin() + index);
+                endRemoveRows();
+            }
+            // If it is not present, and there is a sequence selected show it.
+            else if (!found && sequenceEntityId.IsValid())
+            {
+                beginInsertRows(QModelIndex(), rowCount(), rowCount() + 1);
+                m_cameraItems.push_back(CameraListItem(m_sequenceCameraName, sequenceEntityId));
+                endInsertRows();
+            }
+        }
+
         QModelIndex GetIndexForEntityId(const AZ::EntityId entityId)
         {
             int row = 0;
@@ -137,17 +215,25 @@ namespace Camera
             }
             return index(row, 0);
         }
+
     private:
         AZStd::vector<CameraListItem> m_cameraItems;
+        AZ::EntityId m_sequenceCameraEntityId;
+        bool m_sequenceCameraSelected;
     };
+
+    const char* CameraListModel::m_sequenceCameraName = "Sequence camera";
 
     struct ViewportCameraSelectorWindow
         : public QListView
         , public EditorCameraNotificationBus::Handler
         , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
+        , public Maestro::EditorSequenceNotificationBus::Handler
+        , public Maestro::SequenceComponentNotificationBus::Handler
     {
     public:
         ViewportCameraSelectorWindow(QWidget* parent = nullptr)
+            : m_ignoreViewportViewEntityChanged(false)
         {
             qRegisterMetaType<AZ::EntityId>("AZ::EntityId");
             setParent(parent);
@@ -155,17 +241,17 @@ namespace Camera
             setViewMode(ViewMode::ListMode);
 
             // display camera list
-            CameraListModel* cameraList = new CameraListModel(this);
+            m_cameraList = new CameraListModel(this);
 
             // sort by entity id
             QSortFilterProxyModel* sortedProxyModel = new QSortFilterProxyModel(this);
-            sortedProxyModel->setSourceModel(cameraList);
+            sortedProxyModel->setSourceModel(m_cameraList);
             setModel(sortedProxyModel);
             sortedProxyModel->setSortRole(Qt::CameraIdRole);
 
             // use the stylesheet for elements in a set where one item must be selected at all times
             setProperty("class", "SingleRequiredSelection");
-            connect(cameraList, &CameraListModel::rowsInserted, this, [sortedProxyModel](const QModelIndex&, int, int) { sortedProxyModel->sortColumn(); });
+            connect(m_cameraList, &CameraListModel::rowsInserted, this, [sortedProxyModel](const QModelIndex&, int, int) { sortedProxyModel->sortColumn(); });
 
             // highlight the current selected camera entity
             AZ::EntityId currentSelection;
@@ -175,14 +261,32 @@ namespace Camera
             // bus connections
             EditorCameraNotificationBus::Handler::BusConnect();
             AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
+            Maestro::EditorSequenceNotificationBus::Handler::BusConnect();
+        }
+
+        ~ViewportCameraSelectorWindow()
+        {
+            if (Maestro::SequenceComponentNotificationBus::Handler::BusIsConnected())
+            {
+                Maestro::SequenceComponentNotificationBus::Handler::BusDisconnect();
+            }
+
+            Maestro::EditorSequenceNotificationBus::Handler::BusDisconnect();
+            AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
+            EditorCameraNotificationBus::Handler::BusDisconnect();
         }
 
         void currentChanged(const QModelIndex& current, const QModelIndex& previous) override
         {
             if (current.row() != previous.row())
             {
+                // Lock camera editing when in sequence camera mode.
+                const AZStd::string& selectedCameraName = selectionModel()->currentIndex().data(Qt::DisplayRole).toString().toUtf8().data();
+                bool lockCameraMovement = (selectedCameraName == CameraListModel::m_sequenceCameraName);
+
+                QScopedValueRollback<bool> rb(m_ignoreViewportViewEntityChanged, true);
                 AZ::EntityId entityId = selectionModel()->currentIndex().data(Qt::CameraIdRole).value<AZ::EntityId>();
-                EditorCameraRequests::Bus::Broadcast(&EditorCameraRequests::SetViewFromEntityPerspective, entityId);
+                EditorCameraRequests::Bus::Broadcast(&EditorCameraRequests::SetViewAndMovementLockFromEntityPerspective, entityId, lockCameraMovement);
             }
         }
 
@@ -190,10 +294,13 @@ namespace Camera
         /// EditorCameraNotificationBus::Handler
         void OnViewportViewEntityChanged(const AZ::EntityId& newViewId) override
         {
-            QModelIndex potentialIndex = static_cast<CameraListModel*>(qobject_cast<QSortFilterProxyModel*>(model())->sourceModel())->GetIndexForEntityId(newViewId);
-            if (model()->hasIndex(potentialIndex.row(), potentialIndex.column()))
+            if (!m_ignoreViewportViewEntityChanged)
             {
-                selectionModel()->setCurrentIndex(potentialIndex, QItemSelectionModel::SelectionFlag::ClearAndSelect);
+                QModelIndex potentialIndex = m_cameraList->GetIndexForEntityId(newViewId);
+                if (model()->hasIndex(potentialIndex.row(), potentialIndex.column()))
+                {
+                    selectionModel()->setCurrentIndex(potentialIndex, QItemSelectionModel::SelectionFlag::ClearAndSelect);
+                }
             }
         }
 
@@ -208,6 +315,36 @@ namespace Camera
         void OnStopPlayInEditor() override
         {
             setDisabled(false);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        /// Maestro::EditorSequenceNotificationBus::Handler
+        void OnSequenceSelected(const AZ::EntityId& sequenceEntityId) override
+        {
+            // Connect to the Sequence Component Bus when a sequence is selected for OnCameraChanged.
+            if (Maestro::SequenceComponentNotificationBus::Handler::BusIsConnected())
+            {
+                Maestro::SequenceComponentNotificationBus::Handler::BusDisconnect();
+            }
+            if (sequenceEntityId.IsValid())
+            {
+                Maestro::SequenceComponentNotificationBus::Handler::BusConnect(sequenceEntityId);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        /// Maestro::SequenceComponentNotificationBus::Handler
+        void OnCameraChanged(const AZ::EntityId& oldCameraEntityId, const AZ::EntityId& newCameraEntityId) override
+        {
+            AZ_UNUSED(oldCameraEntityId);
+
+            // If the Sequence camera option is selected, respond to camera changes by selecting the camera used by the sequence.
+            const AZStd::string& selectedCameraName = selectionModel()->currentIndex().data(Qt::DisplayRole).toString().toUtf8().data();
+            if (selectedCameraName == CameraListModel::m_sequenceCameraName)
+            {
+                QScopedValueRollback<bool> rb(m_ignoreViewportViewEntityChanged, true);
+                EditorCameraRequests::Bus::Broadcast(&EditorCameraRequests::SetViewAndMovementLockFromEntityPerspective, newCameraEntityId, true);
+            }
         }
 
         // swallow mouse move events so we can disable sloppy selection
@@ -276,6 +413,10 @@ namespace Camera
             }
             return model()->index(nextRow, 0);
         }
+
+    private:
+        CameraListModel* m_cameraList;
+        bool m_ignoreViewportViewEntityChanged;
     };
 
     // wrapper for the ViewportCameraSelectorWindow so that we can add some descriptive helpful text

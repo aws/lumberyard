@@ -121,7 +121,7 @@ void JobManagerWorkStealing::AddPendingJob(Job* job)
     }
 #endif
 
-    AZ_PROFILE_INTERVAL_START(AZ::Debug::ProfileCategory::AzCore, job, "AzCore Job Queued Awaiting Execute");
+    AZ_PROFILE_INTERVAL_START(AZ::Debug::ProfileCategory::JobManagerDetailed, job, "AzCore Job Queued Awaiting Execute");
     if (info && info->m_isWorker)
     {
         //current thread is a worker, push to the local queue
@@ -324,7 +324,7 @@ void JobManagerWorkStealing::ProcessJobsInternal(ThreadInfo* info, Job* suspende
                 {
                     //no available work, so go to sleep (or we have already been signaled by another thread and will acquire the semaphore but not actually sleep)
                     info->m_waitEvent.acquire();
-                    AZ_PROFILE_INTERVAL_END(AZ::Debug::ProfileCategory::AzCore, info);
+                    AZ_PROFILE_INTERVAL_END(AZ::Debug::ProfileCategory::JobManagerDetailed, info);
 
                     if (m_quitRequested)
                     {
@@ -626,7 +626,7 @@ inline void JobManagerWorkStealing::ActivateWorker()
                 m_numAvailableWorkers.fetch_sub(1, AZStd::memory_order_acq_rel);
                 // resume the thread execution
 
-                AZ_PROFILE_INTERVAL_START(AZ::Debug::ProfileCategory::AzCore, info, "AzCore WakeJobThread %d", info->m_workerId);
+                AZ_PROFILE_INTERVAL_START(AZ::Debug::ProfileCategory::JobManagerDetailed, info, "AzCore WakeJobThread %d", info->m_workerId);
                 info->m_waitEvent.release();
                 return;
             }

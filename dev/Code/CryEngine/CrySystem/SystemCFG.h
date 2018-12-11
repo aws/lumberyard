@@ -26,7 +26,7 @@ typedef string SysConfigValue;
 class CSystemConfiguration
 {
 public:
-    CSystemConfiguration(const string& strSysConfigFilePath, CSystem* pSystem, ILoadConfigurationEntrySink* pSink, AZStd::unordered_map<AZStd::string, CVarInfo>* editorMap = nullptr, bool warnIfMissing = true);
+    CSystemConfiguration(const string& strSysConfigFilePath, CSystem* pSystem, ILoadConfigurationEntrySink* pSink, bool warnIfMissing = true);
     ~CSystemConfiguration();
 
     string RemoveWhiteSpaces(string& s)
@@ -39,8 +39,6 @@ public:
 
 private: // ----------------------------------------
 
-    void AddCVarToMap(const string& filename, const string& strKey, const string& strValue, const string& strGroup);
-
     // Returns:
     //   success
     bool ParseSystemConfig();
@@ -50,7 +48,6 @@ private: // ----------------------------------------
     bool                                                        m_bError;
     ILoadConfigurationEntrySink*       m_pSink;                                         // never 0
     bool m_warnIfMissing;
-    AZStd::unordered_map<AZStd::string, CVarInfo>* m_editorMap;
 };
 
 

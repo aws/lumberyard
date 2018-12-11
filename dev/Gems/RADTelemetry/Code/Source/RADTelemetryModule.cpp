@@ -13,34 +13,57 @@
 #include <platform_impl.h>
 #include <IGem.h>
 #include <IConsole.h>
+#include <cstdint>
+#include <cstdio> // snprintf
+#include <limits>
 
 #include "ProfileTelemetryComponent.h"
 
-#ifdef AZ_PROFILE_TELEMETRY
-namespace
+namespace RADTelemetry
 {
-    const char* s_telemetryAddress;
-    int s_telemetryPort;
-    int s_telemetryCaptureMask;
-    int s_memCaptureEnabled;
+#ifdef AZ_PROFILE_TELEMETRY
+    using TelemetryRequestBus = RADTelemetry::ProfileTelemetryRequestBus;
+    using TelemetryRequests = RADTelemetry::ProfileTelemetryRequests;
+    using MaskType = AZ::Debug::ProfileCategoryPrimitiveType;
 
-    void CmdTelemetryToggleEnabled(IConsoleCmdArgs* args)
+    static const char* s_telemetryAddress;
+    static int s_telemetryPort;
+    static const char* s_telemetryCaptureMask;
+    static int s_memCaptureEnabled;
+
+    static void MaskCvarChangedCallback(ICVar*)
     {
-        using TelemetryRequestBus = RADTelemetry::ProfileTelemetryRequestBus;
-        using TelemetryRequests = RADTelemetry::ProfileTelemetryRequests;
+        if (!s_telemetryCaptureMask || !s_telemetryCaptureMask[0])
+        {
+            return;
+        }
 
+        // Parse as a 64-bit hex string
+        MaskType maskCvarValue = strtoull(s_telemetryCaptureMask, nullptr, 16);
+        if (maskCvarValue == std::numeric_limits<MaskType>::max())
+        {
+            MaskType defaultMask = 0;
+            TelemetryRequestBus::BroadcastResult(defaultMask, &TelemetryRequests::GetDefaultCaptureMask);
+
+            AZ_Error("RADTelemetryGem", false, "Invalid RAD Telemetry capture mask cvar value: %s, using default capture mask 0x%" PRIx64, s_telemetryCaptureMask, defaultMask);
+            maskCvarValue = defaultMask;
+        }
+
+        // Mask off the memory capture flag and add it back if memory capture is enabled
+        const MaskType fullCaptureMask = (maskCvarValue & ~AZ_PROFILE_CAT_TO_RAD_CAPFLAGS(AZ::Debug::ProfileCategory::MemoryReserved)) | (s_memCaptureEnabled ? AZ_PROFILE_CAT_TO_RAD_CAPFLAGS(AZ::Debug::ProfileCategory::MemoryReserved) : 0);
+        TelemetryRequestBus::Broadcast(&TelemetryRequests::SetCaptureMask, fullCaptureMask);
+    }
+
+    static void CmdTelemetryToggleEnabled(IConsoleCmdArgs* args)
+    {
         TelemetryRequestBus::Broadcast(&TelemetryRequests::SetAddress, s_telemetryAddress, s_telemetryPort);
 
-        const AZ::u32 fullCaptureMask = static_cast<AZ::u32>(s_telemetryCaptureMask) | (s_memCaptureEnabled ? AZ_PROFILE_CAT_TO_RAD_CAPFLAGS(AZ::Debug::ProfileCategory::MemoryReserved) : 0);
-        TelemetryRequestBus::Broadcast(&TelemetryRequests::SetCaptureMask, fullCaptureMask);
+        MaskCvarChangedCallback(nullptr); // Set the capture mask
 
         TelemetryRequestBus::Broadcast(&TelemetryRequests::ToggleEnabled);
     }
-}
 #endif
 
-namespace RADTelemetry
-{
     class RADTelemetryModule
         : public CryHooksModule
     {
@@ -84,8 +107,13 @@ namespace RADTelemetry
             REGISTER_CVAR2("radtm_Port", &s_telemetryPort, 4719, VF_NULL, "The port for the RAD telemetry server");
             REGISTER_CVAR2("radtm_MemoryCaptureEnabled", &s_memCaptureEnabled, 0, VF_NULL, "Toggle for telemetry memory capture");
 
-            const int defaultCaptureMask = static_cast<int>((1 << static_cast<AZ::u32>(AZ::Debug::ProfileCategory::FirstDetailedCategory)) - 1); // Set all the category bits "below" Detailed by default
-            REGISTER_CVAR2("radtm_CaptureMask", &s_telemetryCaptureMask, defaultCaptureMask, VF_NULL, "The bit mask for the categories to be captured, 0 for all");
+            // Get the default value from ProfileTelemetryComponent
+            MaskType defaultCaptureMaskValue = 0;
+            TelemetryRequestBus::BroadcastResult(defaultCaptureMaskValue, &TelemetryRequests::GetCaptureMask);
+
+            char defaultCaptureMaskStr[19];
+            azsnprintf(defaultCaptureMaskStr, AZ_ARRAY_SIZE(defaultCaptureMaskStr), "0x%" PRIx64, defaultCaptureMaskValue);
+            REGISTER_CVAR2_CB("radtm_CaptureMask", &s_telemetryCaptureMask, defaultCaptureMaskStr, VF_NULL, "A hex bitmask for the categories to be captured, 0x0 for all", MaskCvarChangedCallback);
 #endif
         }
     };

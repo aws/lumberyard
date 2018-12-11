@@ -41,8 +41,10 @@ def build(bld):
                            'EmbeddedPython'],
         win_lib         = ['gdi32'],
 
-        darwin_cxxflags = ['-Wno-unused-local-typedef'],
-        darwin_x64_lib  = ['python2.7'],
+        darwin_cxxflags = ['-Wno-unused-local-typedef',
+                           '-Wno-deprecated-register'],
+        darwin_x64_lib  = ['python2.7', 'bsm'],
+        darwin_x64_framework = ['Security'],
 
         test_all_file_list = ['dynamiccontentplugin_test.waf_files'],
 

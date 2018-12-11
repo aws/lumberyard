@@ -115,7 +115,7 @@ namespace AZ
                         }
                         else
                         {
-                            AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Unable to extract blendshape mesh for(%s) from BlendShapeChannel %d", sourceMesh->GetName(), channelIndex);
+                            AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Unable to extract blendshape mesh for node '%s' from BlendShapeChannel %d", sourceMesh->GetName(), channelIndex);
                             combinedBlendShapeResult += Events::ProcessingResult::Failure;
                         }
                     }

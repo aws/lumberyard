@@ -105,7 +105,6 @@ namespace NCryOpenGL
         }
     }
 
-#if DXGL_SUPPORT_INDEXED_ENABLE_STATE
     inline void SetEnabledStatei(GLenum eState, GLuint uIndex, bool bEnabled)
     {
         if (bEnabled)
@@ -117,7 +116,6 @@ namespace NCryOpenGL
             glDisablei(eState, uIndex);
         }
     }
-#endif //DXGL_SUPPORT_INDEXED_ENABLE_STATE
 
     inline void GetStateVar(GLenum eTarget, GLint* pData)                     { glGetIntegerv (eTarget, pData); }
     inline void GetStateVar(GLenum eTarget, GLenum* pData)                    { glGetIntegerv (eTarget, reinterpret_cast<GLint*>(pData)); }
@@ -681,10 +679,11 @@ namespace NCryOpenGL
         glBindVertexArray(0);
         glDeleteVertexArrays(1, &m_uGlobalVAO);
 
-#if !DXGL_SUPPORT_COPY_IMAGE
-        GLuint uCopyPixelBufferName(m_kCopyPixelBuffer.GetName());
-        glDeleteBuffers(1, &uCopyPixelBufferName);
-#endif //!DXGL_SUPPORT_COPY_IMAGE
+        if (m_kCopyPixelBuffer.IsValid())
+        {
+            GLuint uCopyPixelBufferName(m_kCopyPixelBuffer.GetName());
+            glDeleteBuffers(1, &uCopyPixelBufferName);
+        }
 
         delete m_pFrameBufferCache;
         delete m_pPipelineCache;
@@ -709,11 +708,12 @@ namespace NCryOpenGL
         glGenVertexArrays(1, &m_uGlobalVAO);
         glBindVertexArray(m_uGlobalVAO);
 
-#if !DXGL_SUPPORT_COPY_IMAGE
-        GLuint uCopyPixelBufferName;
-        glGenBuffers(1, &uCopyPixelBufferName);
-        m_kCopyPixelBuffer = m_pDevice->GetBufferNamePool().Create(uCopyPixelBufferName);
-#endif //!DXGL_SUPPORT_COPY_IMAGE
+        if (!GetDevice()->IsFeatureSupported(eF_CopyImage))
+        {
+            GLuint uCopyPixelBufferName;
+            glGenBuffers(1, &uCopyPixelBufferName);
+            m_kCopyPixelBuffer = m_pDevice->GetBufferNamePool().Create(uCopyPixelBufferName);
+        }
 
 #if !DXGLES //Seamless cube map filtering is not optional in GL ES
         glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
@@ -777,74 +777,77 @@ namespace NCryOpenGL
 
         kCache.m_bAlphaToCoverageEnable = glIsEnabled(GL_SAMPLE_ALPHA_TO_COVERAGE) == GL_TRUE;
 
-#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
-        kCache.m_bIndependentBlendEnable = false; // Enabled only if render target blend states are not compatible
-        uint32 uTarget;
-        for (uTarget = 0; uTarget < DXGL_ARRAY_SIZE(kCache.m_kTargets); ++uTarget)
+        if (m_pDevice->IsFeatureSupported(eF_IndependentBlending))
         {
-            STargetBlendState& kRTCache(kCache.m_kTargets[uTarget]);
-
-    #if DXGL_SUPPORT_INDEXED_BOOL_STATE
-            if (m_pDevice->IsFeatureSupported(eF_IndexedBoolState))
+            kCache.m_bIndependentBlendEnable = false; // Enabled only if render target blend states are not compatible
+            uint32 uTarget;
+            for (uTarget = 0; uTarget < DXGL_ARRAY_SIZE(kCache.m_kTargets); ++uTarget)
             {
-                GetStateVari(GL_COLOR_WRITEMASK, uTarget, kRTCache.m_kWriteMask.m_abRGBA);
-            }
-    #endif
-            kRTCache.m_bEnable = glIsEnabledi(GL_BLEND, uTarget) == TRUE;
-            if (kRTCache.m_bEnable)
-            {
-                GetStateVari(GL_BLEND_EQUATION_RGB,   uTarget, &kRTCache.m_kRGB.m_eEquation);
-                GetStateVari(GL_BLEND_EQUATION_ALPHA, uTarget, &kRTCache.m_kAlpha.m_eEquation);
+                STargetBlendState& kRTCache(kCache.m_kTargets[uTarget]);
 
-                GetStateVari(GL_BLEND_SRC_RGB,        uTarget, &kRTCache.m_kRGB.m_kFunction.m_eSrc);
-                GetStateVari(GL_BLEND_SRC_ALPHA,      uTarget, &kRTCache.m_kAlpha.m_kFunction.m_eSrc);
-
-                GetStateVari(GL_BLEND_DST_RGB,        uTarget, &kRTCache.m_kRGB.m_kFunction.m_eDst);
-                GetStateVari(GL_BLEND_DST_ALPHA,      uTarget, &kRTCache.m_kAlpha.m_kFunction.m_eDst);
-
-                kRTCache.m_bSeparateAlpha = kRTCache.m_kRGB != kRTCache.m_kAlpha; // Enable separate alpha blending if the rgb and alpha parameters are different
-
-                if (uTarget > 0 && kCache.m_kTargets[0].m_bEnable)
+#if DXGL_SUPPORT_INDEXED_BOOL_STATE
+                if (m_pDevice->IsFeatureSupported(eF_IndexedBoolState))
                 {
-                    // Check if the parameters for this target are compatible with the default ones (target 0)
-                    if (kCache.m_kTargets[0] != kRTCache)
+                    GetStateVari(GL_COLOR_WRITEMASK, uTarget, kRTCache.m_kWriteMask.m_abRGBA);
+                }
+#endif
+                kRTCache.m_bEnable = glIsEnabledi(GL_BLEND, uTarget) == TRUE;
+                if (kRTCache.m_bEnable)
+                {
+                    GetStateVari(GL_BLEND_EQUATION_RGB, uTarget, &kRTCache.m_kRGB.m_eEquation);
+                    GetStateVari(GL_BLEND_EQUATION_ALPHA, uTarget, &kRTCache.m_kAlpha.m_eEquation);
+
+                    GetStateVari(GL_BLEND_SRC_RGB, uTarget, &kRTCache.m_kRGB.m_kFunction.m_eSrc);
+                    GetStateVari(GL_BLEND_SRC_ALPHA, uTarget, &kRTCache.m_kAlpha.m_kFunction.m_eSrc);
+
+                    GetStateVari(GL_BLEND_DST_RGB, uTarget, &kRTCache.m_kRGB.m_kFunction.m_eDst);
+                    GetStateVari(GL_BLEND_DST_ALPHA, uTarget, &kRTCache.m_kAlpha.m_kFunction.m_eDst);
+
+                    kRTCache.m_bSeparateAlpha = kRTCache.m_kRGB != kRTCache.m_kAlpha; // Enable separate alpha blending if the rgb and alpha parameters are different
+
+                    if (uTarget > 0 && kCache.m_kTargets[0].m_bEnable)
                     {
-                        kCache.m_bIndependentBlendEnable = true;
+                        // Check if the parameters for this target are compatible with the default ones (target 0)
+                        if (kCache.m_kTargets[0] != kRTCache)
+                        {
+                            kCache.m_bIndependentBlendEnable = true;
+                        }
+                    }
+                }
+                else
+                {
+                    if (uTarget == 0)
+                    {
+                        kCache.m_bIndependentBlendEnable = true; // Can't use unique blending parameters as the default ones (target 0) are not present
                     }
                 }
             }
-            else
+        }
+        else
+        {
+            STargetBlendState& kRTCache(kCache.m_kTargets[0]);
+
+            GetStateVar(GL_COLOR_WRITEMASK, kRTCache.m_kWriteMask.m_abRGBA);
+            kRTCache.m_bEnable = glIsEnabled(GL_BLEND) == TRUE;
+            if (kRTCache.m_bEnable)
             {
-                if (uTarget == 0)
-                {
-                    kCache.m_bIndependentBlendEnable = true; // Can't use unique blending parameters as the default ones (target 0) are not present
-                }
+                GetStateVar(GL_BLEND_EQUATION_RGB, &kRTCache.m_kRGB.m_eEquation);
+                GetStateVar(GL_BLEND_EQUATION_ALPHA, &kRTCache.m_kAlpha.m_eEquation);
+
+                GetStateVar(GL_BLEND_SRC_RGB, &kRTCache.m_kRGB.m_kFunction.m_eSrc);
+                GetStateVar(GL_BLEND_SRC_ALPHA, &kRTCache.m_kAlpha.m_kFunction.m_eSrc);
+
+                GetStateVar(GL_BLEND_DST_RGB, &kRTCache.m_kRGB.m_kFunction.m_eDst);
+                GetStateVar(GL_BLEND_DST_ALPHA, &kRTCache.m_kAlpha.m_kFunction.m_eDst);
+
+                kRTCache.m_bSeparateAlpha = kRTCache.m_kRGB != kRTCache.m_kAlpha; // Enable separate alpha blending if the rgb and alpha parameters are different
+            }
+
+            for (uint32 uOverriddenTarget = 1; uOverriddenTarget < DXGL_ARRAY_SIZE(kCache.m_kTargets); ++uOverriddenTarget)
+            {
+                kCache.m_kTargets[uOverriddenTarget] = kCache.m_kTargets[0];
             }
         }
-#else
-        STargetBlendState& kRTCache(kCache.m_kTargets[0]);
-
-        GetStateVar(GL_COLOR_WRITEMASK, kRTCache.m_kWriteMask.m_abRGBA);
-        kRTCache.m_bEnable = glIsEnabled(GL_BLEND) == TRUE;
-        if (kRTCache.m_bEnable)
-        {
-            GetStateVar(GL_BLEND_EQUATION_RGB,   &kRTCache.m_kRGB.m_eEquation);
-            GetStateVar(GL_BLEND_EQUATION_ALPHA, &kRTCache.m_kAlpha.m_eEquation);
-
-            GetStateVar(GL_BLEND_SRC_RGB,        &kRTCache.m_kRGB.m_kFunction.m_eSrc);
-            GetStateVar(GL_BLEND_SRC_ALPHA,      &kRTCache.m_kAlpha.m_kFunction.m_eSrc);
-
-            GetStateVar(GL_BLEND_DST_RGB,        &kRTCache.m_kRGB.m_kFunction.m_eDst);
-            GetStateVar(GL_BLEND_DST_ALPHA,      &kRTCache.m_kAlpha.m_kFunction.m_eDst);
-
-            kRTCache.m_bSeparateAlpha = kRTCache.m_kRGB != kRTCache.m_kAlpha; // Enable separate alpha blending if the rgb and alpha parameters are different
-        }
-
-        for (uint32 uOverriddenTarget = 1; uOverriddenTarget < DXGL_ARRAY_SIZE(kCache.m_kTargets); ++uOverriddenTarget)
-        {
-            kCache.m_kTargets[uOverriddenTarget] = kCache.m_kTargets[0];
-        }
-#endif
 
         return true;
     }
@@ -1201,7 +1204,7 @@ namespace NCryOpenGL
         static inline void SetBlendFunction(SBlendFunction kRGB, SBlendFunction kAlpha, GLuint)           { glBlendFuncSeparate(kRGB.m_eSrc, kRGB.m_eDst, kAlpha.m_eSrc, kAlpha.m_eDst); }
         static inline void SetWriteMask(const GLboolean abRGBA[4], GLuint)                                { glColorMask(abRGBA[0], abRGBA[1], abRGBA[2], abRGBA[3]); }
     };
-#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
+
     struct SSetTargetDependentBlendState
     {
         static inline void SetBlendEnable(bool bEnable, GLuint uTarget)                                   { SetEnabledStatei(GL_BLEND, uTarget, bEnable); }
@@ -1211,7 +1214,7 @@ namespace NCryOpenGL
         static inline void SetBlendFunction(SBlendFunction kRGB, SBlendFunction kAlpha, GLuint uTarget)   { glBlendFuncSeparatei(uTarget, kRGB.m_eSrc, kRGB.m_eDst, kAlpha.m_eSrc, kAlpha.m_eDst); }
         static inline void SetWriteMask(const GLboolean abRGBA[4], GLuint uTarget)                        { glColorMaski(uTarget, abRGBA[0], abRGBA[1], abRGBA[2], abRGBA[3]); }
     };
-#endif //DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
+
     template <typename TSetBlendState>
     void SetChannelsBlendState(STargetBlendState& kRTCache, const STargetBlendState& kRTState, GLuint uTargetIndex)
     {
@@ -1281,20 +1284,23 @@ namespace NCryOpenGL
 
     bool CContext::SetBlendState(const SBlendState& kState)
     {
-        DXGL_SCOPED_PROFILE("CContext::SetBlendState")
+        DXGL_SCOPED_PROFILE("CContext::SetBlendState")        
+        if (kState.m_bIndependentBlendEnable && !m_pDevice->IsFeatureSupported(eF_IndependentBlending))
+        {
+            DXGL_ERROR("Independent blending is not supported on this device.");
+            return false;
+        }
 
         if (CACHE_FIELD(m_kStateCache.m_kBlend, kState, m_bAlphaToCoverageEnable))
         {
             SetEnabledState(GL_SAMPLE_ALPHA_TO_COVERAGE, kState.m_bAlphaToCoverageEnable);
         }
 
-#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
         if (kState.m_bIndependentBlendEnable)
         {
             SetTargetsBlendState<SSetTargetDependentBlendState>(m_kStateCache.m_kBlend.m_kTargets, kState.m_kTargets, DXGL_ARRAY_SIZE(kState.m_kTargets));
         }
         else
-#endif //DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
         {
             SetTargetsBlendState<SSetTargetIndependentBlendState>(m_kStateCache.m_kBlend.m_kTargets, kState.m_kTargets, 1);
             uint32 uOverriddenTarget;
@@ -2864,13 +2870,11 @@ namespace NCryOpenGL
             { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE }
         };
         
-#if !DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
         SColorMask originalColorMask(m_kStateCache.m_kBlend.m_kTargets[0].m_kWriteMask);
-        if (requiredColorMask != originalColorMask)
+        if (requiredColorMask != originalColorMask && !m_pDevice->IsFeatureSupported(eF_IndependentBlending))
         {
             SSetTargetIndependentBlendState::SetWriteMask(requiredColorMask.m_abRGBA, 0);
         }
-#endif
 
         // Make sure that scissor test is disabled as glClearBufferfv is affected as well
         if (m_kStateCache.m_kRasterizer.m_bScissorEnabled)
@@ -2881,32 +2885,30 @@ namespace NCryOpenGL
         for (AZStd::vector<ClearColorArg>::const_iterator it = args.begin(); it != args.end(); ++it)
         {
             uint32 drawBufferIndex = (*it).first;
-#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
-            SColorMask originalColorMask(m_kStateCache.m_kBlend.m_kTargets[drawBufferIndex].m_kWriteMask);
-            if (requiredColorMask != originalColorMask)
+            if (m_pDevice->IsFeatureSupported(eF_IndependentBlending))
             {
-                SSetTargetDependentBlendState::SetWriteMask(requiredColorMask.m_abRGBA, drawBufferIndex);
+                SColorMask originalColorMask(m_kStateCache.m_kBlend.m_kTargets[drawBufferIndex].m_kWriteMask);
+                if (requiredColorMask != originalColorMask)
+                {
+                    SSetTargetDependentBlendState::SetWriteMask(requiredColorMask.m_abRGBA, drawBufferIndex);
+                }
             }
-#endif
+
             const ColorF color = (*it).second;
             const float clearColor[] = { color.r, color.g, color.b, color.a };
             glClearBufferfv(GL_COLOR, drawBufferIndex, clearColor);
 
-#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
-            if (requiredColorMask != originalColorMask)
+            if (m_pDevice->IsFeatureSupported(eF_IndependentBlending) && requiredColorMask != originalColorMask)
             {
                 SSetTargetDependentBlendState::SetWriteMask(originalColorMask.m_abRGBA, drawBufferIndex);
             }
-#endif
         }
 
-#if !DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
         // Restore the color mask as specified by the blend state
-        if (requiredColorMask != originalColorMask)
+        if (requiredColorMask != originalColorMask && !m_pDevice->IsFeatureSupported(eF_IndependentBlending))
         {
             SSetTargetIndependentBlendState::SetWriteMask(originalColorMask.m_abRGBA, 0);
         }
-#endif
 
         // Restore that scissor test switch as specified by the rasterizer state
         if (m_kStateCache.m_kRasterizer.m_bScissorEnabled)

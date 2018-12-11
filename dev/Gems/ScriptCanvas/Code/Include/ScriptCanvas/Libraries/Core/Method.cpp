@@ -69,18 +69,10 @@ namespace ScriptCanvas
                         int argIndex(0);
                         for (VariableDatumBase& varDatum : m_varDatums)
                         {
-                            auto behaviorParameter = m_method->GetArgument(argIndex);
-                            AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> inputParameter = varDatum.GetData().ToBehaviorValueParameter(*behaviorParameter);
+                            AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> inputParameter = varDatum.GetData().ToBehaviorValueParameter(*m_method->GetArgument(argIndex));
                             if (!inputParameter.IsSuccess())
                             {
-                                if (behaviorParameter->m_traits & (AZ::BehaviorParameter::TR_REFERENCE | AZ::BehaviorParameter::TR_THIS_PTR))
-                                {
-                                    SCRIPTCANVAS_REPORT_ERROR((*this), "BehaviorContext method input problem at parameter index %d: %s. Most likely there is a data pin missing a connection. Connect the missing data pin and try again.", argIndex, behaviorParameter->m_name);
-                                }
-                                else
-                                {
-                                    SCRIPTCANVAS_REPORT_ERROR((*this), "BehaviorContext method input problem at parameter index %d: %s", argIndex, inputParameter.GetError().data());
-                                }
+                                SCRIPTCANVAS_REPORT_ERROR((*this), "BehaviorContext method input problem at parameter index %d: %s", argIndex, inputParameter.GetError().data());
                                 return;
                             }
 

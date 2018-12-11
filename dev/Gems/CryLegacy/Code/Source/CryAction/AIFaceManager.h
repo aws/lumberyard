@@ -49,7 +49,7 @@ public:
 protected:
 
     typedef std::vector<string> TExprState;
-    static TExprState s_Expressions[EE_Count + 1];
+    static StaticInstance<TExprState> s_Expressions[EE_Count + 1];
 
     void MakeFace(const char* pFaceName);
     int SelectExpressionTime() const;

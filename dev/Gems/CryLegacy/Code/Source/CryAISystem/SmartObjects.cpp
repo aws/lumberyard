@@ -33,17 +33,17 @@ namespace BoneNames
     const char* Pelvis = "Bip01 Pelvis";
 }
 
-CSmartObject::CState::MapSmartObjectStateIds    CSmartObject::CState::g_mapStateIds;
-CSmartObject::CState::MapSmartObjectStates      CSmartObject::CState::g_mapStates;
-CSmartObject::SetStates                                             CSmartObject::CState::g_defaultStates;
+StaticInstance<CSmartObject::CState::MapSmartObjectStateIds>    CSmartObject::CState::g_mapStateIds;
+StaticInstance<CSmartObject::CState::MapSmartObjectStates>      CSmartObject::CState::g_mapStates;
+StaticInstance<CSmartObject::SetStates>                                             CSmartObject::CState::g_defaultStates;
 
-CSmartObjectClass::MapClassesByName             CSmartObjectClass::g_AllByName;
+StaticInstance<CSmartObjectClass::MapClassesByName>             CSmartObjectClass::g_AllByName;
 
-CSmartObjectClass::VectorClasses                CSmartObjectClass::g_AllUserClasses;
-CSmartObjectClass::VectorClasses::iterator      CSmartObjectClass::g_itAllUserClasses = CSmartObjectClass::g_AllUserClasses.end();
+StaticInstance<CSmartObjectClass::VectorClasses>                CSmartObjectClass::g_AllUserClasses;
+CSmartObjectClass::VectorClasses::iterator      CSmartObjectClass::g_itAllUserClasses;
 
-CSmartObjectManager::SmartObjects           CSmartObjectManager::g_AllSmartObjects;
-std::map<EntityId, CSmartObject*>       CSmartObjectManager::g_smartObjectEntityMap;
+StaticInstance<CSmartObjectManager::SmartObjects>           CSmartObjectManager::g_AllSmartObjects;
+StaticInstance<std::map<EntityId, CSmartObject*>>       CSmartObjectManager::g_smartObjectEntityMap;
 
 _smart_ptr<IMaterial> CClassTemplateData::m_pHelperMtl = NULL;
 
@@ -922,6 +922,7 @@ CSmartObjectManager::CSmartObjectManager()
     , m_initialized(false)
 {
     // Register system states. Can only be done after CState::Reset() or ID's are lost.
+    CSmartObjectClass::g_itAllUserClasses = CSmartObjectClass::g_AllUserClasses.end();
     CSmartObject::CState::Reset();
     m_StateSameGroup        = CSmartObject::CState("SameGroup");
     m_StateSameFaction  = CSmartObject::CState("SameFaction");
@@ -3726,7 +3727,7 @@ void CSmartObjectManager::RescanSOClasses(IEntity* pEntity)
 void CSmartObjectManager::OnSpawn(IEntity* pEntity, SEntitySpawnParams& params)
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_AI);
-    /* Márcio: Enabling SmartObjects in multiplayer.
+    /* Marcio: Enabling SmartObjects in multiplayer.
         if (gEnv->bMultiplayer)
             return;
     */
@@ -4741,8 +4742,6 @@ bool CSmartObjectManager::LoadSmartObjectsLibrary()
 
     char szPath[512];
     sprintf_s(szPath, "%s", SMART_OBJECTS_XML);
-
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Navigation, 0, "Smart objects library (%s)", szPath);
 
     XmlNodeRef root = GetISystem()->LoadXmlFromFile(szPath);
     if (!root)

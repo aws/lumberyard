@@ -76,6 +76,8 @@ namespace CryLegacy
 
     void CryLegacySystemComponent::Activate()
     {
+        CryLegacyAllocatorScope::ActivateAllocators();
+
 #if !defined(AZ_MONOLITHIC_BUILD)
         // Legacy games containing code to explicitly load CryAction and call the CreateGameFramework function
         // were failing because the EBus call to CryGameFrameworkRequests::CreateFramework was returning nullptr
@@ -114,6 +116,8 @@ namespace CryLegacy
             m_cryActionHandle.reset(nullptr);
         }
 #endif // !defined(AZ_MONOLITHIC_BUILD)
+        
+        CryLegacyAllocatorScope::DeactivateAllocators();
     }
 
     IGameFramework* CryLegacySystemComponent::CreateFramework()

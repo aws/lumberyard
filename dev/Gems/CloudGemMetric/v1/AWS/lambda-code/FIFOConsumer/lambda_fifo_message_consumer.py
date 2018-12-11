@@ -39,7 +39,9 @@ def main(event, lambdacontext):
     prefix = util.get_stack_name_from_arn(os.environ[c.ENV_DEPLOYMENT_STACK_ARN])    
 
     context[c.KEY_STACK_PREFIX] = prefix
-    context[c.KEY_SQS] = Sqs(context, prefix)           
+    context[c.KEY_SQS] = Sqs(context, "{0}_".format(prefix))
+    context[c.KEY_SQS_AMOEBA] = Sqs(context, "{0}{1}_".format(prefix, c.KEY_SQS_AMOEBA_SUFFIX))
+    context[c.KEY_SQS_AMOEBA].set_queue_url(lowest_load_queue=True)    
     context[c.KEY_LAMBDA] = Lambda(context)
     context[c.KEY_CLOUDWATCH] = CloudWatch(context)
     
@@ -49,14 +51,17 @@ def main(event, lambdacontext):
     context[c.KEY_START_TIME] = starttime
     context[c.CW_ATTR_SAVE_DURATION] = context[c.KEY_CLOUDWATCH].avg_save_duration(util.get_cloudwatch_namespace(os.environ[c.ENV_DEPLOYMENT_STACK_ARN]))
     context[c.CW_ATTR_DELETE_DURATION] = context[c.KEY_CLOUDWATCH].avg_delete_duration(util.get_cloudwatch_namespace(os.environ[c.ENV_DEPLOYMENT_STACK_ARN]))    
-    print mutil.get_memory_object()       
+          
     context[c.KEY_SUCCEEDED_MSG_IDS] = []
-    process(context)
+    process(context)    
+    del context
+    gc.collect()
     return {        
         'StatusCode': 200        
     }
 
 def process(context):    
+    print mutil.get_memory_object() 
     write_initial_stats(context)            
     process_bytes = mutil.get_process_memory_usage_bytes()
     if c.KEY_SQS_QUEUE_URL not in context or context[c.KEY_SQS_QUEUE_URL] is None:
@@ -96,8 +101,7 @@ def process(context):
                     "There are {} in-flight messages.\n" \
                     "{} seconds have elapsed and there is {} seconds remaining before timeout.\n" \
                     "The queue growth rate is {}\n" \
-                    "{} message(s) were processed.".format(context[c.KEY_REQUEST_ID], messages_to_process,inflight_messages,round(elapsed,2),util.time_remaining(context),growth_rate,len(messages))            
-                #TODO: move these magic numbers to the context table
+                    "{} message(s) were processed.".format(context[c.KEY_REQUEST_ID], messages_to_process,inflight_messages,round(elapsed,2),util.time_remaining(context),growth_rate,len(messages))                            
                 if messages_to_process > context[c.KEY_THRESHOLD_BEFORE_SPAWN_NEW_CONSUMER] and inflight_messages <= context[c.KEY_MAX_INFLIGHT_MESSAGES]:
                     print "The queue size is greater than {}. Launching another consumer.".format(context[c.KEY_THRESHOLD_BEFORE_SPAWN_NEW_CONSUMER])
                     add_consumer(context)
@@ -158,7 +162,9 @@ def process(context):
     print "[{}]Average uncompressed bytes per minute {}. ".format(context[c.KEY_REQUEST_ID],round(context[c.KEY_AGGREGATOR].bytes_uncompressed / util.elasped_time_in_min(context),2))
     print "[{}]There are approximately {} messages that require processing.".format(context[c.KEY_REQUEST_ID],messages_to_process if messages_to_process else 0)
     print "[{}]There are {} in-flight messages.".format(context[c.KEY_REQUEST_ID],inflight_messages)            
-    print "[{}]There was {} seconds remaining before timeout. ".format(context[c.KEY_REQUEST_ID],util.time_remaining(context))  
+    print "[{}]There was {} seconds remaining before timeout. ".format(context[c.KEY_REQUEST_ID],util.time_remaining(context))          
+    del tables
+    del metric_sets
     gc.collect()
 
 def calculate_aggregate_window_timeout(context):
@@ -190,11 +196,12 @@ def grow_if_threshold_hit(context, rate, threshold):
     if rate > threshold :
         print "[{}]The current growth rate {} has exceeded threshold {}. Adding a new consumer lambda.".format(context[c.KEY_REQUEST_ID],rate, threshold)                 
         add_consumer(context)
+        gc.collect()
 
 def add_consumer(context):           
+    threadpool = context[c.KEY_THREAD_POOL]      
     payload = { c.KEY_SQS_QUEUE_URL: context[c.KEY_SQS_QUEUE_URL], "context": copy_context(context) }    
-    if c.KEY_IS_LAMBDA_ENV in context and context[c.KEY_IS_LAMBDA_ENV]:        
-        threadpool = context[c.KEY_THREAD_POOL]       
+    if context[c.KEY_IS_LAMBDA_ENV]:       
         threadpool.add(context[c.KEY_LAMBDA].invoke, context[c.KEY_LAMBDA_FUNCTION], payload)
     else: 
         main(payload,type('obj', (object,), {'function_name' : context[c.KEY_LAMBDA_FUNCTION]}))            
@@ -204,6 +211,8 @@ def copy_context(context):
     context_copy = context.copy()
     if c.KEY_SQS in context_copy:
         del context_copy[c.KEY_SQS]
+    if c.KEY_SQS_AMOEBA in context_copy:
+        del context_copy[c.KEY_SQS_AMOEBA]
     if c.KEY_LAMBDA in context_copy:
         del context_copy[c.KEY_LAMBDA]
     if c.KEY_CLOUDWATCH in context_copy:
@@ -227,7 +236,7 @@ def flush_and_delete(context, metric_sets):
         context[c.KEY_THREAD_POOL].wait()
         print "[{}]Time remaining {} seconds".format(context[c.KEY_REQUEST_ID], util.time_remaining(context))
         print "[{}]Deleting messages from SQS queue '{}'".format(context[c.KEY_REQUEST_ID],context[c.KEY_SQS].queue_url)
-        delete_duration = context[c.KEY_SQS].delete_message_batch(metric_sets)
+        delete_duration = context[c.KEY_SQS].delete_message_batch(context[c.KEY_SUCCEEDED_MSG_IDS])
         write_cloudwatch_metrics(context, save_duration, delete_duration)
 
 def update_glue_crawler_datastores(context, datastores):    

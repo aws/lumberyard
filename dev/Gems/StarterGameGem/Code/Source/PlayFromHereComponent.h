@@ -21,14 +21,14 @@
 
 namespace StarterGameGem
 {
-	class PlayFromHereComponent
-		: public AZ::Component
+    class PlayFromHereComponent
+        : public AZ::Component
 #ifdef STARTER_GAME_EDITOR
         , private PlayFromHereEditorSystemComponentNotificationBus::Handler
 #endif
-	{
-	public:
-		AZ_COMPONENT(PlayFromHereComponent, "{B2192B24-A38C-449A-82E6-248CDD885771}");
+    {
+    public:
+        AZ_COMPONENT(PlayFromHereComponent, "{B2192B24-A38C-449A-82E6-248CDD885771}");
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -50,14 +50,12 @@ namespace StarterGameGem
         void Deactivate() override;
         ////////////////////////////////////////////////////////////////////////
 
-	private:
+    private:
 #ifdef STARTER_GAME_EDITOR
         ////////////////////////////////////////////////////////////////////////
         // StarterGameEditorSystemComponentNotificationBus::Handler overrides
         void OnPlayFromHere(const AZ::Vector3& pos) override;
         ////////////////////////////////////////////////////////////////////////
 #endif
-
-	};
-
+    };
 }

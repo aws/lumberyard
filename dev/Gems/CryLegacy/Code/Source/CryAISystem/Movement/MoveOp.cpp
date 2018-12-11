@@ -33,7 +33,7 @@ MoveOpDictionaryCollection::MoveOpDictionaryCollection()
     destinationTypes.Add("Formation", MoveOp::Formation);
 }
 
-MoveOpDictionaryCollection g_moveOpDictionaryCollection;
+StaticInstance<MoveOpDictionaryCollection> g_moveOpDictionaryCollection;
 
 
 
@@ -62,7 +62,7 @@ MoveOp::MoveOp(const XmlNodeRef& node)
     m_movementStyle.ReadFromXml(node);
 
     // Destination? Target/Cover/ReferencePoint
-    g_moveOpDictionaryCollection.destinationTypes.Get(node, "to", m_destination, true);
+    g_moveOpDictionaryCollection->destinationTypes.Get(node, "to", m_destination, true);
     m_movementStyle.SetMovingToCover(m_destination == Cover);
     m_movementStyle.SetMovingAlongDesignedPath(m_destination == FollowPath);
 

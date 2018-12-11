@@ -1,0 +1,18 @@
+{
+    "auto": {
+        "Include": [
+            "Include/AWSLambdaLanguageDemo/AWSLambdaLanguageDemoBus.h"
+        ], 
+        "Source": [
+            "Source/AWSLambdaLanguageDemoModule.cpp", 
+            "Source/AWSLambdaLanguageDemoSystemComponent.cpp", 
+            "Source/AWSLambdaLanguageDemoSystemComponent.h"
+        ]
+    }, 
+    "none": {
+        "Source": [
+            "Source/AWSLambdaLanguageDemo_precompiled.cpp", 
+            "Source/AWSLambdaLanguageDemo_precompiled.h"
+        ]
+    }
+}

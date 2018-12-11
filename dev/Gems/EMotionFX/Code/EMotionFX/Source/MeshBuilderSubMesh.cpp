@@ -161,8 +161,7 @@ namespace EMotionFX
         }
     }
 
-
-
+    
     // check if we can handle a given poly inside the submesh
     bool MeshBuilderSubMesh::CanHandlePolygon(const MCore::Array<uint32>& orgVertexNumbers, uint32 materialNr, MCore::Array<uint32>* outBoneList) const
     {

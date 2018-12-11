@@ -33,6 +33,8 @@ namespace ScriptCanvas
     {
         std::mt19937& GetRandomEngine();
 
+        void DeleteRandomDetails();
+
         template<typename NumberType>
         NumberType GetRandomIntegral(NumberType leftNumber, NumberType rightNumber)
         {

@@ -41,8 +41,6 @@ CGeomCacheManager::CGeomCacheManager()
     , m_numReadStreamAborts(0)
     , m_numFailedAllocs(0)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_GeomCache, 0, "Geometry cache streaming pool");
-
     ChangeBufferSize(GetCVars()->e_GeomCacheBufferSize);
 
     ICVar* pGeomCacheBufferSizeCVar = gEnv->pConsole->GetCVar("e_GeomCacheBufferSize");
@@ -64,7 +62,7 @@ CGeomCacheManager::~CGeomCacheManager()
     m_pPool->Release();
     m_pPool = NULL;
 
-    CryGetIMemoryManager()->FreePages(m_pPoolBaseAddress, m_poolSize);
+    CryMemory::FreePages(m_pPoolBaseAddress, m_poolSize);
 #endif
     // Disconnect for LegacyAssetEventBus::Handler
     BusDisconnect();
@@ -106,8 +104,7 @@ CGeomCache* CGeomCacheManager::FindGeomCacheByFilename(const char* filename)
 CGeomCache* CGeomCacheManager::LoadGeomCache(const char* szFileName)
 {
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Geometry Caches");
-
+    
     // Normalize file name
     char sFilename[_MAX_PATH];
 
@@ -221,7 +218,7 @@ void CGeomCacheManager::ChangeBufferSize(const uint newSizeInMiB)
     SAFE_RELEASE(m_pPool);
     if (m_pPoolBaseAddress)
     {
-        CryGetIMemoryManager()->FreePages(m_pPoolBaseAddress, m_poolSize);
+        CryMemory::FreePages(m_pPoolBaseAddress, m_poolSize);
     }
 
     const int geomCacheBufferSize = clamp_tpl(newSizeInMiB, kMinBufferSizeInMiB, kMaxBufferSizeInMiB);
@@ -230,7 +227,7 @@ void CGeomCacheManager::ChangeBufferSize(const uint newSizeInMiB)
     const uint kMiBtoBytesFactor = 1024 * 1024;
     m_poolSize = geomCacheBufferSize * kMiBtoBytesFactor;
 
-    m_pPoolBaseAddress = CryGetIMemoryManager()->AllocPages(m_poolSize);
+    m_pPoolBaseAddress = CryMemory::AllocPages(m_poolSize);
     m_pPool = gEnv->pSystem->GetIMemoryManager()->CreateGeneralMemoryHeap(m_pPoolBaseAddress, m_poolSize, "GEOMCACHE_POOL");
 #endif
 }

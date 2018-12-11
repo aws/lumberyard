@@ -476,6 +476,8 @@ private:
     std::set<CEntityObject*> m_setEntitiesAssignedToSelectedWave;
     void RefreshEntitiesAssignedToSelectedTnW();
 
+    std::unordered_set<CEntityObject*> m_animatedAttachedEntities;
+
     bool m_isUpdateVisibilityList;
 
     uint64 m_currentHideCount;

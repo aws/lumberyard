@@ -289,6 +289,24 @@ namespace EMStudio
     }
 
 
+    void EMStudioManager::MakeTransparentMenuButton(QPushButton* button, const char* iconFileName, const char* toolTipText, uint32 width, uint32 height)
+    {
+        button->setToolTip(toolTipText);
+        button->setMinimumSize(width, height);
+        button->setMaximumSize(width, height);
+        button->setIcon(MysticQt::GetMysticQt()->FindIcon(iconFileName));
+
+        button->setObjectName("EMFXMenuButton");
+        button->setStyleSheet("QPushButton#EMFXMenuButton::menu-indicator \
+                               { \
+                                   subcontrol-position: right bottom; \
+                                   subcontrol-origin: padding; \
+                                   left: 0px; \
+                                   top: -2px; \
+                               }");
+    }
+
+
     QLabel* EMStudioManager::MakeSeperatorLabel(uint32 width, uint32 height)
     {
         QLabel* seperatorLabel = new QLabel("");

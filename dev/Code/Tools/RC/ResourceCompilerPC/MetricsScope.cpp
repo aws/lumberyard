@@ -22,8 +22,9 @@
 #endif // LY_IGNORE_METRICS
 
 #if !defined(LY_IGNORE_METRICS)
+
 MetricsScope::MetricsScope(bool enable, const char* applicationName, uint32_t interval)
-    : m_initialized(enable ? LyMetrics_Initialize(applicationName, interval, true, nullptr, nullptr) : false)
+    : m_initialized(enable ? LyMetrics_Initialize(applicationName, interval, true, nullptr, nullptr, LY_METRICS_BUILD_TIME) : false)
 {
     if (!m_initialized && enable)
     {

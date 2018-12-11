@@ -44,6 +44,17 @@ namespace AzFramework
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b));
                 }
             }
+
+            // We need to register the chunk types for each handler here at reflect time
+            if (!GridMate::ReplicaChunkDescriptorTable::Get().FindReplicaChunkDescriptor(GridMate::ReplicaChunkClassId(ProximityInterestChunk::GetChunkName())))
+            {
+                GridMate::ReplicaChunkDescriptorTable::Get().RegisterChunkType<GridMate::ProximityInterestChunk>();
+            }
+
+            if (!GridMate::ReplicaChunkDescriptorTable::Get().FindReplicaChunkDescriptor(GridMate::ReplicaChunkClassId(BitmaskInterestChunk::GetChunkName())))
+            {
+                GridMate::ReplicaChunkDescriptorTable::Get().RegisterChunkType<GridMate::BitmaskInterestChunk>();
+            }
         }
     }
 

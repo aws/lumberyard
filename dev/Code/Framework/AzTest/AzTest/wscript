@@ -21,9 +21,8 @@ def build(bld):
         platforms        = ['win',
                             'linux_x64',
                             'darwin_x64',
-                            'android_armv7_gcc',
                             'android_armv7_clang',
-                           ],
+                           ] + bld.env['RESTRICTED_PLATFORMS'],
         configurations   = ['test_all'],
         disable_pch      = True,
         use              = ['AzCore',
@@ -32,6 +31,9 @@ def build(bld):
         export_includes  = ['..'],
         
         uselib           = ['GMOCK'],
+
+        restricted_script   = 'update_restricted_parameters',
+
         win_file_list               = ['aztest_win.waf_files'],
         darwin_file_list            = ['aztest_osx.waf_files'],
         android_armv7_gcc_file_list = ['aztest_android.waf_files'],

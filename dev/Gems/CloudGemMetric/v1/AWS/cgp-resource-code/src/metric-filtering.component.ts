@@ -67,13 +67,22 @@ import 'rxjs/add/operator/distinctUntilChanged'
                     <div class="priority-label-high">
                         <label> Highest Priority </label>
                     </div>
-                    <dragable [drop]="onFilterPriorityChanged">
-                        <div *ngFor="let filter of filters; let i = index" [id]="filter.event">
-                            <action-stub [model]="filter" [text]="filter.event"> </action-stub>
+                    <dragable [drop]="onPriorityChanged">
+                        <div *ngFor="let priority of priorities; let i = index" [id]="priorities[i]">                            
+                            <div class="row">
+                                <div class="valign-middle col-4">Rank {{i+1}}:</div>
+                                <div class="col-7"><input type="text" class="form-control" [ngbTypeahead]="searchEvents" [ngModel]="priorities[i]" (change)="onValueUpdate($event, i)" /></div>
+                                <div class="col-1"><i (click)="removePriority(i)" class="fa fa-trash-o float-right cursor-pointer"></i></div>                                
+                            </div>
                         </div>
                     </dragable>
                     <div class="priority-label-low">
                         <label class="priority-label-low"> Lowest Priority </label>
+                    </div>
+                </div>
+                <div class="row add-priority">
+                    <div class="col-lg-2">
+                        <button type="button" class="btn btn-outline-primary" (click)="addPriority()"> + Add Priority </button>
                     </div>
                 </div>
                 <div class="row update-event-filters">
@@ -119,7 +128,7 @@ import 'rxjs/add/operator/distinctUntilChanged'
             text-align: center;
         }
         .priority-dragable-container {
-            width: 250px;
+            width: 450px;
             margin-left: 15px;
         }
         .priority-label-high {
@@ -131,6 +140,9 @@ import 'rxjs/add/operator/distinctUntilChanged'
         }
         .priority-update {
             margin-top: 15px;
+        }
+        .cursor-pointer {
+            cursor: pointer !important;
         }
     `]
 
@@ -151,6 +163,7 @@ export class MetricFilteringComponent implements OnInit {
 
     // Filter lists
     filters: Array<Filter>;
+    priorities: Array<string>;
     hasAttributes: boolean = false;
 
     constructor(private http: Http, private aws: AwsService, private toastr: ToastsManager) { }
@@ -170,6 +183,7 @@ export class MetricFilteringComponent implements OnInit {
         });
 
         this.getExistingFilters();
+        this.getExistingPriorities();
     }
 
     getExistingFilters = () => {
@@ -191,11 +205,29 @@ export class MetricFilteringComponent implements OnInit {
         })
     }
 
+    getExistingPriorities = () => {
+        // Get any existing filters
+        this.priorities = new Array<string>();
+        this._apiHandler.getPriorities().subscribe((res) => {
+            var priorities = JSON.parse(res.body.text()).result.priorities;
+            priorities.map((priority: string, index: number) => {               
+                this.priorities.push(priority);
+            });
+            this.isLoadingFilters = false;
+        })
+    }
+
     /** Add a new filter row locally.  Not saved to the server until #UpdateFilters is called */
     addFilter = () => this.filters.push(Filter.default());
 
     /** Remove a filter from the filter list locally */
     removeFilter = (filter) => this.filters.splice(this.filters.indexOf(filter), 1);
+
+    /** Add a new priority row locally.  Not saved to the server until #UpdateFilters is called */
+    addPriority = () => this.priorities.push("");
+
+    /** Remove a filter from the filter list locally */
+    removePriority = (priority) => this.priorities.splice(this.priorities.indexOf(priority), 1);
 
     /** Add a row to the filter attribute list */
     addAttribute = (filter: Filter) => filter.attributes.push("");
@@ -214,16 +246,22 @@ export class MetricFilteringComponent implements OnInit {
     /* Update the platform value when the dropdown input is changed */
     updateFilterPlatform = (platformDropdownValue, filter) => filter.platform = platformDropdownValue.text
 
+    onValueUpdate = (value, idx) => {
+        this.priorities[idx] = value.target.value
+    }
+
     /** Update the server with the current list of filters */
     updateFilters = (filters: Filter[]) => {
-        this.isLoadingFilters = true;
+        this.isLoadingFilters = true;        
         filters.map((filter) => {
             delete filter.platformDropdownValue;
             delete filter.typeDropdownValue;
-            // Comment this block to not allow submission of attribute types with no actual attributes values specified
-            filter.attributes.map((attribute) => {
-                if (!attribute) delete filter.attributes[filter.attributes.indexOf(attribute)];
-            });
+            // Comment this block to not allow submission of attribute types with no actual attributes values specified                        
+            filter.attributes.forEach((attribute, index) => {                
+                if (!attribute) {                    
+                    filter.attributes.splice(index, 1);
+                }
+            })                        
         })
         // parse out dropdown field values and add a parent filter property
         let filtersObj = {
@@ -232,6 +270,14 @@ export class MetricFilteringComponent implements OnInit {
         this._apiHandler.updateFilters(filtersObj).subscribe(() => {
             this.toastr.success("Updated filters");
             this.getExistingFilters();
+            this._apiHandler.updatePriorities({
+                        priorities: this.priorities
+                    }).subscribe(() => {
+                this.toastr.success("Updated filter priorities");                
+            }, (err) => {
+                this.toastr.error("Unable to update filter priorities.", err);                
+                console.error(err);
+            });
         }, (err) => {
             this.toastr.error("Unable to update Filters", err);
             this.isLoadingFilters = false;
@@ -240,13 +286,13 @@ export class MetricFilteringComponent implements OnInit {
     }
 
     /** Update the priorities given the ordering of the events in the dragable section */
-    onFilterPriorityChanged = (element, targetContainer, subContainer): void => {
+    onPriorityChanged = (element, targetContainer, subContainer): void => {
         let prioritizedEvents = [];
         // Get filter event name from target container and add it to an ordered list
         for (let filterEle of targetContainer.children) {
             prioritizedEvents.push(filterEle['id']);
         }
-        this.filters = this.changeFilterOrdering(prioritizedEvents, this.filters);
+        this.priorities = prioritizedEvents;
 
 
     }
@@ -300,3 +346,4 @@ export class Filter {
 
     static default = () => new Filter( "", "All", "All", [""]);
 }
+

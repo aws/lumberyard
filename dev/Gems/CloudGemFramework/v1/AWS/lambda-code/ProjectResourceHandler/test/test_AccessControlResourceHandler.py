@@ -119,10 +119,10 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_han
             mock_succeed):
 
         event = self.make_event(request_type)
+        event["ResourceProperties"]["Gem"] = "test_gem"
 
         deployment_access = mock_get_stack_info.return_value
         deployment_access.stack_type = deployment_access.STACK_TYPE_DEPLOYMENT_ACCESS
-
         mock_apply_deployment_access_control.side_effect = self.make_problem_reporting_side_effect(problems)
 
         if problems:
@@ -132,7 +132,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_han
             Custom_AccessControl.handler(event, self.CONTEXT)
 
         mock_get_stack_info.assert_called_with(self.STACK_ARN)
-        mock_apply_deployment_access_control.assert_called_with(request_type, deployment_access, self.ANY_PROBLEM_LIST)
+        mock_apply_deployment_access_control.assert_called_with(
+            request_type, deployment_access, 'test_gem', self.ANY_PROBLEM_LIST)
 
         if problems:
             mock_succeed.assert_not_called()
@@ -150,7 +151,6 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_han
 
     def test_stack_type_deployment_access_delete_with_no_problems(self):
         self.__do_stack_type_deployment_access_test('Delete', [])
-
 
     def test_stack_type_deployment_access_create_with_problems(self):
         self.__do_stack_type_deployment_access_test('Create', ['Problem'])
@@ -450,7 +450,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
         mock_get_permissions.side_effect = [ permissions_1, permissions_2 ]
 
         resource_group_1 = mock.MagicMock()
+        resource_group_1.resource_group_name = "test_rg_1"
         resource_group_2 = mock.MagicMock()
+        resource_group_2.resource_group_name = "test_rg_2"
         deployment_access = mock.MagicMock()
         deployment_access.deployment.resource_groups = [ resource_group_1, resource_group_2 ]
 
@@ -460,7 +462,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
 
         problems = Custom_AccessControl.ProblemList()
 
-        Custom_AccessControl._apply_deployment_access_control(request_type, deployment_access, problems)
+        Custom_AccessControl._apply_deployment_access_control(request_type, deployment_access, "test_rg_1", problems)
+        Custom_AccessControl._apply_deployment_access_control(request_type, deployment_access, "test_rg_2", problems)
 
         self.assertEquals(len(problems), len(expected_problems))
 
@@ -476,7 +479,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
 
         mock_update_roles.assert_has_calls([
             mock.call(request_type, policy_name_1, permissions_1, explicit_role_mappings),
-            mock.call(request_type, policy_name_2, permissions_2, explicit_role_mappings)],
+            mock.call(request_type, policy_name_2, permissions_2, explicit_role_mappings)
+            ],
             any_order = True)
 
 
@@ -493,27 +497,24 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
         request_type = mock.MagicMock()
 
         policy_name_1 = mock.MagicMock()
-        policy_name_2 = mock.MagicMock()
 
-        mock_get_resource_group_policy_name.side_effect = [ policy_name_1, policy_name_2 ]
+        mock_get_resource_group_policy_name.side_effect = [ policy_name_1 ]
 
         permissions_1 = mock.MagicMock()
-        permissions_2 = mock.MagicMock()
 
-        mock_get_permissions_return_values = [ permissions_1, permissions_2 ]
+        mock_get_permissions_return_values = [ permissions_1 ]
 
         mock_get_permissions_problem_1 = mock.MagicMock()
-        mock_get_permissions_problem_2 = mock.MagicMock()
-        mock_get_permissions_problems = [ mock_get_permissions_problem_1, mock_get_permissions_problem_2 ]
+        mock_get_permissions_problems = [ mock_get_permissions_problem_1 ]
 
         mock_get_permissions.side_effect = self.make_problem_reporting_side_effect(
             mock_get_permissions_problems,
             mock_get_permissions_return_values)
 
         resource_group_1 = mock.MagicMock()
-        resource_group_2 = mock.MagicMock()
+        resource_group_1.resource_group_name = "test_rg_1"
         deployment_access = mock.MagicMock()
-        deployment_access.deployment.resource_groups = [ resource_group_1, resource_group_2 ]
+        deployment_access.deployment.resource_groups = [ resource_group_1 ]
 
         get_explicit_role_mappings_problem = mock.MagicMock()
         role_mappings = mock.MagicMock()
@@ -526,19 +527,17 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
 
         problems = Custom_AccessControl.ProblemList()
 
-        Custom_AccessControl._apply_deployment_access_control(request_type, deployment_access, problems)
+        Custom_AccessControl._apply_deployment_access_control(request_type, deployment_access, "test_rg_1", problems)
 
         self.assertEquals(len(problems), len(expected_problems))
 
         mock_get_explicit_role_mappings.assert_called_with(deployment_access, problems)
 
         mock_get_resource_group_policy_name.assert_has_calls([
-            mock.call(resource_group_1),
-            mock.call(resource_group_2)])
+            mock.call(resource_group_1)])
 
         mock_get_permissions.assert_has_calls([
-            mock.call(resource_group_1, problems),
-            mock.call(resource_group_2, problems)])
+            mock.call(resource_group_1, problems)])
 
         mock_update_roles.assert_not_called()
 

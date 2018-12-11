@@ -25,9 +25,6 @@
 #include <algorithm>
 
 
-CCryFactoryRegistryImpl CCryFactoryRegistryImpl::s_registry;
-
-
 CCryFactoryRegistryImpl::CCryFactoryRegistryImpl()
     : m_guard()
     , m_byCName()
@@ -45,6 +42,7 @@ CCryFactoryRegistryImpl::~CCryFactoryRegistryImpl()
 
 CCryFactoryRegistryImpl& CCryFactoryRegistryImpl::Access()
 {
+    static StaticInstance<CCryFactoryRegistryImpl, AZStd::no_destruct<CCryFactoryRegistryImpl>> s_registry;
     return s_registry;
 }
 
@@ -182,9 +180,19 @@ bool CCryFactoryRegistryImpl::GetInsertionPos(ICryFactory* pFactory, FactoriesBy
 
     FactoryByCName searchByCName(pFactory);
     FactoriesByCNameIt itForCName = std::lower_bound(m_byCName.begin(), m_byCName.end(), searchByCName);
-    if (itForCName != m_byCName.end() && !(searchByCName < *itForCName))
+    if (itForCName != m_byCName.end())
     {
-        FatalError::Report((*itForCName).m_ptr, pFactory);
+        // If the addresses match, then this factory is already registered. It's not really worth error-ing about, 
+        // as double registration will not cause any harm.
+        if (itForCName->m_ptr == pFactory)
+        {
+            return false;
+        }
+
+        if (!(searchByCName < *itForCName))
+        {
+            FatalError::Report((*itForCName).m_ptr, pFactory);
+        }
     }
 
     FactoryByCID searchByCID(pFactory);

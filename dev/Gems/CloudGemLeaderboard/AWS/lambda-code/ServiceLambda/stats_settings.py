@@ -14,6 +14,7 @@ import boto3
 import json
 import copy
 import errors
+from decimal import *
 
 STATS_SETTINGS_TABLE = None
 LEADERBOARD_INFO_TABLE = None
@@ -60,9 +61,13 @@ def add_stat(stat_def):
         "mode": stat_def["mode"]
     }
     if "min" in stat_def:
-        entry["min"] = stat_def["min"]
+        entry["min"] = Decimal(stat_def["min"]).quantize(
+            Decimal('.000000'), rounding=ROUND_HALF_UP)
     if "max" in stat_def:
-        entry["max"] = stat_def["max"]
+        entry["max"] = Decimal(stat_def["max"]).quantize(
+            Decimal('.000000'), rounding=ROUND_HALF_UP)
+    if "sample_size" in stat_def:
+        entry["sample_size"] = stat_def["sample_size"]
     try:
         STATS_SETTINGS_TABLE.put_item(Item=entry)
     except Exception as e:

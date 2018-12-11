@@ -63,5 +63,45 @@ export class CloudGemDefectReporterApi extends ApiHandler {
     public getClientConfiguration(): Observable<any> {
         return super.get("clientconfiguration");
     }
+
+    public getJiraIntegrationSettings(): Observable<any> {
+        return super.get("jiraintegration/settings");
+    }
+
+    public updateSubmitMode(body): Observable<any> {
+        return super.put("jiraintegration/settings", body);
+    }
+
+    public getProjectKeys(): Observable<any> {
+        return super.get("jiraintegration/projectkeys")
+    }
+
+    public getIssueTypes(project_key): Observable<any> {
+        return super.get("jiraintegration/issuetypes/" + project_key)
+    }
+
+    public getFieldMappings(project, issueType): Observable<any> {
+        return super.get("jiraintegration/mappings/" + project + "/" + issueType)
+    }
+
+    public updateFieldMappings(body): Observable<any> {
+        return super.put("jiraintegration/mappings", body)
+    }
+
+    public updateJiraCredentials(body): Observable<any> {
+        return super.put("jiraintegration/credentials", body)
+    }
+
+    public getJiraCredentialsStatus(): Observable<any> {
+        return super.get("jiraintegration/credentials")
+    }
+
+    public createJiraIssue(body): Observable<any> {
+        return super.post("jiraintegration/cgpemit", body)
+    }
+
+    public groupDefectReports(body): Observable<any> {
+        return super.post("jiraintegration/group", body)
+    }
 }
 //end rest api handler

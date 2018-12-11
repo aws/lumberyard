@@ -1,0 +1,30 @@
+﻿<h2>Recent Searches</h2>
+<div [ngSwitch]="isLoading">
+    <div *ngSwitchCase="true">
+        <loading-spinner></loading-spinner>
+    </div>
+    <div *ngSwitchCase="false">
+        <div *ngIf="recentSearches && recentSearches.length > 0">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th class="query-params-column">QUERY PARAMETERS</th>
+                        <th class="timestamp-column">TIMESTAMP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let recentSearch of recentSearches">
+                        <td *ngIf="recentSearch['query_params'] != '*'" class="query-params-column" (click)="runRecentSearch.emit(recentSearch['query_params'])">{{recentSearch['query_params']}}</td>
+                        <td *ngIf="recentSearch['query_params'] == '*'" class="query-params-column" (click)="runRecentSearch.emit(recentSearch['query_params'])"></td>
+                        <td class="timestamp-column" (click)="runRecentSearch.emit(recentSearch['query_params'])">{{recentSearch['timestamp']}}</td>
+                        <td>
+                            <div class="float-right">
+                                <i (click)="shareRecentSearch(recentSearch)" class="fa fa-share-square-o" data-toggle="tooltip" data-placement="top" title="Share"></i>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

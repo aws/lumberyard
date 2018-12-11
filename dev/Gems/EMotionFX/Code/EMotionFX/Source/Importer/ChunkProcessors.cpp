@@ -2161,7 +2161,7 @@ namespace EMotionFX
 
             // if the node has no mesh, we can skip it
             Mesh* mesh = actor->GetMesh(morphTargetLOD, deformNode->GetNodeIndex());
-            if (mesh) // if there is a mesh
+            if (mesh)
             {
                 // create and add the deform data object
                 MorphTargetStandard::DeformData* deformData = aznew MorphTargetStandard::DeformData(deformNode->GetNodeIndex(), meshDeformDataChunk.mNumVertices);
@@ -2179,49 +2179,6 @@ namespace EMotionFX
 
                 float compressMin = meshDeformDataChunk.mMinValue;
                 float compressMax = meshDeformDataChunk.mMaxValue;
-                /*
-                            // if needed first of all find the real min and max value
-                            if (MCore::GetCoordinateSystem().GetIsIdentityConversion() == false)    // if we need to convert coordinate system
-                            {
-                                // find the minimum and maximum values (the range of the floats in the deltas)
-                                deformData->mMinValue = FLT_MAX;
-                                deformData->mMaxValue = -FLT_MAX;
-
-                                for (d=0; d<meshDeformDataChunk.mNumVertices; ++d)
-                                {
-                                    deltaPos = filePosVectors[d];
-
-                                    // convert endian
-                                    MCore::Endian::ConvertUnsignedInt16( &deltaPos.mX, endianType, 3 );
-
-                                    // decompress and convert coordinate system
-                                    MCore::Vector3 tempPos = MCore::Compressed16BitVector3(deltaPos.mX, deltaPos.mY, deltaPos.mZ).ToVector3(meshDeformDataChunk.mMinValue, meshDeformDataChunk.mMaxValue);
-                                    MCore::GetCoordinateSystem().ConvertVector3( &tempPos );
-
-                                    if (tempPos.SafeLength() > MCore::Math::epsilon)
-                                    {
-                                        const float minValue = MCore::Min3<float>( tempPos.x, tempPos.y, tempPos.z );
-                                        const float maxValue = MCore::Max3<float>( tempPos.x, tempPos.y, tempPos.z );
-                                        deformData->mMinValue = MCore::Min<float>( minValue, deformData->mMinValue );
-                                        deformData->mMaxValue = MCore::Max<float>( maxValue, deformData->mMaxValue );
-                                    }
-                                }
-
-                                // make sure the values won't be too small
-                                if (deformData->mMaxValue - deformData->mMinValue < 1.0f)
-                                {
-                                    if (deformData->mMinValue < 0.0f && deformData->mMinValue > -1.0f)
-                                        deformData->mMinValue = -1.0f;
-
-                                    if (deformData->mMaxValue > 0.0f && deformData->mMaxValue < 1.0f)
-                                        deformData->mMaxValue = 1.0f;
-                                }
-
-                                // use the following new deltas to recompress the deltas after coordinate system conversion in the next loop
-                                compressMin = deformData->mMinValue;
-                                compressMax = deformData->mMaxValue;
-                            }
-                */
                 for (d = 0; d < meshDeformDataChunk.mNumVertices; ++d)
                 {
                     deltaPos = filePosVectors[d];
@@ -2260,10 +2217,10 @@ namespace EMotionFX
                     deltaT = file8BitVectors[d];
 
                     // decompress and convert coordinate system
-                    AZ::Vector3 temp = MCore::Compressed8BitVector3(deltaT.mX, deltaT.mY, deltaT.mZ).ToVector3(-1.0f, +1.0f);
+                    AZ::Vector3 temp = MCore::Compressed8BitVector3(deltaT.mX, deltaT.mY, deltaT.mZ).ToVector3(-2.0f, +2.0f);
 
                     // compress the value after coordinate system conversion
-                    deformData->mDeltas[d].mTangent = MCore::Compressed8BitVector3(temp, -1.0f, +1.0f);
+                    deformData->mDeltas[d].mTangent = MCore::Compressed8BitVector3(temp, -2.0f, +2.0f);
                 }
                 MCore::Free(file8BitVectors);
 
@@ -2366,7 +2323,6 @@ namespace EMotionFX
 
         return true;
     }
-
 
     //-----------------
 
@@ -2702,7 +2658,7 @@ namespace EMotionFX
 
                 // if the node has no mesh, we can skip it
                 Mesh* mesh = actor->GetMesh(morphTargetLOD, deformNode->GetNodeIndex());
-                if (mesh) // if there is a mesh
+                if (mesh)
                 {
                     // create and add the deform data object
                     MorphTargetStandard::DeformData* deformData = aznew MorphTargetStandard::DeformData(deformNode->GetNodeIndex(), meshDeformDataChunk.mNumVertices);
@@ -2811,6 +2767,304 @@ namespace EMotionFX
                     const uint32 numBytes = (meshDeformDataChunk.mNumVertices * sizeof(FileFormat::File16BitVector3)) + // positions
                         (meshDeformDataChunk.mNumVertices * sizeof(FileFormat::File8BitVector3)) +                  // normals
                         (meshDeformDataChunk.mNumVertices * sizeof(FileFormat::File8BitVector3)) +                  // tangents
+                        (meshDeformDataChunk.mNumVertices * sizeof(uint32));                                        // vertex numbers
+
+                    // seek forward in the file
+                    file->Forward(numBytes);
+                }
+            }
+
+
+            // read the facial transformations
+            for (i = 0; i < morphTargetChunk.mNumTransformations; ++i)
+            {
+                // read the facial transformation from disk
+                FileFormat::Actor_MorphTargetTransform transformChunk;
+                file->Read(&transformChunk, sizeof(FileFormat::Actor_MorphTargetTransform));
+
+                // create Core objects from the data
+                AZ::PackedVector3f pos(transformChunk.mPosition.mX, transformChunk.mPosition.mY, transformChunk.mPosition.mZ);
+                AZ::PackedVector3f scale(transformChunk.mScale.mX, transformChunk.mScale.mY, transformChunk.mScale.mZ);
+                MCore::Quaternion rot(transformChunk.mRotation.mX, transformChunk.mRotation.mY, transformChunk.mRotation.mZ, transformChunk.mRotation.mW);
+                MCore::Quaternion scaleRot(transformChunk.mScaleRotation.mX, transformChunk.mScaleRotation.mY, transformChunk.mScaleRotation.mZ, transformChunk.mScaleRotation.mW);
+
+                // convert endian and coordinate system
+                ConvertVector3(&pos, endianType);
+                ConvertScale(&scale, endianType);
+                ConvertQuaternion(&rot, endianType);
+                ConvertQuaternion(&scaleRot, endianType);
+                MCore::Endian::ConvertUnsignedInt32(&transformChunk.mNodeIndex, endianType);
+
+                // create our transformation
+                MorphTargetStandard::Transformation transform;
+                transform.mPosition         = AZ::Vector3(pos);
+                transform.mScale            = AZ::Vector3(scale);
+                transform.mRotation         = rot;
+                transform.mScaleRotation    = scaleRot;
+                transform.mNodeIndex        = transformChunk.mNodeIndex;
+
+                if (GetLogging())
+                {
+                    MCore::LogDetailedInfo("     + Transform #%d: Node='%s' (index=%d)", i, skeleton->GetNode(transform.mNodeIndex)->GetName(), transform.mNodeIndex);
+                    MCore::LogDetailedInfo("        - Pos:      %f, %f, %f",
+                        static_cast<float>(transform.mPosition.GetX()),
+                        static_cast<float>(transform.mPosition.GetY()),
+                        static_cast<float>(transform.mPosition.GetZ()));
+                    MCore::LogDetailedInfo("        - Rotation: %f, %f, %f %f", transform.mRotation.x, transform.mRotation.y, transform.mRotation.z, transform.mRotation.w);
+                    MCore::LogDetailedInfo("        - Scale:    %f, %f, %f",
+                        static_cast<float>(transform.mScale.GetX()),
+                        static_cast<float>(transform.mScale.GetY()),
+                        static_cast<float>(transform.mScale.GetZ()));
+                    MCore::LogDetailedInfo("        - ScaleRot: %f, %f, %f %f", scaleRot.x, scaleRot.y, scaleRot.z, scaleRot.w);
+                }
+
+                // add the transformation to the bones expression part
+                morphTarget->AddTransformation(transform);
+            }
+        } // for all morph targets
+
+        return true;
+    }
+
+    //----------------------------------------------------------------------------------------------------------
+
+    // morph targets
+    bool ChunkProcessorActorProgMorphTargets2::Process(MCore::File* file, Importer::ImportParameters& importParams)
+    {
+        const MCore::Endian::EEndianType endianType = importParams.mEndianType;
+        Actor* actor = importParams.mActor;
+
+        MCORE_ASSERT(actor);
+        Skeleton* skeleton = actor->GetSkeleton();
+
+        // read the header
+        FileFormat::Actor_MorphTargets morphTargetsHeader;
+        file->Read(&morphTargetsHeader, sizeof(FileFormat::Actor_MorphTargets));
+
+        // convert endian
+        MCore::Endian::ConvertUnsignedInt32(&morphTargetsHeader.mNumMorphTargets, endianType);
+        MCore::Endian::ConvertUnsignedInt32(&morphTargetsHeader.mLOD, endianType);
+
+        if (GetLogging())
+        {
+            MCore::LogDetailedInfo("- Morph targets: %d (LOD=%d)", morphTargetsHeader.mNumMorphTargets, morphTargetsHeader.mLOD);
+        }
+
+        // check if the morph setup has already been created, if not create it
+        if (actor->GetMorphSetup(morphTargetsHeader.mLOD) == nullptr)
+        {
+            // create the morph setup
+            MorphSetup* morphSetup = MorphSetup::Create();
+
+            // set the morph setup
+            actor->SetMorphSetup(morphTargetsHeader.mLOD, morphSetup);
+        }
+
+        // pre-allocate the morph targets
+        MorphSetup* setup = actor->GetMorphSetup(morphTargetsHeader.mLOD);
+        setup->ReserveMorphTargets(morphTargetsHeader.mNumMorphTargets);
+
+        // read in all morph targets
+        for (uint32 mt = 0; mt < morphTargetsHeader.mNumMorphTargets; ++mt)
+        {
+            // read the expression part from disk
+            FileFormat::Actor_MorphTarget morphTargetChunk;
+            file->Read(&morphTargetChunk, sizeof(FileFormat::Actor_MorphTarget));
+
+            // convert endian
+            MCore::Endian::ConvertFloat(&morphTargetChunk.mRangeMin, endianType);
+            MCore::Endian::ConvertFloat(&morphTargetChunk.mRangeMax, endianType);
+            MCore::Endian::ConvertUnsignedInt32(&morphTargetChunk.mLOD, endianType);
+            MCore::Endian::ConvertUnsignedInt32(&morphTargetChunk.mNumMeshDeformDeltas, endianType);
+            MCore::Endian::ConvertUnsignedInt32(&morphTargetChunk.mNumTransformations, endianType);
+            MCore::Endian::ConvertUnsignedInt32(&morphTargetChunk.mPhonemeSets, endianType);
+
+            // make sure they match
+            MCORE_ASSERT(morphTargetChunk.mLOD == morphTargetsHeader.mLOD);
+
+            // get the expression name
+            const char* morphTargetName = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
+
+            // get the level of detail of the expression part
+            const uint32 morphTargetLOD = morphTargetChunk.mLOD;
+
+            if (GetLogging())
+            {
+                MCore::LogDetailedInfo("  + Morph Target:");
+                MCore::LogDetailedInfo("     - Name               = '%s'", morphTargetName);
+                MCore::LogDetailedInfo("     - LOD Level          = %d", morphTargetChunk.mLOD);
+                MCore::LogDetailedInfo("     - RangeMin           = %f", morphTargetChunk.mRangeMin);
+                MCore::LogDetailedInfo("     - RangeMax           = %f", morphTargetChunk.mRangeMax);
+                MCore::LogDetailedInfo("     - NumDeformDatas     = %d", morphTargetChunk.mNumMeshDeformDeltas);
+                MCore::LogDetailedInfo("     - NumTransformations = %d", morphTargetChunk.mNumTransformations);
+                MCore::LogDetailedInfo("     - PhonemeSets: %s", MorphTarget::GetPhonemeSetString((MorphTarget::EPhonemeSet)morphTargetChunk.mPhonemeSets).c_str());
+            }
+
+            // create the mesh morph target
+            MorphTargetStandard* morphTarget = MorphTargetStandard::Create(morphTargetName);
+
+            // set the slider range
+            morphTarget->SetRangeMin(morphTargetChunk.mRangeMin);
+            morphTarget->SetRangeMax(morphTargetChunk.mRangeMax);
+
+            // set the phoneme sets
+            morphTarget->SetPhonemeSets((MorphTarget::EPhonemeSet)morphTargetChunk.mPhonemeSets);
+
+            // add the morph target
+            setup->AddMorphTarget(morphTarget);
+
+            // pre-allocate space in the array of deform datas inside the morph target
+            morphTarget->ReserveDeformDatas(morphTargetChunk.mNumMeshDeformDeltas);
+
+            // the same for the transformations
+            morphTarget->ReserveTransformations(morphTargetChunk.mNumTransformations);
+
+            // read all deform datas
+            // each node that gets deformed by the mesh morph results in a deform data object that we read here
+            // so if a given morph target affects 3 meshes, there are 3 deform datas
+            uint32 i;
+            for (i = 0; i < morphTargetChunk.mNumMeshDeformDeltas; ++i)
+            {
+                FileFormat::Actor_MorphTargetMeshDeltas2 meshDeformDataChunk;
+                file->Read(&meshDeformDataChunk, sizeof(FileFormat::Actor_MorphTargetMeshDeltas2));
+
+                // convert endian
+                MCore::Endian::ConvertFloat(&meshDeformDataChunk.mMinValue, endianType);
+                MCore::Endian::ConvertFloat(&meshDeformDataChunk.mMaxValue, endianType);
+                MCore::Endian::ConvertUnsignedInt32(&meshDeformDataChunk.mNumVertices, endianType);
+                MCore::Endian::ConvertUnsignedInt32(&meshDeformDataChunk.mNodeIndex, endianType);
+
+                // get the deformation node
+                MCORE_ASSERT(meshDeformDataChunk.mNodeIndex < actor->GetNumNodes());
+                Node* deformNode = skeleton->GetNode(meshDeformDataChunk.mNodeIndex);
+                MCORE_ASSERT(deformNode);
+
+                if (GetLogging())
+                {
+                    MCore::LogDetailedInfo("     - Deform data #%d: Node='%s' (index=%d)", i, deformNode->GetName(), deformNode->GetNodeIndex());
+                    MCore::LogDetailedInfo("        + NumVertices = %d", meshDeformDataChunk.mNumVertices);
+                    MCore::LogDetailedInfo("        + MinValue    = %f", meshDeformDataChunk.mMinValue);
+                    MCore::LogDetailedInfo("        + MaxValue    = %f", meshDeformDataChunk.mMaxValue);
+                }
+
+                // if the node has no mesh, we can skip it
+                Mesh* mesh = actor->GetMesh(morphTargetLOD, deformNode->GetNodeIndex());
+                if (mesh)
+                {
+                    // create and add the deform data object
+                    MorphTargetStandard::DeformData* deformData = aznew MorphTargetStandard::DeformData(deformNode->GetNodeIndex(), meshDeformDataChunk.mNumVertices);
+                    morphTarget->AddDeformData(deformData);
+
+                    // set the min and max values, used to define the compression/quantitization range for the positions
+                    deformData->mMinValue = meshDeformDataChunk.mMinValue;
+                    deformData->mMaxValue = meshDeformDataChunk.mMaxValue;
+
+                    // read the positions
+                    uint32 d;
+                    FileFormat::File16BitVector3 deltaPos;
+                    FileFormat::File16BitVector3* filePosVectors = (FileFormat::File16BitVector3*)MCore::Allocate(sizeof(FileFormat::File16BitVector3) * meshDeformDataChunk.mNumVertices, EMFX_MEMCATEGORY_IMPORTER);
+                    file->Read(filePosVectors, sizeof(FileFormat::File16BitVector3) * meshDeformDataChunk.mNumVertices);
+
+                    float compressMin = meshDeformDataChunk.mMinValue;
+                    float compressMax = meshDeformDataChunk.mMaxValue;
+
+                    // read and coordinate system convert the deltas
+                    for (d = 0; d < meshDeformDataChunk.mNumVertices; ++d)
+                    {
+                        deltaPos = filePosVectors[d];
+
+                        // convert endian
+                        MCore::Endian::ConvertUnsignedInt16(&deltaPos.mX, endianType, 3);
+
+                        // decompress and convert coordinate system
+                        AZ::Vector3 tempPos = MCore::Compressed16BitVector3(deltaPos.mX, deltaPos.mY, deltaPos.mZ).ToVector3(meshDeformDataChunk.mMinValue, meshDeformDataChunk.mMaxValue);
+
+                        // compress the value after coordinate system conversion
+                        deformData->mDeltas[d].mPosition = MCore::Compressed16BitVector3(tempPos, compressMin, compressMax);
+                    }
+                    MCore::Free(filePosVectors);
+
+                    // read the normals
+                    FileFormat::File8BitVector3* file8BitVectors = (FileFormat::File8BitVector3*)MCore::Allocate(sizeof(FileFormat::File8BitVector3) * meshDeformDataChunk.mNumVertices, EMFX_MEMCATEGORY_IMPORTER);
+                    file->Read(file8BitVectors, sizeof(FileFormat::File8BitVector3) * meshDeformDataChunk.mNumVertices);
+                    FileFormat::File8BitVector3 delta;
+                    for (d = 0; d < meshDeformDataChunk.mNumVertices; ++d)
+                    {
+                        delta = file8BitVectors[d];
+
+                        // decompress and convert coordinate system
+                        AZ::Vector3 temp = MCore::Compressed8BitVector3(delta.mX, delta.mY, delta.mZ).ToVector3(-2.0f, +2.0f);
+
+                        // compress the value after coordinate system conversion
+                        deformData->mDeltas[d].mNormal = MCore::Compressed8BitVector3(temp, -2.0f, +2.0f);
+                    }
+
+                    // read the tangents
+                    file->Read(file8BitVectors, sizeof(FileFormat::File8BitVector3) * meshDeformDataChunk.mNumVertices);
+                    FileFormat::File8BitVector3 deltaT;
+                    for (d = 0; d < meshDeformDataChunk.mNumVertices; ++d)
+                    {
+                        deltaT = file8BitVectors[d];
+                        const AZ::Vector3 temp = MCore::Compressed8BitVector3(deltaT.mX, deltaT.mY, deltaT.mZ).ToVector3(-2.0f, +2.0f);
+                        deformData->mDeltas[d].mTangent = MCore::Compressed8BitVector3(temp, -2.0f, +2.0f);
+                    }
+
+                    // read the bitangents
+                    file->Read(file8BitVectors, sizeof(FileFormat::File8BitVector3) * meshDeformDataChunk.mNumVertices);
+                    FileFormat::File8BitVector3 deltaBT;
+                    for (d = 0; d < meshDeformDataChunk.mNumVertices; ++d)
+                    {
+                        deltaBT = file8BitVectors[d];
+                        const AZ::Vector3 temp = MCore::Compressed8BitVector3(deltaBT.mX, deltaBT.mY, deltaBT.mZ).ToVector3(-2.0f, +2.0f);
+                        deformData->mDeltas[d].mBitangent = MCore::Compressed8BitVector3(temp, -2.0f, +2.0f);
+                    }
+                    MCore::Free(file8BitVectors);
+
+                    // read the vertex numbers
+                    uint32* fileIndices = (uint32*)MCore::Allocate(sizeof(uint32) * meshDeformDataChunk.mNumVertices, EMFX_MEMCATEGORY_IMPORTER);
+                    file->Read(fileIndices, sizeof(uint32) * meshDeformDataChunk.mNumVertices);
+                    MCore::Endian::ConvertUnsignedInt32(fileIndices, endianType, meshDeformDataChunk.mNumVertices);
+                    for (d = 0; d < meshDeformDataChunk.mNumVertices; ++d)
+                    {
+                        deformData->mDeltas[d].mVertexNr = fileIndices[d];
+                    }
+                    MCore::Free(fileIndices);
+
+                    //-------------------------------
+                    // create the mesh deformer
+                    MeshDeformerStack* stack = actor->GetMeshDeformerStack(morphTargetLOD, deformNode->GetNodeIndex());
+
+                    // create the stack if it doesn't yet exist
+                    if (!stack)
+                    {
+                        stack = MeshDeformerStack::Create(mesh);
+                        actor->SetMeshDeformerStack(morphTargetLOD, deformNode->GetNodeIndex(), stack);
+                    }
+
+                    // try to see if there is already some  morph deformer
+                    MorphMeshDeformer* deformer = nullptr;
+                    MeshDeformerStack* stackPtr = stack;
+                    deformer = (MorphMeshDeformer*)stackPtr->FindDeformerByType(MorphMeshDeformer::TYPE_ID);
+                    if (!deformer) // there isn't one, so create and add one
+                    {
+                        deformer = MorphMeshDeformer::Create(mesh);
+                        stack->InsertDeformer(0, deformer);
+                        deformer->ReserveDeformPasses(morphTargetsHeader.mNumMorphTargets); // assume that this mesh is influenced by all morph targets
+                    }
+
+                    // add the deform pass to the mesh deformer
+                    MorphMeshDeformer::DeformPass deformPass;
+                    deformPass.mDeformDataNr = morphTarget->GetNumDeformDatas() - 1;
+                    deformPass.mMorphTarget  = morphTarget;
+                    deformer->AddDeformPass(deformPass);
+                    //-------------------------------
+                }
+                else // if there is no mesh, skip this mesh morph target
+                {
+                    const uint32 numBytes = (meshDeformDataChunk.mNumVertices * sizeof(FileFormat::File16BitVector3)) + // positions
+                        (meshDeformDataChunk.mNumVertices * sizeof(FileFormat::File8BitVector3)) +                  // normals
+                        (meshDeformDataChunk.mNumVertices * sizeof(FileFormat::File8BitVector3)) +                  // tangents
+                        (meshDeformDataChunk.mNumVertices * sizeof(FileFormat::File8BitVector3)) +                  // bitangents
                         (meshDeformDataChunk.mNumVertices * sizeof(uint32));                                        // vertex numbers
 
                     // seek forward in the file
@@ -3465,7 +3719,7 @@ namespace EMotionFX
             // default value
             attr->Read(file, importParams.mEndianType);
             valueParameter->SetDefaultValueFromAttribute(attr);
-            attr->Destroy();
+            delete attr;
 
             // Parameters were previously stored in "AttributeSettings". The calss supported
             // multiple values, however, the UI did not, so this ended up not being used.

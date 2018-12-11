@@ -15,12 +15,12 @@
 #include "EMotionFXConfig.h"
 #include <AzCore/Math/Uuid.h>
 #include "BaseObject.h"
+#include <MCore/Source/Attribute.h>
 #include "MCore/Source/Color.h"
 #include <MCore/Source/Array.h>
 #include <MCore/Source/File.h>
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Quaternion.h>
-#include <MCore/Source/AttributePool.h>
 #include <MCore/Source/MultiThreadManager.h>
 #include "KeyTrackLinearDynamic.h"
 #include "EventInfo.h"
@@ -216,7 +216,7 @@ namespace EMotionFX
                 const uint32 numParams = mParameterValues.GetLength();
                 for (uint32 i = 0; i < numParams; ++i)
                 {
-                    MCore::GetAttributePool().Free(mParameterValues[i]);
+                    delete mParameterValues[i];
                 }
             }
         };

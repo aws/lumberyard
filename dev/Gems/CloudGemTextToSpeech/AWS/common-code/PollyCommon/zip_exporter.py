@@ -23,6 +23,8 @@ import csv
 
 from errors import ClientError
 
+import text_to_speech_s3
+
 PACKAGEDVOICELINES = 'packagedvoicelines'
 ID_PACKAGES_FOLDER = "idPackages/"
 
@@ -58,7 +60,7 @@ def check_url(name, in_lib = True):
     return url
 
 def get_generated_packages():
-    s3_client = boto3.client('s3')
+    s3_client = text_to_speech_s3.get_s3_client()
     response = s3_client.list_objects(Bucket = CloudCanvas.get_setting(PACKAGEDVOICELINES))
 
     generated_packages = []
@@ -116,7 +118,7 @@ def create_zip_file(tts_info_list, name, UUID):
     print(message)
 
 def delete_zip_file(key):
-    client = boto3.client('s3')
+    client = text_to_speech_s3.get_s3_client()
     try:
         client.delete_object(Bucket=CloudCanvas.get_setting(PACKAGEDVOICELINES), Key = key)
     except ClientError as e:
@@ -211,7 +213,7 @@ def __upload_zip_file(file_name, key):
         raise ClientError(error_message)
 
 def __generate_presigned_url(key):
-    s3_client = boto3.client('s3')
+    s3_client = text_to_speech_s3.get_s3_client()
     try:
         presigned_url = s3_client.generate_presigned_url('get_object', Params =
             {

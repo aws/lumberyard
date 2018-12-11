@@ -683,43 +683,65 @@ void ScriptSystemComponent::OnAssetPreReload(Data::Asset<Data::AssetData> asset)
 //=========================================================================
 // OnAssetReloaded
 // #TEMP: Remove when asset dependencies are in place
-// This function will only be called for the asset that triggered the reload (everything else is disconnected)
+// This function will only be called for the asset that triggered the reload.
+//
+// Track all reload requests and remove them from the map one by one as they are handled. 
+// Once all queued reloads are handled, another full reload can be triggered.
 //=========================================================================
 void ScriptSystemComponent::OnAssetReloaded(Data::Asset<Data::AssetData> asset)
 {
-    Data::AssetBus::MultiHandler::BusDisconnect();
+    Data::AssetBus::MultiHandler::BusDisconnect(asset.GetId());
 
-    m_assetsAlreadyReloaded.emplace(asset.GetId());
-
-    if (!m_isReloadQueued)
+    auto it = m_queuedReloads.find(asset.GetId());
+    if (it == m_queuedReloads.end())
     {
-        m_isReloadQueued = true;
-        AZStd::function<void()> reloadFn = [this]()
+        // This is not a reload queued by us as a "dependency" reload, probably an external change.
+        if (!m_isReloadQueued)
         {
-            // Collects all script assets for reloading
-            Data::AssetCatalogRequests::AssetEnumerationCB collectAssetsCb = [this](const Data::AssetId id, const Data::AssetInfo& info)
+            // There is no reload-all queued, schedule one.
+            m_isReloadQueued = true;
+            auto triggeredByAssetId = asset.GetId();
+            AZStd::function<void()> reloadFn = [this, triggeredByAssetId]() ///< Capture just reloaded asset ID so that it can be excluded from reloading
             {
-                // Check asset type
-                if (info.m_assetType == azrtti_typeid<ScriptAsset>())
+                // Collects all script assets for reloading
+                Data::AssetCatalogRequests::AssetEnumerationCB collectAssetsCb = [this, triggeredByAssetId](const Data::AssetId id, const Data::AssetInfo& info)
                 {
-                    // Ensure that the asset isn't scheduled for a reload already
-                    if (m_assetsAlreadyReloaded.find(id) == m_assetsAlreadyReloaded.end())
+                    // Check asset type
+                    if (info.m_assetType == azrtti_typeid<ScriptAsset>())
                     {
-                        auto otherAsset = Data::AssetManager::Instance().FindAsset<ScriptAsset>(id);
-                        if (otherAsset && otherAsset.IsReady())
+                        // Ensure that the asset isn't scheduled for a reload already
+                        if (id != triggeredByAssetId && m_queuedReloads.find(id) == m_queuedReloads.end()) ///< Don't reload just reloaded asset or assets already queued for reload
                         {
-                            // Reload the asset from it's current data
-                            otherAsset.Reload();
+                            auto otherAsset = Data::AssetManager::Instance().FindAsset<ScriptAsset>(id);
+                            if (otherAsset && otherAsset.IsReady())
+                            {
+                                // Reload the asset from it's current data
+                                otherAsset.Reload();
+
+                                // Store the ID of the asset that we started reloading. We will use it to detect the moment 
+                                // when all current reload requests are handled, and reloadFn can be called again.
+                                m_queuedReloads.insert(id);
+                                // the 'this->' in the following line is intentional.
+                                // the C++ standard requires the use of this-> on baseclass calls that are templated classes
+                                // most of the time you can get away with it, but in some cases MSVC will not correctly adjust the offset of this
+                                // during the call
+                                this->Data::AssetBus::MultiHandler::BusConnect(id); 
+                            }
                         }
                     }
-                }
-            };
-            Data::AssetCatalogRequestBus::Broadcast(&Data::AssetCatalogRequestBus::Events::EnumerateAssets, nullptr, collectAssetsCb, nullptr);
+                };
+                Data::AssetCatalogRequestBus::Broadcast(&Data::AssetCatalogRequestBus::Events::EnumerateAssets, nullptr, collectAssetsCb, nullptr);
 
-            m_isReloadQueued = false;
-            m_assetsAlreadyReloaded.clear();
-        };
-        TickBus::QueueFunction(reloadFn);
+                m_isReloadQueued = false;
+            };
+            TickBus::QueueFunction(reloadFn);
+        }
+    }
+    else
+    {
+        // This is one of the reloads triggered by us via reloadFn, no need to trigger another reload-all call.
+        // Remove it from the queue, so that reloadFn can be triggered again once all dependencies finished reloading.
+        m_queuedReloads.erase(it);
     }
 }
 
@@ -818,11 +840,16 @@ void ScriptSystemComponent::Reflect(ReflectContext* reflection)
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Enum<PLATFORM_WINDOWS_32>("Windows32")
             ->Enum<PLATFORM_WINDOWS_64>("Windows64") 
-            ->Enum<PLATFORM_XBOX_360>("Xbox360") // ACCEPTED_USE
-            ->Enum<PLATFORM_XBONE>("XboxOne") // ACCEPTED_USE
-            ->Enum<PLATFORM_PS3>("PS3") // ACCEPTED_USE
-            ->Enum<PLATFORM_PS4>("PS4") // ACCEPTED_USE
-            ->Enum<PLATFORM_WII>("Wii") // ACCEPTED_USE
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+            ->Enum<PLATFORM_##PUBLICNAME>(#CodeName)
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
+            AZ_EXPAND_FOR_RESTRICTED_PLATFORM
+#else
+            AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#endif
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
+#endif
             ->Enum<PLATFORM_LINUX_64>("Linux")
             ->Enum<PLATFORM_ANDROID>("Android")
             ->Enum<PLATFORM_ANDROID_64>("Android64")
@@ -845,8 +872,12 @@ void ScriptSystemComponent::Reflect(ReflectContext* reflection)
         behaviorContext->Class<DummyTickOrder>("TickOrder")
             ->Enum<TICK_FIRST>("First")
             ->Enum<TICK_PLACEMENT>("Placement")
+            ->Enum<TICK_INPUT>("Input")
+            ->Enum<TICK_GAME>("Game")
             ->Enum<TICK_ANIMATION>("Animation")
             ->Enum<TICK_PHYSICS>("Physics")
+            ->Enum<TICK_ATTACHMENT>("Attachment")
+            ->Enum<TICK_PRE_RENDER>("PreRender")
             ->Enum<TICK_DEFAULT>("Default")
             ->Enum<TICK_UI>("UI")
             ->Enum<TICK_LAST>("Last")

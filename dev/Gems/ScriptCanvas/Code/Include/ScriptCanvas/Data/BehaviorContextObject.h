@@ -105,7 +105,7 @@ namespace ScriptCanvas
 
         static void CheckClass(const AZ::BehaviorClass& behaviorClass);
 
-        AZStd::atomic_int m_referenceCount;
+        AZStd::atomic_int m_referenceCount{0};
         AZ::u32 m_flags{ 0 };
         AZStd::any m_object;
 

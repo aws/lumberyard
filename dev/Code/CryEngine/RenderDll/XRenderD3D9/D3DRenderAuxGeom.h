@@ -57,7 +57,7 @@ public:
 
     void* operator new(size_t s)
     {
-        uint8* p = (uint8*) malloc(s + 16 + 8);
+        uint8* p = (uint8*) CryModuleMalloc(s + 16 + 8);
         memset(p, 0, s + 16 + 8);
         uint8* pRet = (uint8*) ((size_t) (p + 16 + 8) & ~0xF);
         ((uint8**) pRet)[-1] = p;
@@ -66,7 +66,7 @@ public:
 
     void operator delete(void* p)
     {
-        free(((uint8**)p)[-1]);
+        CryModuleFree(((uint8**)p)[-1]);
     }
 
 private:

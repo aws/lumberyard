@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/std/functional.h>
+#include <AzCore/std/string/regex.h>
 #include <CloudGemFramework/ServiceClientJob.h>
 #include <CloudGemFramework/JsonObjectHandler.h>
 #include <CloudGemFramework/JsonWriter.h>
@@ -25,11 +26,14 @@
 #include <aws/core/auth/AWSAuthSigner.h>
 #include <aws/core/auth/AWSCredentialsProvider.h>
 
+#include <AzCore/JSON/document.h>
+#include <AzCore/JSON/prettywriter.h>
+
 #include <AzCore/Component/TickBus.h>
 
 namespace CloudGemFramework
 {
-
+    const char logRequestsChannel[] = "ServiceRequest";
     /// Base class for service requests. To use, derive a class and
     /// then provide that class as the argument to the ServiceRequestJob
     /// template class.
@@ -262,6 +266,11 @@ namespace CloudGemFramework
             return ok;
         }
 
+        AZStd::string EscapePercentCharsInString(const AZStd::string& str) const
+        {
+            return AZStd::regex_replace(str, AZStd::regex("%"), "%%");
+        }
+
         void ProcessResponse(const std::shared_ptr<Aws::Http::HttpResponse>& response) override
         {
             if (ServiceClientJobType::IsCancelled())
@@ -298,6 +307,12 @@ namespace CloudGemFramework
                 responseBody.clear();
                 responseBody.seekg(0);
 #endif
+                static AZ::EnvironmentVariable<bool> envVar = AZ::Environment::FindVariable<bool>(CloudCanvas::logRequestsEnvVar);
+
+                if (envVar && envVar.Get())
+                {
+                    ShowRequestLog(response);
+                }
                 JsonInputStream stream{responseBody};
 
                 if(responseCode >= 200 && responseCode <= 299)
@@ -336,11 +351,7 @@ namespace CloudGemFramework
                         requestStream->seekg(0);
                         requestContent = AZStd::string{std::istreambuf_iterator<AZStd::string::value_type>(*requestStream.get()),eos};
                         // Replace the character "%" with "%%" to prevent the error when printing the string that contains the percentage sign
-                        AZStd::size_t start_pos = requestContent.find("%", 0);
-                        while (start_pos != AZStd::string::npos) {
-                            requestContent.replace(start_pos, 1, "%%");
-                            start_pos = requestContent.find("%", start_pos + 2);
-                        }
+                        requestContent = EscapePercentCharsInString(requestContent);
                     }
 
                     Aws::IOStream& responseStream = response->GetResponseBody();
@@ -365,6 +376,8 @@ namespace CloudGemFramework
                 // It has the value 4096, but there is the timestamp, etc., to account for so we reduce it by a few characters.
                 const int MAX_MESSAGE_LENGTH = 4096 - 128;
 
+                // Replace the character "%" with "%%" to prevent the error when printing the string that contains the percentage sign
+                message = EscapePercentCharsInString(message);
                 if (message.size() > MAX_MESSAGE_LENGTH)
                 {
                     int offset = 0;
@@ -507,7 +520,7 @@ namespace CloudGemFramework
                 }
             }
 
-            AZ_Error(
+            AZ_Warning(
                 ServiceClientJobType::COMPONENT_DISPLAY_NAME,
                 false,
                 "Service request url %s does not have the expected format. Cannot determine region from the url.",
@@ -516,6 +529,89 @@ namespace CloudGemFramework
 
             return "us-east-1";
 
+        }
+
+        static AZStd::string GetFormattedJSON(const AZStd::string& inputStr)
+        {
+            rapidjson::Document jsonRep;
+            jsonRep.Parse(inputStr.c_str());
+            if (jsonRep.HasParseError())
+            {
+                // If we couldn't parse, just return as is so it'll be printed
+                return inputStr;
+            }
+
+            rapidjson::StringBuffer buffer;
+            rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+            jsonRep.Accept(writer);
+
+            return buffer.GetString();
+        }
+
+        // Our request output may be longer than allowed, let's just break it apart
+        // Bigger chunks don't look right with our "window title" formatting, so we just break it apart by line
+        void PrintRequestOutput(const AZStd::string& outputStr)
+        {
+            AZStd::size_t startPos = 0;
+
+            while (startPos < outputStr.length())
+            {
+                AZStd::size_t endPos = outputStr.find_first_of('\n', startPos);
+
+                if (endPos == AZStd::string::npos)
+                {
+                    AZ_Printf(logRequestsChannel, outputStr.substr(startPos).c_str());
+                    break;
+                }
+                else
+                {
+                    AZ_Printf(logRequestsChannel, outputStr.substr(startPos, endPos - startPos).c_str());
+                    startPos = endPos + 1;
+                }
+             }
+        }
+
+        void ShowRequestLog(const std::shared_ptr<Aws::Http::HttpResponse>& response)
+        {
+            if (!response)
+            {
+                return;
+            }
+
+            AZStd::string requestContent;
+            AZStd::string responseContent;
+
+            std::istreambuf_iterator<AZStd::string::value_type> eos;
+
+            std::shared_ptr<Aws::IOStream> requestStream = response->GetOriginatingRequest().GetContentBody();
+            if (requestStream)
+            {
+                requestStream->clear();
+                requestStream->seekg(0);
+                requestContent = AZStd::string{ std::istreambuf_iterator<AZStd::string::value_type>(*requestStream.get()),eos };
+                // Replace the character "%" with "%%" to prevent the error when printing the string that contains the percentage sign
+                requestContent = EscapePercentCharsInString(requestContent);
+                requestContent = GetFormattedJSON(requestContent);
+            }
+
+            std::istreambuf_iterator<AZStd::string::value_type> responseEos;
+            Aws::IOStream& responseStream = response->GetResponseBody();
+            responseStream.clear();
+            responseStream.seekg(0);
+            responseContent = AZStd::string{ std::istreambuf_iterator<AZStd::string::value_type>(responseStream),responseEos };
+            responseContent = EscapePercentCharsInString(responseContent);
+            responseStream.seekg(0);
+
+            responseContent = GetFormattedJSON(responseContent);
+
+            AZ_Printf(logRequestsChannel, "Service Request Complete");
+            AZ_Printf(logRequestsChannel, "Service: %s  URI : %s", RequestType::ServiceTraits::ServiceName, response ? response->GetOriginatingRequest().GetURIString().c_str() : "NULL");
+            AZ_Printf(logRequestsChannel, "Request: %s %s", ServiceRequestJobType::HttpMethodToString(RequestType::Method()), RequestType::Path());
+            PrintRequestOutput(requestContent);
+
+            AZ_Printf(logRequestsChannel, "Got Response Code: %d", static_cast<int>(response->GetResponseCode()));
+            AZ_Printf(logRequestsChannel, "Response Body:\n");
+            PrintRequestOutput(responseContent);
         }
 
     public:

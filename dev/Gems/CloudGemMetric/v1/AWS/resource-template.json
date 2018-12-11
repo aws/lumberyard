@@ -84,15 +84,13 @@
                 "LambdaConsumerLauncher",
                 "SQS",
                 "Glue",
-                "Amoeba1",
-                "Amoeba2",
-                "Amoeba3",
-                "Amoeba4",
-                "Amoeba5",
+                "Amoeba",                
                 "AmoebaLauncher",
                 "AmoebaConfiguration",
                 "FIFOProducer",
-                "GlueCrawlerLauncher"
+                "GlueCrawlerLauncher",
+                "EventEmitterConfiguration",
+                "EventEmitter"
             ],
             "Properties": {
                 "ConfigurationBucket": {
@@ -139,7 +137,7 @@
                             ]
                         },
                         {
-                            "AbstractRole": [ "FIFOConsumer", "FIFOProducer", "LambdaConsumerLauncher", "AmoebaLauncher", "AmoebaConfiguration", "Amoeba", "Amoeba1", "Amoeba2", "Amoeba3", "Amoeba4", "Amoeba5" ],
+                            "AbstractRole": [ "FIFOConsumer", "FIFOProducer", "LambdaConsumerLauncher", "AmoebaLauncher", "AmoebaConfiguration", "Amoeba" ],
                             "Action": [
                                 "dynamodb:Scan"
                             ]
@@ -179,7 +177,7 @@
                             "ResourceSuffix": [ "/*", "" ]
                         },
                         {
-                            "AbstractRole": [ "AmoebaConfiguration", "Amoeba", "Amoeba1", "Amoeba2", "Amoeba3", "Amoeba4", "Amoeba5" ],
+                            "AbstractRole": [ "AmoebaConfiguration", "Amoeba" ],
                             "Action": [
                                 "s3:GetObject",
                                 "s3:PutObject",
@@ -476,21 +474,9 @@
                         "AmoebaLauncher": {
                             "Ref": "AmoebaLauncher"
                         },
-                        "Amoeba1": {
-                            "Ref": "Amoeba1"
-                        },
-                        "Amoeba2": {
-                            "Ref": "Amoeba2"
-                        },
-                        "Amoeba3": {
-                            "Ref": "Amoeba3"
-                        },
-                        "Amoeba4": {
-                            "Ref": "Amoeba4"
-                        },
-                        "Amoeba5": {
-                            "Ref": "Amoeba5"
-                        },
+                        "Amoeba": {
+                            "Ref": "Amoeba"
+                        },                        
                         "Verbose": "False",
                         "DeploymentStackArn": {
                             "Ref": "DeploymentStackArn"
@@ -530,7 +516,7 @@
                             "AbstractRole": "ServiceLambda",
                             "Action": "lambda:InvokeFunction"
                         }
-                    ]
+                    ]                    
                 }
             },
             "Properties": {
@@ -600,14 +586,11 @@
                 "CloudCanvas": {
                     "Permissions": [
                         {
-                            "AbstractRole": "LambdaConsumerLauncher",
-                            "Action": "lambda:InvokeFunction"
-                        },
-                        {
-                            "AbstractRole": "FIFOConsumer",
+                            "AbstractRole": [ "LambdaConsumerLauncher", "FIFOConsumer" ],
                             "Action": "lambda:InvokeFunction"
                         }
-                    ]
+                    ],
+                    "CustomResourceVersion": "$LATEST"
                 }
             },
             "Properties": {
@@ -655,6 +638,12 @@
                         "Verbose": "False",
                         "DeploymentStackArn": {
                             "Ref": "DeploymentStackArn"
+                        },
+                        "EventEmitter": {
+                            "Ref": "EventEmitter"
+                        },
+                        "ProjectConfigurationBucket": {
+                            "Ref": "ConfigurationBucket"
                         }
                     }
                 }
@@ -678,7 +667,7 @@
             },
             "Type": "Custom::LambdaConfiguration"
         },
-        "Amoeba1": {
+        "Amoeba": {
             "Metadata": {
                 "CloudCanvas": {
                     "Permissions": [
@@ -686,7 +675,8 @@
                             "AbstractRole": "AmoebaLauncher",
                             "Action": "lambda:InvokeFunction"
                         }
-                    ]
+                    ],
+                    "CustomResourceVersion": "$LATEST"
                 }
             },
             "Properties": {
@@ -736,243 +726,7 @@
                 }
             },
             "Type": "AWS::Lambda::Function"
-        },
-        "Amoeba2": {
-            "Metadata": {
-                "CloudCanvas": {
-                    "Permissions": [
-                        {
-                            "AbstractRole": "AmoebaLauncher",
-                            "Action": "lambda:InvokeFunction"
-                        }
-                    ]
-                }
-            },
-            "Properties": {
-                "Description": "The Lambda used for aggregating s3 files into one large s3 file per partition.",
-                "Code": {
-                    "S3Bucket": {
-                        "Fn::GetAtt": [
-                            "AmoebaConfiguration",
-                            "ConfigurationBucket"
-                        ]
-                    },
-                    "S3Key": {
-                        "Fn::GetAtt": [
-                            "AmoebaConfiguration",
-                            "ConfigurationKey"
-                        ]
-                    }
-                },
-                "Handler": "amoeba_generator.ingest",
-                "Role": {
-                    "Fn::GetAtt": [
-                        "AmoebaConfiguration",
-                        "Role"
-                    ]
-                },
-                "Runtime": {
-                    "Fn::GetAtt": [
-                        "AmoebaConfiguration",
-                        "Runtime"
-                    ]
-                },
-                "Timeout": 300,
-                "MemorySize": 3008,
-                "Environment": {
-                    "Variables": {
-                        "MetricContext": {
-                            "Ref": "MetricContext"
-                        },
-                        "MetricStorage": {
-                            "Ref": "MetricStorage"
-                        },
-                        "Verbose": "False",
-                        "DeploymentStackArn": {
-                            "Ref": "DeploymentStackArn"
-                        }
-                    }
-                }
-            },
-            "Type": "AWS::Lambda::Function"
-        },
-        "Amoeba3": {
-            "Metadata": {
-                "CloudCanvas": {
-                    "Permissions": [
-                        {
-                            "AbstractRole": "AmoebaLauncher",
-                            "Action": "lambda:InvokeFunction"
-                        }
-                    ]
-                }
-            },
-            "Properties": {
-                "Description": "The Lambda used for aggregating s3 files into one large s3 file per partition.",
-                "Code": {
-                    "S3Bucket": {
-                        "Fn::GetAtt": [
-                            "AmoebaConfiguration",
-                            "ConfigurationBucket"
-                        ]
-                    },
-                    "S3Key": {
-                        "Fn::GetAtt": [
-                            "AmoebaConfiguration",
-                            "ConfigurationKey"
-                        ]
-                    }
-                },
-                "Handler": "amoeba_generator.ingest",
-                "Role": {
-                    "Fn::GetAtt": [
-                        "AmoebaConfiguration",
-                        "Role"
-                    ]
-                },
-                "Runtime": {
-                    "Fn::GetAtt": [
-                        "AmoebaConfiguration",
-                        "Runtime"
-                    ]
-                },
-                "Timeout": 300,
-                "MemorySize": 3008,
-                "Environment": {
-                    "Variables": {
-                        "MetricContext": {
-                            "Ref": "MetricContext"
-                        },
-                        "MetricStorage": {
-                            "Ref": "MetricStorage"
-                        },
-                        "Verbose": "False",
-                        "DeploymentStackArn": {
-                            "Ref": "DeploymentStackArn"
-                        }
-                    }
-                }
-            },
-            "Type": "AWS::Lambda::Function"
-        },
-        "Amoeba4": {
-            "Metadata": {
-                "CloudCanvas": {
-                    "Permissions": [
-                        {
-                            "AbstractRole": "AmoebaLauncher",
-                            "Action": "lambda:InvokeFunction"
-                        }
-                    ]
-                }
-            },
-            "Properties": {
-                "Description": "The Lambda used for aggregating s3 files into one large s3 file per partition.",
-                "Code": {
-                    "S3Bucket": {
-                        "Fn::GetAtt": [
-                            "AmoebaConfiguration",
-                            "ConfigurationBucket"
-                        ]
-                    },
-                    "S3Key": {
-                        "Fn::GetAtt": [
-                            "AmoebaConfiguration",
-                            "ConfigurationKey"
-                        ]
-                    }
-                },
-                "Handler": "amoeba_generator.ingest",
-                "Role": {
-                    "Fn::GetAtt": [
-                        "AmoebaConfiguration",
-                        "Role"
-                    ]
-                },
-                "Runtime": {
-                    "Fn::GetAtt": [
-                        "AmoebaConfiguration",
-                        "Runtime"
-                    ]
-                },
-                "Timeout": 300,
-                "MemorySize": 3008,
-                "Environment": {
-                    "Variables": {
-                        "MetricContext": {
-                            "Ref": "MetricContext"
-                        },
-                        "MetricStorage": {
-                            "Ref": "MetricStorage"
-                        },
-                        "Verbose": "False",
-                        "DeploymentStackArn": {
-                            "Ref": "DeploymentStackArn"
-                        }
-                    }
-                }
-            },
-            "Type": "AWS::Lambda::Function"
-        },
-        "Amoeba5": {
-            "Metadata": {
-                "CloudCanvas": {
-                    "Permissions": [
-                        {
-                            "AbstractRole": "AmoebaLauncher",
-                            "Action": "lambda:InvokeFunction"
-                        }
-                    ]
-                }
-            },
-            "Properties": {
-                "Description": "The Lambda used for aggregating s3 files into one large s3 file per partition.",
-                "Code": {
-                    "S3Bucket": {
-                        "Fn::GetAtt": [
-                            "AmoebaConfiguration",
-                            "ConfigurationBucket"
-                        ]
-                    },
-                    "S3Key": {
-                        "Fn::GetAtt": [
-                            "AmoebaConfiguration",
-                            "ConfigurationKey"
-                        ]
-                    }
-                },
-                "Handler": "amoeba_generator.ingest",
-                "Role": {
-                    "Fn::GetAtt": [
-                        "AmoebaConfiguration",
-                        "Role"
-                    ]
-                },
-                "Runtime": {
-                    "Fn::GetAtt": [
-                        "AmoebaConfiguration",
-                        "Runtime"
-                    ]
-                },
-                "Timeout": 300,
-                "MemorySize": 3008,
-                "Environment": {
-                    "Variables": {
-                        "MetricContext": {
-                            "Ref": "MetricContext"
-                        },
-                        "MetricStorage": {
-                            "Ref": "MetricStorage"
-                        },
-                        "Verbose": "False",
-                        "DeploymentStackArn": {
-                            "Ref": "DeploymentStackArn"
-                        }
-                    }
-                }
-            },
-            "Type": "AWS::Lambda::Function"
-        },
+        },       
         "AmoebaConfiguration": {
             "Properties": {
                 "ConfigurationBucket": {
@@ -998,7 +752,8 @@
                             "AbstractRole": "ServiceLambda",
                             "Action": "lambda:InvokeFunction"
                         }
-                    ]
+                    ],
+                    "CustomResourceVersion": "$LATEST"
                 }
             },
             "Properties": {
@@ -1034,21 +789,9 @@
                 "MemorySize": 1024,
                 "Environment": {
                     "Variables": {
-                        "Amoeba1": {
-                            "Ref": "Amoeba1"
-                        },
-                        "Amoeba2": {
-                            "Ref": "Amoeba2"
-                        },
-                        "Amoeba3": {
-                            "Ref": "Amoeba3"
-                        },
-                        "Amoeba4": {
-                            "Ref": "Amoeba4"
-                        },
-                        "Amoeba5": {
-                            "Ref": "Amoeba5"
-                        },
+                        "Amoeba": {
+                            "Ref": "Amoeba"
+                        },                       
                         "MetricContext": {
                             "Ref": "MetricContext"
                         },
@@ -1062,7 +805,7 @@
                     }
                 }
             },
-            "DependsOn": [ "Amoeba1", "Amoeba2", "Amoeba3", "Amoeba4", "Amoeba5" ],
+            "DependsOn": [ "Amoeba" ],
             "Type": "AWS::Lambda::Function"
         },
         "AmoebaLauncherConfiguration": {
@@ -1103,7 +846,7 @@
         },
         "AmoebaLauncherSchedulerRule": {
             "Properties": {
-                "ScheduleExpression": "rate(20 minutes)",
+                "ScheduleExpression": "rate(5 minutes)",
                 "Targets": [
                     {
                         "Arn": {
@@ -1126,7 +869,8 @@
                             "AbstractRole": "ServiceLambda",
                             "Action": "lambda:InvokeFunction"
                         }
-                    ]
+                    ],                 
+                    "CustomResourceVersion": "$LATEST"                
                 }
             },
             "Properties": {
@@ -1348,6 +1092,35 @@
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 },
+                "QueueType":  "fifo",
+                "IntialNumberOfQueues": 5,
+                "Environment": {
+                    "Variables": {
+                        "MetricContext": {
+                            "Ref": "MetricContext"
+                        },
+                        "DeploymentStackArn": {
+                            "Ref": "DeploymentStackArn"
+                        }
+                    }
+                }
+            },
+            "DependsOn": [ "LambdaConsumerLauncher", "FIFOConsumer", "FIFOProducer" ]
+        },
+        "AmoebaSQS": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "CustomResourceVersion": "$LATEST"
+                }
+            },
+            "Type": "Custom::SQSScaler",
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Suffix": "amoeba",
+                "QueueType":  "sqs",
+                "IntialNumberOfQueues": 2,
                 "Environment": {
                     "Variables": {
                         "MetricContext": {
@@ -1375,6 +1148,13 @@
             "Properties": {
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
+                },
+                "Environment": {
+                    "Variables": {
+                        "ProjectConfigurationBucket": {
+                            "Ref": "ConfigurationBucket"
+                        }
+                    }
                 }
             },
             "DependsOn": [ "ServiceLambda", "AmoebaConfiguration", "GlueCrawlerLauncher" ]
@@ -1504,6 +1284,71 @@
                     }
                 ]
             }
+        },
+        "EventEmitter": {
+             "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "FIFOConsumer",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "EventEmitterConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "EventEmitterConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "event_emitter.main",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "EventEmitterConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "EventEmitterConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "EventEmitterConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "EventEmitter",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Services": [
+                    {
+                        "InterfaceId": "CloudGemDefectReporter_MetricsListener_1_0_0",
+                        "Optional": "True"
+                    }
+                ]
+            },
+            "Type": "Custom::LambdaConfiguration"
         }
     }
 }

@@ -71,7 +71,7 @@ int CVehicle::s_fireHitTypeId = 0;
 int CVehicle::s_punishHitTypeId = 0;
 int CVehicle::s_vehicleDestructionTypeId = 0;
 
-const static string s_vehicleImplXmlDir = "Scripts/Entities/Vehicles/Implementations/Xml/";
+const static char* s_vehicleImplXmlDir = "Scripts/Entities/Vehicles/Implementations/Xml/";
 
 namespace Veh
 {
@@ -465,7 +465,7 @@ bool CVehicle::Init(IGameObject* pGameObject)
 
     if (!vehicleXmlData)
     {
-        GameWarning("<%s>: failed loading xml file (directory %s), aborting initialization", pEntity->GetName(), s_vehicleImplXmlDir.c_str());
+        GameWarning("<%s>: failed loading xml file (directory %s), aborting initialization", pEntity->GetName(), s_vehicleImplXmlDir);
         return false;
     }
 
@@ -2768,7 +2768,6 @@ bool CVehicle::NetSerialize(TSerialize ser, EEntityAspects aspect, uint8 profile
 //------------------------------------------------------------------------
 void CVehicle::FullSerialize(TSerialize ser)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Vehicle serialization");
     ser.Value("indestructible", m_indestructible);
     bool isDestroyed = IsDestroyed();
     ser.Value("isDestroyed", isDestroyed, 'bool');

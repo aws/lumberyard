@@ -40,6 +40,7 @@ namespace Serialization {
 
     class IClassFactory
     {
+        friend class ClassFactoryManager;
     public:
         IClassFactory(TypeID baseType)
             : baseType_(baseType)
@@ -60,6 +61,7 @@ namespace Serialization {
     protected:
         TypeID baseType_;
         const char* nullLabel_;
+        IClassFactory* m_next = nullptr;
     };
 
 

@@ -145,6 +145,8 @@
 
 #include "MaterialSender.h"
 
+#include "ActionManager.h"
+
 using namespace AZ;
 using namespace AzQtComponents;
 using namespace AzToolsFramework;
@@ -647,6 +649,8 @@ MainWindow::~MainWindow()
     delete m_toolbarManager;
     m_connectionListener.reset();
     GetIEditor()->UnregisterNotifyListener(this);
+
+    m_instance = nullptr;
 }
 
 void MainWindow::InitCentralWidget()
@@ -867,7 +871,8 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "NewLevel");
     am->AddAction(ID_FILE_OPEN_LEVEL, tr("Open...")).SetShortcut(tr("Ctrl+O"))
         .SetMetricsIdentifier("MainEditor", "OpenLevel")
-        .SetStatusTip(tr("Open an existing level"));
+        .SetStatusTip(tr("Open an existing level"))
+        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateFileOpen);
     am->AddAction(ID_FILE_SAVE_LEVEL, tr("&Save")).SetShortcut(tr("Ctrl+S"))
         .SetStatusTip(tr("Save the current level"))
         .SetMetricsIdentifier("MainEditor", "SaveLevel")
@@ -932,11 +937,17 @@ void MainWindow::InitActions()
     am->AddAction(ID_GAME_PC_ENABLELOWSPEC, tr("Low")).SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "SetSpecPCLow")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
-    am->AddAction(ID_GAME_OSXGL_ENABLESPEC, tr("OSX GL")).SetCheckable(true)
-        .SetMetricsIdentifier("MainEditor", "SetSpecOSXGL")
+    am->AddAction(ID_GAME_OSXMETAL_ENABLEVERYHIGHSPEC, tr("Very High")).SetCheckable(true)
+        .SetMetricsIdentifier("MainEditor", "SetSpecOSXMetalVeryHigh")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
-    am->AddAction(ID_GAME_OSXMETAL_ENABLESPEC, tr("OSX Metal")).SetCheckable(true)
-        .SetMetricsIdentifier("MainEditor", "SetSpecOSXMetal")
+    am->AddAction(ID_GAME_OSXMETAL_ENABLEHIGHSPEC, tr("High")).SetCheckable(true)
+        .SetMetricsIdentifier("MainEditor", "SetSpecOSXMetalHigh")
+        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
+    am->AddAction(ID_GAME_OSXMETAL_ENABLEMEDIUMSPEC, tr("Medium")).SetCheckable(true)
+        .SetMetricsIdentifier("MainEditor", "SetSpecOSXMetalMedium")
+        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
+    am->AddAction(ID_GAME_OSXMETAL_ENABLELOWSPEC, tr("Low")).SetCheckable(true)
+        .SetMetricsIdentifier("MainEditor", "SetSpecOSXMetalLow")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
     am->AddAction(ID_GAME_ANDROID_ENABLEVERYHIGHSPEC, tr("Very High")).SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "SetSpecAndroidVeryHigh")
@@ -963,11 +974,11 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "SetSpecIosLow")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
-#include AZ_RESTRICTED_FILE(MainWindow_cpp, TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
+#include AZ_RESTRICTED_FILE(MainWindow_cpp, TOOLS_SUPPORT_XENIA)
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
-#include AZ_RESTRICTED_FILE(MainWindow_cpp, TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
+#include AZ_RESTRICTED_FILE(MainWindow_cpp, TOOLS_SUPPORT_PROVO)
 #endif
 #endif
     am->AddAction(ID_GAME_APPLETV_ENABLESPEC, tr("Apple TV")).SetCheckable(true)
@@ -1900,7 +1911,13 @@ void MainWindow::InitToolActionHandlers()
 
 void MainWindow::CGPMenuClicked()
 {
-    GetIEditor()->GetAWSResourceManager()->OpenCGP();
+    if (GetIEditor()->GetAWSResourceManager()->IsProjectInitialized()) {
+        GetIEditor()->GetAWSResourceManager()->OpenCGP();
+    }
+    else 
+    {
+        QMessageBox::critical(GetIEditor()->GetEditorMainWindow(), "Cloud Gem Portal", "Cloud Canvas is not yet initialized.   Please ensure the Cloud Gem Framework is enabled in your Project Configurator and has initialized.");
+    }
 }
 
 void MainWindow::OnEscapeAction()

@@ -141,7 +141,6 @@
     #define AZ_TRAIT_OS_ENFORCE_STRICT_VIRTUAL_ALLOC_ALIGNMENT 0
     #if defined(AZ_PLATFORM_WINDOWS)
         #define AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT 1
-        #define AZ_TRAIT_OS_HPHASCHEMA_OS_VIRTUAL_PAGE_SIZE (64 * 1024)
     #endif
     #if defined(AZ_PLATFORM_WINDOWS)
         #define AZ_TRAIT_OS_HPHA_MEMORYBLOCKBYTESIZE 512 * 1024 * 1024
@@ -150,9 +149,6 @@
     #endif
     #if defined(AZ_PLATFORM_WINDOWS)
         #define AZ_TRAIT_OS_USE_FASTER_WINDOWS_SOCKET_CLOSE 1
-    #endif
-    #if !defined(AZ_PLATFORM_WINDOWS) && !defined(AZ_PLATFORM_LINUX) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_APPLE)
-        #define AZ_TRAIT_OS_USE_HPHASCHEMA_4KPAGESIZE 1
     #endif
     #if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_ANDROID)
         #define AZ_TRAIT_OS_USE_POSIX_SOCKETS 1
@@ -168,6 +164,12 @@
         #define AZ_TRAIT_OS_USE_WINDOWS_SET_EVENT 1
         #define AZ_TRAIT_OS_USE_WINDOWS_SOCKETS 1
         #define AZ_TRAIT_OS_USE_WINDOWS_THREADS 1
+    #endif
+
+    #if defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
+        #define AZ_TRAIT_OS_DELETE_THROW noexcept
+    #else
+        #define AZ_TRAIT_OS_DELETE_THROW
     #endif
 
     //----- Compiler traits ---------
@@ -205,6 +207,10 @@
     #if defined(AZ_PLATFORM_WINDOWS)
         #define AZ_TRAIT_COMPILER_USE_OUTPUT_DEBUG_STRING 1
         #define AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER 1
+    #endif
+
+    #if defined(AZ_COMPILER_MSVC) && (_MSC_VER <= 1800)
+        #define AZ_TRAIT_COMPILER_USE_STATIC_STORAGE_FOR_NON_POD_STATICS 1
     #endif
 
     //----- Other -------------------

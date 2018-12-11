@@ -43,11 +43,6 @@ AllocatorManager::AllocatorManager()
 //=========================================================================
 AllocatorManager::~AllocatorManager()
 {
-    // one exception is the debug allocator we close it automatically if the user has not.
-    if (m_numAllocators == 1 && AllocatorInstance<OSAllocator>::IsReady())
-    {
-        AllocatorInstance<OSAllocator>::Destroy();
-    }
     if (!m_isAllocatorLeaking)
     {
         AZ_Assert(m_numAllocators == 0, "There are still %d registered allocators!", m_numAllocators);

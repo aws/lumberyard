@@ -34,6 +34,8 @@ namespace AzToolsFramework
             void Activate() override;
             void Deactivate() override;
             static void Reflect(AZ::ReflectContext* context);
+
+            static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         };
     } // namespace MaterialBrowser
 } // namespace AzToolsFramework

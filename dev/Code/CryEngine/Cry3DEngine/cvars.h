@@ -88,6 +88,8 @@ struct CVars
     };
 #endif
 
+
+#define e_RenderTransparentUnderWaterDefault (0)
 #define e_DecalsDefferedDynamicMinSizeDefault (0.35f)
 #define e_DecalsPlacementTestAreaSizeDefault (0.08f)
 #define e_DecalsPlacementTestMinDepthDefault (0.05f)
@@ -176,7 +178,7 @@ struct CVars
     int e_VolumetricFog;
     DeclareConstIntCVar(e_FogVolumesTiledInjection, 1);
     DeclareConstIntCVar(e_Render, e_RenderDefault);
-    DeclareConstIntCVar(e_Tessellation, 1);
+    int e_Tessellation;
     float e_TessellationMaxDistance;
     DeclareConstIntCVar(e_ShadowsTessellateCascades, 1);
     DeclareConstIntCVar(e_ShadowsTessellateDLights, 0);
@@ -284,6 +286,7 @@ struct CVars
     int e_CheckOcclusionOutputQueueSize;
     int e_SkipParticleOcclusion;
     DeclareConstIntCVar(e_WaterVolumes, e_WaterVolumesDefault);
+    DeclareConstIntCVar(e_RenderTransparentUnderWater, e_RenderTransparentUnderWaterDefault);
     DeclareConstFloatCVar(e_TerrainOcclusionCullingPrecisionDistRatio);
     float e_ScreenShotMapCamHeight;
     DeclareConstIntCVar(e_CoverageBufferOccludersTestMinTrisNum, 0);

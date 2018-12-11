@@ -902,7 +902,7 @@ public:
 
 private:
 
-    // Márcio: Changed this from an enum since some compilers don't support 64bit enums
+    // Marcio: Changed this from an enum since some compilers don't support 64bit enums
     // and we had ran out of bits!
     typedef uint64 MovementRequestFlags;
 

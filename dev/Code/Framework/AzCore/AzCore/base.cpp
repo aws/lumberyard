@@ -22,16 +22,17 @@ namespace AZ
             return "Win32";
         case PLATFORM_WINDOWS_64:
             return "Win64";
-        case PLATFORM_XBOX_360: // ACCEPTED_USE
-            return "X360"; // ACCEPTED_USE
-        case PLATFORM_XBONE: // ACCEPTED_USE
-            return "XB1"; // ACCEPTED_USE
-        case PLATFORM_PS3: // ACCEPTED_USE
-            return "PS3"; // ACCEPTED_USE
-        case PLATFORM_PS4: // ACCEPTED_USE
-            return "PS4"; // ACCEPTED_USE
-        case PLATFORM_WII: // ACCEPTED_USE
-            return "WII"; // ACCEPTED_USE
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+        case PLATFORM_##PUBLICNAME:\
+            return #PublicName;
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
+            AZ_EXPAND_FOR_RESTRICTED_PLATFORM
+#else
+            AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#endif
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
+#endif
         case PLATFORM_LINUX_64:
             return "Linux";
         case PLATFORM_ANDROID:

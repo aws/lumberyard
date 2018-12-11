@@ -59,7 +59,7 @@ namespace LmbrCentral
         float GetTotalRadius(const AZ::SplineAddress& address) const override;
         const SplineAttribute<float>& GetRadiusAttribute() const override;
 
-        AZ::SplinePtr GetSpline() const { return m_spline; }
+        AZ::SplinePtr GetSpline();
         const AZ::Transform& GetCurrentTransform() const { return m_currentTransform; }
 
     private:

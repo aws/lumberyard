@@ -148,7 +148,7 @@ private:
     static FixedCheckpointString g_lastSavedCheckpoint;
 
     //list of CheckpointSystem listeners
-    static std::list<ICheckpointListener*>  g_vCheckpointSystemListeners;
+    static StaticInstance<std::list<ICheckpointListener*>>  g_vCheckpointSystemListeners;
 
     //game handler
     ICheckpointGameHandler* m_pGameHandler;

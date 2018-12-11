@@ -1,4 +1,5 @@
-﻿<h2>Data Mappings</h2>
+﻿<p>Use the data mappings to harmonize labels on detailed defect reports. Configurations are saved locally and will not appear in other browsers or affect other users</p>
+<h2>Data Mappings</h2>
 <button class="btn l-primary" (click)="addNewMapping()">
     Add Mapping
 </button>
@@ -6,12 +7,15 @@
     <div class="row mapping">
         <div class="col-3">
             <label>KEY</label>
+            <i class="fa fa-question-circle-o" aria-hidden="true" placement="bottom" ngbTooltip="Key represents the raw data columns."></i>
         </div>
         <div class="col-3">
             <label>DISPLAY NAME</label>
+            <i class="fa fa-question-circle-o" aria-hidden="true" placement="bottom" ngbTooltip="Display name represents how the raw data will appear on the detailed report."></i>
         </div>
         <div class="col-3">
             <label>DISPLAY CATEGORY</label>
+            <i class="fa fa-question-circle-o" aria-hidden="true" placement="bottom" ngbTooltip="Display category represents which section the data will appear in on the detailed report."></i>
         </div>
     </div>
     <div *ngFor="let mapping of mappings let i = index" class="row mapping">
@@ -22,11 +26,9 @@
             <input class="form-control" type="text" [(ngModel)]="mapping['displayName']" (ngModelChange)="updateMappings()"/>
         </div>
         <div class="col-3">
-            <dropdown class="display-category" placeholderText="Category" [currentOption]="{text: mapping['category']}" (dropdownChanged)="updateCategory($event, mapping)"
+            <dropdown class="display-category" placeholderText="Category" [width]="150" [currentOption]="{text: mapping['category']}" (dropdownChanged)="updateCategory($event, mapping)"
                       [options]="tableDropdownOptions"></dropdown>
-        </div>
-        <div class="float-right">
-            <i (click)="deleteMapping(i)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+            <i (click)="deleteMapping(i)" class="fa fa-trash-o trash-can" data-toggle="tooltip" data-placement="top" title="Delete"></i>
         </div>
     </div>
 </div>

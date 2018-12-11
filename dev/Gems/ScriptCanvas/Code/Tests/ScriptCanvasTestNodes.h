@@ -53,8 +53,7 @@ namespace TestNodes
     class ContractNode : public ScriptCanvas::Node
     {
     public:
-        AZ_CLASS_ALLOCATOR(ContractNode, AZ::SystemAllocator, 0);
-        AZ_RTTI(ContractNode, "{76A17F4F-F508-4C20-83A0-0125468946C7}", ScriptCanvas::Node);
+        AZ_COMPONENT(ContractNode, "{76A17F4F-F508-4C20-83A0-0125468946C7}", ScriptCanvas::Node);
         static void Reflect(AZ::ReflectContext* reflection);
 
         void OnInit() override;

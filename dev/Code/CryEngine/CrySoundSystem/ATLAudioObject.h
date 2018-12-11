@@ -341,6 +341,8 @@ namespace Audio
             TRayInfoVec m_vRayInfos;
             EAudioObjectObstructionCalcType m_eObstOcclCalcType;
 
+            bool m_pendingRaysReleased;
+
     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         public:
             void DrawObstructionRays(IRenderAuxGeom& auxGeom) const;

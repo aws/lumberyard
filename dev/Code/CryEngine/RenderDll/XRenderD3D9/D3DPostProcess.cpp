@@ -173,13 +173,62 @@ void SD3DPostEffectsUtils::CopyScreenToTexture(CTexture*& pDst, const RECT* pSrc
     gcpRendD3D->GetViewport(&iTempX, &iTempY, &iWidth, &iHeight);
 
     CTexture* source = gcpRendD3D->FX_GetCurrentRenderTarget(0);
-    if (source && source->GetDstFormat() == pDst->GetDstFormat())
+    if (source)
     {
-        ResolveRT(pDst, pSrcRegion);
+        if (source->GetDstFormat() == pDst->GetDstFormat())
+        {
+            ResolveRT(pDst, pSrcRegion);
+        }
+        else
+        {
+            StretchRect(source, pDst, false, false, false, false, SPostEffectsUtils::eDepthDownsample_None, false, pSrcRegion);
+        }
     }
     else
     {
-        StretchRect(source, pDst, false, false, false, false, SPostEffectsUtils::eDepthDownsample_None, false, pSrcRegion);
+        CDeviceTexture* dstResource = pDst->GetDevTexture();
+        ID3D11RenderTargetView* sourceRT = gcpRendD3D->FX_GetCurrentRenderTargetSurface(0);
+        if (sourceRT)
+        {
+            D3D11_RENDER_TARGET_VIEW_DESC backbufferDesc;
+            sourceRT->GetDesc(&backbufferDesc);
+            const D3DFormat dstFmt = CTexture::DeviceFormatFromTexFormat(pDst->GetDstFormat());
+            const D3DFormat srcFmt = backbufferDesc.Format;        
+
+            if (dstFmt == srcFmt)
+            {
+                ID3D11Resource* srcResource;
+                sourceRT->GetResource(&srcResource);
+
+                ID3D11Texture2D* srcTex2D = static_cast<ID3D11Texture2D*>(srcResource);
+                D3D11_TEXTURE2D_DESC srcTex2desc;
+                srcTex2D->GetDesc(&srcTex2desc);
+
+                if (pSrcRegion)
+                {
+                    D3D11_BOX box = { 0 };
+                    box.left = pSrcRegion->left;
+                    box.right = pSrcRegion->right;
+                    box.top = pSrcRegion->top;
+                    box.bottom = pSrcRegion->bottom;
+                    box.front = 0;
+                    box.back = 1;
+                    gcpRendD3D->GetDeviceContext().CopySubresourceRegion(dstResource->Get2DTexture(), 0, 0, 0, 0, srcResource, 0, &box);
+                }
+                else
+                {
+                    gcpRendD3D->GetDeviceContext().CopySubresourceRegion(dstResource->Get2DTexture(), 0, 0, 0, 0, srcResource, 0, NULL);
+                }
+            }
+            else
+            {
+                AZ_Assert(false, "Pixel formats differ");
+            }
+        }
+        else
+        {
+            AZ_Assert(false, "No source texture present");
+        }
     }
 }
 

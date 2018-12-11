@@ -38,6 +38,7 @@ namespace CloudCanvas
             virtual AZStd::vector<AZStd::string> GetDownloadablePaks() = 0;
             virtual int GetPakStatus(const char* fileName) = 0;
             virtual AZStd::string GetPakStatusString(const char* fileName) = 0;
+            virtual void HandleWebCommunicatorUpdate(const AZStd::string& messageData) = 0;
         };
 
         using DynamicContentRequestBus = AZ::EBus<IDynamicContentTransferManager>;

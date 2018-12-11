@@ -899,13 +899,10 @@ namespace AzFramework
         const AZ::SliceComponent::SliceInstanceId& sliceInstanceId)
     {
         bool success = false;
-        const bool shouldBindToNetwork = ShouldBindToNetwork();
 
-        AZ_Warning("NetBindingSystemImpl", shouldBindToNetwork, "Failed to bind entity %llu", entity->GetId());
-        if (shouldBindToNetwork)
+        if ( ShouldBindToNetwork() )
         {
             const GridMate::ReplicaPtr bindTo = m_contextData->GetReplicaManager()->FindReplica(replicaId);
-            AZ_Warning("NetBindingSystemImpl", bindTo, "Failed to bind entity %llu - could not find replica %u", entity->GetId(), replicaId);
             if (bindTo)
             {
                 if (addToContext)
@@ -919,7 +916,7 @@ namespace AzFramework
                 }
 
                 NetBindingHandlerInterface* binding = GetNetBindingHandler(entity);
-                AZ_Assert(binding, "Can't find NetBindingComponent on entity %llu (%s)!", static_cast<AZ::u64>(entity->GetId()), entity->GetName().c_str());
+                AZ_Warning("NetBindingSystemImpl", binding, "Can't find NetBindingComponent on entity %llu (%s)!", static_cast<AZ::u64>(entity->GetId()), entity->GetName().c_str());
                 if (binding)
                 {
                     binding->BindToNetwork(bindTo);
@@ -928,6 +925,13 @@ namespace AzFramework
                     entity->Activate();
                     success = true;
                 }
+            }
+            else
+            {
+                // NOTE: It is possible for entities spawned from a slice containing multiple entities with net binding
+                // to never receive their replica counterpart, either because the replica was destroyed, or was interest
+                // filtered.
+                AZ_ExtraTracePrintf("NetBindingSystemImpl", "Failed to bind entity %llu - could not find replica %u", entity->GetId(), replicaId);
             }
         }
 

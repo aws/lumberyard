@@ -189,8 +189,19 @@ namespace AZ
 
         /**
          * Linearly interpolate towards a destination quaternion.
+         * @param[in] to The quaternion to interpolate towards.
+         * @param[in] t Normalized interpolation value where 0.0 represents the current and 1.0 the destination value.
+         * @result The interpolated quaternion at the given interpolation point.
          */
         const Quaternion Lerp(const Quaternion& dest, const VectorFloat& t) const;
+
+        /**
+         * Linearly interpolate towards a destination quaternion, and normalize afterwards.
+         * @param[in] to The quaternion to interpolate towards.
+         * @param[in] t Normalized interpolation value where 0.0 represents the current and 1.0 the destination value.
+         * @result The interpolated and normalized quaternion at the given interpolation point.
+         */
+        const Quaternion NLerp(const Quaternion& dest, const VectorFloat& t) const;
 
         /**
          * Spherical linear interpolation. Result is NOT normalized.

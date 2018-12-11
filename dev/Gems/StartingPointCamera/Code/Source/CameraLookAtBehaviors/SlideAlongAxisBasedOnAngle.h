@@ -14,6 +14,7 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/RTTI/ReflectContext.h>
 #include "StartingPointCamera/StartingPointCameraConstants.h"
+#include <AzCore/Memory/SystemAllocator.h>
 
 namespace Camera
 {
@@ -31,7 +32,8 @@ namespace Camera
     {
     public:
         ~SlideAlongAxisBasedOnAngle() override = default;
-        AZ_RTTI(CameraTargetComponent, "{8DDA8D0B-5BC3-437E-894B-5144E6E81236}", ICameraLookAtBehavior);
+        AZ_RTTI(SlideAlongAxisBasedOnAngle, "{8DDA8D0B-5BC3-437E-894B-5144E6E81236}", ICameraLookAtBehavior);
+        AZ_CLASS_ALLOCATOR(SlideAlongAxisBasedOnAngle, AZ::SystemAllocator, 0); ///< Use AZ::SystemAllocator, otherwise a CryEngine allocator will be used. This will cause the Asset Processor to crash when this object is deleted, because of the wrong uninitialisation order
         static void Reflect(AZ::ReflectContext* reflection);
 
         //////////////////////////////////////////////////////////////////////////

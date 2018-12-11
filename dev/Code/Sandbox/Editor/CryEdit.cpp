@@ -193,9 +193,12 @@
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntry.h>
 #include <AzToolsFramework/UI/Logging/TracePrintFLogPanel.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+#include <AzToolsFramework/Thumbnails/ThumbnailerComponent.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
+#include <AzToolsFramework/MaterialBrowser/MaterialBrowserComponent.h>
 
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 
@@ -579,7 +582,7 @@ CCryEditDoc* CCryDocManager::OpenDocumentFile(LPCTSTR lpszFileName, BOOL bAddToM
     {
         ++lpszFileName;
     }
-    QString szPath = lpszFileName;
+    QString szPath = QString::fromUtf8(lpszFileName);
     if (szPath.endsWith('"'))
     {
         szPath.remove(szPath.length() - 1, 1);
@@ -917,9 +920,7 @@ void CCryEditApp::RegisterActionHandlers()
 
     ON_COMMAND_RANGE(ID_GAME_PC_ENABLELOWSPEC, ID_GAME_PC_ENABLEVERYHIGHSPEC, OnChangeGameSpec)
 
-    ON_COMMAND_RANGE(ID_GAME_OSXGL_ENABLESPEC, ID_GAME_OSXGL_ENABLESPEC, OnChangeGameSpec)
-
-    ON_COMMAND_RANGE(ID_GAME_OSXMETAL_ENABLESPEC, ID_GAME_OSXMETAL_ENABLESPEC, OnChangeGameSpec)
+    ON_COMMAND_RANGE(ID_GAME_OSXMETAL_ENABLELOWSPEC, ID_GAME_OSXMETAL_ENABLEVERYHIGHSPEC, OnChangeGameSpec)
 
     ON_COMMAND_RANGE(ID_GAME_APPLETV_ENABLESPEC, ID_GAME_APPLETV_ENABLESPEC, OnChangeGameSpec)
 
@@ -928,10 +929,10 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND_RANGE(ID_GAME_IOS_ENABLELOWSPEC, ID_GAME_IOS_ENABLEVERYHIGHSPEC, OnChangeGameSpec)
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
     ON_COMMAND_RANGE(ID_GAME_##PUBLICNAME##_ENABLELOWSPEC, ID_GAME_##PUBLICNAME##_ENABLEHIGHSPEC, OnChangeGameSpec)
     AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
 
     ON_COMMAND(ID_OPEN_QUICK_ACCESS_BAR, OnOpenQuickAccessBar)
@@ -963,21 +964,6 @@ CCryEditApp::CCryEditApp()
 
     m_sPreviewFile[0] = 0;
 
-#ifdef Q_OS_WIN
-#ifdef _DEBUG
-    int tmpDbgFlag;
-    tmpDbgFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
-    // Clear the upper 16 bits and OR in the desired freqency
-    tmpDbgFlag = (tmpDbgFlag & 0x0000FFFF) | (32768 << 16);
-    //tmpDbgFlag |= _CRTDBG_LEAK_CHECK_DF;
-    _CrtSetDbgFlag(tmpDbgFlag);
-
-    // Check heap every
-    //_CrtSetBreakAlloc(119065);
-#endif
-#endif
-
-    // TODO: add construction code here,
     // Place all significant initialization in InitInstance
     ZeroStruct(m_tagLocations);
     ZeroStruct(m_tagAngles);
@@ -1021,13 +1007,10 @@ public:
 
     bool m_bConsoleMode = false;
     bool m_bDeveloperMode = false;
-    bool m_bMemReplay = false;
     bool m_bRunPythonScript = false;
-    bool m_bSWBatch = false;
     bool m_bShowVersionInfo = false;
     QString m_exportFile;
     QString m_gameCmdLine; // This variable was already unused in the MFC port.
-    QString m_swCmdLine;
     QString m_strFileName;
 
     bool m_bSkipWelcomeScreenDialog = false;
@@ -1063,8 +1046,6 @@ public:
             { "MatEdit", m_bMatEditMode },
             { "BatchMode", m_bConsoleMode },
             { "devmode", m_bDeveloperMode },
-            { "memreplay", m_bMemReplay },
-            { "sw", m_bSWBatch },
             { "VTUNE", dummy },
             { "runpython", m_bRunPythonScript },
             { "version", m_bShowVersionInfo },
@@ -1125,11 +1106,6 @@ public:
         if (parser.isSet("VTUNE"))
         {
             m_gameCmdLine += " -VTUNE";
-        }
-
-        if (parser.isSet("sw"))
-        {
-            m_swCmdLine = parser.value("sw");
         }
 
         const QStringList positionalArgs = parser.positionalArguments();
@@ -1221,6 +1197,13 @@ BOOL CCryEditApp::FirstInstance(bool bForceNewInstance)
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnFileSave()
 {
+    if (m_savingLevel)
+    {
+        return;
+    }
+
+    const QScopedValueRollback<bool> rollback(m_savingLevel, true);
+
     GetIEditor()->GetDocument()->DoFileSave();
 }
 
@@ -1228,7 +1211,13 @@ void CCryEditApp::OnFileSave()
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnUpdateDocumentReady(QAction* action)
 {
-    action->setEnabled(GetIEditor() && GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady());
+    action->setEnabled(GetIEditor() && GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady() && !m_creatingNewLevel && !m_openingLevel && !m_savingLevel);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateFileOpen(QAction* action)
+{
+    action->setEnabled(!m_creatingNewLevel && !m_openingLevel && !m_savingLevel);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2135,13 +2124,17 @@ CCrySingleDocTemplate::Confidence CCrySingleDocTemplate::MatchDocType(LPCTSTR lp
     CCryEditDoc* pDoc = GetIEditor()->GetDocument();
     if (pDoc)
     {
-        QString prevPathName = Path::GetRelativePath(pDoc->GetPathName());
-        Path::ConvertBackSlashToSlash(prevPathName);
-        if (!QString::compare(prevPathName, lpszPathName))
+        QString prevPathName = pDoc->GetPathName();
+        // all we need to know here is whether it is the same file as before.
+        if (!prevPathName.isEmpty())
         {
-            // already open
-            rpDocMatch = pDoc;
-            return yesAlreadyOpen;
+            // QFileInfo is guaranteed to return true iff the two paths refer to the same path.
+            if (QFileInfo(prevPathName) == QFileInfo(QString::fromUtf8(lpszPathName)))
+            {
+                // already open
+                rpDocMatch = pDoc;
+                return yesAlreadyOpen;
+            }
         }
     }
 
@@ -2291,7 +2284,6 @@ void CCryEditApp::InitFromCommandLine(CEditCommandLineInfo& cmdInfo)
     m_bMergeShaders = cmdInfo.m_bMergeShaders;
     m_bExportMode = cmdInfo.m_bExport;
     m_bRunPythonScript = cmdInfo.m_bRunPythonScript;
-    m_bSWBatchMode = cmdInfo.m_bSWBatch;
 
     m_pEditor->SetMatEditMode(cmdInfo.m_bMatEditMode);
 
@@ -2315,11 +2307,6 @@ void CCryEditApp::InitFromCommandLine(CEditCommandLineInfo& cmdInfo)
         m_bLevelLoadTestMode = true;
         gEnv->bNoAssertDialog = true;
         CEditorAutoLevelLoadTest::Instance();
-    }
-
-    if (cmdInfo.m_bMemReplay)
-    {
-        CryGetIMemReplay()->Start();
     }
 }
 
@@ -2466,19 +2453,7 @@ void CCryEditApp::InitLevel(const CEditCommandLineInfo& cmdInfo)
         QTimer::singleShot(0, QCoreApplication::instance(), &QCoreApplication::quit);
         return;
     }
-    else if (m_bSWBatchMode && !cmdInfo.m_strFileName.isEmpty())
-    {
-        GetIEditor()->SetModifiedFlag(false);
-        GetIEditor()->SetModifiedModule(eModifiedNothing);
-        auto pDocument = OpenDocumentFile(cmdInfo.m_strFileName.toUtf8().constData());
-        if (pDocument)
-        {
-            GetIEditor()->SetModifiedFlag(false);
-            GetIEditor()->SetModifiedModule(eModifiedNothing);
-            GetISystem()->GetIConsole()->ExecuteString(QString("sw batch %1 sw %2").arg(cmdInfo.m_strFileName, cmdInfo.m_swCmdLine).toUtf8().constData());
-        }
-    }
-    else if (QFileInfo(cmdInfo.m_strFileName).suffix() == "cry")
+    else if ((cmdInfo.m_strFileName.endsWith(defaultFileExtension, Qt::CaseInsensitive)) || (cmdInfo.m_strFileName.endsWith(oldFileExtension, Qt::CaseInsensitive)))
     {
         auto pDocument = OpenDocumentFile(cmdInfo.m_strFileName.toUtf8().constData());
         if (pDocument)
@@ -3789,37 +3764,48 @@ int CCryEditApp::IdleProcessing(bool bBackgroundUpdate)
         }
         else
         {
-                // Start profiling frame.
-                GetIEditor()->GetSystem()->GetIProfileSystem()->StartFrame();
+            // Start profiling frame.
+            GetIEditor()->GetSystem()->GetIProfileSystem()->StartFrame();
 
-                GetIEditor()->GetGameEngine()->Update();
+            GetIEditor()->GetGameEngine()->Update();
 
-                if (m_pEditor)
-                {
-                    m_pEditor->Update();
-                }
+            if (m_pEditor)
+            {
+                m_pEditor->Update();
+            }
 
-                // syncronize all animations so ensure that their compuation have finished
-                if (GetIEditor()->GetSystem()->GetIAnimationSystem())
-                {
-                    GetIEditor()->GetSystem()->GetIAnimationSystem()->SyncAllAnimations();
-                }
+            // syncronize all animations so ensure that their compuation have finished
+            if (GetIEditor()->GetSystem()->GetIAnimationSystem())
+            {
+                GetIEditor()->GetSystem()->GetIAnimationSystem()->SyncAllAnimations();
+            }
 
-                GetIEditor()->Notify(eNotify_OnIdleUpdate);
+            GetIEditor()->Notify(eNotify_OnIdleUpdate);
 
-                IEditor* pEditor = GetIEditor();
-                if (!pEditor->GetGameEngine()->IsLevelLoaded() && pEditor->GetSystem()->NeedDoWorkDuringOcclusionChecks())
-                {
-                    pEditor->GetSystem()->DoWorkDuringOcclusionChecks();
-                }
+            IEditor* pEditor = GetIEditor();
+            if (!pEditor->GetGameEngine()->IsLevelLoaded() && pEditor->GetSystem()->NeedDoWorkDuringOcclusionChecks())
+            {
+                pEditor->GetSystem()->DoWorkDuringOcclusionChecks();
+            }
 
-                GetIEditor()->GetSystem()->GetIProfileSystem()->EndFrame();
+            GetIEditor()->GetSystem()->GetIProfileSystem()->EndFrame();
+
+            // Since the rendering is done based on the eNotify_OnIdleUpdate, we should trigger a TickSystem as well.
+            // To ensure that there's a system tick for every render done in Idle
+            AZ::ComponentApplication* componentApplication = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(componentApplication, &AZ::ComponentApplicationRequests::GetApplication);
+            if (componentApplication)
+            {
+                componentApplication->TickSystem();
             }
         }
+    }
     else if (GetIEditor()->GetSystem() && GetIEditor()->GetSystem()->GetILog())
     {
         GetIEditor()->GetSystem()->GetILog()->Update(); // print messages from other threads
     }
+
+    DisplayLevelLoadErrors();
 
     if (CConsoleSCB::GetCreatedInstance())
     {
@@ -3827,6 +3813,26 @@ int CCryEditApp::IdleProcessing(bool bBackgroundUpdate)
     }
 
     return res;
+}
+
+void CCryEditApp::DisplayLevelLoadErrors()
+{
+    CCryEditDoc* currentLevel = GetIEditor()->GetDocument();
+    if (currentLevel && currentLevel->IsDocumentReady() && !m_levelErrorsHaveBeenDisplayed)
+    {
+        // Generally it takes a few idle updates for meshes to load and be processed by their components. This value
+        // was picked based on examining when mesh components are updated and their materials are checked for 
+        // errors (2 updates) plus one more for good luck.
+        const int IDLE_FRAMES_TO_WAIT = 3;
+        ++m_numBeforeDisplayErrorFrames;
+        if (m_numBeforeDisplayErrorFrames > IDLE_FRAMES_TO_WAIT)
+        {
+            GetIEditor()->CommitLevelErrorReport();
+            GetIEditor()->GetErrorReport()->Display();
+            m_numBeforeDisplayErrorFrames = 0;
+            m_levelErrorsHaveBeenDisplayed = true;
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -6198,6 +6204,8 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
     // force the level being rendered at least once
     m_bForceProcessIdle = true;
 
+    m_levelErrorsHaveBeenDisplayed = false;
+
     return true;
 }
 
@@ -6215,6 +6223,13 @@ void CCryEditApp::OnOpenLevel()
 //////////////////////////////////////////////////////////////////////////
 CCryEditDoc* CCryEditApp::OpenDocumentFile(LPCTSTR lpszFileName)
 {
+    if (m_openingLevel)
+    {
+        return GetIEditor()->GetDocument();
+    }
+
+    const QScopedValueRollback<bool> rollback(m_openingLevel, true);
+
     MainWindow::instance()->menuBar()->setEnabled(false);
 
     CCryEditDoc* doc = nullptr;
@@ -6227,15 +6242,9 @@ CCryEditDoc* CCryEditApp::OpenDocumentFile(LPCTSTR lpszFileName)
 
     if (GetIEditor()->GetLevelIndependentFileMan()->PromptChangedFiles())
     {
-        QString currentPath = Path::GetRelativePath(doc->GetPathName());
-        QString newPath = Path::GetRelativePath(lpszFileName);
-        Path::ConvertBackSlashToSlash(currentPath);
-        Path::ConvertBackSlashToSlash(newPath);
-
-        //if (doc && (currentPath == newPath))
-        {
-            m_pDocManager->OpenDocumentFile(lpszFileName, currentPath != newPath);
-        }
+        // in this case, we set bAddToMRU to always be true because adding files to the MRU list
+        // automatically culls duplicate and normalizes paths anyway
+        m_pDocManager->OpenDocumentFile(lpszFileName, true);
     }
 
     if (bTriggerConsole)
@@ -6254,6 +6263,8 @@ CCryEditDoc* CCryEditApp::OpenDocumentFile(LPCTSTR lpszFileName)
             ConvertLegacyEntities();
         }
     });
+
+    m_levelErrorsHaveBeenDisplayed = false;
 
     return doc; // the API wants a CDocument* to be returned. It seems not to be used, though, in our current state.
 }
@@ -7994,11 +8005,17 @@ void CCryEditApp::OnChangeGameSpec(UINT nID)
     case ID_GAME_PC_ENABLEVERYHIGHSPEC:
         GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_VERYHIGH_SPEC).arg(CONFIG_PC));
         break;
-    case ID_GAME_OSXGL_ENABLESPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_OSX_GL));
-        break;
-    case ID_GAME_OSXMETAL_ENABLESPEC:
+    case ID_GAME_OSXMETAL_ENABLELOWSPEC:
         GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_OSX_METAL));
+        break;
+    case ID_GAME_OSXMETAL_ENABLEMEDIUMSPEC:
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_MEDIUM_SPEC).arg(CONFIG_OSX_METAL));
+        break;
+    case ID_GAME_OSXMETAL_ENABLEHIGHSPEC:
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_OSX_METAL));
+        break;
+    case ID_GAME_OSXMETAL_ENABLEVERYHIGHSPEC:
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_VERYHIGH_SPEC).arg(CONFIG_OSX_METAL));
         break;
     case ID_GAME_ANDROID_ENABLELOWSPEC:
         GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_ANDROID));
@@ -8022,10 +8039,10 @@ void CCryEditApp::OnChangeGameSpec(UINT nID)
         GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_IOS));
         break;
     case ID_GAME_IOS_ENABLEVERYHIGHSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_VERYHIGH_SPEC, CONFIG_IOS);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_VERYHIGH_SPEC).arg(CONFIG_IOS));
         break;
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
     case ID_GAME_##PUBLICNAME##_ENABLELOWSPEC:\
         GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_##PUBLICNAME));\
         break;\
@@ -8036,7 +8053,7 @@ void CCryEditApp::OnChangeGameSpec(UINT nID)
         GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_##PUBLICNAME));\
         break;
     AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
     case ID_GAME_APPLETV_ENABLESPEC:
         GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_APPLETV));
@@ -8074,11 +8091,17 @@ void CCryEditApp::OnUpdateGameSpec(QAction* action)
     case ID_GAME_PC_ENABLEVERYHIGHSPEC:
         SetGameSpecCheck(CONFIG_VERYHIGH_SPEC, CONFIG_PC, nCheck, enable);
         break;
-    case ID_GAME_OSXGL_ENABLESPEC:
-        SetGameSpecCheck(CONFIG_HIGH_SPEC, CONFIG_OSX_GL, nCheck, enable);
-        break;
-    case ID_GAME_OSXMETAL_ENABLESPEC:
+    case ID_GAME_OSXMETAL_ENABLELOWSPEC:
         SetGameSpecCheck(CONFIG_LOW_SPEC, CONFIG_OSX_METAL, nCheck, enable);
+        break;
+    case ID_GAME_OSXMETAL_ENABLEMEDIUMSPEC:
+        SetGameSpecCheck(CONFIG_MEDIUM_SPEC, CONFIG_OSX_METAL, nCheck, enable);
+        break;
+    case ID_GAME_OSXMETAL_ENABLEHIGHSPEC:
+        SetGameSpecCheck(CONFIG_HIGH_SPEC, CONFIG_OSX_METAL, nCheck, enable);
+        break;
+    case ID_GAME_OSXMETAL_ENABLEVERYHIGHSPEC:
+        SetGameSpecCheck(CONFIG_VERYHIGH_SPEC, CONFIG_OSX_METAL, nCheck, enable);
         break;
     case ID_GAME_ANDROID_ENABLELOWSPEC:
         SetGameSpecCheck(CONFIG_LOW_SPEC, CONFIG_ANDROID, nCheck, enable);
@@ -8105,7 +8128,7 @@ void CCryEditApp::OnUpdateGameSpec(QAction* action)
         SetGameSpecCheck(CONFIG_VERYHIGH_SPEC, CONFIG_IOS, nCheck, enable);
         break;
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
     case ID_GAME_##PUBLICNAME##_ENABLELOWSPEC:\
         SetGameSpecCheck(CONFIG_LOW_SPEC, CONFIG_##PUBLICNAME, nCheck, enable);\
         break;\
@@ -8116,7 +8139,7 @@ void CCryEditApp::OnUpdateGameSpec(QAction* action)
         SetGameSpecCheck(CONFIG_HIGH_SPEC, CONFIG_##PUBLICNAME, nCheck, enable);\
         break;
         AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
     case ID_GAME_APPLETV_ENABLESPEC:
         SetGameSpecCheck(CONFIG_LOW_SPEC, CONFIG_APPLETV, nCheck, enable);
@@ -8517,62 +8540,32 @@ bool CCryEditApp::OpenProjectConfigurator(const QString& startPage) const
 {
 #if defined(Q_OS_WIN)
     const char* projectConfigurator = "ProjectConfigurator.exe";
-    const char* platformSubDir = "Win";
 #elif defined(Q_OS_MACOS)
     const char* projectConfigurator = "ProjectConfigurator";
-    const char* platformSubDir = "Mac";
 #else
 #error Unsupported Platform for Project Configurator
 #endif
-    const char* toolsLmbrSetup = "Tools" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "LmbrSetup" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING;
-
-    // Get the engine path and app root path.
-    const char* engineRoot = nullptr;
-    AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
-    AZ_Assert(engineRoot != nullptr, "The engine root path is not properly initialized from the AzFramework::Application");
-
-    QString projectConfiguratorPath;
-    AZStd::string exePath = AZStd::string::format("%s%s", engineRoot, BINFOLDER_NAME);
     
-    AZ::Outcome<AZStd::string, AZStd::string> result = AZ::Failure(AZStd::string("No responders have been installed to execute to ResolveToolPath"));
-    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequestBus::Events::ResolveToolPath, exePath.c_str(), projectConfigurator);
+    AZ::Outcome<AZStd::string, AZStd::string> result = AZ::Failure(AZStd::string("No responders have been installed to execute to ResolveConfigToolsPath"));
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequestBus::Events::ResolveConfigToolsPath, projectConfigurator);
 
     if (!result.IsSuccess())
     {
-        // If project configurator doesnt exist in the bin64 folder, then next search LmbrSetup/{Platform}
-        exePath = AZStd::string::format("%s%s%s", engineRoot, toolsLmbrSetup, platformSubDir);
-        AZStd::string projectConfiguratorTestPath = AZStd::string::format("%s" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "%s", exePath.c_str(), projectConfigurator);
-        if (!AZ::IO::SystemFile::Exists(projectConfiguratorTestPath.c_str()))
-        {
-            QMessageBox::warning(QApplication::activeWindow(),
-                                 QString(),
-                                 QObject::tr("Unable to run Project Configurator executable (%1) at location %2. Please make sure its installed correctly and try again.")
-                                    .arg(projectConfigurator)
-                                    .arg(QString::fromUtf8(exePath.c_str(), exePath.size())));
-            return false;
-        }
-        projectConfiguratorPath = QString::fromUtf8(projectConfiguratorTestPath.c_str(), projectConfiguratorTestPath.size());
-    }
-    else
-    {
-        projectConfiguratorPath = QString::fromUtf8(result.GetValue().c_str(), result.GetValue().size());
+        QMessageBox::warning(QApplication::activeWindow(),
+            QString(),
+            QObject::tr("Unable to find Project Configurator executable (%1). Please make sure its installed or built and try again.")
+            .arg(projectConfigurator));
+        return false;
     }
 
-
-
+    QString projectConfiguratorPath(QString::fromUtf8(result.GetValue().c_str()));
     bool success = QProcess::startDetached(
         projectConfiguratorPath,
-        { "-s", startPage, "-i", QString::number(GetCurrentProcessId()), "-e", "1" },
-        QString(exePath.c_str())
-    );
+        { "-s", startPage, "-i", QString::number(GetCurrentProcessId()), "-e", "1" });
 
     if (!success)
     {
-#ifdef Q_OS_WIN
-        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The Project Configurator executable (ProjectConfigurator.exe) could not be found. Please ensure that it is installed in:\n%1\nand try again.").arg(projectConfiguratorPath));
-#else
-        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The ProjectConfigurator executable could not be found. Please ensure that it is installed in:\n%1\nand try again.").arg(projectConfiguratorPath));
-#endif
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The Project Configurator executable (%1) could not be found. Please ensure that it is installed in:\n%2\nand try again.").arg(projectConfigurator, projectConfiguratorPath));
     }
 
     return success;
@@ -8580,38 +8573,30 @@ bool CCryEditApp::OpenProjectConfigurator(const QString& startPage) const
 
 bool CCryEditApp::OpenSetupAssistant() const
 {
-    QDir engineRoot(m_rootEnginePath);
-
-#ifdef Q_OS_WIN32
-    QString setupAssistantFilePath = engineRoot.absoluteFilePath("Tools/LmbrSetup/Win/SetupAssistant.exe");
+#if defined(Q_OS_WIN)
+    const char* setupAssistant = "SetupAssistant.exe";
 #elif defined(Q_OS_MACOS)
-    QString setupAssistantFilePath = engineRoot.absoluteFilePath("Tools/LmbrSetup/Mac/SetupAssistant");
+    const char* setupAssistant = "SetupAssistant";
 #else
-#error Need to determine the path for the SetupAssistant for this platform!
+#error Unsupported Platform for Project Configurator
 #endif
-    QFile launcherFile(setupAssistantFilePath);
-    //Check whether Lumberyard Setup Assistant is present
-    if (launcherFile.exists())
+
+    AZ::Outcome<AZStd::string, AZStd::string> result = AZ::Failure(AZStd::string("No responders have been installed to execute to ResolveConfigToolsPath"));
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequestBus::Events::ResolveConfigToolsPath, setupAssistant);
+
+    if (!result.IsSuccess())
     {
-        //run the launcher
-        if (QProcess::startDetached(setupAssistantFilePath, {}) == false)
-        {
-#ifdef Q_OS_WIN
-            QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The Setup Assistant executable (SetupAssistant.exe) failed to launch. Please ensure that it is installed in:\n%1\nand try again.").arg(setupAssistantFilePath));
-#else
-            QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The SetupAssistant application failed to launch. Please ensure that it is installed in:\n%1\nand try again.").arg(setupAssistantFilePath));
-#endif
-            return false;
-        }
+        QMessageBox::warning(QApplication::activeWindow(),
+            QString(),
+            QObject::tr("Unable to find SetupAssistant executable (%1). Please make sure its installed or built and try again.")
+            .arg(setupAssistant));
+        return false;
     }
-    else
+
+    QString setupAssistantPath(QString::fromUtf8(result.GetValue().c_str()));
+    if (QProcess::startDetached(setupAssistantPath, {}) == false)
     {
-        //Show an error message to user
-#ifdef Q_OS_WIN
-        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Lumberyard Setup Assistant not found"), QObject::tr("SetupAssistant.exe not found. Please locate and run it first"));
-#else
-        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Lumberyard Setup Assistant not found"), QObject::tr("SetupAssistant not found at (%1). Please locate and run it first").arg(setupAssistantFilePath.toUtf8().data()));
-#endif
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The Setup Assistant executable failed to launch. Please ensure that it is installed in:\n%1\nand try again.").arg(setupAssistantPath));
         return false;
     }
 
@@ -8786,6 +8771,11 @@ private:
 
 int SANDBOX_API CryEditMain(int argc, char* argv[])
 {
+    AZ_Assert(!AZ::AllocatorInstance<AZ::LegacyAllocator>::IsReady(), "Expected allocator to not be initialized, hunt down the static that is initializing it");
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+    AZ_Assert(!AZ::AllocatorInstance<CryStringAllocator>::IsReady(), "Expected allocator to not be initialized, hunt down the static that is initializing it");
+    AZ::AllocatorInstance<CryStringAllocator>::Create();
+
     CCryEditApp* theApp = new CCryEditApp();
     // this does some magic to set the current directory...
     {
@@ -8860,10 +8850,10 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
 
         CCryEditApp::instance()->ExitInstance(exitCode);
 
-        AZToolsApp.Stop();
     }
-
-    delete theApp;
+	
+	delete theApp;
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
 
     return ret;
 }

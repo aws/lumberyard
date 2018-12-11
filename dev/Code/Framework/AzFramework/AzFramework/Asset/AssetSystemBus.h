@@ -74,7 +74,9 @@ namespace AzFramework
         public:
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;   // single listener
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;   // single bus
+            
             using MutexType = AZStd::recursive_mutex;
+            static const bool LocklessDispatch = true; // no reason to block other threads when a thread is waiting for a response from AP.
 
             virtual ~AssetSystemRequests() = default;
 
@@ -88,8 +90,6 @@ namespace AzFramework
             virtual AssetStatus CompileAssetSync(const AZStd::string& assetPath) = 0;
             //! Retrieve the status of an asset synchronously
             virtual AssetStatus GetAssetStatus(const AZStd::string& assetPath) = 0;
-            //! Send out queued events
-            virtual void UpdateQueuedEvents() = 0;
             //! Show the AssetProcessor App
             virtual void ShowAssetProcessor() = 0;
             //! Sets the asset processor port to use when connecting

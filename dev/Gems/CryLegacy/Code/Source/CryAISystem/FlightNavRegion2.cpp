@@ -119,7 +119,7 @@ public:
 };
 
 
-GenericAStarSolver<CFlightNavRegion2::NavData, CFlightNavRegion2::NavData, CFlightNavRegion2::NavData, DefaultOpenList<Vec3i>, ClosedList, NodeContainer> astar;
+StaticInstance<GenericAStarSolver<CFlightNavRegion2::NavData, CFlightNavRegion2::NavData, CFlightNavRegion2::NavData, DefaultOpenList<Vec3i>, ClosedList, NodeContainer>> astar;
 
 
 
@@ -1122,10 +1122,10 @@ void CFlightNavRegion2::DebugDraw() const
         pathSmooth.clear();
 
 
-        astar.StartPathFind(*m_FlightNavData.begin(), *m_FlightNavData.begin(), *m_FlightNavData.begin(), debugEntStart->GetPos(), debugEntEnd->GetPos());
-        astar.Update(2000);
+        astar->StartPathFind(*m_FlightNavData.begin(), *m_FlightNavData.begin(), *m_FlightNavData.begin(), debugEntStart->GetPos(), debugEntEnd->GetPos());
+        astar->Update(2000);
 
-        astar.GetPathReversed(path);
+        astar->GetPathReversed(path);
 
         Vec3i span;
         const NavData* graph = GetEnclosing(debugEntStart->GetPos(), span);

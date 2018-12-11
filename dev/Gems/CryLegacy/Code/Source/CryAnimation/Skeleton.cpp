@@ -116,8 +116,6 @@ namespace Skeleton {
 
     bool CPoseData::Initialize(const CDefaultSkeleton& skeleton)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Character Pose Data");
-
         if (!Initialize(skeleton.GetJointCount()))
         {
             return false;
@@ -131,7 +129,6 @@ namespace Skeleton {
 
     bool CPoseData::Initialize(const CPoseData& poseData)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Character Pose Data Cloned");
         if (!AllocateData(poseData.GetJointCount()))
         {
             return false;

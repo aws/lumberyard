@@ -1178,8 +1178,7 @@ Vec2 CFFont::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const STextDraw
 }
 
 bool CFFont::InitTexture()
-{
-    ScopedSwitchToGlobalHeap globalHeap;
+{    
     m_texID = gEnv->pRenderer->FontCreateTexture(m_pFontTexture->GetWidth(), m_pFontTexture->GetHeight(), (uint8*)m_pFontTexture->GetBuffer(), eTF_A8);
     return m_texID >= 0;
 }

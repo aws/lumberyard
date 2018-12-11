@@ -933,8 +933,6 @@ struct IGameFramework
 
     virtual IDebugHistoryManager* CreateDebugHistoryManager() = 0;
 
-    virtual void DumpMemInfo(const char* format, ...) PRINTF_PARAMS(2, 3) = 0;
-
     // Description:
     //      Check whether the client actor is using voice communication.
     virtual bool IsVoiceRecordingEnabled() = 0;

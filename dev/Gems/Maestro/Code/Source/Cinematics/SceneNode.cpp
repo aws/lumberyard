@@ -43,6 +43,7 @@
 
 #include <IAudioSystem.h>
 #include <IConsole.h>
+#include <IViewSystem.h>
 
 #define s_nodeParamsInitialized s_nodeParamsInitializedScene
 #define s_nodeParams s_nodeParamsSene
@@ -52,7 +53,7 @@ float const kDefaultCameraFOV = 60.0f;
 
 namespace {
     bool s_nodeParamsInitialized = false;
-    std::vector<CAnimNode::SParamInfo> s_nodeParams;
+    StaticInstance<std::vector<CAnimNode::SParamInfo>> s_nodeParams;
 
     void AddSupportedParam(const char* sName, AnimParamType paramId, AnimValueType valueType, int flags = 0)
     {
@@ -177,7 +178,7 @@ namespace {
         const Quat& GetRotation() const override
         {
             AZ::Quaternion quat(AZ::Quaternion::CreateIdentity());
-            AZ::TransformBus::EventResult(quat, m_cameraEntityId, &AZ::TransformBus::Events::GetRotationQuaternion);
+            AZ::TransformBus::EventResult(quat, m_cameraEntityId, &AZ::TransformBus::Events::GetWorldRotationQuaternion);
             m_quatBuffer = AZQuaternionToLYQuaternion(quat);
             return m_quatBuffer;
         }
@@ -189,12 +190,12 @@ namespace {
         void SetRotation(const Quat& localRotation) override
         {
             AZ::Quaternion quat = LYQuaternionToAZQuaternion(localRotation);
-            AZ::TransformBus::Event(m_cameraEntityId, &AZ::TransformBus::Events::SetRotationQuaternion, quat);
+            AZ::TransformBus::Event(m_cameraEntityId, &AZ::TransformBus::Events::SetLocalRotationQuaternion, quat);
         }
         float GetFoV() const
         {
             float retFoV = DEFAULT_FOV;
-            Camera::CameraRequestBus::EventResult(retFoV, m_cameraEntityId, &Camera::CameraComponentRequests::GetFov);
+            Camera::CameraRequestBus::EventResult(retFoV, m_cameraEntityId, &Camera::CameraComponentRequests::GetFovDegrees);
             return retFoV;
         }
         float GetNearZ() const
@@ -208,7 +209,7 @@ namespace {
             float degFoV = AZ::RadToDeg(fov);
             if (!AZ::IsClose(GetFoV(), degFoV, FLT_EPSILON))
             {
-                Camera::CameraRequestBus::Event(m_cameraEntityId, &Camera::CameraComponentRequests::SetFov, degFoV);
+                Camera::CameraRequestBus::Event(m_cameraEntityId, &Camera::CameraComponentRequests::SetFovDegrees, degFoV);
             }
             if (!AZ::IsClose(GetNearZ(), nearZ, FLT_EPSILON))
             {
@@ -466,10 +467,22 @@ void CAnimSceneNode::Animate(SAnimContext& ec)
         return;
     }
 
-    // all sequence ID's need to be resolved before UpConverting a SequenceTrack, so we defer the
-    // upconversion until the first Animate() call - m_sequenceTrackUpConverted is set so this is
-    // only done once. When legacy sequence objects are deprecated, we can remove this.
-    UpConvertSequenceTrack();
+    // Don't try to convert sequence track key data from names to EntityId while in game mode.
+    // If the user opens a legacy level, goes in game, goes back to the editor and then
+    // saves the level, it will destroy the sequence refs in the key data because the following
+    // will happen:
+    // Go in game and fill remap entity id map with invalid entity ids (because they have never been converted from names).
+    // In game Animate() is called, converting legacy names to entity ids store in the keys.
+    // Leave game and remap enity map will be used to populate key data with invalid entity ids.
+    //
+    // TODO: Remove with SequenceType::Legacy removal
+    if (gEnv->IsEditor() && !gEnv->IsEditorSimulationMode() && !gEnv->IsEditorGameMode())
+    {
+        // all sequence ID's need to be resolved before UpConverting a SequenceTrack, so we defer the
+        // upconversion until the first Animate() call - m_sequenceTrackUpConverted is set so this is
+        // only done once. When legacy sequence objects are deprecated, we can remove this.
+        UpConvertSequenceTrack();
+    }
 
     CSelectTrack* cameraTrack = NULL;
     CEventTrack* pEventTrack = NULL;
@@ -723,10 +736,17 @@ void CAnimSceneNode::OnReset()
     SCameraParams CamParams = gEnv->pMovieSystem->GetCameraParams();
     if (CamParams.cameraEntityId.IsValid() && m_legacyCurrentCameraEntityId == GetLegacyEntityId(CamParams.cameraEntityId))
     {
-        CamParams.cameraEntityId.SetInvalid();
-        CamParams.fFOV = 0;
-        CamParams.justActivated = true;
-        gEnv->pMovieSystem->SetCameraParams(CamParams);
+        // Don't remove the sequence camera and switch back to last camera if we are actively
+        // doing a render output capture. When capturing output we want a render of the very last frame
+        // where time == end time. When a sequence end time is reached it is immediately stoped and OnReset call
+        // for all dones. Resetting the camera here will make that "last frame" render with a "random" camera.
+        if (!gEnv->pMovieSystem->IsCapturing())
+        {
+            CamParams.cameraEntityId.SetInvalid();
+            CamParams.fFOV = 0;
+            CamParams.justActivated = true;
+            gEnv->pMovieSystem->SetCameraParams(CamParams);
+        }
 
         if (m_legacyCurrentCameraEntityId)
         {
@@ -1079,6 +1099,23 @@ void CAnimSceneNode::ApplyCameraKey(ISelectKey& key, SAnimContext& ec)
     cameraParams.fFOV = 0;
     cameraParams.justActivated = true;
 
+    // Init the defaults with the current view settings.
+    // With component entities, the fov and near plane may be animated on an 
+    // entity with a Camera component. Don't stomp the values if this update happens
+    // after those properties are animated.
+    AZ_Assert(gEnv && gEnv->pSystem, "Expected valid gEnv->pSystem");
+    IViewSystem* viewSystem = gEnv->pSystem->GetIViewSystem();
+    if (viewSystem)
+    {
+        IView* view = viewSystem->GetActiveView();
+        if (view)
+        {
+            SViewParams params = *view->GetCurrentParams();
+            cameraParams.fFOV = params.fov;
+            cameraParams.fNearZ = params.nearplane;
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////
     // find the Scene Camera (either Legacy or Camera Component Camera)  
     ISceneCamera* firstSceneCamera = nullptr;
@@ -1124,6 +1161,14 @@ void CAnimSceneNode::ApplyCameraKey(ISelectKey& key, SAnimContext& ec)
     }
 
     m_legacyCurrentCameraEntityId = GetLegacyEntityId(cameraParams.cameraEntityId);
+    
+    // Broadcast camera changes
+    const SCameraParams& lastCameraParams = gEnv->pMovieSystem->GetCameraParams();
+    if (lastCameraParams.cameraEntityId != cameraParams.cameraEntityId)
+    {
+        Maestro::SequenceComponentNotificationBus::Event(m_pSequence->GetSequenceEntityId(), &Maestro::SequenceComponentNotificationBus::Events::OnCameraChanged, lastCameraParams.cameraEntityId, cameraParams.cameraEntityId);
+    }
+    
     gEnv->pMovieSystem->SetCameraParams(cameraParams);
 
     // This detects when we've switched from one Camera to another on the Camera Track

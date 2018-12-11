@@ -404,7 +404,7 @@ public:
             for (int i = 0; i < params.size(); ++i)
             {
                 SShaderParam& param = params[i];
-                if (_stricmp(param.m_Name, paramNameFloat) == 0)
+                if (param.m_Name == paramNameFloat.c_str()) 
                 {
                     switch (param.m_Type)
                     {
@@ -447,7 +447,7 @@ public:
             {
                 SShaderParam& param = params[i];
 
-                if (_stricmp(param.m_Name, paramNameColor) == 0)
+                if (param.m_Name == paramNameColor.c_str()) 
                 {
                     if (param.m_Type == eType_VECTOR)
                     {
@@ -799,7 +799,7 @@ public:
         for (int i = 0; i < shaderParams.size(); ++i)
         {
             SShaderParam& param = shaderParams[i];
-            if (_stricmp(param.m_Name, paramName) == 0)
+            if (param.m_Name == paramName) 
             {
                 floatValue = 0.0f;
                 switch (param.m_Type)
@@ -843,7 +843,7 @@ public:
         for (int i = 0; i < shaderParams.size(); ++i)
         {
             SShaderParam& param = shaderParams[i];
-            if (_stricmp(param.m_Name, paramName) == 0)
+            if (param.m_Name == paramName) 
             {
                 colorValue.Set(0, 0, 0);
                 if (param.m_Type == eType_VECTOR)

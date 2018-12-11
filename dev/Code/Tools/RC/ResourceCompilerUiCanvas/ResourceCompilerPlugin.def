@@ -1,3 +1,0 @@
-LIBRARY	ResourceCompilerUiCanvas
-EXPORTS
-	RegisterConvertors			@1

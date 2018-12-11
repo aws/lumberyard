@@ -29,6 +29,7 @@
 
 #include <map>                 // stl multimap<>
 #include <AzCore/std/parallel/mutex.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 class CPropertyVars;
 class XmlNodeRef;
@@ -42,6 +43,28 @@ class ResourceCompiler
     , public IConfigKeyRegistry
 {
 public:
+    struct FilesToConvert
+    {
+        std::vector<RcFile> m_allFiles;
+        std::vector<RcFile> m_inputFiles;
+        std::vector<RcFile> m_outOfMemoryFiles;
+        std::vector<RcFile> m_failedFiles;
+        std::vector<RcFile> m_convertedFiles;
+    };
+
+    struct RcCompileFileInfo
+    {
+        ResourceCompiler* rc;
+        FilesToConvert* pFilesToConvert;
+        IConvertor* convertor;
+        ICompiler* compiler;
+
+        bool bLogMemory;
+        bool bWarningHeaderLine;
+        bool bErrorHeaderLine;
+        string logHeaderLine;
+    };
+
     ResourceCompiler();
     virtual ~ResourceCompiler();
 
@@ -145,8 +168,7 @@ public:
 
     MultiplatformConfig& GetMultiplatformConfig();
 
-    void SetupMaxThreads();
-    int  GetMaxThreads() const;
+    void SetComplilingFileInfo(RcCompileFileInfo* compileFileInfo);
 
     bool CollectFilesToCompile(const string& filespec, std::vector<RcFile>& files);
     bool CompileFilesBySingleProcess(const std::vector<RcFile>& files);
@@ -154,7 +176,7 @@ public:
     void RemoveOutputFiles();     // to remove old files for less confusion
     void CleanTargetFolder(bool bUseOnlyInputFiles);
 
-    bool CompileFile(const char* sourceFullFileName, const char* targetLeftPath, const char* sourceInnerPath, ICompiler* compiler);
+    bool CompileFile();
 
     const char* GetLogPrefix() const;
 
@@ -203,8 +225,6 @@ private:
 
     void ScanForAssetReferences(std::vector<string>& outReferences, const string& refsRoot);
     void SaveAssetReferences(const std::vector<string>& references, const string& filename, const string& includeMasks, const string& excludeMasks);
-
-    void InitializeThreadIds();
 
     void LogLine(const IRCLog::EType eType, const char* szText);
 
@@ -273,11 +293,7 @@ private:
     bool                    m_bErrorHeaderLine;     //!< true= header was already printed, false= header needs to be printed
     bool                    m_bWarningsAsErrors;    //!< true= treat any warning as error.
 
-    int                     m_systemCpuCoreCount;
-    int                     m_processCpuCoreCount;
-    int                     m_systemLogicalProcessorCount;
-    int                     m_processLogicalProcessorCount;
-    int                     m_maxThreads;           //!< max number of threads (set by /threads command-line option)
+    RcCompileFileInfo*      m_currentRcCompileFileInfo;
 
     SFileVersion            m_fileVersion;
     string                  m_exePath;
@@ -294,8 +310,6 @@ private:
 
     int                     m_numWarnings;
     int                     m_numErrors;
-
-    unsigned long           m_tlsIndex_pThreadData;
 
     std::vector<FnRunUnitTests> m_unitTestFunctions;
     std::unique_ptr<ISystem> m_pSystem;

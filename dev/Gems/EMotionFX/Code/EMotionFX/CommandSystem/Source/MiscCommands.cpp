@@ -41,7 +41,8 @@ namespace CommandSystem
         MCORE_UNUSED(outResult);
 
         m_wasRecording = EMotionFX::GetRecorder().GetIsRecording();
-        if (m_wasRecording)
+        m_wasInPlayMode = EMotionFX::GetRecorder().GetIsInPlayMode();
+        if (m_wasRecording || m_wasInPlayMode)
         {
             EMotionFX::GetRecorder().Clear();
         }

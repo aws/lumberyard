@@ -37,9 +37,6 @@
 #endif
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
-#define MAX_PF_TEXTURES     (32)
-#define MAX_PF_SAMPLERS     (4)
-
 #ifdef WIN64
     #pragma warning(disable: 4244)
 #endif
@@ -52,12 +49,12 @@ CHWShader_D3D::SHWSInstance *CHWShader_D3D::s_pCurInstVS; bool CHWShader_D3D::s_
 CHWShader_D3D::SHWSInstance *CHWShader_D3D::s_pCurInstPS; bool CHWShader_D3D::s_bFirstPS = true;
 
 #if !defined(_RELEASE)
-std::set<uint32_t> CHWShader_D3D::s_ErrorsLogged;
+AZStd::unordered_set<uint32_t, AZStd::hash<uint32_t>, AZStd::equal_to<uint32_t>, AZ::StdLegacyAllocator> CHWShader_D3D::s_ErrorsLogged;
 #endif
 
 int CHWShader_D3D::s_nActivationFailMask = 0;
 
-std::vector<SShaderTechniqueStat> g_SelectedTechs;
+AZStd::vector<SShaderTechniqueStat, AZ::StdLegacyAllocator> g_SelectedTechs;
 
 bool CHWShader_D3D::s_bInitShaders = true;
 
@@ -78,8 +75,8 @@ FXShaderCacheNames CHWShader::m_ShaderCacheList;
 //  Everything in the block should be pulled into its own file once stablized back to mainline.
 #pragma region ShaderConstants
 
-std::vector<SCGTexture> CHWShader_D3D::s_PF_Textures;        // Per-frame textures
-std::vector<STexSamplerRT> CHWShader_D3D::s_PF_Samplers;     // Per-frame samplers
+CHWShader_D3D::SCGTextures CHWShader_D3D::s_PF_Textures;     // Per-frame textures
+CHWShader_D3D::SCGSamplers CHWShader_D3D::s_PF_Samplers;     // Per-frame samplers
 
 namespace
 {
@@ -196,8 +193,8 @@ namespace
 }
 
 DynArray<SCGParamPool> CGParamManager::s_Pools;
-std::vector<SCGParamsGroup> CGParamManager::s_Groups;
-std::vector<uint32, stl::STLGlobalAllocator<uint32> > CGParamManager::s_FreeGroups;
+AZStd::vector<SCGParamsGroup, AZ::StdLegacyAllocator> CGParamManager::s_Groups;
+AZStd::vector<uint32, AZ::StdLegacyAllocator> CGParamManager::s_FreeGroups;
 
 SCGParamPool::SCGParamPool(int nEntries)
     : m_Params(new SCGParam[nEntries], nEntries)
@@ -1829,7 +1826,12 @@ namespace
                     if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
                     {
                         uint32 stencilRef = CRenderer::CV_r_VisAreaClipLightsPerPixel ? 0 : (rRP.m_RIs[0][0]->nStencRef | BIT_STENCIL_INSIDE_CLIPVOLUME);
-                        stencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) | CRenderer::CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0);
+                        // Here we check if an object can receive decals.
+                        bool bObjectAcceptsDecals = !(rRP.m_pCurObject->m_NoDecalReceiver);
+                        if (bObjectAcceptsDecals)
+                        {
+                             stencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) || CRenderer::CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0);
+                        }
                         result[0].f[0] = azlossy_caster(stencilRef);
                         result[0].f[1] = 0.0f;
                         result[0].f[2] = 0.0f;
@@ -2353,8 +2355,12 @@ void CD3D9Renderer::ForceUpdateGlobalShaderParameters()
 
 void CHWShader_D3D::UpdatePerFrameResourceGroup()
 {
-    mfSetTextures(s_PF_Textures, eHWSC_Pixel);
-    mfSetSamplers_Old(s_PF_Samplers, eHWSC_Pixel);
+    static std::vector<SCGTexture> s_textures;
+    static std::vector<STexSamplerRT> s_samplers;
+    s_textures.assign(s_PF_Textures.begin(), s_PF_Textures.end());
+    s_samplers.assign(s_PF_Samplers.begin(), s_PF_Samplers.end());
+    mfSetTextures(s_textures, eHWSC_Pixel);
+    mfSetSamplers_Old(s_samplers, eHWSC_Pixel);
 
     const PerFrameParameters& PF = gRenDev->m_cEF.m_PF;
     CD3D9Renderer* const __restrict rd = gcpRendD3D;
@@ -2963,9 +2969,9 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
         ++i;
 
-        if (tx >= &CTexture::s_ShaderTemplates[0] && tx <= &CTexture::s_ShaderTemplates[EFTT_MAX - 1])
+        if (tx >= &(*CTexture::s_ShaderTemplates)[0] && tx <= &(*CTexture::s_ShaderTemplates)[EFTT_MAX - 1])
         {
-            nTexMaterialSlot = (int)(tx - &CTexture::s_ShaderTemplates[0]);
+            nTexMaterialSlot = (int)(tx - &(*CTexture::s_ShaderTemplates)[0]);
 
             SEfResTexture*      pTextureRes = pSR ? pSR->GetTextureResource(nTexMaterialSlot) : nullptr;
             if (!pTextureRes)
@@ -3648,9 +3654,9 @@ bool CHWShader_D3D::mfUpdateSamplers(CShader* shader)
             }
 
             //  [Shader System TO DO] - replace with proper data driven code reflected from the shaders 
-            if (tx >= &CTexture::s_ShaderTemplates[0] && tx <= &CTexture::s_ShaderTemplates[EFTT_MAX - 1])
+            if (tx >= &(*CTexture::s_ShaderTemplates)[0] && tx <= &(*CTexture::s_ShaderTemplates)[EFTT_MAX - 1])
             {
-                int             nSlot = (int)(tx - &CTexture::s_ShaderTemplates[0]);
+                int             nSlot = (int)(tx - &(*CTexture::s_ShaderTemplates)[0]);
                 int16           replacementSlot = -1;
                 SEfResTexture*  pTextureRes = pSRes->GetTextureResource(nSlot);
 
@@ -3742,7 +3748,6 @@ bool CHWShader_D3D::mfAddGlobalTexture(SCGTexture& Texture)
     if (i == s_PF_Textures.size())
     {
         s_PF_Textures.push_back(Texture);
-        assert(s_PF_Textures.size() <= MAX_PF_TEXTURES);
         return true;
     }
     return false;
@@ -4047,12 +4052,6 @@ void CHWShader_D3D::SHWSInstance::GetInstancingAttribInfo(uint8 Attributes[32], 
     }
 }
 
-void CHWShader_D3D::InitialiseContainers()
-{
-    s_PF_Textures.reserve(MAX_PF_TEXTURES);
-    s_PF_Samplers.reserve(MAX_PF_SAMPLERS);
-}
-
 void CHWShader_D3D::ShutDown()
 {
     CCryNameTSCRC Name;
@@ -4153,8 +4152,6 @@ CHWShader* CHWShader::mfForName(const char* name, const char* nameSource, uint32
         return NULL;
     }
 
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Shader, 0, "%s", name);
-
     CHWShader_D3D* pSH = NULL;
     stack_string strName = name;
     CCryNameTSCRC className = mfGetClassName(eClass);
@@ -4241,7 +4238,11 @@ void CHWShader_D3D::SetTokenFlags(uint32 nToken)
         m_Flags |= HWSG_SUPPORTS_MULTILIGHTS;
         break;
     case eT__TT_TEXCOORD_MATRIX:
-    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR:
+    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DIFFUSE:
+    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE:
+    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE_MULT:
+    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DETAIL:
+    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_CUSTOM:
         m_Flags |= HWSG_SUPPORTS_MODIF;
         break;
     case eT__VT_TYPE:

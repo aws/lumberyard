@@ -21,7 +21,7 @@
                 "LambdaTimeout": 300,
                 "Definitions": {
                     "Custom::SQSScaler": {
-                        "ArnFormat": "arn:aws:sqs:{region}:{account_id}:",                        
+                        "ArnFormat": "arn:aws:sqs:{region}:{account_id}:",
                         "HandlerFunction": {
                             "Function": "Custom_AutoScaleFifoQueue.handler",
                             "PolicyStatement": [
@@ -45,18 +45,50 @@
                                 {
                                     "AbstractRole": "FIFOConsumer",
                                     "Action": [
-                                        "sqs:ReceiveMessage"
+                                        "sqs:ReceiveMessage",
+                                        "sqs:SendMessage"
                                     ],
                                     "ResourceSuffix": {
-                                            "Fn::Join": [
-                                                "",
-                                                [
-                                                    { "Ref": "AWS::StackName" },
-                                                    "-*"
-                                                ]
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                { "Ref": "AWS::StackName" },
+                                                "-*"
                                             ]
-                                        }
+                                        ]
+                                    }
                                 },
+                                {
+                                    "AbstractRole": "Amoeba",
+                                    "Action": [
+                                        "sqs:SendMessage"                                        
+                                    ],
+                                    "ResourceSuffix": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                { "Ref": "AWS::StackName" },
+                                                "-*"
+                                            ]
+                                        ]
+                                    }
+                                },               
+                                {
+                                    "AbstractRole": "AmoebaLauncher",
+                                    "Action": [
+                                        "sqs:ReceiveMessage",
+                                        "sqs:DeleteMessageBatch"
+                                    ],
+                                    "ResourceSuffix": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                { "Ref": "AWS::StackName" },
+                                                "-*"
+                                            ]
+                                        ]
+                                    }
+                                },                             
                                 {
                                     "AbstractRole": "FIFOProducer",
                                     "Action": [                                        
@@ -73,7 +105,7 @@
                                         }
                                 },
                                 {
-                                    "AbstractRole": [ "FIFOConsumer", "FIFOProducer", "LambdaConsumerLauncher"],
+                                    "AbstractRole": [ "FIFOConsumer", "FIFOProducer", "LambdaConsumerLauncher", "AmoebaLauncher", "Amoeba"],
                                     "Action": [
                                         "sqs:GetQueueAttributes",
                                         "sqs:CreateQueue",
@@ -143,7 +175,8 @@
                                         "glue:GetPartition",
                                         "glue:GetCrawler",
                                         "glue:GetDatabase",
-                                        "glue:GetTable"
+                                        "glue:GetTable",
+                                        "glue:GetDatabases"
                                     ],
                                     "ResourceSuffix": ""
                                 },
@@ -208,6 +241,31 @@
                                     "ResourceSuffix": ""
                                 },
                                 {
+                                    "AbstractRole": "AmoebaLauncher",
+                                    "Action": [
+                                        "sqs:DeleteMessageBatch",
+                                        "sqs:DeleteMessage"
+                                    ],
+                                    "ResourceSuffix": ""
+                                },
+                                {
+                                    "AbstractRole": [ "FIFOConsumer" ],
+                                    "Action": [
+                                        "s3:PutObject"
+                                    ],
+                                    "ResourceSuffix": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    { "Ref": "Configuration" },
+                                                    "/deployment/share",
+                                                    "/emitted_event_payloads/*"
+                                                ]
+                                            ]
+                                        }
+                                },
+                                {
                                     "AbstractRole": ["FIFOConsumer"],
                                     "Action": [                                        
                                         "iam:PassRole"
@@ -217,7 +275,7 @@
                                         }
                                 },
                                 {
-                                    "AbstractRole": ["FIFOConsumer", "FIFOProducer", "ServiceLambda", "LambdaConsumerLauncher", "GlueCrawlerLauncher", "AmoebaLauncher"],
+                                    "AbstractRole": ["FIFOConsumer", "FIFOProducer", "ServiceLambda", "LambdaConsumerLauncher", "GlueCrawlerLauncher", "AmoebaLauncher", "Amoeba"],
                                     "Action": [
                                         "cloudformation:DescribeStacks"
                                     ],

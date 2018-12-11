@@ -21,6 +21,8 @@
             "DataTypes/GraphData/IMeshData.h",
             "DataTypes/GraphData/IMeshVertexColorData.h",
             "DataTypes/GraphData/IMeshVertexUVData.h",
+            "DataTypes/GraphData/IMeshVertexTangentData.h",
+            "DataTypes/GraphData/IMeshVertexBitangentData.h",
             "DataTypes/GraphData/IMaterialData.h",
             "DataTypes/GraphData/ITransform.h",
             "DataTypes/GraphData/IBoneData.h",

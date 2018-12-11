@@ -34,6 +34,8 @@ namespace CloudCanvas
             virtual ReturnStr GetStrValue(const char* tagName, const char* structName, const char* fieldName, bool& wasSuccess) { return{}; }
             virtual ReturnDouble GetDoubleValue(const char* tagName, const char* structName, const char* fieldName, bool& wasSuccess) { return 0.0; }
 
+            virtual size_t GetNumElements(const char* tagName) { return 0; }
+
             virtual bool ReloadTagType(const char* tagName) { return false; }
             virtual void LoadRelativeFile(const char* relativeFile) {}
 

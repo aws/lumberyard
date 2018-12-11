@@ -681,8 +681,8 @@ void CMaterial::SetShaderParamPublicScript()
         SShaderParam &currentShaderParam = m_shaderResources.m_ShaderParams.at(i);
         for (int j = 0; j < pShader->GetPublicParams().size(); ++j)
         {
-            const SShaderParam &publicShaderParam = pShader->GetPublicParams().at(i);
-            if (strcmp(currentShaderParam.m_Name, publicShaderParam.m_Name) == 0 &&  currentShaderParam.m_Type == publicShaderParam.m_Type)
+            const SShaderParam &publicShaderParam = pShader->GetPublicParams().at(j);
+            if ((currentShaderParam.m_Name == publicShaderParam.m_Name) && (currentShaderParam.m_Type == publicShaderParam.m_Type))
             {
                 currentShaderParam.m_Script = publicShaderParam.m_Script;
             }
@@ -1287,17 +1287,7 @@ void CMaterial::SetFromMatInfo(_smart_ptr<IMaterial> pMatInfo)
     }
     else
     {
-        SAFE_RELEASE(m_shaderItem.m_pShader);
-        SAFE_RELEASE(m_shaderItem.m_pShaderResources);
-        m_shaderItem = pMatInfo->GetShaderItem();
-        if (m_shaderItem.m_pShader)
-        {
-            m_shaderItem.m_pShader->AddRef();
-        }
-        if (m_shaderItem.m_pShaderResources)
-        {
-            m_shaderItem.m_pShaderResources->AddRef();
-        }
+        SetShaderItem(pMatInfo->GetShaderItem());
 
         if (m_shaderItem.m_pShaderResources)
         {
@@ -2088,4 +2078,21 @@ void CMaterial::SetHighlightFlags(int highlightFlags)
     m_highlightFlags = highlightFlags;
 
     UpdateHighlighting();
+}
+
+
+void CMaterial::SetShaderItem(const SShaderItem& shaderItem)
+{
+    SAFE_RELEASE(m_shaderItem.m_pShader);
+    SAFE_RELEASE(m_shaderItem.m_pShaderResources);
+	
+    m_shaderItem = shaderItem;
+    if (m_shaderItem.m_pShader)
+    {
+        m_shaderItem.m_pShader->AddRef();
+    }
+    if (m_shaderItem.m_pShaderResources)
+    {
+        m_shaderItem.m_pShaderResources->AddRef();
+    }
 }

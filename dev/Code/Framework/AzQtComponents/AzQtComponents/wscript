@@ -38,7 +38,7 @@ def build(bld):
         platforms        = ['win', 'darwin'],
         configurations   = ['all'],
         disable_pch      = True,
-        features         = ['qt5', 'link_running_program', 'crcfix', 'copy_to_lmbrsetup'],
+        features         = ['qt5', 'link_running_program', 'crcfix'],
         autod_uselib     = ['QT5CORE','QT5GUI','QT5WIDGETS','QT5XML', 'QT5WINEXTRAS', 'QT5MACEXTRAS'],
         use              = ['AzFramework'],
         includes         = ['..', '../../AzToolsFramework'],

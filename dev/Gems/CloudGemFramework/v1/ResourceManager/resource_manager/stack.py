@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #1 $
+# $Revision: #2 $
 
 import time
 
@@ -23,24 +23,33 @@ from dateutil.tz import tzlocal
 import json
 
 from cgf_utils import aws_utils
+from cgf_utils import custom_resource_utils
 
 MONITOR_WAIT_SECONDS = 10
 
+
+class StackOperationException(Exception):
+    def __init__(self, message, failed_resources):
+        super(StackOperationException, self).__init__(message)
+        self.failed_resources = failed_resources
+
+
 class StackContext(object):
 
-    STATUS_CREATE_COMPLETE        = 'CREATE_COMPLETE'
-    STATUS_CREATE_FAILED          = 'CREATE_FAILED'
-    STATUS_CREATE_IN_PROGRESS     = 'CREATE_IN_PROGRESS'
-    STATUS_DELETE_COMPLETE        = 'DELETE_COMPLETE'
-    STATUS_DELETE_FAILED          = 'DELETE_FAILED',
-    STATUS_DELETE_IN_PROGRESS     = 'DELETE_IN_PROGRESS'
-    STATUS_ROLLBACK_COMPLETE      = 'ROLLBACK_COMPLETE'
-    STATUS_ROLLBACK_FAILED        = 'ROLLBACK_FAILED'
-    STATUS_UPDATE_COMPLETE        = 'UPDATE_COMPLETE'
-    STATUS_UPDATE_FAILED          = 'UPDATE_FAILED',
-    STATUS_UPDATE_IN_PROGRESS     = 'UPDATE_IN_PROGRESS'
-    STATUS_UPDATE_ROLLBACK_FAILED = 'UPDATE_ROLLBACK_FAILED'
-    STATUS_UNKNOWN                = 'UNKNOWN'
+    STATUS_CREATE_COMPLETE          = 'CREATE_COMPLETE'
+    STATUS_CREATE_FAILED            = 'CREATE_FAILED'
+    STATUS_CREATE_IN_PROGRESS       = 'CREATE_IN_PROGRESS'
+    STATUS_DELETE_COMPLETE          = 'DELETE_COMPLETE'
+    STATUS_DELETE_FAILED            = 'DELETE_FAILED',
+    STATUS_DELETE_IN_PROGRESS       = 'DELETE_IN_PROGRESS'
+    STATUS_ROLLBACK_COMPLETE        = 'ROLLBACK_COMPLETE'
+    STATUS_ROLLBACK_FAILED          = 'ROLLBACK_FAILED'
+    STATUS_UPDATE_COMPLETE          = 'UPDATE_COMPLETE'
+    STATUS_UPDATE_FAILED            = 'UPDATE_FAILED',
+    STATUS_UPDATE_IN_PROGRESS       = 'UPDATE_IN_PROGRESS'
+    STATUS_UPDATE_ROLLBACK_FAILED   = 'UPDATE_ROLLBACK_FAILED',
+    STATUS_UPDATE_ROLLBACK_COMPLETE = 'UPDATE_ROLLBACK_COMPLETE'
+    STATUS_UNKNOWN                  = 'UNKNOWN'
 
     PENDING_CREATE  = 'CREATE'
     PENDING_DELETE  = 'DELETE'
@@ -87,7 +96,7 @@ class StackContext(object):
 
         return None
 
-    def create_using_url(self, stack_name, template_url, region, parameters = None, created_callback = None, capabilities = []):
+    def create_using_url(self, stack_name, template_url, region, parameters=None, created_callback=None, capabilities=[], rolling=False, throw_failed_resources=False):
 
         self.context.view.creating_stack(stack_name)
 
@@ -117,21 +126,26 @@ class StackContext(object):
             created_callback(res['StackId'])
 
         monitor = Monitor(self.context, res['StackId'], 'CREATE')
-        monitor.wait()
+        failed_resources = monitor.wait()
+
+        if len(failed_resources) and throw_failed_resources:
+            raise StackOperationException("Failed to create stack {}".format(res['StackId']), failed_resources)
 
         return res['StackId']
 
-    def create_using_template(self, stack_name, template_body, region, created_callback = None, capabilities = [], timeoutinminutes=60):
+    def create_using_template(self, stack_name, template_body, region, parameters={}, created_callback=None, capabilities=[], timeoutinminutes=60, throw_failed_resources=False):
 
         self.context.view.creating_stack(stack_name)
 
         cf = self.context.aws.client('cloudformation', region=region)
-        
+        parameter_list = [{'ParameterKey': k, 'ParameterValue': v} for k, v in parameters.iteritems()]
+
         try:
             res = cf.create_stack(
                 StackName = stack_name,
                 TemplateBody = template_body,
                 Capabilities = capabilities,
+                Parameters = parameter_list,
                 TimeoutInMinutes = timeoutinminutes
             )
         except ClientError as e:
@@ -141,11 +155,14 @@ class StackContext(object):
             created_callback(res['StackId'])
 
         monitor = Monitor(self.context, res['StackId'], 'CREATE')
-        monitor.wait()
+        failed_resources = monitor.wait()
+
+        if len(failed_resources) and throw_failed_resources:
+            raise StackOperationException("Failed to create stack {}".format(res['StackId']), failed_resources)
 
         return res['StackId']
 
-    def update(self, stack_id, template_url, parameters={}, pending_resource_status={}, capabilities = []):
+    def update(self, stack_id, template_url, parameters={}, pending_resource_status={}, capabilities=[], template_body=None, throw_failed_resources=False):
 
         stack_name = util.get_stack_name_from_arn(stack_id)
 
@@ -158,24 +175,38 @@ class StackContext(object):
 
         cf = self.context.aws.client('cloudformation', region=util.get_region_from_arn(stack_id))
 
-        parameter_list = [ { 'ParameterKey': k, 'ParameterValue': v } for k, v in parameters.iteritems() ]
-        
+        current_params = self.get_current_parameters(stack_id)
+        update_params = {
+            'StackName': stack_id,
+            'Capabilities': capabilities,
+            'Parameters': [self.__encode_parameter(k, v, current_params) for k, v in parameters.iteritems()]
+        }
+
+        if template_body:
+            update_params['TemplateBody'] = template_body
+        else:
+            update_params['TemplateURL'] = template_url
+
         try:
-            res = cf.update_stack(
-                StackName = stack_id,
-                TemplateURL = template_url,
-                Capabilities = capabilities,
-                Parameters = parameter_list
-            )
+            res = cf.update_stack(**update_params)
         except ClientError as e:
             raise HandledError('Could not start update of {} stack ({}).'.format(stack_name, stack_id), e)
 
-        monitor.wait()
+        failed_resources = monitor.wait()
+
+        if len(failed_resources) and throw_failed_resources:
+            raise StackOperationException("Failed to update stack {}".format(res['StackId']), failed_resources)
 
         self.__clean_log_groups(stack_id, pending_resource_status = pending_resource_status)
 
+    def __encode_parameter(self, key, value, current_params):
+        if value is None:
+            if current_params.get(key):
+                return {'ParameterKey': key, 'UsePreviousValue': True}
+            return {'ParameterKey': key, 'ParameterValue': ''}
+        return {'ParameterKey': key, 'ParameterValue': value}
 
-    def delete(self, stack_id, pending_resource_status = None):
+    def delete(self, stack_id, pending_resource_status=None, throw_failed_resources=False):
 
         stack_name = util.get_stack_name_from_arn(stack_id)
 
@@ -186,18 +217,21 @@ class StackContext(object):
         monitor = Monitor(self.context, stack_id, 'DELETE')
 
         cf = self.context.aws.client('cloudformation', region=util.get_region_from_arn(stack_id))
-        
+
         failed_resources=[]
-        attempts =0;
+        attempts = 0
         while attempts < 5:
             try:
-                res = cf.delete_stack(StackName = stack_id, RetainResources=list(failed_resources)) 
+                res = cf.delete_stack(StackName = stack_id, RetainResources=list(failed_resources))
             except ClientError as e:
                 raise HandledError('Could not start delete of {} stack ({}).'.format(stack_name, stack_id), e)
-            failed_resources = monitor.wait()                        
+            failed_resources = monitor.wait()
             if len(failed_resources)==0:
                 break
             attempts+=1
+
+        if len(failed_resources) and throw_failed_resources:
+            raise StackOperationException("Failed to delete stack {}".format(res['StackId']), failed_resources)
 
         self.__clean_log_groups(stack_id, pending_resource_status = pending_resource_status)
 
@@ -223,7 +257,7 @@ class StackContext(object):
             resources that will be deleted by the update. When called by stack.delete, this is
             None because all resources will be deleted.
 
-        '''        
+        '''
         deleted_resource_logical_ids, resource_definitions = self.__get_deleted_resources(stack_id, pending_resource_status)
 
         for logical_resource_id, resource in resource_definitions.iteritems():
@@ -292,7 +326,7 @@ class StackContext(object):
                 StackName=stack_id,
                 LogicalResourceId=logical_resource_id)
         except ClientError as e:
-            if optional and e.response['Error']['Code'] == 'ValidationError':
+            if e.response['Error']['Code'] == 'ValidationError':
                 return None
             raise HandledError('Could not get the id for the {} resource from the {} stack.'.format( logical_resource_id, stack_id ), e)
 
@@ -367,14 +401,13 @@ class StackContext(object):
             if recursive and entry['ResourceType'] == 'AWS::CloudFormation::Stack':
                 physical_resource_id = entry.get('PhysicalResourceId', None)
                 if physical_resource_id is not None:
-                    logical_resource_id = entry['LogicalResourceId']
                     nested_map = self.describe_resources(physical_resource_id)
                     for k,v in nested_map.iteritems():
                         resource_descriptions[entry['LogicalResourceId'] + '.' + k] = v
             elif entry['ResourceType'] == 'Custom::CognitoUserPool':    # User Pools require extra information (client id/secret)
                 resource_descriptions[entry['LogicalResourceId']]['UserPoolClients'] = []
                 idp = self.context.aws.client('cognito-idp', region=region)
-                pool_id = entry.get('PhysicalResourceId', None)
+                pool_id = custom_resource_utils.get_embedded_physical_id(entry.get('PhysicalResourceId', None))
                 # Lookup client IDs if the pool ID is valid.  Valid pool ids must contain an underscore.
                 # CloudFormation initializes the physical ID to a UUID without an underscore before the resource is created.
                 # If the pool creation doesn't happen or it fails, the physical ID isn't updated to a valid value.
@@ -389,7 +422,6 @@ class StackContext(object):
                     for client in client_list:
                         client_name = client['ClientName']
                         client_id = client['ClientId']
-                        client_description = idp.describe_user_pool_client(UserPoolId=pool_id, ClientId=client_id)['UserPoolClient']
                         collected_details[client_name] = {
                             'ClientId': client_id
                         }
@@ -441,7 +473,7 @@ class StackContext(object):
                     }
 
                     self.__check_for_security_metadata(resource_description, new_resource_definition)
-    
+
                 else:
 
                     # is not enabled
@@ -577,8 +609,6 @@ class StackContext(object):
 
         new_parameter_definitions = new_template.get('Parameters', {})
         old_parameter_definitions = old_template.get('Parameters', {})
-
-        old_parameters_seen = set()
 
         changed_parameters = {}
 
@@ -857,21 +887,21 @@ class StackContext(object):
         stack_description,
         args,
         pending_resource_status,
-        ignore_resource_types = []
+        ignore_resource_types = [],
+        only_resource_types = []
     ):
         for resource_name, resource_description in pending_resource_status.iteritems():
             resource_type = resource_description.get('ResourceType', '')
-
             if resource_type in ignore_resource_types:
                 continue
 
-            if resource_type.startswith('AWS::IAM::'):
-                are_iam_resources = True
+            if resource_type not in only_resource_types:
+                continue
 
             pending_action = resource_description.get('PendingAction')
             if pending_action:
                 return True
-        
+
         return False
 
     def confirm_stack_operation(
@@ -883,24 +913,12 @@ class StackContext(object):
         ignore_resource_types = []
     ):
 
-        capabilities = set()
-
         changed_resources = {}
         deleted_resources = {}
         are_deletions = False
         are_security_changes = False
-        are_iam_resources = False
 
         for resource_name, resource_description in pending_resource_status.iteritems():
-
-            resource_type = resource_description.get('ResourceType', '')
-
-            if resource_type in ignore_resource_types:
-                continue
-
-            if resource_type.startswith('AWS::IAM::'):
-                are_iam_resources = True
-
             pending_action = resource_description.get('PendingAction')
             if pending_action:
                 changed_resources[resource_name] = resource_description
@@ -922,6 +940,21 @@ class StackContext(object):
 
         if are_security_changes and not args.confirm_security_change:
             self.context.view.confirm_stack_security_change()
+
+        return self.get_stack_operation_capabilities(pending_resource_status, ignore_resource_types)
+
+
+    def get_stack_operation_capabilities(self, pending_resource_status, ignore_resource_types = []):
+        capabilities = set()
+        are_iam_resources = False
+        for _, resource_description in pending_resource_status.iteritems():
+            resource_type = resource_description.get('ResourceType', '')
+
+            if resource_type in ignore_resource_types:
+                continue
+
+            if resource_type.startswith('AWS::IAM::'):
+                are_iam_resources = True
 
         if are_iam_resources:
             capabilities.add('CAPABILITY_IAM')
@@ -947,7 +980,7 @@ class StackContext(object):
                 }
             raise HandledError('Could not get stack {} description.'.format(stack_id), e)
 
-        stack_description = res['Stacks'][0];
+        stack_description = res['Stacks'][0]
         return {
             'StackId': stack_description.get('StackId', None),
             'StackName': stack_description.get('StackName', None),
@@ -983,7 +1016,7 @@ class StackContext(object):
         except ClientError as e:
             raise HandledError('Could not get stack {} description.'.format(stack_id), e)
 
-        stack_description = res['Stacks'][0];
+        stack_description = res['Stacks'][0]
         parameter_list = stack_description['Parameters']
         parameter_map = { p['ParameterKey']:p['ParameterValue'] for p in parameter_list }
 
@@ -1065,11 +1098,11 @@ class Monitor(object):
         while not done:
 
             for monitored_stack_id in self.monitored_stacks:
-                
+
                 try:
                     res = self.client.describe_stack_events(StackName = monitored_stack_id)
                     stack_events = reversed(res['StackEvents'])
-                except ClientError as e:                    
+                except ClientError as e:
                     if e.response['Error']['Code'] == 'Throttling':
                         time.sleep(MONITOR_WAIT_SECONDS)
                         stack_events = []
@@ -1077,7 +1110,7 @@ class Monitor(object):
                         raise HandledError('Could not get events for {0} stack.'.format(self.stack_id), e)
 
                 for event in stack_events:
-                   
+
                     if event['EventId'] not in self.events_seen:
 
                         resource_status = event.get('ResourceStatus', None)
@@ -1100,15 +1133,15 @@ class Monitor(object):
                         if event['StackId'] == self.stack_id:
                             if resource_status in self.finished_status and event['PhysicalResourceId'] == self.stack_id:
                                 if errors:
-                                    self.context.view.stack_event_errors(errors, resource_status == self.success_status);
+                                    self.context.view.stack_event_errors(errors, resource_status == self.success_status)
                                 if resource_status == self.success_status:
-                                    done = True                                    
-                                else:                                    
+                                    done = True
+                                else:
                                     if len(failed_resources) > 0:
                                         return failed_resources
                                     raise HandledError("The operation failed.")
 
-                        if event['ResourceType'] == 'AWS::CloudFormation::Stack':                             
+                        if event['ResourceType'] == 'AWS::CloudFormation::Stack':
                             if resource_status in self.start_nested_stack_status and resource_status not in self.monitored_stacks:
                                 if event['PhysicalResourceId'] is not None and event['PhysicalResourceId'] != '':
                                     self.monitored_stacks.append(event['PhysicalResourceId'])
@@ -1117,16 +1150,16 @@ class Monitor(object):
                                 self.monitored_stacks.remove(event['PhysicalResourceId'])
                         else:
                             #return resources ids for resources that failed to delete
-                            logical_resource_id = event.get('LogicalResourceId', None)                            
+                            logical_resource_id = event.get('LogicalResourceId', None)
                             if logical_resource_id is not None:
-                                if resource_status != self.context.stack.STATUS_DELETE_COMPLETE:                                    
+                                if resource_status != self.context.stack.STATUS_DELETE_COMPLETE:
                                     failed_resources.add(logical_resource_id)
                                 elif logical_resource_id in failed_resources:
                                     failed_resources.remove(logical_resource_id)
 
             if not done:
-                time.sleep(MONITOR_WAIT_SECONDS) # seconds   
+                time.sleep(MONITOR_WAIT_SECONDS) # seconds
             else:
-                return []        
-        
-        
+                return []
+
+

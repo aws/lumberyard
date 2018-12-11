@@ -89,6 +89,7 @@ namespace EMStudio
         void SetWidgetAsInvalidInput(QWidget* widget);
 
         static void MakeTransparentButton(QPushButton* button, const char* iconFileName, const char* toolTipText, uint32 width = 20, uint32 height = 20);
+        static void MakeTransparentMenuButton(QPushButton* button, const char* iconFileName, const char* toolTipText, uint32 width = 30, uint32 height = 20);
         static QLabel* MakeSeperatorLabel(uint32 width, uint32 height);
 
         int ExecuteApp();

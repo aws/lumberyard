@@ -16,9 +16,6 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
 
-void __stdcall InitializeAzEnvironment(AZ::EnvironmentInstance sharedEnvironment);
-void __stdcall BeforeUnloadDLL();
-
 class ResourceCompilerSceneTestEnvironment
     : public AZ::Test::ITestEnvironment
 {

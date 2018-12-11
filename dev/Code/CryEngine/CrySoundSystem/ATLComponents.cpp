@@ -509,13 +509,31 @@ namespace Audio
             const TAudioObjectID nNewID = AudioObjectIDFactory::GetNextID();
             IATLAudioObjectData* pObjectData = nullptr;
             AudioSystemImplementationRequestBus::BroadcastResult(pObjectData, &AudioSystemImplementationRequestBus::Events::NewAudioObjectData, nNewID);
-            pObject = azcreate(CATLAudioObject, (nNewID, pObjectData), Audio::AudioSystemAllocator, "ATLAudioObject");
+           
+            size_t unallocatedMemorySize = AZ::AllocatorInstance<Audio::AudioSystemAllocator>::Get().GetUnAllocatedMemory();
+
+            const size_t minimalMemorySize = 100 * 1024;
+
+            if (unallocatedMemorySize < minimalMemorySize)
+            {
+                AZ::AllocatorInstance<Audio::AudioSystemAllocator>::Get().GarbageCollect();
+                unallocatedMemorySize = AZ::AllocatorInstance<Audio::AudioSystemAllocator>::Get().GetUnAllocatedMemory();
+            }
+
+            if (unallocatedMemorySize >= minimalMemorySize)
+            {
+                pObject = azcreate(CATLAudioObject, (nNewID, pObjectData), Audio::AudioSystemAllocator, "ATLAudioObject");
+            }
 
             if (!pObject)
             {
                 --m_cObjectPool.m_nIDCounter;
 
-                g_audioLogger.Log(eALT_WARNING, "Failed to get a new instance of an AudioObject from the implementation");
+                const char* msg = "Failed to get a new instance of an AudioObject from the implementation. "
+                    "If this limit was reached from legitimate content creation and not a scripting error, "
+                    "try increasing the Capacity of Audio::AudioSystemAllocator.";
+
+                g_audioLogger.Log(eALT_FATAL, msg);
                 //failed to get a new instance from the implementation
             }
         }

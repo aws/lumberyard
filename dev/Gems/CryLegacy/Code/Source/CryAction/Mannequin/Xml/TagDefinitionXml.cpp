@@ -42,7 +42,7 @@ namespace mannequin
 
     namespace impl
     {
-        std::map< uint32, STagDefinitionImportsInfo > g_defaultImportInfo;
+        StaticInstance<std::map< uint32, STagDefinitionImportsInfo >> g_defaultImportInfo;
 
         bool LoadTagDefinitionImplXml(XmlNodeRef pXmlNode, CTagDefinition & tagDefinitionOut,
 #if RECURSIVE_IMPORT_CHECK

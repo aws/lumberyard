@@ -100,6 +100,12 @@ class SpawnerApplication
             azrtti_typeid<AzFramework::AssetSystem::AssetSystemComponent>(),
         };
     }
+
+    void RegisterCoreComponents() override
+    {
+        AzFramework::Application::RegisterCoreComponents();
+        RegisterComponentDescriptor(LmbrCentral::SpawnerComponent::CreateDescriptor());
+    }
 };
 
 class SpawnerComponentTest

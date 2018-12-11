@@ -21,7 +21,10 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="character_config.py" />
+    <Compile Include="speech_lib.py" />
     <Compile Include="tts.py" />
+    <Compile Include="zip_exporter.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".ignore" />

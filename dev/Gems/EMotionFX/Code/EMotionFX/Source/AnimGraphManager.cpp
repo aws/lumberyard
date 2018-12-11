@@ -63,9 +63,9 @@ namespace EMotionFX
         mBlendSpaceManager = aznew BlendSpaceManager();
 
         // register custom attribute types
-        MCore::GetAttributeFactory().RegisterAttribute(new AttributeRotation());
-        MCore::GetAttributeFactory().RegisterAttribute(new AttributePose());
-        MCore::GetAttributeFactory().RegisterAttribute(new AttributeMotionInstance());
+        MCore::GetAttributeFactory().RegisterAttribute(aznew AttributeRotation());
+        MCore::GetAttributeFactory().RegisterAttribute(aznew AttributePose());
+        MCore::GetAttributeFactory().RegisterAttribute(aznew AttributeMotionInstance());
     }
 
 

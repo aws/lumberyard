@@ -97,6 +97,9 @@ namespace CloudCanvas
             virtual AZStd::vector<AZStd::string> GetDownloadablePaks() override;
             virtual int GetPakStatus(const char* fileName) override;
             virtual AZStd::string GetPakStatusString(const char* fileName) override;
+            // Handle a JSON status update string
+            // Intended for messages from CloudGemWebCommunicator
+            virtual void HandleWebCommunicatorUpdate(const AZStd::string& messageData) override;
 
             bool RequestFileStatus(const char* fileName, const char* writeFile, bool manifestRequest);
             bool RequestFileStatus(FileTransferSupport::FileRequestMap& requestVec, bool manifestRequest);

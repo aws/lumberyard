@@ -208,6 +208,9 @@ public:
     */
     int GetViewportId() const { return m_nCurViewportID; };
 
+    // Store final Game Matrix ready for editor
+    void SetGameTM(const Matrix34& tm) { m_gameTM = tm; };
+
     //////////////////////////////////////////////////////////////////////////
     // Drag and drop support on viewports.
     // To be overrided in derived classes.
@@ -271,6 +274,8 @@ protected:
     // Screen Matrix
     Matrix34 m_screenTM;
     int m_nCurViewportID;
+    // Final game view matrix before drpping back to editor
+    Matrix34 m_gameTM;
 
     // Custom drop callback (Leroy@Conffx)
     DropCallback m_dropCallback;

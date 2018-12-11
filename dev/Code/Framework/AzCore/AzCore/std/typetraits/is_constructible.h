@@ -18,6 +18,8 @@ namespace AZStd
 {
     using std::is_constructible;
     using std::is_default_constructible;
+#if !(defined(AZ_PLATFORM_ANDROID) && defined(AZ_COMPILER_GCC))
     using std::is_trivially_default_constructible;
+#endif
     using std::is_nothrow_default_constructible;
 }

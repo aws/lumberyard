@@ -240,7 +240,7 @@ void CAssetTextureDatabase::Refresh()
         poTextureDatabaseItem->SetOwnerDatabase(this);
         poTextureDatabaseItem->SetFileExtension(strExtension.toUtf8().data());
         poTextureDatabaseItem->SetFlag(IAssetItem::eFlag_Visible, true);
-        poTextureDatabaseItem->SetHash(AssetBrowser::HashStringSbdm(strOutputTextureName.toUtf8().data()));
+        poTextureDatabaseItem->SetHash(CAssetBrowserManager::HashStringSbdm(strOutputTextureName.toUtf8().data()));
         m_assets[strOutputTextureName] = poTextureDatabaseItem;
     }
 
@@ -307,7 +307,7 @@ void CAssetTextureDatabase::Refresh()
         poTextureDatabaseItem->SetOwnerDatabase(this);
         poTextureDatabaseItem->SetFileExtension(strExtension.toUtf8().data());
         poTextureDatabaseItem->SetFlag(IAssetItem::eFlag_Visible, true);
-        poTextureDatabaseItem->SetHash(AssetBrowser::HashStringSbdm(strOutputTextureName.toUtf8().data()));
+        poTextureDatabaseItem->SetHash(CAssetBrowserManager::HashStringSbdm(strOutputTextureName.toUtf8().data()));
         m_assets[strIntermediateFilename] = poTextureDatabaseItem;
     }
 }

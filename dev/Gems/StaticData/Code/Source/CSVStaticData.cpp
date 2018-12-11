@@ -61,6 +61,11 @@ namespace CloudCanvas
                     attributeStr.erase(attributeStr.length() - 1);
                 }
 
+                if (!attributeStr.length())
+                {
+                    continue;
+                }
+
                 std::stringstream entryStream(attributeStr);
 
                 AttributeMapPtr newMap = AZStd::make_shared<AttributeMap>();
@@ -75,7 +80,7 @@ namespace CloudCanvas
                         newMap->insert({ m_attributes[thisAttrSlot], thisAttribute.c_str() });
                     }
                     ++thisAttrSlot;
-                } while (thisAttribute.length());
+                } while (entryStream.tellg() >= 0);
 
                 m_dataVec.push_back(newMap);
             }
@@ -195,6 +200,11 @@ namespace CloudCanvas
             }
             wasSuccess = false;
             return "";
+        }
+
+        size_t CSVStaticData::GetNumElements() const
+        {
+            return m_dataVec.size();
         }
     }
 }

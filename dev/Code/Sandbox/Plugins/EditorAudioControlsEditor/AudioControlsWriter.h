@@ -69,7 +69,7 @@ namespace AudioControls
 
         std::set<string> m_foundLibraryPaths;
 
-        static const string ms_sLevelsFolder;
-        static const string ms_sLibraryExtension;
+        static const char* ms_sLevelsFolder;
+        static const char* ms_sLibraryExtension;
     };
 } // namespace AudioControls

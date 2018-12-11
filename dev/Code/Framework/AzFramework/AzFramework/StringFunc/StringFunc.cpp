@@ -3992,23 +3992,27 @@ namespace AzFramework
 
             bool GetDrive(const char* in, AZStd::string& out)
             {
-                out.clear();
                 if (!in)
                 {
+                    out.clear();
                     return false;
                 }
 
                 if (!strlen(in))
                 {
+                    out.clear();
                     return false;
                 }
 
+                // If caller used the same AZStd:string for in and out parameters
+                // copy it to another variable and use its memory for in.
                 AZStd::string tempIn;
                 if (in == out.c_str())
                 {
                     tempIn = in;
                     in = tempIn.c_str();
                 }
+                out.clear();
 
     #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
 
@@ -4054,7 +4058,11 @@ namespace AzFramework
                     return true;
                 }
     #else
-                AZ_Assert(false, "Not implemented on this platform!");
+                // on other platforms, its got a root if it starts with '/'
+                if (in[0] == '/')
+                {
+                    return true;
+                }
     #endif
                 return false;
             }

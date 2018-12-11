@@ -21,6 +21,7 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QVBoxLayout>
 #include <QtCore/QTimer>
+#include <QtCore/QSet>
 
 namespace AzToolsFramework
 {
@@ -39,6 +40,34 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
 
         virtual void QueueInvalidationIfSharedData(InternalReflectedPropertyEditorEvents* sender, PropertyModificationRefreshLevel level, const AZStd::set<void*>& sourceInstanceSet) = 0;
+    };
+
+    class ReflectedPropertyEditorUpdateSentinel
+    {
+    public:
+        ReflectedPropertyEditorUpdateSentinel(ReflectedPropertyEditor* propertyEditor, int* guardVariable)
+            : m_propertyEditor(propertyEditor)
+            , m_guardVariable(guardVariable)
+        {
+            int& guardVariableRef = *m_guardVariable;
+            if (guardVariableRef++ == 0)
+            {
+                m_propertyEditor->setUpdatesEnabled(false);
+            }
+        }
+
+        ~ReflectedPropertyEditorUpdateSentinel()
+        {
+            int& guardVariableRef = *m_guardVariable;
+            if (--guardVariableRef == 0)
+            {
+                m_propertyEditor->setUpdatesEnabled(true);
+            }
+        }
+
+    private:
+        QWidget* m_propertyEditor;
+        int* m_guardVariable;
     };
 
     class ReflectedPropertyEditor::Impl
@@ -69,6 +98,10 @@ namespace AzToolsFramework
         RowContainerType m_widgetsInDisplayOrder;
         UserWidgetToDataMap m_userWidgetsToData;
         void AddProperty(InstanceDataNode* node, PropertyRowWidget* pParent, int depth);
+        void CreateEditorWidget(PropertyRowWidget* pWidget);
+        void ExpandChildren(PropertyRowWidget* pWidget, bool expand, bool checkWhetherChildShouldExpand);
+        void UpdateExpansionState();
+        QSet<PropertyRowWidget*> getTopLevelWidgets() const;
 
         ////////////////////////////////////////////////////////////////////////////////////////
         // Support for logical property groups / visual hierarchy.
@@ -113,7 +146,6 @@ namespace AzToolsFramework
 
         bool m_hideRootProperties;
         bool m_queuedTabOrderRefresh;
-        int m_expansionDepth;
         DynamicEditDataProvider m_dynamicEditDataProvider;
 
         bool FilterNode(InstanceDataNode* node, const char* filter);
@@ -206,7 +238,6 @@ namespace AzToolsFramework
         m_impl->m_propertyLabelWidth = 200;
         m_impl->m_propertyLabelAutoResizeMinimumWidth = 0;
 
-        m_impl->m_expansionDepth = 0;
         m_impl->m_savedStateKey = 0;
         setLayout(aznew QVBoxLayout());
         layout()->setSpacing(0);
@@ -399,10 +430,6 @@ namespace AzToolsFramework
                     m_widgetsInDisplayOrder.push_back(widgetEntry);
                 }
 
-                // If we don't have a saved state and we are set to auto-expand, then expand
-                // OR if we have a saved state and it's true, then also expand
-                widgetEntry->SetExpanded(ShouldRowAutoExpand(widgetEntry));
-
                 return widgetEntry;
             }
         }
@@ -426,6 +453,90 @@ namespace AzToolsFramework
         return result;
     }
 
+    QSet<PropertyRowWidget*> ReflectedPropertyEditor::Impl::getTopLevelWidgets() const
+    {
+        QSet<PropertyRowWidget*> toplevelWidgets;
+        for (const auto& widget : m_widgetsInDisplayOrder)
+        {
+            auto parent = widget;
+            while (parent->GetParentRow())
+            {
+                parent = parent->GetParentRow();
+            }
+            toplevelWidgets.insert(parent);
+        }
+        return toplevelWidgets;
+    }
+
+    // sets the expansion state for every PropertyRowWidget starting from the top down
+    void ReflectedPropertyEditor::Impl::UpdateExpansionState()
+    {
+        const auto widgetsToExpand = getTopLevelWidgets();
+        for (const auto widget : widgetsToExpand)
+        {
+            // make sure the editing widget has been created for top-level widgets
+            CreateEditorWidget(widget);
+
+            // determine whether each top-level widget should expand and recursively update it's children
+            const bool expand = ShouldRowAutoExpand(widget);
+            widget->SetExpanded(expand);
+            ExpandChildren(widget, expand, true);
+        }
+
+    }
+
+    // creates and populates the GUI to edit the property if not already created
+    void ReflectedPropertyEditor::Impl::CreateEditorWidget(PropertyRowWidget* pWidget)
+    {
+        if (!pWidget->HasChildWidgetAlready())
+        {
+            PropertyHandlerBase* pHandler = pWidget->GetHandler();
+            if (pHandler)
+            {
+                // create widget gui here.
+                QWidget* newChildWidget = pHandler->CreateGUI(pWidget);
+                if (newChildWidget)
+                {
+                    m_userWidgetsToData[newChildWidget] = pWidget->GetNode();
+                    pHandler->ConsumeAttributes_Internal(newChildWidget, pWidget->GetNode());
+                    pHandler->ReadValuesIntoGUI_Internal(newChildWidget, pWidget->GetNode());
+                    pWidget->ConsumeChildWidget(newChildWidget);
+                    pWidget->OnValuesUpdated();
+
+                    if (!m_queuedTabOrderRefresh)
+                    {
+                        QTimer::singleShot(0, m_editor, SLOT(RecreateTabOrder()));
+                    }
+                    m_queuedTabOrderRefresh = true;
+                }
+            }
+        }
+    }
+
+    // recursively goes through all children either collapsing or expanding them.
+    // "checkIfChildrenShouldExpand" tells whether to test whether to autoexpand each child or force it to expand
+    void ReflectedPropertyEditor::Impl::ExpandChildren(PropertyRowWidget* parentWidget, bool expand, bool checkIfChildrenShouldExpand)
+    {
+        for (auto childWidget : parentWidget->GetChildrenRows())
+        {
+            if (expand)
+            {
+                childWidget->show();
+                CreateEditorWidget(childWidget);
+
+                const bool expandChild = checkIfChildrenShouldExpand ? ShouldRowAutoExpand(childWidget) : !childWidget->IsForbidExpansion();
+                childWidget->SetExpanded(expandChild);
+                ExpandChildren(childWidget, expandChild, checkIfChildrenShouldExpand);
+            }
+            else
+            {
+                // contract all children
+                ExpandChildren(childWidget, false, checkIfChildrenShouldExpand);
+                childWidget->hide();
+            }
+        }
+    }
+
     void ReflectedPropertyEditor::Impl::AddProperty(InstanceDataNode* node, PropertyRowWidget* pParent, int depth)
     {
         // Removal markers should not be displayed in the property grid.
@@ -446,7 +557,8 @@ namespace AzToolsFramework
             return;
         }
 
-        m_editor->setUpdatesEnabled(false);
+        
+        ReflectedPropertyEditorUpdateSentinel updateSentinel(m_editor, &m_editor->m_updateDepth);
 
         PropertyRowWidget* pWidget = nullptr;
         if (visibility == NodeDisplayVisibility::Visible || visibility == NodeDisplayVisibility::HideChildren)
@@ -475,10 +587,8 @@ namespace AzToolsFramework
             }
 
             pWidget = CreateOrPullFromPool();
-            if (!pParent)
-            {
-                pWidget->show();
-            }
+            pWidget->show();
+
             pWidget->Initialize(pParent, node, depth, m_propertyLabelWidth);
             pWidget->setObjectName(pWidget->label());
             pWidget->SetSelectionEnabled(m_selectionEnabled);
@@ -491,7 +601,6 @@ namespace AzToolsFramework
             if (pParent)
             {
                 pParent->AddedChild(pWidget);
-                pParent->SetExpanded(pParent->IsExpanded()); // force child refresh
             }
 
             pParent = pWidget;
@@ -511,49 +620,17 @@ namespace AzToolsFramework
             // Set this as a "Root" element so that our Qt stylesheet can set the labels on these rows to bold text
             pWidget->setProperty("Root", !pWidget->GetParentRow() && pWidget->HasChildRows());
 
-            // If this row is at the root it will not have a parent to expand it so
-            //      the edit field will never be initialized, therefore do it here.
-            if (!pWidget->GetParentRow() && !pWidget->HasChildWidgetAlready())
-            {
-                PropertyHandlerBase* pHandler = pWidget->GetHandler();
-                if (pHandler)
+            if (!pWidget->GetParentRow() && m_hideRootProperties && pWidget->HasChildRows())
                 {
-                    QWidget* rootWidget = pHandler->CreateGUI(pWidget);
-                    if (rootWidget)
-                    {
-                        m_userWidgetsToData[rootWidget] = node;
-                        pHandler->ConsumeAttributes_Internal(rootWidget, node);
-                        pHandler->ReadValuesIntoGUI_Internal(rootWidget, node);
-                        pWidget->ConsumeChildWidget(rootWidget);
-                        pWidget->OnValuesUpdated();
-                    }
-                }
-            }
-
-            // Auto-expand only if no saved expand state and we are set to auto-expand
-            pWidget->SetExpanded(ShouldRowAutoExpand(pWidget));
-            if (pWidget->IsExpanded())
-            {
-                for (auto pChain = pWidget->GetParentRow(); pChain; pChain = pChain->GetParentRow())
-                {
-                    pChain->SetExpanded(true);
-                }
-            }
-
-            if (!pWidget->GetParentRow() && m_hideRootProperties && (pWidget->HasChildRows() || !pWidget->HasChildWidgetAlready()))
-            {
                 pWidget->HideContent();
             }
         }
-
-        m_editor->setUpdatesEnabled(true);
     }
 
     /// Must call after Add/Remove instance for the change to be applied
     void ReflectedPropertyEditor::InvalidateAll(const char* filter)
     {
         setUpdatesEnabled(false);
-
         m_impl->m_selectedRow = nullptr;
         if (m_impl->m_ptrNotify && m_impl->m_selectedRow)
         {
@@ -561,7 +638,6 @@ namespace AzToolsFramework
         }
 
         m_impl->ReturnAllToPool();
-        ++m_impl->m_expansionDepth;
 
         m_impl->m_nodeFilteredOutState.clear();
         m_impl->m_hasFilteredOutNodes = false;
@@ -573,35 +649,33 @@ namespace AzToolsFramework
             m_impl->AddProperty(instance.GetRootNode(), NULL, 0);
         }
 
+        m_impl->UpdateExpansionState();
+
         for (PropertyRowWidget* widget : m_impl->m_widgetsInDisplayOrder)
         {
             widget->RefreshStyle();
             m_impl->m_containerWidget->layout()->addWidget(widget);
         }
 
-        --m_impl->m_expansionDepth;
-        if (m_impl->m_expansionDepth == 0)
+        if (m_impl->m_mainScrollArea)
         {
-            if (m_impl->m_mainScrollArea)
+            // if we're responsible for our own scrolling, then add the spacer.
+            if (!m_impl->m_spacer)
             {
-                // if we're responsible for our own scrolling, then add the spacer.
-                if (!m_impl->m_spacer)
-                {
-                    m_impl->m_spacer = aznew QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Expanding);
-                }
-                else
-                {
-                    m_impl->m_containerWidget->layout()->removeItem(m_impl->m_spacer);
-                }
-
-                m_impl->m_containerWidget->layout()->addItem(m_impl->m_spacer);
+                m_impl->m_spacer = aznew QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Expanding);
+            }
+            else
+            {
+                m_impl->m_containerWidget->layout()->removeItem(m_impl->m_spacer);
             }
 
-            layout()->setEnabled(true);
-            layout()->update();
-            layout()->activate();
-            emit OnExpansionContractionDone();
+            m_impl->m_containerWidget->layout()->addItem(m_impl->m_spacer);
         }
+
+        layout()->setEnabled(true);
+        layout()->update();
+        layout()->activate();
+        emit OnExpansionContractionDone();
 
         // Active property editors should all support transient state saving for the current session, at a minimum.
         // A key must still be manually provided for persistent saving across sessions.
@@ -751,10 +825,10 @@ namespace AzToolsFramework
             }
             );
 
-            QObject::connect(newWidget, &PropertyRowWidget::onExpandedOrContracted, m_editor,
-                [=](InstanceDataNode* node, bool expanded, bool fromUserInteraction)
+            QObject::connect(newWidget, &PropertyRowWidget::onUserExpandedOrContracted, m_editor,
+                [=](InstanceDataNode* node, bool expanded)
             {
-                m_editor->OnPropertyRowExpandedOrContracted(newWidget, node, expanded, fromUserInteraction);
+                m_editor->OnPropertyRowExpandedOrContracted(newWidget, node, expanded, true);
             }
             );
 
@@ -809,14 +883,8 @@ namespace AzToolsFramework
 
     void ReflectedPropertyEditor::OnPropertyRowExpandedOrContracted(PropertyRowWidget* widget, InstanceDataNode* /*node*/, bool expanded, bool fromUserInteraction)
     {
-        setUpdatesEnabled(false);
-
-        // save the expansion state - only if its from the user actually clicking:
-        if (m_impl->m_expansionDepth == 0)
-        {
-            layout()->setEnabled(false);
-        }
-        ++m_impl->m_expansionDepth;
+        ReflectedPropertyEditorUpdateSentinel updateSentinel(this, &m_updateDepth);
+        layout()->setEnabled(false);
 
         // Create a saved state if a user interaction occurred and there is no existing saved state and we have a saved state key to use
         if (m_impl->m_savedState && fromUserInteraction)
@@ -824,61 +892,14 @@ namespace AzToolsFramework
             m_impl->m_savedState->SetExpandedState(m_impl->CreatePathKey(widget), expanded);
         }
 
-        // we need to walk its children and expand them, too...
-        for (auto widgetForChild : widget->GetChildrenRows())
-        {
-            if (expanded)
-            {
-                // expand all the children, show them in whatever state they're already in:
-                widgetForChild->show();
-                widgetForChild->SetExpanded(m_impl->ShouldRowAutoExpand(widgetForChild));
-                // might want to manufacture the inner gui here!
+        m_impl->ExpandChildren(widget, expanded, true);
 
-                if (!widgetForChild->HasChildWidgetAlready())
-                {
-                    PropertyHandlerBase* pHandler = widgetForChild->GetHandler();
-                    if (pHandler)
-                    {
-                        // create widget gui here.
-                        QWidget* newChildWidget = pHandler->CreateGUI(widgetForChild);
-                        if (newChildWidget)
-                        {
-                            m_impl->m_userWidgetsToData[newChildWidget] = widgetForChild->GetNode();
-                            pHandler->ConsumeAttributes_Internal(newChildWidget, widgetForChild->GetNode());
-                            pHandler->ReadValuesIntoGUI_Internal(newChildWidget, widgetForChild->GetNode());
-                            widgetForChild->ConsumeChildWidget(newChildWidget);
-                            widgetForChild->OnValuesUpdated();
+        layout()->setEnabled(true);
+        layout()->update();
+        layout()->activate();
+        emit OnExpansionContractionDone();
 
-                            if (!m_impl->m_queuedTabOrderRefresh)
-                            {
-                                QTimer::singleShot(0, this, SLOT(RecreateTabOrder()));
-                            }
-                            m_impl->m_queuedTabOrderRefresh = true;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                OnPropertyRowExpandedOrContracted(widgetForChild, widgetForChild->GetNode(), false, false);
-
-                // contract all children!
-                widgetForChild->hide();
-            }
-        }
-
-        --m_impl->m_expansionDepth;
-        if (m_impl->m_expansionDepth == 0)
-        {
-            layout()->setEnabled(true);
-            layout()->update();
-            layout()->activate();
-            emit OnExpansionContractionDone();
-
-            m_impl->AdjustLabelWidth();
-        }
-
-        setUpdatesEnabled(true);
+        m_impl->AdjustLabelWidth();
     }
 
     void ReflectedPropertyEditor::RecreateTabOrder()
@@ -1347,7 +1368,17 @@ namespace AzToolsFramework
         //If the container is at capacity, we do not want to add another item.
         if (container->IsFixedCapacity() && !container->IsSmartPointer())
         {
-            if (container->Size(pContainerNode) == container->Capacity(pContainerNode))
+            bool fullCapacity = pContainerNode->GetNumInstances() != 0;
+            for (size_t i = 0; i < pContainerNode->GetNumInstances(); ++i)
+            {
+                if(container->Size(pContainerNode->GetInstance(i)) != container->Capacity(pContainerNode->GetInstance(i)))
+                {
+                    fullCapacity = false;
+                    break;
+                }
+            }
+            // Every instance to be modified is at full capacity, therefore an element cannot be added
+            if (fullCapacity)
             {
                 return;
             }
@@ -1588,28 +1619,25 @@ namespace AzToolsFramework
 
     void ReflectedPropertyEditor::ExpandAll()
     {
-        for (const auto& widget : m_impl->m_widgets)
+        const auto widgetsToExpand = m_impl->getTopLevelWidgets();
+        for (auto widget : widgetsToExpand)
         {
-            widget.second->SetExpanded(!widget.second->IsForbidExpansion());
-        }
-
-        for (const auto& widget : m_impl->m_groupWidgets)
-        {
-            widget.second->SetExpanded(!widget.second->IsForbidExpansion());
+            m_impl->CreateEditorWidget(widget);
+            widget->SetExpanded(true);
+            m_impl->ExpandChildren(widget, true, false);
         }
     }
     void ReflectedPropertyEditor::CollapseAll()
     {
-        for (const auto& widget : m_impl->m_widgets)
+        const auto widgetsToExpand = m_impl->getTopLevelWidgets();
+        for (auto widget : widgetsToExpand)
         {
-            widget.second->SetExpanded(false);
-        }
-
-        for (const auto& widget : m_impl->m_groupWidgets)
+            const AZ::Crc32 groupCrc(widget->label().toUtf8().data());
+            bool isGroup = m_impl->m_groupWidgets.find(groupCrc) != m_impl->m_groupWidgets.end();
+            if (!isGroup || widget->GetParentRow() == nullptr)
         {
-            if (widget.second->GetParentRow() == nullptr)
-            {
-                widget.second->SetExpanded(false);
+                widget->SetExpanded(false);
+                m_impl->ExpandChildren(widget, false, false);
             }
         }
     }

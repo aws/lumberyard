@@ -1506,7 +1506,6 @@ bool CHWShader_D3D::mfGenerateScript(CShader* pSH, SHWSInstance*& pInst, std::ve
     {
         const uint32 tcProjMask = HWMD_TEXCOORD_PROJ;
         const uint32 tcMatrixMask   = HWMD_TEXCOORD_MATRIX;
-        const uint32 tcGenObjectLinearMask = HWMD_TEXCOORD_GEN_OBJECT_LINEAR;
 
         if (pInst->m_Ident.m_MDMask & tcProjMask)
         {
@@ -1516,9 +1515,25 @@ bool CHWShader_D3D::mfGenerateScript(CShader* pSH, SHWSInstance*& pInst, std::ve
         {
             CParserBin::AddDefineToken(eT__TT_TEXCOORD_MATRIX, NewTokens);
         }
-        if (pInst->m_Ident.m_MDMask & tcGenObjectLinearMask)
+        if (pInst->m_Ident.m_MDMask & HWMD_TEXCOORD_GEN_OBJECT_LINEAR_DIFFUSE)
         {
-            CParserBin::AddDefineToken(eT__TT_TEXCOORD_GEN_OBJECT_LINEAR, NewTokens);
+            CParserBin::AddDefineToken(eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DIFFUSE, NewTokens);
+        }
+        if (pInst->m_Ident.m_MDMask & HWMD_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE)
+        {
+            CParserBin::AddDefineToken(eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE, NewTokens);
+        }
+        if (pInst->m_Ident.m_MDMask & HWMD_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE_MULT)
+        {
+            CParserBin::AddDefineToken(eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE_MULT, NewTokens);
+        }
+        if (pInst->m_Ident.m_MDMask & HWMD_TEXCOORD_GEN_OBJECT_LINEAR_DETAIL)
+        {
+            CParserBin::AddDefineToken(eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DETAIL, NewTokens);
+        }
+        if (pInst->m_Ident.m_MDMask & HWMD_TEXCOORD_GEN_OBJECT_LINEAR_CUSTOM)
+        {
+            CParserBin::AddDefineToken(eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_CUSTOM, NewTokens);
         }
     }
 
@@ -2475,7 +2490,7 @@ bool CHWShader_D3D::mfAddCacheItem(SShaderCache* pCache, SShaderCacheHeaderItem*
     return true;
 }
 
-std::vector<SEmptyCombination> SEmptyCombination::s_Combinations;
+SEmptyCombination::Combinations SEmptyCombination::s_Combinations;
 
 bool CHWShader_D3D::mfAddEmptyCombination(CShader* pSH, uint64 nRT, uint64 nGL, uint32 nLT)
 {
@@ -3149,8 +3164,7 @@ bool CHWShader_D3D::mfUploadHW(SHWSInstance* pInst, byte* pBuf, uint32 nSize, CS
     {
         sHwShaderName = _HELP("Pixel Shader");
     }
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_D3D, 0, "D3D HW %s", sHwShaderName);
-
+    
     HRESULT hr = S_OK;
     if (!pInst->m_Handle.m_pShader)
     {
@@ -3734,11 +3748,11 @@ int CHWShader_D3D::mfAsyncCompileReady(SHWSInstance* pInst)
         pErrorMsgs = pAsync->m_pErrors;
         pConstantTable = pAsync->m_pConstants;
         strErr = pAsync->m_Errors;
-        InstBindVars = pAsync->m_InstBindVars;
+        InstBindVars = decltype(InstBindVars)(pAsync->m_InstBindVars.begin(), pAsync->m_InstBindVars.end());
 
         if (pAsync->m_bPendedEnv)
         {
-            bResult &= CHWShader_D3D::mfCreateShaderEnv(pAsync->m_nThread, pInst, pAsync->m_pDevShader, pAsync->m_pConstants, pAsync->m_pErrors, pAsync->m_InstBindVars, this, false, pAsync->m_pFXShader, pAsync->m_nCombination);
+            bResult &= CHWShader_D3D::mfCreateShaderEnv(pAsync->m_nThread, pInst, pAsync->m_pDevShader, pAsync->m_pConstants, pAsync->m_pErrors, InstBindVars, this, false, pAsync->m_pFXShader, pAsync->m_nCombination);
             assert(bResult == true);
         }
 
@@ -3819,7 +3833,7 @@ bool CHWShader_D3D::mfRequestAsync(CShader* pSH, SHWSInstance* pInst, std::vecto
     pInst->m_pAsync = new SShaderAsyncInfo;
     pInst->m_pAsync->m_fMinDistance = gRenDev->m_RP.m_fMinDistance;
     pInst->m_pAsync->m_nFrame = gRenDev->GetFrameID(false);
-    pInst->m_pAsync->m_InstBindVars = InstBindVars;
+    pInst->m_pAsync->m_InstBindVars.assign(InstBindVars.data(), InstBindVars.data() + InstBindVars.size());
     pInst->m_pAsync->m_pShader = this;
     pInst->m_pAsync->m_pShader->AddRef();
     pInst->m_pAsync->m_pFXShader = pSH;

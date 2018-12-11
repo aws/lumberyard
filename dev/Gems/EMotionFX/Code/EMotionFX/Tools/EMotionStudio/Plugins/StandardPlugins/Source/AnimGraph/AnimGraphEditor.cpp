@@ -35,6 +35,7 @@ namespace EMotionFX
 
     AnimGraphEditor::AnimGraphEditor(EMotionFX::AnimGraph* animGraph, AZ::SerializeContext* serializeContext, QWidget* parent)
         : QWidget(parent)
+        , m_animGraph(animGraph)
         , m_propertyEditor(nullptr)
         , m_motionSetComboBox(nullptr)
     {
@@ -74,12 +75,8 @@ namespace EMotionFX
         m_propertyEditor->setStyleSheet("QFrame, .QWidget, QSlider, QCheckBox { background-color: transparent }");
         vLayout->addWidget(m_propertyEditor, 0, Qt::AlignLeft);
 
-        const AZ::TypeId& typeId = azrtti_typeid(animGraph);
-        m_propertyEditor->AddInstance(animGraph, typeId);
-        m_propertyEditor->show();
-        m_propertyEditor->ExpandAll();
-        m_propertyEditor->InvalidateAll();
-        
+        SetAnimGraph(animGraph);
+
         // Motion set combo box
         QHBoxLayout* motionSetLayout = new QHBoxLayout();
         motionSetLayout->setMargin(2);
@@ -131,6 +128,29 @@ namespace EMotionFX
     }
 
     
+    void AnimGraphEditor::SetAnimGraph(AnimGraph* animGraph)
+    {
+        if (animGraph == m_animGraph)
+        {
+            return;
+        }
+
+        if (m_animGraph)
+        {
+            m_propertyEditor->ClearInstances();
+        }
+
+        m_animGraph = animGraph;
+
+        if (m_animGraph)
+        {
+            const AZ::TypeId& typeId = azrtti_typeid(m_animGraph);
+            m_propertyEditor->AddInstance(m_animGraph, typeId);
+            m_propertyEditor->ExpandAll();
+            m_propertyEditor->InvalidateAll();
+        }
+    }
+
     void AnimGraphEditor::UpdateMotionSetComboBox()
     {
         // block signal to avoid event when the current selected item changed

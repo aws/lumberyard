@@ -47,8 +47,8 @@ static const char* g_szAIGrenadeStimType[AIGRENADE_LAST] =
     " SMOKE"
 };
 
-std::vector<CAIObject*> CPerceptionManager::s_targetEntities;
-std::vector<CAIVehicle*> CPerceptionManager::s_playerVehicles;
+StaticInstance<std::vector<CAIObject*>> CPerceptionManager::s_targetEntities;
+StaticInstance<std::vector<CAIVehicle*>> CPerceptionManager::s_playerVehicles;
 
 //===================================================================
 // CPerceptionManager
@@ -251,7 +251,7 @@ bool CPerceptionManager::UpdatePerception(CAIActor* pAIActor, std::vector<CAIObj
 
                 const Vec3& vTargetPos = pTarget->GetPos();
 
-                // TODO(Márcio): Implement
+                // TODO(Marcio): Implement
                 // To make it generic, can have the vision map store 2 collision flag fields and alternate them in case of failure.
                 /*
                 bool skipSoftCover = false;

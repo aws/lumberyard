@@ -106,7 +106,7 @@ def handler(event, context):
         props = properties.load(event, PROPERTY_SCHEMA)
         role_arn = role_utils.create_access_control_role(stack_manager, id_data, stack.stack_arn, logical_role_name, API_GATEWAY_SERVICE_NAME)
         swagger_content = get_configured_swagger_content(stack, props, role_arn, rest_api_resource_name)
-        rest_api_id = create_api_gateway(props, swagger_content)
+        rest_api_id = create_api_gateway(rest_api_resource_name, props, swagger_content)
         service_url = get_service_url(rest_api_id, stack.region)
         register_service_interfaces(stack, service_url, swagger_content)
 
@@ -221,13 +221,12 @@ def list_rest_apis():
     response = api_gateway.get_rest_apis()
     return response['items']
 
-def create_api_gateway(props, swagger_content):
-    api_name = json.loads(swagger_content)["info"]["title"]
+def create_api_gateway(rest_api_resource_name, props, swagger_content):
     existing_apis = list_rest_apis()
     rest_api_id = None
     for api in existing_apis:
-        if api_name == api["name"]:
-            print "We have already created {}, skipping create and using existing api Id".format(api_name)
+        if rest_api_resource_name == api["name"]:
+            print "We have already created {}, skipping create and using existing api Id".format(rest_api_resource_name)
             rest_api_id = api["id"]
 
     if rest_api_id is None:
@@ -268,7 +267,7 @@ def delete_rest_api(rest_api_id):
         else:
             raise e
 
-def create_documentation_version(rest_api_id):
+def create_documentation_version(rest_api_id, attempt=0):
     version = get_documentation_version(rest_api_id)
     if version == None:
         print "Failed to create service API documentation."
@@ -278,7 +277,17 @@ def create_documentation_version(rest_api_id):
             'stageName': STAGE_NAME,
             'documentationVersion': version
         }
-        res = api_gateway.create_documentation_version(**kwargs)
+       
+        try:
+            res = api_gateway.create_documentation_version(**kwargs)
+        except ClientError as error:                        
+            if attempt < 3 and (hasattr(error, 'response') and error.response and error.response['Error']['Code'] != 'ConflictException'):
+                print "Version conflict, incrementing the version and trying again.  This is attempt {}".format(attempt)
+                attempt = attempt + 1
+                self.create_documentation_version(rest_api_id, attempt)
+            else:
+                raise error
+            
 
 def get_documentation_version(rest_api_id):
 
@@ -296,11 +305,12 @@ def get_documentation_version(rest_api_id):
         if current_version == None or item['createdDate'] > current_version['createdDate']:
             current_version = item
             version = current_version['version']
-
+    print "The current version is ", version
     if current_version != None:
         version_parts = version.split('.')
         build = int(version_parts[2])
         version = '{}.{}.{}'.format(version_parts[0], version_parts[1], build+1)
+        print "The new version will be", version
 
     # verify the document version does not exist
     try:

@@ -137,6 +137,7 @@ namespace AZ
         , protected Internal::ModuleManagerInternalRequestBus::Handler
     {
     public:
+        AZ_CLASS_ALLOCATOR(ModuleManager, AZ::OSAllocator, 0);
         static void Reflect(ReflectContext* context);
 
         ModuleManager();

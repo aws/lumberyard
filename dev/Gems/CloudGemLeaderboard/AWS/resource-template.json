@@ -411,6 +411,14 @@
                         "Role"
                     ]
                 },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "RecordSetProcessorConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
                         "RecordSetProcessorConfiguration",
@@ -615,12 +623,20 @@
                         ]
                     }
                 },
-                "Handler": "service.dispatch",
+                "Handler": "cgf_lambda_service.dispatch",
                 "Role": {
                     "Fn::GetAtt": [
                         "ServiceLambdaConfiguration",
                         "Role"
                     ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
                 },
                 "Runtime": {
                     "Fn::GetAtt": [

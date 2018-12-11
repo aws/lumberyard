@@ -191,6 +191,8 @@ public:
     virtual ~UnitTestRegistry() {}
     static UnitTestRegistry* first() { return s_first; }
     UnitTestRegistry* next() const { return m_next; }
+    const char* getName() const { return m_name; }
+
     virtual UnitTestRun* create() = 0;
 protected:
     // it forms a static linked-list using the following internal:

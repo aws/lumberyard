@@ -91,6 +91,8 @@ public:
 
     virtual void OnHmdDeviceChanged() = 0;
 
+    virtual void OnResolutionChanged() {}
+
     virtual void GetNVControlValues(bool& stereoEnabled, float& stereoStrength) = 0;
     // </interfuscator:shuffle>
 

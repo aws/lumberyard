@@ -345,8 +345,6 @@ ILINE bool CActionGame::AllowProceduralBreaking(uint8 proceduralBreakType)
 
 bool CActionGame::Init(const SGameStartParams* pGameStartParams)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "ActionGame::Init");
-
     if (!pGameStartParams)
     {
         m_initState = eIS_InitError;

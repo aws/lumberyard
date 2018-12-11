@@ -40,8 +40,6 @@ CCodeCoverageGUI::~CCodeCoverageGUI(void)
 // CCodeCoverageGUI operations
 void CCodeCoverageGUI::Reset(IAISystem::EResetReason reason)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Code coverage GUI");
-
     for (int i = 0; i < CCLAST_ELEM; ++i)
     {
         m_arrLast3[i] = SStrAndTime();

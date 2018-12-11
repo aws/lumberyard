@@ -418,7 +418,7 @@ static void GetNumCPUCoresGlpi(unsigned int& totAvailToSystem, unsigned int& tot
         unsigned long bufferSize(0);
         pglpi(0, &bufferSize);
 
-        void* pBuffer(malloc(bufferSize));
+        void* pBuffer(alloca(bufferSize));
 
         SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pLogProcInfo((SYSTEM_LOGICAL_PROCESSOR_INFORMATION*) pBuffer);
         if (pLogProcInfo && pglpi(pLogProcInfo, &bufferSize))
@@ -446,8 +446,6 @@ static void GetNumCPUCoresGlpi(unsigned int& totAvailToSystem, unsigned int& tot
                 }
             }
         }
-
-        free(pBuffer);
     }
 }
 

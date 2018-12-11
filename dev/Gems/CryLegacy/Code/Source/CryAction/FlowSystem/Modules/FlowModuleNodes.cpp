@@ -653,7 +653,7 @@ void CFlowModuleCallNode::OnReturn(bool bSuccess, TModuleParams const& params)
 // Module ID map node
 //
 //////////////////////////////////////////////////////////////////////////
-std::map<int, TModuleInstanceId> CFlowModuleUserIdNode::m_ids;
+StaticInstance<std::map<int, TModuleInstanceId>> CFlowModuleUserIdNode::m_ids;
 
 void CFlowModuleUserIdNode::GetConfiguration(SFlowNodeConfig& config)
 {

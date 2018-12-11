@@ -104,6 +104,7 @@ namespace RoadsAndRivers
                 {
                     rendFlags &= ~ERF_HIDDEN;
                 }
+                rendFlags |= ERF_COMPONENT_ENTITY;
                 node->SetRndFlags(rendFlags);
             }
         }

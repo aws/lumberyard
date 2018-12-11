@@ -134,7 +134,7 @@ void CD3DGPUTimer::Start(const char* name)
     {
         m_Name = name;
 
-    #if GPUTIMER_CPP_TRAIT_START_PRIMEQUERY
+#if GPUTIMER_CPP_TRAIT_START_PRIMEQUERY
         // TODO: The d3d docs suggest that the disjoint query should be done once per frame at most
         gcpRendD3D->GetDeviceContext().Begin(m_pQueryFreq);
         gcpRendD3D->GetDeviceContext().End(m_pQueryStart);
@@ -142,7 +142,7 @@ void CD3DGPUTimer::Start(const char* name)
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_3
 #include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
-    #endif
+#endif
     }
 #endif
 }
@@ -152,15 +152,15 @@ void CD3DGPUTimer::Stop()
 #ifndef NULL_RENDERER
     if (m_bStarted && m_bInitialized)
     {
-    #if GPUTIMER_CPP_TRAIT_STOP_ENDQUERY
+#if GPUTIMER_CPP_TRAIT_STOP_ENDQUERY
         gcpRendD3D->GetDeviceContext().End(m_pQueryStop);
         gcpRendD3D->GetDeviceContext().End(m_pQueryFreq);
         m_bStarted = false;
         m_bWaiting = true;
-    #elif defined(AZ_RESTRICTED_PLATFORM)
-    #define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_4
-    #include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
-    #endif
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     }
 #endif
 }
@@ -170,7 +170,7 @@ void CD3DGPUTimer::UpdateTime()
 #ifndef NULL_RENDERER
     if (m_bWaiting && m_bInitialized)
     {
-    #if GPUTIMER_CPP_TRAIT_UPDATETIME_GETDATA
+#if GPUTIMER_CPP_TRAIT_UPDATETIME_GETDATA
         D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
         UINT64 timeStart, timeStop;
 
@@ -194,7 +194,7 @@ void CD3DGPUTimer::UpdateTime()
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_5
 #include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
-    #endif
+#endif
 
         if (!m_bWaiting)
         {
@@ -244,7 +244,7 @@ bool CD3DGPUTimer::Init()
 #ifndef NULL_RENDERER
     if (!m_bInitialized)
     {
-    #if GPUTIMER_CPP_TRAIT_INIT_CREATEQUERY
+#if GPUTIMER_CPP_TRAIT_INIT_CREATEQUERY
         D3D11_QUERY_DESC stampDisjointDesc = { D3D11_QUERY_TIMESTAMP_DISJOINT, 0 };
         D3D11_QUERY_DESC stampDesc = { D3D11_QUERY_TIMESTAMP, 0 };
 
@@ -257,7 +257,7 @@ bool CD3DGPUTimer::Init()
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_2
 #include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
-    #endif
+#endif
 
         EBUS_EVENT(AZ::Debug::EventTraceDrillerSetupBus, SetThreadName, EventTrace::GpuThreadId, EventTrace::GpuThreadName);
     }

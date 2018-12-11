@@ -44,13 +44,13 @@ import { ToastsManager } from 'ng2-toastr/ng2-toastr';
                             <tooltip placement="right" tooltip="The maximum back off period in seconds for failed AWS requests."> </tooltip>
                         </div>
                         <div class="form-group row">
-                            <label class="col-lg-3"> Target Amoeba aggregation file size </label>
+                            <label class="col-lg-3">  Target Amoeba Aggregation File Size </label>
                             <div class="slider-container">
-                                <nouislider [connect]="[true, false]" [min]="1" [max]="256" [step]="1.0" [formControl]="settingsForm.controls.amoeba_target_aggregation_file_size_in_MB" >
+                                <nouislider [connect]="[true, false]" [min]="1" [max]="40" [step]="1.0" [formControl]="settingsForm.controls.amoeba_target_aggregation_file_size_in_MB" >
                                 </nouislider>
                                 <span class="small"> {{settingsForm.controls.amoeba_target_aggregation_file_size_in_MB.value}} MB </span>
                             </div>
-                            <tooltip placement="right" tooltip="The target aggregation file size in MB.  The amoeba file generator will attempt to generate S3 parquet files of this size.  128 MB is ideal."> </tooltip>
+                            <tooltip placement="right" tooltip="The target aggregation file size in MB.  The amoeba file generator will attempt to generate S3 parquet files of this size.  128 MB is ideal but lambdas are memory restricted.  In this environment 32MB is best."> </tooltip>
                         </div>
                         <div class="form-group row">
                             <label class="col-lg-3"> Number Of Initial Consumers </label>
@@ -107,7 +107,7 @@ import { ToastsManager } from 'ng2-toastr/ng2-toastr';
                             <tooltip placement="right" tooltip="The frequency in which to check the threshold for spawning a new consumer lambda."> </tooltip>
                         </div>
                         <div class="form-group row">
-                            <label class="col-lg-3"> Backoff Max Trys </label>
+                            <label class="col-lg-3"> Backoff Max Attempts </label>
                             <div class="slider-container">
                                 <nouislider [connect]="[true, false]" [min]="1" [max]="15" [step]="1.0" [formControl]="settingsForm.controls.backoff_max_trys" >
                                 </nouislider>
@@ -125,7 +125,7 @@ import { ToastsManager } from 'ng2-toastr/ng2-toastr';
                             <tooltip placement="right" tooltip="The maximum number of retries before a message starting logging as an error.  Messages that are processed multiple times are considered to be in error."> </tooltip>
                         </div>
                         <div class="form-group row">
-                            <label class="col-lg-3"> CSV Seperator </label>
+                            <label class="col-lg-3"> CSV Separator </label>
                             <input class="form-control" type="string" formControlName="csv_seperator" >
                             <tooltip placement="right" tooltip="The separator used both for encoding the client CSV and decoding the SQS message payload."> </tooltip>
                         </div>
@@ -159,7 +159,7 @@ import { ToastsManager } from 'ng2-toastr/ng2-toastr';
                         <div class="form-group row">
                             <label class="col-lg-3"> Max Lambda Execution Time  </label>
                             <div class="slider-container">
-                                <nouislider [connect]="[true, false]" [min]="1" [max]="275" [step]="1.0" [formControl]="settingsForm.controls.max_lambda_execution_time" >
+                                <nouislider [connect]="[true, false]" [min]="60" [max]="275" [step]="1.0" [formControl]="settingsForm.controls.max_lambda_execution_time" >
                                 </nouislider>
                                 <span class="small"> {{settingsForm.controls.max_lambda_execution_time.value}} seconds </span>
                             </div>

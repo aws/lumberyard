@@ -212,7 +212,7 @@ void ScriptHelpModel::Reload()
     {
         Item item;
         item.command = pCurrent->m_name;
-        item.module = QString(CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name.c_str());
+        item.module = QString(CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name);
         item.description = pCurrent->m_description;
         item.example = pCurrent->m_example;
         m_items.push_back(item);

@@ -345,7 +345,7 @@ private: // -----------------------------------------------------------------
     typedef std::vector<OnEventSink, stl::STLGlobalAllocator<OnEventSink> > EntitySystemOnEventSinks;
     typedef std::vector<IEntitySystemSink*, stl::STLGlobalAllocator<IEntitySystemSink*> > EntitySystemSinks;
     typedef std::vector<CEntity*> DeletedEntities;
-    typedef std::multimap<CTimeValue, SEntityTimerEvent, std::less<CTimeValue>, stl::STLPoolAllocator<std::pair<const CTimeValue, SEntityTimerEvent>, stl::PoolAllocatorSynchronizationSinglethreaded> > EntityTimersMap;
+    typedef std::multimap<CTimeValue, SEntityTimerEvent, std::less<CTimeValue> > EntityTimersMap;
     typedef std::multimap<const char*, EntityId, stl::less_stricmp<const char*> > EntityNamesMap;
     typedef std::map<EntityId, CEntity*> EntitiesMap;
     typedef std::set<EntityId> EntitiesSet;

@@ -23,18 +23,18 @@ namespace MobileSysInspect
     void LoadDeviceSpecMapping()
     {
         Internal::LoadDeviceSpecMapping_impl("@assets@/config/gpu/android_models.xml");
+        Internal::LoadGpuSpecMapping_impl("@assets@/config/gpu/android_gpus.xml");
     }
 
-    // Returns true if device is found in map
+    // Returns true if device is found in the device spec mapping
     bool GetAutoDetectedSpecName(AZStd::string &buffer)
     {
         static constexpr const char* s_javaFieldName = "MODEL";
         AZ::Android::JNI::Object obj("android/os/Build");
         obj.RegisterStaticField(s_javaFieldName, "Ljava/lang/String;");
         AZStd::string name = obj.GetStaticStringField(s_javaFieldName);
-        buffer = device_spec_map[name];
-        AZ_Printf("Mobile", "Model name for this device is %s", name.c_str());
-        return !buffer.empty();
+
+        return Internal::GetSpecForModelName(name, buffer);
     }
 
     const float GetDeviceRamInGB()

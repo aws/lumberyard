@@ -221,14 +221,14 @@ def expand_annotations(source_dictionary):
             # The tree returned might be collapsible into a list
             # or a string. Check and perform the appropriate adjustment.
             result = build_tree_from_string(attribute_value)
-            if is_simple_string(result):
-                expand_and_store_annotation(annotations, annotation_key, attribute_name, convert_key_to_string(result))
-            elif is_list(result):
-                expand_and_store_annotation(annotations, annotation_key, attribute_name, convert_keys_to_list(result))
-            else:
-                if result is None: # tags with no arguments default to a true value
+            if not isinstance(result, list):
+                if is_simple_string(result):
+                    result = convert_key_to_string(result)
+                elif is_list(result):
+                    result = convert_keys_to_list(result)
+                elif result is None: # tags with no arguments default to a true value
                     result = "true"
-                expand_and_store_annotation(annotations, annotation_key, attribute_name, result)
+            expand_and_store_annotation(annotations, annotation_key, attribute_name, result)
     # update annotations with converted hierarchy
     source_dictionary[u'annotations'] = annotations
 
@@ -240,8 +240,8 @@ def build_tree_from_string(formatted_data):
                      Token:Arguments...
     Any parameter list that is a string or list of strings gets saved as
     such.
-    This will always return a dictionary, even if given a simple string
-    or a list of strings. The is_simple_string and is_list detection
+    This will return a dictionary (even if given a simple string),
+    unless given a list of strings. The is_simple_string and is_list detection
     functions and convert_key_to_string and convert_keys_to_list functions
     can be used to process the results further if necessary.
     @param formatted_data - A string of data formatted by the
@@ -261,11 +261,13 @@ def build_tree_from_string(formatted_data):
     if not isinstance(formatted_data, str) and not isinstance(formatted_data, unicode):
         raise TypeError('Expecting string value, got {} ({})\nDid you add multiple of the same tag to an annotation?'.format(type(formatted_data), formatted_data))
 
-    # remove whitespace
-    formatted_data.strip()
+    # remove external whitespace
+    formatted_data = formatted_data.strip()
     # strip surrounding {}s used in initializer_list<>s
     if formatted_data and formatted_data[0] == '{':
         formatted_data = re.sub(r'^\{(.+)\}$', r'\1', formatted_data)
+        # remove internal whitespace
+        formatted_data = formatted_data.strip()
 
     # The AZCodeGen system can produce empty strings as parameter lists
     # Early detection will speed up execution
@@ -287,10 +289,11 @@ def build_tree_from_string(formatted_data):
         template_params = extract_template_params(formatted_data)
         # Determine if we can flatten the parameter list into a string
         # or a list of strings
-        if is_simple_string(params):
-            params = convert_key_to_string(params)
-        elif is_list(params):
-            params = convert_keys_to_list(params)
+        if not isinstance(params, list):
+            if is_simple_string(params):
+                params = convert_key_to_string(params)
+            elif is_list(params):
+                params = convert_keys_to_list(params)
         
         if template_params:
             result[tag] = {
@@ -308,6 +311,11 @@ def build_tree_from_string(formatted_data):
         for arg in args:
             tree = build_tree_from_string(arg)
             trees.append(tree)
+
+        # intercept simple lists immediately (this is necessary to prevent duplicate list items from being coalesced
+        # into a dictionary)
+        if all(is_simple_string(tree) for tree in trees):
+            return [convert_key_to_string(tree) for tree in trees]
 
         # pre-format the result dict, if there are multiple values at a key
         # ensure that the result value will be a list

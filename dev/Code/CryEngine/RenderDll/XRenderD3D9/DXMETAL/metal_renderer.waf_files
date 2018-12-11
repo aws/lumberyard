@@ -198,6 +198,7 @@
             "../DeviceInfo.h",
             "../DriverD3D.h",
             "../GPUTimer.h",
+            "../GPUTimerFactory.h",
             "../NullD3D11Device.h",
             "../PipelineProfiler.h",
             "../resource.h",
@@ -264,6 +265,7 @@
         [
             "../../Common/Shaders/Parser.cpp",
             "../../Common/Shaders/ParserBin.cpp",
+            "../../Common/Shaders/PoundPoundParser.cpp",
             "../../Common/Shaders/RemoteCompiler.cpp",
             "../../Common/Shaders/ShaderCache.cpp",
             "../../Common/Shaders/ShaderComponents.cpp",
@@ -278,6 +280,7 @@
             "../../Common/Shaders/CShaderBin.h",
             "../../Common/Shaders/Parser.h",
             "../../Common/Shaders/ParserBin.h",
+            "../../Common/Shaders/PoundPoundParser.h",
             "../../Common/Shaders/RemoteCompiler.h",
             "../../Common/Shaders/Shader.h",
             "../../Common/Shaders/ShaderCache.h",

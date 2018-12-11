@@ -112,7 +112,7 @@ namespace AzToolsFramework
     AZ::ComponentDescriptor* GetComponentDescriptor(const AZ::Component* component)
     {
         AZ::ComponentDescriptor* componentDescriptor = nullptr;
-        AZ::ComponentDescriptorBus::EventResult(componentDescriptor, component->RTTI_GetType(), &AZ::ComponentDescriptor::GetDescriptor);
+        AZ::ComponentDescriptorBus::EventResult(componentDescriptor, GetComponentTypeId(component), &AZ::ComponentDescriptor::GetDescriptor);
         return componentDescriptor;
     }
 

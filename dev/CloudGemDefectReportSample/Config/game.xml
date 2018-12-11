@@ -29,13 +29,13 @@
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.LyShine.0fefab3f13364722b2eab3b96ce2bf20.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CryLegacy.352fef7706634c92814c587e84d7165a.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudCanvasCommon.102e23cf4c4c4b748585edbce2bbdc65.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.LegacyGameInterface.3108b261962e44b6a0c1c036c693bca2.v1.0.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
-			</Class>
-			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
-				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CryLegacy.352fef7706634c92814c587e84d7165a.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.InputManagementFramework.59b1b2acc1974aae9f18faddcaddac5b.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
@@ -48,6 +48,9 @@
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemDefectReportSample.99fd2a91d540451fa728e40d2e4dd16f.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.NativeUI.d2a325d80a0445dbb64b22f7d2f20960.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemMetric.e1bf83aa0ddc49418c6b5689c111cb26.v1.0.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>

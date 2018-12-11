@@ -26,4 +26,5 @@ def build(bld):
         use                         = ['AzCore', 'AzFramework', 'AzToolsFramework', 'SceneCore', 'FBXSDK'],
 
         win_x64_clang_cxxflags      = ['-Wno-null-dereference'],
+	darwin_cxxflags 	    = ['-Wno-pragmas'],
     )

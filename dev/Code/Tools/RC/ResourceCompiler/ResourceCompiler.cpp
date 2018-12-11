@@ -56,7 +56,6 @@
 #include "SettingsManagerHelpers.h"
 #include "UnitTestHelper.h"
 #include "CryLibrary.h"
-#include "FunctionThread.h"
 
 #include <ParseEngineConfig.h>
 #include <AzCore/Module/Environment.h>
@@ -72,6 +71,7 @@
 #include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <QSettings>
+#include <QThread>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #if defined(AZ_PLATFORM_APPLE)
@@ -147,19 +147,17 @@ public:
 // ResourceCompiler implementation.
 //////////////////////////////////////////////////////////////////////////
 ResourceCompiler::ResourceCompiler()
+    : m_platformCount(0)
+    , m_bQuiet(false)
+    , m_verbosityLevel(0)
+    , m_numWarnings(0)
+    , m_numErrors(0)
+    , m_memorySizePeakMb(0)
+    , m_pAssetWriter(nullptr)
+    , m_pPakManager(nullptr)
+    , m_systemDll(nullptr)
+    , m_currentRcCompileFileInfo(nullptr)
 {
-    m_platformCount = 0;
-    m_bQuiet = false;
-    m_verbosityLevel = 0;
-    m_maxThreads = 0;
-    m_numWarnings = 0;
-    m_numErrors = 0;
-    m_memorySizePeakMb = 0;
-    m_pAssetWriter = 0;
-    m_pPakManager = 0;
-    m_systemDll = nullptr;
-    InitializeThreadIds();
-
     // install our ctrl handler by default, before we load system modules.  Unfortunately
     // some modules may install their own, so we will install ours again after loading perforce and crysystem.
 #if defined(AZ_PLATFORM_WINDOWS)
@@ -205,8 +203,6 @@ ResourceCompiler::~ResourceCompiler()
             m_systemDll = nullptr;
         }
     }
-
-    TLSFREE(m_tlsIndex_pThreadData);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -340,79 +336,34 @@ void ResourceCompiler::RemoveOutputFiles()
     AZ::IO::SystemFile::Delete(FormLogFileName(m_filenameCreatedFileList));
 }
 
+static void ThreadFunc(ResourceCompiler::RcCompileFileInfo* data);
 
-
-class FilesToConvert
+class CompileFileThread
+    : public QThread
 {
 public:
-    std::vector<RcFile> m_allFiles;
-    std::vector<RcFile> m_inputFiles;
-    std::vector<RcFile> m_outOfMemoryFiles;
-    std::vector<RcFile> m_failedFiles;
-    std::vector<RcFile> m_convertedFiles;
-
+    CompileFileThread(const ResourceCompiler::RcCompileFileInfo& compileInfo)
+        : m_compileInfo(compileInfo)
+    {}
 private:
-    AZStd::mutex m_lock;
-
-public:
-    void lock()
+    void run()
     {
-        m_lock.lock();
+        ThreadFunc(&m_compileInfo);
     }
-
-    void unlock()
-    {
-        m_lock.unlock();
-    }
+    ResourceCompiler::RcCompileFileInfo m_compileInfo;
 };
-
-
-struct RcThreadData
-{
-    ResourceCompiler* rc;
-    FilesToConvert* pFilesToConvert;
-    unsigned long tlsIndex_pThreadData;   // copy of private rc->m_tlsIndex_pThreadData
-    int threadId;
-    IConvertor* convertor;
-    ICompiler* compiler;
-
-    bool bLogMemory;
-    bool bWarningHeaderLine;
-    bool bErrorHeaderLine;
-    string logHeaderLine;
-};
-
-
-unsigned int WINAPI ThreadFunc(void* threadDataMemory);
-
 
 static void CompileFilesMultiThreaded(
     ResourceCompiler* pRC,
-    unsigned long a_tlsIndex_pThreadData,
-    FilesToConvert& a_files,
-    int threadCount,
+    ResourceCompiler::FilesToConvert& a_files,
     IConvertor* convertor)
 {
     assert(pRC);
-
-    if (threadCount <= 0)
-    {
-        return;
-    }
 
     bool bLogMemory = false;
 
     while (!a_files.m_inputFiles.empty())
     {
-        // Never create more threads than needed
-        if (threadCount > a_files.m_inputFiles.size())
-        {
-            threadCount = a_files.m_inputFiles.size();
-        }
-
-        RCLog("Spawning %d thread%s", threadCount, ((threadCount > 1) ? "s" : ""));
-        RCLog("");
-
         // Initialize the convertor
         {
             ConvertorInitContext initContext;
@@ -424,95 +375,49 @@ static void CompileFilesMultiThreaded(
         }
 
         // Initialize the thread data for each thread.
-        std::vector<RcThreadData> threadData(threadCount);
-        for (int threadIndex = 0; threadIndex < threadCount; ++threadIndex)
-        {
-            threadData[threadIndex].rc = pRC;
-            threadData[threadIndex].convertor = convertor;
-            threadData[threadIndex].compiler = convertor->CreateCompiler();
-            threadData[threadIndex].tlsIndex_pThreadData = a_tlsIndex_pThreadData;
-            threadData[threadIndex].threadId = threadIndex + 1;  // our "thread ids" are 1-based indices
-            threadData[threadIndex].pFilesToConvert = &a_files;
-            threadData[threadIndex].bLogMemory = bLogMemory;
-            threadData[threadIndex].bWarningHeaderLine = false;
-            threadData[threadIndex].bErrorHeaderLine = false;
-            threadData[threadIndex].logHeaderLine = "";
-        }
+        ResourceCompiler::RcCompileFileInfo compileInfo;
+        compileInfo.rc = pRC;
+        compileInfo.convertor = convertor;
+        compileInfo.compiler = convertor->CreateCompiler();
+        compileInfo.pFilesToConvert = &a_files;
+        compileInfo.bLogMemory = bLogMemory;
+        compileInfo.bWarningHeaderLine = false;
+        compileInfo.bErrorHeaderLine = false;
+        compileInfo.logHeaderLine = "";
+
         AZStd::binary_semaphore waiter;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
-        // Spawn the threads.
-        QVector<QThread*> threads(threadCount);
-        for (int threadIndex = 0; threadIndex < threadCount; ++threadIndex)
+
+        // Spawn the thread. The old /threads option is no longer supported, and this should remain limited to one thread.
+        // Although this is limited to a single thread, running ThreadFunc on the main thread leads to other issues (LY-85364, LY-85364)
+        // so we should still be creating a new thread here
+        QScopedPointer<CompileFileThread> thread(new CompileFileThread(compileInfo));
+        bool done = false;
+        QObject::connect(thread.data(), &QThread::finished, thread.data(), [&waiter, &done]()
         {
-            threads[threadIndex] = FunctionThread::CreateThread(
-                    0,                           //void *security,
-                    0,                           //unsigned stack_size,
-                    ThreadFunc,                  //unsigned ( *start_address )( void * ),
-                    &threadData[threadIndex],    //void *arglist,
-                    0,                           //unsigned initflag,
-                    0);                          //unsigned *thrdaddr
+            // this makes the app break out of its event loop (below) ASAP.
+            done = true;
+            waiter.release();
+        });
+        thread->start();
 
-            QObject::connect(threads[threadIndex], &QThread::finished, threads[threadIndex], [&waiter, threadIndex, &threads]()
-            {
-                threads.remove(threadIndex);
-                if (threads.isEmpty())
-                {
-                    // this makes the app break out of its event loop (below) ASAP.
-                    waiter.release();
-                }
-            });
-        }
-
-        // Wait until all the threads have exited
-        while (!threads.isEmpty())
+        // Wait until the thread has exited
+        while (!done)
         {
-            // Show progress
-
             // unfortunately the below call to processEvents(...),
             // even with a 'wait for more events' flag applied, causes it to still use up an entire CPU core
             // on windows platforms due to implementation details.
             // To avoid this, we will periodically pump events, but we will also wait on a semaphore to be raised to let us quit instantly
-            // this allows us to spend most of our time with a sleeping main thread, but still instantly exit once the job(s) are done.
+            // this allows us to spend most of our time with a sleeping main thread, but still instantly exit once the job is done.
             waiter.try_acquire_for(AZStd::chrono::milliseconds(50));
             qApp->processEvents(QEventLoop::AllEvents);
-
-            a_files.lock();
-
-            if (!a_files.m_inputFiles.empty())
-            {
-                const int processedFileCount = a_files.m_outOfMemoryFiles.size() + a_files.m_failedFiles.size() + a_files.m_convertedFiles.size();
-
-                pRC->ShowProgress(a_files.m_inputFiles.back().m_sourceInnerPathAndName.c_str(), processedFileCount, a_files.m_allFiles.size());
-            }
-
-            a_files.unlock();
         }
-#elif defined(AZ_PLATFORM_LINUX)
-        std::vector<AZStd::thread> threads(threadCount);
-        for (int threadIndex = 0; threadIndex < threadCount; ++threadIndex)
-        {
-            threads[threadIndex] = AZStd::thread(AZStd::bind(ThreadFunc, &threadData[threadIndex]));
-        }
-
-        //TODO:: Implement an atomic counter to track progress for these threads
-        //and switch the windows version to use this implementation.
-        for (int threadIndex = 0; threadIndex < threadCount; ++threadIndex)
-        {
-            threads[threadIndex].join();
-        }
-#else
-        #error Needs implementation!
-#endif
 
         pRC->FinishProgress();
 
         assert(a_files.m_inputFiles.empty());
 
-        // Release all the compiler objects.
-        for (int threadIndex = 0; threadIndex < threadCount; ++threadIndex)
-        {
-            threadData[threadIndex].compiler->Release();
-        }
+        // Release the compiler object
+        compileInfo.compiler->Release();
 
         // Clean up the converter.
         convertor->DeInit();
@@ -520,35 +425,14 @@ static void CompileFilesMultiThreaded(
         if (!a_files.m_outOfMemoryFiles.empty())
         {
             pRC->LogMemoryUsage(false);
-
-            if (threadCount > 1)
+            RCLogError("Run out of memory while processing %i file(s):", (int)a_files.m_outOfMemoryFiles.size());
+            for (int i = 0; i < (int)a_files.m_outOfMemoryFiles.size(); ++i)
             {
-                // If we ran out of memory while processing files, we should try
-                // to process the files again in single thread (since we may
-                // have run out of memory just because we had multiple threads).
-                RCLogWarning("Run out of memory while processing %i file(s):", (int)a_files.m_outOfMemoryFiles.size());
-                for (int i = 0; i < (int)a_files.m_outOfMemoryFiles.size(); ++i)
-                {
-                    const RcFile& rf = a_files.m_outOfMemoryFiles[i];
-                    RCLogWarning(" \"%s\" \"%s\"", rf.m_sourceLeftPath.c_str(), rf.m_sourceInnerPathAndName.c_str());
-                }
-                RCLogWarning("Switching to single-thread mode and trying to convert the files again");
-                a_files.m_inputFiles.insert(a_files.m_inputFiles.end(), a_files.m_outOfMemoryFiles.begin(), a_files.m_outOfMemoryFiles.end());
-                threadCount = 1;
-                bLogMemory = true;
-            }
-            else
-            {
-                RCLogError("Run out of memory while processing %i file(s):", (int)a_files.m_outOfMemoryFiles.size());
-                for (int i = 0; i < (int)a_files.m_outOfMemoryFiles.size(); ++i)
-                {
-                    const RcFile& rf = a_files.m_outOfMemoryFiles[i];
-                    RCLogError(" \"%s\" \"%s\"", rf.m_sourceLeftPath.c_str(), rf.m_sourceInnerPathAndName.c_str());
-                }
-
-                a_files.m_failedFiles.insert(a_files.m_failedFiles.end(), a_files.m_outOfMemoryFiles.begin(), a_files.m_outOfMemoryFiles.end());
+                const RcFile& rf = a_files.m_outOfMemoryFiles[i];
+                RCLogError(" \"%s\" \"%s\"", rf.m_sourceLeftPath.c_str(), rf.m_sourceInnerPathAndName.c_str());
             }
 
+            a_files.m_failedFiles.insert(a_files.m_failedFiles.end(), a_files.m_outOfMemoryFiles.begin(), a_files.m_outOfMemoryFiles.end());
             a_files.m_outOfMemoryFiles.resize(0);
         }
     }
@@ -944,15 +828,6 @@ bool ResourceCompiler::CompileFilesBySingleProcess(const std::vector<RcFile>& fi
         IConvertor* const convertor = (*convertorIt).first;
         assert(convertor);
 
-        // Check whether this convertor is thread-safe.
-        assert(m_maxThreads >= 1);
-        int threadCount = m_maxThreads;
-        if ((threadCount > 1) && (!convertor->SupportsMultithreading()))
-        {
-            RCLog("/threads specified, but convertor does not support multi-threading. Falling back to single-threading.");
-            threadCount = 1;
-        }
-
         const std::vector<RcFile>& convertorFiles = (*convertorIt).second;
         assert(convertorFiles.size() > 0);
 
@@ -964,7 +839,7 @@ bool ResourceCompiler::CompileFilesBySingleProcess(const std::vector<RcFile>& fi
 
         LogMemoryUsage(false);
 
-        CompileFilesMultiThreaded(this, m_tlsIndex_pThreadData, filesToConvert, threadCount, convertor);
+        CompileFilesMultiThreaded(this, filesToConvert, convertor);
 
         assert(filesToConvert.m_inputFiles.empty());
         assert(filesToConvert.m_outOfMemoryFiles.empty());
@@ -990,8 +865,6 @@ bool ResourceCompiler::CompileFilesBySingleProcess(const std::vector<RcFile>& fi
     }
     else
     {
-        const bool bLogSourceControlInfo = config->HasKey("p4_workspace");
-
         RCLog("");
         RCLog(
             "%d of %d file%s were converted%s. Couldn't convert the following file%s:",
@@ -1028,42 +901,22 @@ void EnableFloatingPointExceptions()
 #endif
 }
 
-unsigned int WINAPI ThreadFunc(void* threadDataMemory)
+void ThreadFunc(ResourceCompiler::RcCompileFileInfo* data)
 {
+    assert(data);
+
     EnableFloatingPointExceptions();
-
-    RcThreadData* const data = static_cast<RcThreadData*>(threadDataMemory);
-
-    // Initialize the thread local storage, so the log can prepend the thread id to each line.
-    TLSSET(data->tlsIndex_pThreadData, static_cast<void *>(data));
-
+    data->rc->SetComplilingFileInfo(data);
     data->compiler->BeginProcessing(&data->rc->GetMultiplatformConfig().getConfig());
 
-    for (;; )
+    while (!data->pFilesToConvert->m_inputFiles.empty())
     {
-        data->pFilesToConvert->lock();
-
         if (g_gotCTRLBreakSignalFromOS)
         {
             RCLogError("Abort was requested during compilation.");
             data->pFilesToConvert->m_failedFiles.insert(data->pFilesToConvert->m_failedFiles.begin(), data->pFilesToConvert->m_inputFiles.begin(), data->pFilesToConvert->m_inputFiles.end());
             data->pFilesToConvert->m_inputFiles.clear();
         }
-
-
-        if (data->pFilesToConvert->m_inputFiles.empty())
-        {
-            data->pFilesToConvert->unlock();
-            break;
-        }
-
-        const RcFile fileToConvert = data->pFilesToConvert->m_inputFiles.back();
-        data->pFilesToConvert->m_inputFiles.pop_back();
-
-        data->pFilesToConvert->unlock();
-
-        const string sourceInnerPath = PathHelpers::GetDirectory(fileToConvert.m_sourceInnerPathAndName);
-        const string sourceFullFileName = PathHelpers::Join(fileToConvert.m_sourceLeftPath, fileToConvert.m_sourceInnerPathAndName);
 
         enum EResult
         {
@@ -1074,9 +927,10 @@ unsigned int WINAPI ThreadFunc(void* threadDataMemory)
         };
         EResult eResult;
 
+        const RcFile& fileToConvert = data->pFilesToConvert->m_inputFiles.back();
         try
         {
-            if (data->rc->CompileFile(sourceFullFileName.c_str(), fileToConvert.m_targetLeftPath.c_str(), sourceInnerPath.c_str(), data->compiler))
+            if (data->rc->CompileFile())
             {
                 eResult = eResult_Ok;
             }
@@ -1096,7 +950,8 @@ unsigned int WINAPI ThreadFunc(void* threadDataMemory)
         //  eResult = eResult_Exception;
         //}
 
-        data->pFilesToConvert->lock();
+        data->pFilesToConvert->m_inputFiles.pop_back();
+
         switch (eResult)
         {
         case eResult_Ok:
@@ -1119,12 +974,10 @@ unsigned int WINAPI ThreadFunc(void* threadDataMemory)
             assert(0);
             break;
         }
-        data->pFilesToConvert->unlock();
     }
 
     data->compiler->EndProcessing();
-
-    return 0;
+    data->rc->SetComplilingFileInfo(nullptr);
 }
 
 
@@ -1150,28 +1003,26 @@ const char* ResourceCompiler::GetAppRoot() const
 
 
 //////////////////////////////////////////////////////////////////////////
-bool ResourceCompiler::CompileFile(
-    const char* const sourceFullFileName,
-    const char* const targetLeftPath,
-    const char* const sourceInnerPath,
-    ICompiler* compiler)
+bool ResourceCompiler::CompileFile()
 {
+    if (!m_currentRcCompileFileInfo)
     {
-        RcThreadData* const pThreadData = static_cast<RcThreadData*>(TLSGET(m_tlsIndex_pThreadData));
-
-        if (!pThreadData)
-        {
-            RCLogError("Unexpected threading failure");
-            exit(eRcExitCode_FatalError);
-        }
-        const bool bMemoryReportProblemsOnly = !pThreadData->bLogMemory;
-        LogMemoryUsage(bMemoryReportProblemsOnly);
+        return false;
     }
+
+    RcCompileFileInfo& compileFileInfo = *m_currentRcCompileFileInfo;
+    const RcFile& fileToConvert = compileFileInfo.pFilesToConvert->m_allFiles.back();
+    const string sourceInnerPath = PathHelpers::GetDirectory(fileToConvert.m_sourceInnerPathAndName);
+    const string sourceFullFileName = PathHelpers::Join(fileToConvert.m_sourceLeftPath, fileToConvert.m_sourceInnerPathAndName);
+    const string targetLeftPath = fileToConvert.m_targetLeftPath;
+    const string targetFullFileName = PathHelpers::Join(targetLeftPath, sourceInnerPath);
+    ICompiler* compiler = compileFileInfo.compiler;
+
+    const bool bMemoryReportProblemsOnly = !compileFileInfo.bLogMemory;
+    LogMemoryUsage(bMemoryReportProblemsOnly);
 
     MultiplatformConfig localMultiConfig = m_multiConfig;
     const IConfig* const config = &m_multiConfig.getConfig();
-
-    const string targetPath = PathHelpers::Join(targetLeftPath, sourceInnerPath);
 
     if (GetVerbosityLevel() >= 2)
     {
@@ -1179,7 +1030,7 @@ bool ResourceCompiler::CompileFile(
         RCLog("  sourceFullFileName: '%s'", sourceFullFileName);
         RCLog("  targetLeftPath: '%s'", targetLeftPath);
         RCLog("  sourceInnerPath: '%s'", sourceInnerPath);
-        RCLog("targetPath: '%s'", targetPath);
+        RCLog("  targetPath: '%s'", targetFullFileName);
     }
 
     // Setup conversion context.
@@ -1187,7 +1038,6 @@ bool ResourceCompiler::CompileFile(
 
     pCC->SetMultiplatformConfig(&localMultiConfig);
     pCC->SetRC(this);
-    pCC->SetThreads(m_maxThreads);
 
     {
         bool bRefresh = config->GetAsBool("refresh", false, true);
@@ -1213,7 +1063,7 @@ bool ResourceCompiler::CompileFile(
     pCC->SetSourceFileNameOnly(PathHelpers::GetFilename(sourceFullFileName));
     pCC->SetSourceFolder(PathHelpers::GetDirectory(PathHelpers::GetAbsoluteAsciiPath(sourceFullFileName)));
 
-    const string outputFolder = PathHelpers::GetAbsoluteAsciiPath(targetPath);
+    const string outputFolder = PathHelpers::GetAbsoluteAsciiPath(targetFullFileName);
     pCC->SetOutputFolder(outputFolder);
 
     if (!FileUtil::EnsureDirectoryExists(outputFolder.c_str()))
@@ -1246,18 +1096,9 @@ bool ResourceCompiler::CompileFile(
     }
 
     // file name changed - print new header for warnings and errors
-    {
-        RcThreadData* const pThreadData = static_cast<RcThreadData*>(TLSGET(m_tlsIndex_pThreadData));
-
-        if (!pThreadData)
-        {
-            RCLogError("Unexpected threading failure");
-            exit(eRcExitCode_FatalError);
-        }
-        pThreadData->bWarningHeaderLine = false;
-        pThreadData->bErrorHeaderLine = false;
-        pThreadData->logHeaderLine = sourceFullFileName;
-    }
+    compileFileInfo.bWarningHeaderLine = false;
+    compileFileInfo.bErrorHeaderLine = false;
+    compileFileInfo.logHeaderLine = sourceFullFileName;
 
     bool bRet;
     bool createJobs = this->GetMultiplatformConfig().getConfig().GetAsString("createjobs", "", "").empty() == false;
@@ -1311,21 +1152,6 @@ void ResourceCompiler::MarkOutputFileForRemoval(const char* outputFilename)
     }
 }
 
-void ResourceCompiler::InitializeThreadIds()
-{
-    TLSALLOC(&m_tlsIndex_pThreadData);
-
-#if defined(AZ_PLATFORM_WINDOWS)
-    if (m_tlsIndex_pThreadData == TLS_OUT_OF_INDEXES)
-    {
-        printf("RC Initialization error");
-        exit(eRcExitCode_FatalError);
-    }
-#endif
-
-    TLSSET(m_tlsIndex_pThreadData, static_cast<void *>(0));
-}
-
 void ResourceCompiler::LogLine(const IRCLog::EType eType, const char* szText)
 {
     AZStd::lock_guard<AZStd::mutex> lock(m_logLock);
@@ -1356,17 +1182,6 @@ void ResourceCompiler::LogLine(const IRCLog::EType eType, const char* szText)
         return;
     }
 
-    RcThreadData* const pThreadData = static_cast<RcThreadData*>(TLSGET(m_tlsIndex_pThreadData));
-
-    // if pThreadData is 0, then probably RC is just not running threads yet
-
-    char threadString[10];
-    threadString[0] = 0;
-    if (pThreadData)
-    {
-        sprintf_s(threadString, "%d> ", pThreadData->threadId);
-    }
-
     char timeString[20];
     timeString[0] = 0;
     if (m_bTimeLogging)
@@ -1391,9 +1206,9 @@ void ResourceCompiler::LogLine(const IRCLog::EType eType, const char* szText)
         if (!m_warningLogFileName.empty())
         {
             additionalLogFileName = m_warningLogFileName.c_str();
-            if (pThreadData)
+            if (m_currentRcCompileFileInfo)
             {
-                pbAdditionalLogHeaderLine = &pThreadData->bWarningHeaderLine;
+                pbAdditionalLogHeaderLine = &m_currentRcCompileFileInfo->bWarningHeaderLine;
             }
         }
         break;
@@ -1403,9 +1218,9 @@ void ResourceCompiler::LogLine(const IRCLog::EType eType, const char* szText)
         if (!m_errorLogFileName.empty())
         {
             additionalLogFileName = m_errorLogFileName.c_str();
-            if (pThreadData)
+            if (m_currentRcCompileFileInfo)
             {
-                pbAdditionalLogHeaderLine = &pThreadData->bErrorHeaderLine;
+                pbAdditionalLogHeaderLine = &m_currentRcCompileFileInfo->bErrorHeaderLine;
             }
         }
         break;
@@ -1430,7 +1245,7 @@ void ResourceCompiler::LogLine(const IRCLog::EType eType, const char* szText)
         if (pbAdditionalLogHeaderLine && (*pbAdditionalLogHeaderLine == false))
         {
             fprintf(fAdditionalLog, "------------------------------------\n");
-            fprintf(fAdditionalLog, "%s%s%s%s\n", prefix, threadString, timeString, pThreadData->logHeaderLine.c_str());
+            fprintf(fAdditionalLog, "%s%s%s\n", prefix, timeString, m_currentRcCompileFileInfo->logHeaderLine.c_str());
             *pbAdditionalLogHeaderLine = true;
         }
     }
@@ -1446,15 +1261,15 @@ void ResourceCompiler::LogLine(const IRCLog::EType eType, const char* szText)
 
         if (fAdditionalLog)
         {
-            fprintf(fAdditionalLog, "%s%s%s%.*s\n", prefix, threadString, timeString, int(lineLen), line);
+            fprintf(fAdditionalLog, "%s%s%.*s\n", prefix, timeString, int(lineLen), line);
         }
 
         if (fLog)
         {
-            fprintf(fLog, "%s%s%s%.*s\n", prefix, threadString, timeString, int(lineLen), line);
+            fprintf(fLog, "%s%s%.*s\n", prefix, timeString, int(lineLen), line);
         }
 
-        printf("%s%s%s%.*s\n", prefix, threadString, timeString, int(lineLen), line);
+        printf("%s%s%.*s\n", prefix, timeString, int(lineLen), line);
         fflush(stdout);
 
         line += lineLen;
@@ -1613,13 +1428,7 @@ static bool RegisterConvertors(ResourceCompiler* pRc)
             return true;
         }
 
-        FnInitializeModule fnInitializeAzEnvironment =
-            hPlugin ? (FnInitializeModule)CryGetProcAddress(hPlugin, "InitializeAzEnvironment") : NULL;
-        if (fnInitializeAzEnvironment)
-        {
-            fnInitializeAzEnvironment(AZ::Environment::GetInstance());
-        }
-
+        
         FnRegisterConvertors fnRegister =
             hPlugin ? (FnRegisterConvertors)CryGetProcAddress(hPlugin, "RegisterConvertors") : NULL;
         if (!fnRegister)
@@ -1691,10 +1500,10 @@ static string GetResourceCompilerGenericInfo(const ResourceCompiler& rc, const s
 
     s += "Platform support: PC";
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
     s += ", " #PublicAuxName3;
     AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
 #if defined(TOOLS_SUPPORT_POWERVR)
     s += ", PowerVR";
@@ -2098,12 +1907,15 @@ std::unique_ptr<QCoreApplication> CreateQApplication(int &argc, char** argv)
 int AzMainUnitTests();
 #endif // AZ_TESTS_ENABLED
 
-//////////////////////////////////////////////////////////////////////////
-// this is a wrapped version of main, so that we can freely create things on the stack like unique_ptrs
-// and know that the actual main() can clean up memory since no objects will be in scope upon return of this main.
-
-int __cdecl main_impl(int argc, char** argv, char** envp)
+int rcmain(int argc, char** argv, char** envp)
 {
+#ifdef AZ_TESTS_ENABLED
+    if (argc == 2 && 0 == stricmp(argv[1], "--unittest"))
+    {
+        return AzMainUnitTests();
+    }
+#endif // AZ_TESTS_ENABLED
+
     std::unique_ptr<QCoreApplication> qApplication = CreateQApplication(argc, argv);
 
 #if 0
@@ -2179,17 +1991,7 @@ int __cdecl main_impl(int argc, char** argv, char** envp)
     rc.RegisterKey("filesperprocess",
         "to specify number of files converted by one process in one step\n"
         "default is 100. this option is unused if /processes is 0.");
-    rc.RegisterKey("threads",
-        "use multiple threads. syntax is /threads=<expression>.\n"
-        "<expression> is an arithmetical expression consisting of numbers,\n"
-        "'cores', 'processors', '+' and '-'. 'cores' is the number of CPU\n"
-        "cores; 'processors' is the number of logical processors.\n"
-        "if expression is omitted, then /threads=cores is assumed.\n"
-        "example: /threads=cores+2");
     rc.RegisterKey("failonwarnings", "return error code if warnings are encountered");
-    rc.RegisterKey("p4_workspace", "Perforce workspace to use. Enables output of source control information for failed files");
-    rc.RegisterKey("p4_user", "Perforce username to use. Default to current system username");
-    rc.RegisterKey("p4_depotFilenames", "Input filelist is given in the Perforce file format");
 
     rc.RegisterKey("help", "lists all usable keys of the ResourceCompiler with description");
     rc.RegisterKey("version", "shows version and exits");
@@ -2475,7 +2277,7 @@ int __cdecl main_impl(int argc, char** argv, char** envp)
         // Force the current working directory to be the same as the executable so
         // that we can load any shared libraries that don't have run-time paths in
         // them (I'm looking at you AWS SDK libraries!).
-        QString currentDir =  QDir::currentPath();
+        QString currentDir = QDir::currentPath();
         QDir::setCurrent(QCoreApplication::applicationDirPath());
 
         if (!RegisterConvertors(&rc))
@@ -2532,7 +2334,6 @@ int __cdecl main_impl(int argc, char** argv, char** envp)
         std::vector<RcFile> files;
         if (rc.CollectFilesToCompile(fileSpec, files) && !files.empty())
         {
-            rc.SetupMaxThreads();
             rc.CompileFilesBySingleProcess(files);
         }
         rc.PostBuild();      // e.g. writing statistics files
@@ -2588,6 +2389,29 @@ int __cdecl main_impl(int argc, char** argv, char** envp)
     default:
         break;
     }
+
+    return exitCode;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+int __cdecl main(int argc, char** argv, char** envp)
+{
+#ifdef AZ_TESTS_ENABLED
+    if (argc == 2 && 0 == azstricmp(argv[1], "--unittest"))
+    {
+        return AzMainUnitTests();
+    }
+#endif // AZ_TESTS_ENABLED
+    AZ::AllocatorInstance<AZ::SystemAllocator>::Create();    
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+    AZ::AllocatorInstance<CryStringAllocator>::Create();
+
+    int exitCode = rcmain(argc, argv, envp);    
+
+    AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+   	AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
 
     return exitCode;
 }
@@ -2928,15 +2752,6 @@ void ResourceCompiler::UnregisterConvertors()
 {
     m_extensionManager.UnregisterAll();
 
-    for (HMODULE pluginDll : m_loadedPlugins)
-    {
-        FnBeforeUnloadDLL fnBeforeUnload = (FnBeforeUnloadDLL)CryGetProcAddress(pluginDll, "BeforeUnloadDLL");
-        if (fnBeforeUnload)
-        {
-            (*fnBeforeUnload)();
-        }
-    }
-
     // let the before unload functions for all DLLs complete before you unload any of them
     for (HMODULE pluginDll : m_loadedPlugins)
     {
@@ -3022,65 +2837,6 @@ static int ComputeExpression(
 }
 
 //////////////////////////////////////////////////////////////////////////
-static int GetAParallelOption(
-    const IConfig* a_config,
-    const char* a_optionName,
-    int a_processCpuCoreCount,
-    int a_processLogicalProcessorCount,
-    int a_valueIfNotSpecified,
-    int a_valueIfEmpty,
-    int a_minValue,
-    int a_maxValue,
-    string& message)
-{
-    int result = -1;
-
-    const string optionValue = a_config->GetAsString(a_optionName, "?", "");
-
-    if (optionValue.empty())
-    {
-        message.Format("/%s specified without value.", a_optionName);
-        result = a_valueIfEmpty;
-    }
-    else if (optionValue[0] == '?')
-    {
-        message.Format("/%s was not specified.", a_optionName);
-        result = a_valueIfNotSpecified;
-    }
-    else
-    {
-        const int expressionResult = ComputeExpression(a_optionName, a_processCpuCoreCount, a_processLogicalProcessorCount, optionValue, message);
-        if (!message.empty())
-        {
-            result = a_valueIfNotSpecified;
-        }
-        else if (expressionResult < a_minValue)
-        {
-            message.Format("/%s specified with too small value %d: '%s'.", a_optionName, expressionResult, optionValue.c_str());
-            result = a_minValue;
-        }
-        else if (expressionResult > a_maxValue)
-        {
-            message.Format("/%s specified with too big value %d: '%s'.", a_optionName, expressionResult, optionValue.c_str());
-            result = a_maxValue;
-        }
-        else
-        {
-            message.Format("/%s specified with value %d: '%s'.", a_optionName, expressionResult, optionValue.c_str());
-            result = expressionResult;
-        }
-    }
-
-    if ((result != 1) && a_config->GetAsBool("validate", false, true))
-    {
-        message.Format("/%s forced to 1 because RC is in resource validation mode (see /validate).", a_optionName);
-        result = 1;
-    }
-
-    return result;
-}
-
-//////////////////////////////////////////////////////////////////////////
 static unsigned int CountBitsSetTo1(const DWORD_PTR val)
 {
     unsigned int result = 0;
@@ -3093,91 +2849,9 @@ static unsigned int CountBitsSetTo1(const DWORD_PTR val)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void ResourceCompiler::SetupMaxThreads()
+void ResourceCompiler::SetComplilingFileInfo(RcCompileFileInfo* compileFileInfo)
 {
-    const IConfig* const config = &m_multiConfig.getConfig();
-
-    {
-        unsigned int numCoresInSystem = 0;
-        unsigned int numCoresAvailableToProcess = 0;
-#if defined(AZ_PLATFORM_WINDOWS)
-        GetNumCPUCores(numCoresInSystem, numCoresAvailableToProcess);
-#else
-        //TODO: Needs cross platform support in order to use multithreading properly
-#endif
-        if (numCoresAvailableToProcess <= 0)
-        {
-            numCoresAvailableToProcess = 1;
-        }
-
-        unsigned int numLogicalProcessorsAvailableToProcess = 0;
-        {
-            DWORD_PTR processAffinity = 0;
-            DWORD_PTR systemAffinity = 0;
-#if defined(AZ_PLATFORM_WINDOWS)
-            GetProcessAffinityMask(GetCurrentProcess(), &processAffinity, &systemAffinity);
-#else
-            //TODO: Needs cross platform support
-#endif
-
-            numLogicalProcessorsAvailableToProcess = CountBitsSetTo1(processAffinity);
-
-            if (numLogicalProcessorsAvailableToProcess < numCoresAvailableToProcess)
-            {
-                numLogicalProcessorsAvailableToProcess = numCoresAvailableToProcess;
-            }
-        }
-
-        unsigned int numLogicalProcessorsInSystem = 0;
-        {
-#if defined(AZ_PLATFORM_WINDOWS)
-            SYSTEM_INFO si;
-            GetSystemInfo(&si);
-            numLogicalProcessorsInSystem = si.dwNumberOfProcessors;
-#else
-            //TODO: Needs cross platform support
-#endif
-        }
-
-        m_systemCpuCoreCount = numCoresInSystem;
-        m_processCpuCoreCount = numCoresAvailableToProcess;
-        m_systemLogicalProcessorCount = numLogicalProcessorsInSystem;
-        m_processLogicalProcessorCount = numLogicalProcessorsAvailableToProcess;
-    }
-
-    RCLog("");
-    RCLog("CPU cores: %d available (%d in system).",
-        m_processCpuCoreCount,
-        m_systemCpuCoreCount);
-    RCLog("Logical processors: %d available (%d in system).",
-        m_processLogicalProcessorCount,
-        m_systemLogicalProcessorCount);
-
-    string message;
-
-    m_maxThreads = GetAParallelOption(
-            config,
-            "threads",
-            m_processCpuCoreCount,
-            m_processLogicalProcessorCount,
-            1,
-            m_processCpuCoreCount,
-            1,
-            m_processLogicalProcessorCount,
-            message);
-    RCLog("%s Using up to %d thread%s.", message.c_str(), m_maxThreads, ((m_maxThreads > 1) ? "s" : ""));
-
-    RCLog("");
-
-    assert(m_maxThreads >= 1);
-
-    m_pPakManager->SetMaxThreads(m_maxThreads);
-}
-
-//////////////////////////////////////////////////////////////////////////
-int ResourceCompiler::GetMaxThreads() const
-{
-    return m_maxThreads;
+    m_currentRcCompileFileInfo = compileFileInfo;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -4419,7 +4093,6 @@ int ResourceCompiler::EvaluateJobXmlNode(CPropertyVars& properties, XmlNodeRef& 
             std::vector<RcFile> files;
             if (CollectFilesToCompile(fileSpec, files) && !files.empty())
             {
-                SetupMaxThreads();
                 CompileFilesBySingleProcess(files);
             }
         }
@@ -4572,29 +4245,3 @@ int ResourceCompiler::RunUnitTests()
     return unitTestHelper.AllUnitTestsPassed() ? eRcExitCode_Success : eRcExitCode_Error;
 }
 
-// here we wrap main(...) so that we can absolutely ensure any objects created on the stack during the actual main are gone by the time
-// we leave it and memory can be freed.
-int __cdecl main(int argc, char** argv, char** envp)
-{
-#ifdef AZ_TESTS_ENABLED
-    if (argc == 2 && 0 == azstricmp(argv[1], "--unittest"))
-    {
-        return AzMainUnitTests();
-    }
-#endif // AZ_TESTS_ENABLED
-
-    // here we are wrapping main to handle memory management around it.
-    if (!AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
-    {
-        AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
-    }
-
-    int exitCode = main_impl(argc, argv, envp);
-
-    if (AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
-    {
-        AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-    }
-
-    return exitCode;
-}

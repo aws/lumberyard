@@ -844,12 +844,12 @@ public:
     DynArray<SSoundPerceptionDescriptor> m_SoundPerceptionDescriptor;
     static SSoundPerceptionDescriptor s_DefaultSoundPerceptionDescriptor[AISOUND_LAST];
 
-    static std::vector<Vec3> s_projectedPoints;
-    static std::vector<std::pair<float, size_t> > s_weights;
-    static std::vector<CAIActor*> s_enemies;
-    static std::vector<SSortedHideSpot> s_sortedHideSpots;
-    static MultimapRangeHideSpots s_hidespots;
-    static MapConstNodesDistance s_traversedNodes;
+    static StaticInstance<std::vector<Vec3>> s_projectedPoints;
+    static StaticInstance<std::vector<std::pair<float, size_t> >> s_weights;
+    static StaticInstance<std::vector<CAIActor*>> s_enemies;
+    static StaticInstance<std::vector<SSortedHideSpot>> s_sortedHideSpots;
+    static StaticInstance<MultimapRangeHideSpots> s_hidespots;
+    static StaticInstance<MapConstNodesDistance> s_traversedNodes;
 };
 
 

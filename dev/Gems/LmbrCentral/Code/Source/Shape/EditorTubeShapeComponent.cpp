@@ -73,6 +73,13 @@ namespace LmbrCentral
 
     void EditorTubeShapeComponent::GenerateVertices()
     {
+        // guard against the case where for some reason we may not have a Spline
+        if (!m_tubeShape.GetSpline())
+        {
+            AZ_Error("EditorTubeShapeComponent", false, "A TubeShape must have a Spline to work");
+            return;
+        }
+
         const AZ::u32 endSegments = m_tubeShape.GetSpline()->IsClosed() ? 0 : m_tubeShapeMeshConfig.m_endSegments;
         GenerateTubeMesh(
             m_tubeShape.GetSpline(), m_tubeShape.GetRadiusAttribute(), m_tubeShape.GetRadius(),

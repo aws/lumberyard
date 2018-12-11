@@ -223,6 +223,7 @@
   <item name="Fade strength at max distance" visibility="Emitter.Emitter_Type:gpu;Emitter.Emitter_Shape:all" as="Visibility.Camera_Fade_Far_Strength"/>
   <item name="Sort Offset" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" as="Visibility.Sort_Offset"/>
   <item name="Sort Bounds Scale" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Visibility.Sort_Bounds_Scale"/>
+  <item name="Dynamic Culling" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Visibility.Dynamic_Culling"/>
   <item name="Draw Near" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Visibility.Draw_Near"/>
   <item name="Draw On Top" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Visibility.Draw_On_Top"/>
   <item name="Visible Indoors" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Visibility.Visible_Indoors"/>

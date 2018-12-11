@@ -162,17 +162,21 @@ namespace HierarchyHelpers
         {
             QTreeWidgetItem* item = _GetItem(widget, i);
 
-            if (item == _GetItem(widget, list->front()))
+            // item can be null in the case of restoring a selection when switching tabs and an entity in a slice has been deleted
+            if (item)
             {
-                // Calling setCurrentItem will set the item as current, but won't
-                // necessarily select the item. If the item is already selected,
-                // and the control or shift key is pressed, the item will
-                // actually become de-selected (we explicitly set the selected
-                // property below to ensure the item becomes selected).
-                widget->setCurrentItem(item);
-            }
+                if (item == _GetItem(widget, list->front()))
+                {
+                    // Calling setCurrentItem will set the item as current, but won't
+                    // necessarily select the item. If the item is already selected,
+                    // and the control or shift key is pressed, the item will
+                    // actually become de-selected (we explicitly set the selected
+                    // property below to ensure the item becomes selected).
+                    widget->setCurrentItem(item);
+                }
 
-            item->setSelected(true);
+                item->setSelected(true);
+            }
         }
     }
 

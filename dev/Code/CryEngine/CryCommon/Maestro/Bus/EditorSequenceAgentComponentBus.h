@@ -60,4 +60,29 @@ namespace Maestro
     };
 
     using EditorSequenceAgentComponentRequestBus = AZ::EBus<EditorSequenceAgentComponentRequests>;
+
+    /**
+    * Notifications from the Editor Sequence Agent Component
+    */
+    class EditorSequenceAgentComponentNotification
+        : public AZ::EBusTraits
+    {
+    public:
+
+        //////////////////////////////////////////////////////////////////////////
+        // EBusTraits overrides
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+        //////////////////////////////////////////////////////////////////////////
+
+        virtual ~EditorSequenceAgentComponentNotification() {}
+
+        /**
+        * Called when a Sequence Agent has been connected to a Sequence.
+        */
+        virtual void OnSequenceAgentConnected() {}
+    };
+
+    using EditorSequenceAgentComponentNotificationBus = AZ::EBus<EditorSequenceAgentComponentNotification>;
+
 } // namespace Maestro

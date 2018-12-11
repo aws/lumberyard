@@ -182,7 +182,6 @@ namespace AssetProcessor
             m_stateData->QuerySourcesTable(sourcesFunction);
 
             m_isCurrentlyScanning = true;
-            return;
         }
         else if ((status == AssetProcessor::AssetScanningStatus::Completed) ||
                  (status == AssetProcessor::AssetScanningStatus::Stopped))
@@ -699,9 +698,8 @@ namespace AssetProcessor
             AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to update the job in the database!!!");
         }
 
-#if defined(BATCH_MODE) && !defined(UNIT_TEST)
-        AZ_Warning(AssetProcessor::ConsoleChannel, false, "Failed processing: %s %s %s %s\n", jobEntry.m_pathRelativeToWatchFolder.toUtf8().constData(), jobEntry.m_builderGuid.ToString<AZStd::string>().c_str(), jobEntry.m_jobKey.toUtf8().constData(), jobEntry.m_platform.toUtf8().constData());
-#else
+#if !defined(BATCH_MODE)
+        // send a network message when not in batch mode.
         const ScanFolderInfo* scanFolder = m_platformConfig->GetScanFolderForFile(jobEntry.m_watchFolderPath);
         AzToolsFramework::AssetSystem::SourceFileNotificationMessage message(AZ::OSString(source.m_sourceName.c_str()), AZ::OSString(scanFolder->ScanPath().toUtf8().constData()), AzToolsFramework::AssetSystem::SourceFileNotificationMessage::FileFailed, source.m_sourceGuid);
         EBUS_EVENT(AssetProcessor::ConnectionBus, Send, 0, message);
@@ -709,6 +707,8 @@ namespace AssetProcessor
 #endif
 
         OnJobStatusChanged(jobEntry, JobStatus::Failed);
+        
+        // note that we always print out the failed job status here in both batch and GUI mode.
         AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Failed %s, (%s)... \n",
             jobEntry.m_pathRelativeToWatchFolder.toUtf8().constData(),
             jobEntry.m_platformInfo.m_identifier.c_str());
@@ -1266,13 +1266,9 @@ namespace AssetProcessor
 
             QString fullSourcePath = processedAsset.m_entry.GetAbsoluteSourcePath();
 
-#if defined(BATCH_MODE) && !defined(UNIT_TEST)
-            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Processed: %s successfully processed for the platform %s.\n", processedAsset.m_entry.m_pathRelativeToWatchFolder.toUtf8().constData(), processedAsset.m_platform.toUtf8().constData());
-#else
             // notify the system about inputs:
             Q_EMIT InputAssetProcessed(fullSourcePath, QString(processedAsset.m_entry.m_platformInfo.m_identifier.c_str()));
             OnJobStatusChanged(processedAsset.m_entry, JobStatus::Completed);
-#endif
 
             if (!QFile::exists(fullSourcePath))
             {
@@ -3240,8 +3236,7 @@ namespace AssetProcessor
             }
         }
     }
-
-
+    
     void AssetProcessorManager::AnalyzeJobDetail(JobToProcessEntry& jobEntry)
     {
         for (JobDetails& jobDetail : jobEntry.m_jobsToAnalyze)
@@ -3323,10 +3318,12 @@ namespace AssetProcessor
 
 
         sourceDatabaseEntry.m_sourceGuid = AssetUtilities::CreateSafeSourceUUIDFromName(sourceDatabaseEntry.m_sourceName.c_str());
+
         if (!m_stateData->SetSource(sourceDatabaseEntry))
         {
             //somethings wrong...
             AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to add source to the database!!!");
+            return;
         }
     }
 

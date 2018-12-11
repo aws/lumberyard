@@ -14,9 +14,9 @@
 #include "CryLegacy_precompiled.h"
 #include "GraphStructures.h"
 
-std::vector<unsigned> GraphNode::freeIDs;
+StaticInstance<std::vector<unsigned>> GraphNode::freeIDs;
 #ifdef DEBUG_GRAPHNODE_IDS
-std::vector<unsigned> GraphNode::usedIds;
+StaticInstance<std::vector<unsigned>> GraphNode::usedIds;
 #endif
 unsigned GraphNode::maxID = 0;
 
@@ -42,7 +42,7 @@ GraphNode::GraphNode(IAISystem::ENavigationType type, const Vec3& inpos, unsigne
     else
     {
         ID = _ID;
-        stl::find_and_erase(freeIDs, ID);
+        stl::find_and_erase(*freeIDs, ID);
     }
     if (ID > maxID)
     {
@@ -50,7 +50,7 @@ GraphNode::GraphNode(IAISystem::ENavigationType type, const Vec3& inpos, unsigne
     }
 
 #ifdef DEBUG_GRAPHNODE_IDS
-    assert(!stl::find(usedIds, ID));
+    assert(!stl::find(*usedIds, ID));
     usedIds.push_back(ID);
 #endif
 }
@@ -60,7 +60,7 @@ GraphNode::~GraphNode()
     freeIDs.push_back(ID);
 
 #ifdef DEBUG_GRAPHNODE_IDS
-    const bool bUsedIdRemoved = stl::find_and_erase(usedIds, ID);
+    const bool bUsedIdRemoved = stl::find_and_erase(*usedIds, ID);
     assert(bUsedIdRemoved);
 #endif
 }

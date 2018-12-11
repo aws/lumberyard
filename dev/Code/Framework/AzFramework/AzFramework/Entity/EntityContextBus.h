@@ -401,9 +401,17 @@ namespace AzFramework
 
         /**
          * Signals that a slice could not be instantiated.
+         * @deprecated Please use OnSliceInstantiationFailedOrCanceled
          * @param sliceAssetId A reference to the slice asset ID.
          */
         virtual void OnSliceInstantiationFailed(const AZ::Data::AssetId& /*sliceAssetId*/) {}
+
+        /**
+         * Signals that a slice could not be instantiated.
+         * @param sliceAssetId A reference to the slice asset ID.
+         * @param canceled Set to true if the failure was due to cancellation.
+         */
+        virtual void OnSliceInstantiationFailedOrCanceled(const AZ::Data::AssetId& /*sliceAssetId*/, bool /*canceled*/) {}
     };
 
     /**

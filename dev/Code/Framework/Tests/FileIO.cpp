@@ -710,8 +710,8 @@ namespace UnitTest
 
                 // test resolving
                 const char* aliasTestPath = "@test@\\some\\path\\somefile.txt";
-                char aliasResolvedPath[MAX_PATH];
-                bool resolveDidWork = local.ResolvePath(aliasTestPath, aliasResolvedPath, MAX_PATH);
+                char aliasResolvedPath[AZ_MAX_PATH_LEN];
+                bool resolveDidWork = local.ResolvePath(aliasTestPath, aliasResolvedPath, AZ_MAX_PATH_LEN);
                 AZ_TEST_ASSERT(resolveDidWork);
                 AZStd::string expectedResolvedPath = folderName + "some/path/somefile.txt";
                 AZ_TEST_ASSERT(aliasResolvedPath == expectedResolvedPath);

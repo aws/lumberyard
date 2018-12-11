@@ -961,14 +961,18 @@ bool CD3D9Renderer::PrepareDepthMap(ShadowMapFrustum* lof, int nLightFrustumID, 
                 nFirstShadowGenRI = SRendItem::m_ShadowsStartRI[nThreadID][nShadowRecur];
                 nLastShadowGenRI = SRendItem::m_ShadowsEndRI[nThreadID][nShadowRecur];
                 const bool bClearRequired = lof->IsCached() && !lof->bIncrementalUpdate;
-                if (nLastShadowGenRI - nFirstShadowGenRI < 1 && !bClearRequired)
+                // If there's something to render, sort by lights.
+                if (nLastShadowGenRI - nFirstShadowGenRI > 0)
                 {
+                    auto& renderItems = CRenderView::CurrentRenderView()->GetRenderItems(SG_SORT_GROUP, EFSLIST_SHADOW_GEN);
+                    SRendItem* pFirst = &renderItems[nFirstShadowGenRI];
+                    SRendItem::mfSortByLight(pFirst, nLastShadowGenRI - nFirstShadowGenRI, true, false, false);
+                }
+                else if (!bClearRequired)
+                {
+                    // Nothing to render and there's no need to clear, so we can just continue.
                     continue;
                 }
-
-                auto& renderItems = CRenderView::CurrentRenderView()->GetRenderItems(SG_SORT_GROUP, EFSLIST_SHADOW_GEN);
-                SRendItem* pFirst = &renderItems[nFirstShadowGenRI];
-                SRendItem::mfSortByLight(pFirst, nLastShadowGenRI - nFirstShadowGenRI, true, false, false);
             }
 
             depthTarget.nWidth = lof->nTextureWidth;
@@ -1707,6 +1711,19 @@ void CD3D9Renderer::EF_PrepareCustomShadowMaps()
         return;
     }
 
+    // Find AABB of all nearest objects. Compute once for all lights as this can be slow
+    AABB aabbCasters(AABB::RESET);
+    m_RP.m_arrCustomShadowMapFrustumData[nThreadID].CoalesceMemory();
+    size_t shadowMapArraySize = m_RP.m_arrCustomShadowMapFrustumData[nThreadID].size();
+    for (size_t i = 0; i < shadowMapArraySize; ++i)
+    {
+        aabbCasters.Add(m_RP.m_arrCustomShadowMapFrustumData[nThreadID][i].aabb);
+    }
+
+    // AABBs are added in world space but without camera position applied
+    aabbCasters.min += GetCamera().GetPosition();
+    aabbCasters.max += GetCamera().GetPosition();
+
     // add nearest frustum if it has been set up
     for (int nLightID = 0; nLightID < NumDynLights; nLightID++)
     {
@@ -1728,18 +1745,6 @@ void CD3D9Renderer::EF_PrepareCustomShadowMaps()
                 //prepare custom frustums for sun
                 if (!m_RP.m_arrCustomShadowMapFrustumData[nThreadID].empty())
                 {
-                    // find aabb of all nearest objects
-                    AABB aabbCasters(AABB::RESET);
-                    m_RP.m_arrCustomShadowMapFrustumData[nThreadID].CoalesceMemory();
-                    for (size_t i = 0; i < m_RP.m_arrCustomShadowMapFrustumData[nThreadID].size(); ++i)
-                    {
-                        aabbCasters.Add(m_RP.m_arrCustomShadowMapFrustumData[nThreadID][i].aabb);
-                    }
-
-                    // AABB's added in world space but without camera position applied
-                    aabbCasters.min += GetCamera().GetPosition();
-                    aabbCasters.max += GetCamera().GetPosition();
-
                     //copy sun frustum
                     ShadowMapFrustum* pCustomFrustum = arrFrustums.AddIndex(1);
                     ShadowMapFrustum* pSunFrustum =  &arrFrustums[nStartIdx];

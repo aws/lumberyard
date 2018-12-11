@@ -54,6 +54,8 @@ namespace EMotionFX
     class EMFX_API AttributeRotation
         : public MCore::Attribute
     {
+        AZ_CLASS_ALLOCATOR_DECL
+
         friend class AnimGraphManager;
     public:
         enum
@@ -105,7 +107,6 @@ namespace EMotionFX
 
         // overloaded from the attribute base class
         MCore::Attribute* Clone() const override                            { return Create(mDegrees, mRotation, mOrder); }
-        MCore::Attribute* CreateInstance(void* destMemory) override         { return new(destMemory) AttributeRotation(); }
         const char* GetTypeString() const override                          { return "Rotation"; }
         uint32 GetDefaultInterfaceType() const override                     { return ATTRIBUTE_INTERFACETYPE_ROTATION; }
         bool InitFrom(const MCore::Attribute* other) override
@@ -203,6 +204,8 @@ namespace EMotionFX
     class EMFX_API AttributePose
         : public MCore::Attribute
     {
+        AZ_CLASS_ALLOCATOR_DECL
+
         friend class AnimGraphManager;
     public:
         enum
@@ -219,7 +222,6 @@ namespace EMotionFX
 
         // overloaded from the attribute base class
         MCore::Attribute* Clone() const override                            { return Create(mValue); }
-        MCore::Attribute* CreateInstance(void* destMemory) override         { return new(destMemory) AttributePose(); }
         const char* GetTypeString() const override                          { return "Pose"; }
         bool InitFrom(const MCore::Attribute* other) override
         {
@@ -253,6 +255,8 @@ namespace EMotionFX
     class EMFX_API AttributeMotionInstance
         : public MCore::Attribute
     {
+        AZ_CLASS_ALLOCATOR_DECL
+
         friend class AnimGraphManager;
     public:
         enum
@@ -269,7 +273,6 @@ namespace EMotionFX
 
         // overloaded from the attribute base class
         MCore::Attribute* Clone() const override                            { return Create(mValue); }
-        MCore::Attribute* CreateInstance(void* destMemory) override         { return new(destMemory) AttributeMotionInstance(); }
         const char* GetTypeString() const override                          { return "MotionInstance"; }
         bool InitFrom(const MCore::Attribute* other) override
         {

@@ -93,6 +93,9 @@ public: // member functions
     bool IsEnabled() override;
     void SetIsEnabled(bool isEnabled) override;
 
+    bool IsRenderEnabled() override;
+    void SetIsRenderEnabled(bool isRenderEnabled) override;
+
     // ~UiElementInterface
 
     // UiEditorInterface
@@ -197,6 +200,7 @@ private: // data
     AZStd::vector<UiElementComponent*> m_childElementComponents;
 
     bool m_isEnabled = true;
+    bool m_isRenderEnabled = true;
 
     // this data is only relevant when running in the editor, it is accessed through UiEditorBus
     bool m_isVisibleInEditor = true;

@@ -164,7 +164,7 @@ void CGoalOpParallel::ExecuteDry(CPipeUser* pPipeUser)
 
 
 
-CGoalOpXMLReader CGoalOp::s_xml;
+StaticInstance<CGoalOpXMLReader> CGoalOp::s_xml;
 
 CGoalOpXMLReader::CGoalOpXMLReader()
 {
@@ -354,13 +354,13 @@ COPApproach::COPApproach(float fEndDistance, float fEndAccuracy, float fDuration
 COPApproach::COPApproach(const XmlNodeRef& node)
     : m_fLastDistance(0.f)
     , m_fInitialDistance(0.f)
-    , m_bUseLastOpResult(s_xml.GetBool(node, "useLastOp"))
-    , m_bLookAtLastOp(s_xml.GetBool(node, "lookAtLastOp"))
+    , m_bUseLastOpResult(s_xml->GetBool(node, "useLastOp"))
+    , m_bLookAtLastOp(s_xml->GetBool(node, "lookAtLastOp"))
     , m_fEndDistance(0.f)
     , m_fEndAccuracy(0.f)
     , m_fDuration(0.f)
-    , m_bForceReturnPartialPath(s_xml.GetBool(node, "requestPartialPath"))
-    , m_stopOnAnimationStart(s_xml.GetBool(node, "stopOnAnimationStart"))
+    , m_bForceReturnPartialPath(s_xml->GetBool(node, "requestPartialPath"))
+    , m_stopOnAnimationStart(s_xml->GetBool(node, "stopOnAnimationStart"))
     , m_looseAttentionId(0)
     , m_pTraceDirective(0)
     , m_pPathfindDirective(0)
@@ -372,7 +372,7 @@ COPApproach::COPApproach(const XmlNodeRef& node)
     }
     else
     {
-        s_xml.GetMandatory(node, "distance", m_fEndDistance);
+        s_xml->GetMandatory(node, "distance", m_fEndDistance);
     }
 
     node->getAttr("endAccuracy", m_fEndAccuracy);
@@ -764,10 +764,10 @@ COPFollowPath::COPFollowPath(bool pathFindToStart, bool reverse, bool startNeare
 }
 
 COPFollowPath::COPFollowPath(const XmlNodeRef& node)
-    : m_pathFindToStart(s_xml.GetBool(node, "pathFindToStart", true))
-    , m_reversePath(s_xml.GetBool(node, "reversePath", true))
-    , m_startNearest(s_xml.GetBool(node, "startNearest", true))
-    , m_bUsePointList(s_xml.GetBool(node, "usePointList"))
+    : m_pathFindToStart(s_xml->GetBool(node, "pathFindToStart", true))
+    , m_reversePath(s_xml->GetBool(node, "reversePath", true))
+    , m_startNearest(s_xml->GetBool(node, "startNearest", true))
+    , m_bUsePointList(s_xml->GetBool(node, "usePointList"))
     , m_loops(0)
     , m_loopCounter(0)
     , m_notMovingTimeMs(0)
@@ -778,10 +778,10 @@ COPFollowPath::COPFollowPath(const XmlNodeRef& node)
     , m_bControlSpeed(true)
     , m_fDesiredSpeedOnPath(0.0f)
 {
-    s_xml.GetMandatory(node, "loops", m_loops);
+    s_xml->GetMandatory(node, "loops", m_loops);
     node->getAttr("endAccuracy", m_fEndAccuracy);
 
-    s_xml.GetMandatory(node, "speed", m_fDesiredSpeedOnPath);
+    s_xml->GetMandatory(node, "speed", m_fDesiredSpeedOnPath);
 }
 
 COPFollowPath::COPFollowPath(const COPFollowPath& rhs)
@@ -1187,13 +1187,13 @@ COPBackoff::COPBackoff(const XmlNodeRef& node)
     , m_fMaxDistanceFound(0.f)
     , m_bTryingLessThanMinDistance(false)
     , m_looseAttentionId(0)
-    , m_bUseLastOp(s_xml.GetBool(node, "useLastOp"))
-    , m_bLookForward(s_xml.GetBool(node, "lookForward"))
-    , m_bUseTargetPosition(s_xml.GetBool(node, "backOffFromTarget"))
-    , m_bRandomOrder(s_xml.GetBool(node, "randomOrder"))
-    , m_bCheckSlopeDistance(s_xml.GetBool(node, "checkSlopeDistance"))
+    , m_bUseLastOp(s_xml->GetBool(node, "useLastOp"))
+    , m_bLookForward(s_xml->GetBool(node, "lookForward"))
+    , m_bUseTargetPosition(s_xml->GetBool(node, "backOffFromTarget"))
+    , m_bRandomOrder(s_xml->GetBool(node, "randomOrder"))
+    , m_bCheckSlopeDistance(s_xml->GetBool(node, "checkSlopeDistance"))
 {
-    s_xml.GetMandatory(node, "distance", m_fDistance);
+    s_xml->GetMandatory(node, "distance", m_fDistance);
     if (m_fDistance < 0.f)
     {
         m_fDistance = -m_fDistance;
@@ -1201,13 +1201,13 @@ COPBackoff::COPBackoff(const XmlNodeRef& node)
 
     node->getAttr("maxDuration", m_fDuration);
 
-    m_iDirection = (s_xml.GetBool(node, "moveForward")        ? AI_MOVE_FORWARD       : 0) |
-        (s_xml.GetBool(node, "moveBackward")       ? AI_MOVE_BACKWARD      : 0) |
-        (s_xml.GetBool(node, "moveLeft")           ? AI_MOVE_LEFT          : 0) |
-        (s_xml.GetBool(node, "moveRight")          ? AI_MOVE_RIGHT         : 0) |
-        (s_xml.GetBool(node, "moveBackLeft")       ? AI_MOVE_BACKLEFT      : 0) |
-        (s_xml.GetBool(node, "moveBackRight")      ? AI_MOVE_BACKRIGHT     : 0) |
-        (s_xml.GetBool(node, "moveTowardsGroup")   ? AI_MOVE_TOWARDS_GROUP : 0);
+    m_iDirection = (s_xml->GetBool(node, "moveForward")        ? AI_MOVE_FORWARD       : 0) |
+        (s_xml->GetBool(node, "moveBackward")       ? AI_MOVE_BACKWARD      : 0) |
+        (s_xml->GetBool(node, "moveLeft")           ? AI_MOVE_LEFT          : 0) |
+        (s_xml->GetBool(node, "moveRight")          ? AI_MOVE_RIGHT         : 0) |
+        (s_xml->GetBool(node, "moveBackLeft")       ? AI_MOVE_BACKLEFT      : 0) |
+        (s_xml->GetBool(node, "moveBackRight")      ? AI_MOVE_BACKRIGHT     : 0) |
+        (s_xml->GetBool(node, "moveTowardsGroup")   ? AI_MOVE_TOWARDS_GROUP : 0);
     if (m_iDirection == 0)
     {
         m_iDirection = AI_MOVE_BACKWARD;
@@ -1683,7 +1683,7 @@ COPTimeout::COPTimeout(const XmlNodeRef& node)
 {
     if (!node->getAttr("interval", m_fIntervalMin))
     {
-        s_xml.GetMandatory(node, "intervalMin", m_fIntervalMin);
+        s_xml->GetMandatory(node, "intervalMin", m_fIntervalMin);
     }
 
     node->getAttr("intervalMax", m_fIntervalMax);
@@ -1749,7 +1749,7 @@ COPStrafe::COPStrafe(float fDistanceStart, float fDistanceEnd, bool bStrafeWhile
 COPStrafe::COPStrafe(const XmlNodeRef& node)
     : m_fDistanceStart(0.f)
     , m_fDistanceEnd(0.0f)
-    , m_bStrafeWhileMoving(s_xml.GetBool(node, "strafeWhileMoving"))
+    , m_bStrafeWhileMoving(s_xml->GetBool(node, "strafeWhileMoving"))
 {
     if (!node->getAttr("distance", m_fDistanceStart))
     {
@@ -1788,12 +1788,12 @@ COPFireCmd::COPFireCmd(EFireMode eFireMode, bool bUseLastOp, float fIntervalMin,
 
 COPFireCmd::COPFireCmd(const XmlNodeRef& node)
     : m_eFireMode(FIREMODE_OFF)
-    , m_bUseLastOp(s_xml.GetBool(node, "useLastOp"))
+    , m_bUseLastOp(s_xml->GetBool(node, "useLastOp"))
     , m_fIntervalMin(-1.f)
     , m_fIntervalMax(-1.f)
     , m_actualIntervalMs(-1000)
 {
-    s_xml.GetFireMode(node, "mode", m_eFireMode, CGoalOpXMLReader::MANDATORY);
+    s_xml->GetFireMode(node, "mode", m_eFireMode, CGoalOpXMLReader::MANDATORY);
 
     if (!node->getAttr("timeout", m_fIntervalMin))
     {
@@ -1866,9 +1866,9 @@ COPBodyCmd::COPBodyCmd(EStance nBodyStance, bool bDelayed)
 
 COPBodyCmd::COPBodyCmd(const XmlNodeRef& node)
     : m_nBodyStance(STANCE_NULL)
-    , m_bDelayed(s_xml.GetBool(node, "delayed"))
+    , m_bDelayed(s_xml->GetBool(node, "delayed"))
 {
-    s_xml.GetStance(node, "id", m_nBodyStance, CGoalOpXMLReader::MANDATORY);
+    s_xml->GetStance(node, "id", m_nBodyStance, CGoalOpXMLReader::MANDATORY);
 }
 
 EGoalOpResult COPBodyCmd::Execute(CPipeUser* pPipeUser)
@@ -1912,17 +1912,17 @@ COPRunCmd::COPRunCmd(const XmlNodeRef& node)
     , m_fMinUrgency(0.f)
     , m_fScaleDownPathLength(0.f)
 {
-    if (!s_xml.GetUrgency(node, "urgency", m_fMaxUrgency))
+    if (!s_xml->GetUrgency(node, "urgency", m_fMaxUrgency))
     {
-        if (!s_xml.GetUrgency(node, "maxUrgency", m_fMaxUrgency))
+        if (!s_xml->GetUrgency(node, "maxUrgency", m_fMaxUrgency))
         {
-            s_xml.GetUrgency(node, "id", m_fMaxUrgency);
+            s_xml->GetUrgency(node, "id", m_fMaxUrgency);
         }
     }
 
     if ((gAIEnv.configuration.eCompatibilityMode == ECCM_CRYSIS) || (gAIEnv.configuration.eCompatibilityMode == ECCM_CRYSIS2))
     {
-        s_xml.GetUrgency(node, "minUrgency", m_fMinUrgency);
+        s_xml->GetUrgency(node, "minUrgency", m_fMinUrgency);
         node->getAttr("scaleDownPathLength", m_fScaleDownPathLength);
     }
 
@@ -2005,12 +2005,12 @@ COPLookAt::COPLookAt(const XmlNodeRef& node)
     : m_fStartAngle(0.f)
     , m_fEndAngle(0.f)
     , m_fAngleThresholdCos(0.98f)
-    , m_eLookStyle(s_xml.GetBool(node, "bodyTurn", true) ? LOOKSTYLE_SOFT : LOOKSTYLE_SOFT_NOLOWER)
-    , m_bUseLastOp(s_xml.GetBool(node, "useLastOp"))
-    , m_bContinuous(s_xml.GetBool(node, "continuous"))
+    , m_eLookStyle(s_xml->GetBool(node, "bodyTurn", true) ? LOOKSTYLE_SOFT : LOOKSTYLE_SOFT_NOLOWER)
+    , m_bUseLastOp(s_xml->GetBool(node, "useLastOp"))
+    , m_bContinuous(s_xml->GetBool(node, "continuous"))
     , m_bInitialized(false)
-    , m_bYawOnly(s_xml.GetBool(node, "yawOnly"))
-    , m_bUseBodyDir(s_xml.GetBool(node, "useBodyDir"))
+    , m_bYawOnly(s_xml->GetBool(node, "yawOnly"))
+    , m_bUseBodyDir(s_xml->GetBool(node, "useBodyDir"))
 {
     node->getAttr("startAngle", m_fStartAngle);
     node->getAttr("endAngle", m_fEndAngle);
@@ -2209,8 +2209,8 @@ COPLookAround::COPLookAround(const XmlNodeRef& node)
     , m_fScanIntervalRange(-1.f)
     , m_fIntervalMin(-1.f)
     , m_fIntervalMax(-1.f)
-    , m_breakOnLiveTarget(s_xml.GetBool(node, "breakOnLiveTarget"))
-    , m_useLastOp(s_xml.GetBool(node, "useLastOp"))
+    , m_breakOnLiveTarget(s_xml->GetBool(node, "breakOnLiveTarget"))
+    , m_useLastOp(s_xml->GetBool(node, "useLastOp"))
     , m_lookAngle(0.f)
     , m_lookZOffset(0.f)
     , m_lastLookAngle(0.f)
@@ -2218,10 +2218,10 @@ COPLookAround::COPLookAround(const XmlNodeRef& node)
     , m_bInitialized(false)
     , m_looseAttentionId(0)
     , m_initialDir(1.f, 0.f, 0.f)
-    , m_eLookStyle(s_xml.GetBool(node, "bodyTurn", true) ? LOOKSTYLE_SOFT : LOOKSTYLE_SOFT_NOLOWER)
+    , m_eLookStyle(s_xml->GetBool(node, "bodyTurn", true) ? LOOKSTYLE_SOFT : LOOKSTYLE_SOFT_NOLOWER)
     , m_checkForObstacles(false)
 {
-    s_xml.GetMandatory(node, "lookAroundRange", m_fLookAroundRange);
+    s_xml->GetMandatory(node, "lookAroundRange", m_fLookAroundRange);
     node->getAttr("scanRange", m_fScanIntervalRange);
 
     if (node->getAttr("interval", m_fIntervalMin))
@@ -2560,7 +2560,7 @@ COPPathFind::COPPathFind(
 //
 //-------------------------------------------------------------------------------------------------------------------------------
 COPPathFind::COPPathFind(const XmlNodeRef& node)
-    : m_sTargetName(s_xml.GetMandatoryString(node, "target"))
+    : m_sTargetName(s_xml->GetMandatoryString(node, "target"))
     , m_refTarget(m_sTargetName.empty() ? NILREF : GetWeakRef(gAIEnv.pAIObjectManager->GetAIObjectByName(m_sTargetName.c_str())))
     , m_fDirectionOnlyDistance(0.f)
     , m_fEndTolerance(0.f)
@@ -2688,11 +2688,11 @@ COPLocate::COPLocate(const XmlNodeRef& node)
     : m_sName(node->getAttr("name"))
     , m_nObjectType(AIOBJECT_DUMMY)
     , m_fRange(0.f)
-    , m_bWarnIfFailed(s_xml.GetBool(node, "warnIfFailed", true))
+    , m_bWarnIfFailed(s_xml->GetBool(node, "warnIfFailed", true))
 {
     if (m_sName.empty())
     {
-        s_xml.GetAIObjectType(node, "type", m_nObjectType, CGoalOpXMLReader::MANDATORY);
+        s_xml->GetAIObjectType(node, "type", m_nObjectType, CGoalOpXMLReader::MANDATORY);
     }
 
     node->getAttr("range", m_fRange);
@@ -2762,7 +2762,7 @@ COPSignal::COPSignal(const XmlNodeRef& node)
     , m_iDataValue(0)
 {
     node->getAttr("id", m_nSignalID);
-    s_xml.GetSignalFilter(node, "filter", m_cFilter);
+    s_xml->GetSignalFilter(node, "filter", m_cFilter);
     node->getAttr("data", m_iDataValue);
 }
 
@@ -2857,7 +2857,7 @@ EGoalOpResult COPScript::Execute(CPipeUser* pPipeUser)
         return eGOR_FAILED;
     }
 
-    // TODO(Márcio): Set the function environment here, instead of setting globals
+    // TODO(Marcio): Set the function environment here, instead of setting globals
     if (IEntity* entity = pPipeUser->GetEntity())
     {
         scriptSystem->SetGlobalValue("entity", entity->GetScriptTable());
@@ -2882,8 +2882,8 @@ COPDeValue::COPDeValue(int nPuppetsAlso, bool bClearDevalued)
 }
 
 COPDeValue::COPDeValue(const XmlNodeRef& node)
-    : m_bDevaluePuppets(s_xml.GetBool(node, "devaluePuppets"))
-    , m_bClearDevalued(s_xml.GetBool(node, "clearDevalued"))
+    : m_bDevaluePuppets(s_xml->GetBool(node, "devaluePuppets"))
+    , m_bClearDevalued(s_xml->GetBool(node, "clearDevalued"))
 {
 }
 
@@ -3308,7 +3308,7 @@ COPTacticalPos::COPTacticalPos(const XmlNodeRef& node)
     }
     else
     {
-        if (s_xml.GetMandatory(node, "id", tacQueryID))
+        if (s_xml->GetMandatory(node, "id", tacQueryID))
         {
             if (!pTPS->GetQueryName(tacQueryID))
             {
@@ -3323,7 +3323,7 @@ COPTacticalPos::COPTacticalPos(const XmlNodeRef& node)
 
     if (tacQueryID)
     {
-        s_xml.GetRegister(node, "register", m_nReg);
+        s_xml->GetRegister(node, "register", m_nReg);
     }
 
     Reset(NULL);
@@ -3505,11 +3505,11 @@ COPLook::COPLook(const XmlNodeRef& node)
     , m_fTimeLeft(0.f)
     , m_nReg(AI_REG_LASTOP)
 {
-    s_xml.GetRegister(node, "register", m_nReg);
+    s_xml->GetRegister(node, "register", m_nReg);
 
     // Pick the soft/hard look styles that match the body turn parameter
     ELookStyle eSoft, eHard;
-    if (s_xml.GetBool(node, "bodyTurn", true))
+    if (s_xml->GetBool(node, "bodyTurn", true))
     {
         eSoft = LOOKSTYLE_SOFT;
         eHard = LOOKSTYLE_HARD;
@@ -3525,7 +3525,7 @@ COPLook::COPLook(const XmlNodeRef& node)
     m_eLookBack = LOOKSTYLE_DEFAULT;
 
     ELookMotivation eLookMode = AILOOKMOTIVATION_LOOK;
-    s_xml.GetLook(node, "id", eLookMode);
+    s_xml->GetLook(node, "id", eLookMode);
     switch (eLookMode)
     {
     case AILOOKMOTIVATION_LOOK:
@@ -3663,7 +3663,7 @@ COPContinuous::COPContinuous(bool bKeeoMoving)
 //
 //----------------------------------------------------------------------------------------------------------
 COPContinuous::COPContinuous(const XmlNodeRef& node)
-    : m_bKeepMoving(s_xml.GetBool(node, "keepMoving"))
+    : m_bKeepMoving(s_xml->GetBool(node, "keepMoving"))
 {
 }
 
@@ -3704,14 +3704,14 @@ COPSteer::COPSteer(const XmlNodeRef& node)
     , m_fEndAccuracy(0.f)
 {
     float fSteerDistance;
-    if (!s_xml.GetMandatory(node, "distance", fSteerDistance))
+    if (!s_xml->GetMandatory(node, "distance", fSteerDistance))
     {
         fSteerDistance = 0.f;
     }
 
     m_fSteerDistanceSqr = fSteerDistance * fSteerDistance;
 
-    s_xml.GetMandatory(node, "pathLengthLimit", m_fPathLenLimit);
+    s_xml->GetMandatory(node, "pathLengthLimit", m_fPathLenLimit);
 }
 
 //
@@ -4140,7 +4140,7 @@ void COPSteer::Serialize(TSerialize ser)
 //
 //----------------------------------------------------------------------------------------------------------
 COPWaitSignal::COPWaitSignal(const XmlNodeRef& node)
-    : m_sSignal(s_xml.GetMandatoryString(node, "name"))
+    : m_sSignal(s_xml->GetMandatoryString(node, "name"))
     , m_edMode(edNone)
     , m_intervalMs(0)
 {
@@ -4327,12 +4327,12 @@ COPAnimation::COPAnimation(EAnimationMode mode, const char* value, const bool is
 //
 //----------------------------------------------------------------------------------------------------------
 COPAnimation::COPAnimation(const XmlNodeRef& node)
-    : m_sValue(s_xml.GetMandatoryString(node, "name"))
-    , m_bIsUrgent(s_xml.GetBool(node, "urgent", false))
+    : m_sValue(s_xml->GetMandatoryString(node, "name"))
+    , m_bIsUrgent(s_xml->GetBool(node, "urgent", false))
     , m_bAGInputSet(false)
     , m_eMode(AIANIM_INVALID)
 {
-    s_xml.GetAnimationMode(node, "mode", m_eMode, CGoalOpXMLReader::MANDATORY);
+    s_xml->GetAnimationMode(node, "mode", m_eMode, CGoalOpXMLReader::MANDATORY);
 }
 
 //
@@ -4426,23 +4426,23 @@ COPAnimTarget::COPAnimTarget(bool signal, const char* animName, float startWidth
 //
 //----------------------------------------------------------------------------------------------------------
 COPAnimTarget::COPAnimTarget(const XmlNodeRef& node)
-    : m_sAnimName(s_xml.GetMandatoryString(node, "name"))
+    : m_sAnimName(s_xml->GetMandatoryString(node, "name"))
     , m_fStartWidth(0.f)
     , m_fDirectionTolerance(0.f)
     , m_fStartArcAngle(0.f)
     , m_vApproachPos(ZERO)
-    , m_bAutoAlignment(s_xml.GetBool(node, "autoAlignment"))
+    , m_bAutoAlignment(s_xml->GetBool(node, "autoAlignment"))
 {
     EAnimationMode eAnimationMode;
-    if (!s_xml.GetAnimationMode(node, "mode", eAnimationMode, CGoalOpXMLReader::MANDATORY))
+    if (!s_xml->GetAnimationMode(node, "mode", eAnimationMode, CGoalOpXMLReader::MANDATORY))
     {
         eAnimationMode = AIANIM_SIGNAL;
     }
     m_bSignal = (eAnimationMode == AIANIM_SIGNAL);
 
-    s_xml.GetMandatory(node, "startWidth", m_fStartWidth);
-    s_xml.GetMandatory(node, "directionTolerance", m_fDirectionTolerance);
-    s_xml.GetMandatory(node, "startArcAngle", m_fStartArcAngle);
+    s_xml->GetMandatory(node, "startWidth", m_fStartWidth);
+    s_xml->GetMandatory(node, "directionTolerance", m_fDirectionTolerance);
+    s_xml->GetMandatory(node, "startArcAngle", m_fStartArcAngle);
 
     float fApproachRadius;
     if (node->getAttr("approachRadius", fApproachRadius))
@@ -4575,12 +4575,12 @@ COPProximity::COPProximity(float radius, const string& signalName, bool signalWh
 
 COPProximity::COPProximity(const XmlNodeRef& node)
     : m_radius(0.f)
-    , m_signalName(s_xml.GetMandatoryString(node, "signal"))
-    , m_signalWhenDisabled(s_xml.GetBool(node, "signalWhenDisabled"))
-    , m_visibleTargetOnly(s_xml.GetBool(node, "visibleTargetOnly"))
+    , m_signalName(s_xml->GetMandatoryString(node, "signal"))
+    , m_signalWhenDisabled(s_xml->GetBool(node, "signalWhenDisabled"))
+    , m_visibleTargetOnly(s_xml->GetBool(node, "visibleTargetOnly"))
     , m_triggered(false)
 {
-    s_xml.GetMandatory(node, "radius", m_radius);
+    s_xml->GetMandatory(node, "radius", m_radius);
 }
 
 //===================================================================
@@ -4752,7 +4752,7 @@ COPMoveTowards::COPMoveTowards(const XmlNodeRef& node)
     }
     else
     {
-        s_xml.GetMandatory(node, "distance", m_distance);
+        s_xml->GetMandatory(node, "distance", m_distance);
     }
 
     float variation = 0.f;
@@ -5017,14 +5017,14 @@ COPDodge::COPDodge(float distance, bool useLastOpAsBackup)
 
 COPDodge::COPDodge(const XmlNodeRef& node)
     : m_distance(0)
-    , m_useLastOpAsBackup(s_xml.GetBool(node, "useLastOpAsBackup"))
+    , m_useLastOpAsBackup(s_xml->GetBool(node, "useLastOpAsBackup"))
     , m_endAccuracy(0.f)
     , m_notMovingTime(0.0f)
     , m_pTraceDirective(0)
     , m_targetPos(ZERO)
     , m_targetView(ZERO)
 {
-    s_xml.GetMandatory(node, "radius", m_distance);
+    s_xml->GetMandatory(node, "radius", m_distance);
 
     m_basis.SetIdentity();
 }
@@ -5414,9 +5414,9 @@ COPCompanionStick::COPCompanionStick(const XmlNodeRef& node)
     , m_fNotReactingDistance(1.f)
     , m_fForcedMoveDistance(2.f)
 {
-    s_xml.GetMandatory(node, "leaderInfluenceRange", m_fLeaderInfluenceRange);
-    s_xml.GetMandatory(node, "notReactingDistance", m_fNotReactingDistance);
-    s_xml.GetMandatory(node, "forcedMoveDistance", m_fForcedMoveDistance);
+    s_xml->GetMandatory(node, "leaderInfluenceRange", m_fLeaderInfluenceRange);
+    s_xml->GetMandatory(node, "notReactingDistance", m_fNotReactingDistance);
+    s_xml->GetMandatory(node, "forcedMoveDistance", m_fForcedMoveDistance);
 }
 
 //
@@ -6012,7 +6012,7 @@ COPCommunication::COPCommunication(const XmlNodeRef& node)
     , m_commFinished(false)
     , m_timeout(8.0f)
     , m_playID(0)
-    , m_waitUntilFinished(s_xml.GetBool(node, "waitUntilFinished", true))
+    , m_waitUntilFinished(s_xml->GetBool(node, "waitUntilFinished", true))
 {
     const char* commName;
     if (node->getAttr("name", &commName))

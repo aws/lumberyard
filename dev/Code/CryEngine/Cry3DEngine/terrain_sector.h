@@ -426,13 +426,13 @@ public:
 
     static void GetStaticMemoryUsage(ICrySizer* sizer);
 
-    static CProcVegetPoolMan* GetProcObjPoolMan() { return m_pProcObjPoolMan; }
+    static CProcVegetPoolMan* GetProcObjPoolMan() { return s_pProcObjPoolMan; }
 
-    static SProcObjChunkPool* GetProcObjChunkPool() { return m_pProcObjChunkPool; }
+    static SProcObjChunkPool* GetProcObjChunkPool() { return s_pProcObjChunkPool; }
 
-    static void SetProcObjPoolMan(CProcVegetPoolMan* pProcObjPoolMan) { m_pProcObjPoolMan = pProcObjPoolMan; }
+    static void SetProcObjPoolMan(CProcVegetPoolMan* pProcObjPoolMan) { s_pProcObjPoolMan = pProcObjPoolMan; }
 
-    static void SetProcObjChunkPool(SProcObjChunkPool* pProcObjChunkPool) { m_pProcObjChunkPool = pProcObjChunkPool; }
+    static void SetProcObjChunkPool(SProcObjChunkPool* pProcObjChunkPool) { s_pProcObjChunkPool = pProcObjChunkPool; }
 
     bool CheckVis(bool bAllIN, bool bAllowRenderIntoCBuffer, const SRenderingPassInfo& passInfo);
 
@@ -471,6 +471,8 @@ public:
     void ReleaseHeightMapGeometry(bool bRecursive = false, const AABB* pBox = NULL);
     void ResetHeightMapGeometry(bool bRecursive = false, const AABB* pBox = NULL);
     int GetSecIndex();
+
+    void GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials);
 
     uint32 GetLastTimeUsed() { return m_nLastTimeUsed; }
 
@@ -578,9 +580,9 @@ private:
 
     BuildMeshData* m_MeshData;
 
-    static PodArray<vtx_idx> m_SurfaceIndices[SurfaceTile::MaxSurfaceCount][4];
-    static CProcVegetPoolMan* m_pProcObjPoolMan;
-    static SProcObjChunkPool* m_pProcObjChunkPool;
+    static PodArray<vtx_idx> s_SurfaceIndices[SurfaceTile::MaxSurfaceCount][4];
+    static CProcVegetPoolMan* s_pProcObjPoolMan;
+    static SProcObjChunkPool* s_pProcObjChunkPool;
 
     static void SetupTexGenParams(SSurfaceType* pLayer, float* pOutParams, uint8 ucProjAxis, bool bOutdoor, float fTexGenScale = 1.f);
 

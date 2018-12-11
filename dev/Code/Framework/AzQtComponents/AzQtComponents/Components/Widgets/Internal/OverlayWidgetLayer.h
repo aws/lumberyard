@@ -57,6 +57,8 @@ namespace AzQtComponents
             virtual void AddButtons(Ui::OverlayWidgetLayer& widget, const OverlayWidgetButtonList& buttons, bool hasBreakoutWindow);
             virtual void ButtonClicked(size_t index);
 
+            void RefreshCloseButton();
+
             bool eventFilter(QObject* object, QEvent* event) override;
 
             static const char* s_layerStyle;
@@ -64,7 +66,7 @@ namespace AzQtComponents
             QVector<Button> m_buttons;
             QScopedPointer<Ui::OverlayWidgetLayer> m_ui;
             OverlayWidget* m_parent;
-            QDialog* m_breakoutDialog;
+            QPointer<QDialog> m_breakoutDialog;
             int m_breakoutCloseButtonIndex;
         };
     }

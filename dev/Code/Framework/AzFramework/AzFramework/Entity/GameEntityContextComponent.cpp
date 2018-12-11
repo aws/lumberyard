@@ -473,12 +473,12 @@ namespace AzFramework
     {
         const SliceInstantiationTicket& ticket = *SliceInstantiationResultBus::GetCurrentBusId();
 
-        SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
-
         if (m_instantiatingDynamicSlices.erase(ticket) > 0)
         {
             EBUS_EVENT(GameEntityContextEventBus, OnSliceInstantiated, sliceAssetId, instance, ticket);
         }
+
+        SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
     }
 
     //=========================================================================
@@ -488,11 +488,12 @@ namespace AzFramework
     {
         const SliceInstantiationTicket& ticket = *SliceInstantiationResultBus::GetCurrentBusId();
 
-        SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
-
         if (m_instantiatingDynamicSlices.erase(ticket) > 0)
         {
             EBUS_EVENT(GameEntityContextEventBus, OnSliceInstantiationFailed, sliceAssetId, ticket);
         }
+
+        SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
+
     }
 } // namespace AzFramework

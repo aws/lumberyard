@@ -34,8 +34,11 @@ namespace AZ
         AssetBrowserContextProvider();
         ~AssetBrowserContextProvider() override;
      
-        void AddContextMenuActions(QWidget* caller, QMenu* menu, const AZStd::vector<AzToolsFramework::AssetBrowser::AssetBrowserEntry*>& entries) override;
+        /////////////////////////////////////////////////////////////////////////////////////////////////////
+        // AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
         void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override;
+        AzToolsFramework::AssetBrowser::SourceFileDetails GetSourceFileDetails(const char* fullSourceFileName) override;
+        /////////////////////////////////////////////////////////////////////////////////////////////////////
 
     protected:
         bool HandlesSource(const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* entry) const; // return true if we care about this kind of source file.

@@ -1,10 +1,10 @@
 {
     "none":
     {
-        "Tests":
-        [
-            "Core/Tests/test_Main.cpp",
-            "Core/Tests/test_Archive.cpp"
-        ]
+      "Tests": [
+        "Core/Tests/test_Main.cpp",
+        "Core/Tests/test_Archive.cpp",
+        "Core/Tests/test_PathUtil.cpp"
+      ]
     }
 }

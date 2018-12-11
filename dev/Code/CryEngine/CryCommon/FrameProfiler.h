@@ -433,9 +433,12 @@ public:
         ,   m_pOfflineHistory(NULL)
         ,   m_bAlwaysCollect(bAlwaysCollect)
     {
-        if (IFrameProfileSystem* const pFrameProfileSystem = m_pISystem->GetIProfileSystem())
+        if (m_pISystem)
         {
-            pFrameProfileSystem->AddFrameProfiler(this);
+            if (IFrameProfileSystem* const pFrameProfileSystem = m_pISystem->GetIProfileSystem())
+            {
+                pFrameProfileSystem->AddFrameProfiler(this);
+            }
         }
     }
 
@@ -470,7 +473,7 @@ public:
 
     ILINE CFrameProfilerSection(CFrameProfiler* profiler)
     {
-        if ((gEnv->bProfilerEnabled || profiler->m_bAlwaysCollect) && (gEnv->callbackStartSection))
+        if (gEnv && ((gEnv->bProfilerEnabled || profiler->m_bAlwaysCollect) && (gEnv->callbackStartSection)))
         {
             m_pFrameProfiler = profiler;
             gEnv->callbackStartSection(this);

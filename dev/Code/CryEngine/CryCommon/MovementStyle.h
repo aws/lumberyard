@@ -56,7 +56,7 @@ public:
     }
 
     void ConstructDictionariesIfNotAlreadyDone();
-    void ReadFromXml(const XmlNodeRef& node);
+    void ReadFromXml(const XmlNodeRef& node) {}
 
     void SetStance(const Stance stance) { m_stance = stance; }
     void SetSpeed(const Speed speed) { m_speed = speed; }
@@ -104,56 +104,5 @@ private:
     bool m_hasExactPositioningRequest;
     bool m_glanceInMovementDirection;
 };
-
-struct MovementStyleDictionaryCollection
-{
-    MovementStyleDictionaryCollection();
-
-    CXMLAttrReader<MovementStyle::Speed> speeds;
-    CXMLAttrReader<MovementStyle::Stance> stances;
-    CXMLAttrReader<EBodyOrientationMode> bodyOrientations;
-    CXMLAttrReader<bool> booleans;
-};
-
-inline MovementStyleDictionaryCollection::MovementStyleDictionaryCollection()
-{
-    speeds.Reserve(3);
-    speeds.Add("Walk", MovementStyle::Walk);
-    speeds.Add("Run", MovementStyle::Run);
-    speeds.Add("Sprint", MovementStyle::Sprint);
-
-    stances.Reserve(4);
-    stances.Add("Relaxed", MovementStyle::Relaxed);
-    stances.Add("Alerted", MovementStyle::Alerted);
-    stances.Add("Stand", MovementStyle::Stand);
-    stances.Add("Crouch", MovementStyle::Crouch);
-
-    bodyOrientations.Reserve(3);
-    bodyOrientations.Add("FullyTowardsMovementDirection", FullyTowardsMovementDirection);
-    bodyOrientations.Add("FullyTowardsAimOrLook", FullyTowardsAimOrLook);
-    bodyOrientations.Add("HalfwayTowardsAimOrLook", HalfwayTowardsAimOrLook);
-
-    booleans.Reserve(4);
-    booleans.Add("true", true);
-    booleans.Add("false", false);
-    booleans.Add("1", true);
-    booleans.Add("0", false);
-}
-
-namespace
-{
-    MovementStyleDictionaryCollection g_movementStyleDictionaryCollection;
-}
-
-inline void MovementStyle::ReadFromXml(const XmlNodeRef& node)
-{
-    g_movementStyleDictionaryCollection.speeds.Get(node, "speed", m_speed, true);
-    g_movementStyleDictionaryCollection.stances.Get(node, "stance", m_stance);
-    g_movementStyleDictionaryCollection.bodyOrientations.Get(node, "bodyOrientation", m_bodyOrientationMode);
-    g_movementStyleDictionaryCollection.booleans.Get(node, "moveToCover", m_movingToCover);
-    g_movementStyleDictionaryCollection.booleans.Get(node, "turnTowardsMovementDirectionBeforeMoving", m_turnTowardsMovementDirectionBeforeMoving);
-    g_movementStyleDictionaryCollection.booleans.Get(node, "strafe", m_strafe);
-    g_movementStyleDictionaryCollection.booleans.Get(node, "glanceInMovementDirection", m_glanceInMovementDirection);
-}
 
 #endif // CRYINCLUDE_CRYCOMMON_MOVEMENTSTYLE_H

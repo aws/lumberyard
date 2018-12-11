@@ -25,12 +25,12 @@ using namespace PathUtil;
 
 namespace AudioControls
 {
-    const string CAudioWwiseLoader::ms_sGameParametersFolder = "Game Parameters";
-    const string CAudioWwiseLoader::ms_sGameStatesPath = "States";
-    const string CAudioWwiseLoader::ms_sSwitchesFolder = "Switches";
-    const string CAudioWwiseLoader::ms_sEventsFolder = "Events";
-    const string CAudioWwiseLoader::ms_sEnvironmentsFolder = "Master-Mixer Hierarchy";
-    const string CAudioWwiseLoader::ms_sSoundBanksPath = "sounds/wwise";
+    const char* CAudioWwiseLoader::ms_sGameParametersFolder = "Game Parameters";
+    const char* CAudioWwiseLoader::ms_sGameStatesPath = "States";
+    const char* CAudioWwiseLoader::ms_sSwitchesFolder = "Switches";
+    const char* CAudioWwiseLoader::ms_sEventsFolder = "Events";
+    const char* CAudioWwiseLoader::ms_sEnvironmentsFolder = "Master-Mixer Hierarchy";
+    const char* CAudioWwiseLoader::ms_sSoundBanksPath = "sounds/wwise";
 
     //-------------------------------------------------------------------------------------------//
     void CAudioWwiseLoader::Load(CAudioSystemEditor_wwise* pAudioSystemImpl)

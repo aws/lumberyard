@@ -18,7 +18,18 @@
 namespace AZStd
 {
     /**
-     * Lock-free vector, indexed access and dynamically resizable.
+     * This container is lock free, provides indexed access and is dynamically resizable.
+     * It will not free up memory unless clear() is explicitly called.
+     *
+     * WARNING 1: concurrent_vector IS NOT THREADSAFE!
+     * The size of the vector is changed atomically, and memory allocations are atomic, but
+     * elements are not pushed onto the list atomically when the size changes. If you just
+     * want a list that dynamically grows, doesn't free up and reallocate existing pointers,
+     * and can be read from in a thread-safe way, then use this.
+     * Otherwise, use something else (like an AZStd::list with a mutex).
+     *
+     * WARNING 2: constructors and destructors on elements created by this will
+     * not be called. Best to use with structs and simple data types (ints, floats, etc)
      */
     template<typename T, typename Allocator = AZStd::allocator,
         unsigned int INITIAL_CAPACITY_LOG = 5, unsigned int MAX_CAPACITY_LOG = 32>

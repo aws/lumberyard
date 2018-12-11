@@ -1130,6 +1130,13 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
     }
     else if (cmd == eMI_RemoveSelected)
     {
+        // If we are about to delete the sequence, cancel the notification
+        // context, otherwise it will notify on a stale sequence pointer.
+        if (pSequence->IsSelected())
+        {
+            context.Cancel();
+        }
+
         if (isLegacySequence)
         {
             CUndo undo("Delete selected TrackView Nodes/Tracks");
@@ -1258,8 +1265,9 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                 }
                 else
                 {
-                    CUndo undo("Add TrackView Comment Node");
+                    AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Comment Node");
                     pGroupNode->CreateSubNode(commentNodeName, AnimNodeType::Comment);
+                    undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
                 }
             }
             else if (cmd == eMI_AddRadialBlur)
@@ -1939,10 +1947,13 @@ void CTrackViewNodesCtrl::ImportFromFBX()
                             if (keyIndex < (pTrack->GetKeyCount() - 1))
                             {
                                 CTrackViewKeyHandle nextKey = key.GetNextKey();
-                                currentKeyTime = nextKey.GetTime() - key.GetTime();
-                                outTangent[0] = pAnimData->rightTangentWeight * currentKeyTime;
-                                outTangent[1] = outTangent[0] * pAnimData->rightTangent;
-                                pSpline->SetKeyOutTangent(keyIndex, outTangent);
+                                if (nextKey.IsValid())
+                                {
+                                    currentKeyTime = nextKey.GetTime() - key.GetTime();
+                                    outTangent[0] = pAnimData->rightTangentWeight * currentKeyTime;
+                                    outTangent[1] = outTangent[0] * pAnimData->rightTangent;
+                                    pSpline->SetKeyOutTangent(keyIndex, outTangent);
+                                }
                             }
                         }
                     }
@@ -2195,6 +2206,11 @@ int CTrackViewNodesCtrl::ShowPopupMenuSingleSelection(SContextMenu& contextMenu,
             a->setData(eMI_Disable);
             a->setCheckable(true);
             a->setChecked(pNode->IsDisabled());
+            // If the node is not currently allowed to be enabled, disable the check box.
+            if (pNode->IsDisabled() && !pNode->CanBeEnabled())
+            {
+                a->setEnabled(false);
+            }
             bFlagAppended = true;
         }
 
@@ -2284,7 +2300,10 @@ int CTrackViewNodesCtrl::ShowPopupMenuSingleSelection(SContextMenu& contextMenu,
         }
     }
 
-    if (bOnNode && !bIsLightAnimationSet && !isOnDirector && !isOnComponentNode && !isOnAzEntityNode)
+    CTrackViewSequence* sequence = pNode->GetSequence();
+    bool isLegacySequence = (sequence && sequence->GetSequenceType() == SequenceType::Legacy);
+
+    if (isLegacySequence && bOnNode && !bIsLightAnimationSet && !isOnDirector && !isOnComponentNode && !isOnAzEntityNode)
     {
         AddMenuSeperatorConditional(contextMenu.main, bAppended);
         contextMenu.main.addAction("Import FBX File...")->setData(eMI_ImportFromFBX);
@@ -2530,6 +2549,12 @@ bool CTrackViewNodesCtrl::FillAddTrackMenu(STrackMenuTreeNode& menuAddTrack, con
         // get the animatable param name
         if (nodeType == AnimNodeType::Component)
         {
+            // Skip over any hidden params
+            if (animatableProperties[i].flags & IAnimNode::ESupportedParamFlags::eSupportedParamFlags_Hidden)
+            {
+                continue;
+            }
+
             paramType = animatableProperties[i].paramType;
         }
         else
@@ -2759,6 +2784,31 @@ void CTrackViewNodesCtrl::ShowNextResult()
 
             QString matchCountText = QString("%1/%2").arg(m_currentMatchIndex + 1).arg(m_matchCount); // One-based indexing
             ui->searchCount->setText(matchCountText);
+        }
+    }
+}
+
+void CTrackViewNodesCtrl::Update()
+{
+    // Update the Track UI elements with the latest names of the Tracks.
+    // In some cases (save slice overrides) the Track names (param names)
+    // may not be available at the time of the Sequence activation because
+    // they come from the animated entities (which may not be active). So
+    // just update them once a frame to make sure they are the latest.
+    for (auto iter = m_nodeToRecordMap.begin(); iter != m_nodeToRecordMap.end(); ++iter)
+    {
+        const CTrackViewNode* node = iter->first;
+        CTrackViewNodesCtrl::CRecord* record = iter->second;
+        if (node && record)
+        {
+            if (node->GetNodeType() == eTVNT_Track)
+            {
+                const CTrackViewAnimNode* track = static_cast<const CTrackViewAnimNode*>(node);
+                if (track)
+                { 
+                    record->setText(0, track->GetName());
+                }
+            }            
         }
     }
 }

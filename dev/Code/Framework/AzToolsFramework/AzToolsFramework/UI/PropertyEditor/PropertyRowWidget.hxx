@@ -63,7 +63,7 @@ namespace AzToolsFramework
 
         virtual void AddedChild(PropertyRowWidget* child);
 
-        virtual void SetExpanded(bool expanded, bool fromUserInteraction = false);
+        virtual void SetExpanded(bool expanded);
         virtual bool IsExpanded() const { return m_expanded; }
 
         void DoExpandOrContract(bool expand, bool includeDescendents = false);
@@ -213,7 +213,7 @@ namespace AzToolsFramework
         void UpdateEnabledState();
 
     signals:
-        void onExpandedOrContracted(InstanceDataNode* node, bool expanded, bool fromUserInteraction = false);
+        void onUserExpandedOrContracted(InstanceDataNode* node, bool expanded);
         void onRequestedContainerClear(InstanceDataNode* node);
         void onRequestedContainerElementRemove(InstanceDataNode* node);
         void onRequestedContainerAdd(InstanceDataNode* node);

@@ -12,7 +12,7 @@
 #ifndef AZCORE_TYPEINFO_H
 #define AZCORE_TYPEINFO_H
 
-#include <AzCore/std/typetraits/aligned_storage.h>
+#include <AzCore/std/typetraits/static_storage.h>
 #include <AzCore/std/typetraits/is_pointer.h>
 #include <AzCore/std/typetraits/is_const.h>
 #include <AzCore/std/typetraits/is_enum.h>
@@ -187,25 +187,8 @@ namespace AZ
 
         // VS2013 does not handle non-pod function statics correctly in a thread-safe manner
         // VS2015+/clang init them as part of static init, or interlocked (as per standard)
-#if defined(AZ_COMPILER_MSVC) && _MSC_VER <= 1800
-        struct TypeIdHolder
-        {
-            AZStd::aligned_storage<sizeof(AZ::TypeId), 16>::type m_uuidBuffer;
-            AZStd::atomic<const AZ::TypeId*> m_uuid; // This is intentionally not initialized so it doesn't stomp another thread's init
-            TypeIdHolder(const AZ::TypeId& uuid)
-            {
-                m_uuid.store(new (&m_uuidBuffer) AZ::TypeId(uuid));
-            }
-            operator const AZ::TypeId&() const
-            {
-                // spin wait for m_uuid to have the only possible correct value, someone must be constructing it
-                const AZ::TypeId* typeId = nullptr;
-                do {
-                    typeId = m_uuid.load();
-                } while (typeId != reinterpret_cast<const AZ::TypeId*>(&m_uuidBuffer));
-                return *typeId;
-            }
-        };
+#if AZ_TRAIT_COMPILER_USE_STATIC_STORAGE_FOR_NON_POD_STATICS
+        using TypeIdHolder = AZStd::static_storage<AZ::TypeId>;
 #else
         using TypeIdHolder = AZ::TypeId;
 #endif

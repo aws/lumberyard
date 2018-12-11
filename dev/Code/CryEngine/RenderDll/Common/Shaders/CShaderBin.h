@@ -88,7 +88,7 @@ struct SParamCacheInfo
 
 struct SShaderBin
 {
-    typedef std::vector<SParamCacheInfo, STLShaderAllocator<SParamCacheInfo> > ParamsCacheVec;
+    typedef AZStd::vector<SParamCacheInfo, AZ::StdLegacyAllocator> ParamsCacheVec;
     static SShaderBin s_Root;
     static uint32 s_nCache;
     static uint32 s_nMaxFXBinCache;

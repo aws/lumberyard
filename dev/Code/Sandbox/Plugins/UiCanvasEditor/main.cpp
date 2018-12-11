@@ -111,7 +111,7 @@ public:
         {
             openers.push_back({ "Lumberyard_UICanvas_Editor", 
                 "Open in UI Canvas Editor...", 
-                QIcon(), 
+                QIcon(":/PropertyEditor/Resources/edit-asset.png"),
                 [](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
             {
                 OpenViewPane(UICANVASEDITOR_NAME_LONG);
@@ -119,12 +119,20 @@ public:
                 UiEditorDLLBus::Broadcast(&UiEditorDLLInterface::OpenSourceCanvasFile, absoluteName);
             } });
         }
-        else if (AZStd::wildcard_match("*.sprite", fullSourceFileName))
+    }
+
+    AzToolsFramework::AssetBrowser::SourceFileDetails GetSourceFileDetails(const char* fullSourceFileName) override
+    {
+        if (AZStd::wildcard_match("*.uicanvas", fullSourceFileName))
         {
-            // don't do anything.  This at least prevents this from going to the system file dialog since we
-            // know that there's no operating system handler for this kind of file.
-            openers.push_back({ "Lumberyard_Sprite_Editor", "Open in Sprite Editor...", QIcon(), nullptr });
+            return AzToolsFramework::AssetBrowser::SourceFileDetails("Editor/Icons/AssetBrowser/UICanvas_16.png");
         }
+        
+        if (AZStd::wildcard_match("*.sprite", fullSourceFileName))
+        {
+            return AzToolsFramework::AssetBrowser::SourceFileDetails("Editor/Icons/AssetBrowser/Sprite_16.png");
+        }
+        return AzToolsFramework::AssetBrowser::SourceFileDetails();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

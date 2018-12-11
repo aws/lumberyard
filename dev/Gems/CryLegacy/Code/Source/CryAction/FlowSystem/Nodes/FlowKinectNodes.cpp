@@ -277,7 +277,7 @@ private:
 
 REGISTER_FLOW_NODE("Kinect:Alignment", CFlowNode_KinectAlignment);
 
-const static string ms_jointEnum("enum_int:hip_center=0,spine=1,shoulder_center=2,head=3,shoulder_left=4,elbow_left=5,wrist_left=6,hand_left=7,shoulder_right=8,elbow_right=9,wrist_right=10,hand_right=11,hip_left=12,knee_left=13,ankle_left=14,foot_left=15,hip_right=16,knee_right=17,ankle_right=18,foot_right=19,hand_refined_left=20,hand_refined_right=21,null=22");
+const static char* ms_jointEnum("enum_int:hip_center=0,spine=1,shoulder_center=2,head=3,shoulder_left=4,elbow_left=5,wrist_left=6,hand_left=7,shoulder_right=8,elbow_right=9,wrist_right=10,hand_right=11,hip_left=12,knee_left=13,ankle_left=14,foot_left=15,hip_right=16,knee_right=17,ankle_right=18,foot_right=19,hand_refined_left=20,hand_refined_right=21,null=22");
 
 class CFlowNode_KinectSkeleton
     : public CFlowBaseNode<eNCT_Instanced>
@@ -315,8 +315,8 @@ public:
             InputPortConfig_Void        ("Sync", _HELP("Synchronize")),
             InputPortConfig<bool>       ("Auto", false, _HELP("Auto update")),
             InputPortConfig<float>  ("Freq", 0.0f, _HELP("Auto update frequency (0 to update every frame)")),
-            InputPortConfig<int>        ("Joint", KIN_SKELETON_POSITION_COUNT, _HELP("Joint"), NULL, _UICONFIG(ms_jointEnum.c_str())),
-            InputPortConfig<int>        ("RefJoint", KIN_SKELETON_POSITION_COUNT, _HELP("Reference joint"), NULL, _UICONFIG(ms_jointEnum.c_str())),
+            InputPortConfig<int>        ("Joint", KIN_SKELETON_POSITION_COUNT, _HELP("Joint"), NULL, _UICONFIG(ms_jointEnum)),
+            InputPortConfig<int>        ("RefJoint", KIN_SKELETON_POSITION_COUNT, _HELP("Reference joint"), NULL, _UICONFIG(ms_jointEnum)),
             { 0 }
         };
 

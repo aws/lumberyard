@@ -27,7 +27,12 @@
     <script>
         var parts = location.href.split("#")
         var fragment, app, dependencies = ""
-
+        var port = ':3000'
+        var domain = 'localhost'
+        var schema = 'http://'
+        var origin = window.location.origin;
+        document.domain = domain
+        
         if(parts.length >= 2){
             fragment = parts[1]
             var f_parts = fragment.split("&")
@@ -38,17 +43,19 @@
         }
     </script>
 
-    <script id='bootstrap'>
-        var bootstrap = { }
-    </script>    
-
+    <script id='bootstrap'>                
+        var bootstrap = {}
+    </script>        
+    
     <script src="config.js"></script>
 
     <script id="systemjs_load">
-        System.import('systemjs-hot-reloader').then((connect) => {
-            connect({ host: '//localhost:3000' })
-            System.import('app')
-        })
+        if (origin.toLocaleLowerCase() == schema + domain + port) {
+            System.import('systemjs-hot-reloader').then((connect) => {
+                connect({ host: '//'+ domain + port })
+                System.import('app')
+            })
+        }
     </script>
 
     <!-- Inline styles required for loading screen -->
@@ -75,6 +82,15 @@
     <div style="margin-top: 250px;">
         <div class="container loading-container">
             <div class="row">
+                <script>
+                    if (origin.toLocaleLowerCase() != schema + domain + port) {
+                        bootstrap = "";
+                        var p = document.createElement("p");
+                        p.className = "text-center"
+                        p.innerHTML = "The attempt to access the Cloud Gem Portal from an unsecure URL hostname has been rejected.  Please use the proper URL pattern http://[bucket-name].s3.amazonaws.com."
+                        document.body.insertBefore(p, document.body.firstChild);
+                    }
+                </script>
                 <div class="col-12 text-center" >
                     Welcome to the Lumberyard Cloud Gem Portal
                 </div>

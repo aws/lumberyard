@@ -115,10 +115,10 @@ void SerializeWeakRefMap(TSerialize& ser, const char* sName, std::map < CWeakRef
 
 
 
-std::vector<CAIActor*> CPuppet::s_enemies;
-std::vector<SSortedHideSpot> CPuppet::s_sortedHideSpots;
-MultimapRangeHideSpots CPuppet::s_hidespots;
-MapConstNodesDistance CPuppet::s_traversedNodes;
+StaticInstance<std::vector<CAIActor*>> CPuppet::s_enemies;
+StaticInstance<std::vector<SSortedHideSpot>> CPuppet::s_sortedHideSpots;
+StaticInstance<MultimapRangeHideSpots> CPuppet::s_hidespots;
+StaticInstance<MapConstNodesDistance> CPuppet::s_traversedNodes;
 
 SSoundPerceptionDescriptor CPuppet::s_DefaultSoundPerceptionDescriptor[AISOUND_LAST] =
 {

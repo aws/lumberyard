@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{c1cb94ca-5fe7-49ff-b847-dde7752b2546}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile />
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="AWS\resource-template.json" />
+    <Content Include="AWS\swagger.json" />
+    <Content Include="preview.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AWS\common-code\SurveyCommon\survey_common.py" />
+    <Compile Include="AWS\common-code\SurveyUtils\survey_utils.py" />
+    <Compile Include="AWS\common-code\ValidationCommon\validation_common.py" />
+    <Compile Include="AWS\common-code\ValidationUtils\validation_utils.py" />
+    <Compile Include="AWS\lambda-code\AnswersDynamoDbStreamLambda\answers_dynamo_db_stream.py" />
+    <Compile Include="AWS\lambda-code\DeleteAnswerSubmissionsLambda\delete_submissions.py" />
+    <Compile Include="AWS\lambda-code\ExportAnswerSubmissionsCSVLambda\export_csv.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\active_surveys.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\active_surveys_answers.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\active_surveys_player_submission.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\active_surveys_player_submissions.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\active_survey_metadata.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\service_status.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\surveys.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\surveys_activation_period.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\surveys_answers.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\surveys_answers_export_csv.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\surveys_answer_aggregations.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\surveys_name.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\surveys_published.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\surveys_questions.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\surveys_questions_status.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\surveys_question_order.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\survey_metadata.py" />
+    <Compile Include="AWS\lambda-code\ServiceLambda\api\__init__.py" />
+    <Compile Include="AWS\test\test_integration.py" />
+    <Compile Include="AWS\test\__init__.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="AWS\" />
+    <Folder Include="AWS\common-code\" />
+    <Folder Include="AWS\common-code\SurveyCommon" />
+    <Folder Include="AWS\common-code\SurveyUtils" />
+    <Folder Include="AWS\common-code\ValidationCommon" />
+    <Folder Include="AWS\common-code\ValidationUtils" />
+    <Folder Include="AWS\lambda-code\" />
+    <Folder Include="AWS\lambda-code\AnswersDynamoDbStreamLambda" />
+    <Folder Include="AWS\lambda-code\DeleteAnswerSubmissionsLambda" />
+    <Folder Include="AWS\lambda-code\ExportAnswerSubmissionsCSVLambda" />
+    <Folder Include="AWS\lambda-code\ServiceLambda\" />
+    <Folder Include="AWS\lambda-code\ServiceLambda\api" />
+    <Folder Include="AWS\test" />
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>

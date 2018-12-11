@@ -262,7 +262,6 @@ public:
 
     virtual IMemoryFilePtr CreateFile(const char* fileName, unsigned int userIndex)
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
         Lock();
         IMemoryFilePtr file(new CMemoryFileStandard(fileName, userIndex));
         LinkFile(file);

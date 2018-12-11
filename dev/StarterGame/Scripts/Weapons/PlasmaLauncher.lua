@@ -41,7 +41,24 @@ function plasmalauncher:DoFire(useForwardForAiming, playerOwned)
 		params.impulse = self.weapon:GetWeaponForward():GetNormalized();
 	else
 		local camTm = TransformBus.Event.GetWorldTM(TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCamera")));
-		params.impulse = camTm:GetColumn(1);
+		local cameraPosition = camTm:GetTranslation();
+		local weaponPosition = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
+		local weaponOffset = cameraPosition - weaponPosition;
+		local cameraDirection = camTm:GetColumn(1);
+		local cameraUp = camTm:GetColumn(2);
+		-- Offset the aim direction to compensate for the gun being below and to the left of the camera
+		-- The offset is greatest when aiming up and lowest when aiming down
+		local upFactor = (cameraDirection.z / 2.0) + 0.5;
+		local upAngleMax = 0.045;
+		local upAngleMin = 0;
+		local upAngleRange = upAngleMax - upAngleMin;
+		local upAngle = upAngleMin + upFactor * upAngleRange;
+		local aimDirection = cameraDirection * Math.Cos(upAngle) + cameraUp * Math.Sin(upAngle);
+		local cameraRight = camTm:GetColumn(0);
+		local rightAngle = 0.017
+		aimDirection = aimDirection * Math.Cos(rightAngle) + cameraRight * Math.Sin(rightAngle);
+		params.impulse = aimDirection;
+		
 	end
 	local pmEventId = GameplayNotificationId(particleManager, "SpawnParticleEvent", "float");
 	GameplayNotificationBus.Event.OnEventBegin(pmEventId, params);

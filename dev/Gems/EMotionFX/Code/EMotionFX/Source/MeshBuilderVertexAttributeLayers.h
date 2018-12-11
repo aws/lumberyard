@@ -114,7 +114,8 @@ namespace EMotionFX
                                                                                                                                                            \
         bool CheckIfIsVertexEqual(uint32 orgVtx, uint32 duplicate) const override;                                                                         \
                                                                                                                                                            \
-        MCORE_INLINE void SetCurrentVertexValue(const void* value) override       { mVertexValue = *((AttribType*)value); }                                      \
+        MCORE_INLINE void SetCurrentVertexValue(const void* value) override       { mVertexValue = *((AttribType*)value); }                                \
+        MCORE_INLINE AttribType GetCurrentVertexValue() const                     { return mVertexValue; }                                                 \
                                                                                                                                                            \
         MCORE_INLINE void AddVertex(uint32 orgVertexNr) override                                                                                           \
         {                                                                                                                                                  \

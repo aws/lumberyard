@@ -16,6 +16,7 @@
 #include <AzCore/IO/IOUtils.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Casting/lossy_cast.h>
+#include <AzCore/std/string/conversions.h>
 #include <cctype>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -656,12 +657,12 @@ namespace AZ
 
             // we assert above, but we also need to properly handle the case when the resolvedPath buffer size
             // is too small to copy the source into.
-            if (path == resolvedPath || (resolvedPathSize < strlen(path)))
+            size_t pathLen = strlen(path) + 1; // account for null
+            if (path == resolvedPath || (resolvedPathSize < pathLen))
             {
                 return false;
             }
 
-            size_t pathLen = strlen(path) + 1; // account for null
             azstrncpy(resolvedPath, resolvedPathSize, path, pathLen);
             for (const auto& alias : m_aliases)
             {
@@ -671,10 +672,7 @@ namespace AZ
                 {
                     if(azstrnicmp(key, "@assets@", 8) == 0 || azstrnicmp(key, "@root@", 6) == 0)
                     {
-                        for (AZ::u64 i = keyLen; i < resolvedPathSize && resolvedPath[i] != '\0'; i++)
-                        {
-                            resolvedPath[i] = static_cast<char>(tolower(static_cast<int>(resolvedPath[i])));
-                        }
+                        AZStd::to_lower(resolvedPath, resolvedPath + resolvedPathSize);
                     }
 
                     const char* dest = alias.second.c_str();
@@ -692,14 +690,7 @@ namespace AZ
                             pathLen -= keyLen;
                             pathLen += destLen;
 
-                            for (AZ::u64 i = 0; i < resolvedPathSize && resolvedPath[i] != '\0'; i++)
-                            {
-                                if (resolvedPath[i] == '\\')
-                                {
-                                    resolvedPath[i] = '/';
-                                }
-                            }
-
+                            AZStd::replace(resolvedPath, resolvedPath + resolvedPathSize, '\\', '/');
                             return true;
                         }
                     }

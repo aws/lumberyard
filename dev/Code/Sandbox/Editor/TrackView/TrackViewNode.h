@@ -75,7 +75,7 @@ public:
 
     const char* GetDescription() const;
 
-    void Offset(float offset);
+    void Offset(float offset, bool notifyListeners);
 
     bool operator==(const CTrackViewKeyHandle& keyHandle) const;
     bool operator!=(const CTrackViewKeyHandle& keyHandle) const;
@@ -109,6 +109,8 @@ public:
     virtual CTrackViewKeyHandle GetKey(unsigned int index) = 0;
 
     virtual void SelectKeys(const bool bSelected) = 0;
+
+    virtual void SortKeysByTime() = 0;
 };
 
 // Represents a bundle of keys
@@ -129,11 +131,18 @@ public:
 
     virtual void SelectKeys(const bool bSelected) override;
 
+    void SortKeysByTime() override;
+
     CTrackViewKeyHandle GetSingleSelectedKey();
 
 private:
     void AppendKey(const CTrackViewKeyHandle& keyHandle);
     void AppendKeyBundle(const CTrackViewKeyBundle& bundle);
+
+    static bool CompareByTime(const CTrackViewKeyHandle &a, const CTrackViewKeyHandle &b)
+    {
+        return a.GetTime() < b.GetTime();
+    }
 
     bool m_bAllOfSameType;
     std::vector<CTrackViewKeyHandle> m_keys;
@@ -196,6 +205,7 @@ public:
     virtual bool GetExpanded() const = 0;
 
     // Disabled state
+    virtual bool CanBeEnabled() const { return true; }
     virtual void SetDisabled(bool bDisabled) {}
     virtual bool IsDisabled() const { return false; }
 

@@ -44,6 +44,7 @@ public:
     virtual void GetMemoryUsage(ICrySizer* pSizer) const;
     virtual string GetLoadedFontNames() const;
     virtual void OnLanguageChanged() override;
+    virtual void ReloadAllFonts() override;
 
 public:
     void UnregisterFont(const char* pFontName);

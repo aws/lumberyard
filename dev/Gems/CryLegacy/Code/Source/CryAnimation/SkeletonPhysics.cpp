@@ -2737,7 +2737,6 @@ void CSkeletonPhysics::Physics_SynchronizeToEntity(IPhysicalEntity& physicalEnti
             abpu.pIds = &m_physJointsIdx[0];
             if (!m_pPhysUpdateValidator)
             {
-                ScopedSwitchToGlobalHeap globalHeap;
                 m_pPhysUpdateValidator = new SBatchUpdateValidator;
             }
             m_pPhysUpdateValidator->AddRef();

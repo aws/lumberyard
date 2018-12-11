@@ -508,6 +508,8 @@ IConsole* iConsole;
 ITimer* iTimer;
 ISystem* iSystem;
 
+StaticInstance<CNULLRenderer> g_nullRenderer;
+
 extern "C" DLL_EXPORT IRenderer * CreateCryRenderInterface(ISystem * pSystem)
 {
     ModuleInitISystem(pSystem, "CryRenderer");
@@ -519,7 +521,7 @@ extern "C" DLL_EXPORT IRenderer * CreateCryRenderInterface(ISystem * pSystem)
     iTimer      = gEnv->pTimer;
     iSystem     = gEnv->pSystem;
 
-    CRenderer* rd = new CNULLRenderer();
+    CRenderer* rd = g_nullRenderer;
     if (rd)
     {
         rd->InitRenderer();

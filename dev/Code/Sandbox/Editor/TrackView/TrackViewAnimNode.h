@@ -189,6 +189,7 @@ public:
     // Disabled state
     virtual void SetDisabled(bool bDisabled) override;
     virtual bool IsDisabled() const override;
+    bool CanBeEnabled() const override;
 
     // Return track assigned to the specified parameter.
     CTrackViewTrack* GetTrackForParameter(const CAnimParamType& paramType, uint32 index = 0) const;
@@ -280,7 +281,7 @@ public:
     void OnEntityRemoved();
 
     // Creates a sub-node for the given component. Returns a pointer to the created component sub-node
-    CTrackViewAnimNode* AddComponent(const AZ::Component* component);
+    CTrackViewAnimNode* AddComponent(const AZ::Component* component, bool disabled);
 
     void AppendNonBehaviorAnimatableProperties(IAnimNode::AnimParamInfos& animatableParams) const
     {
@@ -319,7 +320,7 @@ private:
 
     void PasteNodeFromClipboard(AZStd::map<int, IAnimNode*>& copiedIdToNodeMap, XmlNodeRef xmlNode);
 
-    void SetPosRotScaleTracksDefaultValues();
+    void SetPosRotScaleTracksDefaultValues(bool positionAllowed = true, bool rotationAllowed = true, bool scaleAllowed = true);
 
     void UpdateTrackGizmo();
 

@@ -472,7 +472,7 @@ namespace AzToolsFramework
 
     void ComponentEditor::SetComponentType(const AZ::Component& componentInstance)
     {
-        const AZ::Uuid componentType = GetUnderlyingComponentType(componentInstance);
+        const AZ::Uuid& componentType = GetUnderlyingComponentType(componentInstance);
 
         auto classData = m_serializeContext->FindClassData(componentType);
         if (!classData || !classData->m_editData)

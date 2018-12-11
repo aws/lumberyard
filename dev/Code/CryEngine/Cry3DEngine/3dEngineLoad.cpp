@@ -299,8 +299,6 @@ bool C3DEngine::LoadTerrain(XmlNodeRef pDoc, std::vector<struct IStatObj*>** ppS
 
     if (header.nChunkSize)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Terrain, 0, "Terrain");
-
         if (!m_pTerrain)
         {
             m_pTerrain = (CTerrain*)CreateTerrain(header.TerrainInfo);
@@ -626,8 +624,6 @@ void C3DEngine::UnloadLevel()
 //////////////////////////////////////////////////////////////////////////
 void C3DEngine::LoadFlaresData()
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Flare data");
-
     string flareExportListPath = gEnv->p3DEngine->GetLevelFilePath(FLARE_EXPORT_FILE);
     XmlNodeRef pFlareRootNode = gEnv->pSystem->LoadXmlFromFile(flareExportListPath);
 
@@ -1483,9 +1479,6 @@ void C3DEngine::ReRegisterKilledVegetationInstances()
 bool C3DEngine::LoadUsedShadersList()
 {
     LOADING_TIME_PROFILE_SECTION;
-
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "LoadUsedShadersList");
-
     gEnv->pRenderer->EF_Query(EFQ_SetShaderCombinations);
     return true;
 }
@@ -1494,7 +1487,6 @@ bool C3DEngine::LoadUsedShadersList()
 bool C3DEngine::PrecreateDecals()
 {
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "PrecreateDecals");
 
     CObjManager::DecalsToPrecreate& decals(GetObjManager()->GetDecalsToPrecreate());
     // pre-create ...
@@ -1528,7 +1520,6 @@ bool C3DEngine::PrecreateDecals()
 //////////////////////////////////////////////////////////////////////////
 void C3DEngine::PostLoadLevel()
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "PostLoadLevel");
     LOADING_TIME_PROFILE_SECTION;
 
     CRY_ASSERT(m_levelLoaded == false);

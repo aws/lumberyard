@@ -37,6 +37,9 @@ aws_folder = "AWS"
 systemjs_config = "config-dist.js"
 systemjs_config_dev = "config.js"
 bootstrap_pattern = /{(?=.*"identityPoolId":\s"(\S*)")(?=.*"projectConfigBucketId":\s"(\S*)")(?=.*"userPoolId":\s"(\S*)")(?=.*"region":\s"(\S*)")(?=.*"clientId":\s"(\S*)").*}/g
+port_pattern = /var port(\s)*=(\s)*':3000'/
+domain_pattern = /var domain(\s)*=(\s)*'localhost'/
+schema_pattern = /var schema(\s)*=(\s)*'http:\/\/'/
 index_dist = "index-dist.html"
 index = "index.html"
 app_bundle = "bundles/app.bundle.js"
@@ -382,6 +385,12 @@ var writeIndexDist = function (cb){
     var index_file_content = fs.readFileSync(index, 'utf-8').toString();
     //write the empty bootstrap
     index_file_content = index_file_content.replace(/<script id=['|"]bootstrap['|"]>([\s\S])*?<\/script>/i, "<script>var bootstrap= {}</script>")
+    //empty the domain
+    index_file_content = index_file_content.replace(domain_pattern, "var domain = ''")
+    //empty the port
+    index_file_content = index_file_content.replace(port_pattern, "var port = ''")
+    //set the https schema
+    index_file_content = index_file_content.replace(schema_pattern, "var schema = 'https://'")
     //replace the distro config.js with an updated version from the dev config.js
     index_file_content = index_file_content.replace(/<script src=['|"]config.js['|"]>([\s\S])*?<\/script>/i, "<script>System.config(" + stringified_config + ");</script>")
     //write systemjs load script

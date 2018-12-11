@@ -17,6 +17,7 @@
 #include <IAudioInterfacesCommonData.h>
 #include <IAudioSystem.h>
 
+#include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
 #include <MathConversion.h>
 #include <AzCore/JSON/rapidjson.h>
@@ -305,13 +306,17 @@ namespace CloudGemTextToSpeech
 
     void SpeechComponent::ParsePollySpeechMarks(const AZStd::string& filePath)
     {
-        AZ::IO::SystemFile pFile;
-        if (!pFile.Open(filePath.data(), AZ::IO::SystemFile::SF_OPEN_READ_ONLY))
+        AZ::IO::HandleType marksFileHandle;
+        AZ::IO::FileIOBase::GetInstance()->Open(filePath.data(), AZ::IO::OpenMode::ModeRead, marksFileHandle);
+
+        if (!marksFileHandle)
         {
             AZ_Warning("CloudGemTextToSpeech", false, "Failed to load speech marks");
             return;
         }
-        size_t fileSize = pFile.Length();
+
+        AZ::u64 fileSize;
+        AZ::IO::FileIOBase::GetInstance()->Size(marksFileHandle, fileSize);
         if (fileSize > 0)
         {
             ClearSpeechMarks();
@@ -319,9 +324,8 @@ namespace CloudGemTextToSpeech
             AZStd::string fileBuf;
             fileBuf.resize(fileSize);
 
-            size_t read = pFile.Read(fileSize, fileBuf.data());
-            pFile.Close();
-
+            AZ::IO::FileIOBase::GetInstance()->Read(marksFileHandle, fileBuf.data(), fileSize, true);
+            AZ::IO::FileIOBase::GetInstance()->Close(marksFileHandle);
             static const AZStd::string c_strSpace(" ");
             static const AZStd::string c_strEOL("\n");
             AZStd::size_t cursor = 0;

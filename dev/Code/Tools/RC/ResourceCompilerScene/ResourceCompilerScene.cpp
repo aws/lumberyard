@@ -33,19 +33,6 @@ extern "C"
         AZStd::shared_ptr<AZ::RC::SceneConfig> config = AZStd::make_shared<AZ::RC::SceneConfig>();
         pRC->RegisterConvertor("SceneConverter", new AZ::RC::SceneConverter(config));
     }
-
-    DLL_EXPORT void __stdcall InitializeAzEnvironment(AZ::EnvironmentInstance sharedEnvironment)
-    {
-        if (sharedEnvironment) // Do not attach if loading internally for unit testing
-        {
-            AZ::Environment::Attach(sharedEnvironment);
-        }
-    }
-
-    DLL_EXPORT void __stdcall BeforeUnloadDLL()
-    {
-        AZ::Environment::Detach();
-    }
 }
  
 

@@ -12,6 +12,8 @@
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
+#include <AzToolsFramework/AssetBrowser/Entries/FolderAssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/SourceAssetBrowserEntry.h>
 
 #include <QSharedPointer>
 #include <QTimer>

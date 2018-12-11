@@ -179,7 +179,7 @@ string CD3DDebug::GetLastMessage()
             SIZE_T msgLen = 0;
             if (SUCCEEDED(pQueue->GetMessage(lastMsg, 0, &msgLen)))
             {
-                D3D11_MESSAGE* pMsg = (D3D11_MESSAGE*) malloc(msgLen);
+                D3D11_MESSAGE* pMsg = (D3D11_MESSAGE*) CryModuleMalloc(msgLen);
                 if (SUCCEEDED(pQueue->GetMessage(lastMsg, pMsg, &msgLen)))
                 {
                     const char* pFmt = 0;
@@ -205,7 +205,7 @@ string CD3DDebug::GetLastMessage()
                     res += buf;
                     res += pMsg->pDescription;
                 }
-                free(pMsg);
+                CryModuleFree(pMsg);
             }
         }
     }

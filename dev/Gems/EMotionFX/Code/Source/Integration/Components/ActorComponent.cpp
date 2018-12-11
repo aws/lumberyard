@@ -219,6 +219,17 @@ namespace EMotionFX
         }
 
         //////////////////////////////////////////////////////////////////////////
+        bool ActorComponent::SetMaterialList(const ActorAsset::MaterialList& materialList)
+        {
+            if (m_renderNode)
+            {
+                m_renderNode->SetMaterials(materialList);
+                return true;
+            }
+            return false;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
         void ActorComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
         {
             OnAssetReady(asset);

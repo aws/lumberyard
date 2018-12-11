@@ -97,6 +97,7 @@ namespace EMotionFX
             void DebugDrawRoot(bool enable) override;
             bool GetRenderCharacter() const override;
             void SetRenderCharacter(bool enable) override;
+            bool SetMaterialList(const ActorAsset::MaterialList& materialList) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////

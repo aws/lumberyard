@@ -15,6 +15,18 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Asset/AssetCommon.h>
+
+namespace AzFramework
+{
+    template<typename AssetType>
+    class SimpleAssetReference;
+}
+
+namespace LmbrCentral
+{
+    class MaterialAsset;
+}
 
 namespace EMotionFX
 {
@@ -59,6 +71,9 @@ namespace EMotionFX
             /// Enables rendering of the actor.
             virtual bool GetRenderCharacter() const = 0;
             virtual void SetRenderCharacter(bool enable) = 0;
+
+            /// Allows changing materials for actors
+            virtual bool SetMaterialList(const AZStd::vector<AzFramework::SimpleAssetReference<LmbrCentral::MaterialAsset>>& /*materialList*/) { return false; }
         };
 
         using ActorComponentRequestBus = AZ::EBus<ActorComponentRequests>;

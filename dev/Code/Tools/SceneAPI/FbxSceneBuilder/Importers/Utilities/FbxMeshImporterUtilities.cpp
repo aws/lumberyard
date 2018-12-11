@@ -175,6 +175,37 @@ namespace AZ
                     }
                 }
 
+                // add colors
+                for (int i = 0; i < sourceMesh.GetElementVertexColorCount(); ++i)
+                {
+                    AZ_TraceContext("Vertex color index", i);
+
+                    FbxSDKWrapper::FbxVertexColorWrapper fbxVertexColors = const_cast<FbxSDKWrapper::FbxMeshWrapper&>(sourceMesh).GetElementVertexColor(i);
+
+                    const int fbxPolygonCount = sourceMesh.GetPolygonCount();
+                    const int* const fbxPolygonVertices = sourceMesh.GetPolygonVertices();
+                    for (int fbxPolygonIndex = 0; fbxPolygonIndex < fbxPolygonCount; ++fbxPolygonIndex)
+                    {
+                        const int fbxPolygonVertexCount = sourceMesh.GetPolygonSize(fbxPolygonIndex);
+                        if (fbxPolygonVertexCount < 3)
+                        {
+                            continue;
+                        }
+
+                        const int fbxVertexStartIndex = sourceMesh.GetPolygonVertexIndex(fbxPolygonIndex);
+
+                        for (int polygonVertexIndex = 0; polygonVertexIndex < fbxPolygonVertexCount; ++polygonVertexIndex)
+                        {
+                            const int fbxPolygonVertexIndex = fbxVertexStartIndex + polygonVertexIndex;
+                            const int fbxControlPointIndex = fbxPolygonVertices[fbxPolygonVertexIndex];
+
+                            FbxSDKWrapper::FbxColorWrapper color = fbxVertexColors.GetElementAt(fbxPolygonIndex, fbxPolygonVertexIndex, fbxControlPointIndex);
+
+                            mesh->AddColor(Vector4(color.GetR(), color.GetG(), color.GetB(), color.GetAlpha()) * 255.0f);
+                        }
+                    }
+                }
+
                 // Report problem if no vertex or face converted to MeshData
                 if (mesh->GetVertexCount() <= 0 || mesh->GetFaceCount() <= 0)
                 {

@@ -30,6 +30,15 @@ namespace AZ
                 static_cast<AZ::VectorFloat>(static_cast<float>(vector[2])));
         }
 
+        Vector4 FbxTypeConverter::ToVector4(const FbxVector4& vector)
+        {
+            // Note: FbxVector4[x] is of type FbxDouble and aznumeric_caster does not accept it as cast from type.
+            return Vector4(static_cast<float>(vector[0]),
+                static_cast<float>(vector[1]),
+                static_cast<float>(vector[2]),
+                static_cast<float>(vector[3]));
+        }
+
         Transform FbxTypeConverter::ToTransform(const FbxAMatrix& matrix)
         {
             Transform transform;

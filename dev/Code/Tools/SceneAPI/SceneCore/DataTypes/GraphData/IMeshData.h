@@ -53,10 +53,12 @@ namespace AZ
 
                 virtual unsigned int GetVertexCount() const = 0;
                 virtual bool HasNormalData() const = 0;
+                virtual bool HasColorData() const = 0;
 
                 //1 to 1 mapping from position to normal (each corner of triangle represented)
                 virtual const AZ::Vector3& GetPosition(unsigned int index) const = 0;
                 virtual const AZ::Vector3& GetNormal(unsigned int index) const = 0;
+                virtual const AZ::Vector4& GetColor(unsigned int index) const = 0;
 
                 virtual unsigned int GetFaceCount() const = 0;
                 virtual const Face& GetFaceInfo(unsigned int index) const = 0;

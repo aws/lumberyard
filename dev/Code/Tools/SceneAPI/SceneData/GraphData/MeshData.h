@@ -18,6 +18,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/unordered_set.h>
+#include <AzCore/Math/Vector4.h>
 
 
 namespace AZ
@@ -37,6 +38,7 @@ namespace AZ
                 //positions with more than one normal or uv (seam) will duplicate shared values in multiple verts
                 SCENE_DATA_API virtual void AddPosition(const AZ::Vector3& position);
                 SCENE_DATA_API virtual void AddNormal(const AZ::Vector3& normal);
+                SCENE_DATA_API virtual void AddColor(const AZ::Vector4& color);
 
                 //assume consistent winding - no stripping or fanning expected (3 index per face)
                 SCENE_DATA_API void AddFace(unsigned int index1, unsigned int index2, unsigned int index3,
@@ -51,9 +53,11 @@ namespace AZ
 
                 SCENE_DATA_API unsigned int GetVertexCount() const override;
                 SCENE_DATA_API bool HasNormalData() const override;
+                SCENE_DATA_API bool HasColorData() const override;
 
                 SCENE_DATA_API const AZ::Vector3& GetPosition(unsigned int index) const override;
                 SCENE_DATA_API const AZ::Vector3& GetNormal(unsigned int index) const override;
+                SCENE_DATA_API const AZ::Vector4& GetColor(unsigned int index) const override;
 
                 SCENE_DATA_API unsigned int GetFaceCount() const override;
                 SCENE_DATA_API const AZ::SceneAPI::DataTypes::IMeshData::Face& GetFaceInfo(unsigned int index) const override;
@@ -64,6 +68,7 @@ namespace AZ
             protected:
                 AZStd::vector<AZ::Vector3>                              m_positions;
                 AZStd::vector<AZ::Vector3>                              m_normals;
+                AZStd::vector<AZ::Vector4>                              m_colors;
 
                 AZStd::vector<AZ::SceneAPI::DataTypes::IMeshData::Face> m_faceList;
 

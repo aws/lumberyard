@@ -26,6 +26,7 @@
 #include <SceneAPI/SceneCore/DataTypes/GraphData/ISkinWeightData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexTangentData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexBitangentData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexColorData.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IBlendShapeRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IMaterialRule.h>
@@ -456,6 +457,14 @@ namespace EMotionFX
             EMotionFX::MeshBuilderVertexAttributeLayerVector3* normalsLayer = EMotionFX::MeshBuilderVertexAttributeLayerVector3::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_NORMALS, false, true);
             meshBuilder->AddLayer(normalsLayer);
 
+            // The color layer
+            EMotionFX::MeshBuilderVertexAttributeLayerVector4* pColorsLayer = nullptr;
+            if (meshData->HasColorData())
+            {
+                pColorsLayer = EMotionFX::MeshBuilderVertexAttributeLayerVector4::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_COLORS32, false, true);
+                meshBuilder->AddLayer(pColorsLayer);
+            }
+
             // A Mesh can have multiple children that contain UV, tangent or bitangent data.
             SceneDataTypes::IMeshVertexUVData*                  meshUVDatas[2]      = { nullptr, nullptr };
             SceneDataTypes::IMeshVertexTangentData*             meshTangentData     = nullptr;
@@ -526,6 +535,7 @@ namespace EMotionFX
             AZ::Vector3 bitangent;
             AZ::Vector4 newTangent;
             AZ::PackedVector3f bitangentVec;
+            AZ::Vector4 color;
             const AZ::u32 numTriangles = meshData->GetFaceCount();
             for (AZ::u32 i = 0; i < numTriangles; ++i)
             {
@@ -630,6 +640,12 @@ namespace EMotionFX
                         }
                         bitangentVec.Set(bitangent.GetX(), bitangent.GetY(), bitangent.GetZ());
                         bitangentLayer->SetCurrentVertexValue(&bitangentVec);
+                    }
+
+                    if (pColorsLayer)
+                    {
+                        color = meshData->GetColor(vertexIndex);
+                        pColorsLayer->SetCurrentVertexValue(&color);
                     }
 
                     meshBuilder->AddPolygonVertex(orgVertexNumber);

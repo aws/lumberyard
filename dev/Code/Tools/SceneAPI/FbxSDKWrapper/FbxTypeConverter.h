@@ -24,6 +24,7 @@ namespace AZ
         public:
             static Vector2 ToVector2(const FbxVector2& vector);
             static Vector3 ToVector3(const FbxVector4& vector);
+            static Vector4 ToVector4(const FbxVector4& vector);
             static Transform ToTransform(const FbxAMatrix& matrix);
             static Transform ToTransform(const FbxMatrix& matrix);
         };

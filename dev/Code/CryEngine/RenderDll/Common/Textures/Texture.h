@@ -60,6 +60,7 @@ enum
 
     TO_FOG,
     TO_FROMOBJ,
+    TO_FROMOBJ_GLOW,
     TO_SVOTREE,
     TO_SVOTRIS,
     TO_SVOGLCM,
@@ -2335,6 +2336,7 @@ public:
     static CTexture* s_ptexShadowMask;
     static CTexture* s_ptexFromRE_FromContainer[2];
     static CTexture* s_ptexFromObj;
+    static CTexture* s_ptexFromObjGlow;
     static CTexture* s_ptexSvoTree;
     static CTexture* s_ptexSvoTris;
     static CTexture* s_ptexSvoGlobalCM;

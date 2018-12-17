@@ -1192,7 +1192,7 @@ namespace AzFramework
         {
             m_localTM = m_parentTM->GetWorldTM().GetInverseFull() * m_worldTM;
         }
-        else
+        else if (!m_parentId.IsValid())
         {
             m_localTM = m_worldTM;
         }
